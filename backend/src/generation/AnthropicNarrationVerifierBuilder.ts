@@ -278,7 +278,21 @@ export function buildActVerifyPrompt(request: ActVerifyRequest): string {
     `You are the FACT-VERIFICATION pass for the narration of one act ("${request.actTitle}") of an audio documentary ("Foray"). You did NOT write it.`,
     "",
     "THE CHECKLIST — the beats to judge this round (each must be carried somewhere in the act):",
-    ...(request.beats.length > 0 ? request.beats.map((b) => `  ${b.beatId}: ${b.claim}`) : ["  (none — every beat is already confirmed)"]),
+    ...(request.beats.length > 0
+      ? request.beats.flatMap((b) =>
+          /* F-99: a beat whose seed tape is not in this Foray. Judged on
+             what the act's sources CAN carry: demanding the seed's
+             specifics is demanding something no seam could ever have
+             written, which is how six of run 9's eight unverified pages
+             came to be. */
+          b.seedLost
+            ? [
+                `  ${b.beatId}: ${b.claim}`,
+                `    SEED LOST — the tape this claim was written from is NOT in this act and nothing was retrieved for it. Judge it carried when the prose makes as much of its point as the act's sources support; do NOT demand the names, numbers or incidents that only the missing tape could supply. If the act's sources do not reach the point at all, say exactly that in notes.`
+              ]
+            : [`  ${b.beatId}: ${b.claim}`]
+        )
+      : ["  (none — every beat is already confirmed)"]),
     "",
     "THE ACT'S SOURCES — one set for the whole act. Any statement in any seam may rest on any of these, not only the ones the seam selected:",
     ...request.sources.map(actSourceEntry),
@@ -339,7 +353,15 @@ function actVerifyLayout(request: ActVerifyRequest, clips: Map<string, VerifyCli
     if (seam.introduces) {
       const clip = clips.get(seam.introduces);
       if (clip) {
-        lines.push(`CLIP ${clip.clipId} — "${clip.title}" on ${clip.show || "an unnamed show"}, ${Math.round(clip.durationSec)} s of tape${clip.docId ? ` (${clip.docId})` : ""}`);
+        /* F-99: one clip may carry two beats (§4.5 merged the second
+           beat's window into it). It plays once and there is one window:
+           judge both beats against it. */
+        const carried = clip.carries ?? [];
+        lines.push(
+          `CLIP ${clip.clipId} — "${clip.title}" on ${clip.show || "an unnamed show"}, ${Math.round(clip.durationSec)} s of tape${clip.docId ? ` (${clip.docId})` : ""}` +
+            (carried.length > 1 ? ` — carries beats ${carried.map((b) => b.beatId).join(", ")}, judged against this one window` : "")
+        );
+        if (carried.length > 1) for (const beat of carried) lines.push(`  it carries beat ${beat.beatId}: ${beat.claim}`);
         lines.push(`  Transcript window:\n${clip.windowText || "    (the window is not held — treat any statement about this clip as unsupported)"}`);
       }
     }

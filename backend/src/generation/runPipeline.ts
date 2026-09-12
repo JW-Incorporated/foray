@@ -1661,6 +1661,10 @@ export async function runForayPipeline(
     writerCalls: narrationWriterCalls,
     verifierCalls: narrationVerifierCalls,
     retryRounds: narrationStats.retryRounds,
+    /* F-99: beats the act writer closed as seed-lost rather than retrying.
+       Zero is a real answer here — the accumulator was passed — so it is
+       reported as 0, not as "not counted". */
+    seedLostBeats: narrationStats.seedLostBeats ?? 0,
     pipelineTokens: getUsageTotals().total,
     stageTimings: timings.all(),
     retrieval: evidence.metrics(),

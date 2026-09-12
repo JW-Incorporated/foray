@@ -155,6 +155,36 @@ import {
  * two more (the writer, then the verifier if anything clean is
  * unconfirmed), so an act costs at most six. The deck's target —
  * `narrationCallsPerAct` ≤ 3 — is met on a clean pass.
+ *
+ * F-99 — THE TWO THINGS THE SOURCING PASS LEFT HERE (F-96's PR named
+ * both). Neither is a new rule; both are this lane consuming a field §4.5
+ * now sets.
+ *
+ *   A. A MERGED CLIP IS ONE CLIP. §4.5 merges a second beat whose thought
+ *      sits in the same stretch of the same episode into the clip before
+ *      it (`SourcedBeat.mergedInto`): the clip is extended forward and
+ *      both beats resolve to ONE segment pointer. `stitchAct` and the
+ *      partial projection already play that segment once; `planActSeams`
+ *      now lays it out once too, as one `SeamClip` carrying both beats
+ *      (`SeamClip.carries`, printed as "carries beats b2, b3" on the CLIP
+ *      line). One Intro, one bridge in, one bridge out, and the verifier
+ *      judges both beats against the one window — instead of two Intros
+ *      and a beatless seam between two plays of the same tape.
+ *   B. A SEED-LOST BEAT IS CARRIED ONLY AS FAR AS THE SOURCES GO. A beat
+ *      G-25 seeded from a transcript §4.5 could not place carries
+ *      `seedLost: true` (F-96). Its claim names a guest and an incident
+ *      the act has no tape and no print for — unverifiable by
+ *      construction, and six of run 9's eight unverified pages. The
+ *      writer is told, on the beat's own line, to carry it only as far as
+ *      the act's sources support it and never to attribute specifics to
+ *      the people it names; the verifier is told not to demand the seed's
+ *      specifics. And when the act's sources cannot reach it at all, the
+ *      beat is CLOSED after its first judgement — reported
+ *      `uncarried: seed-lost` on the page (`unverifiedReason:
+ *      "seed-lost"`, counted as `seedLostBeats`) instead of sending the
+ *      act back twice more for a note no writer can answer. F-97's doubt
+ *      (c) said the honest fix is at seeding; this stops the retry tax
+ *      until it lands.
  */
 
 export interface WriteActOptions {
@@ -213,6 +243,15 @@ interface BeatState {
   restsOn?: string[];
   verifiedAtAttempt?: number;
   notes?: string;
+  /**
+   * F-99: a `seedLost` beat the act's sources could not reach, CLOSED on
+   * the verifier's first refusal of it. It is not carried and never will
+   * be — the tape its claim was written from is not in the Foray — so it
+   * leaves the checklist, stops appearing in the round's notes, and does
+   * not keep its seam open for two more rounds. The page it belongs to
+   * says so (`unverifiedReason: "seed-lost"`).
+   */
+  seedLostClosed?: true;
 }
 
 /** One entry of the act's source set, with what it resolves to. */
@@ -277,7 +316,12 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
         ...(window ? { docId: window.docId } : {}),
         opening,
         durationSec: clipDurationSec(clip.tape),
-        intro: decideIntro(clip.tape, previousClip?.tape, opening)
+        intro: decideIntro(clip.tape, previousClip?.tape, opening),
+        /* F-99: every beat this one clip carries — its own, and any beat
+           §4.5 merged into it. Printed on the CLIP line so the writer
+           knows what the tape already says and the verifier judges both
+           beats against the one window. */
+        carries: clip.carries.map((c) => ({ beatId: c.beatId, claim: c.claim }))
       }
     });
     previousClip = clip;
@@ -289,7 +333,11 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
   const beats = new Map<string, BeatState>();
   for (const seam of seams) {
     for (const b of seam.plan.beats) {
-      beats.set(b.beatId, { brief: { beatId: b.beatId, claim: b.claim, mode: b.mode, kind: b.kind }, seamId: seam.plan.seamId, carried: false });
+      beats.set(b.beatId, {
+        brief: { beatId: b.beatId, claim: b.claim, mode: b.mode, kind: b.kind, ...(b.seedLost ? { seedLost: true as const } : {}) },
+        seamId: seam.plan.seamId,
+        carried: false
+      });
     }
   }
 
@@ -337,7 +385,10 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
       }
     }
     const hasScript = (seamId: string): boolean => seams.some((s) => s.plan.seamId === seamId && s.draft !== undefined);
-    const open = [...beats.values()].filter((b) => !b.carried && hasScript(b.seamId));
+    /* F-99: a seed-lost beat closed in an earlier round is off the
+       checklist — asking again costs a round and cannot change the
+       answer, and asking twice would count it twice. */
+    const open = [...beats.values()].filter((b) => !b.carried && !b.seedLostClosed && hasScript(b.seamId));
     if (toJudge.length > 0) {
       const verdicts = await verifier.verifyAct(
         {
@@ -352,7 +403,7 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
         },
         ctx
       );
-      judge(toJudge, open, verdicts, actSources, round);
+      judge(toJudge, open, verdicts, actSources, round, act.title, stats);
     }
 
     /* WHAT FAILED: a seam refused in code, a seam the verifier refused, a
@@ -360,7 +411,7 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
        is frozen from here on. */
     const notes = roundNotes(seams, beats, mechanical);
     for (const seam of seams) {
-      if (seam.draft && seam.confirmed && seam.plan.beats.every((b) => beats.get(b.beatId)!.carried)) {
+      if (seam.draft && seam.confirmed && seam.plan.beats.every((b) => beatSettled(beats.get(b.beatId)!))) {
         seam.frozen = true;
         delete seam.notes;
       } else if (seam.confirmed && seam.draft) {
@@ -483,14 +534,27 @@ export function replayMechanicalGate(
       beat: 0,
       clipId,
       claim: "",
-      tape: { segmentId: brief.segmentId, itemId: brief.itemId, startSec: 0, endSec: brief.durationSec, startAnchor: "", endAnchor: "", tier: 1, confidence: "high" }
+      tape: { segmentId: brief.segmentId, itemId: brief.itemId, startSec: 0, endSec: brief.durationSec, startAnchor: "", endAnchor: "", tier: 1, confidence: "high" },
+      /* F-99: the beats the recorded request says this clip carries. A
+         request recorded before F-99 (the run-9 replay) has none, and the
+         mechanical gate reads none of them — nothing here depends on it. */
+      carries: (brief.carries ?? []).map((b) => ({ slot: 0, beat: 0, beatId: b.beatId, claim: b.claim }))
     };
   };
   const seams = request.seams.map((brief) =>
     seamStateOf(
       {
         seamId: brief.seamId,
-        beats: brief.beats.map((b) => ({ slot: 0, beat: 0, beatId: b.beatId, claim: b.claim, mode: b.mode === "Carry" ? "Carry" : "Patch", kind: b.kind, exploration: false })),
+        beats: brief.beats.map((b) => ({
+          slot: 0,
+          beat: 0,
+          beatId: b.beatId,
+          claim: b.claim,
+          mode: b.mode === "Carry" ? "Carry" : ("Patch" as const),
+          kind: b.kind,
+          exploration: false,
+          ...(b.seedLost ? { seedLost: true as const } : {})
+        })),
         ...(brief.follows ? { follows: clipOf(brief.follows) } : {}),
         ...(brief.introduces ? { introduces: clipOf(brief.introduces) } : {})
       },
@@ -559,7 +623,10 @@ export function titlesForClip(
 function seamBriefOf(seam: SeamState): SeamBrief {
   return {
     seamId: seam.plan.seamId,
-    beats: seam.plan.beats.map((b) => ({ beatId: b.beatId, claim: b.claim, mode: b.mode, kind: b.kind })),
+    /* F-99: `seedLost` travels to the WRITER too — the prompt prints the
+       "its tape was not available" line under the beat, which is the only
+       place a writer looking at one claim reads it. */
+    beats: seam.plan.beats.map((b) => ({ beatId: b.beatId, claim: b.claim, mode: b.mode, kind: b.kind, ...(b.seedLost ? { seedLost: true as const } : {}) })),
     ...(seam.plan.follows ? { follows: seam.plan.follows.clipId } : {}),
     ...(seam.plan.introduces ? { introduces: seam.plan.introduces.clipId } : {}),
     ...(seam.intro ? { intro: seam.intro } : {}),
@@ -810,7 +877,15 @@ function rejectSeam(seam: SeamState, issues: string[], sources: Source[], round:
  * what, and the round it was first confirmed on; each seam's confirmation
  * with the sources it rests on, or its note.
  */
-function judge(toJudge: SeamState[], open: BeatState[], verdicts: ActVerifyResult, actSources: ActSource[], round: number): void {
+function judge(
+  toJudge: SeamState[],
+  open: BeatState[],
+  verdicts: ActVerifyResult,
+  actSources: ActSource[],
+  round: number,
+  actTitle: string,
+  stats?: NarrationWriteStats
+): void {
   for (const state of open) {
     const verdict = verdicts.beats.find((v) => v.beatId === state.brief.beatId);
     const carried = verdict?.carried === true;
@@ -825,6 +900,23 @@ function judge(toJudge: SeamState[], open: BeatState[], verdicts: ActVerifyResul
     delete state.carriedBy;
     delete state.verifiedAtAttempt;
     state.notes = verdict ? (verdict.notes ?? "") : "the verifier returned no verdict for this beat";
+    /* F-99: THE SEED IS GONE AND THE ACT CANNOT REACH IT. A `seedLost`
+       beat the verifier has now read the whole act against is closed
+       here, on its FIRST judgement: the claim was written from tape §4.5
+       could not place, so there is no source in the act for the writer to
+       rest it on and no note it can answer. Two more rounds would buy two
+       more writer calls and the same refusal (six of run 9's eight
+       unverified pages were exactly this). The fix is at seeding; this is
+       the honest report of it. It takes a VERDICT to close one: a verifier
+       that answered nothing for the beat has not read it against the act,
+       and a missing verdict is a retry like any other. */
+    if (state.brief.seedLost === true && verdict !== undefined) {
+      state.seedLostClosed = true;
+      if (stats) stats.seedLostBeats = (stats.seedLostBeats ?? 0) + 1;
+      console.warn(
+        `writeAct: act "${actTitle}" — beat ${state.brief.beatId} was seeded from tape this Foray never clipped (seedLost, F-96) and the act's sources do not carry it; closing it as seed-lost after one round rather than retrying (F-99): ${state.brief.claim.slice(0, 160)}`
+      );
+    }
   }
 
   for (const seam of toJudge) {
@@ -866,6 +958,12 @@ function judge(toJudge: SeamState[], open: BeatState[], verdicts: ActVerifyResul
   }
 }
 
+/** F-99: a beat that no longer holds its seam open — carried, or closed
+ * as seed-lost. */
+function beatSettled(state: BeatState): boolean {
+  return state.carried || state.seedLostClosed === true;
+}
+
 /** The notes for the next round — empty when nothing failed. A seam's
  * own note goes on its SEAM line too (`seamBriefOf`); the act-level
  * list is F-35's running record. */
@@ -876,7 +974,9 @@ function roundNotes(seams: SeamState[], beats: Map<string, BeatState>, mechanica
     if (seam.notes && seam.changed) notes.push(`seam ${seam.plan.seamId}: ${seam.notes}`);
   }
   for (const [beatId, state] of beats) {
-    if (state.carried) continue;
+    /* F-99: a seed-lost beat is NOT a note — there is nothing the writer
+       can do with one, and asking is what cost run 9 three rounds a beat. */
+    if (beatSettled(state)) continue;
     const seam = seams.find((s) => s.plan.seamId === state.seamId)!;
     if (!seam.draft) continue; // its seam was refused in code; that note covers it
     const beatNote = `the prose does not carry beat ${beatId} (${state.brief.claim.slice(0, 120)})${state.notes ? ` — ${state.notes}` : ""}; add it where it belongs (seam ${state.seamId}), resting on an act source — if nothing in the act supports it, say only what the sources say`;
@@ -947,24 +1047,39 @@ function assemble(act: SourcedAct, seams: SeamState[], beats: Map<string, BeatSt
  * opening. */
 function finalPageFor(seam: SeamState, beats: Map<string, BeatState>): NarratedBeat | undefined {
   const hasBeats = seam.plan.beats.length > 0;
-  const uncarried = seam.plan.beats.filter((b) => !beats.get(b.beatId)!.carried).map((b) => b.beatId);
+  const uncarried = seam.plan.beats.filter((b) => !beatSettled(beats.get(b.beatId)!)).map((b) => b.beatId);
+  /* F-99: the beats closed as seed-lost — not "the writer missed them",
+     but "the tape their claim was written from is not in this Foray". */
+  const seedLost = seam.plan.beats.filter((b) => beats.get(b.beatId)!.seedLostClosed === true).map((b) => b.beatId);
 
   if (seam.confirmed && seam.draft) {
     const { sources, rest, pageIds, notes } = seam.confirmed;
     const verification: SynthesisVerification | undefined = pageIds.length > 0 ? { kind: "synthesis", restsOn: pageIds, attempt: seam.confirmed.round } : undefined;
+    const settled = uncarried.length === 0 && seedLost.length === 0;
     const page: NarratedBeat = {
       mode: assignSeamMode(seam.plan, rest),
       script: seam.draft.script,
       sources,
       pronunciationHints: seam.draft.hints,
-      verified: uncarried.length === 0,
-      purposeAccomplished: uncarried.length === 0,
+      verified: settled,
+      purposeAccomplished: settled,
       ...(verification ? { verification } : {}),
       attempts: seam.attempts
     };
     const evidence = evidenceCarriedBy(seam, page);
-    if (uncarried.length === 0) return { ...page, ...(notes ? { verifierNotes: notes } : {}), evidence };
-    const note = `beat${uncarried.length > 1 ? "s" : ""} ${uncarried.join(", ")} positioned in this seam ${uncarried.length > 1 ? "are" : "is"} not carried${uncarried.map((id) => beats.get(id)!.notes).filter(Boolean).length > 0 ? ` — ${uncarried.map((id) => beats.get(id)!.notes).filter(Boolean).join("; ")}` : ""}`;
+    if (settled) return { ...page, ...(notes ? { verifierNotes: notes } : {}), evidence };
+    /* F-99: the seam is clean and confirmed and the ONLY thing missing is
+       a beat whose seed is gone. A distinct reason, not an ordinary
+       refusal: nothing was retried, and nothing can be — the editor's
+       move is to re-seed the beat or cut it. */
+    if (uncarried.length === 0) {
+      const note = `beat${seedLost.length > 1 ? "s" : ""} ${seedLost.join(", ")} ${seedLost.length > 1 ? "were" : "was"} seeded from tape this Foray never clipped (seedLost, F-96) and the act's sources do not carry ${seedLost.length > 1 ? "them" : "it"} — the prose says only what the sources say; re-seed the beat or cut it (F-99, uncarried: seed-lost)`;
+      console.warn(`writeAct: seam ${seam.plan.seamId} — ${note.slice(0, 220)}`);
+      return { ...page, unverifiedReason: "seed-lost", verifierNotes: note, evidence };
+    }
+    const note =
+      `beat${uncarried.length > 1 ? "s" : ""} ${uncarried.join(", ")} positioned in this seam ${uncarried.length > 1 ? "are" : "is"} not carried${uncarried.map((id) => beats.get(id)!.notes).filter(Boolean).length > 0 ? ` — ${uncarried.map((id) => beats.get(id)!.notes).filter(Boolean).join("; ")}` : ""}` +
+      (seedLost.length > 0 ? `; beat${seedLost.length > 1 ? "s" : ""} ${seedLost.join(", ")} lost ${seedLost.length > 1 ? "their seeds" : "its seed"} (F-99, uncarried: seed-lost)` : "");
     console.warn(
       `writeAct: keeping seam ${seam.plan.seamId} (${seam.plan.beats.map((b) => b.beatId).join(", ")}) UNVERIFIED after ${seam.attempts.length} attempt(s) — the veracity gate decides (F-51): ${note.slice(0, 200)}`
     );

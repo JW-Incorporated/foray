@@ -418,6 +418,8 @@ const ACT_PROSE_RULES = [
   "  light — the same guest and show as the clip before: one clause at most, or nothing.",
   "  none  — the host introduces the guest in the clip itself: add nothing about who is speaking.",
   "A seam with no beats and a light or none introduction may return an empty script: the clips then run together.",
+  "A beat marked SEED LOST was written from a stretch of tape this Foray does NOT play and no document was found for: carry it only as far as the act's sources go. Never attribute a specific incident, number or quotation to anyone that beat's claim names — say what the sources DO say, or turn the beat into a question and hand off.",
+  "One CLIP can carry more than one beat: when its line says it carries several, the tape makes those points itself — introduce it once and do not narrate what it is about to say.",
   "Each seam's script MUST land inside the character band on its SEAM line. Longer is not better: narration is at most a quarter of the listening.",
   "List, per seam, the indices of the claims its script asserts (usedClaims).",
   "NEVER assert what the record does or does not contain — no \"nobody wrote it down\", \"there is no record of\", \"the file doesn't say\", \"we still don't know\" — unless a quote you selected says exactly that. Say what a source DOES say instead: not \"the plan nobody wrote down\" but \"the plan that lived in people's heads, as he tells it\"; not \"the report never explains why\" but \"the report names the drawing, and stops there\" (only if it does), or leave the point out.",
@@ -484,7 +486,17 @@ function actLayout(seams: SeamBrief[], clips: Map<string, ClipBrief>): string {
     if (seam.introduces) edges.push(`introduces CLIP ${seam.introduces} (introduction: ${seam.intro ?? "full"})`);
     lines.push(`SEAM ${seam.seamId} — ${seam.band[0]}-${seam.band[1]} characters${edges.length > 0 ? ` — ${edges.join(", ")}` : ""}${seam.frozen ? " — FROZEN" : seam.previousScript !== undefined ? " — EDIT" : ""}`);
     if (seam.beats.length === 0) lines.push("  carries no beat — the introduction only, or nothing");
-    for (const beat of seam.beats) lines.push(`  carries beat ${beat.beatId}${beat.kind === "argument" ? " (an argument — what it means)" : ""}: ${beat.claim}`);
+    for (const beat of seam.beats) {
+      lines.push(`  carries beat ${beat.beatId}${beat.kind === "argument" ? " (an argument — what it means)" : ""}: ${beat.claim}`);
+      /* F-99: the seed behind this claim is not in the Foray. Said on the
+         beat's own line, in the imperative, because the general rule above
+         is not what a writer reads when it is looking at one claim. */
+      if (beat.seedLost) {
+        lines.push(
+          `    SEED LOST — beat ${beat.beatId}'s tape was not available: do not attribute specifics to anyone this claim names; say only what the act's sources say, or hand off.`
+        );
+      }
+    }
     if (seam.frozen && seam.previousScript !== undefined) {
       lines.push(`  FROZEN — verified; return this script verbatim, with no claims: ${JSON.stringify(seam.previousScript)}`);
     } else if (seam.previousScript !== undefined) {
@@ -494,10 +506,18 @@ function actLayout(seams: SeamBrief[], clips: Map<string, ClipBrief>): string {
     if (seam.introduces) {
       const clip = clips.get(seam.introduces);
       if (clip) {
+        /* F-99: a clip §4.5 merged two beats into is ONE clip carrying
+           both — it plays once, so it is introduced once and the tape
+           makes both points itself. Named on the line only when there is
+           more than one: a clip carrying its own beat alone is the
+           ordinary case and says nothing new. */
+        const carried = clip.carries ?? [];
         lines.push(
           `CLIP ${clip.clipId} — "${clip.title}" on ${clip.show || "an unnamed show"}, ${Math.round(clip.durationSec)} s of tape` +
-            (clip.docId ? ` (document ${clip.docId})` : " (no transcript window is held)")
+            (clip.docId ? ` (document ${clip.docId})` : " (no transcript window is held)") +
+            (carried.length > 1 ? ` — carries beats ${carried.map((b) => b.beatId).join(", ")}` : "")
         );
+        if (carried.length > 1) for (const beat of carried) lines.push(`  it carries beat ${beat.beatId}: ${beat.claim}`);
         lines.push(clip.opening ? `  it opens: ${JSON.stringify(clip.opening)}` : "  its opening is not held — introduce it from the show and episode only");
       }
     }

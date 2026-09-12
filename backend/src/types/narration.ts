@@ -261,7 +261,7 @@ export type PronunciationHint = z.infer<typeof PronunciationHintSchema>;
  * unaffected until something actually populates them.
  */
 /** See `NarratedBeat.unverifiedReason`. */
-export const UnverifiedReasonSchema = z.enum(["no-evidence", "no-page"]);
+export const UnverifiedReasonSchema = z.enum(["no-evidence", "no-page", "seed-lost"]);
 export type UnverifiedReason = z.infer<typeof UnverifiedReasonSchema>;
 
 /**
@@ -345,7 +345,7 @@ export const NarratedBeatSchema = z
     purposeRevisedByVerifier: z.boolean().optional(),
     verifierNotes: z.string().trim().min(1).optional(),
     /** WHY this page is unverified, when the answer is not "the verifier
-     * read it and objected" (F-60). Two shapes of page reach a listener
+     * read it and objected" (F-60). Three shapes of page reach a listener
      * with `verified: false`, and an editor triaging them needs to tell
      * them apart at a glance:
      *
@@ -357,6 +357,15 @@ export const NarratedBeatSchema = z
      *   "no-page" — evidence existed but no attempt ever cleared the
      *      mechanical rules far enough to produce prose, so the same
      *      hand-off holds the place and `attempts` records what was tried.
+     *   "seed-lost" (F-99) — the page is clean and confirmed, and the beat
+     *      it was written for was seeded from a stretch of tape §4.5 could
+     *      not place (`SourcedBeat.seedLost`, F-96). The claim names a
+     *      guest and an incident the Foray never plays and print retrieval
+     *      never found, so no prose could carry its specifics: the act's
+     *      sources do not reach it. There is nothing for the writer to fix
+     *      — the fix is at SEEDING — so the beat is closed after its first
+     *      judgement rather than costing three rounds, and the page says
+     *      which beat it was. Six of run 9's eight unverified pages.
      *
      * A page the verifier simply refused carries no reason at all: its
      * `verifierNotes` is the objection, which is the more useful thing to
