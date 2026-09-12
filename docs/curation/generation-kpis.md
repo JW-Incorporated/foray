@@ -41,12 +41,14 @@ harness; it is not something a run can pass or fail yet.
 |---|---|---|---|
 | `wall m` | ≤ 6 min p50 | **proposed (D0)** | §1.2 prompt → finished, validated Foray, keyed after Phase 3 |
 | `ttlA1 m` | ≤ 0.5 min p50 | settled | §1.2 prompt → Act 1 playable (fix plan WS-D); §1.2 itself says the deck cannot reach it and names **D6** as the re-baseline |
-| `tapeSh` | ≥ 0.70 | **proposed (D0)** | §1.2 tape share of runtime |
-| `tape/rt` | — | — | not a §1.2 row; the reading §1.2 *quotes* (see below) |
+| `tapeSh` | — | — | NOT §1.2's row (F-101): the report's tape ÷ (tape + narration) |
+| `tape/rt` | ≥ 0.70 | **proposed (D0)** | §1.2 **tape share of runtime** — the row's own denominator |
 | `clip mean` / `clip max` | — | — | Q-01 cuts a clip to a thought inside 60–1,800 s; no §1.2 target |
 | `pg/seam` | ≤ 1 | **proposed (D0)** | §1.2 narration pages per seam |
 | `narrSh` | ≤ 0.25 | **proposed (D0)** | §1.2 narration share of runtime |
-| `1stPass` | ≥ 0.80 | settled | §1.2 first-attempt page pass rate |
+| `1stPg` | ≥ 0.80 | settled | §1.2 first-attempt **page** pass rate — kept pages accepted on the writer's first try |
+| `1stBt` | — | — | Q-03's per-act reading: narration **beats** the verifier confirmed on round 1. Not comparable to `1stPg` |
+| `1stPass?` | — | — | runs 4–9's single `firstAttemptPassRate`, unit **undeclared** (4–8 are pages, run 9 is beats). F-101 refuses to guess it into either column |
 | `unver` | 0 | settled | F-51: any page kept `verified: false` refuses publish (`evaluateVeracityGate`) |
 | `synth` | — | — | F-88 counts synthesis-verified pages *beside* the unverified ones; no target |
 | `seedLost` | — | — | F-99 counts beats closed as seed-lost; no target, and no report written so far carries it |
@@ -59,30 +61,56 @@ harness; it is not something a run can pass or fail yet.
 
 They are different quantities and the table prints both.
 
-- **`tapeSh`** is `meta.veracity.tapeShare` — Q-05's `computeListeningShares`:
-  tape seconds over tape + narration seconds, as the writer estimated them.
-  Present from run 9 on, because that is when the code landed.
+- **`tapeSh`** is `meta.veracity.tapeOfTapePlusNarration` (`tapeShare` on runs
+  4–9, before F-101 put the denominator in the name) — Q-05's
+  `computeListeningShares`: tape seconds over tape + narration seconds, as the
+  writer estimated them. Present from run 9 on, because that is when the code
+  landed. **It is not §1.2's row and no longer carries §1.2's target.**
 - **`tape/rt`** is tape seconds over the candidate's whole `runtimeSec`, which
   also counts jingles and markers. This is the reading §1.2 quotes — "59–61 %
   (runs 5–7), **78 %** (run 8) [measured on `data/forays.json` @ #642]" — and
   the harness reproduces it from the archived candidates: 0.598, 0.595, 0.776,
   0.557 for runs 6, 7, 8, 9.
 
-On run 9 the two read **0.684** and **0.557**. Collapsing them into one column
-would put a step in the trend line on the day the report started carrying its
-own number, so they stay apart.
+On run 9 the two read **0.684** and **0.557** — thirteen points apart.
+Collapsing them into one column would put a step in the trend line on the day
+the report started carrying its own number, so they stay apart. §1.2 named
+`report.json tapeShare` as the source for a row titled "Tape share **of
+runtime**", which would have graded a *proposed* ≥ 70 % founder target against
+the flattering one; **F-101 moved the target onto `tape/rt`** and the roadmap's
+source cell with it.
+
+### The rate whose unit changed mid-trend
+
+`firstAttemptPassRate` meant "share of kept **pages** accepted on the writer's
+first try" for runs 4–8 and "share of narration **beats** the verifier confirmed
+on round 1" from run 9, and which one a report carried was decided by sniffing
+the candidate — under one field name, in one column. Run 9's **0.048** is not
+run 8's **0.68** measured worse; it is a different measurement, and `writeAct.ts`
+cites exactly that pair as evidence the Q-03 contract did not converge.
+
+Reports from F-101 on carry `firstAttemptPassRatePages`,
+`firstAttemptPassRateBeats` and `firstAttemptUnit`, and the harness prints
+`1stPg` and `1stBt` from them. Runs 4–9 declare no unit, so their number stays
+in `1stPass?` rather than being guessed into one of the two — rule 1 applied to
+a unit instead of a value. What run 9's regression was really made of is in the
+run ledger's F-101 paragraph: under run 9's own contract all four acts ran all
+three rounds and the retry re-sent the whole act, so a clean seam was
+re-attempted (and one clean Intro dropped) for another seam's failure — the page
+unit would have read near zero on run 9 too. The unit change did not manufacture
+the regression; it made the column uninterpretable.
 
 ## The trend
 
-| run | outcome | valid | wall m | ttlA1 m | calls | tapeSh | tape/rt | clips | clip mean | clip max | pg/seam | narrSh | 1stPass | unver | synth | seedLost | introRe | call/bt | tokens | cost $ |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| run | outcome | valid | wall m | ttlA1 m | calls | tapeSh | tape/rt | clips | clip mean | clip max | pg/seam | narrSh | 1stPg | 1stBt | 1stPass? | unver | synth | seedLost | introRe | call/bt | tokens | cost $ |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 <!-- bench:rows:begin -->
-| run-4 | no-tape | no | 4.4 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| run-5 | generated | no | 40.6 | 0.1 | 49 | — | — | — | — | — | — | — | 0.67 | 2 | — | — | — | — | 100380 | — |
-| run-6 | generated | yes | 55.0 | 21.2 | 72 | — | 0.598 | 11 | 142.6 | 237.8 | — | — | 0.73 | 4 | — | — | — | 0.80 | 128592 | — |
-| run-7 | generated | yes | 63.9 | 20.4 | 84 | — | 0.595 | 10 | 102.5 | 181.4 | — | — | 0.55 | 10 | — | — | — | 1.03 | 156534 | — |
-| run-8 | generated | yes | 91.1 | 34.0 | 78 | — | 0.776 | 16 | 122.3 | 176.7 | — | — | 0.68 | 4 | 7 | — | — | 1.13 | 239347 | — |
-| run-9 | generated | yes | 107.7 | 38.7 | 69 | 0.684 | 0.557 | 10 | 107.5 | 188.3 | 0.86 | 0.316 | 0.05 | 8 | 0 | — | 0 | 0.55 | 128050 | — |
+| run-4 | no-tape | no | 4.4 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| run-5 | generated | no | 40.6 | 0.1 | 49 | — | — | — | — | — | — | — | — | — | 0.67 | 2 | — | — | — | — | 100380 | — |
+| run-6 | generated | yes | 55.0 | 21.2 | 72 | — | 0.598 | 11 | 142.6 | 237.8 | — | — | — | — | 0.73 | 4 | — | — | — | 0.80 | 128592 | — |
+| run-7 | generated | yes | 63.9 | 20.4 | 84 | — | 0.595 | 10 | 102.5 | 181.4 | — | — | — | — | 0.55 | 10 | — | — | — | 1.03 | 156534 | — |
+| run-8 | generated | yes | 91.1 | 34.0 | 78 | — | 0.776 | 16 | 122.3 | 176.7 | — | — | — | — | 0.68 | 4 | 7 | — | — | 1.13 | 239347 | — |
+| run-9 | generated | yes | 107.7 | 38.7 | 69 | 0.684 | 0.557 | 10 | 107.5 | 188.3 | 0.86 | 0.316 | — | — | 0.05 | 8 | 0 | — | 0 | 0.55 | 128050 | — |
 <!-- bench:rows:end -->
 
 ## Provenance of the backfilled rows (runs 4–9)

@@ -12,7 +12,7 @@
  * (the scheduled CI job, blocked on D11) can diff two runs later without
  * re-parsing a table meant for a person.
  *
- * THE FOUR RULES THIS FILE IS BUILT AROUND
+ * THE FIVE RULES THIS FILE IS BUILT AROUND
  *
  * 1. A FIELD THE REPORT DOES NOT CARRY IS ABSENT, NEVER ZERO. Reports grew
  *    field by field across runs 4–9: run 4's row has no `calls`, runs 4–8 have
@@ -32,16 +32,21 @@
  *    pass/fail — LLM runs are non-deterministic and a hard gate would be flaky
  *    by construction". Grading is G-42b's, past a band, past D0.
  *
- * 3. TWO DIFFERENT NUMBERS ARE BOTH CALLED "TAPE SHARE", SO BOTH ARE PRINTED.
- *    `meta.veracity.tapeShare` (Q-05, `computeListeningShares`) is tape seconds
- *    over tape + narration seconds, estimated at write time. The roadmap's
- *    "59–61 % (runs 5–7), 78 % (run 8) [measured on `data/forays.json` @ #642]"
- *    is a different quantity: tape seconds over the candidate's whole
- *    `runtimeSec`, which also counts jingles and the band the player actually
- *    plays. On run 9 they read 0.684 and 0.557. Collapsing them would make the
- *    trend line jump the day the report started carrying its own. So
- *    `tape_share` is the report's and `tape_of_runtime` is the candidate's, and
- *    the legend says which is which.
+ * 3. TWO DIFFERENT NUMBERS ARE BOTH CALLED "TAPE SHARE", SO BOTH ARE PRINTED —
+ *    AND ONLY ONE OF THEM IS THE ROADMAP'S ROW (F-101).
+ *    `meta.veracity.tapeOfTapePlusNarration` (Q-05, `computeListeningShares`;
+ *    `tapeShare` on runs 4–9, before F-101 put the denominator in the name) is
+ *    tape seconds over tape + narration seconds, estimated at write time. The
+ *    roadmap's "59–61 % (runs 5–7), 78 % (run 8) [measured on
+ *    `data/forays.json` @ #642]" is a different quantity: tape seconds over the
+ *    candidate's whole `runtimeSec`, which also counts jingles and the band the
+ *    player actually plays. On run 9 they read 0.684 and 0.557 — thirteen
+ *    points apart. Collapsing them would make the trend line jump the day the
+ *    report started carrying its own. So `tape_share` is the report's,
+ *    `tape_of_runtime` is the candidate's, the legend says which is which, and
+ *    §1.2's *proposed* ≥ 70 % target — whose row is titled "Tape share OF
+ *    RUNTIME" and whose history is the candidate's quantity — is attached to
+ *    `tape_of_runtime`, not to the flattering one it used to sit on.
  *
  * 4. CLIP LENGTHS COME FROM THE CANDIDATE, NOT THE REPORT. No report field
  *    holds a clip duration; the deck's "10 clips, mean 107 s, max 188 s" was
@@ -52,6 +57,18 @@
  *    from the committed pool `data/segments.json` for tier-1 rows the candidate
  *    does not restate — and reports how many of the clips it could measure. No
  *    candidate, no clip columns. A partially resolved set prints with a `*`.
+ *
+ * 5. A RATE WHOSE UNIT CHANGED MID-TREND GETS A COLUMN PER UNIT (F-101).
+ *    `firstAttemptPassRate` meant "share of kept PAGES accepted on the writer's
+ *    first try" for runs 4–8 and "share of narration BEATS the verifier
+ *    confirmed on round 1" from run 9, and which one you got was decided by
+ *    sniffing the candidate. Run 9's 0.048 is not run 8's 0.68 measured worse;
+ *    it is a different measurement. Reports from F-101 on carry
+ *    `firstAttemptPassRatePages`, `firstAttemptPassRateBeats` and
+ *    `firstAttemptUnit`, and this harness prints `1stPg` and `1stBt` from them.
+ *    A report that carries only the old scalar prints it in `1stPass?` — the
+ *    `?` is the unit, not a target — and rule 1 applies: it is NOT guessed into
+ *    one of the two declared columns.
  *
  * USAGE
  *   node tools/generation-bench/run.mjs <report.json|dir> [...]   # table + jsonl
@@ -141,9 +158,8 @@ export const COLUMNS = [
     width: 6,
     kind: "number",
     digits: 3,
-    target: 0.7,
-    targetState: PROPOSED,
-    targetNote: "§1.2 tape share of runtime, >= 70 % (proposed, D0); report's Q-05 tape/(tape+narration)"
+    targetNote:
+      "report's Q-05 tape/(tape+narration) (`tapeOfTapePlusNarration`, `tapeShare` before F-101). NOT §1.2's row — that is tape/rt"
   },
   {
     key: "tape_of_runtime",
@@ -152,7 +168,10 @@ export const COLUMNS = [
     width: 7,
     kind: "number",
     digits: 3,
-    targetNote: "the roadmap's own 59-61 %/78 % reading: tape seconds over the candidate's runtimeSec"
+    target: 0.7,
+    targetState: PROPOSED,
+    targetNote:
+      "§1.2 tape share OF RUNTIME, >= 70 % (proposed, D0) — the roadmap's own 59-61 %/78 % reading: tape seconds over the candidate's runtimeSec"
   },
   { key: "clips", header: "clips", from: "candidate", width: 5, kind: "number", digits: 0 },
   {
@@ -188,15 +207,34 @@ export const COLUMNS = [
     targetNote: "§1.2 narration <= 25 % of runtime (proposed, D0)"
   },
   {
-    key: "first_pass",
-    header: "1stPass",
+    key: "first_pass_pages",
+    header: "1stPg",
     from: "report",
-    width: 7,
+    width: 5,
     kind: "number",
     digits: 2,
     target: 0.8,
     targetState: SETTLED,
-    targetNote: "§1.2 first-attempt page pass rate >= 80 %"
+    targetNote: "§1.2 first-attempt PAGE pass rate >= 80 % — kept pages accepted on the writer's first try"
+  },
+  {
+    key: "first_pass_beats",
+    header: "1stBt",
+    from: "report",
+    width: 5,
+    kind: "number",
+    digits: 2,
+    targetNote: "Q-03's per-act reading: narration BEATS the verifier confirmed on round 1. Not comparable to 1stPg"
+  },
+  {
+    key: "first_pass",
+    header: "1stPass?",
+    from: "report",
+    width: 8,
+    kind: "number",
+    digits: 2,
+    targetNote:
+      "runs 4-9: the old single `firstAttemptPassRate`, unit UNDECLARED (4-8 pages, 9 beats). Never folded into the two columns above (F-101)"
   },
   {
     key: "unverified",
@@ -428,14 +466,24 @@ export function rowFor(entry, context = {}) {
     wall_min: minutes(entry.ms),
     ttl_a1_min: minutes(entry.ttlA1Ms),
     calls: num(entry.calls),
-    tape_share: num(v.tapeShare),
+    /* F-101 put the denominator in the name; runs 4–9 carry the old one. The
+       two are the same quantity, so reading either is a rename, not a guess. */
+    tape_share: num(v.tapeOfTapePlusNarration) ?? num(v.tapeShare),
     tape_of_runtime: clips ? clips.tapeOfRuntime : null,
     clips: clips ? clips.count : null,
     clip_mean_s: clips ? clips.meanSec : null,
     clip_max_s: clips ? clips.maxSec : null,
     pages_per_seam: num(v.narrationPagesPerSeam),
-    narration_share: num(v.narrationShare),
-    first_pass: num(v.firstAttemptPassRate),
+    narration_share: num(v.narrationOfTapePlusNarration) ?? num(v.narrationShare),
+    first_pass_pages: num(v.firstAttemptPassRatePages),
+    first_pass_beats: num(v.firstAttemptPassRateBeats),
+    /* Rule 1, applied to a UNIT rather than a value: a report that declares the
+       two rates has said everything, so the undeclared column is absent for it.
+       A report that carries only the old scalar keeps it here, in its own
+       column, rather than being guessed into `1stPg` or `1stBt` — runs 4–8 are
+       pages and run 9 is beats, and the report does not say which. */
+    first_pass:
+      v.firstAttemptPassRatePages === undefined && v.firstAttemptPassRateBeats === undefined ? num(v.firstAttemptPassRate) : null,
     unverified: num(v.unverifiedPages),
     synth_verified: num(v.synthesisVerifiedPages),
     seed_lost: num(v.seedLostBeats),
@@ -557,9 +605,18 @@ export function rowFromJsonl(line) {
   for (const col of COLUMNS) {
     if (col.kind === "number") values[col.key] = num(obj.metrics?.[col.key]);
   }
+  /* A baseline line written before a column existed carries no source for it,
+     and rule 1 says the cell is ABSENT, not sourceless: the archived report did
+     not carry the field, which is exactly what "absent" means. Filling it here
+     rather than leaving the key off keeps a re-serialised baseline honest about
+     every column the harness has today (F-101 added three). */
+  const sources = { ...(obj.sources || {}) };
+  for (const col of COLUMNS) {
+    if (sources[col.key] === undefined) sources[col.key] = values[col.key] === null || values[col.key] === undefined ? "absent" : col.from;
+  }
   return {
     values,
-    sources: obj.sources || {},
+    sources,
     meta: {
       run: obj.run,
       generated_at: obj.generated_at ?? null,
