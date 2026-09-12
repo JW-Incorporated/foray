@@ -4,20 +4,13 @@ import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
-import { isTapeSource, tapeDocIdFor, type Source } from "../types/narration";
 import type {
   ActSourceBrief,
   ActVerifyRequest,
   ActVerifyResult,
   NarrationBuildContext,
   NarrationVerifierBuilder,
-  NarrationVerifyRequest,
-  NarrationVerifyResult,
-  SynthesisVerifyRequest,
-  SynthesisVerifyResult,
-  VerifiedPageSummary,
-  VerifyClipBrief,
-  VerifyPageBrief
+  VerifyClipBrief
 } from "./NarrationVerifierBuilder";
 import { recordUsage } from "./usageTracking";
 
@@ -33,18 +26,27 @@ import { recordUsage } from "./usageTracking";
  * imports, calls, or shares any state with
  * `AnthropicNarrationWriterBuilder`.
  *
- * THREE QUESTIONS, NOT ONE (WS-A). Run 1's prompt said "read it against
+ * REAL QUESTIONS, NOT ONE (WS-A). Run 1's prompt said "read it against
  * ONLY its declared sources", which made this a consistency check on the
  * writer's own declarations: it passed a page citing Chernobyl interviews
  * for a Kansas City claim in five seconds (F-27), never asked whether a
  * page did the job its beat existed for (F-41), and decided the
- * zero-source case by sampling (F-44). It is now given the purpose and
- * the evidence pack, and returns a separate boolean for each of: are the
- * claims supported, is the purpose accomplished, is a genuinely contested
- * point handled (F-43 — the keyword detector no longer decides this).
+ * zero-source case by sampling (F-44). It is now given the act's beats,
+ * prose, clips and whole source set, and answers per BEAT whether the
+ * prose carries its claim and per SEAM whether every statement is
+ * supported and a genuinely contested point handled (F-43 — the keyword
+ * detector no longer decides this).
  *
  * It is NOT asked whether a quote exists. `writeNarration.ts` proves that
  * in code, against the held documents, before this is ever called.
+ *
+ * ONE CALL SINCE F-100. Runs 1-8 asked the same questions of one slot's
+ * pages (`verifySlot`) and F-88 asked a fourth of a page whose retrieval
+ * had found nothing (`verifySynthesis`). Q-03/F-97 folded both into
+ * `verifyAct` — the ground F-88 needed is now part of the act's source set
+ * — and both methods, both prompts and their schemas are deleted with
+ * F-100. Neither could be reached: `createNarrationVerifierBuilder()`
+ * returns this class or the stub, and both verify per act.
  *
  * NEVER instantiate this class in a test. Use createNarrationVerifierBuilder().
  */
@@ -57,40 +59,6 @@ import { recordUsage } from "./usageTracking";
 const MODEL = modelFor("sonnet");
 const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
 const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
-/* A verdict per page for a whole slot, not one page's verdict — see the
- * writer's note on this same number, and F-47's caveat about a thinking
- * allowance if a tier moves to a model that bills it against max_tokens. */
-const MAX_OUTPUT_TOKENS = 2000;
-
-const RawVerifyResultSchema = z.object({
-  pages: z.array(
-    z.object({
-      pageId: z.string(),
-      claimsSupported: z.boolean(),
-      purposeAccomplished: z.boolean(),
-      /* F-50, and optional for the same reason as the writer's flag: a
-         reply that does not answer it has not said "no". */
-      purposeRevised: z.boolean().optional(),
-      contestedHandled: z.boolean(),
-      notes: z.string().optional()
-    })
-  )
-});
-
-/* F-88: the synthesis verdict — the ids the page rests on, or a refusal. */
-const RawSynthesisResultSchema = z.object({
-  pages: z.array(
-    z.object({
-      pageId: z.string(),
-      synthesis: z.boolean(),
-      /* Optional in the reply — a refusal may leave it out — and read as
-         empty: a page that rests on nothing is refused in code either way. */
-      restsOn: z.array(z.string()).optional(),
-      notes: z.string().optional()
-    })
-  )
-});
-
 /* Q-03: one verdict per beat and one per seam of a whole act. F-97: each
  * names what it rests on (`restsOn`, ids of the act's source set) and a
  * carried beat names its carrier. Optional in the SCHEMA so a reply that
@@ -136,25 +104,13 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
     this.client = new Anthropic({ apiKey: env.anthropicApiKey });
   }
 
-  async verifySlot(request: NarrationVerifyRequest, ctx: NarrationBuildContext): Promise<NarrationVerifyResult> {
-    return this.ask(buildVerifyPrompt(request), RawVerifyResultSchema, ctx);
-  }
-
-  /** F-88: the synthesis question — the SAME call family (model, budget
-   * operation, re-ask) as `verifySlot`, with its own short prompt. Only
-   * `synthesisVerify.ts` calls it, and only after retrieval has failed. */
-  async verifySynthesis(request: SynthesisVerifyRequest, ctx: NarrationBuildContext): Promise<SynthesisVerifyResult> {
-    const raw = await this.ask(buildSynthesisPrompt(request), RawSynthesisResultSchema, ctx);
-    return { pages: raw.pages.map((p) => ({ ...p, restsOn: p.restsOn ?? [] })) };
-  }
-
   /** Q-03: the per-beat question for a whole act. See `buildActVerifyPrompt`. */
   async verifyAct(request: ActVerifyRequest, ctx: NarrationBuildContext): Promise<ActVerifyResult> {
     const raw = await this.ask(buildActVerifyPrompt(request), RawActVerifySchema, ctx, MAX_ACT_VERIFY_OUTPUT_TOKENS);
     return { beats: raw.beats, seams: raw.seams.map((s) => ({ ...s, restsOn: s.restsOn ?? [] })) };
   }
 
-  private async ask<T>(promptText: string, schema: z.ZodType<T>, ctx: NarrationBuildContext, maxOutputTokens: number = MAX_OUTPUT_TOKENS): Promise<T> {
+  private async ask<T>(promptText: string, schema: z.ZodType<T>, ctx: NarrationBuildContext, maxOutputTokens: number): Promise<T> {
     const estimatedInputTokens = roughTokenEstimate(promptText);
     await this.budgetGuard.checkAndRecord({
       userId: ctx.userId,
@@ -209,46 +165,6 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
 
     return parseWithRetry(schema, textBlock.text, "LLM output", reask);
   }
-}
-
-/**
- * F-88: the synthesis prompt. Deliberately short, and asked only of a
- * Hinge or Frame whose retrieval returned nothing (`synthesisVerify.ts`
- * decides that; this prompt never sees a Patch or Carry). Exported for
- * the prompt tests only — never instantiate the class in a test.
- */
-export function buildSynthesisPrompt(request: SynthesisVerifyRequest): string {
-  return [
-    'You are the FACT-VERIFICATION pass for the narration pages of an audio documentary ("Foray"), judging SYNTHESIS pages.',
-    "A synthesis page is a short Hinge or Frame that generalises across what this Foray's OTHER, already-verified pages establish.",
-    "Nothing in print was found for it, so its only permitted ground is those pages. You did NOT write it.",
-    "",
-    "For each page to judge, decide whether its script is a fair generalisation of the verified pages listed — and ONLY them:",
-    "  - every concrete case, entity, number or claim the script names must be established by at least one verified page below;",
-    "  - the script must introduce no factual claim of its own beyond what those pages say;",
-    "  - a case the script names that no verified page covers is a REFUSAL, not a near miss.",
-    "Answer with the ids of the verified pages the script rests on (restsOn, every page whose sentences it quotes included), or refuse",
-    "(synthesis: false, restsOn: []) and say in notes which case or claim no verified page covers.",
-    "",
-    "VERIFIED PAGES (the only ground a synthesis may rest on):",
-    request.verifiedPages.map(verifiedPageLine).join("\n"),
-    "",
-    "PAGES TO JUDGE:",
-    request.pages.map(synthesisPageBlock).join("\n\n"),
-    "",
-    "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
-    '{"pages": [{"pageId": string, "synthesis": boolean, "restsOn": string[], "notes": string (required and specific whenever synthesis is false)}]}'
-  ].join("\n");
-}
-
-function verifiedPageLine(page: VerifiedPageSummary): string {
-  const established = page.established.length > 0 ? `\n    established: ${page.established.map((e) => `"${e}"`).join("; ")}` : "";
-  return `  [${page.pageId}] (${page.mode}) purpose: ${page.claim}\n    script: ${page.script}${established}`;
-}
-
-function synthesisPageBlock(page: VerifyPageBrief): string {
-  const sources = page.sources.map((s, i) => `  Source ${i + 1}: claim="${s.claimText}" quoted from page ${s.publication}`).join("\n");
-  return [`PAGE ${page.pageId} — mode ${page.mode}`, `Purpose: ${page.purpose}`, `Script:\n${page.script}`, `Sources:\n${sources || "  (none declared)"}`].join("\n");
 }
 
 /**
@@ -367,76 +283,4 @@ function actVerifyLayout(request: ActVerifyRequest, clips: Map<string, VerifyCli
     }
   }
   return lines.join("\n");
-}
-
-/** Exported for the prompt tests only — never instantiate the class in a
- * test (see the module comment). */
-export function buildVerifyPrompt(request: NarrationVerifyRequest): string {
-  return [
-    'You are the FACT-VERIFICATION pass for the narration pages of one slot of an audio documentary ("Foray").',
-    "You did NOT write these pages. For each page below, answer three questions independently.",
-    "",
-    "1. claimsSupported — does every statement the script makes about the world follow from the quote attached to it?",
-    "   A quote that is about the right subject but does not say what the claim says is NOT support.",
-    "   A source marked [TAPE] has no quote to check against: its holding document is the transcript window of the",
-    "   segment it names — the one that plays just before this page or just after it — printed under it. Every statement",
-    "   the script makes about that tape — what it is about, who is speaking, what they say — must be borne out by what",
-    "   is said in THAT window. A page between two segments may hold both windows; judge each tape source against the",
-    "   window it names, not the other one, and a restatement of the tape with no tape source is unsupported.",
-    "2. purposeAccomplished — does the script address the SUBJECT its purpose names, using the evidence it was given?",
-    "   Contradicting or qualifying the purpose from the documents ACCOMPLISHES it — a purpose is editorial direction and can",
-    "   be wrong. Only a page that ignores the subject, or re-tells what earlier pages covered, fails this.",
-    "   purposeRevised — true when the page departs from its purpose because the evidence did. Your own judgement, not the writer's.",
-    "3. contestedHandled — read the sources: if reputable sources actively disagree about something the script",
-    "   asserts, the script must say the point is disputed, in any natural wording. If nothing is genuinely",
-    "   contested, this is true. Judge the substance, not the presence of any particular phrase.",
-    "",
-    "Do NOT check whether a quote exists in its source — that was already proven mechanically before you were called.",
-    "",
-    request.pages.map(verifyPageBlock).join("\n\n"),
-    "",
-    "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
-    '{"pages": [{"pageId": string, "claimsSupported": boolean, "purposeAccomplished": boolean, "purposeRevised": boolean, ' +
-      '"contestedHandled": boolean, "notes": string (required and specific whenever any answer is false)}]}'
-  ].join("\n");
-}
-
-function verifyPageBlock(page: VerifyPageBrief): string {
-  const sources = page.sources.map((s, i) => sourceLine(s, i, page)).join("\n");
-  const docs = page.evidence.docs
-    .map((d) => `  --- ${d.title}${d.url ? ` | ${d.url}` : ""}\n${d.text}`)
-    .join("\n");
-  const lines = [
-    `PAGE ${page.pageId} — mode ${page.mode}`,
-    `Purpose: ${page.purpose}`,
-    `Script:\n${page.script}`,
-    `Sources:\n${sources || "  (none declared)"}`
-  ];
-  if (docs) lines.push(`Documents the page was written from:\n${docs}`);
-  return lines.join("\n");
-}
-
-/** One declared source as the verifier reads it. A TAPE source (F-81) is
- * handed the segment's transcript window as its holding document, in
- * full, right under the claim — the verifier judges the page's statements
- * about the tape against everything said in it, not against a quote. */
-function sourceLine(s: Source, i: number, page: VerifyPageBrief): string {
-  const contested = s.contested ? " [marked contested]" : "";
-  if (!isTapeSource(s)) {
-    return `  Source ${i + 1}: claim="${s.claimText}" quote="${s.quote}" publication="${s.publication}"${contested}`;
-  }
-  const window = page.evidence.docs.find((d) => d.docId === tapeDocIdFor(s.segmentId));
-  /* F-82: which side of the page the named segment plays on, so a page
-     holding two windows is judged against the one the source names. */
-  const where =
-    window?.tapePosition === "previous"
-      ? "the segment that plays just BEFORE this page"
-      : window?.tapePosition === "next"
-        ? "the segment that plays just AFTER this page (the one it introduces)"
-        : "the segment this page introduces";
-  return [
-    `  Source ${i + 1} [TAPE — ${where}, ${s.segmentId}]: claim="${s.claimText}"${s.quote ? ` echoes="${s.quote}"` : ""} publication="${s.publication}"${contested}`,
-    "    Holding document for this source: the segment's transcript window below. Judge the claim against everything said in it, and not against any other window this page holds.",
-    `    Transcript window:\n${window ? window.text : "    (the window is not held — treat the claim as unsupported)"}`
-  ].join("\n");
 }

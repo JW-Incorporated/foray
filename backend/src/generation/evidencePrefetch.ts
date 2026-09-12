@@ -8,8 +8,8 @@ import type { SourcedAct, SourcedSlot, TapePointer } from "../types/tapeSourcing
  * bounded fan-out right after `source`, so that by the time `writeNarration`
  * asks for a beat's pack the answer is already in hand.
  *
- * WHAT WAS ON THE CRITICAL PATH BEFORE. `writeNarration.ts`'s `writeSlot`
- * gathers its pages' evidence at the top of the slot, and acts are narrated
+ * WHAT WAS ON THE CRITICAL PATH BEFORE. The narration stage gathers its
+ * pages' evidence before it writes, and acts were narrated
  * one after another — so act 2's retrieval could not start until act 1 had
  * been written, verified and stitched, and act 1's own retrieval sat between
  * `source` finishing and the first writer call. Retrieval is a Haiku web
@@ -18,7 +18,7 @@ import type { SourcedAct, SourcedSlot, TapePointer } from "../types/tapeSourcing
  * it at 12–60 s per later act and 12–30 s of ttlA1.
  *
  * WHAT THIS DOES INSTEAD. One pass over every act, every slot, every page
- * that `writeSlot` would gather for, through the SAME gatherer with the SAME
+ * the narration stage would gather for, through the SAME gatherer with the SAME
  * `EvidenceBeat` — so the on-disk cache `gatherEvidence.ts` keeps by claim
  * hash is warm for `writeNarration`, and (because a dry-run's stub researcher
  * keeps no disk cache, and because a disk read is still a read) the pack is
@@ -39,7 +39,7 @@ import type { SourcedAct, SourcedSlot, TapePointer } from "../types/tapeSourcing
  *
  * WHAT IT NEVER DOES: write to disk (the gatherer it wraps owns the cache),
  * call a writer, or decide anything about a page — the page list is derived
- * by the same two functions `writeSlot` uses, and a test proves the two
+ * by the same two functions the narration stage uses, and a test proves the two
  * agree by asking `writeNarration` to run over a prefetched act and counting
  * zero gathers reaching the wrapped gatherer.
  */
@@ -92,27 +92,27 @@ export interface EvidencePrefetchMetrics {
 }
 
 /**
- * The evidence beats `writeSlot` will gather for this slot, built by the
- * same rules: every narration beat is a page in its assigned mode; a tape
- * beat is a page only where `decideConnectiveNarration` gives it one; a
- * page carries content (and so earns F-60's second query) exactly when
+ * The evidence beats the narration stage will gather for this slot, built
+ * by the same rules: every narration beat is a page in its assigned mode; a
+ * tape beat is a page only where `decideConnectiveNarration` gives it one;
+ * a page carries content (and so earns F-60's second query) exactly when
  * `pageCarriesContent` says so. Kept as a pure function so the parity with
- * `writeSlot` is a thing a test can hold still.
+ * `writeAct.ts` is a thing a test can hold still.
  */
 export function evidenceBeatsFor(slot: SourcedSlot, neighbours: SlotNeighbours = {}): EvidenceBeat[] {
   const beats: EvidenceBeat[] = [];
   for (let i = 0; i < slot.beats.length; i++) {
     const beat = slot.beats[i]!;
-    /* Q-02: EVERY tape beat is gathered, not only the ones the per-page
-       path gave a Frame. The per-act writer needs each clip's window for
-       the Intro decision (is the host's own introduction in its opening?)
-       and the restate check, and a same-episode continuation the per-page
-       path left silent still needs both. The mode is only the key's
+    /* Q-02: EVERY tape beat is gathered, not only the ones
+       `decideConnectiveNarration` gives a page. The per-act writer needs
+       each clip's window for the Intro decision (is the host's own
+       introduction in its opening?) and the restate check, and a
+       same-episode continuation still needs both. The mode is only the key's
        `requiresEvidence` (false for any connective mode), so "Intro" here
        and the act path's `decideConnectiveNarration(...) ?? "Intro"` build
        the same key. */
     const mode = beat.sourcing === "narration" ? beat.narration.mode : (decideConnectiveNarration(slot, i) ?? "Intro");
-    /* F-82: the SAME builder `writeSlot` uses, neighbours included — the
+    /* F-82: the SAME builder `writeAct.ts` uses, neighbours included — the
        adjacent windows are part of the pack, so they are part of the key. */
     beats.push(evidenceBeatFor(slot, i, mode, neighbours));
   }

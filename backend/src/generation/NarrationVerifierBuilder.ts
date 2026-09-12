@@ -1,5 +1,4 @@
 import type { Voice } from "../types/spine";
-import type { NarrationMode, Source } from "../types/narration";
 import type { EvidenceDoc } from "./gatherEvidence";
 import type { BeatBrief, ClipBrief, GroundPageBrief, IntroKind, NarrationBuildContext, NarrationPageBrief } from "./NarrationWriterBuilder";
 
@@ -23,41 +22,34 @@ export type { NarrationBuildContext, NarrationPageBrief };
  * also had no way to notice a page that abandoned the job it existed to
  * do (F-41), and it decided the zero-source case by sampling (F-44).
  *
- * So it is now given the beat's PURPOSE and the EVIDENCE PACK, and asked
- * three questions instead of one:
- *
- *   1. is every claim actually supported by the quote attached to it;
- *   2. does the page accomplish the purpose it was given (F-41) — which,
- *      since F-50, means "does it address the purpose's SUBJECT with the
- *      evidence available", INCLUDING by contradicting or qualifying the
- *      purpose. Only a page that ignores the subject fails. It also says
- *      whether the page did depart from its purpose that way, which is
- *      `purposeRevised` below;
- *   3. is rule 3 satisfied — is anything genuinely contested handled, with
- *      the sources in hand rather than guessed at (F-43).
+ * So it is given the beat's PURPOSE and the EVIDENCE PACK, and asked the
+ * questions a model is actually needed for rather than the one it could
+ * only answer from the writer's own declarations: is every claim supported
+ * by the quote attached to it; does the prose accomplish the purpose
+ * (F-41) — which, since F-50, means "does it address the purpose's SUBJECT
+ * with the evidence available", INCLUDING by contradicting or qualifying
+ * the purpose; and is rule 3 satisfied, with the sources in hand rather
+ * than guessed at (F-43).
  *
  * What it is NOT asked is whether a quote exists: that is decided in code
  * against the held documents before this is ever called, so a model is
  * never the last line of defence for something a substring check settles.
  *
- * Batched per slot, matching the writer.
+ * Batched per ACT, matching the writer.
+ *
+ * WHAT USED TO BE HERE (F-100). `verifySlot` asked those questions of one
+ * slot's pages, and F-88's `verifySynthesis` asked a fourth of a page whose
+ * retrieval had returned nothing. Q-03/F-97 folded both into `verifyAct`:
+ * the act's beats are judged against the act's prose, and a bridge is
+ * judged against any source in the act — a clip's window, a document's
+ * span, or a verified page of the same Foray (F-88's ground,
+ * `synthesisVerify.ts`). Both methods, their prompts and their
+ * request/reply types are deleted; nothing could reach them, because both
+ * classes `createNarrationVerifierBuilder()` returns implement
+ * `verifyAct`.
  */
 export interface NarrationVerifierBuilder {
   readonly providerName: string;
-
-  verifySlot(request: NarrationVerifyRequest, ctx: NarrationBuildContext): Promise<NarrationVerifyResult>;
-
-  /**
-   * F-88: the SYNTHESIS question, asked only after the retrieval path has
-   * failed a Hinge or Frame (never instead of it, and never for a Patch or
-   * Carry — `synthesisVerify.ts` decides eligibility, this only answers).
-   * Given the Foray's verified pages, is each page below a fair
-   * generalisation of them and only them? The answer is the ids of the
-   * pages it rests on, or a refusal naming the case or claim no verified
-   * page covers. Optional so a scripted or older verifier still compiles;
-   * a verifier without it leaves every such page unverified.
-   */
-  verifySynthesis?(request: SynthesisVerifyRequest, ctx: NarrationBuildContext): Promise<SynthesisVerifyResult>;
 
   /**
    * Q-03: VERIFIED PER BEAT, against the act's prose and clips. Given the
@@ -89,10 +81,10 @@ export interface NarrationVerifierBuilder {
    * names (F-82). An Intro's naming is not judged here at all — it is
    * checked structurally in `actSeams.ts`.
    *
-   * Optional, as `writeAct` is on the writer: both must be present for the
-   * per-act path to run.
+   * REQUIRED since F-100, as `writeAct` is on the writer: with the
+   * per-page path deleted this is the only verification §4.7 has.
    */
-  verifyAct?(request: ActVerifyRequest, ctx: NarrationBuildContext): Promise<ActVerifyResult>;
+  verifyAct(request: ActVerifyRequest, ctx: NarrationBuildContext): Promise<ActVerifyResult>;
 }
 
 /* ------------------------------------------------------------------ *
@@ -197,77 +189,4 @@ export interface SeamVerdict {
 export interface ActVerifyResult {
   beats: BeatVerdict[];
   seams: SeamVerdict[];
-}
-
-/** F-88: one verified page as the synthesis question sees it — what the
- * page is for, what it says, and what its sources established. */
-export interface VerifiedPageSummary {
-  /** Foray-wide id (`synthesisVerify.ts`'s `forayPageId`). */
-  pageId: string;
-  claim: string;
-  mode: NarrationMode;
-  script: string;
-  /** The `claimText` of every source the page carries — the facts it
-   * established, tape-cited or print-verified. */
-  established: string[];
-}
-
-export interface SynthesisVerifyRequest {
-  voice: Voice;
-  /** The candidate synthesis pages, each written from the verified pages
-   * as its documents and already through every mechanical rule. */
-  pages: VerifyPageBrief[];
-  /** Every page the candidates may rest on. Nothing else counts. */
-  verifiedPages: VerifiedPageSummary[];
-}
-
-export interface SynthesisVerdict {
-  pageId: string;
-  /** True only when the script generalises the pages in `restsOn` and
-   * introduces no case, entity or claim they do not establish. */
-  synthesis: boolean;
-  /** The verified page ids the generalisation rests on. Empty on a
-   * refusal. */
-  restsOn: string[];
-  /** Required on a refusal: which case or claim no verified page covers. */
-  notes?: string;
-}
-
-export interface SynthesisVerifyResult {
-  pages: SynthesisVerdict[];
-}
-
-export interface VerifyPageBrief extends NarrationPageBrief {
-  script: string;
-  sources: Source[];
-}
-
-export interface NarrationVerifyRequest {
-  slotTitle: string;
-  voice: Voice;
-  pages: VerifyPageBrief[];
-}
-
-export interface PageVerdict {
-  pageId: string;
-  /** Q1: every claim the script makes is backed by its quote. */
-  claimsSupported: boolean;
-  /** Q2: the script engages the SUBJECT its purpose names, with the
-   * evidence it was given (F-41, as F-50 redefined it). A page that
-   * contradicts or qualifies its purpose from the documents accomplishes
-   * it; only a page that drops the subject does not. */
-  purposeAccomplished: boolean;
-  /** Q2b, F-50: the verifier's own judgement that this page departed from
-   * its purpose because the evidence did. Optional — a verifier that does
-   * not answer it says nothing, rather than saying "no". */
-  purposeRevised?: boolean;
-  /** Q3: §4.7 rule 3, judged with the sources in hand (F-43). */
-  contestedHandled: boolean;
-  /** Required whenever any answer is false — what the page asserted with
-   * no backing, what it failed to do, or what it left unflagged. */
-  notes?: string;
-}
-
-export interface NarrationVerifyResult {
-  pages: PageVerdict[];
 }

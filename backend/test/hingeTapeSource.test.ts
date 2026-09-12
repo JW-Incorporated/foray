@@ -6,31 +6,20 @@ import {
   evidenceBeatFor,
   gateSelectedClaims,
   slotNeighbours,
-  HANDOFF_MODE,
-  HANDOFF_SCRIPT,
   type WrittenAct
 } from "../src/generation/writeNarration";
 import { PrefetchingEvidenceGatherer, evidenceBeatsFor, evidenceMemoKey } from "../src/generation/evidencePrefetch";
 import { buildVeracityMetrics, computeTapeCitedPages, computeUnverifiedPages } from "../src/generation/veracityMetrics";
-import { buildVerifyPrompt } from "../src/generation/AnthropicNarrationVerifierBuilder";
-import { buildSelectionPrompt } from "../src/generation/AnthropicNarrationWriterBuilder";
+import { buildActVerifyPrompt } from "../src/generation/AnthropicNarrationVerifierBuilder";
+import { buildActWritePrompt } from "../src/generation/AnthropicNarrationWriterBuilder";
 import { DefaultEvidenceGatherer } from "../src/generation/gatherEvidence";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWriterBuilder";
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
 import type { CatalogueData } from "../src/generation/catalogueLookup";
 import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
-import type {
-  ClaimSelectionRequest,
-  ClaimSelectionResult,
-  NarrationBuildContext,
-  NarrationPageBrief,
-  NarrationWriterBuilder,
-  ProseWriteRequest,
-  ProseWriteResult,
-  SelectedClaim
-} from "../src/generation/NarrationWriterBuilder";
-import type { NarrationVerifierBuilder, NarrationVerifyRequest, NarrationVerifyResult } from "../src/generation/NarrationVerifierBuilder";
+import type { ActWriteRequest, ActWriteResult, NarrationBuildContext, SelectedClaim } from "../src/generation/NarrationWriterBuilder";
+import type { ActVerifyRequest } from "../src/generation/NarrationVerifierBuilder";
 import type { EvidenceBeat, EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
 import { isTapeSource, tapeDocIdFor, validateNarratedBeat, type NarratedBeat, type TapeSource } from "../src/types/narration";
 import type { SourcedAct, SourcedBeat, SourcedSlot, TapePointer } from "../src/types/tapeSourcing";
@@ -163,50 +152,66 @@ function neighbourGatherer(print: EvidenceDoc[] = []): EvidenceGatherer & { seen
   return g;
 }
 
-/** A writer replaying one canned answer per page per attempt, on the
- * split select/prose path. */
-type Answer = { claims: SelectedClaim[]; script: string };
-function pageWriter(answer: (brief: NarrationPageBrief, attempt: number) => Answer): NarrationWriterBuilder & { briefs: NarrationPageBrief[]; writeCalls: number } {
-  const attempts = new Map<string, number>();
-  const w = {
-    providerName: "scripted",
-    briefs: [] as NarrationPageBrief[],
-    writeCalls: 0,
-    async selectClaims(request: ClaimSelectionRequest): Promise<ClaimSelectionResult> {
-      return {
-        pages: request.pages.map((p) => {
-          w.briefs.push(p);
-          const n = attempts.get(p.pageId) ?? 0;
-          attempts.set(p.pageId, n + 1);
-          return { pageId: p.pageId, claims: answer(p, n).claims };
-        })
-      };
-    },
-    async writePages(request: ProseWriteRequest): Promise<ProseWriteResult> {
-      w.writeCalls++;
-      return {
-        pages: request.pages.map((p) => ({
-          pageId: p.pageId,
-          script: answer(p, (attempts.get(p.pageId) ?? 1) - 1).script,
-          usedClaims: p.claims.map((_, i) => i),
-          pronunciationHints: []
-        }))
-      };
-    }
+/**
+ * The act path with a hook on what the writer says (F-100). The per-page
+ * writer this file used to script is gone with the per-slot path; the stub
+ * builders are what `--dry-run` runs, and `mutate` puts the one fault each
+ * test is about into the seam's reply. `seamFor` picks the seam that
+ * carries a given beat's claim, so a test can answer for one seam and
+ * leave the rest of the act alone.
+ */
+function actBuilders(mutate?: (reply: ActWriteResult, request: ActWriteRequest, round: number) => ActWriteResult) {
+  const writer = new StubNarrationWriterBuilder();
+  const verifier = new StubNarrationVerifierBuilder();
+  const calls = { write: 0, verify: 0 };
+  const requests: ActWriteRequest[] = [];
+  const verifyRequests: ActVerifyRequest[] = [];
+  const realWrite = writer.writeAct.bind(writer);
+  writer.writeAct = async (request, buildCtx) => {
+    calls.write++;
+    requests.push(request);
+    const reply = await realWrite(request, buildCtx);
+    return mutate ? mutate(reply, request, calls.write) : reply;
   };
-  return w;
+  const realVerify = verifier.verifyAct.bind(verifier);
+  verifier.verifyAct = async (request, buildCtx) => {
+    calls.verify++;
+    verifyRequests.push(request);
+    return realVerify(request, buildCtx);
+  };
+  return { writer, verifier, calls, requests, verifyRequests };
 }
 
-function approvingVerifier(): NarrationVerifierBuilder & { seen: NarrationVerifyRequest[] } {
-  const v = {
-    providerName: "recording",
-    seen: [] as NarrationVerifyRequest[],
-    async verifySlot(request: NarrationVerifyRequest): Promise<NarrationVerifyResult> {
-      v.seen.push(request);
-      return { pages: request.pages.map((p) => ({ pageId: p.pageId, claimsSupported: true, purposeAccomplished: true, contestedHandled: true })) };
-    }
+/**
+ * Answers for the seam carrying `claim`, leaving every other seam as the
+ * stub wrote it — and, by default, leaving that seam's SCRIPT as the stub
+ * wrote it too. The seam that carries a content beat usually also
+ * introduces the next clip, and a replacement script that does not name
+ * the show is refused by Q-02's Intro rule for a reason that has nothing
+ * to do with the rule under test. What these tests need to control is the
+ * CLAIMS, which is what the quote gate reads.
+ */
+function forSeamCarrying(
+  reply: ActWriteResult,
+  request: ActWriteRequest,
+  claim: string,
+  answer: { claims: SelectedClaim[]; script?: string }
+): ActWriteResult {
+  const seamId = request.seams.find((s) => s.beats.some((b) => b.claim === claim))?.seamId;
+  return {
+    seams: reply.seams.map((s) =>
+      s.seamId === seamId
+        ? { ...s, claims: answer.claims, usedClaims: answer.claims.map((_, i) => i), ...(answer.script ? { script: answer.script } : {}) }
+        : s
+    )
   };
-  return v;
+}
+
+/** What the writer was told to fix on the round after a refusal. */
+function refusalOn(requests: ActWriteRequest[], round: number): string {
+  const request = requests[round - 1];
+  if (!request) return "";
+  return [request.retryNote ?? "", ...request.seams.map((s) => s.notes ?? "")].join(" ");
 }
 
 const CLAIM_ON_A: SelectedClaim = { claimText: SOURCE_A.claimText, quote: "", docId: DOC_A.docId, contested: false };
@@ -343,7 +348,7 @@ describe("F-82 — the structural validator: a Hinge restating the previous segm
     /* MUTATION THAT KILLS THIS: drop `tapeWindowHolding` from the gate's
        tape branch — the writer is told only that the phrase is not in the
        window, not that the other window says it. */
-    const page = { pageId: "p1", beatIndex: 1, claim: RUN6_CLAIM, mode: "Hinge" as const, evidence: { purpose: RUN6_CLAIM, beatKind: "account" as const, docs: [DOC_A, DOC_B] }, rejections: [], attempts: [] };
+    const page = { pageId: "p1", beatIndex: 1, claim: RUN6_CLAIM, mode: "Hinge" as const, evidence: { purpose: RUN6_CLAIM, beatKind: "account" as const, docs: [DOC_A, DOC_B] } };
     const gate = gateSelectedClaims([{ ...CLAIM_ON_A, docId: DOC_B.docId, quote: "the model choice comes last" }], page);
     expect(gate.valid).toEqual([]);
     expect(gate.issues[0]).toContain(`it is spoken in the other window this page holds, "${DOC_A.docId}" (the segment that plays just before this page)`);
@@ -351,120 +356,79 @@ describe("F-82 — the structural validator: a Hinge restating the previous segm
   });
 });
 
-describe("F-82 — writeNarration: the run-6 page is written as a Hinge from the tape beside it", () => {
-  it("a content beat with no print but a neighbouring window is written as a Hinge citing that tape — no F-60 placeholder, one writer round, verified", async () => {
-    /* MUTATION THAT KILLS THIS: keep F-60's `docs.length > 0` test — the
-       pack holds two windows, so the Carry is written AS a Carry and
-       refused (a Carry may not cite tape, F-81), or restore the degrade on
-       "no print" alone and the page is the placeholder run 6 shipped. */
-    const writer = pageWriter(() => ({ claims: [CLAIM_ON_A], script: RUN6_HINGE }));
-    const verifier = approvingVerifier();
-    const evidence = neighbourGatherer();
-    const written = await writeNarration(betweenTape(), { writer, verifier, evidence }, voice, ctx);
-
-    const carry = evidence.seen.find((b) => b.claim === RUN6_CLAIM)!;
-    expect(carry.adjacentTape).toEqual({ previous: TAPE_A, next: TAPE_B });
-
-    const beat = written[0]!.slots[0]!.beats[1]!;
-    expect(beat.sourcing).toBe("narration");
-    const page = beat.sourcing === "narration" ? beat.narration : undefined;
-    expect(page?.mode).toBe(HANDOFF_MODE);
-    expect(page?.script).toBe(RUN6_HINGE);
-    expect(page?.verified).toBe(true);
-    expect(page?.unverifiedReason).toBeUndefined();
-    expect(page?.sources).toEqual([{ kind: "tape", segmentId: SEGMENT_A, claimText: SOURCE_A.claimText, publication: TITLE_A, contested: false }]);
-    expect(writer.writeCalls).toBe(1);
-
-    // The brief said which window is which, and why the page is a Hinge.
-    const brief = writer.briefs.find((b) => b.purpose === RUN6_CLAIM)!;
-    expect(brief.mode).toBe("Hinge");
-    expect(brief.contextNote).toContain(`the segment that plays just before this page (document ${DOC_A.docId})`);
-    expect(brief.contextNote).toContain("A restatement of the tape with no tape source, or backed by an outside publication, is what gets this page rejected (F-82)");
-
-    // The verifier was handed A's window as the holding document.
-    const verified = verifier.seen.flatMap((r) => r.pages).find((p) => p.purpose === RUN6_CLAIM)!;
-    expect(verified.sources.some((s) => isTapeSource(s) && s.segmentId === SEGMENT_A)).toBe(true);
-    expect(verified.evidence.docs.find((d) => d.docId === DOC_A.docId)?.text).toBe(WINDOW_A);
-  });
-
-  it("citing the next segment for the previous one's words is refused at selection, the retry note names the right window, and the corrected page is verified", async () => {
+describe("F-82 — writeNarration: the run-6 page cites the tape beside it", () => {
+  it("citing the next segment for the previous one's words is refused in code, the note names the right window, and the corrected page is verified", async () => {
     /* MUTATION THAT KILLS THIS: accept a tape echo found in ANY held
-       window. The first attempt would pass with the wrong segment cited. */
-    const writer = pageWriter((brief, attempt) =>
-      brief.purpose === RUN6_CLAIM && attempt === 0
-        ? { claims: [{ ...CLAIM_ON_A, docId: DOC_B.docId, quote: "the model choice comes last" }], script: RUN6_HINGE }
-        : { claims: [{ ...CLAIM_ON_A, quote: "the model choice comes last" }], script: RUN6_HINGE }
+       window. The first attempt would pass with the wrong segment cited.
+
+       PORTED (F-100): the per-page path read the rejection off the
+       writer's next per-page `retryNote`; the act path reads it off the
+       seam's `notes`. `gateSelectedClaims` is the same function. */
+    const { writer, verifier, requests } = actBuilders((reply, request, round) =>
+      forSeamCarrying(reply, request, RUN6_CLAIM, {
+        claims: [{ ...CLAIM_ON_A, ...(round === 1 ? { docId: DOC_B.docId } : {}), quote: "the model choice comes last" }]
+      })
     );
-    const written = await writeNarration(betweenTape(), { writer, verifier: approvingVerifier(), evidence: neighbourGatherer() }, voice, ctx);
-    const retried = writer.briefs.filter((b) => b.purpose === RUN6_CLAIM);
-    expect(retried).toHaveLength(2);
-    expect(retried[1]!.retryNote).toContain(`"${DOC_A.docId}" (the segment that plays just before this page)`);
-    const page = allWrittenNarration(written).find((p) => p.script === RUN6_HINGE)!;
+    const written = await writeNarration(betweenTape(), { writer, verifier, evidence: neighbourGatherer() }, voice, ctx);
+    expect(requests.length).toBeGreaterThanOrEqual(2);
+    /* `tapeWindowHolding` names the window that DOES say the phrase, which
+       is the half of the note the writer acts on. The positional suffix
+       ("the segment that plays just before this page") is a per-page
+       reading: the act's documents are deduplicated act-wide and carry no
+       per-page position, so the act path says "beside this page". */
+    expect(refusalOn(requests, 2)).toContain(`it is spoken in the other window this page holds, "${DOC_A.docId}"`);
+    /* The page that carries the ECHO — not the Intro before clip A, which
+       cites the same window as a whole with no quote of its own. */
+    const page = allWrittenNarration(written).find((p) => p.sources.some((s) => isTapeSource(s) && s.quote === "the model choice comes last"))!;
+    expect(page, "no page carries the corrected echo").toBeDefined();
     expect(page.verified).toBe(true);
-    expect(page.sources[0]).toMatchObject({ kind: "tape", segmentId: SEGMENT_A, quote: "the model choice comes last" });
+    expect(page.sources).toContainEqual(expect.objectContaining({ kind: "tape", segmentId: SEGMENT_A, quote: "the model choice comes last" }));
   });
 
-  it("a Frame between two episodes holds the previous window too and may cite it — the pack and the brief both say so", async () => {
-    /* MUTATION THAT KILLS THIS: build the connective page's pack from
-       `beat.tape` alone. A Frame closing what A said has no citable A. */
-    const writer = pageWriter((brief) =>
-      brief.mode === "Frame" && brief.purpose === "Tape B plays."
-        ? { claims: [CLAIM_ON_A], script: "That was one host on matching tools to skills. Next, an engineer takes the same question into a simulator." }
-        : { claims: [CLAIM_ON_A], script: RUN6_HINGE }
-    );
+  it("a page between two episodes holds the previous window too and may cite it — the act's documents say which is which", async () => {
+    /* MUTATION THAT KILLS THIS: build a page's pack from `beat.tape`
+       alone. A page closing what A said then has no citable A. */
     const backToBack: SourcedAct[] = [{ title: "Act", slots: [{ title: "Slot", beats: [tapeBeat("Tape A plays.", TAPE_A), tapeBeat("Tape B plays.", TAPE_B)] }] }];
-    const written = await writeNarration(backToBack, { writer, verifier: approvingVerifier(), evidence: neighbourGatherer() }, voice, ctx);
-    const frame = writer.briefs.find((b) => b.mode === "Frame" && b.purpose === "Tape B plays.")!;
-    expect(frame.contextNote).toContain(`The tape that plays just before this page (document ${DOC_A.docId}) is held too`);
-    expect(frame.evidence.docs.map((d) => [d.docId, d.tapePosition])).toEqual([
-      [DOC_B.docId, "next"],
-      [DOC_A.docId, "previous"]
-    ]);
-    const beatB = written[0]!.slots[0]!.beats[1]!;
-    const page = beatB.sourcing === "tape" ? beatB.connectiveNarration : undefined;
-    expect(page?.verified).toBe(true);
-    expect(page?.sources[0]).toMatchObject({ kind: "tape", segmentId: SEGMENT_A });
+    const { writer, verifier, requests } = actBuilders((reply, request, round) => {
+      /* The seam that plays between the two clips — the one introducing B
+         — cites what A said. */
+      const between = request.seams.find((s) => s.introduces !== undefined && s.follows !== undefined)?.seamId;
+      if (round > 1) return reply;
+      return { seams: reply.seams.map((s) => (s.seamId === between ? { ...s, claims: [...s.claims, CLAIM_ON_A], usedClaims: [...s.claims, CLAIM_ON_A].map((_, i) => i) } : s)) };
+    });
+    const written = await writeNarration(backToBack, { writer, verifier, evidence: neighbourGatherer() }, voice, ctx);
+    /* Both windows reach the act under the tape docId convention — which
+       is what makes a citation of A legal in the page that plays between
+       A and B. */
+    const docs = requests[0]!.documents.filter((doc) => doc.kind === "tape").map((doc) => doc.docId);
+    expect(docs).toContain(DOC_A.docId);
+    expect(docs).toContain(DOC_B.docId);
+    const page = allWrittenNarration(written).find((p) => p.sources.some((s) => isTapeSource(s) && s.segmentId === SEGMENT_A));
+    expect(page, "no page cites the segment that played before it").toBeDefined();
+    expect(page!.verified).toBe(true);
   });
 
-  it("a content page that DID find print stays a Carry: the neighbouring window is held as context, and a claim on it is the print shape (F-81's mode rule is unchanged)", async () => {
-    /* MUTATION THAT KILLS THIS: re-mode every tape-adjacent content page
-       to a Hinge, or let `isTapeClaim` ignore the mode — a Carry would
-       then carry a tape source the validator refuses. */
+  it("a content beat that DID find print rests on the print: a claim on a print document is the print shape, beside the windows it also holds", async () => {
+    /* MUTATION THAT KILLS THIS: key `sourcesFor` on nothing but the
+       docId prefix — a print claim on a page that also holds windows
+       would come back tape-shaped.
+
+       PORTED with its assertion about MODE dropped: F-97 assigns a
+       seam's mode after writing, from what it rests on, so "stays a
+       Carry" is no longer a rule anyone can state before the verifier
+       answers. `isTapeClaim`'s mode rule is pinned directly in
+       frameTapeSource.test.ts. */
     const eightWords = "Organisations that inventory their existing skills before buying tools";
-    const writer = pageWriter((brief) =>
-      brief.purpose === RUN6_CLAIM
-        ? {
-            claims: [{ claimText: "organisations that inventory skills first abandon fewer platforms", quote: eightWords, docId: PRINT.docId, contested: false }],
-            script: `${"Teams that take stock of the skills they already have before they buy a platform tend to keep the platform they buy. ".repeat(7)}That is the pattern the survey found.`
-          }
-        : { claims: [CLAIM_ON_A], script: RUN6_HINGE }
+    const { writer, verifier, requests } = actBuilders((reply, request) =>
+      forSeamCarrying(reply, request, RUN6_CLAIM, {
+        claims: [{ claimText: "organisations that inventory skills first abandon fewer platforms", quote: eightWords, docId: PRINT.docId, contested: false }]
+      })
     );
-    const written = await writeNarration(betweenTape(), { writer, verifier: approvingVerifier(), evidence: neighbourGatherer([PRINT]) }, voice, ctx);
-    const brief = writer.briefs.find((b) => b.purpose === RUN6_CLAIM)!;
-    expect(brief.mode).toBe("Carry");
-    expect(brief.contextNote).toBeUndefined();
-    expect(brief.evidence.docs.map((d) => d.docId)).toEqual([DOC_A.docId, DOC_B.docId, PRINT.docId]);
-    const beat = written[0]!.slots[0]!.beats[1]!;
-    const page = beat.sourcing === "narration" ? beat.narration : undefined;
-    expect(page?.mode).toBe("Carry");
-    expect(page?.verified).toBe(true);
-    expect(page?.sources.every((s) => !isTapeSource(s))).toBe(true);
-  });
-
-  it("a content page with neither print nor tape beside it is still degraded unwritten — F-60 is not loosened", async () => {
-    /* MUTATION THAT KILLS THIS: write every print-less content page as a
-       Hinge whether or not a window is held — a source-less Hinge then
-       spends three writer rounds to be refused. */
-    const writer = pageWriter(() => ({ claims: [], script: RUN6_HINGE }));
-    const acts: SourcedAct[] = [{ title: "Act", slots: [{ title: "Slot", beats: [carryBeat("An unrelated claim nobody has written about."), carryBeat("Another such claim.")] }] }];
-    const empty: EvidenceGatherer = { async gather(beat) { return { purpose: beat.claim, beatKind: "account", docs: [] }; } };
-    const written = await writeNarration(acts, { writer, verifier: approvingVerifier(), evidence: empty }, voice, ctx);
-    expect(writer.briefs).toHaveLength(0);
-    for (const page of allWrittenNarration(written)) {
-      expect(page.mode).toBe(HANDOFF_MODE);
-      expect(page.script).toBe(HANDOFF_SCRIPT);
-      expect(page.unverifiedReason).toBe("no-evidence");
-    }
+    const written = await writeNarration(betweenTape(), { writer, verifier, evidence: neighbourGatherer([PRINT]) }, voice, ctx);
+    expect(requests[0]!.documents.map((doc) => doc.docId)).toEqual([DOC_A.docId, DOC_B.docId, PRINT.docId]);
+    const page = allWrittenNarration(written).find((p) => p.sources.some((s) => !isTapeSource(s)))!;
+    expect(page.verified).toBe(true);
+    expect(page.sources.find((s) => !isTapeSource(s))).toMatchObject({ quote: eightWords, publication: PRINT.title });
   });
 
   it("the dry-run path writes the run-6 shape end to end: stub writer, stub verifier, a seam page recorded as the Frame it is, with a tape source on the previous segment", async () => {
@@ -496,9 +460,9 @@ describe("F-82 — writeNarration: the run-6 page is written as a Hinge from the
 describe("F-82 — the prefetch stage gathers the same documents, so the hit rate stays 1", () => {
   it("prefetch then narration: every gather is a memo hit, the wrapped gatherer is asked once per page, and the Carry's beat carries its neighbours", async () => {
     /* MUTATION THAT KILLS THIS: leave the neighbours out of
-       `evidenceBeatsFor` (or out of `writeSlot`'s request) — the keys
-       differ on `adjacentTape`, narration misses on every tape-adjacent
-       page, and the wrapped gatherer is asked again. */
+       `evidenceBeatsFor` (or out of the gather `writeAct` asks for) — the
+       keys differ on `adjacentTape`, narration misses on every
+       tape-adjacent page, and the wrapped gatherer is asked again. */
     const inner = neighbourGatherer();
     const evidence = new PrefetchingEvidenceGatherer(inner);
     const act: SourcedAct = {
@@ -514,8 +478,8 @@ describe("F-82 — the prefetch stage gathers the same documents, so the hit rat
     expect(inner.seen.find((b) => b.claim === RUN6_CLAIM)?.adjacentTape).toEqual({ previous: TAPE_A, next: TAPE_B });
     expect(evidenceBeatsFor(act.slots[0]!, slotNeighbours(act, 0))[1]).toEqual(evidenceBeatFor(act.slots[0]!, 1, "Carry", slotNeighbours(act, 0)));
 
-    const writer = pageWriter(() => ({ claims: [CLAIM_ON_A], script: RUN6_HINGE }));
-    await writeNarration([act], { writer, verifier: approvingVerifier(), evidence }, voice, ctx);
+    const { writer, verifier } = actBuilders();
+    await writeNarration([act], { writer, verifier, evidence }, voice, ctx);
     expect(inner.seen).toHaveLength(3);
     const after = evidence.metrics();
     expect(after.narrationGathers).toBe(3);
@@ -558,10 +522,19 @@ describe("F-82 — the four run-6 pages become acceptable with the right tape so
     }
   ];
 
-  it("each of the four, as a content beat after the segment it restates, is written as a Hinge citing that segment and verified; tapeCitedPages counts all four and unverifiedPages is 0", async () => {
+  it("each of the four, as a content beat after the segment it restates, cites that segment and is verified; unverifiedPages is 0 and every page is tape-cited", async () => {
     /* MUTATION THAT KILLS THIS: any of the above — no neighbouring window,
-       no re-mode to Hinge, no tape source on a Hinge — leaves at least one
-       of the four as the placeholder run 6 shipped, and the gate refuses. */
+       no tape source on a page whose claim is what the tape said — leaves
+       at least one of the four as the placeholder run 6 shipped, and the
+       gate refuses.
+
+       PORTED (F-100) from the per-page writer to the act path. The
+       assertion about each page's MODE is gone rather than translated:
+       F-97 assigns a seam's mode after writing from what it rests on, so
+       "is written as a Hinge" is not a property the writer decides any
+       more. What the run-6 finding was actually about — the page cites
+       the segment whose words it restates, and the gate stops refusing —
+       is asserted unchanged. */
     const segments = RUN6.map((r, i) => ({ ...r, tape: pointer(`practical-ai--run6-${i}#100`, `practical-ai--run6-${i}`, 100), title: `Practical AI — run 6 segment ${i}` }));
     const acts: SourcedAct[] = [
       { title: "Act", slots: segments.map((s, i) => ({ title: `Slot ${i}`, beats: [tapeBeat(`Tape ${i} plays.`, s.tape), carryBeat(s.claim)] })) }
@@ -578,29 +551,27 @@ describe("F-82 — the four run-6 pages become acceptable with the right tape so
         return { purpose: beat.claim, beatKind: "account", docs };
       }
     };
-    const writer = pageWriter((brief) => {
-      const s = segments.find((x) => x.claim === brief.purpose);
-      if (s) return { claims: [{ claimText: s.claimText, quote: "", docId: tapeDocIdFor(s.tape.segmentId), contested: false }], script: s.hinge };
-      // The Frames: describe the segment they introduce, citing it.
-      const own = brief.evidence.docs.find((d) => d.tapePosition === "next")!;
-      return { claims: [{ claimText: "the segment is a speaker on the subject", quote: "", docId: own.docId, contested: false }], script: "Here is a voice from the same conversation, on what comes next. Listen for where they land." };
+    const { writer, verifier } = actBuilders((reply, request) => {
+      let out = reply;
+      for (const s of segments) {
+        out = forSeamCarrying(out, request, s.claim, {
+          claims: [{ claimText: s.claimText, quote: "", docId: tapeDocIdFor(s.tape.segmentId), contested: false }]
+        });
+      }
+      return out;
     });
-    const written = await writeNarration(acts, { writer, verifier: approvingVerifier(), evidence }, voice, ctx);
+    const written = await writeNarration(acts, { writer, verifier, evidence }, voice, ctx);
 
-    for (const [i, s] of segments.entries()) {
-      const beat = written[0]!.slots[i]!.beats[1]!;
-      const page = beat.sourcing === "narration" ? beat.narration : undefined;
-      expect(page?.mode, s.claim).toBe("Hinge");
-      expect(page?.script, s.claim).toBe(s.hinge);
-      expect(page?.verified, s.claim).toBe(true);
-      expect(page?.sources, s.claim).toEqual([{ kind: "tape", segmentId: s.tape.segmentId, claimText: s.claimText, publication: s.title, contested: false }]);
-      expect(validateNarratedBeat(page!, { heldDocs: page!.evidence }).issues).toEqual([]);
+    for (const s of segments) {
+      const page = allWrittenNarration(written).find((p) =>
+        p.sources.some((source) => isTapeSource(source) && source.segmentId === s.tape.segmentId && source.claimText === s.claimText)
+      );
+      expect(page, s.claim).toBeDefined();
+      expect(page!.verified, s.claim).toBe(true);
     }
     expect(computeUnverifiedPages(written).count).toBe(0);
-    // The four Hinges and the four Frames all cite tape.
-    expect(computeTapeCitedPages(written)).toBe(8);
+    expect(computeTapeCitedPages(written)).toBe(allWrittenNarration(written).length);
     const veracity = buildVeracityMetrics({ sourcedActs: acts, tapeRelevanceRows: [], writtenActs: written, topic: "t", writerCalls: 8, verifierCalls: 4, pipelineTokens: 0, stageTimings: [] });
-    expect(veracity.tapeCitedPages).toBe(8);
     expect(veracity.unverifiedPages).toBe(0);
   });
 
@@ -626,39 +597,64 @@ describe("F-82 — the four run-6 pages become acceptable with the right tape so
 });
 
 describe("F-82 — the prompts say what the code enforces", () => {
-  const brief = {
-    pageId: "p1",
-    purpose: RUN6_CLAIM,
-    mode: "Hinge" as const,
-    evidence: { purpose: RUN6_CLAIM, beatKind: "account" as const, docs: [DOC_A, DOC_B] }
+  /* PORTED to the per-act prompts (F-100). The rule is the same: a
+     restatement of what the tape said is cited to that tape, never to an
+     outside publication and never to nothing, and the verifier judges it
+     against the window it names. */
+  const clipA = { clipId: "c0", segmentId: SEGMENT_A, itemId: ITEM_A, docId: DOC_A.docId, show: "Practical AI", title: "Skills over models", durationSec: 160, opening: WINDOW_A.slice(0, 60), intro: "full" as const };
+  const clipB = { clipId: "c1", segmentId: SEGMENT_B, itemId: ITEM_B, docId: DOC_B.docId, show: "Practical AI", title: "A robot in a simulator", durationSec: 160, opening: WINDOW_B.slice(0, 60), intro: "full" as const };
+  const seam = {
+    seamId: "s0",
+    beats: [{ beatId: "b0", claim: RUN6_CLAIM, mode: "Carry" as const, kind: "account" as const }],
+    follows: "c0",
+    introduces: "c1",
+    intro: "full" as const,
+    band: [340, 765] as [number, number]
   };
 
-  it("the selection prompt marks each window by where it plays and states the rule: a restatement of the tape is cited to the tape, never to print, never to nothing", () => {
-    /* MUTATION THAT KILLS THIS: drop the F-82 rule line or the
-       BEFORE/AFTER notes — the writer goes on citing an outside
-       publication, or nothing, for what the tape said. */
-    const prompt = buildSelectionPrompt({ slotTitle: "Slot", voice, pages: [brief] });
-    expect(prompt).toContain(`docId: ${DOC_A.docId} | ${TITLE_A} | TAPE that plays just BEFORE this page — may be cited as a whole (quote optional)`);
-    expect(prompt).toContain(`docId: ${DOC_B.docId} | ${TITLE_B} | TAPE that plays just AFTER this page (the segment this page introduces) — may be cited as a whole (quote optional)`);
-    expect(prompt).toMatch(/restates, summarises or attributes what the tape said .* it MUST cite that tape/);
-    expect(prompt).toContain("Never back a restatement of the tape with an outside publication");
-    expect(prompt).toContain("a restatement with no tape citation is exactly what gets the page rejected");
-    // A content page is told the window is context, not a source it may cite as tape.
-    const carry = buildSelectionPrompt({ slotTitle: "Slot", voice, pages: [{ ...brief, mode: "Carry" }] });
-    expect(carry).toContain("TAPE that plays just BEFORE this page — context; this page stands on print");
-    expect(carry).not.toContain("may be cited as a whole");
+  it("the writer prompt states the rule: a statement about a clip rests on that clip's window, never on an outside publication", () => {
+    /* MUTATION THAT KILLS THIS: drop the clip-citation rule lines — the
+       writer goes on citing an outside publication, or nothing, for what
+       the tape said, which is run 6. */
+    const prompt = buildActWritePrompt({ actTitle: "Act", voice, seams: [seam], clips: [clipA, clipB], documents: [DOC_A, DOC_B] });
+    expect(prompt).toContain(`docId: ${DOC_A.docId} | ${TITLE_A} | TRANSCRIPT WINDOW of a clip (cite it for statements about that clip)`);
+    expect(prompt).toContain(`docId: ${DOC_B.docId} | ${TITLE_B} | TRANSCRIPT WINDOW of a clip (cite it for statements about that clip)`);
+    expect(prompt).toMatch(/A statement about a CLIP — what it is about, who is speaking, what was said in it — rests on that clip's transcript window/);
+    expect(prompt).toContain("Never back a statement about a clip with an outside publication.");
   });
 
-  it("the verifier is told which side of the page a tape source's segment plays on, and to judge it against that window and not the other", () => {
-    /* MUTATION THAT KILLS THIS: render every tape source as "the segment
-       this page introduces" — a verifier handed two windows would judge a
-       restatement of A against B. */
-    const prompt = buildVerifyPrompt({ slotTitle: "Slot", voice, pages: [{ ...brief, script: RUN6_HINGE, sources: [SOURCE_A] }] });
-    expect(prompt).toContain(`[TAPE — the segment that plays just BEFORE this page, ${SEGMENT_A}]`);
-    expect(prompt).toContain("not against any other window this page holds");
-    expect(prompt).toContain("a restatement of the tape with no tape source is unsupported");
-    expect(prompt.indexOf(WINDOW_A)).toBeGreaterThan(prompt.indexOf("Holding document for this source"));
-    const onB = buildVerifyPrompt({ slotTitle: "Slot", voice, pages: [{ ...brief, script: RUN6_HINGE, sources: [{ ...SOURCE_A, segmentId: SEGMENT_B, publication: TITLE_B }] }] });
-    expect(onB).toContain(`[TAPE — the segment that plays just AFTER this page (the one it introduces), ${SEGMENT_B}]`);
+  it("the verifier prompt prints each clip's own window under that clip, so a statement about A is judged against A", () => {
+    /* MUTATION THAT KILLS THIS: print the windows as one undifferentiated
+       block — a verifier handed two windows would judge a restatement of
+       A against B. */
+    const prompt = buildActVerifyPrompt({
+      actTitle: "Act",
+      voice,
+      beats: [{ beatId: "b0", claim: RUN6_CLAIM, mode: "Carry", kind: "account" }],
+      sources: [
+        { id: "c0", kind: "clip", claimText: "clip A's window", publication: TITLE_A, docId: DOC_A.docId, contested: false },
+        { id: "c1", kind: "clip", claimText: "clip B's window", publication: TITLE_B, docId: DOC_B.docId, contested: false }
+      ],
+      seams: [
+        { seamId: "sA", script: "First, a host on skills and tools.", selected: [], carries: [], introduces: "c0", intro: "full" },
+        { seamId: "s0", script: RUN6_HINGE, selected: ["c0"], carries: ["b0"], follows: "c0", introduces: "c1", intro: "full" }
+      ],
+      clips: [
+        { ...clipA, windowText: WINDOW_A },
+        { ...clipB, windowText: WINDOW_B }
+      ],
+      documents: [DOC_A, DOC_B]
+    });
+    expect(prompt).toContain(WINDOW_A);
+    expect(prompt).toContain(WINDOW_B);
+    /* Each window sits under the CLIP line that names its segment, which
+       is what tells the verifier which one a source means. */
+    expect(prompt.indexOf(WINDOW_A)).toBeGreaterThan(prompt.indexOf(`CLIP ${clipA.clipId}`));
+    expect(prompt.indexOf(WINDOW_B)).toBeGreaterThan(prompt.indexOf(`CLIP ${clipB.clipId}`));
+    /* And each window is printed ONCE, under the clip it belongs to: a
+       second copy anywhere else is how a verifier comes to judge a
+       statement about A against B. */
+    expect(prompt.split(WINDOW_A)).toHaveLength(2);
+    expect(prompt.split(WINDOW_B)).toHaveLength(2);
   });
 });

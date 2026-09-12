@@ -1952,6 +1952,25 @@ rather than a silent default.
 
 ### 3.8 Stage 7 — Write the narration
 
+> **SUPERSEDED IN PART — read this first (Q-03, F-97, F-100).** Everything
+> below describes the PER-SLOT, PER-PAGE contract runs 1-8 used: `writeSlot`,
+> the writer's `selectClaims` / `writePages` / `selectAndWrite` calls, the
+> verifier's `verifySlot`, F-60's degrade-before-the-first-call, and the
+> per-slot `narrate:<i>:<slot>` checkpoint keys. **Q-03 replaced it with one
+> writer call per ACT** (`writeAct.ts`: the act's clips, documents and beat
+> checklist go out in one prompt; the verifier answers per BEAT whether the
+> prose carries its claim and per SEAM what it rests on), and **F-100 deleted
+> the per-page path, its five builder methods and their prompts** — it was
+> unreachable, because every builder either factory can return implements the
+> act contract. What survives verbatim, and is what the sections below are
+> still authoritative for, is **every mechanical rule**: the order of
+> operations (evidence → write → CODE → verify), the quote gate (§3.8.4), the
+> entity decode, attribution read off the held document, the structural
+> validator and its issue table, and F-14/F-26/F-27/F-30/F-32/F-35/F-42/F-45/
+> F-46/F-51/F-81/F-82. Read "slot" as "act" and "page" as "seam" in the call
+> counts; `docs/curation/listening-quality-plan.md` §Q-03 and the F-97/F-100
+> entries in `generation-run-2026-09-09.md` are the current shape.
+
 **Module:** `backend/src/generation/writeNarration.ts:writeNarration`
 **Collaborators:** `NarrationWriterBuilder` and `NarrationVerifierBuilder` —
 **two distinct instances, enforced structurally**: `writeNarration` throws if a

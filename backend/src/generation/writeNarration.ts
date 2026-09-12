@@ -1,4 +1,3 @@
-import { BANNED } from "../copy/rules";
 import { decodeEntities } from "../feeds/html";
 import type { SourcedAct, SourcedBeat, SourcedSlot, TapePointer } from "../types/tapeSourcing";
 import { phraseIsInWindow } from "../types/anchorText";
@@ -13,103 +12,76 @@ import {
   quoteEchoesPurpose,
   quoteWords,
   segmentIdOfTapeDoc,
-  tapeDocIdFor,
   tapeWindowHolding,
-  validateNarratedBeat,
   type EvidenceDoc,
   type NarratedBeat,
-  type NarrationAttemptRecord,
   type NarrationMode,
-  type Source,
-  type UnverifiedReason
+  type Source
 } from "../types/narration";
 import type { Voice } from "../types/spine";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
-import {
-  beatKindOf,
-  createEvidenceGatherer,
-  emptyEvidencePack,
-  type AdjacentTape,
-  type EvidenceBeat,
-  type EvidenceDoc as GatheredDoc,
-  type EvidenceGatherer,
-  type EvidencePack
-} from "./gatherEvidence";
-import type {
-  GroundPageBrief,
-  NarrationBuildContext,
-  NarrationPageBrief,
-  NarrationWriterBuilder,
-  ProsePageBrief,
-  SelectedClaim,
-  WrittenPage
-} from "./NarrationWriterBuilder";
-import type { NarrationVerifierBuilder, PageVerdict, VerifyPageBrief } from "./NarrationVerifierBuilder";
+import { beatKindOf, createEvidenceGatherer, type AdjacentTape, type EvidenceBeat, type EvidenceGatherer, type EvidencePack } from "./gatherEvidence";
+import type { GroundPageBrief, NarrationBuildContext, NarrationWriterBuilder, SelectedClaim } from "./NarrationWriterBuilder";
+import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import { writeActNarration } from "./writeAct";
 
 /**
  * §4.7 end to end (docs/curation/generation-architecture.md §4.7): takes
  * §4.5-4.6's `SourcedAct[]` (backend/src/generation/sourceBeats.ts) and,
- * for every narration beat plus any tape beat that needs short
- * connective narration around it, writes a page — grounded in an
- * EVIDENCE PACK gathered first, then checked mechanically, then read by a
- * SEPARATE `NarrationVerifierBuilder`.
+ * for every narration beat plus any tape beat that needs short connective
+ * narration around it, writes a page — grounded in an EVIDENCE PACK
+ * gathered first, then checked mechanically, then read by a SEPARATE
+ * `NarrationVerifierBuilder`.
  *
- * TWO PATHS SINCE Q-03 (docs/curation/listening-quality-plan.md). The
- * PER-ACT path (`writeAct.ts`) is the one production and `--dry-run`
- * take: the writer is handed the whole act — clips, evidence, beats — and
- * writes continuous prose, one page per SEAM (`actSeams.ts`), with an
- * Intro before each clip (Q-02); the verifier checks each BEAT's claim
- * against that prose and the clips, and a retry edits the act. Every
- * mechanical rule below (the quote gate, `sourcesFor`, the structural
- * validator) is shared with it. The PER-SLOT, PER-PAGE path in this file
- * is the fallback for a writer or verifier without the act contract — a
- * scripted test builder, an older provider — and remains F-88's drafting
- * path (`synthesisVerify.ts` drafts a synthesis page through
- * `draftRound`). It is the path every finding below was made on, and its
- * rules are what the act path inherits.
+ * ONE PATH SINCE F-100. THE ACT IS THE UNIT OF WRITING (Q-03,
+ * `writeAct.ts`): the writer is handed the whole act — clips, evidence,
+ * beats — and writes continuous prose, one page per SEAM (`actSeams.ts`),
+ * with an Intro before each clip (Q-02); the verifier checks each BEAT's
+ * claim against that prose and the clips, and a retry edits the act.
  *
- * THE ORDER OF OPERATIONS IS THE DESIGN (WS-A):
+ * WHAT THIS MODULE IS NOW. The entry point (`writeNarration`), the act
+ * gate that parallelises acts (G-32), the §4.5 decisions a page needs
+ * before it is written (`decideConnectiveNarration`, `slotNeighbours`,
+ * `adjacentTapeFor`, `evidenceBeatFor`), and THE MECHANICAL RULES both
+ * this stage and `writeAct.ts` enforce: the quote gate
+ * (`gateSelectedClaims`), the entity decode (`decodeClaimEntities`),
+ * attribution read off the held document (`sourcesFor`), and the retry
+ * note (`retryNoteFrom`). Those rules were written on the per-page path
+ * and every finding below was made there; the act path inherits them
+ * unchanged, which is why they live here and not in `writeAct.ts`.
  *
- *   evidence  → the documents this page may quote (`gatherEvidence.ts`)
- *   select    → one call per slot: which claims, and the span behind each
+ * THE PER-SLOT PATH IS GONE (F-100, 2026-09-12). Until Q-03 this module
+ * also held a per-slot, per-page orchestration — `writeSlot`,
+ * `runSlotRound`, `draftRound` and the writer's `selectClaims` /
+ * `writePages` / `selectAndWrite` calls behind them. Q-03 superseded it
+ * and left it standing as "the fallback for a builder without the act
+ * contract", but the only two writer classes and the only two verifier
+ * classes either factory can return all implement the contract
+ * (`createNarrationWriterBuilder.ts`, `createNarrationVerifierBuilder.ts`),
+ * so the fallback could not run in production or in `--dry-run` — only a
+ * test that deliberately stripped the contract off a stub reached it. It
+ * is deleted rather than kept "just in case": a path no run can take is
+ * not a safety net, it is a second definition of the rules that nothing
+ * checks. A builder without `writeAct`/`verifyAct` is now an error, not a
+ * different route (`writeActNarration` refuses it by name).
+ *
+ * THE ORDER OF OPERATIONS IS THE DESIGN (WS-A), and the act path keeps it:
+ *
+ *   evidence  → the documents this act may quote (`gatherEvidence.ts`)
+ *   write     → one call per ACT: the prose, seam by seam, with the claims
+ *               and the span behind each
  *   CODE      → is that span really in that document? long enough? not the
  *               purpose read back? — decided here, by a substring check
- *   prose     → one call per slot: the scripts, from those claims only
  *   CODE      → structural + copy + negative-claim + empty-source rules,
  *               and every `publication` derived from the held document
- *   verify    → one call per slot: three questions a model is actually
- *               needed for (support, purpose, contested)
+ *   verify    → one call per act: the questions a model is actually needed
+ *               for, asked per BEAT (carried? by what? resting on what?)
  *
  * A model is never asked to decide something a string comparison can
  * decide, and never gets to be the last check on one. Run 1's writer had
  * every incentive to declare less, shorter, or nothing, because declaring
  * was free and unverifiable; under this order a quote either resolves in a
  * held document or the page does not exist.
- *
- * THE RETRY TAX, CUT (G-34, latency model M3 levers a and b). Two things
- * changed in how the order above is PAID for, and neither changes what it
- * checks:
- *
- *   - select and prose are ONE call when the builder offers
- *     `selectAndWrite` (the real and stub builders both do). The quote
- *     gate runs on the combined reply exactly as it ran between the two
- *     replies; a page whose quotes all resolve keeps its script, and a
- *     page with a quote that does not has spent that script — the claims
- *     that DID resolve are kept and only that page's prose is re-run.
- *   - a rejection after the gate (a structural rule, or the verifier)
- *     re-runs prose + verify for the rejected PAGES only. Pages that
- *     passed keep their scripts, and the rejected page's claims are not
- *     re-selected: they already passed the substring gate, and re-asking
- *     for them was the whole slot's select → prose → verify a second
- *     time, three calls where two are enough. A page that holds NO
- *     grounded claim re-selects, because there is nothing to write prose
- *     from and a merged call costs what a prose call costs.
- *
- * What is NOT changed: three attempts per page, the F-51 outcomes below,
- * and every mechanical rule. Lever (c) of M3 — treating a `purposeRevised`
- * page's `purposeAccomplished: false` as accepted — is a founder call and
- * is not built here.
  *
  * §4.5's OWN NOTE, RESOLVED HERE: `SourcedBeat` only ever carries
  * `sourcing: "tape"` with a pointer or `sourcing: "narration"` with a
@@ -123,16 +95,14 @@ import { writeActNarration } from "./writeAct";
  * `writeNarration` throwing if a caller passes the SAME object reference
  * for both.
  *
- * FAILURE POLICY (F-51): three informed attempts per page, each retry
- * carrying EVERY prior rejection (F-35). A connective page that still
- * fails is dropped and its tape kept (§4.8's silence-is-a-valid-bridge
- * rule covers the seam). A NARRATION page that still fails is KEPT, with
- * `verified: false`, its whole `attempts` history and the verifier's final
- * objection in `verifierNotes` — and the run continues.
+ * FAILURE POLICY (F-51): three informed attempts per seam, each retry
+ * carrying EVERY prior rejection (F-35). A page that still fails is KEPT,
+ * with `verified: false`, its whole `attempts` history and the verifier's
+ * final objection in `verifierNotes` — and the run continues.
  *
- * That is a reversal of the previous policy, and the reason is that the
- * thing which used to justify throwing now exists downstream. Run 2 died
- * at act 1 page p2 with ten of twelve pages verified, 34 model calls
+ * That is a reversal of the policy run 1 shipped with, and the reason is
+ * that the thing which used to justify throwing now exists downstream. Run
+ * 2 died at act 1 page p2 with ten of twelve pages verified, 34 model calls
  * spent, and a veracity gate (WS-B, `veracityMetrics.ts` ->
  * `cli/publishForay.ts`) sitting unused behind it whose entire job is to
  * judge a flawed candidate and refuse to publish it. Throwing here
@@ -141,95 +111,25 @@ import { writeActNarration } from "./writeAct";
  * Foray, the gate decides. `unverifiedPages` in `meta.veracity` counts
  * these pages and the gate refuses on any of them.
  *
- * NO EVIDENCE IS NOT A FAILURE EITHER (F-60). Run 2's act 1 p5 asked for
- * evidence, got `{"passages": []}`, and then spent THREE claim-selection
- * calls on a prompt whose own text said "Documents: none were retrieved
- * for this page" — each one rejected by a mechanical rule ("a Carry page
- * cannot be written unsourced") before any model could have helped, each
- * retry note telling the writer to fix a rejection it had no way to fix,
- * and the third leaving no page at all, which was fatal. Both halves are
- * closed: `gatherEvidence` asks a second, rephrased query before giving
- * up, and a content page whose pack is STILL empty never reaches the
- * writer at all. It becomes an unverified hand-off — a question and a
- * bridge, asserting nothing, `unverifiedReason: "no-evidence"` — counted
- * by `unverifiedPages` and refused by the same gate.
- *
- * The beat KEEPS ITS PAGE rather than losing it the way a connective page
- * is dropped, and that is forced rather than chosen: a connective page's
- * beat survives as its tape, while a narration beat IS its page, so
- * dropping one would drop a beat — and §4.5's guarantee that the beat list
- * comes out of the pipeline exactly as it went in (`validateSourcing`,
- * and `stitchAct`/`computePagesDropped`, which index written beats
- * positionally against sourced ones) would break.
- *
- * `NarrationWriteError` therefore no longer fires for any page. It
- * survives as the guard on the one thing left that this stage cannot
- * honestly return — a slot that came out with fewer beats than it went in
- * with — which is unreachable by construction and pinned as unreachable by
- * a test.
- *
- * PER-SLOT CHECKPOINT (F-51's second half): `resume`/`onSlotWritten` in
- * `WriteNarrationOptions` are the same pair of callbacks `deepenActs` has
- * for acts, at slot granularity — the driver keys them `narrate:<act>:<slot>`
- * so a re-run pays only for the slots not yet written. Run 2's re-run
- * would have re-paid for all twelve of act 1's pages to reach the one
- * that failed.
+ * RESUME (F-51's second half): `resume` in `WriteNarrationOptions` hands
+ * back an already-written slot, so a re-run does not re-pay for an act a
+ * previous run finished. Since Q-03 the ACT is what is banked (the
+ * driver's `narrate:<i>` stage) and a seam spans slots, so the hook is
+ * honoured only when EVERY slot of the act comes back — a half-banked act
+ * is written whole.
  */
 
-/**
- * A slot that lost beats — the one unrecoverable outcome left in §4.7.
- *
- * It used to mean "this page could not be written", and that is precisely
- * what it must no longer mean: a page that cannot be written is kept
- * unverified (F-51) or, when there was nothing to write it from, degraded
- * to a hand-off (F-60), and the veracity gate decides. Nothing in the
- * per-page path throws.
- */
-export class NarrationWriteError extends Error {
-  constructor(
-    public readonly claim: string,
-    public readonly mode: NarrationMode,
-    public readonly cause: unknown
-  ) {
-    super(`Writing narration for "${claim}" (mode ${mode}) failed after ${NARRATION_PAGE_ATTEMPTS} attempts: ${(cause as Error)?.message ?? String(cause)}`);
-    this.name = "NarrationWriteError";
-  }
-}
-
-/**
- * One page's validation failure, with every rejection that produced it.
- *
- * Kept, and no longer thrown by this module: F-51 turned a page's third
- * rejection into an unverified page and F-60 turned an unwritable one into
- * a hand-off, so there is no path left that ends a run over a page. It
- * remains the typed shape of "this page did not validate, and here is
- * every reason" — the record `foray-generation-requirements.md` §8's
- * failure table still describes, and the type an editor tool would build
- * from `NarratedBeat.attempts`.
- */
-export class InvalidNarratedBeatError extends Error {
-  constructor(
-    public readonly claim: string,
-    public readonly mode: NarrationMode,
-    public readonly issues: string[]
-  ) {
-    super(`Narration for "${claim}" (mode ${mode}) failed validation: ${issues.join("; ")}`);
-    this.name = "InvalidNarratedBeatError";
-  }
-}
 
 /** One beat's §4.7 result, preserving its position in the sourced spine.
- * A tape beat carries `connectiveNarration` only when a page plays just
- * before it — a Frame on the per-page path, an Intro on the per-act path
- * (Q-02). A narration beat carries `narration` when it holds a page: on
- * the per-page path always; on the per-act path (Q-03) when it is the
- * first narration beat of its seam, whose page is the seam's whole prose.
- * The seam's other narration beats carry `carriedBy` — the position of the
- * beat holding the page their claim lives in — and no page of their own,
- * so `stitchAct` emits one item per seam. `verifiedAtAttempt` is the round
- * on which the verifier first confirmed the act's prose carries this
- * beat's claim (per-act path only; the beat-level reading
- * `firstAttemptPassRate` is now made from). */
+ * A tape beat carries `connectiveNarration` when a page plays just before
+ * it — an Intro (Q-02). A narration beat carries `narration` when it is
+ * the first narration beat of its seam, whose page is the seam's whole
+ * prose. The seam's other narration beats carry `carriedBy` — the position
+ * of the beat holding the page their claim lives in — and no page of their
+ * own, so `stitchAct` emits one item per seam. `verifiedAtAttempt` is the
+ * round on which the verifier first confirmed the act's prose carries this
+ * beat's claim (the beat-level reading `firstAttemptPassRate` is made
+ * from). */
 export type WrittenBeat =
   | { sourcing: "tape"; claim: string; exploration: boolean; tape: TapePointer; connectiveNarration?: NarratedBeat }
   | {
@@ -275,18 +175,18 @@ export interface WriteNarrationOptions {
    * on the machine that holds the transcript bodies. §4.5 was threaded the
    * provider (`sourceBeats`); §4.7 was not. */
   cueProvider?: TranscriptCueProvider;
-  /** F-51's per-slot resume. Returns an already-written slot for
+  /** F-51's resume. Returns an already-written slot for
    * `(actIndex, slotIndex)`, or undefined to write it. Deliberately a
-   * callback pair rather than a store object, exactly as `deepenActs`
-   * takes one for acts: this stage owns the attempt/failure policy above
-   * and keeps owning it; where a written slot is kept is the driver's
-   * business (`runPipeline.ts` keys it `narrate:<act>:<slot>`). */
+   * callback rather than a store object, exactly as `deepenActs` takes one
+   * for acts: this stage owns the attempt/failure policy above and keeps
+   * owning it; where a written act is kept is the driver's business
+   * (`runPipeline.ts` keys it `narrate:<i>`).
+   *
+   * HONOURED ONLY FOR A FULLY BANKED ACT (Q-03). The act is the unit of
+   * writing and a seam spans slots, so an act whose slots come back
+   * piecemeal is written whole rather than stitched together out of two
+   * runs' prose. */
   resume?: (actIndex: number, slotIndex: number) => WrittenSlot | undefined;
-  /** Called with each slot the moment it is written — never for a resumed
-   * one, which is already stored. Awaited BEFORE the act's `Promise.all`
-   * settles, so a slot that finished is banked even when a sibling slot
-   * throws, which is the whole point of the key. */
-  onSlotWritten?: (actIndex: number, slotIndex: number, slot: WrittenSlot) => void | Promise<void>;
   /** G-34: an accumulator this stage adds to as it runs, for the number
    * the retry tax is paid in. The driver reads it after the stage and
    * reports it in `meta.veracity.retryRounds`; request counts live in the
@@ -522,11 +422,10 @@ export function slotNeighbours(act: SourcedAct, slotIndex: number): SlotNeighbou
  *   - a narration beat's page plays AT its beat: `previous` and `next` are
  *     the beats either side when they are tape.
  *
- * A content page (Patch/Carry) is given its neighbours too — not to cite
- * as tape (F-81's mode rule stands) but so that `writeSlot` can see, when
- * no print was found for it, that the tape beside it is what the claim is
- * about and write it as a Hinge from that tape instead of degrading it to
- * a placeholder. Returns undefined when no tape plays beside the page.
+ * A content page (Patch/Carry) is given its neighbours too, so a beat whose
+ * claim is what the tape beside it says can be written from that tape
+ * (F-82) rather than left with nothing to rest on. Returns undefined when
+ * no tape plays beside the page.
  *
  * ONE definition, shared with `evidencePrefetch.ts` through
  * `evidenceBeatFor`, so the prefetch stage gathers the same documents the
@@ -550,9 +449,9 @@ export function adjacentTapeFor(slot: SourcedSlot, beatIndex: number, neighbours
 
 /**
  * The `EvidenceBeat` a page's pack is gathered for — the ONE builder both
- * `writeSlot` and the prefetch stage's `evidenceBeatsFor` call, so the two
- * cannot ask for different documents (G-35's hit rate depends on the memo
- * key, and the key is made from these fields).
+ * `writeAct.ts` and the prefetch stage's `evidenceBeatsFor` call, so the
+ * two cannot ask for different documents (G-35's hit rate depends on the
+ * memo key, and the key is made from these fields).
  */
 export function evidenceBeatFor(slot: SourcedSlot, beatIndex: number, mode: NarrationMode, neighbours: SlotNeighbours = {}): EvidenceBeat {
   const beat = slot.beats[beatIndex]!;
@@ -594,9 +493,9 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
   }
   const evidence = evidenceGathererFor(options);
 
-  /* G-32: every act is written in parallel too, through a gate of
+  /* G-32: every act is written in parallel, through a gate of
      `actConcurrency`. Nothing in one act's narration depends on another
-     act's text, for the same reason nothing in one SLOT does (WS-D1, below):
+     act's text:
      the running order and the M3/M4 episode-ordering guarantees were fixed at
      sourcing time, over the whole Foray, before any of this runs. What DOES
      depend on act order — the continuity call at each act boundary and the
@@ -611,48 +510,32 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
     acts.map((act, actIndex) =>
       gate
         .run(async (): Promise<WrittenAct> => {
-          /* Q-03: THE ACT IS THE UNIT OF WRITING when both builders offer
-             the per-act contract — the real and stub builders do. The
-             writer gets the whole act's material and writes continuous
-             prose; the verifier checks each beat against it; a retry edits
-             the act. Per-slot resume is honoured only when EVERY slot of
-             the act was banked by an earlier (per-page) run: a seam spans
-             slots, so a half-banked act is written whole. A writer or
-             verifier without the contract — a scripted test builder, an
-             older provider — takes the per-slot path below, which is also
-             F-88's drafting path. */
-          if (writer.writeAct && verifier.verifyAct) {
-            const banked = act.slots.map((_, slotIndex) => options.resume?.(actIndex, slotIndex));
-            if (banked.every((s): s is WrittenSlot => s !== undefined)) return { title: act.title, slots: banked };
-            return writeActNarration(
-              act,
-              { writer, verifier, evidence, stats: options.stats, segmentSources: options.segmentSources, ground: options.ground?.() ?? [] },
-              voice,
-              ctx
-            );
-          }
-
-          /* WS-D1: every slot in an act is written in parallel. Nothing in
-             a slot depends on another slot's text (see above), so the only
-             thing serialising them bought was wall time, and narration is
-             the largest stage. */
-          const slots = await Promise.all(
-            act.slots.map(async (slot, slotIndex) => {
-              const resumed = options.resume?.(actIndex, slotIndex);
-              if (resumed) return resumed;
-              const written = await writeSlot(slot, writer, verifier, evidence, voice, ctx, options.stats, slotNeighbours(act, slotIndex));
-              await options.onSlotWritten?.(actIndex, slotIndex, written);
-              return written;
-            })
+          /* Q-03: THE ACT IS THE UNIT OF WRITING. The writer gets the whole
+             act's material and writes continuous prose; the verifier checks
+             each beat against it; a retry edits the act. `writeActNarration`
+             refuses a writer or verifier without the per-act contract by
+             name — since F-100 that is the only outcome, not a fork: both
+             factories return builders that have it, so a caller without one
+             is a test that built a partial builder, and a silent second
+             orchestration is a worse answer than an error. Resume is
+             honoured only when EVERY slot of the act comes back, because a
+             seam spans slots. */
+          const banked = act.slots.map((_, slotIndex) => options.resume?.(actIndex, slotIndex));
+          if (banked.length > 0 && banked.every((s): s is WrittenSlot => s !== undefined)) return { title: act.title, slots: banked };
+          return writeActNarration(
+            act,
+            { writer, verifier, evidence, stats: options.stats, segmentSources: options.segmentSources, ground: options.ground?.() ?? [] },
+            voice,
+            ctx
           );
-          return { title: act.title, slots };
         })
         .catch((err: unknown) => {
           /* The FIRST act to fail is the error this call reports; the acts
              still queued behind it are refused rather than started (their
              rejection is the same error, and is not reported twice), and the
-             ones already in flight run to completion so every slot they
-             finish is banked through `onSlotWritten`. `allSettled` rather
+             ones already in flight run to completion so the driver can bank
+             every act that lands under its own `narrate:<i>` key.
+             `allSettled` rather
              than `all` so this function does not return — and the driver
              does not move on to the next Foray — while narration calls for
              THIS Foray are still landing; `usageTracking` brackets one run
@@ -681,10 +564,17 @@ export function evidenceGathererFor(options: WriteNarrationOptions): EvidenceGat
   return options.evidence ?? createEvidenceGatherer(options.cueProvider ? { cueProvider: options.cueProvider } : {});
 }
 
-/** A page in flight: what it is for, what it may quote, what has been
- * said about it so far, and its result once it has one. Exported for
- * F-88's synthesis pass (`synthesisVerify.ts`), which drafts a page
- * through exactly this shape and `draftRound` below. */
+/**
+ * THE GATE'S VIEW OF A PAGE: what it is for, and what it may quote. The
+ * argument `gateSelectedClaims` and `isTapeClaim` are given, and the shape
+ * `writeAct.ts` builds one of per SEAM (`SeamState.gate`).
+ *
+ * It used to be a mutable per-page record the per-slot orchestration
+ * carried through its rounds — the script so far, the rejections, the
+ * salvage candidates. F-100 deleted that orchestration, and with it every
+ * field only it wrote; what is left is the input the mechanical rules
+ * read, which is all this type was ever for from the rules' side.
+ */
 export interface PendingPage {
   pageId: string;
   beatIndex: number;
@@ -692,194 +582,16 @@ export interface PendingPage {
   mode: NarrationMode;
   contextNote?: string;
   evidence: EvidencePack;
-  rejections: string[];
-  attempts: NarrationAttemptRecord[];
-  result?: NarratedBeat;
-  /* G-34: the grounded claims this page carries into its next round,
-     when the round it just had was rejected AFTER the quote gate (or
-     only partly at it). Set means "re-run prose only, from these";
-     unset means "select again". Never set to an empty list: a page with
-     nothing to write from re-selects. */
-  claims?: SelectedClaim[];
-  /* F-51's two salvage slots. `kept` is the most recent page that cleared
-     every MECHANICAL rule and was rejected only by the verifier — the page
-     an editor can actually work with, and the one preferred when the third
-     attempt is spent. `lastBeat` is the most recent page produced at all,
-     including one the structural validator refused, kept only so a beat
-     that never once cleared the mechanical rules still leaves something
-     behind rather than ending the Foray. */
-  kept?: { beat: NarratedBeat; verdict?: PageVerdict };
-  lastBeat?: NarratedBeat;
   /* Q-03: a seam page written per act may cite any transcript window it
-     holds whatever its mode (`ValidateNarratedBeatOptions.tapeCitable`).
-     Never set on the per-page path. */
+     holds whatever its mode (`ValidateNarratedBeatOptions.tapeCitable`). */
   citesTape?: boolean;
   /* F-97: the page is one seam of an act's prose, and whether a beat's
      claim is carried with support is decided per BEAT by the verifier,
      not per page role at the gate — so §4.7 rule 1's "a Patch must select
-     at least one claim" does not fire here. Never set on the per-page
-     path, where a Patch page IS the beat's content. */
+     at least one claim" does not fire here. */
   claimsOptional?: boolean;
 }
 
-async function writeSlot(
-  slot: SourcedSlot,
-  writer: NarrationWriterBuilder,
-  verifier: NarrationVerifierBuilder,
-  evidence: EvidenceGatherer,
-  voice: Voice,
-  ctx: NarrationBuildContext,
-  stats?: NarrationWriteStats,
-  neighbours: SlotNeighbours = {}
-): Promise<WrittenSlot> {
-  const pages: PendingPage[] = [];
-  for (let i = 0; i < slot.beats.length; i++) {
-    const beat = slot.beats[i]!;
-    if (beat.sourcing === "narration") {
-      pages.push(newPage(`p${i}`, i, beat.claim, beat.narration.mode));
-      continue;
-    }
-    const connectiveMode = decideConnectiveNarration(slot, i);
-    if (!connectiveMode) continue;
-    const previous = adjacentTapeFor(slot, i, neighbours)?.previous;
-    pages.push(
-      newPage(
-        `p${i}`,
-        i,
-        beat.claim,
-        connectiveMode,
-        /* F-81: the page may describe the tape it introduces — what the
-           segment is about, who is speaking — citing the tape itself as
-           its source (the transcript window in its evidence pack). What it
-           still may not do is give the tape's answer away. F-82: when tape
-           plays just before it, that window is held too, and anything the
-           page says about what THAT tape said is cited to it. */
-        `This page hands the listener into or out of real tape — ${tapeDescription(beat)}. It may say what that tape is about and who is speaking, citing the tape itself as its source (document ${tapeDocIdFor(beat.tape.segmentId)}); it does not give away the answer the tape gives (narration-craft.md's spoiler rule).` +
-          (previous
-            ? ` The tape that plays just before this page (document ${tapeDocIdFor(previous.segmentId)}) is held too: anything this page says about what that tape said must cite that window, never an outside publication (F-82).`
-            : "")
-      )
-    );
-  }
-
-  await Promise.all(
-    pages.map(async (page) => {
-      page.evidence = await evidence.gather(evidenceBeatFor(slot, page.beatIndex, page.mode, neighbours), ctx);
-    })
-  );
-
-  /* F-60, THE GUARD THAT SPENDS NOTHING. A Patch/Carry page whose pack is
-     empty after `gatherEvidence`'s two queries cannot be written by any
-     model: `validateSelectedClaims` will reject whatever comes back, in
-     code, before the prose call — which is exactly what run 2 paid three
-     selection calls to discover. Marking the page here takes it out of
-     `pending`, so a slot whose every page is in this state makes ZERO
-     writer calls.
-
-     F-82, THE CASE F-60 WAS DEGRADING FOR THE WRONG REASON. Run 6's four
-     unverified pages were content beats whose claims were what the tape
-     beside them says — the deepen stage wrote the claim from the episode,
-     sourcing placed the episode's segment next door, and the web had
-     nothing to say because the transcript this pipeline holds is the only
-     text that says it. Those pages are not evidence-less; their evidence
-     is the tape. When no print was found but a neighbouring window is
-     held, the page is written as a HINGE from that tape — the mode the
-     hand-off already took (`HANDOFF_MODE`), now with a script that
-     restates or attributes what the tape said and cites it — and only a
-     page with neither print nor tape is still degraded unwritten. */
-  for (const page of pages) {
-    if (!pageCarriesContent(page.mode)) continue;
-    if (page.evidence.docs.some((doc) => doc.kind !== "tape")) continue;
-    const windows = page.evidence.docs.filter((doc) => doc.kind === "tape");
-    if (windows.length > 0) {
-      console.log(
-        `writeNarration: no print for the ${page.mode} page "${page.claim.slice(0, 80)}" (slot "${slot.title}"), but the tape beside it is held — ` +
-          `writing it as a ${HANDOFF_MODE} that cites that tape (F-82)`
-      );
-      page.mode = HANDOFF_MODE;
-      page.contextNote = hingeFromTapeNote(windows);
-      continue;
-    }
-    console.warn(
-      `writeNarration: no evidence for the ${page.mode} page "${page.claim.slice(0, 80)}" (slot "${slot.title}") after two retrieval queries — ` +
-        "degrading it to an unverified hand-off without calling the writer; the veracity gate refuses to publish over it (F-60)"
-    );
-    page.result = handOffPage("no-evidence", NO_EVIDENCE_NOTE, [], heldDocsOf(page.evidence));
-  }
-
-  /* Rounds, not slot attempts (G-34). Every page still gets at most
-     `NARRATION_PAGE_ATTEMPTS` attempts — a round records exactly one
-     attempt (a rejection or a result) on every page it takes, so the
-     per-page filter is the rule and the loop bound is only its guard.
-     What a round DOES for a page depends on what the page already holds:
-     see `runSlotRound`. */
-  for (let round = 0; round < NARRATION_PAGE_ATTEMPTS; round++) {
-    const pending = pages.filter((p) => !p.result && p.attempts.length < NARRATION_PAGE_ATTEMPTS);
-    if (pending.length === 0) break;
-    if (round > 0 && stats) stats.retryRounds += 1;
-    await runSlotRound(slot.title, pending, writer, verifier, voice, ctx);
-  }
-
-  const beats: WrittenBeat[] = [];
-  for (let i = 0; i < slot.beats.length; i++) {
-    const beat = slot.beats[i]!;
-    const page = pages.find((p) => p.beatIndex === i);
-
-    if (beat.sourcing === "narration") {
-      /* F-51. A narration page is the beat's content, so it cannot be
-         dropped the way a connective page can — but it no longer takes the
-         Foray down either. The last attempt is kept unverified and the
-         run continues; `meta.veracity.unverifiedPages` counts it and
-         `evaluateVeracityGate` refuses to publish over it. */
-      const result =
-        page?.result ?? (page ? unverifiedResultFor(page, slot.title) : undefined) ?? noPageFor(page, slot.title, beat.claim);
-      beats.push({ sourcing: "narration", claim: beat.claim, exploration: beat.exploration, narration: result });
-      continue;
-    }
-
-    if (page && !page.result) {
-      /* A CONNECTIVE PAGE THAT CANNOT BE WRITTEN DOES NOT TAKE THE FORAY
-         DOWN. The beat's content is the tape; the Frame around it is a
-         courtesy §4.8's silence-is-a-valid-bridge rule already covers when
-         no page exists. Run 1 attempt 3 died at beat 5 of 31 because a
-         connective page failed verification twice — thirty beats of
-         finished work discarded for one hand-off line. */
-      console.warn(
-        `writeNarration: dropping the ${page.mode} page for tape beat "${beat.claim.slice(0, 80)}" after ${NARRATION_PAGE_ATTEMPTS} rejected attempts — tape kept, silence bridges (${page.rejections.join(" | ").slice(0, 200)})`
-      );
-    }
-    beats.push({
-      sourcing: "tape",
-      claim: beat.claim,
-      exploration: beat.exploration,
-      tape: beat.tape,
-      ...(page?.result ? { connectiveNarration: page.result } : {})
-    });
-  }
-
-  /* THE LAST PLACE `NarrationWriteError` CAN FIRE — and it cannot. Every
-     narration beat above leaves a page behind (verified, unverified, or a
-     degraded hand-off) and every tape beat leaves its tape, so `beats` is
-     built one entry per input beat with no branch that skips one. The
-     check stays because the invariant is worth more than the branch costs:
-     if a future edit ever does drop a beat, §4.5's beat list would silently
-     stop matching §4.7's output and every positional consumer downstream
-     (`stitchAct`'s coverage, `computePagesDropped`) would quietly
-     misattribute pages to beats. `writeNarration.test.ts` pins this as
-     unreachable rather than as behaviour. */
-  if (beats.length !== slot.beats.length) {
-    const first = slot.beats[0]!;
-    throw new NarrationWriteError(
-      first.claim,
-      first.sourcing === "narration" ? first.narration.mode : "Frame",
-      new Error(
-        `slot "${slot.title}" came out with ${beats.length} of ${slot.beats.length} beats — §4.5's beat list must survive §4.7 unchanged`
-      )
-    );
-  }
-
-  return { title: slot.title, beats };
-}
 
 /** A Patch or a Carry IS the beat's content (§4.7 rule 1) — the two modes
  * `validateNarratedBeat` requires a source from, and therefore the two
@@ -888,9 +600,6 @@ async function writeSlot(
 export function pageCarriesContent(mode: NarrationMode): boolean {
   return mode === "Patch" || mode === "Carry";
 }
-
-/** What `verifierNotes` says on a page no verifier ever saw (F-60). */
-export const NO_EVIDENCE_NOTE = "no evidence retrieved after two queries";
 
 /**
  * The script a page with nothing to say is allowed to have: one question
@@ -914,360 +623,10 @@ export const HANDOFF_SCRIPT =
  * 765-1870 character budget it has no content to fill. */
 export const HANDOFF_MODE: NarrationMode = "Hinge";
 
-/** A page that holds its beat's place without asserting anything —
- * `verified: false` and a reason, so `unverifiedPages` counts it, the
- * gate refuses it, and an editor can see at a glance whether there is a
- * draft to fix (`no-page`) or a beat with no evidence behind it at all
- * (`no-evidence`). */
-function handOffPage(
-  reason: UnverifiedReason,
-  notes: string,
-  attempts: NarrationAttemptRecord[],
-  evidence: EvidenceDoc[]
-): NarratedBeat {
-  return {
-    mode: HANDOFF_MODE,
-    script: HANDOFF_SCRIPT,
-    sources: [],
-    pronunciationHints: [],
-    verified: false,
-    unverifiedReason: reason,
-    verifierNotes: notes,
-    evidence,
-    attempts
-  };
-}
 
-/**
- * The narration beat that produced no page at all: evidence existed, but
- * no attempt ever cleared the mechanical rules far enough to reach the
- * prose call, so there is no draft to keep unverified (F-51's salvage
- * returned nothing).
- *
- * This used to be `NarrationWriteError`, i.e. the end of the Foray. It is
- * now the same hand-off an evidence-less page gets, carrying `no-page` and
- * the last rejection — because the gate refusing to publish a Foray with
- * one placeholder page in it is strictly better than discarding every
- * other page in the run to prevent that page from existing.
- */
-function noPageFor(page: PendingPage | undefined, slotTitle: string, claim: string): NarratedBeat {
-  const notes = (page?.rejections[page.rejections.length - 1] ?? "no page was produced").trim();
-  console.warn(
-    `writeNarration: no page was ever produced for "${claim.slice(0, 80)}" (slot "${slotTitle}") — ` +
-      `keeping an unverified hand-off in its place so the rest of the Foray survives (F-51/F-60): ${notes.slice(0, 200)}`
-  );
-  return handOffPage("no-page", notes, page?.attempts ?? [], page ? heldDocsOf(page.evidence) : []);
-}
 
-/** A page's script for this round, with the grounded claims it was
- * written from — whichever call produced it. */
-interface Draft {
-  page: PendingPage;
-  claims: SelectedClaim[];
-  written: WrittenPage;
-}
 
-/**
- * One round over the slot's still-pending pages (G-34). A page arrives
- * in one of two states and the round spends accordingly:
- *
- *   - NO grounded claims yet (its first round, or its last round failed
- *     at the quote gate outright): it joins the SELECTION batch. That is
- *     one merged select+prose call when the builder offers one — the
- *     quote gate then runs on the reply, and a page whose quotes all
- *     resolve is written — or the two-call pair when it does not.
- *   - grounded claims from an earlier round (rejected after the gate,
- *     or only partly at it): it joins the PROSE batch. One `writePages`
- *     call for those pages only, from those claims only. Nothing is
- *     re-selected — those quotes were proven once and are still proven.
- *
- * Both batches then go through the same structural gate and the same
- * ONE verifier call. So a round is at most three requests (merged,
- * prose, verify), a first round is two, and a retry round is two —
- * where each used to be three for the whole slot.
- *
- * Every page the round takes leaves it with exactly one attempt
- * recorded: a rejection or a result.
- */
-async function runSlotRound(
-  slotTitle: string,
-  pending: PendingPage[],
-  writer: NarrationWriterBuilder,
-  verifier: NarrationVerifierBuilder,
-  voice: Voice,
-  ctx: NarrationBuildContext
-): Promise<void> {
-  const toVerify = await draftRound(slotTitle, pending, writer, voice, ctx);
-  if (toVerify.length === 0) return;
 
-  const verdicts = await verifier.verifySlot({ slotTitle, voice, pages: toVerify.map((v) => v.brief) }, ctx);
-  for (const { page, claims, beat } of toVerify) {
-    const verdict = verdicts.pages.find((v) => v.pageId === page.pageId);
-    if (!verdict) {
-      reject(page, [`the verifier returned no verdict for "${page.pageId}"`], beat.sources);
-      carryClaims(page, claims);
-      continue;
-    }
-    const failures: string[] = [];
-    if (!verdict.claimsSupported) failures.push("a claim in the script is not supported by the quote attached to it");
-    if (!verdict.purposeAccomplished) failures.push("the page does not accomplish the purpose the beat was given");
-    if (!verdict.contestedHandled) failures.push("a genuinely contested point is not handled as §4.7 rule 3 requires");
-    if (failures.length > 0) {
-      /* A VERIFIER REJECTION RE-RUNS PROSE + VERIFY, NOT SELECT (G-34
-         lever b, "safe" in the latency model): every quote on this page
-         was proven a span of a held document before the verifier saw
-         it, and that proof does not expire. The writer is told what the
-         verifier objected to and writes again from the same claims —
-         asserting fewer of them if that is the fix. Uniform across the
-         three questions on purpose: even "not supported by its quote"
-         is a property of the SCRIPT against the quote, and the writer
-         can drop the claim it cannot support without a fresh selection.
-         Only when a page holds no grounded claim at all does it
-         re-select — there is nothing to write from. */
-      page.kept = { beat, verdict };
-      reject(page, [`${failures.join("; ")}${verdict.notes ? ` — ${verdict.notes}` : ""}`], beat.sources);
-      carryClaims(page, claims);
-      continue;
-    }
-
-    /* `purposeAccomplished` is recorded on the page even though a `false`
-       answer above already sent it back for another attempt: the field is
-       what WS-B's `purposeFidelity` averages, and it is the statement "the
-       verifier was asked F-41's question about THIS page and answered
-       yes" — which run 1 could not make about any page, because nothing
-       asked. It reads 1.0 across a healthy run by construction (a page
-       that never gets a yes is retried, then dropped or fatal), so the
-       metric earns its keep as a regression alarm rather than as a
-       score: if it ever drops below 1, the question stopped being asked
-       or stopped being enforced. */
-    page.attempts.push({ attempt: page.attempts.length + 1, sources: beat.sources, rejected: false });
-    page.result = {
-      ...beat,
-      purposeAccomplished: verdict.purposeAccomplished,
-      ...(verdict.purposeRevised === true ? { purposeRevisedByVerifier: true } : {}),
-      ...(verdict.notes ? { verifierNotes: verdict.notes } : {}),
-      evidence: heldDocsOf(page.evidence),
-      attempts: page.attempts
-    };
-  }
-}
-
-/** A page that cleared every mechanical rule this round and is ready for
- * a verifier: the brief the verifier reads, the beat it becomes if the
- * verifier says yes, and the grounded claims it carries into the next
- * round if not. */
-export interface DraftedPage {
-  page: PendingPage;
-  claims: SelectedClaim[];
-  brief: VerifyPageBrief;
-  beat: NarratedBeat;
-}
-
-/**
- * The WRITING half of a round — selection (merged or split), the quote
- * gate, prose, and the structural gate — for the pages given, leaving
- * every page that did not clear a mechanical rule with a rejection
- * recorded and returning the ones that did, ready for whichever verifier
- * question the caller asks. `runSlotRound` above asks the three ordinary
- * questions; F-88's `synthesisVerify.ts` asks the synthesis question of
- * the same drafts. ONE drafting path, so a synthesis page pays the same
- * mechanical rules an ordinary page does.
- */
-export async function draftRound(
-  slotTitle: string,
-  pending: PendingPage[],
-  writer: NarrationWriterBuilder,
-  voice: Voice,
-  ctx: NarrationBuildContext
-): Promise<DraftedPage[]> {
-  const needsSelection = pending.filter((p) => p.claims === undefined);
-  const needsProse = pending.filter((p) => p.claims !== undefined);
-  const drafts: Draft[] = [];
-
-  if (needsSelection.length > 0) {
-    const briefs = needsSelection.map(briefFor);
-    if (writer.selectAndWrite) {
-      const merged = await writer.selectAndWrite({ slotTitle, voice, pages: briefs }, ctx);
-      for (const page of needsSelection) {
-        const reply = merged.pages.find((r) => r.pageId === page.pageId);
-        if (!reply) {
-          reject(page, [`the writer returned no page for "${page.pageId}" — every page in the batch must come back`], []);
-          continue;
-        }
-        const gate = gateSelectedClaims(decodeClaimEntities(reply.claims ?? []), page);
-        if (gate.issues.length === 0) {
-          drafts.push({ page, claims: gate.valid, written: reply });
-          continue;
-        }
-        /* THE QUOTE GATE FAILED ON THIS PAGE, AFTER PROSE. The script is
-           spent — it may assert a claim that is not grounded — and the
-           card accepts that cost. What is NOT spent is every claim that
-           did resolve: they are carried to the next round, where only
-           this page's prose is re-run from them. A page left with none
-           re-selects, because there is nothing to write from. */
-        reject(page, gate.issues, []);
-        if (gate.valid.length > 0) page.claims = gate.valid;
-      }
-    } else {
-      const selection = await writer.selectClaims({ slotTitle, voice, pages: briefs }, ctx);
-      for (const page of needsSelection) {
-        const gate = gateSelectedClaims(decodeClaimEntities(selection.pages.find((s) => s.pageId === page.pageId)?.claims ?? []), page);
-        if (gate.issues.length > 0) {
-          /* The prose call is skipped for this page entirely: writing a
-             script from claims that are not grounded would only produce
-             a page that fails a second time, one call later. */
-          reject(page, gate.issues, []);
-          continue;
-        }
-        page.claims = gate.valid;
-        needsProse.push(page);
-      }
-    }
-  }
-
-  if (needsProse.length > 0) {
-    const proseBriefs: ProsePageBrief[] = needsProse.map((page) => ({ ...briefFor(page), claims: page.claims! }));
-    const prose = await writer.writePages({ slotTitle, voice, pages: proseBriefs }, ctx);
-    for (const page of needsProse) {
-      const written = prose.pages.find((p) => p.pageId === page.pageId);
-      if (!written) {
-        reject(page, [`the writer returned no page for "${page.pageId}" — every page in the batch must come back`], []);
-        continue;
-      }
-      drafts.push({ page, claims: page.claims!, written });
-    }
-  }
-
-  const toVerify: DraftedPage[] = [];
-  for (const { page, claims, written } of drafts) {
-    const sources = sourcesFor(written.usedClaims, claims, page.evidence, page.mode);
-    const beat: NarratedBeat = {
-      mode: page.mode,
-      // The script is the other half of the entity boundary — see
-      // `decodeClaimEntities`. This one is about what a listener hears:
-      // a narrator does not say "ampersand a-m-p semicolon" (F-26).
-      script: decodeEntities(written.script),
-      sources,
-      pronunciationHints: written.pronunciationHints ?? [],
-      verified: true,
-      /* F-50: recorded, not trusted. The verifier answers the same
-         question independently below and its answer lands in
-         `purposeRevisedByVerifier`. Only ever set when claimed, so a page
-         that simply did its purpose carries no flag at all. */
-      ...(written.purposeRevised === true ? { purposeRevised: true } : {})
-    };
-    page.lastBeat = beat;
-
-    const structural = validateNarratedBeat(beat, {
-      bannedPhrasePatterns: BANNED,
-      heldDocs: heldDocsOf(page.evidence),
-      purposeText: [page.claim, page.contextNote].filter(Boolean).join(" ")
-    });
-    const issues = structural.issues.map((i) => i.message);
-    for (const source of sources) {
-      if (looksLikeSlug(source.publication)) {
-        issues.push(`publication "${source.publication}" is a tape item id, not a publication — cite the real work the quote comes from, or drop the claim`);
-      }
-    }
-    if (issues.length > 0) {
-      /* Rejected AFTER the quote gate: the claims are still grounded, so
-         the next round re-runs this page's prose from them (G-34 lever
-         a). A page that had none re-selects — see `carryClaims`. */
-      reject(page, issues, sources);
-      carryClaims(page, claims);
-      continue;
-    }
-
-    /* Cleared every mechanical rule. Banked as the salvage candidate
-       BEFORE the verifier is called, so a page the verifier goes on to
-       reject three times is still the page F-51 keeps — a page that broke
-       a substring rule is not. */
-    page.kept = { beat };
-    toVerify.push({ page, claims, brief: { ...briefFor(page), script: beat.script, sources }, beat });
-  }
-  return toVerify;
-}
-
-/**
- * F-51's salvage: the page a narration beat carries out of a slot where
- * every attempt was rejected. Prefers the last MECHANICALLY clean page
- * (quotes held, spans long enough, attribution read off the document) that
- * the verifier nonetheless refused, and falls back to the last page
- * produced at all. Returns undefined when no prose call ever produced one
- * — the unrecoverable case `NarrationWriteError` still exists for.
- *
- * `verified: false` is the whole contract. Nothing downstream reads it as
- * a licence to publish: `veracityMetrics.ts` counts these pages as
- * `unverifiedPages` and `evaluateVeracityGate` refuses on any of them,
- * naming this one. What the field buys is the eleven finished pages that
- * used to be discarded alongside it.
- */
-function unverifiedResultFor(page: PendingPage, slotTitle: string): NarratedBeat | undefined {
-  const salvage = page.kept ?? (page.lastBeat ? { beat: page.lastBeat, verdict: undefined } : undefined);
-  if (!salvage) return undefined;
-
-  const notes = (salvage.verdict?.notes ?? page.rejections[page.rejections.length - 1] ?? "").trim();
-  console.warn(
-    `writeNarration: keeping the ${page.mode} page for "${page.claim.slice(0, 80)}" (slot "${slotTitle}") UNVERIFIED after ` +
-      `${NARRATION_PAGE_ATTEMPTS} rejected attempts — the Foray continues and the veracity gate decides (F-51): ${notes.slice(0, 200)}`
-  );
-
-  return {
-    ...salvage.beat,
-    verified: false,
-    ...(typeof salvage.verdict?.purposeAccomplished === "boolean" ? { purposeAccomplished: salvage.verdict.purposeAccomplished } : {}),
-    ...(salvage.verdict?.purposeRevised === true ? { purposeRevisedByVerifier: true } : {}),
-    ...(notes ? { verifierNotes: notes } : {}),
-    evidence: heldDocsOf(page.evidence),
-    attempts: page.attempts
-  };
-}
-
-export function newPage(pageId: string, beatIndex: number, claim: string, mode: NarrationMode, contextNote?: string): PendingPage {
-  return {
-    pageId,
-    beatIndex,
-    claim,
-    mode,
-    ...(contextNote ? { contextNote } : {}),
-    evidence: emptyEvidencePack(claim),
-    rejections: [],
-    attempts: []
-  };
-}
-
-function tapeDescription(beat: Extract<SourcedBeat, { sourcing: "tape" }>): string {
-  return `segment ${beat.tape.segmentId}`;
-}
-
-/** F-82: the brief for a content beat re-written as a Hinge from the tape
- * beside it. Names each held window by where it plays, so the writer
- * cites the segment whose words it is restating and not the other one. */
-function hingeFromTapeNote(windows: GatheredDoc[]): string {
-  const where = (doc: GatheredDoc): string =>
-    doc.tapePosition === "previous"
-      ? `the segment that plays just before this page (document ${doc.docId})`
-      : doc.tapePosition === "next"
-        ? `the segment that plays just after this page (document ${doc.docId})`
-        : `the segment beside this page (document ${doc.docId})`;
-  return (
-    `This page's purpose is what the tape beside it says — ${windows.map(where).join(", and ")} — and nothing in print was found for it, ` +
-    `so it is written as a ${HANDOFF_MODE}: briefly restate, summarise or attribute what that tape said, citing the tape itself (that document) as the source, ` +
-    "with claimText saying what the segment says and the quote either a phrase of its own words or empty. " +
-    "A restatement of the tape with no tape source, or backed by an outside publication, is what gets this page rejected (F-82)."
-  );
-}
-
-function briefFor(page: PendingPage): NarrationPageBrief {
-  return {
-    pageId: page.pageId,
-    purpose: page.claim,
-    mode: page.mode,
-    ...(page.contextNote ? { contextNote: page.contextNote } : {}),
-    ...(page.rejections.length > 0 ? { retryNote: retryNoteFrom(page.rejections) } : {}),
-    evidence: page.evidence
-  };
-}
 
 /** F-35: every prior rejection, in order. Run 1 overwrote this on each
  * failure, so attempt 3 was told about attempt 2 only and regularly
@@ -1279,23 +638,6 @@ export function retryNoteFrom(rejections: string[]): string {
   );
 }
 
-/** Records one attempt's failure. Exactly one outcome — this or a result
- * — is recorded per page per attempt, which is what makes
- * `page.attempts.length + 1` the attempt number rather than a guess. */
-export function reject(page: PendingPage, issues: string[], sources: Source[]): void {
-  const rejection = issues.join("; ");
-  page.rejections.push(rejection);
-  page.attempts.push({ attempt: page.attempts.length + 1, sources, rejected: true, rejectionNote: rejection });
-}
-
-/** G-34: what a rejected page takes into its next round. Grounded claims
- * are carried, so the round re-runs prose only; a page with none goes
- * back to selection, because a prose call from no claims can only
- * produce a hand-off and a merged call costs the same request. */
-export function carryClaims(page: PendingPage, claims: SelectedClaim[]): void {
-  if (claims.length > 0) page.claims = claims;
-  else delete page.claims;
-}
 
 /** The evidence pack as the validator sees it: documents, and nothing
  * about how they were found. */

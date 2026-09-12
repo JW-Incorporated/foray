@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { writeNarration, allWrittenNarration, isTapeClaim, sourcesFor, type WrittenAct } from "../src/generation/writeNarration";
 import { computeGroundedQuoteRate } from "../src/generation/veracityMetrics";
-import { buildVerifyPrompt } from "../src/generation/AnthropicNarrationVerifierBuilder";
-import { buildSelectionPrompt } from "../src/generation/AnthropicNarrationWriterBuilder";
+import { buildActVerifyPrompt } from "../src/generation/AnthropicNarrationVerifierBuilder";
+import { buildActWritePrompt } from "../src/generation/AnthropicNarrationWriterBuilder";
 import { DefaultEvidenceGatherer } from "../src/generation/gatherEvidence";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWriterBuilder";
@@ -11,16 +11,8 @@ import { canonicalizeForAnchorMatch as fromLookup } from "../src/generation/tran
 import { canonicalizeForAnchorMatch, phraseIsInWindow } from "../src/types/anchorText";
 import type { CatalogueData } from "../src/generation/catalogueLookup";
 import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
-import type {
-  ClaimSelectionRequest,
-  ClaimSelectionResult,
-  NarrationBuildContext,
-  NarrationWriterBuilder,
-  ProseWriteRequest,
-  ProseWriteResult,
-  SelectedClaim
-} from "../src/generation/NarrationWriterBuilder";
-import type { NarrationVerifierBuilder, NarrationVerifyRequest, NarrationVerifyResult } from "../src/generation/NarrationVerifierBuilder";
+import type { ActWriteRequest, ActWriteResult, NarrationBuildContext, SelectedClaim } from "../src/generation/NarrationWriterBuilder";
+import type { ActVerifyRequest } from "../src/generation/NarrationVerifierBuilder";
 import type { EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
 import {
   SourceSchema,
@@ -54,6 +46,16 @@ import type { Voice } from "../src/types/spine";
  *   - the verifier is handed the window as the holding document;
  *   - a page with NO source that states a fact is refused exactly as
  *     before, and a content page may not cite tape at all.
+ *
+ * F-100 (2026-09-12): the orchestrator tests below used to drive the
+ * per-slot path with a scripted per-page writer. That path is deleted, so
+ * they drive the act path — the same stub builders production's
+ * `--dry-run` uses, with the writer's reply mutated at the seam to produce
+ * the one fault each test is about. The RULES are unchanged and are the
+ * same functions (`gateSelectedClaims`, `sourcesFor`, `isTapeClaim`); what
+ * changed is that a page introducing a clip is now an `Intro` seam rather
+ * than a `Frame` page, and the refusal reaches the writer in the seam's
+ * `notes` instead of a per-page `retryNote`.
  *
  * Every test names the mutation that kills it.
  */
@@ -139,49 +141,45 @@ function windowGatherer(docs: EvidenceDoc[] = [TAPE_DOC]): EvidenceGatherer {
   };
 }
 
-/** A writer replaying one canned answer per attempt for the slot's one page. */
-function scriptedWriter(
-  attempts: Array<{ claims: SelectedClaim[]; script?: string }>
-): NarrationWriterBuilder & { selectCalls: number; writeCalls: number; retryNotes: Array<string | undefined> } {
-  const w = {
-    providerName: "scripted",
-    selectCalls: 0,
-    writeCalls: 0,
-    retryNotes: [] as Array<string | undefined>,
-    async selectClaims(request: ClaimSelectionRequest): Promise<ClaimSelectionResult> {
-      w.retryNotes.push(request.pages[0]?.retryNote);
-      const turn = attempts[Math.min(w.selectCalls, attempts.length - 1)]!;
-      w.selectCalls++;
-      return { pages: request.pages.map((p) => ({ pageId: p.pageId, claims: turn.claims })) };
-    },
-    async writePages(request: ProseWriteRequest): Promise<ProseWriteResult> {
-      const turn = attempts[Math.min(w.writeCalls, attempts.length - 1)]!;
-      w.writeCalls++;
-      return {
-        pages: request.pages.map((p) => ({
-          pageId: p.pageId,
-          script: turn.script ?? RUN5_FRAME,
-          usedClaims: p.claims.map((_, i) => i),
-          pronunciationHints: []
-        }))
-      };
-    }
+/**
+ * The act path with a hook on what the writer says, and one on what the
+ * verifier is handed — the stub builders (exactly what
+ * `createNarrationWriterBuilder()` returns in a dry-run) with the reply
+ * mutated at the seam. `round` lets a test say "attempt 1 is the run-5
+ * failure, attempt 2 is the correction".
+ */
+function actBuilders(mutate?: (reply: ActWriteResult, request: ActWriteRequest, round: number) => ActWriteResult) {
+  const writer = new StubNarrationWriterBuilder();
+  const verifier = new StubNarrationVerifierBuilder();
+  const calls = { write: 0, verify: 0 };
+  const requests: ActWriteRequest[] = [];
+  const verifyRequests: ActVerifyRequest[] = [];
+  const realWrite = writer.writeAct.bind(writer);
+  writer.writeAct = async (request, buildCtx) => {
+    calls.write++;
+    requests.push(request);
+    const reply = await realWrite(request, buildCtx);
+    return mutate ? mutate(reply, request, calls.write) : reply;
   };
-  return w;
+  const realVerify = verifier.verifyAct.bind(verifier);
+  verifier.verifyAct = async (request, buildCtx) => {
+    calls.verify++;
+    verifyRequests.push(request);
+    return realVerify(request, buildCtx);
+  };
+  return { writer, verifier, calls, requests, verifyRequests };
 }
 
-function recordingVerifier(): NarrationVerifierBuilder & { calls: number; seen: NarrationVerifyRequest[] } {
-  const v = {
-    providerName: "recording",
-    calls: 0,
-    seen: [] as NarrationVerifyRequest[],
-    async verifySlot(request: NarrationVerifyRequest): Promise<NarrationVerifyResult> {
-      v.calls++;
-      v.seen.push(request);
-      return { pages: request.pages.map((p) => ({ pageId: p.pageId, claimsSupported: true, purposeAccomplished: true, contestedHandled: true })) };
-    }
-  };
-  return v;
+/** Replaces the claims of every seam in the reply. */
+function withClaims(reply: ActWriteResult, claims: SelectedClaim[], script?: string): ActWriteResult {
+  return { seams: reply.seams.map((s) => ({ ...s, claims, usedClaims: claims.map((_, i) => i), ...(script ? { script } : {}) })) };
+}
+
+/** What the writer was told to fix on the round after a refusal. */
+function refusalOn(requests: ActWriteRequest[], round: number): string {
+  const request = requests[round - 1];
+  if (!request) return "";
+  return [request.retryNote ?? "", ...request.seams.map((s) => s.notes ?? "")].join(" ");
 }
 
 const TAPE_CLAIM: SelectedClaim = { claimText: TAPE_SOURCE.claimText, quote: "", docId: TAPE_DOC.docId, contested: false };
@@ -302,27 +300,23 @@ describe("F-81 — the anchor canonicalisation is the quote matcher for tape", (
   });
 });
 
-describe("F-81 — writeNarration: the run-5 Frame is written, gated and verified against the window", () => {
-  it("the run-5 Frame becomes acceptable with a tape source: one selection, one prose call, the verifier gets the window as the holding document", async () => {
+describe("F-81 — writeNarration: the run-5 page is written, gated and verified against the window", () => {
+  it("the run-5 page becomes acceptable with a tape source: one write, one verify, the verifier gets the window as the holding document", async () => {
     /* MUTATION THAT KILLS THIS: leave the tape branch out of
-       `validateSelectedClaims` (an empty quote is then "not a verbatim
+       `gateSelectedClaims` (an empty quote is then "not a verbatim
        span"), or out of `sourcesFor` (the page then carries a print-shaped
        source with an empty quote, which `SourceSchema` refuses). */
-    const writer = scriptedWriter([{ claims: [TAPE_CLAIM] }]);
-    const verifier = recordingVerifier();
+    const { writer, verifier, calls, verifyRequests } = actBuilders((reply) => withClaims(reply, [TAPE_CLAIM], RUN5_FRAME));
     const written = await writeNarration(tapeAct("Hand the listener into the comma segment."), { writer, verifier, evidence: windowGatherer() }, voice, ctx);
 
-    expect(writer.selectCalls).toBe(1);
-    expect(writer.writeCalls).toBe(1);
-    expect(verifier.calls).toBe(1);
+    expect(calls.write).toBe(1);
+    expect(calls.verify).toBe(1);
 
-    const brief = verifier.seen[0]!.pages[0]!;
-    expect(brief.sources).toHaveLength(1);
-    expect(isTapeSource(brief.sources[0]!)).toBe(true);
-    expect(brief.evidence.docs.find((d) => d.docId === tapeDocIdFor(SEGMENT_ID))?.text).toBe(WINDOW_TEXT);
+    /* The window reaches the verifier as the clip's own document, which is
+       what it judges a statement about that clip against. */
+    expect(verifyRequests[0]!.clips.find((c) => c.docId === tapeDocIdFor(SEGMENT_ID))?.windowText).toBe(WINDOW_TEXT);
 
     const page = allWrittenNarration(written)[0]!;
-    expect(page.mode).toBe("Frame");
     expect(page.script).toBe(RUN5_FRAME);
     expect(page.verified).toBe(true);
     expect(page.sources).toEqual([{ kind: "tape", segmentId: SEGMENT_ID, claimText: TAPE_SOURCE.claimText, publication: TAPE_DOC.title, contested: false }]);
@@ -334,46 +328,57 @@ describe("F-81 — writeNarration: the run-5 Frame is written, gated and verifie
 
   it("a tape echo shorter than eight words passes the gate and rides on the source", async () => {
     /* MUTATION THAT KILLS THIS: apply MIN_QUOTE_WORDS to a tape claim. */
-    const writer = scriptedWriter([{ claims: [{ ...TAPE_CLAIM, quote: "It drives like the people it learned from." }] }]);
-    const written = await writeNarration(tapeAct("Hand the listener into the comma segment."), { writer, verifier: recordingVerifier(), evidence: windowGatherer() }, voice, ctx);
-    expect(writer.selectCalls).toBe(1);
+    const echo = "It drives like the people it learned from.";
+    const { writer, verifier, calls } = actBuilders((reply) => withClaims(reply, [{ ...TAPE_CLAIM, quote: echo }], RUN5_FRAME));
+    const written = await writeNarration(tapeAct("Hand the listener into the comma segment."), { writer, verifier, evidence: windowGatherer() }, voice, ctx);
+    expect(calls.write).toBe(1);
     const page = allWrittenNarration(written)[0]!;
-    expect(page.sources[0]).toMatchObject({ kind: "tape", segmentId: SEGMENT_ID, quote: "It drives like the people it learned from." });
+    expect(page.sources[0]).toMatchObject({ kind: "tape", segmentId: SEGMENT_ID, quote: echo });
   });
 
-  it("a tape claim whose quote is not spoken in the window is refused at selection — no prose call, no verifier call — and the retry note says so", async () => {
+  it("a tape claim whose quote is not spoken in the window is refused in code — before the verifier — and the note says so", async () => {
     /* MUTATION THAT KILLS THIS: accept any quote on a tape claim. */
-    const writer = scriptedWriter([{ claims: [{ ...TAPE_CLAIM, quote: "learned to drive from hand-written rules" }] }, { claims: [TAPE_CLAIM] }]);
-    const verifier = recordingVerifier();
+    const { writer, verifier, calls, requests } = actBuilders((reply, _request, round) =>
+      withClaims(reply, [round === 1 ? { ...TAPE_CLAIM, quote: "learned to drive from hand-written rules" } : TAPE_CLAIM], RUN5_FRAME)
+    );
     const written = await writeNarration(tapeAct("Hand the listener into the comma segment."), { writer, verifier, evidence: windowGatherer() }, voice, ctx);
-    expect(writer.selectCalls).toBe(2);
-    expect(writer.writeCalls).toBe(1);
-    expect(verifier.calls).toBe(1);
-    expect(writer.retryNotes[1]).toMatch(/not spoken in the transcript window/);
+    expect(calls.write).toBe(2);
+    expect(calls.verify).toBe(1);
+    expect(refusalOn(requests, 2)).toMatch(/not spoken in the transcript window/);
     expect(allWrittenNarration(written)[0]!.verified).toBe(true);
   });
 
-  it("a Frame with no source that states what the tape says is still refused three times and dropped — the rule for source-less pages is unchanged", async () => {
-    /* MUTATION THAT KILLS THIS: treat a connective page on a tape beat as
-       implicitly tape-sourced when it declares nothing. Declaring is the
-       act; a page that declares nothing may only ask or hand off. */
-    const writer = scriptedWriter([{ claims: [] }]);
-    const verifier = recordingVerifier();
+  it("run 5's eight refusals are closed the other way too: the page rests on the CLIP's window even when it selected no claim of its own (F-97)", async () => {
+    /* THE OTHER HALF OF F-81, and what F-97 made of it. Run 5 refused
+       eight pages for "declares no sources but its script states something
+       about the world". F-81 let the page DECLARE the tape; F-97 went
+       further and made support act-scoped, so the page before a clip may
+       state what the clip is about and rest on that clip's window whether
+       or not it selected a claim. Both answers are the same sentence of
+       tape; this is the one the act path gives.
+
+       MUTATION THAT KILLS THIS: score a seam against only the sources it
+       selected — every bridge in the act goes unsupported, which is run 9
+       (F-97's own finding). */
+    const { writer, verifier, calls } = actBuilders((reply) => withClaims(reply, [], RUN5_FRAME));
     const written = await writeNarration(tapeAct("Hand the listener into the comma segment."), { writer, verifier, evidence: windowGatherer() }, voice, ctx);
-    expect(writer.writeCalls).toBe(3);
-    expect(verifier.calls).toBe(0);
-    expect(writer.retryNotes[1]).toMatch(/may only ask a question or hand off to the listener/);
-    expect(allWrittenNarration(written)).toHaveLength(0);
+    expect(calls.write).toBe(1);
+    const page = allWrittenNarration(written)[0]!;
+    expect(page.script).toBe(RUN5_FRAME);
+    expect(page.verified).toBe(true);
+    expect(page.sources.some((s) => isTapeSource(s) && (s as TapeSource).segmentId === SEGMENT_ID)).toBe(true);
     const beat = written[0]!.slots[0]!.beats[0]!;
     expect(beat.sourcing).toBe("tape");
   });
 
-  it("a tape source can only name the tape this page introduces — a claim on a window not in the pack is refused", async () => {
+  it("a tape source can only name a window the act holds — a claim on a window not in the documents is refused", async () => {
     /* MUTATION THAT KILLS THIS: resolve the segment from the claim's docId
-       without requiring the document to be in the page's pack. */
-    const writer = scriptedWriter([{ claims: [{ ...TAPE_CLAIM, docId: tapeDocIdFor("some-other-episode#40") }] }, { claims: [TAPE_CLAIM] }]);
-    await writeNarration(tapeAct("Hand the listener into the comma segment."), { writer, verifier: recordingVerifier(), evidence: windowGatherer() }, voice, ctx);
-    expect(writer.retryNotes[1]).toMatch(/not one of the documents provided/);
+       without requiring the document to be in the act's documents. */
+    const { writer, verifier, requests } = actBuilders((reply, _request, round) =>
+      withClaims(reply, [round === 1 ? { ...TAPE_CLAIM, docId: tapeDocIdFor("some-other-episode#40") } : TAPE_CLAIM], RUN5_FRAME)
+    );
+    await writeNarration(tapeAct("Hand the listener into the comma segment."), { writer, verifier, evidence: windowGatherer() }, voice, ctx);
+    expect(refusalOn(requests, 2)).toMatch(/is not one of the documents provided/);
   });
 
   it("sourcesFor builds the tape shape from the pack's tape document on a Frame, and the print shape from everything else", () => {
@@ -493,35 +498,51 @@ describe("F-81 — the publish gate's groundedQuoteRate reads a tape source the 
 });
 
 describe("F-81 — the prompts say what the code enforces", () => {
-  const brief = {
-    pageId: "p0",
-    purpose: "Hand the listener into the comma segment.",
-    mode: "Frame" as const,
-    evidence: { purpose: "Hand the listener into the comma segment.", beatKind: "account" as const, docs: [TAPE_DOC] }
+  /* PORTED to the per-act prompts (F-100). The rule is the same one: the
+     window is the source for a statement about the clip, the quote is
+     optional, and the verifier is handed the window to judge it against.
+     What changed is which prompt says it. */
+  const clip = {
+    clipId: "c0",
+    segmentId: SEGMENT_ID,
+    itemId: "practical-ai--open-source-self-driving-with-comma-ai",
+    docId: tapeDocIdFor(SEGMENT_ID),
+    show: "Practical AI",
+    title: "Open source self-driving with comma.ai",
+    durationSec: 150,
+    opening: WINDOW_TEXT.slice(0, 80),
+    intro: "full" as const
   };
+  const seam = { seamId: "s0", beats: [], introduces: "c0", intro: "full" as const, band: [30, 260] as [number, number] };
 
-  it("the verifier is handed the segment's transcript window as the holding document for a tape source, and told a [TAPE] source has no quote to check", () => {
-    /* MUTATION THAT KILLS THIS: render a tape source with the print line
-       (`quote="undefined"`), or leave the window out of the source block. */
-    const prompt = buildVerifyPrompt({ slotTitle: "Slot", voice, pages: [{ ...brief, script: RUN5_FRAME, sources: [TAPE_SOURCE] }] });
-    expect(prompt).toContain(`[TAPE — the segment this page introduces, ${SEGMENT_ID}]`);
-    expect(prompt).toContain("Holding document for this source: the segment's transcript window below.");
-    expect(prompt.indexOf(WINDOW_TEXT)).toBeGreaterThan(prompt.indexOf("Holding document for this source"));
-    expect(prompt).toContain("A source marked [TAPE] has no quote to check against");
-    expect(prompt).not.toContain('quote="undefined"');
-    const echoed = buildVerifyPrompt({ slotTitle: "Slot", voice, pages: [{ ...brief, script: RUN5_FRAME, sources: [{ ...TAPE_SOURCE, quote: "drivers dashcams" }] }] });
-    expect(echoed).toContain('echoes="drivers dashcams"');
+  it("the writer prompt marks the clip's transcript window as the thing to cite for a statement about the clip, quote optional", () => {
+    /* MUTATION THAT KILLS THIS: drop the TAPE note from the document line
+       or the rule line from `ACT_CLAIM_RULES` — the writer would go on
+       selecting nothing for the page before a clip, which is run 5. */
+    const prompt = buildActWritePrompt({ actTitle: "Act", voice, seams: [seam], clips: [clip], documents: [TAPE_DOC] });
+    expect(prompt).toContain("TRANSCRIPT WINDOW of a clip (cite it for statements about that clip)");
+    expect(prompt).toMatch(/A statement about a CLIP — what it is about, who is speaking, what was said in it — rests on that clip's transcript window/);
+    expect(prompt).toMatch(/the whole window is that source, so the word minimum does not apply to it/);
+    expect(prompt).toContain("Never back a statement about a clip with an outside publication.");
   });
 
-  it("the selection prompt marks the tape document a Frame may cite as a whole, and says the quote is optional", () => {
-    /* MUTATION THAT KILLS THIS: drop the TAPE note from `evidenceBlock`
-       or the rule line from `buildSelectionPrompt` — the writer would go
-       on selecting nothing for a Frame, which is run 5. */
-    const prompt = buildSelectionPrompt({ slotTitle: "Slot", voice, pages: [brief] });
-    expect(prompt).toContain("TAPE: the segment this page introduces — may be cited as a whole (quote optional)");
-    expect(prompt).toMatch(/A Frame, Hinge or Marker that hands the listener into tape may cite the tape itself/);
-    expect(prompt).toContain("never the answer it gives");
-    const patch = buildSelectionPrompt({ slotTitle: "Slot", voice, pages: [{ ...brief, mode: "Patch" }] });
-    expect(patch).not.toContain("may be cited as a whole");
+  it("the verifier is handed the clip's transcript window, under the clip it belongs to", () => {
+    /* MUTATION THAT KILLS THIS: leave the window out of the clip block —
+       the verifier would have to take a statement about the tape on
+       trust, which is F-22/F-27. */
+    const prompt = buildActVerifyPrompt({
+      actTitle: "Act",
+      voice,
+      beats: [],
+      sources: [
+        { id: "c0", kind: "clip", claimText: "the clip's whole window", publication: TAPE_DOC.title, docId: tapeDocIdFor(SEGMENT_ID), contested: false }
+      ],
+      seams: [{ seamId: "s0", script: RUN5_FRAME, selected: ["c0"], carries: [], introduces: "c0" }],
+      clips: [{ ...clip, windowText: WINDOW_TEXT }],
+      documents: [TAPE_DOC]
+    });
+    expect(prompt).toContain("Transcript window:");
+    expect(prompt).toContain(WINDOW_TEXT);
+    expect(prompt.indexOf(WINDOW_TEXT)).toBeGreaterThan(prompt.indexOf("Transcript window:"));
   });
 });

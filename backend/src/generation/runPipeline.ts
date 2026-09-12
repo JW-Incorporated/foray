@@ -18,7 +18,7 @@ import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
 import { createActGate, narrationActConcurrency, writeNarration } from "./writeNarration";
-import { countSynthesisCandidates, verifiedPageSummaries, verifyBySynthesis } from "./synthesisVerify";
+import { verifiedPageSummaries } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer } from "./evidencePrefetch";
 import { createEvidenceGatherer, type EvidenceGatherer } from "./gatherEvidence";
 import { ForayStitcher } from "./stitchForay";
@@ -63,10 +63,10 @@ import type { PromptUnderstander } from "./PromptUnderstander";
 import type { ExternalResearcher } from "./ExternalResearcher";
 import type { SpineBuilder } from "./SpineBuilder";
 import type { DeepenActBuilder } from "./DeepenActBuilder";
-import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder, SelectAndWriteRequest } from "./NarrationWriterBuilder";
-import type { ActVerifyRequest, NarrationVerifierBuilder, SynthesisVerifyRequest } from "./NarrationVerifierBuilder";
+import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder } from "./NarrationWriterBuilder";
+import type { ActVerifyRequest, NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
-import type { NarrationWriteStats, WrittenAct, WrittenSlot } from "./writeNarration";
+import type { NarrationWriteStats, WrittenAct } from "./writeNarration";
 import { loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
 import type { TranscriptTextIndex } from "./transcriptTextIndex";
 import type { TapeRelevanceInput } from "../types/tapeSourcing";
@@ -608,15 +608,6 @@ const TapeRelevanceInputSchema = z.object({
   mergedInto: z.object({ slot: z.number().int().nonnegative(), beat: z.number().int().nonnegative() }).optional()
 });
 
-/* F-80 renamed the D5 gate from `d5-uniform` (a preference, #571) to
-   `d5-triple` (a rule), and Q-04 restated the rule as a PAIR (`d5-pair`). A
-   checkpoint written by #571–#620 or by F-80–Q-04 can carry either old
-   spelling in its trace, and a resume must not fail on the runs the ledger
-   decided — so both legacy spellings are accepted and read as the new one. */
-const LEGACY_D5_GATES = ["d5-uniform", "d5-triple"] as const;
-const readLegacyD5Gate = <G extends string>(gate: G | (typeof LEGACY_D5_GATES)[number]): G | "d5-pair" =>
-  (LEGACY_D5_GATES as readonly string[]).includes(gate) ? "d5-pair" : (gate as G);
-
 /* Mirrors `SourcingTrace` (types/tapeSourcing.ts, F-49): why each narrated beat
    got no tape. Checkpointed with the stage for the same reason `tapeRelevance`
    is — a resumed run must be able to say what the search saw, or the evidence
@@ -638,12 +629,10 @@ const TIER2_GATE_SCHEMA = z
     "d2-short-run",
     "d3-mean",
     "d5-pair",
-    ...LEGACY_D5_GATES,
     "m4-runtime",
     "pool-cut",
     "past-duration"
-  ])
-  .transform(readLegacyD5Gate);
+  ]);
 const SourcingTraceSchema = z.object({
   actIndex: z.number().int(),
   slotIndex: z.number().int(),
@@ -668,10 +657,8 @@ const SourcingTraceSchema = z.object({
           "d2-short-run",
           "d3-mean",
           "d5-pair",
-          ...LEGACY_D5_GATES,
           "m4-runtime"
-        ])
-        .transform(readLegacyD5Gate),
+        ]),
       /* G-24 R2: tier 1's weighted floor, when a transcript window was scored. */
       windowWeightedShare: z.number().optional(),
       windowDistinctiveTerms: z.array(z.string()).optional()
@@ -779,14 +766,6 @@ const WrittenActSchema = z.object({
   slots: z.array(WrittenSlotSchema)
 });
 
-/* PRE-F-66 SHAPE, STILL READ. Until F-66 the whole of §4.8 was one stage under
-   one `stitch` key holding the whole Foray's items. A checkpoint written by
-   that code is still on disk in every output directory run 2 touched, and it
-   still describes finished work — so `runForayPipeline` reads it and skips
-   per-act stitching entirely when it is there. Nothing WRITES this key any
-   more; see `StitchActCheckpointSchema`. */
-const StitchCheckpointSchema = z.object({ items: z.array(ForayItemSchema) });
-
 /* F-66: §4.8's unit is now an ACT, keyed `stitch:<i>`, matching `deepen:<i>` /
    `narrate:<i>`. A bare array rather than `{items}` because that is exactly
    what `ForayStitcher.stitchNextAct` returns, and a checkpoint that mirrors the
@@ -884,94 +863,40 @@ export async function runForayPipeline(
      rejected attempts — wrapping here (rather than instrumenting
      `AnthropicNarrationWriterBuilder`/`StubNarrationWriterBuilder`
      themselves) counts real AND stub/test builders alike with one code
-     path, and survives WS-D's per-slot/per-act parallelisation
+     path, and survives G-32's per-act parallelisation
      untouched (a plain counter, no ordering assumed — contrast
      `usageTracking.ts`'s per-process caveat, which does not apply here
      since these two counters are local to this one call).
 
-     WHAT A "CALL" MEANS NOW (WS-A). The narration stage is no longer one
-     writer call per page. A slot is written in two batched calls — claim
-     selection, then prose — and verified in one, whatever the page count,
-     and slots within an act run in parallel. Each of those is counted ONCE
-     here, because each is one request to the model, which is what
-     `callsPerBeat` is measuring: the run-1 baseline of 4.2 calls per beat
-     was 4.2 REQUESTS per beat, and the target of ≤1.5 is met precisely by
-     serving many pages from one request. A four-page slot that passes
-     first time therefore costs 2 writer calls and 1 verifier call, not 8
-     and 4 — and if it did not count that way the metric would report no
-     improvement from the change that produced it. Selection and prose are
-     summed into the one writer counter deliberately: they are two halves
-     of writing a page, and splitting them would make the number
-     incomparable with run 1's. */
+     WHAT A "CALL" MEANS NOW (Q-03). The narration stage is no longer one
+     writer call per page: an ACT is written in one call and verified in
+     one, whatever its page count, and acts run in parallel. Each is
+     counted ONCE here, because each is one request to the model, which is
+     what `callsPerBeat` is measuring: the run-1 baseline of 4.2 calls per
+     beat was 4.2 REQUESTS per beat, and the target of ≤1.5 is met
+     precisely by serving many pages from one request. A clean four-page
+     act therefore costs 1 writer call and 1 verifier call, not 8 and 4 —
+     and if it did not count that way the metric would report no
+     improvement from the change that produced it. */
   let narrationWriterCalls = 0;
   let narrationVerifierCalls = 0;
   const countingNarrationWriter: NarrationWriterBuilder = {
     providerName: narrationWriter.providerName,
-    selectClaims: (selectRequest, selectCtx) => {
+    writeAct: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
       narrationWriterCalls++;
-      return narrationWriter.selectClaims(selectRequest, selectCtx);
-    },
-    writePages: (writeRequest, writeCtx) => {
-      narrationWriterCalls++;
-      return narrationWriter.writePages(writeRequest, writeCtx);
-    },
-    /* G-34: the merged select+prose call is ONE request and counts as
-       one. Forwarded only when the wrapped builder offers it — its
-       absence is what tells `writeNarration` to take the two-call path,
-       so a wrapper that always declared it would silently break every
-       builder without it. */
-    ...(narrationWriter.selectAndWrite
-      ? {
-          selectAndWrite: (mergedRequest: SelectAndWriteRequest, mergedCtx: NarrationBuildContext) => {
-            narrationWriterCalls++;
-            return narrationWriter.selectAndWrite!(mergedRequest, mergedCtx);
-          }
-        }
-      : {}),
-    /* Q-03: the per-act call is ONE request and counts as one. Forwarded
-       only when the wrapped builder offers it, for the same reason as
-       `selectAndWrite`: its absence is what sends `writeNarration` down
-       the per-slot path. */
-    ...(narrationWriter.writeAct
-      ? {
-          writeAct: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
-            narrationWriterCalls++;
-            return narrationWriter.writeAct!(actRequest, actCtx);
-          }
-        }
-      : {})
+      return narrationWriter.writeAct(actRequest, actCtx);
+    }
   };
-  /* G-34: `retryRounds` is counted by the stage itself (a round is a
-     slot going back to the writer), not by the proxies above, which see
+  /* G-34: `retryRounds` is counted by the stage itself (a round is an act
+     going back to the writer), not by the proxy above, which sees
      requests and cannot tell a round from a call. */
   const narrationStats: NarrationWriteStats = { retryRounds: 0 };
   const countingNarrationVerifier: NarrationVerifierBuilder = {
     providerName: narrationVerifier.providerName,
-    verifySlot: (verifyRequest, verifyCtx) => {
+    verifyAct: (actRequest: ActVerifyRequest, actCtx: NarrationBuildContext) => {
       narrationVerifierCalls++;
-      return narrationVerifier.verifySlot(verifyRequest, verifyCtx);
-    },
-    /* F-88: the synthesis question is one verifier request and counts as
-       one. Forwarded only when the wrapped verifier answers it — a wrapper
-       that always declared it would make `synthesisVerify.ts` call into
-       nothing. */
-    ...(narrationVerifier.verifySynthesis
-      ? {
-          verifySynthesis: (synthesisRequest: SynthesisVerifyRequest, synthesisCtx: NarrationBuildContext) => {
-            narrationVerifierCalls++;
-            return narrationVerifier.verifySynthesis!(synthesisRequest, synthesisCtx);
-          }
-        }
-      : {}),
-    /* Q-03: the per-act verdict is one request. */
-    ...(narrationVerifier.verifyAct
-      ? {
-          verifyAct: (actRequest: ActVerifyRequest, actCtx: NarrationBuildContext) => {
-            narrationVerifierCalls++;
-            return narrationVerifier.verifyAct!(actRequest, actCtx);
-          }
-        }
-      : {})
+      return narrationVerifier.verifyAct(actRequest, actCtx);
+    }
   };
 
   /* §4.0-4.1 — safety, then intent. Both non-"understood" outcomes end the run:
@@ -1295,7 +1220,7 @@ export async function runForayPipeline(
   }
 
   /* G-35 — EVERY PAGE'S EVIDENCE, IN ONE FAN-OUT, BEFORE ANY ACT IS WRITTEN.
-     Retrieval used to sit inside each act's `writeSlot`, serial with the acts
+     Retrieval used to sit inside each act's narration, serial with the acts
      around it; now the whole Foray's packs are gathered here, bounded by
      `EVIDENCE_PREFETCH_CONCURRENCY`, and `writeNarration` below is handed the
      same object so its gathers are memo lookups. Timed as its own stage but
@@ -1346,21 +1271,14 @@ export async function runForayPipeline(
      ON in act order; the writer/verifier instances are shared across them,
      as they were across the slots of one act before.
 
-     TWO CHECKPOINT KEYS, NOT ONE (F-51). `narrate:<i>` is still the outer
-     record: once an act is finished, one key holds it and nothing inside it is
-     consulted again. But `narrate:<i>` is only WRITTEN when the whole act
-     finishes, so a run that dies partway through act 1 re-paid for every page
-     of it — run 2 would have re-paid for twelve pages to reach the one that
-     failed. `narrate:<i>:<slot>` banks each slot the moment it is written, and
-     `writeNarration`'s `resume` hook reads them back, so a re-run pays only
-     for the slots that never landed.
-
-     SINCE Q-03 THE ACT IS THE UNIT OF WRITING (`writeAct.ts`), so a fresh run
-     writes no per-slot key: the act's seams span its slots and are banked
-     together under `narrate:<i>` the moment the act lands. The per-slot keys
-     are still READ — a run-1…8 checkpoint whose every slot of an act was
-     banked resumes that act without a call — and still written by the
-     per-slot fallback path. Both legacy key names stay readable.
+     ONE CHECKPOINT KEY (F-100). `narrate:<i>` is the record: once an act is
+     finished, one key holds it and nothing inside it is consulted again.
+     F-51 added a second, finer key — `narrate:<i>:<slot>`, banked as each
+     slot was written — because the per-slot path could die halfway through
+     an act and re-pay for every page of it on the next run. Since Q-03 the
+     ACT is the unit of writing: a seam spans slots, so half an act's slots
+     are not a resumable state, nothing has written the finer key since, and
+     `CHECKPOINT_VERSION` 2 rejects the files that still carry one.
 
      AND §4.8 NOW RUNS INSIDE THIS SAME LOOP (F-66). Stitching used to be one
      stage AFTER the loop, so act 1's items — and with them WS-D2's partial
@@ -1386,16 +1304,6 @@ export async function runForayPipeline(
      "not measured" instead. The same is true of any run that supplied no
      `deps.onActReady` — there was no act-boundary clock to read. */
   let ttlA1Ms: number | null = null;
-
-  /* F-66 BACK-COMPAT: a checkpoint written before §4.8 was split per act holds
-     one `stitch` key carrying the whole Foray's items. That work really was
-     done and paid for, so it is read rather than discarded — and when it is
-     there, the per-act path below is skipped entirely, exactly as the old
-     single stage was. Nothing WRITES this key any more (see
-     `StitchActCheckpointSchema`); the next fresh run for the prompt keys per
-     act. */
-  const legacyStitched = checkpoint.resumeSync("stitch", (raw) => StitchCheckpointSchema.parse(raw) as { items: ForayItem[] });
-  if (legacyStitched) timings.markResumed("stitch");
 
   /* §4.8's per-act driver. Constructed BEFORE narration starts because it
      needs nothing narration produces: its continuity smoothing reads act
@@ -1471,7 +1379,7 @@ export async function runForayPipeline(
   /* G-32: EVERY act's narration starts now, at once, through a gate of
      `narrationActConcurrency` acts in flight (default 4, env
      `NARRATION_ACT_CONCURRENCY`). The `narrate:<i>` stage is unchanged — same
-     key, same per-slot `narrate:<i>:<slot>` keys, same `writeNarration` call
+     key, same `writeNarration` call
      handed one act — it is only no longer waited on before the next act's
      starts. The gate wraps the stage rather than the reverse so a resumed act
      (its `narrate:<i>` already banked) passes through in microseconds and the
@@ -1538,11 +1446,6 @@ export async function runForayPipeline(
                  tape beat's evidence pack holds the cue window and not just
                  the episode title. */
               evidence,
-              /* `writeNarration` is handed ONE act, so its own act index is
-                 always 0; `i` is what names the slot's key. */
-              resume: (_actIndex, slotIndex) =>
-                checkpoint.resumeSync(`narrate:${i}:${slotIndex}`, (raw) => WrittenSlotSchema.parse(raw) as WrittenSlot),
-              onSlotWritten: (_actIndex, slotIndex, slot) => checkpoint.save(`narrate:${i}:${slotIndex}`, slot),
               /* Q-02: the rows tier 2 minted this run, so an Intro before a
                  clip the committed registry does not hold yet can still be
                  checked against its show and episode title. */
@@ -1579,30 +1482,9 @@ export async function runForayPipeline(
   const written: WrittenAct[] = [];
   try {
     for (let i = 0; i < sourced.acts.length; i++) {
-      let writtenAct = await narrations[i]!;
+      const writtenAct = await narrations[i]!;
 
-      /* F-88: SYNTHESIS, between this act's narration landing and its stitch.
-         A thesis Hinge whose retrieval found nothing (an F-60 hand-off) is
-         written from the Foray's verified pages and verified as a
-         generalisation of them — which needs every act's pages, so an act
-         holding one waits for the others' narration to settle first. An act
-         with none pays nothing. Its own `synthesis:<i>` key, so a resume
-         neither re-pays for it nor loses it: `narrate:<i>` still holds the
-         hand-off, and this stage holds the page that replaced it. Before the
-         stitch, because the stitcher owns a page's leading and trailing
-         sentences and the partial candidate leaves through `onActReady`. */
-      if (countSynthesisCandidates(writtenAct) > 0) {
-        await Promise.allSettled(narrations);
-        const before = writtenAct;
-        writtenAct = await stage(
-          `synthesis:${i}`,
-          (raw) => WrittenActSchema.parse(raw) as WrittenAct,
-          () => verifyBySynthesis(before, i, settledActs, { writer: countingNarrationWriter, verifier: countingNarrationVerifier, stats: narrationStats }, spine.voice, ctx)
-        );
-      }
       written.push(writtenAct);
-
-      if (legacyStitched) continue;
 
       /* THIS act, stitched now — not after the last act (F-66). Timed and
          checkpointed under its own `stitch:<i>` key, so a resume does not re-pay
@@ -1633,11 +1515,9 @@ export async function runForayPipeline(
     .map(({ t, m }) => ({ act: Number(m[1]), startedAt: t.startedAt, ms: t.ms, ...(t.resumed ? { resumed: true as const } : {}) }))
     .sort((a, b) => a.act - b.act);
 
-  /* §4.8's product, however it was assembled this run: every act's items in
-     act order, each one either stitched inside the loop above or read back
-     from its own `stitch:<i>` checkpoint (or, for a pre-F-66 checkpoint, the
-     whole thing at once). */
-  const stitchedItems = legacyStitched ? legacyStitched.items : stitcher.items();
+  /* §4.8's product: every act's items in act order, each one either stitched
+     inside the loop above or read back from its own `stitch:<i>` checkpoint. */
+  const stitchedItems = stitcher.items();
 
   const generatedAt = now().toISOString();
   /* The disclosure is prepended here rather than inside stitch: it is a

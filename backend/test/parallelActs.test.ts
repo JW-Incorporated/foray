@@ -4,8 +4,7 @@ import {
   createActGate,
   narrationActConcurrency,
   DEFAULT_NARRATION_ACT_CONCURRENCY,
-  NARRATION_ACT_CONCURRENCY_ENV,
-  type WrittenSlot
+  NARRATION_ACT_CONCURRENCY_ENV
 } from "../src/generation/writeNarration";
 import { runForayPipeline } from "../src/generation/runPipeline";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
@@ -279,10 +278,7 @@ describe("writeNarration — acts are narrated in parallel (G-32)", () => {
         writer,
         verifier: new StubNarrationVerifierBuilder(),
         evidence: gatherer,
-        actConcurrency: 2,
-        onSlotWritten: (_a, _s, slot: WrittenSlot) => {
-          banked.push(slot.title);
-        }
+        actConcurrency: 2
       },
       voice,
       ctx
@@ -299,9 +295,9 @@ describe("writeNarration — acts are narrated in parallel (G-32)", () => {
 
     act1.resolve();
     await expect(run).rejects.toThrow(/provider went away/);
-    /* Act 1 FINISHED before the call settled — the act path banks through the
-       driver's `narrate:1` stage, not `onSlotWritten` (which the per-slot
-       fallback alone calls), so the proof is the writer's own completion log. */
+    /* Act 1 FINISHED before the call settled — the act banks through the
+       driver's `narrate:1` stage (there is no finer key since F-100), so the
+       proof is the writer's own completion log. */
     expect(state.completed).toEqual(["Act 1"]);
     expect(banked).toEqual([]);
     expect(state.started).not.toContain("Act 2");
