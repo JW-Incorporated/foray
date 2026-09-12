@@ -49,9 +49,33 @@ mixed audio file triggers legal review before anything else happens.
 
 ### 1.2 Narration is spoken on-device. A backdoor exists for curated Forays.
 
-Default: the narration item carries a **script**, and the device speaks it with the platform's own
-voice engine. Zero TTS spend, zero hosted bytes, works offline, and — critically — nothing has to
-be rendered before playback can begin, which is what makes §6 possible at all.
+Default: the narration item carries a **script**, and the device speaks it with **the bundled
+voice; the platform's own engine is the fallback**. Zero TTS spend, zero hosted bytes, works
+offline, and — critically — nothing has to be rendered before playback can begin, which is what
+makes §6 possible at all.
+
+> **Amended 2026-09-12 (K-07, `docs/bundled-voice-plan.md`).** This paragraph read "the platform's
+> own voice engine" until the founder heard it: *"those voices were all so bad. Samantha was the
+> least worst"* (2026-09-11), which cut the narration voice picker down to one voice as a stopgap.
+> The ruling's ECONOMICS are unchanged and are what this section was ever about — $0 synthesis and
+> $0 hosting at unlimited user-created volume, which only on-device delivers. What changes is
+> *whose* voice: an 82-million-parameter neural model (Kokoro, Apache-2.0) ships inside the app and
+> runs on the phone, offline, with no download step and no Settings visit. The platform's engine
+> stays as the fallback for any device or item the bundled engine cannot serve, so nothing in §7 or
+> §6 loses a path it had.
+>
+> Two consequences elsewhere in this document. **§4.7 gains a phonemize step**: narration text is
+> turned into phonemes on our servers, at generation time, so the app needs no dictionary, no
+> grapheme-to-phoneme code, and none of the GPL-licensed `espeak-ng` that every Kokoro runtime
+> otherwise drags in — §1.2.1 already confined espeak to the server for the fallback render path,
+> and this extends the same line to the on-device path. And **the review gate comes back**: the
+> model is deterministic and the phonemes are identical on every device, so a curator's render on a
+> laptop is what every listener hears, which is the thing `on-device-tts.md` §5 said on-device
+> narration had given up.
+>
+> **Not yet measured on a phone.** The go/no-go rule is written in that deck's K-01 and the
+> measurement is `HUMAN-ACTIONS.md` H1. Until it comes back, every narration item still speaks
+> through the platform engine and nothing in this pipeline's output changes.
 
 An admin-authored Foray may instead carry a pre-rendered asset for a custom voice. The data model
 must support both from day one: **a narration item may carry `script`, `asset`, or both**, and the
@@ -500,6 +524,33 @@ correct it. Minimum bar:
 
 Write it once, as a template, and gate it in `check-forays.mjs`: **a generated Foray whose first
 item is not the disclosure fails validation.** It should be impossible to publish without it.
+
+#### 4.7a — Phonemize (K-02, added 2026-09-12)
+
+**After the narration is written and verified, and before §4.9 publishes**, every narration page
+gains the phonemes the bundled voice will speak. `backend/src/generation/phonemize.ts` is the
+stage; `tools/narration/phonemize.py` is its grapheme-to-phoneme half (misaki `en-us`, with
+`espeak-ng` for out-of-vocabulary words — both server-side, never shipped).
+
+- **The lexicon goes in first and wins.** `mobile/plugins/foray-tts/lexicon/hard-terms.json`'s
+  83 hand-audited terms are substituted before misaki sees the text, on a case-insensitive word
+  boundary. A term whose `ipa` is `null` is left alone — that file's own honesty note says why, and
+  inventing one here would put an unverified claim into the artefact whose job is to be exact.
+- **Per page, not per beat.** The act-level writer (`writeAct.ts`, 2026-09-12) made a page a
+  stretch of prose between clips; a beat is no longer the unit anything downstream carries.
+- **The item gains** `phonemes`, `est_sec` (characters ÷ 17, until K-04 can record a real rendered
+  length), and `tts: { engine, model, vocab }`. `vocab` is the sha of the phoneme id table these
+  phonemes were written against; the player refuses — falls back to the platform voice — when it
+  disagrees with what the app was built with.
+- **Every failure falls back to today's behaviour.** A missing phonemizer, a page it could not
+  phonemize, a vocabulary it could not report: the item is emitted unchanged, script only, and the
+  Foray publishes on the platform-voice path. A Foray may be half bundled-voice and half
+  platform-voice; `queue-manager.js` decides per item. **The bundled voice is an upgrade to how
+  narration sounds, never a new way for generation to fail.**
+- **Gated in `check-forays.mjs`**: an item that declares `tts.engine: "kokoro"` must carry
+  non-empty `phonemes`, a model and a vocab, and every lexicon term with an authored IPA that
+  appears in its `script` must appear as that IPA in its `phonemes`. Inert on an item with no `tts`
+  block, which is every item in `data/forays.json` today.
 
 ### 4.8 — Stitch
 

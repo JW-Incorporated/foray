@@ -125,6 +125,120 @@ export const ROLES = Object.freeze(["quote", "explanation", "exchange", "narrati
  * Each list is the constant the checks themselves read, never a copy of it,
  * so this cannot say "accepted" about a value the code rejects. */
 
+/* ---------- K-02: phonemes are authored with the script ----------
+ *
+ * `docs/bundled-voice-plan.md` K-02. The deck's load-bearing idea (§4) is that
+ * narration text is turned into PHONEMES on our servers, at generation time,
+ * and the phone receives phoneme ids rather than text. That removes the GPL
+ * text front-end from the app binary, removes the per-platform G2P port, and
+ * makes every render bit-identical across devices.
+ *
+ * WHAT THIS CHECKER OWNS: that a narration item claiming to be phonemized
+ * actually is, and that the pronunciation lexicon was applied. Nothing more —
+ * this file does not phonemize, and it has no opinion about items that do not
+ * carry a `tts` block. Every rule below is INERT on a legacy item, which is
+ * every item in `data/forays.json` today.
+ *
+ * WHY THE LEXICON CHECK IS SCOPED TO TERMS WITH AN AUTHORED IPA. The lexicon
+ * (`mobile/plugins/foray-tts/lexicon/hard-terms.json`) carries 83 terms and
+ * exactly ONE of them has a non-null `ipa` today — that file's own honesty
+ * note explains why: fabricating IPA without linguistic review or without
+ * hearing the result would be the unlabelled claim this repo forbids. A term
+ * with `ipa: null` has no override to reflect, so demanding one would be
+ * demanding that a phonemizer invent what the lexicon deliberately refuses to
+ * state. The rule is therefore: every lexicon term that HAS an authored IPA
+ * and appears in the script must appear, verbatim, in the phonemes.
+ *
+ * The matching rule is the one `narrator-voice.md`'s Appendix describes and
+ * `foray-tts.js`'s `findMatches` implements: case-insensitive, word boundary,
+ * with apostrophes treated as interior characters (`ch'arki`). */
+
+/** The engines a narration item may declare. `kokoro` is the bundled voice;
+    an item with no `tts` block at all is the platform-voice path, unchanged. */
+export const TTS_ENGINES = Object.freeze(["kokoro"]);
+
+/** Where the pronunciation overrides live. */
+export const LEXICON_PATH = "mobile/plugins/foray-tts/lexicon/hard-terms.json";
+
+/** The lexicon's `entries`, read once and memoised.
+ *
+ *  MEMOISED AND FAILURE-TOLERANT: this checker runs on every PR, and a lexicon
+ *  that could not be read must not turn every narration item red with an I/O
+ *  message. An empty list means "no overrides to enforce", which is the same
+ *  answer a lexicon of 83 nulls already gives — so the degradation is to the
+ *  behaviour that exists today rather than to a new one. */
+let _lexicon = null;
+export function lexiconEntries(root = REPO_ROOT) {
+  if (_lexicon) return _lexicon;
+  try {
+    const doc = JSON.parse(fs.readFileSync(path.join(root, LEXICON_PATH), "utf8"));
+    _lexicon = Array.isArray(doc.entries) ? doc.entries : [];
+  } catch (_) {
+    _lexicon = [];
+  }
+  return _lexicon;
+}
+
+/** Case-insensitive, word-boundary test for a lexicon term in a script.
+    Mirrors `mobile/plugins/foray-tts/web/foray-tts.js`'s `findMatches` rather
+    than inventing a second matching rule for the same lexicon. */
+export function scriptMentions(script, term) {
+  if (typeof script !== "string" || typeof term !== "string" || !term) return false;
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![\\p{L}\\p{N}'])${escaped}(?![\\p{L}\\p{N}'])`, "iu").test(script);
+}
+
+/**
+ * Everything wrong with one narration item's phonemization, as messages.
+ * Empty for an item with no `tts` block — the legacy path, untouched.
+ *
+ * `lexiconEntries` is `hard-terms.json`'s `entries` array. Passed in rather
+ * than read here so the rule is testable without the real lexicon and so this
+ * module keeps its "no I/O in a pure function" shape.
+ */
+export function phonemeProblems(item, lexiconEntries = []) {
+  const out = [];
+  const tts = item && item.tts;
+  if (tts === undefined || tts === null) return out;
+  if (typeof tts !== "object" || Array.isArray(tts)) {
+    out.push("`tts` must be an object of { engine, model, vocab }");
+    return out;
+  }
+  if (!TTS_ENGINES.includes(tts.engine)) {
+    out.push(`\`tts.engine\` is ${JSON.stringify(tts.engine)}, not one of ${TTS_ENGINES.join(", ")}`);
+    return out;
+  }
+  /* VERSION COUPLING (deck §5 item 8). Phonemes in the data must match the
+     phoneme vocabulary of the model in the app, and the player refuses (falls
+     back) on a mismatch. A missing `vocab` is therefore not a cosmetic gap:
+     it is an item the player cannot decide about, so it would fall back to the
+     system voice forever and nobody would know why. */
+  for (const field of ["model", "vocab"]) {
+    if (typeof tts[field] !== "string" || !tts[field].trim()) {
+      out.push(`\`tts.${field}\` must be a non-empty string — the player refuses a kokoro item it cannot version-check`);
+    }
+  }
+  const phonemes = typeof item.phonemes === "string" ? item.phonemes.trim() : "";
+  if (!phonemes) {
+    out.push("declares `tts.engine` kokoro but carries no `phonemes` — the phone has no text front-end and cannot make its own");
+    return out;
+  }
+  if (item.est_sec !== undefined && !(typeof item.est_sec === "number" && item.est_sec > 0 && Number.isFinite(item.est_sec))) {
+    out.push(`\`est_sec\` is ${JSON.stringify(item.est_sec)} — it must be a positive finite number of seconds, or absent`);
+  }
+  for (const entry of lexiconEntries) {
+    if (!entry || !entry.ipa) continue; // no authored override to reflect
+    if (!scriptMentions(item.script, entry.term)) continue;
+    if (!phonemes.includes(entry.ipa)) {
+      out.push(
+        `says "${entry.term}" but its \`phonemes\` do not carry the lexicon's IPA for it (${entry.ipa}) — ` +
+        "the pronunciation override was dropped somewhere between hard-terms.json and the phonemizer"
+      );
+    }
+  }
+  return out;
+}
+
 /** `foray.kind` (#134). One value today; the check reads this list. */
 export const FORAY_KINDS = Object.freeze(["deep-dive"]);
 /** `foray.status`. */
@@ -596,6 +710,10 @@ export function checkForays(files) {
           itemsOk = false;
           continue;
         }
+        /* K-02: an item that CLAIMS to be phonemized must be. Inert on every
+         * item in `data/forays.json` today (none carries a `tts` block), which
+         * is why this reads as an addition rather than a re-validation. */
+        for (const problem of phonemeProblems(item, lexiconEntries())) E(`${where} ${problem}`);
         if (item.slot !== undefined && slotIds.length && !slotIds.includes(item.slot)) {
           E(`${where} declares slot "${item.slot}", which is not in \`slots\``);
         } else if (item.slot === undefined && slotIds.length && played.length === 0) {

@@ -750,6 +750,192 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         call.resolve(result);
     }
 
+    /* ---------- K-01: the bundled-voice measurement ----------
+     *
+     * `docs/bundled-voice-plan.md` K-01 — "a throwaway measurement path, not a
+     * product feature", deleted in K-04's cutover. The iOS half's comment
+     * carries the full argument; the two differ only where the platforms do.
+     *
+     * WHAT IS HERE: the method, the asset lookup, the memory reading, the
+     * refusal vocabulary, and the seam an engine plugs into. WHAT IS NOT:
+     * `com.microsoft.onnxruntime:onnxruntime-android`, and no `build.gradle`
+     * dependency on it. Nothing in this repo can build or run an Android
+     * shell — `android-release.yml` is the only thing that compiles this file
+     * — so adding an unverified ~16 MB native dependency for a card whose own
+     * gate is a founder's phone would risk that job for no measurement gained.
+     * K-04 adds it, together with an implementation of {@link KokoroProbeEngine}.
+     *
+     * THE REASON CODES ARE A CLOSED SET shared with
+     * `player/kokoro-probe.js`'s PROBE_REASONS. A code invented here that
+     * that file does not know degrades to `refused` and loses the diagnosis.
+     */
+
+    /** What K-01 needs from a runtime: phoneme ids in, timings out. NOT
+     *  {@code speak}-shaped on purpose — the probe never plays through the
+     *  narration path, so an engine implementing this cannot accidentally
+     *  become the way narration is spoken. */
+    public interface KokoroProbeEngine {
+        String modelName();
+        String provider();
+        /** {@code [coldMs, warmMs]} for loading the model. */
+        double[] load();
+        /** {@code [synthMs, audioSec]} for one line. */
+        double[] synthesize(int[] ids, double speed);
+    }
+
+    /** The seam. Null on every build that ships today; K-04 sets it. */
+    public static KokoroProbeEngine probeEngine = null;
+
+    /** The bundled weights, looked up in the APK's assets by name rather than
+     *  assumed present: a build that skipped `tools/mobile/fetch-models.mjs`
+     *  must answer {@code model-absent}, not crash. */
+    static final String MODEL_ASSET = "kokoro-v1_0-q8f16.onnx";
+
+    @PluginMethod
+    public void kokoroProbe(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("platform", "android");
+
+        JSObject passage = call.getObject("passage");
+        /* `optJSONArray`, not `getJSONArray`: the latter throws on a missing
+         * key, and "the page sent no passage" is an ANSWER this method has a
+         * code for, not an exception to be caught two frames away. */
+        org.json.JSONArray rawLines = passage == null ? null : passage.optJSONArray("lines");
+        List<int[]> idLines = new ArrayList<>();
+        int lineCount = 0;
+        try {
+            if (rawLines != null) {
+                lineCount = rawLines.length();
+                for (int i = 0; i < lineCount; i++) {
+                    org.json.JSONObject line = rawLines.getJSONObject(i);
+                    org.json.JSONArray ids = line.optJSONArray("ids");
+                    if (ids == null || ids.length() == 0) continue;
+                    int[] out = new int[ids.length()];
+                    for (int j = 0; j < ids.length(); j++) out[j] = ids.getInt(j);
+                    idLines.add(out);
+                }
+            }
+        } catch (Exception e) {
+            /* A malformed passage is `passage-unphonemized`, not a crash: the
+             * page owns that file and a founder reading the record needs to be
+             * told which artefact to fix, not that something threw. */
+            idLines.clear();
+        }
+
+        if (lineCount == 0) {
+            result.put("ok", false);
+            result.put("reason", "passage-empty");
+            call.resolve(result);
+            return;
+        }
+        if (idLines.size() != lineCount) {
+            result.put("ok", false);
+            result.put("reason", "passage-unphonemized");
+            call.resolve(result);
+            return;
+        }
+
+        boolean modelPresent = false;
+        try {
+            Context ctx = getContext();
+            String[] assets = ctx == null ? null : ctx.getAssets().list("");
+            if (assets != null) {
+                for (String a : assets) {
+                    if (MODEL_ASSET.equals(a)) { modelPresent = true; break; }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "could not list assets for the Kokoro probe", e);
+        }
+        if (!modelPresent) {
+            result.put("ok", false);
+            result.put("reason", "model-absent");
+            result.put("lookedFor", MODEL_ASSET);
+            call.resolve(result);
+            return;
+        }
+
+        KokoroProbeEngine engine = probeEngine;
+        if (engine == null) {
+            result.put("ok", false);
+            result.put("reason", "engine-absent");
+            call.resolve(result);
+            return;
+        }
+
+        double speed = passage.optDouble("speed", 1.0);
+        double[] load = engine.load();
+        double synthColdMs = 0;
+        double synthWarmMs = 0;
+        for (int i = 0; i < idLines.size(); i++) {
+            double[] out = engine.synthesize(idLines.get(i), speed);
+            /* FIRST LINE IS THE COLD NUMBER, the rest are warm — the go rule
+             * in the card is stated on the warm figure alone, and a mean that
+             * folded a two-second first inference into it would fail a phone
+             * that is fine. */
+            if (i == 0) synthColdMs = out[0]; else synthWarmMs += out[0];
+        }
+
+        Runtime rt = Runtime.getRuntime();
+        result.put("ok", true);
+        result.put("reason", "");
+        result.put("model", engine.modelName());
+        result.put("provider", engine.provider());
+        result.put("modelLoadColdMs", load.length > 0 ? load[0] : 0);
+        result.put("modelLoadWarmMs", load.length > 1 ? load[1] : 0);
+        result.put("synthColdMs", synthColdMs);
+        result.put("synthWarmMs", synthWarmMs);
+        result.put("lines", idLines.size());
+        /* `totalMemory - freeMemory` is the JVM heap, which is NOT where ORT's
+         * arena lives — the native allocation is the number the deck's 833 MB
+         * iPad reading is about. `Debug.getNativeHeapAllocatedSize()` is the
+         * one the card names, and it is reported ALONGSIDE the JVM figure
+         * rather than instead of it, because a reader comparing an Android
+         * number to an iOS `phys_footprint` needs to know which is which. */
+        result.put("peakMemoryBytes", (double) android.os.Debug.getNativeHeapAllocatedSize());
+        result.put("availableMemoryBytes", (double) (rt.maxMemory() - (rt.totalMemory() - rt.freeMemory())));
+        /* The honest weaker fact, same as iOS: the app was not resumed when
+         * the last line finished. HUMAN-ACTIONS.md H1's instruction is what
+         * makes it the strong claim. */
+        result.put("lockedScreenCompleted", !isForeground());
+        call.resolve(result);
+    }
+
+    /** Whether the app is frontmost, tracked from Capacitor's OWN lifecycle
+     *  hooks rather than read off the Activity.
+     *
+     *  NOT {@code getActivity()}: that returns an {@code AppCompatActivity},
+     *  and this plugin module does not carry {@code androidx.appcompat} on its
+     *  compile classpath — naming it fails
+     *  {@code :foray-tts:compileDebugJavaWithJavac} with "cannot access
+     *  AppCompatActivity" (measured, `android-shell` run 34707127094). Adding
+     *  the dependency for one boolean would widen what a throwaway measurement
+     *  card links, and {@code handleOnResume}/{@code handleOnPause} are
+     *  {@code Plugin}'s own hooks: free, and a better question anyway — they
+     *  track the APP lifecycle, which is what "the screen was locked" means
+     *  for a 90-second synthesis loop.
+     *
+     *  Starts {@code true} ("frontmost", so {@code lockedScreenCompleted}
+     *  reads false), because unmeasured must never read as proven — the same
+     *  direction `probeVerdict` fails an unmeasured RTF in. */
+    private volatile boolean resumed = true;
+
+    @Override
+    protected void handleOnResume() {
+        resumed = true;
+        super.handleOnResume();
+    }
+
+    @Override
+    protected void handleOnPause() {
+        resumed = false;
+        super.handleOnPause();
+    }
+
+    private boolean isForeground() {
+        return resumed;
+    }
+
     private static Locale localeFor(String bcp47) {
         try {
             return Locale.forLanguageTag(bcp47);

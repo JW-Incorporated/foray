@@ -403,6 +403,54 @@ final class ForayTtsPluginTests: XCTestCase {
         XCTAssertEqual(ForayTtsPlugin.FINISHED_EVENT, "finished")
     }
 
+    // MARK: - K-01: the bundled-voice probe (docs/bundled-voice-plan.md)
+    //
+    // Same honesty caveat as everything above: nothing runs these, and the
+    // mutations named below have NOT been executed. What they pin is the one
+    // property no Node suite can reach — that the engine seam exists, is
+    // empty on a shipping build, and that the plugin declares the method the
+    // web half calls by name.
+
+    /// **The seam is empty on every build that ships.** The whole inertness
+    /// claim of this card rests on it: with no engine registered,
+    /// `kokoroProbe` resolves `engine-absent` and nothing about how narration
+    /// is spoken has changed. A build that shipped with a probe engine
+    /// pre-registered would be running ONNX Runtime in every listener's app
+    /// for a card that measures one founder's phone.
+    ///
+    /// TO SEE IT FAIL: assign `ForayTtsPlugin.probeEngine` a default in the
+    /// plugin source.
+    func testProbeEngineIsUnregisteredByDefault() {
+        XCTAssertNil(ForayTtsPlugin.probeEngine)
+    }
+
+    /// **The method is declared, and named exactly what the web half calls.**
+    /// `web/foray-tts.js`'s `kokoroProbe()` invokes
+    /// `nativePromise("ForayTts", "kokoroProbe", …)`; a method missing from
+    /// `pluginMethods` rejects at the bridge, which the web half turns into
+    /// `engine-absent` — indistinguishable, from a founder's phone, from "this
+    /// build has no runtime". That ambiguity is exactly what a probe must not
+    /// have.
+    ///
+    /// TO SEE IT FAIL: drop the `kokoroProbe` entry from `pluginMethods`.
+    func testKokoroProbeIsADeclaredPluginMethod() {
+        let plugin = ForayTtsPlugin()
+        XCTAssertTrue(plugin.pluginMethods.contains { $0.name == "kokoroProbe" })
+    }
+
+    /// **The bundled-model resource name is the one `fetch-models.mjs` writes.**
+    /// The two halves of "did the build fetch the weights?" are a filename in
+    /// a build script and a filename in a lookup; they are in different
+    /// languages and different trees, so the only thing keeping them in step
+    /// is that both are pinned — here, and in
+    /// `tools/mobile/fetch-models.test.mjs`.
+    ///
+    /// TO SEE IT FAIL: change `MODEL_RESOURCE` without changing the pin in
+    /// `tools/mobile/fetch-models.mjs`.
+    func testModelResourceName() {
+        XCTAssertEqual(ForayTtsPlugin.MODEL_RESOURCE, "kokoro-v1_0-q8f16")
+        XCTAssertEqual(ForayTtsPlugin.MODEL_EXTENSION, "onnx")
+    }
     // MARK: - L-05: pause, resume, stop (founder feedback F12)
 
     /// `speaking | paused | idle`, and the PRECEDENCE is the whole test.

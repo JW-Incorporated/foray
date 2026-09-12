@@ -56,13 +56,44 @@ export type ForaySegmentItem = z.infer<typeof ForaySegmentItemSchema>;
 export const ForayNarrationModeSchema = z.enum(["hinge", "frame", "marker", "correction", "patch", "carry", "intro"]);
 export type ForayNarrationMode = z.infer<typeof ForayNarrationModeSchema>;
 
+/** K-02 (`docs/bundled-voice-plan.md`): what a narration item carries when the
+ * phonemize stage has run. `engine` is an enum of one today — the deck's §11
+ * non-goals forbid a second engine without a second audition — and
+ * `tools/foray/check-forays.mjs`'s `TTS_ENGINES` is the matching list on the
+ * validation side.
+ *
+ * `vocab` IS NOT COSMETIC. It is the sha of the phoneme id table these
+ * phonemes were written against; the player refuses (falls back to the system
+ * voice) when it disagrees with what the app was built with, which is deck §5
+ * item 8's answer to "the data outlived the model". An item that could not
+ * carry one does not get a `tts` block at all — see `phonemize.ts`'s
+ * fallbacks. */
+export const ForayTtsSchema = z
+  .object({
+    engine: z.literal("kokoro"),
+    model: z.string().trim().min(1),
+    vocab: z.string().trim().min(1)
+  })
+  .strict();
+export type ForayTts = z.infer<typeof ForayTtsSchema>;
+
 export const ForayNarrationItemSchema = z
   .object({
     type: z.literal("narration"),
     id: z.string().trim().min(1),
     script: z.string().trim().min(1),
     mode: ForayNarrationModeSchema,
-    slot: z.string().trim().min(1).optional()
+    slot: z.string().trim().min(1).optional(),
+    /* K-02's three additions, ALL OPTIONAL and all absent together. The
+       `.strict()` below is what made adding them necessary rather than
+       incidental: without these three lines the phonemize stage's output
+       would fail this schema, which is exactly the guard `.strict()` exists
+       to provide. An item with `phonemes` and no `tts`, or the reverse, is
+       rejected downstream by `check-forays.mjs` rather than here — that file
+       can say WHY in a sentence a curator reads, and this one cannot. */
+    phonemes: z.string().trim().min(1).optional(),
+    tts: ForayTtsSchema.optional(),
+    est_sec: z.number().positive().finite().optional()
   })
   .strict();
 export type ForayNarrationItem = z.infer<typeof ForayNarrationItemSchema>;

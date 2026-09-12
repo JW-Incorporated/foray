@@ -528,3 +528,24 @@ candidate. The listening test in item 2 above is what settles it, and it
 costs a couple of hours on hardware Joey already owns for whisper — not a
 reason to defer the founder decision, a reason it can be made cheaply and
 soon.
+
+---
+
+## Addendum (2026-09-12) — one phonemizer, two consumers
+
+The server-side Kokoro fallback this document designs and the **on-device** Kokoro
+engine `docs/bundled-voice-plan.md` introduces now share a single grapheme-to-
+phoneme stage: `tools/narration/phonemize.py`, driven by
+`backend/src/generation/phonemize.ts` at §4.7a of the generation pipeline.
+
+That is not a tidying. §2.1 of this document already established misaki's inline
+IPA as the mechanism for pronunciation control on the server render path, and
+`generation-architecture.md` §1.2.1 already confined `espeak-ng` (GPL-3) to the
+server for exactly that reason. The bundled-voice deck's design — phonemes travel,
+the phone only sings — means the *same* phoneme string is what the server renders
+and what the phone speaks. So the two paths cannot drift in pronunciation, and the
+lexicon is authored once.
+
+**The server-side fallback stays.** It is `generation-architecture.md` §1.2's
+backdoor for curated Forays, and the deck's §11 non-goals are explicit that
+replacing it is not on the table.

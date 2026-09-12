@@ -432,3 +432,172 @@ test("the diagnostic Foray instrument (#29) stays deleted from player/, app.js a
       `under player/, app.js or data/ — D-01 deleted it on purpose:\n${offenders.join("\n")}`
   );
 });
+
+/* ======================================================================
+   K-06: the bundled voice's licence, size and provenance gates
+   (docs/bundled-voice-plan.md K-06)
+
+   THREE PROMISES, ONE PLACE. This suite already exists to hold a release to
+   what the shipped documents claim, which is exactly the shape of all three:
+
+     (1) THE GPL STAYS ON THE SERVER. Kokoro's weights are Apache-2.0, but
+         every Kokoro runtime in the wild reaches `espeak-ng` (GPL-3) for its
+         text front-end. The whole architecture of this deck — phonemes are
+         computed server-side and the phone receives ids — exists to keep that
+         dependency out of the app binary (deck §4). A gate is what makes that
+         an enforced property rather than an intention.
+     (2) THE MODEL IS FETCHED, NEVER COMMITTED, AND ALWAYS VERIFIED.
+     (3) THE APP HAS A SIZE CEILING WITH A STATED REASON, and a written
+         trigger for moving to on-demand resources.
+
+   WHAT THESE CANNOT DO FROM HERE, said plainly: (1) is asserted over the
+   SOURCE TREE, not over a built `.ipa`/`.aab` — no Apple or Android toolchain
+   exists on the machine this was written on, so the `strings`-the-binary half
+   of K-06's ask is named in the deck's remaining work rather than pretended at
+   here. A source gate is strictly weaker and strictly better than nothing: the
+   only way `espeak` reaches the binary is by first appearing in a manifest, a
+   Gradle file or a Package.swift in this tree.
+
+   THE PINS ARE LOADED WITH `await import(...)`, because this suite is
+   CommonJS (`__dirname` above) and `tools/mobile/fetch-models.mjs` is an ES
+   module. A dynamic import inside an async test is the one bridge that works
+   in both directions on every Node this repo supports.
+   ====================================================================== */
+
+const loadModelPins = () => import("../tools/mobile/fetch-models.mjs");
+
+/** Everything a native build reads to decide what to link. A file walk of the
+    whole repo would hit this suite's own prose and the deck that explains the
+    rule, which is why the gate reads BUILD INPUTS rather than grepping the
+    tree for a word. */
+const NATIVE_BUILD_INPUTS = [
+  "mobile/plugins/foray-tts/Package.swift",
+  "mobile/plugins/foray-tts/package.json",
+  "mobile/plugins/foray-tts/android/build.gradle",
+  "mobile/plugins/foray-audio/android/build.gradle",
+  "package.json",
+];
+
+test("K-06: no espeak dependency reaches any native build input", () => {
+  /* THE LICENCE GATE. `espeak-ng` is GPL-3 and would infect an App Store
+     binary; `generation-architecture.md` §1.2.1 already ruled it server-only,
+     and this deck's phoneme design is what makes that possible on-device too.
+     MUTATION: add `piper-phonemize` or `espeak-ng` to Package.swift's
+     dependencies, or to the plugin's build.gradle — this goes red. */
+  const offenders = [];
+  for (const rel of NATIVE_BUILD_INPUTS) {
+    const abs = path.join(ROOT, rel);
+    if (!fs.existsSync(abs)) continue;
+    const text = fs.readFileSync(abs, "utf8").toLowerCase();
+    for (const needle of ["espeak", "piper-phonemize", "phonemizer"]) {
+      if (text.includes(needle)) offenders.push(`${rel}: "${needle}"`);
+    }
+  }
+  assert.deepEqual(offenders, [],
+    "a GPL text front-end reached a native build input — phonemes are computed on the server "
+    + "(docs/bundled-voice-plan.md §4), and the app must never link espeak:\n" + offenders.join("\n"));
+});
+
+test("K-06: the model pin table is well-formed, and is honestly unfilled", async () => {
+  /* CI's half of "fails on a mismatch": the download itself happens in a build
+     step that does not exist yet (`.github/` needs founder-approved, deck H3),
+     but the table it will read is checked on every run today. The failure this
+     catches is somebody editing a URL and not the hash.
+     MUTATION: half-pin an entry (bytes, no sha256) — `pinProblems` names it. */
+  const { PINS, pinProblems, unfilled } = await loadModelPins();
+  assert.deepEqual(pinProblems(), []);
+  assert.ok(PINS.length >= 13, "one model and the twelve audition voices");
+  /* Stated rather than assumed: nobody in this repo has downloaded these
+     files. When that changes, this assertion is the one that has to change
+     too, in a diff that says who did it. */
+  assert.equal(unfilled().length, PINS.length,
+    "if a pin has been filled, update this assertion and say in the PR who hashed the file");
+});
+
+test("K-06: every pinned artefact records a permissive licence and an https source", async () => {
+  /* The THIRD_PARTY_NOTICES entry is written FROM this table (K-06(4)), so a
+     pin with no licence is a notice that cannot be written. The deck's §11
+     non-goals also forbid "any voice whose licence is not Apache/MIT", and
+     this is where that becomes a check rather than a sentence.
+     MUTATION: change a pin's licence to OpenRAIL-M (Supertonic's) — red. */
+  const { PINS } = await loadModelPins();
+  for (const p of PINS) {
+    assert.match(p.licence, /^(Apache-2\.0|MIT)$/, `${p.name}: non-permissive or unrecorded licence`);
+    assert.match(p.source, /^https:\/\//, `${p.name}: no source for the licence claim`);
+  }
+});
+
+test("K-06: the notices file carries Kokoro, ORT and the voice data", () => {
+  /* MUTATION: delete any of the three entries. An app that bundles Apache-2.0
+     weights without reproducing the notice is out of compliance with the one
+     term Apache-2.0 actually imposes. */
+  const notices = read("docs/legal/third-party-notices.md");
+  for (const want of ["Kokoro-82M", "ONNX Runtime", "Apache-2.0", "MIT"]) {
+    assert.ok(notices.includes(want), `third-party-notices.md is missing ${want}`);
+  }
+});
+
+/* K-06(3): the ceiling, and the arithmetic behind it, in one place so the
+   number and its reason cannot drift apart.
+
+   150 MB, from the deck: Apple's App Store cellular-download cap is 200 MB, so
+   an app that crosses it stops installing away from wi-fi — which, for an app
+   used while driving, is a large share of its installs. Today's measured sizes
+   plus the model are the budget:
+
+     Android release .aab   5.46 MB   (deck §2, measured)
+     iOS App.app            8.3 MB    (deck §2, measured, simulator)
+     Kokoro q8f16 weights  ~86 MB     (model card, Documented)
+     ONNX Runtime mobile   ~10-20 MB  (Inferred — K-04 measures)
+     three voice files     ~1.5 MB
+                           --------
+     worst case            ~116 MB, leaving ~34 MB of headroom.
+
+   THE TRIGGER for moving to on-demand resources / Play Asset Delivery: the
+   ceiling being reached, or a second language (a second model and a second
+   audition). Written here, not left to be argued in the PR that hits it. */
+const APP_SIZE_CEILING_MB = 150;
+const APPLE_CELLULAR_CAP_MB = 200;
+
+test("K-06: the app-size ceiling is below Apple's cellular cap, with the reason stated", () => {
+  /* MUTATION: raise the ceiling above 200 — the app stops installing over
+     cellular and nothing else in the repo notices. This is the test that makes
+     raising it a deliberate, argued act. */
+  assert.ok(APP_SIZE_CEILING_MB < APPLE_CELLULAR_CAP_MB,
+    "a ceiling at or above the cellular cap is not a ceiling");
+  const deck = read("docs/bundled-voice-plan.md");
+  assert.ok(deck.includes("150 MB"), "the deck and this gate must name the same ceiling");
+  assert.ok(deck.includes("200 MB"), "the deck must state the cellular cap the ceiling is derived from");
+});
+
+test("K-06: the measured app sizes plus the model still fit under the ceiling", () => {
+  /* The arithmetic, executable. If a future measurement changes one of these
+     numbers, this test is where the budget is re-argued rather than in a PR
+     description nobody re-reads.
+     MUTATION: change the model size to fp32's 326 MB — the sum exceeds the
+     ceiling and the answer becomes "fetch it on first run", which is exactly
+     the finding this test exists to surface rather than hide. */
+  const androidAabMb = 5.46;
+  const iosAppMb = 8.3;
+  const modelMb = 86;
+  const ortMb = 20;      // the top of the inferred range, deliberately
+  const voicesMb = 1.5;
+  const worst = Math.max(androidAabMb, iosAppMb) + modelMb + ortMb + voicesMb;
+  assert.ok(worst < APP_SIZE_CEILING_MB,
+    `the bundled voice would make the app ${worst.toFixed(1)} MB, over the ${APP_SIZE_CEILING_MB} MB ceiling — `
+    + "the model must then be fetched on first run rather than bundled");
+  assert.ok(worst > 100,
+    "if this dropped below 100 MB a measurement changed and the whole budget should be re-read");
+});
+
+test("K-06: the web bundle's own model gate is wired into prepare-webdir", async () => {
+  /* Two different gates for two different failures, and this pins that the
+     second one is actually CALLED: `MAX_BYTES` catches "something enormous got
+     in" with the wrong diagnosis, `assertNoModelWeights` catches "a model got
+     in" — including the SMALL case (a 130 KB voice file) that fits under 3 MB
+     and would otherwise ship silently to the website as well as the shell.
+     MUTATION: delete the `assertNoModelWeights(files)` call from `prepare`. */
+  const src = read("tools/mobile/prepare-webdir.mjs");
+  assert.match(src, /^\s*assertNoModelWeights\(files\);$/m,
+    "prepare() must call the model gate, not merely export it");
+});
