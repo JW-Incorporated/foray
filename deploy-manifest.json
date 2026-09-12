@@ -1,11 +1,11 @@
 {
-  "deploy_id": "e52699e42515e9c6",
+  "deploy_id": "51a5aedc26b203c2",
   "files": {
     "app.js": "sha256:0d6295a0c08b6f05d62f6acd6c73ab34d61e64535288c5af671604e422681999",
     "data/catalog-client.json": "sha256:4ce82cc477acec4f50dd837322be267871e5a2b5d572c094854164fe3b1417e2",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:8f9fe30d80b2bb0666fbf94ebded55795f2b63386c5cf9343527e56e7e14c60d",
-    "data/forays-directory.json": "sha256:cdd5ec690f9f6903d6bcc54c27cd9104e29a0890e40c1a203f182e2f13cbb04a",
+    "data/forays-directory.json": "sha256:f63cf61071e5868fb1c95426a0d2bba2067bc7f0a5d5c67c6b7bbe90eae1b992",
     "data/forays.json": "sha256:b9f44a79f023962e4d70f3546a9c411ceba22c835283d33e33440ac22841d3f8",
     "data/item-tags.json": "sha256:e9cae336633eef728de0307420739e3a87bc496b96f2931c4083e351d62d84a6",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
@@ -25,7 +25,7 @@
     "player/diagnostic-log.js": "sha256:82f8b9492dfe4fde91d0d49e36905f4ce92dc404c7968b73052df1a64efab5b4",
     "player/durable-store.js": "sha256:64b8a80cc7f0f2b3efb366ce2a595e381f80fd1abe9c9e9e0bc3cdc3f7f6eeeb",
     "player/event-log.js": "sha256:88987f4b3c55ca289bf6e43d3264b05287d130a2a4672a5223054297029c2f9c",
-    "player/foray-directory.js": "sha256:ab0c04f1323edcfd3e261a5e8ace0e6269f23ffe513e4d457725a6938034491f",
+    "player/foray-directory.js": "sha256:ac9b61a1f871e96b8f124624c8b438072a6cf50a046df9a372fcf9347a5240cf",
     "player/foray-progress.js": "sha256:6ed1f8a4397d12c40f2e5b92f8602f3c7b9dc45dec341a26e74ff8a58103c155",
     "player/foray-queue.js": "sha256:3860d2aee57b4ea457609bce815b0c5f2d7423284b99dd50d9b0fe66c3a4af60",
     "player/foray-resolve.js": "sha256:c405472b530eec2e2d21ef3fa06047827eba5f6aed2dffdedc06f143d5d9f03f",
