@@ -2434,3 +2434,121 @@ D13; kanban card S-04a (`t_835d1a3c`, itself a workspace-bug redo of
 ## 2026-09-11 (search privacy gate G1: Option B — typed search text may leave the device)
 
 **Ruling (Wyatt, 2026-09-11, HUMAN-ACTIONS #43):** Option **B**. The privacy policy's conditional ("nothing you type leaves your device unless…") is dropped: as-you-type Shows search may send the typed text to our own origin (`api/shows/search`) and, on a miss, to Apple's iTunes Search API. Wyatt updates the store listings' privacy copy himself. Consequence: `docs/search-plan.md` S-07 lands its Option-B diff (`docs/legal/privacy-policy.md` §2 rewritten, release-gate test pinned to the new contract), and S-02's network half, S-05, S-06 and S-08 are no longer gated. Options A (gate network passes on a local miss) and C (wait for S-03's client index) were declined as not worth the speed cost — "this isn't a huge deal".
+
+## 2026-09-12 (the show search moves onto the device: a client-side title index, and what it costs)
+
+**Decision (S-03, `docs/search-plan.md`, PR TBD):** the client fetches a
+derived title index, `data/show-index.tsv`, and answers the keystroke from it.
+**10,113 shows, 436KB raw, 201KB gzipped**, fetched lazily on the **first focus**
+of the search box and never at `init()`.
+
+**What it buys, measured** (`node tools/search-probe.mjs`, 2026-09-12, 20 reps,
+median/p95): the prefix pass over the index is **0.003–0.363ms median** for
+every query in the 12-query battery except a single character (`l`, 418 hits,
+**2.15ms median**), against a breadth-endpoint round trip measured the same day
+at **101–1407ms ttfb**. The endpoint stops being on the interactive path and
+becomes the fall-through.
+
+**What it costs, measured.** The native bundle went **1.79MB → 2.22MB** of its
+3MB cap, which required raising two aggregate alarms in
+`tools/mobile/prepare-webdir.test.mjs` (2.0 → 2.5MB total, 1.4 → 1.85MB for the
+`data/` half). That is the third re-baseline of the total alarm and the reason
+is recorded beside it: unlike `data/item-tags.json`'s unbounded ~3.3KB-a-night
+growth, this file's size is a pure function of one constant
+(`BUILD_MAX_RANK`), it has its own 512KB per-file budget enforced by
+`buildPlan`, and its gzipped size is asserted against S-03's 400KB budget in
+`test/show-index.test.js`. Both alarms keep more headroom than they had the day
+they were last set.
+
+**The cut is `chart_rank <= 100`, not the full 19,904 shows** (G5's question,
+answered with numbers rather than taste). The full index is 874KB raw / **398.4KB
+gzipped against a 400KB budget** — a 0.4% margin that the next harvest breaks —
+and it would take the native bundle to 2.66MB (89% of the cap). A breadth show
+ranked 101–200 in its genre is not on the device; it is still found, because the
+debounced `api/shows/search` pass searches all 19,904 server-side.
+
+**`docs/CATALOG-PIPELINE.md` forward-compatibility requirement #5** ("the web
+client never fetches the breadth file") was amended in the same change rather
+than quietly contradicted: a derived four-column title projection is to the
+breadth file what `catalog-client.json` is to `catalog.json`, and `feed_url` is
+not in it.
+
+**Not taken: precaching it.** Adding the index to `tools/ci/generate-manifest.mjs`'s
+`RUNTIME_DATA` would put it on an all-or-nothing precache that already
+re-downloads `data/discover.json` (2.41MB) on every nightly deploy, paid by
+every listener including those who never open the search box — for a file that
+changes on a harvest, not nightly. The unpinned fetch needed **no new service-worker
+code**: `sw.js:cachePut`'s existing untracked-path branch already caches it into
+the current generation, which `test/sw-generation.test.js` now pins by name.
+
+## 2026-09-12 (show-search ranking: four buckets, and the popularity prior is bucketed, not scored)
+
+**Decision (S-04, `docs/search-plan.md`, PR TBD):** `search-engine.js:searchShows`
+ranks exact title, then title prefix, then **word-start**, then substring; inside
+a bucket, curated before breadth, then a **bucketed** `chart_rank`, then
+`title.localeCompare`. The word-start bucket is the point: "fridman" used to land
+*Lex Fridman Podcast* in the same bucket as every accidental mid-word hit.
+
+**The prior is bucketed because the data does not support a score.** `chart_rank`
+is Apple's **per-genre** chart position 1–200 from the **2026-07-09** harvest
+(measured over all 19,787 breadth rows). Rank 3 in *Life Sciences* is not rank 3
+in *Comedy*, so a raw cross-genre comparison compares two scales and calls the
+result a ranking. It is collapsed to `<=10 / <=50 / <=200 / unranked`, and
+`test/show-search-ranking.test.js` goes red if anyone "improves" that into a raw
+numeric sort.
+
+**The client and the server ranking rules now DIFFER, deliberately.**
+`backend/src/catalog/searchBreadthShows.ts` keeps the old three-bucket rule. The
+card allowed either mirroring it (a `backend/src/` DENIED-path change needing the
+founder-approved label) or stating the divergence plainly; the second was taken,
+and it is defensible only because S-03 landed in the same change: with the index
+on the device the endpoint is the fall-through, not the interactive path, so the
+order a listener sees is the client's. If S-03 were ever reverted, this
+divergence would have to be revisited — that dependency is the reason it is
+recorded here rather than left in a file header.
+
+**`tools/test-search.mjs` (a DENIED path) was not touched and passes unchanged.**
+The topic scorer (`interpretQuery`/`scoreMatch`/`searchWithRelaxation`) answers a
+different question and is untouched; `docs/ui-transition-plan.md` U-05's
+"no `search-engine.js` scoring changes" line now needs a pointer to this entry.
+
+## 2026-09-12 (S-07 lands G1's Option B: the privacy policy stops promising a condition the code never had)
+
+**Decision (S-07, `docs/search-plan.md`; the ruling itself is the 2026-09-11
+entry above):** `docs/legal/privacy-policy.md` §2's sentence *"if a show or
+episode is already in that local catalogue nothing you typed leaves your
+device"* is **gone**, replaced by an affirmative statement that the Shows-search
+lookup happens **whether or not** the show is already on the device, that the
+typed text and nothing else is sent, that it is debounced rather than
+per-keystroke, and that a repeat inside the session is answered from memory.
+
+**The gap being closed was a false shipped promise, not a planned feature.**
+`renderShowSearchResults` fired both `api/shows/search` and
+`api/episodes/search` unconditionally; there was no local-hit branch anywhere,
+and `test/release-gates.test.js` did not catch it (#560 item 2, requirements
+§6.11 / §6.13 row 6).
+
+**The cost of the option not taken.** Option A (gate the network passes on a
+local miss) was three lines and would have contradicted the founder's own
+2026-09-02 ruling — *"the user should never notice any limitations based on our
+own limited curation"*: 37 of the 19,904 merged titles contain "lex" and 1 of
+the 220 curated ones does, so a listener typing `lex` would have seen one show
+and never the other 36. Option C (wait for S-03 to make the sentence true as
+written) was the deck's own recommendation and is now **partly true anyway** —
+S-03 landed in the same batch, so most queries never need the network — but the
+policy still has to describe what the code does on the queries that do, and the
+code sends unconditionally.
+
+**Made mechanical, not just written down.** `app.js` now declares
+`const SHOWS_SEARCH_OFF_DEVICE = true`, which arms `test/release-gates.test.js`'s
+existing AND-gate for real: a release build fails to start if that flag is true
+while the retired sentence is present. The suite's "the flag is false" test was
+inverted to "the flag is true, and here is why", and a new case pins that the
+replacement sentence is affirmative rather than merely absent — deleting a false
+promise without replacing it would have passed the old check and told the reader
+nothing. `docs/legal/data-safety.md` flags this sentence class as worth a
+lawyer's eye; it still is, and the policy is still marked DRAFT.
+
+**Wyatt updates the store listings' privacy copy himself** (the 2026-09-11
+ruling's own term). That is not something this repo can verify, so it is not
+claimed here as done.

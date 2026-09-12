@@ -89,7 +89,15 @@ const PRIVACY_SENTENCE =
    the source is hand-formatted for a human reader, not for a substring
    match, and the check has to meet it there. */
 function normalizeWrap(text) {
-  return text.replace(/([^\n])\n([^\n])/g, "$1 $2");
+  /* CRLF first, and this was a real (Windows-only) red rather than a
+     precaution: this repo commits LF and is developed with
+     `core.autocrlf=true`, so on a developer checkout every soft wrap is
+     "word\r\nword" and the collapse below leaves the `\r` sitting inside the
+     sentence — a substring check for the ABSENCE of a sentence passes
+     vacuously, and one for its PRESENCE fails on a file that says exactly
+     what it should. test/legal-citations.test.js documents the same trick for
+     the same file family; matched to it rather than re-derived. */
+  return text.replace(/\r\n/g, "\n").replace(/([^\n])\n([^\n])/g, "$1 $2");
 }
 
 /* Recognises `const/let/var SHOWS_SEARCH_OFF_DEVICE = true;` or `= "true";`
@@ -138,21 +146,82 @@ test("SHOWS_SEARCH_OFF_DEVICE recognizes a true source flag in app.js or search-
   }
 });
 
-test("SHOWS_SEARCH_OFF_DEVICE is false when neither app.js/search-engine.js nor the env sets it", () => {
-  /* Today's real state (pre-S-05, pre-G5): neither file declares the flag
-     and the env override is unset in a normal test run. This is the "pass
-     with flag off" acceptance case from S-08's own card, run against the
-     REAL shipped files rather than a fixture, so a stray flag left in by a
-     future edit is caught here directly.
+test("SHOWS_SEARCH_OFF_DEVICE is set true in the shipped source, because off-device Shows search is what ships (S-07/G1)", () => {
+  /* THIS TEST USED TO ASSERT THE OPPOSITE, and the inversion is the record of
+     a ruling rather than a weakening. It read "SHOWS_SEARCH_OFF_DEVICE is
+     false when neither app.js/search-engine.js nor the env sets it", which
+     was true while the flag was a promise about a feature nobody had built.
 
-     MUTATION THAT KILLS THIS: add `const SHOWS_SEARCH_OFF_DEVICE = true;`
-     to app.js without also editing the privacy sentence. Ran it — red,
-     which is exactly the tripwire this card exists to build. */
+     G1 (docs/search-plan.md §3, ruled by Wyatt 2026-09-11, recorded in
+     docs/DECISIONS.md) chose OPTION B: the typed Shows-search query leaves
+     the device unconditionally and the policy sentence changes to match. So
+     app.js now declares the flag, and the honest state of this repo is
+     "flag on, old sentence gone" — the (c) branch of the core gate below,
+     which until now was only ever simulated.
+
+     Asserting the flag is ON is not weaker than asserting it was off: the
+     AND-gate is what protects the release, and arming one half of it for
+     real is what makes the other half load-bearing. The thing that must
+     never happen — flag on AND the old sentence present — is asserted
+     against the live tree in the gate test below.
+
+     MUTATION THAT KILLS THIS: delete `const SHOWS_SEARCH_OFF_DEVICE = true;`
+     from app.js while `renderShowSearchResults`/`runShowSearchCostly` still
+     call `api/shows/search`. Ran it — red, and rightly: the code would then
+     be transmitting typed queries with the tripwire disarmed. */
   assert.equal(process.env.SHOWS_SEARCH_OFF_DEVICE, undefined,
     "this test assumes SHOWS_SEARCH_OFF_DEVICE is not set in the ambient " +
-    "test environment — if a workflow now sets it globally, that workflow " +
-    "config is itself a bug this suite should have caught elsewhere");
-  assert.equal(offDeviceSearchFlagOn(), false);
+    "test environment — it must be the SOURCE flag being read here, not an " +
+    "inherited env var, or this asserts nothing about the shipped files");
+  assert.equal(sourceFlagOn(), true,
+    "app.js (or search-engine.js) must declare `const SHOWS_SEARCH_OFF_DEVICE = true;` " +
+    "while the Shows search transmits typed queries — see docs/DECISIONS.md 2026-09-11");
+  assert.equal(offDeviceSearchFlagOn(), true);
+});
+
+test("S-07/G1 Option B: the policy states the lookup is unconditional, in the words the code makes true", () => {
+  /* The OTHER half of S-07's contract, and the one the old absolute-sentence
+     check cannot cover. Removing a false promise is not the same as making a
+     true statement: a policy that simply deleted the sentence would pass the
+     retirement check above while telling the reader nothing about what now
+     happens to what they type.
+
+     Two things are pinned, both against the real committed policy:
+       1. the RETIRED CONDITIONAL — "if a show or episode is already in that
+          local catalogue nothing you typed leaves your device" — is gone.
+          This is #560 item 2 and requirements §6.11/§6.13 row 6: it was
+          false as shipped (`renderShowSearchResults` fired both endpoints
+          unconditionally, with no local-hit branch anywhere), and Option B
+          resolves it by changing the sentence rather than the code.
+       2. the REPLACEMENT is affirmative and unconditional.
+
+     MUTATIONS THAT KILL THIS, both run:
+       (a) restore the old conditional sentence to §2 — red on the first
+           assertion, and the core gate below then also goes red because the
+           source flag is now genuinely on.
+       (b) soften the replacement back to "unless it is already on your
+           device" — red on the second assertion, because the phrase that
+           makes the disclosure unconditional is gone.
+
+     WHY A PHRASE AND NOT A WHOLE PARAGRAPH: the doc is hand-wrapped prose
+     that a lawyer is expected to edit (docs/legal/data-safety.md flags this
+     sentence class as "worth a lawyer's eye"). Pinning the paragraph would
+     make every copy-edit a red build. Pinning the CLAIM lets the wording
+     move and the meaning not. */
+  const policy = normalizeWrap(read(PRIVACY_DOC));
+  assert.equal(
+    policy.includes("nothing you typed leaves your device"),
+    false,
+    "docs/legal/privacy-policy.md §2 still carries the conditional promise G1 retired " +
+      "(Option B, docs/DECISIONS.md 2026-09-11) — the code has no local-hit branch and " +
+      "never had one, so this sentence is false as shipped."
+  );
+  assert.ok(
+    policy.includes("It does this whether or not the show was already on your device."),
+    "docs/legal/privacy-policy.md §2 must say plainly that the Shows-search lookup happens " +
+      "whether or not the show is already on the device — deleting the old promise without " +
+      "replacing it leaves the reader with no statement at all."
+  );
 });
 
 test("the privacy policy's absolute no-transmission sentence has been retired now that G5 is resolved", () => {

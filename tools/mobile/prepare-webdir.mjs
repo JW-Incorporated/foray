@@ -516,7 +516,7 @@ export function buildPlan(root = REPO_ROOT) {
     );
   }
 
-  const plan = [...SHELL_FILES, ...playerFiles(root), ...data, ...seedPointerPlan(root)];
+  const plan = [...SHELL_FILES, ...playerFiles(root), ...data, ...seedPointerPlan(root), ...unpinnedDataPlan(root)];
 
   const missing = plan.filter((rel) => !fs.existsSync(path.join(root, rel)));
   if (missing.length) {
@@ -524,6 +524,18 @@ export function buildPlan(root = REPO_ROOT) {
       `These files are in the bundle plan but not on disk: ${missing.join(", ")}. ` +
         `app.js fetches them, so the app would 404 on a device. If one is genuinely ` +
         `optional now, remove its fetchJson call or handle it explicitly here.`
+    );
+  }
+
+  /* S-03: a per-file budget on the unpinned index, checked here rather than
+     only in the final MAX_BYTES total, so a breach names the file that caused
+     it and the knob that fixes it instead of reporting "the bundle got big". */
+  const over = unpinnedDataOverBudget(root);
+  if (over.length) {
+    throw new Error(
+      over.map((o) => `${o.rel} is ${(o.bytes / 1024).toFixed(1)} KB, over its ${(o.maxBytes / 1024).toFixed(0)} KB budget`).join("; ") +
+        `. Lower tools/build-show-index.mjs's BUILD_MAX_RANK and rebuild, rather than raising the budget — ` +
+        `see UNPINNED_DATA's header for what its unit is.`
     );
   }
 
@@ -560,6 +572,55 @@ export const SEED_POINTER = "data/forays-directory.json";
 
 export function seedPointerPlan(root = REPO_ROOT) {
   return fs.existsSync(path.join(root, SEED_POINTER)) ? [SEED_POINTER] : [];
+}
+
+/* ------------------------------------------------- the unpinned data (S-03) */
+
+/** Data files `app.js` fetches with a BARE `fetch()` rather than `fetchJson()`.
+ *
+ *  `runtimeDataFiles()` above derives the bundle's data list by scanning app.js
+ *  for literal `fetchJson("data/….json")` call sites, which is what keeps that
+ *  list from rotting. An UNPINNED fetch is invisible to it by construction —
+ *  and unpinned is not an oversight there either: `fetchJson` appends
+ *  `?_fdid=<deploy id>` and `sw.js:handleData` answers a bare 504 for a pinned
+ *  file no generation holds, so a file that is deliberately not in
+ *  `deploy-manifest.json` MUST be fetched unpinned (the whole argument is in
+ *  `tools/build-show-index.mjs`'s header).
+ *
+ *  So it is named here, explicitly, for the same reason `SEED_POINTER` is: the
+ *  derivation cannot see it, and a bundle silently missing it would build,
+ *  install, and degrade to the 220-show curated search on a device — green
+ *  everywhere, wrong in the hand.
+ *
+ *  `maxBytes` is a RAW-byte budget against `MAX_BYTES`, checked in `buildPlan`'s
+ *  own size report the same way `PROJECTED_DATA`'s are. 436 KB today against
+ *  512 KB: the unit is a SHOW, ~44 B of title+id+rank each, so this moves when
+ *  `tools/build-show-index.mjs`'s `BUILD_MAX_RANK` is raised or a harvest adds
+ *  shows inside the existing cut. It is not a knob to turn — lower the cut
+ *  instead, which is one flag and a rebuild.
+ *
+ *  OPTIONAL, like the seed pointer: a checkout from before S-03 has no index,
+ *  and its bundle is still a correct bundle (app.js treats an absent index as
+ *  an absent index). */
+export const UNPINNED_DATA = [
+  { rel: "data/show-index.tsv", maxBytes: 512 * 1024 },
+];
+
+export function unpinnedDataPlan(root = REPO_ROOT) {
+  return UNPINNED_DATA.filter((f) => fs.existsSync(path.join(root, f.rel))).map((f) => f.rel);
+}
+
+/** Which `UNPINNED_DATA` entries are over their own budget, as
+ *  `{ rel, bytes, maxBytes }`. Empty is the healthy answer. */
+export function unpinnedDataOverBudget(root = REPO_ROOT) {
+  const over = [];
+  for (const f of UNPINNED_DATA) {
+    const abs = path.join(root, f.rel);
+    if (!fs.existsSync(abs)) continue;
+    const bytes = fs.statSync(abs).size;
+    if (bytes > f.maxBytes) over.push({ rel: f.rel, bytes, maxBytes: f.maxBytes });
+  }
+  return over;
 }
 
 /** The pointer AS THE BUNDLE CARRIES IT: the repo's pointer plus `partial: true`.

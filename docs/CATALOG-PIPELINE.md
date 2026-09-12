@@ -52,8 +52,23 @@ to curated by simply appearing in catalog.json — no migration.
    never bake a lossy mapping into the harvest.
 4. **Provenance + refresh**: `harvest_source`, `harvested_at`, `region` on every
    entry; the script is idempotent and re-runnable (re-harvest = new file, diffable).
-5. **Client isolation**: the web client never fetches the breadth file (it is ~3MB
-   and show-level only). No client change ships with the harvest.
+5. **Client isolation**: the web client never fetches the breadth file (it is
+   12.5MB as committed, and show-level only). No client change ships with the
+   harvest.
+   **AMENDED 2026-09-12 (S-03, `docs/search-plan.md`), and read this before
+   concluding the rule was broken.** The client now fetches
+   `data/show-index.tsv` — a **derived title projection** of the merged
+   catalogue (curated + breadth minus `in_curated`), built by
+   `tools/build-show-index.mjs`, carrying four columns and nothing else: title,
+   id, `chart_rank`, curated flag. It is 436KB raw / 201KB gzipped at the
+   committed `chart_rank <= 100` cut. That is the same relationship
+   `data/catalog-client.json` already has to `data/catalog.json`: a projection
+   ships, the source file does not. `feed_url` — the legally-relevant field
+   `tools/build-catalog-client.mjs`'s header keeps out of a public static
+   fetch — is **not** in the projection, and neither is anything else the
+   harvest carries. The breadth file itself still never reaches a client, and
+   "no client change ships with the harvest" still holds: a re-harvest changes
+   `data/show-index.tsv` through its build step, not through a code change.
 6. **Dedupe discipline**: collectionId-unique within the file; curated-tier overlap
    is allowed and expected (marked `in_curated: true` for joins).
 

@@ -35,3 +35,19 @@ backend/fixtures/** -text
 # is a far cheaper failure than three PRs stalling unnoticed. If a restructure
 # is ever conflict-heavy, resolve that one by hand.
 STATE.md merge=union
+
+# S-03 (docs/search-plan.md): the client-side show index is a DERIVED ARTEFACT
+# whose bytes are compared, not read as prose. `tools/build-show-index.mjs
+# --check` diffs the file on disk against what it regenerates (LF), and
+# `test/show-index.test.js` asserts its gzipped size and its sort order. On a
+# Windows checkout with `core.autocrlf=true`, git would hand it back as CRLF
+# and all three would be wrong at once: `--check` would report a stale index on
+# a clean tree, the size assertion would measure 10,113 extra bytes, and — the
+# one that reaches a device — `search-engine.js:parseShowIndex` splits rows on
+# "\n", so every fourth column would arrive as "1\r" and every curated show in
+# the index would be read as breadth-tier, silently re-ranking the search.
+#
+# `-text` for the same reason the fixtures above have it: these are bytes, not
+# source. `parseShowIndex` also strips a trailing "\r" defensively, because a
+# copy of this file can arrive from somewhere git does not control.
+data/show-index.tsv -text
