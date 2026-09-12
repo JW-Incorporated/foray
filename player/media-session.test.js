@@ -35,8 +35,8 @@ import { fileURLToPath } from "node:url";
 import {
   artworkUrl, mediaArtwork, mediaArtworkList, mediaMetadata,
   mediaPositionState, mediaPlaybackState, mediaSessionView,
-  mediaSessionActions, createMediaSession,
-  MEDIA_ACTIONS, APP_ARTWORK_URL, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
+  mediaSessionActions, createMediaSession, narrationCredit,
+  MEDIA_ACTIONS, APP_ARTWORK_URL, APP_NAME, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
   NONE, PAUSED, PLAYING,
 } from "./media-session.js";
 import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
@@ -238,28 +238,120 @@ test("a narration item with nothing after it shows the FORAY, never its own slug
   assert.equal(mediaMetadata({ item: { kind: "tts", title: "bridge-3" } }).title, "4a");
 });
 
-test("a narration item is credited to Foray, never to a publisher", () => {
+test("a narration item is credited to the FORAY, never to a publisher and never to us (L-06/F15)", () => {
+  /* WAS `artist: "4a"` UNTIL L-06. Founder feedback F15, from the car: the lock
+     screen and the head unit showed only "4a" — and for a narration line with no
+     `nextItem` and a blank Foray title, "4a" really was BOTH the title and the
+     artist. §1b of media-session.js is the argument for what replaced it. */
   const m = mediaMetadata({
     item: { kind: "tts", title: "b", show: "Origin Stories" },
     nextItem: { kind: "episode", title: "T", show: "Origin Stories" },
-    forayTitle: "F", index: 1, total: 4,
+    forayTitle: "The history of grilling", index: 1, total: 4,
   });
-  assert.equal(m.artist, "4a");
+  assert.equal(m.artist, "The history of grilling");
+  assert.notEqual(m.artist, APP_NAME);
+  assert.notEqual(m.artist, "Origin Stories", "a line we wrote never carries a publisher's credit");
 });
 
-test("a jingle item is credited to 4a under its Foray's title, never to a publisher (F-89)", () => {
-  /* The first generated Foray to ship a jingle (2026-09-11) failed the real-data
-     test below with "#42 has no publisher credit": a jingle resolved to an empty
-     `artist`. Drop the jingle branch in `mediaMetadata` and this is red again. */
+test("a jingle item is credited to its Foray, never to a publisher and never to us (F-89 + L-06)", () => {
+  /* F-89 (2026-09-11): the first generated Foray to ship a jingle failed the
+     real-data test below with "#42 has no publisher credit" — a jingle resolved
+     to an EMPTY artist. L-06 (F15) then moved that credit off "4a" and onto the
+     Foray's own title. BOTH requirements are alive here: non-empty, and not ours.
+     Drop the jingle branch in `mediaMetadata` and the first assertion is red;
+     restore `artist = "4a"` and the third is. */
   const m = mediaMetadata({
     item: { kind: "jingle", id: "jingle-cut-act-4-1", show: "Origin Stories" },
     nextItem: { kind: "episode", title: "T", show: "Origin Stories" },
     forayTitle: "F", index: 1, total: 4, showArtworkUrl: APPLE,
   });
-  assert.equal(m.artist, "4a");
+  assert.ok(m.artist.length > 0, "F-89: a jingle must never resolve to an empty credit");
+  assert.equal(m.artist, "F");
+  assert.notEqual(m.artist, APP_NAME);
   assert.equal(m.title, "F");
   assert.equal(m.artwork[0].src, APP_ARTWORK_URL, "a jingle never wears a publisher's artwork");
-  assert.equal(mediaMetadata({ item: { kind: "jingle", id: "j" } }).title, "4a");
+  assert.equal(mediaMetadata({ item: { kind: "jingle", id: "j" } }).title, APP_NAME);
+});
+
+/* ---------- L-06: the Apple Podcasts parity rule (founder feedback F15) ---------- */
+
+// TO SEE IT FAIL: put `APP_NAME` back as the last rung of `narrationCredit`, or
+// reorder the ladder so the next item's show outranks the Foray's title.
+test("narrationCredit walks Foray title -> next episode -> next show, and never reaches 4a", () => {
+  const next = { title: "Fire and the human gut", show: "Origin Stories" };
+  assert.equal(narrationCredit({ forayTitle: "The history of grilling", nextItem: next }),
+    "The history of grilling");
+  assert.equal(narrationCredit({ forayTitle: "", nextItem: next }), "Fire and the human gut");
+  assert.equal(narrationCredit({ forayTitle: "  ", nextItem: { show: "Origin Stories" } }), "Origin Stories");
+  // The bottom of the ladder is EMPTY, not the app's name. §1b is why.
+  assert.equal(narrationCredit(), "");
+  assert.equal(narrationCredit({ forayTitle: "", nextItem: {} }), "");
+});
+
+// TO SEE IT FAIL: revert either narration branch of `mediaMetadata` to
+// `artist = "4a"`. This is F15 exactly as the founder met it — the one display
+// state that said "4a / 4a" — and it is the reason the card exists.
+test("F15's own inputs: a narration line with no next item never says 4a in the CREDIT", () => {
+  const m = mediaMetadata({ item: { kind: "tts", title: "bridge-3" }, forayTitle: "" });
+  assert.notEqual(m.artist, APP_NAME, "4a may not be the artist of anything a listener hears");
+  assert.equal(m.artist, "");
+  /* The TITLE still falls back to the app's name, and that is deliberate rather
+     than an oversight: an empty title is a blank lock screen, while an empty
+     credit reads as "unknown publisher" — which is true. The rule L-06 states is
+     about the credit, and about the pair never both being "4a". */
+  assert.equal(m.title, APP_NAME);
+});
+
+// TO SEE IT FAIL: change the segment branch's `artist` to anything but the show.
+// Apple Podcasts parity for a real segment is what L-06 says must NOT change.
+test("a SEGMENT keeps Apple Podcasts parity untouched: title=episode, artist=show, album=foray+part", () => {
+  const m = mediaMetadata({
+    item: SEG, forayTitle: "The history of grilling", index: 11, total: 32,
+  });
+  assert.equal(m.title, SEG.title);
+  assert.equal(m.artist, SEG.show);
+  assert.equal(m.album, "The history of grilling · part 12 of 32");
+});
+
+// TO SEE IT FAIL: give single-episode playback a non-empty album (e.g. by
+// defaulting `total` to 1). A single episode is not a collection.
+test("single-episode play keeps an empty album (L-06)", () => {
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 0, total: 0 }).album, "");
+});
+
+// TO SEE IT FAIL: delete the `report(...)` call from `createMediaSession`'s
+// update(), or move it outside the `key !== lastMetaKey` branch. The first makes
+// the record silent and F15 unanswerable; the second floods it at 4 Hz and
+// evicts every seam row in the ring.
+test("onWrite fires exactly when metadata is really written, and not on an unchanged view", () => {
+  const nav = fakeNav();
+  const seen = [];
+  const bridge = createMediaSession({ nav, onWrite: (w) => seen.push(w) });
+  const view = mediaSessionView({
+    item: SEG, forayTitle: "F", index: 0, total: 3, durationSec: 600, positionSec: 12, playing: true,
+  });
+  bridge.update(view);
+  bridge.update(view);
+  bridge.update(mediaSessionView({
+    item: { kind: "episode", title: "Another", show: "Other Show" },
+    forayTitle: "F", index: 1, total: 3, durationSec: 600, positionSec: 20, playing: true,
+  }));
+  assert.equal(seen.length, 2, "two distinct metadata writes, and no repeat for the unchanged view");
+  assert.equal(seen[0].metadata.title, SEG.title);
+  assert.equal(seen[0].playbackState, PLAYING);
+  assert.equal(seen[1].metadata.artist, "Other Show");
+});
+
+// TO SEE IT FAIL: call `report(...)` outside the `attempt()` guard. A
+// diagnostics sink is not worth a lock screen — §6.
+test("a throwing onWrite cannot stop the lock screen from being written", () => {
+  const nav = fakeNav();
+  const bridge = createMediaSession({ nav, onWrite: () => { throw new Error("sink is broken"); } });
+  assert.doesNotThrow(() => bridge.update(mediaSessionView({
+    item: SEG, forayTitle: "F", index: 0, total: 3, durationSec: 600, positionSec: 1, playing: true,
+  })));
+  assert.equal(nav._log.filter((l) => l.startsWith("state:")).length, 1,
+    "the rest of the update still happened");
 });
 
 test("a narration item never carries a publisher's artwork", () => {
@@ -1196,10 +1288,45 @@ test("the lock screen's previous/next are the page's own segment controls", () =
 
 test("the lock screen's play/pause is the same call the in-page button makes", () => {
   const surface = /const forayMediaSurface = \{[\s\S]*?\n\};/.exec(CLIENT_CODE)[0];
-  assert.match(surface, /play:\s*\(\)\s*=>\s*setRunning\(true\)/);
-  assert.match(surface, /pause:\s*\(\)\s*=>\s*setRunning\(false\)/);
+  /* The trailing argument is M-03(b)'s transport SOURCE, added 2026-09-12 — see
+     the next test. It is optional in the pattern only because what this test
+     pins is that both surfaces reach the SAME function; which source each one
+     names is the next test's job. */
+  assert.match(surface, /play:\s*\(\)\s*=>\s*setRunning\(true(,[^)]*)?\)/);
+  assert.match(surface, /pause:\s*\(\)\s*=>\s*setRunning\(false(,[^)]*)?\)/);
   // ...and the button really does go through the same function.
   assert.match(CLIENT_CODE, /const toggle = \(\) => setRunning\(!isRunning\(\)\)/);
+});
+
+/* M-03(b), founder feedback F16 / #548: the record must be able to say WHO
+   asked. Asserted against the RAW source rather than `CLIENT_CODE`, because
+   `codeOnly` blanks string literals and the whole assertion here is about which
+   literal each surface passes.
+
+   TO SEE IT FAIL: drop the `"remote"` argument from either lock-screen surface,
+   or pass `"remote"` from the in-page button. A record in which every press
+   looks the same cannot separate F5 ("pressed play on the car's controls,
+   nothing happened") from a tap on the mini bar, which is the distinction the
+   founder's own report turns on. */
+test("a lock-screen press is recorded as `remote` and an in-page tap as `tap`", () => {
+  const foraySurface = /const forayMediaSurface = \{[\s\S]*?\n\};/.exec(CLIENT)[0];
+  const episodeSurface = /const episodeMediaSurface = \{[\s\S]*?\n\};/.exec(CLIENT)[0];
+  for (const [name, surface] of [["foray", foraySurface], ["episode", episodeSurface]]) {
+    assert.match(surface, /play:\s*\(\)\s*=>\s*setRunning\(true,\s*"remote"\)/, name);
+    assert.match(surface, /pause:\s*\(\)\s*=>\s*setRunning\(false,\s*"remote"\)/, name);
+    assert.match(surface, /diag\.transport\("remote",\s*"stop"\)/, name);
+  }
+  // The default is the page's own tap, so the in-page button needs no argument.
+  assert.match(CLIENT, /async function setRunning\(want, source = "tap"\)/);
+  /* RECORDED BEFORE THE EARLY RETURN. A remote command that arrives while the
+     player already believes it is in that state does nothing — which is exactly
+     what F5 reported — so a record that only logged state CHANGES would be
+     silent for the presses being complained about. */
+  const body = CLIENT.slice(CLIENT.indexOf("async function setRunning("));
+  const diagAt = body.indexOf("diag.transport(source");
+  const returnAt = body.indexOf("if (want === isRunning())");
+  assert.ok(diagAt > 0 && returnAt > 0, "setRunning must record the source and keep its early return");
+  assert.ok(diagAt < returnAt, "the source is recorded BEFORE the no-op early return, or F5 leaves no row");
 });
 
 test("single-episode playback installs a surface with no next or previous", () => {

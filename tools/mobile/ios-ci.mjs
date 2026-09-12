@@ -2187,6 +2187,87 @@ export function forayAudioReached(text) {
   };
 }
 
+/** M-03's log-side needle: the unified-log line `ForayAudioPlugin.swift` writes
+ *  from `emitSession` for every `AVAudioSession` interruption, route change,
+ *  media-services reset and app background/foreground transition.
+ *
+ *  ── WHY THE LOG AND NOT ONLY THE PROBE RECORD ────────────────────────────
+ *  M-03(c) asks for a screen-off pass, and a screen-off pass is precisely the
+ *  case where the page cannot write anything: a suspended WKWebView does not
+ *  run `notifyListeners`' handler, so the `session` events that matter most
+ *  reach the localStorage record late or not at all. `os.Logger` is written by
+ *  the native plugin on the app's main queue while the WebView is frozen, and
+ *  `ios-build.yml`'s existing `log stream --predicate 'process == "App" …'`
+ *  step already captures it — so this channel needs NO workflow change, which
+ *  is why the card's CI half can land without the `founder-approved` label the
+ *  rest of a workflow edit would need.
+ *
+ *  The line carries only the closed vocabulary
+ *  `player/diagnostic-log.js`'s `SESSION_KINDS`/route-reason tokens admit —
+ *  never a route's NAME, which is a device somebody named after themselves and
+ *  must not ride out of a phone inside a CI artifact. */
+export const FORAY_SESSION_NEEDLE = "ForayAudio.session kind=";
+
+/**
+ * M-03(c), as far as CI can run it: what did the native side report about the
+ * audio session during this run?
+ *
+ * HONEST ABOUT NO COVERAGE, the convention `parseSimulatorLifecycle` and
+ * `forayAudioReached` already keep. An absent log is `no-coverage`; a present
+ * log with no lines is `silent`, which on a simulator that never backgrounds
+ * the app is the EXPECTED answer and not a failure — a simulator that is never
+ * interrupted has nothing to report, and a verdict that treated silence as a
+ * finding would manufacture one on every green run.
+ *
+ * @param {string|null} text the contents of a captured simulator log
+ */
+export function foraySessionEvents(text) {
+  if (typeof text !== "string" || text.trim() === "") {
+    return {
+      verdict: "no-coverage",
+      matchCount: 0,
+      kinds: {},
+      sampleLines: [],
+      headline: "no simulator log to check — no coverage, not a no",
+    };
+  }
+  const kinds = {};
+  const matches = [];
+  for (const line of text.split("\n")) {
+    const at = line.indexOf(FORAY_SESSION_NEEDLE);
+    if (at < 0) continue;
+    matches.push(line.trim());
+    /* The kind is the token straight after the needle; the reason is on the
+       same line and is deliberately NOT split out into its own tally, because
+       a per-reason count would invite a reader to treat a route-change reason
+       as a rate. What this function answers is "which categories of thing
+       happened, and how often", which is what pairs with the record's own
+       `session` rows. */
+    const rest = line.slice(at + FORAY_SESSION_NEEDLE.length);
+    const kind = /^[A-Za-z]+/.exec(rest);
+    if (kind) kinds[kind[0]] = (kinds[kind[0]] ?? 0) + 1;
+  }
+  if (!matches.length) {
+    return {
+      verdict: "silent",
+      matchCount: 0,
+      kinds: {},
+      sampleLines: [],
+      headline:
+        "the log was present and watched and carried no session event — expected on a run " +
+        "that never backgrounded or interrupted the app (measured on this log's coverage only)",
+    };
+  }
+  const summary = Object.entries(kinds).map(([k, n]) => `${k}x${n}`).join(" ");
+  return {
+    verdict: "found",
+    matchCount: matches.length,
+    kinds,
+    sampleLines: matches.slice(0, 3),
+    headline: `found ${matches.length} line(s): ${summary}; sample \`${matches[0]}\``,
+  };
+}
+
 /**
  * L-02's measured acceptance, verbatim from the card: "in the ios-shell
  * simulator run, the page reports navigator.mediaSession is ours (a marker
@@ -2218,6 +2299,12 @@ export function mediaSessionTakeoverVerdict(probe, logText) {
       forayPolyfill: null,
       roundTrip: null,
       log,
+      /* M-03(c) on BOTH exits, so a caller never has to check whether the key
+         is there: the native session channel does not depend on the probe
+         record at all, and a run whose probe never reported can still have a
+         log full of interruption lines — which is exactly the run whose
+         "why did it stop?" is hardest. */
+      session: foraySessionEvents(logText),
       headline: "No mediaSession takeover probe data came back — L-02's measured half is UNMEASURED this run.",
       detail:
         "Either the bridge probe never reported, or it predates the L-02 marker read. Not a finding either way." +
@@ -2306,12 +2393,21 @@ export function mediaSessionTakeoverVerdict(probe, logText) {
     );
   }
   facts.push(`simulator log needle \`${FORAY_AUDIO_REACHED_NEEDLE}\`: ${log.headline}`);
+  /* M-03(c). Carried on the SAME verdict rather than given its own, because a
+     reader asking "why did it stop?" is already reading this block and a
+     second summary section would be one more thing to remember to look at.
+     `session` deliberately does NOT move `verdict`: an uninterrupted simulator
+     run legitimately reports nothing, and letting silence fail the job would
+     manufacture a finding on every green run. */
+  const session = foraySessionEvents(logText);
+  facts.push(`simulator log needle \`${FORAY_SESSION_NEEDLE}\`: ${session.headline}`);
 
   return {
     verdict,
     forayPolyfill: t.forayPolyfill === true ? true : t.forayPolyfill === false ? false : null,
     roundTrip,
     log,
+    session,
     headline,
     detail: facts.join("; "),
   };

@@ -62,7 +62,7 @@ import { fileURLToPath } from "node:url";
 import {
   createForayMediaSession, mediaSessionApplies, nowPlayingPayload, identityKey,
   transportState, assetUri,
-  PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS,
+  PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, SESSION_EVENT, SESSION_DOM_EVENT, ROUTABLE_ACTIONS,
   SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC, POSITION_MIN_INTERVAL_MS, ASSET_BASE, IOS_ASSET_BASE,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 
@@ -381,12 +381,22 @@ test("iOS payloads carry a bundle:// artwork URI end to end, not Android's asset
 test("install subscribes to the transport event, by that plugin and event name", () => {
   const { session, capacitor } = setup();
   session.install();
+  /* TWO subscriptions since M-03, and they are deliberately independent: the
+     transport event carries the lock screen's BUTTONS and the session event
+     carries diagnostics, so a bridge that refuses one must not cost the other.
+     MUTATION: fold them into one handler that switches on the event name and
+     a single failed subscribe silences the car's play button. */
   assert.deepEqual(
     capacitor.listeners.map((l) => ({ name: l.name, eventName: l.eventName })),
-    [{ name: PLUGIN_NAME, eventName: TRANSPORT_EVENT }]
+    [
+      { name: PLUGIN_NAME, eventName: TRANSPORT_EVENT },
+      { name: PLUGIN_NAME, eventName: SESSION_EVENT },
+    ]
   );
   session.uninstall();
-  assert.equal(capacitor.listeners[0].removed, true, "uninstall left a native listener attached");
+  for (const l of capacitor.listeners) {
+    assert.equal(l.removed, true, `uninstall left the ${l.eventName} listener attached`);
+  }
 });
 
 test("a bridge with no addListener falls back to nativeCallback", () => {
@@ -398,9 +408,10 @@ test("a bridge with no addListener falls back to nativeCallback", () => {
   };
   const { session } = setup({ capacitor });
   assert.equal(session.install(), true);
-  assert.deepEqual(calls, [{
-    name: PLUGIN_NAME, method: "addListener", options: { eventName: TRANSPORT_EVENT },
-  }]);
+  assert.deepEqual(calls, [
+    { name: PLUGIN_NAME, method: "addListener", options: { eventName: TRANSPORT_EVENT } },
+    { name: PLUGIN_NAME, method: "addListener", options: { eventName: SESSION_EVENT } },
+  ]);
 });
 
 test("a bridge with NEITHER subscription method still installs", () => {
@@ -1355,5 +1366,98 @@ test("TWO DIFFERENT DISPLAYS CANNOT HASH TO THE SAME IDENTITY", () => {
       assert.equal(s.sent().length, 2, "a title and show change inside the rate limit was not sent");
       assert.equal(s.last().title, "a");
     });
+  });
+});
+
+/* ---------- M-03: the native session event reaches the page ---------- */
+
+/** A `window` with just enough of one: the shim re-broadcasts on the GLOBAL
+    `window`, because `player/client.js` is a separate module tag that may load
+    before or after it and `window` is the one object both are guaranteed to
+    find. Installed and removed per test, never left behind for the next file in
+    the same process. */
+function withWindow(fn) {
+  const had = Object.prototype.hasOwnProperty.call(globalThis, "window");
+  const prev = globalThis.window;
+  const handlers = new Map();
+  const win = {
+    CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init?.detail; } },
+    addEventListener(type, h) {
+      if (!handlers.has(type)) handlers.set(type, []);
+      handlers.get(type).push(h);
+    },
+    dispatchEvent(e) {
+      for (const h of handlers.get(e.type) ?? []) h(e);
+      return true;
+    },
+  };
+  globalThis.window = win;
+  try { return fn(win); } finally {
+    if (had) globalThis.window = prev; else delete globalThis.window;
+  }
+}
+
+/** The subscription the shim made for one event name. */
+const subFor = (capacitor, eventName) => capacitor.listeners.find((l) => l.eventName === eventName);
+
+// TO SEE IT FAIL: drop `subscribeSession()` from `install()`, or have
+// `dispatchSession` swallow the event instead of dispatching it. Every native
+// cause of a stop — an interruption, a route change, a media-services reset —
+// then never reaches `player/diagnostic-log.js`, and the record goes on
+// answering "the element paused" to the question "why did it stop?".
+test("a native session event is re-broadcast on window, verbatim (M-03)", () => {
+  withWindow((win) => {
+    const { session, capacitor } = setup();
+    session.install();
+    const seen = [];
+    win.addEventListener(SESSION_DOM_EVENT, (e) => seen.push(e.detail));
+    const sub = subFor(capacitor, SESSION_EVENT);
+    assert.ok(sub, "no session subscription to fire");
+    sub.callback({ kind: "interruptionBegan", reason: "began", producer: "audio", at: 1700000000000 });
+    assert.equal(seen.length, 1);
+    assert.deepEqual(seen[0], {
+      kind: "interruptionBegan", reason: "began", producer: "audio", at: 1700000000000,
+    });
+  });
+});
+
+// TO SEE IT FAIL: filter the vocabulary here as well as in
+// `player/diagnostic-log.js`. Two answers to one question, and the one that
+// lives beside the record is the one that can keep the record's no-prose rule.
+test("the shim judges nothing about a session event — the record's vocabulary is the record's", () => {
+  withWindow((win) => {
+    const { session, capacitor } = setup();
+    session.install();
+    const seen = [];
+    win.addEventListener(SESSION_DOM_EVENT, (e) => seen.push(e.detail));
+    subFor(capacitor, SESSION_EVENT).callback({ kind: "somethingThisBuildDoesNotKnow" });
+    assert.equal(seen.length, 1, "forwarded; diagnostic-log.js is what drops it");
+    assert.equal(seen[0].kind, "somethingThisBuildDoesNotKnow");
+  });
+});
+
+// TO SEE IT FAIL: let `dispatchSession` throw out of the native callback. A
+// diagnostics channel must never be able to take the transport down with it —
+// the same rule the shim keeps for its own `setNowPlaying` answers.
+test("a broken window cannot break the session channel", () => {
+  withWindow((win) => {
+    const { session, capacitor, logs } = setup();
+    session.install();
+    win.dispatchEvent = () => { throw new Error("window is hostile"); };
+    assert.doesNotThrow(() => subFor(capacitor, SESSION_EVENT).callback({ kind: "background" }));
+    assert.ok(logs.some((l) => /re-broadcast/.test(l.m)), "and it is reported rather than swallowed");
+  });
+});
+
+// TO SEE IT FAIL: re-broadcast from inside the transport dispatcher as well.
+// A page listening for both would then record one press twice.
+test("a transport event is NOT re-broadcast as a session event", () => {
+  withWindow((win) => {
+    const { session, capacitor } = setup();
+    session.install();
+    const seen = [];
+    win.addEventListener(SESSION_DOM_EVENT, (e) => seen.push(e.detail));
+    subFor(capacitor, TRANSPORT_EVENT).callback({ action: "play" });
+    assert.equal(seen.length, 0);
   });
 });

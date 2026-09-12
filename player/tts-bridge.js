@@ -141,6 +141,58 @@ export function createTtsBridge({ load = null, candidates = null, log = null } =
       return mod.listVoices(opts);
     },
 
+    /* ---- L-05 (founder feedback F12): pause, resume, stop ----------------
+       The wire for the OTHER half of the transport. `speak` has been wired
+       since this file existed; pause was not, so `queue-manager.js`'s pause
+       effect could only reach the `<audio>` element and narration kept
+       talking through every press of every pause button in the app.
+
+       SAME LAZY-LOAD-THEN-DELEGATE SHAPE as `speak`/`listVoices`, and the
+       same reason: the module lives at a different URL per host (this file's
+       header), so a caller must not import it directly.
+
+       THEY DO NOT LOAD THE MODULE. `if (!pending) pending = loadModule()` is
+       deliberately ABSENT here, unlike in `speak`, and the asymmetry is the
+       whole point: pausing before anything has ever spoken must not pull a
+       plugin off the network mid-drive to be told there is nothing to pause.
+       `pending === null` means nothing has ever been asked to speak on this
+       page, so there is nothing speaking, so the honest answer is "not
+       accepted" — returned without a fetch. */
+    async pause() { return this._transport("pause"); },
+    async resume() { return this._transport("resume"); },
+    async stop() { return this._transport("stop"); },
+
+    /** `speaking | paused | idle`. Same no-load rule as the three above: with
+        nothing ever spoken the answer is `idle` and no module is fetched. */
+    async state() {
+      if (!pending) return { ok: false, path: "none", state: "idle", reason: "nothing has spoken on this page" };
+      const mod = await pending;
+      if (!mod || typeof mod.state !== "function") {
+        return { ok: false, path: "none", state: "idle", reason: "this build of foray-tts has no state()" };
+      }
+      return mod.state();
+    },
+
+    /** @private — shared by the three above. `typeof mod[name] !== "function"`
+        is the REAL case `listVoices` already documents: the Capacitor shell
+        carries a flattened COPY of the module made at build time by
+        `tools/mobile/prepare-webdir.mjs`, so a shell built before L-05 loads a
+        module with a `speak` and no `pause`. Saying so beats a TypeError
+        thrown into a reducer. */
+    async _transport(name) {
+      if (!pending) {
+        return { ok: false, path: "none", accepted: false, reason: "nothing has spoken on this page" };
+      }
+      const mod = await pending;
+      if (!mod) {
+        return { ok: false, path: "none", accepted: false, reason: "foray-tts module could not be loaded" };
+      }
+      if (typeof mod[name] !== "function") {
+        return { ok: false, path: "none", accepted: false, reason: `this build of foray-tts has no ${name}()` };
+      }
+      return mod[name]();
+    },
+
     /* §7 item 3 (L-03). Same lazy-load-then-delegate shape `speak`/
        `listVoices` above already use, and the same reason: the module lives
        at a different URL per host (this file's own header), so a caller must

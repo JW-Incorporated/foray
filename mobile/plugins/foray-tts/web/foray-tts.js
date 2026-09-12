@@ -399,10 +399,152 @@ export async function listVoices(opts = {}) {
   };
 }
 
+/* ── L-05 (founder feedback F12): pause, resume, stop ───────────────────────
+ *
+ * WHAT WAS BROKEN. TestFlight 2026090603: "Once the on-device narration foray
+ * test starts, none of the pause buttons work." This module exposed `speak`,
+ * `listVoices` and `state` and nothing else, so the page's pause could only
+ * ever reach the `<audio>` element — which has nothing to do with a
+ * synthesizer. Nothing in the app could silence narration once it started, on
+ * either platform. For a driving app that is a safety defect, which is why
+ * this card outranked the rest of the L-track.
+ *
+ * THE THREE PATHS, AND WHAT EACH ONE HONESTLY DOES:
+ *   native iOS      `pauseSpeaking(at: .word)` / `continueSpeaking()` /
+ *                   `stopSpeaking(at: .immediate)` — a real pause.
+ *   native Android  `TextToSpeech` HAS NO PAUSE. The plugin emulates it as
+ *                   stop-plus-remembered-boundary and re-speaks the
+ *                   remainder; the answer carries `emulated: true` and, on a
+ *                   resume that could not find a boundary, `fromStart: true`.
+ *                   Documented in `README.md` as the platform's limit, not
+ *                   ours.
+ *   Web Speech      `speechSynthesis.pause()/resume()/cancel()`. Real on
+ *                   Chrome and Firefox; Safari's `pause()` is documented as
+ *                   unreliable for remote voices, which is why `state()`
+ *                   ASKS the engine rather than tracking a flag of its own.
+ *
+ * NEVER THROWS, NEVER REJECTS — the same contract `speak()` states, for the
+ * same reason: the caller is `player/queue-manager.js`'s pause effect, which
+ * runs from a reducer, and an unhandled rejection there would leave the
+ * player's state machine believing it paused something it did not. */
+
+/** Shared shape for the three transport calls, so `pause`/`resume`/`stop`
+    differ only in the method name and the Web Speech function they fall back
+    to. Returns `{ ok, path, accepted, state?, native? , reason? }`. */
+async function transport(method, webFallback, opts = {}) {
+  const {
+    bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),
+    speechSynth = (typeof window !== "undefined" ? window.speechSynthesis : undefined),
+    log = (typeof console !== "undefined" ? console.warn.bind(console) : () => {}),
+  } = opts;
+
+  if (shellApplies(bridge)) {
+    try {
+      const result = await bridge.nativePromise(PLUGIN_NAME, method, {});
+      return {
+        ok: true,
+        path: "native",
+        /* HOISTED OUT OF `native`, exactly as `speak()` hoists `voice`: a
+           caller asking "did my pause take?" must not have to branch on which
+           platform answered. An OLDER shell build whose native half predates
+           this card has no `accepted` key at all — `undefined === true` is
+           false, so it reads as "did not take", which is the truth. */
+        accepted: !!(result && result.accepted),
+        state: (result && result.state) || "",
+        native: result,
+      };
+    } catch (e) {
+      try { log("foray-tts: native " + method + " failed, falling back", e); } catch (_e) { /* never throw */ }
+    }
+  }
+
+  if (speechSynth && typeof speechSynth[webFallback] === "function") {
+    try {
+      speechSynth[webFallback]();
+      return { ok: true, path: "web-speech", accepted: true, state: webSpeechState(speechSynth) };
+    } catch (e) {
+      return { ok: false, path: "web-speech", accepted: false, state: "", reason: (e && e.message) || String(e) };
+    }
+  }
+
+  return {
+    ok: false,
+    path: "none",
+    accepted: false,
+    state: "",
+    reason: "no native bridge and no speechSynthesis available",
+  };
+}
+
+/** `speaking | paused | idle` from `speechSynthesis`'s own two booleans, with
+    the SAME precedence both native halves use — `paused` first, because a
+    paused engine still reports `speaking === true` and a lock screen that
+    offered a pause button for already-silent audio would cost a press. */
+function webSpeechState(speechSynth) {
+  try {
+    if (speechSynth.paused === true) return "paused";
+    if (speechSynth.speaking === true) return "speaking";
+  } catch (_e) { /* a hostile stub must not break a transport call */ }
+  return "idle";
+}
+
+/** Pause the line now being spoken. See the block comment above. */
+export function pause(opts = {}) { return transport("pause", "pause", opts); }
+
+/** Continue a paused line. */
+export function resume(opts = {}) { return transport("resume", "resume", opts); }
+
+/** Stop speaking and discard what is queued. `cancel()` is Web Speech's
+    `stop` — the names differ, the meaning does not. */
+export function stop(opts = {}) { return transport("stop", "cancel", opts); }
+
+/**
+ * `speaking | paused | idle`, asked of whoever is actually speaking.
+ *
+ * ASKED, NEVER REMEMBERED. A flag kept here would go wrong the moment the
+ * system took the audio away — an interruption, a route change, the very
+ * events M-03 exists to record — and the page would then show a pause button
+ * for a voice that stopped talking minutes ago.
+ *
+ * @returns {Promise<{ok: boolean, path: string, state: string, native?: object, reason?: string}>}
+ */
+export async function state(opts = {}) {
+  const {
+    bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),
+    speechSynth = (typeof window !== "undefined" ? window.speechSynthesis : undefined),
+    log = (typeof console !== "undefined" ? console.warn.bind(console) : () => {}),
+  } = opts;
+
+  if (shellApplies(bridge)) {
+    try {
+      const result = await bridge.nativePromise(PLUGIN_NAME, "state", {});
+      /* An older shell's `state()` answered with booleans and no word. Derive
+         one rather than reporting `""`: the booleans carry the same fact and
+         a caller that has to handle three shapes will handle one of them
+         wrongly. */
+      const word = (result && result.state)
+        || (result && result.paused === true && "paused")
+        || (result && result.speaking === true && "speaking")
+        || "idle";
+      return { ok: true, path: "native", state: word, native: result };
+    } catch (e) {
+      try { log("foray-tts: native state failed, falling back", e); } catch (_e) { /* never throw */ }
+    }
+  }
+
+  if (speechSynth) return { ok: true, path: "web-speech", state: webSpeechState(speechSynth) };
+
+  return { ok: false, path: "none", state: "idle", reason: "no native bridge and no speechSynthesis available" };
+}
+
 export function createForayTtsShell(defaults = {}) {
   return {
     speak: (text, opts = {}) => speak(text, { ...defaults, ...opts }),
     listVoices: (opts = {}) => listVoices({ ...defaults, ...opts }),
+    pause: (opts = {}) => pause({ ...defaults, ...opts }),
+    resume: (opts = {}) => resume({ ...defaults, ...opts }),
+    stop: (opts = {}) => stop({ ...defaults, ...opts }),
+    state: (opts = {}) => state({ ...defaults, ...opts }),
     shellApplies: (bridge) => shellApplies(bridge ?? defaults.bridge),
     onFinished: (fn) => onFinished(fn, defaults),
   };

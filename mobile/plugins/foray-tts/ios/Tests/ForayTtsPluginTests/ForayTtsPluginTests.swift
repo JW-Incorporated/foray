@@ -402,4 +402,84 @@ final class ForayTtsPluginTests: XCTestCase {
     func testFinishedEventNameMatchesTheWebHalf() {
         XCTAssertEqual(ForayTtsPlugin.FINISHED_EVENT, "finished")
     }
+
+    // MARK: - L-05: pause, resume, stop (founder feedback F12)
+
+    /// `speaking | paused | idle`, and the PRECEDENCE is the whole test.
+    /// `AVSpeechSynthesizer.isSpeaking` stays TRUE while paused — Apple's
+    /// documented behaviour, a paused synthesizer is still "speaking" an
+    /// utterance — so reading `isSpeaking` first would report a paused
+    /// synthesizer as speaking, and the lock screen would offer a pause button
+    /// for audio that is already silent. That costs a press, which on a driving
+    /// app is the whole of F12's complaint in miniature.
+    ///
+    /// TO SEE IT FAIL: swap the two `if`s in `stateWord`. The third case below
+    /// goes red and nothing else in this repo notices.
+    func testStateWordChecksPausedBeforeSpeaking() {
+        XCTAssertEqual(ForayTtsPlugin.stateWord(isSpeaking: false, isPaused: false), "idle")
+        XCTAssertEqual(ForayTtsPlugin.stateWord(isSpeaking: true, isPaused: false), "speaking")
+        // The case that matters: BOTH true is what a paused synthesizer reports.
+        XCTAssertEqual(ForayTtsPlugin.stateWord(isSpeaking: true, isPaused: true), "paused")
+    }
+
+    /// The three words are a contract with `web/foray-tts.js` and with
+    /// `ForayTtsPlugin.java`, which reports the same three. A caller should not
+    /// have to know which platform answered.
+    ///
+    /// TO SEE IT FAIL: rename any one of them here alone.
+    func testTheThreeStateWordsAreTheOnesBothPlatformsUse() {
+        XCTAssertEqual(ForayTtsPlugin.STATE_SPEAKING, "speaking")
+        XCTAssertEqual(ForayTtsPlugin.STATE_PAUSED, "paused")
+        XCTAssertEqual(ForayTtsPlugin.STATE_IDLE, "idle")
+    }
+
+    // MARK: - M-03: the session event
+
+    /// Both plugins raise the SAME event name with the same shape, and
+    /// `producer` is what separates them. A record that had to join two event
+    /// names with two vocabularies to answer "why did it stop?" would be
+    /// answering a harder question than the founder asked.
+    ///
+    /// TO SEE IT FAIL: rename `SESSION_EVENT` here without renaming it in
+    /// `web/foray-media-session.js`, which is what subscribes.
+    func testSessionEventNameMatchesTheAudioPluginAndTheWebHalf() {
+        XCTAssertEqual(ForayTtsPlugin.SESSION_EVENT, "session")
+    }
+
+    /// `producer: "tts"` — a narration line and a tape segment are silenced
+    /// through different objects, and a record that could not tell them apart
+    /// would answer "the audio stopped" to the question "WHICH audio".
+    ///
+    /// TO SEE IT FAIL: emit `producer: "audio"` here. The record accepts it
+    /// (both are in its vocabulary) and quietly attributes every silenced
+    /// narration line to the element.
+    func testSessionEventNamesThisPluginAsTheProducer() {
+        let event = ForayTtsPlugin.sessionEvent(kind: "interruptionBegan", reason: "began", at: 1_700_000_000_000)
+        XCTAssertEqual(event["kind"] as? String, "interruptionBegan")
+        XCTAssertEqual(event["reason"] as? String, "began")
+        XCTAssertEqual(event["producer"] as? String, "tts")
+        XCTAssertEqual(event["at"] as? Int, 1_700_000_000_000)
+    }
+
+    /// A route change reports a CODE, never the route's name — a Bluetooth
+    /// route is named after the person who owns the car, and this record is
+    /// pasted into issues.
+    ///
+    /// TO SEE IT FAIL: return `String(raw)`. `dataTokenOf()` in the record
+    /// admits only a lower-case dashed token, so a number lands as an empty
+    /// reason and the row says nothing.
+    func testRouteChangeReasonIsAClosedVocabularyOfDashedTokens() {
+        XCTAssertEqual(
+            ForayTtsPlugin.routeChangeReason(AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue),
+            "old-device-gone"
+        )
+        XCTAssertEqual(ForayTtsPlugin.routeChangeReason(9_999), "unknown")
+        for raw: UInt in 0...8 {
+            let token = ForayTtsPlugin.routeChangeReason(raw)
+            XCTAssertFalse(token.isEmpty)
+            XCTAssertEqual(token, token.lowercased())
+            XCTAssertFalse(token.contains(" "))
+        }
+    }
+
 }

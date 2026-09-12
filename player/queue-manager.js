@@ -243,6 +243,17 @@ export class PlayerQueueManager {
    *   item then fails to load exactly like a missing bridge asset always has
    *   (corner case #12: reported, and the Foray moves on).
    *
+   *   L-05 (founder feedback F12): three more OPTIONAL methods complete the
+   *   TRANSPORT half — `pause()`, `resume()` and `stop()`, each resolving
+   *   `{ ok, accepted, path, reason? }` and never rejecting. When they are
+   *   present, `pausePlayback`/`startPlayback` for a narration item go to
+   *   this bridge instead of to `backend`, which is what makes the
+   *   mini-player's pause, the lock screen's, the car's and the headphone
+   *   pinch's all silence a spoken line. When they are absent — an older
+   *   shell build carrying a flattened copy of `foray-tts.js` from before
+   *   that card — the manager records `tts.pause.unavailable` and the
+   *   reducer's state still moves, which is the behaviour that shipped.
+   *
    *   §7 item 3 (L-03): an OPTIONAL `onFinished(fn) -> unsubscribe` completes
    *   the contract. When present, this manager subscribes once and advances
    *   the queue past the currently-speaking item the first time it fires
@@ -364,6 +375,18 @@ export class PlayerQueueManager {
         than loaded into `backend` — nothing in `backend` is playing it, so
         the rate/playback effects below must not touch the backend for it. */
     this._loadedIsSynth = false;
+    /** L-05. True between a `pausePlayback` effect that reached the TTS
+        bridge and the `startPlayback` that resumes it. The ONE thing that
+        separates "start the utterance" from "continue the utterance" at the
+        `startPlayback` effect, which cannot tell them apart by itself. */
+    this._narrationPaused = false;
+    /** L-05. Wall-clock ms at which narration was paused, so the Foray clock
+        does not run through a pause — see `narrationElapsedSec`. */
+    this._narrationPausedAtMs = null;
+    /** L-05. Set for the duration of `stop()` so the `pausePlayback` effect
+        the stop reducer emits does not pause a synthesizer one instruction
+        before the same method stops it. One bridge call, not two. */
+    this._narrationStopping = false;
 
     /* ---- the seam beat (see §10 in the header) ----
        `_gapUntil` is an ABSOLUTE deadline, stamped when the out-point fires,
@@ -439,6 +462,17 @@ export class PlayerQueueManager {
   dispose() {
     this._stopTimer();
     this._stopNarrationTicker();
+    /* L-05. `dispose()` is the other way a Foray ends without its line
+       finishing — a page teardown, `__resetInstanceForTests`, a second
+       manager replacing this one. `release()` on the backend below silences
+       the element; nothing silenced the synthesizer, which on iOS outlives
+       the WebView's own objects because `AVSpeechSynthesizer` lives in the
+       native plugin. Fire-and-forget on purpose: `dispose()` is synchronous
+       by contract (every caller in this repo treats it so), and the ask is
+       already on the bridge's own serialised queue by the time this returns. */
+    if (this._loadedIsSynth && this._tts && typeof this._tts.stop === "function") {
+      try { Promise.resolve(this._tts.stop()).catch(() => {}); } catch (_) { /* never break disposal */ }
+    }
     // `_disposed` first: the released wait's continuation then hits `_handle`'s
     // disposed guard instead of dispatching into a torn-down player.
     this._disposed = true;
@@ -623,7 +657,25 @@ export class PlayerQueueManager {
   }
 
   async stop() {
-    await this._transport("stop", () => this._handle(E.stop()));
+    /* L-05: "Stopping a Foray (`stopAndClose`) must also stop speech."
+       Without this, closing the player left `AVSpeechSynthesizer` talking
+       into a car with no surface left on screen to stop it — the worst
+       version of F12, because the listener has just taken the app away and
+       has nothing to press.
+
+       `_narrationStopping` is held across the transport so the
+       `pausePlayback` effect the stop reducer emits does not pause the
+       synthesizer one instruction before this method stops it: one bridge
+       call, not two, and no window in which a listener hears a pause that is
+       about to become a stop. */
+    const wasSynth = this._loadedIsSynth;
+    this._narrationStopping = wasSynth;
+    try {
+      await this._transport("stop", () => this._handle(E.stop()));
+    } finally {
+      this._narrationStopping = false;
+    }
+    if (wasSynth) await this._stopNarration();
     this._stopTimer();
   }
 
@@ -910,15 +962,32 @@ export class PlayerQueueManager {
         return this._loadItem(effect.item);
 
       case "startPlayback":
-        // A synth narration item has nothing loaded into `backend` — see
-        // `_isSynthNarration` — so there is nothing here for `backend.play()`
-        // to start. `_speakNarration` already asked the plugin to speak, in
-        // `_loadItem`, before this effect ever runs.
-        if (this._loadedIsSynth) return;
+        /* A synth narration item has nothing loaded into `backend` — see
+           `_isSynthNarration` — so there is nothing here for `backend.play()`
+           to start. `_speakNarration` already asked the plugin to speak, in
+           `_loadItem`, before this effect ever runs.
+
+           L-05 SPLITS THAT IN TWO. A `startPlayback` for a synth item is
+           either the FIRST start (the utterance is already under way, nothing
+           to do — what shipped) or a RESUME after this manager paused it
+           (`_narrationPaused`), which now has somewhere real to go. The flag
+           is what tells them apart, and it has to be a flag rather than a
+           question asked of the plugin: the plugin's answer crosses the
+           Capacitor bridge asynchronously, and the reducer's effects are
+           applied in order. */
+        if (this._loadedIsSynth) return this._narrationPaused ? this._resumeNarration() : undefined;
         return this.backend.play();
 
       case "pausePlayback":
-        if (this._loadedIsSynth) return;
+        /* L-05, founder feedback F12: "none of the pause buttons work" during
+           narration. This line used to be a bare `return` — the reducer
+           dutifully paused, the state machine said `interrupted`, the button
+           redrew, and the voice kept talking, because `backend.pause()`
+           pauses an `<audio>` element and an `AVSpeechSynthesizer` is not
+           one. Every pause surface in the app routes through this one effect
+           — the mini-player, the lock screen, the car, the headphone pinch —
+           so wiring it here is what makes all four work at once. */
+        if (this._loadedIsSynth) return this._pauseNarration();
         return this.backend.pause();
 
       case "savePosition":
@@ -1065,9 +1134,29 @@ export class PlayerQueueManager {
            moment of the call, not a hardcoded 1.0x — see `_speakNarration`.
            §7 item 3 (L-03): advancing past a spoken item on its own now
            happens too — see `_beginSynthNarration` and `_onTtsFinished`. */
-        await this._speakNarration(item);
-        this._loadedId = item.id;
-        this._beginSynthNarration(item);
+        /* L-05: RE-ENTERING A PAUSED UTTERANCE IS A RESUME, NOT A RESTART.
+           Every resume path in this class routes back through `loadItem` —
+           `handlePlay`'s `interrupted` branch re-primes the load rather than
+           assuming the backend kept anything warm — which is right for an
+           element and wrong for a synthesizer: `speak()` has no offset, so
+           re-speaking starts the line again from its first word. The card asks
+           for the opposite in the founder's own terms ("resume from the same
+           sentence"), so a re-entry into the item we are already inside, with
+           speech paused and no restart asked for, does NOTHING here and lets
+           the `startPlayback` effect's resume branch continue the utterance.
+
+           The three conditions are the synth mirror of `resumingInPlace` above,
+           minus the playhead test that only a media element can answer:
+           `forced == null` (nothing asked for a restart — `skipToPrevious`
+           sets it to 0), the same item, and speech actually paused. */
+        const resumingSpeech = forced == null && this._loadedId === item.id && this._narrationPaused;
+        if (!resumingSpeech) {
+          await this._speakNarration(item);
+          this._loadedId = item.id;
+          this._beginSynthNarration(item);
+        } else {
+          this._emit(`tts.resumingInPlace ${item.id}`);
+        }
       } else {
         await this.backend.load(item, { startOffset });
         this._loadedId = item.id;
@@ -1185,6 +1274,9 @@ export class PlayerQueueManager {
   _beginSynthNarration() {
     this._loadedIsSynth = true;
     this._speakSeq++;
+    // L-05: a NEW utterance is never a paused one, whatever the last one was.
+    this._narrationPaused = false;
+    this._narrationPausedAtMs = null;
     /* The Foray clock during narration (L-03). Nothing in `backend` is
        playing this item — its `currentTime` is frozen at wherever the last
        rendered item left it — so a surface reading the manager's playhead
@@ -1208,7 +1300,99 @@ export class PlayerQueueManager {
       contract it applies to every other item's position. */
   get narrationElapsedSec() {
     if (!this._loadedIsSynth || this._narrationStartedAtMs == null) return null;
-    return Math.max(0, (this._scheduler.nowMs() - this._narrationStartedAtMs) / 1000);
+    /* L-05: THE CLOCK DOES NOT RUN THROUGH A PAUSE, and this is the half of
+       the card that is about the lock screen rather than the loudspeaker.
+       `narrationElapsedSec` is wall clock since the utterance started, and
+       `client.js`'s `forayPlayhead()` reads it for the Now Playing position —
+       so without this line a listener who paused narration for two minutes
+       would come back to a lock screen claiming the Foray had advanced two
+       minutes while it was silent, and the position would then SNAP BACK on
+       the next report. The card asks for exactly the opposite: "Now Playing
+       keeps its state across a pause/resume of narration."
+       Frozen here, and `_resumeNarration` shifts the START stamp forward by
+       however long the pause lasted so the number continues rather than
+       jumping. */
+    const at = this._narrationPaused && this._narrationPausedAtMs != null
+      ? this._narrationPausedAtMs
+      : this._scheduler.nowMs();
+    return Math.max(0, (at - this._narrationStartedAtMs) / 1000);
+  }
+
+  /* ---------- L-05: pause, resume and stop for spoken narration ----------
+
+     THE THREE OF THESE ARE THE ONLY PLACE `player/` TALKS TO THE SYNTHESIZER'S
+     TRANSPORT, and they are reached from the reducer's effects rather than
+     from a surface, so the lock screen, the car, the headphone pinch and the
+     in-page button all arrive down one path. That is the same argument
+     `client.js`'s `forayMediaSurface` makes for the element — one opinion
+     about the transport, never two.
+
+     EVERY ONE OF THEM TOLERATES A BRIDGE THAT CANNOT DO IT. A shell built
+     before this card carries a `foray-tts.js` with a `speak` and no `pause`
+     (`tools/mobile/prepare-webdir.mjs` copies the module at build time), and
+     `tts-bridge.js` answers `{ ok: false, reason }` rather than throwing for
+     exactly that case. The player's own state machine has already moved — the
+     button and the lock screen say paused — so the failure to silence a voice
+     is recorded and not thrown: a rejection here would land in `_perform`'s
+     caller and abort a transition the listener already saw happen. */
+
+  async _pauseNarration() {
+    if (this._narrationStopping) return;
+    /* IDEMPOTENT, because the reducer is not. A skip, a stop and a second
+       pause press all emit `pausePlayback`, and a skip from an ALREADY-paused
+       narration item would otherwise cross the Capacitor bridge a second time
+       to pause a synthesizer that is already paused — which both native halves
+       answer `accepted: false` to, so the only thing the extra call buys is a
+       bridge round trip on the hot path of a listener skipping through a
+       Foray. It would also re-stamp `_narrationPausedAtMs` and quietly extend
+       the pause the clock is compensating for. */
+    if (this._narrationPaused) return;
+    this._narrationPaused = true;
+    this._narrationPausedAtMs = this._scheduler.nowMs();
+    this._stopNarrationTicker();
+    await this._ttsTransport("pause");
+  }
+
+  async _resumeNarration() {
+    const pausedFor = this._narrationPausedAtMs == null
+      ? 0
+      : Math.max(0, this._scheduler.nowMs() - this._narrationPausedAtMs);
+    /* The start stamp moves forward by the length of the pause, which is what
+       makes `narrationElapsedSec` CONTINUE from where it froze instead of
+       jumping by the pause's length the instant the ticker restarts. */
+    if (this._narrationStartedAtMs != null) this._narrationStartedAtMs += pausedFor;
+    this._narrationPaused = false;
+    this._narrationPausedAtMs = null;
+    this._startNarrationTicker();
+    await this._ttsTransport("resume");
+  }
+
+  /** Silence speech and forget the utterance. Called by `stop()` and
+      `dispose()` — the two ways a Foray ends without the line finishing. */
+  async _stopNarration() {
+    this._narrationPaused = false;
+    this._narrationPausedAtMs = null;
+    this._stopNarrationTicker();
+    await this._ttsTransport("stop");
+  }
+
+  /** One call into the bridge, reported and never thrown. `_emit` carries the
+      accepted/refused answer into the telemetry stream, which is what puts it
+      in the field record (`diagnostic-log.js`) — so "I pressed pause and it
+      kept talking" is answerable from a drive instead of re-asked. */
+  async _ttsTransport(name) {
+    if (!this._tts || typeof this._tts[name] !== "function") {
+      this._emit(`tts.${name}.unavailable`);
+      return null;
+    }
+    try {
+      const result = await this._tts[name]();
+      this._emit(`tts.${name} accepted=${result?.accepted === true} path=${result?.path ?? "?"}`);
+      return result;
+    } catch (err) {
+      this._emit(`tts.${name}.failed: ${err?.message ?? err}`);
+      return null;
+    }
   }
 
   /** Is the item the manager currently holds a synth narration utterance —
@@ -1233,6 +1417,12 @@ export class PlayerQueueManager {
   _endSynthNarration() {
     this._loadedIsSynth = false;
     this._narrationStartedAtMs = null;
+    /* L-05. A paused-narration flag that outlived its utterance would make
+       the NEXT synth item's first `startPlayback` take the resume branch and
+       ask the plugin to continue a line it has already discarded — a silent
+       narration item, which is precisely the failure this card is closing. */
+    this._narrationPaused = false;
+    this._narrationPausedAtMs = null;
     this._stopNarrationTicker();
   }
 

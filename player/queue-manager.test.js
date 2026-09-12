@@ -656,6 +656,7 @@ test("narration between segments plays as an ordinary TTS item at 1.0x", async (
 
 function fakeTts() {
   const calls = [];
+  const transport = [];
   const finishedListeners = new Set();
   return {
     calls,
@@ -674,8 +675,25 @@ function fakeTts() {
     finish() {
       for (const fn of [...finishedListeners]) fn();
     },
+    /* L-05 (founder feedback F12). The transport half of the real bridge's
+       contract: `pause`/`resume`/`stop` resolve `{ ok, accepted, path }` and
+       never reject — `player/tts-bridge.js` guarantees that even for a shell
+       whose plugin predates the card.
+
+       A SEPARATE ARRAY from `calls`, deliberately: the suites above index
+       `calls` positionally (`tts.calls[1].voice`), and folding a stop into that
+       list would renumber them — a change to a fake that silently rewrites what
+       an unrelated test is asserting about is exactly the shape this repo keeps
+       losing tests to. */
+    transport,
+    async pause() { transport.push("pause"); return { ok: true, accepted: true, path: "native" }; },
+    async resume() { transport.push("resume"); return { ok: true, accepted: true, path: "native" }; },
+    async stop() { transport.push("stop"); return { ok: true, accepted: true, path: "native" }; },
   };
 }
+
+/** The transport calls this fake received, in order. */
+const transportsOf = (tts) => tts.transport ?? [];
 
 test("a script-only narration item is not dropped and never reaches backend.load", async () => {
   const tts = fakeTts();
@@ -2430,4 +2448,187 @@ test("pause while the next segment is still loading cuts the jingle at once, not
   await settled;
   assert.equal(plays(backend), 1, "the load landing into a paused player starts nothing");
   assert.equal(interlude.starts, 1);
+});
+
+/* ---------- L-05: pause, resume and stop for spoken narration ----------
+
+   Founder feedback F12, TestFlight 2026090603: "Once the on-device narration
+   foray test starts, none of the pause buttons work." Root cause, measured in
+   code at the time: `foray-tts` exposed no pause on either platform, and this
+   manager's `pausePlayback` effect had a bare `return` for a synth item — so
+   the reducer paused, the button redrew, and the voice kept talking. For a
+   driving app that is a safety defect. */
+
+async function playingNarration(opts = {}) {
+  const tts = fakeTts();
+  const made = make({ tts, ...opts });
+  await made.m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "a line the listener wants to be able to stop" },
+    fseg(),
+  ]), { resolveItem });
+  return { ...made, tts };
+}
+
+// TO SEE IT FAIL: restore `case "pausePlayback": if (this._loadedIsSynth) return;`
+// — the exact line that shipped, and the whole of F12. Nothing else in this
+// repo turns red for it, which is why it survived to a TestFlight build.
+test("L-05: pausing during narration calls the TTS bridge and leaves the element alone", async () => {
+  const { m, backend, tts } = await playingNarration();
+  const backendBefore = [...backend.calls];
+  await m.pause();
+  assert.deepEqual(transportsOf(tts), ["pause"], "the synthesizer was asked to pause");
+  assert.deepEqual(backend.calls, backendBefore, "no backend call — there is no element under a synth item");
+  assert.notEqual(m.state.type, "playing", "the state machine agrees the listener is not hearing anything");
+});
+
+// TO SEE IT FAIL: swap `_pauseNarration` and `_resumeNarration` at their two
+// effect sites — the card's own named mutation, in the form this manager can
+// express it. A resume would silence the line and a pause would restart it.
+test("L-05: resume after a narration pause CONTINUES it, and a first start does not", async () => {
+  const { m, tts } = await playingNarration();
+  // The first `startPlayback` already happened inside playForay and must NOT
+  // have asked the plugin to continue anything — the utterance was under way.
+  assert.deepEqual(transportsOf(tts), []);
+  await m.pause();
+  await m.resume();
+  assert.deepEqual(transportsOf(tts), ["pause", "resume"]);
+});
+
+// TO SEE IT FAIL: drop the `_narrationPaused` reset from `_beginSynthNarration`
+// (and from `_endSynthNarration`). The NEXT utterance's very first
+// `startPlayback` would then take the RESUME branch and ask the plugin to
+// continue a line it has already discarded — a silent narration item, which is
+// the failure this card is closing, reappearing one item later.
+test("L-05: a pause flag never survives into the next utterance", async () => {
+  const tts = fakeTts();
+  const { m } = make({ tts });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "first line" },
+    { type: "narration", id: "nar-2", script: "second line" },
+    fseg(),
+  ]), { resolveItem });
+  await m.pause();
+  await m.resume();
+  assert.deepEqual(transportsOf(tts), ["pause", "resume"]);
+
+  // The first line finishes on its own (L-03's `finished` event) and the queue
+  // advances to the second, which is SPOKEN — a brand-new utterance.
+  tts.finish();
+  await tick();
+  await tick();
+  assert.equal(tts.calls.filter((c) => c.text).length, 2, "both lines were spoken");
+  assert.deepEqual(transportsOf(tts), ["pause", "resume"],
+    "starting a NEW utterance is a speak(), never a resume() of the one before it");
+
+  // ...and the new utterance's own pause/resume works from a clean flag.
+  await m.pause();
+  await m.resume();
+  assert.deepEqual(transportsOf(tts), ["pause", "resume", "pause", "resume"]);
+});
+
+// TO SEE IT FAIL: delete the `if (wasSynth) await this._stopNarration()` line
+// from `stop()`. Closing the player then leaves a voice talking into a car with
+// no surface left on screen to stop it — the worst version of F12.
+test("L-05: stopping the Foray stops the speech, in exactly one bridge call", async () => {
+  const { m, tts } = await playingNarration();
+  await m.stop();
+  assert.deepEqual(transportsOf(tts), ["stop"],
+    "a stop is one call — the reducer's own pause effect must not also reach the plugin");
+});
+
+// TO SEE IT FAIL: remove the `_narrationStopping` guard. `stop()` runs the
+// reducer's `pausePlayback` effect on its way through, so without the guard a
+// listener's stop becomes pause-then-stop: two crossings of the Capacitor
+// bridge, and a window in which they hear a pause that is about to be a stop.
+test("L-05: `stop` does not pause first — the guard is what makes it one call", async () => {
+  const { m, tts } = await playingNarration();
+  await m.stop();
+  assert.ok(!transportsOf(tts).includes("pause"), `got ${transportsOf(tts)}`);
+});
+
+// TO SEE IT FAIL: delete the `_tts.stop()` call from `dispose()`. On iOS
+// `AVSpeechSynthesizer` lives in the native plugin and outlives every JS object
+// the page tears down, so a disposed manager leaves a voice running.
+test("L-05: disposing a manager mid-utterance silences it", async () => {
+  const { m, tts } = await playingNarration();
+  m.dispose();
+  await tick();
+  assert.deepEqual(transportsOf(tts), ["stop"]);
+});
+
+// TO SEE IT FAIL: remove the `_narrationPaused` branch from
+// `narrationElapsedSec`, or stop shifting `_narrationStartedAtMs` in
+// `_resumeNarration`. The card asks that "Now Playing keeps its state across a
+// pause/resume of narration"; without this the lock screen claims the Foray
+// advanced by the whole length of the pause and then snaps back.
+test("L-05: the narration clock freezes across a pause and CONTINUES on resume", async () => {
+  const scheduler = manualScheduler();
+  const { m, tts } = await playingNarration({ scheduler });
+  await scheduler.advance(250);
+  const atPause = m.narrationElapsedSec;
+  assert.ok(atPause > 0, `the clock ran before the pause, got ${atPause}`);
+
+  await m.pause();
+  await scheduler.advance(250);
+  await scheduler.advance(250);
+  assert.equal(m.narrationElapsedSec, atPause,
+    "a paused utterance does not advance the Foray clock — the lock screen would lie");
+
+  await m.resume();
+  await scheduler.advance(250);
+  assert.ok(m.narrationElapsedSec > atPause, "the clock continues once speech does");
+  assert.ok(
+    m.narrationElapsedSec < atPause + 0.5,
+    `it CONTINUES rather than catching up — got ${m.narrationElapsedSec} after a 0.5 s pause`
+  );
+  assert.deepEqual(transportsOf(tts), ["pause", "resume"]);
+});
+
+// TO SEE IT FAIL: let `_ttsTransport` call `this._tts[name]()` without the
+// `typeof` guard, or let it rethrow. A Capacitor shell built before L-05 carries
+// a flattened copy of `foray-tts.js` with a `speak` and no `pause`, and a
+// TypeError there would abort a transition the listener already saw happen.
+test("L-05: a bridge with no transport methods is REPORTED, and the pause still happens", async () => {
+  const bare = {
+    calls: [],
+    async speak(text, opts = {}) { this.calls.push({ text, rate: opts.rate }); return { ok: true }; },
+  };
+  const { m, log } = make({ tts: bare });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "an older shell speaks this" },
+    fseg(),
+  ]), { resolveItem });
+  await assert.doesNotReject(() => m.pause());
+  assert.ok(log.some((l) => l.includes("tts.pause.unavailable")), `got ${log.join(" | ")}`);
+  assert.notEqual(m.state.type, "playing", "the reducer still moved — the button is not left lying");
+});
+
+// TO SEE IT FAIL: let `_ttsTransport`'s catch rethrow instead of emitting. The
+// rejection lands in `_perform`'s caller and aborts a transition the surface has
+// already painted.
+test("L-05: a bridge whose pause REJECTS is recorded, never thrown", async () => {
+  const angry = {
+    async speak() { return { ok: true }; },
+    async pause() { throw new Error("the bridge is gone"); },
+  };
+  const { m, log } = make({ tts: angry });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "spoken by a bridge about to vanish" },
+    fseg(),
+  ]), { resolveItem });
+  await assert.doesNotReject(() => m.pause());
+  assert.ok(log.some((l) => l.includes("tts.pause.failed")), `got ${log.join(" | ")}`);
+});
+
+// TO SEE IT FAIL: route a NON-synth item's pause to the bridge (drop the
+// `_loadedIsSynth` condition). Every ordinary segment's pause would then cross
+// the Capacitor bridge and the element would keep playing — F12 with the two
+// halves swapped.
+test("L-05: an ordinary segment's pause still goes to the element, never to the plugin", async () => {
+  const tts = fakeTts();
+  const { m, backend } = make({ tts });
+  await m.playForay(foray([fseg(), fseg({ start_sec: 300, end_sec: 410 })]), { resolveItem });
+  await m.pause();
+  assert.deepEqual(transportsOf(tts), [], "no plugin call for a rendered segment");
+  assert.ok(backend.calls.includes("pause"), `got ${backend.calls}`);
 });

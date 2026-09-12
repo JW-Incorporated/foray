@@ -200,9 +200,48 @@ await listVoices({ lang });
 //      quality: iOS      "premium" | "enhanced" | "default" | "unknown"
 //               Android  "very-high" | "high" | "normal" | "low" | "very-low"
 //               web      "unknown"   (the Web Speech API exposes no quality)
+
+// L-05 (founder feedback F12): the transport half.
+await pause();   // -> { ok, path, accepted, state, native? }
+await resume();  // -> { ok, path, accepted, state, native? }
+await stop();    // -> { ok, path, accepted, state, native? }
+await state();   // -> { ok, path, state: "speaking" | "paused" | "idle", native? }
 ```
 
-`player/tts-bridge.js` exposes both on the object it hands the player.
+`player/tts-bridge.js` exposes all of these on the object it hands the player.
+
+### Android has no pause, and what this plugin does instead
+
+**This is a documented limitation of `android.speech.tts.TextToSpeech`, not of
+this plugin.** That class exposes `speak`, `stop` and nothing between them --
+there is no pause/continue pair anywhere in the platform API, on any API level.
+
+So `pause()` on Android is `stop()` plus remembering the last word boundary the
+engine reported through `UtteranceProgressListener.onRangeStart`, and `resume()`
+re-speaks the **remainder** of the same text from that boundary. A listener
+hears the line continue from the start of the word that was in flight, which is
+within a word of what iOS's `pauseSpeaking(at: .word)` gives.
+
+Two things are said on the wire rather than hidden, because both are real:
+
+- `emulated: true` on every Android `pause`/`resume` answer -- a caller
+  comparing platforms should not have to know which one it is talking to.
+- `fromStart: true` on a `resume` that had no boundary to work from.
+  `onRangeStart` is API 24+ and an engine may never call it, in which case the
+  whole line is spoken again. That is the honest fallback: a narration line is
+  one or two sentences, and hearing it twice is recoverable in a way that
+  silence from a lock-screen resume button is not.
+
+iOS has a real pause (`pauseSpeaking` / `continueSpeaking` /
+`stopSpeaking(at: .immediate)`) and never sets either flag. The Web Speech
+fallback uses `speechSynthesis.pause()/resume()/cancel()`.
+
+**`stop()` deliberately does not raise `finished`.** That event advances the
+queue (`player/queue-manager.js`'s `_onTtsFinished`), so a stop that fired it
+would turn every stop into a skip. On iOS `stopSpeaking` calls
+`speechSynthesizer(_:didCancel:)`, which this plugin does not implement; on
+Android `TextToSpeech.stop()` never calls `onDone`. Both platforms agree by
+construction rather than by a guard.
 
 `tools/mobile/tts-fixture.mjs`:
 
