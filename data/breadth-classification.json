@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-09-12T00:09:41.812Z",
+  "built_at": "2026-09-12T08:09:20.622Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-09-12-8d52116a",
+    "last_batch_id": "fresh-2026-09-12-c7348922",
     "last_batch_tier": 1
   },
   "entries": {
@@ -1813,7 +1813,22 @@
         "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Anime, manga, and gaming discussion podcast.",
+      "display_title": "Ze Shows – Anime Pulse",
+      "blurb": "Reviews and commentary on anime, manga, and video games with community discussions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "98746009": {
       "topics": [
@@ -2305,10 +2320,30 @@
     },
     "121493688": {
       "topics": [
-        "music"
+        "music",
+        "craft/instrument-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/instrument-making",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classical music puzzle game with listener participation.",
+      "display_title": "Piano Puzzler",
+      "blurb": "Weekly segment featuring classical piano pieces performed in different composer styles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "121493804": {
       "topics": [
@@ -2388,7 +2423,22 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NASCAR racing news, interviews, and championship coverage.",
+      "display_title": "PRN - Garage Pass Podcast",
+      "blurb": "Latest from NASCAR rs, team updates, and championship race analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "124686671": {
       "topics": [
@@ -3487,7 +3537,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings and mindfulness practice from Zen monastery.",
+      "display_title": "Deer Park Dharmacast",
+      "blurb": "Dharma talks and teachings from Deer Park Monastery in the Vietnamese Zen tradition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "185803769": {
       "topics": [
@@ -3709,7 +3774,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lectures and speeches from Nation of Islam leadership.",
+      "display_title": "Farrakhan Speaks",
+      "blurb": "Archives of lectures and interviews from Nation of Islam leadership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "193181775": {
       "topics": [
@@ -4086,7 +4166,22 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daytime soap opera and television commentary and discussion.",
+      "display_title": "Daytime Confidential",
+      "blurb": "Debates and analysis of daytime dramas including General Hospital and The Bold and Beautiful.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "206603090": {
       "topics": [
@@ -4891,7 +4986,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop culture comedy and banter with guests.",
+      "display_title": "Jim and Them",
+      "blurb": "Pop culture comedy show with interviews and humorous discussions of entertainment news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "255620843": {
       "topics": [
@@ -4971,7 +5081,22 @@
         "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Druidry traditions, Celtic poetry, music, and spiritual practice.",
+      "display_title": "Druidcast - A Druid Podcast",
+      "blurb": "Poetry, music, interviews, and teachings from the Druid tradition and Celtic spirituality.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "257441540": {
       "topics": [
@@ -5030,10 +5155,30 @@
     },
     "260010384": {
       "topics": [
-        "aviation"
+        "aviation",
+        "history/military-ancient"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Naval aviation history and experiences from military pilots.",
+      "display_title": "Naval Air",
+      "blurb": "Stories and technical discussions from naval aviation personnel and operations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "260335249": {
       "topics": [
@@ -5077,7 +5222,22 @@
         "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian parenting advice and faith-based family guidance.",
+      "display_title": "Focus on the Family Parenting Podcast",
+      "blurb": "Practical Christian parenting tips and faith-based inspiration for families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "261059123": {
       "topics": [
@@ -5342,7 +5502,22 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strength training and fitness coaching advice from industry experts.",
+      "display_title": "The Strength Coach Podcast",
+      "blurb": "s into functional training, conditioning, and strength coaching practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "267257453": {
       "topics": [
@@ -5368,10 +5543,30 @@
     },
     "267824646": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comic book discussion, reviews, and superhero entertainment commentary.",
+      "display_title": "Comic Book Noise",
+      "blurb": "Reviews and commentary on comic books, graphic novels, and superhero films.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "267928081": {
       "topics": [
@@ -5529,7 +5724,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baseball team coverage with player analysis and season discussion.",
+      "display_title": "Talkin' Mets",
+      "blurb": "Deep coverage of MLB teams including draft prospects, trades, and game analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "272018688": {
       "topics": [
@@ -5647,10 +5857,30 @@
     },
     "273916368": {
       "topics": [
-        "religion/judaism"
+        "aviation",
+        "history/military-ancient"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Naval aviation history and experiences from military pilots.",
+      "display_title": "Ta Shma",
+      "blurb": "Stories and technical discussions from naval aviation personnel and operations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "274450056": {
       "topics": [
@@ -5954,10 +6184,25 @@
     },
     "280313970": {
       "topics": [
-        "news/daily"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian parenting advice and faith-based family guidance.",
+      "display_title": "WorldviewTube",
+      "blurb": "Practical Christian parenting tips and faith-based inspiration for families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "280383574": {
       "topics": [
@@ -6231,12 +6476,25 @@
     },
     "287114592": {
       "topics": [
-        "medicine/biology",
-        "science",
-        "nature"
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science Q&A and explanations of natural phenomena.",
+      "display_title": "Ask the Naked Scientists",
+      "blurb": "Answers to listener questions about science, medicine, and natural phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "287700520": {
       "topics": [
@@ -6294,7 +6552,22 @@
         "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive reviews, industry trends, and vehicle testing.",
+      "display_title": "MotorWeek",
+      "blurb": "Vehicle reviews and automotive industry news from professional testers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "289338154": {
       "topics": [
@@ -6325,7 +6598,22 @@
         "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic radio drama and mystery theater performances.",
+      "display_title": "Old Time Radio Theater",
+      "blurb": "Vintage radio dramas and mystery theater productions professionally performed.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "290618642": {
       "topics": [
@@ -6375,11 +6663,25 @@
     },
     "292546170": {
       "topics": [
-        "music",
-        "history"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hip-hop, R&B, and throwback music mixtapes and mixes.",
+      "display_title": "THEMIXLAB",
+      "blurb": "DJ mixes featuring hip-hop, R&B, and throwback tracks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "292651411": {
       "topics": [
@@ -6406,10 +6708,25 @@
     },
     "293185092": {
       "topics": [
-        "culture/performing-arts"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian parenting advice and faith-based family guidance.",
+      "display_title": "The Moonlit Road Podcast - Southern",
+      "blurb": "Practical Christian parenting tips and faith-based inspiration for families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "293376147": {
       "topics": [
@@ -6529,10 +6846,25 @@
     },
     "297917898": {
       "topics": [
-        "sports/fantasy"
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and current events commentary.",
+      "display_title": "Fantasy Football Scout - FPL Tips",
+      "blurb": "News analysis and commentary on current events and geopolitical issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "299436963": {
       "topics": [
@@ -6610,10 +6942,25 @@
     },
     "303672420": {
       "topics": [
-        "business/marketing"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NASCAR racing news, interviews, and championship coverage.",
+      "display_title": "The Best SEO Podcast: Defining the",
+      "blurb": "Latest from NASCAR rs, team updates, and championship race analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "304214854": {
       "topics": [
@@ -6649,11 +6996,25 @@
     },
     "305561100": {
       "topics": [
-        "economics/markets",
-        "business"
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and current events commentary.",
+      "display_title": "DHUnplugged Podcast",
+      "blurb": "News analysis and commentary on current events and geopolitical issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "305590390": {
       "topics": [
@@ -6810,7 +7171,22 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baseball team coverage with player analysis and season discussion.",
+      "display_title": "SoxProspects.com Red Sox Podcast",
+      "blurb": "Deep coverage of MLB teams including draft prospects, trades, and game analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "309927499": {
       "topics": [
@@ -7115,7 +7491,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings and mindfulness practice from Zen monastery.",
+      "display_title": "Insight Meditation Society - Forest",
+      "blurb": "Dharma talks and teachings from Deer Park Monastery in the Vietnamese Zen tradition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "323506039": {
       "topics": [
@@ -7257,10 +7648,25 @@
     },
     "327207852": {
       "topics": [
-        "comedy/interviews"
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop culture comedy and banter with guests.",
+      "display_title": "Fitzdog Radio",
+      "blurb": "Pop culture comedy show with interviews and humorous discussions of entertainment news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "327466681": {
       "topics": [
@@ -7570,11 +7976,25 @@
     },
     "339853848": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strength training and fitness coaching advice from industry experts.",
+      "display_title": "Dishing Up Nutrition",
+      "blurb": "s into functional training, conditioning, and strength coaching practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "339875623": {
       "topics": [
@@ -7608,10 +8028,25 @@
     },
     "340903074": {
       "topics": [
-        "sports/fantasy"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive reviews, industry trends, and vehicle testing.",
+      "display_title": "RJ Bell's Dream Preview",
+      "blurb": "Vehicle reviews and automotive industry news from professional testers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "341410942": {
       "topics": [
@@ -7662,8 +8097,23 @@
       "topics": [
         "culture/performing-arts"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Low confidence classification, check prior.",
+      "display_title": "Shannon Cason's Homemade",
+      "blurb": "General show in culture/performing-arts category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "346735400": {
       "topics": [
@@ -7736,10 +8186,25 @@
     },
     "349527672": {
       "topics": [
-        "food"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive reviews, industry trends, and vehicle testing.",
+      "display_title": "Spilled Milk",
+      "blurb": "Vehicle reviews and automotive industry news from professional testers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "349529445": {
       "topics": [
@@ -8017,8 +8482,23 @@
       "topics": [
         "sports/golf"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Low confidence classification, check prior.",
+      "display_title": "The Hackers Paradise",
+      "blurb": "General show in sports/golf category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "356157099": {
       "topics": [
@@ -8030,10 +8510,25 @@
     },
     "356920632": {
       "topics": [
-        "religion/christianity"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian parenting advice and faith-based family guidance.",
+      "display_title": "White Horse Inn",
+      "blurb": "Practical Christian parenting tips and faith-based inspiration for families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "357537542": {
       "topics": [
@@ -8194,8 +8689,23 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Low confidence classification, check prior.",
+      "display_title": "الشيخ ياسر الدوسري",
+      "blurb": "General show in religion/islam category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "366931951": {
       "topics": [
@@ -8353,10 +8863,25 @@
     },
     "373596600": {
       "topics": [
-        "business/marketing"
+        "news/daily"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and current events commentary.",
+      "display_title": "The Digital Marketing Podcast",
+      "blurb": "News analysis and commentary on current events and geopolitical issues.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "373784645": {
       "topics": [
@@ -8630,10 +9155,30 @@
     },
     "387565920": {
       "topics": [
-        "music"
+        "music",
+        "craft/instrument-making"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/instrument-making",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classical music puzzle game with listener participation.",
+      "display_title": "Piano Puzzler",
+      "blurb": "Weekly segment featuring classical piano pieces performed in different composer styles.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "387601688": {
       "topics": [
@@ -8745,8 +9290,23 @@
       "topics": [
         "tv-film/reviews"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Low confidence classification, check prior.",
+      "display_title": "The Twilight Zone Podcast",
+      "blurb": "General show in tv-film/reviews category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "393557569": {
       "topics": [
@@ -8757,11 +9317,25 @@
     },
     "394242270": {
       "topics": [
-        "economics/markets",
-        "business"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian parenting advice and faith-based family guidance.",
+      "display_title": "Notes on the Week Ahead",
+      "blurb": "Practical Christian parenting tips and faith-based inspiration for families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "394432287": {
       "topics": [
@@ -9000,8 +9574,23 @@
       "topics": [
         "religion/judaism"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Low confidence classification, check prior.",
+      "display_title": "Mishna Yomit",
+      "blurb": "General show in religion/judaism category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "410937196": {
       "topics": [
@@ -9013,10 +9602,25 @@
     },
     "411665520": {
       "topics": [
-        "medicine"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strength training and fitness coaching advice from industry experts.",
+      "display_title": "Emergency Medicine Cases",
+      "blurb": "s into functional training, conditioning, and strength coaching practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "412308695": {
       "topics": [
@@ -9058,11 +9662,25 @@
     },
     "413518068": {
       "topics": [
-        "music",
-        "history"
+        "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Low confidence classification, check prior.",
+      "display_title": "Doug Jackson",
+      "blurb": "General show in music category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "413879919": {
       "topics": [
@@ -9315,10 +9933,25 @@
     },
     "425369034": {
       "topics": [
-        "religion/judaism"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian parenting advice and faith-based family guidance.",
+      "display_title": "New Books in Jewish Studies",
+      "blurb": "Practical Christian parenting tips and faith-based inspiration for families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "425400236": {
       "topics": [
@@ -9442,11 +10075,25 @@
     },
     "427377900": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strength training and fitness coaching advice from industry experts.",
+      "display_title": "Mental Illness Happy Hour",
+      "blurb": "s into functional training, conditioning, and strength coaching practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "427441597": {
       "topics": [
@@ -9460,15 +10107,45 @@
       "topics": [
         "culture/performing-arts"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Low confidence classification, check prior.",
+      "display_title": "The Six Shooter | OTRWesterns.com",
+      "blurb": "General show in culture/performing-arts category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "427476432": {
       "topics": [
         "culture/performing-arts"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Low confidence classification, check prior.",
+      "display_title": "The Lone Ranger | Old Time Radio Westerns",
+      "blurb": "General show in culture/performing-arts category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "427774337": {
       "topics": [
@@ -9592,10 +10269,25 @@
     },
     "431183292": {
       "topics": [
-        "culture/performing-arts"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian parenting advice and faith-based family guidance.",
+      "display_title": "Tales of the Texas Rangers | OTRWesterns.com",
+      "blurb": "Practical Christian parenting tips and faith-based inspiration for families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "431183617": {
       "topics": [
@@ -9917,7 +10609,22 @@
         "religion/buddhism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings and mindfulness practice from Zen monastery.",
+      "display_title": "Jonathan Foust",
+      "blurb": "Dharma talks and teachings from Deer Park Monastery in the Vietnamese Zen tradition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "456574751": {
       "topics": [
@@ -10125,10 +10832,25 @@
     },
     "464722938": {
       "topics": [
-        "sports/football"
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive reviews, industry trends, and vehicle testing.",
+      "display_title": "Sports Gambling Podcast",
+      "blurb": "Vehicle reviews and automotive industry news from professional testers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "465081916": {
       "topics": [
@@ -10143,7 +10865,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hip-hop, R&B, and throwback music mixtapes and mixes.",
+      "display_title": "CPR's Clubhouse Freestyle Universe",
+      "blurb": "DJ mixes featuring hip-hop, R&B, and throwback tracks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "466659176": {
       "topics": [
@@ -10157,8 +10894,23 @@
       "topics": [
         "gaming"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Low confidence classification, check prior.",
+      "display_title": "The Cane and Rinse videogame podcast",
+      "blurb": "General show in gaming category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "467974574": {
       "topics": [
@@ -10274,10 +11026,25 @@
     },
     "473550858": {
       "topics": [
-        "music"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian parenting advice and faith-based family guidance.",
+      "display_title": "Washed Up Emo",
+      "blurb": "Practical Christian parenting tips and faith-based inspiration for families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "474057351": {
       "topics": [
@@ -10326,10 +11093,30 @@
     },
     "474763182": {
       "topics": [
-        "news/politics"
+        "aviation",
+        "history/military-ancient"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Naval aviation history and experiences from military pilots.",
+      "display_title": "The Globalist",
+      "blurb": "Stories and technical discussions from naval aviation personnel and operations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "474763569": {
       "topics": [
@@ -10342,8 +11129,23 @@
       "topics": [
         "travel"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Low confidence classification, check prior.",
+      "display_title": "The Urbanist",
+      "blurb": "General show in travel category.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "475878118": {
       "topics": [
@@ -10362,12 +11164,30 @@
     },
     "477154374": {
       "topics": [
-        "medicine/biology",
         "science",
-        "nature"
+        "medicine/biology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science Q&A and explanations of natural phenomena.",
+      "display_title": "The Naked Scientists Podcast",
+      "blurb": "Answers to listener questions about science, medicine, and natural phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "477159597": {
       "topics": [
@@ -10548,7 +11368,22 @@
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pop culture comedy and banter with guests.",
+      "display_title": "Sneaky Dragon",
+      "blurb": "Pop culture comedy show with interviews and humorous discussions of entertainment news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-09-12-c7348922",
+      "classified_at": "2026-09-12T08:09:20.622Z"
     },
     "489940415": {
       "topics": [
