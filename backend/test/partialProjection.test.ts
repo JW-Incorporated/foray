@@ -184,8 +184,11 @@ describe("projectedRuleOf — which check-forays lines are shares of the whole",
     expect(projectedRuleOf(`${id}D3 FAIL: mean segment duration 76.1 s is under the 90 s floor`)).toBeNull();
     expect(projectedRuleOf(`${id}D5 FAIL: interquartile range 15.6 s is under the 45 s floor (R-7)`)).toBeNull();
 
-    /* D5's real current message (`check-forays.mjs`'s `E(\`D5 FAIL: ${line}\`)`),
-       pinned live against the checker in `partialProjectionRules.test.ts`. */
+    /* D5's pair message. F-102 made it a WARNING — the checker emits no
+       `D5 FAIL` string at all any more, which `partialProjectionRules.test.ts`
+       asserts live — so this line is now hypothetical, and kept because the
+       answer must stay `null` if the clause is ever gated again: the offending
+       pair is already in the partial's own prefix, so it is monotone. */
     expect(projectedRuleOf(`${id}D5 FAIL: a / b are 100.0 / 105.0 s — two consecutive clips within +/-20 % of the same length (max/min 1.050)`)).toBeNull();
     expect(projectedRuleOf(`${id}D2 FAIL: 3 consecutive segments under 60 s starting at x`)).toBeNull();
     expect(projectedRuleOf(`${id}D2 FAIL: two consecutive segments under 60 s at x are followed by 90.0 s, under the 150 s recovery floor`)).toBeNull();

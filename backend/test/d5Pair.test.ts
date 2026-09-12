@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { execFileSync } from "child_process";
 import { resolve as resolvePath } from "path";
 import { pathToFileURL } from "url";
-import { D5_TOLERANCE, d5EscapeBelow, d5PairIsUniform, d5Pairs, placementEscapesD5Pair } from "../src/generation/d5Pair";
+import { D5_TOLERANCE, d5PairIsUniform, d5Pairs, placementEscapesD5Pair } from "../src/generation/d5Pair";
 import { D5_TOLERANCE as D5_TOLERANCE_VIA_SOURCE_BEATS } from "../src/generation/sourceBeats";
 
 /**
@@ -111,18 +111,36 @@ describe("d5Pair — the checker's arithmetic, mirrored (Q-04)", () => {
     expect(placementEscapesD5Pair([400, 69.7], 65.6)).toBe(false);
   });
 
-  it("names the longest length under the previous clip that escapes the band", () => {
-    /* previous / 1.2, a hair under: at exactly 1.2 the ratio is NOT over the
-       tolerance and the pair is still uniform — the edge case the `boundary`
-       fixture pins on the checker. */
-    const below = d5EscapeBelow([120])!;
-    expect(below).toBeLessThan(100);
-    expect(below).toBeGreaterThan(99.9);
-    expect(placementEscapesD5Pair([120], below)).toBe(true);
+  it("F-102: exports nothing that can shorten a clip — the module answers, it does not prescribe", async () => {
+    /* THE DEFECT THIS PINS. Until F-102 this module exported `d5EscapeBelow`,
+       whose entire job was to tell `sourceBeats.ts` how far to CUT a clip back
+       so an adjacent pair would escape the band — `previous / 1.2`, a hair
+       under. It was the mechanism by which a listening-variety rule made the
+       Foray play less tape than its relevance supports, which is what the
+       founder's Q-01 instruction forbids, and it is deleted.
+
+       MUTATION THAT KILLS THIS: export any function from `d5Pair.ts` that
+       returns a LENGTH — restore `d5EscapeBelow`, or add a `d5EscapeAbove` —
+       and this goes red naming it. What the module may export is predicates
+       and counts: a question a caller asks about lengths it already has, never
+       a length a caller should cut to. (`D5_TOLERANCE` is a ratio, not a
+       length, and is listed by name rather than by type.) */
+    const mod = (await import("../src/generation/d5Pair")) as Record<string, unknown>;
+    expect(Object.keys(mod).sort()).toEqual(["D5_TOLERANCE", "d5PairIsUniform", "d5Pairs", "placementEscapesD5Pair"]);
+    const prescribesALength = Object.entries(mod)
+      .filter(([name]) => name !== "D5_TOLERANCE")
+      .filter(([, value]) => typeof value === "function")
+      .filter(([, fn]) => {
+        const out = (fn as (...args: unknown[]) => unknown)([120], 120);
+        return typeof out === "number";
+      })
+      .map(([name]) => name);
+    expect(prescribesALength).toEqual([]);
+
+    /* And the one predicate that survives still answers the question — it is
+       the MARK sourcing writes on the row, so it must keep working. */
     expect(placementEscapesD5Pair([120], 100)).toBe(false);
-    /* Nothing placed, or nothing positive, is no escape to name. */
-    expect(d5EscapeBelow([])).toBeNull();
-    expect(d5EscapeBelow([0])).toBeNull();
+    expect(placementEscapesD5Pair([120], 99.9)).toBe(true);
   });
 
   it("is the one D5_TOLERANCE sourceBeats re-exports, so the constants cannot drift", () => {

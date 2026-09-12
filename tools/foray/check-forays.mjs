@@ -358,18 +358,26 @@ export const D4_ADJACENT_QUOTE_MAX = 2;
  *      the triple was a looser statement of the same thing, and an
  *      interquartile floor over 60-1,800 s clips is met by construction. The
  *      IQR is still reported (`d5_iqr_sec`), no longer gated.
- *      GATED ONLY ON TAPE CUT UNDER Q-01 — a generated Foray at least one of
- *      whose played rows carries `boundary`. The pair clause is STRICTER than
- *      the triple it replaces (a uniform triple contains two uniform pairs; a
- *      uniform pair need not be in any triple), and every Foray committed
- *      before Q-04 — the four hand-cut ones and the four generated under the
- *      ladder — has one to four adjacent pairs inside the band. Their tape
- *      cannot be re-cut (a curator's decision; a published Foray's runtime),
- *      so on them the pairs are REPORTED as warnings and the count is in the
- *      report; nothing committed goes red for a rule its tape was never cut
- *      under. Sourcing (`backend/src/generation/sourceBeats.ts`, `d5Pair.ts`)
- *      asks the same arithmetic at placement, so a Q-01 Foray arrives here
- *      already clear.
+ *      AND NEITHER IS THE PAIR CLAUSE, SINCE F-102 (2026-09-12). It was gated
+ *      on tape cut under Q-01 for one day. Q-01 and Q-04 are two cards of the
+ *      same series pulling the same quantity in opposite directions: Q-01 says
+ *      a clip runs as long as the tape stays relevant ("if there's a half hour
+ *      of relevant content then let it ride"), Q-04 says two clips in a row
+ *      must not be the same length — and a GATE can only reconcile them by
+ *      shortening a clip or refusing its tape. Sourcing did both, and the
+ *      measurement is in F-102: four seeded beats refused at `d5-pair` on the
+ *      real archive, nine clips placed where the suite's floor asks ten. A
+ *      variety rule that makes the Foray play LESS tape is the wrong rule now
+ *      that clips are cut at thought boundaries, where two near-equal lengths
+ *      are a coincidence of where two thoughts ended rather than the monotonous
+ *      ladder the old rule was written against.
+ *      SO EVERY UNIFORM PAIR IS A WARNING AND A COUNT, on every Foray, whatever
+ *      its tape was cut under. `d5_uniform_pairs` and `d5_iqr_sec` are how a
+ *      Foray says how uniform its rhythm is; nothing fails for the answer. (The
+ *      eight Forays committed before Q-04 each hold one to four such pairs —
+ *      3/1/2/4 hand-cut, 1/3/1/3 generated — which is what made the regime
+ *      split necessary for a day and is now simply the baseline the count
+ *      reports.)
  *   M4 (no one episode over 25 % of segments or of tape runtime) — the COUNT
  *      clause is kept; the RUNTIME clause is restated so a single let-it-ride
  *      clip does not trip it by construction (a 1,800 s clip is over 25 % of
@@ -879,8 +887,10 @@ export function checkForays(files) {
       }
 
       /* Q-01's two optional row fields. Both are written by the tier-2 mint and
-       * by nothing else; a hand-cut row never carries them, and a row that does
-       * is what puts its Foray under the Q-04 length regime (D5 below). */
+       * by nothing else; a hand-cut row never carries them. They are VALIDATED
+       * here and nothing turns on their presence: D5's pair clause used to read
+       * them to decide which length regime a Foray was judged under, and F-102
+       * removed the regime along with the gate. */
       if (seg.boundary !== undefined && !SEGMENT_BOUNDARIES.includes(seg.boundary)) {
         E(`${at}: segment "${seg.id}" has boundary ${JSON.stringify(seg.boundary)}; expected one of ${SEGMENT_BOUNDARIES.join(", ")}`);
       }
@@ -1093,19 +1103,18 @@ export function checkForays(files) {
 
     /* ---- D5: anti-uniformity — no two consecutive clips within 20 % of the
      * same length (Q-04; the reasoning is the length-rules note above the
-     * constants). Gated on tape cut under Q-01 — a generated Foray at least one
-     * of whose played rows carries `boundary` — and reported on everything else,
-     * because tape cut under the old ladder or by hand cannot be re-cut and the
-     * pair clause is stricter than the triple it replaces. */
-    const cutUnderQ01 = isGeneratedForay(foray) && played.some((p) => p.seg.boundary !== undefined);
+     * constants). REPORTED, NEVER GATED (F-102): under Q-01's lengths the only
+     * way a placement can satisfy this clause is to play less tape, so the
+     * count is the answer and there is no verdict. `W`, not `E`, on every
+     * Foray — this file emits no `D5 FAIL` string at all. */
     const d5 = d5UniformPairs(durations);
     for (const hit of d5) {
       const names = played.slice(hit.index, hit.index + 2).map((p) => p.label ?? p.segment_id);
-      const line =
-        `${names.join(" / ")} are ${hit.durations.map((d) => d.toFixed(1)).join(" / ")} s — ` +
-        `two consecutive clips within +/-${D5_TOLERANCE * 100} % of the same length (max/min ${hit.ratio.toFixed(3)})`;
-      if (cutUnderQ01) E(`D5 FAIL: ${line}`);
-      else W(`D5 (reported, not gated — tape cut before Q-01): ${line}`);
+      W(
+        "D5 (reported, not gated — a variety rule must not make the Foray play less, F-102): " +
+          `${names.join(" / ")} are ${hit.durations.map((d) => d.toFixed(1)).join(" / ")} s — ` +
+          `two consecutive clips within +/-${D5_TOLERANCE * 100} % of the same length (max/min ${hit.ratio.toFixed(3)})`
+      );
     }
     const spread = iqr(durations);
 
@@ -1226,10 +1235,11 @@ export function checkForays(files) {
       d1_budget: budget,
       d1_max_starts_in_window: worst.count,
       d5_iqr_sec: +spread.toFixed(2),
-      /* Q-04: adjacent pairs inside D5's band, and whether they were gated
-         (tape cut under Q-01) or only reported. */
+      /* Q-04: adjacent pairs inside D5's band. Always reported, never gated
+         (F-102) — the companion `d5_gated` flag went with the gate, because a
+         field that is permanently `false` leaves a future reader hunting for
+         what makes it true. */
       d5_uniform_pairs: d5.length,
-      d5_gated: cutUnderQ01,
     });
   }
 
@@ -1277,7 +1287,7 @@ if (invokedDirectly) {
           (f.narration_unvoiced ? `\n  ${f.narration_unvoiced} narration item(s) authored but not yet voiced — excluded from the clock` : "") +
           "\n" +
           `  D1 ${f.d1_max_starts_in_window}/${f.d1_budget} starts per ${D1_WINDOW_SEC} s   ` +
-          `D5 ${f.d5_uniform_pairs} uniform pair(s)${f.d5_gated ? "" : " (reported, not gated)"}, IQR ${f.d5_iqr_sec} s`
+          `D5 ${f.d5_uniform_pairs} uniform pair(s) (reported, not gated), IQR ${f.d5_iqr_sec} s`
       );
     }
     console.log(`${report.sources} source episodes registered`);

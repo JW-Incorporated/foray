@@ -78,8 +78,9 @@ export const D2_RECOVERY_SEC = 150;
  * a minute to half an hour, at thought boundaries — so there is no target to
  * ladder, the mean floor is served per clip by the 60 s floor, and a spread
  * over clips that vary by an order of magnitude is met by construction. The
- * pair clause is what remains of D5's listening purpose, and it is asked where
- * the length is decided (`chooseCutForPlacement`).
+ * pair clause is what remains of D5's listening purpose, and since F-102 it is
+ * MEASURED rather than enforced — see `placementAllows`, which no longer asks
+ * it, and `d5Pair.ts`'s header for why.
  */
 export { D5_TOLERANCE } from "./d5Pair";
 
@@ -210,7 +211,7 @@ import {
   type TranscriptTextIndex
 } from "./transcriptTextIndex";
 import { tokenizeForSourcing } from "./catalogueLookup";
-import { d5EscapeBelow, placementEscapesD5Pair } from "./d5Pair";
+import { placementEscapesD5Pair } from "./d5Pair";
 import { extendToThought, thoughtTerms, type ThoughtExtent } from "./tapeExtent";
 
 /**
@@ -463,9 +464,10 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
                that tape through — the field a run log counts to say how often
                the rule decided. */
             seedFloor: resolution.seedFloor,
-            /* Q-04: and whether D5's pair clause is what chose this segment's
-               LENGTH — the full extent would have been within 20 % of the
-               previous clip, and a shorter extent of the same window escaped. */
+            /* Q-04 / F-102: and whether this clip landed within 20 % of the
+               previous clip's length. Counted so a run log can say how
+               metronomic the Foray came out; it refused and shortened nothing
+               to get there. */
             lengthGate: resolution.lengthGate,
             /* Q-01: what kind of boundary the clip landed on and how far past
                the claim window relevance carried it — the two numbers the
@@ -672,9 +674,10 @@ type BeatResolution =
    * (WS-L). `seedFloor` — the seed window's share-only floor is what admitted
    * this window (F-72); absent whenever the searching floor would have taken it
    * anyway, so counting it counts decisions rather than applications.
-   * `lengthGate` — D5's pair clause chose this cut's LENGTH (Q-04): the full
-   * thought extent would have been within 20 % of the previous clip; absent
-   * whenever the full extent escaped by itself, for the same counting reason.
+   * `lengthGate` — this clip is within 20 % of the previous clip's length,
+   * D5's pair clause (Q-04). A MARK since F-102, not a decision: nothing was
+   * shortened or refused to produce it. Absent whenever the clip escapes the
+   * band, for the same counting reason.
    * `boundary` / `extendedBySec` — where the clip's edges landed and how far
    * relevance carried it past the claim window (Q-01); absent for a pool cut.
    * `poolCut` — tier 2's window began where a committed pool segment begins and
@@ -860,37 +863,54 @@ function m3OrderAllows(itemId: string, startSec: number, state: SourcingState): 
    in the one direction sourcing cannot see (D2) — never looser. Where sourcing
    is stricter the comment says so and says why. */
 
-/** Which D-tier rule a candidate duration would break, or `null`. */
-type DurationGate = "d2-short-run" | "d5-pair" | "m4-runtime";
+/** Which D-tier rule a candidate duration would break, or `null`.
+ *
+ * `d5-pair` LEFT THIS UNION IN F-102 and stays in `Tier1Gate`/`Tier2Gate` as a
+ * legacy spelling a checkpoint written before it can still carry, exactly as
+ * `d3-mean` does. Nothing emits it any more: D5's pair clause is measured, not
+ * enforced. */
+type DurationGate = "d2-short-run" | "m4-runtime";
 
 /**
- * ALL FOUR ARE HARD. Each refuses tape whose LENGTH does damage no later
- * placement can undo: a second consecutive short segment starts a run D2 will
- * not forgive, a short segment below the running mean pulls D3's average down
- * for good, a third segment inside +/-20 % of the two before it is a uniform
- * triple no later cut can un-make, and an episode past its quarter of the
- * seconds is past it. Declining any of them costs the candidate — and, when no
- * other candidate clears them, the beat its tape — and that is the right trade:
- * the checker's verdict on any of them is fatal to the whole run.
+ * BOTH ARE HARD. Each refuses tape whose LENGTH does damage no later placement
+ * can undo: a second consecutive short segment starts a run D2 will not
+ * forgive, and an episode past its quarter of the seconds is past it. Declining
+ * either costs the candidate — and, when no other candidate clears them, the
+ * beat its tape — and that is the right trade: the checker's verdict on either
+ * is fatal to the whole run.
  *
- * D5's TRIPLE CLAUSE WAS A PREFERENCE UNTIL F-80, AND HERE IS WHY IT NO LONGER
- * IS. #571 argued that refusing every candidate that resembles its two
- * predecessors could starve a Foray of tape, so it remembered the one candidate
- * the clause alone refused and took it when nothing better turned up. Run 5
- * (2026-09-11) is what that costs: a 25-segment Foray, narrated end to end, was
- * refused at finalize on `practical-ai--tiny-recursive-networks#603 /
- * …model-context-protocol-deep-dive#2297 / …federated-learning-in-production-part-1#1650`
- * at 152.0 / 142.2 / 169.4 s (max/min 1.191) — one relaxed placement, and every
- * page of narration written after it was for a Foray nothing could publish.
- * #620 keeps the clause strict on the partial candidate as well, so under G-30
- * the same placement now ends the run after act 1. The starvation argument was
- * about a POOL of fixed lengths; tier 2 cuts its own segment from a window and
- * can choose a length, which is what `chooseCutForPlacement` now does — the
- * clause costs a beat its tape only when no candidate's window can be cut
- * outside the band at all. A pool segment that would make the triple is passed
- * over for the next one, and then for tier 2, exactly as `m3-order` is.
+ * D5's PAIR CLAUSE IS NOT ONE OF THEM ANY MORE (F-102). It was, from F-80 (as
+ * the triple clause) to Q-04, and the reasoning was sound for the rule it was
+ * written against: #571 had relaxed the triple clause to avoid starving a Foray
+ * of tape, run 5 (2026-09-11) placed one relaxed triple and every page of
+ * narration written after it was for a Foray `check-forays.mjs` refused, so
+ * F-80 made the clause strict and let the candidate fall through. What made
+ * that affordable was that tier 2 could CHOOSE a length — and Q-01 took that
+ * away in the same card series, three cards later, by making a clip's length a
+ * fact about where the speaker's thought ends. After Q-01 the clause's only two
+ * moves are to cut relevant tape off the clip or to refuse the beat, and the
+ * founder's instruction that governs both ("if there's a half hour of relevant
+ * content then let it ride") forbids each. Measured on the real archive
+ * 2026-09-12: four seeded beats refused at `d5-pair`, nine clips placed against
+ * a floor of ten.
  *
- * Nothing in this file relaxes any of the four.
+ * SO IT IS MEASURED INSTEAD, AND NOT PURSUED BY ORDERING EITHER. Ordering — take
+ * the next candidate rather than this one — is the only lever that would cost
+ * no tape, and every order sourcing is free to change is ranked by how well the
+ * tape carries the claim: beat order is the act's argument and belongs to the
+ * spine, and candidate order inside a beat is relevance rank. G-24's beat 2/0/0
+ * is what spending relevance rank buys — a *Causality* segment on the 1981
+ * Hyatt Regency walkway collapse played under an agent-engineering claim
+ * because it cleared tier 1's bar on four generic words. Trading that for
+ * rhythm is buying listening variety with veracity, which is the one trade
+ * Q-04's own card says this rule must not make. The clause therefore decides
+ * nothing here: `chooseCutForPlacement` marks the clip that made a pair,
+ * `check-forays.mjs` counts the pairs and the interquartile spread per Foray,
+ * and a Foray that comes out metronomic says so in the report rather than
+ * playing less tape. If the measurement ever says the rhythm matters, the lever
+ * that costs nothing is upstream: the spine choosing which beat follows which.
+ *
+ * Nothing in this file relaxes either of the two that are left.
  */
 function durationVetoFor(itemId: string, durationSec: number, state: SourcingState): DurationGate | null {
   return placementAllows(itemId, durationSec, state);
@@ -919,9 +939,20 @@ function d2RunAllows(durationSec: number, state: SourcingState): boolean {
 
 /* D5's pair clause is `placementEscapesD5Pair` in `d5Pair.ts` (Q-04): the
    checker's own arithmetic, asked against the most recently placed duration
-   because that is the only pair this placement can create. When it refuses a
-   tier-2 cut the chooser asks the same window for a shorter extent first —
-   `chooseCutForPlacement`. */
+   because that is the only pair this placement can create. Since F-102 the
+   answer is RECORDED and never acted on — `placedMakesUniformPair` below is the
+   only caller, and it writes the relevance row's `lengthGate`. */
+
+/** Whether this placement would put the clip inside D5's band with the one
+ * before it — the mark `chooseCutForPlacement` puts on the relevance row, and
+ * the whole of what sourcing does about the clause since F-102. `replacing` is
+ * a merged clip's index, for which the pair is with the placement BEFORE it
+ * (nothing sits after a mergeable clip), exactly as `placementAllows` reads the
+ * ledger. */
+function placementMakesUniformPair(durationSec: number, state: SourcingState, replacing?: number): boolean {
+  const prior = replacing === undefined ? state.placedDurations : state.placedDurations.slice(0, replacing);
+  return !placementEscapesD5Pair(prior, durationSec);
+}
 
 /**
  * M4's RUNTIME clause, restated for clips that may be half an hour long (Q-04).
@@ -1007,12 +1038,14 @@ function episodeLedgerExcluding(
  *       SHORT segments; a clip that was legal at its old length cannot be made
  *       illegal by getting longer, and asking `d2RunAllows` against the clip
  *       BEFORE it would judge it against its own predecessor twice.
- *   D5  is asked against the placements before the replaced clip, because
- *       nothing sits after it (a clip with a placement after it is closed to
- *       merging — `placeTape` clears `lastMintedClip`), so the only pair this
- *       length can create is with the clip before.
+ *   M4  is asked in full either way, through `episodeLedgerExcluding`.
  *
- * M4 is asked in full either way, through `episodeLedgerExcluding`.
+ * D5's pair clause used to be the third thing `replacing` changed — it read the
+ * placements before the replaced clip, because nothing sits after it (a clip
+ * with a placement after it is closed to merging; `placeTape` clears
+ * `lastMintedClip`). It is no longer asked here at all (F-102);
+ * `placementMakesUniformPair` keeps the same `replacing` reading for the mark
+ * it writes on the row.
  *
  * WHY THIS EXISTS. F-96 wrote the merge's copy of M4's runtime clause as a
  * second, hand-mirrored implementation of the same formula over the same
@@ -1028,8 +1061,9 @@ export function placementAllows(
 ): DurationGate | null {
   const { replacing } = options;
   if (replacing === undefined && !d2RunAllows(durationSec, state)) return "d2-short-run";
-  const priorDurations = replacing === undefined ? state.placedDurations : state.placedDurations.slice(0, replacing);
-  if (!placementEscapesD5Pair(priorDurations, durationSec)) return "d5-pair";
+  /* D5's pair clause was asked HERE until F-102 and is not asked at all now —
+     `placementMakesUniformPair` marks the row instead. See the note above
+     `durationVetoFor`. */
   if (!m4RuntimeAllows(itemId, durationSec, state, replacing)) return "m4-runtime";
   return null;
 }
@@ -1859,10 +1893,10 @@ function weakerBoundary(a: TapeBoundary, b: TapeBoundary): TapeBoundary {
  * literally `placementAllows` with `replacing` set (F-101), rather than a
  * second hand-mirrored copy of M4's arithmetic. Everything the merge needs to
  * say differently is said by that one argument: D2 cannot refuse a clip that
- * only grew; D5's pair is against the placement BEFORE the clip (nothing has
- * been placed after it, or it could not be merged into); M4's clauses read the
- * episode's seconds with this clip at its new length and its old length taken
- * out of every figure it appears in.
+ * only grew; M4's clauses read the episode's seconds with this clip at its new
+ * length and its old length taken out of every figure it appears in. (D5's pair
+ * clause was the third; since F-102 no rule here can refuse a merge for making
+ * a pair — a merge only ever plays MORE tape.)
  */
 function mergedClipEscapesLengthRules(last: LastMintedClip, durationSec: number, state: SourcingState): boolean {
   return placementAllows(last.itemId, durationSec, state, { replacing: last.placedIndex }) === null;
@@ -1881,18 +1915,20 @@ function mergedClipEscapesLengthRules(last: LastMintedClip, durationSec: number,
  * clip's length is what the tape measures, and the D-tier rules were restated
  * for that (Q-04 — `d5Pair.ts`, `m4RuntimeAllows`).
  *
- * THE ONE RULE THAT CAN ASK FOR A DIFFERENT LENGTH IS D5's PAIR CLAUSE. When
- * the full extent would be within 20 % of the previous clip's length, the same
- * window is extended again with a ceiling just under the band
- * (`d5EscapeBelow`), so relevance stops one boundary earlier and the pair
- * escapes; the tape-relevance row records `lengthGate: "d5-pair"` so a run log
- * can count the placements the clause decided. If even that cut is refused —
- * by the pair clause again (the ceiling fell under the 60 s floor, or the
- * boundary before it was still inside the band) or by any other gate — the
- * candidate is refused with the gate that got furthest, a fall-through to the
- * next episode like every other gate. A LONGER escape is never asked for: the
- * extent is already as long as relevance allows, and a clip bought with tape
- * relevance refused would be F-62's padding back under another name.
+ * NO RULE ASKS FOR A DIFFERENT LENGTH ANY MORE (F-102). D5's pair clause did,
+ * until 2026-09-12: a full extent within 20 % of the previous clip sent the
+ * same window back to the extension with a ceiling just under the band, and a
+ * window no shorter thought of which escaped was refused outright. Both moves
+ * make the Foray play less tape than its relevance supports, which is what
+ * Q-01's "let it ride" forbids, and the second cost four seeded beats their
+ * tape on the archive the day it was measured. The chooser now asks for exactly
+ * one cut — the thought the tape measures — judges it by the rules that are
+ * still rules, and MARKS it (`lengthGate: "d5-pair"`) when it lands inside the
+ * band with the clip before. The mark is the whole of the clause's effect here.
+ *
+ * A LONGER escape was never asked for and still is not: the extent is already
+ * as long as relevance allows, and a clip bought with tape relevance refused
+ * would be F-62's padding back under another name.
  */
 
 /** One length a window can be cut to, and the extent it was cut from. */
@@ -1904,9 +1940,10 @@ interface PlacementCut {
 
 type PlacementGate = "past-duration" | "m3-order" | DurationGate;
 
-/** The chooser's answer: the cut to place (and whether D5's pair clause is
- * what chose its length), or the cut that got furthest and the gate that
- * refused it. `null` when the window yields no anchored span at all. */
+/** The chooser's answer: the cut to place (and whether it lands inside D5's
+ * band with the clip before it — a mark, not a decision, F-102), or the cut
+ * that got furthest and the gate that refused it. `null` when the window yields
+ * no anchored span at all. */
 type PlacementChoice = { accepted: PlacementCut; lengthGate?: "d5-pair" } | { refused: PlacementCut; gate: PlacementGate };
 
 /**
@@ -1975,24 +2012,17 @@ function chooseCutForPlacement(
   state: SourcingState
 ): PlacementChoice | null {
   const terms = extentTermsFor(claim, act, idf);
+  /* ONE CUT, AND IT IS THE THOUGHT (F-102). There is no second, shorter extent
+     to ask for: the only rule that ever asked for one was D5's pair clause, and
+     a variety rule that can only be satisfied by playing less tape is the wrong
+     rule now that clips are cut at thought boundaries. */
   const full = cutExtent(claim, cues, window, terms, undefined);
   if (!full) return null;
-  const fullGate = placementGateFor(full, itemId, feedDurationSec, state);
-  if (fullGate === null) return { accepted: full };
-  if (fullGate !== "d5-pair") return { refused: full, gate: fullGate };
-
-  /* The full extent is inside the band with the previous clip. Ask the same
-     window for the longest extent that escapes UNDER it — still at a thought
-     boundary, still only tape relevance kept — and judge that cut by every
-     rule in turn. */
-  const ceiling = d5EscapeBelow(state.placedDurations);
-  const shorter = ceiling !== null && ceiling >= MIN_TAPE_SEGMENT_SEC ? cutExtent(claim, cues, window, terms, ceiling) : null;
-  if (!shorter || shorter.durationSec >= full.durationSec) return { refused: full, gate: fullGate };
-  const gate = placementGateFor(shorter, itemId, feedDurationSec, state);
-  if (gate === null) return { accepted: shorter, lengthGate: "d5-pair" };
-  /* The trace reports the cut that got FURTHEST, by the same progress order the
-     walk ranks candidates on. */
-  return TIER2_GATE_PROGRESS[gate] > TIER2_GATE_PROGRESS[fullGate] ? { refused: shorter, gate } : { refused: full, gate: fullGate };
+  const gate = placementGateFor(full, itemId, feedDurationSec, state);
+  if (gate !== null) return { refused: full, gate };
+  /* Placed at its own length, and marked if it happens to land inside the band
+     with the clip before — the clause's entire say in the matter. */
+  return placementMakesUniformPair(full.durationSec, state) ? { accepted: full, lengthGate: "d5-pair" } : { accepted: full };
 }
 
 /** The window extended to its thought (to `maxSec` when given) and cut to
@@ -2072,7 +2102,8 @@ const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
      (so its duration is real) and before the audio-source row is written. A
      beat that reached one of these got further than one refused on M3, because
      M3 is answered first, on the same span. `d3-mean` is no longer asked (Q-04)
-     and keeps a slot only so a checkpoint written under F-73 still ranks. */
+     and `d5-pair` no longer refuses anything (F-102); both keep a slot only so
+     a checkpoint written under F-73 or Q-04 still ranks. */
   "d2-short-run": 9,
   "d3-mean": 10,
   "d5-pair": 10,
@@ -2288,6 +2319,10 @@ function narrationReasonFor(furthest: Tier2Progress | null): string {
        LENGTH would be reading a falsehood. */
     case "d2-short-run":
       return "Tape for this beat was found, but it is short and the segment before it is short too, and the running order does not allow a run of short segments here.";
+    /* LEGACY (F-102): nothing emits `d5-pair` any more — the clause is measured,
+       not enforced — but a checkpoint written under Q-04 can still carry it into
+       this switch on resume, and a beat narrated for that reason then deserves
+       the reason it was narrated for. */
     case "d5-pair":
       return "Tape for this beat was found, but no cut of it escapes the length of the segment before it, and two segments of one length in a row would make the Foray sound metronomic.";
     case "m4-runtime":
@@ -2311,7 +2346,7 @@ function narrationReasonFor(furthest: Tier2Progress | null): string {
 /** Which of this Foray's own assembly rules refused a usable piece of tape, in
  * the words the transcription-queue row uses. One phrase per gate, so a row can
  * name the rule without the caller re-deriving it from the gate name. */
-const ASSEMBLY_REFUSAL_CLAUSE: Record<"m4-share" | "m3-order" | DurationGate, string> = {
+const ASSEMBLY_REFUSAL_CLAUSE: Record<"m4-share" | "m3-order" | "d5-pair" | DurationGate, string> = {
   "m4-share": "the episode already supplies its quarter of the segments",
   "m3-order": "the window sits earlier in an episode already joined later",
   "d2-short-run": "it is short and the segment before it is short too",

@@ -302,19 +302,26 @@ export interface TapeRelevanceInput {
    */
   seedFloor?: "share-only";
   /**
-   * D5's pair clause is what chose this segment's LENGTH (Q-04; F-80 for the
-   * triple clause it replaced): the full thought extent of the window would
-   * have put this clip within +/-20 % of the previous clip's length
-   * (`check-forays.mjs`'s "no two consecutive clips within 20 % of the same
-   * length"), and a shorter extent of the same window — relevance stopped one
-   * boundary earlier — escaped the band and was placed instead. Absent
-   * whenever the full extent escaped by itself, and always absent for tier 1
-   * (a pool segment's length is a curator's, and one that would make the pair
-   * is passed over rather than re-cut).
+   * THIS CLIP IS INSIDE D5's BAND WITH THE CLIP BEFORE IT — within +/-20 % of
+   * its length (`check-forays.mjs`'s "no two consecutive clips within 20 % of
+   * the same length"). A MARK, NOT A DECISION, since F-102.
    *
-   * Counting these rows counts the placements the rule DECIDED, which is the
-   * number to watch: a run where it fires often is a run whose passages keep
-   * coming out the same length as their neighbours.
+   * WHAT IT MEANT BEFORE, AND WHY THE NAME OUTLIVED THE MEANING. Under Q-04 the
+   * pair clause chose the length: a full thought extent inside the band sent
+   * the window back to be re-cut SHORTER, and this field said so. That is the
+   * defect F-102 removed — a variety rule whose only moves are to shorten a
+   * clip or refuse a beat is a rule that makes the Foray play less tape, which
+   * Q-01's "if there's a half hour of relevant content then let it ride"
+   * forbids. Nothing is shortened or refused now; the clip plays at the length
+   * its thought measures and carries this field when it lands in the band. The
+   * wire name (`lengthGate`, value `"d5-pair"`) is unchanged so the sourcing
+   * checkpoint's schema — another lane's file — still reads every run written
+   * either side of the change; a rename is a follow-up, noted in F-102.
+   *
+   * Counting these rows counts how metronomic the Foray came out, which is the
+   * number to watch and the only thing the clause now produces. Absent whenever
+   * the clip escapes the band, and always absent for tier 1 (a pool segment's
+   * length is a curator's, and no tier-1 path writes the mark).
    */
   lengthGate?: "d5-pair";
   /**
@@ -388,17 +395,17 @@ export interface TapeRelevanceInput {
  *                        is the run D2 only permits if a 150 s segment follows —
  *                        something sourcing cannot promise, so it never starts
  *                        the run.
- *   - `d5-pair`        — it and the segment before it would be within +/-20 %
- *                        of each other, D5's uniform pair, by
- *                        `check-forays.mjs`'s own arithmetic (`d5Pair.ts`;
- *                        Q-04 restated F-80's triple clause as a pair). A
- *                        rule, not a preference: for a pool segment the length
- *                        is fixed and the candidate is passed over; for a
- *                        tier-2 window a shorter thought extent is tried first,
- *                        and the gate is reported only when that does not
- *                        escape the band either. (Spelled `d5-uniform` in
- *                        traces written by #571–#620 and `d5-triple` by
- *                        F-80–Q-04; both read as this gate on resume.)
+ *   - `d5-pair`        — LEGACY, never emitted since F-102: it and the segment
+ *                        before it would have been within +/-20 % of each
+ *                        other, D5's uniform pair (`d5Pair.ts`; Q-04 restated
+ *                        F-80's triple clause as a pair). It was a refusal
+ *                        until 2026-09-12, when the measurement showed what
+ *                        that costs — four seeded beats' tape in one run — and
+ *                        the clause became a thing the report says rather than
+ *                        a thing a placement obeys. Kept in the union so a
+ *                        checkpoint written under Q-04 still resumes, with
+ *                        `d5-uniform` (#571–#620) and `d5-triple` (F-80–Q-04)
+ *                        reading as it.
  *   - `d3-mean`        — LEGACY, never emitted since Q-04: taking it would
  *                        have dropped the Foray's running mean under D3's 90 s
  *                        floor, a rule Q-04 retired. Kept in the union so a
@@ -468,10 +475,11 @@ export type Tier2Gate =
      whichever tier found the tape. */
   | "m4-share"
   | "m3-order"
-  /* F-73: the four D-tier LENGTH rules, likewise asked by both tiers and named
-     the same in both — documented once, on `Tier1Gate` above. Tier 2 asks them on
+  /* F-73: the D-tier LENGTH rules, likewise asked by both tiers and named the
+     same in both — documented once, on `Tier1Gate` above. Tier 2 asks them on
      the cut span, which is the first point at which a minted segment has a real
-     duration. */
+     duration. Two of the four are legacy spellings now: `d3-mean` (retired by
+     Q-04) and `d5-pair` (measured rather than enforced since F-102). */
   | "d2-short-run"
   | "d3-mean"
   | "d5-pair"

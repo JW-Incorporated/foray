@@ -173,6 +173,22 @@ longer existed.)
 **Done when.** The run-8 candidate re-sourced under Q-01 passes the checker with
 zero rule errors and the ledger records old vs new values.
 **Dependencies.** Q-01. **Human gate.** D0's targets in the G-deck (Wyatt).
+**Corrected 2026-09-12 by F-102** (`docs/curation/generation-run-2026-09-09.md`).
+This card shipped the pair clause as a HARD REFUSAL at placement — sourcing
+either re-cut the clip shorter (`d5EscapeBelow`) or narrated the beat, and
+`check-forays.mjs` failed a Q-01 Foray that held a pair. That is this card
+overruling Q-01, three cards above it in the same series: both of those moves
+make the Foray play LESS tape, and Q-01 is the founder's own instruction that it
+should play more ("if there's a half hour of relevant content then let it
+ride"). Measured on the real archive the next morning: four seeded beats refused
+at `d5-pair`, nine clips placed against a floor of ten. **D5's pair clause is now
+reported and gates nothing** — in the checker (`d5_uniform_pairs`, `d5_iqr_sec`,
+warnings only; `d5_gated` removed) and in sourcing (`placementAllows` does not
+ask it; the relevance row carries `lengthGate: "d5-pair"` as a mark). Variety is
+not pursued by re-ordering candidates either, because every order sourcing may
+change is ranked by relevance and that would buy variety with veracity. The
+general lesson is in F-102: two cards in one series moved the same quantity in
+opposite directions, and the only test that could see it runs on one machine.
 
 ### Q-05 · The tape share target moves up, the page count moves down — **M · S — overlord** — **DONE** (#646, 2026-09-12; the two listening KPIs in `veracityMetrics.ts` and the `generateForays.ts` report)
 **Ask.** `docs/curation/foray-to-spec-roadmap.md` §1.2's *proposed* targets get two
