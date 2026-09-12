@@ -51,7 +51,7 @@
    it came in.
 
    THE SEED IS PARTIAL (F-92, 2026-09-12). The package leaves generated drafts —
-   the founder's test track, `cp_show_drafts` — to the directory, so its pointer
+   the founder's test track, the drafts switch (#631) — to the directory, so its pointer
    carries `partial: true` (`prepare-webdir.mjs` `seedPointerDoc`). A held set
    marked partial is never `current`, whatever version the live pointer names: a
    fresh install built from the same deploy as the live site would otherwise hold
