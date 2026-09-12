@@ -265,6 +265,20 @@ card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
   the newest phone and ≤ 1.5 on the oldest tried, peak memory ≤ 400 MB, and locked-screen
   synthesis completes. Miss any and K-04 waits for a design change (fp16 vs q8, EP,
   chunking) or the runner-up engine.
+- **The instruction Wyatt gets, verbatim** (also `HUMAN-ACTIONS.md` #45, and the
+  top of the PR that landed this card): **"Install build N, open Settings, turn on
+  'Voice engine probe', tap 'Run the voice engine probe', and immediately lock the
+  phone. When the passage stops (about 80 seconds), unlock, tap Copy in the sheet
+  that is already open, and paste the whole record here."** Then the same on Joey's
+  Pixel 10 Pro and on the oldest phone either of them can find, saying which record
+  is which phone and which OS version. A record reading `could not measure
+  (model-absent)` means the build did not fetch the weights — that is a build
+  problem, not a phone one, and the run should stop there.
+
+  The locking order is not a detail: the plugin reports the honest weaker fact —
+  the app was not frontmost when the last line finished — and it is the founder
+  locking the phone BEFORE the passage ends that turns that into "synthesis
+  completed with the screen locked", which is one of the four go/no-go clauses.
 - **Governance:** `mobile/` auto-merges; the model-fetch step touches the build
   workflows → `founder-approved` (H3; batch with K-06).
 
