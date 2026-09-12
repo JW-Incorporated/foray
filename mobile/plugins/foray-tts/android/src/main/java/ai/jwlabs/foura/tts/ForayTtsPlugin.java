@@ -687,18 +687,39 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         call.resolve(result);
     }
 
-    /** Whether the hosting Activity is resumed. Defaults to {@code true}
-     *  ("frontmost", so {@code lockedScreenCompleted} reads false) when it
-     *  cannot be determined — unmeasured must never read as proven, the same
+    /** Whether the app is frontmost, tracked from Capacitor's OWN lifecycle
+     *  hooks rather than read off the Activity.
+     *
+     *  NOT {@code getActivity()}: that returns an {@code AppCompatActivity},
+     *  and this plugin module does not carry {@code androidx.appcompat} on its
+     *  compile classpath — naming it fails
+     *  {@code :foray-tts:compileDebugJavaWithJavac} with "cannot access
+     *  AppCompatActivity" (measured, `android-shell` run 34707127094). Adding
+     *  the dependency for one boolean would widen what a throwaway measurement
+     *  card links, and {@code handleOnResume}/{@code handleOnPause} are
+     *  {@code Plugin}'s own hooks: free, and a better question anyway — they
+     *  track the APP lifecycle, which is what "the screen was locked" means
+     *  for a 90-second synthesis loop.
+     *
+     *  Starts {@code true} ("frontmost", so {@code lockedScreenCompleted}
+     *  reads false), because unmeasured must never read as proven — the same
      *  direction `probeVerdict` fails an unmeasured RTF in. */
+    private volatile boolean resumed = true;
+
+    @Override
+    protected void handleOnResume() {
+        resumed = true;
+        super.handleOnResume();
+    }
+
+    @Override
+    protected void handleOnPause() {
+        resumed = false;
+        super.handleOnPause();
+    }
+
     private boolean isForeground() {
-        try {
-            android.app.Activity a = getActivity();
-            if (a == null) return true;
-            return !a.isFinishing() && a.hasWindowFocus();
-        } catch (Exception e) {
-            return true;
-        }
+        return resumed;
     }
 
     private static Locale localeFor(String bcp47) {
