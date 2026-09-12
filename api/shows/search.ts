@@ -70,6 +70,26 @@ import { appleShowSearch } from "./appleShowSearch";
  *     five-minute outage for every client behind that edge. It is `no-store`
  *     now.
  *
+ * (4) WHAT THE ROWS CARRY, AND WHY THE ORDER THEY ARRIVE IN MATTERS EVEN
+ *     THOUGH THE CLIENT RE-RANKS THEM (client audit 2026-09-12). `app.js`'s
+ *     `mergeBreadth` re-buckets every row it receives with
+ *     `SearchEngine.rankShows`, so the order this endpoint replies in is never
+ *     the order displayed - but `limit` is applied by `searchBreadthShows`
+ *     BEFORE the reply, and what it cuts there no client can recover. Ranking
+ *     server-side by a different rule therefore kept the best 25 under a rule
+ *     nobody displays. The two rules are now one rule, pinned by a test on
+ *     each side; see `backend/src/catalog/searchBreadthShows.ts`'s header for
+ *     the measurement and the pin.
+ *
+ *     Two consequences for this response's SHAPE, both deliberate:
+ *       - the `rank` field is gone. It was serialised on every row and read by
+ *         nobody, for the reason above.
+ *       - `chart_rank` is present (null for a curated row). That one IS read:
+ *         `search-engine.js:popularityBand` bands it when it re-ranks. Rows
+ *         from here used to arrive without it and were banded UNRANKED, the
+ *         worst band, which cost exactly the chart_rank 101-200 shows that the
+ *         client's `<=100` index cut means only this endpoint has.
+ *
  * MEASURED, AND THE SOURCE SHOULD NOT MISLEAD THE NEXT READER: the success
  * header below sets `public, max-age=300, stale-while-revalidate=3600`, and the
  * response as received from production carries only `public, max-age=300`.

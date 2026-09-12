@@ -1784,12 +1784,28 @@ function prettyConceptLabel(id) {
    it varies with title length rather than with relevance, and it is what made
    the old ordering depend on which catalogue a row came from.
 
-   NOT SHARED WITH THE SERVER. `backend/src/catalog/searchBreadthShows.ts`
-   still applies the old three-bucket rule. The two now differ, on purpose —
-   see S-04's own card and the PR that landed it: once S-03's index is on the
-   device the endpoint is the FALL-THROUGH rather than the interactive path,
-   so the ranking a listener sees is this file's. Mirroring it server-side is
-   a `backend/src/` (DENIED-path) change that buys nothing while that holds. */
+   NOT SHARED CODE WITH THE SERVER, BUT THE SAME RULE.
+   `backend/src/catalog/searchBreadthShows.ts` applies these same four buckets
+   and these same tie-breaks over the full merged catalogue, and the paragraph
+   that used to stand here said the opposite - that the two "now differ, on
+   purpose", because "once S-03's index is on the device the endpoint is the
+   FALL-THROUGH rather than the interactive path". THAT WAS NOT TRUE OF THE
+   CODE. `app.js:runShowSearchCostly` calls `api/shows/search` on every
+   debounce tick that misses the hot-query cache, whatever the local passes
+   found, and `mergeBreadth` merges the answer unconditionally; only the
+   `fallthrough=1` APPLE flag is gated on an empty local result. So the
+   endpoint is an interactive path, it replies with at most `limit` rows, and
+   it chose those rows by a rule that is not this one - the three-bucket rule
+   with no word-start tier and no popularity prior. Measured over the real
+   committed catalogue: the query "show" shipped a plain-substring row and
+   dropped 14 rows this file ranks WORD-START, "talk" dropped 14, "news" 12.
+   Re-ranking here cannot undo a row that was never sent.
+
+   The duplication is therefore pinned rather than trusted:
+   `test/show-search-ranking.test.js` reads both files and asserts the two
+   bucket tables are EQUAL, and `backend/test/breadthCatalog.test.ts` asserts
+   the two orders agree row for row over the real catalogue. A fifth bucket
+   added on one side only is a red suite. */
 
 /** The four buckets, named once. `SHOW_MATCH_NONE` is a real answer ("this
     title does not match at all"), not an error code — every caller filters on

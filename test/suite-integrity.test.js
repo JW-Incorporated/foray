@@ -536,7 +536,7 @@ const FLOORS = {
      others kept the file's count up, which is precisely what a floor cannot
      see. */
   "test/show-search-live.test.js": 10,
-  "test/show-search-ranking.test.js": 9,
+  "test/show-search-ranking.test.js": 10, // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
   "test/show-index.test.js": 11,
   "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
   /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
@@ -1875,7 +1875,14 @@ const BACKEND_FLOORS = {
      client ships. Fixture-based ranking tests plus real-catalogue
      integration checks (merge/dedupe correctness against the committed
      data/catalog.json + data/catalog-breadth.json). */
-  "test/breadthCatalog.test.ts": 11,
+  /* RAISED 11 -> 17 by the client audit (2026-09-12): searchBreadthShows now
+     applies search-engine.js’s four-bucket rule with its popularity prior, so
+     the endpoint TRUNCATES to `limit` under the order the client will display
+     rather than under an order nobody sees. Six tests: the four buckets, the
+     bucketed prior, the row shape (no dead `rank`, a live `chart_rank`), and
+     three agreement tests that load the real search-engine.js in a node:vm and
+     compare bucket for bucket and row for row over the real catalogue. */
+  "test/breadthCatalog.test.ts": 17,
   /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
      a candidate against the real check-forays.mjs/check-narration.mjs
      and only returns a writable record on a clean pass; stageTiming.ts

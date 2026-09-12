@@ -48,6 +48,22 @@ export interface CatalogueShowEntry {
   tier: CatalogueTier;
   taxonomy_node_ids: string[];
   editorial_note: string | null;
+  /* Apple's PER-GENRE top-chart position, 1-200, paired with `chart_genre_id`
+     in the harvest (docs/search-plan.md §1.1 - present on all 19,787 breadth
+     rows). `null` for a curated row, which has no chart position and needs
+     none: the tier term has already placed it.
+
+     IT IS CARRIED BECAUSE THE RANKING RULE READS IT, on both sides of the
+     wire. `searchBreadthShows`'s comparator bands it, and therefore decides
+     which rows survive that endpoint's `limit` cut; `search-engine.js`'s
+     `popularityBand` bands it again client-side after `mergeBreadth`. Before
+     this field existed, a row from `api/shows/search` reached that function
+     with `chart_rank` undefined and was banded UNRANKED - the WORST band - so
+     it lost every tie to a row from `data/show-index.tsv`, which does carry
+     it. That hurt precisely the rows only the endpoint can supply:
+     `tools/build-show-index.mjs` cuts the client index at `chart_rank <= 100`,
+     so a 101-200 show exists nowhere else. */
+  chart_rank: number | null;
 }
 
 interface CuratedShowRaw {
@@ -65,6 +81,7 @@ interface BreadthShowRaw {
   feed_url: string | null;
   artwork_url?: string | null;
   in_curated?: boolean;
+  chart_rank?: number | null;
 }
 
 let cached: CatalogueShowEntry[] | null = null;
@@ -98,6 +115,7 @@ export function loadBreadthCatalog(): CatalogueShowEntry[] {
       tier: "curated",
       taxonomy_node_ids: show.taxonomy_node_ids ?? [],
       editorial_note: show.editorial_note ?? null,
+      chart_rank: null, // a curated row has no chart position - see the field's note
     });
   }
 
@@ -115,11 +133,20 @@ export function loadBreadthCatalog(): CatalogueShowEntry[] {
       tier: "breadth",
       taxonomy_node_ids: [],
       editorial_note: null,
+      /* Absent, non-numeric or <= 0 becomes `null` rather than reaching a
+         consumer as NaN or 0: `popularityBand` reads null as UNRANKED (the
+         worst band), while 0 would read as the best one. */
+      chart_rank: normalizeChartRank(show.chart_rank),
     });
   }
 
   cached = entries;
   return entries;
+}
+
+function normalizeChartRank(raw: number | null | undefined): number | null {
+  const rank = Number(raw);
+  return Number.isFinite(rank) && rank > 0 ? rank : null;
 }
 
 function readJson<T>(relPath: string): T {

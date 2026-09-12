@@ -1,7 +1,17 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { searchBreadthShows, type ShowSearchResult } from "../src/catalog/searchBreadthShows";
+import * as vm from "vm";
+import {
+  searchBreadthShows,
+  showMatchBucket,
+  SHOW_MATCH_EXACT,
+  SHOW_MATCH_PREFIX,
+  SHOW_MATCH_WORD_START,
+  SHOW_MATCH_SUBSTRING,
+  SHOW_MATCH_NONE,
+  type ShowSearchResult,
+} from "../src/catalog/searchBreadthShows";
 import { loadBreadthCatalog, type CatalogueShowEntry } from "../src/catalog/breadthCatalog";
 
 /**
@@ -11,9 +21,56 @@ import { loadBreadthCatalog, type CatalogueShowEntry } from "../src/catalog/brea
  * 220-show curated set the client ships in data/catalog-client.json. See
  * breadthCatalog.ts's header for the merge/dedupe rule this suite proves.
  *
+ * THE TWIN (client audit 2026-09-12). `searchBreadthShows` ranks by the same
+ * rule as `search-engine.js:searchShows`, and section 3 of this suite is what
+ * makes that a fact rather than an intention: it loads the real client module
+ * and asserts the two orders agree row for row over the real catalogue. The
+ * reason the SERVER's order matters at all, given that `app.js:mergeBreadth`
+ * re-ranks everything it receives, is the `limit` cut - the server truncates
+ * BEFORE the client ever sees the list, so a row dropped here is dropped for
+ * good. See searchBreadthShows.ts's header for the measurement.
+ *
  * Every test names the mutation that kills it, per CLAUDE.md "a green test
  * is not evidence until you have broken it".
  */
+
+/** The real `search-engine.js`, loaded the way a browser would load it: a
+    classic script in a `node:vm` context with a `window` to hang itself on.
+    Not `require`d, because the backend is CommonJS-compiled TypeScript with no
+    type declarations for that file and no `allowJs` - and the point of this
+    suite is to run the CLIENT's own bytes, not a copy of them.
+
+    `Intl` is handed to the sandbox deliberately. `compareTitles` falls back to
+    code-unit order when `Intl` is absent, and the server-side tie-break uses a
+    real collator, so a sandbox without `Intl` would compare two different
+    orders and call a genuine agreement a failure. */
+interface ClientSearchEngine {
+  searchShows(query: string, shows: unknown[]): Array<{ show_id: string }>;
+  showMatchBucket(title: string, q: string): { bucket: number; idx: number };
+  SHOW_MATCH_EXACT: number;
+  SHOW_MATCH_PREFIX: number;
+  SHOW_MATCH_WORD_START: number;
+  SHOW_MATCH_SUBSTRING: number;
+  SHOW_MATCH_NONE: number;
+}
+
+let clientEngine: ClientSearchEngine | null = null;
+function clientRule(): ClientSearchEngine {
+  if (clientEngine) return clientEngine;
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const src = fs.readFileSync(path.join(repoRoot, "search-engine.js"), "utf8");
+  const sandbox: { window: { SearchEngine?: ClientSearchEngine }; Intl: typeof Intl; console: typeof console } = {
+    window: {},
+    Intl,
+    console,
+  };
+  vm.createContext(sandbox);
+  new vm.Script(src, { filename: "search-engine.js" }).runInContext(sandbox);
+  const engine = sandbox.window.SearchEngine;
+  if (!engine) throw new Error("search-engine.js did not publish window.SearchEngine");
+  clientEngine = engine;
+  return engine;
+}
 
 /**
  * The first result, or a red test that says the list was empty.
@@ -50,6 +107,7 @@ function fixtureCatalog(): CatalogueShowEntry[] {
       tier: "curated",
       taxonomy_node_ids: ["engineering/energy-fusion"],
       editorial_note: "Marathon technical interviews.",
+      chart_rank: null, // curated: no chart position, and the tier term places it anyway
     },
     {
       show_id: "111111",
@@ -57,6 +115,7 @@ function fixtureCatalog(): CatalogueShowEntry[] {
       artwork_url: "https://example.com/scifri.jpg",
       feed_url: "https://example.com/scifri.xml",
       tier: "breadth",
+      chart_rank: 1,
       taxonomy_node_ids: [],
       editorial_note: null,
     },
@@ -66,6 +125,7 @@ function fixtureCatalog(): CatalogueShowEntry[] {
       artwork_url: null,
       feed_url: "https://example.com/dsce.xml",
       tier: "breadth",
+      chart_rank: 40,
       taxonomy_node_ids: [],
       editorial_note: null,
     },
@@ -75,6 +135,7 @@ function fixtureCatalog(): CatalogueShowEntry[] {
       artwork_url: null,
       feed_url: "https://example.com/soe.xml",
       tier: "breadth",
+      chart_rank: 40,
       taxonomy_node_ids: [],
       editorial_note: null,
     },
@@ -99,9 +160,13 @@ describe("searchBreadthShows — ranking over the merged catalogue", () => {
     // MUTATION: drop the `title === q ? 0` branch so every match ranks by
     // substring position only — "Science Friday" (exact) would then tie or
     // lose to "science of everything" depending on sort stability.
+    //
+    // The bucket is asserted through `showMatchBucket` rather than through a
+    // `rank` field on the row: the row no longer carries one, because nothing
+    // downstream ever read it (see searchBreadthShows.ts's header).
     const results = searchBreadthShows("science friday", 25, fixtureCatalog());
     expect(topResult(results).show_id).toBe("111111");
-    expect(topResult(results).rank).toBe(0);
+    expect(showMatchBucket(topResult(results).title, "science friday")).toBe(SHOW_MATCH_EXACT);
   });
 
   it("a substring match still surfaces, ranked after exact/prefix matches", () => {
@@ -112,7 +177,10 @@ describe("searchBreadthShows — ranking over the merged catalogue", () => {
     // startsWith-only implementation would drop "Science Friday" entirely.
     const results = searchBreadthShows("friday", 25, fixtureCatalog());
     expect(results.some((r) => r.show_id === "111111")).toBe(true);
-    expect(topResult(results).rank).toBe(2);
+    // "Science Friday": " friday" follows a space, so this is the WORD-START
+    // bucket, not the plain-substring one — the bucket S-04 added on the
+    // client and this file's rewrite added here.
+    expect(showMatchBucket(topResult(results).title, "friday")).toBe(SHOW_MATCH_WORD_START);
   });
 
   it("no match returns an empty array, not a throw", () => {
@@ -137,8 +205,8 @@ describe("searchBreadthShows — ranking over the merged catalogue", () => {
     // before a same-rank curated show's title, the breadth entry would then
     // come first, and this assertion (curated first) fails.
     const catalog: CatalogueShowEntry[] = [
-      { show_id: "b1", title: "Anchor Show", artwork_url: null, feed_url: null, tier: "breadth", taxonomy_node_ids: [], editorial_note: null },
-      { show_id: "c1", title: "Zebra Show", artwork_url: null, feed_url: null, tier: "curated", taxonomy_node_ids: [], editorial_note: null },
+      { show_id: "b1", title: "Anchor Show", artwork_url: null, feed_url: null, tier: "breadth", taxonomy_node_ids: [], editorial_note: null, chart_rank: 1 },
+      { show_id: "c1", title: "Zebra Show", artwork_url: null, feed_url: null, tier: "curated", taxonomy_node_ids: [], editorial_note: null, chart_rank: null },
     ];
     const results = searchBreadthShows("show", 25, catalog);
     expect(topResult(results).show_id).toBe("c1"); // curated "Zebra Show" beats breadth "Anchor Show" despite alphabetical order
@@ -207,5 +275,163 @@ describe("loadBreadthCatalog — real committed data/catalog*.json", () => {
     for (const s of clientCatalog.shows) {
       expect(mergedIds.has(s.show_id)).toBe(true);
     }
+  });
+});
+/* ==================================================================== */
+/* 3. THE TWIN: THIS FILE'S ORDER IS search-engine.js'S ORDER            */
+/* ==================================================================== */
+
+describe("searchBreadthShows — the four buckets and the popularity prior", () => {
+  it("ranks exact, then prefix, then WORD-START, then plain substring", () => {
+    /* THE BUCKET S-04 ADDED ON THE CLIENT AND THIS FILE DID NOT HAVE for the
+       whole time in between. Without it, "Casual Show Talk" (a word-start hit)
+       and "Antiques Roadshow Detours" (a mid-word hit) share one bucket and a
+       tie-break decides — which is how the show a listener obviously meant got
+       buried.
+
+       THE MID-WORD ROW IS "Antiques Roadshow Detours" AND NOT "Ricochet
+       Showcase", which is what test/show-search-ranking.test.js's equivalent
+       fixture uses: "Showcase" follows a SPACE, so it is a word start too, and
+       that fixture therefore passes with or without the word-start bucket (the
+       alphabetical tie-break happens to order it the same way). "Roadshow"
+       follows "d" — a letter, no break — so it is a genuine plain substring.
+
+       MUTATION: delete the word-start loop from `showMatchBucket` and return
+       `SHOW_MATCH_SUBSTRING` instead. The two rows collapse into one bucket,
+       the title tie-break puts "Antiques…" first, and the expected four-way
+       order below fails. */
+    const catalog: CatalogueShowEntry[] = [
+      { show_id: "sub", title: "Antiques Roadshow Detours", artwork_url: null, feed_url: null, tier: "breadth", taxonomy_node_ids: [], editorial_note: null, chart_rank: 5 },
+      { show_id: "word", title: "Casual Show Talk", artwork_url: null, feed_url: null, tier: "breadth", taxonomy_node_ids: [], editorial_note: null, chart_rank: 5 },
+      { show_id: "prefix", title: "Show Me The Numbers", artwork_url: null, feed_url: null, tier: "breadth", taxonomy_node_ids: [], editorial_note: null, chart_rank: 5 },
+      { show_id: "exact", title: "Show", artwork_url: null, feed_url: null, tier: "breadth", taxonomy_node_ids: [], editorial_note: null, chart_rank: 5 },
+    ];
+    expect(searchBreadthShows("show", 25, catalog).map((r) => r.show_id)).toEqual([
+      "exact", "prefix", "word", "sub",
+    ]);
+    expect(showMatchBucket("Show", "show")).toBe(SHOW_MATCH_EXACT);
+    expect(showMatchBucket("Show Me The Numbers", "show")).toBe(SHOW_MATCH_PREFIX);
+    expect(showMatchBucket("Casual Show Talk", "show")).toBe(SHOW_MATCH_WORD_START);
+    expect(showMatchBucket("Antiques Roadshow Detours", "show")).toBe(SHOW_MATCH_SUBSTRING);
+  });
+
+  it("breaks ties on the BUCKETED popularity prior, with an unranked breadth row last", () => {
+    /* `chart_rank` is Apple's PER-GENRE position, so rank 3 in one genre and
+       rank 8 in another are not comparable — inside a band the prior must say
+       nothing and the title tie-break must decide. Both directions are pinned,
+       because a test for only one of them is satisfied by deleting the prior.
+
+       MUTATION A: compare `a.show.chart_rank` raw instead of
+       `popularityBand(a.show)`. "Beta Show" (3) jumps ahead of "Alpha Show"
+       (8) on a meaningless cross-genre comparison and the first case fails.
+       MUTATION B: make `popularityBand` return 0 rather than the worst band
+       for a null `chart_rank`. "Zzz No Rank Show" leads and the second fails. */
+    const band = (title: string, chart_rank: number | null): CatalogueShowEntry => ({
+      show_id: title, title, artwork_url: null, feed_url: null, tier: "breadth",
+      taxonomy_node_ids: [], editorial_note: null, chart_rank,
+    });
+    expect(searchBreadthShows("show", 25, [band("Beta Show", 3), band("Alpha Show", 8)]).map((r) => r.title))
+      .toEqual(["Alpha Show", "Beta Show"]);
+    expect(searchBreadthShows("show", 25, [band("Zzz No Rank Show", null), band("Mmm Mid Show", 150), band("Aaa Top Show", 4)]).map((r) => r.title))
+      .toEqual(["Aaa Top Show", "Mmm Mid Show", "Zzz No Rank Show"]);
+  });
+
+  it("puts no `rank` field on the wire, and does put `chart_rank`, which has a reader", () => {
+    /* The shipped `rank` was computed on every row, serialised on every
+       response and read by NOBODY: `app.js:mergeBreadth` re-buckets every row
+       it receives with `SearchEngine.rankShows`. `chart_rank` replaces it and
+       is not decoration — `search-engine.js:popularityBand` reads it during
+       exactly that re-rank, and a row arriving without it is banded UNRANKED,
+       the worst band.
+
+       MUTATION: re-add `rank` to the returned row, or drop `chart_rank` from
+       `breadthCatalog.ts`'s entry. Either half of this fails. */
+    const entries = loadBreadthCatalog();
+    const row = topResult(searchBreadthShows("the daily", 25, entries));
+    expect(Object.prototype.hasOwnProperty.call(row, "rank")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(row, "chart_rank")).toBe(true);
+    const ranked = entries.find((e) => e.tier === "breadth" && e.chart_rank !== null);
+    expect(typeof ranked?.chart_rank).toBe("number");
+    expect(entries.find((e) => e.tier === "curated")?.chart_rank).toBe(null);
+  });
+});
+
+describe("searchBreadthShows — agreement with the real search-engine.js", () => {
+  it("buckets every real catalogue title exactly as search-engine.js does", () => {
+    /* The bucket rule, run over all ~19,904 real titles against the client's
+       own bytes rather than against a restatement of them. This is the check
+       that would have gone red the day S-04 added `SHOW_MATCH_WORD_START` to
+       one side only.
+
+       MUTATION: change this file's `SHOW_WORD_BREAK` to `/\W/`. Every CJK
+       title in the catalogue buckets differently from the client's, and this
+       throws on the first one. */
+    const client = clientRule();
+    const entries = loadBreadthCatalog();
+    for (const q of ["the", "show", "up"]) {
+      for (const entry of entries) {
+        const mine = showMatchBucket(entry.title, q);
+        const theirs = client.showMatchBucket(entry.title, q).bucket;
+        if (mine !== theirs) {
+          throw new Error(`"${q}" on ${JSON.stringify(entry.title)}: server ${mine}, client ${theirs}`);
+        }
+      }
+    }
+    expect(SHOW_MATCH_WORD_START).toBe(client.SHOW_MATCH_WORD_START);
+    expect(SHOW_MATCH_SUBSTRING).toBe(client.SHOW_MATCH_SUBSTRING);
+  });
+
+  it("keeps, at the limit cut, exactly the rows the client's rule would have kept", () => {
+    /* THE DEFECT, STATED AS AN EQUALITY. The endpoint truncates to `limit`
+       before the client sees anything and `mergeBreadth` cannot recover a row
+       that was never sent — so the only way the cut can be right is for it to
+       be taken under the order the client will display. Row for row, over the
+       real committed catalogue.
+
+       MUTATION: restore the old comparator (bucket -> `tier === "curated"` ->
+       `localeCompare`), dropping the popularity band. "daily" alone then
+       disagrees on 6 of its 25 rows and "show" on 14. */
+    const client = clientRule();
+    const entries = loadBreadthCatalog();
+    for (const q of ["show", "talk", "news", "daily", "fridman"]) {
+      const mine = searchBreadthShows(q, 25, entries).map((r) => r.show_id);
+      const theirs = client.searchShows(q, entries).slice(0, 25).map((r) => r.show_id);
+      expect({ q, ids: mine }).toEqual({ q, ids: theirs });
+    }
+  });
+
+  it("never drops a word-start row to make room for a plain-substring one", () => {
+    /* The consequence that costs a listener something, pinned on its own
+       because the equality above could in principle be satisfied by both sides
+       being wrong together. Whatever survives the cut must sit in a bucket no
+       worse than anything that did not.
+
+       Measured before the fix, query "show": the old rule shipped the
+       plain-substring "Antiques Roadshow Detours" and dropped 14 rows the
+       client buckets WORD-START, among them "Money Guy Show" (chart_rank 4).
+
+       MUTATION: revert `showMatchBucket` to the three-bucket
+       `title === q ? 0 : idx === 0 ? 1 : 2`. Word-start and plain substring
+       collapse into one bucket, a substring row rides into the kept 25, and
+       the last assertion fails. */
+    const entries = loadBreadthCatalog();
+    const q = "show";
+    const kept = searchBreadthShows(q, 25, entries);
+    const keptIds = new Set(kept.map((r) => r.show_id));
+    const dropped = entries.filter(
+      (e) => showMatchBucket(e.title, q) !== SHOW_MATCH_NONE && !keptIds.has(e.show_id)
+    );
+    expect(kept.length).toBe(25);
+    expect(dropped.length).toBeGreaterThan(0);
+
+    const worstKept = Math.max(...kept.map((r) => showMatchBucket(r.title, q)));
+    const bestDropped = Math.min(...dropped.map((e) => showMatchBucket(e.title, q)));
+    expect(worstKept).toBeLessThanOrEqual(bestDropped);
+
+    /* Teeth: the catalogue really does contain plain-substring "show" hits, so
+       "nothing kept is one" is a claim about the ranking rather than a vacuous
+       truth about the data. */
+    expect(entries.some((e) => showMatchBucket(e.title, q) === SHOW_MATCH_SUBSTRING)).toBe(true);
+    expect(kept.some((r) => showMatchBucket(r.title, q) === SHOW_MATCH_SUBSTRING)).toBe(false);
   });
 });
