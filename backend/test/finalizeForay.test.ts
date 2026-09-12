@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
-import { buildCandidateFiles, finalizeForay, type FinalizeForayInput } from "../src/generation/finalizeForay";
+import { buildCandidateFiles, finalizeForay, isGeneratedDraft, type FinalizeForayInput } from "../src/generation/finalizeForay";
 import type { MintedSegmentSource } from "../src/generation/audioSourceLookup";
 import type { NewSegment } from "../src/types/tapeSourcing";
 import { disclosureNarratedBeat } from "../src/types/narration";
@@ -231,5 +231,46 @@ describe("finalizeForay — the tier-2 tape a candidate brings with it (F-49)", 
     const rows = (files.segments as { segments: Array<{ id: string; source?: string }> }).segments.filter((s) => s.id === clash.id);
     expect(rows).toHaveLength(1);
     expect(rows[0]!.source).not.toBe("generation-tier-2");
+  });
+});
+
+/**
+ * AUDIT FINDING E (2026-09-12): the "generated draft" predicate has ONE home,
+ * `player/foray-resolve.js`, and this copy may not drift from it.
+ *
+ * `tools/mobile/prepare-webdir.mjs`'s `seedCarries` is that module's
+ * `isGeneratedDraft` negated (asserted in `tools/mobile/prepare-webdir.test.mjs`,
+ * which can load that module — vitest on Windows cannot), so the seed leaves out
+ * exactly the Forays this pipeline is allowed to re-cut. This package is
+ * `"module": "CommonJS"` and
+ * calls `isGeneratedDraft` synchronously, so it cannot import the ESM module
+ * without an `await import()` at every call site — it keeps a copy, and this
+ * test is what makes the copy safe.
+ *
+ * MUTATION: change either spelling (drop the `status` term here, or make the
+ * player's read `!== "published"`) → this is red, naming the row they disagree
+ * on. Deleting `isGeneratedDraft` from `player/foray-resolve.js` → red on the
+ * import.
+ */
+describe("isGeneratedDraft agrees with player/foray-resolve.js (audit finding E)", () => {
+  it("agrees with the player module on every combination of `generated` and `status`", async () => {
+    const resolve = (await import(
+      /* `player/` is plain untyped ESM with no declaration file — which is the
+         very thing this test exists for: the two predicates live in different
+         module worlds and cannot share an import. */
+      // @ts-expect-error TS7016: no declarations for the player module
+      "../../player/foray-resolve.js"
+    )) as { isGeneratedDraft: (f: unknown) => boolean };
+    const generated = [true, false, undefined, "true"];
+    const statuses = ["draft", "published", "proposed", undefined, ""];
+    for (const g of generated) {
+      for (const s of statuses) {
+        const row = { id: "x", generated: g, status: s } as never;
+        const mine = isGeneratedDraft(row);
+        expect(resolve.isGeneratedDraft(row), `generated=${String(g)} status=${String(s)}`).toBe(mine);
+      }
+    }
+    /* And the one row that matters is still true. */
+    expect(isGeneratedDraft({ id: "x", generated: true, status: "draft" } as never)).toBe(true);
   });
 });

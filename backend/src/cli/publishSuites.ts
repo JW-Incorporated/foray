@@ -56,7 +56,17 @@ export const REAL_DATA_SUITES: readonly string[] = [
   "test/draft-forays-switch.test.js",
   "test/home-v2-real-data.test.js",
   "tools/mobile/shell-invariants.test.mjs",
-  "tools/segments/merge-segments.test.mjs"
+  "tools/segments/merge-segments.test.mjs",
+  /* G-21c part (2) — added by audit finding B, 2026-09-12. This suite reads the
+     REAL `data/` (`loadFiles(DATA_ROOT)`, DATA_ROOT = the repo root unless
+     FORAY_DATA_ROOT is set), but it names no filename on the line that reads
+     them, so `REAL_DATA_READ_RE`'s filename half never saw it and the anti-rot
+     grep in `backend/test/publishSuites.test.ts` passed while the suite was
+     missing from the gate. Part (2) of G-21c was therefore invisible to part
+     (1): the publish that lands a new shape would go green locally and red in
+     CI, which is the exact failure #632 made this card exist. `loadFiles(` is
+     now an alternative in the regex, so this cannot rot back out. */
+  "tools/foray/fixture-coverage.test.mjs"
 ];
 
 /**
@@ -68,9 +78,20 @@ export const REAL_DATA_SUITES: readonly string[] = [
  * comments (`player/foray-directory.test.js`, `test/sw-generation.test.js`,
  * `tools/ci/forays-directory.test.mjs`) that never open the file. Applied per
  * line; a call split across lines is not matched, so keep reads on one line.
+ *
+ * THE SECOND ALTERNATIVE, `loadFiles(` (audit finding B, 2026-09-12).
+ * `check-forays.mjs` exports `loadFiles(root)`, which opens all three data
+ * files (plus `data/taxonomy.json`) from a checkout root — so a suite that
+ * calls it reads the real data while naming no filename at all. Two suites do
+ * (`tools/foray/check-forays.test.mjs`, `tools/foray/fixture-coverage.test.mjs`)
+ * and the second was missing from `REAL_DATA_SUITES` for exactly this reason,
+ * with the anti-rot grep green. A bare `loadFiles(` is enough to match: the
+ * name has one meaning in this repo, and a suite that calls it with a FIXTURE
+ * root (`loadFiles(FIXTURE_ROOT)`) is a false positive costing one entry in a
+ * list, where a miss costs the gate.
  */
 export const REAL_DATA_READ_RE =
-  /\b(?:readJson|readData|readFileSync|readFile|read|DATA|require|loadJson|readJSON)\s*\([^;\n]*?\b(?:forays|segments|segment-sources)\.json/;
+  /\b(?:readJson|readData|readFileSync|readFile|read|DATA|require|loadJson|readJSON)\s*\([^;\n]*?\b(?:forays|segments|segment-sources)\.json|\bloadFiles\s*\(/;
 
 /** One failed assertion, as `node --test`'s TAP reporter describes it. */
 export interface SuiteFailure {
@@ -272,4 +293,38 @@ export function suiteSummaryLine(result: SuiteRunResult): string {
 export function formatSuiteFailure(f: SuiteFailure): string {
   const where = f.location && f.location !== f.suite ? ` (${f.location})` : "";
   return `${f.suite} › ${f.name}: ${f.error}${where}`;
+}
+
+/**
+ * THE ONE SUITE WHOSE ASSERTION INVERTS, AND WHAT THE OPERATOR HAS TO DO
+ * (audit finding B, 2026-09-12).
+ *
+ * `tools/foray/fixture-coverage.test.mjs` holds `KNOWN_UNCOVERED`: shapes
+ * `check-forays.mjs` accepts that no committed Foray carries yet. Each entry
+ * is asserted to be STILL uncovered — so the day a publish lands a carrier for
+ * `segment.boundary = "turn"`, that suite goes red saying the shape "is now
+ * carried by <id>". Every other suite in this gate goes red because something
+ * is WRONG with the data. This one goes red because something is RIGHT with
+ * it, and the fix is a one-line deletion in the same PR, not a change to the
+ * Foray. A publisher shown only `KNOWN_UNCOVERED: segment.boundary = "turn"
+ * still has no committed carrier — AssertionError` reads it as the publish
+ * being rejected and re-cuts a perfectly good Foray.
+ *
+ * So the verdict spells it out. Returns the guidance lines for `failures`, or
+ * `[]` when none of them came from that suite's inverted assertions.
+ */
+export function knownUncoveredGuidance(failures: readonly SuiteFailure[]): string[] {
+  const shapes = failures
+    .filter((f) => /^KNOWN_UNCOVERED:\s/.test(f.name))
+    .map((f) => f.name.replace(/^KNOWN_UNCOVERED:\s*/, "").replace(/\s+still has no committed carrier\s*$/, "").trim())
+    .filter((s) => s.length > 0);
+  if (shapes.length === 0) return [];
+  return [
+    `${shapes.length === 1 ? "This publish lands a shape" : `This publish lands ${shapes.length} shapes`} the coverage gate ` +
+      `still lists as uncovered. That is not a defect in the Foray — it is the fixture arriving (G-21c part (2)).`,
+    ...shapes.map((s) => `DELETE the KNOWN_UNCOVERED entry for ${s} from tools/foray/fixture-coverage.test.mjs IN THIS PR.`),
+    "Until the entries are gone the gate stays red, here and in CI: the per-entry assertion inverts the moment a carrier " +
+      "lands. Lower KNOWN_UNCOVERED_CEILING in the same commit if you want the ceiling to follow the list down; do not " +
+      "re-cut the Foray, and do not --force past this."
+  ];
 }

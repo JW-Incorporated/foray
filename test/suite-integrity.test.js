@@ -129,14 +129,14 @@ const FLOORS = {
      (2026-09-06): the one-id shell-unlock exception and its five tests were
      deleted with the diagnostic Foray once V-01 shipped an in-app Audition
      button to replace it. */
-  "player/foray-resolve.test.js": 62, // 2026-09-11: the `showDrafts` option (the founder's test track), admits `draft` only, unlock path unchanged; 57 -> 62
+  "player/foray-resolve.test.js": 63, // +1 audit finding E (2026-09-12): `isGeneratedDraft`, the one home of the generated-draft predicate; 62 -> 63
   /* The Foray directory (FD-03, 2026-09-10): the mechanism that lets a phone see
      a new Foray without a store build. Floored with zero slack because each of
      its three rules — never block first paint, never adopt an unvalidated set,
      never drop a cached set on a network error — is one deleted test away from
      a phone that either hangs on a dead cell or plays a torn deploy. The page-
      level half is test/foray-directory.test.js, floored separately below. */
-  "player/foray-directory.test.js": 29, // +1 F-92 (2026-09-12): `partial` on the bundled pointer defeats the `current` short-circuit exactly once
+  "player/foray-directory.test.js": 30, // +1 audit finding E (2026-09-12): the cache row carries `partial` instead of dropping it; 29 -> 30
   "player/foray-sources.test.js": 24,
     /* 108 -> 109 with #264: a telemetry sink that throws must not reject a load. That
      became reachable when `player/client.js` gave this backend its first real sink —
@@ -763,7 +763,12 @@ const FLOORS = {
      manifest-autofix does not push a built_at-only commit to every PR. Seven
      load-bearing mutations (named in the suite header) were run and killed;
      the other 17 are named in their tests. */
-  "tools/ci/forays-directory.test.mjs": 24,
+  /* +4 audit finding C (2026-09-12): the rollback clause — a real `git revert`
+     end to end (the restored OLD built_at, the base-branch floor, the player-side
+     `isOlderThan` verdict), byte-idempotence under every floor shape, the
+     --check message, the best-effort degrade with no git, and the stale-branch
+     case the merge-base floor must NOT restamp; 24 -> 29. */
+  "tools/ci/forays-directory.test.mjs": 29,
   "tools/ci/pr-triage.test.mjs": 85,
   "tools/ci/run-suites.test.mjs": 36,
   // The classify fleet. `no-exclusion` is the founder's "label, never filter"
@@ -939,7 +944,7 @@ const FLOORS = {
 
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
-  "tools/mobile/prepare-webdir.test.mjs": 82, // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
+  "tools/mobile/prepare-webdir.test.mjs": 83, // +1 audit finding E (2026-09-12): seedCarries is exactly the negation of the one `isGeneratedDraft`; 82 -> 83 // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
   "tools/mobile/shell-invariants.test.mjs": 57, // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
@@ -1828,7 +1833,11 @@ const BACKEND_FLOORS = {
      pages it rests on. */
   /* RAISED 20 -> 26 by F-98: the superseded row rewritten in place, the draft
      runtimes restated, --supersedes and the PR body paragraphs. */
-  "test/publishForay.test.ts": 26,
+  /* +5 audit findings A/B/D (2026-09-12): `--force` implies `hold` (parseArgs,
+     three tests), the verdict telling the operator to delete a KNOWN_UNCOVERED
+     entry, and the PR body no longer claiming check-narration.mjs checked this
+     Foray; 26 -> 31. */
+  "test/publishForay.test.ts": 31,
   /* G-21c: REAL_DATA_SUITES names the four roadmap suites and every other
      suite the repo grep finds reading data/forays.json, data/segments.json or
      data/segment-sources.json (the list cannot rot); the TAP parser (one
@@ -1836,7 +1845,11 @@ const BACKEND_FLOORS = {
      skipped, load failures attributed by name); the runner's cwd/flags and
      its three broken-run shapes; the summary and failure lines. One named
      mutation per test. */
-  "test/publishSuites.test.ts": 15,
+  /* +4 audit finding B (2026-09-12): the fixture-coverage suite joins the gate,
+     the check-forays loader counts as a real-data read, and knownUncoveredGuidance;
+     15 -> 19. (Spelled without the call syntax on purpose: REAL_DATA_READ_RE now
+     matches that name, and this file is one of the suites it greps.) */
+  "test/publishSuites.test.ts": 19,
   /* F-98: deterministic post-seeding, the seed floor and its one re-ask —
      the scorer and its floor, the M4 ledger an assigned seed faces, the
      summary line, and the re-ask that is kept only when it is better. */
@@ -1847,7 +1860,9 @@ const BACKEND_FLOORS = {
   "test/spineSeeding.test.ts": 6,
   /* G-30: self-resuming runs, abort on a refused partial, notification hook, id suffixing. */
   "test/generateForaysHandsFree.test.ts": 20,
-  "test/finalizeForay.test.ts": 8,
+  /* +1 audit finding E (2026-09-12): this package's `isGeneratedDraft` agrees
+     with player/foray-resolve.js over the whole truth table; 8 -> 9. */
+  "test/finalizeForay.test.ts": 9,
   /* The `data/segment-sources.json` row a minted tier-2 segment needs, and the
      refusals that stop this pipeline writing one it cannot vouch for — an
      unknown DAI verdict above all, which ADR-0007 gates seek precision on. */

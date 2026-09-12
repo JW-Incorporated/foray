@@ -53,6 +53,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
@@ -128,21 +129,129 @@ function readPointer(root) {
   }
 }
 
+/** `a` is a parseable ISO instant strictly before the parseable instant `b`.
+    Anything unparseable is not "older" — it is unknown, and an unknown floor
+    must never cause a rewrite on its own. Mirrors `isOlderThan` in
+    `player/foray-directory.js`, which is the consumer this ordering is for. */
+export function builtAtIsOlder(a, b) {
+  const x = Date.parse(a ?? "");
+  const y = Date.parse(b ?? "");
+  return Number.isFinite(x) && Number.isFinite(y) && x < y;
+}
+
+/** `git <args>` in `root`, trimmed stdout, or null on any failure. */
+function gitOut(root, args) {
+  try {
+    return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * The `built_at` of the pointer as it stands on a git ref (or commit sha), or
+ * null when there is no git, no such ref, no such file on it, or it does not
+ * parse as JSON.
+ *
+ * This and `builtAtFloorFrom` are the ONLY impure things in this module, and
+ * they are deliberately best-effort: every failure returns null, which puts
+ * `writePointer` back on exactly the behaviour it had before the floor existed.
+ * A pure-function test from a scratch tree never calls them — it passes
+ * `builtAtFloor` directly.
+ */
+export function pointerBuiltAtOnRef(root, ref) {
+  const raw = gitOut(root, ["show", `${ref}:${POINTER_PATH}`]);
+  if (raw === null) return null;
+  try {
+    const doc = JSON.parse(raw);
+    return doc && typeof doc.built_at === "string" ? doc.built_at : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * The floor `writePointer` measures against: the pointer's `built_at` at the
+ * MERGE BASE of HEAD and the base branch.
+ *
+ * WHY THE MERGE BASE AND NOT THE BASE BRANCH'S TIP. The tip would make every
+ * PR cut before the last data change look like a rollback — its pointer is
+ * genuinely older than main's, it is not going backwards, and restamping it
+ * would put an autofix commit on every stale branch in the repo. The merge base
+ * is the pointer this branch STARTED from, so "behind the floor" means
+ * "this branch moved it backwards", which is exactly the rollback case: a
+ * revert is cut from the tip, so its merge base carries the stamp the revert
+ * just undid.
+ *
+ * The first base in `bases` that HEAD shares a merge base with wins; null when
+ * none does (no git, a shallow clone with no such ref, an orphan branch), which
+ * is the pre-floor behaviour.
+ */
+export function builtAtFloorFrom(root, bases = ["origin/main", "main"]) {
+  for (const base of bases) {
+    const mergeBase = gitOut(root, ["merge-base", base, "HEAD"]);
+    if (!mergeBase) continue;
+    const at = pointerBuiltAtOnRef(root, mergeBase);
+    if (at) return at;
+  }
+  return null;
+}
+
 /**
  * Write the pointer for `deployId`, idempotently: if the committed pointer
  * already describes exactly these files under exactly this id, it is left
  * byte-for-byte alone (its `built_at` included), so a `--write` that changed
  * nothing produces no diff and the manifest-autofix bot stays quiet.
- * -> { changed, pointer }
+ * -> { changed, pointer, restamped }
+ *
+ * ── THE ROLLBACK CLAUSE (`opts.builtAtFloor`, audit finding C, 2026-09-12) ──
+ * `built_at` is not decoration: it is the ONLY order the phone has.
+ * `player/foray-directory.js` refuses a live pointer whose `built_at` is
+ * behind the one it holds (`STATUS.OLDER`) because deploy ids are content
+ * hashes with no order of their own, and that refusal is permanent — it is
+ * re-evaluated against the same two timestamps on every refresh, forever.
+ *
+ * A rollback is a `git revert`, and the pointer rides in the SAME squashed
+ * commit as the three data files (`manifest-autofix.yml` adds
+ * `data/forays-directory.json` to the data PR's own head — see commit e2934d0,
+ * "Generated Foray: What Engineers Actually Do All Day"). So a revert restores
+ * the pointer's OLD bytes, old `built_at` and all; the tree then computes back
+ * to the old deploy id, `samePointerContent` says "nothing changed", and the
+ * rolled-back site ships a pointer that every phone holding the reverted
+ * version refuses for good. A fresh install is worse: its bundled seed is
+ * `partial: true` (F-92) and never `current`, so it refuses the live pointer
+ * as older and shows only the seed — no generated Foray, no recovery.
+ *
+ * WHY A FLOOR AND NOT "RESTAMP WHENEVER THE VERSION CHANGES". Restamping on a
+ * version change does not touch this case at all: after the revert the
+ * on-disk pointer's version and the computed deploy id are BOTH the old id.
+ * Nothing local can tell "rolled back to D1" from "still at D1". The missing
+ * fact lives in history, so the floor is read from history: the `built_at` of
+ * the pointer at the MERGE BASE of this branch and main (`builtAtFloorFrom`),
+ * which on a revert branch is the reverted-from pointer's newer stamp. A
+ * pointer behind that floor is restamped even when its content is unchanged.
+ *
+ * WHY NOT A MONOTONIC COUNTER. A counter is a field in the same file, so a
+ * revert walks it backwards exactly as it walks `built_at` backwards. The
+ * problem is never the clock — it is that the ordering key is committed and
+ * therefore revertible. Only a value derived from something the revert cannot
+ * restore (history, or the wall clock at write time) fixes it.
+ *
+ * The floor changes nothing on an ordinary PR: the merge base's pointer is the
+ * one on disk (a branch merely BEHIND main is not a rollback — that is why the
+ * floor is the merge base and not main's tip), `builtAtIsOlder` is false, the
+ * bytes are left alone and the autofix bot stays as quiet as before.
  */
-export function writePointer(root, deployId, now = new Date()) {
+export function writePointer(root, deployId, now = new Date(), opts = {}) {
   const fresh = buildPointer(root, deployId, now);
   const { pointer: existing } = readPointer(root);
-  if (existing && samePointerContent(existing, fresh)) {
-    return { changed: false, pointer: existing };
+  const floor = opts.builtAtFloor ?? null;
+  const behindFloor = !!existing && builtAtIsOlder(existing.built_at, floor);
+  if (existing && samePointerContent(existing, fresh) && !behindFloor) {
+    return { changed: false, pointer: existing, restamped: false };
   }
   writeFileSync(path.join(root, POINTER_PATH), pointerText(fresh));
-  return { changed: true, pointer: fresh };
+  return { changed: true, pointer: fresh, restamped: behindFloor };
 }
 
 /**
@@ -150,7 +259,7 @@ export function writePointer(root, deployId, now = new Date()) {
  * tree computes to. Empty means it is current. Each string is one operator-
  * facing line; `--check` prints them all and exits 1 on any.
  */
-export function pointerProblems(root, deployId) {
+export function pointerProblems(root, deployId, opts = {}) {
   const { pointer, error } = readPointer(root);
   if (error) return [error];
   const problems = [];
@@ -162,6 +271,20 @@ export function pointerProblems(root, deployId) {
   }
   if (typeof pointer.built_at !== "string" || Number.isNaN(Date.parse(pointer.built_at))) {
     problems.push(`built_at is not an ISO-8601 timestamp: ${JSON.stringify(pointer.built_at)}`);
+  }
+  /* The rollback clause (audit finding C) — see `writePointer`. A pointer this
+     branch has moved BACKWARDS from the stamp it started at is one every phone
+     holding the newer version refuses forever, so it is as stale as a wrong
+     hash. `builtAtFloor` is the merge base's stamp (`builtAtFloorFrom`), not
+     the base branch's tip — a branch that is merely behind main is not a
+     rollback. */
+  const floor = opts.builtAtFloor ?? null;
+  if (builtAtIsOlder(pointer.built_at, floor)) {
+    problems.push(
+      `built_at is ${JSON.stringify(pointer.built_at)}, BEHIND the ${floor} this branch started from — ` +
+        "a rollback must carry a NEWER built_at or every phone holding the reverted version refuses it forever " +
+        "(player/foray-directory.js, STATUS.OLDER)"
+    );
   }
   const sections = { files: pointer.files, bytes: pointer.bytes, sha256: pointer.sha256 };
   for (const [name, section] of Object.entries(sections)) {

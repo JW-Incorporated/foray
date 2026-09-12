@@ -58,6 +58,9 @@ import {
   samePointerContent,
   writePointer,
   pointerProblems,
+  builtAtIsOlder,
+  builtAtFloorFrom,
+  pointerBuiltAtOnRef,
 } from "./forays-directory.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -486,5 +489,195 @@ test("CLI: the guard still refuses a CRLF tree before touching the pointer", () 
     assert.match(c.stderr, /CRLF line endings/);
     assert.match(c.stderr, /forays-directory\.json/);
     assert.ok(existsSync(path.join(dir, POINTER_PATH)));
+  });
+});
+
+// ------------------------------------------------- the rollback clause (C) --
+
+/* AUDIT FINDING C (2026-09-12): a rollback could not reach a phone.
+ *
+ * `player/foray-directory.js` orders pointers by `built_at` and refuses one
+ * that is BEHIND the set it holds — permanently, since the refusal is
+ * re-decided from the same two timestamps on every refresh. Its header claimed
+ * "a real rollback is a revert commit and carries a newer `built_at`". It did
+ * not: `manifest-autofix.yml` commits `data/forays-directory.json` onto the
+ * data PR's own head (see commit e2934d0), so the pointer is reverted along
+ * with the three data files, `samePointerContent` strips `built_at` before
+ * comparing, and `writePointer` left the restored OLD stamp byte-for-byte
+ * alone. Every phone holding the reverted version refused the rollback for
+ * good, and a fresh install — whose seed is `partial: true` (F-92) and so never
+ * `current` — showed the seed and nothing else.
+ *
+ * The fix is `opts.builtAtFloor`: the `built_at` of the pointer on the BASE
+ * branch, which a revert cannot walk backwards because it lives in history
+ * rather than in the reverted file. (A monotonic counter would NOT have worked
+ * — it would be a field in the same reverted file. See `writePointer`.) */
+
+/* `core.autocrlf=false` is not incidental: the developer machines this runs on
+   set it globally to `true`, and a checkout that rewrote these fixtures' LFs to
+   CRLF would change their sha256s and make every pointer comparison here a
+   false negative. The real gate refuses a CRLF checkout outright
+   (`tools/ci/crlf-guard.mjs`); this scratch repo just never makes one. */
+function git(dir, args) {
+  const r = spawnSync("git", ["-c", "user.email=t@t.invalid", "-c", "user.name=t", "-c", "core.autocrlf=false", ...args], {
+    cwd: dir,
+    encoding: "utf8",
+  });
+  assert.equal(r.status, 0, `git ${args.join(" ")} failed: ${r.stderr || r.stdout}`);
+  return r.stdout;
+}
+
+const T1 = new Date("2026-09-10T12:00:00.000Z");
+const T2 = new Date("2026-09-11T12:00:00.000Z");
+const T3 = new Date("2026-09-12T12:00:00.000Z");
+const ID2 = "fedcba9876543210";
+
+test("END TO END: a git revert restores the OLD built_at, and the base-branch floor restamps it so a phone adopts the rollback", async () => {
+  /* The whole defect and the whole fix, in one test, against a real git
+     revert and the real player-side ordering function.
+     KILLED BY: dropping `!behindFloor` from writePointer's idempotence
+     condition (the revert then keeps T1 and `isOlderThan` says the phone
+     refuses it), or by `builtAtIsOlder` returning false always. */
+  const { isOlderThan } = await import("../../player/foray-directory.js");
+
+  withTree(dataTree, (dir) => {
+    git(dir, ["init", "-q", "-b", "main"]);
+
+    // v1 — the catalogue before the publish.
+    writePointer(dir, ID, T1);
+    git(dir, ["add", "-A"]);
+    git(dir, ["commit", "-q", "-m", "v1"]);
+
+    // v2 — the publish: the three data files AND the pointer in one commit,
+    // exactly as manifest-autofix.yml lands them on a data PR.
+    put(dir, DIRECTORY_FILES.forays, FORAYS.replace("f1", "f2"));
+    writePointer(dir, ID2, T2);
+    git(dir, ["add", "-A"]);
+    git(dir, ["commit", "-q", "-m", "v2 — Generated Foray"]);
+
+    // The rollback: a revert COMMIT on a branch cut from main's tip.
+    git(dir, ["switch", "-q", "-c", "revert-it"]);
+    git(dir, ["revert", "--no-edit", "HEAD"]);
+    const reverted = JSON.parse(readFileSync(path.join(dir, POINTER_PATH), "utf8"));
+    assert.equal(reverted.version, ID, "the revert restores the old deploy id");
+    assert.equal(reverted.built_at, T1.toISOString(), "and, with it, the OLD built_at — this is the defect");
+
+    // What shipped before the fix: --write sees identical content and keeps T1.
+    const unfixed = writePointer(dir, ID, T3);
+    assert.equal(unfixed.changed, false);
+    assert.equal(unfixed.pointer.built_at, T1.toISOString());
+    assert.equal(
+      isOlderThan(T1.toISOString(), T2.toISOString()),
+      true,
+      "a phone holding v2 reads that pointer as OLDER and refuses the rollback forever"
+    );
+
+    // With the floor read from the base branch, which still carries v2's stamp.
+    const floor = builtAtFloorFrom(dir, ["main"]);
+    assert.equal(floor, T2.toISOString(), "the floor comes from history, which a revert cannot walk backwards");
+    const fixed = writePointer(dir, ID, T3, { builtAtFloor: floor });
+    assert.equal(fixed.changed, true);
+    assert.equal(fixed.restamped, true);
+    assert.equal(fixed.pointer.built_at, T3.toISOString());
+    assert.equal(fixed.pointer.version, ID, "the rollback still ships the OLD content under the OLD deploy id");
+    assert.equal(
+      isOlderThan(T3.toISOString(), T2.toISOString()),
+      false,
+      "and now a phone holding v2 adopts it"
+    );
+  });
+});
+
+test("the floor changes nothing on an ordinary run: same content, same stamp, no diff for the autofix bot", () => {
+  /* The cost of the rollback clause has to be zero on every PR that is not a
+     rollback, or manifest-autofix pushes a commit to all of them.
+     KILLED BY: `behindFloor = true` unconditionally, or dropping the
+     `Number.isFinite` guards in builtAtIsOlder (an unparseable/absent floor
+     would then compare as newer and rewrite every time). */
+  withTree(dataTree, (dir) => {
+    const first = writePointer(dir, ID, T1);
+    const bytes = readFileSync(path.join(dir, POINTER_PATH));
+    assert.equal(first.changed, true);
+
+    for (const floor of [undefined, null, T1.toISOString(), "not a date", ""]) {
+      const again = writePointer(dir, ID, T3, { builtAtFloor: floor });
+      assert.equal(again.changed, false, `floor ${JSON.stringify(floor)} must not rewrite an unchanged pointer`);
+      assert.equal(again.restamped, false);
+      assert.ok(readFileSync(path.join(dir, POINTER_PATH)).equals(bytes));
+    }
+  });
+});
+
+test("--check reports a pointer this branch moved backwards, naming what a phone does with it", () => {
+  /* `--write` is the safety net, but a founder merging by hand runs `--check`,
+     and a red check that says nothing about built_at sends them to the hashes.
+     KILLED BY: dropping the builtAtIsOlder push from pointerProblems. */
+  withTree(dataTree, (dir) => {
+    writePointer(dir, ID, T1);
+    assert.deepEqual(pointerProblems(dir, ID), [], "no floor, no complaint — unchanged behaviour");
+    assert.deepEqual(pointerProblems(dir, ID, { builtAtFloor: T1.toISOString() }), []);
+
+    const problems = pointerProblems(dir, ID, { builtAtFloor: T2.toISOString() });
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /BEHIND the .* this branch started from/);
+    assert.match(problems[0], /refuses it forever/);
+  });
+});
+
+test("the floor is best-effort: no git, no ref and no pointer on the ref all read as null", () => {
+  /* Every failure has to degrade to the behaviour that shipped before the
+     floor existed, or a `--write` outside a checkout throws instead of writing.
+     KILLED BY: removing the try/catch in pointerBuiltAtOnRef, or returning
+     something other than null from it. */
+  withTree(dataTree, (dir) => {
+    assert.equal(pointerBuiltAtOnRef(dir, "origin/main"), null, "not a git repo at all");
+    assert.equal(builtAtFloorFrom(dir), null);
+
+    git(dir, ["init", "-q", "-b", "main"]);
+    assert.equal(pointerBuiltAtOnRef(dir, "origin/main"), null, "a repo with no such ref");
+
+    writePointer(dir, ID, T1);
+    git(dir, ["add", "-A"]);
+    git(dir, ["commit", "-q", "-m", "v1"]);
+    assert.equal(builtAtFloorFrom(dir, ["origin/main", "main"]), T1.toISOString(), "falls through to the base that exists");
+    assert.equal(builtAtFloorFrom(dir, ["no-such-ref"]), null);
+  });
+});
+
+test("a branch cut before the last publish is NOT a rollback: the floor is its merge base, so nothing is restamped", () => {
+  /* The cost of the rollback clause has to stay at zero for every PR that is
+     merely BEHIND main. Measuring against main's TIP instead of the merge base
+     would read every stale branch as a rollback and put an autofix commit on it.
+     KILLED BY: `builtAtFloorFrom` reading the base branch's tip
+     (`pointerBuiltAtOnRef(root, base)`) instead of the merge base. */
+  withTree(dataTree, (dir) => {
+    git(dir, ["init", "-q", "-b", "main"]);
+    writePointer(dir, ID, T1);
+    git(dir, ["add", "-A"]);
+    git(dir, ["commit", "-q", "-m", "v1"]);
+
+    // A feature branch cut here, touching nothing in data/.
+    git(dir, ["switch", "-q", "-c", "feature"]);
+    git(dir, ["commit", "-q", "--allow-empty", "-m", "some unrelated work"]);
+
+    // Meanwhile main publishes: new data, new pointer, a newer built_at.
+    git(dir, ["switch", "-q", "main"]);
+    put(dir, DIRECTORY_FILES.forays, FORAYS.replace("f1", "f2"));
+    writePointer(dir, ID2, T2);
+    git(dir, ["add", "-A"]);
+    git(dir, ["commit", "-q", "-m", "v2"]);
+    git(dir, ["switch", "-q", "feature"]);
+
+    /* main's TIP says T2 — the branch's own pointer is "behind" it and is not
+       going backwards at all. The merge base says T1: the stamp this branch
+       started from, which is the only thing it could have moved. */
+    assert.equal(pointerBuiltAtOnRef(dir, "main"), T2.toISOString());
+    assert.equal(builtAtFloorFrom(dir, ["main"]), T1.toISOString());
+
+    const floor = builtAtFloorFrom(dir, ["main"]);
+    const r = writePointer(dir, ID, T3, { builtAtFloor: floor });
+    assert.equal(r.changed, false, "a stale branch must not get an autofix commit");
+    assert.equal(r.pointer.built_at, T1.toISOString());
+    assert.deepEqual(pointerProblems(dir, ID, { builtAtFloor: floor }), []);
   });
 });

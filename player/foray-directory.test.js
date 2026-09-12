@@ -184,10 +184,30 @@ test("the cache row round-trips, and a row missing a document is absent rather t
      truncated row would boot the app with `segments: undefined`. Red. */
   const set = { ...makeSet(1), version: "v1", built_at: "2026-09-10T00:00:00Z", fetched_at: "2026-09-10T01:00:00Z" };
   const back = parseCachedSet(serializeSet(set));
-  assert.deepEqual(back, { version: "v1", built_at: set.built_at, fetched_at: set.fetched_at, forays: set.forays, segments: set.segments, sources: set.sources });
+  assert.deepEqual(back, { version: "v1", built_at: set.built_at, fetched_at: set.fetched_at, partial: false, forays: set.forays, segments: set.segments, sources: set.sources });
   assert.equal(parseCachedSet(JSON.stringify({ version: "v1", forays: set.forays, segments: set.segments })), null);
   assert.equal(parseCachedSet("{not json"), null);
   assert.equal(parseCachedSet(""), null);
+});
+
+test("the cache row carries `partial` (F-92), and a legacy row without it reads as whole", () => {
+  /* AUDIT FINDING E (2026-09-12). `partial` decides whether a held set can ever
+     be `current` — a partial set at the live version still has the rest to
+     fetch. Only whole sets are cached today, so dropping it on the round-trip
+     was harmless; the invariant was held by convention and by nothing in the
+     parser. MUTATION: delete the `partial:` line from parseCachedSet (or from
+     serializeSet) -> red. A partial set would then round-trip as whole and the
+     phone would stop fetching, showing the seed forever. */
+  const whole = { ...makeSet(1), version: "v1", built_at: "2026-09-10T00:00:00Z", fetched_at: null };
+  assert.equal(parseCachedSet(serializeSet({ ...whole, partial: true })).partial, true);
+  assert.equal(parseCachedSet(serializeSet(whole)).partial, false);
+  /* A row written before this landed has no field at all; it is a whole set,
+     which is what every row in the cache today actually is. */
+  const legacy = JSON.parse(serializeSet(whole));
+  delete legacy.partial;
+  assert.equal(parseCachedSet(JSON.stringify(legacy)).partial, false);
+  /* `=== true` only: nothing else is truthy enough to stop a phone fetching. */
+  assert.equal(parseCachedSet(JSON.stringify({ ...legacy, partial: "yes" })).partial, false);
 });
 
 /* ==================================================================== */

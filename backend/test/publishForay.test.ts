@@ -11,6 +11,8 @@ import {
   currentRef,
   cutPublishBranch,
   gateWrittenTree,
+  parseArgs,
+  printSuiteVerdict,
   publishPrBody,
   recordPublishInReport,
   recordRefusalInReport,
@@ -586,5 +588,101 @@ describe("F-98 at publish — a superseded row, the drafts timed on it, and --su
     /* And a publish that only adds reads exactly as it did before F-98. */
     expect(supersedeLines(undefined)).toBe("");
     expect(supersedeLines({ superseded: [], restated: [], removed: null })).toBe("");
+  });
+});
+
+/**
+ * AUDIT FINDING A (2026-09-12): `--force --no-hold` put unreviewed narration on
+ * every phone with no human.
+ *
+ * `--force` overrides the WS-B veracity gate. `meta.veracity` is never written
+ * into `data/` (`finalizeForay.ts`), no CI check reads it, `path-policy.mjs`
+ * allow-lists `data/`, and `automerge-nightly.yml` merges a green `data/`-only
+ * PR unless it carries `hold`/`founder-decision`. The `hold` label was the only
+ * thing standing between a forced publish and the directory, and `--no-hold`
+ * removed it.
+ *
+ * MUTATIONS, one per test:
+ *   - put `hold: !argv.includes("--no-hold")` back in `parseArgs` (drop the
+ *     `force ? true :`) → "`--force` implies hold" is red;
+ *   - drop `holdForcedByForce` → "the refusal is reported, not silent" is red;
+ *   - make `--force` imply hold for a plain `--no-hold` run too → "`--no-hold`
+ *     alone still works" is red.
+ */
+describe("parseArgs — `--force` implies `hold` (audit finding A)", () => {
+  it("`--force` implies hold, and `--no-hold` alongside it is refused", () => {
+    const forced = parseArgs(["--input", "c.json", "--force", "--no-hold"]);
+    expect(forced.force).toBe(true);
+    expect(forced.hold).toBe(true);
+    expect(parseArgs(["--input", "c.json", "--force"]).hold).toBe(true);
+  });
+
+  it("the refusal is reported, not silent — `holdForcedByForce` marks the run whose flag was declined", () => {
+    expect(parseArgs(["--input", "c.json", "--force", "--no-hold"]).holdForcedByForce).toBe(true);
+    /* Not set when there was nothing to decline. */
+    expect(parseArgs(["--input", "c.json", "--force"]).holdForcedByForce).toBe(false);
+    expect(parseArgs(["--input", "c.json", "--no-hold"]).holdForcedByForce).toBe(false);
+  });
+
+  it("`--no-hold` alone still works, and a plain publish still holds", () => {
+    expect(parseArgs(["--input", "c.json", "--no-hold"]).hold).toBe(false);
+    expect(parseArgs(["--input", "c.json"]).hold).toBe(true);
+    expect(parseArgs(["--input", "c.json"]).force).toBe(false);
+  });
+});
+
+/**
+ * AUDIT FINDINGS B AND D (2026-09-12): what the operator and the PR body are
+ * told.
+ *
+ * MUTATIONS, one per test:
+ *   - drop the `knownUncoveredGuidance` loop from `printSuiteVerdict` → "the
+ *     verdict tells the operator to delete the KNOWN_UNCOVERED entry" is red;
+ *   - put "passed check-forays.mjs and check-narration.mjs" back in
+ *     `publishPrBody` → "the PR body does not claim a narration check that
+ *     structurally did not run" is red.
+ */
+describe("the verdict and the PR body say what was actually checked", () => {
+  it("the verdict tells the operator to DELETE the KNOWN_UNCOVERED entry rather than re-cut the Foray", () => {
+    const lines: { error: string[]; log: string[]; warn: string[] } = { error: [], log: [], warn: [] };
+    const out: Out = {
+      log: (l) => lines.log.push(l),
+      warn: (l) => lines.warn.push(l),
+      error: (l) => lines.error.push(l)
+    };
+    const proceed = printSuiteVerdict(
+      {
+        ok: false,
+        failures: [
+          {
+            suite: "tools/foray/fixture-coverage.test.mjs",
+            name: 'KNOWN_UNCOVERED: narration.mode = "intro" still has no committed carrier',
+            error: 'narration.mode = "intro" is now carried by engineers-1',
+            location: "tools/foray/fixture-coverage.test.mjs:190:3"
+          }
+        ],
+        durationMs: 10,
+        counts: { tests: 1, pass: 0, fail: 1 },
+        exitCode: 1,
+        files: ["tools/foray/fixture-coverage.test.mjs"]
+      },
+      false,
+      out
+    );
+    expect(proceed).toBe(false);
+    const said = lines.error.join("\n");
+    expect(said).toMatch(/DELETE the KNOWN_UNCOVERED entry for narration\.mode = "intro"/);
+    expect(said).toMatch(/IN THIS PR/);
+    expect(said).toMatch(/do not --force past this/);
+  });
+
+  it("the PR body does not claim a narration check that structurally did not run (finding D)", () => {
+    const body = publishPrBody({ id: "foray-x" }, { ok: true, failures: [] });
+    /* `check-narration.mjs` validates docs/curation/narration/<id>/, which the
+       §4 pipeline never writes — see finalizeForay.ts's header. The old line
+       said the Foray "passed check-forays.mjs and check-narration.mjs". */
+    expect(body).not.toMatch(/passed check-forays\.mjs and\s+check-narration\.mjs/);
+    expect(body).toMatch(/passed check-forays\.mjs/);
+    expect(body).toMatch(/it is not a check of this Foray's narration/);
   });
 });

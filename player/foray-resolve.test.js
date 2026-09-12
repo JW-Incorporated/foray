@@ -14,7 +14,7 @@ import {
   PUBLISHED, indexSegments, indexSources, allForays, forayVisibility,
   listableForays, findForay, foraysReferencingShow, hydrateForayItems, resolveForay, groupBySlot,
   segmentStarts, segmentAtElapsed, forayElapsed, fmtClock, fmtSpan, progressSegments,
-  validateForayDocuments, VALIDATION_CODES,
+  validateForayDocuments, VALIDATION_CODES, isGeneratedDraft,
 } from "./foray-resolve.js";
 /* The resume half of #40. Imported here rather than tested in
    foray-progress.test.js because `progressSegments` is the adapter between the
@@ -661,4 +661,29 @@ test("validateForayDocuments: shapes and ids, and every code is a token the fiel
   for (const c of ["segment-missing", "source-missing", "nothing-playable", "item-malformed", "duplicate-foray-id", "foray-without-id", "no-forays"]) {
     assert.ok(VALIDATION_CODES.includes(c), `${c} is returned but not in the vocabulary`);
   }
+});
+
+test("isGeneratedDraft: generated AND draft, both, and it is not the visibility rule", () => {
+  /* AUDIT FINDING E (2026-09-12): the one home of the predicate that decides
+     which Forays the generator may re-cut (backend finalizeForay.ts) and which
+     the native seed leaves to the directory (tools/mobile/prepare-webdir.mjs
+     seedCarries, F-92). Those two must agree exactly; a Foray the seed leaves
+     out but the pipeline will not re-cut is a phone showing a Foray whose audio
+     moved under it.
+     MUTATION: drop either term (`generated === true` or `status === DRAFT`) ->
+     red here, and red in backend/test/finalizeForay.test.ts's agreement test. */
+  assert.equal(isGeneratedDraft({ generated: true, status: "draft" }), true);
+  assert.equal(isGeneratedDraft({ generated: true, status: "published" }), false);
+  assert.equal(isGeneratedDraft({ generated: false, status: "draft" }), false);
+  assert.equal(isGeneratedDraft({ status: "draft" }), false);
+  assert.equal(isGeneratedDraft({ generated: true }), false);
+  assert.equal(isGeneratedDraft(null), false);
+  assert.equal(isGeneratedDraft(undefined), false);
+  /* Truthy is not enough — a string "true" from a hand-edited row is not a
+     generated draft, and the seed must not drop a Foray on one. */
+  assert.equal(isGeneratedDraft({ generated: "true", status: "draft" }), false);
+  /* NOT the visibility rule: a hand-authored draft is invisible to a visitor
+     but is nobody's to re-cut. Collapsing the two would be the actual bug. */
+  assert.equal(forayVisibility({ generated: false, status: "draft" }).visible, false);
+  assert.equal(isGeneratedDraft({ generated: false, status: "draft" }), false);
 });
