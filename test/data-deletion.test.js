@@ -461,11 +461,19 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      these forays in the app"). A local per-device preference, default off,
      read only in app.js — player/ takes it as an option, never from the
      store. Same mechanism: this count failed first, then the policy check,
-     until privacy-policy.md §1 got the row. */
+     until privacy-policy.md §1 got the row.
+
+     25 -> 26 on 2026-09-12: `cp_voice_probe`, K-01's voice-engine measurement
+     switch (app.js § voiceProbeOn; docs/bundled-voice-plan.md K-01). A local
+     per-device preference, default off, read only in app.js — the probe
+     itself (`player/kokoro-probe.js`) takes no flag, because whether to OFFER
+     a 90-second synthesis run is the page's decision, not the player's. Same
+     mechanism as every prior addition: this count failed first, then the
+     policy check, until privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 25,
-    `expected 25 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 26,
+    `expected 26 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

@@ -56,6 +56,11 @@ import {
   L4_SOFT_MAX_SEC,
   M4_LONG_CLIP_SEC,
   M4_SHARE_MAX,
+  phonemeProblems,
+  scriptMentions,
+  lexiconEntries,
+  TTS_ENGINES,
+  LEXICON_PATH,
 } from "./check-forays.mjs";
 
 const { BANNED, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
@@ -2330,4 +2335,160 @@ test("a Foray using a segment §4.5 tier 2 minted this run resolves, and its sec
   const r = checkForays(f).report.forays.find((x) => x.id === b.id);
   assert.equal(r.segments, segmentItems(boundary(fixture)).length + 1, "the minted segment is counted, not dropped");
   assert.equal(r.runtime_sec, FIXTURE_RUNTIME + MINTED_SEC, "its seconds are on the listener's clock");
+});
+
+/* ====================================================================
+   K-02: phonemes are authored with the script
+   (docs/bundled-voice-plan.md K-02)
+
+   The deck's load-bearing idea (§4): narration text becomes PHONEMES on our
+   servers, at generation time, and the phone receives ids. What this checker
+   owns is that an item CLAIMING to be phonemized actually is, and that the
+   pronunciation lexicon survived the trip.
+
+   EVERY RULE IS INERT ON A LEGACY ITEM, which is every item in
+   `data/forays.json` today. The first test below is the one that proves it,
+   and it is the one that would catch this card breaking the four committed
+   Forays.
+   ==================================================================== */
+
+const LEX = [
+  { term: "sake", ipa: "ˈsɑːkeɪ" },
+  { term: "ch'arki", ipa: "tʃarki" },
+  { term: "koji", ipa: null },      // in the lexicon, no authored override
+];
+
+const kokoroItem = (over = {}) => ({
+  type: "narration",
+  id: "n1",
+  script: "The sake was poured.",
+  mode: "carry",
+  phonemes: "ðə ˈsɑːkeɪ wɒz pɔːd",
+  tts: { engine: "kokoro", model: "1.0", vocab: "sha256:abc" },
+  est_sec: 1.2,
+  ...over,
+});
+
+test("K-02: an item with no `tts` block is untouched — the legacy path is not re-validated", () => {
+  /* THE REGRESSION GUARD FOR THIS WHOLE CARD. Every narration item in
+     `data/forays.json` is script-only with no `tts`; a rule that fired on them
+     would fail the repo's own data on the day it landed.
+     MUTATION: drop the `tts === undefined` early return in `phonemeProblems` —
+     every committed Foray goes red and `node tools/foray/check-forays.mjs`
+     stops passing. */
+  assert.deepEqual(phonemeProblems({ type: "narration", id: "n1", script: "Plain." }, LEX), []);
+  assert.deepEqual(phonemeProblems({ script: "The sake was poured." }, LEX), [],
+    "a lexicon term in a legacy script demands nothing");
+});
+
+test("K-02: a well-formed kokoro item passes", () => {
+  assert.deepEqual(phonemeProblems(kokoroItem(), LEX), []);
+});
+
+test("K-02: THE MUTATION THE CARD NAMES — drop one override and the item goes red", () => {
+  /* The card's own words: "every lexicon term in `script` is reflected in
+     `phonemes` (MUTATION: drop one override → red)". This is that mutation,
+     executed: the script still says "sake", the phonemes no longer carry the
+     lexicon's IPA for it, and the item is rejected.
+
+     WHY IT MATTERS MORE HERE THAN ON THE SYSTEM-VOICE PATH: an iOS voice that
+     ignores an IPA attribute mispronounces one word. A Kokoro item whose
+     phonemes lost the override mispronounces it on EVERY device, identically,
+     forever — the determinism the deck is built on cuts both ways. */
+  const dropped = kokoroItem({ phonemes: "ðə seɪk wɒz pɔːd" }); // the English "sake"
+  const problems = phonemeProblems(dropped, LEX);
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /says "sake"/);
+  assert.match(problems[0], /ˈsɑːkeɪ/);
+});
+
+test("K-02: a lexicon term with NO authored IPA demands nothing", () => {
+  /* `hard-terms.json` carries 83 terms and exactly one authored IPA; that
+     file's own honesty note says why. Demanding an override for a term whose
+     override is deliberately `null` would be demanding that a phonemizer
+     invent what the lexicon refuses to state.
+     MUTATION: drop the `if (!entry.ipa) continue` guard — every kokoro item
+     mentioning `koji` goes red with nothing to fix. */
+  assert.deepEqual(phonemeProblems(kokoroItem({ script: "The koji was ready." }), LEX), []);
+});
+
+test("K-02: a term matched inside a longer word does not count", () => {
+  /* The lexicon's own matching rule (narrator-voice.md's Appendix,
+     `foray-tts.js`'s `findMatches`): case-insensitive, word boundary, with
+     apostrophes as interior characters.
+     MUTATION: use a bare `script.includes(term)` — "sakes" and "namesake"
+     both demand the override and the checker starts rejecting correct items. */
+  assert.equal(scriptMentions("for goodness' sakes", "sake"), false);
+  assert.equal(scriptMentions("the namesake district", "sake"), false);
+  assert.equal(scriptMentions("A glass of SAKE.", "sake"), true, "case-insensitive");
+  assert.equal(scriptMentions("dried ch'arki, salted", "ch'arki"), true, "apostrophes are interior");
+  assert.equal(scriptMentions("charki without the mark", "ch'arki"), false);
+});
+
+test("K-02: a kokoro item with no phonemes is rejected — the phone cannot make its own", () => {
+  /* The entire licence argument (deck §4) is that there is NO text front-end
+     on the device. An item that declares the engine and carries no phonemes is
+     an item that will fall back to the system voice, silently, forever.
+     MUTATION: treat missing phonemes as "fall back quietly" — the item ships
+     and nobody learns the phonemize stage skipped it. */
+  for (const bad of [undefined, "", "   ", 42]) {
+    const problems = phonemeProblems(kokoroItem({ phonemes: bad }), LEX);
+    assert.match(problems.join("\n"), /carries no `phonemes`/, `phonemes: ${JSON.stringify(bad)}`);
+  }
+});
+
+test("K-02: model and vocab are required — a kokoro item must be version-checkable", () => {
+  /* Deck §5 item 8: phonemes in the data must match the phoneme vocabulary of
+     the model in the app, and the player refuses on mismatch. An item with no
+     `vocab` is one the player cannot decide about, so it falls back to the
+     system voice and the failure is invisible.
+     MUTATION: drop either field from the required list. */
+  assert.match(phonemeProblems(kokoroItem({ tts: { engine: "kokoro", model: "1.0" } }), LEX).join("\n"),
+    /`tts\.vocab` must be a non-empty string/);
+  assert.match(phonemeProblems(kokoroItem({ tts: { engine: "kokoro", vocab: "v" } }), LEX).join("\n"),
+    /`tts\.model` must be a non-empty string/);
+});
+
+test("K-02: an unknown engine is rejected, and stops there", () => {
+  /* MUTATION: accept any string as an engine — a typo'd `kokoru` then ships,
+     the player falls back forever, and the phonemes ride along unused. The
+     "stops there" half matters too: reporting eight more problems about an
+     engine nobody recognises buries the one that matters. */
+  const problems = phonemeProblems(kokoroItem({ tts: { engine: "kokoru", model: "1.0", vocab: "v" } }), LEX);
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /`tts\.engine` is "kokoru", not one of kokoro/);
+  assert.deepEqual(TTS_ENGINES, ["kokoro"]);
+});
+
+test("K-02: a non-object `tts` is rejected rather than read for fields", () => {
+  /* MUTATION: read `tts.engine` off a string — `"kokoro".engine` is undefined,
+     which reports as an unknown engine and hides the real shape error. */
+  assert.match(phonemeProblems(kokoroItem({ tts: "kokoro" }), LEX).join("\n"), /must be an object/);
+  assert.match(phonemeProblems(kokoroItem({ tts: ["kokoro"] }), LEX).join("\n"), /must be an object/);
+});
+
+test("K-02: est_sec must be a positive finite number when present", () => {
+  /* `est_sec` feeds the seam and generation-lead maths until K-04 can record a
+     real rendered length (deck K-05). A zero or a NaN there is a seam the
+     player schedules for no time at all.
+     MUTATION: drop the `Number.isFinite` half — NaN passes. */
+  for (const bad of [0, -1, "12", NaN, Infinity]) {
+    assert.match(phonemeProblems(kokoroItem({ est_sec: bad }), LEX).join("\n"), /`est_sec` is/,
+      `est_sec: ${JSON.stringify(bad)}`);
+  }
+  assert.deepEqual(phonemeProblems(kokoroItem({ est_sec: undefined }), LEX), [], "absent is fine");
+});
+
+test("K-02: the real lexicon loads, and is the file the plugin reads", () => {
+  /* One lexicon, not two. `foray-tts.js` applies it on the system-voice path
+     and this checker enforces it on the kokoro path; a second copy would be
+     two rules that agree until they do not.
+     MUTATION: point LEXICON_PATH at a copy. */
+  const entries = lexiconEntries();
+  assert.ok(entries.length >= 80, `the lexicon has ${entries.length} entries, expected the committed 83`);
+  assert.equal(LEXICON_PATH, "mobile/plugins/foray-tts/lexicon/hard-terms.json");
+  /* Honest state, pinned: exactly one authored IPA today. When that changes,
+     this assertion is where somebody says so. */
+  const authored = entries.filter((e) => e.ipa);
+  assert.equal(authored.length, 1, "if IPA has been authored for more terms, update this and say who verified it");
 });

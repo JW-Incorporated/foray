@@ -3146,4 +3146,24 @@ backfill is a future, separate pass.
   GITHUB_TOKEN/automerge gap, and the published-vs-pointerChanged
   idempotency gate).
 
+- **The bundled voice (K-deck) — K-01's probe, K-02, K-03, K-06, K-07 landed;
+  K-04 and K-05 deliberately unstarted.** `docs/bundled-voice-plan.md` was written
+  2026-09-06 and never started; the 2026-09-11 verdict on the platform voices
+  ("all so bad", picker cut to Samantha) is what started it. What is on `main`:
+  an `engine: "kokoro-probe"` measurement path through `foray-tts` on both
+  platforms behind a `cp_voice_probe` drawer switch, writing a `voiceProbe` row
+  into the Playback-diagnostics record; the phonemize stage
+  (`tools/narration/phonemize.py`, `backend/src/generation/phonemize.ts`,
+  `check-forays.mjs` rules); the audition kit and its twelve-voice slate; and
+  K-06's pin table, espeak licence gate and 150 MB app-size ceiling.
 
+  **Everything is inert.** No ONNX Runtime dependency, no weights (pinned, never
+  committed, sha256 still `null`), an empty native engine seam, an unphonemized
+  passage, and no narration item in `data/forays.json` carries a `tts` block. Every
+  refusal is named rather than reported as a zero.
+
+  **Blocked on a phone.** K-04 (the engine) and K-05 (the player speaking
+  phonemes) are downstream of K-01's numbers, which need a real device:
+  `HUMAN-ACTIONS.md` #45. The audition (H2) needs the weights fetched and a
+  founder listening; `docs/research/voice-audition-2026-09.md` holds the slate and
+  the decision rule.

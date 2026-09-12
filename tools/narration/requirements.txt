@@ -1,0 +1,21 @@
+# K-02's phonemize stage (docs/bundled-voice-plan.md K-02). Server-side only —
+# nothing here ever ships to a phone, which is the whole point of the deck's §4
+# design: espeak-ng is GPL-3 and stays behind this line.
+#
+# PINNED EXACTLY, because a phoneme string that changes under us is an item the
+# app's version check (deck §5 item 8) will reject after publication. The
+# `vocab` sha that `phonemize.py` stamps on every item is derived from the
+# installed backend, so an unpinned upgrade would silently invalidate every
+# Foray already in `data/`.
+#
+# NOT INSTALLED ON THE MACHINE THAT WROTE THIS FILE. `python
+# tools/narration/phonemize.py --check` reports what is missing; every other
+# mode refuses rather than emitting phonemes nobody produced.
+misaki[en]==0.9.4
+# Kokoro's own package, for `render-audition.py` (K-03). The ONNX runtime it
+# needs is listed separately because the audition renders through the SAME
+# graph K-01 bundles, not through torch.
+kokoro-onnx==0.4.9
+onnxruntime==1.20.1
+numpy==2.1.3
+soundfile==0.12.1

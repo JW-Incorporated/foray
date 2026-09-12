@@ -21,6 +21,8 @@ import {
   speak,
   createForayTtsShell,
   onFinished,
+  kokoroProbe,
+  PROBE_ENGINE,
   pause,
   resume,
   stop,
@@ -563,6 +565,97 @@ test("createForayTtsShell: exposes onFinished wired to the same baked-in bridge"
   assert.equal(listeners.get(`${PLUGIN_NAME}:${FINISHED_EVENT}`)?.size, 1);
 });
 
+/* ---------- K-01: the bundled-voice probe (docs/bundled-voice-plan.md) ----------
+ *
+ * The measurement path, and the one property that makes it worth shipping: it
+ * is a SEPARATE call from `speak()` with no fallback ladder under it. `speak()`
+ * degrades native -> Web Speech -> honest refusal, which is right for
+ * narration and catastrophic for a probe: a probe that fell down that ladder
+ * would time the SYSTEM voice and report a Kokoro number. Every test below is
+ * a mutation of that separation.
+ */
+
+test("kokoroProbe: no bridge is `no-bridge`, and it never reaches speechSynthesis", async () => {
+  /* TO SEE IT FAIL: give `kokoroProbe` the same `speechSynth` fallback
+     `speak()` has. `spoke` becomes true and the probe reports a measurement of
+     the phone's own voice. */
+  let spoke = false;
+  const speechSynth = { speak: () => { spoke = true; }, getVoices: () => [] };
+  const out = await kokoroProbe({ bridge: undefined, speechSynth });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, "no-bridge");
+  assert.equal(spoke, false);
+});
+
+test("kokoroProbe: calls the native method by the name the plugin declares", async () => {
+  /* The Swift half's `pluginMethods` and the Java half's `@PluginMethod` are
+     both named `kokoroProbe`; a rename on one side reports as `engine-absent`,
+     which reads exactly like "this build has no runtime".
+     TO SEE IT FAIL: change the method string here or in either native half. */
+  const calls = [];
+  const bridge = {
+    nativePromise: async (plugin, method, payload) => {
+      calls.push({ plugin, method, payload });
+      return { ok: true, model: "1.0", provider: "cpu" };
+    },
+  };
+  const passage = { lines: [{ ids: [1, 2] }] };
+  const out = await kokoroProbe({ bridge, passage });
+  assert.equal(calls[0].plugin, PLUGIN_NAME);
+  assert.equal(calls[0].method, "kokoroProbe");
+  assert.equal(calls[0].payload.engine, PROBE_ENGINE);
+  assert.deepEqual(calls[0].payload.passage, passage);
+  assert.equal(out.ok, true);
+  assert.equal(out.path, "native");
+});
+
+test("kokoroProbe: an answer without `ok` is a refusal, never a success", async () => {
+  /* TO SEE IT FAIL: return the native payload unchanged. `{}` then reads as a
+     complete measurement of nothing. */
+  const bridge = { nativePromise: async () => ({}) };
+  const out = await kokoroProbe({ bridge });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, "refused");
+});
+
+test("kokoroProbe: the native reason code is carried through verbatim", async () => {
+  /* `model-absent` (the build skipped the fetch step) and `engine-absent` (no
+     runtime compiled in) are different things for a founder to do next.
+     TO SEE IT FAIL: replace `native.reason` with a constant. */
+  for (const reason of ["model-absent", "engine-absent", "passage-unphonemized"]) {
+    const bridge = { nativePromise: async () => ({ ok: false, reason }) };
+    assert.equal((await kokoroProbe({ bridge })).reason, reason);
+  }
+});
+
+test("kokoroProbe: a rejecting bridge is `engine-absent`, not a throw", async () => {
+  /* Capacitor rejects an unknown method, which is exactly what an older shell
+     build — one whose flattened `foray-tts.js` predates this card — does.
+     TO SEE IT FAIL: drop the try/catch; the call rejects into a drawer handler. */
+  const bridge = { nativePromise: async () => { throw new Error("no such method"); } };
+  const out = await kokoroProbe({ bridge, log: () => {} });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, "engine-absent");
+});
+
+test("kokoroProbe: `speak()` is untouched by the probe engine", async () => {
+  /* THE INERTNESS CLAIM from this file's side: narration still goes through
+     the `speak` method, with no `engine` in its payload, exactly as before.
+     TO SEE IT FAIL: add an `engine` branch to `speak()`. */
+  const calls = [];
+  const bridge = {
+    nativePromise: async (plugin, method, payload) => { calls.push({ method, payload }); return { ok: true }; },
+  };
+  await speak("hello", { bridge, engine: PROBE_ENGINE });
+  assert.equal(calls[0].method, "speak");
+  assert.equal(calls[0].payload.engine, undefined, "speak() has no engine field to switch on");
+});
+
+test("createForayTtsShell: exposes kokoroProbe on the same baked-in bridge", async () => {
+  const bridge = { nativePromise: async () => ({ ok: true, model: "1.0" }) };
+  const shell = createForayTtsShell({ bridge });
+  assert.equal((await shell.kokoroProbe({ passage: { lines: [{ ids: [1] }] } })).ok, true);
+});
 /* ------------------------------------------- L-05: pause, resume, stop
 
    Founder feedback F12, TestFlight 2026090603: "Once the on-device narration

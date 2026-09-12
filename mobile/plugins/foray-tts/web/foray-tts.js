@@ -399,6 +399,79 @@ export async function listVoices(opts = {}) {
   };
 }
 
+/* ---------- K-01: the measurement path, and only the measurement path ----------
+
+   `docs/bundled-voice-plan.md` K-01 asks for "a throwaway measurement path,
+   not a product feature": an `engine: "kokoro-probe"` branch that loads a
+   bundled Kokoro model and one voice, synthesizes a PRE-PHONEMIZED passage
+   (no text front-end on device, which is the whole licence argument — deck
+   §4), and reports numbers. It is deleted in K-04's cutover.
+
+   IT IS A SEPARATE FUNCTION AND NOT AN `engine` OPTION ON `speak()`, and that
+   is the safety decision rather than a stylistic one. `speak()`'s documented
+   contract is a ladder — native, then Web Speech, then an honest refusal —
+   and a probe that fell down that ladder would measure the SYSTEM voice while
+   reporting a Kokoro number. The one thing this instrument must never do is
+   produce a plausible measurement of the wrong engine. So: no ladder, no Web
+   Speech path, and the only answer when nothing is there is `ok: false` with
+   a named reason. `speak()` itself is untouched by this card — narration is
+   spoken exactly as it was.
+
+   `PROBE_ENGINE` is duplicated in `player/kokoro-probe.js` (a classic-script
+   page and a plugin web half cannot import each other — `tts-bridge.js`'s
+   header has the URL argument). `tools/mobile/foray-tts.test.mjs` pins the
+   two strings equal, so the duplication cannot drift into a silent
+   degradation. */
+export const PROBE_ENGINE = "kokoro-probe";
+
+/**
+ * Ask the native half for K-01's measurement. NEVER throws and NEVER rejects,
+ * same rule as `speak()`.
+ *
+ * @param {object} [opts]
+ * @param {object} [opts.passage] the parsed `tools/mobile/kokoro-probe-passage.json`
+ * @param {object} [opts.bridge]  injected `window.Capacitor` (or a fake, for tests)
+ * @param {Function} [opts.log]
+ * @returns {Promise<object>} `{ ok, reason?, ...native }` — the native payload
+ *   verbatim on success, so `player/kokoro-probe.js` owns the arithmetic and
+ *   this file owns only the transport.
+ */
+export async function kokoroProbe(opts = {}) {
+  const {
+    passage = null,
+    bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),
+    log = (typeof console !== "undefined" ? console.warn.bind(console) : () => {}),
+  } = opts;
+
+  if (!shellApplies(bridge)) {
+    return { ok: false, path: "none", reason: "no-bridge" };
+  }
+  try {
+    const native = await bridge.nativePromise(PLUGIN_NAME, "kokoroProbe", {
+      engine: PROBE_ENGINE,
+      passage: passage ?? null,
+    });
+    /* `ok` is the native side's to give. An older shell build whose plugin has
+       no `kokoroProbe` method REJECTS (Capacitor's own behaviour for an
+       unknown method) and lands in the catch below; one that answers without
+       an `ok` is treated as a refusal rather than a success, because a probe
+       that defaults to "it worked" is the failure mode this whole file is
+       written around. */
+    if (!native || native.ok !== true) {
+      return {
+        ok: false,
+        path: "native",
+        reason: (native && typeof native.reason === "string" && native.reason) || "refused",
+        native: native ?? null,
+      };
+    }
+    return { ...native, ok: true, path: "native" };
+  } catch (e) {
+    try { log("foray-tts: kokoroProbe is not available on this build", e); } catch (_e) { /* logging must never throw */ }
+    return { ok: false, path: "native", reason: "engine-absent" };
+  }
+}
+
 /* ── L-05 (founder feedback F12): pause, resume, stop ───────────────────────
  *
  * WHAT WAS BROKEN. TestFlight 2026090603: "Once the on-device narration foray
@@ -541,6 +614,7 @@ export function createForayTtsShell(defaults = {}) {
   return {
     speak: (text, opts = {}) => speak(text, { ...defaults, ...opts }),
     listVoices: (opts = {}) => listVoices({ ...defaults, ...opts }),
+    kokoroProbe: (opts = {}) => kokoroProbe({ ...defaults, ...opts }),
     pause: (opts = {}) => pause({ ...defaults, ...opts }),
     resume: (opts = {}) => resume({ ...defaults, ...opts }),
     stop: (opts = {}) => stop({ ...defaults, ...opts }),
