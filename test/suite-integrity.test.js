@@ -225,7 +225,7 @@ const FLOORS = {
      import and cannot be loaded under node — see its own header), floored
      because a perfect gesture module wired to nothing passes every other test
      in this repo. */
-  "player/now-playing-sheet.test.js": 15,
+  "player/now-playing-sheet.test.js": 16,
   "player/seek-policy.test.js": 33,
   /* The wire between the page and on-device speech (#29). Floored with no
      slack, because what it holds down is a connection that was ABSENT for

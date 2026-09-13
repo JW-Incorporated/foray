@@ -1301,11 +1301,34 @@ body:not(.fp-expanded) .fp-close { display: none; }
    still be able to cover this. */
 .fp-sheet {
   position: fixed;
-  inset: 0;
+  /* NOT `inset: 0`. It stops under the topbar, for two reasons that happen to
+     agree:
+
+       1. U-12 / F17 is a standing invariant — the ☰ lives in the topbar and
+          must be reachable AT EVERY MOMENT, including while this sheet is
+          expanded (see the z-index ledger's own note near the drawer). The
+          sheet paints inside #foray-player's stacking context at 60, well
+          above the topbar's 20, so a full-bleed `inset: 0` swallows the menu
+          button. It did: test/playwright/drawer-and-close.spec.js caught it,
+          with `.fp-grab-zone` named as the element intercepting the click.
+       2. It is also what the reference actually looks like. An iOS sheet does
+          not cover the screen — it stops short of the top and leaves the
+          presenting view showing behind it, and that sliver plus the rounded
+          top corners IS the affordance that says "this can be dragged down".
+          A full-bleed panel reads as a page, which is the thing the founder
+          was complaining about. */
+  top: calc(var(--topbar-h) + env(safe-area-inset-top));
+  left: 0; right: 0; bottom: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
   background: var(--surface);
+  /* The same radius `.fy-panel` uses, so the app has one sheet silhouette.
+     `overflow: hidden` on the sheet is what makes the radius actually clip the
+     scroller inside it; the sheet itself still never scrolls. */
+  border-radius: 22px 22px 0 0;
+  overflow: hidden;
+  box-shadow: 0 -8px 30px rgba(0,0,0,0.45);
   /* The drag offset client.js writes (`--fp-sheet-dy`), defaulted here so the
      transform always parses even before the first pointerdown. */
   transform: translateY(var(--fp-sheet-dy, 0px));

@@ -159,9 +159,34 @@ test("the sheet itself is a full-height overlay, and the [hidden] attribute stil
   const sheet = /\.fp-sheet \{[^}]*\}/.exec(CSS_RULES);
   assert.ok(sheet, ".fp-sheet must have a rule of its own");
   assert.match(sheet[0], /position:\s*fixed/);
-  assert.match(sheet[0], /inset:\s*0/);
+  assert.match(sheet[0], /left:\s*0/);
+  assert.match(sheet[0], /right:\s*0/);
+  assert.match(sheet[0], /bottom:\s*0/);
   assert.match(sheet[0], /display:\s*flex/);
   assert.match(CSS_RULES, /\.fp-sheet\[hidden\]\s*\{\s*display:\s*none;?\s*\}/);
+});
+
+test("the sheet stops under the topbar, so the ☰ is still reachable while it is open", () => {
+  /* U-12 / F17 is a standing invariant: the menu button lives in the topbar
+     and must be reachable at EVERY moment, including while this sheet is
+     expanded — the z-index ledger in styles.css says so in as many words. The
+     sheet paints inside #foray-player's stacking context (60), far above the
+     topbar (20), so `inset: 0` swallows the ☰ completely.
+     THIS IS NOT HYPOTHETICAL: the first draft of this change shipped
+     `inset: 0` and test/playwright/drawer-and-close.spec.js failed on it in
+     CI, naming `.fp-grab-zone` as the element intercepting the click on
+     `#menu-btn`. It is also the wrong look — an iOS sheet stops short of the
+     top, and that sliver is the affordance that says "drag me down".
+     MUTATION: change the `top` declaration back to `inset: 0`. This fails,
+     and so does the Playwright suite. */
+  const sheet = /\.fp-sheet \{[^}]*\}/.exec(CSS_RULES);
+  assert.ok(sheet, ".fp-sheet must have a rule of its own");
+  assert.doesNotMatch(sheet[0], /inset:\s*0/, "the sheet must not be full-bleed");
+  assert.match(
+    sheet[0],
+    /top:\s*calc\(var\(--topbar-h\) \+ env\(safe-area-inset-top\)\)/,
+    "the sheet's top edge must be the bottom of the topbar, inset included"
+  );
 });
 
 test("no body padding is reserved for the expanded sheet any more", () => {
