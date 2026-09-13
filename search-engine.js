@@ -1962,7 +1962,43 @@ function searchShows(query, shows) {
  *  obvious answers first, and the server's extra suggestions below them — IN
  *  THE ORDER THE SERVER GAVE THEM (see `compareShowMatches`'s
  *  `SHOW_MATCH_UNMATCHED` line: the sort is stable and that group is left
- *  exactly as it arrived). */
+ *  exactly as it arrived).
+ *
+ *  P-03b (docs/search-parity-plan.md): `artist_name` IS DELIBERATELY NOT READ
+ *  HERE, AND THAT IS A MEASURED REFUSAL, NOT AN OVERSIGHT. P-03 as written asks
+ *  for exactly the obvious thing — bucket the author too, half a step below a
+ *  title hit of the same strength, so `alex cooper` finds *Call Her Daddy*. It
+ *  was built and measured against the live directory over 20 host-name queries
+ *  on 2026-09-12, and it made the answer WORSE: the target show landed in the
+ *  top 5 on 16/20 queries with this code and 14/20 with the author bucket
+ *  (top-1: 6 -> 4). Ranking the author strictly below every title hit instead
+ *  of half a step — the other reading of the card's own sentence — measured
+ *  15/20 and 5/20. Both lose to doing nothing.
+ *
+ *  WHY, because the number alone would look like tuning and it is not:
+ *
+ *    - Apple's `artistName` is SEO-stuffed on the long tail. `andrew huberman`
+ *      promotes three shows whose artist reads "Hosted By: Amanda McKinney |
+ *      Andrew Huberman | ..." above *Huberman Lab*, whose own artist is
+ *      "Scicomm Media" and therefore never matches. The field the listener is
+ *      searching by is not in the field we would be searching.
+ *    - Where it is honest it is a PUBLISHER field, so an exact author hit is
+ *      routinely the wrong artefact by the right person: `tim ferriss` promotes
+ *      *CØCKPUNCH*, *Tools of Titans* and *Tribe of Mentors* — all artist
+ *      "Tim Ferriss" — above *The Tim Ferriss Show*.
+ *    - These rows are HERE ONLY BECAUSE APPLE SENT THEM, and Apple already
+ *      ranked them using an author index far richer than the one string it
+ *      hands back. 19 of those same 20 host queries return the right show from
+ *      the directory pass alone. Re-bucketing its answer on one noisy field
+ *      discards a good ranking and substitutes a bad one.
+ *
+ *  So the author's value is as a LOCAL INDEX column, where our rank is the only
+ *  rank there is — and `data/show-index.tsv` has no author column, because no
+ *  committed catalogue row has an author at all (P-03a fixes the harvest; the
+ *  column itself is P-03b/P-04's budget decision). Until a local author exists,
+ *  the honest client-side answer is to SHOW the author (`showResultRow` does)
+ *  and not to rank on it. `test/show-search-ranking.test.js` pins this: a row
+ *  matched only on `artist_name` must stay unmatched and in arrival order. */
 function rankShows(query, shows) {
   const q = String(query || "").trim().toLowerCase();
   const scored = (shows || []).map((show) => {

@@ -1,17 +1,39 @@
-// api/shows/search.ts — S-05's degraded header and S-06's `id` lookup and
-// Apple fall-through (docs/search-plan.md).
+// api/shows/search.ts — S-05's degraded header, S-06's `id` lookup and Apple
+// fall-through (docs/search-plan.md), and P-02's directory pass
+// (docs/search-parity-plan.md).
 //
-// WHAT THIS SUITE IS ABOUT, in one paragraph. The fall-through is the one
-// thing in this deck that spends a budget somebody else controls: Apple's
-// keyless search endpoint, capped by this repo's own committed ceiling of
-// <=20/min per warm instance. So the tests that matter are not "does it
-// return results" but "does it refuse to ask". Two gates have to hold — the
-// client only sets `fallthrough=1` when its own local pass found nothing
-// (asserted in test/show-search-fallthrough.test.js, on the other side of the
-// wire), and this endpoint only performs the call when the full 19,904-row
-// merged catalogue also found nothing. Without the second, the client's
-// `chart_rank <= 100` index cut would make "zero hits" mean "not in 10,113"
-// and a query for any mid-chart show would burn a slot for a show we hold.
+// WHAT THIS SUITE USED TO BE ABOUT. "The fall-through is the one thing in this
+// deck that spends a budget somebody else controls, so the tests that matter
+// are not 'does it return results' but 'does it refuse to ask'. TWO gates have
+// to hold — the client only sets `fallthrough=1` when its own local pass found
+// nothing, and this endpoint only performs the call when the full 19,904-row
+// merged catalogue also found nothing."
+//
+// WHAT IT IS ABOUT NOW, and the second gate is gone rather than relaxed.
+// Measured against the live endpoint on 2026-09-12 over 25 listener queries:
+// passing `fallthrough=1` returned BYTE-IDENTICAL results to omitting it for
+// 23 of the 25, with `fallthrough: {attempted: false}` in the body — only the
+// two queries with zero rows in the full catalogue got through. The second
+// gate was not a safety valve on an occasional call; it was the reason
+// "tim ferriss" returned one row while Apple held fourteen. P-02 deleted it.
+// The FIRST gate is untouched and still load-bearing: a caller that does not
+// ask (a script, a probe, tools/search-probe.mjs's forced-MISS samples) still
+// never spends a slot, and that test is still below.
+//
+// So the tests that matter here are now about what happens once it DOES ask:
+//   - Apple's rows are MERGED BENEATH the catalogue's, never in place of them.
+//     Before P-02 this branch replied `shows: apple.shows`, safe only because
+//     `results.length === 0` was a precondition — with the gate gone that
+//     would have dropped the catalogue on every rate-limited or failed call,
+//     losing the `chart_rank` 101-200 tier only this endpoint has.
+//   - The dedup is by collection id AND normalised title, because Apple
+//     returns one show under several collection ids.
+//   - `limit` is PER SOURCE on this path, or a query whose catalogue answer
+//     already filled the quota would silently be the old gate again.
+//   - A failed directory pass is briefly edge-cacheable rather than
+//     `no-store`, because it now carries a real answer and because a pass that
+//     fires on every search must not turn a limiter trip into a re-invocation
+//     storm.
 //
 // Every test names the mutation that kills it.
 //
@@ -25,8 +47,12 @@ import { test } from "node:test";
 import assert from "node:assert";
 import * as searchModule from "../shows/search.ts";
 import {
-  appleShowSearch, mapAppleShow, appleShowCacheKey,
+  appleShowSearch, mapAppleShow, appleShowCacheKey, APPLE_SHOW_TIMEOUT_MS,
+  mergeDirectoryShows, showTitleDedupStem,
 } from "../shows/appleShowSearch.ts";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { SlidingWindowBucket, APPLE_BUCKET_CAPACITY, APPLE_BUCKET_WINDOW_MS } from "../episodes/appleBucket.ts";
 import { TtlCache } from "../episodes/searchCache.ts";
 
@@ -152,26 +178,112 @@ test("q and id together are a 400, and neither is a 400", async () => {
 /* S-06(a): the Apple fall-through, and the two gates                     */
 /* ====================================================================== */
 
-test("the fall-through does NOT fire when the merged catalogue has hits, even if the client asked for it", async () => {
-  /* THE SECOND GATE, and the one the card's own MUTATION line names. The
-     client sets `fallthrough=1` when ITS index found nothing — and its index
-     is the `chart_rank <= 100` cut, 10,113 of 19,904 rows. So "the client
-     asked" is not "nobody has this show", and acting on the client's word
-     alone would spend a 20/min budget on shows we already hold.
+test("P-02: the directory fires even when the merged catalogue has hits, and its rows land BENEATH them", async () => {
+  /* THE SECOND GATE'S FUNERAL. This test asserted the exact opposite until
+     P-02 — "Apple must not be asked about a show our own catalogue has" — and
+     the measurement that reversed it is in this file's header: 23 of 25
+     listener queries never got past this line, while every one of the 25
+     gained rows from the directory (min +2, median +17, max +25).
 
-     MUTATION (the card's): fire the fall-through whenever `fallthrough=1` is
-     present. Apple is called for a query the catalogue answered, `called`
-     becomes true, and this goes red. */
+     THE ORDER IS HALF THE ASSERTION. `mergeDirectoryShows` appends; the
+     catalogue's rows keep their positions. The client re-ranks everything it
+     receives, so this order is never what is displayed — but it is what a
+     caller reading this endpoint directly sees, and "the local one first" is
+     the deck's §1.4 line.
+
+     MUTATION (the one P-02 exists to make impossible): restore
+     `&& results.length === 0` on the `if (fallthroughAsked)` branch. Apple is
+     never called for a query the catalogue answered, `called` stays false, and
+     this goes red. */
   let called = false;
+  const plain = mockRes();
+  await handler(req({ q: "lex" }), plain);
+  const catalogueOnly = plain.body.shows;
+  assert.ok(catalogueOnly.length > 0, "fixture assumption: \"lex\" matches the real committed catalogue");
+
   await withFetch(async () => { called = true; return appleBody([APPLE_HIT]); }, async () => {
     const res = mockRes();
     await handler(req({ q: "lex", fallthrough: "1" }), res);
     assert.equal(res.statusCode, 200);
-    assert.ok(res.body.shows.length > 0, "fixture assumption: \"lex\" matches the real committed catalogue");
-    assert.equal(res.body.fallthrough.attempted, false);
-    assert.deepEqual(res.body.source, ["catalogue"]);
+    assert.equal(res.body.fallthrough.attempted, true);
+    assert.deepEqual(res.body.source, ["catalogue", "apple"]);
+    /* Scale-free on purpose: the catalogue grows, so this pins the RELATION
+       (every catalogue row survives, in order, and the Apple row is added
+       after them) rather than a count. */
+    assert.deepEqual(
+      res.body.shows.slice(0, catalogueOnly.length).map((s) => s.show_id),
+      catalogueOnly.map((s) => s.show_id),
+      "every catalogue row survives the merge, in its own order, ahead of the directory's"
+    );
+    assert.equal(res.body.shows[catalogueOnly.length].show_id, "999000111",
+      "and the directory's row is appended beneath, not interleaved or in front");
   });
-  assert.equal(called, false, "Apple must not be asked about a show our own catalogue has");
+  assert.equal(called, true, "the directory must be asked about a query the catalogue also answered");
+});
+
+test("`limit` is PER SOURCE once the directory is asked, or a broad query is the old gate under a new name", async () => {
+  /* `searchBreadthShows` has already cut its answer to `limit` before this
+     branch runs, so cutting the MERGED list at `limit` too would return ZERO
+     directory rows for exactly the queries where the catalogue filled the
+     quota. Measured 2026-09-12 at `limit=25`: `history`, `the daily`, `dark`
+     and `true crime` each return 25 catalogue rows AND each gain 17-20 rows
+     from the directory. A merged cut would have silently reinstated the gate
+     for every broad query while every test here stayed green.
+
+     Driven at `limit=1` so the claim is exact and needs no assumption about
+     how many rows the committed catalogue happens to hold.
+
+     MUTATION: `return merged.slice(0, limit)` in `mergeDirectoryShows` (and
+     pass `limit` to it). The Apple row is cut, the length assertion reads 1,
+     and this goes red. */
+  await withFetch(async () => appleBody([APPLE_HIT]), async () => {
+    const res = mockRes();
+    await handler(req({ q: "tech", fallthrough: "1", limit: "1" }), res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.shows.length, 2, "one catalogue row plus one directory row, not one row total");
+    assert.equal(res.body.shows[1].source, "apple");
+  });
+});
+
+test("the directory's rows dedup by collection id AND by normalised title", async () => {
+  /* Apple returns the same show under several `collectionId`s — measured
+     2026-09-12, `lex fridman` returns THREE rows all titled "Lex Fridman
+     Podcast" with three distinct ids. An id-only dedup surfaces all three, one
+     under the other, which is worse for the listener than the single row they
+     had before this card. The normalised-title half is the half doing the work
+     on that query; it is not belt-and-braces and must not be dropped for
+     looking redundant.
+
+     Three cases in one call: a row duplicating the CATALOGUE's title, a row
+     duplicating an earlier APPLE row's title under a different id, and a row
+     that is genuinely new.
+
+     A DISTINCT QUERY PER TEST IN THIS SECTION, and it is not cosmetic:
+     `appleShowCache` is a module singleton with a one-hour TTL and no clear(),
+     so two tests sharing a query would have the second one silently served the
+     first one's Apple rows — a green test asserting nothing about its own
+     fixture. Each query is checked against the real committed catalogue below
+     rather than assumed.
+
+     MUTATION: drop the `titles` half of `mergeDirectoryShows` and dedup on
+     `ids` alone. Both duplicates appear and the length assertion goes red. */
+  const plain = mockRes();
+  await handler(req({ q: "science" }), plain);
+  assert.ok(plain.body.shows.length > 0, "fixture assumption: \"science\" matches the real committed catalogue");
+  const firstCatalogueTitle = plain.body.shows[0].title;
+
+  await withFetch(async () => appleBody([
+    { collectionId: 111111, collectionName: `  ${firstCatalogueTitle.toUpperCase()}!! ` },
+    { collectionId: 222222, collectionName: "Only Once Please" },
+    { collectionId: 333333, collectionName: "only-once, please" },
+    APPLE_HIT,
+  ]), async () => {
+    const res = mockRes();
+    await handler(req({ q: "science", fallthrough: "1" }), res);
+    const added = res.body.shows.filter((s) => s.source === "apple").map((s) => s.show_id);
+    assert.deepEqual(added, ["222222", "999000111"],
+      `expected the catalogue-title dupe and the apple-title dupe to collapse, got ${added}`);
+  });
 });
 
 test("the fall-through does NOT fire on a genuine miss when the client did not ask", async () => {
@@ -255,23 +367,106 @@ test("an unmappable Apple hit degrades rather than throwing, and is dropped rath
   assert.equal(mapAppleShow(null), null);
 });
 
-test("an Apple transport failure returns the local results with a flag, never an error status", async () => {
+test("an Apple transport failure returns the CATALOGUE's rows with a flag, never an error and never an empty list", async () => {
   /* "Rate-limit exhaustion returns the local results with a flag, never an
-     error" is the card's own line, and the same holds for a timeout or a 503:
-     the listener gets the honest empty state they would have got anyway.
+     error" is S-06's own line, and the same holds for a timeout or a 503. What
+     P-02 changed is what "the local results" means: under the old gate they
+     were empty by precondition, so `shows: apple.shows` and `shows: results`
+     were the same thing and nobody could tell the difference. With the gate
+     gone they are not: a failed Apple call on a query the catalogue answered
+     would have replied `[]` IN PLACE OF the catalogue's rows — the
+     `chart_rank` 101-200 tier that only this endpoint has, gone on every
+     Apple hiccup.
 
-     MUTATION: rethrow the fetch error out of `appleShowSearch`. The handler
-     500s and this goes red on the status assertion. */
+     Both halves asserted, on the SAME failure, because the pair is the point:
+     a miss still answers honestly empty, and a hit still answers with the
+     catalogue.
+
+     MUTATION: reply `shows: apple.shows` instead of `mergeDirectoryShows(...)`.
+     The second half goes red with an empty list for a query the catalogue
+     answered. */
+  await withFetch(async () => { throw new Error("ECONNRESET"); }, async () => {
+    const miss = mockRes();
+    await handler(req({ q: "zzqx-transport-failure-query", fallthrough: "1" }), miss);
+    assert.equal(miss.statusCode, 200);
+    assert.deepEqual(miss.body.shows, []);
+    assert.equal(miss.body.fallthrough.attempted, true);
+    assert.match(miss.body.fallthrough.error, /ECONNRESET/);
+    assert.deepEqual(miss.body.source, [], "nothing answered, and the source list says so");
+
+    const hit = mockRes();
+    await handler(req({ q: "history", fallthrough: "1" }), hit);
+    assert.ok(hit.body.shows.length > 0,
+      "a failed directory pass must never take the catalogue's rows down with it");
+    assert.deepEqual(hit.body.source, ["catalogue"], "catalogue answered, Apple did not");
+    assert.match(hit.body.fallthrough.error, /ECONNRESET/);
+  });
+});
+
+test("a failed directory pass is briefly edge-cacheable, so a limiter trip cannot become a re-invocation storm", async () => {
+  /* THIS HEADER CHANGED FROM `no-store`, and the change is deliberate rather
+     than a relaxation of S-05's rule.
+
+     Under S-06 this branch's failure body was `shows: []`. Edge-caching an
+     empty for five minutes would have been a five-minute outage for everyone
+     behind that edge, so `no-store` was right. Under P-02 the body carries the
+     full catalogue answer — a real result missing only its directory half — and
+     the directory pass fires on EVERY search rather than on 8% of them.
+     `no-store` on that is now actively harmful: a rate-limited answer is never
+     cached, so every retry re-invokes the function and re-fails. 10 s is short
+     enough that a listener retrying after the 60 s bucket window has moved on
+     does not get a stale refusal, and long enough to flatten the storm.
+
+     `no-store` still belongs on the DEGRADED branch, where the body really is
+     empty — asserted two tests below, and unchanged.
+
+     MUTATION: put `no-store` back on the `apple.error` branch. Every rate-
+     limited retry re-invokes the function and this goes red. */
+  const bucket = new SlidingWindowBucket(0, APPLE_BUCKET_WINDOW_MS); // exhausted before it starts
+  const outcome = await appleShowSearch("anything", 25, async () => appleBody([APPLE_HIT]), { bucket, cache: new TtlCache() });
+  assert.match(outcome.error, /rate limit/, "harness assumption: a zero-capacity bucket refuses immediately");
+
   await withFetch(async () => { throw new Error("ECONNRESET"); }, async () => {
     const res = mockRes();
-    await handler(req({ q: "zzqx-transport-failure-query", fallthrough: "1" }), res);
-    assert.equal(res.statusCode, 200);
-    assert.deepEqual(res.body.shows, []);
-    assert.equal(res.body.fallthrough.attempted, true);
-    assert.match(res.body.fallthrough.error, /ECONNRESET/);
-    assert.equal(res.headers["Cache-Control"], "no-store",
-      "a failed fall-through must not be edge-cached as an answer");
+    await handler(req({ q: "crime", fallthrough: "1" }), res);
+    assert.match(res.body.fallthrough.error, /ECONNRESET/, "fixture assumption: this query is not already cached");
+    assert.equal(res.headers["Cache-Control"], "public, max-age=10");
   });
+
+  const ok = mockRes();
+  await withFetch(async () => appleBody([APPLE_HIT]), async () => {
+    await handler(req({ q: "money", fallthrough: "1" }), ok);
+  });
+  assert.match(ok.headers["Cache-Control"], /max-age=300/,
+    "a successful directory pass keeps the full TTL — the short one is for failures only");
+});
+
+test("the show directory's Apple timeout is 2 s, not the episode path's 8 s", async () => {
+  /* Inherited numbers are the thing this repo's headers keep asking authors to
+     re-argue, and P-02 is where this one had to be. 8 s was an episode-feed
+     budget: `api/episodes/search.ts` fetches a show's live RSS. This fetches
+     one JSON document from one host, measured 2026-09-12 across 25 queries at
+     52 ms min / 266 ms median / 698 ms max. 8 s was also defensible while the
+     call happened on 8% of searches; it is not defensible as the worst case of
+     a pass that now runs on every one of them.
+
+     A CONSTANT PIN, not a behavioural one, and saying so is the point: the
+     executed version of this test would have to wait out the timeout, and a
+     suite that sleeps for seconds to prove a number is worse than a suite that
+     reads it. What this catches is the only realistic regression — somebody
+     copying the episode path's constant back over it.
+
+     MUTATION: set `APPLE_SHOW_TIMEOUT_MS` back to `8_000`. Red. */
+  assert.equal(APPLE_SHOW_TIMEOUT_MS, 2_000);
+  const episodeSrc = await (async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    return fs.readFileSync(path.join(here, "..", "episodes", "search.ts"), "utf8");
+  })();
+  assert.match(episodeSrc, /APPLE_TIMEOUT_MS = 8_000/,
+    "the episode path keeps its own 8 s — these are two budgets, not one constant that drifted");
 });
 
 /* ====================================================================== */
@@ -444,4 +639,127 @@ test("a successful response still carries the cache header the source claims, an
   const src = fs.readFileSync(path.join(here, "..", "shows", "search.ts"), "utf8");
   assert.match(src, /stale-while-revalidate.{0,400}does NOT arrive/s,
     "the source must record that the directive it sets is not the one production returns");
+});
+
+/* ======================================================================
+   ADVERSARIAL REVIEW, 2026-09-12, defect 3: the server half of the dedup
+   rule. `mergeDirectoryShows` deduped on exact normalised title equality,
+   and the shape Apple actually varies is a SUBTITLE.
+   ====================================================================== */
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const DATA = path.join(HERE, "..", "..", "data");
+
+/** An Apple-shaped directory row, as `mapAppleShow` would have produced it. */
+const appleRow = (id, title) => ({
+  show_id: String(id), title, artwork_url: null, artist_name: null,
+  editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "apple",
+});
+
+test("a directory row that only ADDS a subtitle collapses into the catalogue row", () => {
+  /* THE FIVE PAIRS ARE MEASURED, NOT INVENTED. Joining `data/catalog.json` to
+     `data/catalog-breadth.json` by `apple_collection_id` gives 164 rows whose
+     titles can be compared directly — `catalog-breadth.json`'s title IS Apple's
+     `collectionName` — and these five are the ones that disagree. Exact
+     normalised equality collapsed none of them, so all five reached the client
+     as a second row for a podcast it was already showing.
+
+     Written as five fixed strings rather than as a query over `data/`, so this
+     assertion is scale-free and cannot drift with the catalogue.
+
+     MUTATION: put `normaliseShowTitle` back in place of `showTitleDedupStem`
+     in `mergeDirectoryShows`. Every pair merges to two rows. */
+  const PAIRS = [
+    ["The Twenty Minute VC (20VC)", "The Twenty Minute VC (20VC): Venture Capital | Startup Funding | The Pitch"],
+    ["The TWIML AI Podcast", "The TWIML AI Podcast (formerly This Week in Machine Learning & Artificial Intelligence)"],
+    ["omega tau", "omega tau - English only"],
+    ["Around the House with Eric G", "Around the House with Eric G®: Upgrade Your Home Like a Pro"],
+    ["Ask Lisa: The Psychology of Parenting", "Ask Lisa: The Psychology of Raising Tweens & Teens"],
+    /* NOT a subtitle divergence — the full normalised titles are IDENTICAL and
+       only the separator the two publishers typed differs. It is here because a
+       stem-ONLY rule breaks it (one side cuts at `:`, the other has nothing to
+       cut at), which is why the dedup carries the full title AND the stem.
+       MUTATION: drop `normaliseShowTitle(title)` from `showDedupKeys`. Only
+       this row goes red, and it is the row a stem-only rule loses. */
+    ["It's a Material World: Materials Science Podcast", "It's a Material World | Materials Science Podcast"],
+  ];
+  for (const [curated, apple] of PAIRS) {
+    const merged = mergeDirectoryShows(
+      [{ show_id: "curated-slug", title: curated }],
+      [appleRow(958230465, apple)]
+    );
+    assert.equal(merged.length, 1, `"${curated}" and "${apple}" are one podcast: got ${merged.length} rows`);
+    assert.equal(merged[0].title, curated, "and the CATALOGUE row is the one that survives, with its artwork and note");
+  }
+});
+
+test("the stem cuts at a subtitle and nowhere else", () => {
+  /* THE INVERSE COST IS REAL — directory rows are title-deduped against
+     catalogue rows, so any title rule silently suppresses a genuinely different
+     show that shares the key — which is why the separator set is the one the
+     data uses and not "anything that looks like punctuation".
+
+     A BARE HYPHEN IS NOT A SEPARATOR: without the surrounding spaces
+     "Sword-and-Scale" stems to "sword". A longer name that merely continues a
+     shorter one is not a subtitle either.
+
+     MUTATION: drop the \s ... \s around the hyphen in
+     `SHOW_TITLE_SUBTITLE_SEPARATOR`, or add a bare "-" to the alternation. The
+     first assertion goes red. */
+  assert.equal(showTitleDedupStem("Sword-and-Scale"), "sword and scale");
+  assert.equal(showTitleDedupStem("omega tau - English only"), "omega tau");
+  assert.equal(showTitleDedupStem("The Daily Stoic"), "the daily stoic");
+  assert.notEqual(showTitleDedupStem("The Daily Stoic"), showTitleDedupStem("The Daily"));
+  assert.equal(showTitleDedupStem("!!!"), "", "an all-punctuation title stems to empty, which is never a dedup key");
+  /* A PIPE IS NOT A SUBTITLE MARKER, and that is measured. Adding `|` to the
+     separator set collapses not one extra pair in the committed catalogue, and
+     live it costs `tim ferriss`, `sam harris` and `lex fridman` one row each —
+     the same derivative feed every time, `<the real show> | 5 minute podcast
+     summaries`, whose stem would become the real show's whole title.
+     MUTATION: put `|` back in the character class. This goes red. */
+  assert.notEqual(
+    showTitleDedupStem("The Tim Ferriss Show | 5 minute podcast summaries"),
+    showTitleDedupStem("The Tim Ferriss Show"),
+    "a pipe is a list separator, not a subtitle marker");
+  assert.equal(showTitleDedupStem(": leading separator"), "leading separator",
+    "a title that STARTS with a separator keeps itself — cutting at 0 would erase it");
+});
+
+test("no curated show and its own Apple twin can be rendered as two rows", () => {
+  /* THE SAME CLAIM AGAINST THE COMMITTED DATA, quantified over whatever the
+     files hold rather than over a count of them: for EVERY curated row that
+     names an `apple_collection_id` the breadth catalogue also carries, feeding
+     the pair through `mergeDirectoryShows` must yield one row. That is the
+     defect stated exactly — a listener seeing one podcast twice — and it holds
+     however many such pairs exist, so it is safe in the publish gate.
+
+     `catalog-breadth.json`'s titles ARE Apple's `collectionName`s (they are
+     harvested from it), which is what makes this a real test of the directory
+     merge rather than of the catalogue against itself.
+
+     MUTATION: revert `mergeDirectoryShows` to exact normalised equality. The
+     five committed divergences fail it. */
+  const catalogPath = path.join(DATA, "catalog.json");
+  const breadthPath = path.join(DATA, "catalog-breadth.json");
+  if (!fs.existsSync(catalogPath) || !fs.existsSync(breadthPath)) return; // not a data-bearing checkout
+
+  const curated = JSON.parse(fs.readFileSync(catalogPath, "utf8")).shows;
+  const breadth = JSON.parse(fs.readFileSync(breadthPath, "utf8")).shows;
+  const byCollectionId = new Map(breadth.map((r) => [String(r.apple_collection_id), r]));
+
+  const twoRowed = [];
+  let pairs = 0;
+  for (const c of curated) {
+    const twin = byCollectionId.get(String(c.apple_collection_id));
+    if (!twin) continue;
+    pairs++;
+    const merged = mergeDirectoryShows(
+      [{ show_id: c.show_id, title: c.title }],
+      [appleRow(twin.apple_collection_id, twin.title)]
+    );
+    if (merged.length !== 1) twoRowed.push(`${c.title}  <>  ${twin.title}`);
+  }
+  assert.ok(pairs > 0, "fixture assumption: some curated rows join the breadth catalogue by apple_collection_id");
+  assert.deepEqual(twoRowed, [],
+    "these curated shows would be rendered twice, once as themselves and once as their own Apple row");
 });

@@ -17,7 +17,8 @@ import assert from "node:assert/strict";
 import {
   median, p95, timeReps, localPassBattery, decodeStats, breadthRoundTrip,
   runProbe, formatTable, validateReport, QUERY_BATTERY, NON_ASCII_QUERY, REPS,
-  indexPassBattery,
+  indexPassBattery, PARITY_CASES, parityCase, parityBattery, targetRank,
+  normaliseTitle,
 } from "./search-probe.mjs";
 
 /* ==================================================================== */
@@ -222,6 +223,9 @@ function validReport() {
       misses: [{ ms: 1, status: 200, cache_control: "public, max-age=300", x_vercel_cache: "MISS", age: "0" }],
       hits: [{ ms: 1, status: 200, cache_control: "public, max-age=300", x_vercel_cache: "HIT", age: "1" }],
     },
+    /* P-06's section. Like `index`, a skipped section is the DEFAULT-VALID
+       shape — an offline runner is not a finding about the gate. */
+    parity: { skipped: true, reason: "--no-network", cases: [] },
   };
 }
 
@@ -418,4 +422,214 @@ test("validateReport rejects an index section with no explicit skipped flag", ()
   const r = validReport();
   delete r.index;
   assert.ok(validateReport(r).some((e) => /index section/.test(e)));
+});
+
+/* ==================================================================== */
+/* P-06 — the three named parity cases (docs/search-parity-plan.md §2.1) */
+/* ==================================================================== */
+
+/** A fake /api/shows/search. `directoryRows` is what it returns when
+    `fallthrough=1` is present, `plainRows` what it returns without — so a
+    server that IGNORES the flag is expressed by passing the same array for
+    both, which is precisely the state P-02 removed. */
+function fakeSearchEndpoint({ plainRows, directoryRows, attempted = true, seen = [] }) {
+  return async (url) => {
+    seen.push(url);
+    const flagged = url.includes("fallthrough=1");
+    const rows = flagged ? directoryRows : plainRows;
+    return {
+      status: 200,
+      headers: { get: () => null },
+      json: async () => ({
+        query: "q",
+        shows: rows,
+        degraded: false,
+        fallthrough: flagged ? { attempted, error: null, cached: false } : { attempted: false },
+      }),
+    };
+  };
+}
+
+const prow = (title) => ({ show_id: title.replace(/\W+/g, ""), title });
+
+test("PARITY_CASES is exactly the three queries §2.1 names as the defect, each with the show the listener meant", () => {
+  /* THE NAMES ARE THE CONTRACT. P-06 exists because "one row for tim ferriss"
+     was invisible for three days; a later edit that quietly drops a query, or
+     retargets `sam harris` at something other than Making Sense, un-names the
+     defect and the regression goes silent again.
+
+     MUTATION: drop any entry, reorder them, or change a `target` string. Red. */
+  assert.deepEqual(PARITY_CASES.map((c) => c.query), ["tim ferriss", "lex fridman", "sam harris"]);
+  assert.deepEqual(PARITY_CASES.map((c) => c.target), [
+    "The Tim Ferriss Show", "Lex Fridman Podcast", "Making Sense with Sam Harris",
+  ]);
+});
+
+test("parityCase asks the endpoint TWICE — once plain, once with fallthrough=1 — and never only once", async () => {
+  /* The pair IS the measurement. Asking only the flagged form would report
+     "14 rows for tim ferriss" with nothing to compare it against, and the
+     §2.1 defect (1 and 1) would be indistinguishable from a thin catalogue.
+
+     MUTATION: delete either `get()` call in parityCase. The length check and
+     the url assertions below go red. */
+  const seen = [];
+  const fetchImpl = fakeSearchEndpoint({ plainRows: [prow("A")], directoryRows: [prow("A"), prow("B")], seen });
+  await parityCase(PARITY_CASES[0], { origin: "https://x.test", fetchImpl });
+  assert.equal(seen.length, 2);
+  assert.ok(seen.some((u) => !u.includes("fallthrough=1")), "one request must be unflagged");
+  assert.ok(seen.some((u) => u.includes("fallthrough=1")), "one request must carry fallthrough=1");
+  assert.ok(seen.every((u) => u.includes("tim%20ferriss")), "both requests must carry the case's own query, encoded");
+});
+
+test("THE §2.1 DEFECT HAS A SIGNATURE: a server that ignores the flag reports gain 0 with both columns equal", async () => {
+  /* This is the exact shape measured on 2026-09-13 against the live endpoint:
+     `tim ferriss` returned ONE row with the flag and ONE without it. Pinned so
+     that a re-introduction of `&& results.length === 0` in
+     api/shows/search.ts cannot pass as "the catalogue is small".
+
+     MUTATION: have parityCase report the flagged count for both columns, or
+     compute `gain` from anything but the difference. Red. */
+  const same = [prow("The Tim Ferriss Show")];
+  const c = await parityCase(PARITY_CASES[0], {
+    origin: "https://x.test",
+    fetchImpl: fakeSearchEndpoint({ plainRows: same, directoryRows: same, attempted: false }),
+  });
+  assert.equal(c.plain_rows, 1);
+  assert.equal(c.directory_rows, 1);
+  assert.equal(c.gain, 0);
+  assert.equal(c.fallthrough_attempted, false);
+});
+
+test("parityCase reports the first THREE titles for each column, and fewer only when fewer exist", async () => {
+  /* P-06 asks for titles, not only counts, and three of them. MUTATION:
+     slice(0, 1), or report titles for the flagged column only. Red. */
+  const c = await parityCase(PARITY_CASES[1], {
+    origin: "https://x.test",
+    fetchImpl: fakeSearchEndpoint({
+      plainRows: [prow("Lex Fridman Podcast")],
+      directoryRows: [prow("Lex Fridman Podcast"), prow("B"), prow("C"), prow("D")],
+    }),
+  });
+  assert.deepEqual(c.plain_titles, ["Lex Fridman Podcast"]);
+  assert.deepEqual(c.directory_titles, ["Lex Fridman Podcast", "B", "C"]);
+});
+
+test("targetRank is 1-INDEXED and null when the show the listener meant is absent", () => {
+  /* A 0 would read as "first" in every table this feeds and mean "first" only
+     by accident. MUTATION: return the raw findIndex. `2 !== 1` here, and the
+     absent case silently becomes -1. */
+  assert.equal(targetRank([prow("A"), prow("The Tim Ferriss Show")], "The Tim Ferriss Show"), 2);
+  assert.equal(targetRank([prow("A")], "The Tim Ferriss Show"), null);
+});
+
+test("targetRank matches on the NORMALISED title, so punctuation and case cannot hide the target", () => {
+  /* Apple's rows are whatever a publisher typed. MUTATION: compare raw
+     strings — "Making Sense with Sam Harris!" stops matching and every table
+     reports the target as absent, which reads as a far worse regression than
+     the punctuation it actually is. */
+  assert.equal(targetRank([{ show_id: "1", title: "Making Sense with Sam Harris!" }], "Making Sense with Sam Harris"), 1);
+  assert.equal(normaliseTitle("Making Sense with Sam Harris!"), "making sense with sam harris");
+});
+
+test("A ROW COUNT CAN IMPROVE WHILE THE TARGET SINKS, and parityCase reports both so it cannot hide", async () => {
+  /* MEASURED, 2026-09-13, and the reason this test exists: `tim ferriss` goes
+     1 -> 14 rows on feat/search-parity while The Tim Ferriss Show goes from
+     rank 1 to rank 3, behind two obscure Apple rows whose titles merely START
+     with "tim ferriss" (rankShows buckets prefix above word-start). A table of
+     counts alone reads that as an unqualified win.
+
+     MUTATION: drop either target-rank field from parityCase's return. Red. */
+  const c = await parityCase(PARITY_CASES[0], {
+    origin: "https://x.test",
+    fetchImpl: fakeSearchEndpoint({
+      plainRows: [prow("The Tim Ferriss Show")],
+      directoryRows: [prow("Tim Ferriss The 4-Hour Body"), prow("Tim Ferriss Podcast"), prow("The Tim Ferriss Show")],
+    }),
+  });
+  assert.equal(c.gain, 2, "the count improved");
+  assert.equal(c.plain_target_rank, 1);
+  assert.equal(c.directory_target_rank, 3, "and the show the listener typed sank to third");
+});
+
+test("parityBattery is SKIPPED, not thrown, when the origin is unreachable", async () => {
+  /* Same contract as breadthRoundTrip: an offline runner is not a finding
+     about the gate. MUTATION: let the rejection propagate — the probe exits
+     non-zero on a dev machine with no egress and the whole report is lost. */
+  const boom = async () => { throw new Error("ENOTFOUND"); };
+  const r = await parityBattery({ origin: "https://x.test", fetchImpl: boom });
+  assert.equal(r.skipped, true);
+  assert.match(r.reason, /ENOTFOUND/);
+  assert.deepEqual(r.cases, []);
+});
+
+test("parityBattery runs every case in PARITY_CASES, in order", async () => {
+  // MUTATION: break out of the loop after the first case. 3 !== 1.
+  const r = await parityBattery({
+    origin: "https://x.test",
+    fetchImpl: fakeSearchEndpoint({ plainRows: [prow("A")], directoryRows: [prow("A"), prow("B")] }),
+  });
+  assert.equal(r.skipped, false);
+  assert.deepEqual(r.cases.map((c) => c.query), PARITY_CASES.map((c) => c.query));
+});
+
+test("validateReport rejects a report with no parity section at all", () => {
+  /* The silent regression P-06 exists to prevent is not a wrong number, it is
+     a section that quietly stopped being reported. MUTATION: drop the parity
+     check from validateReport. Red. */
+  const r = validReport();
+  delete r.parity;
+  assert.ok(validateReport(r).some((e) => /parity section/.test(e)));
+});
+
+test("validateReport rejects a populated parity section that lost a case", () => {
+  // MUTATION: accept any non-empty cases array. Red.
+  const r = validReport();
+  r.parity = {
+    skipped: false, reason: null,
+    cases: [{ query: "tim ferriss", plain_rows: 1, directory_rows: 14, plain_titles: [], directory_titles: [] }],
+  };
+  assert.ok(validateReport(r).some((e) => /exactly 3 cases/.test(e)));
+});
+
+test("validateReport rejects a parity case reporting only the flagged column", () => {
+  /* One count cannot show that the directory pass was inert, and that is the
+     whole measurement. MUTATION: check only directory_rows. Red. */
+  const r = validReport();
+  r.parity = {
+    skipped: false, reason: null,
+    cases: PARITY_CASES.map((c) => ({ query: c.query, directory_rows: 14, plain_titles: [], directory_titles: [] })),
+  };
+  assert.ok(validateReport(r).some((e) => /plain_rows/.test(e)));
+});
+
+test("validateReport rejects a parity case that reports counts but no titles", () => {
+  // MUTATION: drop the titles check. Red — and P-06 asked for titles by name.
+  const r = validReport();
+  r.parity = {
+    skipped: false, reason: null,
+    cases: PARITY_CASES.map((c) => ({ query: c.query, plain_rows: 1, directory_rows: 14 })),
+  };
+  assert.ok(validateReport(r).some((e) => /first-three titles/.test(e)));
+});
+
+test("formatTable says no coverage for a skipped parity section, never a fabricated row", () => {
+  // MUTATION: print an empty table instead. Red.
+  const out = formatTable({ ...validReport(), v: 3, run_at: "t", catalog_shows: 220 });
+  assert.match(out, /parity cases \(§2\.1\): no coverage/);
+});
+
+test("formatTable calls out the inert-directory state in words, not only in a zero", () => {
+  /* A column of zeroes in a gain column is easy to read past in a CI log.
+     MUTATION: drop the every()-gain-zero line. Red. */
+  const inert = PARITY_CASES.map((c) => ({
+    query: c.query, target: c.target,
+    plain_rows: 1, plain_titles: [c.target], plain_target_rank: 1,
+    directory_rows: 1, directory_titles: [c.target], directory_target_rank: 1,
+    gain: 0, fallthrough_attempted: false, plain_ms: 1, directory_ms: 1,
+  }));
+  const out = formatTable({
+    ...validReport(), v: 3, run_at: "t", catalog_shows: 220,
+    parity: { skipped: false, reason: null, cases: inert },
+  });
+  assert.match(out, /the directory pass is inert/);
 });

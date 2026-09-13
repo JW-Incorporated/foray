@@ -219,9 +219,17 @@ test("ten keystrokes inside the debounce window produce exactly ONE costly pass"
      "the timer is cancelled and restarted", and a burst that straddled the
      window would be testing the runner's scheduler instead.
 
+     ONE COSTLY PASS IS NOW THREE SHOW PASSES AND TWO SHOW REQUESTS (P-02,
+     docs/search-parity-plan.md): local (already painted, no request), the
+     catalogue endpoint, and the directory endpoint carrying `fallthrough=1`.
+     They are counted separately below rather than summed, which makes this
+     assertion strictly stronger than the `=== 1` it replaces: a bug that fired
+     the catalogue pass twice and the directory pass never would have passed a
+     `shows.length === 2` check.
+
      MUTATION (the one the card names): drop the `clearTimeout` from
      `onShowSearchInput`. Ten timers survive, ten costly passes fire, and the
-     count below is 20 calls instead of 2. */
+     counts below are 10 and 10 instead of 1 and 1. */
   const m = mount();
   const word = "lex fridman";
   for (let i = 1; i <= 10; i++) {
@@ -231,11 +239,16 @@ test("ten keystrokes inside the debounce window produce exactly ONE costly pass"
   assert.deepStrictEqual(m.apiCalls(), [], "nothing may have fired while the query was still changing");
   await sleep(WAIT);
   const shows = m.apiCalls().filter((u) => u.includes("api/shows/search"));
+  const catalogue = shows.filter((u) => !u.includes("fallthrough=1"));
+  const directory = shows.filter((u) => u.includes("fallthrough=1"));
   const eps = m.apiCalls().filter((u) => u.includes("api/episodes/search"));
-  assert.strictEqual(shows.length, 1, `expected one breadth call, got ${JSON.stringify(shows)}`);
+  assert.strictEqual(catalogue.length, 1, `expected one catalogue call, got ${JSON.stringify(catalogue)}`);
+  assert.strictEqual(directory.length, 1, `expected one directory call, got ${JSON.stringify(directory)}`);
   assert.strictEqual(eps.length, 1, `expected one episode call, got ${JSON.stringify(eps)}`);
-  assert.ok(shows[0].includes(`q=${encodeURIComponent(word.slice(0, 10))}`),
-    "the one call that fires must carry the LAST query typed, not the first");
+  for (const u of shows) {
+    assert.ok(u.includes(`q=${encodeURIComponent(word.slice(0, 10))}`),
+      `every call that fires must carry the LAST query typed, not the first: ${u}`);
+  }
 });
 
 test("Enter/submit runs the costly passes immediately, with no debounce wait", async () => {
@@ -252,7 +265,14 @@ test("Enter/submit runs the costly passes immediately, with no debounce wait", a
   m.byId.get("sh-form").fire("submit");
   await sleep(0);
   const shows = m.apiCalls().filter((u) => u.includes("api/shows/search"));
-  assert.strictEqual(shows.length, 1, "submit must not wait for the debounce");
+  /* Two requests, not one, since P-02 made the directory its own pass — and
+     BOTH have to be here before the debounce could have elapsed, or submit
+     would be skipping the debounce for one half of the search and not the
+     other. */
+  assert.strictEqual(shows.filter((u) => !u.includes("fallthrough=1")).length, 1,
+    "submit must not wait for the debounce");
+  assert.strictEqual(shows.filter((u) => u.includes("fallthrough=1")).length, 1,
+    "and the directory pass must not wait for it either");
   assert.ok(m.results().innerHTML.includes("Radiolab"));
 });
 

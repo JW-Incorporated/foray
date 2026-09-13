@@ -408,6 +408,195 @@ claims in §1.3 ("a mid-range phone is commonly 2-4x slower") remain **inferred*
 ---
 
 
+### 1.8 P-06's before/after (2026-09-13, `origin/main` @ `c1deb48` vs `feat/search-parity` @ `287296c`)
+
+**Read this beside §1.7, not instead of it.** §1.7 is the S-deck's after-table;
+this is the P-deck's, produced by re-running the same harness
+(`tools/search-probe.mjs`, S-01) against **both** revisions on the same machine
+inside the same twenty minutes, plus a replay of the three queries
+`docs/search-parity-plan.md` §2.1 names as the defect.
+
+**The headline, before the tables, because the tables do not contain it.**
+*The probe cannot see P-02's win.* Its 12-query battery is a timing battery and
+its network section deliberately asks for queries that match nothing, so it
+measures the same passes at the same speed on both revisions — which is the
+correct result and a useless one. **What the P-deck exists to fix is measured in
+§1.8(d), and it had to be added to the probe to be measurable at all.**
+
+**(a) The curated 220-show pass and the index pass are a CONTROL, and this is
+checkable rather than asserted.** Every changed line in `search-engine.js` on
+this branch is a comment (`git diff origin/main...HEAD -- search-engine.js |
+grep '^[+-][^+-]' | grep -v '^[+-] \*'` is empty), and `data/` is untouched. So
+(a) and (b) run byte-identical executable code over byte-identical data; any
+delta below is machine noise, and reading one as a result would be an error.
+
+| query | len | hits main / branch | median ms main | median ms branch | p95 ms main | p95 ms branch |
+|---|---|---|---|---|---|---|
+| `l` | 1 | 112 / 112 | 0.103 | 0.127 | 0.826 | 1.132 |
+| `le` | 2 | 27 / 27 | 0.019 | 0.025 | 0.037 | 0.038 |
+| `lex` | 3 | 1 / 1 | 0.012 | 0.017 | 0.019 | 0.026 |
+| `lex f` | 5 | 1 / 1 | 0.015 | 0.022 | 0.023 | 0.033 |
+| `sci` | 3 | 9 / 9 | 0.015 | 0.023 | 0.032 | 0.091 |
+| `science f` | 9 | 1 / 1 | 0.011 | 0.015 | 0.033 | 0.025 |
+| `hist` | 4 | 11 / 11 | 0.018 | 0.025 | 0.023 | 0.033 |
+| `the daily` | 9 | 0 / 0 | 0.019 | 0.023 | 0.024 | 0.040 |
+| `radiolab` | 8 | 1 / 1 | 0.025 | 0.033 | 0.092 | 0.081 |
+| `99%` | 3 | 1 / 1 | 0.017 | 0.030 | 0.031 | 0.037 |
+| `zzqx` | 4 | 0 / 0 | 0.011 | 0.015 | 0.015 | 0.025 |
+| `伊藤洋一のRound Up World Now！` | 24 | 0 / 0 | 0.009 | 0.011 | 0.028 | 0.034 |
+
+`JSON.parse` decode: main median **0.127 ms** / p95 0.265; branch median
+**0.169 ms** / p95 0.399.
+
+**Hit counts are identical on every row**, which is the assertion that matters:
+P-02 and P-03 changed nothing about what the local pass *finds*. The branch
+column reads ~1.3-1.5x slower throughout, and that is **sandbox load, not the
+branch** — a second `origin/main` run taken immediately after the branch run
+reproduced the branch's numbers, not the first main run's (index decode 5.963 ms
+vs 6.395 vs 8.832 across three runs of identical code). Treat the absolute ms
+here the way §1.7 asks you to: environment-dependent, and far inside a frame.
+
+**(b) The index pass.** `data/show-index.tsv`, **10,113 rows, 446,334 B on both
+revisions** — P-03b shipped no column, so the file is byte-identical (see
+P-03's own commit message for why the author column was measured and refused).
+`parseShowIndex` decode: main median **6.395 ms** / p95 10.075; branch median
+**8.832 ms** / p95 12.704.
+
+| query | pfx hits m/b | pfx med m | pfx med b | pfx p95 m | pfx p95 b | scan hits m/b | scan med m | scan med b | scan run? |
+|---|---|---|---|---|---|---|---|---|---|
+| `l` | 418 / 418 | 0.330 | 0.586 | 0.649 | 1.515 | 5332 / 5332 | 6.652 | 9.951 | no |
+| `le` | 90 / 90 | 0.058 | 0.109 | 0.078 | 0.123 | 1382 / 1382 | 2.039 | 3.408 | no |
+| `lex` | 1 / 1 | 0.001 | 0.001 | 0.001 | 0.001 | 15 / 15 | 0.625 | 0.951 | yes |
+| `lex f` | 1 / 1 | 0.001 | 0.001 | 0.001 | 0.001 | 0 / 0 | 0.601 | 0.910 | yes |
+| `sci` | 14 / 14 | 0.004 | 0.006 | 0.005 | 0.007 | 117 / 117 | 0.784 | 1.354 | no |
+| `science f` | 3 / 3 | 0.001 | 0.001 | 0.001 | 0.002 | 7 / 7 | 0.602 | 0.977 | yes |
+| `hist` | 15 / 15 | 0.005 | 0.008 | 0.006 | 0.009 | 110 / 110 | 0.695 | 1.136 | no |
+| `the daily` | 18 / 18 | 0.006 | 0.011 | 0.007 | 0.012 | 2 / 2 | 0.697 | 1.093 | no |
+| `radiolab` | 1 / 1 | 0.001 | 0.001 | 0.001 | 0.002 | 0 / 0 | 0.650 | 1.030 | yes |
+| `99%` | 1 / 1 | 0.001 | 0.001 | 0.001 | 0.001 | 0 / 0 | 0.440 | 0.696 | yes |
+| `zzqx` | 0 / 0 | 0.001 | 0.001 | 0.001 | 0.001 | 0 / 0 | 0.451 | 0.718 | yes |
+| `伊藤洋一のRound Up World Now！` | 0 / 0 | 0.001 | 0.001 | 0.001 | 0.001 | 0 / 0 | 0.284 | 0.459 | yes |
+
+**A correction to §1.7's index table, found by re-running it.** §1.7 records
+**24** prefix hits for `伊藤洋一のRound Up World Now！`. Measured today on both
+revisions, on the same file, it is **0**. 24 is that query's `query_len` — the
+probe prints `query_len` as its first column and §1.7 transcribed the query text
+in its place, shifting the row. The other eleven rows transcribed correctly
+(`l`'s 418 and 5332 both reproduce exactly). Nothing regressed; §1.7's number was
+never measured.
+
+**(c) The breadth round-trip — the same deployment on both runs, so this is one
+measurement printed twice.** `API_ORIGIN` is
+`https://foray-web-seven.vercel.app`, which serves `main`. Neither run is
+testing the checkout it was launched from.
+
+| sample | ttfb main | cache main | ttfb branch | cache branch |
+|---|---|---|---|---|
+| MISS 1 | 374 | MISS | 369 | MISS |
+| MISS 2 | 335 | MISS | 214 | MISS |
+| MISS 3 | 180 | MISS | 184 | MISS |
+| repeat 1 | 111 | MISS | 117 | MISS |
+| repeat 2 | 83 | HIT | 188 | HIT |
+| repeat 3 | 30 | HIT | 32 | HIT |
+
+All twelve samples: status 200, `Cache-Control: public, max-age=300`.
+**`stale-while-revalidate` is still absent from the response** — fourth
+independent observation (§1.4, §1.6, §1.7, here).
+
+---
+
+#### (d) The three named cases — `tim ferriss`, `lex fridman`, `sam harris`
+
+`docs/search-parity-plan.md` §2.1 measured each of these returning **one row**,
+with and without `fallthrough=1`. P-06 asks for them as named cases so that
+cannot regress silently, and they are now `PARITY_CASES` in
+`tools/search-probe.mjs` — its own battery, deliberately **not** appended to
+`QUERY_BATTERY`, whose length is asserted and whose contents §1.6 and §1.7 quote
+verbatim. Fifteen tests in `tools/search-probe.test.mjs` pin them (floor 30 ->
+45).
+
+**What the probe reports today, run from this branch's worktree:**
+
+```
+  query          plain  tgt#  directory  tgt#  gain  first title (directory)
+  tim ferriss        1     1          1     1     0  The Tim Ferriss Show
+  lex fridman        1     1          1     1     0  Lex Fridman Podcast
+  sam harris         1     1          1     1     0  Making Sense with Sam Harris
+  ^ EVERY case gained nothing: the directory pass is inert (this is §2.1's defect).
+```
+
+**That is not a finding about the branch.** This section asks the *deployed*
+endpoint, which is `main`; it reproduces §2.1 exactly, three days on, and its
+real content is that **P-02 is not in front of a listener yet**. The probe says
+so in its own header rather than letting a future reader mistake it for a
+verdict on the code.
+
+**So the after-column is a replay, and it says what it replays.** The local pass
+is `app.js`'s own (`prefixSearchShows` -> `searchShows` over the committed
+`data/show-index.tsv` and `data/catalog-client.json`, then `scanShowIndex` under
+`SHOW_PREFIX_UNDERDELIVERS_BELOW`); BEFORE merges the live endpoint under main's
+gate (`&fallthrough=1` only when the local pass was empty — it never is here);
+AFTER merges the live endpoint **plus** `itunes.apple.com/search?entity=podcast`
+through this branch's `mergeDirectoryShows` and `mergeBreadth`, deduped by
+`show_id` and by normalised title. Live, `limit=25`, 2026-09-13.
+
+| query | local | endpoint | Apple raw | **rows before** | **rows after** | gain |
+|---|---|---|---|---|---|---|
+| `tim ferriss` | 1 | 1 | 14 | **1** | **14** | +13 |
+| `lex fridman` | 1 | 1 | 4 | **1** | **3** | +2 |
+| `sam harris` | 1 | 1 | 11 | **1** | **11** | +10 |
+
+**First three titles, which is where the interesting result is.**
+
+| query | before | after |
+|---|---|---|
+| `tim ferriss` | 1. *The Tim Ferriss Show* | 1. *Tim Ferriss "The 4-Hour Body": Meet the Author*<br>2. *Tim Ferriss Podcast*<br>3. ***The Tim Ferriss Show*** |
+| `lex fridman` | 1. *Lex Fridman Podcast* | 1. ***Lex Fridman Podcast***<br>2. *Lex Fridman Podcast \| 5 minute podcast summaries*<br>3. *5 minute podcast summaries of: Tim Ferriss, Hidden Brain, Sam Harris, Lex Fridman, Jordan Peterson* |
+| `sam harris` | 1. *Making Sense with Sam Harris* | 1. ***Making Sense with Sam Harris***<br>2. *5 minute podcast summaries of: Tim Ferriss, Hidden Brain, Sam Harris, Lex Fridman, Jordan Peterson*<br>3. *Making Sense with Sam Harris \| 5 minute podcast summaries* |
+
+**`tim ferriss` does not meet P-02's own done-when, and the row count hides it.**
+P-02 asks for ">= 10 rows **with the exact show first**". It returns 14 rows and
+The Tim Ferriss Show is **third**, behind two shows nobody is searching for:
+
+```
+ 1 prefix      apple      Tim Ferriss "The 4-Hour Body": Meet the Author
+ 2 prefix      apple      Tim Ferriss Podcast
+ 3 word-start  catalogue  The Tim Ferriss Show
+ 4 word-start  apple      5 minute podcast summaries of: Tim Ferriss, ...
+ …
+ 8 unmatched   apple      Tools of Titans: …
+```
+
+The cause is `rankShows`'s bucket order, not the merge: a title that **starts
+with** "tim ferriss" is a prefix match and outranks *The Tim Ferriss Show*,
+which is only a word-start match because of its leading "The". Apple itself does
+not make this mistake — these rows arrive in Apple's order and are re-sorted by
+us. **This is the same failure P-03b refused the author column for**, arriving
+through the title bucket instead: re-ranking Apple's answer on one lexical
+signal discards a better ranking than the one it substitutes. It is named here
+rather than fixed because it is a ranking change and P-06 is a measurement card;
+it belongs to P-04's re-derivation or a card of its own.
+
+`lex fridman`'s ceiling of 3 is Apple's, not ours, and is already recorded in
+P-02's commit message: Apple returns 4 rows at `limit=25` **and** at
+`limit=200`, three of them duplicate *Lex Fridman Podcast* entries that the
+normalised-title dedup correctly collapses. **P-02's ">= 10 rows" cannot be met
+for this query by any merge**, and the deck's done-when should be rewritten
+against that measured ceiling rather than left to fail forever.
+
+**The one-line comparison.** Before: three of the best-known shows in podcasting
+returned **one row each**, because one local match is not zero. After: **14, 3
+and 11**, with the show the listener meant **first on two of the three** — and
+the third is a ranking defect that the row count alone would have called a win,
+which is exactly why the target's rank is now reported beside the count.
+
+**Still owed, unchanged from §1.7 and now also true of (d):** none of this has
+been run on the founder's device, and none of it is deployed. P-01's build is
+still the prerequisite for P-07.
+
+---
+
+
 ## 2. Target
 
 - **The Shows search filters as you type** (F2), locally, at frame rate, with no

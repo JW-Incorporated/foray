@@ -773,9 +773,27 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 .show-result-art-blank {
   background: var(--surface-2);
 }
+/* P-03's byline column. `min-width: 0` is load-bearing, not defensive: a flex
+   item's default `min-width: auto` refuses to shrink below its content, so
+   without it a long artist string (measured max 249 B on Apple's field) pushes
+   the row wider than the viewport instead of ellipsing. */
+.show-result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
 .show-result-title {
   font-weight: 600;
   font-size: 0.95rem;
+}
+/* One line, ellipsed. The byline explains a row; it never becomes the row. */
+.show-result-by {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- secondary in-page nav row ----------
@@ -1288,6 +1306,17 @@ body:not(.fp-expanded) .fp-close { display: none; }
    prose rather than shouting the provenance note. */
 .ep-more h3 .note {
   text-transform: none; letter-spacing: normal; font-weight: 400;
+  font-size: 0.78rem;
+}
+/* P-05 piece 2: the same caption as a DIVIDER, used when the Episodes section
+   carries both tiers — the listener's own saved/Up Next episodes above, the
+   endpoint's below. It only renders when both tiers have rows (see
+   paintEpisodeSearchResults); with one tier the caption stays on the h3 above,
+   which is why this is a separate rule rather than a variant of it. Tokens
+   only, per U-01 — no raw hex anywhere outside the ui-v2 token block. */
+.ep-more .fy-episode-search-more {
+  margin: 12px 0 8px; padding-top: 8px;
+  border-top: 1px solid var(--line);
   font-size: 0.78rem;
 }
 
@@ -2234,6 +2263,7 @@ body.ui-v2 #sh-form button {
   color: var(--text);
 }
 body.ui-v2 .show-result-title { font-family: var(--font-body); }
+body.ui-v2 .show-result-by { font-family: var(--font-body); color: var(--muted); }
 
 /* The "browse subjects" pill row (mockup SearchScreen), v2-only per
    browsePillsHtml()'s own guard -- there is no v1 pill row to restyle,

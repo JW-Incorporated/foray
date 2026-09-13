@@ -44,6 +44,19 @@
        "no coverage" instead of red, the same "absence is a real state, not
        an error" rule app.js's own header states elsewhere in this repo.
 
+   (d) THE PARITY CASES (P-06, docs/search-parity-plan.md §2.1) — the three
+       queries the P-deck names as THE defect: `tim ferriss`, `lex fridman`,
+       `sam harris`. Each is asked of /api/shows/search TWICE, plain and with
+       `fallthrough=1`, and BOTH answers are reported: row count, the first
+       three titles, and the 1-indexed rank of the show the listener meant.
+       The pair is the measurement — a single count cannot regress visibly
+       ("1 row for tim ferriss" reads as a thin catalogue, not as a gate that
+       was never asked), and a row count alone can improve from 1 to 14 while
+       the show the listener typed slides from first to third. SKIPPED, NOT
+       FAILED, when the origin is unreachable, like (c). NOTE that this
+       section measures the DEPLOYED endpoint, never the checkout it is run
+       from.
+
    THE FIELD LIST IS THE CONTRACT the doc quotes from and later cards are
    graded against — a stat this script stops reporting silently breaks the
    contract, so add here and in docs/search-plan.md together.
@@ -56,8 +69,9 @@
                        these are point-in-time measurements, not a derived
                        artifact like build-catalog-client's). Prints the
                        12-query table either way.
-       --no-network   skip the breadth round-trip outright (matches "skipped,
-                       not failed" — useful for a fully offline dev loop). */
+       --no-network   skip the breadth round-trip AND the parity cases
+                       outright (matches "skipped, not failed" — useful for a
+                       fully offline dev loop). */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -222,6 +236,112 @@ export async function breadthRoundTrip({
   }
 }
 
+/* ==================================================================== */
+/* P-06 — THE THREE NAMED PARITY CASES                                  */
+/* ==================================================================== */
+
+/** The three queries `docs/search-parity-plan.md` §2.1 names as THE DEFECT.
+ *
+ *  WHY THESE LIVE HERE AND NOT IN THE 12-QUERY BATTERY. `QUERY_BATTERY` is a
+ *  TIMING battery: fixed since S-01, quoted verbatim by §1.6 and §1.7, and its
+ *  length is asserted by `validateReport`. Adding a query to it would silently
+ *  invalidate every committed comparison table. These cases measure something
+ *  else entirely — not how fast a pass runs but WHETHER THE DIRECTORY IS ASKED
+ *  AT ALL — so they are their own battery with their own section.
+ *
+ *  WHAT §2.1 MEASURED, and what this re-measures. On 2026-09-13, against the
+ *  live endpoint at `limit=5`, each of these three returned exactly ONE row
+ *  both with and without `fallthrough=1`, for three of the best-known shows in
+ *  podcasting. That is the whole of P-02's diagnosis: the fall-through was not
+ *  broken, it was never asked, because one match is not zero.
+ *
+ *  SO THE MEASUREMENT IS THE PAIR, NOT EITHER NUMBER. A single count cannot
+ *  regress visibly — "1 row for tim ferriss" looks like a thin catalogue, not
+ *  a gate. The pair cannot hide: when `plain_rows === directory_rows` for all
+ *  three, the directory is inert, and that is exactly the state P-02 exists to
+ *  leave behind. `parityCase` therefore always issues BOTH requests and always
+ *  reports both, even when they agree.
+ *
+ *  `target` is the show the listener meant. It is recorded as a RANK, never as
+ *  an assertion here, because this file measures and does not grade — but its
+ *  rank is the number that caught what row counts alone missed (see §1.8's
+ *  `tim ferriss` row). A count can go 1 -> 14 while the show the listener
+ *  typed slides from first to third. */
+export const PARITY_CASES = [
+  { query: "tim ferriss", target: "The Tim Ferriss Show" },
+  { query: "lex fridman", target: "Lex Fridman Podcast" },
+  { query: "sam harris", target: "Making Sense with Sam Harris" },
+];
+
+/** The normalised-title rule, verbatim from `api/shows/appleShowSearch.ts`'s
+    `normaliseShowTitle` and `app.js`'s copy of it. Used here ONLY to locate a
+    target title in a result list — never to dedupe; the endpoint has already
+    done that by the time these rows arrive. */
+export function normaliseTitle(title) {
+  return String(title || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+/** 1-INDEXED rank of `target` in `shows`, or `null` when absent. 1-indexed
+    because every table this feeds is read by a human counting from the top of
+    a list; a 0 here would read as "first" and mean "first" only by accident. */
+export function targetRank(shows, target) {
+  const want = normaliseTitle(target);
+  const i = (shows || []).findIndex((s) => normaliseTitle(s?.title) === want);
+  return i === -1 ? null : i + 1;
+}
+
+/** One parity case: the SAME query asked twice, plain and with
+    `fallthrough=1`, and both answers reported side by side. Throws on a
+    network failure — `parityBattery` is where "skipped, not failed" is
+    applied, matching `breadthRoundTrip`'s split. */
+export async function parityCase({ query, target }, { origin = API_ORIGIN, fetchImpl, limit = 25 } = {}) {
+  const get = async (extra) => {
+    const url = `${origin}/api/shows/search?q=${encodeURIComponent(query)}&limit=${limit}${extra}`;
+    const start = process.hrtime.bigint();
+    const res = await (fetchImpl ?? ((...a) => fetch(...a)))(url, { cache: "no-store" });
+    const ms = Number(process.hrtime.bigint() - start) / 1e6;
+    const body = await res.json();
+    const shows = Array.isArray(body?.shows) ? body.shows : [];
+    return { ms, shows, attempted: body?.fallthrough?.attempted ?? null };
+  };
+
+  const plain = await get("");
+  const directory = await get("&fallthrough=1");
+
+  return {
+    query, target,
+    plain_rows: plain.shows.length,
+    plain_titles: plain.shows.slice(0, 3).map((s) => String(s?.title ?? "")),
+    plain_target_rank: targetRank(plain.shows, target),
+    directory_rows: directory.shows.length,
+    directory_titles: directory.shows.slice(0, 3).map((s) => String(s?.title ?? "")),
+    directory_target_rank: targetRank(directory.shows, target),
+    /* THE REGRESSION SIGNATURE, computed rather than left to the reader: zero
+       means the flag changed nothing, which is §2.1's defect exactly. */
+    gain: directory.shows.length - plain.shows.length,
+    fallthrough_attempted: directory.attempted,
+    plain_ms: plain.ms,
+    directory_ms: directory.ms,
+  };
+}
+
+/** All three cases. SKIPPED, NOT FAILED, on any thrown error — an offline
+    runner is not a finding about the gate, the same rule `breadthRoundTrip`
+    follows. */
+export async function parityBattery({ origin = API_ORIGIN, fetchImpl, cases = PARITY_CASES } = {}) {
+  try {
+    const out = [];
+    for (const c of cases) out.push(await parityCase(c, { origin, fetchImpl }));
+    return { skipped: false, reason: null, cases: out };
+  } catch (err) {
+    return {
+      skipped: true,
+      reason: `origin unreachable: ${String(err?.message ?? err)}`,
+      cases: [],
+    };
+  }
+}
+
 function parseArgs(argv) {
   const out = { outPath: null, check: false, noNetwork: false };
   for (let i = 0; i < argv.length; i++) {
@@ -250,6 +370,16 @@ export async function runProbe({ searchShows, engine, noNetwork = false } = {}) 
     ? { skipped: true, reason: "--no-network", misses: [], hits: [] }
     : await breadthRoundTrip();
 
+  /* P-06's named cases. Same "skipped, not failed" contract as `network`, and
+     skipped for the same reasons. NOTE WHAT THIS SECTION MEASURES: the
+     DEPLOYED endpoint, not the checkout. Until a branch is deployed, running
+     this probe from that branch's worktree still reports the deployment's
+     behaviour — which is the honest answer, and is why §1.8's after-column is
+     a replay rather than a reading of this section. */
+  const parity = noNetwork
+    ? { skipped: true, reason: "--no-network", cases: [] }
+    : await parityBattery();
+
   /* SKIPPED, NOT FAILED, when the index is absent — the same rule the network
      section follows, and for the same reason: a checkout from before S-03, or
      one where the build step has not run, is not a finding about the index's
@@ -274,13 +404,17 @@ export async function runProbe({ searchShows, engine, noNetwork = false } = {}) 
   }
 
   return {
-    v: 2,
+    /* v3: the `parity` section is new and `validateReport` now requires it.
+       Bumped rather than added silently — §1.6/§1.7 quote a v2 report and a
+       reader has to be able to tell which shape they are holding. */
+    v: 3,
     run_at: new Date().toISOString(),
     catalog_shows: catalog.shows.length,
     battery: QUERY_BATTERY.map((q, i) => ({ ...local[i], query_len: q.length })),
     decode,
     index,
     network,
+    parity,
   };
 }
 
@@ -330,6 +464,27 @@ export function formatTable(report) {
     lines.push("breadth round-trip, repeat (expect HIT after the first):");
     for (const s of report.network.hits) lines.push(`  ${fmt(s)}`);
   }
+  lines.push("");
+  /* P-06's named cases. Printed with BOTH columns always, and with the target
+     show's rank beside each, because either number alone is unreadable: one
+     row looks like a thin catalogue rather than a gate, and fourteen rows
+     looks like a win even when the show the listener typed is third. */
+  if (!report.parity || report.parity.skipped) {
+    lines.push(`parity cases (§2.1): no coverage (${report.parity?.reason ?? "not reported"})`);
+  } else {
+    lines.push("parity cases (docs/search-parity-plan.md §2.1) — same query, plain vs &fallthrough=1:");
+    lines.push("  query          plain  tgt#  directory  tgt#  gain  first title (directory)");
+    for (const c of report.parity.cases) {
+      lines.push(
+        `  ${c.query.padEnd(13)}  ${String(c.plain_rows).padStart(5)}  ` +
+        `${String(c.plain_target_rank ?? "—").padStart(4)}  ${String(c.directory_rows).padStart(9)}  ` +
+        `${String(c.directory_target_rank ?? "—").padStart(4)}  ${String(c.gain).padStart(4)}  ${c.directory_titles[0] ?? "—"}`
+      );
+    }
+    if (report.parity.cases.every((c) => c.gain === 0)) {
+      lines.push("  ^ EVERY case gained nothing: the directory pass is inert (this is §2.1's defect).");
+    }
+  }
   return lines.join("\n");
 }
 
@@ -369,6 +524,30 @@ export function validateReport(report) {
   }
   if (typeof report.network?.skipped !== "boolean") {
     errors.push("network section must explicitly say skipped: true/false — silence is not \"no coverage\"");
+  }
+  /* P-06. The parity section is REQUIRED — a report that stopped carrying it
+     is the silent regression this card exists to make impossible, so its
+     absence is an error and not a shrug. */
+  if (typeof report.parity?.skipped !== "boolean") {
+    errors.push("parity section must explicitly say skipped: true/false — P-06's three §2.1 cases are part of the contract, and a report that dropped them is not valid");
+  }
+  if (report.parity && report.parity.skipped === false) {
+    if (!Array.isArray(report.parity.cases) || report.parity.cases.length !== PARITY_CASES.length) {
+      errors.push(`parity section must carry exactly ${PARITY_CASES.length} cases, got ${report.parity.cases?.length}`);
+    }
+    for (const c of report.parity.cases ?? []) {
+      /* BOTH COLUMNS OR NEITHER. Reporting only the flagged count would hide
+         the defect completely: 1 row reads as a thin catalogue, and it is only
+         "1 with the flag AND 1 without it" that names the gate. */
+      if (typeof c.plain_rows !== "number" || typeof c.directory_rows !== "number") {
+        errors.push("every parity case needs BOTH plain_rows and directory_rows — a single count cannot show that the directory pass was inert, which is the whole measurement");
+        break;
+      }
+      if (!Array.isArray(c.plain_titles) || !Array.isArray(c.directory_titles)) {
+        errors.push("every parity case needs its first-three titles for BOTH columns — P-06 asks for titles, not only counts, because a count can improve while the show the listener typed moves down the list");
+        break;
+      }
+    }
   }
   if (report.network && report.network.skipped === false) {
     for (const s of [...report.network.misses, ...report.network.hits]) {

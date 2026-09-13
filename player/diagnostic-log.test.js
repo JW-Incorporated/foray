@@ -1189,20 +1189,30 @@ test("the search entry speaks this file's ONE vocabulary: camelCase keys, and `h
      field, and a slow search could not be told apart from a slow search in a
      BACKGROUNDED tab whose timers were throttled.
 
+     `dirMs`/`dirHits` joined the list for P-02 (docs/search-parity-plan.md):
+     the Apple DIRECTORY pass is a second request to `api/shows/search` and the
+     slowest of the show passes by construction, so it gets its own pair rather
+     than being folded into `netMs` — the two fail independently, and "search
+     took 900 ms" is a different finding depending on which pass spent it. This
+     assertion is exactly the guard that caught them arriving, which is what it
+     is for.
+
      MUTATION: put `q_len:`/`local_ms:` back, or drop `hidden: this._isHidden()`
      from `search()`. Either turns this red, and the `no_snake` sweep below is
      what stops a later field arriving in the old dialect. */
   const { diag, store } = mk();
-  diag.search({ qLen: 4, localMs: 0.05, localHits: 3, netMs: 210, netHits: 5, epMs: 480, epHits: 2, ctaMs: 1600, paintedMs: 12, path: "local+net" });
+  diag.search({ qLen: 4, localMs: 0.05, localHits: 3, netMs: 210, netHits: 5, dirMs: 470, dirHits: 12, epMs: 480, epHits: 2, ctaMs: 1600, paintedMs: 12, path: "local+net" });
   const entry = parse(store).entries.find((e) => e.type === "search");
   assert.equal(entry.hidden, false, "`hidden` is recorded, exactly as voiceProbe/nowplaying record it");
   const snake = Object.keys(entry).filter((k) => k.includes("_"));
   assert.deepEqual(snake, [], `no snake_case key may survive on this entry: ${snake.join(", ")}`);
   assert.deepEqual(
     Object.keys(entry).filter((k) => !["type", "t", "seq", "wall"].includes(k)).sort(),
-    ["ctaMs", "epHits", "epMs", "hidden", "localHits", "localMs", "netHits", "netMs", "paintedMs", "path", "qLen"],
+    ["ctaMs", "dirHits", "dirMs", "epHits", "epMs", "hidden", "localHits", "localMs", "netHits", "netMs", "paintedMs", "path", "qLen"],
     "the whole vocabulary, named once here so a new field cannot arrive unnoticed",
   );
+  assert.equal(entry.dirMs, 470, "the directory pass's own timing is stored, not merged into netMs");
+  assert.equal(entry.dirHits, 12);
 });
 
 test("the search entry measures the EPISODES endpoint and the playlist CTA's scan, not only the shows half", () => {

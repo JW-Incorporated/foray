@@ -456,7 +456,7 @@ const FLOORS = {
      mutations named and killed in the file's own header — rendering,
      Apple-vs-live captioning, empty-result absence, offline skip, stale
      response drop, and in-app playability of a result. */
-  "test/episode-search.test.js": 6,
+  "test/episode-search.test.js": 18, // adversarial review (2026-09-12): the three defects the P-05 episode tier shipped with — a search paint writing the endpoint's thinner row shape back over a REAL stored episode's snapshot, a show-page save that could never dedup against its own endpoint copy, and the show index landing mid-query clearing an answered episode section; 14 -> 18 // P-05 piece 2 (docs/search-parity-plan.md, 2026-09-12): the INSTANT EPISODE TIER — the first half of the two-pass shape, over the listener's own cp_saved/cp_queue. Paints on the keystroke before any network call, matches the show name as well as the title, merges the endpoint's copy of a saved episode instead of duplicating it, never lets the Apple caption label a local row, survives a dead endpoint, answers offline, refuses state.itemIndex as a source, and clears a previous query's rows; 6 -> 14
 
 
   /* The home screen's geometry under DEVICE conditions. Floored because every
@@ -535,7 +535,10 @@ const FLOORS = {
                                       BUCKETED (never raw — `chart_rank` is
                                       per-genre and from one harvest), and a
                                       determinism check over the real
-                                      catalogue in two input orders.
+                                      catalogue in two input orders. Plus
+                                      P-03b's REFUSAL: the author is not a
+                                      ranking signal, pinned on the real
+                                      Apple strings that measured worse.
        `show-index.test.js`           S-03's CLIENT half over the real
                                       committed data/show-index.tsv: the sort
                                       order the binary search depends on,
@@ -552,13 +555,13 @@ const FLOORS = {
      others kept the file's count up, which is precisely what a floor cannot
      see. */
   "test/show-search-live.test.js": 10,
-  "test/show-search-ranking.test.js": 10, // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
+  "test/show-search-ranking.test.js": 12, // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
   "test/show-index.test.js": 11,
   "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
   /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
      its rows render and cache like any other breadth row, and a breadth show page survives
      a cold open. Restored with the card after a merge took main's side on app.js. */
-  "test/show-search-fallthrough.test.js": 10, // client audit (2026-09-12): Apple's ranking survives the merge instead of being re-sorted A-Z; 7 -> 10
+  "test/show-search-fallthrough.test.js": 24, // adversarial review (2026-09-12): a degraded/rate-limited directory answer is HTTP 200 and was cached as an answer for the session (with the fixture that could not model it, and the telemetry that hid it), the title dedup missed the subtitle divergence the committed catalogue already carries, and the show index landing mid-query replaced the painted list instead of merging into it; 19 -> 24 // P-03 (docs/search-parity-plan.md, 2026-09-12): the BYLINE — the half of "index the author" that survived measurement. A directory row renders its author, a row without one renders no byline element (the shared curated callers stay byte-identical), and the string is escaped rather than trusted; 16 -> 19 // P-02 (docs/search-parity-plan.md, 2026-09-12): the directory became a SECOND PASS instead of a last resort — the reversal itself, the `tim` case that kills every count threshold, the 3-character floor in both directions, Apple's duplicate-title collapse and its catalogue-row boundary, "a failed directory pass leaves the local list exactly as it was", the directory's own hot-query cache, and the two-language pin on the normalised-title rule; 10 -> 16 // client audit (2026-09-12): Apple's ranking survives the merge instead of being re-sorted A-Z; 7 -> 10
   /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
      #135): the Playlists results section under Shows/Episodes on the Shows
      page, plus the "Create a playlist about X" CTA. Floored new rather than
@@ -834,7 +837,7 @@ const FLOORS = {
      network contract, the report validator) -- driven by fakes and an
      injected fetch, no real catalogue/network. See
      test/search-probe-record.test.js for the wiring/mutation-guard half. */
-  "tools/search-probe.test.mjs": 30, // S-03/S-08 (2026-09-12): +3 — the index battery reports the prefix and scan passes separately, and the validator refuses a report that lost either p95 or the whole section; 27 -> 30
+  "tools/search-probe.test.mjs": 45, // P-06 (docs/search-parity-plan.md §2.1, 2026-09-13): +15 — the THREE NAMED PARITY CASES (`tim ferriss`, `lex fridman`, `sam harris`) become a battery of their own, asked plain AND with `fallthrough=1` so that "one row" cannot read as a thin catalogue instead of a gate that was never asked; the target show's 1-indexed rank rides along because `tim ferriss` measured 1 -> 14 rows while The Tim Ferriss Show slid from first to third, and a count-only table calls that an unqualified win; the validator now refuses a report that dropped the section, a case, either column, or the titles; 30 -> 45 // S-03/S-08 (2026-09-12): +3 — the index battery reports the prefix and scan passes separately, and the validator refuses a report that lost either p95 or the whole section; 27 -> 30
   /* S-03 (docs/search-plan.md): the BUILD half of the show index — the merge,
      the in_curated dedupe, the chart_rank cut, the control-character sanitiser,
      the four-column row shape, and the parity of the committed

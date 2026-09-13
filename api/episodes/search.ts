@@ -5,7 +5,7 @@ import { fetchFeedConditional } from "../../backend/src/feeds/conditionalGet";
 import { parseFeed, type ParsedEpisode } from "../../backend/src/feeds/parser";
 import { appleSearchBucket } from "./appleBucket";
 import { loadShowIdMap } from "./showIdMap";
-import { episodeSearchCache, normalizeQueryKey } from "./searchCache";
+import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "./searchCache";
 
 /**
  * GET /api/episodes/search?q=<query>&show=<show_id> — episode search (S-07,
@@ -21,15 +21,27 @@ import { episodeSearchCache, normalizeQueryKey } from "./searchCache";
  *      query (searchCache.ts). Every hit's `collectionId` is mapped back to
  *      a 4a `show_id` via showIdMap.ts; a hit that doesn't map to any known
  *      show is DROPPED (never surfaced with a broken show link) — this is
- *      the card's own explicit rule.
+ *      the card's own explicit rule. Since P-05 that map spans BOTH
+ *      catalogue files (19.9k ids, not 220), so the rule fires on genuine
+ *      strangers rather than on 73 % of every answer — see showIdMap.ts's
+ *      loadCatalogFallback() for the measurement.
  *
  *   2. SHOW-SCOPED SEARCH (`show=<show_id>`): no Apple call at all. Fetches
  *      that show's live feed (S-02's exact path: fetchFeedConditional +
  *      parseFeed, no persisted state between invocations — same no-DB-mode
  *      shape as `api/shows/[show_id]/episodes.ts`) and filters episodes by
- *      a case-insensitive substring match on title. This is cheap, doesn't
- *      touch the rate-limited Apple endpoint, and gives an exact answer for
- *      a show 4a already knows about.
+ *      a case-insensitive substring match on title. It doesn't touch the
+ *      rate-limited Apple endpoint and gives an exact answer for a show 4a
+ *      already knows about — but it is NOT cheap, and S-07's "this is cheap"
+ *      did not survive measurement. Its floor is the third-party feed
+ *      ORIGIN: 165 ms best case, ~950 ms median on Lex Fridman, 2082 ms
+ *      observed worst, and bytes do not predict it (2284 KB in 258 ms vs
+ *      2053 KB in 954 ms — a bigger feed on a CDN beat a smaller one on
+ *      WordPress 4x). Nothing in this file moves that number, so do not
+ *      promise this path will ever feel like the search page's. What P-05
+ *      piece 3 could remove is the part we were paying twice:
+ *      `episodeFeedFailureCache` stops a feed that just failed from being
+ *      refetched on the next keystroke.
  *
  * DB-MODE: not implemented. The card asks for it to be "stubbed behind
  * DATABASE_URL presence for a later card" — production has no DATABASE_URL
@@ -86,11 +98,25 @@ interface AppleEpisodeHit {
   episodeUrl?: string;
 }
 
-/** Maps one Apple search hit to our shape, or null if its collectionId doesn't resolve to a known show. */
+/** Maps one Apple search hit to our shape, or null if its collectionId doesn't
+ *  resolve to a known show.
+ *
+ *  THE DROP IS STILL RIGHT; ITS OLD JUSTIFICATION IS NOT (P-05, 2026-09-12).
+ *  S-07 wrote this drop so a hit was "never surfaced with a broken show link",
+ *  which was true while a breadth show page 404'd on a cold open. S-06(b)/#560
+ *  landed after S-07 and made every merged-catalogue id resolvable — verified
+ *  live, `GET /api/shows/search?id=863897795` -> "The Tim Ferriss Show". So the
+ *  reason to drop is now narrow and literal: an id `showIdMap.ts` cannot place
+ *  at all would render a row pointing at a show page that does not exist, and
+ *  no listener is served by that. What P-05 changed is the SIZE of the set this
+ *  catches — 220 ids to 19.9k — because at 220 this line was silently eating
+ *  three quarters of every answer and five of eight probe queries returned
+ *  nothing at all with `degraded:false`. If this ever starts dropping most hits
+ *  again, the id-map is broken, not the query. */
 function mapAppleHit(hit: AppleEpisodeHit, idMap: Map<number, string>): EpisodeSearchResult | null {
   if (typeof hit.collectionId !== "number") return null;
   const show_id = idMap.get(hit.collectionId);
-  if (!show_id) return null; // unmapped — dropped, per the card's own rule
+  if (!show_id) return null; // genuinely outside our catalogue — see this function's header
   if (!hit.trackName) return null;
   return {
     show_id,
@@ -144,11 +170,18 @@ async function searchApple(
   }
 }
 
+/* `feedFailed` separates "the expensive thing went wrong" from every other
+   error this function can return (P-05 piece 3). Only a failed FEED FETCH is
+   worth remembering: it is the one that cost a real round trip and the one
+   that will cost it again on the next keystroke. An unknown `show_id` never
+   touched the network, and a missing catalogue file is a deploy gap that a
+   90-second window neither helps nor describes — both stay uncached so they
+   keep answering honestly on every request. */
 async function searchWithinShow(
   showId: string,
   query: string,
   fetchImpl: typeof fetch
-): Promise<{ results: EpisodeSearchResult[]; error: string | null }> {
+): Promise<{ results: EpisodeSearchResult[]; error: string | null; feedFailed: boolean }> {
   // Find the show's feed URL. This is a pure local lookup (data/catalog.json,
   // no network) — the show/collectionId id-map (showIdMap.ts) is a different
   // join (Apple collectionId -> show_id) not needed here, so it's not loaded
@@ -167,18 +200,18 @@ async function searchWithinShow(
       // caller can't fix a bad show_id, but this IS an operational
       // failure worth surfacing honestly rather than as a false-empty
       // "no results" — see this file's degraded-honesty test.
-      return { results: [], error: err.message };
+      return { results: [], error: err.message, feedFailed: false };
     }
     throw err;
   }
-  if (!meta) return { results: [], error: `unknown show_id: ${showId}` };
+  if (!meta) return { results: [], error: `unknown show_id: ${showId}`, feedFailed: false };
 
   const fetchResult = await fetchFeedConditional(meta.feedUrl, { etag: null, lastModified: null }, {
     fetchImpl,
     userAgent: EPISODE_USER_AGENT
   });
   if (fetchResult.error || fetchResult.body === null) {
-    return { results: [], error: fetchResult.error ?? `unexpected empty body (status ${fetchResult.status})` };
+    return { results: [], error: fetchResult.error ?? `unexpected empty body (status ${fetchResult.status})`, feedFailed: true };
   }
 
   const parsed = parseFeed(fetchResult.body);
@@ -187,7 +220,7 @@ async function searchWithinShow(
     .filter((ep) => ep.title.toLowerCase().includes(q))
     .map((ep) => mapLiveEpisode(showId, meta.title, ep))
     .filter((ep): ep is EpisodeSearchResult => ep !== null);
-  return { results, error: null };
+  return { results, error: null, feedFailed: false };
 }
 
 interface ShowMeta {
@@ -285,7 +318,24 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   }
 
   if (showScope) {
-    const { results, error } = await searchWithinShow(showScope, q, fetch);
+    /* P-05 piece 3: a feed that just failed is not refetched for the next
+       query. Keyed on the SHOW, because it is the feed that failed and the
+       feed is what a fresh `q` would refetch — `episodeSearchCache`'s key
+       includes the query, which is exactly why retyping in the show page's
+       search box re-paid a doomed round trip every time. Answered as
+       `degraded: true` with the original error, never as an empty success:
+       the client branches on `degraded` and falls back to its own
+       `filterLoadedEpisodes`, so this is a faster honest answer, not a worse
+       one. See searchCache.ts's FEED_FAILURE_TTL_MS for the window and why it
+       is short. */
+    const rememberedFailure = episodeFeedFailureCache.get(showScope);
+    if (rememberedFailure) {
+      res.setHeader("Cache-Control", "no-store"); // never let the edge outlive our own short window
+      res.status(200).json({ query: q, show: showScope, episodes: [], source: ["live"], degraded: true, error: rememberedFailure });
+      return;
+    }
+
+    const { results, error, feedFailed } = await searchWithinShow(showScope, q, fetch);
     const payload = {
       query: q,
       show: showScope,
@@ -295,6 +345,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       error: error && results.length === 0 ? error : null
     };
     if (!error) episodeSearchCache.set(cacheKey, { episodes: payload.episodes, source: payload.source });
+    else if (feedFailed) episodeFeedFailureCache.set(showScope, error);
     res.setHeader("Cache-Control", error ? "no-store" : "public, max-age=300, stale-while-revalidate=3600");
     res.status(200).json(payload);
     return;
