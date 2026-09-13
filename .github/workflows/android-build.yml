@@ -278,6 +278,28 @@ jobs:
           # so reordering or skipping one build cannot leave the other unable to run.
           chmod +x android/gradlew
 
+      - name: Fetch the Kokoro weights and put them in the app (K-01/K-06)
+        # docs/bundled-voice-plan.md K-06(1): "pins {url, sha256, bytes} for the
+        # model and each voice; CI fails on a mismatch." This is the step that
+        # calls it, and H3 is the founder-approved sitting that lets it be here.
+        #
+        # WHY IT IS HERE AND NOT EARLIER: `cap add`/`cap sync` rewrites the
+        # generated project's resource directories, so weights copied in before
+        # it would be deleted by it. Immediately after is the first safe point
+        # and the last one before the build reads the tree.
+        #
+        # THREE COMMANDS, NOT ONE, because they fail for three different
+        # reasons and a red build has to say which: the pin table is malformed
+        # (somebody edited a URL and not the hash), the download did not match
+        # its pin, or the copy landed somewhere the app does not look. The last
+        # is the one that would otherwise ship a green build with no weights in
+        # it and tell a founder `model-absent`.
+        run: |
+          set -euo pipefail
+          node tools/mobile/fetch-models.mjs --check
+          node tools/mobile/fetch-models.mjs --fetch
+          node tools/mobile/inject-models.mjs android mobile/android/app/src/main/assets
+          node tools/mobile/inject-models.mjs android mobile/android/app/src/main/assets --check
       - name: Put the REAL splash screen and launcher icon in the generated project
         # See .github/actions/android-bundle/action.yml for why; same script, same
         # byte-level --check. tools/mobile/inject-splash.test.mjs covers it.

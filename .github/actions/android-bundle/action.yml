@@ -103,6 +103,18 @@ runs:
         echo "sdk.dir=$ANDROID_HOME" > android/local.properties
         chmod +x android/gradlew
 
+    - name: Fetch the Kokoro weights and put them in the app (K-01/K-06)
+      # The same step `.github/workflows/android-build.yml` runs, and for the same reasons — see that
+      # file's copy of this comment. This is the release path: it is what puts
+      # the weights into the build a founder actually installs, which is the
+      # whole point of K-01 and of HUMAN-ACTIONS.md #45.
+      shell: bash
+      run: |
+        set -euo pipefail
+        node tools/mobile/fetch-models.mjs --check
+        node tools/mobile/fetch-models.mjs --fetch
+        node tools/mobile/inject-models.mjs android mobile/android/app/src/main/assets
+        node tools/mobile/inject-models.mjs android mobile/android/app/src/main/assets --check
     - name: Wire the signing include into the generated project
       shell: bash
       run: |

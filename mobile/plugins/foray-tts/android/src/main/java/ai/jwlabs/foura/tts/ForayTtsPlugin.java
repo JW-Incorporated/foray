@@ -855,7 +855,17 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             return;
         }
 
+        /* THE ENGINE IS BUILT HERE, ON DEMAND, AND NOWHERE ELSE.
+         * `probeEngine` stays null on every shipping build, and this line is
+         * why that remains true AND the probe can still answer: ORT is not
+         * touched in `load()`, not at app start, and not on any path narration
+         * reaches. It is constructed the moment a founder taps the probe
+         * button on a build that fetched the weights, and dropped when this
+         * method returns. An engine registered at startup would be running
+         * ONNX Runtime in every listener's app for a card that measures one
+         * phone. */
         KokoroProbeEngine engine = probeEngine;
+        if (engine == null) engine = KokoroOrtProbeEngine.create(getContext());
         if (engine == null) {
             result.put("ok", false);
             result.put("reason", "engine-absent");

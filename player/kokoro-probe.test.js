@@ -78,13 +78,29 @@ test("the passage's char counts and est_sec agree with the 17 chars/s planning r
   }
 });
 
-test("the shipped passage is UNPHONEMIZED, and that is the reported state", () => {
-  /* THE HONESTY TEST. Nothing in this repo can run misaki, so every `ids` is
-     null — and the probe must SAY so rather than synthesize something else.
-     MUTATION: put a plausible id array into the JSON. This goes red, and so
-     does the claim in the file's own `//shape` note. */
-  assert.equal(passageProblem(PASSAGE), "passage-unphonemized");
-  for (const l of PASSAGE.lines) assert.equal(l.ids, null);
+test("the shipped passage IS phonemized, so the probe can reach the phone's engine", () => {
+  /* THIS TEST WAS INVERTED ON 2026-09-12, and the inversion is the point of
+     the PR that did it. It used to assert `passage-unphonemized`, which was
+     the honest state while `ids` was null — and it is exactly the string
+     Wyatt's phone printed on build 2026091212 instead of a number:
+
+         voiceProbe kokoro-probe could not measure: passage-unphonemized
+
+     `tools/narration/phonemize.py --passage ... --in-place` filled it. The
+     ids' correctness is not asserted here but in
+     `tools/mobile/kokoro-vocab.test.mjs`, which decodes every one of them back
+     through the model's own table — because "there is an array here" and "the
+     array says what the text says" are different claims and only the second
+     one is worth anything.
+     MUTATION: null one line's `ids` — the passage refuses again and the probe
+     goes back to answering `passage-unphonemized`. */
+  assert.equal(passageProblem(PASSAGE), null);
+  for (const l of PASSAGE.lines) {
+    assert.ok(Array.isArray(l.ids) && l.ids.length > 0, `${l.id}: no ids`);
+    assert.ok(typeof l.phonemes === "string" && l.phonemes.length > 0, `${l.id}: no phonemes`);
+  }
+  assert.match(PASSAGE.vocab, /^sha256:[0-9a-f]{16}$/,
+    "the passage must carry the id table's sha, so the player can refuse a mismatch");
 });
 
 test("passageProblem separates missing, empty and unphonemized", () => {
@@ -258,12 +274,35 @@ const fakeTts = (answer) => ({ kokoroProbe: async () => answer });
 test("the run refuses before touching the bridge when the passage is unphonemized", () => {
   /* ORDER IS THE CONTRACT. Asking a plugin to synthesize nulls would produce
      whatever that plugin does with nulls. MUTATION: check the passage after
-     the call — `called` becomes true. */
+     the call — `called` becomes true.
+
+     Driven from a DELIBERATELY BROKEN copy of the shipped passage now that the
+     real one is filled in: the rule being tested is "refuse before the bridge",
+     and it has to keep being tested after the state that used to demonstrate
+     it for free went away. */
   let called = false;
+  const broken = { ...PASSAGE, lines: PASSAGE.lines.map((l) => ({ ...l, ids: null })) };
   const tts = { kokoroProbe: async () => { called = true; return { ok: true }; } };
-  return runKokoroProbe({ tts, passage: PASSAGE }).then((rec) => {
+  return runKokoroProbe({ tts, passage: broken }).then((rec) => {
     assert.equal(called, false);
     assert.equal(rec.reason, "passage-unphonemized");
+  });
+});
+
+test("the shipped passage now reaches the bridge — the whole point of filling it in", () => {
+  /* The other half of the inversion above, at the level the founder actually
+     experiences: hand `runKokoroProbe` the REAL file and a bridge, and the
+     bridge is called. On a phone the answer then comes from the native half
+     (`model-absent`, `engine-absent`, or a measurement); in Node it comes from
+     this fake. What matters is that the page no longer stops first.
+     MUTATION: restore `ids: null` in the JSON — this goes red, and so does the
+     founder's run. */
+  let seen = null;
+  const tts = { kokoroProbe: async (opts) => { seen = opts; return { ok: false, reason: "model-absent" }; } };
+  return runKokoroProbe({ tts, passage: PASSAGE }).then((rec) => {
+    assert.ok(seen, "the bridge was never asked");
+    assert.equal(seen.passage.lines.length, 4);
+    assert.equal(rec.reason, "model-absent", "the native half's own diagnosis wins");
   });
 });
 

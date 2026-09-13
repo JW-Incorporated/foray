@@ -53,4 +53,28 @@ repositories {
 
 dependencies {
     implementation project(':capacitor-android')
+    /* ONNX Runtime, for K-01's measurement engine (KokoroOrtProbeEngine.java).
+     * MIT-licensed, already carried in docs/legal/third-party-notices.md.
+     *
+     * PINNED EXACTLY, not with a `+` or a range: the number this card exists
+     * to produce is a TIMING, and a measurement whose runtime version is not
+     * in the diff is not a measurement. The version matches the `onnxruntime`
+     * pin in tools/narration/requirements.txt to within a patch, so K-03's
+     * audition renders through the same generation of the graph the phone runs.
+     *
+     * `onnxruntime-android` is the mobile package: it carries arm64-v8a,
+     * armeabi-v7a, x86 and x86_64 .so files, and the ~16 MB in the size budget
+     * (test/release-gates.test.js) is what Play's per-ABI split ships.
+     *
+     * NOT sherpa-onnx: its TTS API takes TEXT and runs a GPL-3 text front end
+     * on it internally, which is the one dependency deck §4 exists to keep off
+     * the phone. ORT takes tensors and has no opinion about text.
+     *
+     * THAT FRONT END IS NOT NAMED IN THIS FILE ON PURPOSE:
+     * test/release-gates.test.js greps this very file for the three names it
+     * travels under, comments included, because a manifest is the only way one
+     * reaches a shipped binary. A gate a comment can break is a gate that
+     * works. See docs/legal/third-party-notices.md, "What is deliberately NOT
+     * here", for the names and the argument. */
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.20.0'
 }

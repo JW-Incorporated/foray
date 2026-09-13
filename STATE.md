@@ -7,6 +7,42 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Kokoro probe: the three blockers under HUMAN-ACTIONS #45 (2026-09-12) — `feat/kokoro-probe-measurable`
+
+- **Why:** Wyatt ran the voice probe on build 2026091212 and the whole result
+  was `voiceProbe kokoro-probe could not measure: passage-unphonemized`. Three
+  things had to be true before that card can produce a number and none of them
+  were. All three in one PR, because clearing one would have moved him one
+  refusal along and cost a second trip to a locked phone.
+- **What:** (1) the K-01 passage is phonemized — and two real defects in
+  `tools/narration/phonemize.py` had to be fixed first, since `--passage` could
+  not run on any machine (it asked misaki for a `vocab`/`vocab_ids` it does not
+  have, and disabled the espeak fallback the card's own Ask requires). The id
+  table is now the MODEL's, extracted verbatim from the pinned export's
+  `tokenizer.json`. (2) Every pin in `fetch-models.mjs` is FILLED — each URL
+  fetched once and stream-hashed, nothing large written to disk — and a new
+  `bundle` field says which two of the thirteen reach a phone. (3) ONNX Runtime
+  1.20.0 is linked on both platforms with a real `KokoroProbeEngine` behind
+  K-01's seam, and all four build paths fetch and inject the weights.
+- **Touches:** `tools/narration/phonemize.py`, `tools/narration/kokoro-vocab.json`
+  (new), `tools/mobile/kokoro-probe-passage.json` (filled),
+  `tools/mobile/fetch-models.mjs` (+ test 16 -> 18),
+  `tools/mobile/inject-models.mjs` (new, + test 7, floored),
+  `tools/mobile/kokoro-vocab.test.mjs` (new, 7, floored),
+  `mobile/plugins/foray-tts/**` (ORT dep both platforms, two new engine files),
+  `player/kokoro-probe.test.js` (29 -> 30), `test/release-gates.test.js`,
+  `tools/ci/path-policy.mjs`, `.github/workflows/{ios,android}-build.yml`,
+  `.github/actions/{ios-archive,android-bundle}/action.yml`,
+  `docs/bundled-voice-plan.md`, `docs/legal/third-party-notices.md`,
+  `HUMAN-ACTIONS.md` (#45 rewritten with the build number and the lock timing).
+- **OWNS the voice/TTS surface.** Stays out of `app.js`'s search functions,
+  `search-engine.js`, `api/**` and `tools/build-show-index.mjs` — a search-parity
+  workstream owns those.
+- **Gates:** `.github/**` → **`founder-approved`** (deck H3), and the overlord
+  applies it. `path-policy` is red until then, by design.
+- **Still blocked on a human:** HUMAN-ACTIONS #45 itself. Nothing here produces
+  the number; it makes the number producible.
+
 ### Hermes search deck S-05/S-06/S-08, the `api/**` batch (2026-09-12, PR #658) — `feat/search-deck-api`
 
 - **Stacked on `feat/search-deck-s02-s08` (PR #657), not on `main`** — it

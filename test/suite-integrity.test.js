@@ -233,7 +233,7 @@ const FLOORS = {
      native answer with no `ok` read as success). A record that says "RTF 0.00,
      locked screen fine" because nothing ran is a record that gets pasted into a
      decision, and every one of those tests is one edit from allowing it. */
-  "player/kokoro-probe.test.js": 29,
+  "player/kokoro-probe.test.js": 30, // K-01 (2026-09-12): the passage is phonemized, so "refuses before the bridge" and "reaches the bridge" are two tests; 29 -> 30
   "player/tts-bridge.test.js": 29, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 25 -> 29 // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
@@ -1033,7 +1033,19 @@ const FLOORS = {
      this file" and "our app executes whatever is now at that URL" is one hash
      comparison, and the load-bearing test here is that an UNPINNED entry never
      verifies however right the bytes are. Zero slack. */
-  "tools/mobile/fetch-models.test.mjs": 16,
+  "tools/mobile/fetch-models.test.mjs": 18, // K-01 (2026-09-12): the pins are FILLED, and `bundle` decides what reaches a phone; 16 -> 18
+  /* The weights-into-the-app step. New with the filled pins (2026-09-12): the
+     failure it guards is a build that fetched 82 MB correctly and put it where
+     the app does not look — green, uploaded, and answering `model-absent` to a
+     founder holding a locked phone. Zero slack, same as its sibling above. */
+  "tools/mobile/inject-models.test.mjs": 7,
+  /* The phoneme-to-id table and the ids that were mapped through it. The ids
+     are the ONLY thing the phone ever sees of our text (deck §4: no G2P ships),
+     so a wrong one is not a crash and not silence — it is a different phoneme,
+     sung fluently, inside a measurement a founder then quotes. This suite needs
+     neither Python nor misaki, which is the point: it re-checks on every CI run
+     a file that CI could not have produced. */
+  "tools/mobile/kokoro-vocab.test.mjs": 7,
   "tools/mobile/foray-tts.test.mjs": 60, // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is

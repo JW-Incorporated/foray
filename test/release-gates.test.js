@@ -498,20 +498,25 @@ test("K-06: no espeak dependency reaches any native build input", () => {
     + "(docs/bundled-voice-plan.md §4), and the app must never link espeak:\n" + offenders.join("\n"));
 });
 
-test("K-06: the model pin table is well-formed, and is honestly unfilled", async () => {
-  /* CI's half of "fails on a mismatch": the download itself happens in a build
-     step that does not exist yet (`.github/` needs founder-approved, deck H3),
-     but the table it will read is checked on every run today. The failure this
-     catches is somebody editing a URL and not the hash.
-     MUTATION: half-pin an entry (bytes, no sha256) — `pinProblems` names it. */
+test("K-06: the model pin table is well-formed, and every pin is filled", async () => {
+  /* CI's half of "fails on a mismatch". The download now happens in the
+     `ios-shell` and `android-shell` jobs, and the table those jobs read is
+     checked on every run here. The failure this catches is somebody editing a
+     URL and not the hash.
+     MUTATION: half-pin an entry (bytes, no sha256) — `pinProblems` names it.
+
+     The previous form of this test asserted the OPPOSITE — that every pin was
+     unfilled — with the instruction "when that changes, this assertion is the
+     one that has to change too, in a diff that says who did it". This is that
+     diff: on 2026-09-12 every URL was fetched once and STREAM-hashed on a
+     Windows workstation — the bytes went through `createHash` chunk by chunk
+     and were never written to disk, so no 86 MB file entered a worktree.
+     `tools/mobile/fetch-models.test.mjs` carries the rest of the detail. */
   const { PINS, pinProblems, unfilled } = await loadModelPins();
   assert.deepEqual(pinProblems(), []);
   assert.ok(PINS.length >= 13, "one model and the twelve audition voices");
-  /* Stated rather than assumed: nobody in this repo has downloaded these
-     files. When that changes, this assertion is the one that has to change
-     too, in a diff that says who did it. */
-  assert.equal(unfilled().length, PINS.length,
-    "if a pin has been filled, update this assertion and say in the PR who hashed the file");
+  assert.equal(unfilled().length, 0,
+    "an unfilled pin refuses to fetch, so a build carrying one would ship no weights at all");
 });
 
 test("K-06: every pinned artefact records a permissive licence and an https source", async () => {
@@ -570,23 +575,83 @@ test("K-06: the app-size ceiling is below Apple's cellular cap, with the reason 
   assert.ok(deck.includes("200 MB"), "the deck must state the cellular cap the ceiling is derived from");
 });
 
-test("K-06: the measured app sizes plus the model still fit under the ceiling", () => {
-  /* The arithmetic, executable. If a future measurement changes one of these
-     numbers, this test is where the budget is re-argued rather than in a PR
-     description nobody re-reads.
-     MUTATION: change the model size to fp32's 326 MB — the sum exceeds the
-     ceiling and the answer becomes "fetch it on first run", which is exactly
-     the finding this test exists to surface rather than hide. */
-  const androidAabMb = 5.46;
-  const iosAppMb = 8.3;
-  const modelMb = 86;
-  const ortMb = 20;      // the top of the inferred range, deliberately
-  const voicesMb = 1.5;
-  const worst = Math.max(androidAabMb, iosAppMb) + modelMb + ortMb + voicesMb;
-  assert.ok(worst < APP_SIZE_CEILING_MB,
-    `the bundled voice would make the app ${worst.toFixed(1)} MB, over the ${APP_SIZE_CEILING_MB} MB ceiling — `
+test("K-06: the measured app sizes plus the model still fit under the ceiling", async () => {
+  /* NO LONGER AN ESTIMATE. Until 2026-09-13 every number here was quoted from
+     the deck, because no build in this repo had ever produced an artefact with
+     the weights in it. `android-shell` now does, and these are read off it:
+
+       app-release-unsigned.apk, WITHOUT the model   6,070,267 B
+         (run 34737154752, job 103670869175 — a PR that does not touch voice)
+       app-release-unsigned.apk, WITH it           137,468,845 B
+         (run 34737888251, job 103672413287 — this card's own PR)
+
+     The 125.3 MiB difference decomposes: 82.5 MiB is the pinned model plus one
+     voice (`bundledBytes()`, asserted below against the same table the build
+     copies from), and the remaining ~42.8 MiB is ONNX Runtime's native
+     libraries for FOUR ABIs.
+
+     ~42.8 MiB IS THE FINDING, and it is well outside the deck's inferred
+     "10–20 MB". The deck's figure is not wrong so much as about a different
+     artefact: `onnxruntime-android` carries arm64-v8a, armeabi-v7a, x86 and
+     x86_64, a universal APK contains all four, and Play splits the `.aab` so a
+     phone downloads roughly one. Per-ABI that is ~11 MiB, which is what the
+     deck meant.
+
+     SO THIS TEST CHECKS THE PESSIMISTIC ARTEFACT ON PURPOSE — the universal
+     APK, every ABI, no splitting — because it is the one that has actually been
+     built. It passes with ~19 MB of headroom. What is STILL NOT MEASURED is the
+     `.aab` Play actually receives (`android-release.yml` makes it; no run of it
+     exists for this branch) and the iOS `.ipa` (one arm64 slice, so it should
+     land near 8.3 + 82.5 + ~11 = ~102 MiB). Those two remain K-06's open soft
+     spot, and this comment is the record of exactly which numbers are real.
+
+     MUTATION: bundle a second voice, or pin fp32's 326 MB model — the sum
+     crosses the ceiling and the answer becomes "fetch it on first run", which
+     is the finding this test exists to surface rather than hide. */
+  const { bundledBytes } = await loadModelPins();
+  const MiB = 1024 * 1024;
+
+  /* Measured, both from android-shell runs named above. */
+  const APK_WITHOUT_MODEL_BYTES = 6_070_267;
+  const APK_WITH_MODEL_BYTES = 137_468_845;
+
+  const bundledMb = bundledBytes() / MiB;
+  assert.ok(bundledMb > 80 && bundledMb < 90,
+    `the bundled weights are ${bundledMb.toFixed(1)} MiB — if this moved, a different model variant got pinned`);
+
+  /* The build's own delta must be the weights plus a runtime, not the weights
+     plus a surprise. If a future change smuggled a second large file into the
+     app, this is where the arithmetic stops agreeing.
+     MUTATION: copy every pin instead of the bundled ones — the runtime share
+     would have to absorb 5.5 MB of unused voices and this goes red. */
+  const deltaMb = (APK_WITH_MODEL_BYTES - APK_WITHOUT_MODEL_BYTES) / MiB;
+  const runtimeShareMb = deltaMb - bundledMb;
+  assert.ok(runtimeShareMb > 35 && runtimeShareMb < 55,
+    `ONNX Runtime's four ABIs measured ${runtimeShareMb.toFixed(1)} MiB in a universal APK; `
+    + "outside 35–55 MiB, something other than the runtime is in the delta");
+
+  const worstApkMb = APK_WITH_MODEL_BYTES / MiB;
+  assert.ok(worstApkMb < APP_SIZE_CEILING_MB,
+    `the universal APK is ${worstApkMb.toFixed(1)} MiB, over the ${APP_SIZE_CEILING_MB} MB ceiling — `
     + "the model must then be fetched on first run rather than bundled");
-  assert.ok(worst > 100,
+
+  /* iOS ships ONE architecture, so its SHIPPED artefact cannot be worse than
+     Android's universal APK. Stated as an assertion rather than a sentence so
+     that a future iOS measurement pasted in above has something to contradict.
+
+     DO NOT REACH FOR THE 146 MB FIGURE IN `ios-shell`'s LOG. That run records
+     `du -sh App.app` = 146M (job 103673939658), and it is the SIMULATOR DEBUG
+     bundle: two simulator slices of the runtime, unoptimised, unstripped, and
+     never thinned. It is not the `.ipa`, it is not what a phone downloads, and
+     reading it as either would make a 102 MiB app look like it is 4 MB from the
+     ceiling. It is recorded here rather than left for someone to find in an
+     artifact and misread. The real iOS number needs a signed archive, which is
+     `ios-archive`'s job and has not run for this branch. */
+  const iosAppMb = 8.3;   // deck §2, measured, simulator, before the model
+  const iosProjectedMb = iosAppMb + bundledMb + (runtimeShareMb / 4);
+  assert.ok(iosProjectedMb < worstApkMb,
+    "a single-slice iOS app cannot exceed a four-ABI universal APK");
+  assert.ok(iosProjectedMb > 100,
     "if this dropped below 100 MB a measurement changed and the whole budget should be re-read");
 });
 

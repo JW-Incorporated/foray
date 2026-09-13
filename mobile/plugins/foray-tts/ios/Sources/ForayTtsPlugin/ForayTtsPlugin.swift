@@ -860,6 +860,21 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// `model-absent`, not crash.
     static let MODEL_RESOURCE = "kokoro-v1_0-q8f16"
     static let MODEL_EXTENSION = "onnx"
+    /// The one voice the probe bundles — `fetch-models.mjs`'s `PROBE_VOICE`.
+    /// One, not three: K-01 times the graph, and the graph takes the same time
+    /// whichever 256-float style vector it is handed. Which three voices SHIP
+    /// is K-03's audition and K-04's cutover.
+    static let VOICE_RESOURCE = "af_heart"
+    /// Where `tools/mobile/inject-models.mjs` puts both. Capacitor's iOS
+    /// template carries the web bundle as a folder reference at
+    /// `App.app/public`, so a file placed in the generated `ios/App/App/public`
+    /// after `cap sync` reaches the built app with no `.pbxproj` surgery — and
+    /// a Node script editing an Xcode project file is a class of fragility this
+    /// repo has so far avoided (`inject-app-icon.mjs` and `inject-splash.mjs`
+    /// both write into an asset catalog, which is a directory of JSON, not a
+    /// project graph). The bundle ROOT is still searched first, so a future
+    /// proper resource phase needs no change here.
+    static let RESOURCE_SUBDIR = "public"
 
     @objc func kokoroProbe(_ call: CAPPluginCall) {
         var result = JSObject()
@@ -885,7 +900,7 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
             return
         }
 
-        if Bundle.main.url(forResource: Self.MODEL_RESOURCE, withExtension: Self.MODEL_EXTENSION) == nil {
+        if KokoroModelFiles.modelURL() == nil {
             result["ok"] = false
             result["reason"] = "model-absent"
             result["lookedFor"] = "\(Self.MODEL_RESOURCE).\(Self.MODEL_EXTENSION)"
@@ -893,7 +908,16 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
             return
         }
 
-        guard let engine = Self.probeEngine else {
+        /* THE ENGINE IS BUILT HERE, ON DEMAND, AND NOWHERE ELSE.
+           `probeEngine` stays nil on every shipping build — the XCTest that
+           asserts it still does — and this line is why that remains true AND
+           the probe can still answer: ORT is not touched at `load()`, not at
+           app start, and not on any path narration reaches. It is constructed
+           the moment a founder taps the probe button on a build that fetched
+           the weights, and released when this method returns. An engine
+           registered at startup would be running ONNX Runtime in every
+           listener's app for a card that measures one phone. */
+        guard let engine = Self.probeEngine ?? KokoroOrtProbeEngine() else {
             result["ok"] = false
             result["reason"] = "engine-absent"
             call.resolve(result)

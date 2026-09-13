@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   PINS, MODELS_DIR, pinProblems, unfilled, verifyBuffer, verifyOnDisk,
-  digest, ensureIgnored, fillPinCommand,
+  digest, ensureIgnored, fillPinCommand, bundledPins, bundledBytes, PROBE_VOICE,
 } from "./fetch-models.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -151,16 +151,60 @@ test("verifyBuffer accepts only the exact bytes and the exact hash", () => {
   assert.match(verifyBuffer({ ...pin, sha256: "b".repeat(64) }, buf).reason, /sha256 /);
 });
 
-test("the shipped table is honestly unfilled, and says how to fill it", () => {
-  /* Nobody in this repo has hashed these files (the module header says so).
-     This test pins that the state is DECLARED rather than faked: if a future
-     PR fills the pins, this test is the one that has to be updated, in a diff
-     that says who downloaded what.
-     MUTATION: replace a `sha256: null` with a plausible-looking hex string —
-     this goes red, and so does the "refuses to fetch" behaviour it protects. */
-  assert.equal(unfilled().length, PINS.length, "no pin has been hashed by anyone here yet");
+test("every pin is filled, and the fill command is still printable for the next one", () => {
+  /* THIS TEST WAS INVERTED ON 2026-09-12. It used to assert
+     `unfilled().length === PINS.length` with the note "if a future PR fills
+     the pins, this test is the one that has to be updated, in a diff that says
+     who downloaded what". This is that diff.
+
+     WHO DOWNLOADED WHAT: every URL in the table was fetched once from a
+     Windows workstation and STREAM-hashed — `crypto.createHash("sha256")` over
+     the response body chunk by chunk, with nothing written to disk, so no
+     86 MB file ever entered a worktree. `bytes` is the streamed length.
+
+     The voice lengths are self-checking and that is why they are asserted
+     here rather than taken on trust: 522,240 = 510 token-lengths x 256 floats
+     x 4 bytes, which is the style matrix's documented shape. A voice file of
+     any other length is not a Kokoro v1.0 voice.
+     MUTATION: null one pin's sha256 — the fetch path refuses again, and a
+     build that used to produce weights silently stops. */
+  assert.equal(unfilled().length, 0, "an unfilled pin cannot be fetched at all");
+  for (const p of PINS) {
+    assert.match(p.sha256, /^[0-9a-f]{64}$/, `${p.name}: no measured digest`);
+    assert.ok(Number.isInteger(p.bytes) && p.bytes > 0, `${p.name}: no measured length`);
+  }
+  for (const v of PINS.filter((p) => p.kind === "voice")) {
+    assert.equal(v.bytes, 510 * 256 * 4, `${v.name} is not shaped like a Kokoro style matrix`);
+  }
   assert.match(fillPinCommand(PINS[0]), /^curl -fL "https:\/\/huggingface\.co\//);
   assert.match(fillPinCommand(PINS[0]), /sha256/);
+});
+
+test("only the model and ONE voice are bundled into the app", () => {
+  /* The size budget is enforced by what `bundle: true` says, not by what a
+     workflow's glob happens to match. Twelve voices are pinned because K-03's
+     audition renders twelve; eleven of them have no business in an app store
+     binary, and the tokenizer has no business on a phone at all (deck §4: no
+     text front end on the device).
+     MUTATION: set `bundle: true` on a second voice — the bundled byte count
+     moves and this goes red before the .ipa does. */
+  const names = bundledPins().map((p) => p.name);
+  assert.deepEqual(names, ["kokoro-v1_0-q8f16.onnx", `${PROBE_VOICE}.bin`]);
+  assert.equal(bundledBytes(), 86033585 + 522240);
+  for (const p of PINS.filter((p) => p.kind === "tokenizer")) {
+    assert.equal(p.bundle, false, "the id table never ships to a phone");
+  }
+});
+
+test("a pin that forgets `bundle` is a problem, not a default", () => {
+  /* The dangerous default is falsy: a model pin whose `bundle` was dropped in
+     a rebase would stop being copied, the app would ship without weights, and
+     the probe would answer `model-absent` — which reads as "the build did not
+     fetch the weights" and sends a founder to look at the wrong thing.
+     MUTATION: fall back to `p.bundle ?? true` in `pinProblems`. */
+  const { bundle, ...noBundle } = PINS[0];
+  assert.match(pinProblems([noBundle]).join("\n"), /bundle must be true or false/);
+  assert.match(pinProblems([{ ...PINS[0], bundle: "yes" }]).join("\n"), /bundle must be true or false/);
 });
 
 /* ---------- the directory ---------- */

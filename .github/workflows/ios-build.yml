@@ -209,6 +209,28 @@ jobs:
           # recorded instead, and the next step decides what to build.
           find ios -maxdepth 4 -not -path '*/public/*' | sort | tee "$ART/ios-tree.txt"
 
+      - name: Fetch the Kokoro weights and put them in the app (K-01/K-06)
+        # docs/bundled-voice-plan.md K-06(1): "pins {url, sha256, bytes} for the
+        # model and each voice; CI fails on a mismatch." This is the step that
+        # calls it, and H3 is the founder-approved sitting that lets it be here.
+        #
+        # WHY IT IS HERE AND NOT EARLIER: `cap add`/`cap sync` rewrites the
+        # generated project's resource directories, so weights copied in before
+        # it would be deleted by it. Immediately after is the first safe point
+        # and the last one before the build reads the tree.
+        #
+        # THREE COMMANDS, NOT ONE, because they fail for three different
+        # reasons and a red build has to say which: the pin table is malformed
+        # (somebody edited a URL and not the hash), the download did not match
+        # its pin, or the copy landed somewhere the app does not look. The last
+        # is the one that would otherwise ship a green build with no weights in
+        # it and tell a founder `model-absent`.
+        run: |
+          set -euo pipefail
+          node tools/mobile/fetch-models.mjs --check
+          node tools/mobile/fetch-models.mjs --fetch
+          node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public
+          node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public --check
       - name: Which Xcode container did Capacitor generate?
         # `-workspace` (CocoaPods) or `-project` (SwiftPM), chosen by a tested
         # function rather than assumed. Every Capacitor guide — and HUMAN-ACTIONS.md

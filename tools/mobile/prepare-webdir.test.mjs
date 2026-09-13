@@ -2666,17 +2666,25 @@ test("K-06: the model extension list covers every shape weights arrive in", () =
 });
 
 test("K-01: the probe passage ships into the shell and is not a script tag", () => {
-  /* The passage is the one thing this card adds to the bundle (~1.6 KB). It
-     has to be at the bundle ROOT because nothing under `tools/` exists inside
-     the shell, and it must NOT become a `<script src>`.
+  /* The passage is the one thing this card adds to the bundle. It has to be at
+     the bundle ROOT because nothing under `tools/` exists inside the shell, and
+     it must NOT become a `<script src>`.
      MUTATION: give the entry `module: true`, or move it out of
-     SHELL_ONLY_FILES — one of the two assertions goes red. */
+     SHELL_ONLY_FILES — one of the two assertions goes red.
+
+     THE CEILING MOVED FROM 8 KB TO 48 KB ON 2026-09-12, and the reason is the
+     whole point of that day's PR: the passage was ~1.6 KB while `ids` was null
+     on all four lines, and filling it in added 1,334 phoneme ids. It is 24.4 KB
+     now. The ceiling is still a real tripwire — a fifth line, or a passage
+     pasted in from somewhere, moves it by another ~6 KB per line — and the web
+     bundle it lands in has ~540 KB of its 3.00 MB budget spare, so 48 KB costs
+     nothing that matters. */
   const entry = SHELL_ONLY_FILES.find((f) => f.src.endsWith("kokoro-probe-passage.json"));
   assert.ok(entry, "the probe passage must ship with the shell");
   assert.equal(entry.dest, "kokoro-probe-passage.json", "at the bundle root, where the page fetches it");
   assert.ok(!shellScriptTags().some((t) => t.includes("kokoro-probe-passage")), "a JSON file is not a script");
   const bytes = fs.statSync(path.join(ROOT, entry.src)).size;
-  assert.ok(bytes < 8 * 1024, `the passage is ${bytes} B — if it grew past 8 KB something other than four lines got in`);
+  assert.ok(bytes < 48 * 1024, `the passage is ${bytes} B — if it grew past 48 KB something other than four phonemized lines got in`);
 });
 
 test("K-01: the page's two passage URLs match where the file actually lands", () => {
