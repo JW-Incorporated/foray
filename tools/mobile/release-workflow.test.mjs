@@ -222,3 +222,54 @@ test("the summary prints a version/build/iOS/Android table", () => {
   assert.match(summaryStep, /MARKETING_VERSION/);
   assert.match(summaryStep, /BUILD_NUMBER/);
 });
+
+/* ────── the embedded framework plist, on the path that makes the artifact ──── */
+
+/* WHY THESE LIVE HERE AND NOT ONLY IN ios-workflow.test.mjs. Release run
+ * 34739630705 failed at `xcrun altool` with error 90360 —
+ * `App.app/Frameworks/onnxruntime.framework` has no `MinimumOSVersion` — on a
+ * build whose plugin change (#675) had been verified against `ios-kit` and
+ * `ios-shell`. Neither of those archives or uploads. THIS composite action is a
+ * third build path and the only one that produces the founder's TestFlight
+ * artifact, so the fix has to be asserted here in its own right; a step that
+ * exists only in ios-build.yml is the exact gap that let this ship. */
+
+test("the ios composite PATCHES the ONNX Runtime plist before it archives — MUTATION: delete the step; the release path regains the 90360 rejection while ios-build.yml stays green", () => {
+  const patch = actionStep(IOS_ACTION, "Give the embedded ONNX Runtime framework the MinimumOSVersion") ?? "";
+  assert.ok(patch, "the release path does not patch the framework plist at all");
+  assert.match(patch, /ios-embedded-frameworks\.mjs patch "\$SPM_DIR" --min-os "\$MIN_OS"/);
+  assert.match(patch, /IPHONEOS_DEPLOYMENT_TARGET/, "the deployment target is hardcoded rather than read off the project");
+  const archiveAt = IOS_ACTION.indexOf("- name: Archive, export and upload to TestFlight");
+  const patchAt = IOS_ACTION.indexOf("- name: Give the embedded ONNX Runtime framework");
+  assert.ok(patchAt > 0 && patchAt < archiveAt, "the patch runs after the archive, when the bundle is already signed");
+});
+
+test("the archive resolves its packages from the PATCHED tree — MUTATION: drop -clonedSourcePackagesDirPath and xcodebuild fetches its own unpatched xcframework into DerivedData", () => {
+  const uploadStep = actionStep(IOS_ACTION, "Archive, export and upload to TestFlight") ?? "";
+  assert.match(uploadStep, /-clonedSourcePackagesDirPath "\$SPM_DIR"/);
+  assert.match(IOS_ACTION, /SPM_DIR=\$RUNNER_TEMP/, "SPM_DIR is never given a value");
+});
+
+test("the ARCHIVE is read back for embedded-framework keys before it is exported or uploaded — MUTATION: move the verify after `altool` and it can only confirm a failure Apple already reported", () => {
+  /* Same reasoning as the two CFBundleVersion read-backs beside it: a build input
+     that silently does not reach the bundle is this repo's "green and wrong"
+     shape, and for this one the place it surfaces is 90 seconds into an upload. */
+  const uploadStep = actionStep(IOS_ACTION, "Archive, export and upload to TestFlight") ?? "";
+  assert.match(uploadStep, /ios-embedded-frameworks\.mjs verify/, "the archive's frameworks are never checked");
+  assert.match(uploadStep, /Foray\.xcarchive\/Products\/Applications\/App\.app/,
+    "the check reads something other than the archived bundle");
+  const verifyAt = uploadStep.indexOf("ios-embedded-frameworks.mjs verify");
+  const exportAt = uploadStep.indexOf("xcodebuild -exportArchive");
+  const uploadAt = uploadStep.indexOf("altool --upload-app");
+  assert.ok(exportAt > 0 && uploadAt > 0, "the export/upload commands moved");
+  assert.ok(verifyAt > 0 && verifyAt < exportAt && verifyAt < uploadAt,
+    "the embedded-framework check does not run before the export and the upload");
+});
+
+test("both iOS build paths run the SAME script, not two copies of the rule — MUTATION: inline the plist edit here and the two paths start disagreeing", () => {
+  const shell = fs.readFileSync(path.join(ROOT, ".github/workflows/ios-build.yml"), "utf8");
+  for (const src of [IOS_ACTION, shell]) {
+    assert.match(src, /node tools\/mobile\/ios-embedded-frameworks\.mjs patch/);
+    assert.match(src, /node tools\/mobile\/ios-embedded-frameworks\.mjs verify/);
+  }
+});

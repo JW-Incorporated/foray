@@ -51,6 +51,11 @@ runs:
       run: |
         set -euo pipefail
         echo "ART=$RUNNER_TEMP/ios-release" >> "$GITHUB_ENV"
+        # A SwiftPM tree at a path this action chooses, rather than one Xcode
+        # derives from a hash of the project path: the MinimumOSVersion patch
+        # below has to find the downloaded onnxruntime.xcframework, and "wherever
+        # DerivedData put it" is not a location a build step can assert against.
+        echo "SPM_DIR=$RUNNER_TEMP/ios-spm" >> "$GITHUB_ENV"
         mkdir -p "$RUNNER_TEMP/ios-release"
         { sw_vers; xcodebuild -version; } | tee "$RUNNER_TEMP/ios-release/toolchain.txt"
 
@@ -127,6 +132,57 @@ runs:
         set -euo pipefail
         node tools/mobile/inject-splash.mjs ios mobile/ios/App/App/Assets.xcassets/Splash.imageset
         node tools/mobile/inject-splash.mjs ios mobile/ios/App/App/Assets.xcassets/Splash.imageset --check
+
+    - name: Give the embedded ONNX Runtime framework the MinimumOSVersion Apple requires
+      # THIS IS THE PATH THAT FAILED. Release run 34739630705 (build 2026091315,
+      # main @ ad732eb) archived and exported cleanly and then died in
+      # `xcrun altool --upload-app`:
+      #
+      #   Missing Info.plist value. A value for the key 'MinimumOSVersion' in
+      #   bundle App.app/Frameworks/onnxruntime.framework is required. (90360)
+      #
+      # The key is absent from Microsoft's own xcframework slice — see
+      # `tools/mobile/ios-embedded-frameworks.mjs` for the evidence, for why
+      # patching a binary dependency's metadata is a WORKAROUND, and for the two
+      # things that would remove it.
+      #
+      # `ios-build.yml` runs the same step, and running it there is not enough:
+      # that workflow builds but never archives and never uploads, so it was
+      # green for this defect all the way to Apple. The founder's TestFlight
+      # artifact comes from HERE.
+      #
+      # BEFORE the archive, deliberately: nothing is signed yet, so Xcode embeds
+      # an already-correct plist and signs it itself. Patching the archive would
+      # break the framework's seal and the app's with it.
+      shell: bash
+      run: |
+        set -euo pipefail
+        xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App \
+          -clonedSourcePackagesDirPath "$SPM_DIR" \
+          -resolvePackageDependencies > "$ART/spm-resolve.log" 2>&1 \
+          || { tail -50 "$ART/spm-resolve.log"; exit 1; }
+        # Read the deployment target off the project rather than hardcoding it: a
+        # framework may declare an OLDER floor than the app but never a newer one,
+        # and the verify step below asserts exactly that relationship.
+        xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App -configuration Release \
+          -sdk iphoneos -clonedSourcePackagesDirPath "$SPM_DIR" \
+          -showBuildSettings > "$ART/build-settings.txt" 2>/dev/null
+        # `head -1` takes the scheme's own target, which xcodebuild prints first.
+        # If that ever stops being true the value lands too HIGH and the verify
+        # step below says so by name — it is not a silent wrong answer.
+        MIN_OS=$(sed -n 's/^ *IPHONEOS_DEPLOYMENT_TARGET = //p' "$ART/build-settings.txt" | head -1)
+        test -n "$MIN_OS"
+        echo "IPHONEOS_DEPLOYMENT_TARGET is $MIN_OS"
+        # The failure mode worth printing for: the patcher REFUSES to report
+        # success when it found nothing to patch, and the only reason that
+        # happens is the resolved artifact not being where we pointed it. Print
+        # the tree so the next reader can see where Xcode actually put it.
+        node tools/mobile/ios-embedded-frameworks.mjs patch "$SPM_DIR" --min-os "$MIN_OS" \
+          | tee "$ART/framework-plist-patch.txt" \
+          || { echo "::group::$SPM_DIR"; find "$SPM_DIR" -maxdepth 4 -type d; echo "::endgroup::"; exit 1; }
+        # Apple's own parser on our output, the second opinion every other plist
+        # edit in this action gets.
+        find "$SPM_DIR" -name Info.plist -path "*.framework/*" -print0 | xargs -0 -n1 plutil -lint
 
     - name: Is signing configured?
       id: signing
@@ -214,6 +270,7 @@ runs:
         xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App -configuration Release \
           -sdk iphoneos -destination 'generic/platform=iOS' \
           -archivePath "$RUNNER_TEMP/Foray.xcarchive" \
+          -clonedSourcePackagesDirPath "$SPM_DIR" \
           CODE_SIGN_STYLE=Manual \
           MARKETING_VERSION="$MARKETING_VERSION" \
           CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
@@ -238,6 +295,17 @@ runs:
           echo "::error::CFBundleShortVersionString in the archive is '$BUILT_MARKETING', not '$MARKETING_VERSION'."
           exit 1
         fi
+
+        # AND READ THE EMBEDDED FRAMEWORKS BACK OUT OF THE ARCHIVE, for the same
+        # reason the two version fields are read back above: a step that edits a
+        # build input and silently does not reach the bundle is this repo's
+        # "green and wrong" failure shape, and for THIS input the place it
+        # surfaces is 90 seconds into `altool`, after a full archive and export.
+        # Every key App Store Connect requires of an embedded framework is
+        # asserted here, on the bundle that is about to be uploaded.
+        node tools/mobile/ios-embedded-frameworks.mjs verify \
+          "$RUNNER_TEMP/Foray.xcarchive/Products/Applications/App.app" \
+          | tee "$ART/embedded-frameworks.txt"
 
         xcodebuild -exportArchive \
           -archivePath "$RUNNER_TEMP/Foray.xcarchive" \
