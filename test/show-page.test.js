@@ -668,9 +668,9 @@ test("renderEpisode links its show-name text to #/show/:show_id when the show jo
 /* ==================================================================== */
 
 test("similarShows ranks by shared taxonomy_node_ids count, against the real catalogue", async () => {
-  /* lex-fridman-podcast (engineering/energy-fusion only) against the real
+  /* titans-of-nuclear (engineering/energy-fusion only) against the real
      220-show catalogue, not a synthetic fixture — proves the join works on
-     what's actually shipped. omega-tau shares 1 node with lex (energy-fusion)
+     what's actually shipped. omega-tau shares 1 node with titans-of-nuclear (energy-fusion)
      same as titans-of-nuclear, but this only pins that every returned show
      actually shares at least one node — the mixed-count ranking is pinned
      with a synthetic fixture below where the counts are controlled.
@@ -679,10 +679,10 @@ test("similarShows ranks by shared taxonomy_node_ids count, against the real cat
      The "every result must overlap" assertion below fails immediately. */
   const m = await mountBooted();
   const catalog = readJson("data/catalog-client.json");
-  const show = catalog.shows.find((s) => s.show_id === "lex-fridman-podcast");
+  const show = catalog.shows.find((s) => s.show_id === "titans-of-nuclear");
   m.state.catalog = catalog;
   const results = m.ctx.similarShows(show);
-  assert.ok(results.length > 0, "fixture assumption: lex-fridman-podcast must have real overlapping shows");
+  assert.ok(results.length > 0, "fixture assumption: titans-of-nuclear must have real overlapping shows");
   const wanted = new Set(show.taxonomy_node_ids);
   for (const r of results) {
     assert.ok(r.show_id !== show.show_id, "must never include the show itself");
@@ -762,12 +762,12 @@ test("renderShow renders a 'Similar shows' section linking to each match, via th
      template. The heading and href assertions both fail. */
   const m = await mountBooted();
   const catalog = readJson("data/catalog-client.json");
-  const show = catalog.shows.find((s) => s.show_id === "lex-fridman-podcast");
-  m.ctx.renderShow("lex-fridman-podcast");
+  const show = catalog.shows.find((s) => s.show_id === "titans-of-nuclear");
+  m.ctx.renderShow("titans-of-nuclear");
   const html = m.view();
   assert.ok(html.includes("Similar shows"), "must render the 'Similar shows' heading");
   const expected = m.ctx.similarShows(show);
-  assert.ok(expected.length > 0, "fixture assumption: lex-fridman-podcast must have real similar shows");
+  assert.ok(expected.length > 0, "fixture assumption: titans-of-nuclear must have real similar shows");
   for (const s of expected) {
     assert.ok(html.includes(`href="#/show/${encodeURIComponent(s.show_id)}"`), `must link to ${s.show_id}`);
   }
