@@ -1153,6 +1153,25 @@ body.fp-open.fp-expanded { padding-bottom: calc(var(--fp-sheet-h) + env(safe-are
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+/* While a soft keyboard is up, the bar is off the screen entirely (founder
+   report, 2026-09-13 — it used to ride up onto the top of the keyboard the
+   moment the page was scrolled). `body.kb-open` is written by app.js's
+   installKeyboardChrome(); that header carries the whole diagnosis.
+
+   `display: none` rather than `visibility`/`opacity`, because the complaint is
+   that it is THERE — a still-laid-out bar keeps eating the taps meant for the
+   list underneath it. It does not fight player/client.js, which shows and
+   hides this element with the `hidden` attribute: both say "not displayed",
+   and when the class comes off the element goes back to obeying `hidden`
+   alone, whatever the player has decided in the meantime.
+
+   The `body.fp-open` bottom reservations above are deliberately NOT unset
+   here. They are page padding, invisible at the very end of the document, and
+   dropping and re-adding them on every keyboard open would reflow the list the
+   listener is mid-scroll through — which is the same jank this whole fix is
+   about. */
+body.kb-open #foray-player { display: none; }
+
 /* ---------- U-02: the four-tab bar (docs/ui-transition-plan.md) ----------
 
    `--tab-bar-h` is the bar's own CONTENT height, deliberately named apart
@@ -2062,22 +2081,10 @@ body.fy-sheet-open { overflow: hidden; }
 }
 .show-forays-note { margin: 0 0 10px; font-size: 0.76rem; color: var(--text-dim); }
 
-/* ---------- show-page pagination + in-page episode search (S-06) ---------- */
-.show-more-btn {
-  display: block;
-  width: 100%;
-  margin: 14px 0;
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
-  font-weight: 600;
-  font-size: 0.92rem;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-}
-.show-more-btn:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+/* ---------- in-page episode search (S-06) ----------
+   `.show-more-btn` used to live here, next to the search box, for the
+   "Show more episodes" control. Both are gone (2026-09-13) — see the
+   REMOVED block in app.js's renderShow for why the control failed. */
 .show-ep-search { margin: 14px 0; }
 .show-ep-search input {
   width: 100%;
@@ -2378,11 +2385,6 @@ body.ui-v2 .show-result {
   color: var(--text);
 }
 body.ui-v2 .show-result-art-blank { background: var(--surface2); }
-body.ui-v2 .show-more-btn {
-  border-color: var(--line);
-  background: var(--surface);
-  color: var(--text);
-}
 body.ui-v2 .show-ep-search input {
   border-color: var(--line);
   background: var(--surface);
