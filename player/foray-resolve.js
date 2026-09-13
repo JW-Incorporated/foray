@@ -159,6 +159,85 @@ export function findForay(doc, id, opts = {}) {
 
 /* ---------- the join ---------- */
 
+/* WHICH SHOW A SOURCE ROW IS, AS AN IDENTIFIER RATHER THAN A NAME.
+
+   A running order wants to link each beat to its show page, and a show page is
+   keyed by `show_id`. `data/segment-sources.json` carries `show` — the TITLE —
+   which is the weaker join: of the 19 distinct show titles across the 98
+   committed source rows, 5 match a `catalog.json` title. What the rows do carry
+   is an `id` whose `--`-prefix is the harvester's show_id for the episode
+   (`being-an-engineer--s7e17-…` -> `being-an-engineer`); 76 of the 98 rows have
+   one that is exactly a catalogue `show_id`.
+
+   This returns the CANDIDATE, not a verified id: this module is pure and has no
+   catalogue to check against. Validating it (and falling back to the title
+   join) belongs to the surface that holds `state.catalog` — see `forayShowId`
+   in app.js. Measured on the committed data the two joins do not separate: 76
+   prefix rows, 78 title rows, and the prefix set is entirely inside the title
+   set, so this join adds no linkable row today. It is asked first anyway,
+   because the prefix is an identifier and the title is a string a publisher can
+   reword — which is a claim only a synthetic test can currently exercise.
+
+   A source id with no `--` is a hand-curated row (`origin-stories-cooking-
+   human`) whose leading words are not a show_id — answering with the whole id
+   would invent a link to a show page that does not exist, so those get null and
+   fall through to the title join. */
+export function showIdFromSourceId(sourceId) {
+  if (!nonEmpty(sourceId)) return null;
+  const i = sourceId.indexOf("--");
+  return i > 0 ? sourceId.slice(0, i) : null;
+}
+
+/* CITATIONS ON A NARRATION BEAT (F-103).
+
+   The producer ships a tape cite as `{ kind: "tape", segment_id }` and nothing
+   else — deliberately, because the show and episode title for that segment are
+   already in the two documents this module joins, and shipping them again would
+   duplicate bytes into `data/forays.json` that can go stale against the pool.
+   So the denormalisation happens HERE, once, where both indexes are already in
+   hand, and the renderer receives a cite it can draw without a second lookup.
+
+   Everything about this is tolerant: `cites` is optional, may never be `[]` by
+   the producer's own rule but is treated as empty if it is, and a tape cite
+   whose segment does not join is DROPPED rather than rendered as a citation
+   with no content — an unresolvable citation supports nothing. No committed
+   Foray carries `cites` yet, so the normal answer today is `null`.
+
+   There is deliberately no per-source "contested" flag. Contestedness is a
+   property of a CLAIM, and the producer's entries are deduplicated by source,
+   so a flag here would attach it to the publication instead of to the sentence
+   it belongs to. A contested claim has to say so in the narration itself, which
+   the transcript already shows. */
+export function resolveCites(cites, { segments, sources } = {}) {
+  if (!Array.isArray(cites) || !cites.length) return null;
+  const segIndex = asMap(segments);
+  const srcIndex = asMap(sources);
+  const out = [];
+  for (const c of cites) {
+    if (!c || typeof c !== "object") continue;
+    if (c.kind === "tape") {
+      const seg = segIndex.get(c.segment_id);
+      const src = seg ? srcIndex.get(seg.item_id) : null;
+      if (!src) continue;
+      out.push({
+        kind: "tape",
+        segment_id: seg.id,
+        show: src.show ?? "",
+        show_id: showIdFromSourceId(src.id),
+        episode_title: src.title ?? "",
+      });
+    } else if (c.kind === "print") {
+      if (!nonEmpty(c.publication)) continue;
+      out.push({
+        kind: "print",
+        publication: c.publication,
+        url: nonEmpty(c.url) ? c.url : null,
+      });
+    }
+  }
+  return out.length ? out : null;
+}
+
 /**
  * Fill in each ordered item from `segments` + `sources`.
  *
@@ -208,6 +287,11 @@ export function hydrateForayItems(foray, { segments, sources } = {}) {
            make a slot look interleaved. A bridge that OPENS a Foray has nothing
            to inherit and must carry its own `slot`. */
         slot: raw.slot ?? lastSlot,
+        /* F-103: the beat's own citations, resolved against the same two
+           documents the segments join through, so the running order can credit
+           a narration beat the way it credits a tape beat. `null` when the item
+           carries none, which is every committed Foray today. */
+        cites: resolveCites(raw.cites, { segments: segIndex, sources: srcIndex }),
       });
       return;
     }
@@ -250,6 +334,13 @@ export function hydrateForayItems(foray, { segments, sources } = {}) {
       why: seg.why ?? "",
       /* what a running order reads */
       show: src.show ?? "",
+      /* The show as an IDENTIFIER, so a row can link to `#/show/:show_id`
+         instead of only naming the publisher. A candidate, not a verified id —
+         see `showIdFromSourceId`. `source_id` rides along beside it because it
+         is what the candidate was derived from, and a surface debugging a row
+         that did not link needs to see both. */
+      show_id: showIdFromSourceId(src.id),
+      source_id: src.id ?? null,
       episode_title: src.title ?? "",
       topic: seg.topic ?? null,
       confidence: seg.confidence ?? null,

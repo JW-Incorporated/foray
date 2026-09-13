@@ -129,7 +129,14 @@ const FLOORS = {
      (2026-09-06): the one-id shell-unlock exception and its five tests were
      deleted with the diagnostic Foray once V-01 shipped an in-app Audition
      button to replace it. */
-  "player/foray-resolve.test.js": 63, // +1 audit finding E (2026-09-12): `isGeneratedDraft`, the one home of the generated-draft predicate; 62 -> 63
+  /* +1 audit finding E (2026-09-12): `isGeneratedDraft`, the one home of the
+     generated-draft predicate; 62 -> 63. +6 (2026-09-12): the show IDENTIFIER
+     carried onto every tape entry (`showIdFromSourceId`, `show_id`,
+     `source_id`) so a running order can link a beat to its show page, and
+     F-103's `resolveCites`, which denormalises a narration beat's citations
+     against the same two documents rather than having them shipped twice in
+     data/forays.json; 63 -> 69. */
+  "player/foray-resolve.test.js": 69,
   /* The Foray directory (FD-03, 2026-09-10): the mechanism that lets a phone see
      a new Foray without a store build. Floored with zero slack because each of
      its three rules — never block first paint, never adopt an unvalidated set,
@@ -264,6 +271,15 @@ const FLOORS = {
      suite (title link + PR #357 unchanged-controls checks), so any change to
      its size is worth a second look. */
   "test/episode-row-links.test.js": 5,
+  /* The Foray running order's rows (founder report 2026-09-12): every beat
+     links to its show page, the curation-code gutter is gone, and a narration
+     beat is credited "AI Narrator" with a collapsible transcript. Floored at
+     its exact landing count because three of its tests are DEGRADE tests —
+     "an unjoinable show is plain text, never a dead link", "a narration beat
+     with no cites draws no Sources block", "no committed Foray renders a
+     curation code" — and a degrade test is the kind that looks redundant to a
+     reader who does not know what it is holding down. */
+  "test/foray-row-links.test.js": 18,
   /* Visible explicit-content ("E") badge (kanban card t_02c6bb0b):
      explicitBadge() itself, its four call sites (epRow, archivedRow,
      renderEpisode, renderShow at both episode- and show-level), and a check

@@ -1,11 +1,11 @@
 {
-  "deploy_id": "8f09614fe1b0db52",
+  "deploy_id": "c5243eb431893a85",
   "files": {
-    "app.js": "sha256:8af86ac215f7e81598452ac2ff02e63a41207b24810c896f73a84635e118956b",
+    "app.js": "sha256:e976d263ea9624e759800b2eb1832bd279baad97b17072b14b4c1f324f4581a2",
     "data/catalog-client.json": "sha256:4ce82cc477acec4f50dd837322be267871e5a2b5d572c094854164fe3b1417e2",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:ed9a093f7c3848b2910a58a4da11ee02a6929a8b4f2e4107cc5381a0136af25a",
-    "data/forays-directory.json": "sha256:b66630d8ee65599793c97423c5fce80e045dca5acb8d7bb78bcda64b4aa69d63",
+    "data/forays-directory.json": "sha256:9411ac6f95526d77f663e0150380bb8d05de4735a75c8bcb54bbbf4047f65ff7",
     "data/forays.json": "sha256:e2fe2e76371261c335814f0387cbb70de78aba1fe82f186c009e29c2a2854c61",
     "data/item-tags.json": "sha256:17c403bd09345f4f4e0b96f37da4187649288fee3fbd31f05858f219a1c604b1",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
@@ -28,7 +28,7 @@
     "player/foray-directory.js": "sha256:e496384b24adeebf2e200d9744e9cdbca651ddcb68b8ad27dffac7eba74c9f67",
     "player/foray-progress.js": "sha256:6ed1f8a4397d12c40f2e5b92f8602f3c7b9dc45dec341a26e74ff8a58103c155",
     "player/foray-queue.js": "sha256:3860d2aee57b4ea457609bce815b0c5f2d7423284b99dd50d9b0fe66c3a4af60",
-    "player/foray-resolve.js": "sha256:f79c08e48b9b7ae216990a89700042b8a706a32d9cb5ba527b9035db697e846e",
+    "player/foray-resolve.js": "sha256:5c65b80291afda81d5006a04be242fcc604b9c67de3b5a98d853c9cb25131757",
     "player/foray-sources.js": "sha256:1afa1506d0ed7aaf59dbb372418b4c142adfd213aea00f31a1ae007fdebb7d42",
     "player/html-audio-backend.js": "sha256:055bf98c479512972d1f2badf1e320298fbba998b6881d7d0fbe5889886a2d83",
     "player/idb-tier.js": "sha256:1bfe6d3a37ab405010d6977acc749efafade727369c138ff56d6172f4918dbcb",
@@ -46,6 +46,6 @@
     "player/strip-scrub-gesture.js": "sha256:88415f256049ee1ac96c6738651819d3b1c76161f6fe685dc6eaeab71b0d487e",
     "player/tts-bridge.js": "sha256:3624d19408abb0cbede260d358681685698c506509837f2b593cda58de4217c2",
     "search-engine.js": "sha256:d93b67112d9163dd614dee2132f1fa180f76035bb9842b37fd7fa438085aa259",
-    "styles.css": "sha256:935d5eddc587c330508c910f2597d2e8ed668a290b88375f435bbd544442a68a"
+    "styles.css": "sha256:0821a19d8845c2a0b36c0539a7eb43a2c442d92a13cb84392d01e408b5ee711a"
   }
 }
