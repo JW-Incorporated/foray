@@ -57,10 +57,17 @@
  *   - that the bar, the keyboard and the home indicator do not overlap by a
  *     pixel or two on any specific device. That is `env()` in a real
  *     compositor.
- *   - that a bottom-docked search field FEELS right on this page rather than
- *     merely obeying the instruction. Apple Podcasts, one of the two apps
- *     named, puts search at the TOP; the Claude app's composer is at the
- *     bottom. That disagreement is recorded in the PR, not decided here.
+ *   - the CHROME of the pill: exact radii, blur strength, shadow, colour.
+ *     Those are tuned against the founder's photographs by eye, and pinning
+ *     them here would mean rewriting this file every time one is nudged.
+ *     Section 7 pins the STRUCTURAL claims those photographs settle, and
+ *     stops there.
+ *
+ * SETTLED BY THE FOUNDER'S OWN DEVICE, not by anyone's recollection: both
+ * apps he named put the field at the BOTTOM. "The text field on Apple
+ * Podcasts search is definitely on the bottom. Let me share some pictures,
+ * they seem to have nailed it." He sent two — idle, and focused with the
+ * keyboard up — and section 7 is read off them.
  *
  * Every test names the one-line mutation that turns it red (CLAUDE.md, "a
  * green test is not evidence until you have broken it").
@@ -141,7 +148,7 @@ function makeEl(tag) {
 const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "menu-btn", "refresh-btn", "banner-slot",
   "sh-form", "sh-input", "sh-note", "sh-results", "sh-browse", "sh-compose",
-  "ep-search-results", "pl-search-results",
+  "sh-dismiss", "ep-search-results", "pl-search-results",
 ];
 
 function mount() {
@@ -187,6 +194,7 @@ function mount() {
 
   const m = {
     ctx, byId, body, root, showIndex,
+    input: byId.get("sh-input"),
     view: () => byId.get("view").innerHTML,
     bodyHas: (c) => body.classList.contains(c),
   };
@@ -360,16 +368,23 @@ test("the z-index ladder comment names the new layer — the file's own rule for
 /* 4. THE DOCKING ARITHMETIC                                             */
 /* ==================================================================== */
 
-test("the bar is fixed to the bottom and rises by --kb-inset, never by a hard-coded number", () => {
-  /* MUTATION: replace `bottom: var(--kb-inset, 0px)` with `bottom: 0`. This
-     fails, and on a phone the field goes back behind the keyboard. RUN:
+test("the row is fixed, inset from both edges, and rises by --kb-inset", () => {
+  /* Inset left AND right is the floating-row half of the reference: a bar
+     welded to the window would be `left: 0; right: 0`.
+     MUTATION: replace `bottom: calc(var(--kb-inset, 0px) + var(--sh-dock))`
+     with `bottom: var(--sh-dock)`. This fails, and on a phone the field goes
+     back behind the keyboard. A second, independent mutation also kills it:
+     `left: 0; right: 0`, which is the welded bar this replaced. RUN: both
      failed as named. */
   const rule = cssRule("#sh-compose");
   assert.ok(rule, "#sh-compose must have a rule");
-  assert.match(rule, /position:\s*fixed/, "it is a compose bar, not page content");
-  assert.match(rule, /bottom:\s*var\(--kb-inset,\s*0px\)/,
-    `the bar's lift must come from the published keyboard inset, got: ${rule}`);
-  assert.match(rule, /--sh-dock:\s*0px/, "and the dock default must be zero, not a magic number");
+  assert.match(rule, /position:\s*fixed/, "it floats over the page, it is not page content");
+  assert.match(rule, /bottom:\s*calc\(var\(--kb-inset,\s*0px\)\s*\+\s*var\(--sh-dock\)\)/,
+    `the lift must compose the keyboard inset with the dock, got: ${rule}`);
+  assert.match(rule, /left:\s*var\(--sh-gap\);\s*right:\s*var\(--sh-gap\)/,
+    `the row must be inset from BOTH screen edges, not full-bleed, got: ${rule}`);
+  assert.match(rule, /--sh-dock:\s*var\(--sh-gap\)/,
+    "the dock default is the bare gap — the keyboard-open case, which matches no dock rule");
 });
 
 test("--sh-dock composes the tab bar, the player and the safe-area inset, counting each once", () => {
@@ -618,6 +633,187 @@ test("kb-open takes the now-playing bar off the screen and leaves the compose ba
     "the player rule this change builds on must still be there");
   assert.ok(!/body\.kb-open\s+#sh-compose\s*\{[^}]*display:\s*none/.test(STYLES),
     "the compose bar must never be hidden by the keyboard it is tracking");
+});
+
+/* ==================================================================== */
+/* 7. THE SHAPE THE SCREENSHOTS SETTLED                                  */
+/*                                                                      */
+/* The founder photographed Apple Podcasts' search screen — idle, and    */
+/* focused with the keyboard up — and said "they seem to have nailed    */
+/* it". These pin the structural claims read off those images. They      */
+/* deliberately do NOT pin the chrome (radii, blur strength, shadow,     */
+/* colour): that is ours to tune against the pictures without rewriting  */
+/* this file.                                                           */
+/* ==================================================================== */
+
+test("the field is a translucent pill, not an opaque bar welded to the screen edge", () => {
+  /* The single most characteristic thing in the screenshots: the category
+     grid reads THROUGH the search pill. An opaque fill cuts the page off at a
+     hard line instead, which is what this replaced.
+     MUTATION: drop the `color-mix(...)` background from `#sh-compose #sh-form`
+     so only the opaque `var(--surface)` fallback remains. This fails. RUN:
+     failed as named. */
+  const pill = cssRule("#sh-compose #sh-form");
+  assert.ok(pill, "the pill must have a rule of its own inside the floating row");
+  assert.match(pill, /border-radius:\s*999px/, "rounded to a capsule, as in the reference");
+  /* `[^;]*` rather than `[^)]*`: the value nests a `var(--surface)`, so a
+     class excluding `)` stops inside it and never reaches `transparent`. */
+  assert.match(pill, /background:\s*color-mix\(in srgb[^;]*transparent\)/,
+    `the pill must be translucent so content reads through it, got: ${pill}`);
+  assert.match(pill, /background:\s*var\(--surface\);/,
+    "…with an opaque fallback first, for browsers without color-mix");
+  assert.match(STYLES, /backdrop-filter:\s*blur\(/, "and blurred where the platform supports it");
+});
+
+test("the pill's stronger translucency is gated on backdrop-filter actually working", () => {
+  /* An unblurred 55%-transparent pill over dense podcast artwork is
+     unreadable. The heavier transparency must be conditional on the blur
+     being real, not applied unconditionally and hoped for.
+     MUTATION: change the base rule's 72% to 55%, i.e. apply the gated value
+     unconditionally. This fails. RUN: failed as named. */
+  const base = cssRule("#sh-compose #sh-form");
+  assert.ok(!/55%/.test(base), "the heavier transparency must not be in the ungated rule");
+  const i = STYLES.indexOf("@supports (backdrop-filter: blur(20px))");
+  assert.ok(i !== -1, "the support gate must exist");
+  assert.ok(STYLES.slice(i, i + 600).includes("55%"), "…and must be where the 55% lives");
+});
+
+test("the field gives up its own box so the pill is the only box", () => {
+  /* `#sh-input` carries a border, a surface fill and a shadow from its
+     page-content days. Left in place inside the pill, that is a box in a box.
+     MUTATION: delete the `#sh-compose #sh-input` rule. This fails. RUN:
+     failed as named. */
+  const field = cssRule("#sh-compose #sh-input");
+  assert.ok(field, "the field must be restyled inside the pill");
+  assert.match(field, /border:\s*0/, "no second border");
+  assert.match(field, /background:\s*none/, "no second fill");
+  assert.match(field, /box-shadow:\s*none/, "no second shadow");
+});
+
+test("there is a leading magnifier and NO microphone", () => {
+  /* Apple's pill has a magnifier at the leading edge and a microphone at the
+     trailing one. We copy the first and refuse the second: we have no
+     dictation, and a glyph wired to nothing is worse than an empty slot. The
+     trailing slot keeps the Go button, which G2 decided and this change does
+     not revoke.
+     MUTATION: add a `<svg class="sh-mic">` beside the input. This fails on
+     the microphone assertion. RUN: failed as named. */
+  const m = mount();
+  m.ctx.renderAllShows();
+  const html = m.view();
+  assert.ok(html.includes('class="sh-glyph"'), "the leading magnifier must be in the pill");
+  assert.ok(html.indexOf('class="sh-glyph"') < html.indexOf('id="sh-input"'),
+    "…leading it, not trailing it");
+  assert.ok(!/mic/i.test(html), "no microphone: we have no dictation to wire one to");
+  assert.ok(html.includes('type="submit"'), "the Go button keeps the trailing slot");
+  assert.ok(cssRule("#sh-compose .sh-glyph"), "and the glyph must be styled, not a raw 24px SVG");
+});
+
+test("the companion button is absent when idle and present once the field is live", () => {
+  /* Apple swaps an idle Home button for a circular ✕ on focus. We do not copy
+     the Home half — `.tab-bar` already carries Home two rows below, and the
+     same destination twice is not a design. So the slot is EMPTY when idle,
+     which also lets the pill span the whole row.
+     MUTATION: change the dismiss line to `dismiss.hidden = false`. The button
+     then shows on an untouched page and the first assertion fails. RUN:
+     failed as named. */
+  const m = mount();
+  m.ctx.renderAllShows();
+  const dismiss = m.byId.get("sh-dismiss");
+  assert.strictEqual(dismiss.hidden, true, "nothing to dismiss on a resting page");
+  m.input.dispatch("focus");
+  assert.strictEqual(dismiss.hidden, false, "…and it arrives with the keyboard");
+  m.input.dispatch("blur");
+  assert.strictEqual(dismiss.hidden, true, "…and leaves again on a blur with an empty field");
+});
+
+test("the companion button follows the SAME predicate as the browse furniture, inverted", () => {
+  /* "There is a search in progress" is one fact about this page. The browse
+     furniture leaving and the ✕ arriving are that fact seen from two sides, so
+     they are computed together rather than by two rules that could drift —
+     including the case that separates them from a naive `focused` test: a
+     blur with a live query, where the results stay up and so must the way out
+     of them.
+     MUTATION: `dismiss.hidden = !showSearchFieldFocused`. The blur-with-a-
+     query case fails. RUN: failed as named. */
+  const m = mount();
+  m.ctx.renderAllShows();
+  const dismiss = m.byId.get("sh-dismiss");
+  m.input.dispatch("focus");
+  m.input.value = "radio";
+  m.input.dispatch("input");
+  m.input.dispatch("blur");
+  assert.deepStrictEqual(
+    { browse: m.byId.get("sh-browse").hidden, dismiss: !dismiss.hidden },
+    { browse: true, dismiss: true },
+    "a live query keeps the results up, so it must keep the way OUT of them up too");
+});
+
+test("pressing the companion button clears the query, the results and the focus", () => {
+  /* It is the phone's Escape key — the gap the Escape handler's own comment
+     names ("desktop only; a phone keyboard has no Escape").
+     MUTATION: bind the button to `click` instead of `mousedown`. On a desktop
+     the press blurs the field first, updateShowBrowseVisibility hides the
+     button, and the click never lands — this test dispatches `mousedown` and
+     fails outright on the handler count. RUN: failed as named. */
+  const m = mount();
+  m.ctx.renderAllShows();
+  const dismiss = m.byId.get("sh-dismiss");
+  m.input.dispatch("focus");
+  m.input.value = "radio";
+  m.input.dispatch("input");
+  m.byId.get("sh-results").hidden = false;
+
+  assert.strictEqual(dismiss.dispatch("mousedown"), 1, "exactly one mousedown handler");
+  assert.strictEqual(m.input.value, "", "the field is emptied");
+  assert.strictEqual(m.byId.get("sh-results").hidden, true, "the painted results are dropped");
+  assert.deepStrictEqual(
+    { browse: m.byId.get("sh-browse").hidden, index: m.showIndex.hidden },
+    { browse: false, index: false },
+    "and the catalogue comes back");
+  assert.strictEqual(dismiss.hidden, true, "…taking the button with it");
+});
+
+test("Escape and the button are one path, not two implementations", () => {
+  /* MUTATION: inline the four statements back into the Escape handler, so
+     `dismissShowSearch` is called only by the button. The behavioural halves
+     still pass — which is exactly why the source assertion is here too. RUN:
+     failed as named. */
+  const m = mount();
+  m.ctx.renderAllShows();
+  m.input.dispatch("focus");
+  m.input.value = "radio";
+  m.input.dispatch("input");
+  m.input.dispatch("keydown", { key: "Escape" });
+  const afterEscape = { v: m.input.value, browse: m.byId.get("sh-browse").hidden };
+
+  const m2 = mount();
+  m2.ctx.renderAllShows();
+  m2.input.dispatch("focus");
+  m2.input.value = "radio";
+  m2.input.dispatch("input");
+  m2.byId.get("sh-dismiss").dispatch("mousedown");
+  const afterButton = { v: m2.input.value, browse: m2.byId.get("sh-browse").hidden };
+
+  assert.deepStrictEqual(afterEscape, afterButton, "the two triggers must land identically");
+  /* CALL sites only — the trailing `;` excludes the `function
+     dismissShowSearch(input) {` declaration, which is not a caller. */
+  const calls = APP_SRC.match(/dismissShowSearch\(input\);/g) || [];
+  assert.strictEqual(calls.length, 2, `one function, two callers, got ${calls.length}`);
+  assert.strictEqual((APP_SRC.match(/function dismissShowSearch\(/g) || []).length, 1,
+    "…and exactly one definition of it");
+});
+
+test("the page still reserves the row's height, so the last show stays reachable", () => {
+  /* Content scrolling BEHIND the pill is the look. Content permanently
+     UNREACHABLE behind it is not — and that distinction is why this
+     reservation survives the move from an opaque bar to a floating row.
+     MUTATION: delete `body.sh-compose #view`'s padding-bottom. This fails,
+     and in a browser the last of the 220 rows cannot be scrolled clear of the
+     pill. RUN: failed as named. */
+  const rule = cssRule("body.sh-compose #view");
+  assert.ok(rule && /padding-bottom/.test(rule), "the reservation must survive the restyle");
+  assert.match(STYLES, /--sh-compose-h:\s*\d+px/, "and be expressed as the row's own height");
 });
 
 test("there is still exactly one keyboard detector in the app", () => {

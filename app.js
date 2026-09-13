@@ -1998,6 +1998,30 @@ function updateShowBrowseVisibility() {
   const input = $("#sh-input");
   const hide = showSearchFieldFocused || !!(input && input.value.trim());
   for (const el of showBrowseSections()) el.hidden = hide;
+  /* THE SAME PREDICATE, INVERTED, decides the ✕ beside the pill (Apple
+     Podcasts swaps its idle Home button for one the moment the field is
+     live). Deliberately not a second rule: "there is a search in progress"
+     is one fact about this page, and the browse furniture going away and the
+     dismiss button arriving are the same event seen from two sides. A
+     separate predicate would be one more thing to drift. */
+  const dismiss = $("#sh-dismiss");
+  if (dismiss) dismiss.hidden = !hide;
+}
+
+/* "Never mind" — empty the field, drop the painted results (the same reset a
+   deleted query already gets), and let go of focus, so the page lands back on
+   its browse state by the ordinary rule rather than by a special case.
+
+   ONE PATH, TWO TRIGGERS: Escape on a desktop keyboard, and the ✕ button for
+   a thumb. Extracted the day the button was added, rather than copied, so the
+   two can never answer differently. */
+function dismissShowSearch(input) {
+  if (!input) return;
+  input.value = "";
+  clearShowSearchResults();
+  showSearchFieldFocused = false;
+  if (typeof input.blur === "function") input.blur();
+  updateShowBrowseVisibility();
 }
 
 function renderAllShows() {
@@ -2023,16 +2047,46 @@ function renderAllShows() {
        the rest of the page and there is nothing to tear down by hand. A
        fixed element parked on `<body>` would outlive the page that owns it.
 
-     The wrapper is a real element rather than `position: fixed` on `#sh-form`
-     itself because the bar has to be opaque edge to edge \u2014 it paints over
-     the list scrolling underneath it \u2014 while the form inside stays the same
-     flex row of field + Go button it has always been. */
+     THE SHAPE IS APPLE PODCASTS', matched against the founder's own
+     screenshots of it rather than guessed: a FLOATING ROW inset from both
+     screen edges \u2014 a translucent rounded pill holding the field, with the
+     page's content scrolling visibly behind it \u2014 and a circular companion
+     button beside the pill. The wrapper is a real element, not `position:
+     fixed` on `#sh-form`, precisely because the row holds two siblings: the
+     pill and that button.
+
+     THE COMPANION BUTTON IS A DISMISS, AND ONLY WHEN THERE IS SOMETHING TO
+     DISMISS. Apple's idle state puts a Home button there and swaps it for a
+     circular \u2715 on focus. We do not copy the Home half: Apple has no tab bar
+     in that screenshot \u2014 their floating Home pill IS their navigation \u2014
+     whereas `.tab-bar` already carries Home two rows below this one, and a
+     second Home button inside the search row would be the same destination
+     twice. So the slot is EMPTY when idle and holds the \u2715 when the field is
+     focused or holds a query, which is the half of Apple's pattern that does
+     something we lack.
+
+     And it fills a gap this page already had in writing: the Escape handler
+     below notes that Escape is "desktop only; a phone keyboard has no
+     Escape". This button is that key, for a thumb \u2014 it runs the identical
+     path, `dismissShowSearch`, rather than a parallel implementation.
+
+     NO MICROPHONE. Apple's pill has one at its trailing edge; we have no
+     dictation, and a glyph that does nothing is worse than an empty slot.
+     The trailing slot keeps the Go button instead \u2014 G2's standing decision
+     ("keep the button, keep Enter, make neither required"), which is not
+     this change's to revoke, and which unlike a microphone is wired to
+     something. The leading magnifier is kept: it is what tells you the pill
+     is a search field rather than a compose box. */
   renderShowIndexPage("Shows", "", shows, `
       <div id="sh-compose">
         <form id="sh-form" autocomplete="off">
+          <svg class="sh-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
           <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
           <button type="submit">Go</button>
         </form>
+        <button id="sh-dismiss" type="button" aria-label="Clear search" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+        </button>
       </div>
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
@@ -2109,17 +2163,28 @@ function renderAllShows() {
       showSearchFieldFocused = false;
       updateShowBrowseVisibility();
     });
-    /* Escape is the desktop "never mind": empty the field, drop the results
-       (the same reset a deleted query already gets), and let go of focus, so
-       the page lands back on its browse state by the ordinary rule rather
-       than by a special case of its own. */
+    /* Escape is the desktop "never mind". The ✕ button below is the same
+       thing for a thumb, which is why both call one function. */
     input.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
-      input.value = "";
-      clearShowSearchResults();
-      showSearchFieldFocused = false;
-      if (typeof input.blur === "function") input.blur();
-      updateShowBrowseVisibility();
+      dismissShowSearch(input);
+    });
+  }
+
+  const dismiss = $("#sh-dismiss");
+  if (dismiss) {
+    /* `mousedown`, NOT `click`, and that is the whole reason this is not a
+       one-liner. The button is only on screen while the field holds focus or
+       a query; pressing it blurs the field first, `updateShowBrowseVisibility`
+       then hides the button, and the `click` that would have followed lands on
+       an element that is no longer there — so on a desktop the button does
+       nothing at all. `mousedown` fires before focus moves. `preventDefault`
+       stops the press from stealing focus in the first place, so there is no
+       blur/refocus flicker either. Touch devices synthesise mousedown from a
+       tap, so one listener covers both. */
+    dismiss.addEventListener("mousedown", (e) => {
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      dismissShowSearch(input);
     });
   }
 }

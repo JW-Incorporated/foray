@@ -1245,98 +1245,208 @@ body.ui-v2.fp-open #foray-player {
 body.ui-v2.fp-open {
   padding-bottom: calc(var(--fp-bar-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
 }
-/* ---------- the search page's compose bar (#sh-compose) ----------
+/* ---------- the search page's floating search pill (#sh-compose) ----------
 
-   FOUNDER, 2026-09-13, verbatim: "We should likely also move the search bar
-   down to the bottom - model it after most other text boxes, for example in
-   the Claude app or Apple Podcasts." So the search field is a chat composer:
-   pinned to the bottom edge, thumb-reachable, and above the keyboard rather
-   than behind it. It is rendered by renderAllShows and exists on #/shows
-   alone — the category page shares the template and gets none of this.
+   FOUNDER, 2026-09-13: "We should likely also move the search bar down to the
+   bottom - model it after most other text boxes, for example in the Claude
+   app or Apple Podcasts" — then, having checked his phone: "the text field on
+   Apple Podcasts search is definitely on the bottom. Let me share some
+   pictures, they seem to have nailed it."
 
-   It sits here, after the player and tab-bar rules rather than next to
-   `#sh-form` where the field's own styling lives, because what it has to say
-   is entirely about the bottom edge: it composes `--tab-bar-h`, `--fp-bar-h`
-   and `--kb-inset`, and the reader needs those three in view to check the
-   arithmetic.
+   SO THIS IS BUILT AGAINST THOSE SCREENSHOTS, not against an idea of what
+   Apple probably does. What they show, and what the rules below reproduce in
+   our own palette and type rather than copy pixel for pixel:
+
+     - a FLOATING ROW inset from both screen edges, not a full-width bar
+       welded to the bottom of the window;
+     - the field as a TRANSLUCENT ROUNDED PILL with the page's own content
+       scrolling visibly behind it;
+     - a CIRCULAR COMPANION BUTTON beside the pill (app.js explains why ours
+       is empty when idle where theirs holds a Home button);
+     - the mini-player floating as its own inset pill ABOVE the field, and
+       GONE while the keyboard is up.
+
+   That last one we had already shipped independently, in the rule above
+   (`body.kb-open #foray-player`), from a separate founder report. Apple
+   agrees with it. The one place we do NOT match them yet is the mini-player's
+   own SHAPE — theirs is an inset floating pill, ours is still a full-width
+   docked bar — and that is deliberately left alone here: `#foray-player`'s
+   markup belongs to the player module and to the Now Playing sheet work
+   landing beside this.
+
+   These rules sit here, after the player and tab-bar block rather than next
+   to `#sh-form` where the field's own styling lives, because what they have
+   to say is entirely about the bottom edge: they compose `--tab-bar-h`,
+   `--fp-bar-h` and `--kb-inset`, and the reader needs those three in view to
+   check the arithmetic.
 
    WHAT ELSE IS DOWN THERE, bottom-up, and where this lands in it:
 
      .tab-bar       z 55   always (body.ui-v2), bottom: 0
      #sh-compose    z 58   <- here
-     #foray-player  z 60   only while body.fp-open; docks above the tab bar,
+     #foray-player  z 60   only while body.fp-open; sits above the tab bar,
                            and is display:none while body.kb-open
 
-   ABOVE THE TAB BAR (55) because the compose bar docks ON TOP of it, which
-   is the same relationship the mini-player has to it and so belongs on the
-   same side of 55. BELOW THE PLAYER (60) because that id is two things: the
-   mini bar AND the expanded Now Playing sheet. A compose bar that outranked
-   60 would float a search field over an open sheet — a modal with someone
-   else's chrome punched through it. Yielding costs nothing in the only case
-   where the two actually share the screen, because they never overlap:
-   `--sh-dock` below holds this bar clear of the mini bar while the keyboard
-   is shut, and `body.kb-open` takes the mini bar off the screen entirely
-   while it is open. The ladder near the top of this file carries 58 too.
+   ABOVE THE TAB BAR (55) because the row floats ON TOP of it, which is the
+   same relationship the mini-player has to it and so belongs on the same side
+   of 55. BELOW THE PLAYER (60) because that id is two things: the mini bar
+   AND the expanded Now Playing sheet. A search pill that outranked 60 would
+   float over an open sheet — a modal with someone else's chrome punched
+   through it. Yielding costs nothing in the only case where the two share the
+   screen, because they never overlap: `--sh-dock` lifts this row clear of the
+   mini bar while the keyboard is shut, and `body.kb-open` takes the mini bar
+   off the screen entirely while it is open. That is also the order Apple
+   uses — mini-player above the field, never below it. The ladder near the top
+   of this file carries 58 too.
 
    `--sh-dock` IS THE ROOM ALREADY TAKEN at the bottom edge, composed exactly
    the way `body.fp-open`'s content reservations above compose it: each rule
    names the sum of what is actually on screen, and adds the home-indicator
-   inset exactly once. It is spent as PADDING rather than as `bottom`, which
-   is deliberate — padding keeps the bar's background continuous all the way
-   down to the tab bar, so the A–Z list scrolling underneath never shows
-   through a gap between two floating bars. `--fp-bar-h` is the player's
-   generous reservation rather than its drawn height, so a little of that
-   padding shows as breathing room above the mini bar; that is a nicer
+   inset exactly once. It is spent as `bottom` — the row FLOATS, so unlike a
+   welded bar it has no background that must reach the screen edge, and
+   lifting it is both simpler and what the screenshots show. `--fp-bar-h` is
+   the player's generous reservation rather than its drawn height, so the gap
+   above the mini bar is a little roomier than Apple's; that is a nicer
    failure than a 1px overlap, and it reuses the existing token instead of
    introducing a second number for the same object.
 
    THE `:not(.kb-open)` PREFIX IS LOAD-BEARING, not decoration. While the
-   keyboard is up there is nothing left to dock above — the player is hidden
-   by the rule above, the tab bar is behind the keyboard, and the home
-   indicator is behind it too — so `--sh-dock` must fall back to 0. Writing
-   that as a `body.kb-open` override would LOSE: `body.ui-v2.fp-open
-   #sh-compose` is the more specific selector and would keep winning. Scoping
-   the dock rules themselves means the keyboard-open case simply matches none
-   of them and inherits the 0 default. */
+   keyboard is up there is nothing left to clear — the player is hidden by the
+   rule above, and the tab bar and the home indicator are both behind the
+   keyboard — so `--sh-dock` must fall back to the bare gap. Writing that as a
+   `body.kb-open` override would LOSE: `body.ui-v2.fp-open #sh-compose` is the
+   more specific selector and would keep winning. Scoping the dock rules
+   themselves means the keyboard-open case simply matches none of them and
+   inherits the default. */
+:root {
+  /* The breathing room between the row and whatever is under it — the screen
+     edge, the tab bar, the mini bar. One token, because Apple's inset is
+     visibly the same on every side. */
+  --sh-gap: 10px;
+}
 #sh-compose {
-  --sh-dock: 0px;
+  --sh-dock: var(--sh-gap);
   position: fixed;
-  left: 0; right: 0;
-  /* Written by app.js's installKeyboardChrome (see keyboardInsetPx): the
-     distance this bar must rise to sit on the keyboard's top edge. 0 whenever
-     no keyboard is up, and 0 on any browser that never sets it. */
-  bottom: var(--kb-inset, 0px);
+  left: var(--sh-gap); right: var(--sh-gap);
+  /* `--kb-inset` is written by app.js's installKeyboardChrome (see
+     keyboardInsetPx): the distance this row must rise to sit on the
+     keyboard's top edge. 0 whenever no keyboard is up, and 0 on any browser
+     that never sets it. */
+  bottom: calc(var(--kb-inset, 0px) + var(--sh-dock));
   z-index: 58;
-  background: var(--bg);
-  border-top: 1px solid var(--line);
-  padding: 8px 12px calc(8px + var(--sh-dock));
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 body:not(.kb-open).ui-v2 #sh-compose {
-  --sh-dock: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
+  --sh-dock: calc(var(--sh-gap) + var(--tab-bar-h) + env(safe-area-inset-bottom));
 }
 body:not(.kb-open).fp-open #sh-compose {
-  --sh-dock: calc(var(--fp-bar-h) + env(safe-area-inset-bottom));
+  --sh-dock: calc(var(--sh-gap) + var(--fp-bar-h) + env(safe-area-inset-bottom));
 }
 body:not(.kb-open).ui-v2.fp-open #sh-compose {
-  --sh-dock: calc(var(--fp-bar-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
+  --sh-dock: calc(var(--sh-gap) + var(--fp-bar-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
 }
-/* With no keyboard and no tab bar or player, the home indicator is still
-   down there — the one case none of the three rules above covers. */
+/* With no keyboard and no tab bar or player, the home indicator is still down
+   there — the one case none of the three rules above covers. */
 body:not(.kb-open):not(.ui-v2):not(.fp-open) #sh-compose {
-  --sh-dock: env(safe-area-inset-bottom, 0px);
+  --sh-dock: calc(var(--sh-gap) + env(safe-area-inset-bottom, 0px));
 }
-/* #sh-form's 14px bottom margin was its gap to the page content beneath it
-   when it WAS page content. Inside the bar that gap is the bar's own padding,
-   and keeping both leaves a dead strip under the field. */
-#sh-compose #sh-form { margin-bottom: 0; }
 
-/* The bar is fixed, so it occupies none of the page's own height and the last
-   A–Z row would sit under it. Reserved on `#view` rather than on `body`
+/* THE PILL. `#sh-form`'s own rule earlier in this file is the page-content
+   version (a plain flex row with a 14px bottom margin); inside the floating
+   row it is the translucent capsule the screenshots show. Two IDs, so this
+   beats both that rule and `body.ui-v2 #sh-form` without an !important. */
+#sh-compose #sh-form {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  gap: 8px;
+  align-items: center;
+  padding: 0 6px 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  /* Translucent, so the catalogue reads THROUGH the pill rather than being
+     cut off by it — the most characteristic thing about the reference. The
+     plain `background` first is the fallback for browsers without
+     `color-mix`: opaque, but correctly coloured. */
+  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.28);
+}
+@supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
+  /* Only where it is supported: an unblurred translucent pill over dense
+     artwork is unreadable, so without this the pill has to stay near-opaque. */
+  #sh-compose #sh-form {
+    background: color-mix(in srgb, var(--surface) 55%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(20px) saturate(1.6);
+  }
+}
+/* The field gives up its own box: the pill is the box now. Scoped by two IDs
+   so `#sh-input` and `body.ui-v2 #sh-input` are both overridden here, and
+   here only. */
+#sh-compose #sh-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+#sh-compose #sh-input:focus { outline: none; }
+/* The leading magnifier: what says "search field" rather than "compose box",
+   and the one of Apple's two glyphs we can honour — app.js says why their
+   trailing microphone is deliberately not copied. */
+#sh-compose .sh-glyph {
+  flex: none;
+  width: 18px; height: 18px;
+  stroke: var(--text-dim);
+  stroke-width: 2;
+  stroke-linecap: round;
+  fill: none;
+}
+#sh-compose #sh-form button[type="submit"] { flex: none; }
+
+/* THE COMPANION — Apple's circular button beside the pill. Driven by the
+   `hidden` attribute from the same predicate that hides the browse furniture
+   (app.js), so when idle it costs no width and the pill spans the whole row. */
+#sh-dismiss {
+  flex: none;
+  width: 46px; height: 46px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.28);
+}
+@supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
+  #sh-dismiss {
+    background: color-mix(in srgb, var(--surface) 55%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    backdrop-filter: blur(20px) saturate(1.6);
+  }
+}
+#sh-dismiss svg {
+  width: 18px; height: 18px;
+  stroke: currentColor; stroke-width: 2; stroke-linecap: round; fill: none;
+}
+
+/* The row floats, so it occupies none of the page's own height and the last
+   A–Z row would end underneath it. Content scrolling BEHIND the pill is the
+   look we want; content permanently UNREACHABLE behind it is not, so the page
+   still reserves the row's height. Reserved on `#view` rather than on `body`
    precisely so it STACKS with body's existing tab-bar/player reservations
-   instead of having to restate them: this is one more thing at the bottom,
-   and it adds one more term. `body.sh-compose` is set by renderAllShows and
-   cleared by the next page's setBodyClass(), so no other page pays for it. */
-:root { --sh-compose-h: 68px; }   /* 52px field + the bar's own 8px + 8px */
+   instead of having to restate them. `body.sh-compose` is set by
+   renderAllShows and cleared by the next page's setBodyClass(), so no other
+   page pays for it. */
+:root { --sh-compose-h: 66px; }   /* the 46px pill + --sh-gap above and below */
 body.sh-compose #view { padding-bottom: var(--sh-compose-h); }
 
 .fp-progress { height: 3px; background: var(--surface-2); }

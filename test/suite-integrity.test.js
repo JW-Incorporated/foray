@@ -604,8 +604,14 @@ const FLOORS = {
      alongside `body.kb-open` so the field rides above the keyboard instead of
      behind it. That last part is shared ground with
      test/now-playing-keyboard.test.js, which owns the DETECTOR; this file
-     owns the measurement derived from it, and asserts the two never split. */
-  "test/search-field-bottom.test.js": 22,
+     owns the measurement derived from it, and asserts the two never split.
+     Same day, +9: the founder checked Apple Podcasts on his own phone and
+     sent screenshots ("they seem to have nailed it"), which settled the shape
+     against a guess — a floating translucent pill inset from both edges with
+     content reading through it, a circular companion button that arrives with
+     the keyboard, a leading magnifier and no microphone, and Escape and that
+     button as one code path. 22 -> 31. */
+  "test/search-field-bottom.test.js": 31,
   "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
   /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
      its rows render and cache like any other breadth row, and a breadth show page survives
