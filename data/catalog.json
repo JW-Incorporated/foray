@@ -12,9 +12,7 @@
       "apple_genre": null,
       "episode_count": null,
       "editorial_note": "Marathon technical interviews with the actual scientists and founders building fusion reactors, AI, and everything adjacent.",
-      "taxonomy_node_ids": [
-        "engineering/energy-fusion"
-      ],
+      "taxonomy_node_ids": [],
       "archetype_fit": [
         "deep-learn"
       ],
