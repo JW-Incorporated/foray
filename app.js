@@ -3179,12 +3179,22 @@ const PREFS_CHIP_IDS = [
    intro popup on top of it (`if (!showFirstTimeExplainerOnce())
    showIntroPopupOnce()`), which is the same bug wearing a different id.
 
+   ORDER MATTERS, AND IT IS THE SEMANTIC GATES FIRST. The idempotency check is
+   LAST, after "is this a first-time profile" and "has the intro been
+   dismissed", because it is a guard against this function's own output and
+   nothing more — it must never be able to answer a question about WHO the
+   listener is. A first draft put it first and turned
+   test/first-time-onboarding.test.js red in CI: that suite's DOM stub answers
+   `querySelector` with a fresh truthy element for every selector, so the check
+   short-circuited and an EXISTING user was reported as seeing the first-time
+   screen. The stub is crude, but the tests were right and the order was wrong.
+
    MUTATION: delete either early return below and
    test/onboarding-sheet-once.test.js fails on the duplicate-mount assertion. */
 function showFirstTimeExplainerOnce() {
-  if ($("#first-time-sheet")) return true;   // already on screen this visit
   if (!isGenuineFirstTimeUser()) return false;
   if (lsGet("cp_intro_dismissed", false)) return false;
+  if ($("#first-time-sheet")) return true;   // already on screen this visit
 
   const wrap = ddEl("div", "fy-sheet");
   wrap.id = "first-time-sheet";
@@ -3374,12 +3384,13 @@ function showFirstTimeExplainerOnce() {
    function — renderHome() calls the two in sequence and short-circuits here
    when the explainer just showed, so a first-ever visit never shows both. */
 function showIntroPopupOnce() {
-  /* The same guard, for the same reason, on the older popup — see the block
-     above `showFirstTimeExplainerOnce`. This one is reachable by returning
-     users, who are not `isGenuineFirstTimeUser()`, so it has only ever had the
-     one persisted flag between it and a duplicate mount. */
-  if ($("#intro-sheet")) return;
   if (lsGet("cp_intro_dismissed", false)) return;
+  /* The same guard, for the same reason and in the same position (after the
+     persisted gate, never before it) as `showFirstTimeExplainerOnce` above.
+     This one is reachable by RETURNING users, who are not
+     `isGenuineFirstTimeUser()`, so it has only ever had the one flag between
+     it and a duplicate mount. */
+  if ($("#intro-sheet")) return;
   const wrap = ddEl("div", "fy-sheet");
   wrap.id = "intro-sheet";
 

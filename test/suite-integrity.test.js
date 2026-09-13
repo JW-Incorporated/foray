@@ -276,7 +276,7 @@ const FLOORS = {
      because the browser suite only catches it when the machine is slow enough
      to lose the race — green on a quiet box, red under load — so these
      timing-free assertions are the reliable half of the guard. */
-  "test/onboarding-sheet-once.test.js": 5,
+  "test/onboarding-sheet-once.test.js": 6,
   /* A new page starts at the top, and ‹ puts you back where you were
      (founder report, 2026-09-13). Floored because BOTH halves are one-line
      deletions away and only one of them is visible: losing the scroll-to-top

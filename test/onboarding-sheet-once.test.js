@@ -210,16 +210,46 @@ test("the older intro popup is idempotent on its own account too", () => {
 
 test("dismissing still works, and a later render does not bring it back", () => {
   /* The guard must not become a way for a dismissed sheet to resurrect: once
-     `cp_intro_dismissed` is written, the persisted guard is what answers, and
-     the DOM guard has nothing left to see.
-     MUTATION: move the new early return BELOW the `cp_intro_dismissed` check
-     — this still passes (both guards hold), which is why it is not the
-     mutation named on the duplicate-mount test above; what this test actually
-     protects is that neither guard swallowed the other. */
+     `cp_intro_dismissed` is written, the persisted gate is what answers, and
+     the idempotency check has nothing left to see.
+     MUTATION: delete the `cp_intro_dismissed` early return. This fails. */
   const m = mount();
   m.evalIn("showFirstTimeExplainerOnce()");
   m.evalIn('document.getElementById("first-time-sheet").remove()');
   m.evalIn('lsSet("cp_intro_dismissed", true)');
   assert.strictEqual(m.evalIn("showFirstTimeExplainerOnce()"), false);
   assert.strictEqual(m.countById("first-time-sheet"), 0, "a dismissed explainer stays dismissed");
+});
+
+test("the idempotency check is LAST — it never answers a question about who the listener is", () => {
+  /* A stale DOM node must not be able to report that an EXISTING user is
+     seeing the first-time screen. A first draft of this fix put the check
+     first and turned two tests in test/first-time-onboarding.test.js red in
+     CI, because that suite's DOM stub answers `querySelector` with a fresh
+     truthy element for every selector — so the check short-circuited and an
+     existing user came back as `true`. The stub is crude; the ordering was
+     genuinely wrong, and this pins the order rather than the stub.
+
+     Both halves are asserted WITH a sheet already mounted, because that is
+     the only state in which the ordering is observable at all.
+
+     MUTATION: move `if ($("#first-time-sheet")) return true;` above the
+     `isGenuineFirstTimeUser()` / `cp_intro_dismissed` gates. Both assertions
+     below fail, and so do those two first-time-onboarding tests. */
+  const existing = mount();
+  existing.evalIn("showFirstTimeExplainerOnce()");
+  existing.evalIn('lsSet("cp_history", ["ep-1"])');
+  assert.strictEqual(existing.evalIn("isGenuineFirstTimeUser()"), false, "fixture: now an existing user");
+  assert.strictEqual(
+    existing.evalIn("showFirstTimeExplainerOnce()"), false,
+    "an existing user must be reported as not seeing the explainer, sheet on screen or not"
+  );
+
+  const dismissed = mount();
+  dismissed.evalIn("showFirstTimeExplainerOnce()");
+  dismissed.evalIn('lsSet("cp_intro_dismissed", true)');
+  assert.strictEqual(
+    dismissed.evalIn("showFirstTimeExplainerOnce()"), false,
+    "a dismissed intro must be reported as dismissed, even with a sheet still in the DOM"
+  );
 });
