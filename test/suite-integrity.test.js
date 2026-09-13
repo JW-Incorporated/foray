@@ -586,9 +586,32 @@ const FLOORS = {
      the network — it is where things are rendered and when they are hidden,
      and it would be invisible inside a file whose subject is what a query
      returns. The scroll MECHANISM it depends on stays floored separately at
-     test/collapsing-header-scroll.test.js; this file only pins the nesting
-     that opts the search bar into it. */
+     test/collapsing-header-scroll.test.js.
+     2026-09-13, same day: the founder moved the search field to the BOTTOM of
+     the page ("model it after most other text boxes, for example in the
+     Claude app or Apple Podcasts"), superseding his own scroll-up report. The
+     three tests that pinned the field INSIDE `.page-head` were rewritten to
+     pin the negative — not in the header, header back to one shape, no field
+     on the category page — so the count is unchanged at 15 and the file's
+     subject is unchanged with it. The positive lives next door. */
   "test/search-page-chrome.test.js": 15,
+  /* The bottom-docked search field itself (founder, 2026-09-13). A SEPARATE
+     file rather than more tests in the one above, because its subject is the
+     bottom EDGE of the screen and not the search page's content: where
+     `#sh-compose` sits in a stacking order it shares with `.tab-bar` (55) and
+     `#foray-player` (60), how `--sh-dock` composes the room those two take,
+     and the `--kb-inset` measurement installKeyboardChrome now publishes
+     alongside `body.kb-open` so the field rides above the keyboard instead of
+     behind it. That last part is shared ground with
+     test/now-playing-keyboard.test.js, which owns the DETECTOR; this file
+     owns the measurement derived from it, and asserts the two never split.
+     Same day, +9: the founder checked Apple Podcasts on his own phone and
+     sent screenshots ("they seem to have nailed it"), which settled the shape
+     against a guess — a floating translucent pill inset from both edges with
+     content reading through it, a circular companion button that arrives with
+     the keyboard, a leading magnifier and no microphone, and Escape and that
+     button as one code path. 22 -> 31. */
+  "test/search-field-bottom.test.js": 31,
   "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
   /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
      its rows render and cache like any other breadth row, and a breadth show page survives
