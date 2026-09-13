@@ -1,11 +1,11 @@
 {
-  "deploy_id": "a81c8ec0f0d8a0ac",
+  "deploy_id": "ca5222d3178d4680",
   "files": {
-    "app.js": "sha256:a62fee93161512b46aa100b261a1ff9e66ce0218b6935e61ae51763e89ef684c",
+    "app.js": "sha256:756ff8541a27106034ea73fd28a0e6529be1e82e854a334bf44c43a0de6ad476",
     "data/catalog-client.json": "sha256:734c542d08decc62fd401593cbf19c25216c366fe99ebc86fce2192dcf9d85c4",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:4e50f24a3829ca6f9264a13ae6ea327d0acaa2a0b898ba1e13b5c97aa53ea3b7",
-    "data/forays-directory.json": "sha256:a568cabd1ebcee9da8fbcafc29d08d56a3651f0e640ae9f8a786f4c3a368b06a",
+    "data/forays-directory.json": "sha256:45dd562312f51f1c49fa43a1648153c54ebc2960fe82d3907490eca243a36cf8",
     "data/forays.json": "sha256:e2fe2e76371261c335814f0387cbb70de78aba1fe82f186c009e29c2a2854c61",
     "data/item-tags.json": "sha256:d4a1eccdbf270a4982cf79c6f737e68052b80a91569bbe45aba70ce576d6c064",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
@@ -20,7 +20,7 @@
     "icon-512.png": "sha256:1c7c61679d2e6935e361de64a774930230dfaddd1ecef00dc70288e2d38f2451",
     "index.html": "sha256:9bffe0be2e62bd95565e4607b6be1c3b05f28dfcfde216cef142b54cffaa1ff3",
     "manifest.json": "sha256:e99d17d7b18d314cf6a60286c9f28e77761f5642d44117115c219b2acfb9c118",
-    "player/client.js": "sha256:326aae25d8fbf431d163ea96703832827497682610cff5041f4627530348eaeb",
+    "player/client.js": "sha256:04eb26be97a6fcb59a94f2cb1890e34a383c83e0a8d3017eb5ce0e03e44e4be0",
     "player/default-voice.js": "sha256:ebdd4cb5067b937ec0ba02e1be6d8fc84c7e73e58078bcafc2ce8911d26ba82f",
     "player/diagnostic-log.js": "sha256:e6d029745849097afc56e96eae1fca5c671141153a33dbcafa11786ead1654c3",
     "player/durable-store.js": "sha256:64b8a80cc7f0f2b3efb366ce2a595e381f80fd1abe9c9e9e0bc3cdc3f7f6eeeb",
@@ -43,10 +43,9 @@
     "player/seam-gap.js": "sha256:d0246bea2b7bc0c1a3b54c9db7614d3675529328483bad63d8622674b04f8e23",
     "player/seek-policy.js": "sha256:248ca07cef5c5c7c09bd5967b1e86d8a3254493033aec77bb8e3d4b8f25e350c",
     "player/segment-strip.js": "sha256:c961c352bb6643138f6634b0077eab5cb5fddba0e4e38c854a386b8ac537b6c4",
-    "player/sheet-drag-dismiss.js": "sha256:cfa5a441a01ee1dddfe309d7c81ab5408a1d03d46b48f74d01b4680d2ce89c55",
     "player/strip-scrub-gesture.js": "sha256:88415f256049ee1ac96c6738651819d3b1c76161f6fe685dc6eaeab71b0d487e",
     "player/tts-bridge.js": "sha256:3624d19408abb0cbede260d358681685698c506509837f2b593cda58de4217c2",
     "search-engine.js": "sha256:2052d0222334686fa62de740b0dc207b33efd67de0b6ad7634bcc68f51d5c168",
-    "styles.css": "sha256:551a727a35d93837337cd7555eba9f9d6de30dec34c5c9cffe1e4bdfea96fe00"
+    "styles.css": "sha256:6b6f725f38b33bf964e58628cb82d4c4dde17ccc98c8e31006eec113479b32ad"
   }
 }

@@ -919,6 +919,26 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 .page-head h2 { margin: 0; font-family: var(--serif); font-size: 1.3rem; font-weight: 700; }
 .page-head .sub { margin: 2px 0 0; color: var(--text-dim); font-size: 0.82rem; }
 
+/* The STACKED variant (`renderShowIndexPage`'s `headExtra`, used only by the
+   Shows/search page): the ‹-back-plus-title row on one line, and something
+   full-width beneath it inside the SAME sticky header — today the search
+   field.
+
+   Founder, 2026-09-13: "In the search page, when I start scrolling up, the
+   search bar should reappear. At the top of the screen." The search field
+   used to be ordinary page content below the header, so it scrolled away for
+   good. Moving it inside `.page-head` hands it to the collapsing-header
+   mechanism that already exists (app.js's onWindowScroll + the
+   `.page-head-hidden` transform above) instead of adding a second scroll
+   listener that would fight it. Everything here is layout only — the
+   hide/show behaviour is entirely the rules above this comment. */
+.page-head-stacked { flex-direction: column; align-items: stretch; gap: 10px; }
+.page-head-stacked .page-head-main { display: flex; align-items: center; gap: 12px; }
+/* #sh-form's own 14px bottom margin was the gap to the page content below it
+   when it WAS page content; inside the sticky header that gap is the header's
+   own padding, and keeping both double-spaces the collapsed bar. */
+.page-head-stacked #sh-form { margin-bottom: 0; }
+
 /* ---------- interests page (#/interests, U-07) ---------- */
 .interest-group { margin-bottom: 20px; }
 .interest-group-label {

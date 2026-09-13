@@ -1836,19 +1836,45 @@ function showsForCategory(nodeId) {
    row here looks and behaves exactly like a Shows-search result.
 
    `above` is raw HTML dropped between the header and the A–Z list. It exists
-   for the Shows page's search box + editorial rows; the category page passes
-   nothing and is byte-identical to what it rendered before. */
-function renderShowIndexPage(title, subtitle, shows, above = "") {
+   for the Shows page's editorial rows; the category page passes nothing and
+   is byte-identical to what it rendered before.
+
+   `subtitle` IS OPTIONAL (founder, 2026-09-13: "On the search page, delete
+   '220 shows in 4a's…'"). It is not dropped as a parameter because the
+   OTHER caller still wants one: renderCategory's "N shows in 4a's
+   catalogue" is the only thing on that page that says how big the category
+   is, and it is not a restatement of the heading the way the Shows page's
+   was. An empty subtitle renders no `<p class="sub">` at all rather than an
+   empty one, so the heading does not sit above a blank line's worth of
+   leading.
+
+   `headExtra` is raw HTML rendered INSIDE `.page-head`, under the title row.
+   That placement is the whole of founder report 3 ("when I start scrolling
+   up, the search bar should reappear. At the top of the screen"): the
+   collapsing-header mechanism this app already has — `.page-head`'s sticky
+   + `page-head-hidden` transform, driven by onWindowScroll() — hides and
+   re-shows whatever is inside `.page-head`, so putting the search field
+   there gets the hide-on-scroll-down/show-on-scroll-up behaviour with no
+   second scroll listener. When it is empty the markup is byte-identical to
+   what shipped before, so the category page is untouched. */
+function renderShowIndexPage(title, subtitle, shows, above = "", headExtra = "") {
   setBodyClass("view-page");
-  $("#view").innerHTML = `
-    <div class="page">
-      <div class="page-head">
+  const titleBlock = `
         <a class="back" href="#/">‹</a>
         <div>
           <h2>${esc(title)}</h2>
-          <p class="sub">${esc(subtitle)}</p>
+          ${subtitle ? `<p class="sub">${esc(subtitle)}</p>` : ""}
+        </div>`;
+  $("#view").innerHTML = `
+    <div class="page">
+      ${headExtra
+        ? `<div class="page-head page-head-stacked">
+        <div class="page-head-main">${titleBlock}
         </div>
-      </div>
+        ${headExtra}
+      </div>`
+        : `<div class="page-head">${titleBlock}
+      </div>`}
       ${above}
       ${shows.length
         ? `<div class="show-results show-index">${shows.map(showResultRow).join("")}</div>`
@@ -1914,20 +1940,84 @@ function browsePillsHtml() {
   return `<div class="sh-browse-pills">${roots.map(n => taxonomyChip(n.id)).join("")}</div>`;
 }
 
+/* THE BROWSE FURNITURE \u2014 everything on this page that is a SUGGESTION rather
+   than an ANSWER: the browse-subjects pill row, the starred-shows shortcut,
+   the "Shows we vouch for" editorial row, and the A\u2013Z index itself.
+
+   Two nodes, not one wrapper, because the A\u2013Z list is rendered by
+   renderShowIndexPage AFTER `above` and the two therefore cannot be enclosed
+   in a single element without reshaping the template the category page
+   shares. Missing nodes are filtered out rather than guarded at each call
+   site, so this is safe on a page that has no search box at all. */
+function showBrowseSections() {
+  return [$("#sh-browse"), $("#view .show-index")].filter(Boolean);
+}
+
+/* Tracks whether the Shows-page search field currently holds focus. A flag
+   rather than `document.activeElement`: the field lives in an innerHTML
+   template that is thrown away and rebuilt on every render, so the only
+   honest source of truth is the focus/blur pair bound alongside it. Reset by
+   renderAllShows on every render. */
+let showSearchFieldFocused = false;
+
+/* Founder, 2026-09-13: "The cards below the search box are kind of helpful
+   initially, but should go away when I click on the search box to start
+   typing."
+
+   THE RULE, in one line: the browse furniture is visible exactly when the
+   field is NOT focused AND the query is empty. Everything else follows from
+   that single predicate rather than from a pile of event-specific branches.
+
+     focus (tap the box)      -> hidden, immediately, before a single
+                                 keystroke. FOCUS, not first-keystroke, and
+                                 that is deliberate: on a phone the tap is
+                                 what raises the keyboard and reflows the
+                                 page, so doing both movements at once is one
+                                 settling motion instead of two, and the
+                                 first result then lands directly under the
+                                 field instead of being inserted above 220
+                                 unrelated rows. It is also what the report
+                                 literally says ("when I click on the search
+                                 box").
+     blur with an empty box   -> back. Dismissing the keyboard on an empty
+                                 field is "never mind", and browse is the
+                                 page's resting state.
+     blur with a live query   -> STAYS hidden. The results are the answer the
+                                 listener is reading; pushing them down the
+                                 page to re-expose the catalogue is the exact
+                                 clutter being complained about.
+     Escape                   -> clears the field, clears the results, blurs,
+                                 and so lands on the "blur with an empty box"
+                                 case: browse comes back. (Desktop only; a
+                                 phone keyboard has no Escape, which is why
+                                 blur has to be a restorer in its own right.)
+     deleting the query while still focused -> stays hidden. You are still
+                                 mid-search with the keyboard up; one blur
+                                 brings the catalogue back. */
+function updateShowBrowseVisibility() {
+  const input = $("#sh-input");
+  const hide = showSearchFieldFocused || !!(input && input.value.trim());
+  for (const el of showBrowseSections()) el.hidden = hide;
+}
+
 function renderAllShows() {
   const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
-  renderShowIndexPage("Shows", `${shows.length} shows in 4a's catalogue, A\u2013Z`, shows, `
-      <form id="sh-form" autocomplete="off">
-        <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
-        <button type="submit">Go</button>
-      </form>
-      ${browsePillsHtml()}
+  /* NO SUBTITLE (founder, 2026-09-13: "On the search page, delete '220 shows
+     in 4a's\u2026'"). renderCategory keeps its own \u2014 see renderShowIndexPage. */
+  renderShowIndexPage("Shows", "", shows, `
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
       <div id="ep-search-results" hidden></div>
       <div id="pl-search-results" hidden></div>
-      <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
-      ${vouchForHtml()}`);
+      <div id="sh-browse">
+        ${browsePillsHtml()}
+        <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
+        ${vouchForHtml()}
+      </div>`, `
+      <form id="sh-form" autocomplete="off">
+        <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
+        <button type="submit">Go</button>
+      </form>`);
 
   /* S-02 (docs/search-plan.md, founder feedback F2: "Shows search should
      filter live as you type. Hitting Go should not be required.").
@@ -1966,14 +2056,40 @@ function renderAllShows() {
     renderShowSearchResults(query);
   });
 
+  /* A fresh render starts from the resting state: nothing focused, browse
+     furniture showing. Without this a return to #/shows after leaving it
+     mid-search would open with the catalogue already hidden. */
+  showSearchFieldFocused = false;
+  updateShowBrowseVisibility();
+
   const input = $("#sh-input");
   if (input) {
-    input.addEventListener("input", () => onShowSearchInput(input.value));
+    input.addEventListener("input", () => { onShowSearchInput(input.value); updateShowBrowseVisibility(); });
     /* Once. `loadShowIndex` is itself idempotent (it returns the in-flight
        promise, then the resolved index), so a second focus costs nothing and
        this needs no `{ once: true }` — which would be wrong anyway, since a
        first attempt that failed offline should be retried on a later focus. */
-    input.addEventListener("focus", () => { loadShowIndex(); });
+    input.addEventListener("focus", () => {
+      loadShowIndex();
+      showSearchFieldFocused = true;
+      updateShowBrowseVisibility();
+    });
+    input.addEventListener("blur", () => {
+      showSearchFieldFocused = false;
+      updateShowBrowseVisibility();
+    });
+    /* Escape is the desktop "never mind": empty the field, drop the results
+       (the same reset a deleted query already gets), and let go of focus, so
+       the page lands back on its browse state by the ordinary rule rather
+       than by a special case of its own. */
+    input.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      input.value = "";
+      clearShowSearchResults();
+      showSearchFieldFocused = false;
+      if (typeof input.blur === "function") input.blur();
+      updateShowBrowseVisibility();
+    });
   }
 }
 
@@ -3753,9 +3869,13 @@ function recordSearchDiagnostic(fields) {
   }
 }
 
-/** Back to the unfiltered A-Z list, which is still in the page underneath —
-    NOT to an empty results box with a "no shows match" note for a query the
-    listener just deleted (S-02's own acceptance line). */
+/** Back to the unfiltered A-Z list — NOT to an empty results box with a "no
+    shows match" note for a query the listener just deleted (S-02's own
+    acceptance line). Since 2026-09-13 that list is itself hidden while the
+    search field holds focus (see updateShowBrowseVisibility), so on a
+    deleted query this clears the answer and the browse furniture returns on
+    blur; the two are deliberately separate, and this function does not
+    unhide anything on its own. */
 function clearShowSearchResults() {
   // Nothing is painted any more, so no later pass may merge onto what was.
   showSearchPainted = { token: -1, query: "", rows: [] };
