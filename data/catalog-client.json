@@ -6,9 +6,7 @@
       "title": "Lex Fridman Podcast",
       "artwork_url": null,
       "editorial_note": "Marathon technical interviews with the actual scientists and founders building fusion reactors, AI, and everything adjacent.",
-      "taxonomy_node_ids": [
-        "engineering/energy-fusion"
-      ],
+      "taxonomy_node_ids": [],
       "episode_count": null
     },
     {
