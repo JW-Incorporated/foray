@@ -1,7 +1,7 @@
 import { searchBreadthShows } from "../../backend/src/catalog/searchBreadthShows";
 import { loadBreadthCatalog } from "../../backend/src/catalog/breadthCatalog";
 import { applyCors } from "../_lib/cors";
-import { appleShowSearch } from "./appleShowSearch";
+import { appleShowSearch, mergeDirectoryShows } from "./appleShowSearch";
 
 /**
  * GET /api/shows/search?q=<query>&limit=<n> — the backend half of A3.1/Q3
@@ -51,16 +51,44 @@ import { appleShowSearch } from "./appleShowSearch";
  *     for one row, so `app.js` prefers the loaded index when it has it and this
  *     endpoint otherwise. The index is never fetched FOR this.
  *
- * (2) `?fallthrough=1` — THE APPLE FALL-THROUGH (S-06a). Ask Apple's public
- *     directory only when nothing anywhere we hold matches. TWO INDEPENDENT
- *     GATES, and neither is optional: the CLIENT sets this flag only when its
- *     own local pass found nothing, and this endpoint performs the call only
- *     when the full 19,904-row merged catalogue ALSO found nothing. Without
- *     the second gate, the client's `chart_rank <= 100` index cut would make
- *     "zero hits" mean "not in 10,113" and every query for a mid-chart show we
- *     already have would burn a slot in a 20/min bucket. The rate limiter, the
- *     cache, the timeout and the argument for doing this server-side all live
- *     in `./appleShowSearch.ts`.
+ * (2) `?fallthrough=1` — THE APPLE DIRECTORY PASS. Shipped by S-06a as a LAST
+ *     RESORT behind two gates: the CLIENT set this flag only when its own
+ *     local pass found nothing, and this endpoint performed the call only when
+ *     the full 19,904-row merged catalogue ALSO found nothing.
+ *
+ *     P-02 (docs/search-parity-plan.md) DELETED THE SECOND GATE, and the
+ *     original text is kept above rather than overwritten because the argument
+ *     it makes is still the right shape — it was just answered by measurement
+ *     instead of assumed. Measured against this endpoint on 2026-09-12 over 25
+ *     listener queries: passing `fallthrough=1` returned BYTE-IDENTICAL results
+ *     to omitting it for 23 of the 25, with `fallthrough: {attempted: false}`
+ *     in the body. Only `ira glass` and `hubermann` — the two queries with zero
+ *     rows in the full catalogue — got through. Meanwhile every one of the 25
+ *     gained rows from the directory after dedup: minimum +2, median +17,
+ *     maximum +25. There is no query in that table where our own catalogue was
+ *     enough, and a one-exact-hit query is not the exception — `radiolab` (1
+ *     exact local hit) gains 18, `crime junkie` (2 exact) gains 24, and what
+ *     arrives is the network and the spinoffs a listener is reaching for ("The
+ *     99% Invisible Breakdown", "Hard Fork Live", "Business Wars Daily").
+ *
+ *     So the condition is now simply `fallthroughAsked`. The CLIENT's gate is
+ *     the only one left and it is a LENGTH floor, not a strength test:
+ *     `app.js` asks on every debounced search of >= 3 characters. Its own
+ *     header says why a strength test was rejected — `tim` returns 10 strong
+ *     local matches, none of them The Tim Ferriss Show.
+ *
+ *     THE OTHER HALF OF THE SAME CHANGE, and it is not optional: this branch
+ *     used to reply `shows: apple.shows`, REPLACING `results` rather than
+ *     merging. That was safe only because `results.length === 0` was a
+ *     precondition. With the gate gone, a rate-limited, timed-out or failed
+ *     Apple call would have returned `[]` IN PLACE OF the catalogue's rows —
+ *     losing precisely the `chart_rank` 101-200 tier that only this endpoint
+ *     has. It merges now (`mergeDirectoryShows`), and a failed directory pass
+ *     replies with `results` unchanged plus the flag.
+ *
+ *     The rate limiter, the cache, the (now 2 s) timeout, the dedup rule and
+ *     the argument for doing this server-side all live in
+ *     `./appleShowSearch.ts`.
  *
  * (3) THE DEGRADED BRANCH'S MISSING HEADER (S-05, #560 item 10,
  *     requirements §6.12). The catch branch below set NO `Cache-Control` at
@@ -198,21 +226,43 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  /* S-06's SECOND GATE. `results.length === 0` here means "not in the full
-     19,904-row merged catalogue", which is the only definition of a miss this
-     fall-through may act on — see this file's header for why the client's own
-     gate is not sufficient on its own. */
-  if (fallthroughAsked && results.length === 0) {
+  /* P-02: the directory is a SECOND PASS, not a last resort. The old
+     `&& results.length === 0` is gone — see this file's header (2) for the
+     measurement that removed it. The caller's `fallthrough=1` is the only gate
+     left, which keeps the refusal S-06 actually needed: a script, a probe or
+     `tools/search-probe.mjs`'s forced-MISS samples still never spend a slot,
+     because they do not ask. */
+  if (fallthroughAsked) {
     const apple = await appleShowSearch(q, limit);
-    /* A rate-limited or failed fall-through returns the local results (empty,
-       here) with a flag — never an error. The listener gets the honest empty
-       state they would have got anyway, and the flag lets a caller say so. */
-    res.setHeader("Cache-Control", apple.error ? "no-store" : "public, max-age=300, stale-while-revalidate=3600");
+    /* MERGED, NEVER REPLACED. A rate-limited or failed directory pass returns
+       the catalogue's own rows with a flag beside them — never an error, and
+       never `[]`. Before P-02 this line read `shows: apple.shows`, which was
+       only safe because `results.length === 0` was a precondition; with the
+       gate gone that would have dropped the catalogue on every Apple failure. */
+    const shows = mergeDirectoryShows(results, apple.shows);
+    const source: string[] = [];
+    if (results.length) source.push("catalogue");
+    if (shows.length > results.length) source.push("apple");
+    /* A FAILED DIRECTORY PASS IS NOW A CACHEABLE ANSWER, briefly, and the change
+       from `no-store` is deliberate rather than a relaxation.
+
+       Under S-06 this branch's failure body was `shows: []` — caching an empty
+       for five minutes would have been a five-minute outage for everyone behind
+       that edge, so `no-store` was right. Under P-02 the body carries the full
+       catalogue answer, so it is a real result that happens to be missing its
+       directory half. `no-store` on it is now actively harmful: the directory
+       pass fires on EVERY search, so a limiter trip that is never edge-cached
+       means every retry re-invokes the function and re-fails — a trip becomes a
+       re-invocation storm with no backoff. 10 s is short enough that a listener
+       retrying after the 60 s window has moved on does not get a stale refusal,
+       and long enough to flatten the storm. `no-store` still belongs on the
+       degraded branch above, where the body really is empty. */
+    res.setHeader("Cache-Control", apple.error ? "public, max-age=10" : "public, max-age=300, stale-while-revalidate=3600");
     res.status(200).json({
       query: q,
-      shows: apple.shows,
+      shows,
       degraded: false,
-      source: apple.shows.length ? ["apple"] : [],
+      source,
       fallthrough: { attempted: true, error: apple.error, cached: apple.cached },
     });
     return;

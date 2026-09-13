@@ -1170,20 +1170,35 @@ export class PlayerDiagnostics {
    * took 900 ms" from "search took 900 ms in a backgrounded tab whose timers
    * were throttled" — exactly the question a slow-search report asks.
    *
-   * THE THREE SLOW HALVES ARE ALL HERE, and that is the audit's other half:
+   * THE FOUR SLOW HALVES ARE ALL HERE, and that is the audit's other half:
    *   `netMs`/`netHits`  the breadth (shows) endpoint, or 0 on a cache hit
+   *   `dirMs`/`dirHits`  the APPLE DIRECTORY pass (P-02,
+   *                      docs/search-parity-plan.md) — a SECOND request to the
+   *                      same endpoint carrying `fallthrough=1`, and the
+   *                      slowest of the show passes by construction because a
+   *                      third party is in it (measured 381-561 ms against
+   *                      118 ms for the catalogue pass). It is its own pair of
+   *                      fields rather than being folded into `netMs` for the
+   *                      reason the audit split the halves in the first place:
+   *                      the two fail independently, and "search took 900 ms"
+   *                      is a different finding depending on WHICH pass spent
+   *                      it. `dirMs` is the field to watch for P-02's
+   *                      latency risk — the local paint is unaffected, so a
+   *                      directory regression never shows up in `paintedMs`.
    *   `epMs`/`epHits`    the EPISODES endpoint — the slower of the two, and
    *                      until the audit it was measured by nothing at all
    *   `ctaMs`            the create-a-playlist CTA's relaxation scan, a
    *                      1.3-8 s synchronous pass that used to run behind a
    *                      `setTimeout(0)` where no number could see it
    * Null means "this half did not run on this search", which is a real state
-   * for all three (a cache hit, a page with no episode section, a query that
-   * already matched a playlist) and not an error.
+   * for all four (a cache hit, a query under the directory's 3-character
+   * floor, a page with no episode section, a query that already matched a
+   * playlist) and not an error.
    */
   search({
     qLen = null, localMs = null, localHits = null,
-    netMs = null, netHits = null, epMs = null, epHits = null,
+    netMs = null, netHits = null, dirMs = null, dirHits = null,
+    epMs = null, epHits = null,
     ctaMs = null, paintedMs = null, path = null,
   } = {}) {
     const num = (v) => (Number.isFinite(v) ? v : null);
@@ -1193,6 +1208,8 @@ export class PlayerDiagnostics {
       localHits: num(localHits),
       netMs: num(netMs),
       netHits: num(netHits),
+      dirMs: num(dirMs),
+      dirHits: num(dirHits),
       epMs: num(epMs),
       epHits: num(epHits),
       ctaMs: num(ctaMs),
@@ -1412,13 +1429,14 @@ function lineFor(e) {
          out, not only in the raw JSON. `—` for null fields keeps the line
          legible when a caller has not wired one half yet (e.g. paint timing
          landing in a later card than the network pass), and is also how the
-         three halves that did not run on this search read.
+         halves that did not run on this search read.
 
          `hidden=` at the end like every other line that carries it (2026-09-12
          audit: this was the only case printing none). */
       const n = (v) => (v == null ? "—" : v);
       return `${head} qLen=${n(e.qLen)} local=${ms(e.localMs)}/${n(e.localHits)}h` +
-        ` net=${ms(e.netMs)}/${n(e.netHits)}h ep=${ms(e.epMs)}/${n(e.epHits)}h` +
+        ` net=${ms(e.netMs)}/${n(e.netHits)}h dir=${ms(e.dirMs)}/${n(e.dirHits)}h` +
+        ` ep=${ms(e.epMs)}/${n(e.epHits)}h` +
         ` cta=${ms(e.ctaMs)} painted=${ms(e.paintedMs)}` +
         ` path=${n(e.path)}  hidden=${e.hidden ? "y" : "n"}`;
     }

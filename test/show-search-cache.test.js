@@ -159,7 +159,16 @@ function mount({ breadthOk = true, episodesOk = true, episodes = [] } = {}) {
   return {
     ctx, byId, calls, state, search, records,
     evalIn: (src) => vm.runInContext(src, ctx),
-    breadthCalls: () => calls.filter((u) => u.includes("api/shows/search")),
+    /* P-02 (docs/search-parity-plan.md) split one show request into two: the
+       CATALOGUE pass, and the DIRECTORY pass carrying `fallthrough=1`. This
+       suite is about `showBreadthQueryCache`, which is the catalogue pass's
+       cache and nothing else — the directory pass has its own
+       (`showDirectoryQueryCache`), pinned in
+       test/show-search-fallthrough.test.js. Filtering here rather than
+       loosening every count below keeps each assertion about the one cache it
+       names. */
+    breadthCalls: () => calls.filter((u) => u.includes("api/shows/search") && !u.includes("fallthrough=1")),
+    directoryCalls: () => calls.filter((u) => u.includes("api/shows/search") && u.includes("fallthrough=1")),
     episodeCalls: () => calls.filter((u) => u.includes("api/episodes/search")),
   };
 }

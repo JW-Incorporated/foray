@@ -3507,8 +3507,73 @@ function localShowMatches(query) {
 const SHOW_BREADTH_CACHE_MAX = 200;
 const showBreadthQueryCache = new Map();
 
+/* ---------- P-02: the DIRECTORY pass (docs/search-parity-plan.md) ----------
+
+   Its own cache, bounded and cleared by the same FIFO-with-wholesale-clear
+   rule as `showBreadthQueryCache` directly above. A SECOND map rather than a
+   second field on the first, because the two passes answer at different times
+   and either can fail alone: one shared entry would mean a directory failure
+   poisoned the catalogue answer for that query, or a catalogue answer arriving
+   first cached an entry the directory half would then never be allowed to fill.
+
+   THE ONLY GATE LEFT ON THE DIRECTORY, and it is a LENGTH floor rather than
+   anything about what the local pass found. Measured 2026-09-12 over 25
+   listener queries (docs/search-parity-plan.md §2.1's own three among them):
+
+     - Every one of the 25 gained rows from the directory after dedup:
+       minimum +2, median +17, maximum +25. There is no query where the local
+       pass was enough, so "ask when the local pass was thin" has nothing to
+       key on.
+     - An exact local match does not mean done. `radiolab` (1 exact local hit)
+       gains 18, `crime junkie` (2 exact) gains 24, `99% invisible` (1 exact)
+       gains 6 — and what arrives is the network and the spinoffs a listener is
+       reaching for ("The 99% Invisible Breakdown", "Hard Fork Live").
+     - STRONG-MATCH COUNT ANTI-CORRELATES WITH RELEVANCE at short lengths, so
+       a threshold on it is worse than none. `tim` returns TEN strong local
+       matches, all `prefix` (Timothy Keller Sermons, Timcast IRL, Tiny
+       Matters...) and NOT ONE of them is The Tim Ferriss Show, which Apple
+       returns at position 5. A threshold of 10 — the value already in this
+       file as `SHOW_PREFIX_UNDERDELIVERS_BELOW` — would suppress the one show
+       the listener meant, BECAUSE the local pass delivered plenty.
+     - The "strong, not substring" distinction P-02 proposed as a first cut is
+       INERT: across all 25 listener queries the local result contained ZERO
+       `substring` matches. Substring hits only appear at 1-3 characters (`h`:
+       97 of 450 rows), i.e. only at the lengths where you do not want to ask.
+
+   Which leaves the length floor, and 3 is where it belongs: at 1-2 characters
+   the local pass already returns 54-450 rows and Apple's answer is noise (`h`
+   -> "Handsome", "Happier"), while at 3 the directory is already load-bearing
+   (`tim`, `lex`). This is also the deck's own ">= 3 characters" line.
+
+   WHAT THIS COSTS, because the card says to say it rather than assume it is
+   free. Vercel -> Apple calls over that 25-query sample go from 2 to 25
+   (12.5x). `appleShowBucket` is 20 calls / 60 s and — per its own header — PER
+   WARM INSTANCE, not global, so this is not a cap and must not be reported as
+   one; the honest statement is that one warm instance refuses past ~6-10
+   active searches a minute and `api/shows/search.ts` now makes that refusal
+   harmless (the catalogue rows still come back) and non-compounding (a short
+   edge TTL instead of `no-store`). Client -> endpoint calls double, because
+   this is a separate request; see `runShowSearchCostly` for why it is separate. */
+const SHOW_DIRECTORY_MIN_QUERY_LENGTH = 3;
+const showDirectoryQueryCache = new Map();
+
 function showBreadthCacheKey(query) {
   return String(query || "").trim().toLowerCase();
+}
+
+/** P-02's dedup key for DIRECTORY rows. Lowercase, every run of
+    non-letter/non-digit to one space, trim.
+
+    MUST STAY CHARACTER FOR CHARACTER IDENTICAL to
+    `api/shows/appleShowSearch.ts:normaliseShowTitle`, and it is not left to
+    discipline: `test/show-search-fallthrough.test.js` reads both files and
+    compares the two expressions, the same way `test/show-search-ranking.test.js`
+    pins the bucket table against `backend/src/catalog/searchBreadthShows.ts`.
+    Unicode property escapes rather than `\W`, which is ASCII-only — "99%
+    Invisible" and "伊藤洋一のRound Up World Now！" both have to normalise
+    sensibly. */
+function normaliseShowTitle(title) {
+  return String(title || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 /* S-01's diagnostics call site (docs/search-plan.md, `player/diagnostic-log.js`'s
@@ -3614,6 +3679,7 @@ function runShowSearchCostly(query, myToken, local) {
     localHits: local.localShows.length,
     paintedMs: local.paintedMs,
     netMs: null, netHits: null,
+    dirMs: null, dirHits: null,
     epMs: null, epHits: null,
     ctaMs: null,
     path: null,
@@ -3625,7 +3691,7 @@ function runShowSearchCostly(query, myToken, local) {
      record, which was already true of the breadth half alone: `fetchApiJson`
      swallows errors to `null` but cannot invent an answer for a socket that
      simply hangs. */
-  let owed = 3;
+  let owed = 4;
   const settle = (patch) => {
     Object.assign(record, patch);
     if (--owed === 0) recordSearchDiagnostic(record);
@@ -3644,15 +3710,37 @@ function runShowSearchCostly(query, myToken, local) {
     }
   }
 
+  /* P-02 adds the second half of the dedup rule, and applies it ONLY to rows
+     Apple produced (`source === "apple"`, stamped by `mapAppleShow`).
+
+     WHY BY TITLE AT ALL, when `show_id` for an Apple row already IS its
+     `apple_collection_id`: Apple returns the same show under several
+     collection ids. Measured 2026-09-12, `lex fridman` -> THREE distinct ids
+     all titled "Lex Fridman Podcast". An id-only dedup shows the listener all
+     three. The normalised-title half is the half doing the work there, not
+     belt-and-braces.
+
+     WHY NOT TO CATALOGUE ROWS. Two genuinely different shows can share a
+     title ("The Daily" is not one show), and a catalogue row carries artwork,
+     a chart rank and an editorial note that a title collision would throw
+     away. The endpoint is authoritative about its own rows; it is only the
+     directory's answer that needs collapsing. Both sides apply the same rule
+     to the same rows — `api/shows/search.ts` merges Apple beneath the
+     catalogue server-side, and this merges whatever arrives beneath what is
+     already painted. */
   const mergeBreadth = (breadthShows) => {
     const seen = new Set(shown.map((s) => s.show_id));
+    const seenTitles = new Set(shown.map((s) => normaliseShowTitle(s.title)));
     const additions = [];
     for (const s of breadthShows) {
       // so showById can resolve it once a result is tapped, and so a richer
       // record (artwork, editorial note) replaces the index's title-only row
       state.breadthShowCache[s.show_id] = s;
       if (seen.has(s.show_id)) continue;
+      const title = normaliseShowTitle(s.title);
+      if (s.source === "apple" && title && seenTitles.has(title)) continue;
       seen.add(s.show_id);
+      if (title) seenTitles.add(title);
       additions.push(s);
     }
     if (!additions.length) return;
@@ -3669,17 +3757,16 @@ function runShowSearchCostly(query, myToken, local) {
       path: myToken !== showSearchToken ? "superseded" : "local+cache",
     });
   } else {
-    /* S-06(a): the CLIENT's half of the Apple fall-through gate. Ask for it
-       only when everything on the device found nothing — the curated 220, the
-       index's prefix pass, and (just above) the index's linear scan. The
-       endpoint has its OWN gate over the full 19,904 merged rows and will not
-       call Apple unless that is empty too; see `api/shows/search.ts`'s header
-       for why one gate is not enough. Two gates, and the flag is what makes
-       the client's intent explicit rather than implied by an empty result the
-       server cannot see. */
+    /* THE CATALOGUE PASS, and it no longer carries `&fallthrough=1` under any
+       condition — P-02 moved that to its own request below. This one exists to
+       be FAST: measured 118 ms median against the live endpoint, versus
+       381-561 ms on the two requests that actually performed a fall-through.
+       Folding the directory into this request would have delayed the
+       `chart_rank` 101-200 rows — the tier only this endpoint has — by 3-5x on
+       every search, to no benefit, since nothing about the catalogue answer
+       depends on Apple's. */
     const netStart = nowMs();
-    const fallthrough = shown.length === 0 ? "&fallthrough=1" : "";
-    fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25${fallthrough}`).then((data) => {
+    fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25`).then((data) => {
       const netMs = nowMs() - netStart;
       const superseded = myToken !== showSearchToken;
       const breadthShows = data?.shows || [];
@@ -3693,6 +3780,51 @@ function runShowSearchCostly(query, myToken, local) {
         path: superseded ? "superseded" : data ? "local+net" : "local-only",
       });
     }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
+  }
+
+  /* ---------- P-02: THE DIRECTORY PASS, a THIRD pass and a SECOND request ----------
+
+     The order a listener experiences is local (0.28 ms median, already
+     painted before this function ran) -> catalogue (118 ms) -> directory
+     (381-561 ms). All three merge into one growing list; none of them waits
+     for a later one.
+
+     WHY A SEPARATE REQUEST rather than `&fallthrough=1` on the pass above.
+     `api/shows/search.ts` awaits Apple before replying, so one merged request
+     would move the catalogue rows from 118 ms to 381-561 ms — worst case the
+     2 s Apple timeout — for every search. The local paint is untouched either
+     way, so this is not a keystroke regression in either design; it is the
+     `chart_rank` 101-200 tier arriving late, and there is no reason for it to.
+     Two requests also make this card's "a directory failure or timeout must
+     leave the local list exactly as it was" structural rather than argued:
+     the directory pass can only ever CALL `mergeBreadth`, which only ever
+     appends, and `fetchApiJson` resolves `null` on any failure — there is no
+     path from an Apple problem to a shorter list. The cost is one extra
+     endpoint invocation per uncached search; the two URLs are distinct edge
+     cache keys and both are `max-age=300`, so repeats are absorbed there.
+
+     THE FLOOR IS THE ONLY GATE, and `shown` is deliberately not consulted —
+     not its length, not its match strengths. The measurement that killed every
+     threshold is in `SHOW_DIRECTORY_MIN_QUERY_LENGTH`'s own comment above. */
+  const directoryKey = showBreadthCacheKey(query);
+  const cachedDirectory = showDirectoryQueryCache.get(directoryKey);
+  if (directoryKey.length < SHOW_DIRECTORY_MIN_QUERY_LENGTH) {
+    settle({ dirMs: null, dirHits: null }); // "this half did not run", a real state
+  } else if (cachedDirectory) {
+    if (myToken === showSearchToken) mergeBreadth(cachedDirectory);
+    settle({ dirMs: 0, dirHits: cachedDirectory.length });
+  } else {
+    const dirStart = nowMs();
+    fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25&fallthrough=1`).then((data) => {
+      const dirMs = nowMs() - dirStart;
+      const rows = data?.shows || [];
+      if (data) {
+        if (showDirectoryQueryCache.size >= SHOW_BREADTH_CACHE_MAX) showDirectoryQueryCache.clear();
+        showDirectoryQueryCache.set(directoryKey, rows);
+      }
+      if (myToken === showSearchToken && rows.length) mergeBreadth(rows);
+      settle({ dirMs, dirHits: data ? rows.length : null });
+    }); // fetchApiJson swallows network/parse errors to null — a failed directory pass adds nothing and removes nothing
   }
 
   renderEpisodeSearchResults(query, myToken, (epMs, epHits) => settle({ epMs, epHits }));

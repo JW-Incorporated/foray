@@ -1,19 +1,41 @@
-/* S-06 (docs/search-plan.md): the Apple fall-through gate, and a breadth show
- * page that survives a reload.
+/* S-06 (docs/search-plan.md) + P-02 (docs/search-parity-plan.md): the Apple
+ * DIRECTORY PASS, and a breadth show page that survives a reload.
  *
  * TWO HALVES OF ONE CARD, and they share a card because they share one
  * endpoint change (`api/shows/search.ts`). This suite is the CLIENT side of
  * both; the server side is `api/test/shows-search-apple.test.mjs`.
  *
- * (a) THE FALL-THROUGH GATE. Apple is asked only when nothing on the device
- *     matched. That gate is cheap — one URL parameter — and it is the one that
- *     protects a budget somebody else controls (<=20/min per warm instance,
- *     `api/episodes/appleBucket.ts`, with its own honest per-instance caveat).
- *     The endpoint has a SECOND gate over the full 19,904-row merged
- *     catalogue; neither is sufficient alone, and the reason is in that file's
- *     header. This suite proves the client's gate opens and shuts on the right
- *     condition, including the one S-03 changed: a show only the INDEX knows
- *     is a local hit, not a miss.
+ * (a) THE DIRECTORY PASS. S-06 shipped this as a LAST RESORT behind two gates:
+ *     the client asked only when its own local pass found nothing, and the
+ *     endpoint called Apple only when the full 19,904-row merged catalogue
+ *     also found nothing. P-02 replaced both with a SECOND PASS, and this
+ *     suite is where the reversal is pinned, because the old tests asserted
+ *     the old gate in both directions and a change that only edited the source
+ *     would have gone red for the right reason and been "fixed" by loosening
+ *     them.
+ *
+ *     WHAT REPLACED THE GATE, and every clause is a measurement rather than a
+ *     preference (docs/search-parity-plan.md §4 P-02, measured 2026-09-12 over
+ *     25 listener queries against the live endpoint and Apple's directory):
+ *
+ *       - The directory is asked on EVERY debounced search of >= 3 characters.
+ *         No threshold on how many local rows there were, and none on how
+ *         strong they were. All 25 queries gained rows (min +2, median +17,
+ *         max +25); there is no query where the local pass was enough.
+ *       - A count threshold is not merely unnecessary, it is BACKWARDS at the
+ *         lengths that matter. `tim` returns ten strong local matches and not
+ *         one of them is The Tim Ferriss Show, which Apple returns at #5. A
+ *         threshold of ten — the value already in app.js as
+ *         `SHOW_PREFIX_UNDERDELIVERS_BELOW` — suppresses exactly the show the
+ *         listener meant, BECAUSE the local pass delivered plenty.
+ *       - The local list paints first and never waits for either request, and
+ *         a directory pass that fails or times out leaves it exactly as it
+ *         was. Both are asserted below rather than argued.
+ *       - The directory's rows are deduped by `apple_collection_id` (which IS
+ *         the Apple row's `show_id`) AND by normalised title. Apple returns
+ *         the same show under several collection ids — `lex fridman` returns
+ *         three rows all titled "Lex Fridman Podcast" — so the title half is
+ *         the half doing the work on that query, not belt-and-braces.
  *
  * (b) LINKABILITY (#560 item 7, requirements §6.8). `state.breadthShowCache`
  *     is in-memory and populated only by a search response THIS session, so a
@@ -97,8 +119,17 @@ const INDEX_TSV = [
   "",
 ].join("\n");
 
-/** `{ ctx, byId, calls }` — `calls` is every URL the page asked for, in order. */
-function mount({ indexBody = INDEX_TSV, indexOk = true, breadth = [], showById = null, idDelayMs = 0 } = {}) {
+/** `{ ctx, byId, calls }` — `calls` is every URL the page asked for, in order.
+
+    P-02 split one show request into two, so the harness answers them
+    separately: `breadth` is what the CATALOGUE pass returns and `directory` is
+    what the pass carrying `fallthrough=1` returns. `directoryOk: false` makes
+    the directory request a non-ok response (which `fetchApiJson` resolves to
+    `null`), and `directoryDelayMs` holds it in flight. */
+function mount({
+  indexBody = INDEX_TSV, indexOk = true, breadth = [], directory = [],
+  directoryOk = true, directoryDelayMs = 0, showById = null, idDelayMs = 0,
+} = {}) {
   const calls = [];
   const byId = new Map(PAGE_IDS.map((id) => {
     const el = makeEl("div");
@@ -117,6 +148,17 @@ function mount({ indexBody = INDEX_TSV, indexOk = true, breadth = [], showById =
       const body = { id: "x", show: showById, degraded: false };
       const answer = { ok: true, status: 200, json: () => Promise.resolve(body) };
       return idDelayMs ? new Promise((r) => setTimeout(() => r(answer), idDelayMs)) : Promise.resolve(answer);
+    }
+    if (u.includes("api/shows/search") && u.includes("fallthrough=1")) {
+      if (!directoryOk) return Promise.resolve({ ok: false, status: 502, json: () => Promise.resolve({}) });
+      const answer = {
+        ok: true, status: 200,
+        json: () => Promise.resolve({
+          shows: directory, degraded: false,
+          fallthrough: { attempted: true, error: null, cached: false },
+        }),
+      };
+      return directoryDelayMs ? new Promise((r) => setTimeout(() => r(answer), directoryDelayMs)) : Promise.resolve(answer);
     }
     if (u.includes("api/shows/search")) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ shows: breadth, degraded: false }) });
@@ -175,72 +217,302 @@ function mount({ indexBody = INDEX_TSV, indexOk = true, breadth = [], showById =
     ctx, byId, calls, state, input, type,
     apiCalls: () => calls.filter((u) => u.includes("/api/")),
     indexCalls: () => calls.filter((u) => u.includes("show-index.tsv")),
+    catalogueCalls: () => calls.filter((u) => u.includes("api/shows/search") && u.includes("q=") && !u.includes("fallthrough=1")),
+    directoryCalls: () => calls.filter((u) => u.includes("api/shows/search") && u.includes("fallthrough=1")),
+    evalIn: (src) => vm.runInContext(src, ctx),
     results: () => byId.get("sh-results"),
     note: () => byId.get("sh-note"),
   };
 }
 
-test("the fall-through is NOT asked for when the device already answered", () => {
-  /* THE CARD'S OWN MUTATION LINE: "fire the fall-through on a non-empty local
-     result → red". This is the client half of a two-gate design (the server
-     half is in api/test/shows-search-apple.test.mjs) and it is the cheap gate:
-     it costs one URL parameter and it stops a query the device already
-     answered from ever reaching a 20/min budget.
+test("the directory IS asked when the device already answered — P-02's reversal, in one assertion", () => {
+  /* THIS TEST USED TO ASSERT THE OPPOSITE, and the inversion is the card.
+     S-06's version read "the fall-through is NOT asked for when the device
+     already answered" and its mutation line was "always append
+     `&fallthrough=1` → red". That gate is what docs/search-parity-plan.md §2.1
+     measured as "the largest share of still totally sucks": "radiolab" is one
+     exact local hit, and Apple holds 21 rows for it of which 18 are new after
+     dedup — Dolly Parton's America, Terrestrials, FM Fatale, the WNYC network
+     a listener typing "radiolab" is reaching for.
 
-     MUTATION: always append `&fallthrough=1`. Every search a listener does —
-     including every one that matched locally — asks the endpoint to consider
-     calling Apple, and this goes red. */
+     The catalogue pass must still fire, and must still NOT carry the flag:
+     that is the other half of P-02's shape (two requests, so the catalogue's
+     118 ms answer is not held behind Apple's 381-561 ms one).
+
+     MUTATION: restore `const fallthrough = shown.length === 0 ? "&fallthrough=1" : ""`
+     on the catalogue fetch and delete the directory pass. No request carries
+     the flag and this goes red — which is exactly the shape of the no-op this
+     card was at risk of shipping. */
   const m = mount();
   m.input.value = "radiolab";
   m.byId.get("sh-form").fire("submit");
-  const url = m.apiCalls().find((u) => u.includes("api/shows/search"));
-  assert.ok(url, "the breadth pass must still fire");
-  assert.ok(!url.includes("fallthrough"), `a local hit must not request the fall-through: ${url}`);
+  assert.strictEqual(m.catalogueCalls().length, 1, "the catalogue pass must still fire, unflagged");
+  assert.strictEqual(m.directoryCalls().length, 1,
+    `a local hit must STILL ask the directory: ${JSON.stringify(m.apiCalls())}`);
+  assert.ok(m.directoryCalls()[0].includes("q=radiolab"));
 });
 
-test("the fall-through IS asked for when nothing on the device matched", () => {
-  /* The other direction, so the test above cannot be satisfied by never
-     asking at all — which would leave S-06's whole feature dead and every
-     suite green.
+test("the directory is asked on a genuine local miss too, so the reversal did not simply swap which case is broken", () => {
+  /* The other direction, so the test above cannot be satisfied by a client
+     that asks the directory only when the local pass found something.
 
-     MUTATION: drop the `&fallthrough=1` append. A query for a show in neither
-     catalogue never reaches Apple and this goes red. */
+     MUTATION: gate the directory pass on `shown.length > 0`. A query for a
+     show in neither catalogue never reaches Apple and this goes red. */
   const m = mount();
   m.input.value = "zzqx-no-such-show-anywhere";
   m.byId.get("sh-form").fire("submit");
-  const url = m.apiCalls().find((u) => u.includes("api/shows/search"));
-  assert.ok(url.includes("fallthrough=1"), `a genuine local miss must request the fall-through: ${url}`);
+  assert.strictEqual(m.directoryCalls().length, 1,
+    `a genuine local miss must reach the directory: ${JSON.stringify(m.apiCalls())}`);
 });
 
-test("the index's own hits close the gate: a show only the index knows stops the fall-through", async () => {
-  /* The seam between S-03 and S-06, and the reason S-06 must not start before
-     S-03. "Deep History Hour" is in the index and not in `state.catalog.shows`
-     — so before S-03 this query was a zero-hit and would have asked Apple
-     about a show we already hold. With the index loaded it is a local hit and
-     the gate stays shut.
+test("an index-only hit no longer closes the gate: the seam S-03 opened is now asked about too", async () => {
+  /* The seam between S-03 and S-06, re-pointed by P-02 rather than deleted.
+     "Deep History Hour" is in the index and not in `state.catalog.shows`, so
+     S-06 treated it as a local hit and shut the gate. It is still a local hit
+     — the row paints from the index with no network at all, asserted below —
+     but it is no longer a reason to withhold the directory: the index is the
+     `chart_rank <= 100` cut of a US top-chart set, about 0.3% of what a
+     listener thinks they are searching (deck §2.3).
 
-     MUTATION: make `localShowMatches` ignore `showIndex`. The query becomes a
-     local miss again, `fallthrough=1` is appended, and this goes red. */
+     MUTATION: gate the directory pass on `shown.length === 0`. The index hit
+     suppresses the directory and the `directoryCalls()` assertion goes red. */
   const m = mount();
   m.input.fire("focus");
   await sleep(10);
   m.input.value = "deep history";
   m.byId.get("sh-form").fire("submit");
-  const url = m.apiCalls().find((u) => u.includes("api/shows/search"));
-  assert.ok(!url.includes("fallthrough"), `an index-only hit is still a hit: ${url}`);
+  assert.ok(m.results().innerHTML.includes("Deep History Hour"),
+    "the index hit still paints locally — that half of S-03 is untouched");
+  assert.strictEqual(m.directoryCalls().length, 1, "and the directory is asked anyway");
 });
 
-test("an Apple fall-through result is rendered and cached like any other breadth row", async () => {
+test("TEN strong local matches still ask the directory: the `tim` case, which every threshold gets wrong", async () => {
+  /* THE CASE THAT KILLS THE THRESHOLD P-02 WAS ORIGINALLY WRITTEN TO PICK, and
+     it is here because it is the one a future "let us add a cheap gate back"
+     change would break first, silently, while looking more efficient.
+
+     Measured 2026-09-12: `tim` returns TEN strong local matches over the
+     committed index, every one of them a `prefix` match (Timothy Keller
+     Sermons, Timcast IRL, Timcast News, Tiny Matters...), and NOT ONE of them
+     is The Tim Ferriss Show — which Apple returns at position 5. Strong-match
+     COUNT anti-correlates with relevance at short lengths. Ten is also exactly
+     `SHOW_PREFIX_UNDERDELIVERS_BELOW`, the constant already in app.js, so the
+     obvious cheap gate is the one that breaks this query.
+
+     The fixture reproduces the shape rather than the data: ten index rows that
+     all prefix-match "tim", none of which is the show the listener meant.
+
+     MUTATION: gate the directory pass on `shown.length < SHOW_PREFIX_UNDERDELIVERS_BELOW`,
+     or on any other count of local hits. Ten local rows suppress the request
+     and this goes red. */
+  const rows = [];
+  for (let i = 0; i < 10; i++) rows.push(`Timcast Filler ${i}\t200000${i}\t${i + 1}\t0`);
+  const m = mount({
+    indexBody: rows.concat([""]).join("\n"),
+    directory: [{
+      show_id: "863897795", title: "The Tim Ferriss Show", artwork_url: null,
+      artist_name: "Tim Ferriss", editorial_note: null, taxonomy_node_ids: [],
+      tier: "breadth", source: "apple",
+    }],
+  });
+  m.input.fire("focus");
+  await sleep(10);
+  m.input.value = "tim";
+  m.byId.get("sh-form").fire("submit");
+  const localRows = (m.results().innerHTML.match(/href="#\/show\//g) || []).length;
+  assert.ok(localRows >= 10, `fixture assumption: ten strong local matches, got ${localRows}`);
+  assert.strictEqual(m.directoryCalls().length, 1,
+    "ten strong local matches must not buy the listener a suppressed directory");
+  await sleep(20);
+  assert.ok(m.results().innerHTML.includes("The Tim Ferriss Show"),
+    "and the show the listener actually meant must arrive");
+});
+
+test("under three characters the directory is not asked at all, and at three it is", async () => {
+  /* THE ONLY GATE LEFT, and it is about the QUERY, never about what the local
+     pass found. Measured: at 1-2 characters the local pass already returns
+     54-450 rows and Apple's answer is noise (`h` -> "Handsome", "Happier"),
+     and those are also the only lengths at which the local pass produces
+     `substring` matches at all (97 of 450 rows for `h`; ZERO across all 25
+     real listener queries). At three the directory is already load-bearing:
+     `tim` and `lex` both need it.
+
+     Both directions in one test deliberately — a floor asserted only from
+     below is satisfied by never asking, and only from above by always asking.
+
+     MUTATION: drop the `directoryKey.length < SHOW_DIRECTORY_MIN_QUERY_LENGTH`
+     branch, or change the 3 to a 1. The two-character query fires a request
+     and the first assertion goes red. */
+  const m = mount();
+  assert.strictEqual(m.evalIn("SHOW_DIRECTORY_MIN_QUERY_LENGTH"), 3);
+  m.input.value = "le";
+  m.byId.get("sh-form").fire("submit");
+  assert.deepStrictEqual(m.directoryCalls(), [], "two characters must not spend an Apple slot");
+  assert.strictEqual(m.catalogueCalls().length, 1, "the catalogue pass is not floored — only the directory is");
+
+  m.input.value = "lex";
+  m.byId.get("sh-form").fire("submit");
+  assert.strictEqual(m.directoryCalls().length, 1, "three characters is where the directory starts earning its keep");
+});
+
+test("Apple's duplicate rows collapse by normalised title, not just by collection id", async () => {
+  /* Apple returns the same show under several `collectionId`s — measured
+     2026-09-12, `lex fridman` returns THREE rows all titled "Lex Fridman
+     Podcast" with three distinct ids, which is why its merged ceiling is 3-4
+     rows and not the 10 the card's first draft asked for. A dedup by
+     `apple_collection_id` alone surfaces all three, one under the other, which
+     is worse than the one row the listener had before this card.
+
+     Only rows Apple produced are title-deduped: a catalogue row carries
+     artwork, a chart rank and an editorial note that a title collision would
+     throw away, and two genuinely different shows can share a title. The
+     second half of this test is that boundary.
+
+     MUTATION: delete the `s.source === "apple" && title && seenTitles.has(title)`
+     check from `mergeBreadth`. Three identical rows render and the count goes
+     to 3. */
+  const dupes = ["1", "2", "3"].map((n) => ({
+    show_id: `1000000${n}`, title: n === "2" ? "Lex  Fridman Podcast!" : "Lex Fridman Podcast",
+    artwork_url: null, artist_name: "Lex Fridman", editorial_note: null,
+    taxonomy_node_ids: [], tier: "breadth", source: "apple",
+  }));
+  const m = mount({ directory: dupes });
+  m.input.value = "lex fridman";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(20);
+  const html = m.results().innerHTML;
+  const shown = dupes.filter((d) => html.includes(`href="#/show/${d.show_id}"`));
+  assert.strictEqual(shown.length, 0,
+    `the curated "Lex Fridman Podcast" already answers this; Apple's copies must collapse into it, got ${shown.map((s) => s.show_id)}`);
+  assert.ok(html.includes('href="#/show/lex-fridman-podcast"'), "and the local row is what survives");
+
+  /* The boundary: a CATALOGUE row sharing a normalised title is NOT dropped.
+     MUTATION: apply the title dedup to every row rather than to apple rows
+     only. This second half goes red. */
+  const m2 = mount({ breadth: [{
+    show_id: "555555", title: "Radiolab", artwork_url: null, editorial_note: null,
+    taxonomy_node_ids: [], tier: "breadth", chart_rank: 140,
+  }] });
+  m2.input.value = "radiolab";
+  m2.byId.get("sh-form").fire("submit");
+  await sleep(20);
+  assert.ok(m2.results().innerHTML.includes('href="#/show/555555"'),
+    "a catalogue row is authoritative about itself and must survive a title collision");
+});
+
+test("the local list paints before either request resolves, and a failed directory pass leaves it exactly as it was", async () => {
+  /* THE CARD'S TWO NON-NEGOTIABLES IN ONE TEST, because they are the same
+     claim from two sides: the directory can only ever ADD.
+
+     `mergeBreadth` appends and re-ranks; there is no path in it that removes a
+     row, and `fetchApiJson` resolves `null` on any non-ok response, so a 502,
+     a timeout and a rate-limited answer are the same thing here — nothing
+     arrives, nothing changes. The directory request is held 60 ms so the
+     "painted before" half is a real observation rather than a race.
+
+     MUTATION: have the directory branch call `paintShowResults(query, rows, myToken)`
+     instead of `mergeBreadth(rows)` — the shape the old server branch had, where
+     Apple REPLACED rather than merged. The failed pass blanks the list and the
+     final assertion goes red. */
+  const m = mount({ directoryOk: false, directoryDelayMs: 60 });
+  m.input.value = "radiolab";
+  m.byId.get("sh-form").fire("submit");
+  const painted = m.results().innerHTML;
+  assert.ok(painted.includes("Radiolab"), "the local row is on the page before anything resolves");
+  assert.strictEqual(m.results().hidden, false);
+  await sleep(120);
+  assert.strictEqual(m.results().innerHTML, painted,
+    "a failed directory pass must leave the local list byte for byte as it was");
+});
+
+test("the directory pass has its own hot-query cache, and a failure is not cached as an answer", async () => {
+  /* A SECOND cache rather than a second field on `showBreadthQueryCache`: the
+     two passes answer at different times and either can fail alone, so one
+     shared entry would let a directory failure poison the catalogue answer for
+     that query — or let a catalogue answer arriving first cache an entry the
+     directory half would then never be allowed to fill.
+
+     Same rule as the catalogue cache on failures (`test/show-search-cache.js`'s
+     own line): `fetchApiJson` swallows an error to `null`, which is
+     indistinguishable at the call site from "answered with nothing". Caching
+     it would turn one bad moment on a train into a permanently directory-less
+     session for that query.
+
+     MUTATION: drop the `showDirectoryQueryCache` lookup — the repeat fires a
+     second request and the first count goes to 2. Or move the cache write
+     outside `if (data)` — the failing mount below stops retrying and its count
+     stays at 1. */
+  const m = mount({ directory: [{
+    show_id: "777777", title: "A Directory Row", artwork_url: null, artist_name: null,
+    editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "apple",
+  }] });
+  m.input.value = "radiolab";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(20);
+  assert.strictEqual(m.directoryCalls().length, 1);
+  m.input.value = "  RADIOLAB ";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(20);
+  assert.strictEqual(m.directoryCalls().length, 1,
+    "a repeat — case and spacing normalised, as the catalogue cache does — must not re-ask Apple");
+  assert.ok(m.results().innerHTML.includes("A Directory Row"),
+    "and the cached rows must still be merged, not silently dropped");
+
+  const bad = mount({ directoryOk: false });
+  bad.input.value = "radiolab";
+  bad.byId.get("sh-form").fire("submit");
+  await sleep(20);
+  bad.input.value = "radiolab";
+  bad.byId.get("sh-form").fire("submit");
+  await sleep(20);
+  assert.strictEqual(bad.directoryCalls().length, 2, "a failure must not be remembered as an answer");
+});
+
+test("the two normalised-title rules are one rule: app.js and api/shows/appleShowSearch.ts agree character for character", () => {
+  /* The dedup happens on BOTH sides — the endpoint merges Apple beneath the
+     catalogue, the client merges whatever arrives beneath what is painted — so
+     two copies of the rule exist, in two languages, with no import between
+     them (the same situation `test/show-search-ranking.test.js` pins for the
+     bucket table against `backend/src/catalog/searchBreadthShows.ts`).
+     Discipline is not the mechanism: this reads both files.
+
+     Behaviour as well as source, because identical text that both did the
+     wrong thing would still be one rule: the shared battery below is the
+     measured cases — Apple's real duplicate ("Lex  Fridman Podcast!"), a title
+     that is mostly punctuation ("99% Invisible"), and a non-ASCII title, which
+     is why the classes are `\p{L}/\p{N}` and not `\W`.
+
+     MUTATION: change either copy — `\W` for `[^\p{L}\p{N}]`, or drop the
+     `.trim()`. The expressions differ and this goes red. */
+  const EXPR = String.raw`String(title || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()`;
+  const server = fs.readFileSync(path.join(ROOT, "api", "shows", "appleShowSearch.ts"), "utf8");
+  assert.ok(APP_SRC.includes(EXPR), "app.js must carry the rule verbatim");
+  assert.ok(server.includes(EXPR), "api/shows/appleShowSearch.ts must carry the same rule verbatim");
+
+  const m = mount();
+  const norm = (t) => m.evalIn("normaliseShowTitle")(t);
+  assert.strictEqual(norm("Lex  Fridman Podcast!"), norm("Lex Fridman Podcast"));
+  assert.strictEqual(norm("99% Invisible"), "99 invisible");
+  assert.strictEqual(norm("The Daily — NYT"), "the daily nyt");
+  assert.strictEqual(norm("伊藤洋一のRound Up World Now！"), "伊藤洋一のround up world now",
+    "a CJK title must not be shredded into single characters, which is what \\W would do");
+  assert.strictEqual(norm("!!!"), "", "an all-punctuation title normalises to empty, which is never a dedup key");
+});
+
+test("an Apple directory result is rendered and cached like any other breadth row", async () => {
   /* The endpoint returns Apple rows in the SAME `shows` array and the SAME row
      shape as catalogue rows, deliberately, so the client needs no new branch.
      This is what pins that claim from the client's side: the row renders, it
      links to `#/show/:id`, and it is seeded into `state.breadthShowCache` so
      tapping it resolves.
 
+     Driven through the DIRECTORY pass since P-02 (the `fallthrough=1` request),
+     which is the only pass Apple rows can arrive on.
+
      MUTATION: have the endpoint return Apple hits under a separate
      `apple_shows` key. Nothing renders and this goes red — which is the
      failure a "the server returns it" test alone would not catch. */
-  const m = mount({ breadth: [{
+  const m = mount({ directory: [{
     show_id: "999000111",
     title: "A Show Not In Our Catalogue At All",
     artwork_url: null,

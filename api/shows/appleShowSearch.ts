@@ -48,6 +48,34 @@ import { TtlCache } from "../episodes/searchCache";
  * global cap needs shared state (Redis/KV), which is new infra and out of
  * scope. Do not let this comment decay into "we cap Apple at 20/min".
  *
+ * (6) P-02 (docs/search-parity-plan.md): THE GATE THIS FILE'S NOTE (2) LEANS
+ * ON IS GONE, and the note above is left standing as the history rather than
+ * quietly rewritten. "Only on a GENUINE miss" was the whole argument for an
+ * 8 s timeout and a 20/min bucket; the directory is now a SECOND PASS asked on
+ * every show search of >= 3 characters, so both numbers had to be re-argued
+ * against measurement rather than inherited. What changed here:
+ *
+ *   - `APPLE_SHOW_TIMEOUT_MS` is 2 s, not 8 s. 8 s was an episode-feed budget
+ *     (`api/episodes/search.ts` fetches a show's live RSS; this fetches one
+ *     JSON document from one host). Measured 2026-09-12 over 25 listener
+ *     queries against `itunes.apple.com/search?entity=podcast`: 52 ms min,
+ *     266 ms median, 698 ms max. 2 s is ~3x the measured worst case and it
+ *     bounds what a typeahead's second pass can cost when Apple hangs.
+ *   - `mergeDirectoryShows` lives here rather than in the handler, because the
+ *     dedup rule is a property of Apple's answer: Apple returns the SAME show
+ *     under several `collectionId`s (`lex fridman` -> three rows all titled
+ *     "Lex Fridman Podcast", measured), so an id-only dedup surfaces all
+ *     three. The normalised-title half is not redundant belt-and-braces; it is
+ *     the half doing the work on that query.
+ *
+ * THE LIMITER IS STILL NOT A SAFETY NET, and under a second pass that is more
+ * visibly true, not less. See note (4): 20/min is per warm instance, so the
+ * effective ceiling is 20/min x however many instances Vercel is running. A
+ * real global cap is shared state (Redis/KV) and new infra. What P-02 could do
+ * without new infra is stop a trip from compounding, and that is in
+ * `search.ts`: a rate-limited answer now carries the catalogue rows and a short
+ * edge TTL instead of `shows: []` with `no-store`.
+ *
  * (5) `artistName` IS KEPT, and that is not incidental. §1.1 measured that our
  * own breadth catalogue has NO author/artist/host field on any of its 19,787
  * rows — the harvester calls Apple's `lookup`, which returns `artistName`, and
@@ -61,7 +89,10 @@ import { TtlCache } from "../episodes/searchCache";
 const APPLE_SEARCH_URL = "https://itunes.apple.com/search";
 /** Verbatim from `api/episodes/search.ts` — one User-Agent for this product. */
 const SHOW_USER_AGENT = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
-const APPLE_TIMEOUT_MS = 8_000;
+/** 2 s, and NOT `api/episodes/search.ts`'s 8 s — see note (6). Exported so
+    `api/test/shows-search-apple.test.mjs` can pin the number rather than the
+    behaviour, which is untestable without waiting for it. */
+export const APPLE_SHOW_TIMEOUT_MS = 2_000;
 
 /** See (3): our own instances of the shared classes, never a second copy of
     the logic, and never the episode path's singleton. */
@@ -120,6 +151,68 @@ export function mapAppleShow(hit: AppleShowRaw): AppleShowResult | null {
   };
 }
 
+/**
+ * P-02's dedup key, and the reason it is not just the id.
+ *
+ * Lowercase, then every run of non-letter/non-digit becomes one space, then
+ * trim. Character for character the rule `search-parity-plan.md` §4 P-02
+ * names, and the same `\p{L}/\p{N}` classes `search-engine.js`'s
+ * `SHOW_WORD_BREAK` and `searchBreadthShows.ts`'s copy of it use — Unicode
+ * property escapes rather than `\W`, because `\W` is ASCII-only and this
+ * catalogue is not ("99% Invisible", "伊藤洋一のRound Up World Now！").
+ *
+ * An empty result (a title that is all punctuation) is NEVER a dedup key: it
+ * would collapse every such title into one row. Callers check for it.
+ */
+export function normaliseShowTitle(title: string): string {
+  return String(title || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+/**
+ * P-02: merge the directory's answer BENEATH the catalogue's, deduped by
+ * `show_id` (which for an Apple row IS `apple_collection_id`, stringified by
+ * `mapAppleShow`) and by normalised title.
+ *
+ * THE ORDER IS THE CONTRACT: catalogue rows keep their positions and the
+ * directory's are appended after them, never interleaved and never in front.
+ * The client re-ranks everything it receives with `SearchEngine.rankShows`
+ * anyway, but what arrives first is what a caller reading this endpoint
+ * directly sees, and "the local one first" is the deck's §1.4 line.
+ *
+ * `limit` IS NOT APPLIED TO THE MERGED LIST, and that is deliberate rather
+ * than an oversight. `searchBreadthShows` has already cut its own answer to
+ * `limit`, so a merged cut at `limit` would return ZERO directory rows for
+ * exactly the queries where the catalogue filled the quota — measured
+ * 2026-09-12 at `limit=25`: `history`, `the daily`, `dark` and `true crime`
+ * all return 25 catalogue rows, and all four gain 17-20 rows from the
+ * directory. Cutting there would reinstate the old gate under a new name for
+ * every broad query. `limit` is therefore PER SOURCE on this path: at most
+ * `limit` catalogue rows and at most `limit` directory rows, so a response is
+ * bounded at `2 * limit` and a caller can still reason about its size.
+ */
+export function mergeDirectoryShows<T extends { show_id: string; title: string }>(
+  catalogueRows: readonly T[],
+  directoryRows: readonly AppleShowResult[]
+): (T | AppleShowResult)[] {
+  const ids = new Set<string>();
+  const titles = new Set<string>();
+  for (const row of catalogueRows) {
+    ids.add(row.show_id);
+    const t = normaliseShowTitle(row.title);
+    if (t) titles.add(t);
+  }
+  const merged: (T | AppleShowResult)[] = catalogueRows.slice();
+  for (const row of directoryRows) {
+    if (ids.has(row.show_id)) continue;
+    const t = normaliseShowTitle(row.title);
+    if (t && titles.has(t)) continue;
+    ids.add(row.show_id);
+    if (t) titles.add(t);
+    merged.push(row);
+  }
+  return merged;
+}
+
 export interface AppleShowSearchOutcome {
   shows: AppleShowResult[];
   /** `"rate-limited"`, a transport/parse message, or null on success. A
@@ -157,7 +250,7 @@ export async function appleShowSearch(
     `${APPLE_SEARCH_URL}?entity=podcast&limit=${encodeURIComponent(String(Math.min(limit, 200)))}` +
     `&term=${encodeURIComponent(query)}`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), APPLE_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), APPLE_SHOW_TIMEOUT_MS);
   try {
     const res = await fetchImpl(url, {
       headers: { "User-Agent": SHOW_USER_AGENT, Accept: "application/json" },
