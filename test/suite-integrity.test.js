@@ -535,7 +535,10 @@ const FLOORS = {
                                       BUCKETED (never raw — `chart_rank` is
                                       per-genre and from one harvest), and a
                                       determinism check over the real
-                                      catalogue in two input orders.
+                                      catalogue in two input orders. Plus
+                                      P-03b's REFUSAL: the author is not a
+                                      ranking signal, pinned on the real
+                                      Apple strings that measured worse.
        `show-index.test.js`           S-03's CLIENT half over the real
                                       committed data/show-index.tsv: the sort
                                       order the binary search depends on,
@@ -552,13 +555,13 @@ const FLOORS = {
      others kept the file's count up, which is precisely what a floor cannot
      see. */
   "test/show-search-live.test.js": 10,
-  "test/show-search-ranking.test.js": 10, // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
+  "test/show-search-ranking.test.js": 12, // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
   "test/show-index.test.js": 11,
   "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
   /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
      its rows render and cache like any other breadth row, and a breadth show page survives
      a cold open. Restored with the card after a merge took main's side on app.js. */
-  "test/show-search-fallthrough.test.js": 16, // P-02 (docs/search-parity-plan.md, 2026-09-12): the directory became a SECOND PASS instead of a last resort — the reversal itself, the `tim` case that kills every count threshold, the 3-character floor in both directions, Apple's duplicate-title collapse and its catalogue-row boundary, "a failed directory pass leaves the local list exactly as it was", the directory's own hot-query cache, and the two-language pin on the normalised-title rule; 10 -> 16 // client audit (2026-09-12): Apple's ranking survives the merge instead of being re-sorted A-Z; 7 -> 10
+  "test/show-search-fallthrough.test.js": 19, // P-03 (docs/search-parity-plan.md, 2026-09-12): the BYLINE — the half of "index the author" that survived measurement. A directory row renders its author, a row without one renders no byline element (the shared curated callers stay byte-identical), and the string is escaped rather than trusted; 16 -> 19 // P-02 (docs/search-parity-plan.md, 2026-09-12): the directory became a SECOND PASS instead of a last resort — the reversal itself, the `tim` case that kills every count threshold, the 3-character floor in both directions, Apple's duplicate-title collapse and its catalogue-row boundary, "a failed directory pass leaves the local list exactly as it was", the directory's own hot-query cache, and the two-language pin on the normalised-title rule; 10 -> 16 // client audit (2026-09-12): Apple's ranking survives the merge instead of being re-sorted A-Z; 7 -> 10
   /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
      #135): the Playlists results section under Shows/Episodes on the Shows
      page, plus the "Create a playlist about X" CTA. Floored new rather than

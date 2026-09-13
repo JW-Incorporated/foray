@@ -711,3 +711,70 @@ test("navigating away while the id lookup is in flight does not clobber the new 
   assert.equal(m.byId.get("view").innerHTML, "<p>somewhere else</p>",
     "the in-flight row must not repaint a page the listener has left");
 });
+
+/* ---------- P-03: the byline (docs/search-parity-plan.md, 2026-09-12) --------
+
+   These belong in THIS suite rather than the ranking one because the byline
+   exists because of P-02: after the directory became a second pass, most of
+   what a listener sees is rows APPLE chose, matched against an author index we
+   do not have. "andrew huberman" returns *Huberman Lab* first and nothing
+   visible on that row contains a word he typed. The byline is the row saying
+   why it is there — and it is the only half of P-03 that survived measurement,
+   the ranking half having been refused (see test/show-search-ranking.test.js's
+   last two tests and `rankShows`'s header).
+
+   Every string below is a real Apple `artistName`, measured 2026-09-12. */
+
+test("a directory row renders its author as a byline", () => {
+  /* MUTATION: drop the `${by ? ...}` branch from `showResultRow`, or gate it on
+     `show.source === "apple"` and pass a row without that field. The byline
+     disappears and this goes red. */
+  const m = mount();
+  const html = m.ctx.showResultRow({
+    show_id: "1545953110", title: "Huberman Lab", artwork_url: null,
+    artist_name: "Scicomm Media", tier: "breadth", source: "apple",
+  });
+  assert.ok(html.includes("Huberman Lab"), "the title still renders");
+  assert.ok(html.includes('class="show-result-by">Scicomm Media<'),
+    "the author must render in its own element, or the row cannot explain itself");
+});
+
+test("a row with no author renders no byline element at all", () => {
+  /* THE SHARED-CALLER GUARANTEE. `showResultRow` is also `similarShowsSection`'s
+     and A3.5's row, and every curated show reaches it — no committed catalogue
+     row has an author (that is P-03a's whole point), so an unconditional byline
+     would put an empty grey line under all 220 of them.
+
+     A WHITESPACE-ONLY AUTHOR IS NO AUTHOR, tested explicitly: `artist_name`
+     comes off a third-party API, and `by` is trimmed rather than truthiness-
+     checked precisely so " " cannot render a blank line.
+
+     MUTATION: change the `by` guard to `show.artist_name` untrimmed, or emit the
+     span unconditionally. The second assertion goes red. */
+  const m = mount();
+  const curated = m.ctx.showResultRow({
+    show_id: "lex-fridman-podcast", title: "Lex Fridman Podcast", artwork_url: null,
+  });
+  assert.ok(!curated.includes("show-result-by"),
+    "a curated row has no author and must render exactly as it did before P-03");
+  assert.ok(!m.ctx.showResultRow({ show_id: "x", title: "X", artist_name: "   " }).includes("show-result-by"),
+    "a whitespace-only artist_name is not an author");
+});
+
+test("an author string is escaped, not trusted", () => {
+  /* `artist_name` is attacker-controllable in the only sense that matters: it
+     is whatever an arbitrary podcast publisher typed into Apple's directory,
+     and it now reaches innerHTML. It goes through the same `esc` the title
+     does. Not hypothetical for this field — the measured long tail already
+     contains pipes and angle-adjacent punctuation ("Hosted By: Amanda McKinney
+     | Andrew Huberman").
+
+     MUTATION: interpolate `by` instead of `esc(by)`. The raw tag appears and
+     this goes red. */
+  const m = mount();
+  const html = m.ctx.showResultRow({
+    show_id: "1", title: "A Show", artist_name: '<img src=x onerror=alert(1)>',
+  });
+  assert.ok(!html.includes("<img src=x"), "an author string must never reach innerHTML as markup");
+  assert.ok(html.includes("&lt;img src=x"), "it must render as escaped text instead");
+});

@@ -136,6 +136,25 @@ async function main() {
           artwork_url: r.artworkUrl600 ?? null,
           apple_genre: r.primaryGenreName ?? null,
           apple_genre_ids: r.genreIds ?? [],
+          /* P-03a (docs/search-parity-plan.md). THE ONLY LINE IN THIS CARD THAT
+             CHANGES WHAT WE HOLD. `lookup` has always returned `artistName` in
+             this very response object and this projection has always dropped it,
+             so the repo re-fetches at query time (`api/shows/appleShowSearch.ts`)
+             a field it threw away at harvest. Measured 2026-09-12 on a 20-id
+             `lookup` of shows taken from the committed index: 20/20 carried a
+             non-empty `artistName`. Zero new calls, zero new quota — same URL,
+             same batch, same throttle.
+
+             IT IS APPLE'S PUBLISHER FIELD, NOT A HOST FIELD, and whoever uses it
+             must know that: measured over the same 20, it is the person for
+             "Joe Rogan"/"Alex Cooper" and the network for "WNYC Studios"/
+             "Scicomm Media"/"iHeartPodcasts". It is also SEO-stuffed on the long
+             tail ("Hosted By: Amanda McKinney | Andrew Huberman | ..."), which is
+             why P-03b refuses to rank on it — see search-engine.js's `rankShows`.
+
+             NULL, NOT "": an absent author and an empty one are the same fact and
+             the rest of this row literal already says so with `?? null`. */
+          artist_name: r.artistName ?? null,
           episode_count: r.trackCount ?? null,
           explicit: r.collectionExplicitness === "explicit",
           chart_genre_id: chart.genreId ?? null,

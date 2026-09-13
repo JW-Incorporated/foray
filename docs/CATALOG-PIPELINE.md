@@ -71,6 +71,18 @@ to curated by simply appearing in catalog.json — no migration.
    `data/show-index.tsv` through its build step, not through a code change.
 6. **Dedupe discipline**: collectionId-unique within the file; curated-tier overlap
    is allowed and expected (marked `in_curated: true` for joins).
+7. **Author** (added 2026-09-12, P-03a of `docs/search-parity-plan.md`):
+   `artist_name`, Apple's `artistName` off the same `lookup` response the row is
+   already built from. It was in that object from the first harvest and the row
+   literal simply never read it, so the repo re-fetched at query time
+   (`api/shows/appleShowSearch.ts:146`) a field it had discarded at harvest.
+   **Every row committed before 2026-09-12 lacks it** — the field arrives on the
+   next re-harvest, not retroactively, and nothing may assume it is present.
+   It is Apple's **publisher** field, not a host field: measured over 20 ids from
+   the committed index it is the person for *Joe Rogan* and *Alex Cooper* and the
+   network for *WNYC Studios*, *Scicomm Media*, *iHeartPodcasts*. Rule 5 still
+   holds — this is a server-side field, and whether any projection of it ever
+   reaches `data/show-index.tsv` is P-03b's decision, not the harvest's.
 
 ## The harvester (`tools/harvest-catalog.mjs`)
 

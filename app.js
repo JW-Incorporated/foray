@@ -3267,11 +3267,35 @@ function showIntroPopupOnce() {
 /* One result row per matched show -- deliberately not epRow/miniCard: a show
    search result has no play control, duration, or star (it names a SHOW, not
    a playable item), and links straight to the page Stage 1 already built. */
+/* P-03 (docs/search-parity-plan.md): THE BYLINE. The only half of "index the
+   author and search it" that survives measurement — see `rankShows`'s header in
+   search-engine.js for why the ranking half was built, measured against the live
+   directory over 20 host-name queries, and refused.
+
+   WHAT IT IS FOR. After P-02 the list is mostly rows the DIRECTORY chose, and
+   Apple matches on an author index we do not have. So a listener who types
+   "andrew huberman" gets *Huberman Lab* at the top of a list where nothing
+   visible on the row contains a word they typed, and the rows under it look
+   like noise. The byline is the row saying why it is there.
+
+   GATED ON THE FIELD, NOT ON `source === "apple"`, deliberately. Today only
+   `mapAppleShow` populates `artist_name` (no committed catalogue row has an
+   author — that is P-03a's whole point), so the gate is self-limiting now AND
+   correct the day a re-harvest gives breadth rows one, with no second edit here.
+
+   `showResultRow` is shared with `similarShowsSection` and A3.5's "shows we
+   vouch for", both of which render curated rows: those carry no `artist_name`,
+   so they are byte-identical to before. `test/show-search-ranking.test.js` pins
+   both directions. */
 function showResultRow(show) {
   const art = showArtworkUrl(show);
+  const by = typeof show?.artist_name === "string" ? show.artist_name.trim() : "";
   return `<a class="show-result" href="#/show/${encodeURIComponent(show.show_id)}">
     ${art ? `<img class="show-result-art" src="${esc(safeUrl(art))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
-    <span class="show-result-title">${esc(show.title)}</span>
+    <span class="show-result-text">
+      <span class="show-result-title">${esc(show.title)}</span>
+      ${by ? `<span class="show-result-by">${esc(by)}</span>` : ""}
+    </span>
   </a>`;
 }
 

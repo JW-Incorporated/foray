@@ -321,3 +321,63 @@ test("the server's bucket table is THIS file's bucket table, constant for consta
     "both sides must split words the same way, or the word-start bucket means two different things"
   );
 });
+
+/* ---------- P-03b: the author is NOT a ranking signal (2026-09-12) ----------
+
+   These two are a REFUSAL PINNED AS A TEST, which is unusual enough to say why.
+   `docs/search-parity-plan.md` P-03 asks for an author bucket ranked just below
+   a title hit of the same strength. It was built and measured against the live
+   directory over 20 host-name queries (see that card's amended text and
+   `rankShows`'s header in search-engine.js) and it made the answer worse on
+   every summary statistic. The next agent to read the card will have the same
+   good idea, so the measurement has to be enforceable and not merely written
+   down: both fixtures below are the REAL Apple strings that produced the
+   regression, so a re-implementation cannot pass by being "smarter about noise".
+
+   MUTATION FOR BOTH: in `rankShows`, fall back to
+   `showMatchBucket(show.artist_name, q)` when the title does not match, and
+   bucket it above `SHOW_MATCH_UNMATCHED`. Both go red. */
+
+test("a row matched only on artist_name is NOT promoted above a title match", () => {
+  /* The measured `tim ferriss` case. All three of Tim Ferriss's AUDIOBOOKS
+     carry artist "Tim Ferriss" exactly, so an author-exact bucket (0) outranks
+     *The Tim Ferriss Show*'s title word-start bucket (2) and the listener's
+     show falls from 3rd to 6th. An exact author hit is routinely the wrong
+     artefact by the right person, which is the whole objection. */
+  const apple = (title, artist_name) => ({ show_id: title, title, artist_name, tier: "breadth", source: "apple" });
+  const got = SearchEngine.rankShows("tim ferriss", [
+    apple("CØCKPUNCH", "Tim Ferriss"),
+    apple("Tools of Titans", "Tim Ferriss"),
+    apple("The Tim Ferriss Show", "Tim Ferriss: Bestselling Author, Human Guinea Pig"),
+  ]).map((s) => s.title);
+
+  assert.strictEqual(got[0], "The Tim Ferriss Show",
+    "the show whose TITLE matches must come first; an author-only row may never outrank it");
+  assert.deepStrictEqual(got.slice(1), ["CØCKPUNCH", "Tools of Titans"],
+    "the author-only rows stay unmatched, and unmatched rows keep the order the directory sent them in");
+});
+
+test("a noisy artist_name cannot displace the show the listener meant", () => {
+  /* The measured `andrew huberman` case, and the reason the field cannot be
+     trusted even when it does match. Apple's artist string is SEO-stuffed on
+     the long tail: three unrelated shows list "Andrew Huberman" in theirs,
+     while *Huberman Lab* itself is published by "Scicomm Media" and so never
+     matches at all. Bucketing the author promotes all three above it — the
+     field the listener is searching by is not the field we would be searching.
+
+     THE LIST IS IN APPLE'S ORDER, WHICH IS THE POINT: every row here is
+     unmatched by title, so this pins that `rankShows` leaves the directory's
+     own ranking alone rather than substituting one built on `artist_name`. */
+  const apple = (title, artist_name) => ({ show_id: title, title, artist_name, tier: "breadth", source: "apple" });
+  const asAppleSentThem = [
+    apple("Huberman Lab", "Scicomm Media"),
+    apple("High Capacity", "Michelle Grosser – Inspired by Andrew Huberman"),
+    apple("The Unapologetic Entrepreneur", "Hosted By: Amanda McKinney | Andrew Huberman"),
+    apple("Accountable", "Hosted By: Amanda McKinney | Andrew Huberman"),
+  ];
+  assert.deepStrictEqual(
+    SearchEngine.rankShows("andrew huberman", asAppleSentThem).map((s) => s.title),
+    asAppleSentThem.map((s) => s.title),
+    "no row matches by title, so the directory's order must survive the merge untouched"
+  );
+});

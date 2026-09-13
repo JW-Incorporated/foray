@@ -90,6 +90,29 @@ throw it away**: `api/shows/appleShowSearch.ts:115` already keeps
 harvester calls Apple's `lookup`, which returns `artistName`. So a host search
 works only by the accident of the host being named in the title.
 
+> **AMENDED 2026-09-12 while implementing P-03, and read this before writing
+> any code against the paragraph above.** "We have the data and we throw it
+> away" is true of the *product* and false of the *disk*, and the difference is
+> the whole card. We throw it away **at harvest**, not at index build: nothing
+> committed has an author at all. Enumerated key by key across every row —
+> `data/catalog-breadth.json` (19,787 shows, 17 keys) and `data/catalog.json`
+> (220 shows, 13 keys) have **zero** fields matching
+> `artist|author|host|creator|publisher|owner|producer|network`. The cause is
+> one line never written: `tools/harvest-catalog.mjs`'s row literal projects
+> seven fields off Apple's `lookup` response and never reads `r.artistName`,
+> which is sitting in the same object. `appleShowSearch.ts:115` keeps the field
+> because it calls Apple **at query time** — that proves Apple has it, not that
+> we harvested it. An agent reading the unamended paragraph goes looking for a
+> column to project and finds nothing.
+>
+> Apple does hold it universally: measured 2026-09-12, a single `lookup` of 20
+> ids taken from the committed index returned a non-empty `artistName` on
+> **20/20**. It is a **publisher** field, not a host field — the person for
+> *Joe Rogan* and *Alex Cooper*, the network for *WNYC Studios*, *Scicomm
+> Media*, *iHeartPodcasts* — and on the long tail it is SEO-stuffed
+> ("Hosted By: Amanda McKinney | Andrew Huberman | ..."). That distinction is
+> not pedantry; it is what killed the ranking half of this card. See P-03b.
+
 ### 2.3 The local index is half of a small catalogue
 10,113 rows (`wc -l data/show-index.tsv`), from a `chart_rank <= 100` cut chosen
 on a measured budget (`tools/build-show-index.mjs:132-137`: the full 19,904 is
@@ -120,6 +143,26 @@ budget that currently buys chart ranks 101–200. Episodes ride the same two-pas
 shape. Nothing here is novel — it is the mechanism the S-deck's own §0 described
 and did not finish.
 
+> **AMENDED 2026-09-12 (P-03):** the clause "paid for by the same budget that
+> currently buys chart ranks 101–200" is wrong twice and it points the next
+> agent at the wrong gate.
+>
+> 1. **Nothing buys ranks 101–200 today.** The committed cut is
+>    `chart_rank <= 100`. There is no spent budget to reclaim; the column would
+>    be paid for by ranks *below* 100, not above it.
+> 2. **The 400 KB gzip budget is not the binding one.**
+>    `tools/mobile/prepare-webdir.mjs:606` puts a **512 KB RAW** per-file budget
+>    on `data/show-index.tsv`, enforced in `buildPlan` and throwing before
+>    `MAX_BYTES` ever applies. Measured on the committed file 2026-09-12:
+>    **435.9 KB raw = 85.1 % of that gate, 76.1 KB of headroom** (and 201.1 KB
+>    gzip = 50.3 % of 400 KB, which is why gzip looks roomy and is not the
+>    constraint). An author column adds roughly 189 KB of raw text — about
+>    **2.5× the headroom that exists** — so a PR can pass this deck's stated
+>    acceptance and still fail the mobile build. That file's header pre-refuses
+>    the obvious workaround: *"It is not a knob to turn — lower the cut
+>    instead."* So the real trade is the column against **chart ranks ~76–100**,
+>    and it belongs to P-04.
+
 ---
 
 ## 4. Cards
@@ -148,16 +191,70 @@ locally in under a millisecond; the rate limiter's behaviour under the new call
 volume is measured and named. **Watch.** This raises directory call volume —
 measure it and say what it costs before assuming it is free.
 
-### P-03 · Index the author, and search it — **H · M**
-**Ask.** Add an author column to `data/show-index.tsv` and to the client's
-matcher, ranked below a title hit of the same strength (a show whose *title*
-matches beats a show whose *host* matches). Source it from what the harvester
-already stores; `appleShowSearch.ts:115` proves the field exists upstream. Say
-what it costs in bytes and re-argue the budget in §2.3's terms — an author column
-and chart ranks 101–200 are competing for the same ~200 KB, and the measurement
-should decide, not the order the cards were written in.
-**Done when.** A host's name finds their show when the title does not contain it;
-the byte cost is measured against the budget and stated.
+### P-03 · Index the author, and search it — **H · M — SPLIT 2026-09-12, see P-03a/b**
+**Ask (as written).** Add an author column to `data/show-index.tsv` and to the
+client's matcher, ranked below a title hit of the same strength (a show whose
+*title* matches beats a show whose *host* matches). Source it from what the
+harvester already stores; `appleShowSearch.ts:115` proves the field exists
+upstream. Say what it costs in bytes and re-argue the budget in §2.3's terms — an
+author column and chart ranks 101–200 are competing for the same ~200 KB, and the
+measurement should decide, not the order the cards were written in.
+
+**What happened.** Both halves were attempted. The card rests on a premise that
+is false at rest (see §2.2's amendment: no committed row has an author), so the
+column half cannot be written at all until a re-harvest. The matcher half *was*
+written, against the directory rows that do carry `artist_name`, and measurement
+said to throw it away. What shipped is the third thing nobody asked for and the
+measurement made obvious: **show the author, don't rank on it.** Split below.
+
+### P-03a · Keep `artistName` at harvest — **S — DONE 2026-09-12, `feat/search-parity`**
+**Ask.** One field in `tools/harvest-catalog.mjs`'s row literal. Apple's `lookup`
+has returned `artistName` in the same response object since the first harvest and
+the projection never read it, so the repo re-fetches at query time a field it
+discarded at harvest. Zero new calls, zero new quota, no key, $0.
+**Done.** Shipped as `artist_name`, documented as requirement 7 in
+`docs/CATALOG-PIPELINE.md`. **It is not retroactive** — every committed row still
+lacks the field, and nothing may assume it is present until a re-harvest runs
+(~12 min full, and it also refreshes a harvest dated 2026-07-09). **This does not
+unblock P-03b by itself; it is the prerequisite.**
+
+### P-03b · The author column in the index — **HELD, folded into P-04**
+**Why held, measured rather than deferred on taste.**
+1. **It fails the build, not the budget.** 512 KB raw gate, 76.1 KB of headroom,
+   ~189 KB of author text. See §3's amendment. The only in-policy fix is cutting
+   shows, which is P-04's question, not this card's.
+2. **The ranking rule the card specifies makes search worse.** Built and measured
+   2026-09-12 against the live directory over 20 host-name queries. Target show
+   in the top 5: **16/20 with no author bucket, 14/20 with the card's "half a
+   step below a title hit of the same strength", 15/20 with the stricter "below
+   every title hit"**. Top-1: 6 / 4 / 5. Both readings of the card's own sentence
+   lose to doing nothing. Two reasons, both about the field rather than the rule:
+   `artistName` is SEO-stuffed on the long tail (`andrew huberman` promotes three
+   shows whose artist string name-drops him over *Huberman Lab*, published by
+   "Scicomm Media"), and where honest it is a *publisher* field, so an exact
+   author hit is the wrong artefact by the right person (`tim ferriss` promotes
+   *CØCKPUNCH*, *Tools of Titans* and *Tribe of Mentors* over *The Tim Ferriss
+   Show*). Pinned as a refusal in `test/show-search-ranking.test.js`.
+3. **P-02 already answers the queries this card was written for.** All 20 host
+   names were run against the live `itunes.apple.com/search` the fall-through
+   uses: **19 of 20 return the right show** (only `sarah koenig` is absent at
+   limit=25), 11 of them at rank 1. The card's premise — "a host's name finds
+   their show when the title does not contain it" — is *already true on `main`
+   as of P-02* for 19/20, by a mechanism that costs no bytes.
+**So the open question is P-04's, and it is one trade rather than two halves:**
+*the author column makes the long tail findable by the person who makes it, and
+costs the ~2,500 least-popular shows in the index; the shows you would actually
+test are already handled by the directory pass. Tail, or rows?*
+
+### P-03c · Show the author — **S — DONE 2026-09-12, `feat/search-parity`**
+**Ask.** After P-02 most of the list is rows *Apple* chose, matched against an
+author index we do not have — so "andrew huberman" returns *Huberman Lab* first
+and nothing visible on the row contains a word he typed. `showResultRow` now
+renders `artist_name` as a byline when a row has one. Gated on the field rather
+than on `source === "apple"`, so it lights up for catalogue rows the day P-03a's
+re-harvest lands, with no second edit.
+**Done when.** A directory row explains itself; curated rows (which have no
+author) render exactly as before. Pinned in `test/show-search-fallthrough.test.js`.
 
 ### P-04 · Decide what the local index is for — **M · S — needs P-02 and P-03 measured**
 **Ask.** Once the directory answers every query (P-02), the local index stops
@@ -197,6 +294,15 @@ P-01 immediately and independently — he cannot judge anything without it.
 P-02 is the card; it is most of the win and it is a condition, not an
 architecture. P-03 in parallel with it. P-04 only after both are measured.
 P-05 after shows are right, never before. P-06 alongside. P-07 closes.
+
+**AMENDED 2026-09-12.** P-03a and P-03c are done and neither needed a decision.
+P-03b is **held and folded into P-04**, which is now the only open question in
+this deck's second half — and it cannot be answered until a re-harvest has run
+(P-03a made the harvester keep the field; it did not backfill the 19,787 rows).
+So: **re-harvest, then P-06, then P-04 with real numbers.** P-04's own text
+already says it may conclude the current cut is right; the author column is a
+cut question, and putting it there means the founder sees one trade instead of
+two half-trades in different cards.
 
 ## 6. Rules for the agents
 
