@@ -36,6 +36,15 @@
  *     work back on the keystroke tick #662 just cleared.
  * 14. A fresh query with no local match clears the previous query's rows.
  *
+ * AND SINCE THE ADVERSARIAL REVIEW OF 2026-09-12, the three defects it found
+ * in that tier, each reproduced against this harness before it was fixed:
+ * 15. Painting the tier may not write over the session snapshot of a REAL
+ *     stored episode (defect 1 — the one that corrupted saved data).
+ * 16. An episode saved from a SHOW PAGE dedups against the endpoint's copy of
+ *     it, which it structurally could not before (defect 4).
+ * 17. The show index landing mid-query does not clear the episode section
+ *     (defect 5, the half that was new on this branch).
+ *
  * Every test names the mutation that kills it, per CLAUDE.md.
  */
 
@@ -502,4 +511,189 @@ test("a fresh query with no local match clears the previous query's rows rather 
   vm.runInContext("onShowSearchInput('zzqx')", m.ctx);
   assert.strictEqual(m.container().hidden, true);
   assert.strictEqual(m.container().innerHTML, "");
+});
+
+/* ====================================================================
+   ADVERSARIAL REVIEW, 2026-09-12. Three defects, each reproduced against
+   this harness first and each fixed here. The point of these three is not
+   that the bugs were fixed — it is that they cannot come back.
+   ==================================================================== */
+
+/** The shape `fullCatalogueRowToEpRowItem` (app.js) mints for an episode saved
+    from a show page or the full-catalogue list: `${show_id}--${guid}`, where
+    the suffix is the feed's REAL guid. Every test below that is about a
+    show-page save uses this id, because it is the id the app actually writes. */
+const SHOW_PAGE_SAVED = {
+  cp_saved: {
+    "lex-fridman-podcast--abc-123-guid": {
+      id: "lex-fridman-podcast--abc-123-guid",
+      show: "Lex Fridman Podcast",
+      title: "Elon Musk: Neuralink",
+      hook: "A conversation.",
+      artwork_url: "https://img.test/lex.jpg",
+      topics: ["technology", "science"],
+      release_date: "2026-01-02",
+      audio_url: "https://cdn.test/lex.mp3",
+      duration_min: 180,
+      duration_sec: 10800,
+      explicit: false,
+      apple_collection_id: 1434243584,
+      saved_at: "2026-09-01T00:00:00Z",
+    },
+  },
+};
+
+test("a search paint never writes over the session snapshot of a real stored episode", async () => {
+  /* DEFECT 1 of the adversarial review, and the worst of the five because it
+     corrupted the listener's own data rather than only the screen.
+
+     `rowFor` passed `ep._localId` — the REAL storage id — into `snapshot()`,
+     and the object it passed was the ENDPOINT's row shape, which has no
+     `artwork_url`, no `topics`, no `release_date`, no `explicit` and no
+     `apple_*`. `snapshot()` ends `state.itemIndex[id] = snap`, so ONE
+     KEYSTROKE, with no network and no debounce, replaced a starred, in-pool
+     episode's artwork and topics with nulls. `rowsForIds` then rendered the
+     degraded copy in Up Next and the Library for the rest of the session, and
+     `toggleStar` wrote it into `cp_saved` at the next star toggle — at which
+     point it was on disk and `boostTopics` was being fed `[]`.
+
+     THE ASSERTIONS ARE THE STORED RECORD, not the painted row, deliberately:
+     a row that happened to render artwork while `itemIndex` rotted would be
+     the same bug one repaint later.
+
+     MUTATION: collapse `rowFor` back to one branch —
+     `const id = ep._localId || \`apple:...\`` followed by the shared
+     `snapshot(id, {...})`. The artwork, topics and release_date assertions all
+     go red, and so does the queue row's.
+
+     MUTATION 2: keep the branch but pass the projection instead of
+     `ep._localSnapshot`. Same three failures — which is the point: the branch
+     alone is not the fix, the SOURCE it snapshots from is. */
+  const m = mount({ storage: SHOW_PAGE_SAVED });
+  m.state.catalog = { shows: [] };
+  const ID = "lex-fridman-podcast--abc-123-guid";
+  const rich = SHOW_PAGE_SAVED.cp_saved[ID];
+  m.state.itemIndex[ID] = { ...rich };
+  m.state.poolIds = new Set([ID]);
+
+  vm.runInContext("onShowSearchInput('neuralink')", m.ctx);
+
+  const after = m.state.itemIndex[ID];
+  assert.strictEqual(after.artwork_url, rich.artwork_url, "the snapshot must keep its artwork through a search paint");
+  assert.deepStrictEqual(after.topics, rich.topics, "and its topics, which feed boostTopics on the next star");
+  assert.strictEqual(after.release_date, rich.release_date, "and its release date, which the row itself renders");
+  assert.strictEqual(after.explicit, rich.explicit, "and its explicit flag, which the badge reads");
+
+  /* The surface that made it visible: anything in `poolIds` renders from
+     `state.itemIndex`, so Up Next and the Library screen read back whatever
+     the paint left there. */
+  const row = vm.runInContext(`rowsForIds([${JSON.stringify(ID)}])[0]`, m.ctx);
+  assert.strictEqual(row.state, "live");
+  assert.strictEqual(row.item.artwork_url, rich.artwork_url, "the Up Next / Library row must not render the degraded copy");
+});
+
+test("an episode saved from a SHOW PAGE dedups against the endpoint's copy of it", async () => {
+  /* DEFECT 4. `episodeDedupKey` uses two disjoint namespaces — `g:<guid>` when
+     a row has a guid, `t:<title>|<show>` when it does not — and
+     `localEpisodeRow` only ever recovered a guid from an `apple:<show>:<guid>`
+     id. Every episode saved from a show page has id `<show_id>--<guid>`
+     (`fullCatalogueRowToEpRowItem`), so it yielded `guid: null` and keyed by
+     TITLE, while the endpoint's copy — endpoint rows always carry a guid —
+     keyed by GUID. A `t:` key can never equal a `g:` key, so the listener saw
+     the episode they had starred twice: once in the local tier with a filled
+     star, once under "from Apple's index" with an empty one and a different
+     minted id, so starring THAT copy made a second `cp_saved` entry for the
+     same episode.
+
+     MUTATION: restore `guid: wasApple ? parts.slice(2).join(":") : null` in
+     `localEpisodeRow` (i.e. drop the `--` branch of `localEpisodeIdentity`).
+     The row renders twice and the count assertion goes red. */
+  const m = mount({
+    storage: SHOW_PAGE_SAVED,
+    fetchImpl: apiRouter({
+      episodes: () => jsonResponse({
+        episodes: [
+          { show_id: "lex-fridman-podcast", show_title: "Lex Fridman Podcast", title: "Elon Musk: Neuralink", guid: "abc-123-guid", audio_url: "https://cdn.test/lex.mp3", duration_seconds: 10800 },
+          { show_id: "lex-fridman-podcast", show_title: "Lex Fridman Podcast", title: "Another Conversation", guid: "def-456-guid", audio_url: "https://cdn.test/other.mp3", duration_seconds: 7200 },
+        ],
+        source: ["apple"],
+      }),
+    }),
+  });
+  m.state.catalog = { shows: [] };
+  vm.runInContext("renderShowSearchResults('neuralink')", m.ctx);
+  await flush();
+
+  const html = m.container().innerHTML;
+  assert.strictEqual((html.match(/>Elon Musk: Neuralink</g) || []).length, 1,
+    "the episode the listener starred from a show page must render exactly once");
+  assert.ok(html.includes(">Another Conversation<"), "the endpoint's genuinely new row must still be merged");
+  assert.ok(html.includes(`#/episode/${encodeURIComponent("lex-fridman-podcast--abc-123-guid")}`),
+    "and the copy that survives must be the LOCAL one, whose id is the real storage id and whose star is real");
+});
+
+test("the guid recovered from an id is a candidate, not an answer: the curated pool dedups by title", () => {
+  /* THE OTHER DIRECTION OF DEFECT 4, and the reason the fix is a key SET
+     rather than a better guid parse. `data/discover.json`'s 2,160 ids share
+     the `<a>--<b>` shape and NOT its meaning: the suffix there is an editorial
+     slug (`lex-fridman-podcast--don-lincoln-physics`), so it will never equal
+     any feed's guid. Trusting a recovered guid alone would therefore have
+     fixed the show-page case and left the curated pool duplicating — and, far
+     worse, a guid key carries no show, so `show-a--intro` and `show-b--intro`
+     would both derive `g:intro` and collapse two unrelated episodes into one.
+
+     MUTATION: make `episodeDedupKeys` return `[episodeDedupKey(ep)]`. The
+     first assertion goes red — the curated row and the endpoint row stop
+     agreeing on anything. */
+  const m = mount();
+  const curatedKeys = vm.runInContext(
+    'episodeDedupKeys(localEpisodeRow("omega-tau--modern-fission-reactors", {show:"omega tau", title:"Modern Fission Reactors"}))',
+    m.ctx);
+  const endpointKeys = vm.runInContext(
+    'episodeDedupKeys({guid:"https://feed.test/?p=9912", title:"Modern Fission Reactors", show_title:"omega tau"})',
+    m.ctx);
+  assert.ok(curatedKeys.some((k) => endpointKeys.includes(k)),
+    "a curated pool item and the endpoint's copy of it must share at least one key");
+
+  const a = vm.runInContext('episodeDedupKeys(localEpisodeRow("show-a--intro", {show:"Show A", title:"Intro"}))', m.ctx);
+  const b = vm.runInContext('episodeDedupKeys(localEpisodeRow("show-b--intro", {show:"Show B", title:"Intro"}))', m.ctx);
+  assert.ok(!a.some((k) => b.includes(k)),
+    "two different shows' episodes must not collapse through a slug that merely looks like a guid");
+});
+
+test("the show index landing mid-query does not clear the episode section", async () => {
+  /* DEFECT 5, the half that was new on this branch. The show index is loaded
+     lazily on the first focus, so it routinely resolves in the MIDDLE of a
+     query the endpoint has already answered. `repaintShowSearchForIndex` ran
+     `paintShowSearchLocal` with the CURRENT token — not a supersession, so no
+     guard stopped it — and P-05 had just put `paintLocalEpisodeSearch` on that
+     function, whose no-local-match branch does
+     `container.innerHTML = ""; container.hidden = true`. The endpoint's
+     episode rows vanished, with no way back until the next keystroke.
+
+     A SHOW INDEX SAYS NOTHING ABOUT EPISODES. That is the whole argument, and
+     the fix is that `repaintShowSearchForIndex` no longer touches this
+     container at all.
+
+     MUTATION: put `paintLocalEpisodeSearch(query, showSearchToken)` back into
+     `repaintShowSearchForIndex` (or restore its `paintShowSearchLocal` call).
+     The section is cleared and both assertions go red. */
+  const m = mount({
+    fetchImpl: apiRouter({
+      episodes: () => jsonResponse({
+        episodes: [{ show_id: "radiolab", show_title: "Radiolab", title: "Stereothreat", guid: "g1", audio_url: "https://cdn.test/s.mp3" }],
+        source: ["apple"],
+      }),
+    }),
+  });
+  m.state.catalog = { shows: [] };
+  m.byId.get("sh-input").value = "radiolab";
+  vm.runInContext("renderShowSearchResults('radiolab')", m.ctx);
+  await flush();
+  assert.ok(m.container().innerHTML.includes("Stereothreat"), "precondition: the endpoint's row is on screen");
+
+  vm.runInContext("repaintShowSearchForIndex()", m.ctx);
+
+  assert.strictEqual(m.container().hidden, false, "the index landing must not hide an answered episode section");
+  assert.ok(m.container().innerHTML.includes("Stereothreat"), "nor throw away the rows it had no opinion about");
 });

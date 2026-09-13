@@ -169,6 +169,100 @@ export function normaliseShowTitle(title: string): string {
 }
 
 /**
+ * The dedup key P-02 should have had, and the measurement that replaced the
+ * one it did have (adversarial review 2026-09-12, defect 3).
+ *
+ * Exact normalised EQUALITY cannot see the shape Apple actually varies, which
+ * is a SUBTITLE. Joining `data/catalog.json` to `data/catalog-breadth.json` by
+ * `apple_collection_id` gives 164 rows whose titles can be compared directly —
+ * `catalog-breadth.json`'s title IS Apple's `collectionName` — and FIVE of the
+ * 164 disagree. Every one of the five is a suffix or a subtitle, never a
+ * different name:
+ *
+ *   The Twenty Minute VC (20VC)            | …(20VC): Venture Capital | Startup Funding | The Pitch
+ *   The TWIML AI Podcast                   | …(formerly This Week in Machine Learning & …)
+ *   omega tau                              | omega tau - English only
+ *   Around the House with Eric G           | …with Eric G®: Upgrade Your Home Like a Pro
+ *   Ask Lisa: The Psychology of Parenting  | Ask Lisa: The Psychology of Raising Tweens & Teens
+ *
+ * The STEM — the title cut at its first subtitle separator, then normalised —
+ * collapses all five; equality collapses none.
+ *
+ * AND THE INVERSE COST IS REAL, so it is recorded rather than left implicit.
+ * Directory rows are title-deduped against catalogue rows, so ANY title rule
+ * suppresses a genuinely different show that shares the key — the exact
+ * "'The Daily' is not one show" case `mergeDirectoryShows` invokes for the
+ * other half of the rule. Measured the same way, 220 curated titles against all
+ * 19,787 breadth titles, counting only pairs with different
+ * `apple_collection_id`s: equality already suppresses 7, the stem suppresses 9.
+ * The two it adds are named, because they are the trade:
+ *
+ *   Dan Carlin's Hardcore History  <>  Dan Carlin's Hardcore History: Addendum
+ *   In The Dark                    <>  In The Dark (Bigfoot, Dogmen, Aliens, …)
+ *
+ * No title rule separates those from the five above: "X: Addendum" and
+ * "omega tau - English only" are the same string shape. Five duplicates
+ * collapsed against two spin-offs suppressed is the measured trade, taken
+ * deliberately.
+ *
+ * SEPARATORS ARE THE ONES THE DATA USES AND NO MORE. A bare hyphen is NOT one —
+ * it needs surrounding spaces, or "Sword-and-Scale" loses everything after its
+ * first word; `(` and `[` need a leading space for the same reason. An empty
+ * stem is never a dedup key, exactly as an empty normalised title is not.
+ *
+ * A PIPE IS NOT ONE EITHER, and that is measured rather than stylistic. `|` was
+ * in the first version of this set and earns NOTHING on the committed catalogue
+ * — the same 5 of 5 collapse and the same 2 extra suppressions occur with it
+ * and without it, because all five real cases cut at `:`, ` - ` or ` (` first.
+ * Live it costs: with `|` in the set, `tim ferriss`, `sam harris` and
+ * `lex fridman` each lose one row, the same row every time — a derivative feed
+ * named `<the real show> | 5 minute podcast summaries`, whose stem becomes the
+ * real show's whole title. A pipe is a list separator; `:`, ` - ` and ` (` are
+ * subtitle markers.
+ *
+ * MUST STAY CHARACTER FOR CHARACTER IDENTICAL to `app.js:showTitleDedupStem`,
+ * pinned by `test/show-search-fallthrough.test.js` the same way
+ * `normaliseShowTitle` is.
+ */
+export const SHOW_TITLE_SUBTITLE_SEPARATOR = /\s[–—]\s|\s-\s|:|\s\(|\s\[/u;
+
+export function showTitleDedupStem(title: string): string {
+  const raw = String(title || "");
+  const cut = raw.search(SHOW_TITLE_SUBTITLE_SEPARATOR);
+  return normaliseShowTitle(cut > 0 ? raw.slice(0, cut) : raw);
+}
+
+/**
+ * BOTH KEYS, because the stem is an ADDITION to exact equality and not a
+ * replacement for it, and the committed catalogue says so in both directions.
+ *
+ * Replacing equality with the stem broke a pair equality had been collapsing
+ * correctly: `It's a Material World: Materials Science Podcast` (curated) and
+ * `It's a Material World | Materials Science Podcast` (Apple). Their full
+ * normalised titles are identical — the only difference is which separator the
+ * two publishers typed — but their stems are not, because one side cuts at `:`
+ * and the other has nothing to cut at. A rule that answers only on stems is
+ * therefore not a superset of the one it replaces.
+ *
+ * MEASURED WITH BOTH, over the 164 rows that join `data/catalog.json` to
+ * `data/catalog-breadth.json` by `apple_collection_id`: every one of the 164
+ * collapses (equality alone left 5 standing; the stem alone left this one). Over
+ * the 220 curated titles against all 19,787 breadth titles, pairs with different
+ * `apple_collection_id`s that collapse: 7 with equality alone, 10 with both —
+ * and 8 of those 10 are the SAME show under a second Apple collection id, which
+ * is the thing this rule exists to collapse. The two that are genuinely
+ * different shows are named in `showTitleDedupStem` above; they are the whole
+ * cost of the change.
+ */
+export function showDedupKeys(title: string): string[] {
+  const keys: string[] = [];
+  for (const k of [normaliseShowTitle(title), showTitleDedupStem(title)]) {
+    if (k && !keys.includes(k)) keys.push(k);
+  }
+  return keys;
+}
+
+/**
  * P-02: merge the directory's answer BENEATH the catalogue's, deduped by
  * `show_id` (which for an Apple row IS `apple_collection_id`, stringified by
  * `mapAppleShow`) and by normalised title.
@@ -189,6 +283,11 @@ export function normaliseShowTitle(title: string): string {
  * every broad query. `limit` is therefore PER SOURCE on this path: at most
  * `limit` catalogue rows and at most `limit` directory rows, so a response is
  * bounded at `2 * limit` and a caller can still reason about its size.
+ *
+ * THE TITLE HALF OF THE DEDUP IS TWO KEYS — the full normalised title AND the
+ * stem — see `showTitleDedupStem` and `showDedupKeys` above for the five
+ * committed-catalogue rows equality missed, the one the stem alone missed, and
+ * the two genuinely different shows the pair suppresses in exchange.
  */
 export function mergeDirectoryShows<T extends { show_id: string; title: string }>(
   catalogueRows: readonly T[],
@@ -198,16 +297,15 @@ export function mergeDirectoryShows<T extends { show_id: string; title: string }
   const titles = new Set<string>();
   for (const row of catalogueRows) {
     ids.add(row.show_id);
-    const t = normaliseShowTitle(row.title);
-    if (t) titles.add(t);
+    for (const k of showDedupKeys(row.title)) titles.add(k);
   }
   const merged: (T | AppleShowResult)[] = catalogueRows.slice();
   for (const row of directoryRows) {
     if (ids.has(row.show_id)) continue;
-    const t = normaliseShowTitle(row.title);
-    if (t && titles.has(t)) continue;
+    const keys = showDedupKeys(row.title);
+    if (keys.some((k) => titles.has(k))) continue;
     ids.add(row.show_id);
-    if (t) titles.add(t);
+    for (const k of keys) titles.add(k);
     merged.push(row);
   }
   return merged;

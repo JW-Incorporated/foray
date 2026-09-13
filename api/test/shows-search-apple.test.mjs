@@ -48,7 +48,11 @@ import assert from "node:assert";
 import * as searchModule from "../shows/search.ts";
 import {
   appleShowSearch, mapAppleShow, appleShowCacheKey, APPLE_SHOW_TIMEOUT_MS,
+  mergeDirectoryShows, showTitleDedupStem,
 } from "../shows/appleShowSearch.ts";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { SlidingWindowBucket, APPLE_BUCKET_CAPACITY, APPLE_BUCKET_WINDOW_MS } from "../episodes/appleBucket.ts";
 import { TtlCache } from "../episodes/searchCache.ts";
 
@@ -635,4 +639,127 @@ test("a successful response still carries the cache header the source claims, an
   const src = fs.readFileSync(path.join(here, "..", "shows", "search.ts"), "utf8");
   assert.match(src, /stale-while-revalidate.{0,400}does NOT arrive/s,
     "the source must record that the directive it sets is not the one production returns");
+});
+
+/* ======================================================================
+   ADVERSARIAL REVIEW, 2026-09-12, defect 3: the server half of the dedup
+   rule. `mergeDirectoryShows` deduped on exact normalised title equality,
+   and the shape Apple actually varies is a SUBTITLE.
+   ====================================================================== */
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const DATA = path.join(HERE, "..", "..", "data");
+
+/** An Apple-shaped directory row, as `mapAppleShow` would have produced it. */
+const appleRow = (id, title) => ({
+  show_id: String(id), title, artwork_url: null, artist_name: null,
+  editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "apple",
+});
+
+test("a directory row that only ADDS a subtitle collapses into the catalogue row", () => {
+  /* THE FIVE PAIRS ARE MEASURED, NOT INVENTED. Joining `data/catalog.json` to
+     `data/catalog-breadth.json` by `apple_collection_id` gives 164 rows whose
+     titles can be compared directly — `catalog-breadth.json`'s title IS Apple's
+     `collectionName` — and these five are the ones that disagree. Exact
+     normalised equality collapsed none of them, so all five reached the client
+     as a second row for a podcast it was already showing.
+
+     Written as five fixed strings rather than as a query over `data/`, so this
+     assertion is scale-free and cannot drift with the catalogue.
+
+     MUTATION: put `normaliseShowTitle` back in place of `showTitleDedupStem`
+     in `mergeDirectoryShows`. Every pair merges to two rows. */
+  const PAIRS = [
+    ["The Twenty Minute VC (20VC)", "The Twenty Minute VC (20VC): Venture Capital | Startup Funding | The Pitch"],
+    ["The TWIML AI Podcast", "The TWIML AI Podcast (formerly This Week in Machine Learning & Artificial Intelligence)"],
+    ["omega tau", "omega tau - English only"],
+    ["Around the House with Eric G", "Around the House with Eric G®: Upgrade Your Home Like a Pro"],
+    ["Ask Lisa: The Psychology of Parenting", "Ask Lisa: The Psychology of Raising Tweens & Teens"],
+    /* NOT a subtitle divergence — the full normalised titles are IDENTICAL and
+       only the separator the two publishers typed differs. It is here because a
+       stem-ONLY rule breaks it (one side cuts at `:`, the other has nothing to
+       cut at), which is why the dedup carries the full title AND the stem.
+       MUTATION: drop `normaliseShowTitle(title)` from `showDedupKeys`. Only
+       this row goes red, and it is the row a stem-only rule loses. */
+    ["It's a Material World: Materials Science Podcast", "It's a Material World | Materials Science Podcast"],
+  ];
+  for (const [curated, apple] of PAIRS) {
+    const merged = mergeDirectoryShows(
+      [{ show_id: "curated-slug", title: curated }],
+      [appleRow(958230465, apple)]
+    );
+    assert.equal(merged.length, 1, `"${curated}" and "${apple}" are one podcast: got ${merged.length} rows`);
+    assert.equal(merged[0].title, curated, "and the CATALOGUE row is the one that survives, with its artwork and note");
+  }
+});
+
+test("the stem cuts at a subtitle and nowhere else", () => {
+  /* THE INVERSE COST IS REAL — directory rows are title-deduped against
+     catalogue rows, so any title rule silently suppresses a genuinely different
+     show that shares the key — which is why the separator set is the one the
+     data uses and not "anything that looks like punctuation".
+
+     A BARE HYPHEN IS NOT A SEPARATOR: without the surrounding spaces
+     "Sword-and-Scale" stems to "sword". A longer name that merely continues a
+     shorter one is not a subtitle either.
+
+     MUTATION: drop the \s ... \s around the hyphen in
+     `SHOW_TITLE_SUBTITLE_SEPARATOR`, or add a bare "-" to the alternation. The
+     first assertion goes red. */
+  assert.equal(showTitleDedupStem("Sword-and-Scale"), "sword and scale");
+  assert.equal(showTitleDedupStem("omega tau - English only"), "omega tau");
+  assert.equal(showTitleDedupStem("The Daily Stoic"), "the daily stoic");
+  assert.notEqual(showTitleDedupStem("The Daily Stoic"), showTitleDedupStem("The Daily"));
+  assert.equal(showTitleDedupStem("!!!"), "", "an all-punctuation title stems to empty, which is never a dedup key");
+  /* A PIPE IS NOT A SUBTITLE MARKER, and that is measured. Adding `|` to the
+     separator set collapses not one extra pair in the committed catalogue, and
+     live it costs `tim ferriss`, `sam harris` and `lex fridman` one row each —
+     the same derivative feed every time, `<the real show> | 5 minute podcast
+     summaries`, whose stem would become the real show's whole title.
+     MUTATION: put `|` back in the character class. This goes red. */
+  assert.notEqual(
+    showTitleDedupStem("The Tim Ferriss Show | 5 minute podcast summaries"),
+    showTitleDedupStem("The Tim Ferriss Show"),
+    "a pipe is a list separator, not a subtitle marker");
+  assert.equal(showTitleDedupStem(": leading separator"), "leading separator",
+    "a title that STARTS with a separator keeps itself — cutting at 0 would erase it");
+});
+
+test("no curated show and its own Apple twin can be rendered as two rows", () => {
+  /* THE SAME CLAIM AGAINST THE COMMITTED DATA, quantified over whatever the
+     files hold rather than over a count of them: for EVERY curated row that
+     names an `apple_collection_id` the breadth catalogue also carries, feeding
+     the pair through `mergeDirectoryShows` must yield one row. That is the
+     defect stated exactly — a listener seeing one podcast twice — and it holds
+     however many such pairs exist, so it is safe in the publish gate.
+
+     `catalog-breadth.json`'s titles ARE Apple's `collectionName`s (they are
+     harvested from it), which is what makes this a real test of the directory
+     merge rather than of the catalogue against itself.
+
+     MUTATION: revert `mergeDirectoryShows` to exact normalised equality. The
+     five committed divergences fail it. */
+  const catalogPath = path.join(DATA, "catalog.json");
+  const breadthPath = path.join(DATA, "catalog-breadth.json");
+  if (!fs.existsSync(catalogPath) || !fs.existsSync(breadthPath)) return; // not a data-bearing checkout
+
+  const curated = JSON.parse(fs.readFileSync(catalogPath, "utf8")).shows;
+  const breadth = JSON.parse(fs.readFileSync(breadthPath, "utf8")).shows;
+  const byCollectionId = new Map(breadth.map((r) => [String(r.apple_collection_id), r]));
+
+  const twoRowed = [];
+  let pairs = 0;
+  for (const c of curated) {
+    const twin = byCollectionId.get(String(c.apple_collection_id));
+    if (!twin) continue;
+    pairs++;
+    const merged = mergeDirectoryShows(
+      [{ show_id: c.show_id, title: c.title }],
+      [appleRow(twin.apple_collection_id, twin.title)]
+    );
+    if (merged.length !== 1) twoRowed.push(`${c.title}  <>  ${twin.title}`);
+  }
+  assert.ok(pairs > 0, "fixture assumption: some curated rows join the breadth catalogue by apple_collection_id");
+  assert.deepEqual(twoRowed, [],
+    "these curated shows would be rendered twice, once as themselves and once as their own Apple row");
 });

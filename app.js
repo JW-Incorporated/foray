@@ -3398,6 +3398,27 @@ const SHOWS_SEARCH_OFF_DEVICE = true;
 
 let showSearchToken = 0; // guards a slow in-flight fetch from clobbering a newer query's results
 
+/* WHAT IS ON THE SCREEN RIGHT NOW, and it has to be module state rather than a
+   closure because more than one pass paints into `#sh-results` for a single
+   query and they do not all originate from the same call (adversarial review
+   2026-09-12, defect 5).
+
+   The show index is loaded lazily on the first focus, so it routinely lands in
+   the MIDDLE of a query that has already been answered by the catalogue and
+   directory passes. `repaintShowSearchForIndex` used to re-run the LOCAL pass
+   with the current token — which is not a supersession, so no guard stopped it
+   — and the endpoint's rows vanished until the next keystroke, taking the
+   majority of the list with them now that P-02 makes the directory the bigger
+   half. `runShowSearchCostly`'s own `shown` variable had the mirror-image
+   problem: it was a snapshot taken before the index landed, so the next merge
+   to complete would repaint from it and undo the index's rows instead.
+
+   One record, written by the only function that paints, read by everyone who
+   merges. `query` and `token` are both here because either alone can go stale:
+   a repeat of the same query gets a new token, and a superseded token can
+   belong to the same query text. */
+let showSearchPainted = { token: -1, query: "", rows: [] };
+
 /* S-02: the debounce timer, and `showSearchToken` now guards it as well as the
    in-flight responses. A fast retype must CANCEL the pending tick, not merely
    drop its answer — otherwise ten keystrokes inside 250 ms would still fire
@@ -3479,15 +3500,32 @@ function loadShowIndex() {
   return showIndexPromise;
 }
 
-/** The index landing mid-query must improve the list already on screen — a
+/** The index landing mid-query must IMPROVE the list already on screen — a
     listener who typed before it resolved would otherwise keep the 220-show
-    answer until the next keystroke. Re-runs the LOCAL pass only: the costly
-    passes stay on the debounce tick, and this is not a keystroke. */
+    answer until the next keystroke.
+
+    IT MERGES, IT DOES NOT REPAINT FROM SCRATCH, and it does not touch the
+    episode section at all (adversarial review 2026-09-12, defect 5). This ran
+    `paintShowSearchLocal(query, showSearchToken)` — the CURRENT token, so no
+    supersession guard applied and nothing stopped it — which threw away every
+    row the catalogue and directory passes had already merged in, and then, once
+    P-05 put the episode tier on that same function, cleared the endpoint's
+    episode rows too. Two sections reverted to the local-only answer with no way
+    back until the next keystroke, and under P-02 the discarded directory rows
+    are the majority of the list.
+
+    THE SHOW INDEX IS A SHOW INDEX. It says nothing whatsoever about episodes,
+    so there is no honest reason for its arrival to repaint `#ep-search-results`
+    — that section belongs to the keystroke and to the episode endpoint. */
 function repaintShowSearchForIndex() {
   const input = $("#sh-input");
   const query = input && String(input.value || "").trim();
   if (!query) return;
-  paintShowSearchLocal(query, showSearchToken);
+  const localShows = localShowMatches(query);
+  const existing = paintedShowRows(query, showSearchToken, null);
+  if (!existing) { paintShowResults(query, localShows, showSearchToken); return; }
+  const merged = mergeShowRows(query, existing, localShows);
+  if (merged) paintShowResults(query, merged, showSearchToken);
 }
 
 /** Curated 220 + the index's PREFIX answer, merged and ranked once by
@@ -3600,6 +3638,106 @@ function normaliseShowTitle(title) {
   return String(title || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
+/* P-02's dedup key was exact normalised EQUALITY, and the shape Apple actually
+   varies is a SUBTITLE, which equality cannot see (adversarial review
+   2026-09-12, defect 3).
+
+   MEASURED ON THE COMMITTED CATALOGUE, not argued. Joining `data/catalog.json`
+   to `data/catalog-breadth.json` by `apple_collection_id` gives 164 rows whose
+   titles can be compared directly, because `catalog-breadth.json`'s title IS
+   Apple's `collectionName`. FIVE of the 164 disagree, and every one of them
+   is a suffix or a subtitle rather than a different name:
+
+     The Twenty Minute VC (20VC)            | …(20VC): Venture Capital | Startup Funding | The Pitch
+     The TWIML AI Podcast                   | …(formerly This Week in Machine Learning & …)
+     omega tau                              | omega tau - English only
+     Around the House with Eric G           | …with Eric G®: Upgrade Your Home Like a Pro
+     Ask Lisa: The Psychology of Parenting  | Ask Lisa: The Psychology of Raising Tweens & Teens
+
+   Under equality all five render twice: typing `twenty minute vc` puts the
+   curated row and the Apple row side by side, one of them now wearing a byline.
+   The STEM — the title cut at its first subtitle separator, then normalised —
+   collapses all five, and equality collapses none of them.
+
+   THE INVERSE COST IS REAL AND IS WRITTEN DOWN HERE rather than left for the
+   next reviewer to rediscover, because it was documented nowhere before. Apple
+   rows are title-deduped against catalogue rows, so ANY title rule silently
+   suppresses a genuinely different show that shares the key — the exact
+   "'The Daily' is not one show" case `mergeShowRows` invokes to justify the
+   other half of the rule. Measured the same way, the 220 curated titles against
+   all 19,787 breadth titles, counting only pairs whose `apple_collection_id`s
+   differ: equality already suppresses 7. The stem suppresses 9. The two it adds
+   are named, because they ARE the trade:
+
+     Dan Carlin's Hardcore History  <>  Dan Carlin's Hardcore History: Addendum
+     In The Dark                    <>  In The Dark (Bigfoot, Dogmen, Aliens, …)
+
+   AND NO TITLE RULE CAN SEPARATE THOSE FROM THE FIVE ABOVE — "X: Addendum" and
+   "omega tau - English only" are the same string shape. Five duplicates
+   collapsed against two spin-offs suppressed is the measured trade, taken
+   deliberately and reversible by reverting this function. The way OUT of the
+   trade is not a cleverer string rule but an identity key: `catalog.json`
+   carries `apple_collection_id` for every curated row and would dedup all five
+   exactly, with nothing suppressed — but `data/catalog-client.json`, the cut
+   the client actually holds, does not ship that field, and adding it is a
+   data + `deploy-manifest.json` + byte-pinned-file change rather than this one.
+
+   SEPARATORS ARE THE ONES THE DATA USES, AND NO MORE THAN THAT. A BARE HYPHEN
+   IS NOT ONE: it needs surrounding spaces, or "Sword-and-Scale" loses
+   everything after its first word. `(` and `[` need a leading space for the
+   same reason. An empty stem is never a dedup key, exactly as an empty
+   normalised title is never one.
+
+   AND A PIPE IS NOT ONE EITHER, WHICH IS A MEASUREMENT AND NOT A STYLE CHOICE.
+   `|` was in the first version of this set. On the committed catalogue it earns
+   NOTHING — the same 5 of 5 collapse and the same 2 extra suppressions occur
+   with it and without it, because all five real cases cut at `:`, ` - ` or
+   ` (` first. Live it costs: with `|` in the set, `tim ferriss`, `sam harris`
+   and `lex fridman` each lose exactly one row, and it is the same row every
+   time — a derivative feed named `<the real show> | 5 minute podcast
+   summaries`, whose stem becomes the real show's whole title. A pipe is a list
+   separator, not a subtitle marker; `:`, ` - ` and ` (` are subtitle markers.
+   Zero gain against three named losses is not a close call.
+
+   MUST STAY CHARACTER FOR CHARACTER IDENTICAL to
+   `api/shows/appleShowSearch.ts:showTitleDedupStem`, pinned the same way
+   `normaliseShowTitle` is — `test/show-search-fallthrough.test.js` reads both
+   files and compares the expressions. */
+const SHOW_TITLE_SUBTITLE_SEPARATOR = /\s[–—]\s|\s-\s|:|\s\(|\s\[/u;
+
+function showTitleDedupStem(title) {
+  const raw = String(title || "");
+  const cut = raw.search(SHOW_TITLE_SUBTITLE_SEPARATOR);
+  return normaliseShowTitle(cut > 0 ? raw.slice(0, cut) : raw);
+}
+/** BOTH KEYS, because the stem is an ADDITION to exact equality and not a
+    replacement for it, and the committed catalogue says so in both directions.
+
+    Replacing equality with the stem broke a pair equality had been collapsing
+    correctly: `It's a Material World: Materials Science Podcast` (curated) and
+    `It's a Material World | Materials Science Podcast` (Apple). Their full
+    normalised titles are identical — the only difference is which separator the
+    two publishers typed — but their stems are not, because one side cuts at
+    `:` and the other has nothing to cut at. A rule that answers only on stems
+    is therefore not a superset of the one it replaces.
+
+    MEASURED WITH BOTH, over the 164 rows that join `data/catalog.json` to
+    `data/catalog-breadth.json` by `apple_collection_id`: every one of the 164
+    collapses (equality alone left 5 standing; the stem alone left this one).
+    Over the 220 curated titles against all 19,787 breadth titles, pairs with
+    different `apple_collection_id`s that collapse: 7 with equality alone, 10
+    with both — and 8 of those 10 are the SAME show under a second Apple
+    collection id, which is the thing this rule exists to collapse. The two that
+    are genuinely different shows are named in `showTitleDedupStem` above; they
+    are the whole cost of the change. */
+function showDedupKeys(title) {
+  const keys = [];
+  for (const k of [normaliseShowTitle(title), showTitleDedupStem(title)]) {
+    if (k && !keys.includes(k)) keys.push(k);
+  }
+  return keys;
+}
+
 /* S-01's diagnostics call site (docs/search-plan.md, `player/diagnostic-log.js`'s
    `search` entry kind). ONE call per completed search. QUERY LENGTH, NEVER THE
    QUERY TEXT -- `diag.search`'s own guard would drop a string in `qLen` to
@@ -3619,6 +3757,8 @@ function recordSearchDiagnostic(fields) {
     NOT to an empty results box with a "no shows match" note for a query the
     listener just deleted (S-02's own acceptance line). */
 function clearShowSearchResults() {
+  // Nothing is painted any more, so no later pass may merge onto what was.
+  showSearchPainted = { token: -1, query: "", rows: [] };
   const note = $("#sh-note");
   const results = $("#sh-results");
   const eps = $("#ep-search-results");
@@ -3636,6 +3776,11 @@ function paintShowResults(query, shows, myToken) {
   const note = $("#sh-note");
   const results = $("#sh-results");
   if (!note || !results) return;
+  /* Recorded whether or not there is anything to draw, and BEFORE the empty
+     branch returns: "nothing matched" is a painted answer like any other, and a
+     later merge has to append to it rather than to whatever the last non-empty
+     query left behind (defect 5). */
+  showSearchPainted = { token: myToken, query, rows: shows };
   if (!shows.length) {
     results.innerHTML = "";
     results.hidden = true;
@@ -3646,6 +3791,54 @@ function paintShowResults(query, shows, myToken) {
   note.hidden = true;
   results.innerHTML = shows.map(showResultRow).join("");
   results.hidden = false;
+}
+
+/** The rows on screen for `query` under `myToken`, or `fallback` when the
+    record belongs to some other query or token. Every merge starts here rather
+    than from a variable it captured earlier, so passes that complete out of
+    order cannot undo each other (defect 5). */
+function paintedShowRows(query, myToken, fallback) {
+  return (showSearchPainted.token === myToken && showSearchPainted.query === query)
+    ? showSearchPainted.rows
+    : fallback;
+}
+
+/** THE ONE MERGE RULE, named once because four callers share it: the index's
+    scan pass, the catalogue pass, the directory pass, and the index landing
+    mid-query. Appends `incoming` beneath `existing` and re-ranks; returns null
+    when nothing was added, so a caller can skip a repaint.
+
+    DEDUP IS BY `show_id` FOR EVERYTHING and additionally by title STEM for
+    APPLE ROWS ONLY (`source === "apple"`, stamped by `mapAppleShow`).
+
+    WHY BY TITLE AT ALL, when `show_id` for an Apple row already IS its
+    `apple_collection_id`: Apple returns the same show under several collection
+    ids. Measured 2026-09-12, `lex fridman` -> THREE distinct ids all titled
+    "Lex Fridman Podcast". An id-only dedup shows the listener all three, so the
+    title half is the half doing the work there, not belt-and-braces.
+
+    WHY NOT TO CATALOGUE ROWS. Two genuinely different shows can share a title
+    ("The Daily" is not one show), and a catalogue row carries artwork, a chart
+    rank and an editorial note that a title collision would throw away. The
+    endpoint is authoritative about its own rows; it is only the directory's
+    answer that needs collapsing. Both sides apply the same rule to the same
+    rows — `api/shows/search.ts` merges Apple beneath the catalogue server-side,
+    and this merges whatever arrives beneath what is already painted. */
+function mergeShowRows(query, existing, incoming) {
+  const ids = new Set(existing.map((s) => s.show_id));
+  const titleKeys = new Set();
+  for (const s of existing) for (const k of showDedupKeys(s.title)) titleKeys.add(k);
+  const additions = [];
+  for (const s of incoming) {
+    if (ids.has(s.show_id)) continue;
+    const keys = showDedupKeys(s.title);
+    if (s.source === "apple" && keys.some((k) => titleKeys.has(k))) continue;
+    ids.add(s.show_id);
+    for (const k of keys) titleKeys.add(k);
+    additions.push(s);
+  }
+  if (!additions.length) return null;
+  return SearchEngine.rankShows(query, existing.concat(additions));
 }
 
 /** THE KEYSTROKE PATH. Local only: no fetch, no playlist CTA, nothing deferred.
@@ -3704,7 +3897,10 @@ function whenIdle(fn, timeoutMs = 2000) {
     search" contract (test/search-probe-record.test.js) is unchanged: this
     makes the one call later, not twice. */
 function runShowSearchCostly(query, myToken, local) {
-  let shown = local.localShows;
+  /* NOT a captured snapshot: `paintedShowRows` re-reads what is actually on the
+     page every time, so the show index landing between two of these passes is
+     not undone by whichever one completes next (defect 5). */
+  const shown = () => paintedShowRows(query, myToken, local.localShows);
 
   const record = {
     qLen: query.length,
@@ -3734,51 +3930,22 @@ function runShowSearchCostly(query, myToken, local) {
      must have under-delivered. `scanShowIndex` returns word-start and
      substring hits only, so there is nothing here to dedupe against the
      prefix answer beyond the curated rows. */
-  if (showIndex && shown.length < SHOW_PREFIX_UNDERDELIVERS_BELOW) {
-    const seen = new Set(shown.map((s) => s.show_id));
-    const scanned = SearchEngine.scanShowIndex(query, showIndex).filter((s) => !seen.has(s.show_id));
-    if (scanned.length) {
-      shown = SearchEngine.rankShows(query, shown.concat(scanned));
-      paintShowResults(query, shown, myToken);
-    }
+  if (showIndex && shown().length < SHOW_PREFIX_UNDERDELIVERS_BELOW) {
+    const scanned = SearchEngine.scanShowIndex(query, showIndex);
+    const merged = mergeShowRows(query, shown(), scanned);
+    if (merged) paintShowResults(query, merged, myToken);
   }
 
-  /* P-02 adds the second half of the dedup rule, and applies it ONLY to rows
-     Apple produced (`source === "apple"`, stamped by `mapAppleShow`).
-
-     WHY BY TITLE AT ALL, when `show_id` for an Apple row already IS its
-     `apple_collection_id`: Apple returns the same show under several
-     collection ids. Measured 2026-09-12, `lex fridman` -> THREE distinct ids
-     all titled "Lex Fridman Podcast". An id-only dedup shows the listener all
-     three. The normalised-title half is the half doing the work there, not
-     belt-and-braces.
-
-     WHY NOT TO CATALOGUE ROWS. Two genuinely different shows can share a
-     title ("The Daily" is not one show), and a catalogue row carries artwork,
-     a chart rank and an editorial note that a title collision would throw
-     away. The endpoint is authoritative about its own rows; it is only the
-     directory's answer that needs collapsing. Both sides apply the same rule
-     to the same rows — `api/shows/search.ts` merges Apple beneath the
-     catalogue server-side, and this merges whatever arrives beneath what is
-     already painted. */
+  /* The dedup rule itself now lives in `mergeShowRows`, shared with the index
+     repaint so the two cannot drift. What stays here is the side effect that is
+     specific to an ENDPOINT answer: seeding `state.breadthShowCache` so
+     `showById` can resolve a row once it is tapped, and so a richer record
+     (artwork, editorial note) replaces the index's title-only row. It runs for
+     every row received, including the ones the dedup then drops. */
   const mergeBreadth = (breadthShows) => {
-    const seen = new Set(shown.map((s) => s.show_id));
-    const seenTitles = new Set(shown.map((s) => normaliseShowTitle(s.title)));
-    const additions = [];
-    for (const s of breadthShows) {
-      // so showById can resolve it once a result is tapped, and so a richer
-      // record (artwork, editorial note) replaces the index's title-only row
-      state.breadthShowCache[s.show_id] = s;
-      if (seen.has(s.show_id)) continue;
-      const title = normaliseShowTitle(s.title);
-      if (s.source === "apple" && title && seenTitles.has(title)) continue;
-      seen.add(s.show_id);
-      if (title) seenTitles.add(title);
-      additions.push(s);
-    }
-    if (!additions.length) return;
-    shown = SearchEngine.rankShows(query, shown.concat(additions));
-    paintShowResults(query, shown, myToken);
+    for (const s of breadthShows) state.breadthShowCache[s.show_id] = s;
+    const merged = mergeShowRows(query, shown(), breadthShows);
+    if (merged) paintShowResults(query, merged, myToken);
   };
 
   const cacheKey = showBreadthCacheKey(query);
@@ -3851,12 +4018,41 @@ function runShowSearchCostly(query, myToken, local) {
     fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25&fallthrough=1`).then((data) => {
       const dirMs = nowMs() - dirStart;
       const rows = data?.shows || [];
-      if (data) {
+      /* HTTP 200 IS NOT "THE DIRECTORY ANSWERED" (adversarial review
+         2026-09-12, defect 2), and `data` being non-null only ever meant the
+         TRANSPORT worked. `api/shows/search.ts` replies 200 with
+         `fallthrough: {attempted: true, error: "rate-limited"}` and ZERO
+         directory rows whenever the limiter trips or Apple errors or times out
+         — by design, so that a directory problem never costs the listener the
+         catalogue rows — and it replies 200 with `degraded: true, shows: []`
+         when the breadth catalogue itself cannot be read. Both used to be
+         written into `showDirectoryQueryCache` as THE answer for that query,
+         and the cache is session-lived, so one rate-limit trip on a train
+         removed the whole directory tier for that query until a reload. The
+         10 s edge TTL `api/shows/search.ts` argues will "flatten the storm" was
+         irrelevant, because no second request was ever made.
+
+         THE TEST THAT SHOULD HAVE CAUGHT IT DID NOT, because the fixture was
+         more forgiving than the endpoint: `mount({directoryOk: false})` models
+         a NON-200, which `fetchApiJson` resolves to `null` — the one shape this
+         endpoint never sends on a limiter trip. `mount({directoryError: …})`
+         now models the shape it does send. */
+      const answered = !!data && !data.degraded && !(data.fallthrough && data.fallthrough.error);
+      if (answered) {
         if (showDirectoryQueryCache.size >= SHOW_BREADTH_CACHE_MAX) showDirectoryQueryCache.clear();
         showDirectoryQueryCache.set(directoryKey, rows);
       }
+      /* The rows still MERGE either way. A degraded reply carries the
+         catalogue's own rows, and `mergeShowRows` only ever appends — refusing
+         them would make a directory failure cost the listener something, which
+         is the whole thing P-02 promised it never would. */
       if (myToken === showSearchToken && rows.length) mergeBreadth(rows);
-      settle({ dirMs, dirHits: data ? rows.length : null });
+      /* `dirHits` is the DIRECTORY's hit count and nothing else. Reporting
+         `rows.length` on a trip that returned no directory rows at all made
+         limiter trips invisible to P-06's diagnostics — a full count for a pass
+         that fetched nothing. `null` is the existing "this half is unknown"
+         value and it is the honest one here. */
+      settle({ dirMs, dirHits: answered ? rows.length : null });
     }); // fetchApiJson swallows network/parse errors to null — a failed directory pass adds nothing and removes nothing
   }
 
@@ -4102,17 +4298,97 @@ const episodeSearchQueryCache = new Map();
    previous query's Apple results as if they were the listener's own. */
 const LOCAL_EPISODE_TIER_MAX = 5;
 
-/** Dedup key shared by both tiers. `guid` when the row has one — the only
-    genuinely stable episode identity either side supplies — falling back to
-    normalised title + normalised show, which is `normaliseShowTitle`'s exact
-    rule (P-02) reused rather than a second normalisation that could drift from
-    it. Show is part of the fallback key because episode titles collide hard
-    across shows ("Episode 1", "Introduction"). */
+/** THE SHOW NAMES ONE ROW CAN BE RECOGNISED BY, normalised. Every episode key
+    below is scoped by one of these, and the two sides of the merge name the
+    show differently — a locally saved episode's id carries the SLUG
+    (`lex-fridman-podcast`) while the endpoint's row carries the DISPLAY TITLE
+    ("Lex Fridman Podcast") — so both are offered and `normaliseShowTitle`
+    (P-02's rule, reused rather than re-derived) is what makes them meet. */
+function episodeDedupScopes(ep) {
+  const out = [];
+  for (const v of [ep && ep.show_title, ep && ep.show_id]) {
+    const n = normaliseShowTitle(v);
+    if (n && !out.includes(n)) out.push(n);
+  }
+  return out.length ? out : [""];
+}
+
+/** Dedup key shared by both tiers. `guid` when the row has one — the closest
+    thing to a stable episode identity either side supplies — falling back to
+    the normalised title. BOTH forms are scoped by the show, and the guid form
+    is scoped for a reason that is not symmetry:
+
+    A GUID RECOVERED FROM AN ID IS NOT KNOWN TO BE A GUID. `localEpisodeIdentity`
+    above reads `<show_id>--<guid>`, which is a real feed guid for a show-page
+    save and an editorial slug for a curated pool item, and nothing on this side
+    can tell those apart. An unscoped `g:` key would therefore let the curated
+    ids `show-a--intro` and `show-b--intro` both derive `g:intro` and collapse
+    two unrelated episodes into one row. Scoped by show they cannot.
+
+    Show was already part of the title key, for the older version of the same
+    problem: episode titles collide hard across shows ("Episode 1",
+    "Introduction"). */
 function episodeDedupKey(ep) {
   const guid = ep && ep.guid ? String(ep.guid).trim() : "";
-  if (guid) return "g:" + guid;
-  const show = (ep && (ep.show_title || ep.show_id)) || "";
-  return "t:" + normaliseShowTitle(ep && ep.title) + "|" + normaliseShowTitle(show);
+  const scope = episodeDedupScopes(ep)[0];
+  if (guid) return "g:" + scope + "|" + guid;
+  return "t:" + normaliseShowTitle(ep && ep.title) + "|" + scope;
+}
+
+/** EVERY key a row can be recognised by, because one is never enough here, and
+    two rows are the same episode when their key SETS INTERSECT.
+
+    TWO REASONS THE SET IS BIGGER THAN THE KEY. The show scope is ambiguous —
+    slug on one side, display title on the other — so every scope the row can
+    name gets a key. And a row that HAS a guid still carries its title key,
+    because the guid halves of the two tiers agree only for a show-page save:
+    for a curated pool item the local suffix is an editorial slug the feed will
+    never match, and there it is the title key that does the work. Before this,
+    a `g:` key and a `t:` key could never meet, so an episode saved from a show
+    page was rendered twice — once with a filled star, once with an empty one
+    (adversarial review 2026-09-12, defect 4). */
+function episodeDedupKeys(ep) {
+  const guid = ep && ep.guid ? String(ep.guid).trim() : "";
+  const title = normaliseShowTitle(ep && ep.title);
+  const keys = [];
+  for (const scope of episodeDedupScopes(ep)) {
+    if (guid) keys.push("g:" + scope + "|" + guid);
+    keys.push("t:" + title + "|" + scope);
+  }
+  return keys;
+}
+
+/** The TWO id shapes a device-resident episode can have, and the identity each
+    one carries. Both are minted in this file, so this reads our own format
+    rather than guessing at one:
+
+      `apple:<show_id>:<guid>`  `paintEpisodeSearchResults` below, for a row the
+                                listener starred straight out of a search.
+      `<show_id>--<guid>`       `fullCatalogueRowToEpRowItem`, for a row saved
+                                from a show page or the full-catalogue list —
+                                and the suffix there is the feed's REAL guid.
+
+    THE SECOND SHAPE WAS NOT READ AT ALL before this (adversarial review
+    2026-09-12, defect 4), which made cross-tier dedup structurally impossible
+    for every episode saved from a show page: it yielded `guid: null` and so
+    keyed by title, while its endpoint twin — endpoint rows ALWAYS carry a guid
+    (`api/episodes/search.ts`) — keyed by guid. A `t:` key can never equal a
+    `g:` key, so the listener saw the episode they had starred twice, once with
+    a filled star and once with an empty one, and starring the second copy made
+    a second `cp_saved` entry for the same episode.
+
+    THE CURATED POOL SHARES THE SECOND SHAPE AND NOT ITS MEANING, which is why
+    what comes back is a CANDIDATE and not an answer: `data/discover.json`'s
+    2,160 ids are `<show-slug>--<episode-slug>`, so the suffix there is an
+    editorial slug that no feed will ever agree with. `episodeDedupKeys` below
+    therefore matches on a SET of keys rather than trusting this one. */
+function localEpisodeIdentity(id) {
+  const s = String(id);
+  const parts = s.split(":");
+  if (parts[0] === "apple" && parts.length >= 3) return { show_id: parts[1], guid: parts.slice(2).join(":") };
+  const cut = s.indexOf("--");
+  if (cut > 0) return { show_id: s.slice(0, cut), guid: s.slice(cut + 2) };
+  return { show_id: null, guid: null };
 }
 
 /** Projects one device-resident snapshot into the SAME row shape
@@ -4122,14 +4398,23 @@ function episodeDedupKey(ep) {
     render already-starred here, and it would not if this minted a fresh
     `apple:` id for it. */
 function localEpisodeRow(id, snap) {
-  const parts = String(id).split(":");
-  const wasApple = parts[0] === "apple" && parts.length >= 3;
+  const { show_id, guid } = localEpisodeIdentity(id);
   return {
     _localId: id,
-    show_id: wasApple ? parts[1] : null,
+    /* THE LISTENER'S OWN SNAPSHOT, CARRIED WHOLE AND NEVER RE-DERIVED
+       (adversarial review 2026-09-12, defect 1). Everything below this line is
+       the ENDPOINT's row shape, which is strictly THINNER than a stored
+       snapshot — no `artwork_url`, no `topics`, no `release_date`, no
+       `explicit`, no `apple_*`, no `chapters`. Projecting a real episode down
+       to it and then snapshotting THAT back under the real storage id is how
+       one keystroke used to blank a saved episode's artwork and topics for the
+       rest of the session. `rowFor` renders a local row from this field, never
+       from the projection. */
+    _localSnapshot: snap,
+    show_id,
     show_title: snap.show || null,
     title: snap.title,
-    guid: wasApple ? parts.slice(2).join(":") : null,
+    guid,
     description_text: snap.hook || "",
     published_at: snap.release_date || null,
     duration_seconds: snap.duration_sec != null
@@ -4183,12 +4468,13 @@ function localEpisodeMatches(query) {
     the copy whose star and Up Next state are real. */
 function paintEpisodeSearchResults(query, data, container, localEpisodes) {
   const local = localEpisodes || [];
-  const seen = new Set(local.map(episodeDedupKey));
+  const seen = new Set();
+  for (const ep of local) for (const k of episodeDedupKeys(ep)) seen.add(k);
   const remote = [];
   for (const ep of (data?.episodes || [])) {
-    const key = episodeDedupKey(ep);
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const keys = episodeDedupKeys(ep);
+    if (keys.some((k) => seen.has(k))) continue;
+    for (const k of keys) seen.add(k);
     remote.push(ep);
   }
   if (!local.length && !remote.length) {
@@ -4203,8 +4489,39 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
      episodes came from Apple's index. */
   const fromApple = (data?.source || []).includes("apple") && remote.length > 0;
   const ctx = "episode-search-" + query;
+  /* A SEARCH PAINT MAY NEVER WRITE OVER A REAL STORED EPISODE (adversarial
+     review 2026-09-12, defect 1 — and the rule this tier's own header already
+     claimed). `snapshot()` ends `state.itemIndex[id] = snap`, and `rowsForIds`
+     reads `state.itemIndex` for anything in `state.poolIds` — so Up Next, the
+     Library screen and `toggleStar`'s `cp_saved` write all read back whatever
+     this function last put there. Before this, one keystroke over a starred,
+     in-pool episode replaced its artwork, topics and release date with nulls
+     for the rest of the session, and then on disk at the next star toggle.
+
+     THE SPLIT IS BY ID PROVENANCE, not by row contents. A REMOTE row's id is
+     minted here (`apple:…`) and collides with nothing, so it still goes through
+     `snapshot()` — that is how a tapped Apple result becomes playable and
+     starrable at all. A LOCAL row's id is the listener's OWN storage id, so it
+     renders from what is already under that id: the live `state.itemIndex`
+     entry when the pool has one, otherwise the listener's own snapshot carried
+     through `_localSnapshot`, which is registered rather than merely read
+     because an episode saved in an earlier session has no `itemIndex` entry yet
+     and `toggleStar` would then persist `{}` over it. Either way the value
+     written is a FULL snapshot, never the endpoint's thinner projection. */
   const rowFor = (ep, i) => {
-    const id = ep._localId || `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
+    if (ep._localId) {
+      const item = state.itemIndex[ep._localId] || snapshot(ep._localId, ep._localSnapshot || {
+        show: ep.show_title || ep.show_id,
+        title: ep.title,
+        hook: ep.description_text || "",
+        audio_url: ep.audio_url,
+        duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
+        duration_sec: ep.duration_seconds ?? null,
+        topics: [],
+      });
+      return epRow(item, i, ctx, -1);
+    }
+    const id = `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
     const item = snapshot(id, {
       show: ep.show_title || ep.show_id,
       title: ep.title,

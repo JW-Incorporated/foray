@@ -125,10 +125,23 @@ const INDEX_TSV = [
     separately: `breadth` is what the CATALOGUE pass returns and `directory` is
     what the pass carrying `fallthrough=1` returns. `directoryOk: false` makes
     the directory request a non-ok response (which `fetchApiJson` resolves to
-    `null`), and `directoryDelayMs` holds it in flight. */
+    `null`), and `directoryDelayMs` holds it in flight.
+
+    `directoryError` AND `directoryDegraded` MODEL THE SHAPES THE ENDPOINT
+    REALLY SENDS ON A BAD DAY, and they exist because the fixture used to be
+    more forgiving than the thing it stood for (adversarial review 2026-09-12,
+    defect 2). `api/shows/search.ts` answers a limiter trip, an Apple error and
+    an Apple timeout with HTTP **200** — carrying the catalogue's own rows and
+    `fallthrough: {attempted: true, error: "rate-limited"}` — precisely so a
+    directory problem never costs the listener the catalogue; and it answers an
+    unreadable breadth catalogue with 200, `shows: []`, `degraded: true`. A
+    non-ok response is the one shape it never sends on either path, so
+    `directoryOk: false` alone could not have caught a client that read HTTP 200
+    as "the directory answered". */
 function mount({
   indexBody = INDEX_TSV, indexOk = true, breadth = [], directory = [],
-  directoryOk = true, directoryDelayMs = 0, showById = null, idDelayMs = 0,
+  directoryOk = true, directoryDelayMs = 0, directoryError = null,
+  directoryDegraded = false, showById = null, idDelayMs = 0,
 } = {}) {
   const calls = [];
   const byId = new Map(PAGE_IDS.map((id) => {
@@ -154,8 +167,11 @@ function mount({
       const answer = {
         ok: true, status: 200,
         json: () => Promise.resolve({
-          shows: directory, degraded: false,
-          fallthrough: { attempted: true, error: null, cached: false },
+          // A trip returns the CATALOGUE's rows, never the directory's, and
+          // never an error — that is the endpoint's own promise.
+          shows: directoryDegraded ? [] : (directoryError ? breadth : directory),
+          degraded: directoryDegraded,
+          fallthrough: { attempted: true, error: directoryError, cached: false },
         }),
       };
       return directoryDelayMs ? new Promise((r) => setTimeout(() => r(answer), directoryDelayMs)) : Promise.resolve(answer);
@@ -489,6 +505,17 @@ test("the two normalised-title rules are one rule: app.js and api/shows/appleSho
   assert.ok(APP_SRC.includes(EXPR), "app.js must carry the rule verbatim");
   assert.ok(server.includes(EXPR), "api/shows/appleShowSearch.ts must carry the same rule verbatim");
 
+  /* THE STEM IS THE SECOND HALF OF THE SAME RULE and is pinned the same way
+     (adversarial review 2026-09-12, defect 3): the dedup that matters runs on
+     the stem, in both languages, and a change to one copy alone is the exact
+     drift this test exists to stop. */
+  const SEP = String.raw`/\s[–—]\s|\s-\s|:|\s\(|\s\[/u`;
+  const STEM = String.raw`return normaliseShowTitle(cut > 0 ? raw.slice(0, cut) : raw);`;
+  for (const [label, src] of [["app.js", APP_SRC], ["api/shows/appleShowSearch.ts", server]]) {
+    assert.ok(src.includes(SEP), `${label} must carry the separator set verbatim`);
+    assert.ok(src.includes(STEM), `${label} must carry the stem rule verbatim`);
+  }
+
   const m = mount();
   const norm = (t) => m.evalIn("normaliseShowTitle")(t);
   assert.strictEqual(norm("Lex  Fridman Podcast!"), norm("Lex Fridman Podcast"));
@@ -777,4 +804,216 @@ test("an author string is escaped, not trusted", () => {
   });
   assert.ok(!html.includes("<img src=x"), "an author string must never reach innerHTML as markup");
   assert.ok(html.includes("&lt;img src=x"), "it must render as escaped text instead");
+});
+
+/* ====================================================================
+   ADVERSARIAL REVIEW, 2026-09-12. Three of the five defects landed in this
+   file's territory; each was reproduced against this harness before it was
+   fixed, and each test below names the mutation that brings it back.
+   ==================================================================== */
+
+test("a RATE-LIMITED directory answer (HTTP 200 with fallthrough.error) is never cached as an answer", async () => {
+  /* DEFECT 2. `if (data)` treated ANY parsed body as "the directory answered",
+     and `data` being non-null only ever meant the transport worked. On a
+     limiter trip `api/shows/search.ts` replies 200 with the CATALOGUE's rows
+     and `fallthrough: {error: "rate-limited"}` — zero directory rows — and the
+     client wrote that into `showDirectoryQueryCache` as THE answer for the
+     query. The cache is session-lived and cleared only by overflow or reload,
+     so one bad minute on a train removed the directory tier for that query
+     until the app was restarted, and the 10 s edge TTL the endpoint argues will
+     "flatten the storm" never came into it, because no second request was made.
+
+     THE FIXTURE IS HALF THE TEST. `directoryOk: false` — the only failure the
+     old harness could model — is a NON-200, the one shape this endpoint never
+     sends on a trip. `directoryError` sends the shape it does.
+
+     MUTATION: change `answered` back to `!!data`. The retry is served from the
+     poisoned cache and the second count stays at 1. */
+  const m = mount({
+    breadth: [{ show_id: "radiolab", title: "Radiolab", source: "catalogue" }],
+    directoryError: "rate-limited",
+  });
+  m.input.value = "radiolab";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  assert.strictEqual(m.directoryCalls().length, 1);
+
+  m.input.value = "radiolab";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  assert.strictEqual(m.directoryCalls().length, 2,
+    "a rate-limited directory pass must be retried, not remembered as an answer");
+
+  /* The same rule for the OTHER 200-shaped failure: an unreadable breadth
+     catalogue, which replies `shows: [], degraded: true`.
+     MUTATION: drop the `!data.degraded` clause from `answered`. */
+  const deg = mount({ directoryDegraded: true });
+  deg.input.value = "radiolab";
+  deg.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  deg.input.value = "radiolab";
+  deg.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  assert.strictEqual(deg.directoryCalls().length, 2,
+    "a degraded answer is not an answer either");
+});
+
+test("a rate-limited directory pass reports dirHits: null, not a full count, and still cannot shorten the list", async () => {
+  /* THE OTHER HALF OF DEFECT 2, and the reason it is a separate assertion: the
+     bug was invisible to the very diagnostics that would have found it.
+     `settle({dirHits: data ? rows.length : null})` reported the CATALOGUE's row
+     count for a trip that fetched no directory rows at all, so P-06's records
+     showed a healthy directory on every limiter trip. `null` is the existing
+     "this half is unknown" value and is the honest one here.
+
+     The list assertion rides along because it is the promise the shape exists
+     to keep: a degraded reply carries the catalogue's rows, they still merge,
+     and nothing is ever removed.
+
+     MUTATION: restore `dirHits: data ? rows.length : null`. The strictEqual on
+     null goes red. */
+  const records = [];
+  const m = mount({
+    breadth: [{ show_id: "radiolab", title: "Radiolab", source: "catalogue" }],
+    directoryError: "rate-limited",
+  });
+  m.evalIn("window.forayRecordSearch = (f) => { RECORDS.push(f); }");
+  m.ctx.RECORDS = records;
+  m.evalIn("window.forayRecordSearch = (f) => { RECORDS.push(JSON.parse(JSON.stringify(f))); }");
+
+  m.input.value = "radiolab";
+  m.byId.get("sh-form").fire("submit");
+  const painted = m.results().innerHTML;
+  await sleep(60);
+
+  assert.strictEqual(records.length, 1, "exactly one diagnostics record per completed search");
+  assert.strictEqual(records[0].dirHits, null,
+    "a trip that returned no directory rows must not report a hit count for them");
+  assert.ok(records[0].dirMs !== null, "the timing of the attempt is still real and still recorded");
+  assert.ok(m.results().innerHTML.includes("Radiolab"),
+    "and the catalogue rows the degraded reply carried still merge — nothing is ever removed");
+  assert.ok(painted.includes("Radiolab"), "the local row was painted before any of this");
+});
+
+test("an Apple row whose title only adds a SUBTITLE collapses into the catalogue row", async () => {
+  /* DEFECT 3, driven by the committed catalogue rather than by an invented
+     pair. Joining `data/catalog.json` to `data/catalog-breadth.json` by
+     `apple_collection_id` gives 164 comparable rows and five disagree; all five
+     are below, verbatim, because exact normalised equality collapsed NONE of
+     them and the listener saw every one twice — `twenty minute vc` put the
+     curated row and the Apple row side by side, one of them now wearing a
+     byline.
+
+     SCALE-FREE BY CONSTRUCTION: these are five fixed strings, not a count of
+     anything in `data/`, so this assertion cannot drift with the catalogue.
+
+     MUTATION: revert `showTitleDedupStem` to `normaliseShowTitle` in
+     `mergeShowRows`. Every pair renders twice. */
+  const PAIRS = [
+    ["The Twenty Minute VC (20VC)", "The Twenty Minute VC (20VC): Venture Capital | Startup Funding | The Pitch"],
+    ["The TWIML AI Podcast", "The TWIML AI Podcast (formerly This Week in Machine Learning & Artificial Intelligence)"],
+    ["omega tau", "omega tau - English only"],
+    ["Around the House with Eric G", "Around the House with Eric G®: Upgrade Your Home Like a Pro"],
+    ["Ask Lisa: The Psychology of Parenting", "Ask Lisa: The Psychology of Raising Tweens & Teens"],
+    /* NOT a subtitle divergence — the full normalised titles are IDENTICAL and
+       only the separator the two publishers typed differs. It is here because a
+       stem-ONLY rule breaks it (one side cuts at `:`, the other has nothing to
+       cut at), which is why the dedup carries the full title AND the stem.
+       MUTATION: drop `normaliseShowTitle(title)` from `showDedupKeys`. Only
+       this row goes red, and it is the row a stem-only rule loses. */
+    ["It's a Material World: Materials Science Podcast", "It's a Material World | Materials Science Podcast"],
+  ];
+  for (const [curated, apple] of PAIRS) {
+    const m = mount({
+      directory: [{
+        show_id: "958230465", title: apple, artwork_url: null, artist_name: "A Host",
+        editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "apple",
+      }],
+    });
+    m.state.catalog = { shows: [{ show_id: "curated-slug", title: curated, artwork_url: null }] };
+    m.input.value = curated.split(/[:(]/)[0].trim();
+    m.byId.get("sh-form").fire("submit");
+    await sleep(30);
+    const rows = (m.results().innerHTML.match(/class="show-result"/g) || []).length;
+    assert.strictEqual(rows, 1, `"${curated}" and "${apple}" are one podcast and must render one row, got ${rows}`);
+  }
+});
+
+test("the stem is a SUBTITLE rule, not a prefix rule: a hyphenated name and a longer name both survive", async () => {
+  /* THE OTHER DIRECTION, which is the half a looser rule gets wrong. Suppression
+     is not free — the whole point of `mergeShowRows`'s "'The Daily' is not one
+     show" clause — so the stem must cut only where a subtitle really starts.
+
+     A BARE HYPHEN IS NOT A SEPARATOR: without the surrounding-space requirement
+     "Sword-and-Scale" stems to "sword" and every show beginning with that word
+     collapses into it. And a longer name that merely CONTINUES the shorter one
+     ("The Daily Stoic" after "The Daily") has no separator at all, so it is not
+     a subtitle and is not suppressed.
+
+     MUTATION: drop the \s...\s around the hyphen in
+     `SHOW_TITLE_SUBTITLE_SEPARATOR`, or make the rule a word-boundary prefix
+     test instead of a stem equality. Either way one of these rows disappears. */
+  const hyphen = mount({
+    directory: [{ show_id: "111", title: "Sword-and-Scale Rewind", artwork_url: null, artist_name: null,
+      editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "apple" }],
+  });
+  hyphen.state.catalog = { shows: [{ show_id: "sword", title: "Sword", artwork_url: null }] };
+  hyphen.input.value = "sword";
+  hyphen.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  const hyphenHtml = hyphen.results().innerHTML;
+  assert.ok(hyphenHtml.includes("Sword-and-Scale Rewind"), "a hyphenated name must not stem to its first word");
+  assert.ok(hyphenHtml.includes(">Sword<"), "and the catalogue row it would have collapsed into is still there");
+
+  const longer = mount({
+    directory: [{ show_id: "222", title: "The Daily Stoic", artwork_url: null, artist_name: null,
+      editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "apple" }],
+  });
+  longer.state.catalog = { shows: [{ show_id: "the-daily", title: "The Daily", artwork_url: null }] };
+  longer.input.value = "the daily";
+  longer.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  const longerHtml = longer.results().innerHTML;
+  assert.ok(longerHtml.includes("The Daily Stoic"), "a longer name with no subtitle separator is a different show");
+  assert.ok(longerHtml.includes(">The Daily<"), "and the catalogue row keeps its place");
+});
+
+test("the show index landing mid-query MERGES into the painted list instead of replacing it", async () => {
+  /* DEFECT 5, the pre-existing half that P-02 made expensive. The index is
+     loaded lazily on the first focus, so it routinely resolves in the middle of
+     a query the endpoint has already answered. `repaintShowSearchForIndex`
+     called `paintShowSearchLocal(query, showSearchToken)` — the CURRENT token,
+     so no supersession guard applied and nothing stopped it — and the list
+     reverted to the local-only answer with no way back until the next
+     keystroke. Under P-02 the rows it discarded are the majority of the list
+     (§2.1's measured "median +17").
+
+     BOTH DIRECTIONS ARE ASSERTED, because the mirror-image bug is just as real:
+     `runShowSearchCostly` held its own `shown` snapshot, so whichever merge
+     completed AFTER the index landed would have repainted from a list that
+     predated it and undone the index's rows instead. `paintedShowRows` re-reads
+     what is on the page, so neither can undo the other.
+
+     MUTATION: restore `paintShowSearchLocal(query, showSearchToken)` as the
+     body of `repaintShowSearchForIndex`, or capture `shown` once in
+     `runShowSearchCostly`. One of the two directory assertions goes red. */
+  const m = mount({
+    indexBody: "", // the index has not landed yet
+    directory: [{
+      show_id: "999", title: "Radiolab for Kids", artwork_url: null, artist_name: null,
+      editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "apple",
+    }],
+  });
+  m.input.value = "radiolab";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(40);
+  assert.ok(m.results().innerHTML.includes("Radiolab for Kids"), "precondition: the directory row is on screen");
+
+  // the index resolves now, mid-query, on a slow first-focus load
+  m.evalIn(`showIndex = SearchEngine.parseShowIndex(${JSON.stringify(INDEX_TSV)})`);
+  m.evalIn("repaintShowSearchForIndex()");
+
+  const html = m.results().innerHTML;
+  assert.ok(html.includes("Radiolab for Kids"), "the directory row must survive the index landing");
+  assert.ok(html.includes(">Radiolab<"), "and so must the local row it was merged onto");
 });
