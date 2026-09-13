@@ -837,7 +837,7 @@ const FLOORS = {
      network contract, the report validator) -- driven by fakes and an
      injected fetch, no real catalogue/network. See
      test/search-probe-record.test.js for the wiring/mutation-guard half. */
-  "tools/search-probe.test.mjs": 30, // S-03/S-08 (2026-09-12): +3 — the index battery reports the prefix and scan passes separately, and the validator refuses a report that lost either p95 or the whole section; 27 -> 30
+  "tools/search-probe.test.mjs": 45, // P-06 (docs/search-parity-plan.md §2.1, 2026-09-13): +15 — the THREE NAMED PARITY CASES (`tim ferriss`, `lex fridman`, `sam harris`) become a battery of their own, asked plain AND with `fallthrough=1` so that "one row" cannot read as a thin catalogue instead of a gate that was never asked; the target show's 1-indexed rank rides along because `tim ferriss` measured 1 -> 14 rows while The Tim Ferriss Show slid from first to third, and a count-only table calls that an unqualified win; the validator now refuses a report that dropped the section, a case, either column, or the titles; 30 -> 45 // S-03/S-08 (2026-09-12): +3 — the index battery reports the prefix and scan passes separately, and the validator refuses a report that lost either p95 or the whole section; 27 -> 30
   /* S-03 (docs/search-plan.md): the BUILD half of the show index — the merge,
      the in_curated dedupe, the chart_rank cut, the control-character sanitiser,
      the four-column row shape, and the parity of the committed
