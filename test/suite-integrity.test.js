@@ -212,6 +212,20 @@ const FLOORS = {
      mutation that kills it. */
   "player/segment-strip.test.js": 46, // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
   "player/strip-scrub-gesture.test.js": 41,
+  /* Drag the Now Playing sheet down to dismiss it (founder report,
+     2026-09-13). Same pure-state-machine shape as the scrub gesture above and
+     floored for the same reason: the numbers ARE the product decision — how
+     far a thumb must travel, what counts as a flick, and the eligibility rule
+     that keeps a scroll through a long episode description from throwing the
+     sheet away. Every test names the mutation that kills it, and each was run. */
+  "player/sheet-drag-dismiss.test.js": 15,
+  /* The other half of the same report: the sheet is WIRED, opens at the top,
+     scrolls inside itself, and is a full-height overlay whose `[hidden]`
+     attribute still hides it. A source-text suite (client.js builds DOM at
+     import and cannot be loaded under node — see its own header), floored
+     because a perfect gesture module wired to nothing passes every other test
+     in this repo. */
+  "player/now-playing-sheet.test.js": 16,
   "player/seek-policy.test.js": 33,
   /* The wire between the page and on-device speech (#29). Floored with no
      slack, because what it holds down is a connection that was ABSENT for
@@ -256,6 +270,20 @@ const FLOORS = {
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
   "test/collapsing-header-scroll.test.js": 6,
+  /* The onboarding sheet mounts once per VISIT, not once per persisted flag
+     (found 2026-09-13 by the Playwright drawer spec: two `#first-time-sheet`
+     nodes, duplicate ids, three-minute click timeouts behind them). Floored
+     because the browser suite only catches it when the machine is slow enough
+     to lose the race — green on a quiet box, red under load — so these
+     timing-free assertions are the reliable half of the guard. */
+  "test/onboarding-sheet-once.test.js": 6,
+  /* A new page starts at the top, and ‹ puts you back where you were
+     (founder report, 2026-09-13). Floored because BOTH halves are one-line
+     deletions away and only one of them is visible: losing the scroll-to-top
+     reproduces the reported bug, and losing the back-step restore quietly
+     ruins every deep browse instead — the failure mode that has no bug report
+     because it feels like the app forgetting rather than like a defect. */
+  "test/route-scroll-position.test.js": 11,
   /* Where `api/*` actually lives, and the CSP entry that lets the client reach
      it. Floored because this is the suite standing between the app and a
      REGRESSION THAT LOOKS LIKE NOTHING: every caller degrades a failed api
