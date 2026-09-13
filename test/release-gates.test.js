@@ -635,9 +635,18 @@ test("K-06: the measured app sizes plus the model still fit under the ceiling", 
     `the universal APK is ${worstApkMb.toFixed(1)} MiB, over the ${APP_SIZE_CEILING_MB} MB ceiling — `
     + "the model must then be fetched on first run rather than bundled");
 
-  /* iOS ships ONE architecture, so its artefact cannot be worse than Android's
-     universal APK. Stated as an assertion rather than a sentence so that a
-     future iOS measurement pasted in above has something to contradict. */
+  /* iOS ships ONE architecture, so its SHIPPED artefact cannot be worse than
+     Android's universal APK. Stated as an assertion rather than a sentence so
+     that a future iOS measurement pasted in above has something to contradict.
+
+     DO NOT REACH FOR THE 146 MB FIGURE IN `ios-shell`'s LOG. That run records
+     `du -sh App.app` = 146M (job 103673939658), and it is the SIMULATOR DEBUG
+     bundle: two simulator slices of the runtime, unoptimised, unstripped, and
+     never thinned. It is not the `.ipa`, it is not what a phone downloads, and
+     reading it as either would make a 102 MiB app look like it is 4 MB from the
+     ceiling. It is recorded here rather than left for someone to find in an
+     artifact and misread. The real iOS number needs a signed archive, which is
+     `ios-archive`'s job and has not run for this branch. */
   const iosAppMb = 8.3;   // deck §2, measured, simulator, before the model
   const iosProjectedMb = iosAppMb + bundledMb + (runtimeShareMb / 4);
   assert.ok(iosProjectedMb < worstApkMb,
