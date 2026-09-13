@@ -3,8 +3,11 @@
 // rate limiting, and caching.
 import { test } from "node:test";
 import assert from "node:assert";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import * as searchModule from "../episodes/search.ts";
-import { _resetShowIdMapCacheForTests } from "../episodes/showIdMap.ts";
+import { _resetShowIdMapCacheForTests, loadShowIdMap } from "../episodes/showIdMap.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
@@ -249,6 +252,207 @@ test("caching: the cache key includes limit, so a later request with a different
   }
 });
 
+// ---------------------------------------------------------------------------
+// P-05 piece 1 (docs/search-parity-plan.md §4, 2026-09-12): the id-map spans
+// BOTH catalogue files, so `mapAppleHit`'s drop rule stops eating most of
+// every answer.
+//
+// These read the REAL data/catalog.json + data/catalog-breadth.json on
+// purpose — the defect was entirely a question of which committed file the
+// map reads, and a fixture pair would have stayed green throughout the bug.
+// Every assertion below is an INVARIANT or a floor, never an inventory count:
+// the catalogue grows on a schedule (tools/harvest-*), and a test that reddens
+// because 19,787 became 21,000 would be a false alarm, not a finding.
+// ---------------------------------------------------------------------------
+
+const REPO_ROOT = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "..", "..");
+const CATALOG = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "data", "catalog.json"), "utf8"));
+const BREADTH = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "data", "catalog-breadth.json"), "utf8"));
+
+/** A real breadth-only show: present in catalog-breadth.json, not flagged
+ *  `in_curated`, and with no curated row claiming its Apple id. Derived rather
+ *  than pinned so this suite survives any particular show leaving the
+ *  catalogue — the id 863897795 that the P-05 probe measured is a fine example
+ *  and a terrible fixture. */
+function someBreadthOnlyShow() {
+  const curatedIds = new Set(
+    CATALOG.shows.filter((s) => typeof s.apple_collection_id === "number").map((s) => s.apple_collection_id)
+  );
+  return BREADTH.shows.find(
+    (s) => !s.in_curated && typeof s.apple_collection_id === "number" && s.title && !curatedIds.has(s.apple_collection_id)
+  );
+}
+
+async function loadFallbackMap() {
+  _resetShowIdMapCacheForTests();
+  // A fetchImpl that throws proves the map is built from committed files
+  // alone: data/shows-index-pointer.json does not exist on main, so
+  // tryLoadReleaseIdMap() must bail before it ever reaches the network.
+  const map = await loadShowIdMap({
+    fetchImpl: async () => {
+      throw new Error("no network in this test");
+    },
+    forceReload: true,
+  });
+  _resetShowIdMapCacheForTests();
+  return map;
+}
+
+test("id-map: a breadth-only show's Apple collectionId maps to its numeric show_id instead of being dropped", async () => {
+  // MUTATION THAT TURNS THIS RED: delete the catalog-breadth.json pass from
+  // showIdMap.ts:loadCatalogFallback() — i.e. restore the pre-P-05 220-id map,
+  // under which this id resolved to nothing and every episode of this show was
+  // silently discarded by mapAppleHit.
+  const show = someBreadthOnlyShow();
+  assert.ok(show, "data/catalog-breadth.json has no breadth-only show — the fixture assumption is gone, not the behaviour");
+  const idMap = await loadFallbackMap();
+  assert.strictEqual(
+    idMap.byCollectionId.get(show.apple_collection_id),
+    String(show.apple_collection_id),
+    `breadth show "${show.title}" (${show.apple_collection_id}) must map to its minted numeric show_id`
+  );
+});
+
+test("id-map: a curated show keeps its SLUG id — the curated pass is merged first and breadth never overwrites it", async () => {
+  // MUTATION THAT TURNS THIS RED: swap the two passes in
+  // loadCatalogFallback(), or drop its `if (map.has(...)) continue` guard.
+  // Either one hands a curated show the numeric id, and
+  // backend/src/catalog/breadthCatalog.ts DROPS the breadth row for a curated
+  // show — so that numeric id resolves to nothing on the show page. That is
+  // exactly the broken link mapAppleHit's drop rule exists to prevent,
+  // reintroduced by the very change meant to widen it.
+  const idMap = await loadFallbackMap();
+  let checked = 0;
+  for (const show of CATALOG.shows) {
+    if (!show.show_id || typeof show.apple_collection_id !== "number") continue;
+    assert.strictEqual(
+      idMap.byCollectionId.get(show.apple_collection_id),
+      show.show_id,
+      `curated show ${show.show_id} must map to its slug, not to ${show.apple_collection_id}`
+    );
+    checked++;
+  }
+  assert.ok(checked > 0, "no curated show carries an apple_collection_id — the join this map is built on is gone");
+});
+
+test("id-map: every id it mints resolves to a show the merged catalogue will actually hand back", async () => {
+  // THE INVARIANT THE DROP RULE WAS REALLY PROTECTING, stated directly. A
+  // mapped hit renders a row linking to #/show/<show_id>, which
+  // api/shows/search.ts answers out of backend/src/catalog/breadthCatalog.ts's
+  // merged index. Any id in this map that is NOT in that index is a dead link
+  // on a live result row — strictly worse than the drop it replaced.
+  //
+  // MUTATION THAT TURNS THIS RED: delete BOTH of loadCatalogFallback()'s
+  // breadth-pass guards — `if (show.in_curated) continue` and
+  // `if (map.has(...)) continue`. Verified red, 2026-09-12: the 103
+  // `in_curated` rows then get numeric ids, breadthCatalog.ts drops exactly
+  // those rows, and 103 entries point at show_ids the merged catalogue does
+  // not contain.
+  //
+  // SAID HONESTLY, because a test that overstates its own coverage is worse
+  // than no test: deleting the `in_curated` guard ALONE leaves this green on
+  // the committed data, because every `in_curated` breadth row happens to
+  // have a curated counterpart today (0 orphans, checked 2026-09-12) and the
+  // `map.has` guard therefore catches all of them first. The guard is kept
+  // anyway — it is the half of the rule that does not depend on that
+  // coincidence holding — and THIS assertion is what notices if the
+  // coincidence ever stops holding, which is the thing worth catching.
+  //
+  // Scale-free by construction: it quantifies over whatever the map holds, so
+  // a bigger catalogue cannot redden it — only a drift between the two
+  // admission rules can.
+  const { loadBreadthCatalog } = await import("../../backend/src/catalog/breadthCatalog.ts");
+  const resolvable = new Set(loadBreadthCatalog().map((s) => s.show_id));
+  const idMap = await loadFallbackMap();
+  const unresolvable = [];
+  for (const [collectionId, showId] of idMap.byCollectionId) {
+    if (!resolvable.has(showId)) unresolvable.push(`${collectionId} -> ${showId}`);
+  }
+  assert.deepStrictEqual(
+    unresolvable.slice(0, 10),
+    [],
+    `${unresolvable.length} id-map entries point at show_ids the merged catalogue does not contain (first 10 shown)`
+  );
+});
+
+test("id-map: it is strictly wider than the curated-only map it replaced, and lost no curated id buying that", async () => {
+  // A FLOOR, NOT A COUNT. Containment (every curated Apple id still present)
+  // plus "strictly more entries than curated rows", which holds for any
+  // catalogue in which at least one breadth-only show exists. It deliberately
+  // does NOT pin 19,843 or 19,787 or 220: the harvest moves those numbers on
+  // its own schedule and nothing here may go red for the catalogue growing.
+  //
+  // MUTATION THAT TURNS THIS RED: reading catalog-breadth.json INSTEAD of
+  // catalog.json rather than in addition to it — the plausible bad fix, which
+  // widens the map while quietly breaking all 220 curated links.
+  const idMap = await loadFallbackMap();
+  const curatedIds = CATALOG.shows
+    .filter((s) => s.show_id && typeof s.apple_collection_id === "number")
+    .map((s) => s.apple_collection_id);
+  for (const id of curatedIds) {
+    assert.ok(idMap.byCollectionId.has(id), `curated Apple id ${id} fell out of the id-map`);
+  }
+  assert.ok(
+    idMap.byCollectionId.size > curatedIds.length,
+    `id-map (${idMap.byCollectionId.size}) must be wider than the curated set (${curatedIds.length}) it used to be limited to`
+  );
+});
+
+test("general search: a breadth-only show's Apple hit now reaches the response, end to end through the handler", async () => {
+  // The point of the card, through the real handler rather than the map alone.
+  //
+  // MUTATION THAT TURNS THIS RED: any change that puts loadCatalogFallback()
+  // back on catalog.json alone. Pre-P-05 this exact request answered
+  // `{episodes: [], source: [], degraded: false}` — the measured production
+  // behaviour for `tim ferriss`, `sam harris`, `elon musk`,
+  // `artificial intelligence` and `the daily` on 2026-09-12.
+  resetSharedState();
+  const show = someBreadthOnlyShow();
+  assert.ok(show, "no breadth-only show in the committed catalogue");
+  const fetchImpl = async (url) => {
+    if (String(url).includes("itunes.apple.com")) {
+      return new Response(
+        JSON.stringify({
+          results: [
+            {
+              collectionId: show.apple_collection_id,
+              collectionName: show.title,
+              trackName: "A breadth-show episode",
+              episodeGuid: "breadth-g1",
+              episodeUrl: "https://cdn.example.com/breadth.mp3",
+              trackTimeMillis: 90000,
+              releaseDate: "2026-01-01T00:00:00Z",
+            },
+          ],
+        }),
+        { status: 200 }
+      );
+    }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const req = { method: "GET", query: { q: `breadth-hit-${Date.now()}` }, headers: {} };
+  const res = mockRes();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  try {
+    await handler(req, res);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.episodes.length, 1, "the breadth hit must survive mapAppleHit");
+  assert.strictEqual(res.body.episodes[0].show_id, String(show.apple_collection_id));
+  assert.strictEqual(res.body.episodes[0].source, "apple");
+});
+
+/* THIS TEST MUST STAY LAST IN THE FILE. It deliberately drains
+   appleBucket.ts's 20/min bucket, which is module state shared by every test
+   above it — node:test runs a file's top-level tests in source order, so any
+   Apple-path test placed after this one is answered `degraded: true, "rate
+   limit exceeded"` and fails for a reason that has nothing to do with what it
+   asserts. That is not hypothetical: P-05's end-to-end test was appended below
+   it and failed exactly this way before being moved above. Add new Apple-path
+   tests ABOVE this comment. */
 test("rate limit: the 21st distinct general search within the same instant is refused without calling Apple", async () => {
   // Drives the handler itself through the bucket capacity — imports across
   // separate test files can get separate module instances under tsx's ESM

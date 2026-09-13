@@ -21,7 +21,10 @@ import { episodeSearchCache, normalizeQueryKey } from "./searchCache";
  *      query (searchCache.ts). Every hit's `collectionId` is mapped back to
  *      a 4a `show_id` via showIdMap.ts; a hit that doesn't map to any known
  *      show is DROPPED (never surfaced with a broken show link) — this is
- *      the card's own explicit rule.
+ *      the card's own explicit rule. Since P-05 that map spans BOTH
+ *      catalogue files (19.9k ids, not 220), so the rule fires on genuine
+ *      strangers rather than on 73 % of every answer — see showIdMap.ts's
+ *      loadCatalogFallback() for the measurement.
  *
  *   2. SHOW-SCOPED SEARCH (`show=<show_id>`): no Apple call at all. Fetches
  *      that show's live feed (S-02's exact path: fetchFeedConditional +
@@ -86,11 +89,25 @@ interface AppleEpisodeHit {
   episodeUrl?: string;
 }
 
-/** Maps one Apple search hit to our shape, or null if its collectionId doesn't resolve to a known show. */
+/** Maps one Apple search hit to our shape, or null if its collectionId doesn't
+ *  resolve to a known show.
+ *
+ *  THE DROP IS STILL RIGHT; ITS OLD JUSTIFICATION IS NOT (P-05, 2026-09-12).
+ *  S-07 wrote this drop so a hit was "never surfaced with a broken show link",
+ *  which was true while a breadth show page 404'd on a cold open. S-06(b)/#560
+ *  landed after S-07 and made every merged-catalogue id resolvable — verified
+ *  live, `GET /api/shows/search?id=863897795` -> "The Tim Ferriss Show". So the
+ *  reason to drop is now narrow and literal: an id `showIdMap.ts` cannot place
+ *  at all would render a row pointing at a show page that does not exist, and
+ *  no listener is served by that. What P-05 changed is the SIZE of the set this
+ *  catches — 220 ids to 19.9k — because at 220 this line was silently eating
+ *  three quarters of every answer and five of eight probe queries returned
+ *  nothing at all with `degraded:false`. If this ever starts dropping most hits
+ *  again, the id-map is broken, not the query. */
 function mapAppleHit(hit: AppleEpisodeHit, idMap: Map<number, string>): EpisodeSearchResult | null {
   if (typeof hit.collectionId !== "number") return null;
   const show_id = idMap.get(hit.collectionId);
-  if (!show_id) return null; // unmapped — dropped, per the card's own rule
+  if (!show_id) return null; // genuinely outside our catalogue — see this function's header
   if (!hit.trackName) return null;
   return {
     show_id,
