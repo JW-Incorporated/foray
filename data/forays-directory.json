@@ -1,6 +1,6 @@
 {
-  "version": "68dc321c61bfa62a",
-  "built_at": "2026-09-13T11:55:16.191Z",
+  "version": "cef50f9878d16b01",
+  "built_at": "2026-09-13T15:34:12.712Z",
   "files": {
     "forays": "data/forays.json",
     "segments": "data/segments.json",
