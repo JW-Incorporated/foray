@@ -62,10 +62,6 @@ displays. None of that is in question, and none of it is what Wyatt is hitting.
 Four things are, in the order they cost him:
 
 ### 2.1 One weak local match suppresses the entire directory
-`app.js:3675` — `const fallthrough = shown.length === 0 ? "&fallthrough=1" : "";`
-
-The Apple fall-through fires **only when the local pass returns nothing at all.**
-Measured against the live endpoint, `limit=5`:
 
 | query | local-only | with `fallthrough=1` |
 |---|---|---|
@@ -75,8 +71,36 @@ Measured against the live endpoint, `limit=5`:
 
 One row, for three of the best-known shows in podcasting. Pocket Casts answers
 each of those with a screenful. The fall-through is not broken — it is never
-asked, because one match is not zero. **This single condition is the largest
-share of "still totally sucks".**
+asked. **This single condition is the largest share of "still totally sucks".**
+
+**CORRECTED 2026-09-12 — THIS SECTION NAMED THE WRONG GATE, and a card written
+against the version it replaces would have shipped a diff that changed nothing.**
+
+It originally cited `app.js:3675` —
+`const fallthrough = shown.length === 0 ? "&fallthrough=1" : "";` — as "the
+single condition". It is *a* condition and it is not the binding one. There are
+**two gates in series**, and the client's is the weaker of the two:
+
+| | the gate | measured against |
+|---|---|---|
+| client, `app.js` | ask only when the LOCAL pass is empty | the **10,113**-row cut the device holds |
+| **endpoint, `api/shows/search.ts:198`** | **call Apple only when the merged catalogue is empty** | **the full 19,904-row catalogue** |
+
+The endpoint's is the one that decides, because it is measured against a
+catalogue twice the size of the client's. Setting `fallthrough=1` from the client
+does not make Apple answer — the endpoint still refuses unless its own 19,904
+rows return zero.
+
+**Measured 2026-09-12, live endpoint, 25 listener queries, each asked twice
+(plain and `fallthrough=1`): for 23 of the 25 the two responses were
+byte-identical and the flagged one came back carrying
+`fallthrough: {attempted: false}`.** Apple was reached on exactly two —
+`ira glass` and `hubermann` (the typo) — the only two queries where the full
+catalogue returned nothing at all. **Editing the client alone would have moved 0
+of those 25 queries.**
+
+So P-02 is an endpoint change first and a client change second, and it needs both
+halves: the endpoint has to become willing to answer, and the client has to ask.
 
 ### 2.2 There is no author or host anywhere in the local index
 `data/show-index.tsv` is four columns — title, id, `chart_rank`, curated
@@ -192,11 +216,71 @@ and never wait; the directory's arrive and are merged beneath them, deduped by
 times out must leave the local list exactly as it was.
 **Owned.** `app.js` (`runShowSearchCostly`, `mergeBreadth`), `api/shows/search.ts`
 if the gate moves server-side, their tests.
-**Done when.** `tim ferriss`, `lex fridman` and `sam harris` each return ≥ 10
-rows with the exact show first; a query with a strong local match still paints
-locally in under a millisecond; the rate limiter's behaviour under the new call
-volume is measured and named. **Watch.** This raises directory call volume —
-measure it and say what it costs before assuming it is free.
+**Done when.** ~~`tim ferriss`, `lex fridman` and `sam harris` each return ≥ 10
+rows with the exact show first~~ — **REWRITTEN 2026-09-12 against the measured
+ceiling, because the original is unachievable for one of its own three cases.**
+A query cannot return more rows than Apple has for it, and `lex fridman` is
+capped at **3**: Apple returns 4 results for that term at `limit=25` *and* at
+`limit=200`, and three of the four are duplicate `Lex Fridman Podcast` entries
+that the dedup collapses into one. No merge and no limit reaches ten. The other
+two have room, and both also sit at their ceilings: `tim ferriss` 14,
+`sam harris` 11.
+
+> **Done when (measured ceilings — live endpoint + Apple, `limit=25`,
+> 2026-09-13).** Each named case returns **its Apple ceiling rather than a fixed
+> count** — `tim ferriss` ≥ 14, `sam harris` ≥ 11, `lex fridman` ≥ 3 — and in
+> each the show the listener meant is somewhere in the list. A query with a
+> strong local match still paints locally in under a millisecond, and the rate
+> limiter's behaviour under the new call volume is measured and named.
+>
+> *Ranking it FIRST is deliberately not part of this card.* Measured today, with
+> `rankShows` applied exactly as the client applies it, `The Tim Ferriss Show`
+> lands at position 7 and `Making Sense with Sam Harris` at 3, behind titles that
+> merely START with the query text. That is `rankShows`'s bucket order — a title
+> beginning "Tim Ferriss" is a prefix match and outranks one that is only a
+> word-start match because of its leading "The" — and Apple did not make that
+> mistake; we re-sort its answer. It is a ranking change, it belongs to P-04 or a
+> card of its own, and folding it in here would make a correct merge look broken.
+
+**The condition that was chosen, and the one that was rejected.** The ask above
+proposed "fewer than a named threshold of *strong* matches". **That was measured
+and refused.** What shipped is **always ask, with a length floor (≥ 3 characters)
+and no strength test of any kind**: `SHOW_DIRECTORY_MIN_QUERY_LENGTH` is the only
+gate left on the client, and on the endpoint the caller's `fallthrough=1` is the
+only gate left at all.
+
+*Why no threshold.* It is not merely unnecessary — it is **backwards at exactly
+the lengths that matter**. Measured 2026-09-12: `tim` returns **10 strong local
+matches**, prefix hits, the strongest bucket there is, and **not one of them is
+The Tim Ferriss Show**, which Apple returns at position 5. A threshold of ten —
+the value already sitting in `app.js` as `SHOW_PREFIX_UNDERDELIVERS_BELOW` —
+suppresses precisely the show the listener meant, *because* the local pass
+delivered plenty. Every count threshold has that shape: the queries where the
+local catalogue looks healthiest are the ones where it is answering with a
+different set of shows.
+
+*Why the floor stays.* One and two-character queries match thousands of rows and
+name nothing. The floor is what keeps the directory off the first two keystrokes
+of every search.
+
+**Dedup, amended 2026-09-12 after adversarial review.** The ask says "deduped by
+`apple_collection_id` and by normalised title". Normalised title alone is not
+enough: the shape Apple actually varies is a **subtitle**, and the committed
+catalogue already carries it — joining `data/catalog.json` to
+`data/catalog-breadth.json` by `apple_collection_id` gives 164 comparable rows
+and 5 of them disagree, every one a suffix or a subtitle (`The Twenty Minute VC
+(20VC)` against `…(20VC): Venture Capital | Startup Funding | The Pitch`). The
+rule is now the full normalised title **and** the title's *stem* — the title cut
+at its first subtitle separator — with either match counting as a duplicate.
+Both keys, because neither is a superset of the other: one committed pair
+(`It's a Material World: …` / `It's a Material World | …`) has identical full
+titles and different stems. The cost is named in `api/shows/appleShowSearch.ts`
+rather than left implicit: two genuinely different shows in the committed
+catalogue are now suppressed by it, and no title rule can tell them apart from
+the five.
+
+**Watch.** This raises directory call volume — measure it and say what it costs
+before assuming it is free.
 
 ### P-03 · Index the author, and search it — **H · M — SPLIT 2026-09-12, see P-03a/b**
 **Ask (as written).** Add an author column to `data/show-index.tsv` and to the
