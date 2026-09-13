@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-09-12T11:58:58.123Z",
+  "built_at": "2026-09-13T11:55:15.964Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -18344,6 +18344,56 @@
       "distilling",
       "panel",
       "education"
+    ],
+    "the-ancients--the-first-punic-war": [
+      "ancient-rome",
+      "carthage",
+      "roman-empire",
+      "ancient-history",
+      "military-history",
+      "tactics"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1629": [
+      "engineering-history",
+      "textiles",
+      "history-of-technology",
+      "innovation",
+      "change"
+    ],
+    "around-the-house-eric-g--stop-recording-crimes-we-want-people": [
+      "home-improvement",
+      "diy-home",
+      "cameras",
+      "crime",
+      "smart-home"
+    ],
+    "around-the-house-eric-g--the-science-of-building-insights-from": [
+      "building-materials",
+      "diy-home",
+      "home-improvement",
+      "construction",
+      "physics"
+    ],
+    "masters-of-scale--rapid-response-on-s-16-year": [
+      "business",
+      "sports-business",
+      "brands",
+      "leadership",
+      "startups"
+    ],
+    "common-descent--episode-252-the-ice-age": [
+      "paleontology",
+      "earth-science",
+      "geology",
+      "climate-science",
+      "climate"
+    ],
+    "happier-gretchen-rubin--move-happier-getting-unstuck-a-fresh": [
+      "habits",
+      "self-improvement",
+      "behavior-change",
+      "productivity",
+      "motivation"
     ]
   }
 }

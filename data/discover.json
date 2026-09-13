@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-09-12T11:58:58.123Z",
+  "built_at": "2026-09-13T11:55:15.964Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -45557,6 +45557,153 @@
       ],
       "hook": "Fan Q&A on label transparency, 'bottled by' claims, straight bourbon rules, and how Pursuit Palooza began.",
       "explicit": true
+    },
+    {
+      "id": "the-ancients--the-first-punic-war",
+      "show": "The Ancients",
+      "title": "The First Punic War",
+      "apple_collection_id": 1520403988,
+      "apple_track_id": 1000788681281,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-first-punic-war/id1520403988?i=1000788681281&uo=4",
+      "release_date": "2026-09-13",
+      "duration_min": 61,
+      "duration_sec": 3683,
+      "audio_url": "https://sphinx.acast.com/p/acast/s/the-ancients/e/6aa15cc3647921ed602c6d30/media.mp3?tk=eyJ0ayI6ImRlZmF1bHQiLCJhZHMiOnRydWUsInNwb25zIjp0cnVlLCJzdGF0dXMiOiJwdWJsaWMifQ==&sig=4e6p3SXkDCy9a6qk28b2dEn8dd6DojwMp_IHE4jIOgQ",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 58932662,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
+      "topics": [
+        "history/military-ancient"
+      ],
+      "hook": "Hughes and MacDonald cover Rome's ambush of a Carthaginian fleet off Sicily.",
+      "explicit": false
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1629",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 1629: Resisting Change",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000789258774,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1629-resisting-change/id121493645?i=1000789258774&uo=4",
+      "release_date": "2026-09-13",
+      "duration_min": 4,
+      "duration_sec": 224,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260913.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 1794165,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "An old book on textile engineering shows how people once resisted change.",
+      "explicit": false
+    },
+    {
+      "id": "around-the-house-eric-g--stop-recording-crimes-we-want-people",
+      "show": "Around the House with Eric G",
+      "title": "Stop recording crimes — we want people to show up: the simple missing link in home security",
+      "apple_collection_id": 869377733,
+      "apple_track_id": 1000789208614,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/stop-recording-crimes-we-want-people-to-show-up-the/id869377733?i=1000789208614&uo=4",
+      "release_date": "2026-09-10",
+      "duration_min": 42,
+      "duration_sec": 2520,
+      "audio_url": "https://episodes.captivate.fm/episode/00ea2587-8f73-411f-8e23-d9b5b1d9d10b.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 60530630,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/55/d0/42/55d042d1-d595-0fce-c14a-04e2d4d48505/mza_8757307005226717506.jpg/600x600bb.jpg",
+      "topics": [
+        "craft/diy-home"
+      ],
+      "hook": "After his garage was burglarized, Eric G and Aura's Brandon Smith debate cameras versus real security.",
+      "explicit": false
+    },
+    {
+      "id": "around-the-house-eric-g--the-science-of-building-insights-from",
+      "show": "Around the House with Eric G",
+      "title": "The Science of Building: Insights from Emily Mottram",
+      "apple_collection_id": 869377733,
+      "apple_track_id": 1000789195908,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-science-of-building-insights-from-emily-mottram/id869377733?i=1000789195908&uo=4",
+      "release_date": "2026-09-10",
+      "duration_min": 54,
+      "duration_sec": 3223,
+      "audio_url": "https://episodes.captivate.fm/episode/87681647-447a-4fe6-aed2-434b2348b694.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 77404868,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/55/d0/42/55d042d1-d595-0fce-c14a-04e2d4d48505/mza_8757307005226717506.jpg/600x600bb.jpg",
+      "topics": [
+        "craft/diy-home"
+      ],
+      "hook": "Eric G and Emily Mottram break down the four control layers that keep houses working.",
+      "explicit": false
+    },
+    {
+      "id": "masters-of-scale--rapid-response-on-s-16-year",
+      "show": "Masters of Scale",
+      "title": "Rapid Response: On's 16-year overnight success: Zendaya, Federer, and outrunning competition",
+      "apple_collection_id": 1227971746,
+      "apple_track_id": 1000789152625,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/rapid-response-ons-16-year-overnight-success-zendaya/id1227971746?i=1000789152625&uo=4",
+      "release_date": "2026-09-12",
+      "duration_min": 27,
+      "duration_sec": 1627,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/prfx.byspotify.com/e/pscrb.fm/rss/p/tracking.swap.fm/track/7G0M4p2bOLP0mP50O3CD/rss.art19.com/episodes/490f67dc-42b6-4f3e-8122-f04dbc4b130a.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 26033423,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/13/4b/81/134b8173-d713-cbb2-2d3b-4a8692bd87c0/mza_996010941061703843.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/founders"
+      ],
+      "hook": "On's David Allemann explains the leadership shake-up and robotic process behind its $4 billion brand.",
+      "explicit": false
+    },
+    {
+      "id": "common-descent--episode-252-the-ice-age",
+      "show": "The Common Descent Podcast",
+      "title": "Episode 252 - The Ice Age",
+      "apple_collection_id": 1207586509,
+      "apple_track_id": 1000789238063,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-252-the-ice-age/id1207586509?i=1000789238063&uo=4",
+      "release_date": "2026-09-13",
+      "duration_min": 131,
+      "duration_sec": 7856,
+      "audio_url": "https://mcdn.podbean.com/mf/web/uitzkfgetrj9k5tt/Episode_252_Ice_Ages.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 188556026,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/2d/ad/58/2dad5885-6566-fdd4-6b52-f87b69af3688/mza_3078482384516892224.png/600x600bb.jpg",
+      "topics": [
+        "nature/paleontology"
+      ],
+      "hook": "Only 10% of Earth's land is glaciated today; the hosts explain how ice age science works.",
+      "explicit": false
+    },
+    {
+      "id": "happier-gretchen-rubin--move-happier-getting-unstuck-a-fresh",
+      "show": "Happier with Gretchen Rubin",
+      "title": "Move Happier: Getting Unstuck: A Fresh Start for Your Move 26 Habit",
+      "apple_collection_id": 969519520,
+      "apple_track_id": 1000789270108,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/move-happier-getting-unstuck-a-fresh-start-for-your/id969519520?i=1000789270108&uo=4",
+      "release_date": "2026-09-13",
+      "duration_min": 69,
+      "duration_sec": 4113,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/claritaspod.com/measure/pscrb.fm/rss/p/mgln.ai/e/491/traffic.megaphone.fm/LEME5618378997.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/1f/f2/b6/1ff2b684-9732-37a5-bda9-2ccdaada4131/mza_16417990144203692350.jpeg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement"
+      ],
+      "hook": "Dan Harris and Laurie Santos join Gretchen to spot what's blocking a stuck habit.",
+      "explicit": false
     }
   ]
 }
