@@ -557,6 +557,17 @@ const FLOORS = {
   "test/show-search-live.test.js": 10,
   "test/show-search-ranking.test.js": 16, // P-08 (docs/search-parity-plan.md, 2026-09-12): the MATCH TIER is interposed above the bucket, so the popularity prior can speak across prefix and word-start — four tests (the charting word-start row wins; the bucket still breaks the tie the prior cannot; the exact/mid-word edges hold against the prior; and the real committed index puts nothing worse-banded above the show the listener meant); 12 -> 16 // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
   "test/show-index.test.js": 11,
+  /* The search PAGE's chrome, as opposed to the search itself (founder
+     reports, 2026-09-13): no catalogue subtitle, the browse furniture hides
+     while the field is in use, and the search field lives inside `.page-head`
+     so the collapsing header carries it. Its own suite rather than additions
+     to show-search*.test.js because none of it touches matching, ranking or
+     the network — it is where things are rendered and when they are hidden,
+     and it would be invisible inside a file whose subject is what a query
+     returns. The scroll MECHANISM it depends on stays floored separately at
+     test/collapsing-header-scroll.test.js; this file only pins the nesting
+     that opts the search bar into it. */
+  "test/search-page-chrome.test.js": 15,
   "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
   /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
      its rows render and cache like any other breadth row, and a breadth show page survives
