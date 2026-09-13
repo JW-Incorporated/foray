@@ -525,6 +525,130 @@ existing table. Add the three queries from §2.1 as named cases, because
 "one row for *tim ferriss*" is the defect this deck exists to close and it should
 be impossible to regress silently.
 
+### P-08 · The show the listener meant comes first — **H · M — SHIPPED 2026-09-12**
+**Ask.** P-02 fixed *reach*; this fixes *order*. Measured end to end over 30
+queries with the intended show named before the run (the full table is
+`docs/search-plan.md` §1.9), 8 of the 30 did not put the intended show first,
+and **every one of the 8 failed the same way**: a row whose title merely STARTS
+with the query outranking a far more popular row where the query starts an
+interior word. `daily` put *The Daily* 40th behind *Daily Dose of Dana*;
+`american` put *This American Life* 33rd; `history` put *Dan Carlin's Hardcore
+History* 30th; `tim ferriss` put his own show 3rd behind two of his audiobooks.
+
+**The cause, and it is not "the buckets are wrong".** `SHOW_MATCH_PREFIX` really
+is better evidence than `SHOW_MATCH_WORD_START`, all else equal. The defect was
+that the comparator read the BUCKET first, which made the popularity prior a
+tie-break *inside* a bucket — so it could not speak across two, and a rank-1 show
+lost to every unranked row in a stronger bucket. Sixty-odd index rows begin with
+"Daily"; *The Daily* had to clear all of them before its chart position was
+consulted.
+
+**The fix.** A **match tier** is interposed above the bucket — exact /
+word-boundary (prefix ∪ word-start) / mid-word substring / server-chosen — and
+the bucket survives *below* the prior as the tie-break between two shows the
+prior cannot separate. S-04's finding (a word-start hit is not a mid-word hit) is
+intact; an exact title still leads. **Both twins move together**: the same tier
+table and the same comparator order are in
+`backend/src/catalog/searchBreadthShows.ts`, and they have to be — the endpoint
+takes its `limit` cut under this order, and for `history` the old order spent all
+25 slots on prefix rows so *Hardcore History* was not in the reply at all.
+`test/show-search-ranking.test.js` now pins the tier table across the two files
+and EXECUTES the server's `showMatchTier` against the client's, so a boundary
+that moves on one side only is a red suite.
+
+**Measured.** Intended show first on 22/30 → **26/30**; top 3 on 24/30 →
+**29/30**; 7 improved, **0 regressed**; total rows across the battery 670 → 678,
+so P-02's reach was not traded for order. 29 of 30 queries return at least as
+many rows; `history` returns 4 fewer and every one of the four was a long-tail
+"History …" row displaced by a charting one (§1.9 lists them).
+
+**Not fixed, and why — see P-09 and P-10.** Four queries still do not lead:
+`history` (2), `money` (2), `science` (3), `daily` (17).
+
+### P-09 · Curated rows carry no popularity signal, and one exists today — **M · S**
+**Ask.** `popularityBand` returns 0 for every curated row on the stated ground
+that "the tier term has already placed it". That is true of curated-vs-breadth
+and false of curated-vs-curated: all 220 tie, and the alphabet decides. Measured
+consequence, after P-08: `history` puts *Ancient History Fangirl* above *Dan
+Carlin's Hardcore History*, and `science` puts *Science for Sport Podcast* above
+*Science Vs*, purely on the letter A and the letter f.
+
+**The signal is already committed.** 164 of the 220 curated rows join
+`data/catalog-breadth.json` on `apple_collection_id` and carry a `chart_rank`
+there (measured 2026-09-12: 220/220 have an `apple_collection_id`, 164 have a
+breadth row, all 164 of those have a rank). *Hardcore History* is rank 14 in
+*History*; *Ancient History Fangirl* has no breadth row at all. *Science Vs* is
+rank 18 in *Science*; *Science for Sport Podcast* has none. Banding those two
+pairs fixes both queries.
+
+**What it costs, honestly.**
+- Server: free. `loadBreadthCatalog` already reads both files and can join in
+  memory; it currently writes `chart_rank: null` on every curated entry.
+- Client: `data/show-index.tsv` already HAS a `chart_rank` column that is empty
+  for curated rows — filling it is ~4 bytes × 164 ≈ **0.6 KB** against the
+  400 KB budget, i.e. nothing. `data/catalog-client.json` needs the field too, or
+  the curated pass and the index pass will disagree about the same show.
+- The real cost is a **rule change with a loser**: the 56 curated rows with no
+  breadth row would become the WORST band and sink below the 164 within their
+  match tier. That is consistent with "a missing number must never read as zero",
+  but it is a visible demotion of 56 editorially chosen shows and should be
+  measured before it is assumed harmless.
+- Three pinned tests state the current rule and would have to be re-argued:
+  `test/show-search-ranking.test.js`'s `popularityBand(curated) === 0`, and
+  `backend/test/breadthCatalog.test.ts`'s `entries.find(curated).chart_rank ===
+  null`.
+- Both data files are regenerated by their builders, so the PR carries a data
+  diff — check it is ONLY the rank column before shipping.
+
+**Done when.** `history` and `science` put the intended show first (behind a
+genuine exact title where one exists), the 56 unjoined curated rows are measured
+rather than assumed, and the byte cost is stated against the §2.3 budget.
+
+### P-10 · `chart_rank` is per-genre, so the top band cannot be sharpened — **the named gap, needs a signal we do not have**
+**Ask.** Nothing, yet. This card exists so the gap is named rather than fudged.
+
+**The measurement.** After P-08, `daily` still puts *The Daily* **17th**. It is
+`chart_rank` 1. So are ~16 other rows above it — *Kinda Funny Games Daily* is
+rank 1 in *Video Games*, *AI Business Daily* is rank 4, *BirdNote Daily* is 7.
+`popularityBand` collapses 1–10 into one band precisely because rank 1 in *News*
+and rank 7 in *Nature* are two different scales, so inside that band the prior
+says nothing and the alphabet decides. The same cause puts *Death, Sex & Money*
+(rank 8, *Relationships*) above *Planet Money* (rank 20, *Business*) — there
+across bands, which is worse: the band edge asserts an ordering the data does not
+support.
+
+**The fix that was built and refused.** `SHOW_PRIOR_BANDS = [3, 10, 50, 200]`
+moves `daily` from 17 to 4 with no regression across the 30-query battery. It was
+reverted: a band edge at 3 makes a rank-3-against-rank-8 cross-genre comparison
+decisive, which is the exact mutation
+`test/show-search-ranking.test.js`'s cross-genre test exists to kill. Buying 13
+places by deleting the pin that says the comparison is meaningless is not a fix,
+it is the fudge this deck's §0 is about.
+
+**What would actually close it — one of these, costed.**
+1. **A cross-genre popularity measure.** Apple's charts are per-genre by
+   construction, so this cannot come from the existing harvest. Whether Podcast
+   Index offers one against the `podcastindex_id` the breadth rows already carry
+   has NOT been checked and is the first thing to check. The cheapest proxy
+   already on disk is
+   `episode_count` × recency, already in `data/catalog-breadth.json`, which
+   measures *prolificacy*, not popularity — measure whether it correlates with
+   the intended show before trusting it. **Cost: a measurement day, then a
+   builder change and ~40 KB of index if it needs a new column.**
+2. **Carry Apple's own relevance rank through the merge.** The directory already
+   ranks better than we do for exactly these queries (P-03b measured 19 of 20
+   host queries right from the directory pass alone), and `compareShowMatches`
+   deliberately preserves its ORDER for unmatched rows — but a row whose title
+   matches is re-bucketed and Apple's opinion is discarded. Blending the two is a
+   real design question, not a patch. **Cost: a card, and a new field on the
+   wire, which `searchBreadthShows.ts`'s header argues against for good reasons.**
+3. **Accept it.** `daily` is a one-word query for a show whose title is the
+   word plus an article. It is the hardest case in the battery and the only one
+   still in double digits. Doing 1 or 2 badly is worse than leaving it.
+
+**Done when.** A founder or a measurement picks one. Until then this is a known,
+named, 1-query-in-30 gap and not a defect anybody needs to rediscover.
+
 ### P-07 · The listening test — **founder gate**
 **Ask.** Wyatt searches for five things he would actually search for, on the
 phone, on the build from P-01 plus this deck. The question is not a number; it is
@@ -539,6 +663,14 @@ P-01 immediately and independently — he cannot judge anything without it.
 P-02 is the card; it is most of the win and it is a condition, not an
 architecture. P-03 in parallel with it. P-04 only after both are measured.
 P-05 after shows are right, never before. P-06 alongside. P-07 closes.
+
+Added 2026-09-12, after P-02 shipped and its own author reported the remaining
+gap: **P-08 is done** — it was the other half of "a listener types a show and
+finds it", because a list of fourteen with the answer seventh is not finding it.
+**P-09** next if anything: it is small, the signal is already committed, and it
+closes two of the four queries P-08 could not. **P-10 is a named gap, not a
+card to pick up** — it needs a signal this repo does not have, and the
+cheap-looking version of it was built, measured and refused.
 
 *(P-05 amendment, 2026-09-12: its three pieces are three PRs, one per surface —
 pieces 1 and 2 are the search page, piece 3 is the show page. A PR that mixes

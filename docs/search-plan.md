@@ -597,6 +597,113 @@ still the prerequisite for P-07.
 ---
 
 
+### 1.9 P-08's before/after: WHERE the show lands, over 30 queries (2026-09-12, `origin/main` @ `3b899d8` vs `fix/search-ranking-intent`)
+
+**This section measures a POSITION, not a duration, and that is the point.**
+§1.7 and §1.8 measure how fast the answer arrives and how many rows it has.
+Neither can see the defect this card closes: after P-02, `tim ferriss` returned
+14 rows and *The Tim Ferriss Show* was the third of them. A row count improving
+from 1 to 14 reads as a win in every table above while the listener still does
+not find what they typed.
+
+**The harness.** The whole client pipeline, run offline against the real
+committed `data/catalog-client.json`, the real `data/show-index.tsv`, the real
+merged catalogue through `searchBreadthShows` at `limit=25`, and the LIVE
+directory rows — collected once per query from
+`https://foray-web-seven.vercel.app/api/shows/search?…&fallthrough=1`, cached,
+and replayed identically into both revisions so the only variable is the rule.
+The passes and their order are `app.js`'s: `localShowMatches` →
+`scanShowIndex` (only when the local pass returns < 10) → the catalogue pass →
+the directory pass, each merged through `mergeShowRows` and re-ranked by
+`rankShows`. **The intended show was written down before the run** (the case
+list is the table's second column), so no result could be rationalised after the
+fact.
+
+**A note on pacing that the next person to run this will need.** The endpoint's
+Apple bucket is 20 calls per 60 s (`api/episodes/appleBucket.ts`), shared across
+queries. A 30-query battery fired back to back trips it at query 21 and every
+query after that comes back `fallthrough: {error: "rate limit exceeded"}` with
+directory rows silently missing — which looks exactly like a catalogue that has
+nothing to say. Collect at ~1 query per 3.5 s, and assert on
+`fallthrough.error`, not on the row count.
+
+| query | intended show | pos before | pos after | rows before | rows after |
+|---|---|---:|---:|---:|---:|
+| `tim ferriss` | The Tim Ferriss Show | 3 | **1** | 14 | 14 |
+| `sam harris` | Making Sense with Sam Harris | 1 | 1 | 11 | 11 |
+| `lex fridman` | Lex Fridman Podcast | 1 | 1 | 3 | 3 |
+| `huberman` | Huberman Lab | 1 | 1 | 13 | 13 |
+| `hard fork` | Hard Fork | 1 | 1 | 4 | 4 |
+| `radiolab` | Radiolab | 1 | 1 | 18 | 18 |
+| `crime junkie` | Crime Junkie | 1 | 1 | 26 | 26 |
+| `99% invisible` | 99% Invisible | 1 | 1 | 7 | 7 |
+| `history` | Dan Carlin's Hardcore History | 30 | **2** | 57 | 53 |
+| `science` | Science Vs | 3 | 3 | 51 | 52 |
+| `the daily` | The Daily | 1 | 1 | 44 | 45 |
+| `planet money` | Planet Money | 1 | 1 | 6 | 6 |
+| `smartless` | SmartLess | 1 | 1 | 13 | 13 |
+| `serial` | Serial | 1 | 1 | 27 | 27 |
+| `this american life` | This American Life | 1 | 1 | 8 | 8 |
+| `freakonomics` | Freakonomics Radio | 1 | 1 | 14 | 14 |
+| `rogan` | The Joe Rogan Experience | 5 | **1** | 25 | 25 |
+| `conan` | Conan O'Brien Needs a Friend | 1 | 1 | 24 | 24 |
+| `armchair` | Armchair Expert with Dax Shepard | 1 | 1 | 26 | 26 |
+| `stuff you should know` | Stuff You Should Know | 1 | 1 | 19 | 19 |
+| `ferriss` | The Tim Ferriss Show | 1 | 1 | 14 | 14 |
+| `fridm` | Lex Fridman Podcast | 1 | 1 | 3 | 3 |
+| `huber` | Huberman Lab | 1 | 1 | 25 | 25 |
+| `dark history` | Dark History | 1 | 1 | 22 | 22 |
+| `pod save` | Pod Save America | 1 | 1 | 21 | 21 |
+| `daily` | The Daily | 40 | **17** | 59 | 66 |
+| `money` | Planet Money | 19 | **2** | 40 | 42 |
+| `american` | This American Life | 33 | **1** | 40 | 41 |
+| `fork` | Hard Fork | 10 | **1** | 27 | 27 |
+| `the rest is history` | The Rest Is History | 1 | 1 | 9 | 9 |
+
+**Summary: intended show first on 22/30 → 26/30; in the top 3 on 24/30 → 29/30;
+7 queries improved, 0 regressed. Total rows across the battery 670 → 678.**
+
+**Reach was not traded for order.** 29 of the 30 queries return at least as many
+rows as before. The one that does not is `history` (57 → 53), and the swap is
+worth stating rather than netting out: the endpoint sends 25 rows either way, and
+under the old rule all 25 were titles BEGINNING with "history", 13 of which
+(*History of L.A. Ska: One On One Sessions*, *History Tea Time*, *History Chats
+with Dr. S.*, …) no longer survive the cut. In their place come 9 charting
+word-start rows (*A History of Rock Music in 500 Songs*, *Unpacking Israeli
+History*, *The History of Chemistry*, …) plus *Dan Carlin's Hardcore History*
+itself, which under the old rule **was not in the endpoint's reply at all** and
+reached the listener only because Apple's directory happened to send it too.
+Four fewer rows, and every one of the four was worse than what replaced it.
+
+**What did NOT get fixed, measured rather than hand-waved.** Four queries still
+do not put the intended show first, and all four fail for the same reason: the
+popularity prior cannot separate the rows that are left.
+
+| query | intended show | after | what stands above it, and why |
+|---|---|---:|---|
+| `history` | Dan Carlin's Hardcore History | 2 | *Ancient History Fangirl* — also curated, so both are band 0. **Curated rows carry no `chart_rank` at all**, so 220 editorially chosen shows tie and fall to the alphabet. |
+| `money` | Planet Money | 2 | *Death, Sex & Money* — same, and worse: the join in `data/catalog-breadth.json` knows *Death, Sex & Money* is rank 8 in *Relationships* and *Planet Money* is rank 20 in *Business*, which is not a comparison. |
+| `science` | Science Vs | 3 | *Science* (a genuine exact title, correctly first) and *Science for Sport Podcast* — curated, band 0, alphabetically earlier. |
+| `daily` | The Daily | 17 | ~16 breadth rows that are also band 1. `chart_rank` is PER-GENRE, so *The Daily* (rank 1, *News*) is in the same band as *BirdNote Daily* (rank 7, *Nature*) and *Kinda Funny Games Daily* (rank 1, *Video Games*). |
+
+Both causes are written up as cards: **P-09** (curated rows have no popularity
+signal, and one is available today) and **P-10** (`chart_rank` is per-genre and
+no cross-genre measure exists).
+
+**A tempting fix that was built, measured and REFUSED, recorded so it is not
+re-proposed.** Adding a fourth band at the top — `SHOW_PRIOR_BANDS = [3, 10, 50,
+200]` — moves `daily` from 17 to **4** with no regression anywhere else in the
+battery. It was reverted anyway. The boundary at 10 is not arbitrary: it is the
+point past which this repo has decided two per-genre ranks stop being
+comparable, and `test/show-search-ranking.test.js`'s cross-genre test pins that
+with a rank-3-against-rank-8 fixture. A band edge at 3 makes exactly that
+comparison decisive, so buying the 13 places would have meant deleting the pin
+that says the comparison is meaningless. It is meaningless either way; the
+number just flattered it. P-10 is the honest version of the same win.
+
+---
+
+
 ## 2. Target
 
 - **The Shows search filters as you type** (F2), locally, at frame rate, with no

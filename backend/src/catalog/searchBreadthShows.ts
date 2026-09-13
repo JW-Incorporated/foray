@@ -71,6 +71,35 @@ export const SHOW_MATCH_WORD_START = 2;
 export const SHOW_MATCH_SUBSTRING = 3;
 export const SHOW_MATCH_NONE = -1;
 
+/* THE TIER TABLE, interposed ABOVE the bucket in the comparator below, and
+   pinned across the two files exactly as the bucket table is. The measurement
+   that produced it is in search-engine.js's own header (30 queries, end to end,
+   intended show named before the run); the half of it that belongs HERE is
+   `history`. The breadth catalogue has far more than 25 rows whose title STARTS
+   with "history", so under bucket-first ordering every one of the 25 rows this
+   function was allowed to send was a prefix row, and *Dan Carlin's Hardcore
+   History* — a CURATED row, chart-listed, and obviously the answer — did not
+   survive the `limit` cut at all. It reached the listener only because Apple's
+   directory happened to send it too. No amount of client re-ranking could have
+   recovered it: the cut is here, so the fix has to be here as well.
+
+   `SHOW_TIER_UNMATCHED` is deliberately absent, like `SHOW_MATCH_UNMATCHED`:
+   this file filters `SHOW_MATCH_NONE` out and never emits a row that matched
+   nothing. */
+export const SHOW_TIER_EXACT = 0;
+export const SHOW_TIER_BOUNDARY = 1;
+export const SHOW_TIER_SUBSTRING = 2;
+
+/** Which tier a bucket belongs to. Character for character search-engine.js's,
+    minus the unmatched branch it has no producer for — a bucket this file can
+    never see (`SHOW_MATCH_NONE`) falls through to the substring tier, which is
+    unreachable rather than meaningful. */
+export function showMatchTier(bucket: number): number {
+  if (bucket === SHOW_MATCH_EXACT) return SHOW_TIER_EXACT;
+  if (bucket === SHOW_MATCH_PREFIX || bucket === SHOW_MATCH_WORD_START) return SHOW_TIER_BOUNDARY;
+  return SHOW_TIER_SUBSTRING;
+}
+
 /* What separates two words of a title. Unicode property escapes rather than
    `\W`, because `\W` is ASCII-only and this catalogue is not: "伊藤洋一のRound
    Up World Now！" and "99% Invisible" both have to tokenize sensibly, and an
@@ -173,13 +202,19 @@ export function searchBreadthShows(
      finding, search-engine.js's header), and re-adding it here would put this
      file back out of step with the rule the listener actually sees. */
   scored.sort((a, b) => {
-    if (a.bucket !== b.bucket) return a.bucket - b.bucket;
+    const at = showMatchTier(a.bucket);
+    const bt = showMatchTier(b.bucket);
+    if (at !== bt) return at - bt;
     const ab = a.show.tier === "breadth" ? 1 : 0;
     const bb = b.show.tier === "breadth" ? 1 : 0;
     if (ab !== bb) return ab - bb;
     const ap = popularityBand(a.show);
     const bp = popularityBand(b.show);
     if (ap !== bp) return ap - bp;
+    /* The bucket, demoted rather than deleted — search-engine.js's line and
+       its comment. Two rows the prior cannot separate are still ordered
+       prefix-before-word-start. */
+    if (a.bucket !== b.bucket) return a.bucket - b.bucket;
     return compareTitles(a.show.title, b.show.title);
   });
 

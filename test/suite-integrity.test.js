@@ -555,7 +555,7 @@ const FLOORS = {
      others kept the file's count up, which is precisely what a floor cannot
      see. */
   "test/show-search-live.test.js": 10,
-  "test/show-search-ranking.test.js": 12, // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
+  "test/show-search-ranking.test.js": 16, // P-08 (docs/search-parity-plan.md, 2026-09-12): the MATCH TIER is interposed above the bucket, so the popularity prior can speak across prefix and word-start — four tests (the charting word-start row wins; the bucket still breaks the tie the prior cannot; the exact/mid-word edges hold against the prior; and the real committed index puts nothing worse-banded above the show the listener meant); 12 -> 16 // P-03b (docs/search-parity-plan.md, 2026-09-12): the author bucket was BUILT, measured against the live directory over 20 host-name queries, and refused — two tests pin the refusal on the real Apple strings (`tim ferriss` promotes his audiobooks over his show; `andrew huberman` promotes three SEO-stuffed artist fields over Huberman Lab); 10 -> 12 // client audit (2026-09-12): the server twin is pinned mechanically — backend/src/catalog/searchBreadthShows.ts’s bucket table is read and compared to this file’s, so a fifth bucket cannot land on one side only; 9 -> 10
   "test/show-index.test.js": 11,
   "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
   /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
@@ -1946,7 +1946,14 @@ const BACKEND_FLOORS = {
      bucketed prior, the row shape (no dead `rank`, a live `chart_rank`), and
      three agreement tests that load the real search-engine.js in a node:vm and
      compare bucket for bucket and row for row over the real catalogue. */
-  "test/breadthCatalog.test.ts": 17,
+  /* RAISED 17 -> 18 by P-08 (docs/search-parity-plan.md, 2026-09-12): the
+     `limit` cut is now taken with the popularity prior compared ABOVE the
+     prefix/word-start distinction, so a query with more than 25 title-initial
+     matches no longer spends all 25 slots on unranked ones. The added test is
+     the real-catalogue proof — for "history", *Dan Carlin's Hardcore History*
+     is IN the 25 rows the endpoint sends, where before it was not in the reply
+     at all and reached the listener only via Apple's directory. */
+  "test/breadthCatalog.test.ts": 18,
   /* §4.9 end to end (kanban card t_0b1729d6): finalizeForay() validates
      a candidate against the real check-forays.mjs/check-narration.mjs
      and only returns a writable record on a clean pass; stageTiming.ts

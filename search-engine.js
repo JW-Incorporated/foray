@@ -1823,6 +1823,72 @@ const SHOW_MATCH_NONE = -1;
     on belongs with the vocabulary the comparator is written in. */
 const SHOW_MATCH_UNMATCHED = SHOW_MATCH_SUBSTRING + 1;
 
+/* ---------- THE MATCH TIER, and why the bucket is no longer the first key ----
+
+   MEASURED 2026-09-12, end to end (local index + `api/shows/search` + the live
+   directory), 30 queries with the intended show NAMED BEFORE the run. Under
+   bucket-first ordering, 8 of the 30 did not put the intended show first, and
+   every one of the 8 failed the same way — an obscure row whose title STARTS
+   with the query outranking a famous row where the query starts an interior
+   WORD:
+
+     query        intended show                    was   what stood above it
+     daily        The Daily                         40   Daily Dose of Dana, DAILY AUDIO BIBLE, Daily Dad Jokes, …
+     american     This American Life                33   American Potential, American Afterlife, …
+     history      Dan Carlin's Hardcore History     30   History for the Curious, History in Five Songs, …
+     money        Planet Money                      19   Money Made Simple Strategy, Money Moves, …
+     fork         Hard Fork                         10   Fork This City, Fork's Sake, Forking Around with Flavor, …
+     rogan        The Joe Rogan Experience           5   Rogan And Runescape, Rogan Josh, Rogan Josh Spicy Talks
+     tim ferriss  The Tim Ferriss Show               3   Tim Ferriss "The 4-Hour Body", Tim Ferriss Podcast
+     science      Science Vs                         3   Science, Science for Sport Podcast
+
+   THE DIAGNOSIS IS NOT "the buckets are wrong". `SHOW_MATCH_PREFIX` really is
+   better evidence than `SHOW_MATCH_WORD_START`, all else equal — *Daily Stoic*
+   is a better answer to "daily" than *The Daily Show Without Jon Stewart* is.
+   The defect is that under a bucket-FIRST comparator all else is never equal:
+   the popularity prior is a tie-break INSIDE a bucket, so it could not speak at
+   all across two buckets, and a rank-1 show lost to any unranked row in a
+   stronger bucket. Sixty-odd rows in `data/show-index.tsv` start with "Daily";
+   *The Daily* had to clear every one of them before the prior was consulted.
+
+   SO THE TIER IS INTERPOSED ABOVE THE BUCKET, AND THE BUCKET SURVIVES BELOW THE
+   PRIOR. A tier answers "how strong is this match, in kind" — exact, the query
+   begins a word, the query is buried mid-word, the server chose this row — and
+   the prefix/word-start distinction becomes what it can honestly support: a
+   tie-break between two shows the prior cannot separate. That keeps S-04's
+   actual finding (a word-start hit is NOT a mid-word hit) intact and pinned by
+   the same suite, and it keeps an exact title on top, which no measurement here
+   argued against.
+
+   WHAT IT IS NOT. It is not a score, and it does not make `chart_rank`
+   comparable across genres — `popularityBand` still collapses the per-genre
+   rank to <=10/<=50/<=200/unranked for the reason it always did. It is a
+   reordering of two keys that were already there.
+
+   THE SERVER HAS THE SAME TABLE AND THE SAME ORDER, and it must: the `limit`
+   cut in `backend/src/catalog/searchBreadthShows.ts` happens under this rule,
+   and before this change that cut was the whole defect for "history" — all 25
+   rows the endpoint could send were prefix rows, so *Dan Carlin's Hardcore
+   History* was not in the reply at all and reached the listener only because
+   Apple happened to send it. `test/show-search-ranking.test.js` pins the tier
+   table across the two files exactly as it already pins the bucket table. */
+const SHOW_TIER_EXACT = 0;
+const SHOW_TIER_BOUNDARY = 1;
+const SHOW_TIER_SUBSTRING = 2;
+/** Client-only, and an EXPRESSION rather than a literal for the same reason
+    `SHOW_MATCH_UNMATCHED` is: the cross-file pin parses integer literals, and
+    the server never emits an unmatched row. */
+const SHOW_TIER_UNMATCHED = SHOW_TIER_SUBSTRING + 1;
+
+/** Which tier a bucket belongs to. Total over every bucket value, including
+    `SHOW_MATCH_NONE`, so there is no input this can fail to answer for. */
+function showMatchTier(bucket) {
+  if (bucket === SHOW_MATCH_EXACT) return SHOW_TIER_EXACT;
+  if (bucket === SHOW_MATCH_PREFIX || bucket === SHOW_MATCH_WORD_START) return SHOW_TIER_BOUNDARY;
+  if (bucket === SHOW_MATCH_SUBSTRING) return SHOW_TIER_SUBSTRING;
+  return SHOW_TIER_UNMATCHED;
+}
+
 /* What separates two words of a title. Unicode property escapes rather than
    `\W`, because `\W` is ASCII-only and this catalogue is not: "伊藤洋一のRound
    Up World Now！" and "99% Invisible" both have to tokenize sensibly, and an
@@ -1894,7 +1960,11 @@ function compareTitles(a, b) {
     pass, the index prefix pass and the index scan alike, so all three orders
     agree and a result cannot jump when the index finishes loading. */
 function compareShowMatches(a, b) {
-  if (a.bucket !== b.bucket) return a.bucket - b.bucket;
+  /* THE TIER, NOT THE BUCKET, IS THE FIRST KEY — see the tier table's own
+     header for the 30-query measurement that moved it. */
+  const at = showMatchTier(a.bucket);
+  const bt = showMatchTier(b.bucket);
+  if (at !== bt) return at - bt;
   /* S-06 BUG (client audit 2026-09-12): TWO UNMATCHED ROWS ARE NOT OURS TO
      ORDER, so this says so and stops. `Array.prototype.sort` has been required
      to be STABLE since ES2019, so returning 0 here leaves the pair in the order
@@ -1921,13 +1991,19 @@ function compareShowMatches(a, b) {
      This can only fire for rows `rankShows` bucketed: `searchShows` and the
      index passes FILTER on `SHOW_MATCH_NONE`, so nothing they hand over is
      ever unmatched, and their ordering is untouched. */
-  if (a.bucket === SHOW_MATCH_UNMATCHED) return 0;
+  if (at === SHOW_TIER_UNMATCHED) return 0;
   const ab = isBreadthShow(a.show) ? 1 : 0;
   const bb = isBreadthShow(b.show) ? 1 : 0;
   if (ab !== bb) return ab - bb;
   const ap = popularityBand(a.show);
   const bp = popularityBand(b.show);
   if (ap !== bp) return ap - bp;
+  /* THE BUCKET, DEMOTED RATHER THAN DELETED. Two rows the prior cannot
+     separate — same tier, same tier-of-catalogue, same popularity band — are
+     still ordered prefix-before-word-start, which is the honest remainder of
+     S-04's rule once the prior has had its say. Deleting this line instead
+     would make *Daily Stoic* and *The Daily Show* an alphabetical coin-toss. */
+  if (a.bucket !== b.bucket) return a.bucket - b.bucket;
   return compareTitles(String(a.show?.title || ""), String(b.show?.title || ""));
 }
 
@@ -2134,6 +2210,7 @@ const SearchEngine = {
   SHOW_MATCH_EXACT, SHOW_MATCH_PREFIX, SHOW_MATCH_WORD_START, SHOW_MATCH_SUBSTRING, SHOW_MATCH_NONE,
   SHOW_PRIOR_BANDS,
   SHOW_MATCH_UNMATCHED,
+  SHOW_TIER_EXACT, SHOW_TIER_BOUNDARY, SHOW_TIER_SUBSTRING, SHOW_TIER_UNMATCHED, showMatchTier,
   showMatchBucket, isBreadthShow, popularityBand, compareShowMatches, rankShows,
   parseShowIndex, showIndexLowerBound, prefixSearchShows, scanShowIndex,
 };
