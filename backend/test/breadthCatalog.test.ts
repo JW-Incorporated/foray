@@ -10,6 +10,8 @@ import {
   SHOW_MATCH_WORD_START,
   SHOW_MATCH_SUBSTRING,
   SHOW_MATCH_NONE,
+  showMatchTier,
+  popularityBand,
   type ShowSearchResult,
 } from "../src/catalog/searchBreadthShows";
 import { loadBreadthCatalog, type CatalogueShowEntry } from "../src/catalog/breadthCatalog";
@@ -403,12 +405,22 @@ describe("searchBreadthShows — agreement with the real search-engine.js", () =
   it("never drops a word-start row to make room for a plain-substring one", () => {
     /* The consequence that costs a listener something, pinned on its own
        because the equality above could in principle be satisfied by both sides
-       being wrong together. Whatever survives the cut must sit in a bucket no
+       being wrong together. Whatever survives the cut must sit in a TIER no
        worse than anything that did not.
 
-       Measured before the fix, query "show": the old rule shipped the
-       plain-substring "Antiques Roadshow Detours" and dropped 14 rows the
-       client buckets WORD-START, among them "Money Guy Show" (chart_rank 4).
+       THE CLAIM IS ON THE TIER AND NO LONGER ON THE BUCKET, and that is the
+       whole of P-08 restated here: the popularity prior is compared above the
+       prefix/word-start distinction now, so a charting word-start row (bucket
+       2) legitimately survives the cut while an unranked title-initial row
+       (bucket 1) does not. Asserting `worstKept <= bestDropped` on the BUCKET
+       forbids exactly the improvement — it went red on `2 <= 1` the moment the
+       tier landed. What must still never happen is a MID-WORD hit riding into
+       the kept 25 over a word-start one, which is what the tier says.
+
+       Measured before the word-start bucket existed, query "show": the old rule
+       shipped the plain-substring "Antiques Roadshow Detours" and dropped 14
+       rows the client buckets WORD-START, among them "Money Guy Show"
+       (chart_rank 4).
 
        MUTATION: revert `showMatchBucket` to the three-bucket
        `title === q ? 0 : idx === 0 ? 1 : 2`. Word-start and plain substring
@@ -424,8 +436,8 @@ describe("searchBreadthShows — agreement with the real search-engine.js", () =
     expect(kept.length).toBe(25);
     expect(dropped.length).toBeGreaterThan(0);
 
-    const worstKept = Math.max(...kept.map((r) => showMatchBucket(r.title, q)));
-    const bestDropped = Math.min(...dropped.map((e) => showMatchBucket(e.title, q)));
+    const worstKept = Math.max(...kept.map((r) => showMatchTier(showMatchBucket(r.title, q))));
+    const bestDropped = Math.min(...dropped.map((e) => showMatchTier(showMatchBucket(e.title, q))));
     expect(worstKept).toBeLessThanOrEqual(bestDropped);
 
     /* Teeth: the catalogue really does contain plain-substring "show" hits, so
@@ -433,5 +445,53 @@ describe("searchBreadthShows — agreement with the real search-engine.js", () =
        truth about the data. */
     expect(entries.some((e) => showMatchBucket(e.title, q) === SHOW_MATCH_SUBSTRING)).toBe(true);
     expect(kept.some((r) => showMatchBucket(r.title, q) === SHOW_MATCH_SUBSTRING)).toBe(false);
+  });
+
+  it("the limit cut keeps the CHARTING word-start show, not 25 unranked title-initial ones", () => {
+    /* P-08's server half, over the real committed catalogue, and the reason
+       this card had to change this file at all rather than only the client.
+       `api/shows/search.ts` replies with at most `limit` rows and `mergeBreadth`
+       cannot recover one that was never sent — so for "history", where the
+       catalogue holds far more than 25 titles BEGINNING with "history", the old
+       bucket-first order filled all 25 slots with prefix rows and *Dan Carlin's
+       Hardcore History* — curated, chart-listed, and plainly the answer — was
+       not in the reply at all. It reached the listener only because Apple's
+       directory happened to send it too.
+
+       STATED SCALE-FREE, as a relation and not a position: every row that
+       survives the cut must be in a popularity band no worse than every row
+       that did not, within the same match tier and the same catalogue tier.
+       A count would rot the day the harvest adds more "History …" shows.
+
+       MUTATION: restore `if (a.bucket !== b.bucket) return a.bucket - b.bucket;`
+       as the FIRST comparison in this file's sort. The unranked prefix rows
+       retake the 25 slots, the named show is absent from `kept`, and the first
+       assertion fails. */
+    const entries = loadBreadthCatalog();
+    const q = "history";
+    const kept = searchBreadthShows(q, 25, entries);
+    expect(kept.length).toBe(25);
+    expect(kept.map((r) => r.title)).toContain("Dan Carlin's Hardcore History");
+
+    const keptIds = new Set(kept.map((r) => r.show_id));
+    const dropped = entries.filter(
+      (e) => showMatchBucket(e.title, q) !== SHOW_MATCH_NONE && !keptIds.has(e.show_id)
+    );
+    expect(dropped.length).toBeGreaterThan(0);
+    /* The comparator's three ordered keys packed into one number, most
+       significant first, so "no worse than" is a single `>=`. Each component is
+       a small integer with a known ceiling (tier <= 2, breadth flag <= 1, band
+       <= 4), so the radix cannot collide. */
+    const key = (e: CatalogueShowEntry) =>
+      showMatchTier(showMatchBucket(e.title, q)) * 100
+      + (e.tier === "breadth" ? 1 : 0) * 10
+      + popularityBand(e);
+    const worstKeptKey = Math.max(...kept.map(key));
+    /* Teeth: the dropped set really does contain rows the prior bands WORSE
+       than something kept, so "the cut respected the prior" is a claim about
+       the ranking and not a vacuous truth about the data. */
+    expect(dropped.some((e) => popularityBand(e) > Math.min(...kept.map(popularityBand)))).toBe(true);
+    const jumped = dropped.filter((e) => key(e) < worstKeptKey).map((e) => e.title);
+    expect(jumped).toEqual([]);
   });
 });

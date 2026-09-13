@@ -188,23 +188,145 @@ test("the result order over the real catalogue is byte-identical across 20 conse
   );
 });
 
-test("over the real catalogue, the returned order is non-decreasing in bucket", () => {
-  /* The invariant stated against real data rather than a fixture: whatever the
-     tie-breaks do inside a bucket, a bucket-3 result can never appear above a
-     bucket-2 one. Checked over several real queries, each of which genuinely
-     spans more than one bucket in the committed catalogue.
+test("over the real catalogue, the returned order is non-decreasing in TIER", () => {
+  /* The invariant stated against real data rather than a fixture. It used to
+     be stated on the BUCKET and it cannot be any more: the popularity prior is
+     compared above the prefix/word-start distinction now, so a word-start
+     bucket-2 row with a chart position legitimately outranks an unranked
+     bucket-1 one. What must still never happen is a MID-WORD hit above a
+     word-start one, or either above an exact title — which is what the tier
+     says, and the tier is what the comparator's first key reads.
 
-     MUTATION: reorder `compareShowMatches` to compare the tier before the
-     bucket. A curated substring match then outranks a breadth prefix match and
-     this goes red. */
+     MUTATION: reorder `compareShowMatches` to compare the catalogue tier (or
+     the popularity band) before `showMatchTier`. A curated substring match then
+     outranks a breadth word-start match and this goes red. */
   const catalog = readJson("data/catalog-client.json");
   for (const q of ["the", "daily", "science", "life", "show"]) {
     const results = SearchEngine.searchShows(q, catalog.shows);
-    const buckets = results.map((s) => SearchEngine.showMatchBucket(s.title, q).bucket);
-    for (let i = 1; i < buckets.length; i++) {
-      assert.ok(buckets[i] >= buckets[i - 1],
-        `"${q}": ${results[i].title} (bucket ${buckets[i]}) ranked below ${results[i - 1].title} (bucket ${buckets[i - 1]})`);
+    const tiers = results.map((s) =>
+      SearchEngine.showMatchTier(SearchEngine.showMatchBucket(s.title, q).bucket));
+    for (let i = 1; i < tiers.length; i++) {
+      assert.ok(tiers[i] >= tiers[i - 1],
+        `"${q}": ${results[i].title} (tier ${tiers[i]}) ranked below ${results[i - 1].title} (tier ${tiers[i - 1]})`);
     }
+  }
+});
+
+/* ---------- the tier: the popularity prior speaks across prefix/word-start ----
+   docs/search-parity-plan.md P-08. Measured end to end over 30 queries with the
+   intended show named before the run (the table is in search-engine.js's tier
+   header and in the PR body): 8 of 30 put the intended show somewhere other
+   than first, and all 8 failed the same way — an unranked row whose title
+   STARTS with the query sitting above a charting row where the query starts an
+   interior word. `daily` put *The Daily* 40th, `american` put *This American
+   Life* 33rd, `history` put *Dan Carlin's Hardcore History* 30th. */
+
+test("a charting word-start show beats an unranked show whose title merely STARTS with the query", () => {
+  /* THE HEADLINE CHANGE, as the smallest fixture that shows it. Before, the
+     bucket was the comparator's first key, so the prior was a tie-break INSIDE
+     a bucket and could not speak across two — *Hard Fork* had to clear every
+     one of the ~23 index rows beginning with "Fork" before its chart position
+     was consulted at all.
+
+     MUTATION: put `if (a.bucket !== b.bucket) return a.bucket - b.bucket;` back
+     as the FIRST comparison in `compareShowMatches` (i.e. revert the tier).
+     "Fork This City" leads and this fails. */
+  const got = SearchEngine.searchShows("fork", [
+    breadth("Fork This City", null),
+    breadth("Hard Fork", 4),
+  ]).map((s) => s.title);
+  assert.deepStrictEqual(got, ["Hard Fork", "Fork This City"]);
+  assert.strictEqual(
+    SearchEngine.showMatchTier(SearchEngine.showMatchBucket("Hard Fork", "fork").bucket),
+    SearchEngine.showMatchTier(SearchEngine.showMatchBucket("Fork This City", "fork").bucket),
+    "both are word-boundary matches — one tier, so the prior is free to decide"
+  );
+});
+
+test("the bucket still breaks the tie the prior cannot: same band, prefix before word-start", () => {
+  /* S-04's rule is DEMOTED, not deleted, and this is the half that proves it.
+     Two shows the prior cannot separate — same tier, same catalogue tier, same
+     band — are still ordered title-initial first, which is the honest remainder
+     of "a prefix is stronger evidence than a word start".
+
+     THE WORD-START ROW IS ALPHABETICALLY FIRST, DELIBERATELY. The obvious
+     fixture ("Fork This City" against "Hard Fork") is worthless here: F sorts
+     before H, so `compareTitles` alone produces the expected order and the test
+     passes with the bucket line deleted — the named mutation does not kill it.
+     "Bad Fork" sorts BEFORE "Forking Around", so the alphabet and the bucket
+     disagree and only the bucket can produce the assertion below.
+
+     MUTATION: delete the `if (a.bucket !== b.bucket) return a.bucket - b.bucket;`
+     line that now sits BELOW the popularity band in `compareShowMatches`. The
+     pair falls through to `compareTitles`, "Bad Fork" wins on the alphabet, and
+     this fails. */
+  const got = SearchEngine.searchShows("fork", [
+    breadth("Bad Fork", 4),         // word start, and alphabetically FIRST
+    breadth("Forking Around", 4),   // prefix, same band
+  ]).map((s) => s.title);
+  assert.deepStrictEqual(got, ["Forking Around", "Bad Fork"]);
+});
+
+test("an exact title still leads and a mid-word hit still trails, whatever the prior says", () => {
+  /* THE TIER'S TWO EDGES, pinned with the prior pushing AGAINST both of them:
+     the exact row is unranked (worst band) and the mid-word row is rank 1. If
+     either edge dissolves, the prior wins a comparison it must never be asked.
+
+     MUTATION A: return `SHOW_TIER_BOUNDARY` for `SHOW_MATCH_EXACT` in
+     `showMatchTier`. "Fork" (unranked) drops behind "Hard Fork" (band 3).
+     MUTATION B: return `SHOW_TIER_BOUNDARY` for `SHOW_MATCH_SUBSTRING`.
+     "Pitchfork Review" (band 1) jumps above "Hard Fork" (band 3). */
+  const got = SearchEngine.searchShows("fork", [
+    breadth("Pitchfork Review", 1),   // "fork" follows "h" — a letter, so mid-word
+    breadth("Hard Fork", 60),         // word start, band 3
+    breadth("Fork", null),            // exact, and the WORST band
+  ]).map((s) => s.title);
+  assert.deepStrictEqual(got, ["Fork", "Hard Fork", "Pitchfork Review"]);
+  assert.strictEqual(SearchEngine.showMatchBucket("Pitchfork Review", "fork").bucket,
+    SearchEngine.SHOW_MATCH_SUBSTRING, "fixture assumption: this really is a mid-word hit");
+});
+
+test("over the REAL index, nothing in a worse popularity band outranks the show the listener meant", () => {
+  /* THE CLAIM AS A RELATION, NOT AS A POSITION, so it cannot rot when the
+     catalogue grows: for each query, no row above the intended show may sit in
+     a WORSE popularity band than it does. A count ("must be in the top 5")
+     would be an inventory assertion and would go red the day the harvest adds
+     another "Daily …" show; this stays true at any catalogue size.
+
+     Run over the real committed `data/show-index.tsv` merged with the curated
+     220 — which is exactly `app.js:localShowMatches`'s input, so this is the
+     list a listener actually sees before any network pass.
+
+     MEASURED, so this is not a vacuous truth: before the tier, the count of
+     worse-banded rows sitting ABOVE the intended show was 14 for "history",
+     23 for "daily", 9 for "money" and 13 for "american". It is 0 for all four
+     now. The `worseExists` assertion is the teeth — each list really does
+     contain rows the prior bands worse.
+
+     MUTATION: revert `compareShowMatches` to bucket-first. All four queries go
+     red, each naming the rows that jumped the prior. */
+  const catalog = readJson("data/catalog-client.json");
+  const index = SearchEngine.parseShowIndex(
+    fs.readFileSync(path.join(ROOT, "data/show-index.tsv"), "utf8"));
+  assert.ok(index.rows.length > 100, "fixture assumption: the committed index decoded");
+  const seen = new Set(catalog.shows.map((s) => s.show_id));
+  const all = catalog.shows.concat(index.rows.filter((r) => !seen.has(r.show_id)));
+
+  for (const [q, title] of [
+    ["history", "Dan Carlin's Hardcore History"],
+    ["daily", "The Daily"],
+    ["money", "Planet Money"],
+    ["american", "This American Life"],
+  ]) {
+    const results = SearchEngine.searchShows(q, all);
+    const at = results.findIndex((s) => s.title === title);
+    assert.ok(at >= 0, `fixture assumption: "${q}" still finds ${title} in the committed index`);
+    const band = SearchEngine.popularityBand(results[at]);
+    assert.ok(results.some((s) => SearchEngine.popularityBand(s) > band),
+      `"${q}": the list must contain rows the prior bands WORSE, or this test asserts nothing`);
+    const jumped = results.slice(0, at).filter((s) => SearchEngine.popularityBand(s) > band);
+    assert.deepStrictEqual(jumped.map((s) => s.title), [],
+      `"${q}": these sit above ${title} despite a worse popularity band`);
   }
 });
 
@@ -305,6 +427,60 @@ test("the server's bucket table is THIS file's bucket table, constant for consta
      which is exactly why the parse above does not see it. */
   assert.strictEqual(SearchEngine.SHOW_MATCH_UNMATCHED, SearchEngine.SHOW_MATCH_SUBSTRING + 1);
   assert.ok(!("SHOW_MATCH_UNMATCHED" in server), "the server never emits an unmatched row, so it must not declare that bucket");
+
+  /* THE TIER TABLE IS PINNED THE SAME WAY, and it has to be for the same
+     reason the bucket table is: `searchBreadthShows` takes the `limit` cut
+     under this order, so a tier boundary that moved on one side only would cut
+     the 25 rows by a rule the other side does not display. Same parse, same
+     comparison, and `SHOW_TIER_UNMATCHED` is excluded by the same construction
+     — it is written as an expression on the client and does not exist on the
+     server, which has no producer for it.
+
+     MUTATION: change `SHOW_TIER_BOUNDARY` to 2 in either file alone (or add a
+     tier to one of them). The deepStrictEqual fails naming the constant. */
+  const TIER_DECLARATION = /^(?:export )?const (SHOW_TIER_[A-Z_]+) = (-?\d+);$/gm;
+  const tierTableOf = (rel) => {
+    const src = fs.readFileSync(path.join(ROOT, rel), "utf8");
+    const table = {};
+    for (const m of src.matchAll(TIER_DECLARATION)) table[m[1]] = Number(m[2]);
+    return table;
+  };
+  const clientTiers = tierTableOf("search-engine.js");
+  assert.deepStrictEqual(tierTableOf("backend/src/catalog/searchBreadthShows.ts"), clientTiers,
+    "the two tier tables must be identical — the endpoint's limit cut is taken under this order");
+  assert.deepStrictEqual(clientTiers, {
+    SHOW_TIER_EXACT: 0, SHOW_TIER_BOUNDARY: 1, SHOW_TIER_SUBSTRING: 2,
+  }, "and they must still be the three tiers this suite documents");
+  for (const [name, value] of Object.entries(clientTiers)) {
+    assert.strictEqual(SearchEngine[name], value, `${name} is exported with a different value than it is declared with`);
+  }
+  assert.strictEqual(SearchEngine.SHOW_TIER_UNMATCHED, SearchEngine.SHOW_TIER_SUBSTRING + 1);
+  assert.ok(!("SHOW_TIER_UNMATCHED" in tierTableOf("backend/src/catalog/searchBreadthShows.ts")),
+    "the server never emits an unmatched row, so it must not declare that tier");
+
+  /* And the MAPPING, not only the integers: two tier tables can agree while
+     `showMatchTier` files PREFIX under a different one of them on each side,
+     which is a silent divergence of exactly the kind this suite exists to stop.
+     So the server's function is EXECUTED, not read — its source is lifted out,
+     its type annotations stripped (the body is otherwise plain JS), and it is
+     run against every bucket the server can ever see.
+
+     MUTATION: move `SHOW_MATCH_PREFIX` out of the boundary branch in either
+     file's `showMatchTier`. The loop below names the bucket that disagrees. */
+  const serverSrc = fs.readFileSync(path.join(ROOT, "backend/src/catalog/searchBreadthShows.ts"), "utf8");
+  const fn = serverSrc.match(/export function showMatchTier\(bucket: number\): number \{([\s\S]*?)\n\}/);
+  assert.ok(fn, "searchBreadthShows.ts must declare showMatchTier as a plain function");
+  const serverTierOf = new Function(
+    "SHOW_MATCH_EXACT", "SHOW_MATCH_PREFIX", "SHOW_MATCH_WORD_START", "SHOW_MATCH_SUBSTRING",
+    "SHOW_TIER_EXACT", "SHOW_TIER_BOUNDARY", "SHOW_TIER_SUBSTRING", "bucket", fn[1]
+  ).bind(null,
+    server.SHOW_MATCH_EXACT, server.SHOW_MATCH_PREFIX, server.SHOW_MATCH_WORD_START, server.SHOW_MATCH_SUBSTRING,
+    clientTiers.SHOW_TIER_EXACT, clientTiers.SHOW_TIER_BOUNDARY, clientTiers.SHOW_TIER_SUBSTRING);
+  for (const bucket of [SearchEngine.SHOW_MATCH_EXACT, SearchEngine.SHOW_MATCH_PREFIX,
+    SearchEngine.SHOW_MATCH_WORD_START, SearchEngine.SHOW_MATCH_SUBSTRING]) {
+    assert.strictEqual(SearchEngine.showMatchTier(bucket), serverTierOf(bucket),
+      `bucket ${bucket} is tiered differently by the two files`);
+  }
 
   /* The word-break class is half the word-start bucket's meaning, so it is
      pinned character for character too: an ASCII-only `\W` on one side would
