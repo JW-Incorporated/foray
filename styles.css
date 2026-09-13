@@ -1308,6 +1308,17 @@ body:not(.fp-expanded) .fp-close { display: none; }
   text-transform: none; letter-spacing: normal; font-weight: 400;
   font-size: 0.78rem;
 }
+/* P-05 piece 2: the same caption as a DIVIDER, used when the Episodes section
+   carries both tiers — the listener's own saved/Up Next episodes above, the
+   endpoint's below. It only renders when both tiers have rows (see
+   paintEpisodeSearchResults); with one tier the caption stays on the h3 above,
+   which is why this is a separate rule rather than a variant of it. Tokens
+   only, per U-01 — no raw hex anywhere outside the ui-v2 token block. */
+.ep-more .fy-episode-search-more {
+  margin: 12px 0 8px; padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 0.78rem;
+}
 
 .fp-scrub { width: 100%; accent-color: var(--accent); }
 .fp-times { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); }

@@ -3648,15 +3648,24 @@ function paintShowResults(query, shows, myToken) {
   results.hidden = false;
 }
 
-/** THE KEYSTROKE PATH. Local only: no fetch, no episode search, no playlist
-    CTA, nothing deferred. Returns what it painted plus its own timings, which
-    the costly pass folds into the one diagnostics record. */
+/** THE KEYSTROKE PATH. Local only: no fetch, no playlist CTA, nothing deferred.
+    Returns what it painted plus its own timings, which the costly pass folds
+    into the one diagnostics record.
+
+    P-05 PUT THE EPISODE TIER ON THIS TICK, and the sentence above changed from
+    "no episode search" because of it. What runs here is `localEpisodeMatches` —
+    a substring scan over `cp_saved` + `cp_queue`, tens of entries, no fetch and
+    nothing deferred — NOT the endpoint, which stays behind the 250 ms debounce
+    in `runShowSearchCostly` exactly where #662 put it. `localMs`/`paintedMs`
+    cover both local passes because both are this one paint; the endpoint half
+    keeps its own `epMs`. */
 function paintShowSearchLocal(query, myToken) {
   const localStart = nowMs();
   const localShows = localShowMatches(query);
   const localMs = nowMs() - localStart;
   paintShowResults(query, localShows, myToken);
-  return { localShows, localMs, paintedMs: nowMs() - localStart };
+  const localEpisodes = paintLocalEpisodeSearch(query, myToken);
+  return { localShows, localEpisodes, localMs, paintedMs: nowMs() - localStart };
 }
 
 /** Run `fn` when the main thread is actually free, with a deadline.
@@ -3851,7 +3860,7 @@ function runShowSearchCostly(query, myToken, local) {
     }); // fetchApiJson swallows network/parse errors to null — a failed directory pass adds nothing and removes nothing
   }
 
-  renderEpisodeSearchResults(query, myToken, (epMs, epHits) => settle({ epMs, epHits }));
+  renderEpisodeSearchResults(query, myToken, (epMs, epHits) => settle({ epMs, epHits }), local.localEpisodes);
   renderPlaylistSearchResults(query, myToken, (ctaMs) => settle({ ctaMs }));
 }
 
@@ -4051,19 +4060,151 @@ function bindCreatePlaylistCta(scope) {
 const EPISODE_SEARCH_CACHE_MAX = 200;
 const episodeSearchQueryCache = new Map();
 
+/* ---------- P-05 piece 2: THE INSTANT EPISODE TIER (docs/search-parity-plan.md
+   §4, rewritten 2026-09-12) ----------
+
+   P-05 as written asked episodes to "ride the same two-pass shape" as shows.
+   Episodes already had the SECOND half — `renderEpisodeSearchResults` fires in
+   parallel with the show passes, paints its own container, shares
+   `showSearchToken`, and never blocks the show list. What was missing is the
+   FIRST half, and the honest version of it is much smaller than the shows one,
+   because the device holds almost no episodes.
+
+   WHAT IS ACTUALLY RESIDENT, measured 2026-09-12. `data/catalog-client.json` is
+   220 shows / 100 KB carrying `episode_count` and NO episodes — zero episodes
+   are on the device at boot. The only persisted episode corpus is the
+   listener's own: `cp_saved` (stars) and `cp_queue` (Up Next), tens of items.
+   So that is what this tier searches.
+
+   AND THAT IS NOT A SHORTFALL — IT IS THE MECHANISM. Pocket Casts' instant
+   episode tier is your subscriptions, not the world's episodes; it reaches the
+   directory for everything else, exactly as the endpoint below does. Read this
+   as "the local tier is the listener's own library", not as "we could not
+   afford the real one".
+
+   THOUGH WE ALSO COULD NOT AFFORD THE REAL ONE, and the number is recorded so
+   nobody re-litigates it from taste. A title+show_id index built from the one
+   episode corpus that exists (`data/episode-archive.json.gz`, 98 shows / 73,719
+   episodes) is 4.35 MB raw / 1,486 KB gzip. Extrapolated to the 10,113 shows
+   `data/show-index.tsv` already covers: ~150 MB gzip against §2.3's 400 KB
+   budget — 375x over. Server-side it needs a datastore production does not
+   have (`api/episodes/search.ts`'s own header: DB-mode "not implemented …
+   production has no DATABASE_URL today") plus a refresh job over ~10k feeds.
+   A prebuilt episode index is a project, not a card. Revisit only if P-04
+   concludes the local tier should hold episodes at all.
+
+   IT RUNS ON THE KEYSTROKE, INSIDE THE TOKEN GUARD, AND IT IS O(saved). Called
+   from `paintShowSearchLocal` — the same tick as the local SHOW pass, before
+   the 250 ms debounce and therefore before any network call. #662 just took
+   two multi-second passes off this tick and nothing here may put work back on
+   it: the scan is over `cp_saved` + `cp_queue` (tens of entries), never over
+   `state.itemIndex`, which grows with every rendered row AND would resurface a
+   previous query's Apple results as if they were the listener's own. */
+const LOCAL_EPISODE_TIER_MAX = 5;
+
+/** Dedup key shared by both tiers. `guid` when the row has one — the only
+    genuinely stable episode identity either side supplies — falling back to
+    normalised title + normalised show, which is `normaliseShowTitle`'s exact
+    rule (P-02) reused rather than a second normalisation that could drift from
+    it. Show is part of the fallback key because episode titles collide hard
+    across shows ("Episode 1", "Introduction"). */
+function episodeDedupKey(ep) {
+  const guid = ep && ep.guid ? String(ep.guid).trim() : "";
+  if (guid) return "g:" + guid;
+  const show = (ep && (ep.show_title || ep.show_id)) || "";
+  return "t:" + normaliseShowTitle(ep && ep.title) + "|" + normaliseShowTitle(show);
+}
+
+/** Projects one device-resident snapshot into the SAME row shape
+    `api/episodes/search.ts` returns, so the paint and the dedup below have one
+    vocabulary rather than two. `_localId` carries the real storage id through,
+    because that id is what `starBtn`/`upNextBtn` read: a saved episode must
+    render already-starred here, and it would not if this minted a fresh
+    `apple:` id for it. */
+function localEpisodeRow(id, snap) {
+  const parts = String(id).split(":");
+  const wasApple = parts[0] === "apple" && parts.length >= 3;
+  return {
+    _localId: id,
+    show_id: wasApple ? parts[1] : null,
+    show_title: snap.show || null,
+    title: snap.title,
+    guid: wasApple ? parts.slice(2).join(":") : null,
+    description_text: snap.hook || "",
+    published_at: snap.release_date || null,
+    duration_seconds: snap.duration_sec != null
+      ? snap.duration_sec
+      : (snap.duration_min != null ? snap.duration_min * 60 : null),
+    audio_url: snap.audio_url || null,
+    source: "local",
+  };
+}
+
+/** The listener's own episodes matching `query`, title matches before
+    show-only matches, capped. Matching the SHOW name as well as the episode
+    title is not a nicety: a listener who types "huberman" is looking for their
+    saved Huberman episodes, whose titles rarely contain the host's name —
+    that is §2.2's finding, one layer down. Description text is deliberately
+    NOT matched (`filterLoadedEpisodes` does, on the show page, where the pool
+    is one show): across a mixed library it surfaces rows whose connection to
+    the query is invisible in the row itself. */
+function localEpisodeMatches(query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return [];
+  const byTitle = [];
+  const byShow = [];
+  const seen = new Set();
+  const consider = (id, snap) => {
+    if (!id || !snap || !snap.title || seen.has(id)) return;
+    seen.add(id);
+    if (String(snap.title).toLowerCase().includes(q)) byTitle.push(localEpisodeRow(id, snap));
+    else if (String(snap.show || "").toLowerCase().includes(q)) byShow.push(localEpisodeRow(id, snap));
+  };
+  const saved = savedMap();
+  for (const id of Object.keys(saved)) consider(id, saved[id]);
+  /* Up Next resolves through the same three-way rule every other id-list
+     surface uses (`rowsForIds`); an "unnamed" row is an id with no snapshot
+     behind it and has no title to match, so it cannot appear here. */
+  for (const row of queueRows()) {
+    if (row.state === "unnamed") continue;
+    consider(row.id, row.item);
+  }
+  return byTitle.concat(byShow).slice(0, LOCAL_EPISODE_TIER_MAX);
+}
+
 /** Paints one episode answer, or the honest nothing. Split out of the fetch so
-    a cache hit and a fresh response cannot drift into two renderers. */
-function paintEpisodeSearchResults(query, data, container) {
-  const episodes = data?.episodes || [];
-  if (!episodes.length) {
+    a cache hit and a fresh response cannot drift into two renderers.
+
+    TWO TIERS, ONE LIST. `localEpisodes` paints first and always; the endpoint's
+    rows are merged BENEATH them, never interleaved and never re-sorted — the
+    endpoint's own order is Apple's relevance ranking and re-sorting it here
+    would throw that away, the same rule `mergeBreadth` holds for shows. A row
+    the listener already has is shown once, in the local tier, because that is
+    the copy whose star and Up Next state are real. */
+function paintEpisodeSearchResults(query, data, container, localEpisodes) {
+  const local = localEpisodes || [];
+  const seen = new Set(local.map(episodeDedupKey));
+  const remote = [];
+  for (const ep of (data?.episodes || [])) {
+    const key = episodeDedupKey(ep);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    remote.push(ep);
+  }
+  if (!local.length && !remote.length) {
     container.innerHTML = "";
     container.hidden = true;
     return 0;
   }
-  const fromApple = (data.source || []).includes("apple");
+  /* The caption is an attribution, so it may only sit on rows Apple produced.
+     With no local tier it stays on the heading, byte-identical to what shipped
+     before this card; with one, it becomes a divider ABOVE the endpoint's rows,
+     because a heading caption would silently claim the listener's own saved
+     episodes came from Apple's index. */
+  const fromApple = (data?.source || []).includes("apple") && remote.length > 0;
   const ctx = "episode-search-" + query;
-  const rows = episodes.map((ep, i) => {
-    const id = `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
+  const rowFor = (ep, i) => {
+    const id = ep._localId || `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
     const item = snapshot(id, {
       show: ep.show_title || ep.show_id,
       title: ep.title,
@@ -4074,26 +4215,64 @@ function paintEpisodeSearchResults(query, data, container) {
       topics: [],
     });
     return epRow(item, i, ctx, -1);
-  });
+  };
+  const localRows = local.map((ep, i) => rowFor(ep, i));
+  const remoteRows = remote.map((ep, i) => rowFor(ep, local.length + i));
   container.innerHTML = `<section class="ep-more fy-episode-search">
-    <h3>Episodes${fromApple ? ` <span class="note">from Apple's index</span>` : ""}</h3>
-    ${rows.join("")}
+    <h3>Episodes${fromApple && !local.length ? ` <span class="note">from Apple's index</span>` : ""}</h3>
+    ${localRows.join("")}
+    ${fromApple && local.length ? `<div class="note fy-episode-search-more">from Apple's index</div>` : ""}
+    ${remoteRows.join("")}
   </section>`;
   container.hidden = false;
   bindPickLogging(container);
   bindStars(container);
   bindUpNext(container);
   bindPlay(container);
-  return episodes.length;
+  return local.length + remote.length;
 }
 
-function renderEpisodeSearchResults(query, myToken, report = () => {}) {
+/** THE KEYSTROKE HALF, called from `paintShowSearchLocal`. Paints the local
+    tier alone — the endpoint's rows are not here yet and this must not wait for
+    them — and hands the rows back so the debounced pass can merge beneath
+    exactly what the listener is already looking at. Token-guarded like every
+    other painter on this page. */
+function paintLocalEpisodeSearch(query, myToken) {
+  const container = $("#ep-search-results");
+  if (!container) return [];
+  if (myToken !== showSearchToken) return []; // superseded before this ran
+  const local = localEpisodeMatches(query);
+  if (!local.length) {
+    /* Nothing of the listener's matches. Leave the container cleared rather
+       than leaving the PREVIOUS query's rows on screen — "absence is a real
+       state", and a stale Episodes section under a fresh query is a lie the
+       endpoint would take 369 ms to correct. */
+    container.innerHTML = "";
+    container.hidden = true;
+    return [];
+  }
+  paintEpisodeSearchResults(query, null, container, local);
+  return local;
+}
+
+function renderEpisodeSearchResults(query, myToken, report = () => {}, localEpisodes = null) {
   const container = $("#ep-search-results");
   if (!container) { report(null, null); return; } // page markup not present (e.g. category page reusing renderShowIndexPage)
 
+  /* The local tier normally arrives from the keystroke pass. `renderShowSearch-
+     Results` and the tests call this directly, so recompute rather than assume
+     — it is a scan over tens of stored items, not something worth a flag. */
+  const local = localEpisodes || localEpisodeMatches(query);
+
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    container.innerHTML = "";
-    container.hidden = true;
+    /* OFFLINE IS WHERE THE LOCAL TIER EARNS ITS KEEP, so it must not be wiped
+       here. Before P-05 this branch cleared the container because there was
+       genuinely nothing to show without the network; now the listener's own
+       saved and queued episodes are still answerable, and they are exactly
+       what someone searching on a plane is looking for. The fetch is still
+       skipped — a network-only feature does not get a spinner that will never
+       resolve (this file's "absence is a real state" rule). */
+    paintEpisodeSearchResults(query, null, container, local);
     report(null, null);
     return;
   }
@@ -4108,7 +4287,8 @@ function renderEpisodeSearchResults(query, myToken, report = () => {}) {
   const cacheKey = showBreadthCacheKey(query);
   const cached = episodeSearchQueryCache.get(cacheKey);
   if (cached) {
-    report(0, paintEpisodeSearchResults(query, cached, container));
+    paintEpisodeSearchResults(query, cached, container, local);
+    report(0, (cached.episodes || []).length);
     return;
   }
 
@@ -4120,7 +4300,19 @@ function renderEpisodeSearchResults(query, myToken, report = () => {}) {
       episodeSearchQueryCache.set(cacheKey, data);
     }
     if (myToken !== showSearchToken) { report(epMs, null); return; } // superseded — drop this response
-    report(epMs, data ? paintEpisodeSearchResults(query, data, container) : null);
+    /* A FAILED ENDPOINT PASS LEAVES THE LOCAL TIER EXACTLY AS IT WAS — the
+       same structural promise P-02 made the show list. `data` is null on any
+       network or parse failure (`fetchApiJson` swallows both), and this
+       repaints the local rows rather than falling through to a clear. Only the
+       ENDPOINT half is unknown in that case, which is what `epHits: null`
+       already says.
+
+       `epHits` stays the ENDPOINT's hit count, not the painted total. It is a
+       diagnostics field about the slow half (docs/search-plan.md's `search`
+       entry) and quietly folding device-resident rows into it would make every
+       historical comparison wrong. */
+    paintEpisodeSearchResults(query, data, container, local);
+    report(epMs, data ? (data.episodes || []).length : null);
   });
 }
 

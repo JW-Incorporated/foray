@@ -456,7 +456,7 @@ const FLOORS = {
      mutations named and killed in the file's own header — rendering,
      Apple-vs-live captioning, empty-result absence, offline skip, stale
      response drop, and in-app playability of a result. */
-  "test/episode-search.test.js": 6,
+  "test/episode-search.test.js": 14, // P-05 piece 2 (docs/search-parity-plan.md, 2026-09-12): the INSTANT EPISODE TIER — the first half of the two-pass shape, over the listener's own cp_saved/cp_queue. Paints on the keystroke before any network call, matches the show name as well as the title, merges the endpoint's copy of a saved episode instead of duplicating it, never lets the Apple caption label a local row, survives a dead endpoint, answers offline, refuses state.itemIndex as a source, and clears a previous query's rows; 6 -> 14
 
 
   /* The home screen's geometry under DEVICE conditions. Floored because every
