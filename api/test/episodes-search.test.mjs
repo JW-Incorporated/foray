@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as searchModule from "../episodes/search.ts";
 import { _resetShowIdMapCacheForTests, loadShowIdMap } from "../episodes/showIdMap.ts";
+import { episodeFeedFailureCache } from "../episodes/searchCache.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
@@ -30,6 +31,11 @@ function mockRes() {
 
 function resetSharedState() {
   _resetShowIdMapCacheForTests();
+  /* P-05 piece 3: the feed-failure memory is module scope and 90 s long, so a
+     failure remembered by one test would answer a later one from a different
+     test's setup. Cleared here rather than per-test for the same reason the
+     id-map cache is. */
+  episodeFeedFailureCache.clear();
 }
 
 const FEED_TWO_EPS = `<?xml version="1.0"?>
@@ -443,6 +449,137 @@ test("general search: a breadth-only show's Apple hit now reaches the response, 
   assert.strictEqual(res.body.episodes.length, 1, "the breadth hit must survive mapAppleHit");
   assert.strictEqual(res.body.episodes[0].show_id, String(show.apple_collection_id));
   assert.strictEqual(res.body.episodes[0].source, "apple");
+});
+
+// ---------------------------------------------------------------------------
+// P-05 piece 3 (docs/search-parity-plan.md §4, 2026-09-12) — THE SHOW PAGE.
+// A feed that just failed is not refetched on the next keystroke.
+//
+// Measured motivation, live endpoint 2026-09-12: `omega-tau`'s feed fails from
+// Vercel on every attempt, burns 387 / 467 / 756 ms, and — because the handler
+// set `no-store` and skipped the cache write on error — paid that on EVERY
+// query, forever.
+// ---------------------------------------------------------------------------
+
+const FAILING_SHOW = "lex-fridman-podcast"; // a real catalogue show; only its FETCH is made to fail here
+
+test("show-scoped: a feed that just failed is not refetched for the next, different query", async () => {
+  // THE CARD. Two different `q` values against the same show, so
+  // episodeSearchCache's query-keyed entry cannot be what answers the second
+  // one — only the show-keyed failure memory can.
+  //
+  // MUTATION THAT TURNS THIS RED: delete the `episodeFeedFailureCache.get`
+  // short-circuit in the handler's showScope branch, or the
+  // `else if (feedFailed)` write that fills it. `feedFetches` becomes 2.
+  resetSharedState();
+  let feedFetches = 0;
+  const fetchImpl = async (url) => {
+    if (String(url).includes("itunes.apple.com")) throw new Error("Apple must not be called in show-scoped mode");
+    feedFetches++;
+    throw new Error("fetch failed");
+  };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  let first, second;
+  try {
+    first = mockRes();
+    await handler({ method: "GET", query: { q: `p05c-${Date.now()}-one`, show: FAILING_SHOW }, headers: {} }, first);
+    second = mockRes();
+    await handler({ method: "GET", query: { q: `p05c-${Date.now()}-two`, show: FAILING_SHOW }, headers: {} }, second);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.strictEqual(feedFetches, 1, "the second query must be answered from the remembered failure, not a second feed fetch");
+  assert.strictEqual(first.body.degraded, true);
+  assert.strictEqual(second.body.degraded, true, "the remembered answer must still be honest about being degraded");
+  assert.ok(second.body.error, "and must carry the original error rather than a silent empty result");
+  assert.deepStrictEqual(second.body.episodes, []);
+});
+
+test("show-scoped: a remembered failure is never replayed as an empty success, and never handed to the edge", async () => {
+  // TWO LIES THIS MUST NOT TELL. `degraded: false` with zero episodes tells the
+  // listener their query matched nothing (the client's
+  // `searchShowEpisodesScoped` branches on exactly that and would stop falling
+  // back to `filterLoadedEpisodes`). And a cacheable `Cache-Control` would let
+  // the CDN keep the dark window alive long past FEED_FAILURE_TTL_MS, turning
+  // a 90-second guard into an unbounded outage.
+  //
+  // MUTATION THAT TURNS THIS RED: answer the short-circuit with
+  // `degraded: false`, or give it the success path's
+  // `public, max-age=300, ...` header.
+  resetSharedState();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("itunes.apple.com")) throw new Error("no Apple here");
+    throw new Error("fetch failed");
+  };
+  let replay;
+  try {
+    await handler({ method: "GET", query: { q: `p05c-${Date.now()}-a`, show: FAILING_SHOW }, headers: {} }, mockRes());
+    replay = mockRes();
+    await handler({ method: "GET", query: { q: `p05c-${Date.now()}-b`, show: FAILING_SHOW }, headers: {} }, replay);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.strictEqual(replay.body.degraded, true);
+  assert.strictEqual(replay.headers["Cache-Control"], "no-store");
+});
+
+test("show-scoped: an unknown show_id is not remembered as a feed failure", async () => {
+  // ONLY THE EXPENSIVE FAILURE IS WORTH REMEMBERING. An unknown show_id never
+  // touched the network, so caching it buys nothing and costs honesty — and
+  // more to the point, a failure memory that fills up with non-failures is one
+  // that will eventually dark-window a show that was never broken.
+  //
+  // MUTATION THAT TURNS THIS RED: write the failure cache on any `error`
+  // rather than on `feedFailed` (i.e. drop the `feedFailed` flag threaded
+  // through searchWithinShow). The second call would be answered from the
+  // remembered failure and `reached` would stay false.
+  resetSharedState();
+  await handler({ method: "GET", query: { q: "anything", show: "definitely-not-a-real-show" }, headers: {} }, mockRes());
+
+  // The same unknown id again must still walk the real path rather than a
+  // remembered one: it reaches loadShowMeta and answers "unknown show_id".
+  const again = mockRes();
+  await handler({ method: "GET", query: { q: "anything-else", show: "definitely-not-a-real-show" }, headers: {} }, again);
+  assert.deepStrictEqual(again.body.episodes, []);
+  assert.match(String(again.body.error || ""), /unknown show_id/, "must still be the real unknown-id answer, not a replayed feed failure");
+});
+
+test("show-scoped: a healthy feed is never poisoned by another show's failure", async () => {
+  // The memory is keyed by show. A broken feed elsewhere in the catalogue must
+  // not take a working show's search box down with it.
+  //
+  // MUTATION THAT TURNS THIS RED: key episodeFeedFailureCache on anything
+  // shared across shows (a single boolean, the query, the empty string).
+  resetSharedState();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("itunes.apple.com")) throw new Error("no Apple here");
+    throw new Error("fetch failed");
+  };
+  try {
+    await handler({ method: "GET", query: { q: `p05c-${Date.now()}-x`, show: FAILING_SHOW }, headers: {} }, mockRes());
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const healthy = mockRes();
+  const healthyFetch = async (url) => {
+    if (String(url).includes("itunes.apple.com")) throw new Error("no Apple here");
+    return new Response(FEED_TWO_EPS, { status: 200, headers: { "content-type": "application/rss+xml" } });
+  };
+  const restore = globalThis.fetch;
+  globalThis.fetch = healthyFetch;
+  try {
+    // A different show_id whose feed answers normally.
+    await handler({ method: "GET", query: { q: "alpha", show: "huberman-lab" }, headers: {} }, healthy);
+  } finally {
+    globalThis.fetch = restore;
+  }
+  assert.strictEqual(healthy.body.degraded, false, "an unrelated show must be unaffected by the remembered failure");
+  assert.strictEqual(healthy.body.episodes.length, 1);
 });
 
 /* THIS TEST MUST STAY LAST IN THE FILE. It deliberately drains
