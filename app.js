@@ -3149,7 +3149,40 @@ const PREFS_CHIP_IDS = [
     Both steps' exits set the SAME cp_intro_dismissed flag showIntroPopupOnce()
     already uses, so this flow and the older popup can never both show on the
     same visit and neither shows again after. */
+/* ---------- ONCE MEANS ONCE, INCLUDING WITHIN A SINGLE VISIT ----------
+
+   Both `…Once` functions below guarded only on PERSISTED state — "is this a
+   first-time profile" and "has the intro been dismissed" — and neither of
+   those flips until the listener actually dismisses the sheet. So two renders
+   of Home before that dismissal mount two sheets, with duplicate element ids,
+   stacked over each other.
+
+   Home re-renders on its own: `refreshForayDirectory("boot")` is fired
+   unawaited by init() and, when a newer directory is adopted, repaints every
+   Foray surface — and `isForaySurface("#/")` is true, so Home is one of them.
+   The whole defect is therefore a RACE between that fetch landing and the
+   listener's thumb, invisible on a fast machine and reliable on a slow one.
+
+   Found 2026-09-13 by test/playwright/drawer-and-close.spec.js, which failed
+   in CI inside its own `openApp()` helper: `#first-time-sheet-skip` resolved
+   to two elements, and before that a three-minute click timeout where the
+   duplicate sheet intercepted every click aimed at the first. Reproduced
+   locally only under `CI=1` (two workers, all specs in parallel) — a
+   single-spec run never showed it.
+
+   The fix is at the level the bug is at: a function whose name promises ONCE
+   must be idempotent against its own output, not merely against a flag it has
+   not written yet. Neither the repaint nor the directory refresh is wrong;
+   both are wanted. `true` rather than `false` on the early return because the
+   return value means "the first-time explainer owns this visit" — answering
+   `false` while a sheet is on screen would let the caller open the OLDER
+   intro popup on top of it (`if (!showFirstTimeExplainerOnce())
+   showIntroPopupOnce()`), which is the same bug wearing a different id.
+
+   MUTATION: delete either early return below and
+   test/onboarding-sheet-once.test.js fails on the duplicate-mount assertion. */
 function showFirstTimeExplainerOnce() {
+  if ($("#first-time-sheet")) return true;   // already on screen this visit
   if (!isGenuineFirstTimeUser()) return false;
   if (lsGet("cp_intro_dismissed", false)) return false;
 
@@ -3341,6 +3374,11 @@ function showFirstTimeExplainerOnce() {
    function — renderHome() calls the two in sequence and short-circuits here
    when the explainer just showed, so a first-ever visit never shows both. */
 function showIntroPopupOnce() {
+  /* The same guard, for the same reason, on the older popup — see the block
+     above `showFirstTimeExplainerOnce`. This one is reachable by returning
+     users, who are not `isGenuineFirstTimeUser()`, so it has only ever had the
+     one persisted flag between it and a duplicate mount. */
+  if ($("#intro-sheet")) return;
   if (lsGet("cp_intro_dismissed", false)) return;
   const wrap = ddEl("div", "fy-sheet");
   wrap.id = "intro-sheet";

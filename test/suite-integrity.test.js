@@ -270,6 +270,13 @@ const FLOORS = {
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
   "test/collapsing-header-scroll.test.js": 6,
+  /* The onboarding sheet mounts once per VISIT, not once per persisted flag
+     (found 2026-09-13 by the Playwright drawer spec: two `#first-time-sheet`
+     nodes, duplicate ids, three-minute click timeouts behind them). Floored
+     because the browser suite only catches it when the machine is slow enough
+     to lose the race — green on a quiet box, red under load — so these
+     timing-free assertions are the reliable half of the guard. */
+  "test/onboarding-sheet-once.test.js": 5,
   /* A new page starts at the top, and ‹ puts you back where you were
      (founder report, 2026-09-13). Floored because BOTH halves are one-line
      deletions away and only one of them is visible: losing the scroll-to-top
