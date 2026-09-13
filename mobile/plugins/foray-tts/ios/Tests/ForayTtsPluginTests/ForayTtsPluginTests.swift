@@ -411,17 +411,46 @@ final class ForayTtsPluginTests: XCTestCase {
     // empty on a shipping build, and that the plugin declares the method the
     // web half calls by name.
 
-    /// **The seam is empty on every build that ships.** The whole inertness
-    /// claim of this card rests on it: with no engine registered,
-    /// `kokoroProbe` resolves `engine-absent` and nothing about how narration
-    /// is spoken has changed. A build that shipped with a probe engine
+    /// **The seam is empty on every build that ships**, and it stays empty
+    /// even now that ONNX Runtime IS linked (2026-09-12). That is the whole
+    /// inertness claim: `KokoroOrtProbeEngine` is constructed inside
+    /// `kokoroProbe`, on demand, after the model-presence check passes — so
+    /// ORT is never touched at `load()`, never at app start, and never on any
+    /// path narration reaches. A build that shipped with a probe engine
     /// pre-registered would be running ONNX Runtime in every listener's app
     /// for a card that measures one founder's phone.
     ///
     /// TO SEE IT FAIL: assign `ForayTtsPlugin.probeEngine` a default in the
-    /// plugin source.
+    /// plugin source, or move the `KokoroOrtProbeEngine()` construction into
+    /// the plugin's `load()`.
     func testProbeEngineIsUnregisteredByDefault() {
         XCTAssertNil(ForayTtsPlugin.probeEngine)
+    }
+
+    /// **The probe finds no weights in a test bundle, and says so.** The test
+    /// host has no `kokoro-v1_0-q8f16.onnx` in either place the lookup
+    /// searches, so this pins the ORDER of the refusals rather than a
+    /// measurement: a passage problem first, then `model-absent`, and only
+    /// then an engine. It is the one assertion that would notice
+    /// `KokoroModelFiles.modelURL()` being changed to return a path that
+    /// always exists — after which every build would answer `engine-absent`
+    /// and a founder would be sent to look at the runtime instead of at the
+    /// fetch step.
+    ///
+    /// TO SEE IT FAIL: have `modelURL()` fall back to `Bundle.main.bundlePath`.
+    func testModelIsAbsentInATestBundle() {
+        XCTAssertNil(KokoroModelFiles.modelURL())
+        XCTAssertNil(KokoroModelFiles.voiceURL())
+    }
+
+    /// **An engine cannot be built without the files.** `init?` returns nil,
+    /// which the plugin turns into `engine-absent` — not a crash, and not a
+    /// zero that would read as "infinitely fast" in an RTF.
+    ///
+    /// TO SEE IT FAIL: make `KokoroOrtProbeEngine.init?` non-failable and open
+    /// the session lazily instead.
+    func testProbeEngineRefusesToBuildWithNoWeights() {
+        XCTAssertNil(KokoroOrtProbeEngine())
     }
 
     /// **The method is declared, and named exactly what the web half calls.**
@@ -450,6 +479,20 @@ final class ForayTtsPluginTests: XCTestCase {
     func testModelResourceName() {
         XCTAssertEqual(ForayTtsPlugin.MODEL_RESOURCE, "kokoro-v1_0-q8f16")
         XCTAssertEqual(ForayTtsPlugin.MODEL_EXTENSION, "onnx")
+    }
+
+    /// **The voice and the subdirectory are the ones the build step writes.**
+    /// `tools/mobile/fetch-models.mjs`'s `PROBE_VOICE` names the file and
+    /// `tools/mobile/inject-models.mjs` writes it into the generated project's
+    /// `public/` folder reference — which is the only place in a
+    /// Capacitor-generated iOS app a Node script can add a resource without
+    /// editing a `.pbxproj`. `inject-models.test.mjs` asserts the same pair
+    /// from the other side, in Node, by reading this source file.
+    ///
+    /// TO SEE IT FAIL: change either constant without changing the pin table.
+    func testVoiceAndSubdirectoryMatchTheBuildStep() {
+        XCTAssertEqual(ForayTtsPlugin.VOICE_RESOURCE, "af_heart")
+        XCTAssertEqual(ForayTtsPlugin.RESOURCE_SUBDIR, "public")
     }
     // MARK: - L-05: pause, resume, stop (founder feedback F12)
 
