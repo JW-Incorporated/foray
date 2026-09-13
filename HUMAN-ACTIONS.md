@@ -2,9 +2,24 @@
 
 <!-- ha-format: 2 -->
 
-> **32 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **33 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #46 🔴 [BLOCKING] nightly-refresh.yml and nightly-watch.yml haven't fired since 2026-09-12 11:12 UTC
+<!-- ha filed=2026-09-13 kind=default -->
+
+**Why:** No scheduled run of either workflow has happened since (verified 2026-09-13
+~12:00 UTC), so no fresh digest has published since 2026-09-10 and the absence
+watchdog can't re-check either. PR #678 is a one-off manual catch-up; without a fix
+tonight's run won't fire on its own either.
+
+**Steps:**
+1. Open https://github.com/JW-Incorporated/foray/actions/workflows/nightly-refresh.yml — a banner reading "This scheduled workflow is disabled" means click the button beside it to re-enable.
+2. If it shows enabled, check https://github.com/organizations/JW-Incorporated/settings/billing for exhausted included Actions minutes on the Team plan.
+3. If neither explains it, check whether any PR merged since 2026-09-12 12:02 UTC touched the `on: schedule` block in `.github/workflows/nightly-refresh.yml` or `nightly-watch.yml`.
+
+**Worked if:** the Actions tab shows a run of nightly-refresh.yml that started after this item was filed.
 
 ## #45 🟡 [DECIDE] Run the voice-engine probe on your phone — the one measurement no machine here can take (K-01)
 <!-- ha filed=2026-09-12 kind=default -->
