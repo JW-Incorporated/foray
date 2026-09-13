@@ -153,18 +153,27 @@ test("the kit renders from the passage K-01 probes, not a second one", () => {
 /* ---------- the refusal ---------- */
 
 test("--check names every missing dependency and exits non-zero", () => {
-  /* The state of this machine, and of CI: no runtime, no weights, an
-     unphonemized passage. All four are reported, because a founder or an agent
-     picking this up needs to know which of them they have to solve.
+  /* The state of this machine, and of CI: no runtime, no weights. Each is
+     reported, because a founder or an agent picking this up needs to know
+     which of them they have to solve.
      MUTATION: return 0 when dependencies are missing — the kit then reads as
-     ready and the next step is a confusing crash. */
+     ready and the next step is a confusing crash.
+
+     THE PASSAGE IS NO LONGER ON THAT LIST, from 2026-09-12, and the assertion
+     that it is has been INVERTED rather than deleted. `--check` used to report
+     "phonemized passage" as a fourth missing item; the passage now carries real
+     ids, so a `--check` that still named it would be lying about the one
+     dependency the audition shares with K-01's probe. Asserting its ABSENCE is
+     what keeps that true: null an `ids` array and this goes red.
+     MUTATION: restore `ids: null` in the passage. */
   const r = spawnSync(PYTHON, [SCRIPT, "--check"], { encoding: "utf8", cwd: ROOT });
   assert.equal(r.status, 1);
   assert.match(r.stdout, /slate: 12 voices, labels A\.\.L/);
   assert.match(r.stdout, /NOT READY/);
   assert.match(r.stdout, /onnxruntime \(pip\)/);
   assert.match(r.stdout, /kokoro-v1_0-q8f16\.onnx/);
-  assert.match(r.stdout, /phonemized passage/);
+  assert.ok(!/phonemized passage/.test(r.stdout),
+    "the passage is phonemized — reporting it as missing would send the reader to a solved problem");
   assert.match(r.stdout, /node tools\/mobile\/fetch-models\.mjs/,
     "the failure must carry the commands that fix it");
 });
