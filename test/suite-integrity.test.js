@@ -468,8 +468,29 @@ const FLOORS = {
      session ONE); and the implication over the real data, pool has artwork
      => the show resolves artwork. */
   "test/show-page.test.js": 43,
+  /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
+     the show page, so show-page-pagination.test.js was RE-POINTED rather than
+     shrunk — same five tests, now pinning the absence of the control, the
+     absence of a silent auto-pager in its place, and the count label the
+     founder had deleted. Its floor is deliberately unchanged: this file is the
+     one that would have noticed a quiet gutting, and a removal that keeps its
+     coverage should not need to lower anything.
+     show-page-search.test.js gained the eighth: the founder's actual bug,
+     pinned from the search side — no Show more control may sit under a set of
+     scoped search results, which is the case the pagination suite could not
+     see because none of its tests ever typed a query. */
   "test/show-page-pagination.test.js": 5,
-  "test/show-page-search.test.js": 7,
+  "test/show-page-search.test.js": 8,
+
+  /* The third founder report of 2026-09-13: the now-playing bar must be off
+     the screen while a soft keyboard is up (it used to ride up onto the top of
+     the keyboard on the first scroll). Floored on its own rather than folded
+     into a show-page suite because the mechanism is global chrome — the
+     keyboard can open on any screen with a text field — and because most of
+     what it guards is the fix's escape hatches: the two independent ways the
+     bar comes BACK, and the no-visualViewport fail-open. Those are exactly the
+     assertions a future edit is most likely to drop as redundant. */
+  "test/now-playing-keyboard.test.js": 7,
 
   /* Kanban t_d5079285 (recreated — was mistakenly archived as t_623d16a7) —
      episode page: publish date (A1.2), full episode description additive to
@@ -593,9 +614,32 @@ const FLOORS = {
      the network — it is where things are rendered and when they are hidden,
      and it would be invisible inside a file whose subject is what a query
      returns. The scroll MECHANISM it depends on stays floored separately at
-     test/collapsing-header-scroll.test.js; this file only pins the nesting
-     that opts the search bar into it. */
+     test/collapsing-header-scroll.test.js.
+     2026-09-13, same day: the founder moved the search field to the BOTTOM of
+     the page ("model it after most other text boxes, for example in the
+     Claude app or Apple Podcasts"), superseding his own scroll-up report. The
+     three tests that pinned the field INSIDE `.page-head` were rewritten to
+     pin the negative — not in the header, header back to one shape, no field
+     on the category page — so the count is unchanged at 15 and the file's
+     subject is unchanged with it. The positive lives next door. */
   "test/search-page-chrome.test.js": 15,
+  /* The bottom-docked search field itself (founder, 2026-09-13). A SEPARATE
+     file rather than more tests in the one above, because its subject is the
+     bottom EDGE of the screen and not the search page's content: where
+     `#sh-compose` sits in a stacking order it shares with `.tab-bar` (55) and
+     `#foray-player` (60), how `--sh-dock` composes the room those two take,
+     and the `--kb-inset` measurement installKeyboardChrome now publishes
+     alongside `body.kb-open` so the field rides above the keyboard instead of
+     behind it. That last part is shared ground with
+     test/now-playing-keyboard.test.js, which owns the DETECTOR; this file
+     owns the measurement derived from it, and asserts the two never split.
+     Same day, +9: the founder checked Apple Podcasts on his own phone and
+     sent screenshots ("they seem to have nailed it"), which settled the shape
+     against a guess — a floating translucent pill inset from both edges with
+     content reading through it, a circular companion button that arrives with
+     the keyboard, a leading magnifier and no microphone, and Escape and that
+     button as one code path. 22 -> 31. */
+  "test/search-field-bottom.test.js": 31,
   "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
   /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
      its rows render and cache like any other breadth row, and a breadth show page survives

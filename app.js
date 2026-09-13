@@ -1848,33 +1848,33 @@ function showsForCategory(nodeId) {
    empty one, so the heading does not sit above a blank line's worth of
    leading.
 
-   `headExtra` is raw HTML rendered INSIDE `.page-head`, under the title row.
-   That placement is the whole of founder report 3 ("when I start scrolling
-   up, the search bar should reappear. At the top of the screen"): the
-   collapsing-header mechanism this app already has — `.page-head`'s sticky
-   + `page-head-hidden` transform, driven by onWindowScroll() — hides and
-   re-shows whatever is inside `.page-head`, so putting the search field
-   there gets the hide-on-scroll-down/show-on-scroll-up behaviour with no
-   second scroll listener. When it is empty the markup is byte-identical to
-   what shipped before, so the category page is untouched. */
-function renderShowIndexPage(title, subtitle, shows, above = "", headExtra = "") {
+   THE HEADER CARRIES NO SEARCH FIELD (founder, 2026-09-13, superseding his
+   own report of an hour earlier). A `headExtra` slot used to exist here, and
+   the Shows page used it to render the search field INSIDE `.page-head` so
+   that the collapsing header's scroll-up would bring the field back. The
+   field now lives at the BOTTOM of the search page instead (see
+   renderAllShows and `#sh-compose` in styles.css), where it is always on
+   screen — so "scroll up to reveal it" has nothing left to reveal, and the
+   slot, its `.page-head-stacked` layout modifier and the branch that chose
+   between two header shapes are all deleted rather than left standing as a
+   second, unused mechanism.
+
+   `.page-head` KEEPS ITS JOB and keeps its collapse: it still carries the ‹
+   button and the page title, which are the things a header is for, and
+   onWindowScroll still hides and re-shows it exactly as it has since
+   2026-09-05 (test/collapsing-header-scroll.test.js). Nothing about that
+   mechanism changed; only the field stopped riding along inside it. */
+function renderShowIndexPage(title, subtitle, shows, above = "") {
   setBodyClass("view-page");
-  const titleBlock = `
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
           <h2>${esc(title)}</h2>
           ${subtitle ? `<p class="sub">${esc(subtitle)}</p>` : ""}
-        </div>`;
-  $("#view").innerHTML = `
-    <div class="page">
-      ${headExtra
-        ? `<div class="page-head page-head-stacked">
-        <div class="page-head-main">${titleBlock}
         </div>
-        ${headExtra}
-      </div>`
-        : `<div class="page-head">${titleBlock}
-      </div>`}
+      </div>
       ${above}
       ${shows.length
         ? `<div class="show-results show-index">${shows.map(showResultRow).join("")}</div>`
@@ -1998,13 +1998,96 @@ function updateShowBrowseVisibility() {
   const input = $("#sh-input");
   const hide = showSearchFieldFocused || !!(input && input.value.trim());
   for (const el of showBrowseSections()) el.hidden = hide;
+  /* THE SAME PREDICATE, INVERTED, decides the ✕ beside the pill (Apple
+     Podcasts swaps its idle Home button for one the moment the field is
+     live). Deliberately not a second rule: "there is a search in progress"
+     is one fact about this page, and the browse furniture going away and the
+     dismiss button arriving are the same event seen from two sides. A
+     separate predicate would be one more thing to drift. */
+  const dismiss = $("#sh-dismiss");
+  if (dismiss) dismiss.hidden = !hide;
+}
+
+/* "Never mind" — empty the field, drop the painted results (the same reset a
+   deleted query already gets), and let go of focus, so the page lands back on
+   its browse state by the ordinary rule rather than by a special case.
+
+   ONE PATH, TWO TRIGGERS: Escape on a desktop keyboard, and the ✕ button for
+   a thumb. Extracted the day the button was added, rather than copied, so the
+   two can never answer differently. */
+function dismissShowSearch(input) {
+  if (!input) return;
+  input.value = "";
+  clearShowSearchResults();
+  showSearchFieldFocused = false;
+  if (typeof input.blur === "function") input.blur();
+  updateShowBrowseVisibility();
 }
 
 function renderAllShows() {
   const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
   /* NO SUBTITLE (founder, 2026-09-13: "On the search page, delete '220 shows
      in 4a's\u2026'"). renderCategory keeps its own \u2014 see renderShowIndexPage. */
+  /* THE FIELD IS A COMPOSE BAR AT THE BOTTOM (founder, 2026-09-13: "We should
+     likely also move the search bar down to the bottom - model it after most
+     other text boxes, for example in the Claude app or Apple Podcasts").
+
+     `#sh-compose` is `position: fixed` (styles.css), so where it appears in
+     this template decides only two things, and neither is where it is
+     painted:
+
+       TAB / READING ORDER. It is emitted FIRST, ahead of the results and the
+       browse furniture, because it is this page's primary control \u2014 the
+       reason anyone opens #/shows \u2014 and a keyboard or VoiceOver user should
+       reach it without walking 220 catalogue rows. Visually it is last;
+       those two orders disagree here on purpose, and the visual one is the
+       founder's ask.
+
+       LIFETIME. It is inside `#view`, so the next render throws it away with
+       the rest of the page and there is nothing to tear down by hand. A
+       fixed element parked on `<body>` would outlive the page that owns it.
+
+     THE SHAPE IS APPLE PODCASTS', matched against the founder's own
+     screenshots of it rather than guessed: a FLOATING ROW inset from both
+     screen edges \u2014 a translucent rounded pill holding the field, with the
+     page's content scrolling visibly behind it \u2014 and a circular companion
+     button beside the pill. The wrapper is a real element, not `position:
+     fixed` on `#sh-form`, precisely because the row holds two siblings: the
+     pill and that button.
+
+     THE COMPANION BUTTON IS A DISMISS, AND ONLY WHEN THERE IS SOMETHING TO
+     DISMISS. Apple's idle state puts a Home button there and swaps it for a
+     circular \u2715 on focus. We do not copy the Home half: Apple has no tab bar
+     in that screenshot \u2014 their floating Home pill IS their navigation \u2014
+     whereas `.tab-bar` already carries Home two rows below this one, and a
+     second Home button inside the search row would be the same destination
+     twice. So the slot is EMPTY when idle and holds the \u2715 when the field is
+     focused or holds a query, which is the half of Apple's pattern that does
+     something we lack.
+
+     And it fills a gap this page already had in writing: the Escape handler
+     below notes that Escape is "desktop only; a phone keyboard has no
+     Escape". This button is that key, for a thumb \u2014 it runs the identical
+     path, `dismissShowSearch`, rather than a parallel implementation.
+
+     NO MICROPHONE. Apple's pill has one at its trailing edge; we have no
+     dictation, and a glyph that does nothing is worse than an empty slot.
+     The trailing slot keeps the Go button instead \u2014 G2's standing decision
+     ("keep the button, keep Enter, make neither required"), which is not
+     this change's to revoke, and which unlike a microphone is wired to
+     something. The leading magnifier is kept: it is what tells you the pill
+     is a search field rather than a compose box. */
   renderShowIndexPage("Shows", "", shows, `
+      <div id="sh-compose">
+        <form id="sh-form" autocomplete="off">
+          <svg class="sh-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+          <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
+          <button type="submit">Go</button>
+        </form>
+        <button id="sh-dismiss" type="button" aria-label="Clear search" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+        </button>
+      </div>
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
       <div id="ep-search-results" hidden></div>
@@ -2013,11 +2096,13 @@ function renderAllShows() {
         ${browsePillsHtml()}
         <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
         ${vouchForHtml()}
-      </div>`, `
-      <form id="sh-form" autocomplete="off">
-        <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
-        <button type="submit">Go</button>
-      </form>`);
+      </div>`);
+  /* The page reserves room at its bottom edge for a bar that is fixed and so
+     occupies none of its own. Added AFTER renderShowIndexPage, which writes
+     document.body.className wholesale through setBodyClass() and would
+     otherwise wipe it \u2014 and that same wholesale write is what removes this
+     class again on navigation away, so it needs no cleanup of its own. */
+  document.body.classList.add("sh-compose");
 
   /* S-02 (docs/search-plan.md, founder feedback F2: "Shows search should
      filter live as you type. Hitting Go should not be required.").
@@ -2078,17 +2163,28 @@ function renderAllShows() {
       showSearchFieldFocused = false;
       updateShowBrowseVisibility();
     });
-    /* Escape is the desktop "never mind": empty the field, drop the results
-       (the same reset a deleted query already gets), and let go of focus, so
-       the page lands back on its browse state by the ordinary rule rather
-       than by a special case of its own. */
+    /* Escape is the desktop "never mind". The ✕ button below is the same
+       thing for a thumb, which is why both call one function. */
     input.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
-      input.value = "";
-      clearShowSearchResults();
-      showSearchFieldFocused = false;
-      if (typeof input.blur === "function") input.blur();
-      updateShowBrowseVisibility();
+      dismissShowSearch(input);
+    });
+  }
+
+  const dismiss = $("#sh-dismiss");
+  if (dismiss) {
+    /* `mousedown`, NOT `click`, and that is the whole reason this is not a
+       one-liner. The button is only on screen while the field holds focus or
+       a query; pressing it blurs the field first, `updateShowBrowseVisibility`
+       then hides the button, and the `click` that would have followed lands on
+       an element that is no longer there — so on a desktop the button does
+       nothing at all. `mousedown` fires before focus moves. `preventDefault`
+       stops the press from stealing focus in the first place, so there is no
+       blur/refocus flicker either. Touch devices synthesise mousedown from a
+       tap, so one listener covers both. */
+    dismiss.addEventListener("mousedown", (e) => {
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      dismissShowSearch(input);
     });
   }
 }
@@ -2240,11 +2336,30 @@ function showForaysHtml(show) {
 
 /* S-06 (kanban t_be4c1793): renders the count label honestly for however
    much of the full-catalogue list this render has actually loaded so far.
-   `state.fullyLoaded` (closure var in renderShow, passed in) must be the
-   ONLY thing that flips this to a bare, unqualified total — a page count
-   arriving from a "Show more" click that still carries a next_cursor is,
-   by definition, not the whole show, and this function is the one place
-   that rule is enforced so no call site can accidentally claim otherwise. */
+   `fullyLoaded` (closure var in renderShow, passed in) must be the ONLY
+   thing that flips this to a bare, unqualified total — a page that still
+   carries a next_cursor is, by definition, not the whole show, and this
+   function is the one place that rule is enforced so no call site can
+   accidentally claim otherwise.
+
+   FOUNDER CALL 2026-09-13 — the partial-load branch renders NOTHING.
+   It used to read "100+ episodes loaded so far — more available", and
+   Wyatt's verdict was "delete that, it's useless info". He is right twice
+   over now: it was always a hedge nobody asked for, and since the "Show
+   more episodes" control came out in this same change there is no longer
+   any way for a listener to act on "more available" — it would be a
+   subtitle advertising a door that no longer exists.
+
+   What does NOT collapse with it:
+     - the `fullyLoaded` branch, which states a TRUE total and is the only
+       branch allowed to. Falling back to that shape for a partial load
+       (a bare "100 episodes") is exactly the false-completeness claim the
+       honesty rule forbids, so the partial case says nothing at all
+       rather than saying something wrong;
+     - the stale note, promoted here to a standalone sentence. "Couldn't
+       refresh" is a failure the listener can act on (pull to refresh,
+       come back on a better connection); silence about it would be a
+       different lie from the one we just deleted. */
 function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBreadthTier, stale, loadError }) {
   if (loadError && loadedCount === 0) {
     return curatedCount
@@ -2262,9 +2377,9 @@ function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBread
   if (fullyLoaded) {
     return `${loadedCount} episode${loadedCount === 1 ? "" : "s"}${staleNote}`;
   }
-  // Honesty rule (card acceptance criterion): never imply this is the whole
-  // show while pages remain unfetched. "100+" reads as a floor, not a total.
-  return `${loadedCount}+ episodes loaded so far — more available${staleNote}`;
+  // Partial load: no count, because any count we could state here would
+  // either hedge uselessly or claim a completeness we do not have.
+  return stale ? "Showing the last saved list — couldn't refresh just now." : "";
 }
 
 /* S-06: local-filter search over whatever full-catalogue pages have been
@@ -2423,7 +2538,6 @@ function renderShow(show_id) {
         ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
         : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
   </div>
-  <div data-show-more-wrap></div>
   ${similarShowsSection(show)}
   ${showForaysHtml(show)}
   </div>`;
@@ -2436,9 +2550,14 @@ function renderShow(show_id) {
   // ---- Pagination + in-page search state for this render only. A fresh
   // renderShow() call (new navigation) gets a fresh closure — nothing here
   // survives or leaks across shows. ----
-  let loaded = [];          // raw API episode records, every page fetched so far, in server order
-  let nextCursor = null;    // API's opaque keyset cursor; null = no more pages
-  let fullyLoaded = false;  // true only once a page comes back with next_cursor: null
+  let loaded = [];          // raw API episode records, the page(s) fetched, in server order
+  /* True only once a page comes back with next_cursor: null. Since the
+     "Show more episodes" control was removed (2026-09-13) nothing here
+     advances past page 1, so in practice this is "page 1 was the whole
+     show" — still exactly the question showEpisodeCountLabel and
+     paintSearchNote need answered, and still answered by the API rather
+     than assumed. */
+  let fullyLoaded = false;
   let anyStale = false;     // sticky once any page reports stale/degraded
   let lastLoadError = null;
   let searchQuery = "";
@@ -2458,7 +2577,6 @@ function renderShow(show_id) {
 
   const container = () => $("#view [data-show-episodes]");
   const countLabelEl = () => $("#view [data-show-count]");
-  const moreWrap = () => $("#view [data-show-more-wrap]");
   const searchWrap = () => $("#view [data-show-ep-search]");
   const searchNote = () => $("#view [data-show-ep-search-note]");
   const stillMounted = () => !!container();
@@ -2518,45 +2636,45 @@ function renderShow(show_id) {
       : `${matchCount} match${matchCount === 1 ? "" : "es"} — searching loaded episodes only (${loaded.length} of the full list loaded so far).`;
   }
 
-  function paintMoreButton() {
-    const wrap = moreWrap();
-    if (!wrap) return;
-    if (fullyLoaded || !nextCursor) { wrap.innerHTML = ""; return; }
-    wrap.innerHTML = `<button type="button" class="show-more-btn" data-show-more>Show more episodes</button>`;
-    const btn = wrap.querySelector("[data-show-more]");
-    if (btn) btn.addEventListener("click", loadNextPage);
-  }
+  /* REMOVED 2026-09-13: paintMoreButton() / loadNextPage(), the "Show more
+     episodes" control. Founder report: "there is a 'Show more episodes'
+     button which tries to do something but fails."
+
+     WHY IT FAILED — the defect, stated exactly, because the same shape can
+     recur anywhere a paginated list grows underneath a filtered view.
+
+     The control's visibility was decided by `fullyLoaded || !nextCursor`
+     ALONE. That is a fact about the PAGINATION, and it was used to decide
+     the chrome for a container that, while a search is running, is not
+     showing the paginated list at all. Once S-07's scoped search answered,
+     `searchMode === "scoped"` and paintList() rendered `scopedResults` — a
+     server-side search over the show's FULL catalogue, a result set that
+     has nothing to do with `loaded` and grows not at all when another page
+     of `loaded` arrives. The button kept rendering anyway, because the
+     cursor was still non-null.
+
+     So pressing it ran the whole of loadNextPage honestly and to
+     completion: disable, "Loading…", fetch page 2 with the right cursor,
+     append to `loaded`, repaint. And the repaint painted `scopedResults`,
+     which were byte-for-byte what was already on screen. The button
+     flickered and the list did not move. Nothing errored; nothing was
+     logged; the work was real and the outcome was invisible. That is what
+     "tries to do something but fails" looks like from the outside.
+
+     Two things worth carrying forward rather than forgetting with the
+     button: (1) the same click DID work in "idle" and "fallback" mode, so
+     this was a mode-dependent no-op, the kind a happy-path test never
+     sees — test/show-page-pagination.test.js had five passing tests over
+     this control and not one of them typed in the search box; (2) the
+     pagination underneath is NOT the broken part and is untouched —
+     api/shows/:id/episodes still keysets, and fetchShowEpisodes still
+     takes and returns a cursor. What is gone is only this page's UI for
+     walking it. Reaching older episodes is now the search box's job,
+     which is the one path that actually searches the whole catalogue. */
 
   function revealSearchIfEligible() {
     const wrap = searchWrap();
     if (wrap && loaded.length) wrap.hidden = false;
-  }
-
-  function loadNextPage() {
-    const btn = $("#view [data-show-more]");
-    if (btn) { btn.disabled = true; btn.textContent = "Loading…"; }
-    fetchShowEpisodes(show.show_id, nextCursor).then(({ episodes, nextCursor: nc, stale, error }) => {
-      if (!stillMounted()) return; // navigated away before this page resolved
-      if (episodes === null) {
-        lastLoadError = error || "load failed";
-        if (btn) { btn.disabled = false; btn.textContent = "Try again"; }
-        paintCount();
-        return;
-      }
-      lastLoadError = null;
-      if (stale) anyStale = true;
-      loaded = loaded.concat(episodes);
-      nextCursor = nc;
-      fullyLoaded = nc === null;
-      // A pending fallback-mode search should see the newly-loaded page
-      // immediately (this is exactly the "finds an episode on page 12"
-      // case if S-07 itself isn't reachable) — scoped-mode results are
-      // already the full list and don't need re-filtering on a new page.
-      if (searchMode === "fallback") paintSearchNote();
-      paintList();
-      paintCount();
-      paintMoreButton();
-    });
   }
 
   /* Debounced (250ms) so a fast typist doesn't fire a request per
@@ -2627,11 +2745,9 @@ function renderShow(show_id) {
 
     if (stale) anyStale = true;
     loaded = episodes;
-    nextCursor = nc;
     fullyLoaded = nc === null;
     paintList();
     paintCount();
-    paintMoreButton();
     revealSearchIfEligible();
   });
 }
@@ -9423,6 +9539,180 @@ function refreshForayDirectory(trigger) {
   return _directoryRefreshing;
 }
 
+/* ---------- the soft keyboard vs. the now-playing bar (founder, 2026-09-13) ----------
+
+   THE REPORT, verbatim: "When I'm searching episodes on a show page, the now
+   playing bar is down at the bottom behind the keyboard (good). When I start
+   scrolling that now playing bar eventually moves up onto the top of the
+   keyboard (bad). When the keyboard is present the now playing bar should not
+   be visible."
+
+   WHY IT MOVES, which is why the fix is not a CSS-only one. `#foray-player` is
+   `position: fixed; bottom: 0`, and in WKWebView "fixed" is resolved against
+   the LAYOUT viewport, which the keyboard does not shrink. So at the instant
+   the keyboard opens the bar stays pinned to the bottom of the layout viewport
+   — underneath the keyboard, exactly as Wyatt saw. The moment the page is
+   scrolled, WebKit re-anchors fixed elements to the VISUAL viewport, and the
+   bar snaps up to sit on the keyboard's top edge. Nothing about the element
+   changed; the coordinate space it is measured in did. No `bottom`/`inset`
+   value can fix that, because both positions are the same declared `bottom: 0`.
+
+   So: detect the keyboard, and while it is up take the bar off the screen.
+
+   HOW WE DETECT IT — what was already here, checked first. There is no
+   `@capacitor/keyboard` in mobile/package.json and no keyboard handling
+   anywhere in this file, so there was nothing to reuse. Adding the Capacitor
+   plugin would mean a native dependency, a `cap sync`, and a rebuild of both
+   platform projects for a chrome tweak — and it would still leave the same bug
+   on the web build, where there is no bridge at all. `window.visualViewport` is
+   the platform answer to precisely this question, ships in WKWebView (iOS 13+),
+   in the Android WebView and on the mobile web, and needs nothing installed.
+
+   The test is `innerHeight - visualViewport.height`: the layout viewport minus
+   the visible one, i.e. how much of the window something is covering. A soft
+   keyboard is the only thing that takes >120px, and `offsetTop` is deliberately
+   NOT folded in — it moves on scroll and on pinch-zoom, which is the signal we
+   must stay insensitive to, while `height` does not move on either.
+
+   ANDed with "an editable element holds focus", because a soft keyboard cannot
+   be up without one. That conjunct costs nothing when the report's own case is
+   running (the search field IS focused) and it is what makes every other cause
+   of a short visual viewport — an interstitial, a rotation mid-animation, a
+   WebView that mis-reports during the splash fade — unable to hide the bar.
+
+   IT MUST NEVER STICK. A bar that stays hidden after the keyboard closes is a
+   worse bug than the one being fixed, so there are two independent ways back:
+   `resize` on the visual viewport (the normal one — closing the keyboard fires
+   it and the inset returns to ~0), and `focusout`, which clears the class
+   outright once nothing editable holds focus, covering any WebView that closes
+   the keyboard without a resize. Both call the same evaluator, and the class is
+   only ever the computed answer — there is no "remember that we hid it" state
+   that could get stranded.
+
+   SCOPE. This owns ONE thing: whether `#foray-player` is on screen while a
+   keyboard is up (`body.kb-open`, styles.css). It does not touch the bar's
+   markup, its tap target, or the Now Playing sheet — those belong to the
+   player module and to the sheet work landing alongside this. */
+const KEYBOARD_MIN_INSET = 120;
+
+function keyboardIsOpen(win) {
+  const vv = win && win.visualViewport;
+  if (!vv || typeof vv.height !== "number" || typeof win.innerHeight !== "number") return false;
+  return (win.innerHeight - vv.height) > KEYBOARD_MIN_INSET;
+}
+
+/* HOW FAR A BOTTOM-ANCHORED FIXED BAR MUST RISE to sit on the keyboard's top
+   edge instead of behind it, in CSS pixels. Published as `--kb-inset` on
+   <html> so CSS can use it; today the search page's compose bar
+   (`#sh-compose`) is its only consumer.
+
+   ONE DETECTOR, TWO ANSWERS. This is not a second keyboard detector: it runs
+   inside the same `apply()`, off the same `visualViewport` listeners, and
+   returns 0 whenever installKeyboardChrome's own predicate says the keyboard
+   is shut. What it adds is a MEASUREMENT where that predicate gives a
+   boolean — `body.kb-open` says whether to take the now-playing bar off the
+   screen, and that is all it needs to say; the compose bar additionally has
+   to know HOW FAR.
+
+   WHY `offsetTop` IS SUBTRACTED HERE THOUGH keyboardIsOpen LEAVES IT OUT, and
+   why the two are not in conflict. keyboardIsOpen needs a STABLE boolean, so
+   it must ignore the term that moves under scroll and pinch-zoom: a bar that
+   flickered back on mid-scroll would be the original bug again. A POSITION
+   needs the exact opposite — it has to track, or the field detaches from the
+   keyboard the moment anything moves.
+
+   `innerHeight - height - offsetTop` is the distance from the bottom of the
+   VISIBLE viewport to the bottom of the LAYOUT viewport, and it is the right
+   shift in both of the regimes installKeyboardChrome's header describes.
+   Before the page is scrolled, WebKit resolves `position: fixed` against the
+   layout viewport and `offsetTop` is 0, so this is the full keyboard inset —
+   the bar rises by the whole of it. Once WebKit re-anchors fixed elements to
+   the visual viewport (the frame the `scroll` subscription exists for) the
+   visual viewport has itself moved down by that inset, `offsetTop` reports
+   it, and the shift falls back toward 0 — which is what a bar already
+   sitting on the keyboard's edge needs. Same formula, both regimes, no
+   branch on which one we are in — because we cannot ask.
+
+   NOT MEASURED HERE, and said plainly: that second regime cannot be
+   reproduced off an iPhone. This is reasoned from the behaviour
+   installKeyboardChrome's header already diagnosed on a device, and it is
+   the line in this change that most needs a real phone.
+
+   Clamped at 0 and rounded: a negative shift would push the bar off the
+   bottom of the screen, and sub-pixel values make the bar shimmer as the
+   viewport settles. */
+function keyboardInsetPx(win) {
+  const vv = win && win.visualViewport;
+  if (!vv || typeof vv.height !== "number" || typeof win.innerHeight !== "number") return 0;
+  const offsetTop = typeof vv.offsetTop === "number" ? vv.offsetTop : 0;
+  return Math.max(0, Math.round(win.innerHeight - vv.height - offsetTop));
+}
+
+/* Guarded rather than assumed: the fake windows in test/now-playing-keyboard
+   pass a document with a body and nothing else, and a WebView that hands us
+   no style object is not worth throwing over — the bar simply stays at
+   `bottom: 0`, which is where it sat before this variable existed. */
+function setKeyboardInsetVar(doc, px) {
+  const root = doc && doc.documentElement;
+  if (!root || !root.style || typeof root.style.setProperty !== "function") return;
+  root.style.setProperty("--kb-inset", `${px}px`);
+}
+
+function editableHasFocus(doc) {
+  const el = doc && doc.activeElement;
+  if (!el) return false;
+  const tag = String(el.tagName || "").toUpperCase();
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  return el.isContentEditable === true;
+}
+
+/* Returns its own teardown so a test can prove the listeners come off again
+   (and so a future embedder can unwind it); `init()` installs one for the life
+   of the document and drops the handle. */
+function installKeyboardChrome(win) {
+  const w = win || (typeof window !== "undefined" ? window : null);
+  const vv = w && w.visualViewport;
+  const doc = w && w.document;
+  if (!vv || !doc || !doc.body || typeof vv.addEventListener !== "function") {
+    return () => {}; // no visualViewport (desktop Safari <13, jsdom, a test stub): never hide the bar
+  }
+  const apply = () => {
+    const open = keyboardIsOpen(w) && editableHasFocus(doc);
+    doc.body.classList.toggle("kb-open", open);
+    /* Written from the SAME evaluation as the class, so the two can never
+       disagree — a `kb-open` body with a stale inset would put the compose
+       bar somewhere the keyboard is not. `open ? ... : 0` rather than the raw
+       measurement, so that everything the class's own predicate rejects
+       (nothing editable focused, an inset below the threshold, a WebView
+       mis-reporting during a splash fade) leaves the bar exactly where it
+       sits with no keyboard at all. */
+    setKeyboardInsetVar(doc, open ? keyboardInsetPx(w) : 0);
+  };
+  const onFocusOut = () => {
+    /* Runs BEFORE focus lands on the next element, so re-evaluate on the next
+       turn rather than reading a momentarily-empty activeElement. */
+    setTimeout(apply, 0);
+  };
+  vv.addEventListener("resize", apply);
+  /* `scroll` is the exact moment WebKit re-anchors fixed elements — the frame
+     Wyatt described the bar jumping in. Re-evaluating here means the class is
+     already on before the bar can be repainted in its new place. */
+  vv.addEventListener("scroll", apply);
+  doc.addEventListener("focusout", onFocusOut, true);
+  apply();
+  return () => {
+    vv.removeEventListener("resize", apply);
+    vv.removeEventListener("scroll", apply);
+    doc.removeEventListener("focusout", onFocusOut, true);
+    doc.body.classList.remove("kb-open");
+    /* Teardown must undo the measurement as well as the class. A document
+       left carrying `--kb-inset: 312px` after the listeners are gone would
+       hold the compose bar a keyboard's height off the floor with nothing
+       left running to correct it. */
+    setKeyboardInsetVar(doc, 0);
+  };
+}
+
 async function init() {
   /* Storage hydration runs CONCURRENTLY with the first fetch, not before it: it
      is one IndexedDB read, so it costs nothing on the critical path, and it must
@@ -9563,6 +9853,13 @@ async function init() {
      restore is simply the last write instead of the losing one. */
   try { if ("scrollRestoration" in history) history.scrollRestoration = "manual"; } catch (_) {}
   window.addEventListener("hashchange", route);
+  /* Hides #foray-player while a soft keyboard is up (founder report,
+     2026-09-13) — see installKeyboardChrome's header. Installed once for the
+     life of the document: the keyboard can open on any screen with a text
+     field, not just the show page's episode search, and the bar is global
+     chrome, so this is deliberately NOT per-route. The teardown handle is
+     dropped on purpose here; the suite calls it directly. */
+  installKeyboardChrome(window);
   /* `{ passive: true }`: this listener never calls preventDefault, and
      without the flag some browsers assume it might and delay scrolling to
      find out — passive says up front that scrolling can proceed immediately.
