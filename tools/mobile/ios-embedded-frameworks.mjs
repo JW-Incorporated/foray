@@ -81,13 +81,23 @@
  * and is the half that makes the failure impossible to ship again: the next
  * embedded binary with a thin plist goes red in CI instead of at Apple.
  *
+ * ── ONLY WHAT IS MISSING THE KEY, AND NEVER A CHANGE OF FORMAT ──────────────
+ * The resolved SwiftPM tree holds every binary dependency, not just ONNX
+ * Runtime. The first CI run of this step found that out: `Capacitor.xcframework`
+ * and `Cordova.xcframework` sit two directories away, correctly built, already
+ * carrying their deployment target — and stored as BINARY plists, because Xcode
+ * built them and Xcode writes binary. So `patch` skips anything that already
+ * declares a version (which is all of them), and when a binary plist ever does
+ * need the key it is handed to `plutil -insert` rather than re-encoded here.
+ * Converting a vendored plist's format is a change nobody asked for.
+ *
  * ── macOS ONLY, FOR THE CLI; THE LOGIC IS NOT ───────────────────────────────
- * A BUILT `Info.plist` is a BINARY plist — Xcode converts the app's own, and a
- * vendored one may already be. So the CLI reads every plist through
- * `plutil -convert xml1`, which means the CLI needs a Mac, which is where both
- * call sites already are. Everything below `readPlistXml()` is pure text in and
- * text out, has no opinion about where the text came from, and is tested on the
- * real 613-byte ORT plist from a machine with no Xcode on it.
+ * A BUILT `Info.plist` is a BINARY plist — Xcode converts the app's own — so
+ * `verify` reads through `plutil -convert xml1`, and the binary branch of
+ * `patch` writes through `plutil -insert`. Those two shell-outs are the whole of
+ * what needs a Mac, and both call sites already run on one. Everything else is
+ * pure text in and text out, has no opinion about where the text came from, and
+ * is tested on the real 613-byte ORT plist from a machine with no Xcode on it.
  *
  * USAGE
  *   node tools/mobile/ios-embedded-frameworks.mjs patch <spm-dir> --min-os 15.0
@@ -420,22 +430,37 @@ export function readPlistXml(file) {
   }
 }
 
-/** Read a plist that is about to be EDITED, as its own bytes.
+/** A plist's stored format, off its first eight bytes.
  *
- *  Not via `plutil` — `patch` rewrites the file, and round-tripping it through a
- *  converter would reformat every line of a vendored file we have no business
- *  reformatting, turning a one-key diff into a whole-file one. A binary plist is
- *  refused rather than silently converted, because converting one is a change of
- *  format, not of value, and nobody asked for it. */
-export function readPlistSource(file) {
-  const buf = fs.readFileSync(file);
-  if (buf.slice(0, 8).toString("latin1") === "bplist00") {
-    throw new PlistError(
-      `${file} is a BINARY plist. This script edits XML plists in place and will not rewrite one ` +
-        `in a different format. Convert it deliberately (plutil -convert xml1) if that is what you mean.`
-    );
+ *  IT MATTERS BECAUSE `patch` MUST NOT CHANGE IT. The first run of this step
+ *  found out the hard way: ONNX Runtime ships XML, and Capacitor's own
+ *  `Capacitor.xcframework` — sitting two directories away in the same resolved
+ *  tree — ships `bplist00`, because Xcode built it properly and Xcode writes
+ *  binary. Converting one to the other is a change of format, not of value, and
+ *  nobody asked for it. */
+export function isBinaryPlist(buf) {
+  return buf.slice(0, 8).toString("latin1") === "bplist00";
+}
+
+/** Apple's own editor, for a plist we must not reformat.
+ *
+ *  The XML path below is a byte-preserving text edit with a parser this repo
+ *  owns and tests; there is no equivalent for a binary plist, and writing one
+ *  would be a plist encoder nobody asked for. `plutil -insert` is the tool for
+ *  it, so the binary case delegates — and then re-reads, because a delegated
+ *  edit needs the same "prove it landed" treatment as our own. */
+export function plutilInsertString(file, key, value) {
+  try {
+    execFileSync("plutil", ["-insert", key, "-string", value, file], { encoding: "utf8" });
+  } catch (e) {
+    if (e && e.code === "ENOENT") {
+      throw new PlistError(
+        `plutil is not on this machine, so the BINARY plist ${file} cannot be edited. ` +
+          `This subcommand needs macOS.`
+      );
+    }
+    throw new PlistError(`plutil could not insert ${key} into ${file}: ${e.message}`);
   }
-  return buf.toString("utf8");
 }
 
 /* --------------------------------------------------------------------- main */
@@ -454,9 +479,27 @@ const USAGE =
  *  directory this is pointed at is a RESOLVED SwiftPM artifact tree whose exact
  *  layout is Xcode's business, not ours; if a future Xcode puts it somewhere
  *  else, the honest outcome is a red step saying "nothing to patch", not a green
- *  one that patched nothing and let the build sail on to altool. */
-export function runPatch(root, minOS) {
+ *  one that patched nothing and let the build sail on to altool.
+ *
+ *  IT TOUCHES ONLY WHAT IS ACTUALLY MISSING THE KEY. The resolved tree holds
+ *  every binary dependency, not just ONNX Runtime — Capacitor's and Cordova's
+ *  xcframeworks are in there too, correctly built, already carrying their
+ *  deployment target, and stored as BINARY plists. A patcher that rewrote every
+ *  framework it found would reformat two vendored bundles to fix a third.
+ *
+ *  `read` and `insert` are seams for the two things that need a Mac, and only
+ *  the binary path uses either: an XML plist is read as its own bytes and edited
+ *  as text, which is why the fixture-driven tests run on Windows. */
+export function runPatch(root, minOS, { read = readPlistXml, insert = plutilInsertString } = {}) {
   if (!fs.existsSync(root)) throw new PlistError(`no such directory: ${root}`);
+  if (!parseVersion(minOS) || compareVersions(minOS, MIN_OS_FLOOR) < 0) {
+    /* Checked here as well as inside the injector, because the binary path below
+       hands the value to `plutil` instead and would otherwise never see it. */
+    throw new PlistError(
+      `invalid ${MIN_OS_KEY} ${JSON.stringify(minOS)} — expected a dotted version of ` +
+        `${MIN_OS_FLOOR} or later.`
+    );
+  }
   const found = findFrameworkPlists(root);
   const ios = found.filter((f) => isIosSlice(f.slice));
   if (!ios.length) {
@@ -469,8 +512,28 @@ export function runPatch(root, minOS) {
   }
   const lines = [];
   for (const f of ios) {
-    const src = readPlistSource(f.plist);
-    const r = injectMinimumOSVersion(src, minOS);
+    const raw = fs.readFileSync(f.plist);
+    const binary = isBinaryPlist(raw);
+    const before = minimumOSVersion(binary ? read(f.plist) : raw.toString("utf8"));
+    if (before !== null && before !== "") {
+      lines.push(`${f.plist}: already declares ${MIN_OS_KEY} = ${before}`);
+      continue;
+    }
+    if (binary) {
+      insert(f.plist, MIN_OS_KEY, minOS);
+      /* The same anti-fails-green re-read the XML path gets from
+         `assertMinimumOSVersion`. A delegated edit is still an edit. */
+      const after = minimumOSVersion(read(f.plist));
+      if (after !== minOS) {
+        throw new PlistError(
+          `the edit did not take: ${MIN_OS_KEY} in ${f.plist} reads ${JSON.stringify(after)} ` +
+            `after plutil -insert, not ${JSON.stringify(minOS)}.`
+        );
+      }
+      lines.push(`${f.plist}: added ${MIN_OS_KEY} = ${minOS} (binary plist, via plutil)`);
+      continue;
+    }
+    const r = injectMinimumOSVersion(raw.toString("utf8"), minOS);
     if (r.changed) fs.writeFileSync(f.plist, r.xml);
     lines.push(`${f.plist}: ${r.reason}`);
   }

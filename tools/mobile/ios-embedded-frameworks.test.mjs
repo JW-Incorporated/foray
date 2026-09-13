@@ -11,11 +11,11 @@
  *
  * Every test names the MUTATION that kills it.
  *
- * WHAT THIS SUITE CANNOT DO. It cannot upload anything, and it cannot read a
- * binary plist: `readPlistXml()` shells out to `plutil`, which exists only on the
- * Mac both call sites already run on. `runVerify` takes its reader as a seam for
- * exactly that reason, so every DECISION it makes is covered here and only the
- * one `execFileSync` line is not.
+ * WHAT THIS SUITE CANNOT DO. It cannot upload anything, and it cannot read or
+ * write a binary plist: those two operations shell out to `plutil`, which exists
+ * only on the Mac both call sites already run on. `runVerify` and `runPatch` take
+ * those as seams for exactly that reason, so every DECISION they make is covered
+ * here and only the two `execFileSync` lines are not.
  */
 
 import test from "node:test";
@@ -36,6 +36,7 @@ import {
   frameworkProblems,
   findFrameworkPlists,
   isIosSlice,
+  isBinaryPlist,
   runPatch,
   runVerify,
 } from "./ios-embedded-frameworks.mjs";
@@ -421,4 +422,85 @@ test("runVerify reports EVERY bad framework at once — MUTATION: throwing insid
     assert.match(e.message, /other\.framework: MinimumOSVersion is missing/);
     return true;
   });
+});
+
+test("a framework that already declares its deployment target is left completely alone", () => {
+  /* THE FIRST CI RUN OF THIS STEP FOUND THIS, and it is why the patcher is
+     selective. The resolved SwiftPM tree holds every binary dependency, not just
+     ONNX Runtime: `Capacitor.xcframework` and `Cordova.xcframework` are in there
+     too, correctly built, already carrying a deployment target — and stored as
+     BINARY plists, which the first draft of this script refused outright and
+     failed the whole step on.
+     MUTATION: patch every framework found rather than only the ones missing the
+     key -> two correctly-built vendored bundles get rewritten to fix a third. */
+  const root = tmpdir();
+  const mk = (rel, body) => {
+    fs.mkdirSync(path.join(root, path.dirname(rel)), { recursive: true });
+    fs.writeFileSync(path.join(root, rel), body);
+    return path.join(root, rel);
+  };
+  const ort = mk("artifacts/ort/onnxruntime.xcframework/ios-arm64/onnxruntime.framework/Info.plist", ORT_PLIST);
+  const cap = mk(
+    "artifacts/cap/Capacitor.xcframework/ios-arm64/Capacitor.framework/Info.plist",
+    injectMinimumOSVersion(ORT_PLIST, "14.0").xml
+  );
+  const capBefore = fs.readFileSync(cap, "utf8");
+
+  const lines = runPatch(root, "15.0");
+  assert.equal(minimumOSVersion(fs.readFileSync(ort, "utf8")), "15.0");
+  assert.equal(fs.readFileSync(cap, "utf8"), capBefore, "a framework that needed nothing was rewritten");
+  assert.ok(lines.some((l) => /Capacitor[\s\S]*already declares MinimumOSVersion = 14\.0/.test(l)), lines.join("\n"));
+});
+
+test("a BINARY plist is read and written through plutil, never re-encoded here — MUTATION: parsing the bytes as text, which is the exact failure the first CI run hit on Capacitor.xcframework", () => {
+  const root = tmpdir();
+  const rel = "artifacts/x/B.xcframework/ios-arm64/B.framework/Info.plist";
+  fs.mkdirSync(path.join(root, path.dirname(rel)), { recursive: true });
+  const file = path.join(root, rel);
+  /* Not a real binary plist — the magic is all `isBinaryPlist` reads, and the
+     point of this test is that the TEXT PARSER never touches these bytes. */
+  fs.writeFileSync(file, Buffer.concat([Buffer.from("bplist00"), Buffer.from([0xd1, 0x00, 0xff])]));
+  assert.equal(isBinaryPlist(fs.readFileSync(file)), true);
+
+  const reads = [];
+  let inserted = null;
+  const read = (f) => {
+    reads.push(f);
+    /* Before the insert: no key. After it: the key. */
+    return inserted ? injectMinimumOSVersion(ORT_PLIST, inserted).xml : ORT_PLIST;
+  };
+  const insert = (f, key, value) => {
+    assert.equal(f, file);
+    assert.equal(key, MIN_OS_KEY);
+    inserted = value;
+  };
+
+  const lines = runPatch(root, "15.0", { read, insert });
+  assert.equal(inserted, "15.0", "plutil -insert was never called for the binary plist");
+  assert.equal(fs.readFileSync(file).length, 11, "the binary plist was rewritten by this script");
+  assert.ok(lines.some((l) => /binary plist, via plutil/.test(l)), lines.join("\n"));
+  assert.ok(reads.length >= 2, "the delegated edit was never re-read to prove it landed");
+});
+
+test("the binary path re-reads and refuses an insert that did not land — MUTATION: trusting plutil's exit code, which is the same 'said it worked' hole assertMinimumOSVersion closes on the XML path", () => {
+  const root = tmpdir();
+  const rel = "artifacts/x/B.xcframework/ios-arm64/B.framework/Info.plist";
+  fs.mkdirSync(path.join(root, path.dirname(rel)), { recursive: true });
+  fs.writeFileSync(path.join(root, rel), Buffer.from("bplist00\x00"));
+  assert.throws(
+    () => runPatch(root, "15.0", { read: () => ORT_PLIST, insert: () => {} }),
+    /the edit did not take[\s\S]*after plutil -insert/
+  );
+});
+
+test("runPatch validates --min-os before it touches anything — MUTATION: leaving the check to the injector, which the binary path bypasses entirely", () => {
+  const root = tmpdir();
+  const rel = "artifacts/x/B.xcframework/ios-arm64/B.framework/Info.plist";
+  fs.mkdirSync(path.join(root, path.dirname(rel)), { recursive: true });
+  const file = path.join(root, rel);
+  fs.writeFileSync(file, ORT_PLIST);
+  for (const bad of ["", "latest", "7.0"]) {
+    assert.throws(() => runPatch(root, bad), /invalid MinimumOSVersion/, `accepted ${JSON.stringify(bad)}`);
+  }
+  assert.equal(fs.readFileSync(file, "utf8"), ORT_PLIST, "a refused run still wrote to the tree");
 });

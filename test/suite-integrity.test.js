@@ -1142,8 +1142,12 @@ const FLOORS = {
      patch (which must refuse to report success when it found nothing to patch)
      and the verify (which must refuse to pass when it cannot find the frameworks
      it exists to check). The fixture is the real 613-byte upstream plist, so the
-     first test is evidence rather than restatement. */
-  "tools/mobile/ios-embedded-frameworks.test.mjs": 36,
+     first test is evidence rather than restatement. 36 -> 40 after the first CI
+     run found the other half of the problem: the resolved tree also holds
+     Capacitor's and Cordova's xcframeworks, correctly built and stored as BINARY
+     plists, so the patcher must touch only what is actually missing the key and
+     must never change a vendored plist's format. */
+  "tools/mobile/ios-embedded-frameworks.test.mjs": 40,
   "tools/mobile/ios-workflow.test.mjs": 43, // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 39,
