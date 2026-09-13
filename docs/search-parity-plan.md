@@ -143,6 +143,13 @@ budget that currently buys chart ranks 101–200. Episodes ride the same two-pas
 shape. Nothing here is novel — it is the mechanism the S-deck's own §0 described
 and did not finish.
 
+*(Amended 2026-09-12 by P-05's measurement: the episode half of that last
+sentence survived only in a narrower form than it was written. Episodes already
+had the second pass; their first pass can only be the listener's own library,
+because zero episodes are resident on the device and a real index is 375x over
+budget. And the episode path's real defect was never latency — it was throwing
+away 73 % of the answer it had already paid for. See P-05.)*
+
 > **AMENDED 2026-09-12 (P-03):** the clause "paid for by the same budget that
 > currently buys chart ranks 101–200" is wrong twice and it points the next
 > agent at the wrong gate.
@@ -266,12 +273,166 @@ starred; a smaller cut that buys the author column. **This card is a measurement
 and a decision, not a foregone change** — it may conclude the current cut is
 right.
 
-### P-05 · Episodes ride the same shape — **M · M**
-**Ask.** Give episode search the two-pass treatment shows now have: instant local
-pass over what is already on the device, directory/endpoint pass merged beneath.
-Note `api/episodes/search.ts` fetches a show's live feed server-side, so its
-latency is structurally worse than shows — measure it before designing, and if
-the honest answer is "this needs a different mechanism", say that instead.
+### P-05 · Episodes — **M · M — REWRITTEN 2026-09-12 after measurement, then built**
+
+**The card as first written, kept for the record:** *"Give episode search the
+two-pass treatment shows now have: instant local pass over what is already on
+the device, directory/endpoint pass merged beneath. Note `api/episodes/search.ts`
+fetches a show's live feed server-side, so its latency is structurally worse
+than shows — measure it before designing, and if the honest answer is 'this
+needs a different mechanism', say that instead."*
+
+The measurement was taken (live endpoint, 2026-09-12, CDN busted on every
+request — `x-vercel-cache: MISS`, `age: 0` on all 100+ samples) and it moved
+the card. **The premise was attached to the wrong half of the endpoint, and
+latency was not the episode path's real defect.**
+
+**`api/episodes/search.ts` is two endpoints wearing one name**, chosen by
+whether `show=` is present, and the two surfaces do not overlap:
+
+- **The search page** (`app.js`, `renderEpisodeSearchResults`) calls it with
+  **no `show=`** — the unscoped Apple path. **It never fetches a feed.** So the
+  card's "fetches a show's live feed server-side" is **refuted for the surface
+  P-05 is about**.
+- **The show page's episode box** (`searchShowEpisodesScoped`) calls it with
+  `?show=<id>` — the live-feed path. There the premise is **confirmed, and
+  worse than stated**: 954 ms median forced-cold on Lex Fridman, 2082 ms
+  observed worst.
+
+Episodes *are* structurally slower than shows on the search page, for a
+different reason: shows answer from a file already in the function bundle
+(median 104 ms, no cold penalty); episodes make a third-party round trip
+(median 369 ms cold, 730 ms max; 117 ms warm, and see the caveat in §4's
+watch list — the server cache is per-warm-instance, so a listener's second
+query is not reliably a hit).
+
+#### The actual defect, which was not latency
+
+`mapAppleHit` **dropped any hit whose `collectionId` did not resolve through
+`showIdMap.ts`**, and `loadCatalogFallback()` read **only `data/catalog.json` —
+220 ids**. (S-04's `data/shows-index-pointer.json` was never shipped; the file
+does not exist on `main`, so the release path returns null on every call and
+the 220-id fallback *was* production.) Meanwhile `search.ts`'s own sibling
+`loadShowMeta()` **in the same file** already read `data/catalog-breadth.json`
+— **19,787 ids** — and `vercel.json` already listed it in `includeFiles`.
+
+Measured against Apple's live endpoint, 78 hits over the deck's eight probe
+queries:
+
+| query | Apple hits | mappable at 220 | mappable with breadth | dropped |
+|---|---|---|---|---|
+| `tim ferriss` | 10 | 0 | 10 | 10 |
+| `sam harris` | 10 | 0 | 9 | 10 |
+| `elon musk` | 10 | 0 | 10 | 10 |
+| `artificial intelligence` | 10 | 0 | 10 | 10 |
+| `the daily` | 9 | 0 | 3 | 9 |
+| `lex fridman` | 10 | 10 | 10 | 0 |
+| `huberman` | 10 | 9 | 10 | 1 |
+| `ozempic` | 9 | 2 | 4 | 7 |
+| **total** | **78** | **21** | **66** | **57 (73 %)** |
+
+**Five of eight queries returned zero episodes with `degraded: false`**, and the
+live endpoint returned exactly those counts — this was production behaviour,
+not a model of it. And the drop rule's stated justification was spent: it
+existed so a result is "never surfaced with a broken show link", but S-06(b)/
+#560 landed after S-07 and made breadth show pages resolvable
+(`GET /api/shows/search?id=863897795` → "The Tim Ferriss Show", verified live).
+
+#### Can episodes ride the two-pass shape? Half of it already did.
+
+`renderEpisodeSearchResults` already fires in parallel with the show passes,
+paints its own container, shares `showSearchToken` and never blocks the show
+list — that is the *second* pass. What was missing is the *first*, and **there
+is almost nothing on the device to fill it with**: `data/catalog-client.json` is
+220 shows / 100 KB carrying `episode_count` only — **zero episodes are resident
+at boot**. The only persisted episode corpus is the listener's own `cp_saved`
+and `cp_queue`, tens of items.
+
+**A real local episode index is not affordable, and the number is recorded here
+so it is not re-litigated from taste.** Built from `data/episode-archive.json.gz`
+(98 shows, 73,719 episodes, `built_at: 2026-07-09`), a title+show_id TSV is
+4.35 MB raw / **1,486 KB gzip**. Extrapolated to the 10,113 shows
+`data/show-index.tsv` already covers: **~150 MB gzip against §2.3's 400 KB
+budget — 375x over.** Server-side it needs a datastore production does not have
+(`api/episodes/search.ts`'s own header: DB-mode "not implemented… production has
+no DATABASE_URL today") plus a refresh job over ~10k feeds, plus the ingest S-04
+never shipped. **A prebuilt episode index is a project, not a card.** Revisit
+only if P-04 concludes the local tier should hold episodes at all.
+
+#### What was built, in three pieces — one per surface
+
+**Piece 1 — the id-map (the card). Search page.** `loadCatalogFallback()` also
+reads `data/catalog-breadth.json`, curated merged first so a curated slug id
+wins over the numeric breadth id — load-bearing, because
+`backend/src/catalog/breadthCatalog.ts` drops a breadth row flagged
+`in_curated`, so the numeric id for such a show resolves to nothing. Zero wire
+bytes (already in `includeFiles`), zero client change, zero new infrastructure;
+cost is one lazy ~95 ms read+parse per warm instance against a 369 ms median
+cold round trip. The drop rule stays — an id we cannot place at all still must
+not render a dead link — and its comment now says what it is actually for.
+
+**Piece 2 — the honest instant tier. Search page.** `paintShowSearchLocal` now
+paints a local episode pass on the keystroke, over `cp_saved` + `cp_queue`, and
+the endpoint's rows merge beneath it deduped by `guid` (falling back to
+normalised title + show, reusing P-02's `normaliseShowTitle`). It is scoped to
+what actually exists on the device — **and that is the mechanism, not a
+shortfall**: Pocket Casts' instant episode tier is *your subscriptions*, not the
+world's episodes. `state.itemIndex` is deliberately NOT a source; it grows with
+every rendered row and would put unbounded work back on the tick #662 just
+cleared, as well as resurfacing the previous query's Apple results as though
+they were the listener's own. Offline now answers from the device instead of
+clearing.
+
+**Piece 3 — stop paying for a feed that never answers. Show page.** The scoped
+path skipped the cache write on error and set `no-store`, so `omega-tau` burned
+387–756 ms on **every** query forever. The failure is now remembered for 90 s,
+**keyed by show** (the feed is what a fresh `q` would refetch), replayed as
+`degraded: true` with the original error — never as an empty success, which
+would be a lie and would disable the client's `filterLoadedEpisodes` fallback.
+Short on purpose: a cached failure means a recovered feed stays dark until it
+expires.
+
+**Done when.** `tim ferriss`, `sam harris`, `elon musk`, `artificial
+intelligence` and `the daily` each return ≥ 5 episodes **against the live
+endpoint**, with the query-by-query before/after in the PR body per §6. The
+table above is a prediction from the committed catalogue files; **it is not the
+live after-number and must not be reported as one until this is deployed.**
+A saved episode's title appears in the Episodes section on the keystroke,
+before any network call, and is not duplicated when the endpoint returns the
+same episode.
+
+**Watch.** Today five of eight queries return nothing, so nobody scrolls and
+nobody retypes. After piece 1 every query produces results people interact
+with, and `appleBucket.ts`'s 20/min limit is **per warm instance, not a global
+deployment cap** — a cold start gets a fresh bucket and concurrent instances
+each get their own. P-02 raises show-directory volume in the same week.
+**Measure the two together and name the number before assuming it is free** —
+the same watch this deck already attached to P-02.
+
+**Also watch.** A breadth-mapped episode carries Apple's metadata, not ours:
+`show_title` from `collectionName`, `audio_url` from `episodeUrl`. That is
+already the behaviour of the `source: "apple"` rows shipping today, but piece 1
+makes it load-bearing for ~3x more rows — so drift between Apple's show title
+and ours becomes visible in the Episodes header, and an `episodeUrl` that is a
+page rather than an enclosure becomes a play button that does not play. Worth
+one spot-check across the newly-unblocked queries before merge; not worth
+blocking on.
+
+#### The structural note this deck should carry forward
+
+**The show-scoped path's floor is the third-party feed origin.** 165 ms best
+case, ~950 ms median on Lex Fridman, 2082 ms observed worst — and bytes do not
+predict it (2284 KB in 258 ms vs 2053 KB in 954 ms: a bigger feed on a CDN is
+4x faster than a smaller one on WordPress). **No amount of our code moves
+that.** Do not promise the show page's episode box will feel like the search
+page's. If it must, that is the one place a per-show cached episode list earns
+its keep — and it is a separate card with real infrastructure behind it.
+
+**And the measurements are one machine, one network, one day** (Windows
+desktop, home broadband, 2026-09-12, n=3–5 per cell). The medians are stable
+and the cold/warm split is unambiguous, but the absolute numbers are not a
+phone on LTE and the tails are under-sampled. Anything graded against "under
+1.5 s" should be re-measured from a device before it is called done.
 
 ### P-06 · One measured after-number, from the probe that already exists — **S**
 **Ask.** `tools/search-probe.mjs` (S-01) produced the before numbers. Re-run it
@@ -294,6 +455,12 @@ P-01 immediately and independently — he cannot judge anything without it.
 P-02 is the card; it is most of the win and it is a condition, not an
 architecture. P-03 in parallel with it. P-04 only after both are measured.
 P-05 after shows are right, never before. P-06 alongside. P-07 closes.
+
+*(P-05 amendment, 2026-09-12: its three pieces are three PRs, one per surface —
+pieces 1 and 2 are the search page, piece 3 is the show page. A PR that mixes
+them gets argued on the wrong axis. Piece 1 is the one with the ratio; ship it
+first and measure Apple call volume together with P-02's, per both cards' watch
+lists.)*
 
 **AMENDED 2026-09-12.** P-03a and P-03c are done and neither needed a decision.
 P-03b is **held and folded into P-04**, which is now the only open question in
