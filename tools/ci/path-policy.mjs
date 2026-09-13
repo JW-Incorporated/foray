@@ -151,6 +151,23 @@ export const DENIED_PREFIXES = [
   // two need different merge authority. Found while fixing PR #501's gate
   // scan (kanban t_5458c0a2).
   "tools/mobile/release-ci.mjs",
+  // The two scripts that decide WHICH BINARY GETS EXECUTED ON A LISTENER'S
+  // PHONE (2026-09-12, docs/bundled-voice-plan.md K-01/K-06). `fetch-models.mjs`
+  // holds the sha256 of an 82 MB ONNX graph that ONNX Runtime then runs on
+  // device, and `inject-models.mjs` is what verifies the bytes one last time
+  // and copies them into the app. Both are run by all four build paths — both
+  // shell workflows and both release composite actions — and `tools/mobile/` is
+  // allowlisted, so without these entries a bot-authored one-line change to a
+  // URL, a hash, or a `verifyBuffer` call would auto-merge unread and the next
+  // TestFlight build would execute whatever is at the new URL.
+  //
+  // This is a STRICTLY LARGER exposure than the icon and splash entries above,
+  // which ship a wrong picture: this ships arbitrary code to a phone. Denied
+  // rather than acknowledged for that reason alone. Change frequency is near
+  // zero — the pins move when the model does, which is a deliberate act with
+  // an audition behind it.
+  "tools/mobile/fetch-models.mjs",
+  "tools/mobile/inject-models.mjs",
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):

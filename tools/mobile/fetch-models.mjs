@@ -25,29 +25,32 @@
  * two disagreeing is a different diagnosis from a hash mismatch alone.
  *
  * ── What runs this ────────────────────────────────────────────────────────
- * Nothing yet, and that is stated rather than implied. The build-workflow step
- * that calls it is `.github/` and needs `founder-approved` (deck H3), so it is
- * NOT in this PR. Until it lands, this script is run by hand:
+ * The `ios-shell` and `android-shell` jobs, one step each, added 2026-09-12
+ * with the pins below (deck H3's `founder-approved` sitting). By hand:
  *
  *     node tools/mobile/fetch-models.mjs            # fetch + verify
  *     node tools/mobile/fetch-models.mjs --verify   # verify what is on disk
  *     node tools/mobile/fetch-models.mjs --check    # check the pins only (CI)
+ *     node tools/mobile/fetch-models.mjs --bundled  # names the files a build copies
  *
- * `--check` is the mode CI can run TODAY with no download and no secret: it
- * asserts every pin is well-formed and internally consistent, which is what
- * makes "somebody edited the URL and not the hash" a red build rather than a
+ * `--check` is the mode CI can run with no download and no secret: it asserts
+ * every pin is well-formed and internally consistent, which is what makes
+ * "somebody edited the URL and not the hash" a red build rather than a
  * surprise at fetch time. `test/release-gates.test.js` runs the same
  * assertions in-process.
  *
- * ── The sha256 values are NOT filled in, and that is the honest state ─────
- * Every `sha256` below is `null`. Nobody in this repo has downloaded these
- * files: this branch was written on a machine that must not pull a
- * multi-hundred-megabyte model into a worktree, and a hash copied out of a
- * model card without having hashed the bytes would be exactly the unlabelled
- * claim `CLAUDE.md` and every research doc here warns against. A `null` pin
- * REFUSES TO FETCH — see `verifyPins` — so the failure mode is "this step
- * cannot run yet", never "it ran unverified". The one command that fills them
- * in is printed by `--check`.
+ * ── The pins were FILLED on 2026-09-12, and here is exactly how ───────────
+ * Until that date every `sha256` was `null`, because nobody in this repo had
+ * downloaded the files and a hash copied out of a model card is an unlabelled
+ * claim. The probe on Wyatt's phone could not produce a number without them,
+ * so they were measured: each URL below was fetched once and STREAM-hashed —
+ * the bytes went through `crypto.createHash("sha256")` chunk by chunk and were
+ * never written to disk, so no 86 MB file entered a worktree at any point.
+ * `bytes` is the streamed length. The 522,240 of a voice file is its own
+ * check: 510 token-lengths x 256 floats x 4 bytes, exactly.
+ *
+ * A `null` pin still REFUSES TO FETCH — see `verifyBuffer` — so a pin added
+ * later without a hash cannot ride along unverified.
  */
 
 import fs from "node:fs";
@@ -82,29 +85,85 @@ export const MODELS_DIR = path.join("mobile", "models");
  * renders all twelve and K-04 bundles only the three the founders pick. A
  * voice file is a 256-float style matrix per token length: ~130 KB each.
  */
+/** The voice the probe (and only the probe) bundles. K-01 measures ONE voice:
+ *  it times the graph, and the graph takes the same time whichever 256-float
+ *  style vector it is handed. `af_heart` because it is the voice Wyatt already
+ *  judged good in the acceptance fixture (deck §2) and the only A-grade voice
+ *  on the slate. The other eleven are pinned for K-03's audition, which renders
+ *  them on a workstation, and are NOT bundled — eleven unused voices would add
+ *  5.5 MB to every install for a card that is not K-01. */
+export const PROBE_VOICE = "af_heart";
+
 export const PINS = Object.freeze([
   Object.freeze({
     kind: "model",
     name: "kokoro-v1_0-q8f16.onnx",
     url: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model_q8f16.onnx",
-    sha256: null,
-    bytes: null,
+    sha256: "04c658aec1b6008857c2ad10f8c589d4180d0ec427e7e6118ceb487e215c3cd0",
+    bytes: 86033585,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
+    bundle: true,
   }),
   ...[
-    "af_heart", "af_bella", "af_nicole", "af_sarah", "af_kore", "af_aoede",
-    "bf_emma", "am_michael", "am_fenrir", "am_puck", "bm_george", "bm_fable",
-  ].map((id) => Object.freeze({
+    ["af_heart", "d583ccff3cdca2f7fae535cb998ac07e9fcb90f09737b9a41fa2734ec44a8f0b", 522240],
+    ["af_bella", "f69d836209b78eb8c66e75e3cda491e26ea838a3674257e9d4e5703cbaf55c8b", 522240],
+    ["af_nicole", "cd2191ab31b914ed7b318416b0e4440fdf392ddad9106a060819aa600a64f59a", 522240],
+    ["af_sarah", "4409fbc125afabacc615d94db5398d847006a737b0247d6892b7a9a0007a2f0a", 522240],
+    ["af_kore", "9be5221b6a941c04b561959b8ff0b06e809444dcc4ab7e75a7b23606f691819e", 522240],
+    ["af_aoede", "4a004c33430762e2461eedb2013fad808ef4ab3121f5300f554476caf58d8361", 522240],
+    ["bf_emma", "669fe0647f9dd04fcab92f1439a40eeb4c8b4ab1f82e4996fe3d918ce4a63b73", 522240],
+    ["am_michael", "1d1f21dd8da39c30705cd4c75d039d265e9bc4a2a93ed09bc9e1b1225eb95ba1", 522240],
+    ["am_fenrir", "c27989f741f7ee34d273a39d8a595cc0837d35f5ced9a29b7cc162614616df43", 522240],
+    ["am_puck", "fcf73c989033e9233e0b98713eca600c8c74dcc1614b37009d5450ff4a2274a0", 522240],
+    ["bm_george", "c4b235a4c1f2cd3b939fed08b899ce9385638b763f7b73a59616c4fc9bd6c9bc", 522240],
+    ["bm_fable", "f889083196807b4adb15e9204252165f503b8d33d3982e681c52443c49d798f1", 522240],
+  ].map(([id, sha256, bytes]) => Object.freeze({
     kind: "voice",
     name: `${id}.bin`,
     url: `https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/${id}.bin`,
-    sha256: null,
-    bytes: null,
+    sha256,
+    bytes,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
+    bundle: id === PROBE_VOICE,
   })),
+  /* THE ID TABLE'S RECEIPT. `tools/narration/kokoro-vocab.json` is the
+     phoneme-to-id table, committed because it is 3 KB and because
+     `phonemize.py` needs it on any machine that authors a Foray. It was
+     EXTRACTED from this file, and this pin is what makes that checkable: the
+     committed table records the same sha256 and length, `kokoro-vocab.test.mjs`
+     asserts the two agree, and `--fetch` re-downloads the file so the
+     extraction can be repeated by hand.
+
+     `bundle: false` — it never reaches a phone. The app receives ids and has
+     no text to map; a table in the bundle would be the first step back towards
+     a front end on the device, which is the thing deck §4 exists to prevent. */
+  Object.freeze({
+    kind: "tokenizer",
+    name: "kokoro-tokenizer.json",
+    url: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/tokenizer.json",
+    sha256: "77a02c8e164413299b4b4c403b14f8e0e1c1b727db4d46a09d6327b861060a34",
+    bytes: 3497,
+    licence: "Apache-2.0",
+    source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
+    bundle: false,
+  }),
 ]);
+
+/** The pins a shell build copies into the app. Everything else is fetched for
+    a workstation's use (the audition's eleven other voices, the tokenizer) and
+    stays out of the binary — which is what keeps the size budget in
+    `test/release-gates.test.js` honest rather than aspirational. */
+export function bundledPins(pins = PINS) {
+  return pins.filter((p) => p.bundle === true);
+}
+
+/** Total bytes a build would add to the app. Exported so the size ceiling can
+    be checked against the real pinned lengths instead of the deck's estimates. */
+export function bundledBytes(pins = PINS) {
+  return bundledPins(pins).reduce((n, p) => n + (p.bytes ?? 0), 0);
+}
 
 /** The single command that turns a `null` pin into a real one. Printed rather
     than run: filling a pin is a deliberate act by somebody who then looks at
@@ -151,6 +210,14 @@ export function pinProblems(pins = PINS) {
        hash looks filled in at a glance and verifies nothing about content. */
     if ((p.sha256 === null) !== (p.bytes === null)) {
       problems.push(`${at}: sha256 and bytes must be pinned together — a half-pin verifies nothing`);
+    }
+    /* `bundle` decides whether an 86 MB file goes into an app store binary.
+       A pin that merely FORGOT the field would default to falsy under a
+       `!p.bundle` read and silently stop shipping the model — the probe would
+       then answer `model-absent` on a build that fetched everything
+       correctly. Required and strictly boolean, so the omission is the error. */
+    if (typeof p.bundle !== "boolean") {
+      problems.push(`${at}: bundle must be true or false — "goes into the app" is never left implicit`);
     }
     if (typeof p.licence !== "string" || !p.licence) problems.push(`${at}: no licence recorded`);
     if (typeof p.source !== "string" || !/^https:\/\//.test(p.source || "")) {
@@ -238,8 +305,19 @@ async function main() {
     process.exit(1);
   }
   const missing = unfilled();
+  if (mode === "--bundled") {
+    /* One filename per line, for a build step to read. Deliberately NOT a glob
+       over `mobile/models/` in the workflow: the fetch pulls twelve voices and
+       a tokenizer that must NOT reach the binary, and a `cp mobile/models/*`
+       would ship all of them. The decision belongs to the pin table, in the
+       same file as the hashes, where a reviewer sees both at once. */
+    for (const pin of bundledPins()) console.log(pin.name);
+    process.exit(0);
+  }
   if (mode === "--check") {
     console.log(`${PINS.length} pins, all well-formed.`);
+    console.log(`${bundledPins().length} of them are bundled into the app: `
+      + `${(bundledBytes() / (1024 * 1024)).toFixed(1)} MiB.`);
     if (missing.length) {
       console.log(`${missing.length} of them carry no sha256 yet. Fill one with:`);
       console.log(`  ${fillPinCommand(missing[0])}`);
@@ -261,7 +339,7 @@ async function main() {
   }
   if (mode !== "--fetch") {
     console.error(`Unknown argument: ${mode}`);
-    console.error("Usage: node tools/mobile/fetch-models.mjs [--fetch|--verify|--check]");
+    console.error("Usage: node tools/mobile/fetch-models.mjs [--fetch|--verify|--check|--bundled]");
     process.exit(2);
   }
   const dir = path.join(REPO_ROOT, MODELS_DIR);

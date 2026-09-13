@@ -59,11 +59,15 @@ not Apache/MIT") as a check rather than a sentence.
 - **Source:** https://github.com/microsoft/onnxruntime
 - **Notice:** Copyright (c) Microsoft Corporation. Licensed under the MIT
   License.
-- **Status in this build:** NOT YET LINKED. K-01's probe ships with an empty
-  engine seam and no ONNX Runtime dependency in `Package.swift` or
-  `build.gradle` — see `mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift`'s
-  own comment on why. This entry is written now so that K-04, which adds the
-  dependency, does not also have to remember the notice.
+- **Status in this build:** LINKED, from 2026-09-12, pinned at **1.20.0** on
+  both platforms (`mobile/plugins/foray-tts/Package.swift`,
+  `mobile/plugins/foray-tts/android/build.gradle`). The only code that calls it
+  is K-01's measurement engine
+  (`KokoroOrtProbeEngine.swift` / `KokoroOrtProbeEngine.java`), which is
+  constructed on demand when a founder taps the probe button and is never
+  reached from the narration path. Exact pins rather than ranges: the number
+  this card exists to produce is a timing, and a measurement whose runtime
+  version is not in the diff is not a measurement.
 
 ## What is deliberately NOT here
 

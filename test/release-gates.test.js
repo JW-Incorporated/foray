@@ -498,20 +498,25 @@ test("K-06: no espeak dependency reaches any native build input", () => {
     + "(docs/bundled-voice-plan.md §4), and the app must never link espeak:\n" + offenders.join("\n"));
 });
 
-test("K-06: the model pin table is well-formed, and is honestly unfilled", async () => {
-  /* CI's half of "fails on a mismatch": the download itself happens in a build
-     step that does not exist yet (`.github/` needs founder-approved, deck H3),
-     but the table it will read is checked on every run today. The failure this
-     catches is somebody editing a URL and not the hash.
-     MUTATION: half-pin an entry (bytes, no sha256) — `pinProblems` names it. */
+test("K-06: the model pin table is well-formed, and every pin is filled", async () => {
+  /* CI's half of "fails on a mismatch". The download now happens in the
+     `ios-shell` and `android-shell` jobs, and the table those jobs read is
+     checked on every run here. The failure this catches is somebody editing a
+     URL and not the hash.
+     MUTATION: half-pin an entry (bytes, no sha256) — `pinProblems` names it.
+
+     The previous form of this test asserted the OPPOSITE — that every pin was
+     unfilled — with the instruction "when that changes, this assertion is the
+     one that has to change too, in a diff that says who did it". This is that
+     diff: on 2026-09-12 every URL was fetched once and STREAM-hashed on a
+     Windows workstation — the bytes went through `createHash` chunk by chunk
+     and were never written to disk, so no 86 MB file entered a worktree.
+     `tools/mobile/fetch-models.test.mjs` carries the rest of the detail. */
   const { PINS, pinProblems, unfilled } = await loadModelPins();
   assert.deepEqual(pinProblems(), []);
   assert.ok(PINS.length >= 13, "one model and the twelve audition voices");
-  /* Stated rather than assumed: nobody in this repo has downloaded these
-     files. When that changes, this assertion is the one that has to change
-     too, in a diff that says who did it. */
-  assert.equal(unfilled().length, PINS.length,
-    "if a pin has been filled, update this assertion and say in the PR who hashed the file");
+  assert.equal(unfilled().length, 0,
+    "an unfilled pin refuses to fetch, so a build carrying one would ship no weights at all");
 });
 
 test("K-06: every pinned artefact records a permissive licence and an https source", async () => {
@@ -570,19 +575,33 @@ test("K-06: the app-size ceiling is below Apple's cellular cap, with the reason 
   assert.ok(deck.includes("200 MB"), "the deck must state the cellular cap the ceiling is derived from");
 });
 
-test("K-06: the measured app sizes plus the model still fit under the ceiling", () => {
+test("K-06: the measured app sizes plus the model still fit under the ceiling", async () => {
   /* The arithmetic, executable. If a future measurement changes one of these
      numbers, this test is where the budget is re-argued rather than in a PR
      description nobody re-reads.
      MUTATION: change the model size to fp32's 326 MB — the sum exceeds the
      ceiling and the answer becomes "fetch it on first run", which is exactly
-     the finding this test exists to surface rather than hide. */
+     the finding this test exists to surface rather than hide.
+
+     THE MODEL AND VOICE FIGURES ARE NO LONGER ESTIMATES. They are read from
+     the pin table's `bytes`, which were measured by downloading the files on
+     2026-09-12, and from `bundle: true`, which is the same field the build
+     step copies by. So "what the app grows by" and "what the build puts in the
+     app" are one number with one source, and a second bundled voice moves this
+     test rather than only the .ipa. The q8f16 weights come out at 82.0 MiB
+     against the model card's "86 MB" — the card counts decimal megabytes.
+
+     ORT IS STILL INFERRED at the top of its 10–20 MB range, deliberately, and
+     is the one line here a real build still has to replace. K-01's whole
+     purpose is to produce that build. */
+  const { bundledBytes } = await loadModelPins();
   const androidAabMb = 5.46;
   const iosAppMb = 8.3;
-  const modelMb = 86;
+  const bundledMb = bundledBytes() / (1024 * 1024);
   const ortMb = 20;      // the top of the inferred range, deliberately
-  const voicesMb = 1.5;
-  const worst = Math.max(androidAabMb, iosAppMb) + modelMb + ortMb + voicesMb;
+  const worst = Math.max(androidAabMb, iosAppMb) + bundledMb + ortMb;
+  assert.ok(bundledMb > 80 && bundledMb < 90,
+    `the bundled weights are ${bundledMb.toFixed(1)} MiB — if this moved, a different model variant got pinned`);
   assert.ok(worst < APP_SIZE_CEILING_MB,
     `the bundled voice would make the app ${worst.toFixed(1)} MB, over the ${APP_SIZE_CEILING_MB} MB ceiling — `
     + "the model must then be fetched on first run rather than bundled");

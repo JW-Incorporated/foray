@@ -10,6 +10,31 @@ downstream of a number only a real phone can produce, and that measurement is
 far is inert by construction, and the platform voice still speaks every narration
 item.
 
+**2026-09-12, later the same day — K-01's probe can now RETURN A NUMBER.** Wyatt
+ran it on build 2026091212 and the whole result was
+`voiceProbe kokoro-probe could not measure: passage-unphonemized` — the first of
+the probe's four refusals, with `model-absent` and `engine-absent` waiting behind
+it. All three are cleared in one PR, because clearing one would have moved him one
+refusal along and cost a second trip to a locked phone:
+
+1. **The passage is phonemized.** `tools/narration/phonemize.py` had two defects
+   that made `--passage` impossible to run at all — it asked misaki for a
+   `vocab`/`vocab_ids` it does not have, and it disabled the espeak fallback the
+   card's own Ask requires. Both fixed; the id table is now the MODEL's, extracted
+   verbatim from the pinned export's `tokenizer.json`
+   (`tools/narration/kokoro-vocab.json`). Re-running the stage is byte-identical.
+2. **The pins are filled.** Every URL in `tools/mobile/fetch-models.mjs` was
+   fetched once and stream-hashed; nothing large touched a worktree.
+   `bundle: true` now says which of the thirteen reach a phone: the model and one
+   voice, 82.5 MiB.
+3. **The weights reach the app, and ONNX Runtime is linked.** A fetch+inject step
+   in both shell builds and both release actions, and a real ORT engine behind
+   K-01's seam on both platforms — constructed on demand when the founder taps the
+   button, never at app start, never on the narration path.
+
+What is still NOT known is the thing only a phone can say. **K-01 remains open
+until `HUMAN-ACTIONS.md` #45 comes back with numbers.**
+
 Research + card deck for Hermes. Written 2026-09-06 by the founder's
 Claude session at Wyatt's request. Companion to `docs/ios-controls-and-voice-plan.md`
 (whose V-01 voice picker this deck **re-scopes**, see §8) and to the ruling in
@@ -244,7 +269,7 @@ S-04b). Read first: `CLAUDE.md`; this file; `generation-architecture.md` §1.2, 
 `mobile/plugins/foray-tts/README.md` and both native sources; the onnx-community model
 card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
 
-#### K-01 · Measure Kokoro on real phones before anything is built on it — **L** — *design comment first* — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`), **the probe only, not the measurement**: the `engine: "kokoro-probe"` path exists on both platforms behind a `cp_voice_probe` drawer switch and writes a `voiceProbe` row into the Playback-diagnostics record. It is inert — no ORT dependency, no weights, an empty native engine seam, an unphonemized passage — and each of those four refuses with its own named reason rather than a zero. The measurement itself is `HUMAN-ACTIONS.md` #45 and still open; §10 of `on-device-tts.md` is the empty table it fills
+#### K-01 · Measure Kokoro on real phones before anything is built on it — **L** — *design comment first* — **BUILT, NOT YET MEASURED** (probe 2026-09-12 `feat/bundled-voice-k-deck`; the three blockers cleared 2026-09-12 `feat/kokoro-probe-measurable`). The `engine: "kokoro-probe"` path exists on both platforms behind a `cp_voice_probe` drawer switch and writes a `voiceProbe` row into the Playback-diagnostics record. It was inert on four counts and **three of them are now cleared**: the passage carries real ids, the weights are fetched into both shell builds and both release actions, and ONNX Runtime 1.20.0 is linked with an engine behind the seam. The fourth — a founder's phone — is `HUMAN-ACTIONS.md` #45 and **still open**; §10 of `on-device-tts.md` is the empty table it fills. The probe still refuses with a named reason rather than a zero on every path that can still fail
 - **Ask:** a throwaway measurement path, not a product feature. Add an `engine: "kokoro-probe"`
   branch to `foray-tts` on both platforms that loads a bundled q8f16 model and one
   voice, synthesizes a pre-phonemized 90 s passage (ids computed offline and shipped as
@@ -269,29 +294,77 @@ card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
   synthesis completes. Miss any and K-04 waits for a design change (fp16 vs q8, EP,
   chunking) or the runner-up engine.
 - **The instruction Wyatt gets, verbatim** (also `HUMAN-ACTIONS.md` #45, and the
-  top of the PR that landed this card): **"Install build N, open Settings, turn on
-  'Voice engine probe', tap 'Run the voice engine probe', and immediately lock the
-  phone. When the passage stops (about 80 seconds), unlock, tap Copy in the sheet
-  that is already open, and paste the whole record here."** Then the same on Joey's
-  Pixel 10 Pro and on the oldest phone either of them can find, saying which record
-  is which phone and which OS version. A record reading `could not measure
-  (model-absent)` means the build did not fetch the weights — that is a build
-  problem, not a phone one, and the run should stop there.
+  top of the PR that landed this card):
 
-  The locking order is not a detail: the plugin reports the honest weaker fact —
-  the app was not frontmost when the last line finished — and it is the founder
-  locking the phone BEFORE the passage ends that turns that into "synthesis
-  completed with the screen locked", which is one of the four go/no-go clauses.
+  **"Install the FIRST TestFlight or Play-internal build numbered higher than
+  2026091212 — build 2026091212 is the one that answered
+  `passage-unphonemized`, and no build before this PR merged can produce a
+  number. Open Settings, scroll to Playback diagnostics, turn on the 'Voice
+  engine probe' switch, tap 'Run the voice engine probe', and lock the phone
+  immediately — within a second or two, and in any case BEFORE the passage
+  finishes. The passage runs about 78 seconds. When it stops, unlock, tap Copy
+  in the sheet that is already open, and paste the whole record here."** Then
+  the same on Joey's Pixel 10 Pro, and on the oldest phone either of them can
+  find, saying which record is which phone and which OS version.
+
+  **Locking the phone before the passage ends is not a detail; it is one of the
+  four go/no-go clauses.** The plugin can only report the honest weaker fact —
+  that the app was not frontmost when the last line finished — and it is the
+  founder locking the phone in time that turns that into "synthesis completed
+  with the screen locked". A run where the phone was locked late, or not at all,
+  produces `locked screen did NOT complete`, which `probeVerdict` counts as a
+  FAILURE rather than a missing reading. That is deliberate, and it means a
+  mistimed lock reads as a no-go rather than as a gap: if that happens, say so
+  and run it again rather than reporting the record.
+
+  **Reading a refusal instead of numbers.** Each names a different artefact and
+  only one of them is a phone problem:
+  - `passage-unphonemized` — the build predates this PR. Get a newer one.
+  - `model-absent` — the build did not fetch the weights. A build problem, not a
+    phone one: stop and say so.
+  - `engine-absent` — the weights are there but ONNX Runtime did not load, or the
+    voice file is the wrong size. Also a build problem; paste the record.
+  - `no-bridge` / `threw` — the probe could not reach the plugin at all.
 - **Governance:** `mobile/` auto-merges; the model-fetch step touches the build
   workflows → `founder-approved` (H3; batch with K-06).
 
-#### K-02 · Phonemes are authored with the script — **M** — **PARTIAL, NOT DONE** (2026-09-12, `feat/bundled-voice-k-deck`) — *downgraded from **DONE** on 2026-09-12; it was the one materially false DONE marker in the repo*
+#### K-02 · Phonemes are authored with the script — **M** — **STILL PARTIAL** (2026-09-12) — *downgraded from **DONE** on 2026-09-12; it was the one materially false DONE marker in the repo. Partly repaired the same day by `feat/kokoro-probe-measurable`: the stage now RUNS (see "What was wrong with the stage itself" below) and has produced its first real output — the K-01 passage. The pipeline stage is still not wired, and `data/forays.json` still carries zero `phonemes`, so the card stays PARTIAL*
 
 **What exists:** `tools/narration/phonemize.py` + `requirements.txt`, `backend/src/generation/phonemize.ts` (per PAGE, not per beat — the act-level writer landed the same week), the `tts`/`phonemes`/`est_sec` fields on the item schema, and `check-forays.mjs`'s rules with the card's own named mutation executed.
 
 **What does not:** ***the stage.*** This card's **Ask** is "the generation pipeline (#487's driver) gains a `phonemize` stage after §4.7", and its **Owned** list names "the pipeline driver" and "the four committed Forays in `data/forays.json` re-authored with phonemes". Neither happened. Verified 2026-09-12: `runPipeline.ts` contains **zero** occurrences of `phonemize`; `runPhonemizer`, `phonemizeItems` and `phonemizeItem` have **no production caller** — the only references repo-wide are the module's own internal call and `backend/test/phonemize.test.ts`. The module is fully dependency-injected (`export type Phonemizer`), so only a pipeline driver could ever supply a real phonemizer, and none does. `data/forays.json` carries **0** `phonemes` fields. The original marker already noted that `forays.json` is not re-authored (misaki is not installed here, and a fabricated phoneme string would be worse than none) — that half was honest; the claim that the STAGE landed was not.
 
-**What is left:** wire the stage into the pipeline driver, which is a decision, not a typo — see `docs/curation/generation-architecture.md` §4.7a, corrected in the same pass.
+**What was wrong with the stage itself, found 2026-09-12 when something first tried to run it.** The module did not merely lack a caller; `--passage` and `--text`
+could not have worked on any machine:
+
+- `vocab_sha()` read `g2p.vocab` / `g2p.phoneme_vocab`, and misaki exposes
+  neither, so it always raised `MissingBackend`. The phoneme-to-id table is a
+  property of the ONNX EXPORT, not of the front end, and is now read from
+  `tools/narration/kokoro-vocab.json` — extracted verbatim from the pinned
+  export's own `tokenizer.json`, with that file's sha256 pinned alongside the
+  weights so the extraction is checkable. `tts.vocab` is the sha of that table,
+  computed identically in Python and in Node (`tools/mobile/kokoro-vocab.test.mjs`).
+- `--passage` called `g2p.vocab_ids(...)`, which does not exist, and then
+  refused. Replaced by `ids_for()`, which maps character by character and
+  REFUSES on a character with no id rather than skipping it. `kokoro-onnx`'s own
+  loader skips; applied to the fixture line that would have turned six
+  mispronounced terms into six absent ones, in audio that still sounds fluent
+  and still produces an RTF, and it would also have shifted the style-vector row.
+- `load_backend()` passed `fallback=None`, which the card's own Ask contradicts
+  ("misaki (`en-us`) with `espeak-ng` fallback for the rest, on the server").
+  The effect was not fewer phonemes but wrong ones: misaki emits a literal `?`
+  for a word it cannot look up, and the passage's fixture line came out with six.
+
+**A finding that outlives this card:** 82 of the lexicon's 83 `ipa` fields are
+still null, so five of the six terms the fixture line exists to test are
+phonemized by espeak's guess, not by an authored override. Harmless for K-01,
+which times the graph — a guessed pronunciation takes the same time to sing.
+**Not harmless for K-03**: the fixture cannot be evidence about pronunciation
+control until those fields are authored, which is a human job nobody has done.
+The passage records this per line (`espeak_fallback`) and at the top
+(`espeak_fallback_terms`) so no audition can quietly assume otherwise.
+
+**What is left:** wire the stage into the pipeline driver, which is a decision, not a typo — see `docs/curation/generation-architecture.md` §4.7a, corrected in the same pass; and author the lexicon's IPA.
 
 - **Ask:** the generation pipeline (#487's driver) gains a `phonemize` stage after §4.7
   "Write the narration": apply `hard-terms.json` first (exact IPA for the 83 terms, word
@@ -347,6 +420,15 @@ card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
   (floor 38 → raise), XCTest + JUnit for the id table, chunking and the refuse-on-vocab
   rule (MUTATION: change one id → the vocab check goes red), `mobile/plugins/foray-tts/README.md`.
 - **Dependencies:** K-01 passed its go rule; K-03 named the voices.
+- **Already done for you by `feat/kokoro-probe-measurable` (2026-09-12):** the ORT
+  dependency exists on both platforms (pinned 1.20.0), the weights are fetched and
+  injected by all four build paths, and a working `KokoroProbeEngine` implementation
+  is in the tree on each side — `KokoroOrtProbeEngine.swift` /
+  `KokoroOrtProbeEngine.java`, three tensors in and one out, with the style row
+  chosen by the unpadded id count. They are MEASUREMENT engines: no audio session,
+  no ring buffer, no `finished`, and the samples are counted and dropped. K-04 still
+  owns everything that makes them a product — chunking, playback, the event, the
+  bundled-voice choice — but it no longer owns "can this even link".
 - **Acceptance:** on the two H1 phones, a full narration-heavy Foray plays locked with
   no gap over ~1 s at any line boundary; `finished` fires once per line; peak memory
   within K-01's ceiling; the CI shell builds green on both platforms with the model
@@ -369,7 +451,7 @@ card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
   the chosen voice (MUTATION: drop `voice` → red); a legacy item still speaks `script`;
   vocab mismatch → fallback, not silence.
 
-#### K-06 · Size, provenance and licence gates — **S** — **DONE** (2026-09-12, `feat/bundled-voice-k-deck`), **except the workflow step and part of the size gate**; `tools/mobile/fetch-models.mjs` pins `{url, sha256, bytes}` for the model and the twelve voices and refuses an unpinned file, the espeak gate and the 150 MB ceiling are in `test/release-gates.test.js`, `prepare-webdir.mjs` refuses a model in the web bundle, and `docs/legal/third-party-notices.md` carries Kokoro/ORT/voices. The build-workflow step that CALLS the fetcher is `.github/` and waits on H3. **Soft spot, noted 2026-09-12:** the 150 MB ceiling is only partly enforced — `test/release-gates.test.js:566-570` asserts the ceiling is below Apple's cellular cap and that this deck names both numbers, which is arithmetic over constants; nothing measures a real `.ipa`/`.aab` and fails on it, because no build produces one here yet
+#### K-06 · Size, provenance and licence gates — **S** — **DONE** (workflow step and pins landed 2026-09-12, `feat/kokoro-probe-measurable`; the rest 2026-09-12 `feat/bundled-voice-k-deck`). The build-workflow step that CALLS the fetcher now exists in all four build paths — both shell workflows and both release composite actions — and every pin is FILLED: each URL was fetched once and stream-hashed, nothing large written to disk. A new `bundle` field decides what reaches a phone (the model and one voice, 82.5 MiB; the eleven other audition voices and the tokenizer are fetched for a workstation and stay out of the binary), `tools/mobile/inject-models.mjs` copies exactly that set and re-verifies it, and `test/release-gates.test.js`'s budget now reads the real pinned lengths rather than the deck's estimates. `tools/mobile/fetch-models.mjs` and `inject-models.mjs` are DENIED in `tools/ci/path-policy.mjs`, because between them they decide which binary ONNX Runtime executes on a listener's phone. **The remaining soft spot is unchanged:** nothing measures a real `.ipa`/`.aab` against the 150 MB ceiling, because no build in this repo produces one. Original marker follows —; `tools/mobile/fetch-models.mjs` pins `{url, sha256, bytes}` for the model and the twelve voices and refuses an unpinned file, the espeak gate and the 150 MB ceiling are in `test/release-gates.test.js`, `prepare-webdir.mjs` refuses a model in the web bundle, and `docs/legal/third-party-notices.md` carries Kokoro/ORT/voices. The build-workflow step that CALLS the fetcher is `.github/` and waits on H3. **Soft spot, noted 2026-09-12:** the 150 MB ceiling is only partly enforced — `test/release-gates.test.js:566-570` asserts the ceiling is below Apple's cellular cap and that this deck names both numbers, which is arithmetic over constants; nothing measures a real `.ipa`/`.aab` and fails on it, because no build produces one here yet
 - **Ask:** (1) `tools/mobile/fetch-models.mjs` pins `{url, sha256, bytes}` for the model
   and each voice; CI fails on a mismatch. (2) A gate test asserts **no `espeak`
   symbol, file or licence text** is present in the built app (`strings` on the binary
