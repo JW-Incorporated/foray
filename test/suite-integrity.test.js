@@ -440,8 +440,29 @@ const FLOORS = {
      session ONE); and the implication over the real data, pool has artwork
      => the show resolves artwork. */
   "test/show-page.test.js": 43,
+  /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
+     the show page, so show-page-pagination.test.js was RE-POINTED rather than
+     shrunk — same five tests, now pinning the absence of the control, the
+     absence of a silent auto-pager in its place, and the count label the
+     founder had deleted. Its floor is deliberately unchanged: this file is the
+     one that would have noticed a quiet gutting, and a removal that keeps its
+     coverage should not need to lower anything.
+     show-page-search.test.js gained the eighth: the founder's actual bug,
+     pinned from the search side — no Show more control may sit under a set of
+     scoped search results, which is the case the pagination suite could not
+     see because none of its tests ever typed a query. */
   "test/show-page-pagination.test.js": 5,
-  "test/show-page-search.test.js": 7,
+  "test/show-page-search.test.js": 8,
+
+  /* The third founder report of 2026-09-13: the now-playing bar must be off
+     the screen while a soft keyboard is up (it used to ride up onto the top of
+     the keyboard on the first scroll). Floored on its own rather than folded
+     into a show-page suite because the mechanism is global chrome — the
+     keyboard can open on any screen with a text field — and because most of
+     what it guards is the fix's escape hatches: the two independent ways the
+     bar comes BACK, and the no-visualViewport fail-open. Those are exactly the
+     assertions a future edit is most likely to drop as redundant. */
+  "test/now-playing-keyboard.test.js": 7,
 
   /* Kanban t_d5079285 (recreated — was mistakenly archived as t_623d16a7) —
      episode page: publish date (A1.2), full episode description additive to

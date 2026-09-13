@@ -2240,11 +2240,30 @@ function showForaysHtml(show) {
 
 /* S-06 (kanban t_be4c1793): renders the count label honestly for however
    much of the full-catalogue list this render has actually loaded so far.
-   `state.fullyLoaded` (closure var in renderShow, passed in) must be the
-   ONLY thing that flips this to a bare, unqualified total — a page count
-   arriving from a "Show more" click that still carries a next_cursor is,
-   by definition, not the whole show, and this function is the one place
-   that rule is enforced so no call site can accidentally claim otherwise. */
+   `fullyLoaded` (closure var in renderShow, passed in) must be the ONLY
+   thing that flips this to a bare, unqualified total — a page that still
+   carries a next_cursor is, by definition, not the whole show, and this
+   function is the one place that rule is enforced so no call site can
+   accidentally claim otherwise.
+
+   FOUNDER CALL 2026-09-13 — the partial-load branch renders NOTHING.
+   It used to read "100+ episodes loaded so far — more available", and
+   Wyatt's verdict was "delete that, it's useless info". He is right twice
+   over now: it was always a hedge nobody asked for, and since the "Show
+   more episodes" control came out in this same change there is no longer
+   any way for a listener to act on "more available" — it would be a
+   subtitle advertising a door that no longer exists.
+
+   What does NOT collapse with it:
+     - the `fullyLoaded` branch, which states a TRUE total and is the only
+       branch allowed to. Falling back to that shape for a partial load
+       (a bare "100 episodes") is exactly the false-completeness claim the
+       honesty rule forbids, so the partial case says nothing at all
+       rather than saying something wrong;
+     - the stale note, promoted here to a standalone sentence. "Couldn't
+       refresh" is a failure the listener can act on (pull to refresh,
+       come back on a better connection); silence about it would be a
+       different lie from the one we just deleted. */
 function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBreadthTier, stale, loadError }) {
   if (loadError && loadedCount === 0) {
     return curatedCount
@@ -2262,9 +2281,9 @@ function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBread
   if (fullyLoaded) {
     return `${loadedCount} episode${loadedCount === 1 ? "" : "s"}${staleNote}`;
   }
-  // Honesty rule (card acceptance criterion): never imply this is the whole
-  // show while pages remain unfetched. "100+" reads as a floor, not a total.
-  return `${loadedCount}+ episodes loaded so far — more available${staleNote}`;
+  // Partial load: no count, because any count we could state here would
+  // either hedge uselessly or claim a completeness we do not have.
+  return stale ? "Showing the last saved list — couldn't refresh just now." : "";
 }
 
 /* S-06: local-filter search over whatever full-catalogue pages have been
@@ -2423,7 +2442,6 @@ function renderShow(show_id) {
         ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
         : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
   </div>
-  <div data-show-more-wrap></div>
   ${similarShowsSection(show)}
   ${showForaysHtml(show)}
   </div>`;
@@ -2436,9 +2454,14 @@ function renderShow(show_id) {
   // ---- Pagination + in-page search state for this render only. A fresh
   // renderShow() call (new navigation) gets a fresh closure — nothing here
   // survives or leaks across shows. ----
-  let loaded = [];          // raw API episode records, every page fetched so far, in server order
-  let nextCursor = null;    // API's opaque keyset cursor; null = no more pages
-  let fullyLoaded = false;  // true only once a page comes back with next_cursor: null
+  let loaded = [];          // raw API episode records, the page(s) fetched, in server order
+  /* True only once a page comes back with next_cursor: null. Since the
+     "Show more episodes" control was removed (2026-09-13) nothing here
+     advances past page 1, so in practice this is "page 1 was the whole
+     show" — still exactly the question showEpisodeCountLabel and
+     paintSearchNote need answered, and still answered by the API rather
+     than assumed. */
+  let fullyLoaded = false;
   let anyStale = false;     // sticky once any page reports stale/degraded
   let lastLoadError = null;
   let searchQuery = "";
@@ -2458,7 +2481,6 @@ function renderShow(show_id) {
 
   const container = () => $("#view [data-show-episodes]");
   const countLabelEl = () => $("#view [data-show-count]");
-  const moreWrap = () => $("#view [data-show-more-wrap]");
   const searchWrap = () => $("#view [data-show-ep-search]");
   const searchNote = () => $("#view [data-show-ep-search-note]");
   const stillMounted = () => !!container();
@@ -2518,45 +2540,45 @@ function renderShow(show_id) {
       : `${matchCount} match${matchCount === 1 ? "" : "es"} — searching loaded episodes only (${loaded.length} of the full list loaded so far).`;
   }
 
-  function paintMoreButton() {
-    const wrap = moreWrap();
-    if (!wrap) return;
-    if (fullyLoaded || !nextCursor) { wrap.innerHTML = ""; return; }
-    wrap.innerHTML = `<button type="button" class="show-more-btn" data-show-more>Show more episodes</button>`;
-    const btn = wrap.querySelector("[data-show-more]");
-    if (btn) btn.addEventListener("click", loadNextPage);
-  }
+  /* REMOVED 2026-09-13: paintMoreButton() / loadNextPage(), the "Show more
+     episodes" control. Founder report: "there is a 'Show more episodes'
+     button which tries to do something but fails."
+
+     WHY IT FAILED — the defect, stated exactly, because the same shape can
+     recur anywhere a paginated list grows underneath a filtered view.
+
+     The control's visibility was decided by `fullyLoaded || !nextCursor`
+     ALONE. That is a fact about the PAGINATION, and it was used to decide
+     the chrome for a container that, while a search is running, is not
+     showing the paginated list at all. Once S-07's scoped search answered,
+     `searchMode === "scoped"` and paintList() rendered `scopedResults` — a
+     server-side search over the show's FULL catalogue, a result set that
+     has nothing to do with `loaded` and grows not at all when another page
+     of `loaded` arrives. The button kept rendering anyway, because the
+     cursor was still non-null.
+
+     So pressing it ran the whole of loadNextPage honestly and to
+     completion: disable, "Loading…", fetch page 2 with the right cursor,
+     append to `loaded`, repaint. And the repaint painted `scopedResults`,
+     which were byte-for-byte what was already on screen. The button
+     flickered and the list did not move. Nothing errored; nothing was
+     logged; the work was real and the outcome was invisible. That is what
+     "tries to do something but fails" looks like from the outside.
+
+     Two things worth carrying forward rather than forgetting with the
+     button: (1) the same click DID work in "idle" and "fallback" mode, so
+     this was a mode-dependent no-op, the kind a happy-path test never
+     sees — test/show-page-pagination.test.js had five passing tests over
+     this control and not one of them typed in the search box; (2) the
+     pagination underneath is NOT the broken part and is untouched —
+     api/shows/:id/episodes still keysets, and fetchShowEpisodes still
+     takes and returns a cursor. What is gone is only this page's UI for
+     walking it. Reaching older episodes is now the search box's job,
+     which is the one path that actually searches the whole catalogue. */
 
   function revealSearchIfEligible() {
     const wrap = searchWrap();
     if (wrap && loaded.length) wrap.hidden = false;
-  }
-
-  function loadNextPage() {
-    const btn = $("#view [data-show-more]");
-    if (btn) { btn.disabled = true; btn.textContent = "Loading…"; }
-    fetchShowEpisodes(show.show_id, nextCursor).then(({ episodes, nextCursor: nc, stale, error }) => {
-      if (!stillMounted()) return; // navigated away before this page resolved
-      if (episodes === null) {
-        lastLoadError = error || "load failed";
-        if (btn) { btn.disabled = false; btn.textContent = "Try again"; }
-        paintCount();
-        return;
-      }
-      lastLoadError = null;
-      if (stale) anyStale = true;
-      loaded = loaded.concat(episodes);
-      nextCursor = nc;
-      fullyLoaded = nc === null;
-      // A pending fallback-mode search should see the newly-loaded page
-      // immediately (this is exactly the "finds an episode on page 12"
-      // case if S-07 itself isn't reachable) — scoped-mode results are
-      // already the full list and don't need re-filtering on a new page.
-      if (searchMode === "fallback") paintSearchNote();
-      paintList();
-      paintCount();
-      paintMoreButton();
-    });
   }
 
   /* Debounced (250ms) so a fast typist doesn't fire a request per
@@ -2627,11 +2649,9 @@ function renderShow(show_id) {
 
     if (stale) anyStale = true;
     loaded = episodes;
-    nextCursor = nc;
     fullyLoaded = nc === null;
     paintList();
     paintCount();
-    paintMoreButton();
     revealSearchIfEligible();
   });
 }
@@ -9283,6 +9303,110 @@ function refreshForayDirectory(trigger) {
   return _directoryRefreshing;
 }
 
+/* ---------- the soft keyboard vs. the now-playing bar (founder, 2026-09-13) ----------
+
+   THE REPORT, verbatim: "When I'm searching episodes on a show page, the now
+   playing bar is down at the bottom behind the keyboard (good). When I start
+   scrolling that now playing bar eventually moves up onto the top of the
+   keyboard (bad). When the keyboard is present the now playing bar should not
+   be visible."
+
+   WHY IT MOVES, which is why the fix is not a CSS-only one. `#foray-player` is
+   `position: fixed; bottom: 0`, and in WKWebView "fixed" is resolved against
+   the LAYOUT viewport, which the keyboard does not shrink. So at the instant
+   the keyboard opens the bar stays pinned to the bottom of the layout viewport
+   — underneath the keyboard, exactly as Wyatt saw. The moment the page is
+   scrolled, WebKit re-anchors fixed elements to the VISUAL viewport, and the
+   bar snaps up to sit on the keyboard's top edge. Nothing about the element
+   changed; the coordinate space it is measured in did. No `bottom`/`inset`
+   value can fix that, because both positions are the same declared `bottom: 0`.
+
+   So: detect the keyboard, and while it is up take the bar off the screen.
+
+   HOW WE DETECT IT — what was already here, checked first. There is no
+   `@capacitor/keyboard` in mobile/package.json and no keyboard handling
+   anywhere in this file, so there was nothing to reuse. Adding the Capacitor
+   plugin would mean a native dependency, a `cap sync`, and a rebuild of both
+   platform projects for a chrome tweak — and it would still leave the same bug
+   on the web build, where there is no bridge at all. `window.visualViewport` is
+   the platform answer to precisely this question, ships in WKWebView (iOS 13+),
+   in the Android WebView and on the mobile web, and needs nothing installed.
+
+   The test is `innerHeight - visualViewport.height`: the layout viewport minus
+   the visible one, i.e. how much of the window something is covering. A soft
+   keyboard is the only thing that takes >120px, and `offsetTop` is deliberately
+   NOT folded in — it moves on scroll and on pinch-zoom, which is the signal we
+   must stay insensitive to, while `height` does not move on either.
+
+   ANDed with "an editable element holds focus", because a soft keyboard cannot
+   be up without one. That conjunct costs nothing when the report's own case is
+   running (the search field IS focused) and it is what makes every other cause
+   of a short visual viewport — an interstitial, a rotation mid-animation, a
+   WebView that mis-reports during the splash fade — unable to hide the bar.
+
+   IT MUST NEVER STICK. A bar that stays hidden after the keyboard closes is a
+   worse bug than the one being fixed, so there are two independent ways back:
+   `resize` on the visual viewport (the normal one — closing the keyboard fires
+   it and the inset returns to ~0), and `focusout`, which clears the class
+   outright once nothing editable holds focus, covering any WebView that closes
+   the keyboard without a resize. Both call the same evaluator, and the class is
+   only ever the computed answer — there is no "remember that we hid it" state
+   that could get stranded.
+
+   SCOPE. This owns ONE thing: whether `#foray-player` is on screen while a
+   keyboard is up (`body.kb-open`, styles.css). It does not touch the bar's
+   markup, its tap target, or the Now Playing sheet — those belong to the
+   player module and to the sheet work landing alongside this. */
+const KEYBOARD_MIN_INSET = 120;
+
+function keyboardIsOpen(win) {
+  const vv = win && win.visualViewport;
+  if (!vv || typeof vv.height !== "number" || typeof win.innerHeight !== "number") return false;
+  return (win.innerHeight - vv.height) > KEYBOARD_MIN_INSET;
+}
+
+function editableHasFocus(doc) {
+  const el = doc && doc.activeElement;
+  if (!el) return false;
+  const tag = String(el.tagName || "").toUpperCase();
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  return el.isContentEditable === true;
+}
+
+/* Returns its own teardown so a test can prove the listeners come off again
+   (and so a future embedder can unwind it); `init()` installs one for the life
+   of the document and drops the handle. */
+function installKeyboardChrome(win) {
+  const w = win || (typeof window !== "undefined" ? window : null);
+  const vv = w && w.visualViewport;
+  const doc = w && w.document;
+  if (!vv || !doc || !doc.body || typeof vv.addEventListener !== "function") {
+    return () => {}; // no visualViewport (desktop Safari <13, jsdom, a test stub): never hide the bar
+  }
+  const apply = () => {
+    const open = keyboardIsOpen(w) && editableHasFocus(doc);
+    doc.body.classList.toggle("kb-open", open);
+  };
+  const onFocusOut = () => {
+    /* Runs BEFORE focus lands on the next element, so re-evaluate on the next
+       turn rather than reading a momentarily-empty activeElement. */
+    setTimeout(apply, 0);
+  };
+  vv.addEventListener("resize", apply);
+  /* `scroll` is the exact moment WebKit re-anchors fixed elements — the frame
+     Wyatt described the bar jumping in. Re-evaluating here means the class is
+     already on before the bar can be repainted in its new place. */
+  vv.addEventListener("scroll", apply);
+  doc.addEventListener("focusout", onFocusOut, true);
+  apply();
+  return () => {
+    vv.removeEventListener("resize", apply);
+    vv.removeEventListener("scroll", apply);
+    doc.removeEventListener("focusout", onFocusOut, true);
+    doc.body.classList.remove("kb-open");
+  };
+}
+
 async function init() {
   /* Storage hydration runs CONCURRENTLY with the first fetch, not before it: it
      is one IndexedDB read, so it costs nothing on the critical path, and it must
@@ -9414,6 +9538,13 @@ async function init() {
     else location.hash = "#/";
   });
   window.addEventListener("hashchange", route);
+  /* Hides #foray-player while a soft keyboard is up (founder report,
+     2026-09-13) — see installKeyboardChrome's header. Installed once for the
+     life of the document: the keyboard can open on any screen with a text
+     field, not just the show page's episode search, and the bar is global
+     chrome, so this is deliberately NOT per-route. The teardown handle is
+     dropped on purpose here; the suite calls it directly. */
+  installKeyboardChrome(window);
   /* `{ passive: true }`: this listener never calls preventDefault, and
      without the flag some browsers assume it might and delay scrolling to
      find out — passive says up front that scrolling can proceed immediately.
