@@ -278,8 +278,14 @@ export function assertModePresent(xml, mode) {
 
 /** The indentation used by the root dict's first key, so the inserted block
  *  matches the file rather than a guess about it. Capacitor's generated plist
- *  uses tabs; Xcode's UI rewrites with tabs too. */
-function rootIndent(xml, entries) {
+ *  uses tabs; Xcode's UI rewrites with tabs too.
+ *
+ *  EXPORTED for `ios-embedded-frameworks.mjs`, which inserts a root key into a
+ *  DIFFERENT plist (a vendored framework's) and needs the same "match the file
+ *  you found, do not impose a house style" rule. Copying four lines would have
+ *  been cheaper than this comment and is exactly how two indent rules start
+ *  disagreeing — see `workflow-yaml.mjs`'s header for the same argument. */
+export function rootIndent(xml, entries) {
   const first = entries[0];
   if (!first) return "\t";
   const lineStart = xml.lastIndexOf("\n", first.value.start) + 1;

@@ -1134,7 +1134,18 @@ const FLOORS = {
   "tools/mobile/inject-splash.test.mjs": 19,
   "tools/mobile/inject-background-audio.test.mjs": 41,
   "tools/mobile/ios-ci.test.mjs": 136, // +7: L-02 takeover verdict + reached needle (2026-09-10); +4: M-03 session needle (2026-09-12)
-  "tools/mobile/ios-workflow.test.mjs": 39,
+  /* The embedded-framework plist rules (2026-09-13). Release run 34739630705
+     archived, exported, and was REJECTED by App Store Connect: the ONNX Runtime
+     xcframework Microsoft ships carries no `MinimumOSVersion`, which altool
+     requires of every embedded framework (errors 90360/90530). Floored with no
+     slack, because two different things in here are one edit from silence — the
+     patch (which must refuse to report success when it found nothing to patch)
+     and the verify (which must refuse to pass when it cannot find the frameworks
+     it exists to check). The fixture is the real 613-byte upstream plist, so the
+     first test is evidence rather than restatement. */
+  "tools/mobile/ios-embedded-frameworks.test.mjs": 36,
+  "tools/mobile/ios-workflow.test.mjs": 43, // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
+
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent
@@ -1260,7 +1271,8 @@ const FLOORS = {
      shared build steps into. Registered the same day both suites were
      written, per R-02's own precedent for this map. */
   "tools/mobile/release-ci.test.mjs": 15,
-  "tools/mobile/release-workflow.test.mjs": 25,
+  "tools/mobile/release-workflow.test.mjs": 29, // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
+
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
      entirely one-directional: a verdict too generous reports a launch for a page

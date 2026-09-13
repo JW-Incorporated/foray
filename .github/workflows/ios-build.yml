@@ -177,6 +177,12 @@ jobs:
           echo "ART=$RUNNER_TEMP/ios-ci"   >> "$GITHUB_ENV"
           echo "DD_SIM=$RUNNER_TEMP/dd-sim" >> "$GITHUB_ENV"
           echo "DD_DEV=$RUNNER_TEMP/dd-dev" >> "$GITHUB_ENV"
+          # ONE resolved SwiftPM tree for both builds, at a path this workflow
+          # chooses rather than one Xcode derives from a hash of the project path.
+          # The MinimumOSVersion patch below has to find the downloaded
+          # onnxruntime.xcframework, and "wherever DerivedData put it" is not a
+          # location a build step can assert against.
+          echo "SPM_DIR=$RUNNER_TEMP/ios-spm" >> "$GITHUB_ENV"
           mkdir -p "$RUNNER_TEMP/ios-ci"
           { sw_vers; xcodebuild -version; echo "sqlite3 $(sqlite3 --version)"; pod --version; } \
             | tee "$RUNNER_TEMP/ios-ci/toolchain.txt"
@@ -359,6 +365,52 @@ jobs:
           node tools/mobile/inject-splash.mjs ios "$SPLASHSET" --check
           ls -l "$SPLASHSET" | tee "$ART/splashset.txt"
 
+      - name: Give the embedded ONNX Runtime framework the MinimumOSVersion Apple requires
+        # THE STEP THAT WOULD HAVE SAVED RELEASE RUN 34739630705. That build
+        # compiled, archived, exported — and died in `altool` with error 90360:
+        # `App.app/Frameworks/onnxruntime.framework` has no `MinimumOSVersion`.
+        # The key is missing from Microsoft's own xcframework slice, not from our
+        # embed (`tools/mobile/ios-embedded-frameworks.mjs` carries the evidence
+        # and the two things that would retire this step).
+        #
+        # IT RUNS BEFORE ANY xcodebuild, on the RESOLVED SwiftPM artifact, because
+        # at that moment nothing is signed: Xcode then embeds an already-correct
+        # plist and signs it itself. Patching the built bundle instead would break
+        # the framework's seal and the app's with it.
+        #
+        # THE SAME STEP IS IN `.github/actions/ios-archive`, which is a THIRD
+        # build path and the one that makes the founder's TestFlight artifact.
+        # #675 verified `ios-kit` and `ios-shell`; neither archives or uploads,
+        # which is exactly how this reached Apple.
+        run: |
+          set -euo pipefail
+          xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App \
+            -clonedSourcePackagesDirPath "$SPM_DIR" \
+            -resolvePackageDependencies > "$ART/spm-resolve.log" 2>&1 \
+            || { tail -50 "$ART/spm-resolve.log"; exit 1; }
+          # Read the deployment target off the project rather than hardcoding it:
+          # a framework may declare an OLDER floor than the app but never a newer
+          # one, and the verify step below asserts exactly that relationship.
+          xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App -configuration Release \
+            -sdk iphoneos -clonedSourcePackagesDirPath "$SPM_DIR" \
+            -showBuildSettings > "$ART/build-settings.txt" 2>/dev/null
+          # `head -1` takes the scheme's own target, which xcodebuild prints
+          # first. If that ever stops being true the value lands too HIGH and the
+          # verify step below says so by name — it is not a silent wrong answer.
+          MIN_OS=$(sed -n 's/^ *IPHONEOS_DEPLOYMENT_TARGET = //p' "$ART/build-settings.txt" | head -1)
+          test -n "$MIN_OS"
+          echo "IPHONEOS_DEPLOYMENT_TARGET is $MIN_OS"
+          # The failure mode worth printing for: the patcher REFUSES to report
+          # success when it found nothing to patch, and the only reason that
+          # happens is the resolved artifact not being where we pointed it. Print
+          # the tree so the next reader can see where Xcode actually put it.
+          node tools/mobile/ios-embedded-frameworks.mjs patch "$SPM_DIR" --min-os "$MIN_OS" \
+            | tee "$ART/framework-plist-patch.txt" \
+            || { echo "::group::$SPM_DIR"; find "$SPM_DIR" -maxdepth 4 -type d; echo "::endgroup::"; exit 1; }
+          # Apple's own parser on our output, the second opinion every other
+          # plist edit in this workflow gets.
+          find "$SPM_DIR" -name Info.plist -path "*.framework/*" -print0 | xargs -0 -n1 plutil -lint
+
       - name: Build for the iOS Simulator (unsigned by construction)
         # The primary build verdict, and the artefact the probes run in. A
         # simulator build needs no signing identity at all, which is why it is
@@ -369,7 +421,7 @@ jobs:
           if ! xcodebuild \
               "$XC_FLAG" "$XC_PATH" -scheme App -configuration Debug \
               -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-              -derivedDataPath "$DD_SIM" \
+              -derivedDataPath "$DD_SIM" -clonedSourcePackagesDirPath "$SPM_DIR" \
               CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
               build > "$ART/xcodebuild-simulator.log" 2>&1; then
             echo "::group::xcodebuild (simulator) tail"; tail -300 "$ART/xcodebuild-simulator.log"; echo "::endgroup::"
@@ -423,13 +475,34 @@ jobs:
           if ! xcodebuild \
               "$XC_FLAG" "$XC_PATH" -scheme App -configuration Release \
               -sdk iphoneos -destination 'generic/platform=iOS' \
-              -derivedDataPath "$DD_DEV" \
+              -derivedDataPath "$DD_DEV" -clonedSourcePackagesDirPath "$SPM_DIR" \
               CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
               build > "$ART/xcodebuild-device.log" 2>&1; then
             echo "::group::xcodebuild (device) tail"; tail -300 "$ART/xcodebuild-device.log"; echo "::endgroup::"
             exit 1
           fi
           grep -E "^\*\* BUILD (SUCCEEDED|FAILED)" "$ART/xcodebuild-device.log" | tail -1
+
+      - name: Every embedded framework carries what App Store Connect requires
+        # THE GUARD, and it is a different claim from the patch step above. That
+        # one says our bytes are in the resolved SwiftPM artifact; this one says
+        # Xcode EMBEDDED them — read off the arm64/Release `App.app`, which is the
+        # same assembly a TestFlight archive produces. Between the two sits the
+        # embed phase, which can copy a slice we never patched.
+        #
+        # RUN HERE, ON EVERY PR THAT TOUCHES mobile/, because this is the cheapest
+        # place the check exists at all: the release path has the same step, but a
+        # release run happens on a tag, after review, which is precisely when
+        # finding this is most expensive. The next embedded binary with a thin
+        # plist goes red here rather than at Apple.
+        #
+        # macOS-ONLY, and honestly so: it reads BINARY plists through `plutil`.
+        # The decisions it makes are unit-tested on Windows in
+        # tools/mobile/ios-embedded-frameworks.test.mjs; only the read is not.
+        run: |
+          set -euo pipefail
+          node tools/mobile/ios-embedded-frameworks.mjs verify \
+            "$DD_DEV/Build/Products/Release-iphoneos/App.app" | tee "$ART/embedded-frameworks.txt"
 
       # ── the two measurements ────────────────────────────────────────────────
 

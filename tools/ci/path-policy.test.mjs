@@ -223,6 +223,21 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // to a bad build, not an unread security-relevant change. Found while fixing
   // PR #501's gate scan (kanban t_5458c0a2).
   "tools/mobile/version.mjs": "no auth/secret bypass; worst case is a mislabeled version or a failed (red) upload, not a silent bad deploy",
+  // Writes `MinimumOSVersion` into a vendored framework's Info.plist before the
+  // build (`patch`), and asserts the embedded result afterwards (`verify`).
+  // Same risk class as version.mjs directly above, and for the same reason:
+  // neutering either half cannot reach a secret, cannot change which BINARY
+  // ships (fetch-models.mjs / inject-models.mjs are denied for that, two
+  // entries up — this script never touches an executable, only five metadata
+  // keys), and cannot ship anything wrong silently. The ONLY thing a
+  // `process.exit(0)` here buys is the failure we already had: App Store
+  // Connect rejecting the upload with error 90360, a red run at the end of a
+  // release rather than the start of one. That is a worse afternoon, not an
+  // unread security-relevant change. It is the OPPOSITE of the icon/splash
+  // entries in DENIED_PREFIXES, whose silent failure ships a wrong picture to
+  // the store with nothing red anywhere.
+  "tools/mobile/ios-embedded-frameworks.mjs":
+    "framework Info.plist metadata only; no secret, no binary choice, and its silent failure is a RED altool rejection rather than a bad ship",
 };
 
 /* Every `.github/workflows/*.yml` file, not just ci.yml — a gate script run

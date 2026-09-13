@@ -923,3 +923,71 @@ test("the built bundle is checked for the icon, not only the source catalog", ()
 });
 
 
+
+/* ─────────── the embedded ONNX Runtime framework's Info.plist (#675) ─────── */
+
+test("the MinimumOSVersion patch runs after the project is generated and BEFORE any xcodebuild build", () => {
+  /* Release run 34739630705 archived, exported, and died in `altool` with error
+     90360: `App.app/Frameworks/onnxruntime.framework` has no `MinimumOSVersion`.
+     The patch has to land on the RESOLVED SwiftPM artifact before anything is
+     compiled or signed, because Xcode embeds that plist verbatim and then signs
+     the bundle around it — a patch after the build would break the seal.
+     MUTATION: move the step below the simulator build -> both builds embed the
+     unpatched slice and this fails. RUN. */
+  const at = (fragment) => {
+    const i = WF.indexOf(`- name: ${fragment}`);
+    assert.ok(i > 0, `step not found: ${fragment}`);
+    return i;
+  };
+  const patch = at("Give the embedded ONNX Runtime framework the MinimumOSVersion");
+  assert.ok(patch > at("Build the webDir and generate the iOS project"), "the patch runs before the project exists");
+  assert.ok(patch < at("Build for the iOS Simulator"), "the patch runs after a build that would have embedded the unpatched slice");
+  assert.ok(patch < at("Build for a real device"), "the patch runs after the device build");
+});
+
+test("the patch and BOTH builds share one resolved SwiftPM directory", () => {
+  /* THE ONE-EDIT DEFEAT THIS EXISTS FOR. Drop `-clonedSourcePackagesDirPath` from
+     a build and Xcode resolves its own copy into DerivedData — a second,
+     unpatched onnxruntime.xcframework — while the patch step still reports
+     success against the directory nothing reads. Green, and the upload still
+     fails. */
+  const s = step(WF, "Give the embedded ONNX Runtime framework the MinimumOSVersion") ?? "";
+  assert.match(s, /-resolvePackageDependencies/, "package resolution never runs, so there is nothing to patch");
+  const clones = xcodebuildInvocations(WF).filter((c) => !/-version/.test(c));
+  assert.ok(clones.length >= 4, `expected the resolve, the settings read and two builds, found ${clones.length}`);
+  for (const c of clones) {
+    assert.match(c, /-clonedSourcePackagesDirPath "\$SPM_DIR"/,
+      `an xcodebuild invocation resolves its own packages instead of the patched tree: ${c}`);
+  }
+});
+
+test("the deployment target is READ off the project, never written into the workflow", () => {
+  /* A hardcoded `--min-os 15.0` is correct exactly until IPHONEOS_DEPLOYMENT_TARGET
+     moves, and then it is a framework that claims to need a newer system than the
+     app embedding it — which Apple rejects, and which the verify step is written to
+     catch. Read it instead. MUTATION: `--min-os 15.0` -> fails here. */
+  const s = commandsOnly(step(WF, "Give the embedded ONNX Runtime framework the MinimumOSVersion") ?? "");
+  assert.match(s, /IPHONEOS_DEPLOYMENT_TARGET/, "the deployment target is not read from the project");
+  assert.match(s, /--min-os "\$MIN_OS"/, "the patch is handed something other than the value just read");
+  assert.equal(/--min-os \d/.test(s), false, "a literal version is hardcoded into the patch step");
+});
+
+test("the BUILT device bundle is checked for the keys App Store Connect requires", () => {
+  /* TWO DIFFERENT CLAIMS, exactly like the icon pair above: the patch says our
+     bytes are in the resolved artifact, this says Xcode EMBEDDED them. Between
+     them sits the embed phase. It reads the arm64/Release app because that is the
+     assembly a TestFlight archive produces; the Debug simulator bundle is a
+     different one.
+     MUTATION: point it at "$DD_SIM/Build/Products/Debug-iphonesimulator/App.app"
+     -> fails here. MUTATION: delete the step -> fails here. RUN. */
+  const s = step(WF, "Every embedded framework carries what App Store Connect requires") ?? "";
+  assert.ok(s, "nothing checks the built bundle's embedded frameworks");
+  assert.match(s, /ios-embedded-frameworks\.mjs verify/, "the verify subcommand is never run");
+  assert.match(s, /"\$DD_DEV\/Build\/Products\/Release-iphoneos\/App\.app"/,
+    "the check reads something other than the Release device bundle");
+  assert.equal(
+    /continue-on-error/.test(s),
+    false,
+    "the embedded-framework check carries continue-on-error, so a rejectable bundle would not fail the job"
+  );
+});
