@@ -203,8 +203,12 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
                 withInputs: ["input_ids": idsValue, "style": styleValue, "speed": speedTensor],
                 outputNames: [outputName],
                 runOptions: nil)
-            guard let audio = outputs[outputName],
-                  let data = try audio.tensorDataWithError() as Data? else { return 0 }
+            /* `tensorDataWithError:` arrives in Swift as a throwing
+               `tensorData()` — the ObjC-to-Swift error translation drops the
+               `WithError:` suffix and the out-parameter. Spelled the ObjC way
+               it does not compile. */
+            guard let audio = outputs[outputName] else { return 0 }
+            let data = try audio.tensorData() as Data
             /* The samples are COUNTED AND DROPPED. K-01 measures speed, memory
                and whether the passage survives a locked screen; what it sounds
                like is K-03's audition, rendered on a workstation from the same
