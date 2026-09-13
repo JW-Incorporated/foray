@@ -1,11 +1,11 @@
 {
-  "deploy_id": "9f52eeefc6d8e76f",
+  "deploy_id": "621df4d63435539c",
   "files": {
-    "app.js": "sha256:3a39c46fc3eb1c731d4cb24baf5258d96febc799e8e15cdef2cee02466f65882",
+    "app.js": "sha256:bf77e43f7d2c15bed27b2153cef7a7f315659230f9a1c39b4dfc0c506a382d91",
     "data/catalog-client.json": "sha256:734c542d08decc62fd401593cbf19c25216c366fe99ebc86fce2192dcf9d85c4",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:4e50f24a3829ca6f9264a13ae6ea327d0acaa2a0b898ba1e13b5c97aa53ea3b7",
-    "data/forays-directory.json": "sha256:24701615b2be8d2cf7bc16ef0fff800d2d447742efcf12685d5236792b76fbff",
+    "data/forays-directory.json": "sha256:517aeb734c6597db23623b77be45a9e1c4bd601b3006b9d3e4939b7ca33ca196",
     "data/forays.json": "sha256:e2fe2e76371261c335814f0387cbb70de78aba1fe82f186c009e29c2a2854c61",
     "data/item-tags.json": "sha256:d4a1eccdbf270a4982cf79c6f737e68052b80a91569bbe45aba70ce576d6c064",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
@@ -46,6 +46,6 @@
     "player/strip-scrub-gesture.js": "sha256:88415f256049ee1ac96c6738651819d3b1c76161f6fe685dc6eaeab71b0d487e",
     "player/tts-bridge.js": "sha256:3624d19408abb0cbede260d358681685698c506509837f2b593cda58de4217c2",
     "search-engine.js": "sha256:2052d0222334686fa62de740b0dc207b33efd67de0b6ad7634bcc68f51d5c168",
-    "styles.css": "sha256:eecec87c7c933d0d6147a877d515101b13e8299ea48e784fd4f66e283d087540"
+    "styles.css": "sha256:5628b700aa8ff2fd5ce9f0cee3a3d8f383b2dbd3a202646e27d66185e9d3d9e7"
   }
 }
