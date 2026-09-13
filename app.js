@@ -8857,11 +8857,90 @@ function renderCurrentPage() {
   renderTabBar();
 }
 
+/* ---------- a new page starts at the top ----------
+
+   Wyatt (2026-09-13, live bug report): "Clicking on a show jumps to a random
+   point on the show page (I think it is retaining the screen position from
+   the previous page), it should start at the top". His diagnosis is exactly
+   right, and it is not specific to shows — measured in Chrome against this
+   build: scrolled to 1500 on `#/shows`, tapping a show landed on the show
+   page at 457, which is not a random number but the previous page's offset
+   clamped to the shorter new document. Routing here is hash-only, a hash
+   change is a same-document navigation, and the browser has no reason to
+   move the viewport for one. Nothing in the router ever did it either — the
+   only scroll code in this file before today is the collapsing header's.
+
+   So: every FORWARD navigation lands at the top, for every route, not just
+   shows.
+
+   THE EXCEPTION IS REAL AND IS PRESERVED. Going BACK to a list you were
+   scrolled into must return you to where you were — a blanket `scrollTo(0, 0)`
+   here would make the four-tap-deep browse that `navStack` exists to support
+   useless. `noteNavigation` already knows which kind of step this is (it pops
+   for a back-step and pushes for a forward one), so it now says so, and a
+   back-step lands on the remembered position instead of the top.
+
+   WHY THE RESTORE IS OURS AND NOT THE BROWSER'S. The browser's own
+   restoration is real but it is a RACE, and adding a scroll reset to the
+   forward path is enough to lose it. Measured, same build, same three taps:
+   on `main`, back from a show to `#/shows` restored 4000; with a plain
+   `scrollTo(0, 0)` on the forward step it restored 457 instead — 4000 clamped
+   to the SHOW page's much shorter document, because the browser applies the
+   restore against whatever is on screen at that instant and our re-render has
+   not happened yet. Whether it later retries once the list is tall again is
+   timing, not contract. So the exception is preserved by keeping the position
+   ourselves and applying it AFTER the page renders, which is deterministic and
+   can be tested; it also covers a page the browser never recorded at all. */
 function route() {
   if (!state.ready) return;
-  noteNavigation(location.hash);
+  const h = location.hash || "#/";
+  const step = noteNavigation(h);
+  /* Read BEFORE the render: renderCurrentPage() replaces #view's innerHTML,
+     and a shorter page clamps window.scrollY on the spot. */
+  const target = step === "back" ? (navScrollY.get(h) || 0) : 0;
+  renderedHash = h;
+  /* To the top first, THEN render: the new page is laid out with the viewport
+     already where it is going rather than painted and yanked. */
+  scrollPageTo(0);
   openDrawer(false);
   renderCurrentPage();
+  if (target > 0) scrollPageTo(target);
+}
+
+/* ---------- where a list was left, so ‹ can put you back ----------
+
+   Recorded continuously rather than at the moment of navigation, because by
+   the time `hashchange` fires on a back-step the browser may already have
+   moved the viewport — the position we want is gone before anything here runs.
+   The scroll listener already installed for the collapsing header ticks once
+   per animation frame, so this costs one Map write per frame of scrolling and
+   nothing at all when nobody is scrolling.
+
+   Keyed by hash, so it also survives a route being reached twice by different
+   paths, and unbounded only in the sense that the app has a fixed, small set
+   of routes plus one entry per show/episode/playlist actually visited in a
+   session — the same cardinality `navStack` already lives with. */
+const navScrollY = new Map();
+let renderedHash = null;
+
+function rememberScrollPosition() {
+  if (renderedHash === null) return;
+  navScrollY.set(renderedHash, window.scrollY || 0);
+}
+
+/* `window.scrollTo` is guarded because this file is also loaded under node:vm
+   by several suites whose window stub has no scrolling at all — a router that
+   throws there would take every one of them down for a cosmetic reason.
+
+   `resetPageHeadScrollState()` afterwards re-baselines the collapsing header
+   against the position we just moved to. Without it, landing at 1200 on a
+   restored list reads as a 1200px downward scroll on the next real scroll
+   event and collapses a header the listener never scrolled. */
+function scrollPageTo(y) {
+  try {
+    if (typeof window.scrollTo === "function") window.scrollTo(0, y);
+  } catch (_) { /* a viewport we cannot move is not a reason to lose the page */ }
+  resetPageHeadScrollState();
 }
 
 /* ---------- in-app history: what the ‹ button does ----------
@@ -8894,11 +8973,23 @@ function route() {
    href and goes Home, which is the correct behavior for a cold open. */
 const navStack = [];
 
+/** Records the step and REPORTS WHICH KIND IT WAS: "back" for a step the
+    stack recognises as the page behind this one, "same" for a re-render of the
+    hash already on top of the stack, "forward" for everything else.
+
+    The return value is new; the bookkeeping is not one line different. It
+    exists because route() needs to know the same thing this function already
+    had to work out in order to decide whether to scroll the new page to the
+    top — a back-step must keep the browser's own restored position (see
+    route()'s comment), and re-deriving that from the stack at the call site
+    would be a second, drifting copy of the rule below. */
 function noteNavigation(hash) {
   backPending = false;
   const h = hash || "#/";
-  if (navStack.length >= 2 && navStack[navStack.length - 2] === h) navStack.pop();
-  else if (navStack[navStack.length - 1] !== h) navStack.push(h);
+  if (navStack.length >= 2 && navStack[navStack.length - 2] === h) { navStack.pop(); return "back"; }
+  if (navStack[navStack.length - 1] === h) return "same";
+  navStack.push(h);
+  return "forward";
 }
 
 function canGoBackInApp() { return navStack.length > 1; }
@@ -9293,6 +9384,15 @@ async function init() {
     if ((location.hash || "#/") === "#/") renderHome();
     else location.hash = "#/";
   });
+  /* The router owns the viewport now (see route()), so the browser must stop
+     owning it too. Left on "auto", its own restoration lands a beat AFTER
+     ours and overwrites it — measured: with the restore in route() but this
+     line missing, a back-step to `#/shows` still ended at 457 rather than the
+     remembered 4000, because the browser re-applied its own clamped answer
+     after the page had rendered. Guarded because `scrollRestoration` is
+     absent on older WebKit, where "auto" is all there is and route()'s own
+     restore is simply the last write instead of the losing one. */
+  try { if ("scrollRestoration" in history) history.scrollRestoration = "manual"; } catch (_) {}
   window.addEventListener("hashchange", route);
   /* `{ passive: true }`: this listener never calls preventDefault, and
      without the flag some browsers assume it might and delay scrolling to
@@ -9304,7 +9404,15 @@ async function init() {
   window.addEventListener("scroll", () => {
     if (scrollScheduled) return;
     scrollScheduled = true;
-    requestAnimationFrame(() => { scrollScheduled = false; onWindowScroll(); });
+    requestAnimationFrame(() => {
+      scrollScheduled = false;
+      onWindowScroll();
+      /* Piggy-backed on the same throttled tick rather than given a second
+         scroll listener: both want exactly "the current position, once per
+         frame", and two listeners for one fact is how they drift. See
+         rememberScrollPosition() — this is what the ‹ button reads. */
+      rememberScrollPosition();
+    });
   }, { passive: true });
 }
 

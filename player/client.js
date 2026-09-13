@@ -114,6 +114,7 @@ import {
   BUBBLE_SCALE, BUBBLE_WIDTH, BUBBLE_HEIGHT, BUBBLE_GAP_PX,
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
+import { startDrag, moveDrag, endDrag, dragOffset } from "./sheet-drag-dismiss.js";
 import { createDurableStore } from "./durable-store.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
@@ -504,12 +505,61 @@ function buildUI() {
   const fill = el("div", "fp-fill");
   progress.append(fill);
 
-  bar.append(art, info, playBtn, closeBtn);
+  /* The ✕ is NOT on this row any more. U-13 put it here and hid it unless the
+     sheet was expanded, which worked while the sheet was a 340px panel docked
+     above the bar. Now that the sheet covers the whole screen the bar is
+     BEHIND it, so a ✕ living here would be a control that exists, is styled
+     visible, and can never be touched — the exact "dead target" defect U-13's
+     own comment set out to remove. It moves into the sheet's grab row below,
+     which is the only place it can be both visible and hit-testable, and is
+     also where the sheet's other dismiss affordances now are. */
+  bar.append(art, info, playBtn);
   root.append(progress, bar);
 
-  /* expanded sheet */
+  /* ---------- the Now Playing sheet ----------
+
+     Wyatt (2026-09-13, live bug report): "when I click on the now playing
+     episode, it should pop up with the page for the episode, same as Apple
+     Podcasts, starting at the top with the 'album artwork' or whatever that
+     is. That window should then be scrollable... Also, I should be able to
+     drag that page down from the top to return to what I was looking at
+     previously."
+
+     Three structural facts follow from that, and all three are in this
+     builder rather than in styles.css, because they are about what the sheet
+     IS, not how it is painted:
+
+       - IT HAS ITS OWN SCROLLER. `.fp-sheet` is the fixed full-height
+         surface and never scrolls; `.fp-sheet-scroll` inside it is the only
+         thing that does. Before this the sheet had no scroller at all, so
+         "the whole screen" was whatever page happened to be underneath it at
+         whatever position that page was left at — which is exactly the
+         "bottom part of the transcript" in the report.
+       - ITS FIRST CHILD IS THE ARTWORK. Not the title: the report names the
+         artwork specifically, and it is also the thing that makes a sheet
+         read as "this episode" at a glance from a car cradle.
+       - IT HAS A GRAB HANDLE, which is a drag target and not a button. The
+         gesture itself is `player/sheet-drag-dismiss.js` (pure, tested);
+         this is only the element it is measured against. */
   const sheet = el("div", "fp-sheet");
   sheet.hidden = true;
+  /* `.fy-grab` is the app's existing grabber (the reason sheet, the feedback
+     sheet, the delete sheet and the voice sheet all already paint one) —
+     reused by class rather than restyled under a new name, so a fifth sheet
+     in this app cannot look like a different product. The zone around it is
+     this file's own: it needs `touch-action: none` to receive a vertical
+     drag, and the 4px bar itself is far too small a target for a thumb. */
+  const grabZone = el("div", "fp-grab-zone");
+  /* The handle, and beside it the ✕ that used to live on the mini bar. A drag
+     is not discoverable and is not available to everyone — a visible, labelled
+     dismiss control next to the gesture is what keeps the sheet closeable with
+     a switch, a keyboard or a screen reader. Same element, same
+     `aria-label`, same handler as before; only its parent changed. */
+  grabZone.append(el("div", "fy-grab"), closeBtn);
+  const scroll = el("div", "fp-sheet-scroll");
+  const sArt = el("img", "fp-s-art");
+  sArt.alt = "";
+  sArt.hidden = true;
   const sTitle = el("h2", "fp-s-title");
   const sShow = el("p", "fp-s-show");
   const sWhy = el("p", "fp-s-why");
@@ -564,15 +614,50 @@ function buildUI() {
 
   const note = el("p", "fp-note");
 
-  sheet.append(sTitle, sShow, sWhy, scrub, times, row, row2, note);
+  /* The publisher's own description, LAST. It is the longest thing here and
+     the only reason the sheet needs to scroll at all, so putting it under the
+     transport is what keeps play/pause and the scrub bar reachable without
+     scrolling — the same order the `#/episode/:id` page uses, and the same
+     order Apple Podcasts uses. Empty-and-hidden when the item carries no
+     description, because a heading over nothing is worse than an absence. */
+  const sDesc = el("p", "fp-s-desc");
+  sDesc.hidden = true;
+
+  scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, row2, note, sDesc);
+  sheet.append(grabZone, scroll);
   root.append(sheet);
   document.body.append(root);
 
   return {
     root, bar, art, title, show, playBtn, closeBtn, fill, sheet,
+    grabZone, scroll, sArt, sDesc,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
     rateBtn, openLink, forayLink, stopBtn, collapse, info, note,
   };
+}
+
+/** How far down the Now Playing sheet is currently pulled, in CSS px.
+ *
+ *  Written as a CUSTOM PROPERTY rather than as `transform` directly, so
+ *  styles.css keeps the whole transform — including the transition that
+ *  springs the sheet back — and this file only ever supplies one number. That
+ *  is the same division `segment-strip.js` already documents for its own
+ *  `style.setProperty()` writes: a CSSOM call, never a `style` attribute, so
+ *  the strict CSP (`style-src 'self'`, no inline styles) is untouched.
+ *
+ *  Zero is the resting state and is written as `0px` rather than removed, so
+ *  the property always parses — an unset custom property would fall back to
+ *  the `var()` default and work, but a MIS-set one would silently invalidate
+ *  the whole transform, and "always a length" is the cheaper invariant. */
+function setSheetDragOffset(px) {
+  if (!ui || !ui.sheet) return;
+  const n = Number(px);
+  ui.sheet.style.setProperty("--fp-sheet-dy", `${Number.isFinite(n) && n > 0 ? n : 0}px`);
+  /* No spring-back transition WHILE a finger is on it: the sheet must track
+     the thumb exactly, and a transition on every pointermove turns that into
+     lag. The class goes on for the duration of the drag and comes off when it
+     rests, which is when the transition should apply. */
+  ui.sheet.classList.toggle("fp-sheet-dragging", Number.isFinite(n) && n > 0);
 }
 
 /* ---------- state -> DOM ---------- */
@@ -964,9 +1049,22 @@ function setNowPlaying(item, why) {
   if (item.artwork_url) {
     ui.art.src = item.artwork_url;
     ui.art.hidden = false;
+    /* The same URL, the same gate: the sheet's artwork is the mini bar's
+       artwork at full size, never a second source that could disagree with
+       it. Assigned through `src` on an element built by createElement, like
+       every other field here — there is no HTML-string path in this file for
+       a third-party URL to escape through. */
+    ui.sArt.src = item.artwork_url;
+    ui.sArt.hidden = false;
   } else {
     ui.art.hidden = true;
+    ui.sArt.hidden = true;
+    ui.sArt.removeAttribute("src");
   }
+  /* `textContent`, so an RSS description's own markup is text and not DOM —
+     the rule this whole file is built on (see the header). */
+  ui.sDesc.textContent = item.description || "";
+  ui.sDesc.hidden = !item.description;
   if (item.id) {
     // Our own route, built from our own id — mirrors ui.forayLink below:
     // an in-app hash change, never target="_blank".
@@ -1409,9 +1507,34 @@ function bind() {
      else that used to (the mini bar's ✕) now collapses instead. */
   ui.stopBtn.addEventListener("click", () => stopAndClose());
 
+  /* OPENING IS ALWAYS FROM THE TOP (founder report, 2026-09-13: "it should
+     pop up ... starting at the top with the album artwork"). The sheet's
+     scroller is a long-lived element — it is built once, at module
+     evaluation, and reused for every episode — so it REMEMBERS where it was
+     left. Without this line, the second open of the sheet resumes at
+     whatever offset the first one ended at, and an episode with a long
+     description opens on the middle of that description with the artwork
+     scrolled off the top. That is the same class of defect as the router's
+     leaked scroll position in app.js, in a different container.
+
+     Written on the way OPEN rather than on the way closed, deliberately: a
+     reset on close would be equally correct today and would silently stop
+     being enough the day anything else can scroll this element (a resume
+     restore, a "jump to the chapter you are in"). "Every open starts at the
+     top" is the promise; make it where the promise is kept.
+
+     AND IT MUST BE THE LAST LINE, AFTER THE UNHIDE. A `display: none` element
+     has no scrollport: the assignment is silently dropped and the browser
+     restores the old offset the moment the element is shown again. Measured
+     in Chrome with this line first: open the sheet, scroll 400px down the
+     description, close, reopen — `scrollTop` read back 400, which is the
+     founder's exact "opens on the bottom part of the transcript", now caused
+     by the fix for it. Moving the line below `hidden = false` makes it 0. */
   const setExpanded = (open) => {
+    setSheetDragOffset(0);
     ui.sheet.hidden = !open;
     document.body.classList.toggle("fp-expanded", open);
+    if (open) ui.scroll.scrollTop = 0;
   };
   ui.info.addEventListener("click", () => setExpanded(ui.sheet.hidden));
   ui.collapse.addEventListener("click", () => setExpanded(false));
@@ -1425,6 +1548,70 @@ function bind() {
   // hash route too, not target="_blank", the sheet must not linger open
   // over the page it navigates to.
   ui.openLink.addEventListener("click", () => setExpanded(false));
+
+  /* ---------- drag the sheet down to dismiss it ----------
+
+     Wyatt: "I should be able to drag that page down from the top to return to
+     what I was looking at previously." The decision — how far is far enough,
+     what counts as a flick, whether this gesture is even eligible — is
+     `player/sheet-drag-dismiss.js`, pure and tested. Everything here is the
+     three things only a real browser can supply: the events, the transform,
+     and the answer to "is the scroller at its top".
+
+     LISTENERS ARE ON THE WHOLE SHEET, not only the handle, because Apple's
+     sheet comes down when you pull anywhere in a body that is already at the
+     top — and because a handle alone is a 36px target on a 800px surface. The
+     eligibility rule (`fromHandle || atTop`, read ONCE at pointerdown) is
+     what keeps that from stealing the scroller's own gesture: a pull that
+     starts halfway down a long description is a scroll, forever, no matter
+     where it ends up.
+
+     `pointer` events rather than `touch`: the same choice the strip's own
+     scrub gesture makes in app.js, and the one that makes this testable with
+     a mouse in a desktop browser as well as a thumb on a phone. */
+  let drag = null;
+  ui.sheet.addEventListener("pointerdown", (e) => {
+    if (ui.sheet.hidden) return;
+    /* A press that lands on a control is that control's, never the sheet's.
+       Without this, starting a scrub by pressing the range thumb and pulling
+       slightly down would begin dismissing the sheet underneath it. */
+    if (e.target && typeof e.target.closest === "function"
+        && e.target.closest("button, a, input, select, textarea")) return;
+    const fromHandle = !!(e.target && typeof e.target.closest === "function"
+      && e.target.closest(".fp-grab-zone"));
+    drag = startDrag(e.clientY, e.timeStamp, {
+      fromHandle,
+      atTop: (ui.scroll.scrollTop || 0) <= 0,
+    });
+  });
+  ui.sheet.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const next = moveDrag(drag, e.clientY, e.timeStamp);
+    drag = next;
+    const offset = dragOffset(next);
+    setSheetDragOffset(offset);
+    /* Once the sheet is actually moving, the scroller must stop competing for
+       the same finger. `touch-action: none` on the grab zone covers a drag
+       that STARTED there; this covers one that started on the body at
+       scrollTop 0, which the scroller would otherwise rubber-band. */
+    if (offset > 0 && e.cancelable) e.preventDefault();
+  });
+  const endSheetDrag = () => {
+    if (!drag) return;
+    const { dismiss } = endDrag(drag);
+    drag = null;
+    if (dismiss) setExpanded(false);
+    else setSheetDragOffset(0);
+  };
+  ui.sheet.addEventListener("pointerup", endSheetDrag);
+  /* A cancelled pointer (the browser took it for a system gesture, the finger
+     left the screen edge) is a release that never happened — spring back
+     rather than dismiss, because nobody decided anything. */
+  ui.sheet.addEventListener("pointercancel", () => {
+    if (!drag) return;
+    drag = null;
+    setSheetDragOffset(0);
+  });
 
   // In a Foray these are previous/next SEGMENT, not ±15/30 s: a segment here is
   // often under two minutes, so a 30-second nudge mostly leaves it anyway, and

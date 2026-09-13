@@ -260,6 +260,11 @@ body {
        20  .topbar            the fixed header  (also .fy-strip-bubble)
        55  .tab-bar           the four-tab bar (U-02)
        60  #foray-player      mini bar AND the expanded Now Playing sheet
+                              (the sheet is a FULL-HEIGHT overlay since the
+                               2026-09-13 report and paints inside this
+                               element's own stacking context, so it covers
+                               the mini bar without needing a number of its
+                               own — and is still under the drawer, below)
        70  .fy-sheet          the per-segment reason sheet (modal)
     -> 80  #drawer-overlay     var(--z-drawer)
        81  #drawer             var(--z-drawer) + 1, so the panel is over its
@@ -1133,16 +1138,15 @@ button.up-next-remove {
    is scoped to `.fp-open`, which client.js removes in `stopAndClose()`, so
    stopping takes the reservation with it rather than leaving a dead gap. */
 :root {
-  /* The room the collapsed mini bar needs, and the room the expanded sheet
-     needs, as tokens rather than two magic numbers repeated across the four
-     rules below. Unchanged values: these are the numbers that were inline.
-     Each is the bar/sheet box ONLY -- the safe-area inset is added by the
-     rules, never folded in here, so it is applied exactly once. */
+  /* The room the collapsed mini bar needs, as a token rather than a magic
+     number repeated across the rules below. Unchanged value: this is the
+     number that was inline. It is the bar box ONLY -- the safe-area inset is
+     added by the rules, never folded in here, so it is applied exactly once.
+     Its `--fp-sheet-h` sibling is gone: the expanded sheet is a full-height
+     overlay now and reserves nothing (see `.fp-sheet`). */
   --fp-bar-h: 96px;
-  --fp-sheet-h: 340px;
 }
 body.fp-open { padding-bottom: calc(var(--fp-bar-h) + env(safe-area-inset-bottom)); }
-body.fp-open.fp-expanded { padding-bottom: calc(var(--fp-sheet-h) + env(safe-area-inset-bottom)); }
 
 #foray-player {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
@@ -1206,16 +1210,19 @@ body.ui-v2 .tab-btn[aria-current="page"] { color: var(--amber); }
    transport. Bumping #foray-player's own `bottom` by the bar's reserved
    height is what "docked above" means in a fixed-position layout; the
    content reservation below stacks the tab-bar's height UNDERNEATH the
-   existing fp-open reservation (96px/340px) rather than replacing it,
-   because both are real space something now occupies. */
+   existing fp-open reservation (96px) rather than replacing it,
+   because both are real space something now occupies.
+
+   There is no longer a `.fp-expanded` variant of that reservation: since the
+   2026-09-13 founder report the expanded Now Playing sheet is a full-height
+   OVERLAY (see `.fp-sheet` below), so it occupies no page space to reserve —
+   the mini bar's 96px is the only bottom furniture the page ever has to
+   account for, open or closed. */
 body.ui-v2.fp-open #foray-player {
   bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
 }
 body.ui-v2.fp-open {
   padding-bottom: calc(var(--fp-bar-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
-}
-body.ui-v2.fp-open.fp-expanded {
-  padding-bottom: calc(var(--fp-sheet-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
 }
 .fp-progress { height: 3px; background: var(--surface-2); }
 .fp-fill { height: 100%; width: 0; background: var(--accent); transition: width .25s linear; }
@@ -1253,13 +1260,143 @@ body.ui-v2.fp-open.fp-expanded {
    a UA-stylesheet rule and ANY author `display` declaration beats it (the trap
    test/home-layout.test.js's BUG 3 documents and app.js's `renderTabBar` comment
    restates). `.fp-play, .fp-close` declares no `display` today, so `hidden` would
-   work — and would silently stop working the day one is added. */
+   work — and would silently stop working the day one is added.
+
+   STILL TRUE, NOW BELT-AND-BRACES: since 2026-09-13 the ✕ lives inside
+   `.fp-sheet` itself (client.js's grab row), and a collapsed sheet is
+   `hidden`, so the control is already gone when the bar is collapsed. This
+   rule stays because it is the one that states the INTENT — "the ✕ belongs to
+   the expanded sheet" — independently of which parent happens to hold it. */
 body:not(.fp-expanded) .fp-close { display: none; }
 
-.fp-sheet { padding: 4px 16px 16px; border-top: 1px solid var(--line); }
+/* ---------- the Now Playing sheet (founder report, 2026-09-13) ----------
+
+   Wyatt: "when I click on the now playing episode, it should pop up with the
+   page for the episode, same as Apple Podcasts, starting at the top with the
+   'album artwork' ... That window should then be scrollable ... Also, I
+   should be able to drag that page down from the top."
+
+   What this replaces: a 340px panel docked to the bottom edge that RESERVED
+   space by growing `<body>`'s padding, showed no artwork, and could not
+   scroll. Three consequences of the change, in the order they bite:
+
+     1. IT IS AN OVERLAY NOW, so it reserves nothing. `position: fixed` with
+        `inset: 0` takes it out of #foray-player's flow entirely (that parent
+        sets no transform/filter/contain, so the viewport is the containing
+        block), which is why the `--fp-sheet-h` body-padding rules above are
+        gone rather than merely retuned — there is no longer a strip of page
+        under the sheet for the last card to hide behind.
+     2. THE PAGE BEHIND IT MUST NOT SCROLL. `overflow: hidden` on <body> is
+        the same lock `body.fy-sheet-open` already applies for the reason /
+        feedback / delete / voice sheets — reused by rule rather than by a
+        second class, so there is one answer to "a modal is open" here.
+     3. ONE SCROLLER, AND IT IS INSIDE. `.fp-sheet` never scrolls;
+        `.fp-sheet-scroll` is the only thing that does, which is what makes
+        "opens at the top" a property of a single element client.js can reset
+        (`ui.scroll.scrollTop = 0`) rather than a property of the whole page.
+
+   z-index sits inside #foray-player's own stacking context (60), which is
+   already above the tab bar (55). It deliberately does NOT outrank the
+   `.fy-sheet` family (70): those are true modals — a delete confirmation must
+   still be able to cover this. */
+.fp-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  /* The drag offset client.js writes (`--fp-sheet-dy`), defaulted here so the
+     transform always parses even before the first pointerdown. */
+  transform: translateY(var(--fp-sheet-dy, 0px));
+  /* A pull that reaches the end of the inner scroller stops there rather than
+     handing the gesture to the page underneath — the same `overscroll-behavior`
+     convention the rest of this file uses for scrollable chrome. */
+  overscroll-behavior: contain;
+}
+/* While a finger is on it the sheet tracks the thumb exactly — no transition,
+   which would read as lag. The transition belongs to the RELEASE, which is the
+   moment the class comes off, so the spring-back animates and the drag does
+   not. `transform` only: animating anything else here would repaint a
+   full-screen surface every frame. */
+.fp-sheet:not(.fp-sheet-dragging) { transition: transform .22s ease; }
+/* THE TRAP `.fp-close`'s own comment above documents, and the first real
+   casualty of it: `[hidden]` is a UA-stylesheet rule and any author `display`
+   declaration beats it. `.fp-sheet` had none until this change and could be
+   hidden by the attribute alone (client.js's `sheet.hidden = true`, which is
+   still the only thing that opens and closes it); giving it `display: flex`
+   silently made a collapsed sheet a full-screen opaque overlay over the whole
+   app with no way out. This line is what keeps the attribute authoritative.
+   MUTATION: delete this rule and the app is unusable the moment anything
+   plays. */
+.fp-sheet[hidden] { display: none; }
+body.fp-expanded { overflow: hidden; }
+
+/* The grab handle's TARGET, not the handle itself (that is `.fy-grab`, shared
+   with every other sheet in the app). `touch-action: none` is what lets a
+   vertical drag that starts here reach the pointermove listener at all rather
+   than being consumed as a scroll — the same rule and the same reason as the
+   Foray strip's own scrub target documented near it. */
+.fp-grab-zone {
+  position: relative;
+  flex: none;
+  height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: none;
+  cursor: grab;
+}
+.fp-grab-zone .fy-grab { margin: 0; }
+/* The ✕, absolutely placed so the handle stays centred on the sheet rather
+   than on the space left over beside a button. `touch-action: auto` undoes the
+   zone's `none` for this one element: a tap must reach it as a tap, and the
+   drag listener in client.js already refuses any press that starts on a
+   button. */
+.fp-grab-zone .fp-close {
+  position: absolute; right: 10px; top: 50%;
+  transform: translateY(-50%);
+  width: 36px; height: 36px;
+  touch-action: auto;
+}
+
+.fp-sheet-scroll {
+  flex: 1 1 auto;
+  min-height: 0;             /* or a flex child refuses to shrink and never scrolls */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+  max-width: 680px;          /* same measure .fy-panel keeps, for the same reason */
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* The artwork the report asks for, FIRST and large — this is the thing that
+   says "this episode" from a car cradle. Squared and centred rather than
+   full-bleed: podcast art is square, and stretching it is worse than framing
+   it. Sized off the smaller of the two axes so a short landscape window does
+   not push the title off the bottom of the sheet. */
+.fp-s-art {
+  display: block;
+  width: min(72vw, 46vh, 320px);
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  margin: 4px auto 16px;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+}
+
 .fp-s-title { font-family: var(--serif); font-size: 1.1rem; font-weight: 700; margin: 8px 0 2px; color: var(--text); }
 .fp-s-show { font-size: 0.75rem; color: var(--text-dim); margin: 0 0 8px; }
 .fp-s-why { font-size: 0.82rem; color: var(--text-dim); margin: 0 0 12px; }
+/* The publisher's own description inside the sheet. Same body-copy scale and
+   the same `pre-line` handling as `.ep-description-text` on the episode page,
+   because it is the same text — a second scale for one field is how two
+   surfaces showing one fact start to look like two facts. */
+.fp-s-desc {
+  margin: 20px 0 0;
+  font-size: 0.88rem; color: var(--text); line-height: 1.5;
+  white-space: pre-line;
+}
 
 /* Episode page (#/episode/:id) — page wrapper only; artwork/title/show
    typography is the existing .fp-s-title/.fp-s-show pair above, body copy
@@ -2578,7 +2715,9 @@ body.ui-v2 .fp-play, body.ui-v2 .fp-close {
 /* Play/pause is 4a's own transport control -- violet. */
 body.ui-v2 .fp-play { background: var(--violet); border-color: var(--violet); color: var(--bg); box-shadow: none; }
 body.ui-v2 .fp-close { color: var(--muted); }
-body.ui-v2 .fp-sheet { border-top-color: var(--line); }
+body.ui-v2 .fp-sheet { background: var(--surface); border-top-color: var(--line); }
+body.ui-v2 .fp-s-desc { color: var(--text); }
+body.ui-v2 .fp-grab-zone .fy-grab { background: var(--line); }
 body.ui-v2 .fp-scrub { accent-color: var(--amber); }
 body.ui-v2 .fp-times { color: var(--muted); }
 body.ui-v2 .fp-btn {
