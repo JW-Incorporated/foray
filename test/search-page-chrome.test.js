@@ -8,18 +8,25 @@
  *   3. "In the search page, when I start scrolling up, the search bar should
  *       reappear. At the top of the screen."
  *
+ * REPORT 3 WAS SUPERSEDED BY THE FOUNDER HIMSELF, hours later: "We should
+ * likely also move the search bar down to the bottom - model it after most
+ * other text boxes, for example in the Claude app or Apple Podcasts." A field
+ * pinned to the bottom edge is on screen at every scroll position, so "scroll
+ * up to bring it back" has nothing left to bring back. Section 2 below was
+ * rewritten from that instruction and now pins the NEGATIVE — the field is
+ * not in the header, and the header is back to one shape. The bottom
+ * placement itself is owned by test/search-field-bottom.test.js; this file
+ * deliberately does not restate it.
+ *
  * WHAT THIS PROVES, in order:
  *  1. The Shows page renders NO `<p class="sub">` — and the shared template
  *     did not lose the ability to render one, because renderCategory still
  *     does. Both directions, because deleting the parameter outright would
  *     silently strip the category page's only size indicator.
- *  2. The search form is rendered INSIDE `.page-head`, not below it. That
- *     nesting is the entirety of report 3's implementation: `.page-head` is
- *     the element app.js's onWindowScroll() already hides on scroll-down and
- *     re-shows on scroll-up (test/collapsing-header-scroll.test.js owns that
- *     mechanism and is not duplicated here) — so the search bar reappearing
- *     at the top of the screen is a consequence of WHERE the field lives,
- *     and that is the thing worth pinning.
+ *  2. The search form is NOT inside `.page-head`, the header still carries
+ *     the ‹ button and the title, the `.page-head-stacked` variant that
+ *     briefly made room for the field is gone from both the markup and
+ *     styles.css, and the category page has neither field nor compose bar.
  *  3. The browse furniture (pill row, starred shortcut, editorial row, and
  *     the A–Z index) hides on FOCUS, stays hidden while a query is live even
  *     across a blur, and comes back on a blur with an empty field or on
@@ -29,10 +36,10 @@
  *     (the category page reuses the same template), rather than throwing.
  *
  * WHAT THIS SUITE CANNOT PROVE, said plainly rather than faked:
- *   - that the collapsed bar actually slides back to the top of a real
- *     viewport on an upward flick, at 60fps, under iOS rubber-banding. That
- *     is CSS `position: sticky` + a transform in a real compositor. It was
- *     checked by hand in Chrome (see the PR); it is not checkable here.
+ *   - that the header itself still collapses acceptably on a real viewport
+ *     under iOS rubber-banding. That is CSS `position: sticky` + a transform
+ *     in a real compositor. It was checked by hand in Chrome (see the PR); it
+ *     is not checkable here.
  *   - that hiding on focus rather than on the first keystroke FEELS right on
  *     a phone. That is a judgement, recorded in updateShowBrowseVisibility's
  *     own comment, not a property.
@@ -61,6 +68,9 @@ const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
 const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
+/* Read as text, for the one assertion that a class the markup no longer emits
+   has no rule left behind it. Not a substitute for a browser — see the header. */
+const STYLES = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
 
 process.on("unhandledRejection", () => {});
 
@@ -219,57 +229,78 @@ test("the category page still renders its own subtitle — the parameter was kep
 });
 
 /* ==================================================================== */
-/* 2. REPORT 3 — THE SEARCH FIELD LIVES INSIDE THE COLLAPSING HEADER     */
+/* 2. THE SEARCH FIELD IS NOT IN THE HEADER — IT IS AT THE BOTTOM        */
+/*                                                                      */
+/* REPORT 3 ("when I start scrolling up, the search bar should reappear. */
+/* At the top of the screen") was answered by rendering the field inside */
+/* `.page-head`, and was superseded the same day by the founder's next   */
+/* instruction: "We should likely also move the search bar down to the   */
+/* bottom - model it after most other text boxes, for example in the     */
+/* Claude app or Apple Podcasts." A field pinned to the bottom is always */
+/* on screen, so there is nothing for a scroll-up to reveal.             */
+/*                                                                      */
+/* The bottom placement itself, its docking arithmetic and its keyboard  */
+/* tracking are owned by test/search-field-bottom.test.js. What stays    */
+/* HERE is the negative these tests were originally written as: the      */
+/* header does NOT carry the field, and the header still exists.         */
 /* ==================================================================== */
 
-test("the search form renders INSIDE .page-head, which is what makes it reappear on scroll-up", () => {
-  /* The mechanism itself (hide past a dead zone on scroll-down, re-show on
-     any upward movement) is app.js's onWindowScroll and is proven by
-     test/collapsing-header-scroll.test.js. It acts on `#view .page-head`, so
-     the only thing that decides whether the SEARCH BAR gets that behaviour is
-     whether it is inside that element. Before this change it was ordinary
-     page content below the header and scrolled away for good.
+test("the search form does NOT render inside .page-head any more", () => {
+  /* The header's collapse (hide past a dead zone on scroll-down, re-show on
+     any upward movement — app.js's onWindowScroll, proven by
+     test/collapsing-header-scroll.test.js) acts on `#view .page-head`. While
+     the field lived in there it collapsed with it. It must not any more: a
+     compose bar that vanishes when you scroll down the list you are
+     searching is the opposite of the thing being asked for.
 
-     MUTATION: move the `<form id="sh-form">` block out of renderShowIndexPage's
-     `headExtra` argument and back into `above`. The form is then a sibling of
-     the header, not a child, and the nesting assertion fails. RUN: failed as
-     named. */
+     MUTATION: put the field back in the header — restore the `headExtra`
+     argument on renderShowIndexPage and pass the `<form id="sh-form">` block
+     through it. This fails. RUN: failed as named. */
   const m = mount();
   m.ctx.renderAllShows();
   const head = elementHtml(m.view(), '<div class="page-head');
-  assert.ok(head.includes('id="sh-form"'), "the search form must be inside the sticky page header");
-  assert.ok(head.includes('id="sh-input"'), "and so must the field itself");
   assert.ok(head.includes("<h2>Shows</h2>"), "fixture assumption: that really is the page header");
+  assert.ok(!head.includes("sh-form"), "the search form must not be inside the collapsing header");
+  assert.ok(!head.includes("sh-input"), "nor the field itself");
+  assert.ok(!head.includes("sh-compose"), "nor the bar that now holds it");
 });
 
-test("the stacked header keeps the back/title row as its own line above the field", () => {
-  /* `.page-head` is a horizontal flex row; a full-width search field as a
-     third flex child next to the ‹ button and the heading would be crushed.
-     `.page-head-stacked` + `.page-head-main` (styles.css) turn it into a
-     column with the original row preserved inside it.
-     MUTATION: drop the `page-head-stacked` class from the template. This
-     fails, and in a browser the field renders as a squeezed third column.
-     RUN: failed as named. */
+test("the page header keeps its job — the back button and the title — and only one shape of it survives", () => {
+  /* The header was NOT deleted along with the field it briefly carried: the ‹
+     button is how you leave this page and the title is how you know where you
+     are, and both still collapse on scroll exactly as they have since
+     2026-09-05. What is gone is the two-shape branch — `.page-head-stacked`
+     and `.page-head-main` existed only to make room for the field.
+
+     MUTATION: re-introduce the stacked variant, i.e. make renderShowIndexPage
+     emit `<div class="page-head page-head-stacked">` again. The exact-open-tag
+     assertion fails, and so does the styles.css one — a class no rule matches
+     is dead markup. RUN: failed as named. */
   const m = mount();
   m.ctx.renderAllShows();
   const head = elementHtml(m.view(), '<div class="page-head');
-  assert.ok(head.startsWith('<div class="page-head page-head-stacked">'),
-    `the Shows page header must opt into the stacked layout, got: ${head.slice(0, 80)}`);
-  const main = elementHtml(head, '<div class="page-head-main">');
-  assert.ok(main.includes('class="back"') && main.includes("<h2>Shows</h2>"),
-    "the back button and heading must share one row");
-  assert.ok(!main.includes('id="sh-form"'), "the field belongs under that row, not in it");
+  assert.ok(head.startsWith('<div class="page-head">'),
+    `one header shape for every page, got: ${head.slice(0, 80)}`);
+  assert.ok(head.includes('class="back"'), "the ‹ button stays");
+  assert.ok(head.includes("<h2>Shows</h2>"), "and the title stays");
+  assert.ok(!head.includes("page-head-main"), "the stacked inner row is gone with the modifier");
+  assert.ok(!STYLES.includes(".page-head-stacked {"),
+    "the dead layout rule must be gone from styles.css, not left orphaned");
 });
 
-test("the category page, which shares the template, gets no stacked header and no search field", () => {
-  /* MUTATION: make `headExtra` non-optional / always emit the stacked
-     wrapper. This fails: the category page would grow an empty second row
-     inside its header. RUN: failed as named. */
+test("the category page, which shares the template, still has no search field of any kind", () => {
+  /* The template is shared, and the search field has now been in two
+     different places in one day without ever belonging on this page.
+     MUTATION: move the `#sh-compose` block out of renderAllShows's `above`
+     argument and into renderShowIndexPage's own template, where it would
+     apply to every caller. This fails. RUN: failed as named. */
   const m = mount();
   m.ctx.renderCategory("science");
-  const head = elementHtml(m.view(), '<div class="page-head');
+  const html = m.view();
+  const head = elementHtml(html, '<div class="page-head');
   assert.ok(head.startsWith('<div class="page-head">'), `got: ${head.slice(0, 80)}`);
-  assert.ok(!head.includes("sh-form"), "no search field on the category page");
+  assert.ok(!html.includes("sh-form"), "no search field on the category page");
+  assert.ok(!html.includes("sh-compose"), "and no compose bar either");
 });
 
 /* ==================================================================== */

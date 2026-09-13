@@ -1848,33 +1848,33 @@ function showsForCategory(nodeId) {
    empty one, so the heading does not sit above a blank line's worth of
    leading.
 
-   `headExtra` is raw HTML rendered INSIDE `.page-head`, under the title row.
-   That placement is the whole of founder report 3 ("when I start scrolling
-   up, the search bar should reappear. At the top of the screen"): the
-   collapsing-header mechanism this app already has — `.page-head`'s sticky
-   + `page-head-hidden` transform, driven by onWindowScroll() — hides and
-   re-shows whatever is inside `.page-head`, so putting the search field
-   there gets the hide-on-scroll-down/show-on-scroll-up behaviour with no
-   second scroll listener. When it is empty the markup is byte-identical to
-   what shipped before, so the category page is untouched. */
-function renderShowIndexPage(title, subtitle, shows, above = "", headExtra = "") {
+   THE HEADER CARRIES NO SEARCH FIELD (founder, 2026-09-13, superseding his
+   own report of an hour earlier). A `headExtra` slot used to exist here, and
+   the Shows page used it to render the search field INSIDE `.page-head` so
+   that the collapsing header's scroll-up would bring the field back. The
+   field now lives at the BOTTOM of the search page instead (see
+   renderAllShows and `#sh-compose` in styles.css), where it is always on
+   screen — so "scroll up to reveal it" has nothing left to reveal, and the
+   slot, its `.page-head-stacked` layout modifier and the branch that chose
+   between two header shapes are all deleted rather than left standing as a
+   second, unused mechanism.
+
+   `.page-head` KEEPS ITS JOB and keeps its collapse: it still carries the ‹
+   button and the page title, which are the things a header is for, and
+   onWindowScroll still hides and re-shows it exactly as it has since
+   2026-09-05 (test/collapsing-header-scroll.test.js). Nothing about that
+   mechanism changed; only the field stopped riding along inside it. */
+function renderShowIndexPage(title, subtitle, shows, above = "") {
   setBodyClass("view-page");
-  const titleBlock = `
+  $("#view").innerHTML = `
+    <div class="page">
+      <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
           <h2>${esc(title)}</h2>
           ${subtitle ? `<p class="sub">${esc(subtitle)}</p>` : ""}
-        </div>`;
-  $("#view").innerHTML = `
-    <div class="page">
-      ${headExtra
-        ? `<div class="page-head page-head-stacked">
-        <div class="page-head-main">${titleBlock}
         </div>
-        ${headExtra}
-      </div>`
-        : `<div class="page-head">${titleBlock}
-      </div>`}
+      </div>
       ${above}
       ${shows.length
         ? `<div class="show-results show-index">${shows.map(showResultRow).join("")}</div>`
@@ -2004,7 +2004,36 @@ function renderAllShows() {
   const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
   /* NO SUBTITLE (founder, 2026-09-13: "On the search page, delete '220 shows
      in 4a's\u2026'"). renderCategory keeps its own \u2014 see renderShowIndexPage. */
+  /* THE FIELD IS A COMPOSE BAR AT THE BOTTOM (founder, 2026-09-13: "We should
+     likely also move the search bar down to the bottom - model it after most
+     other text boxes, for example in the Claude app or Apple Podcasts").
+
+     `#sh-compose` is `position: fixed` (styles.css), so where it appears in
+     this template decides only two things, and neither is where it is
+     painted:
+
+       TAB / READING ORDER. It is emitted FIRST, ahead of the results and the
+       browse furniture, because it is this page's primary control \u2014 the
+       reason anyone opens #/shows \u2014 and a keyboard or VoiceOver user should
+       reach it without walking 220 catalogue rows. Visually it is last;
+       those two orders disagree here on purpose, and the visual one is the
+       founder's ask.
+
+       LIFETIME. It is inside `#view`, so the next render throws it away with
+       the rest of the page and there is nothing to tear down by hand. A
+       fixed element parked on `<body>` would outlive the page that owns it.
+
+     The wrapper is a real element rather than `position: fixed` on `#sh-form`
+     itself because the bar has to be opaque edge to edge \u2014 it paints over
+     the list scrolling underneath it \u2014 while the form inside stays the same
+     flex row of field + Go button it has always been. */
   renderShowIndexPage("Shows", "", shows, `
+      <div id="sh-compose">
+        <form id="sh-form" autocomplete="off">
+          <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
+          <button type="submit">Go</button>
+        </form>
+      </div>
       <p id="sh-note" class="note" hidden></p>
       <div id="sh-results" class="show-results" hidden></div>
       <div id="ep-search-results" hidden></div>
@@ -2013,11 +2042,13 @@ function renderAllShows() {
         ${browsePillsHtml()}
         <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
         ${vouchForHtml()}
-      </div>`, `
-      <form id="sh-form" autocomplete="off">
-        <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
-        <button type="submit">Go</button>
-      </form>`);
+      </div>`);
+  /* The page reserves room at its bottom edge for a bar that is fixed and so
+     occupies none of its own. Added AFTER renderShowIndexPage, which writes
+     document.body.className wholesale through setBodyClass() and would
+     otherwise wipe it \u2014 and that same wholesale write is what removes this
+     class again on navigation away, so it needs no cleanup of its own. */
+  document.body.classList.add("sh-compose");
 
   /* S-02 (docs/search-plan.md, founder feedback F2: "Shows search should
      filter live as you type. Hitting Go should not be required.").
@@ -9365,6 +9396,63 @@ function keyboardIsOpen(win) {
   return (win.innerHeight - vv.height) > KEYBOARD_MIN_INSET;
 }
 
+/* HOW FAR A BOTTOM-ANCHORED FIXED BAR MUST RISE to sit on the keyboard's top
+   edge instead of behind it, in CSS pixels. Published as `--kb-inset` on
+   <html> so CSS can use it; today the search page's compose bar
+   (`#sh-compose`) is its only consumer.
+
+   ONE DETECTOR, TWO ANSWERS. This is not a second keyboard detector: it runs
+   inside the same `apply()`, off the same `visualViewport` listeners, and
+   returns 0 whenever installKeyboardChrome's own predicate says the keyboard
+   is shut. What it adds is a MEASUREMENT where that predicate gives a
+   boolean — `body.kb-open` says whether to take the now-playing bar off the
+   screen, and that is all it needs to say; the compose bar additionally has
+   to know HOW FAR.
+
+   WHY `offsetTop` IS SUBTRACTED HERE THOUGH keyboardIsOpen LEAVES IT OUT, and
+   why the two are not in conflict. keyboardIsOpen needs a STABLE boolean, so
+   it must ignore the term that moves under scroll and pinch-zoom: a bar that
+   flickered back on mid-scroll would be the original bug again. A POSITION
+   needs the exact opposite — it has to track, or the field detaches from the
+   keyboard the moment anything moves.
+
+   `innerHeight - height - offsetTop` is the distance from the bottom of the
+   VISIBLE viewport to the bottom of the LAYOUT viewport, and it is the right
+   shift in both of the regimes installKeyboardChrome's header describes.
+   Before the page is scrolled, WebKit resolves `position: fixed` against the
+   layout viewport and `offsetTop` is 0, so this is the full keyboard inset —
+   the bar rises by the whole of it. Once WebKit re-anchors fixed elements to
+   the visual viewport (the frame the `scroll` subscription exists for) the
+   visual viewport has itself moved down by that inset, `offsetTop` reports
+   it, and the shift falls back toward 0 — which is what a bar already
+   sitting on the keyboard's edge needs. Same formula, both regimes, no
+   branch on which one we are in — because we cannot ask.
+
+   NOT MEASURED HERE, and said plainly: that second regime cannot be
+   reproduced off an iPhone. This is reasoned from the behaviour
+   installKeyboardChrome's header already diagnosed on a device, and it is
+   the line in this change that most needs a real phone.
+
+   Clamped at 0 and rounded: a negative shift would push the bar off the
+   bottom of the screen, and sub-pixel values make the bar shimmer as the
+   viewport settles. */
+function keyboardInsetPx(win) {
+  const vv = win && win.visualViewport;
+  if (!vv || typeof vv.height !== "number" || typeof win.innerHeight !== "number") return 0;
+  const offsetTop = typeof vv.offsetTop === "number" ? vv.offsetTop : 0;
+  return Math.max(0, Math.round(win.innerHeight - vv.height - offsetTop));
+}
+
+/* Guarded rather than assumed: the fake windows in test/now-playing-keyboard
+   pass a document with a body and nothing else, and a WebView that hands us
+   no style object is not worth throwing over — the bar simply stays at
+   `bottom: 0`, which is where it sat before this variable existed. */
+function setKeyboardInsetVar(doc, px) {
+  const root = doc && doc.documentElement;
+  if (!root || !root.style || typeof root.style.setProperty !== "function") return;
+  root.style.setProperty("--kb-inset", `${px}px`);
+}
+
 function editableHasFocus(doc) {
   const el = doc && doc.activeElement;
   if (!el) return false;
@@ -9386,6 +9474,14 @@ function installKeyboardChrome(win) {
   const apply = () => {
     const open = keyboardIsOpen(w) && editableHasFocus(doc);
     doc.body.classList.toggle("kb-open", open);
+    /* Written from the SAME evaluation as the class, so the two can never
+       disagree — a `kb-open` body with a stale inset would put the compose
+       bar somewhere the keyboard is not. `open ? ... : 0` rather than the raw
+       measurement, so that everything the class's own predicate rejects
+       (nothing editable focused, an inset below the threshold, a WebView
+       mis-reporting during a splash fade) leaves the bar exactly where it
+       sits with no keyboard at all. */
+    setKeyboardInsetVar(doc, open ? keyboardInsetPx(w) : 0);
   };
   const onFocusOut = () => {
     /* Runs BEFORE focus lands on the next element, so re-evaluate on the next
@@ -9404,6 +9500,11 @@ function installKeyboardChrome(win) {
     vv.removeEventListener("scroll", apply);
     doc.removeEventListener("focusout", onFocusOut, true);
     doc.body.classList.remove("kb-open");
+    /* Teardown must undo the measurement as well as the class. A document
+       left carrying `--kb-inset: 312px` after the listeners are gone would
+       hold the compose bar a keyboard's height off the floor with nothing
+       left running to correct it. */
+    setKeyboardInsetVar(doc, 0);
   };
 }
 
