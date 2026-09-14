@@ -365,10 +365,15 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
        - `usedSegmentIds` — a segment may not play twice;
        - `lastStartByItem`  — segments from one episode must play in ascending
          time order (check-forays' M3), so an episode already heard at 1964 s
-         cannot later be joined at 900 s.
+         cannot later be joined at 900 s;
+       - `lastEndByItem`    — and they must not OVERLAP (2026-09-13 audit,
+         defect 2): ascending starts alone admit a window that begins INSIDE
+         the clip before it, which mints a second clip that replays tape the
+         listener has already heard. See `m3OrderAllows`.
      A set scoped to a slot or an act would satisfy neither. */
   const usedSegmentIds = new Set<string>();
   const lastStartByItem = new Map<string, number>();
+  const lastEndByItem = new Map<string, number>();
   /* M4: no single episode may be more than a quarter of a Foray — see
      `m4SegmentCapFor` for the cap, its denominator, and why the denominator is
      the count of tape segments PLACED rather than the beat count it used to be
@@ -405,6 +410,7 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
     transcriptionQueueCandidates,
     usedSegmentIds,
     lastStartByItem,
+    lastEndByItem,
     usedCountByItem,
     placedTapeCount: 0,
     placedDurations,
@@ -631,6 +637,10 @@ interface SourcingState {
   transcriptionQueueCandidates: TranscriptionQueueCandidate[];
   usedSegmentIds: Set<string>;
   lastStartByItem: Map<string, number>;
+  /** Where the last clip from each episode ENDS — the overlap half of M3
+   * (2026-09-13 audit, defect 2). Mutated by `placeTape` only, including on
+   * the merge path, where a clip's end moves forward. */
+  lastEndByItem: Map<string, number>;
   usedCountByItem: Map<string, number>;
   /** How many tape segments this Foray has placed — M4's denominator. Mutated
    * by `placeTape`, which is the only thing allowed to move any of these. */
@@ -842,12 +852,36 @@ function m4ShareAllows(itemId: string, state: SourcingState): boolean {
   return used + 1 <= m4SegmentCapFor(state.placedTapeCount + 1);
 }
 
-/** Whether a segment starting at `startSec` may follow what this Foray has
+/**
+ * Whether a segment starting at `startSec` may follow what this Foray has
  * already placed from the same episode: M3 asks that segments from one episode
- * play in ascending time order, and beats are placed in playing order here. */
+ * play in ascending time order, and beats are placed in playing order here.
+ *
+ * AND THAT THEY DO NOT OVERLAP (2026-09-13 audit, defect 2). Ascending starts
+ * were the ONLY positional guard on a second clip from an episode, and
+ * `startSec >= lastStart` admits every window that begins INSIDE the clip
+ * before it. F-96's `mergeIntoClip` returns `null` for six reasons, five of
+ * which are not "this tape is somewhere else" — a hole in the cues, the merged
+ * length over `TAPE_WINDOW_MAX_SEC`, a cut whose start moved, the feed's
+ * duration gate, M4 at the new length — and after any of them the walk falls
+ * through and mints an ORDINARY second clip from the same stretch. Nothing
+ * downstream caught it: `check-forays.mjs`'s M3 compared starts too. So the
+ * listener heard the same tape twice, and the second time it was introduced as
+ * though it were new.
+ *
+ * The rule is now the plain one a listener would state: a clip from an episode
+ * starts at or after the end of the last clip from that episode. It subsumes
+ * ascending order (an end is never before its own start), and a candidate it
+ * refuses falls through to the next one exactly as an `m3-order` refusal
+ * always did — the answer to "this tape has already played" is a different
+ * piece of tape, not narration.
+ */
 function m3OrderAllows(itemId: string, startSec: number, state: SourcingState): boolean {
   const lastStart = state.lastStartByItem.get(itemId);
-  return lastStart === undefined || startSec >= lastStart;
+  if (lastStart === undefined) return true;
+  if (startSec < lastStart) return false;
+  const lastEnd = state.lastEndByItem.get(itemId);
+  return lastEnd === undefined || startSec >= lastEnd;
 }
 
 /* THE D-TIER LEDGER (F-73). Four rules that read a candidate's DURATION against
@@ -1094,6 +1128,10 @@ function placeTape(
     state.placedDurations[replacing] = durationSec;
     state.placedSecByItem.set(itemId, (state.placedSecByItem.get(itemId) ?? 0) - before + durationSec);
     state.longestSecByItem.set(itemId, Math.max(state.longestSecByItem.get(itemId) ?? 0, durationSec));
+    /* The merged clip grew FORWARD, so its end moved and the next clip from
+       this episode must clear the NEW end (defect 2). Its start did not, so
+       `lastStartByItem` is right as it stands. */
+    state.lastEndByItem.set(itemId, Math.max(state.lastEndByItem.get(itemId) ?? 0, startSec + durationSec));
     return;
   }
   /* A placement after a minted clip closes it to merging (F-96): a beat
@@ -1101,6 +1139,7 @@ function placeTape(
   state.lastMintedClip = null;
   state.usedSegmentIds.add(segmentId);
   state.lastStartByItem.set(itemId, startSec);
+  state.lastEndByItem.set(itemId, startSec + durationSec);
   state.usedCountByItem.set(itemId, (state.usedCountByItem.get(itemId) ?? 0) + 1);
   state.placedTapeCount += 1;
   state.placedDurations.push(durationSec);
@@ -2348,7 +2387,7 @@ function narrationReasonFor(furthest: Tier2Progress | null): string {
  * name the rule without the caller re-deriving it from the gate name. */
 const ASSEMBLY_REFUSAL_CLAUSE: Record<"m4-share" | "m3-order" | "d5-pair" | DurationGate, string> = {
   "m4-share": "the episode already supplies its quarter of the segments",
-  "m3-order": "the window sits earlier in an episode already joined later",
+  "m3-order": "the window sits earlier in an episode already joined later, or inside tape from it this Foray already plays",
   "d2-short-run": "it is short and the segment before it is short too",
   "d5-pair": "every cut of it is within a fifth of the length of the segment before it",
   "m4-runtime": "the episode already supplies a long clip, or its quarter of the tape seconds beyond its longest clip"

@@ -1244,14 +1244,37 @@ export function checkForays(files) {
     }
     const spread = iqr(durations);
 
-    /* ---- M3: same-episode segments never out of chronological order */
-    const lastStart = new Map();
+    /* ---- M3: same-episode segments never out of chronological order, and
+     * never overlapping.
+     *
+     * THE SECOND CLAUSE IS NEW (2026-09-13 audit, defect 2). Comparing STARTS
+     * is what M3 was written to do and it is only half a rule: two clips from
+     * one episode at 900-1100 s and 1000-1200 s have ascending starts and
+     * share a hundred seconds of tape, which a listener hears as the same
+     * words twice, the second time introduced as though they were new. The
+     * sourcing walk could mint exactly that pair — `mergeIntoClip` refuses a
+     * merge for five reasons that are not "this tape is elsewhere" and the
+     * walk then mints an ordinary second clip — and nothing on this side
+     * caught it. It is caught here now, because a published Foray is the last
+     * place the defect is still cheap to see.
+     *
+     * Touching ends are fine: a clip ending at 1100 s and the next starting at
+     * 1100 s share no tape. Only a strict overlap fails. */
+    const lastPlayed = new Map();
     for (const p of played) {
-      const prev = lastStart.get(p.seg.item_id);
-      if (prev !== undefined && p.seg.start_sec < prev) {
-        E(`M3 FAIL: ${p.label ?? p.segment_id} plays at ${p.seg.start_sec} s of "${p.seg.item_id}" after a later segment from the same episode`);
+      const prev = lastPlayed.get(p.seg.item_id);
+      if (prev !== undefined) {
+        if (p.seg.start_sec < prev.start_sec) {
+          E(`M3 FAIL: ${p.label ?? p.segment_id} plays at ${p.seg.start_sec} s of "${p.seg.item_id}" after a later segment from the same episode`);
+        } else if (p.seg.start_sec < prev.end_sec) {
+          E(
+            `M3 FAIL: ${p.label ?? p.segment_id} starts at ${p.seg.start_sec} s of "${p.seg.item_id}", inside ` +
+              `${prev.label ?? prev.segment_id} (${prev.start_sec}-${prev.end_sec} s) — the two clips overlap, so the ` +
+              `listener hears the same tape twice`
+          );
+        }
       }
-      lastStart.set(p.seg.item_id, p.seg.start_sec);
+      lastPlayed.set(p.seg.item_id, { start_sec: p.seg.start_sec, end_sec: p.seg.end_sec, label: p.label, segment_id: p.segment_id });
     }
 
     /* ---- M4: no one episode dominating — over 25 % of segments, more than

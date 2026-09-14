@@ -746,6 +746,27 @@ export function sourcesForRest(ids: ReadonlyArray<string>, actSources: ReadonlyA
  * its gated claims, or the issues joined (an empty string for a seam that
  * may be silent and is). Exactly one attempt is recorded per seam per
  * round it was written, as on the per-page path.
+ *
+ * SILENCE IS CHOSEN, NEVER INFERRED (2026-09-13 audit, defect 1). A seam
+ * that is ABSENT from the reply and a seam that came back with
+ * `"script": ""` used to take the same branch, and they are not the same
+ * event. `MAX_ACT_OUTPUT_TOKENS` bounds the writer's reply;
+ * `parseOrRepairJson` closes the brackets of a cut-off reply, so a
+ * truncated `seams` array parses as a VALID short array and every seam
+ * the model never got to write arrived here as `undefined`. Under the old
+ * branch each of those became `silent = true` — no rejection, no retry,
+ * no warning, and a clip shipped without its Q-02 introduction. That is
+ * Wyatt's own complaint from 2026-09-12 ("inadequate, if any,
+ * introduction to podcast segments") surviving as a silent failure path
+ * inside the card that was meant to fix it.
+ *
+ * So a missing seam is always a REJECTION. Only the `script.length === 0`
+ * branch below — an explicitly returned empty string, which only a reply
+ * the model actually finished can contain — may set `silent`. The cost of
+ * being wrong the new way is one more writer round and, at worst, the
+ * same dropped introduction three rounds later with a warning in the log
+ * (`finalPageFor`'s intro-only drop); the cost of being wrong the old way
+ * was silence nobody could see.
  */
 function gateSeamClaims(seam: SeamState, written: WrittenSeam | undefined, round: number): { script: string; claims: SelectedClaim[]; hints: NarratedBeat["pronunciationHints"] } | string {
   const seamId = seam.plan.seamId;
@@ -754,11 +775,12 @@ function gateSeamClaims(seam: SeamState, written: WrittenSeam | undefined, round
   delete seam.silent;
   delete seam.confirmed;
   if (!written) {
-    if (!hasBeats && seam.intro !== "full") {
-      seam.silent = true;
-      return "";
-    }
-    return rejectSeam(seam, [`the writer returned no script for seam ${seamId} — every seam must come back`], [], round);
+    return rejectSeam(
+      seam,
+      [`the writer returned no script for seam ${seamId} — every seam must come back, and a seam that is meant to be silent comes back with an empty script ("script": "")`],
+      [],
+      round
+    );
   }
   const script = decodeEntities(String(written.script ?? "")).trim();
   seam.previousScript = script;

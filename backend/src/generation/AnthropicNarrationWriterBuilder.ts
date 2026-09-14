@@ -60,8 +60,39 @@ const RawClaimSchema = z.object({
 /* Q-03: the whole act's seams come back in one reply — every seam's script,
  * claims and quotes. Sized for a long act (a dozen beats over half a dozen
  * seams, each seam inside `SEAM_MAX_CHARS`) with room for the quotes;
- * F-47's thinking-allowance caveat applies here as to the others. */
+ * F-47's thinking-allowance caveat applies here as to the others.
+ *
+ * THE FLOOR, NOT THE SIZE (2026-09-13 audit, defect 1). This was the fixed
+ * budget for every act, however many seams it had. An act's reply is at
+ * least the sum of its own seams' upper bands plus its quotes, and a
+ * fourteen-seam act at the Carry band alone can exceed this number — at
+ * which point the reply is cut off mid-array, `parseOrRepairJson` closes
+ * the brackets, and the seams that never got written arrive as
+ * `undefined`. `actOutputTokenBudget` below sizes the budget from the
+ * request; this stays the floor a small act still gets. */
 const MAX_ACT_OUTPUT_TOKENS = 12000;
+/** The ceiling, so a pathological act cannot ask for an unbounded reply.
+ * Sonnet's own output limit is the real bound; this is the budget guard's. */
+const ACT_OUTPUT_TOKEN_CEILING = 32000;
+/** Roughly four characters to a token, the same estimate `roughTokenEstimate`
+ * uses for the input side. Doubled, because a seam's script reaches the reply
+ * as JSON alongside its claims, quotes and pronunciation hints. */
+const ACT_OUTPUT_TOKENS_PER_SEAM_CHAR = 0.5;
+
+/**
+ * How many output tokens THIS act's reply needs (2026-09-13 audit, defect 1):
+ * the sum of every seam's upper character band, converted to tokens and
+ * doubled for the JSON the scripts are wrapped in, floored at
+ * `MAX_ACT_OUTPUT_TOKENS` and capped at `ACT_OUTPUT_TOKEN_CEILING`.
+ *
+ * Exported for the prompt tests, which are the only place this class's
+ * internals may be read from (never instantiate the class in a test).
+ */
+export function actOutputTokenBudget(request: Pick<ActWriteRequest, "seams">): number {
+  const scriptChars = request.seams.reduce((sum, seam) => sum + (seam.band[1] ?? 0), 0);
+  const needed = Math.ceil(scriptChars * ACT_OUTPUT_TOKENS_PER_SEAM_CHAR);
+  return Math.min(ACT_OUTPUT_TOKEN_CEILING, Math.max(MAX_ACT_OUTPUT_TOKENS, needed));
+}
 
 const RawWrittenSeamSchema = z.object({
   seamId: z.string(),
@@ -94,7 +125,7 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
 
   /** Q-03: the whole act in one call. See `buildActWritePrompt`. */
   async writeAct(request: ActWriteRequest, ctx: NarrationBuildContext): Promise<ActWriteResult> {
-    const raw = await this.askJson(RawActWriteSchema, buildActWritePrompt(request), "narration_write_act", ctx, MAX_ACT_OUTPUT_TOKENS);
+    const raw = await this.askJson(RawActWriteSchema, buildActWritePrompt(request), "narration_write_act", ctx, actOutputTokenBudget(request));
     return { seams: raw.seams.map((s) => ({ ...s, pronunciationHints: s.pronunciationHints ?? [] })) };
   }
 
@@ -130,6 +161,7 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
     recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic narration-write response had no text block");
+    assertNotTruncated(response.stop_reason, operation, maxOutputTokens);
 
     const reask = async (): Promise<string> => {
       const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
@@ -158,11 +190,38 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
       recordUsage(retryResponse.usage);
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic narration-write re-ask response had no text block");
+      assertNotTruncated(retryResponse.stop_reason, operation, maxOutputTokens);
       return retryTextBlock.text;
     };
 
     return parseWithRetry(schema, textBlock.text, "LLM output", reask);
   }
+}
+
+/**
+ * THE REPLY RAN OUT OF ROOM (2026-09-13 audit, defect 1). `stop_reason`
+ * was never read, and it is the ONLY signal that distinguishes "the model
+ * finished" from "the model was cut off". A cut-off act reply is not
+ * malformed in any way the parser can see: `parseOrRepairJson` closes its
+ * brackets, the short `seams` array satisfies `RawActWriteSchema`, and
+ * every seam that never got written reaches `writeAct.ts` as `undefined`
+ * — which used to be recorded as the writer CHOOSING silence.
+ *
+ * Thrown rather than repaired, and thrown BEFORE the parse so a truncated
+ * reply can never become a valid-looking short act. `writeActNarration`
+ * lets the throw out to `runPipeline`, which is the same treatment any
+ * other writer failure gets: a visible failure beats a Foray whose clips
+ * lost their introductions. `max_tokens` on a re-ask is checked the same
+ * way — the re-ask re-sends the whole prompt, so it is at least as likely
+ * to run out of room as the original call.
+ */
+export function assertNotTruncated(stopReason: string | null | undefined, operation: WriterOperation, maxOutputTokens: number): void {
+  if (stopReason !== "max_tokens") return;
+  throw new Error(
+    `Anthropic ${operation} reply was truncated: the model hit max_tokens (${maxOutputTokens}) before finishing its JSON. ` +
+      "A truncated reply parses as a SHORT act (parseOrRepairJson closes the brackets) and every seam it never wrote would be " +
+      "recorded as a seam the writer chose to leave silent — so it is refused here instead."
+  );
 }
 
 const JSON_ONLY = "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:";

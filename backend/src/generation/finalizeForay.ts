@@ -606,8 +606,34 @@ export async function finalizeForay(input: FinalizeForayInput, root: string = RE
     return mod.checkNarration(root);
   });
 
+  /* A CANDIDATE IS NOT FAILED BY ANOTHER FORAY'S ARTIFACTS (2026-09-13
+     audit, defect 3). `checkNarration(root)` walks
+     `docs/curation/narration/<id>/` for EVERY committed Foray and has no
+     way to see the candidate being built — its own doc comment above says
+     so, and says it plainly. Folding its errors into `ok` therefore made
+     the candidate's fate depend on the state of curation artifacts that
+     have nothing to do with it: under the abort-on-refused-partial
+     default, ONE red artifact anywhere in `docs/curation/narration/` ends
+     the whole run at act 1, and the message names a Foray the run is not
+     building. Measured on this checkout: 0 errors — which is the point.
+     It is latent, one bad commit away from killing a run, and the commit
+     that lands it would have no reason to suspect this stage.
+
+     The errors are still REPORTED (`checkNarrationErrors`, unchanged) and
+     CI still fails on them where they belong — `tools/foray/check-narration.mjs`
+     runs in the data-and-site job against the repo. What changes is only
+     that a repo-wide checker no longer votes on one candidate's validity.
+     `checkForays` does see the candidate (it is handed
+     `buildCandidateFiles(candidateRecord, ...)`), so it, alone, decides. */
+  if (checkNarrationResult.errors.length > 0) {
+    console.warn(
+      `finalizeForay: tools/foray/check-narration.mjs reports ${checkNarrationResult.errors.length} error(s) in this repo's curation artifacts under docs/curation/narration/. ` +
+        "They are recorded on the result and are NOT counted against this candidate — that checker cannot see it (see this module's doc comment). " +
+        `First: ${checkNarrationResult.errors[0]}`
+    );
+  }
   const validation: FinalizeForayValidation = {
-    ok: checkForaysResult.errors.length === 0 && checkNarrationResult.errors.length === 0,
+    ok: checkForaysResult.errors.length === 0,
     checkForaysErrors: checkForaysResult.errors,
     checkForaysWarnings: checkForaysResult.warnings,
     checkNarrationErrors: checkNarrationResult.errors,

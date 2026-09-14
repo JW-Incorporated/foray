@@ -1402,6 +1402,33 @@ test("M3 FAILS when two segments from one episode play out of order", () => {
   assert.match(errorsFor(f).join("\n"), /M3 FAIL: A-1 plays at 200 s of "boundary-ep-a"/);
 });
 
+test("M3 FAILS when two segments from one episode OVERLAP, even in ascending order", () => {
+  /* 2026-09-13 AUDIT, DEFECT 2. M3 compared STARTS, which is half a rule: two
+     clips from one episode at 100-300 s and 200-400 s have ascending starts
+     and share a hundred seconds of tape. The listener hears those seconds
+     twice, the second time introduced as though they were new. The sourcing
+     walk can mint exactly that pair (`mergeIntoClip` refuses a merge for five
+     reasons that are not "this tape is elsewhere" and the walk then mints an
+     ordinary second clip from the same stretch), so this is the last cheap
+     place to see it.
+
+     MUTATION THAT KILLS THIS: drop the `p.seg.start_sec < prev.end_sec`
+     clause, or compare it against `prev.start_sec`. Ran it - green, which is
+     the defect. */
+  const f = fx();
+  const a1 = segmentAt(f, "A-1");
+  const a2 = segmentAt(f, "A-2");
+  /* Ascending starts, overlapping spans: A-2 begins before A-1 ends. */
+  const span = a1.end_sec - a1.start_sec;
+  a2.start_sec = a1.start_sec + Math.floor(span / 2);
+  a2.end_sec = a2.start_sec + span;
+  const errors = errorsFor(f).filter((e) => /M3 FAIL/.test(e));
+  assert.equal(errors.length, 1, errors.join("\n"));
+  assert.match(errors[0], /the two clips overlap, so the listener hears the same tape twice/);
+  /* And the ordering clause is NOT what fired - the starts ascend. */
+  assert.doesNotMatch(errors[0], /after a later segment/);
+});
+
 test("slots are contiguous blocks in the order `slots` declares", () => {
   const f = fx();
   const items = boundary(f).items;
