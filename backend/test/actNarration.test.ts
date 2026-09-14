@@ -19,7 +19,7 @@ import {
 } from "../src/generation/actSeams";
 import { StubNarrationWriterBuilder, stubSeam } from "../src/generation/StubNarrationWriterBuilder";
 import { StubNarrationVerifierBuilder, actVerdictFor } from "../src/generation/StubNarrationVerifierBuilder";
-import { buildActWritePrompt } from "../src/generation/AnthropicNarrationWriterBuilder";
+import { actOutputTokenBudget, assertNotTruncated, buildActWritePrompt } from "../src/generation/AnthropicNarrationWriterBuilder";
 import { buildActVerifyPrompt } from "../src/generation/AnthropicNarrationVerifierBuilder";
 import { stitchAct } from "../src/generation/stitchAct";
 import {
@@ -34,7 +34,7 @@ import {
 } from "../src/generation/veracityMetrics";
 import { MODE_CHAR_BANDS, TAPE_SOURCE_MODES, negativeRecordSentence, tapeDocIdFor, validateNarratedBeat, type NarratedBeat } from "../src/types/narration";
 import type { EvidenceBeat, EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
-import type { ActWriteRequest, ActWriteResult, NarrationBuildContext } from "../src/generation/NarrationWriterBuilder";
+import type { ActWriteRequest, ActWriteResult, NarrationBuildContext, SeamBrief } from "../src/generation/NarrationWriterBuilder";
 import type { ActVerifyRequest, ActVerifyResult } from "../src/generation/NarrationVerifierBuilder";
 import type { SourcedAct, TapePointer } from "../src/types/tapeSourcing";
 import type { Voice } from "../src/types/spine";
@@ -1261,3 +1261,107 @@ function verifyRequestWithSeedLost(): ActVerifyRequest {
     documents: [NBS]
   };
 }
+
+/**
+ * 2026-09-13 AUDIT, DEFECT 1 — A TRUNCATED WRITER REPLY USED TO DELETE A
+ * CLIP'S INTRODUCTION IN SILENCE.
+ *
+ * `MAX_ACT_OUTPUT_TOKENS` bounded the act reply, `stop_reason` was never
+ * read, and `parseOrRepairJson` closes the brackets of a cut-off reply —
+ * so a short `seams` array parsed as valid and every seam the model never
+ * reached arrived at `gateSeamClaims` as `undefined`. That branch set
+ * `silent = true` for any seam with no beats whose introduction was not
+ * `full`: no rejection, no retry, no warning, and the clip shipped without
+ * its Q-02 introduction. Wyatt's 2026-09-12 complaint ("inadequate, if
+ * any, introduction to podcast segments") living on as a silent failure
+ * path inside the card that was meant to fix it.
+ *
+ * Every test names the mutation that kills it.
+ */
+describe("defect 1 — a seam the writer never returned is a rejection, not a chosen silence", () => {
+  /** Two clips from the SAME episode: the second one's introduction is
+   * `light` (Q-02's follow-on weight), which is exactly the combination —
+   * a seam with no beats and a non-full intro — that the old branch turned
+   * into silence. */
+  const TAPE_A2 = pointer(ITEM_A, `${ITEM_A}#700`, ANCHOR_A, 700);
+  function twoClipsSameEpisode(): SourcedAct {
+    return {
+      title: "Act 3: two clips from one episode",
+      slots: [
+        { title: "Opening", beats: [narration(CLAIMS.b0), tape("A guest explains why skills decide the tools.", TAPE_A), tape("The same guest, later.", TAPE_A2)] },
+        { title: "The turn", beats: [narration(CLAIMS.b3)] }
+      ]
+    };
+  }
+  const sameEpisodeWindows = { [SEGMENT_A]: WINDOW_A, [TAPE_A2.segmentId]: WINDOW_A };
+
+  it("an omitted intro-only seam is retried and the introduction ships, instead of being recorded as silence", async () => {
+    /* MUTATION THAT KILLS THIS: restore `gateSeamClaims`'s old `!written`
+       branch — `if (!hasBeats && seam.intro !== "full") { seam.silent =
+       true; return ""; }`. The writer is then never asked again (write
+       calls stay at 1) and the clip between the two plays of this episode
+       loses its introduction with nothing recorded anywhere. */
+    let dropped: string | undefined;
+    const { writer, verifier, calls } = builders((reply, request, round) => {
+      if (round > 1) return reply;
+      /* The truncation, exactly as it reaches the orchestrator: the last
+         seam of the reply is simply not there. */
+      const introOnly = request.seams.find((s) => s.beats.length === 0 && s.introduces !== undefined);
+      dropped = introOnly?.seamId;
+      return { seams: reply.seams.filter((s) => s.seamId !== dropped) };
+    });
+
+    const [act] = await writeNarration([twoClipsSameEpisode()], { writer, verifier, evidence: gatherer(sameEpisodeWindows) }, voice, ctx);
+
+    /* The fixture really does contain the vulnerable shape. */
+    expect(dropped).toBeDefined();
+
+    /* The writer was asked again rather than taken at its silence... */
+    expect(calls.write).toBe(2);
+    /* ...and the second clip got the introduction it was owed. */
+    const secondClip = act!.slots[0]!.beats[2]!;
+    expect(secondClip.sourcing).toBe("tape");
+    expect(secondClip.sourcing === "tape" && secondClip.connectiveNarration?.script).toBeTruthy();
+  });
+
+  it("an explicitly empty script still chooses silence — only omission is a rejection", async () => {
+    /* MUTATION THAT KILLS THIS: reject an empty `script` as well as a
+       missing seam. Silence is a valid bridge (§4.8) and a writer that
+       says so must be believed; the write count would rise to 3 and the
+       run would pay two rounds for an answer it already had. */
+    const { writer, verifier, calls } = builders((reply, request, round) => {
+      if (round > 1) return reply;
+      const introOnly = request.seams.find((s) => s.beats.length === 0 && s.introduces !== undefined)!;
+      return { seams: reply.seams.map((s) => (s.seamId === introOnly.seamId ? { ...s, script: "", claims: [], usedClaims: [] } : s)) };
+    });
+
+    const [act] = await writeNarration([twoClipsSameEpisode()], { writer, verifier, evidence: gatherer(sameEpisodeWindows) }, voice, ctx);
+
+    expect(calls.write).toBe(1);
+    const secondClip = act!.slots[0]!.beats[2]!;
+    expect(secondClip.sourcing === "tape" && secondClip.connectiveNarration).toBeUndefined();
+  });
+
+  it("a reply the model was cut off mid-way is refused before it can be parsed as a short act", () => {
+    /* MUTATION THAT KILLS THIS: delete the `assertNotTruncated` calls, or
+       weaken it to a `console.warn`. A `max_tokens` reply then reaches
+       `parseWithRetry`, whose `parseOrRepairJson` closes its brackets, and
+       the act is written from however many seams happened to fit. */
+    expect(() => assertNotTruncated("max_tokens", "narration_write_act", 12000)).toThrow(/truncated/i);
+    expect(() => assertNotTruncated("end_turn", "narration_write_act", 12000)).not.toThrow();
+    expect(() => assertNotTruncated(null, "narration_write_act", 12000)).not.toThrow();
+  });
+
+  it("the act's output budget is sized from its own seams, with 12000 as the floor rather than the size", () => {
+    /* MUTATION THAT KILLS THIS: return the constant 12000 for every act.
+       A long act's reply is then cut off by construction, which is how the
+       silent path above got exercised in the first place. */
+    const band = (upper: number, i: number): SeamBrief => ({ seamId: `s${i}`, band: [30, upper], beats: [] });
+    const small = actOutputTokenBudget({ seams: [band(260, 0), band(260, 1)] });
+    const large = actOutputTokenBudget({ seams: Array.from({ length: 40 }, (_, i) => band(1870, i)) });
+    expect(small).toBe(12000);
+    expect(large).toBeGreaterThan(12000);
+    /* And it is bounded — a pathological act cannot ask for an unbounded reply. */
+    expect(large).toBeLessThanOrEqual(32000);
+  });
+});

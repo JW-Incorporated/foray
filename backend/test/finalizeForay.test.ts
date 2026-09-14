@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { describe, it, expect } from "vitest";
 import { buildCandidateFiles, finalizeForay, isGeneratedDraft, type FinalizeForayInput } from "../src/generation/finalizeForay";
 import type { MintedSegmentSource } from "../src/generation/audioSourceLookup";
@@ -129,6 +130,46 @@ describe("finalizeForay — §4.9 validate-then-write", () => {
     // error — proving the call genuinely happens and its result reaches
     // the caller, without this test overclaiming what it audits.
     expect(result.validation.checkNarrationErrors).toEqual([]);
+  });
+
+  it("does not fail a candidate for errors in ANOTHER Foray's curation artifacts", async () => {
+    /* 2026-09-13 AUDIT, DEFECT 3. `checkNarration(root)` validates
+       `docs/curation/narration/<id>/` for every COMMITTED Foray and
+       structurally cannot see the candidate being built - this module's own
+       doc comment says so. Folding its errors into `ok` therefore made a
+       candidate's fate depend on artifacts that have nothing to do with it:
+       under the abort-on-refused-partial default, one red artifact anywhere
+       ends the whole run at act 1, naming a Foray the run is not building.
+       It measured as latent on this checkout (0 errors), which is the danger
+       - it is one bad commit away from killing a run.
+
+       MUTATION THAT KILLS THIS: restore `ok: checkForaysErrors.length === 0
+       && checkNarrationErrors.length === 0`. The candidate below is clean by
+       every rule that can see it, and `ok` goes false because an unrelated
+       directory holds a broken arc.json. */
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "finalize-narration-scope-"));
+    try {
+      fs.mkdirSync(path.join(root, "data"), { recursive: true });
+      for (const f of fs.readdirSync(path.join(FIXTURE_ROOT, "data"))) {
+        fs.copyFileSync(path.join(FIXTURE_ROOT, "data", f), path.join(root, "data", f));
+      }
+      /* A different Foray entirely, with an unreadable arc - the cheapest
+         real `checkNarration` error there is. */
+      const other = path.join(root, "docs", "curation", "narration", "some-other-foray");
+      fs.mkdirSync(other, { recursive: true });
+      fs.writeFileSync(path.join(other, "arc.json"), "{ not json", "utf8");
+
+      const result = await finalizeForay(validCandidate("finalize-test-scope"), root);
+
+      /* The other Foray's breakage is REPORTED... */
+      expect(result.validation.checkNarrationErrors.join(" ")).toMatch(/some-other-foray/);
+      /* ...and does not touch this candidate, which publishes. */
+      expect(result.validation.checkForaysErrors).toEqual([]);
+      expect(result.validation.ok).toBe(true);
+      expect(result.forayRecord).toBeDefined();
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

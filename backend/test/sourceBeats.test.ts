@@ -535,6 +535,60 @@ describe("sourceBeats — Foray-wide assembly constraints", () => {
     expect(beats.filter((b) => b.sourcing === "tape")).toHaveLength(1);
     expect(beats.filter((b) => b.sourcing === "narration")).toHaveLength(2);
   });
+
+  /** ep-a offers a SECOND segment that starts inside its first (100-220 s and
+   * 150-300 s). Everything else mirrors `ascendingPool`: eight episodes, so
+   * M4's cap stops holding ep-a to one segment once the Foray holds eight, and
+   * alternating 120/150 s lengths so D5 never stops the walk early. */
+  function overlappingPool(): SegmentRecord[] {
+    const base = multiPool()[0]!;
+    const seg = (item: string, start: number, durationSec: number) =>
+      ({ ...base, id: `${item}#${start}`, item_id: item, start_sec: start, end_sec: start + durationSec }) as SegmentRecord;
+    return [
+      seg("ep-a", 100, 120),
+      seg("ep-a", 150, 150),
+      seg("ep-b", 200, 150), seg("ep-b", 500, 120),
+      seg("ep-c", 300, 120), seg("ep-d", 300, 150), seg("ep-e", 300, 120),
+      seg("ep-f", 300, 150), seg("ep-g", 300, 120), seg("ep-h", 300, 150)
+    ];
+  }
+
+  it("never plays two clips from one episode that overlap - the same tape twice", () => {
+    /* 2026-09-13 AUDIT, DEFECT 2. M3 asked only that starts ASCEND, and
+       `startSec >= lastStart` admits every window that begins INSIDE the clip
+       before it. ep-a#150 starts 70 s into ep-a#100 and shares seventy seconds
+       of tape with it; a listener hears those seventy seconds twice, the second
+       time introduced as though they were new. Nothing downstream caught it
+       either - `check-forays.mjs`'s M3 compared starts too (its own case in
+       check-forays.test.mjs).
+
+       MUTATION THAT KILLS THIS: restore `m3OrderAllows` to `lastStart ===
+       undefined || startSec >= lastStart` - ep-a#150 is placed once the Foray
+       holds eight segments and the cap lets ep-a supply a second. Ran it - red.
+
+       TWELVE beats over eight episodes, for the reason the two tests above
+       give: while M4's cap holds every episode to one segment there is no
+       second ep-a clip to overlap with, and this would pass with the clause
+       deleted. */
+    const result = sourceBeats(identicalClaimActs(12), { segmentPool: overlappingPool(), transcriptArchive: [] });
+    const pointers = tapePointers(result);
+    expect(pointers.length).toBeGreaterThan(8);
+    /* The overlapping cut is never played... */
+    expect(pointers.map((t) => t.segmentId)).not.toContain("ep-a#150");
+    /* ...and the rule, stated the way a listener would: no two clips from one
+       episode share a second of tape. */
+    const byItem = new Map<string, Array<{ startSec: number; endSec: number }>>();
+    for (const t of pointers) {
+      if (!byItem.has(t.itemId)) byItem.set(t.itemId, []);
+      byItem.get(t.itemId)!.push({ startSec: t.startSec, endSec: t.endSec });
+    }
+    for (const [item, spans] of byItem) {
+      const ordered = [...spans].sort((a, b) => a.startSec - b.startSec);
+      for (let i = 1; i < ordered.length; i++) {
+        expect(ordered[i]!.startSec, `two clips from ${item} overlap: ${JSON.stringify(ordered)}`).toBeGreaterThanOrEqual(ordered[i - 1]!.endSec);
+      }
+    }
+  });
 });
 
 describe("sourceBeats — generation run 1 (2026-09-09) regressions: cross-domain false positives", () => {
