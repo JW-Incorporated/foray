@@ -1815,7 +1815,18 @@ function showNameLink(showName) {
    catalogue. Zero new data needed: the join is entirely against fields
    already fetched (state.taxonomy, state.catalog). Deliberately an <a>, not
    a <button> wired through JS, so it is a normal navigable link (right-click
-   "open in new tab" etc. keep working, same reasoning as showNameLink). */
+   "open in new tab" etc. keep working, same reasoning as showNameLink).
+
+   SINCE 2026-09-13 THIS HAS EXACTLY ONE CALLER: renderShow's chip strip,
+   built from a show's OWN `taxonomy_node_ids`. The browse pills on #/shows
+   used to call it too and no longer do — see `browseTile` below for the
+   measurement that moved them. That is not a dead route left standing: an id
+   that reaches this function comes off a show record, so `showsForCategory`
+   returns at least that show BY CONSTRUCTION and the page it links to can
+   never be the empty one the founder reported. The pills were the opposite
+   case — they emit taxonomy ROOTS, and roots are almost never what a show is
+   tagged with. Same renderer, two populations, and only one of them joined.
+   test/category-browse.test.js pins both halves. */
 function taxonomyChip(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
   const label = esc(node?.label || nodeId);
@@ -1890,7 +1901,7 @@ function renderCategory(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
   const label = node?.label || nodeId;
   const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
-  renderShowIndexPage(label, `${shows.length} show${shows.length === 1 ? "" : "s"} in 4a's catalogue`, shows);
+  renderShowIndexPage(label, `${shows.length} show${shows.length === 1 ? "" : "s"}`, shows);
 }
 
 /* A3.3 — the all-shows browsable index. A-Z over the full curated catalogue;
@@ -1927,17 +1938,77 @@ function taxonomyRootNodes() {
   return (state.taxonomy?.nodes || []).filter(n => n.parent === null).slice().sort((a, b) => a.label.localeCompare(b.label));
 }
 
+/* `decodeURIComponent` throws a URIError on a lone `%` — and a hash is
+   user-authored text that anyone can type or paste. The other routes get away
+   with the bare call because their ids come from our own links; this one is
+   the shape a person types by hand. An undecodable query is not a query, so it
+   degrades to "" and the caller lands on the plain browse page. */
+function safeDecode(s) {
+  try { return decodeURIComponent(String(s || "")); } catch (_) { return ""; }
+}
+
 /* U-05: the "browse subjects" pill row the mockup's Search screen shows
    above an active query (docs/ux/foray-mockup.jsx SearchScreen). v2-only —
    v1's Shows page had no such row and must not grow one (offline/v1
-   behaviour unchanged is this card's own acceptance line). Reuses
-   taxonomyChip() verbatim (A3.2's existing "chip -> #/category/:id" link,
-   restyled to tokens in styles.css under body.ui-v2 .fy-chip) rather than a
-   new component, so there is exactly one taxonomy-chip renderer in the app. */
+   behaviour unchanged is this card's own acceptance line).
+   ---------------------------------------------------------------------
+   FOUNDER, 2026-09-13 (issue #684): "clicking on any of the tiles on the
+   search page gives 0 results. It should just search for that text."
+
+   HE IS RIGHT, AND THE NUMBER IS WHY. These pills used to render
+   `taxonomyChip`, i.e. a link to `#/category/<root id>`, and
+   `showsForCategory` is an EXACT `taxonomy_node_ids.includes(id)` overlap
+   that never walks children. Measured against the committed catalogue
+   (data/taxonomy.json + data/catalog-client.json, 2026-09-13):
+
+     41 pills rendered. 32 of them match ZERO shows. Only 9 taxonomy roots
+     appear in any curated show's `taxonomy_node_ids` at all — shows are
+     tagged with LEAVES (`science/materials`, `comedy/casual-hangs`), and a
+     root is a leaf's parent, not one of its ids.
+
+   So this was never about tagging being sparse or about #679 untagging one
+   show. It is a root/leaf mismatch, and it made four fifths of the browse
+   furniture on this page a set of buttons that reliably say "No shows here
+   yet."
+
+   WHY SEARCH AND NOT A DESCENDANT WALK. Teaching showsForCategory to expand
+   a root (the fix docs/product/suggested-shows-requirements.md §6.7
+   proposes) was measured too: it takes the 32 empty pills down to 4, with a
+   median of 4 shows behind a pill, because it can still only ever answer out
+   of the curated 220. Searching the pill's own label reaches the same local
+   catalogue AND the breadth endpoint AND the directory: measured live the
+   same day, every one of the 41 labels returns between 10 and 50 shows,
+   median 37, none empty. The founder's fix is both the simpler change and
+   the better answer, and it degrades the way the search box already does
+   rather than the way a join does.
+
+   THE PILL STAYS A PILL. Same `.fy-chip` class, same row, same styling; only
+   its destination changed, so nothing in styles.css moves.
+
+   STILL AN <a> TO A REAL ROUTE, not a button wired through JS — taxonomyChip's
+   reasoning holds unchanged, and a search you can link to is strictly better
+   than one you can only reach by tapping. `#/shows/q/<q>` rather than
+   `#/shows?q=<q>` because `renderCurrentPage` matches with anchored regexes
+   and an exact `h === "#/shows"`: a path segment is the shape that router
+   already speaks, a query string would have to be taught to every branch.
+
+   The prefix is a LITERAL, not an interpolated helper, for the same reason
+   every other in-app link in this file is (test/app-security.test.js's "every
+   interpolated href passes through safeUrl" rule): `safeUrl` gates schemes via
+   `new URL`, which throws on a bare hash, so a hash route must be visibly
+   constant in the template instead. The round trip from this href back through
+   the router is pinned in test/category-browse.test.js rather than held
+   together by a shared constant. */
+function browseTile(nodeId) {
+  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
+  const label = node?.label || nodeId;
+  return `<a class="fy-chip" href="#/shows/q/${esc(encodeURIComponent(label))}">${esc(label)}</a>`;
+}
+
 function browsePillsHtml() {
   const roots = taxonomyRootNodes();
   if (!roots.length) return "";
-  return `<div class="sh-browse-pills">${roots.map(n => taxonomyChip(n.id)).join("")}</div>`;
+  return `<div class="sh-browse-pills">${roots.map(n => browseTile(n.id)).join("")}</div>`;
 }
 
 /* THE BROWSE FURNITURE \u2014 everything on this page that is a SUGGESTION rather
@@ -1997,6 +2068,24 @@ let showSearchFieldFocused = false;
 function updateShowBrowseVisibility() {
   const input = $("#sh-input");
   const hide = showSearchFieldFocused || !!(input && input.value.trim());
+  /* THE PAGE'S HEIGHT GOES WITH THE FURNITURE, and it is worth writing down
+     what that costs because #684 reports it as motion. Measured in Chromium at
+     390x844 against the shipped page: with the A-Z index showing,
+     `document.documentElement.scrollHeight` is 17809 px; the moment the field
+     takes focus it is 844. A listener who had scrolled the catalogue and then
+     reached for the field — which since #683 is a fixed pill at the BOTTOM of
+     the screen, i.e. the thing you tap WITHOUT scrolling back up — goes from
+     scrollY 4000 to 0.
+
+     THAT MOVEMENT IS INHERENT TO HIDING THE CATALOGUE, not a defect in how it
+     is hidden, and this function deliberately does NOT try to soften it. An
+     explicit `scrollPageTo(0)` here was written and then measured: Chromium
+     applies its own clamp synchronously, in the same turn as the `hidden`
+     writes, so the viewport is already at 0 before anything else can read it
+     and the extra call changed nothing observable. It was removed rather than
+     kept as a line that looks like a fix. If the settling still reads badly on
+     a device, the thing to revisit is #681's rule — hide on focus, and hide
+     the A-Z index along with the cards — not this write. */
   for (const el of showBrowseSections()) el.hidden = hide;
   /* THE SAME PREDICATE, INVERTED, decides the ✕ beside the pill (Apple
      Podcasts swaps its idle Home button for one the moment the field is
@@ -2024,7 +2113,17 @@ function dismissShowSearch(input) {
   updateShowBrowseVisibility();
 }
 
-function renderAllShows() {
+/* `initialQuery` is #/shows/q/<q>'s payload — the browse tiles' destination
+   (see `browseTile`) and anything else that wants to land on this page with
+   an answer already on it. Empty string is the ordinary #/shows arrival and
+   is byte-identical to what this rendered before.
+
+   IT DOES NOT FOCUS THE FIELD. On a phone, focus raises the keyboard, and a
+   listener who tapped "Science" asked to SEE shows, not to type. The query
+   is in the box so it can be edited, the results are painted, and the
+   keyboard stays down. */
+function renderAllShows(initialQuery = "") {
+  const query = String(initialQuery || "").trim();
   const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
   /* NO SUBTITLE (founder, 2026-09-13: "On the search page, delete '220 shows
      in 4a's\u2026'"). renderCategory keeps its own \u2014 see renderShowIndexPage. */
@@ -2143,8 +2242,17 @@ function renderAllShows() {
 
   /* A fresh render starts from the resting state: nothing focused, browse
      furniture showing. Without this a return to #/shows after leaving it
-     mid-search would open with the catalogue already hidden. */
+     mid-search would open with the catalogue already hidden.
+
+     `#/shows/q/<q>` is the one arrival that is NOT resting: the field is
+     seeded first so `updateShowBrowseVisibility`'s single predicate ("the
+     field is focused OR holds a query") hides the browse furniture for the
+     ordinary reason rather than through a second rule. */
   showSearchFieldFocused = false;
+  if (query) {
+    const seed = $("#sh-input");
+    if (seed) seed.value = query;
+  }
   updateShowBrowseVisibility();
 
   const input = $("#sh-input");
@@ -2187,6 +2295,13 @@ function renderAllShows() {
       dismissShowSearch(input);
     });
   }
+
+  /* LAST, after every listener is bound, because this paints into the nodes
+     above and then runs the same costly pass a submit would — a pass that can
+     resolve at any point and must not land on a half-wired page. It is
+     `renderShowSearchResults`, the SUBMIT path, verbatim: a tile IS a submit
+     the listener did not have to type. */
+  if (query) renderShowSearchResults(query);
 }
 
 /* Stage 3b (docs/show-pages-plan.md §Stage 3, kanban t_567b570f): full
@@ -2536,7 +2651,7 @@ function renderShow(show_id) {
       ? curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("")
       : isBreadthTier
         ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
-        : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
+        : `<p class="note">No episodes available for this show right now.</p>`}
   </div>
   ${similarShowsSection(show)}
   ${showForaysHtml(show)}
@@ -3805,8 +3920,8 @@ function repaintShowSearchForIndex() {
   const localShows = localShowMatches(query);
   const existing = paintedShowRows(query, showSearchToken, null);
   if (!existing) { paintShowResults(query, localShows, showSearchToken); return; }
-  const merged = mergeShowRows(query, existing, localShows);
-  if (merged) paintShowResults(query, merged, showSearchToken);
+  const additions = mergeShowRows(query, existing, localShows);
+  if (additions) appendShowResults(query, additions, showSearchToken);
 }
 
 /** Curated 220 + the index's PREFIX answer, merged and ranked once by
@@ -4069,7 +4184,7 @@ function paintShowResults(query, shows, myToken) {
   if (!shows.length) {
     results.innerHTML = "";
     results.hidden = true;
-    note.textContent = `No shows match "${query}" in 4a's catalogue.`;
+    note.textContent = `No results for "${query}".`;
     note.hidden = false;
     return;
   }
@@ -4090,8 +4205,38 @@ function paintedShowRows(query, myToken, fallback) {
 
 /** THE ONE MERGE RULE, named once because four callers share it: the index's
     scan pass, the catalogue pass, the directory pass, and the index landing
-    mid-query. Appends `incoming` beneath `existing` and re-ranks; returns null
-    when nothing was added, so a caller can skip a repaint.
+    mid-query. Returns the rows to put BENEATH `existing`, ranked among
+    themselves, or null when nothing was added so a caller can skip a repaint.
+
+    IT NO LONGER RE-RANKS `existing`, AND THAT IS THE FIX FOR THE SECOND HALF
+    OF #684 (founder: "the page jumps around a lot within a second or so").
+    This used to return `SearchEngine.rankShows(query, existing.concat(
+    additions))` — a fresh sort of the WHOLE list every time a pass landed.
+    Measured in a real Chromium at 390x844 against the shipped page, with the
+    two endpoints held at their reported live latencies (test/playwright/
+    tests/search-result-stability.spec.js is that measurement, kept):
+
+      t=107 ms   the local pass paints 20 rows.
+      t=882 ms   the catalogue pass merges 10 more. The list re-sorts.
+      t=1692 ms  the directory pass merges 12 more, and they land at INDEX 2 —
+                 every row from the third down moves 74 px per inserted row,
+                 222 px in that sample, a second and a half after the listener
+                 started reading them.
+
+    So the complaint is not that the list grows. It is that it grows in the
+    middle. Ranking additions among themselves and appending them means the
+    list only ever grows DOWNWARD: a row that has been painted keeps its
+    position for the life of the query, and the only thing a later pass can do
+    is add more underneath.
+
+    WHAT THIS COSTS, said plainly: a directory row that outranks everything
+    local no longer jumps to the top — it sits below the local answer, in
+    order, with the rest of its own pass. That is a real ranking concession and
+    it is the intended trade. The passes arrive best-source-first already
+    (curated local, then the catalogue endpoint, then Apple's directory), so
+    the append order is close to the rank order anyway; and a list that
+    reshuffles under a thumb is worth less than a slightly worse order that
+    holds still.
 
     DEDUP IS BY `show_id` FOR EVERYTHING and additionally by title STEM for
     APPLE ROWS ONLY (`source === "apple"`, stamped by `mapAppleShow`).
@@ -4123,7 +4268,25 @@ function mergeShowRows(query, existing, incoming) {
     additions.push(s);
   }
   if (!additions.length) return null;
-  return SearchEngine.rankShows(query, existing.concat(additions));
+  return SearchEngine.rankShows(query, additions);
+}
+
+/** Puts `additions` beneath whatever is already painted for `query` under
+    `myToken`, and repaints. The one call site shape every merging pass now
+    uses, so none of them can accidentally reorder the list by hand.
+
+    `paintShowResults` still writes `#sh-results.innerHTML` wholesale rather
+    than inserting at the end, and deliberately: the leading rows of the new
+    string are byte-identical to the ones already there, so their geometry is
+    unchanged and nothing above the insertion point moves — which is the
+    property that was actually broken. A DOM-level append would additionally
+    keep the existing nodes alive, but it would also need `insertAdjacentHTML`
+    taught to the ~30 node:vm element stubs in `test/`, and a second painting
+    path guarded by a `typeof` check is the "fallback nobody exercises" shape
+    this repo keeps deleting. One path. */
+function appendShowResults(query, additions, myToken) {
+  const existing = paintedShowRows(query, myToken, null);
+  paintShowResults(query, existing ? existing.concat(additions) : additions, myToken);
 }
 
 /** THE KEYSTROKE PATH. Local only: no fetch, no playlist CTA, nothing deferred.
@@ -4217,8 +4380,8 @@ function runShowSearchCostly(query, myToken, local) {
      prefix answer beyond the curated rows. */
   if (showIndex && shown().length < SHOW_PREFIX_UNDERDELIVERS_BELOW) {
     const scanned = SearchEngine.scanShowIndex(query, showIndex);
-    const merged = mergeShowRows(query, shown(), scanned);
-    if (merged) paintShowResults(query, merged, myToken);
+    const additions = mergeShowRows(query, shown(), scanned);
+    if (additions) appendShowResults(query, additions, myToken);
   }
 
   /* The dedup rule itself now lives in `mergeShowRows`, shared with the index
@@ -4229,8 +4392,8 @@ function runShowSearchCostly(query, myToken, local) {
      every row received, including the ones the dedup then drops. */
   const mergeBreadth = (breadthShows) => {
     for (const s of breadthShows) state.breadthShowCache[s.show_id] = s;
-    const merged = mergeShowRows(query, shown(), breadthShows);
-    if (merged) paintShowResults(query, merged, myToken);
+    const additions = mergeShowRows(query, shown(), breadthShows);
+    if (additions) appendShowResults(query, additions, myToken);
   };
 
   const cacheKey = showBreadthCacheKey(query);
@@ -5332,7 +5495,7 @@ function archivedRow(item, idx, ctx) {
     <div class="info">
       <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Part no longer in the catalogue"}</div>
       <div class="s">${named
-        ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}${dateStr ? ` · ${esc(dateStr)}` : ""} · not in 4a's catalogue right now`
+        ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}${dateStr ? ` · ${esc(dateStr)}` : ""} · not available right now`
         : "Saved before 4a kept episode details"}</div>
     </div>
     ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${unavailable}
@@ -5349,7 +5512,7 @@ function partsNote(rows) {
   const parts = [];
   if (archived) {
     const one = archived === 1;
-    parts.push(`${archived} part${one ? " is" : "s are"} not in 4a's catalogue right now, so ${one ? "it" : "they"} cannot play — ${one ? "it stays listed" : "they stay listed"} so you can see where it fits in the playlist.`);
+    parts.push(`${archived} part${one ? " is" : "s are"} not available right now, so ${one ? "it" : "they"} cannot play — ${one ? "it stays listed" : "they stay listed"} so you can see where it fits in the playlist.`);
   }
   if (unnamed) {
     const one = unnamed === 1;
@@ -5588,7 +5751,7 @@ function upNextRow(r, idx, total) {
   const sub = state === "live"
     ? `${esc(item.show)} · ${fmtDur(item.duration_min)}`
     : state === "archived"
-      ? `${esc(item.show || "")}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
+      ? `${esc(item.show || "")}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not available right now`
       : "Removed from your history — no details saved";
   return `<div class="ep-row up-next-row ${playable ? "" : "gone"}">
     <span class="q-num">${idx + 1}</span>
@@ -5716,7 +5879,7 @@ function renderLibrary() {
   // would misname what happened here, so History gets its own honest fallback
   // for that one state rather than reusing archivedRow's wording.
   const historyRowHtml = (r, i) => r.state === "unnamed"
-    ? `<div class="ep-row gone"><span class="q-num">${i + 1}</span><div class="info"><div class="t">No longer available</div><div class="s">Previously played, no longer in 4a's catalogue</div></div></div>`
+    ? `<div class="ep-row gone"><span class="q-num">${i + 1}</span><div class="info"><div class="t">No longer available</div><div class="s">Previously played, no longer available</div></div></div>`
     : rowHtml(r, i, "library-history");
 
   const savedHtml = savedRows.length
@@ -9121,6 +9284,13 @@ function renderCurrentPage() {
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(m[1]);
   else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
   else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(decodeURIComponent(m[1]));
+  /* Before the bare `#/shows`, because `h === "#/shows"` is an exact match
+     and would otherwise never see this one — and the browse tiles link here
+     (see `browseTile`). A malformed percent-escape decodes to nothing rather
+     than throwing the whole router: `decodeURIComponent` is the one call in
+     this chain that can raise on user-authored input, and a bad hash must
+     land on the ordinary Shows page, not a blank screen. */
+  else if ((m = /^#\/shows\/q\/(.*)$/.exec(h))) renderAllShows(safeDecode(m[1]));
   else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
   else if (h === "#/create") renderCreate();

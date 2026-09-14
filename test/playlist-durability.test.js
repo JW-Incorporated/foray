@@ -539,7 +539,7 @@ test("an archived part is SHOWN and labelled, never hidden — 'label, never exc
   assert.strictEqual(goneCount(html), 1, "the departed one must be marked");
   assert.ok(html.includes("Episode 2 of something"), "the archived part must still be named");
   assert.ok(html.includes("Show 2"), "and still credit its show");
-  assert.ok(html.includes("not in 4a's catalogue right now"), "and say what happened to it");
+  assert.ok(html.includes("not available right now"), "and say what happened to it");
 });
 
 test("THE SECOND RENDER SAYS WHAT THE FIRST SAID — liveness is the pool, not the snapshot cache", () => {
@@ -574,7 +574,7 @@ test("THE SECOND RENDER SAYS WHAT THE FIRST SAID — liveness is the pool, not t
   for (const [label, html] of [["first", first], ["second", second]]) {
     assert.strictEqual(rowCount(html), 2, `${label} render: both parts must be there`);
     assert.strictEqual(goneCount(html), 1, `${label} render: the archived part must stay marked`);
-    assert.ok(html.includes("not in 4a's catalogue right now"), `${label} render: it must keep its caption`);
+    assert.ok(html.includes("not available right now"), `${label} render: it must keep its caption`);
     assert.ok(html.includes("class=\"note\""), `${label} render: the shortfall must still be announced`);
     assert.deepStrictEqual(nextMarkers(html), ["2"], `${label} render: next belongs on the live part`);
     assert.strictEqual((html.match(/data-play="/g) || []).length, 1,
@@ -604,7 +604,7 @@ test("a rotated-out part does not become live for a DIFFERENT playlist that also
   assert.strictEqual(goneCount(m.view()), 1, "A must mark it");
   m.ctx.renderPlaylistDetail("qB");
   assert.strictEqual(goneCount(m.view()), 1, "and B must mark it too, on its first render");
-  assert.ok(m.view().includes("not in 4a's catalogue right now"));
+  assert.ok(m.view().includes("not available right now"));
 });
 
 test("an archived pick never becomes the continue banner, and cannot degrade a live snapshot", () => {
@@ -683,17 +683,24 @@ test("the page says what happened, once, and says nothing when nothing is missin
      MUTATION 2: emit it unconditionally. The all-live assertion fails.
 
      The note is asserted through `partsNote` output rather than by fishing for a
-     substring in the page: the first draft looked for `1 part is not in 4a's
-     catalogue` in the RENDERED html, where `esc()` has already turned the
-     apostrophe into `&#39;`, so that disjunct could never match and the whole
-     assertion was carried by `includes("not in 4a")` — which archivedRow's own
-     caption satisfies. It passed with partsNote returning anything at all. */
+     substring in the page: an earlier draft looked for the sentence in the
+     RENDERED html, where `esc()` has already rewritten its punctuation, so that
+     disjunct could never match and the whole assertion was carried by a loose
+     `includes()` that archivedRow's own caption satisfies too. It passed with
+     partsNote returning anything at all.
+
+     THE COPY NAMES NO CATALOGUE (founder, 2026-09-13: "don't blame it on 4a").
+     This read "1 part is not in 4a's catalogue right now"; the explanation of
+     WHY the part cannot play is kept, because that is the listener's real
+     question, and only our own internal model is dropped from it.
+     MUTATION: put "in 4a's catalogue" back into partsNote -> the anchored
+     match below fails. */
   const m = mount();
   const withGaps = withArchivedPart(m, { extraStub: true });
   const notes = (withGaps.match(/class="note"/g) || []).length;
   assert.strictEqual(notes, 1, "one note, not one per missing part");
   const noteText = /<p class="note">([\s\S]*?)<\/p>/.exec(withGaps)[1];
-  assert.match(noteText, /^1 part is not in 4a&#39;s catalogue right now/,
+  assert.match(noteText, /^1 part is not available right now/,
     `the note must open by naming the shortfall: ${noteText}`);
   assert.match(noteText, /1 part was saved before 4a kept episode details/,
     `and name the unnameable one too: ${noteText}`);

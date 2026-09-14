@@ -614,8 +614,13 @@ directory rows — collected once per query from
 and replayed identically into both revisions so the only variable is the rule.
 The passes and their order are `app.js`'s: `localShowMatches` →
 `scanShowIndex` (only when the local pass returns < 10) → the catalogue pass →
-the directory pass, each merged through `mergeShowRows` and re-ranked by
-`rankShows`. **The intended show was written down before the run** (the case
+the directory pass, each merged through `mergeShowRows`. (That battery ran
+before #684, when every merge re-ranked the WHOLE list through `rankShows`.
+Since then a pass ranks only the rows IT adds and appends them beneath what is
+already painted — see `mergeShowRows`'s own header for the measurement that
+forced it. The ranking rule the battery was testing is unchanged; what changed
+is that it is no longer applied retroactively to rows the listener is already
+reading.) **The intended show was written down before the run** (the case
 list is the table's second column), so no result could be rationalised after the
 fact.
 

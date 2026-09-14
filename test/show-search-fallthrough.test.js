@@ -1017,3 +1017,102 @@ test("the show index landing mid-query MERGES into the painted list instead of r
   assert.ok(html.includes("Radiolab for Kids"), "the directory row must survive the index landing");
   assert.ok(html.includes(">Radiolab<"), "and so must the local row it was merged onto");
 });
+
+/* ==================================================================== */
+/* THE LIST ONLY EVER GROWS DOWNWARD (issue #684, founder report 2)      */
+/*                                                                      */
+/* "when I do click the search bar, type and search something, then hit  */
+/*  search, the page jumps around a lot within a second or so."          */
+/*                                                                      */
+/* The three passes land at measured 3 ms / 0.7 s / 1.5 s, and until     */
+/* this change each of them re-ranked the WHOLE list. Measured in a real */
+/* Chromium at 390x844 (test/playwright/tests/search-result-stability    */
+/* .spec.js, which is the same rule at the pixel level): the directory's */
+/* rows landed at index 2 and pushed everything from the third row down  */
+/* by 222 px, a second and a half after the listener started reading.    */
+/*                                                                      */
+/* The rule here is the whole fix: a row that has been painted keeps its */
+/* position for the life of the query.                                   */
+/* ==================================================================== */
+
+/** The titles painted into #sh-results, in order. */
+const paintedTitles = (m) =>
+  [...m.results().innerHTML.matchAll(/class="show-result-title">([^<]*)</g)].map((x) => x[1]);
+
+test("a later pass never reorders what is already painted — it only appends beneath it", async () => {
+  /* THE CASE THAT FORCES THE RULE, not a case that merely tolerates it: the
+     directory row is an EXACT title match for the query, so a whole-list
+     re-rank would put it FIRST, above the local row the listener is already
+     reading. Appending is therefore visible as a different order here, not
+     just a different implementation of the same one.
+
+     MUTATION: re-rank the WHOLE painted list, as this did before #684 — in
+     appendShowResults, wrap the concatenation in `SearchEngine.rankShows(query,
+     ...)`. "Science" sorts above "Science Friday" and the prefix assertion
+     goes red. RUN: failed as named. */
+  const m = mount({
+    directory: [{
+      show_id: "apple-science", title: "Science", artwork_url: null, artist_name: null,
+      editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "apple",
+    }],
+  });
+  m.input.value = "science";
+  m.byId.get("sh-form").fire("submit");
+
+  const local = paintedTitles(m);
+  assert.deepStrictEqual(local, ["Science Friday"], `precondition: the local pass painted first: ${JSON.stringify(local)}`);
+
+  await sleep(40);
+  const merged = paintedTitles(m);
+  assert.ok(merged.length > local.length, `precondition: the directory row arrived: ${JSON.stringify(merged)}`);
+  assert.deepStrictEqual(merged.slice(0, local.length), local,
+    `every row already on screen must still be where it was: ${JSON.stringify(merged)}`);
+  assert.ok(merged.includes("Science"), "and the directory's row must still be in the list, underneath");
+});
+
+test("the rows a pass adds are ranked among THEMSELVES, so appending is not arrival order", async () => {
+  /* The other half of the trade. Holding the painted prefix still must not
+     mean giving up on ranking altogether — a pass that brings 25 rows still
+     owes the listener its best one first.
+
+     MUTATION: `return additions` (drop the rankShows call) in mergeShowRows.
+     The endpoint's own order survives and "Zzz Something Science" leads the
+     appended block instead of the prefix match. */
+  const m = mount({
+    directory: [
+      { show_id: "apple-z", title: "Zzz Something Science", artwork_url: null, artist_name: null, editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "apple" },
+      { show_id: "apple-w", title: "Science Weekly", artwork_url: null, artist_name: null, editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "apple" },
+    ],
+  });
+  m.input.value = "science";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(40);
+
+  const painted = paintedTitles(m);
+  assert.deepStrictEqual(painted[0], "Science Friday", `the local row still leads: ${JSON.stringify(painted)}`);
+  assert.deepStrictEqual(painted.slice(1), ["Science Weekly", "Zzz Something Science"],
+    `the appended block must be ranked, not in arrival order: ${JSON.stringify(painted)}`);
+});
+
+test("the empty-state note names no catalogue of ours — it says nothing matched", async () => {
+  /* Founder, 2026-09-13: "there is every now and then messages that say 'no
+     shows in 4a's catalogue.' Get rid of that, just give some standard 'no
+     results' response or something, don't blame it on 4a."
+
+     It was also, by then, untrue: since #674 this page asks Apple's directory
+     as well, so an empty list does not mean "not in OUR catalogue", it means
+     nothing matched anywhere.
+
+     MUTATION: restore `No shows match "${query}" in 4a's catalogue.` in
+     paintShowResults. The second assertion goes red. */
+  const m = mount();
+  m.input.value = "zzz-nothing-matches-this-zzz";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(40);
+
+  assert.strictEqual(m.note().hidden, false, "an empty result still gets an honest note, not silence");
+  assert.ok(m.note().textContent.includes("zzz-nothing-matches-this-zzz"),
+    `the note must name the query rather than generic filler: ${m.note().textContent}`);
+  assert.ok(!/4a/.test(m.note().textContent),
+    `the note must not name our own catalogue as the reason: ${m.note().textContent}`);
+});

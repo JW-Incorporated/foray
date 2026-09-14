@@ -412,7 +412,7 @@ test("a breadth-tier show (found via search, zero curated episodes) shows an hon
   const html = m.view();
   assert.ok(html.includes("Deep Sea Engineering Hour"), "must render the breadth show's title");
   assert.ok(!html.includes("Show not found"), "a breadth-tier show_id must resolve, not 404");
-  assert.ok(!html.includes("No episodes from this show are in 4a's catalogue right now"), "must NOT use the curated-tier empty copy, which implies the show has none");
+  assert.ok(!html.includes("No episodes available for this show right now"), "must NOT use the curated-tier empty copy, which implies the show has none");
   assert.ok(html.toLowerCase().includes("fetching"), "must show an honest in-progress state instead");
   assert.strictEqual(rowCount(html), 0, "no episode rows yet — Stage 3b (t_567b570f) wires the real list in separately");
 });
@@ -421,7 +421,15 @@ test("a curated-tier show with genuinely zero discover-pool episodes keeps its o
   /* MUTATION: remove the `isBreadthTier` condition entirely so EVERY
      zero-episode show gets the breadth "fetching" copy. This test catches
      that regression: a curated show is not "still loading," it genuinely
-     has none, and must keep saying so. */
+     has none, and must keep saying so.
+
+     THE WORDING MOVED, THE SPLIT DID NOT (issue #684; founder, 2026-09-13:
+     "don't blame it on 4a"). It used to read "No episodes from this show are
+     in 4a's catalogue right now" and now reads "No episodes available for
+     this show right now" — the same claim, without naming our own catalogue
+     as the reason. What this test is a regression guard for is the BRANCH,
+     not the sentence, and both directions are still pinned here and in the
+     breadth-tier test above. */
   const m = mount();
   m.state.catalog = {
     shows: [{ show_id: "curated-no-eps", title: "Curated No Episodes Show", artwork_url: null, taxonomy_node_ids: [], editorial_note: null }],
@@ -432,7 +440,7 @@ test("a curated-tier show with genuinely zero discover-pool episodes keeps its o
 
   m.ctx.renderShow("curated-no-eps");
   const html = m.view();
-  assert.ok(html.includes("No episodes from this show are in 4a's catalogue right now"), "curated-tier zero-episode state must be unchanged");
+  assert.ok(html.includes("No episodes available for this show right now"), "curated-tier zero-episode state must be unchanged");
   assert.ok(!html.toLowerCase().includes("fetching"), "must not show the breadth-tier in-progress copy for a curated show");
 });
 
