@@ -781,6 +781,26 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         double[] load();
         /** {@code [synthMs, audioSec]} for one line. */
         double[] synthesize(int[] ids, double speed);
+
+        /** Why the last {@link #synthesize} produced no audio, from
+         *  {@code player/kokoro-probe.js}'s {@code SYNTH_REASONS}, or
+         *  {@code null} when it produced some.
+         *
+         *  <p>NOT DECORATION (#685). A null session, a throwing inference and
+         *  an empty output tensor used to be the same {@code [0, 0]}, each
+         *  diagnosed only into logcat — which the founder holding the phone
+         *  cannot read. Three bugs arrived as one number, and the number was
+         *  zero. Defaulted rather than required so a K-04 engine that has not
+         *  thought about it is honest rather than broken. */
+        default String lastSynthReason() { return null; }
+
+        /** Whether an accelerator execution provider (NNAPI here, CoreML on
+         *  iOS) is registered, as opposed to ORT's CPU provider. {@code false}
+         *  on every build today — see {@code KokoroOrtProbeEngine#makeSession}.
+         *  Reported rather than inferred from {@link #provider()}, because
+         *  {@code "cpu"} reads as a fallback that fired and it is not one: it
+         *  is the only path compiled. */
+        default boolean acceleratorWired() { return false; }
     }
 
     /** The seam. Null on every build that ships today; K-04 sets it. */
@@ -877,24 +897,84 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         double[] load = engine.load();
         double synthColdMs = 0;
         double synthWarmMs = 0;
+        /* THE RENDERED SECONDS, AND #685's WHOLE STORY. `out[1]` is the audio
+         * the engine actually produced for this line, and until now NOTHING IN
+         * THIS METHOD READ IT — the value was computed on the device and never
+         * crossed the bridge. With no rendered length on the wire,
+         * `player/kokoro-probe.js` divided by the passage's PLANNING ESTIMATE,
+         * which is positive whatever the engine does; a synthesis time of zero
+         * over 77.4 estimated seconds is not an unmeasured RTF, it is `0.00`,
+         * and 0.00 beats every ceiling K-01 has. Reported SPLIT COLD/WARM to
+         * match the two synthesis figures, so each RTF is a ratio of two
+         * numbers measured over the same audio. */
+        double audioColdSec = 0;
+        double audioWarmSec = 0;
+        int synthFailures = 0;
+        String firstFailure = null;
         for (int i = 0; i < idLines.size(); i++) {
             double[] out = engine.synthesize(idLines.get(i), speed);
+            String why = engine.lastSynthReason();
+            if (why != null) {
+                synthFailures++;
+                if (firstFailure == null) firstFailure = why;
+            }
             /* FIRST LINE IS THE COLD NUMBER, the rest are warm — the go rule
              * in the card is stated on the warm figure alone, and a mean that
              * folded a two-second first inference into it would fail a phone
              * that is fine. */
-            if (i == 0) synthColdMs = out[0]; else synthWarmMs += out[0];
+            if (i == 0) {
+                synthColdMs = out[0];
+                audioColdSec = out.length > 1 ? out[1] : 0;
+            } else {
+                synthWarmMs += out[0];
+                audioWarmSec += out.length > 1 ? out[1] : 0;
+            }
         }
 
         Runtime rt = Runtime.getRuntime();
+
+        /* NOT ONE LINE RENDERED IS A REFUSAL, NOT A MEASUREMENT. The weights
+         * are here and the runtime loaded, so `model-absent`/`engine-absent`
+         * would both be lies — but there is no number, and the only thing
+         * worse than no number is a zero that reads as a triumph. The sub-code
+         * travels in `detail` so the next run says WHICH failure it was
+         * instead of leaving it in logcat where nobody can read it. */
+        if (audioColdSec + audioWarmSec <= 0) {
+            result.put("ok", false);
+            result.put("reason", "synthesis-failed");
+            result.put("detail", firstFailure == null ? "zero-samples" : firstFailure);
+            result.put("model", engine.modelName());
+            result.put("provider", engine.provider());
+            result.put("modelLoadColdMs", load.length > 0 ? load[0] : 0);
+            result.put("modelLoadWarmMs", load.length > 1 ? load[1] : 0);
+            result.put("synthColdMs", synthColdMs);
+            result.put("synthWarmMs", synthWarmMs);
+            result.put("synthFailures", synthFailures);
+            result.put("lines", idLines.size());
+            /* Reported as the zeroes they are, so the record is internally
+             * consistent: rendered audio of 0 s makes every RTF `null` in
+             * `summarizeProbe` rather than a quotient over an estimate. */
+            result.put("audioColdSec", 0.0);
+            result.put("audioWarmSec", 0.0);
+            result.put("acceleratorWired", engine.acceleratorWired());
+            result.put("peakMemoryBytes", (double) android.os.Debug.getNativeHeapAllocatedSize());
+            call.resolve(result);
+            return;
+        }
+
         result.put("ok", true);
         result.put("reason", "");
+        result.put("detail", firstFailure == null ? "" : firstFailure);
         result.put("model", engine.modelName());
         result.put("provider", engine.provider());
+        result.put("acceleratorWired", engine.acceleratorWired());
         result.put("modelLoadColdMs", load.length > 0 ? load[0] : 0);
         result.put("modelLoadWarmMs", load.length > 1 ? load[1] : 0);
         result.put("synthColdMs", synthColdMs);
         result.put("synthWarmMs", synthWarmMs);
+        result.put("audioColdSec", audioColdSec);
+        result.put("audioWarmSec", audioWarmSec);
+        result.put("synthFailures", synthFailures);
         result.put("lines", idLines.size());
         /* `totalMemory - freeMemory` is the JVM heap, which is NOT where ORT's
          * arena lives — the native allocation is the number the deck's 833 MB

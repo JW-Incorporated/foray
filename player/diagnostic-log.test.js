@@ -1378,6 +1378,9 @@ test("the report prints a successful probe with every number K-01 asks for", () 
     engine: "kokoro-probe", ok: true, provider: "coreml", model: "1.0",
     modelLoadColdMs: 1840, modelLoadWarmMs: 120, rtfCold: 0.94, rtfWarm: 0.61,
     audioSec: 77.4, peakMemoryMb: 312, lockedScreenCompleted: true, batteryDeltaPct: -3,
+    /* The shape K-01 was written expecting and no build has yet produced: an
+       accelerator EP and seconds the phone actually rendered. */
+    audioFrom: "rendered", acceleratorWired: true,
   });
   const line = formatDiagnosticReport(log.read()).split("\n").find((l) => l.includes("voiceProbe"));
   assert.match(line, /kokoro-probe\/coreml/);
@@ -1387,6 +1390,51 @@ test("the report prints a successful probe with every number K-01 asks for", () 
   assert.match(line, /locked=y/);
   assert.match(line, /batt -3%/);
   assert.match(line, /over 77\.4s/);
+  assert.doesNotMatch(line, /cpu-only/, "an accelerated run is not tagged as CPU-only");
+});
+
+test("the line says whether the seconds were RENDERED or estimated, and flags an impossible RTF", () => {
+  /* #685. The reading the founder pasted was `rtf cold 0.00 warm 0.00 ... over
+     77.4s`, and every part of that was true and misleading: the 77.4 s was a
+     planning estimate the phone never rendered, and 0.00 is what a synthesis
+     that never ran divides to. One line read aloud over a phone has no room
+     for a sentence, so it carries `(est)` and a `!`.
+     MUTATION: drop the `audioFrom` suffix or the `floor()` marker — the line
+     becomes byte-for-byte the one that got filed as a pass. */
+  const { diag, log } = mk();
+  diag.voiceProbe({
+    engine: "kokoro-probe", ok: true, provider: "cpu", model: "1.0",
+    modelLoadColdMs: 467, modelLoadWarmMs: 388, rtfCold: 0, rtfWarm: 0,
+    audioSec: 77.4, audioFrom: "estimated", peakMemoryMb: 290.9,
+    lockedScreenCompleted: false, acceleratorWired: false,
+  });
+  const line = formatDiagnosticReport(log.read()).split("\n").find((l) => l.includes("voiceProbe"));
+  assert.match(line, /rtf cold 0\.00! warm 0\.00!/);
+  assert.match(line, /over 77\.4s\(est\)/);
+  assert.match(line, /\(cpu-only\)/);
+});
+
+test("a synthesis-failed refusal keeps the load and memory numbers it DID produce", () => {
+  /* Every refusal before this one came from a build with no model in it, so
+     printing the code alone lost nothing. `synthesis-failed` comes from a
+     phone that loaded the model in 467 ms and reached 290.9 MB — the numbers
+     PR #675 existed to obtain. Printing the code alone would make the next
+     failed probe less informative than the broken one was.
+     MUTATION: return the bare reason line — the load and peak assertions go
+     red, and so does the founder's next trip to a locked phone. */
+  const { diag, log } = mk();
+  diag.voiceProbe({
+    engine: "kokoro-probe", ok: false, reason: "synthesis-failed", synthReason: "session-absent",
+    modelLoadColdMs: 467, modelLoadWarmMs: 388, peakMemoryMb: 290.9,
+  });
+  const line = formatDiagnosticReport(log.read()).split("\n").find((l) => l.includes("voiceProbe"));
+  assert.match(line, /could not measure: synthesis-failed\/session-absent/);
+  assert.match(line, /load 467ms\/388ms/);
+  assert.match(line, /peak 290\.9MB/);
+  /* And a refusal that truly has no numbers still prints no dashes. */
+  diag.voiceProbe({ engine: "kokoro-probe", ok: false, reason: "model-absent" });
+  const bare = formatDiagnosticReport(log.read()).split("\n").filter((l) => l.includes("voiceProbe")).at(-1);
+  assert.match(bare, /could not measure: model-absent$/);
 });
 /* L-06: what the lock screen was actually told (founder feedback F15)  */
 /* ==================================================================== */

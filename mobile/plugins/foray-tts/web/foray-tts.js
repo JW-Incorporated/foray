@@ -458,7 +458,19 @@ export async function kokoroProbe(opts = {}) {
        that defaults to "it worked" is the failure mode this whole file is
        written around. */
     if (!native || native.ok !== true) {
+      /* SPREAD, not just `reason` (#685). `runKokoroProbe` hands THIS object to
+         `summarizeProbe` as the native payload, so anything left one level
+         down in `native` is a field the record never sees. That cost nothing
+         while every refusal was `model-absent`-shaped and carried no numbers —
+         but `synthesis-failed` is a refusal from a phone that DID load the
+         model, and its load times, peak memory and `detail` sub-code are the
+         most useful things the run produced. Losing them would make the next
+         failed probe less informative than #685's was.
+
+         `ok`/`path`/`reason` are written AFTER the spread so a native payload
+         can never talk its way into looking like a success. */
       return {
+        ...(native && typeof native === "object" ? native : {}),
         ok: false,
         path: "native",
         reason: (native && typeof native.reason === "string" && native.reason) || "refused",
