@@ -226,7 +226,13 @@ agents and the coordinator called `path-policy` "report-only" by reading
 
 1. **Curiosity/learning first; anti-echo-chamber.** Discovery surfaces keep a
    hard ~30% exploration floor. No engagement dark patterns (no streaks, no
-   infinite scroll, no autoplay chains).
+   infinite scroll). **Continuous playback is NOT a dark pattern here and is
+   wanted** — founder ruling, 2026-09-14: *"'autoplay chains' should not be
+   banned. This isn't TikTok, we aren't hooking children here, I just want more
+   podcasts to play while I'm in the car and can't pick something out for
+   myself."* When an episode ends, keep playing: the rest of the list, and then
+   more of what fits. The exploration floor still governs **what** gets queued;
+   it does not require stopping. See `docs/DECISIONS.md`, 2026-09-14.
 2. **State observed, never declared.** No config fields or manual "done"
    declarations where observation is possible. Commute length is a learned
    parameter, never UI copy.

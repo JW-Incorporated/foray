@@ -621,7 +621,26 @@ export class PlayerQueueManager {
       overloads `interrupted`'s telemetry meaning but keeps "why are we paused"
       as a single code path — see the note in PlayerQueueState.swift. */
   async pause() {
-    return this._transport("pause", () => this._handle(E.interruptionBegan()));
+    return this._transport("pause", async () => {
+      await this._handle(E.interruptionBegan());
+      /* THE POSTCONDITION OF `pause()` IS SILENCE, and the reducer alone cannot
+         promise it (#689 report 3). `interruptionBegan` is idempotent by design
+         — "a duplicate interruption notification must not re-pause" — so from
+         `interrupted` it returns no effects at all, including no
+         `pausePlayback`. That is right for a notification arriving twice and
+         wrong for a press: if the element is audible while the machine says
+         paused, the listener's pause reaches the state it is already in and the
+         sound carries on, which is the founder's *"the button still said play"*
+         with the press that follows it also doing nothing.
+         Reading the element rather than the state is the whole point; this is
+         not a second opinion about the transport but the one entry point
+         checking that the instruction landed. Never in the other direction —
+         nothing here may start audio. */
+      if (this.elementIsAudible) {
+        this._emit("pause.forced — the element was audible while the machine said paused");
+        await this.backend.pause();
+      }
+    });
   }
 
   async skipToNext() {
@@ -953,6 +972,32 @@ export class PlayerQueueManager {
    */
   get playheadItemId() { return this._loadedId; }
 
+  /**
+   * THE ELEMENT'S OWN ANSWER to "is sound coming out right now", with none of
+   * this class's belief in it (#689).
+   *
+   * `reconcileWithBackend` above catches the lie in one direction only — we say
+   * `playing`, the element is paused — because that is the direction that costs
+   * a press and the only one it can safely correct. The other direction exists
+   * too, and it is the founder's third report: *"I scrubbed ahead, the podcast
+   * started playing, but the button still said play (not pause)."* Sound coming
+   * out of a transport that believes it is stopped cannot be fixed by a reducer
+   * event, because there is no event — but it CAN be answered, and a surface
+   * that asks before it acts on its own belief stops a press being spent on
+   * correcting the app instead of doing what the listener meant.
+   *
+   * FALSE FOR A SYNTH NARRATION ITEM, and that is not a gap. Nothing in
+   * `backend` is producing a spoken line (§7 item 1) — the element is exactly as
+   * paused as it was before the utterance — so its `paused` is an answer about
+   * the previous item. `client.js` composes this with `isRunning()`, which is
+   * already true for every state in which a synth item is audible, so the
+   * composition is right and this getter never has to guess.
+   */
+  get elementIsAudible() {
+    if (this._disposed || this._loadedIsSynth) return false;
+    return this.backend?.paused === false && this.backend?.ended !== true;
+  }
+
   /** Every effect gets an explicit case. An unhandled one throws rather than
       silently doing nothing — a missed effect is a stuck player, and that is
       far harder to diagnose later than a loud failure now. */
@@ -1109,16 +1154,42 @@ export class PlayerQueueManager {
     // phone call 100 seconds in. Observed, not declared (principle 2): if the
     // playhead is inside THIS item's slice and nothing asked for a restart,
     // that is a resume.
+    /* AN UNBOUNDED EPISODE HAS THE SAME RULE, and it did not have it (#689
+       reports 2 and 4). The paragraph above was written for segments and the
+       `bounds &&` on the next line quietly confined it to them, so a whole
+       episode took the other branch — `_savedPositionFor(item.id)` — on EVERY
+       resume, including the ones where the element is sitting right there
+       holding this episode at the playhead the listener is actually at. The
+       stored row is only ever as fresh as the last write, and the writers do not
+       cover a paused player: `handleSeek` on `interrupted` emits `savePosition`
+       BEFORE `seekTo`, so it records the position the listener just LEFT, and
+       the 15 s timer stops the moment the state is not `playing`. Scrub ahead
+       while paused, press play, and the load yanks the listener back to the
+       pre-scrub second — the founder's "when I pressed the play button, it again
+       jumped backwards in the podcast", reproduced end to end in
+       transport-reconcile.test.js part 4.
+       The saved row keeps the job it is actually for: a COLD resume, where
+       `_loadedId` is null because this process has never loaded anything. The
+       element's own clock only wins when it is demonstrably about this very
+       item, which is what `_loadedId === item.id` asks. */
     const playhead = this.backend.currentTime;
+    const playheadReadable = typeof playhead === "number" && Number.isFinite(playhead);
+    const reEnteringLoadedItem = forced == null && this._loadedId === item.id && playheadReadable;
     const resumingInPlace = Boolean(
-      bounds && forced == null && this._loadedId === item.id &&
-      typeof playhead === "number" && Number.isFinite(playhead) &&
-      playhead > bounds.startSec &&
-      (bounds.endSec == null || playhead < bounds.endSec)
+      reEnteringLoadedItem && (
+        bounds
+          ? (playhead > bounds.startSec && (bounds.endSec == null || playhead < bounds.endSec))
+          /* A bridge is one authored line; there is no "where I was" in it worth
+             preserving, and `handleItemEnded`'s bridged branch re-enters one by
+             design. Left on the old path deliberately, not by omission. */
+          : (item.kind !== TTS && playhead > 0)
+      )
     );
-    const startOffset = bounds
-      ? (resumingInPlace ? playhead : bounds.startSec)
-      : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item.id)));
+    const startOffset = resumingInPlace
+      ? playhead
+      : (bounds
+        ? bounds.startSec
+        : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item.id))));
 
     // Move the index only now — after savePosition has already run against the
     // outgoing item. currentIndex tracks what is actually loaded, never what we
@@ -2007,6 +2078,25 @@ export class PlayerQueueManager {
     // played before it, and would stamp this item's id with someone else's
     // playhead. There is no position to persist for an utterance anyway.
     if (this._loadedIsSynth && item.id === this._loadedId) return;
+    /* THE ELEMENT'S CLOCK HAS TO BE ABOUT THIS ITEM (#689), and asking is what
+       makes an UNCONDITIONAL write safe. Until #689 the only background flush
+       ran `if (current && isPlaying())`, and `isPlaying()` was standing in for
+       this question by accident: a state of `playing` implies a load that
+       landed. Dropping that condition — which is the fix for "a paused episode
+       that is backgrounded must remember where it was paused" — removes the
+       accident, so the real question gets asked.
+       It is the same distinction `playheadItemId` already exists for: `_loadItem`
+       moves `currentIndex` BEFORE `backend.load`, and assigning `src` resets the
+       element's clock to 0, so a load that failed leaves this method pointing at
+       an item whose audio the element never received, with a playhead of 0.
+       Writing that is not a weak position, it is a fabricated one, and it lands
+       on top of a good row. Every pre-existing caller passes this by
+       construction (the reducer's `savePosition` runs against the outgoing item,
+       whose audio IS loaded; the 15 s timer only ticks in `playing`), so this
+       refuses nothing that used to be written. */
+    if (this._loadedId !== item.id) {
+      return this._emit(`position.refused ${item.id} — the playhead is about ${this._loadedId ?? "nothing"}`);
+    }
     const seconds = this.backend.currentTime;
     if (typeof seconds !== "number" || !Number.isFinite(seconds)) return;
     this.positionStore.save(item.id, seconds, { duration: this.backend.duration ?? null });
