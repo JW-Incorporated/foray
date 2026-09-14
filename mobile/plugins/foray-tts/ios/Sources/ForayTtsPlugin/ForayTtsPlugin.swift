@@ -24,9 +24,28 @@ public protocol KokoroProbeEngine {
     /// start — which only matters if the warm figure is small, so both are
     /// reported rather than one.
     func load() -> (coldMs: Double, warmMs: Double)
-    /// Synthesize one line from its phoneme ids. Returns synthesis wall time
-    /// and the seconds of audio produced.
-    func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double)
+    /// Synthesize one line from its phoneme ids. Returns synthesis wall time,
+    /// the seconds of audio produced, and — when no audio was produced — WHICH
+    /// of the failures fired, from `player/kokoro-probe.js`'s `SYNTH_REASONS`.
+    ///
+    /// THE REASON IS NOT OPTIONAL DECORATION (#685). Before it existed, a nil
+    /// session, a throwing inference and an empty output tensor were the same
+    /// `(0, 0)`, each diagnosed only into `os_log` — which the founder holding
+    /// the phone cannot read. Three different bugs arrived as one number, and
+    /// the number was zero.
+    func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?)
+
+    /// Whether an accelerator execution provider (CoreML on iOS, NNAPI on
+    /// Android) is registered on the session, as opposed to ORT's CPU
+    /// provider. `false` on every build today — see `KokoroOrtProbeEngine`.
+    /// Reported rather than inferred from `provider`, because `"cpu"` reads as
+    /// a fallback that fired and it is not one: it is the only path compiled.
+    var acceleratorWired: Bool { get }
+}
+
+public extension KokoroProbeEngine {
+    /// The honest default for any engine that has not thought about it.
+    var acceleratorWired: Bool { false }
 }
 
 /// The bridge half of `foray-tts` on iOS: wraps `AVSpeechSynthesizer` /
@@ -928,26 +947,83 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         let load = engine.load()
         var synthColdMs: Double = 0
         var synthWarmMs: Double = 0
-        var audioSec: Double = 0
+        // THE RENDERED SECONDS, AND #685's WHOLE STORY. This pair used to be
+        // one local named `audioSec` that was summed on every iteration and
+        // then never written into `result` — the engine measured the audio it
+        // produced, the plugin added it up, and the number died here. With no
+        // rendered length on the wire, `player/kokoro-probe.js` divided by the
+        // passage's PLANNING ESTIMATE instead, which is positive whatever the
+        // engine does; a synthesis time of zero over 77.4 estimated seconds is
+        // not an unmeasured RTF, it is `0.00`, and 0.00 beats every ceiling
+        // K-01 has. Both halves are reported, SPLIT COLD/WARM to match the two
+        // synthesis figures, so each RTF is a ratio of two numbers measured
+        // over the same audio.
+        var audioColdSec: Double = 0
+        var audioWarmSec: Double = 0
+        var synthFailures = 0
+        var firstFailure: String? = nil
         for (index, ids) in idLines.enumerated() {
             let out = engine.synthesize(ids: ids, speed: speed)
-            audioSec += out.audioSec
+            if let reason = out.reason {
+                synthFailures += 1
+                if firstFailure == nil { firstFailure = reason }
+            }
             // FIRST LINE IS THE COLD NUMBER, the rest are the warm one. They
             // are reported separately rather than averaged because the deck's
             // go rule is stated on the WARM figure alone (§K-01 acceptance),
             // and a mean that folded a 2-second first inference into it would
             // fail a phone that is fine.
-            if index == 0 { synthColdMs = out.synthMs } else { synthWarmMs += out.synthMs }
+            if index == 0 {
+                synthColdMs = out.synthMs
+                audioColdSec = out.audioSec
+            } else {
+                synthWarmMs += out.synthMs
+                audioWarmSec += out.audioSec
+            }
+        }
+
+        // NOT ONE LINE RENDERED IS A REFUSAL, NOT A MEASUREMENT. The weights
+        // are here and the runtime loaded, so `model-absent`/`engine-absent`
+        // would both be lies — but there is no number, and the only thing
+        // worse than no number is a zero that reads as a triumph. The sub-code
+        // travels in `detail` so the next run says WHICH failure it was
+        // instead of leaving it in a device log nobody can read.
+        if audioColdSec + audioWarmSec <= 0 {
+            result["ok"] = false
+            result["reason"] = "synthesis-failed"
+            result["detail"] = firstFailure ?? "zero-samples"
+            result["provider"] = engine.provider
+            result["model"] = engine.modelName
+            result["modelLoadColdMs"] = load.coldMs
+            result["modelLoadWarmMs"] = load.warmMs
+            result["synthColdMs"] = synthColdMs
+            result["synthWarmMs"] = synthWarmMs
+            result["synthFailures"] = synthFailures
+            result["lines"] = idLines.count
+            // Reported as the zeroes they are, so the record is internally
+            // consistent: rendered audio of 0 s makes every RTF `null` in
+            // `summarizeProbe` rather than a quotient over an estimate.
+            result["audioColdSec"] = 0.0
+            result["audioWarmSec"] = 0.0
+            result["acceleratorWired"] = engine.acceleratorWired
+            result["peakMemoryBytes"] = Double(Self.peakResidentBytes())
+            call.resolve(result)
+            return
         }
 
         result["ok"] = true
         result["reason"] = ""
+        result["detail"] = firstFailure ?? ""
         result["model"] = engine.modelName
         result["provider"] = engine.provider
+        result["acceleratorWired"] = engine.acceleratorWired
         result["modelLoadColdMs"] = load.coldMs
         result["modelLoadWarmMs"] = load.warmMs
         result["synthColdMs"] = synthColdMs
         result["synthWarmMs"] = synthWarmMs
+        result["audioColdSec"] = audioColdSec
+        result["audioWarmSec"] = audioWarmSec
+        result["synthFailures"] = synthFailures
         result["lines"] = idLines.count
         // `os_proc_available_memory` is the figure Apple documents for "how
         // much more can this process allocate before jetsam", which is the

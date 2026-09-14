@@ -137,13 +137,34 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
         return (loadColdMs, loadWarmMs)
     }
 
+    /// ORT's environment, MADE ONCE AND KEPT. It used to be constructed inside
+    /// `makeSession()`, which meant the warm load overwrote `self.env` and
+    /// dropped the last strong reference the cold session's environment had —
+    /// the session that is then kept and run on. ORT refcounts its global
+    /// environment so this is survivable rather than fatal, but "survivable"
+    /// is not a property to rely on underneath the one measurement this card
+    /// exists to take, and one env for one engine is what the Android half
+    /// already does (`OrtEnvironment.getEnvironment()` is a singleton there).
+    private func environment() -> ORTEnv? {
+        if let env { return env }
+        env = try? ORTEnv(loggingLevel: ORTLoggingLevel.warning)
+        return env
+    }
+
     private func makeSession() -> ORTSession? {
         do {
-            let env = try ORTEnv(loggingLevel: ORTLoggingLevel.warning)
+            guard let env = environment() else { return nil }
             let options = try ORTSessionOptions()
             try options.setIntraOpNumThreads(0)   // 0 = ORT picks, per the C API
             try options.setGraphOptimizationLevel(ORTGraphOptimizationLevel.all)
-            self.env = env
+            /* NO EXECUTION PROVIDER IS APPENDED, and `acceleratorWired` says so
+               rather than leaving a reader to infer it from `provider: "cpu"`.
+               ORT runs the CPU provider when nothing else is registered, so the
+               `cpu` in #685's reading was NOT a CoreML attempt that fell back —
+               CoreML was never wired at all. Wiring it means linking an ORT
+               build that carries the CoreML EP and appending it here, which is
+               a change to the one binary dependency `ios-shell` compiles and
+               therefore its own card (K-08), not a line smuggled into a fix. */
             providerName = "cpu"
             return try ORTSession(env: env, modelPath: modelPath, sessionOptions: options)
         } catch {
@@ -152,19 +173,34 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
         }
     }
 
-    /// One line. Returns `(0, 0)` on any failure — which `kokoro-probe.js`
-    /// turns into an unmeasured RTF, and `probeVerdict` fails an unmeasured
-    /// RTF rather than passing it.
-    func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double) {
-        guard let session, ids.count > 2 else { return (0, 0) }
+    /// No accelerator EP is registered on any build today. See `makeSession`.
+    var acceleratorWired: Bool { false }
+
+    /// One line. On failure the audio seconds are 0 AND the reason is named —
+    /// `player/kokoro-probe.js`'s `SYNTH_REASONS`, which the plugin carries
+    /// across as `detail`.
+    ///
+    /// THE REASON IS THE FIX FOR #685. This used to return a bare `(0, 0)` and
+    /// claim, in this very comment, that `kokoro-probe.js` would read it as an
+    /// unmeasured RTF. It did not: the plugin never put the rendered seconds on
+    /// the wire, so the page divided a zero synthesis time by the passage's
+    /// planning estimate and got `0.00` — a real number, better than every
+    /// ceiling in the card. A failure has to arrive as a failure, by name.
+    func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?) {
+        guard let session else { return (0, 0, "session-absent") }
+        guard ids.count > 2 else { return (0, 0, "zero-samples") }
         var samples = 0
+        var failure: String? = nil
         let ms = timed {
-            samples = self.run(session: session, ids: ids, speed: speed)
+            let out = self.run(session: session, ids: ids, speed: speed)
+            samples = out.samples
+            failure = out.reason
         }
-        return (ms, Double(samples) / Self.SAMPLE_RATE)
+        if samples <= 0 { return (ms, 0, failure ?? "zero-samples") }
+        return (ms, Double(samples) / Self.SAMPLE_RATE, nil)
     }
 
-    private func run(session: ORTSession, ids: [Int], speed: Double) -> Int {
+    private func run(session: ORTSession, ids: [Int], speed: Double) -> (samples: Int, reason: String?) {
         do {
             /* int64, little-endian, exactly as the graph declares. `Int` is
                64-bit on every device this ships to, but the conversion is
@@ -198,7 +234,7 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
                onnx-community export calls it `waveform`; a re-export that
                renamed it would otherwise turn into "ORT returned nothing" with
                no diagnosis attached. */
-            guard let outputName = (try session.outputNames()).first else { return 0 }
+            guard let outputName = (try session.outputNames()).first else { return (0, "no-output") }
             let outputs = try session.run(
                 withInputs: ["input_ids": idsValue, "style": styleValue, "speed": speedTensor],
                 outputNames: [outputName],
@@ -207,7 +243,7 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
                `tensorData()` — the ObjC-to-Swift error translation drops the
                `WithError:` suffix and the out-parameter. Spelled the ObjC way
                it does not compile. */
-            guard let audio = outputs[outputName] else { return 0 }
+            guard let audio = outputs[outputName] else { return (0, "no-output") }
             let data = try audio.tensorData() as Data
             /* The samples are COUNTED AND DROPPED. K-01 measures speed, memory
                and whether the passage survives a locked screen; what it sounds
@@ -215,10 +251,15 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
                graph and the same weights. Playing it here would mean an audio
                session, which would mean this file could become the narration
                path by accident. */
-            return data.count / MemoryLayout<Float>.size
+            let samples = data.count / MemoryLayout<Float>.size
+            return (samples, samples > 0 ? nil : "zero-samples")
         } catch {
+            /* THE LOG LINE IS NOT THE REPORT. This `os_log` is unreachable from
+               the founder's phone; the returned code is what reaches the
+               diagnostics record he pastes, and #685 is what it costs when only
+               the unreachable half exists. */
             Self.log.error("Kokoro inference failed: \(error.localizedDescription)")
-            return 0
+            return (0, "inference-threw")
         }
     }
 
