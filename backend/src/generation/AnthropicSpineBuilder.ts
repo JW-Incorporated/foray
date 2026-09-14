@@ -252,6 +252,31 @@ function tapeWindowLines(researchShape: ResearchShape): string[] {
   return lines;
 }
 
+/**
+ * THE HALF OF THE SIGNAL THAT SAYS WHETHER THE TAPE FITS (#703).
+ *
+ * The line this replaces read "tape: strong, 304 items", and a reader — human
+ * or Opus — takes that as a statement about this Foray. It is not. Both numbers
+ * come from `queryTapeAvailability`, which counts items in
+ * `data/discover.json` carrying the concept; neither has looked at a
+ * transcript. On 2026-09-14 "Medicine — tape: strong, 304 items" sat above five
+ * clips about Lyme disease, injection moulding and toothpaste packaging, and
+ * the number of episodes in the searchable corpus that actually said anything
+ * about germ theory was zero. A confidence figure that cannot tell "lots of
+ * relevant tape" from "lots of tape, none relevant" is worse than no figure.
+ *
+ * So the prompt now says both, and says which is which: `catalogue` is breadth
+ * (how much of this KIND of thing exists at all) and `tape found` is fit (how
+ * many episodes on this machine say this subtopic's own words, and how many of
+ * them are quoted below). `tape found: none` under `catalogue: strong` is the
+ * exact sentence the germ-theory map should have printed.
+ */
+function tapeFitPhrase(subtopic: ResearchShape["subtopics"][number]): string {
+  if (subtopic.tapeEpisodesMatched === undefined) return "tape found: not measured";
+  if (subtopic.tapeEpisodesMatched === 0) return "tape found: none";
+  return `tape found: ${subtopic.tapeEpisodesMatched} episode(s), ${subtopic.tapeWindows.length} quoted below`;
+}
+
 /** Exported for tests and for measuring the prompt's size against a real
  * research map (G-25 records it): the words that reach the model are the
  * whole of WS-L and G-25, so they are asserted on directly. */
@@ -260,7 +285,7 @@ export function buildSpinePrompt(intent: IntentUnderstanding, researchShape: Res
   const subtopicLines = researchShape.subtopics
     .map(
       (s) =>
-        `- ${s.label} (${s.source}, tape: ${s.tape.signal}, ${s.tape.itemCount} items${
+        `- ${s.label} (${s.source}, catalogue: ${s.tape.signal}, ${s.tape.itemCount} items; ${tapeFitPhrase(s)}${
           s.controversies.length > 0 ? `; controversies: ${s.controversies.join("; ")}` : ""
         }${
           // §4.2's external research is only invoked for a genuine catalogue

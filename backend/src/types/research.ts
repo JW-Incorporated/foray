@@ -112,9 +112,75 @@ export const SubtopicCandidateSchema = z.object({
    * to be worth searching, no lineage-admissible episode the index would open,
    * or no transcript body for the episodes it ranked.
    */
-  windowsUnavailable: z.string().nullable().default(null)
+  windowsUnavailable: z.string().nullable().default(null),
+  /**
+   * HOW MANY EPISODES OF THE SEARCHABLE CORPUS ACTUALLY SAY THIS SUBTOPIC'S
+   * TERMS (#703).
+   *
+   * `tape.itemCount` is a CATALOGUE count — how many items in
+   * `data/discover.json` carry the concept — and it says nothing about whether
+   * this machine holds tape that is ABOUT it. The 2026-09-14 germ-theory map
+   * reported "Medicine (semantic-concept, tape: strong, 304 items)" and served
+   * clips about injection moulding and toothpaste boxes: 304 was the breadth of
+   * the catalogue, the fit of what was found was zero, and only the first
+   * number was printed. This is the second one, and `AnthropicSpineBuilder`
+   * now prints both — a confidence figure that cannot tell "lots of relevant
+   * tape" from "lots of tape, none relevant" is worse than no figure.
+   *
+   * Defaulted to 0 like every other field added to a checkpointed schema: a
+   * research-shape checkpoint written before #703 still parses.
+   */
+  tapeEpisodesMatched: z.number().int().min(0).optional()
 });
 export type SubtopicCandidate = z.infer<typeof SubtopicCandidateSchema>;
+
+/** One show whose transcripts are on this machine and which tape sourcing
+ * cannot search, with the reason (issue #703). */
+export const CorpusBlindSpotSchema = z.object({
+  showId: z.string(),
+  episodes: z.number().int().min(0),
+  reason: z.enum(["no-digest-row", "no-body-resolved"])
+});
+export type CorpusBlindSpotRow = z.infer<typeof CorpusBlindSpotSchema>;
+
+/**
+ * WHAT THE RUN COULD SEE OF ITS OWN CORPUS (#703 ask 2).
+ *
+ * The 2026-09-14 run drew its map from 14 of the 22 shows on its own disk and
+ * gave no hint of it — the map looked healthy, and only reading the tape quotes
+ * revealed the gap. Carried on the map so `report.json` and stdout both say it,
+ * in the same numbers, whether or not it is bad news.
+ */
+export const ResearchCorpusCoverageSchema = z.object({
+  showsOnDisk: z.number().int().min(0),
+  episodesOnDisk: z.number().int().min(0),
+  showsSearchable: z.number().int().min(0),
+  episodesSearchable: z.number().int().min(0),
+  blindSpots: z.array(CorpusBlindSpotSchema)
+});
+export type ResearchCorpusCoverage = z.infer<typeof ResearchCorpusCoverageSchema>;
+
+/**
+ * THE RELEVANCE FLOOR'S OWN MEASUREMENT (#703 ask 3).
+ *
+ * The subject's own vocabulary, run against the searchable corpus BEFORE the
+ * expensive spine call. `episodesMatched: 0` with a corpus present is the state
+ * that let "Data Centers" score as a strong subtopic for a Foray about
+ * Victorian medicine, and it is available five stages before anybody reads a
+ * clip.
+ */
+export const SubjectTapeProbeSchema = z.object({
+  /** The query the probe ran — the intent's own subject and angle. */
+  query: z.string(),
+  /** Episodes in the searchable corpus that say any of it. */
+  episodesMatched: z.number().int().min(0),
+  /** Shows those episodes belong to, best first, at most five. */
+  shows: z.array(z.string()),
+  /** False when there was no index to ask, which is not the same as an index
+   * that found nothing — CI and a fresh checkout are the former. */
+  searched: z.boolean()
+});
+export type SubjectTapeProbe = z.infer<typeof SubjectTapeProbeSchema>;
 
 export const ResearchShapeSchema = z.object({
   subject: z.string(),
@@ -128,6 +194,13 @@ export const ResearchShapeSchema = z.object({
   /** Labels of subtopics that actually triggered an external-research call
    * (empty when the catalogue answered everything) — the caller-visible
    * proof that external research only fires for genuine gaps. */
-  externalGapsResearched: z.array(z.string())
+  externalGapsResearched: z.array(z.string()),
+  /** #703: what the run could see of its own transcript corpus. Null on a
+   * machine with no corpus at all (CI, a fresh checkout), which is honest —
+   * "nothing was scanned" is not "nothing was missing". */
+  corpus: ResearchCorpusCoverageSchema.nullable().optional(),
+  /** #703: the relevance floor's measurement. Null when the stage ran without a
+   * text index. */
+  subjectTape: SubjectTapeProbeSchema.nullable().optional()
 });
 export type ResearchShape = z.infer<typeof ResearchShapeSchema>;

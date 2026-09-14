@@ -4,7 +4,8 @@ import * as path from "path";
 import { spawn } from "child_process";
 import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RunPipelineOutcome } from "../generation/runPipeline";
 import type { SpineReask } from "../generation/buildSpine";
-import { FileTranscriptCueProvider } from "../generation/transcriptArchiveLookup";
+import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
+import { corpusCoverage, corpusCoverageLine } from "../generation/transcriptCorpus";
 import { FileTranscriptTextIndex, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
 import { checkpointFingerprint } from "../generation/checkpoint";
 import { getUsageTotals } from "../generation/usageTracking";
@@ -786,6 +787,23 @@ async function main(): Promise<void> {
        builds nothing, returns no candidates, and leaves tier 2 on the title path. */
     const textIndex = new FileTranscriptTextIndex({ bodies: cueProvider });
 
+    /* #703: WHAT THIS RUN CAN SEE OF ITS OWN CORPUS, BEFORE IT GENERATES
+       ANYTHING. The 2026-09-14 run drew its research map from 14 of the 22
+       shows on this disk, said nothing about the other eight, and produced a
+       germ-theory Foray sourced from geology tape. It looked healthy. The line
+       below is printed whether the news is good or bad — a run that can see the
+       whole corpus says so — and the same numbers go into report.json, so a
+       reader who never watched the console can still tell which corpus a batch
+       was sourced from. */
+    const corpus = corpusCoverage({
+      archive: loadTranscriptArchive(),
+      hasBody: (entry) => cueProvider.bodyStat(entry as TranscriptDigestEntry) !== null,
+      /* The same directory `FileTranscriptCueProvider` defaults to, resolved
+         the same way: two levels up from `backend/src/cli`. */
+      normalizedRoot: path.resolve(__dirname, "..", "..", "..", "data-local", "transcripts", "normalized")
+    });
+    if (corpus.showsOnDisk > 0) console.log(corpusCoverageLine(corpus));
+
     for (const spec of queue) {
       const result = await generateOneCandidate(spec, args, { cueProvider, textIndex });
       if (result.skipped) {
@@ -827,6 +845,10 @@ async function main(): Promise<void> {
             aborts,
             notify: args.notify,
             notification,
+            /* #703 ask 2: the corpus this batch was sourced from, named shows
+               and all. Null when there is no corpus directory at all (CI, a
+               fresh checkout), which is not the same as "nothing was missing". */
+            corpus: corpus.showsOnDisk > 0 ? corpus : null,
             entries: report
           },
           null,

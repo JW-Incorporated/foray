@@ -60,8 +60,13 @@ import {
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 
 /** Bumped whenever the on-disk shape, the tokenizer, or the scoring changes —
- * a cache built by an older rule is discarded rather than trusted. */
-export const TRANSCRIPT_TEXT_INDEX_VERSION = 1;
+ * a cache built by an older rule is discarded rather than trusted.
+ *
+ * 2 (#703): `readCues` now drops letter-spaced cues, so a document's token
+ * count and its postings both change while its mtime and size do not. Freshness
+ * here is mtime+size, which cannot see a change in the READING rule — only the
+ * version can, and a v1 cache would otherwise be trusted forever. */
+export const TRANSCRIPT_TEXT_INDEX_VERSION = 2;
 
 /** BM25's term-frequency saturation. The standard value; nothing here is tuned
  * against a labelled set, and pretending otherwise would be worse than saying
@@ -309,6 +314,52 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
       return a.entry.guid < b.entry.guid ? -1 : a.entry.guid > b.entry.guid ? 1 : 0;
     });
     return scored.slice(0, limit).map((c, rank) => ({ ...c, rank }));
+  }
+
+  /** The shows this index could search, with how many archive rows each has.
+   * The warm tool's work list, in the order it will walk it. */
+  shows(): Array<{ showId: string; rows: number }> {
+    return [...this.groupedByShow()].map(([showId, entries]) => ({ showId, rows: entries.length }));
+  }
+
+  /**
+   * BUILD ONE SHOW'S INDEX NOW, RATHER THAN WHEN A SEARCH FIRST WANTS IT
+   * (#703 ask 1).
+   *
+   * Laziness here never cost REACH — `search` builds a missing index on the
+   * spot for every show the lineage gate admits, so a show in the archive with
+   * bodies on disk was always searchable the first time. What it cost is
+   * HONESTY about time: the build for `stuff-you-should-know` is 2,857 bodies
+   * and 306 MB of JSON, and paying that inside the §4.2 research call put it on
+   * the critical path of a run, invisibly, where a stall reads as a hung
+   * pipeline. Warming is the same work, done deliberately, with the bill
+   * printed.
+   *
+   * Returns what it cost, or `null` for a show with no bodies on this machine.
+   * One show at a time and nothing retained: the caller holds the numbers, this
+   * holds no more than the index it just wrote (`forget` drops even that), so a
+   * full warm of a 5,000-episode corpus never has two shows in memory at once.
+   */
+  warmShow(showId: string): { episodes: number; terms: number; bytes: number } | null {
+    const index = this.showIndex(showId);
+    if (!index) return null;
+    let bytes = 0;
+    try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- path derived from a digest show id, slugged by cacheFile.
+      bytes = fs.statSync(this.cacheFile(showId)).size;
+    } catch {
+      /* `cache: false`, or a cache that could not be written — the index is
+         real either way and its size is simply not a number we have. */
+    }
+    return { episodes: index.docs.length, terms: Object.keys(index.postings).length, bytes };
+  }
+
+  /** Drop a show's in-memory index, keeping its disk cache. The warm path's
+   * memory bound: 22 shows warmed in one process must not mean 22 inverted
+   * indexes resident, and `stuff-you-should-know`'s alone is the largest single
+   * object this module ever builds. */
+  forget(showId: string): void {
+    this.loaded.delete(showId);
   }
 
   private groupedByShow(): Map<string, TranscriptDigestEntry[]> {

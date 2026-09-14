@@ -1,5 +1,14 @@
+import * as path from "path";
 import type { IntentUnderstanding } from "../types/generation";
-import type { ResearchShape, ResearchTapeWindow, SubtopicCandidate, TapeAvailability, TapeSignal } from "../types/research";
+import type {
+  ResearchCorpusCoverage,
+  ResearchShape,
+  ResearchTapeWindow,
+  SubjectTapeProbe,
+  SubtopicCandidate,
+  TapeAvailability,
+  TapeSignal
+} from "../types/research";
 import {
   conceptLabel,
   loadCatalogueData,
@@ -13,13 +22,19 @@ import { familyGateAllows, nodesForArchiveEntry } from "./taxonomyFamily";
 import {
   cueWindowText,
   deriveItemId,
+  loadTranscriptArchive,
   NullTranscriptCueProvider,
   selectTapeWindow,
   type TranscriptCueProvider,
   type TranscriptDigestEntry
 } from "./transcriptArchiveLookup";
+import { corpusCoverage } from "./transcriptCorpus";
 import { NullTranscriptTextIndex, type TranscriptTextIndex } from "./transcriptTextIndex";
 import type { ExternalResearcher, ExternalResearchContext } from "./ExternalResearcher";
+
+/** This checkout. Only the corpus-coverage read below needs it, and only when
+ * the caller did not pass a root of its own. */
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 
 /**
  * §4.2 — research to establish shape (docs/curation/generation-architecture.md
@@ -247,6 +262,11 @@ interface TapeWindowDeps {
 interface TapeWindowResult {
   windows: ResearchTapeWindow[];
   unavailable: string | null;
+  /** How many episodes in the SEARCHABLE corpus actually say this subtopic's
+   * terms — the fit half of the evidence, as opposed to `tape.itemCount`'s
+   * breadth half (#703). Zero with a "strong" catalogue signal is precisely
+   * the state the 2026-09-14 map reported as healthy. */
+  episodesMatched: number;
 }
 
 /**
@@ -276,10 +296,10 @@ interface TapeWindowResult {
  */
 function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeWindowDeps, usedEpisodes: Set<string>): TapeWindowResult {
   if (!deps.textIndex.enabled) {
-    return { windows: [], unavailable: "no transcript text index on this machine, so nothing could be quoted" };
+    return { windows: [], unavailable: "no transcript text index on this machine, so nothing could be quoted", episodesMatched: 0 };
   }
   if (tape.signal !== "strong" && tape.signal !== "moderate") {
-    return { windows: [], unavailable: `catalogue tape for this subtopic is "${tape.signal}" — too thin to be worth quoting` };
+    return { windows: [], unavailable: `catalogue tape for this subtopic is "${tape.signal}" — too thin to be worth quoting`, episodesMatched: 0 };
   }
 
   /* The subtopic's own vocabulary: its label plus the semantic index's phrases
@@ -292,7 +312,7 @@ function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeW
 
   const candidates = deps.textIndex.search(queryText, { limit: RESEARCH_TAPE_EPISODE_CANDIDATES, isUsable });
   if (candidates.length === 0) {
-    return { windows: [], unavailable: "no episode in this Foray's taxonomy lineage says enough of this subtopic to open" };
+    return { windows: [], unavailable: "no episode in this Foray's taxonomy lineage says enough of this subtopic to open", episodesMatched: 0 };
   }
 
   const windows: ResearchTapeWindow[] = [];
@@ -344,6 +364,7 @@ function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeW
 
   if (windows.length === 0) {
     return {
+      episodesMatched: candidates.length,
       windows: [],
       unavailable: candidates.every((c) => usedEpisodes.has(deriveItemId(c.entry)))
         ? "every episode the archive ranked for this subtopic is already quoted under an earlier subtopic"
@@ -358,7 +379,7 @@ function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeW
   windows.sort((a, b) => b.score - a.score || (a.episodeId < b.episodeId ? -1 : a.episodeId > b.episodeId ? 1 : 0));
   const kept = windows.slice(0, RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC);
   for (const w of kept) usedEpisodes.add(w.episodeId);
-  return { windows: kept, unavailable: null };
+  return { windows: kept, unavailable: null, episodesMatched: candidates.length };
 }
 
 /**
@@ -399,6 +420,75 @@ async function fanOutExternalResearch(
   return new Map(results.map(([label, r]) => [label, { notes: r.notes, controversies: r.controversies }]));
 }
 
+/**
+ * THE RESEARCH MAP REFUSED ITS OWN SUBJECT (#703 ask 3).
+ *
+ * Thrown BEFORE the spine call, which is the entire point: the 2026-09-14 run
+ * spent an Opus spine request on a map whose top concept was "Medicine", whose
+ * third was "Data Centers", and behind which sat zero episodes about germ
+ * theory. The signal that would have stopped it — the subject's own words
+ * returning nothing from the searchable corpus — was already computed one stage
+ * earlier and simply never looked at.
+ *
+ * A REFUSAL, NOT A WARNING. §4.2's standing guardrail is that a tape signal
+ * never FILTERS a candidate, and this does not: every subtopic keeps its full
+ * entry. What it refuses is the whole map, once, when the corpus is present and
+ * says nothing at all about the Foray's subject — which is not a thin-tape
+ * Foray (those are legitimate and narration carries them) but a machine whose
+ * corpus does not hold this Foray, and a map built on it is a confident count
+ * of the wrong corpus.
+ */
+export class ResearchMapRefusedError extends Error {
+  readonly corpus: ResearchCorpusCoverage | null;
+  readonly subjectTape: SubjectTapeProbe;
+  constructor(message: string, subjectTape: SubjectTapeProbe, corpus: ResearchCorpusCoverage | null) {
+    super(message);
+    this.name = "ResearchMapRefusedError";
+    this.subjectTape = subjectTape;
+    this.corpus = corpus;
+  }
+}
+
+/**
+ * The floor itself: how many episodes of the searchable corpus must say
+ * something of the subject before a map built on that corpus is worth an Opus
+ * call.
+ *
+ * ONE, DELIBERATELY. Not a tuned threshold — there is no labelled set here and
+ * pretending otherwise would be worse than saying so. The failure #703 records
+ * is not "the tape was a poor fit", it is "there was no tape about this at all
+ * and the map said strong"; one episode is the smallest number that
+ * distinguishes those, and every gate that decides whether tape is actually
+ * about a claim still runs afterwards, unchanged.
+ */
+export const SUBJECT_TAPE_FLOOR = 1;
+
+/** Set to "1" to record the refusal and continue anyway. For the case the floor
+ * is wrong about — a genuinely untaped subject the founder wants narrated
+ * regardless — so that being stopped is never the end of the road. */
+const OVERRIDE_ENV = "FORAY_ALLOW_IRRELEVANT_MAP";
+
+/**
+ * Does the searchable corpus say ANYTHING about this Foray's subject?
+ *
+ * The cheapest possible question — one BM25 search over the index that is about
+ * to be asked eight subtopic questions anyway — and the only one that compares
+ * the map against its own subject rather than against the catalogue. Run with
+ * NO lineage gate: the gate's job is to keep off-branch tape out of a Foray,
+ * and a subject whose own words appear nowhere in the whole corpus is a fact
+ * about the corpus, not about the branch.
+ */
+function probeSubjectTape(query: string, textIndex: TranscriptTextIndex): SubjectTapeProbe {
+  if (!textIndex.enabled) return { query, episodesMatched: 0, shows: [], searched: false };
+  const hits = textIndex.search(query, { limit: 50 });
+  const shows: string[] = [];
+  for (const hit of hits) {
+    const show = String(hit.entry.show_title ?? hit.entry.show_id ?? "").trim();
+    if (show && !shows.includes(show) && shows.length < 5) shows.push(show);
+  }
+  return { query, episodesMatched: hits.length, shows, searched: true };
+}
+
 export interface BuildResearchShapeOptions {
   researcher: ExternalResearcher;
   ctx: ExternalResearchContext;
@@ -436,6 +526,21 @@ export interface BuildResearchShapeOptions {
   /** Where the quoted sentences come from. Defaults to
    * `NullTranscriptCueProvider` — no bodies, no windows. */
   cueProvider?: TranscriptCueProvider;
+  /**
+   * #703: the transcript corpus on this machine, for the coverage report. The
+   * cue provider knows how a digest row maps to a file and this is the other
+   * half of the join — the directory listing that knows the DENOMINATOR.
+   * Defaults to `<root>/data-local/transcripts/normalized`; a machine with no
+   * such directory reports `corpus: null`, which is honest.
+   */
+  corpusRoot?: string;
+  /**
+   * #703: set false to build the map even when the subject's own vocabulary
+   * returns nothing from the searchable corpus. Defaults to true, and the
+   * `FORAY_ALLOW_IRRELEVANT_MAP=1` environment variable is the same switch for
+   * a caller that cannot pass one.
+   */
+  refuseIrrelevantMap?: boolean;
 }
 
 /**
@@ -489,18 +594,63 @@ export async function buildResearchShape(
   const withTape = seeds.map((seed) => ({ seed, tape: buildTapeAvailability(seed.terms, catalogue) }));
   const gaps = withTape.filter((s) => s.tape.signal === "none");
 
-  const externalResults =
-    gaps.length > 0 ? await fanOutExternalResearch(gaps, options.researcher, options.ctx) : new Map<string, { notes: string; controversies: string[] }>();
-
   /* WS-L: what the tape SAYS about each candidate, not just how much of it
-     there is (F-63). Built after the external fan-out and before the map is
-     assembled, so a subtopic carries both halves of its evidence at once. */
+     there is (F-63). */
   const windowDeps: TapeWindowDeps = {
     textIndex: options.textIndex ?? new NullTranscriptTextIndex(),
     cueProvider: options.cueProvider ?? new NullTranscriptCueProvider(),
     topic,
     root: options.root
   };
+
+  /* #703 ASK 3: THE FLOOR, AND IT RUNS BEFORE THE STAGE'S ONE PAID CALL.
+     `fanOutExternalResearch` is the most expensive collaborator in §4.2 and it
+     fires once per catalogue gap; a map about to be refused should not buy
+     research for it first. The probe itself is one BM25 search over an index
+     the next twenty lines use anyway, so the ordering costs nothing and saves
+     everything downstream of it — the fan-out, the window searches, and the
+     Opus spine call the whole of #703 is about. */
+  const subjectTape = probeSubjectTape(`${options.prompt ?? ""} ${intent.subject} ${intent.angle}`, windowDeps.textIndex);
+
+  /* #703 ASK 2: and what that corpus IS, counted against the disk rather than
+     against the digest that was supposed to describe it. Read here so the
+     refusal below can NAME the shows a warm would add. */
+  const coverage = corpusCoverageFor(options, windowDeps.cueProvider);
+
+  /* WHAT IS REFUSED IS A CONTRADICTION, NOT AN ABSENCE.
+     §4.2's standing guardrail — "a genuinely untaped subject must still produce
+     a real candidate, not an empty map" — is not negotiable and this does not
+     touch it: a map whose every subtopic honestly reports `signal: "none"` is a
+     thin-tape Foray, narration carries it, and it is built exactly as before.
+     What #703 records is the other thing: a map that CLAIMED strong tape on six
+     subtopics while the corpus behind it held not one episode about the
+     subject. So the floor fires only where those two statements disagree. */
+  const claimsTape = withTape.some(({ tape }) => tape.signal === "strong" || tape.signal === "moderate");
+  const refuse = options.refuseIrrelevantMap ?? process.env[OVERRIDE_ENV] !== "1";
+  if (claimsTape && subjectTape.searched && subjectTape.episodesMatched < SUBJECT_TAPE_FLOOR) {
+    const detail = coverage
+      ? `${coverage.episodesSearchable} searchable episode(s) over ${coverage.showsSearchable} of ${coverage.showsOnDisk} show(s) on disk`
+      : "the searchable archive";
+    const blind =
+      coverage && coverage.blindSpots.length > 0
+        ? ` Not searchable: ${coverage.blindSpots.map((b) => `${b.showId} (${b.episodes}, ${b.reason})`).join(", ")}.`
+        : "";
+    const claimed = withTape
+      .filter(({ tape }) => tape.signal === "strong" || tape.signal === "moderate")
+      .map(({ seed, tape }) => `${seed.label} (${tape.signal}, ${tape.itemCount} items)`)
+      .join(", ");
+    const message =
+      `research map refused: not one episode of ${detail} says anything of "${intent.subject}",` +
+      ` yet the catalogue reports real tape for ${claimed}.` +
+      `${blind} The catalogue signals on this map describe how much tape EXISTS, not whether any of it is about this Foray —` +
+      ` building a spine on them is what #703 recorded. Warm the corpus (\`node tools/generation/warm-transcript-index.mjs\`)` +
+      ` or set ${OVERRIDE_ENV}=1 to proceed anyway.`;
+    if (refuse) throw new ResearchMapRefusedError(message, subjectTape, coverage);
+    console.log(`  WARNING ${message}`);
+  }
+
+  const externalResults =
+    gaps.length > 0 ? await fanOutExternalResearch(gaps, options.researcher, options.ctx) : new Map<string, { notes: string; controversies: string[] }>();
 
   /* One window per episode across the whole map (G-24 R3): subtopics are
      walked in order, so the first subtopic an episode ranks for is the one that
@@ -518,7 +668,8 @@ export async function buildResearchShape(
       externalNotes: external?.notes ?? null,
       externallyResearched: external !== undefined,
       tapeWindows: windows.windows,
-      windowsUnavailable: windows.unavailable
+      windowsUnavailable: windows.unavailable,
+      tapeEpisodesMatched: windows.episodesMatched
     };
   });
 
@@ -528,6 +679,36 @@ export async function buildResearchShape(
     generatedAt: new Date().toISOString(),
     subtopics,
     nonObviousAngle: intent.angle,
-    externalGapsResearched: gaps.map((g) => g.seed.label)
+    externalGapsResearched: gaps.map((g) => g.seed.label),
+    corpus: coverage,
+    subjectTape
   };
+}
+
+/**
+ * The coverage block, or null when this machine has no corpus directory or no
+ * provider that can say whether a row has a body.
+ *
+ * FEATURE-DETECTED RATHER THAN REQUIRED. `TranscriptCueProvider` is the seam
+ * §4.2 is handed, and only `FileTranscriptCueProvider` (and
+ * `TranscriptBodySource` generally) can answer `bodyStat`. A test's four-line
+ * stub cannot, and must not have to: no `bodyStat`, no coverage block, and the
+ * map reads exactly as it did before #703.
+ */
+function corpusCoverageFor(options: BuildResearchShapeOptions, cueProvider: TranscriptCueProvider): ResearchCorpusCoverage | null {
+  const bodyStat = (cueProvider as { bodyStat?: (entry: TranscriptDigestEntry) => unknown }).bodyStat;
+  if (typeof bodyStat !== "function") return null;
+  const root = options.corpusRoot ?? path.join(options.root ?? REPO_ROOT, "data-local", "transcripts", "normalized");
+  try {
+    const coverage = corpusCoverage({
+      archive: loadTranscriptArchive(),
+      hasBody: (entry) => bodyStat.call(cueProvider, entry as TranscriptDigestEntry) !== null,
+      normalizedRoot: root
+    });
+    return coverage.showsOnDisk === 0 ? null : coverage;
+  } catch {
+    /* A coverage report is a diagnostic. It never decides whether a Foray gets
+       made, so it never fails one either. */
+    return null;
+  }
 }

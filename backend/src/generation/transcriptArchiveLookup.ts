@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { tokenizeForSourcing } from "./catalogueLookup";
 import { canonicalizeForAnchorMatch } from "../types/anchorText";
+import { corpusSafeKey, isLetterSpacedCue } from "./transcriptCorpus";
 import type { TapeBoundary, TranscriptSource } from "../types/tapeSourcing";
 
 /**
@@ -76,16 +77,42 @@ export interface TranscriptDigestEntry {
 
 let cachedDigests: TranscriptDigestEntry[] | null = null;
 
-/** Reads both committed digest files (curated + breadth), keeping only
- * episodes whose transcript is usable at all (has cues, timeline not
- * flagged implausible — the same `span_implausible` field
+/**
+ * The machine-local corpus digest — the rows for episodes whose bodies are on
+ * THIS machine and which the committed digests do not carry.
+ *
+ * WHY A THIRD FILE (#703). The committed digests are RUN ARTIFACTS:
+ * `tools/segments/fetch-transcripts.mjs` writes its `--digests` path whole, with
+ * only the targets of that invocation, so a later fetch erases the shows an
+ * earlier one recorded while their bodies stay in `data-local/`. On the
+ * 2026-09-14 generation machine that had cost seven shows and 3,328 episodes —
+ * `stuff-you-should-know` (2,857) and `this-podcast-will-kill-you` (132) among
+ * them, both in `data/catalog.json` with taxonomy nodes, neither with a digest
+ * row — and it is why a germ-theory Foray was sourced from geology and
+ * engineering tape.
+ *
+ * It is written by `tools/generation/warm-transcript-index.mjs`, it lives under
+ * `data-local/` because it describes one machine's disk and nothing else, and
+ * it is absent in CI and in a fresh checkout, where this reads exactly as it
+ * did before.
+ */
+export const CORPUS_DIGEST_FILE = path.join("data-local", "transcripts", "corpus-digest.json");
+
+/** Reads the committed digest files (curated + breadth) and the machine-local
+ * corpus digest, keeping only episodes whose transcript is usable at all (has
+ * cues, timeline not flagged implausible — the same `span_implausible` field
  * `prepare-segment-batch.mjs`'s timeline gate already computes upstream
  * of these files). */
 export function loadTranscriptArchive(): TranscriptDigestEntry[] {
   if (cachedDigests && process.env.FORAY_SKIP_CATALOGUE_CACHE !== "1") return cachedDigests;
 
   const entries: TranscriptDigestEntry[] = [];
-  for (const file of ["data/transcript-digests.json", "data/breadth-transcript-digests.json"]) {
+  /* COMMITTED FIRST, LOCAL LAST, AND FIRST ROW WINS. A committed row carries
+     the publisher metadata the local one reconstructs from a feed, so where
+     both describe an episode the committed one is the better row; the local
+     digest exists to ADD episodes, never to restate them. */
+  const seen = new Set<string>();
+  for (const file of ["data/transcript-digests.json", "data/breadth-transcript-digests.json", CORPUS_DIGEST_FILE]) {
     const full = path.join(REPO_ROOT, file);
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- hardcoded repo-relative path list, not external input.
     if (!fs.existsSync(full)) continue;
@@ -93,7 +120,11 @@ export function loadTranscriptArchive(): TranscriptDigestEntry[] {
     const raw = fs.readFileSync(full, "utf8");
     const parsed = JSON.parse(raw) as { transcripts?: TranscriptDigestEntry[] };
     for (const t of parsed.transcripts ?? []) {
-      if ((t.cues ?? 0) > 0 && t.span_implausible !== true) entries.push(t);
+      if (!((t.cues ?? 0) > 0) || t.span_implausible === true) continue;
+      const key = `${t.show_id}\u0000${t.guid}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      entries.push(t);
     }
   }
   cachedDigests = entries;
@@ -261,6 +292,7 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
   private readonly dirByShow = new Map<string, string | null>();
   private readonly cuesByKey = new Map<string, TranscriptCue[] | null>();
   private readonly guidIndexByDir = new Map<string, Map<string, string>>();
+  private readonly filesByDir = new Map<string, Map<string, string>>();
 
   constructor(root: string = path.join(REPO_ROOT, "data-local", "transcripts", "normalized")) {
     this.root = root;
@@ -330,6 +362,28 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
     }
   }
 
+  /**
+   * One directory listing per show directory, lowercased name -> real name.
+   *
+   * CACHED BECAUSE THE CORPUS IS BIG NOW (#703). `locate` used to `readdirSync`
+   * on every call; `stuff-you-should-know` holds 2,857 bodies, and warming its
+   * index asks `locate` 2,857 times, so the un-cached version is 8.2 million
+   * directory entries for one show. The listing is read once per process, which
+   * is the same freshness every other read here has.
+   */
+  private filesIn(dir: string): Map<string, string> {
+    let files = this.filesByDir.get(dir);
+    if (!files) {
+      files = new Map();
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- path came from this provider's own directory walk.
+      for (const f of fs.readdirSync(dir)) {
+        if (f.endsWith(".json")) files.set(f.toLowerCase(), f);
+      }
+      this.filesByDir.set(dir, files);
+    }
+    return files;
+  }
+
   private showDir(showId: string): string | null {
     if (this.dirByShow.has(showId)) return this.dirByShow.get(showId) ?? null;
     let found: string | null = null;
@@ -348,17 +402,24 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
   private locate(showId: string, guid: string): string | null {
     const dir = this.showDir(showId);
     if (!dir) return null;
+    /* THE WRITER'S OWN KEY FIRST (#703). `corpusSafeKey` is byte-identical to
+       `fetch-transcripts.mjs`'s `safeKey`, the function that named this file,
+       so this is an exact lookup rather than a prefix guess — and it costs one
+       `Set.has` on a directory listing this provider now caches, instead of a
+       linear `find` over 2,857 names per episode. */
+    const files = this.filesIn(dir);
+    const exact = files.get(`${corpusSafeKey(guid)}.json`);
+    if (exact) return path.join(dir, exact);
     const slug = guidSlug(guid);
-    const files = fs.readdirSync(dir).filter((f) => f.endsWith(".json"));
     if (slug) {
-      const byName = files.find((f) => f.toLowerCase().startsWith(`${slug}-`) || f.toLowerCase() === `${slug}.json`);
-      if (byName) return path.join(dir, byName);
+      const byName = [...files.keys()].find((f) => f.startsWith(`${slug}-`) || f === `${slug}.json`);
+      if (byName) return path.join(dir, files.get(byName)!);
     }
     // Fallback: index the directory's real guids once, then look the guid up.
     let index = this.guidIndexByDir.get(dir);
     if (!index) {
       index = new Map();
-      for (const f of files) {
+      for (const f of files.values()) {
         try {
           const j = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as { guid?: unknown };
           if (typeof j.guid === "string") index.set(j.guid, path.join(dir, f));
@@ -372,7 +433,19 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
   }
 }
 
-/** The slug `tools/segments/` uses for the file name: lowercase, non-alphanumerics to `-`. */
+/**
+ * The prefix `tools/segments/` MAY have used for the file name, when the guid's
+ * slug is short enough that eighty characters and sixty are the same string.
+ *
+ * KEPT ONLY AS A SECOND CHANCE (#703). The writer's rule is `corpusSafeKey`,
+ * and it truncates at SIXTY before appending its hash; this truncated at
+ * eighty, so for every guid whose slug runs past sixty characters the prefix
+ * asked for here is longer than the name on disk and `startsWith` can never
+ * match. That is not hypothetical: Becker's Healthcare guids are permalink URLs,
+ * and 0 of its 990 bodies resolved until `locate` asked for the writer's key
+ * first. It stays because a body written before the hash suffix existed is
+ * named by the bare slug, and that file is still readable.
+ */
 function guidSlug(guid: string): string {
   return String(guid ?? "")
     .toLowerCase()
@@ -390,6 +463,17 @@ function readCues(file: string): TranscriptCue[] | null {
     const start = typeof c?.start_sec === "number" ? c.start_sec : null;
     const end = typeof c?.end_sec === "number" ? c.end_sec : null;
     if (text === null || start === null || end === null || !Number.isFinite(start) || !Number.isFinite(end) || end < start) continue;
+    /* #703: LETTER-SPACED JUNK NEVER LEAVES THE READER. `sigma-nutrition-radio`
+       #595 opens with its PDF cover page spelled out one character at a time
+       ("T r a n s c r i p t - E p i s o d e # 5 9 5"); that cue was indexed,
+       ranked second under "Medicine" for a germ-theory Foray, and quoted into
+       the spine prompt as tape. Dropped here rather than in the index so the
+       one rule covers every reader of a body at once — the text index, §4.2's
+       window quotes and §4.5's minted anchors — and so a clip can never be cut
+       to a boundary phrase nobody spoke. The cost is measured and named in
+       `isLetterSpacedCue`: 0.0219 % of this corpus's cues, all of them someone
+       spelling a word out loud. */
+    if (isLetterSpacedCue(text)) continue;
     const speaker = typeof c?.speaker === "string" && c.speaker.trim().length > 0 ? c.speaker.trim() : null;
     cues.push({ text, start_sec: start, end_sec: end, speaker });
   }

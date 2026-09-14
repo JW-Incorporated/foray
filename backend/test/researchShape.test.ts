@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildResearchShape,
+  SUBJECT_TAPE_FLOOR,
   tapeSignalFor,
   RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC,
   RESEARCH_TAPE_WINDOW_MAX_CHARS,
@@ -714,3 +715,191 @@ describe("buildResearchShape — G-24 R3: one window per episode across the WHOL
     expect(plasma.windowsUnavailable ?? fusion.windowsUnavailable).toBeNull();
   });
 });
+
+describe("buildResearchShape — #703: the map is checked against its own subject before the spine call", () => {
+  const germEpisode: TranscriptDigestEntry = {
+    show_id: "this-podcast-will-kill-you",
+    show_title: "This Podcast Will Kill You",
+    guid: "tpwky-1",
+    title: "Ep 1: Childbed fever",
+    cues: 4,
+    feed_duration_sec: 3600
+  };
+  const germCues: TranscriptCue[] = [
+    { text: "semmelweis asked the doctors on his ward to wash their hands in chlorinated lime", start_sec: 0, end_sec: 40 },
+    { text: "the miasma theory said disease rose from bad air and germ theory had not yet won", start_sec: 40, end_sec: 85 },
+    { text: "pasteur and lister were still decades from making any of this obvious to anyone", start_sec: 85, end_sec: 130 },
+    { text: "and that is why nineteenth century medicine took so long to accept germ theory", start_sec: 130, end_sec: 175 }
+  ];
+  const engineeringEpisode: TranscriptDigestEntry = {
+    show_id: "being-an-engineer",
+    show_title: "Being an Engineer",
+    guid: "bae-1",
+    title: "S1E31 Toothpaste Boxes",
+    cues: 3,
+    feed_duration_sec: 3600
+  };
+  const engineeringCues: TranscriptCue[] = [
+    { text: "injection moulding a toothpaste box is a surprisingly difficult manufacturing problem", start_sec: 0, end_sec: 45 },
+    { text: "the tooling costs dominate and the cycle time is what decides your unit economics", start_sec: 45, end_sec: 95 },
+    { text: "we ran the whole line for a year before anybody looked at the packaging again", start_sec: 95, end_sec: 150 }
+  ];
+
+  /**
+   * A catalogue that reports STRONG tape for medicine, over a corpus that holds
+   * none of it. That pairing is the whole of #703: the map's confidence came
+   * from `data/discover.json` item counts, which had never looked at a
+   * transcript, and the corpus behind them held engineering tape.
+   */
+  function medicineClaimingCatalogue(): CatalogueData {
+    const items = Array.from({ length: 25 }, (_, i) => ({
+      id: `tpwky--medicine-${i}`,
+      show: "This Podcast Will Kill You",
+      title: `Medicine and disease, part ${i}`,
+      topics: ["medicine/biology"],
+      hook: "Doctors, disease and the history of medicine."
+    }));
+    return {
+      items,
+      itemTags: Object.fromEntries(items.map((it) => [it.id, ["medicine", "disease"]])),
+      concepts: { medicine: { terms: ["medicine", "disease", "germ", "doctors"], topics: ["medicine/biology"], related: [] } },
+      shows: [{ show_id: "this-podcast-will-kill-you", title: "This Podcast Will Kill You", taxonomy_node_ids: ["medicine/biology"] }]
+    };
+  }
+
+  function indexOver(archive: TranscriptDigestEntry[], cuesByGuid: Record<string, TranscriptCue[]>): TranscriptTextIndex {
+    return new FileTranscriptTextIndex({
+      archive,
+      bodies: {
+        getCues: (entry) => cuesByGuid[entry.guid] ?? null,
+        bodyStat: (entry) => (cuesByGuid[entry.guid] ? { mtimeMs: 1, size: 1 } : null)
+      },
+      cache: false
+    });
+  }
+
+  const germIntent = makeIntent({
+    subject: "Germ theory's acceptance in nineteenth-century medicine",
+    angle: "the decades between doctors refusing to wash their hands and germ theory becoming obvious"
+  });
+
+  it("refuses a map whose subject the searchable corpus says nothing about, and names what it searched", async () => {
+    /* MUTATION THAT KILLS THIS: delete the `throw new ResearchMapRefusedError`
+       and keep only the console warning. Then this is the 2026-09-14 run
+       exactly: an engineering-only corpus, a germ-theory subject, a map that
+       reads as healthy, and an Opus spine call spent on it. */
+    const { guard } = guardAndSink();
+    await expect(
+      buildResearchShape(germIntent, {
+        researcher: new StubExternalResearcher(guard),
+        ctx: { userId: "founder-1" },
+        catalogue: medicineClaimingCatalogue(),
+        topic: null,
+        textIndex: indexOver([engineeringEpisode], { "bae-1": engineeringCues }),
+        cueProvider: { getCues: (entry) => ({ "bae-1": engineeringCues })[entry.guid] ?? null }
+      })
+    ).rejects.toThrow(/research map refused/i);
+  });
+
+  it("builds the map when one episode of the corpus does say the subject", async () => {
+    /* MUTATION THAT KILLS THIS: raise SUBJECT_TAPE_FLOOR above 1, or run the
+       probe through the lineage gate. Either turns the floor from "this corpus
+       does not hold this Foray" into "this corpus does not hold ENOUGH of this
+       Foray", which is a judgement §4.2's guardrail forbids — a thin subject
+       must still get a real map. */
+    const { guard } = guardAndSink();
+    const cues = { "tpwky-1": germCues, "bae-1": engineeringCues };
+    const shape = await buildResearchShape(germIntent, {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: medicineClaimingCatalogue(),
+      topic: null,
+      textIndex: indexOver([germEpisode, engineeringEpisode], cues),
+      cueProvider: { getCues: (entry) => cues[entry.guid as keyof typeof cues] ?? null }
+    });
+    expect(shape.subjectTape?.searched).toBe(true);
+    expect(shape.subjectTape?.episodesMatched).toBeGreaterThanOrEqual(SUBJECT_TAPE_FLOOR);
+    expect(shape.subjectTape?.shows).toContain("This Podcast Will Kill You");
+  });
+
+  it("never refuses on a machine with no text index, because nothing was searched", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `subjectTape.searched` guard and
+       refuse on `episodesMatched === 0`. CI and every fresh checkout run the
+       Null index, which returns nothing by design — that would fail every
+       keyless run on a machine with no data-local/, which is all of CI. */
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(germIntent, {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: medicineClaimingCatalogue(),
+      topic: null
+    });
+    expect(shape.subjectTape).toEqual({ query: expect.any(String), episodesMatched: 0, shows: [], searched: false });
+    expect(shape.subtopics.length).toBeGreaterThan(0);
+  });
+
+  it("can be told to proceed anyway, so being stopped is never the end of the road", async () => {
+    /* MUTATION THAT KILLS THIS: hardcode the refusal with no override. A
+       genuinely untaped subject the founder wants narrated regardless is a
+       legitimate Foray (§4.2's guardrail says so in as many words), and a floor
+       with no door is a floor that gets deleted. */
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(germIntent, {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: medicineClaimingCatalogue(),
+      topic: null,
+      refuseIrrelevantMap: false,
+      textIndex: indexOver([engineeringEpisode], { "bae-1": engineeringCues }),
+      cueProvider: { getCues: (entry) => ({ "bae-1": engineeringCues })[entry.guid] ?? null }
+    });
+    expect(shape.subjectTape?.episodesMatched).toBe(0);
+    expect(shape.subtopics.length).toBeGreaterThan(0);
+  });
+
+  it("never refuses a map that honestly reports no tape, which §4.2's guardrail requires", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `claimsTape` condition and refuse on
+       `episodesMatched === 0` alone. §4.2 says in as many words that "a
+       genuinely untaped subject must still produce a real candidate, not an
+       empty map" — narration carries those Forays. What #703 records is not an
+       absence, it is a CONTRADICTION: strong catalogue signals over a corpus
+       holding nothing about the subject. Refuse the contradiction only. */
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(makeIntent({ subject: "onomatopoeia", angle: "sound symbolism" }), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: noTapeFixtureCatalogue(),
+      topic: null,
+      textIndex: indexOver([engineeringEpisode], { "bae-1": engineeringCues }),
+      cueProvider: { getCues: (entry) => ({ "bae-1": engineeringCues })[entry.guid] ?? null }
+    });
+    expect(shape.subjectTape?.episodesMatched).toBe(0);
+    expect(shape.subtopics.length).toBeGreaterThan(0);
+  });
+
+  it("records how many episodes actually said each subtopic, separately from the catalogue's item count", async () => {
+    /* MUTATION THAT KILLS THIS: leave `tapeEpisodesMatched` off the subtopic
+       and let the prompt keep saying "tape: strong, 304 items". That number is
+       catalogue BREADTH; #703's map printed it over five clips about toothpaste
+       packaging and nothing said the fit was zero. */
+    const { guard } = guardAndSink();
+    const cues = { "tpwky-1": germCues };
+    const shape = await buildResearchShape(germIntent, {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: medicineClaimingCatalogue(),
+      topic: null,
+      textIndex: indexOver([germEpisode], cues),
+      cueProvider: { getCues: (entry) => cues[entry.guid as keyof typeof cues] ?? null }
+    });
+    /* EVERY subtopic carries the number, including the ones that found
+       nothing — "0 episodes said this" is the sentence the germ-theory map
+       should have printed under "tape: strong, 304 items". */
+    expect(shape.subtopics.length).toBeGreaterThan(0);
+    for (const subtopic of shape.subtopics) {
+      expect(typeof subtopic.tapeEpisodesMatched).toBe("number");
+      expect(subtopic.tapeEpisodesMatched).toBeGreaterThanOrEqual(subtopic.tapeWindows.length);
+    }
+  });
+});
+

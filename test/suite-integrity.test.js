@@ -1137,6 +1137,11 @@ const FLOORS = {
      as pipeline latency. The 12 mutations named in the suite header were each
      applied and observed to fail before it landed. */
   "tools/generation/relay.test.mjs": 27,
+  /* #703: the corpus-warming launcher. Small on purpose — the work is in
+     backend/src/cli/warmTranscriptIndex.ts and pinned by its own suite — but a
+     launcher that spawns an entry that no longer exists fails quietly, and a
+     run then proceeds on the cold corpus this issue was filed about. */
+  "tools/generation/warm-transcript-index.test.mjs": 5,
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,
@@ -1868,6 +1873,10 @@ const BACKEND_FLOORS = {
   "test/sessionBuilder.test.ts": 12,
   "test/stubEnricher.test.ts": 6,
   "test/userInterests.test.ts": 17,
+  /* #703: the warm pass's feed parsing, which is what decides whether a
+     reconciled episode comes out SEARCHABLE only or also MINTABLE — a duration
+     read as 58 rather than 3501 makes an episode rank and then yield nothing. */
+  "test/warmTranscriptIndex.test.ts": 13,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c): §3's input
      schema, `author_id` required and carried from day one per §1.3. */
   "test/generationRequest.test.ts": 5,
@@ -2056,6 +2065,13 @@ const BACKEND_FLOORS = {
      cache and the invalidation that makes a re-transcribed episode rebuild it,
      and the Null implementation CI actually runs. Raised to 12 by F-61: the
      idf a search scored with is carried out to tier 2's window search. */
+  /* #703: the two rules that decide what of the corpus on disk is readable —
+     the file-naming key the fetcher actually wrote, and the letter-spaced-cue
+     refusal — plus the coverage count that makes a blind spot impossible to
+     miss. Every case names the mutation it kills; four of them are the 990
+     dark Becker's episodes and the sigma-nutrition cover page that was served
+     as tape on a germ-theory Foray. */
+  "test/transcriptCorpus.test.ts": 19,
   "test/transcriptTextIndex.test.ts": 13,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
