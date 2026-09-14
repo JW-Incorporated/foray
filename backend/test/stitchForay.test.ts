@@ -33,8 +33,12 @@ function makeDeepened(title: string, index: number): DeepenedAct {
     startState: `Before ${title}.`,
     endState: `After ${title}.`,
     slots: [{ title: `${title} slot`, beats: [{ claim: `${title} makes a real claim.`, exploration: false }] }],
-    introduction: `Act ${index}'s own introduction, on its own.`,
-    exit: `Act ${index}'s own exit, on its own.`
+    /* Q-08: not `Act ${index}'s own introduction` — these two strings are
+       SPOKEN (they become the act's opening and closing narration items), and
+       `validateSmoothedSeam` now refuses a line that names the running order.
+       `index` still distinguishes them, which is all this fixture needs. */
+    introduction: `Opening number ${index}, on its own.`,
+    exit: `Closing number ${index}, on its own.`
   };
 }
 

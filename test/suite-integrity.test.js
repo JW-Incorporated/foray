@@ -1065,7 +1065,7 @@ const FLOORS = {
      D3's (1) went with their rules; the pair clause gained six (reported on
      pre-Q-01 tape, gated on a Q-01 Foray, the CLI exit, the row fields, the
      IQR still reported, the helper) and M4's restatement three. */
-  "tools/foray/check-forays.test.mjs": 154, // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154
+  "tools/foray/check-forays.test.mjs": 161, // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154
   /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
      of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
      accepted value (~30 today), so the floor is the count of `test(` lines this
@@ -2422,7 +2422,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 38,
+  "test/actNarration.test.ts": 52,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

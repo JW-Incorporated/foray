@@ -1,4 +1,5 @@
 import type { DeepenedAct } from "../types/spine";
+import { narratorStructureLeaks } from "../copy/narratorStructure";
 import type { ContinuityBuilder, ContinuityBuildContext } from "./ContinuityBuilder";
 
 /**
@@ -135,6 +136,18 @@ export function validateSmoothedSeam(nextAct: DeepenedAct, smoothedIntroduction:
   if (smoothedIntroduction.trim().length < nextAct.introduction.trim().length * 0.5) {
     issues.push(
       `smoothed introduction (${smoothedIntroduction.trim().length} chars) is suspiciously shorter than the original (${nextAct.introduction.trim().length} chars) — looks truncated rather than smoothed`
+    );
+  }
+  /* Q-08: and it must not have introduced a structural aside on the way
+     through. This is the one stage that REPLACES an introduction §4.4 already
+     wrote and validated (`validateDeepenedAct`), so a rule asked only there
+     stops being true the moment the continuity agent answers — and "the last
+     act showed you..." is precisely the kind of bridge a smoothing prompt
+     invites. Same rule, same message, one definition
+     (`copy/narratorStructure.js`). */
+  for (const leak of narratorStructureLeaks(smoothedIntroduction)) {
+    issues.push(
+      `smoothed introduction says "${leak.phrase}", which ${leak.why} — the narrator never mentions this Foray's own acts, beats or segments (Q-08)`
     );
   }
   return { valid: issues.length === 0, issues };

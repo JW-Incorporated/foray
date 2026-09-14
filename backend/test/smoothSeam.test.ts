@@ -13,8 +13,11 @@ function makeAct(title: string, index: number): DeepenedAct {
     startState: `Before ${title}.`,
     endState: `After ${title}.`,
     slots: [{ title: `${title} slot`, beats: [{ claim: `${title} makes a real claim about something.`, exploration: false }] }],
-    introduction: `This is act ${index}'s original introduction, written independently of any other act.`,
-    exit: `This is act ${index}'s original exit, written independently of any other act.`
+    /* Q-08: these two are SPOKEN, so they may not name the running order
+       (`validateSmoothedSeam` refuses that now). `index` still tells them
+       apart, which is all these tests read them for. */
+    introduction: `This is opening number ${index}, written independently of anything else.`,
+    exit: `This is closing number ${index}, written independently of anything else.`
   };
 }
 
@@ -62,7 +65,9 @@ describe("smoothActs — cross-act continuity is forward-only (§6.2)", () => {
       readonly providerName = "recording";
       async smoothSeam(request: ContinuitySmoothRequest, _ctx: ContinuityBuildContext): Promise<ContinuitySmoothResult> {
         seenRequests.push(request);
-        return { nextIntroduction: `${request.nextActIntroduction} (smoothed callback to "${request.previousActTitle}")` };
+        /* Q-08: the callback records the previous act's EXIT, not its title
+           — a title reads "Act One", and a smoothed introduction is spoken. */
+        return { nextIntroduction: `${request.nextActIntroduction} (smoothed callback to "${request.previousActExit}")` };
       }
     }
 
@@ -114,7 +119,7 @@ describe("validateSmoothedSeam", () => {
 
   it("accepts a real smoothed introduction", () => {
     const act = makeAct("Act Two", 2);
-    const result = validateSmoothedSeam(act, `Coming out of act one — ${act.introduction}`);
+    const result = validateSmoothedSeam(act, `Coming out of all that — ${act.introduction}`);
     expect(result.valid).toBe(true);
   });
 });

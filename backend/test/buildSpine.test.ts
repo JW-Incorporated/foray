@@ -171,6 +171,7 @@ describe("buildSpine — rejects an invalid spine rather than silently accepting
       return {
         subject: intent.subject,
         angle: intent.angle,
+        overview: "We look at what happens when the thing you built meets the world that has to run it, told by the people who were there.",
         duration,
         generatedAt: new Date().toISOString(),
         voice: { style: "s", register: "r", sentenceRhythm: "sr", narratorPresence: "np" },
@@ -185,6 +186,7 @@ describe("buildSpine — rejects an invalid spine rather than silently accepting
       return {
         subject: intent.subject,
         angle: intent.angle,
+        overview: "We look at what happens when the thing you built meets the world that has to run it, told by the people who were there.",
         duration,
         generatedAt: new Date().toISOString(),
         voice: { style: "s", register: "r", sentenceRhythm: "sr", narratorPresence: "np" },

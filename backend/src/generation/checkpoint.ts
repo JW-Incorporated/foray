@@ -78,8 +78,15 @@ export type CheckpointStageKey = string;
  * directory nobody has cleaned, resumed against a prompt that has not
  * changed. Rejecting such a file costs one re-run; half-understanding it
  * costs a Foray that silently mixes two builds' output.
+ *
+ * VERSION 3 (Q-07, 2026-09-13): the spine now carries an `overview` — the
+ * prelude's second half, the few sentences the listener hears before
+ * anything else. `SpineSchema` is `.strict()` and the field is REQUIRED, so
+ * a version-2 spine banked by an earlier build cannot parse. No shim, per
+ * the deck's §5: a resumed run under the old file would build a Foray whose
+ * first item is half missing, and re-running the spine stage costs one call.
  */
-export const CHECKPOINT_VERSION = 2;
+export const CHECKPOINT_VERSION = 3;
 
 export const CheckpointFileSchema = z
   .object({

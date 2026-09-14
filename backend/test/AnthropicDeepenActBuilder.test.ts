@@ -16,6 +16,7 @@ describe("AnthropicDeepenActBuilder", () => {
   const spine: Spine = {
     subject: "Charcoal briquettes",
     angle: "an industrial waste-disposal scheme",
+    overview: "We look at what happens when the thing you built meets the world that has to run it, told by the people who were there.",
     duration: "short",
     generatedAt: new Date().toISOString(),
     voice: { style: "s", register: "r", sentenceRhythm: "sr", narratorPresence: "np" },

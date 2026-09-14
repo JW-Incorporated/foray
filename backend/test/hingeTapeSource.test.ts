@@ -104,6 +104,10 @@ const RUN6_CLAIM = "One host argued that matching an organization's actual mix o
 /* The Hinge a writer makes of it — inside the Hinge band, declarative, and
    about what the previous tape said. */
 const RUN6_HINGE = "One host just argued for matching tools to a team's actual mix of skills. Hold that thought as the next voice picks it up.";
+/* Q-09: the seam that INTRODUCES the act's first clip names the show. This
+   fixture is about F-82's tape-source rules on the seam that FOLLOWS a clip
+   (`RUN6_HINGE`); the introduction before it only has to be legal. */
+const RUN6_INTRO = "First, a host on Practical AI on skills and tools.";
 
 const SOURCE_A: TapeSource = {
   kind: "tape",
@@ -535,7 +539,7 @@ describe("F-82 — the four run-6 pages become acceptable with the right tape so
        more. What the run-6 finding was actually about — the page cites
        the segment whose words it restates, and the gate stops refusing —
        is asserted unchanged. */
-    const segments = RUN6.map((r, i) => ({ ...r, tape: pointer(`practical-ai--run6-${i}#100`, `practical-ai--run6-${i}`, 100), title: `Practical AI — run 6 segment ${i}` }));
+    const segments = RUN6.map((r, i) => ({ ...r, tape: pointer(`practical-ai--run6-${i}#100`, `practical-ai--run6-${i}`, 100), title: `Practical AI — run six, episode ${"ABCD"[i] ?? i}` }));
     const acts: SourcedAct[] = [
       { title: "Act", slots: segments.map((s, i) => ({ title: `Slot ${i}`, beats: [tapeBeat(`Tape ${i} plays.`, s.tape), carryBeat(s.claim)] })) }
     ];
@@ -636,7 +640,7 @@ describe("F-82 — the prompts say what the code enforces", () => {
         { id: "c1", kind: "clip", claimText: "clip B's window", publication: TITLE_B, docId: DOC_B.docId, contested: false }
       ],
       seams: [
-        { seamId: "sA", script: "First, a host on skills and tools.", selected: [], carries: [], introduces: "c0", intro: "full" },
+        { seamId: "sA", script: RUN6_INTRO, selected: [], carries: [], introduces: "c0", intro: "full" },
         { seamId: "s0", script: RUN6_HINGE, selected: ["c0"], carries: ["b0"], follows: "c0", introduces: "c1", intro: "full" }
       ],
       clips: [

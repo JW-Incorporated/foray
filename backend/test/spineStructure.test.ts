@@ -80,6 +80,7 @@ function runOneSpine(): Spine {
   return {
     subject: "engineering disasters",
     angle: "the chains of small decisions behind collapsed bridges, failed dams and machines that broke",
+    overview: "We look at what happens when the thing you built meets the world that has to run it, told by the people who were there.",
     duration: "medium",
     generatedAt: "2026-09-09T02:00:00.000Z",
     voice: { style: "forensic", register: "plain", sentenceRhythm: "short then long", narratorPresence: "low" },

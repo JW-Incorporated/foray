@@ -11,6 +11,7 @@ import {
   clipOpening,
   decideIntro,
   hostIntroducesGuest,
+  introNamesShow,
   introNamesSource,
   introRestatesClip,
   planActSeams,
@@ -32,12 +33,14 @@ import {
   computePagesDropped,
   computeUnverifiedPages
 } from "../src/generation/veracityMetrics";
-import { MODE_CHAR_BANDS, TAPE_SOURCE_MODES, negativeRecordSentence, tapeDocIdFor, validateNarratedBeat, type NarratedBeat } from "../src/types/narration";
+import { MODE_CHAR_BANDS, TAPE_SOURCE_MODES, disclosureTemplate, negativeRecordSentence, tapeDocIdFor, validateNarratedBeat, type NarratedBeat } from "../src/types/narration";
+import { narratorStructureLeaks } from "../src/copy/narratorStructure";
+import { validateSmoothedSeam } from "../src/generation/smoothSeam";
 import type { EvidenceBeat, EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
 import type { ActWriteRequest, ActWriteResult, NarrationBuildContext, SeamBrief } from "../src/generation/NarrationWriterBuilder";
 import type { ActVerifyRequest, ActVerifyResult } from "../src/generation/NarrationVerifierBuilder";
 import type { SourcedAct, TapePointer } from "../src/types/tapeSourcing";
-import type { Voice } from "../src/types/spine";
+import { validateDeepenedAct, type Voice } from "../src/types/spine";
 
 /**
  * Q-02 / Q-03 / Q-05 (docs/curation/listening-quality-plan.md; ledger F-95):
@@ -436,13 +439,37 @@ describe("Q-02 — every clip gets a light introduction", () => {
     /* MUTATION THAT KILLS THIS: drop the `introNamesSource` check from
        `draftSeam` — the nameless introduction below passes round 1. Or:
        fail the check when the row is empty — the second act is refused three
-       times for a name it could never say. */
+       times for a name it could never say.
+
+       Q-09 CHANGED WHICH MESSAGE FIRES FIRST, not whether one does. The
+       clip this act opens with is the FIRST from its show, so the stricter
+       Q-09 rule (say the show's name) answers before Q-02's "name the show
+       OR somebody". Both refusals are asserted: the first clip below, and
+       the SECOND clip — same show, already introduced — which is held to
+       Q-02's rule exactly as it was. */
     const { writer, verifier, calls, requests } = builders((reply, _request, round) =>
       round === 1 ? { seams: reply.seams.map((s) => (s.seamId === "s0" ? { ...s, script: s.script.replace(/Practical AI/g, "the show").replace(/Skills over models/g, "an episode") } : s)) } : reply
     );
     await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx);
     expect(calls.write).toBe(2);
-    expect(requests[1]!.retryNote).toMatch(/names neither the show/);
+    expect(requests[1]!.retryNote).toMatch(/first clip this Foray plays from "Practical AI"/);
+
+    /* The SECOND clip of the act: the show has been introduced, so Q-09 is
+       satisfied and Q-02's own rule is what refuses a nameless
+       introduction. */
+    const later = builders((reply, request, round) =>
+      round === 1
+        ? {
+            seams: reply.seams.map((s) => {
+              const brief = request.seams.find((b) => b.seamId === s.seamId);
+              if (!brief?.introduces || brief.introduces === "c0") return s;
+              return { ...s, script: s.script.replace(/Practical AI/g, "the show").replace(/A robot in a simulator/gi, "an episode") };
+            })
+          }
+        : reply
+    );
+    await writeNarration([fourBeatsTwoClips()], { writer: later.writer, verifier: later.verifier, evidence: gatherer() }, voice, ctx);
+    expect(later.requests[1]!.retryNote).toMatch(/names neither the show/);
 
     /* No window, no tape context, no minted row: nothing names the clip
        (the dry-run stub's tape, or a tier-2 item whose row was not minted). */
@@ -1365,3 +1392,189 @@ describe("defect 1 — a seam the writer never returned is a rejection, not a ch
     expect(large).toBeLessThanOrEqual(32000);
   });
 });
+
+/**
+ * Q-08 / Q-09 (2026-09-13, the founder's words verbatim):
+ *
+ *   "the narrator should never mention acts or beats in the context of the
+ *    foray formatting (for example, saying 'this foray has 3 acts' is NOK
+ *    but mentioning 'in the first act of Macbeth' is fine if it's
+ *    relevant)."
+ *
+ *   "we should try to introduce any podcast with a brief mention of what
+ *    podcast it is, for example 'here's a clip from XYZ emphasizing this
+ *    point'"
+ *
+ * Every test names the mutation that kills it.
+ */
+describe("Q-08 — the narrator never mentions the Foray's own structure", () => {
+  it("flags a self-reference and leaves the founder's own legitimate example alone", () => {
+    /* THE WHOLE DIFFICULTY IS THIS PAIR, and a naive /\bact\b/ fails the
+       second list starting with the exact sentence Wyatt chose to name as
+       fine. MUTATION THAT KILLS THIS: delete the OF_ANCHOR or the
+       POSSESSIVE_ANCHOR test in `narratorStructure.js` — the "fine" list
+       goes red. Delete a RULES entry and the "banned" list goes red. */
+    const banned = [
+      "This foray has three acts.",
+      "In this second act, the pressure rises.",
+      "The next beat is where it turns.",
+      "In this segment we hear from a builder.",
+      "Part one of three.",
+      "We are in act two now.",
+      "In the first act of this foray.",
+      "Coming up in the final segment."
+    ];
+    const fine = [
+      "In the first act of Macbeth, the witches speak.",
+      "The second act of the crisis began in March.",
+      "His first act as chairman was to close the plant.",
+      "Macbeth\u2019s first act opens in a storm.",
+      "That was part of the problem all along.",
+      "A section of the pipeline had corroded.",
+      "Three acts of Macbeth were cut.",
+      "The play\u2019s three acts run ninety minutes."
+    ];
+    for (const line of banned) expect(narratorStructureLeaks(line), line).not.toHaveLength(0);
+    for (const line of fine) expect(narratorStructureLeaks(line), line).toHaveLength(0);
+  });
+
+  it("the prelude's own boilerplate passes the rule it imposes", () => {
+    /* A rule the product's own fixed opening breaks is a rule nobody can
+       ship. MUTATION THAT KILLS THIS: put "this Foray" into the boilerplate,
+       or widen the programme-noun rule to match "a Foray". */
+    expect(narratorStructureLeaks(disclosureTemplate("grilling"))).toHaveLength(0);
+  });
+
+  it("a seam that mentions the running order is refused in code and the writer is told", async () => {
+    /* MUTATION THAT KILLS THIS: delete the `narratorStructureLeaks` loop in
+       `validateSeam`. The act then ships the aside and only the publish gate
+       sees it — at which point there is no retry left. */
+    const { writer, verifier, calls } = builders((reply, _request, round) => {
+      if (round > 1) return reply;
+      return { seams: reply.seams.map((s, i) => (i === 0 ? { ...s, script: `In this second act we hear why. ${s.script}` } : s)) };
+    });
+    const [act] = await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx);
+    expect(calls.write).toBe(2);
+    for (const page of pagesInOrder(act!)) expect(narratorStructureLeaks(page.script)).toHaveLength(0);
+  });
+
+  it("an act introduction or exit that names the running order fails validation — where 25 of 25 real violations were", () => {
+    /* MEASURED 2026-09-13 on the four generated Forays on `main`: 25
+       violations across 157 narration items, and every single one of them an
+       act introduction or exit, not a seam. MUTATION THAT KILLS THIS: drop
+       the loop from `validateDeepenedAct` — the rule then holds everywhere
+       except the one place it was actually being broken. */
+    const beat = { claim: "A bolt carried twice the load the drawing assumed.", exploration: false };
+    const original = { title: "T", thesis: "th", startState: "s", endState: "e", slots: [{ title: "S", beats: [beat] }] };
+    const deepened = {
+      ...original,
+      slots: [{ title: "S", beats: [{ ...beat, kind: "account" as const }] }],
+      introduction: "Act one opens with the assumption every engineer starts with.",
+      exit: "Every fault this act named lived underneath the model."
+    };
+    const result = validateDeepenedAct(original, deepened);
+    expect(result.valid).toBe(false);
+    expect(result.issues.filter((i) => i.code === "structure-self-reference")).toHaveLength(2);
+
+    const clean = { ...deepened, introduction: "It opens with the assumption every engineer starts with.", exit: "Every fault so far lived underneath the model." };
+    expect(validateDeepenedAct(original, clean).valid).toBe(true);
+  });
+
+  it("a smoothed introduction that reaches back by name is refused — the one stage that rewrites an already-validated line", () => {
+    /* MUTATION THAT KILLS THIS: drop the loop from `validateSmoothedSeam`.
+       §4.4 validates an introduction and §4.8 then REPLACES it, so a rule
+       asked only at §4.4 stops being true the moment continuity answers —
+       and "the last act showed you..." is precisely what a smoothing prompt
+       invites. */
+    const nextAct = {
+      title: "Act 3",
+      thesis: "th",
+      startState: "s",
+      endState: "e",
+      slots: [{ title: "S", beats: [{ claim: "A bolt carried twice the load the drawing assumed.", exploration: false, kind: "account" as const }] }],
+      introduction: "By now you have stopped looking for the reckless engineer, and the question turns to paper.",
+      exit: "x"
+    };
+    const bad = "By now you have stopped looking for the reckless engineer - the last act showed you the flaw arriving on paper.";
+    expect(validateSmoothedSeam(nextAct, bad).valid).toBe(false);
+    expect(validateSmoothedSeam(nextAct, nextAct.introduction).valid).toBe(true);
+  });
+});
+
+describe("Q-09 — the first clip from a show says the show's name, and no clip after it has to", () => {
+  it("marks the first clip from each show, and only the first — across two EPISODES of one show", () => {
+    /* Wyatt's "try to", resolved. The fixture's two clips are different
+       EPISODES of the same SHOW ("Practical AI"), which is precisely the
+       case the rule exists for: Q-02 gives both a `full` introduction
+       because the guest may be new, and Q-09 asks only the first of them to
+       say the show's name.
+
+       MUTATION THAT KILLS THIS: key `showFirstHeard` off the EPISODE (reuse
+       Q-02's `intro` weight) instead of the show — both come back true, and
+       a Foray with nine clips from one show says its name nine times. */
+    const { writer, verifier, requests } = builders();
+    return writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx).then(() => {
+      const clips = requests[0]!.clips;
+      expect(clips.map((c) => c.show)).toEqual([SHOW, SHOW]);
+      expect(clips.map((c) => c.showFirstHeard)).toEqual([true, false]);
+      /* Q-02's weight is unchanged and still per-episode. */
+      expect(clips.map((c) => c.intro)).toEqual(["full", "full"]);
+    });
+  });
+
+  it("does not mark a show this Foray already named in an earlier act", async () => {
+    /* MUTATION THAT KILLS THIS: drop `showsIntroduced` from
+       `WriteActOptions`, or seed the set empty each act. A listener does not
+       forget a name at an act boundary, and act 3 would re-introduce the
+       show act 1 opened with. Canonicalised, so casing cannot smuggle a
+       second introduction past it. */
+    const { writer, verifier, requests } = builders();
+    await writeActNarration(fourBeatsTwoClips(), { writer, verifier, evidence: gatherer(), showsIntroduced: ["practical ai"] }, voice, ctx);
+    expect(requests[0]!.clips.map((c) => c.showFirstHeard)).toEqual([false, false]);
+  });
+
+  it("refuses an introduction to a show's first clip that never says the show's name", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `firstFromShow` branch from
+       `validateSeam`. The listener then hears a clip with no idea whose
+       voice it is, which is half of Wyatt's 2026-09-12 complaint. */
+    const { writer, verifier, calls } = builders((reply, request, round) => {
+      if (round > 1) return reply;
+      const introSeam = request.seams.find((s) => s.introduces !== undefined)!;
+      return {
+        seams: reply.seams.map((s) =>
+          s.seamId === introSeam.seamId
+            ? { ...s, script: "Listen to what he says next about hiring, and how long it takes to find people who can keep a pipeline running.", claims: [], usedClaims: [] }
+            : s
+        )
+      };
+    });
+    await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx);
+    expect(calls.write).toBeGreaterThan(1);
+  });
+
+  it("a later clip from the same show may introduce it without naming the show again", () => {
+    /* The rule is a floor on the FIRST clip, not a ceiling on the rest:
+       naming the show again is allowed, it is simply never demanded.
+       MUTATION THAT KILLS THIS: make `introNamesShow` the requirement for
+       every full introduction — the second and third clauses go red. */
+    expect(introNamesShow("Here is a clip from Practical AI on why skills decide the tools.", { show: SHOW })).toBe(true);
+    expect(introNamesShow("Back with the same engineer, a few minutes later.", { show: SHOW })).toBe(false);
+    /* ...and `introNamesSource` still accepts a NAME from the episode title,
+       which is what a later clip owes under Q-02, unchanged. */
+    expect(introNamesSource("Here is Chris Benson again, on skills.", { show: SHOW, title: "Chris Benson on skills over models" })).toBe(true);
+  });
+
+  it("says on the CLIP line which clip owes the show's name and which must not repeat it", () => {
+    /* The prompt half of the rule. MUTATION THAT KILLS THIS: drop the
+       `showFirstHeard` clause from `actLayout` — the model is then told the
+       rule in the abstract and never told which clip it applies to, which is
+       how "try to" becomes "every time" or "never". */
+    const request = { ...requestWithMergedClip() };
+    const first = buildActWritePrompt({ ...request, clips: request.clips.map((c) => ({ ...c, showFirstHeard: true })) });
+    const later = buildActWritePrompt({ ...request, clips: request.clips.map((c) => ({ ...c, showFirstHeard: false })) });
+    expect(first).toContain("FIRST CLIP FROM THIS SHOW: say its name");
+    expect(later).toContain("has already been introduced in this Foray: do not name it again");
+    expect(later).not.toContain("FIRST CLIP FROM THIS SHOW");
+  });
+});
+

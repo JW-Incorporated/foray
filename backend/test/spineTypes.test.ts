@@ -47,6 +47,7 @@ function makeSpine(overrides: Partial<Spine> = {}): Spine {
   return {
     subject: "the history of grilling",
     angle: "how an industrial waste product became a backyard ritual",
+    overview: "We look at what happens when the thing you built meets the world that has to run it, told by the people who were there.",
     duration: "short",
     generatedAt: new Date().toISOString(),
     voice: {

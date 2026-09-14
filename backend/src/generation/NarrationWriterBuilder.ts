@@ -89,6 +89,27 @@ export interface ClipBrief {
   opening: string;
   durationSec: number;
   intro: IntroKind;
+  /**
+   * Q-09: this is the FIRST clip this Foray plays from this show.
+   *
+   * Wyatt, 2026-09-13: "we should try to introduce any podcast with a brief
+   * mention of what podcast it is, for example 'here's a clip from XYZ
+   * emphasizing this point'". "Try to" is doing work: an introduction that
+   * names the show every single time, in the same phrasing, grates badly
+   * across a sixty-minute Foray. So the show is NAMED the first time the
+   * listener hears it and never required again — a later clip from the same
+   * show is free to refer back lightly, or not at all.
+   *
+   * Q-02's `intro` weight is a different question and is unchanged: it is
+   * about the EPISODE (a new episode still gets a full introduction, because
+   * the guest may be new), while this is about the SHOW. A second episode of
+   * a show the listener already met gets `intro: "full"` and
+   * `showFirstHeard: false` — introduce the guest, leave the show alone.
+   *
+   * Optional so a request recorded before Q-09 (the run-9 replay fixture)
+   * still reads; absent is treated as `true`, which is the stricter answer.
+   */
+  showFirstHeard?: boolean;
   /** F-99: every beat this clip carries — the beat whose clip it is and
    * any beat §4.5 merged into it (F-96 `mergedInto`: one clip, two claims).
    * Printed on the CLIP line ("carries beats b2, b3") so the writer knows

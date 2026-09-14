@@ -91,16 +91,49 @@ function kindOf(claim: string): "account" | "argument" {
   return /\b(every|always|never|almost|tends?|generally|typically|in general|means that|is why)\b/i.test(claim) ? "argument" : "account";
 }
 
+/* Q-08: the stub's own copy obeys the rule the pipeline enforces. It used to
+   say "the last act", "the next act" and "this Foray", which is exactly the
+   structural aside Wyatt banned — and because `--dry-run` runs THIS builder,
+   the one path a developer can actually execute without a key was the one
+   path that produced the banned prose. `validateDeepenedAct` now refuses it,
+   so a stub that kept the old wording would fail every dry run. */
+/** The act's own subject matter, with the planning prefix taken off: a title
+ * reads "Act 2: how the tools get chosen", and only the half after the colon
+ * is about the world. Empty when the title is nothing but the prefix, which
+ * is what a minimal test fixture ("Act 1") is. */
+function strandOf(act: Act): string {
+  return act.title.replace(/^Act\s+\d+\s*:?\s*/i, "").trim();
+}
+
+/**
+ * Q-08: THE STUB'S OWN COPY OBEYS THE RULE THE PIPELINE ENFORCES, and it
+ * stopped echoing PLANNING TEXT to get there.
+ *
+ * These two strings used to be built out of `act.thesis` and `act.endState`
+ * — fields written for the writer, not for the listener, which legitimately
+ * read "Act 1 establishes..." and "the listener has just finished act 1" —
+ * and out of "the last act", "the next act" and "this Foray" in the stub's
+ * own words. Every one of those is the structural aside Wyatt banned on
+ * 2026-09-13, and because `--dry-run` runs THIS builder, the one path a
+ * developer can execute without an API key was the one path that reliably
+ * produced the banned prose. `validateDeepenedAct` now refuses it.
+ *
+ * So the stub speaks from the act's TITLE (the planning prefix stripped) and
+ * the spine's subject, and from nothing that was written to be read rather
+ * than heard.
+ */
 function introductionFor(act: Act, index: number, spine: Spine): string {
+  const strand = strandOf(act);
   if (index === 0) {
-    return `We start with ${act.thesis.toLowerCase()} Before anything else, here is where ${spine.subject} begins.`;
+    return `We start where ${spine.subject} begins${strand ? `, with ${strand}` : ""}.`;
   }
-  return `Coming out of the last act, here is where ${act.thesis.toLowerCase()}`;
+  return `Coming out of all that, here is where ${strand || spine.subject} takes it.`;
 }
 
 function exitFor(act: Act, nextAct: Act | undefined, spine: Spine): string {
+  const strand = strandOf(act);
   if (!nextAct) {
-    return `That is where ${act.endState.toLowerCase()} closing out this Foray on ${spine.subject}.`;
+    return `That is where we leave ${spine.subject}${strand ? `, and where ${strand} leaves us` : ""}.`;
   }
-  return `That leaves us with ${act.endState.toLowerCase()} which is exactly where the next act picks up.`;
+  return `That leaves us somewhere new${strand ? ` on ${strand}` : ""}, and it is exactly where we pick up.`;
 }

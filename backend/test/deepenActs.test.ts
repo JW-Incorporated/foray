@@ -33,6 +33,7 @@ function makeSpine(overrides: Partial<Spine> = {}): Spine {
   return {
     subject: "the history of grilling",
     angle: "how an industrial waste product became a backyard ritual",
+    overview: "We look at what happens when the thing you built meets the world that has to run it, told by the people who were there.",
     duration: "medium",
     generatedAt: new Date().toISOString(),
     voice: { style: "s", register: "r", sentenceRhythm: "sr", narratorPresence: "np" },
@@ -108,8 +109,12 @@ describe("deepenActs — full-spine context, not just the act's own slice", () =
       this.seenSiblingTheses.push(siblingTheses);
       return {
         ...targetAct,
-        introduction: `intro for ${targetAct.title}`,
-        exit: `exit for ${targetAct.title}`
+        /* Q-08: not `intro for ${targetAct.title}` — the fixture titles are
+           "Act 1"/"Act 2", and `validateDeepenedAct` now refuses a spoken
+           line that names the running order. What this test pins is the
+           SPINE the builder was handed, not the words it wrote. */
+        introduction: `intro for the slice about ${targetAct.startState}`,
+        exit: `exit from the slice about ${targetAct.endState}`
       };
     }
   }

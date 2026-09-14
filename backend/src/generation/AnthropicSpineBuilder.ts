@@ -56,7 +56,7 @@ const VoiceSchema = z.object({
   sentenceRhythm: z.string(),
   narratorPresence: z.string()
 });
-const RawSpineSchema = z.object({ voice: VoiceSchema, acts: z.array(ActSchema) });
+const RawSpineSchema = z.object({ overview: z.string(), voice: VoiceSchema, acts: z.array(ActSchema) });
 
 function roughTokenEstimate(text: string): number {
   return Math.ceil(text.length / 4);
@@ -155,6 +155,7 @@ export class AnthropicSpineBuilder implements SpineBuilder {
     return {
       subject: intent.subject,
       angle: intent.angle,
+      overview: raw.overview,
       duration,
       generatedAt: new Date().toISOString(),
       voice: raw.voice,
@@ -170,7 +171,7 @@ export class AnthropicSpineBuilder implements SpineBuilder {
  * test that pins the re-ask conversation.
  */
 export function spineReplyText(previous: Spine): string {
-  return JSON.stringify({ voice: previous.voice, acts: previous.acts });
+  return JSON.stringify({ overview: previous.overview, voice: previous.voice, acts: previous.acts });
 }
 
 /**
@@ -355,8 +356,15 @@ export function buildSpinePrompt(intent: IntentUnderstanding, researchShape: Res
     "Decide the VOICE once for the whole spine (style, register, sentenceRhythm, narratorPresence) —",
     "it applies to every act; do not vary it per act.",
     "",
+    "Write the OVERVIEW: three or four sentences the listener hears before anything else, telling them",
+    "what this Foray covers. It is spoken aloud, so write it to be heard — no list, no colon-and-bullets,",
+    "no \"first we... then we...\". Say what the Foray is about and what makes it worth an hour, the way",
+    "you would tell a friend before pressing play. NEVER say how many acts or parts there are, never say",
+    "\"this Foray has\", and never mention acts, beats or segments at all: the listener cannot see a",
+    "running order and does not need one. A machine checks that after you answer.",
+    "",
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
-    '{"voice": {"style": string, "register": string, "sentenceRhythm": string, "narratorPresence": string}, ' +
+    '{"overview": string, "voice": {"style": string, "register": string, "sentenceRhythm": string, "narratorPresence": string}, ' +
       '"acts": [{"title": string, "thesis": string, "startState": string, "endState": string, ' +
       '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, ' +
       '"seed"?: {"episodeId": string, "startSec": number, "endSec": number}}]}]}]}'
