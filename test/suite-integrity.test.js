@@ -466,8 +466,21 @@ const FLOORS = {
      follows the pool it was built from (rendered twice on purpose — this
      harness gives every test a fresh vm context and a browser gives a whole
      session ONE); and the implication over the real data, pool has artwork
-     => the show resolves artwork. */
-  "test/show-page.test.js": 43,
+     => the show resolves artwork.
+     2026-09-14, +1 (issue #687): two tests here CHANGED SUBJECT rather than
+     being deleted, and one was added. They used to pin that a breadth show
+     and a curated show with zero discover-pool episodes get DIFFERENT empty
+     copy — and both of those strings were the ones the founder told us to
+     stop shipping ("don't blame it on 4a"), the first of which is #687's bug.
+     The tier distinction went with them, deliberately: `tier` is a fact about
+     which ingestion path found the show, invisible and unactionable to a
+     listener. What the two tests now pin is what they were really protecting —
+     a breadth show_id RESOLVES rather than 404ing, and neither kind of show
+     claims to be empty while its fetch is in flight — and the third asserts
+     the copy itself, at the two states most likely to regress. The four
+     OUTCOME states those two used to conflate are floored separately at
+     test/show-episode-load-states.test.js. 43 -> 44. */
+  "test/show-page.test.js": 44,
   /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
      the show page, so show-page-pagination.test.js was RE-POINTED rather than
      shrunk — same five tests, now pinning the absence of the control, the
