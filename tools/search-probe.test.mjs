@@ -18,7 +18,7 @@ import {
   median, p95, timeReps, localPassBattery, decodeStats, breadthRoundTrip,
   runProbe, formatTable, validateReport, QUERY_BATTERY, NON_ASCII_QUERY, REPS,
   indexPassBattery, PARITY_CASES, parityCase, parityBattery, targetRank,
-  normaliseTitle,
+  normaliseTitle, SCAN_REACH_CASES, SCAN_REACH_TARGETS, SCAN_MIN_QUERY_LENGTH,
 } from "./search-probe.mjs";
 
 /* ==================================================================== */
@@ -348,7 +348,17 @@ function validIndexSection() {
     battery: QUERY_BATTERY.map((q) => ({
       query_len: q.length,
       prefix_hits: 1, prefix_ms_median: 0.004, prefix_ms_p95: 0.013,
-      scan_hits: 0, scan_ms_median: 8, scan_ms_p95: 13, scan_reached: true, scan_reached: true,
+      scan_hits: 0, scan_ms_median: 8, scan_ms_p95: 13, scan_reached: true,
+    })),
+    /* The REACH rows (defect 1, 2026-09-13) are part of a valid index section
+       now: a report that carries the scan's latency saving and not its reach
+       cost is exactly the half-measurement `validateReport` was extended to
+       refuse. */
+    reach: SCAN_REACH_CASES.map((c) => ({
+      query_len: c.query.length,
+      prefix_hits: 1, prefix_ms_median: 0.004, prefix_ms_p95: 0.013,
+      scan_hits: 3, scan_ms_median: 8, scan_ms_p95: 13, scan_reached: true,
+      reach_target: c.target, reach_rank_without_scan: null, reach_rank_with_scan: 4, reach_lost: true,
     })),
   };
 }
@@ -372,16 +382,20 @@ test("indexPassBattery reports the prefix pass and the scan pass SEPARATELY, nev
   assert.equal(rows.length, 2);
   assert.deepEqual(rows.map((r) => r.prefix_hits), [2, 3]);
   assert.deepEqual(rows.map((r) => r.scan_hits), [4, 6]);
-  /* `scan_reached` says whether app.js would EVER pay this row's scan cost: it
-     runs the scan only on the debounce tick and only when the prefix pass
-     returned fewer than 10 hits. Without the column, a table row showing a
-     500 ms scan for "l" reads as a cost the app pays; it never does, because
-     "l" returns 418 prefix hits.
-     MUTATION: hardcode `scan_reached: true`. The wide-prefix case below
-     returns 12 hits and goes red. */
-  assert.deepEqual(rows.map((r) => r.scan_reached), [true, true]);
-  const wide = indexPassBattery(() => new Array(12).fill(0), scan, { keys: [], rows: [] }, ["ab"], 2);
-  assert.deepEqual(wide.map((r) => r.scan_reached), [false]);
+  /* `scan_reached` says whether app.js would EVER pay this row's scan cost.
+     Without the column, a table row showing a 331 ms scan for "l" reads as a
+     cost the app pays; it never does.
+
+     IT MIRRORS THE APP'S GATE, AND THAT GATE CHANGED (defect 1, 2026-09-13):
+     it was `prefix_hits < 10` and is now a floor on query LENGTH, because the
+     count gate was measured to cost reach. "ab" is two characters and below
+     the floor; "cde" is three and above it.
+     MUTATION: hardcode `scan_reached: true`, or leave the old
+     `prefix_hits < 10` expression in place. Either way "ab" and "cde" stop
+     disagreeing and this goes red. */
+  assert.deepEqual(rows.map((r) => r.scan_reached), [false, true]);
+  assert.equal(SCAN_MIN_QUERY_LENGTH, 3,
+    "the mirrored floor must match app.js's SHOW_SCAN_MIN_QUERY_LENGTH — a drift here makes the column report a policy the app does not have");
   for (const r of rows) {
     for (const k of ["prefix_ms_median", "prefix_ms_p95", "scan_ms_median", "scan_ms_p95"]) {
       assert.equal(typeof r[k], "number", `${k} must be reported in its own right`);
@@ -410,6 +424,123 @@ test("validateReport accepts a populated index section and rejects one that lost
   short.index = validIndexSection();
   short.index.battery = short.index.battery.slice(0, 2);
   assert.ok(validateReport(short).length > 0);
+});
+
+/* -------------------------------------------- defect 1: the REACH columns -- */
+
+test("indexPassBattery reports REACH beside cost: where a named target lands WITH the scan and WITHOUT it", () => {
+  /* THE COLUMN THE TABLE WAS MISSING. `scan_reached` said what skipping the
+     scan SAVES and its comment called the saving "never paid in the app";
+     nobody had asked what the skip COSTS. For `daily` the answer measured
+     2026-09-13 over the committed index is: The Daily is absent from the
+     index's answer without the scan and 17th with it — a REACH gap, not the
+     ranking gap P-10 already owns.
+
+     Driven by fakes with known contents, so this asserts the SHAPE of the
+     measurement and not the speed or the contents of the real index (the
+     probe's own --no-network run and test/show-search-reach.test.js cover
+     those). The prefix pass here cannot see the target and the scan can,
+     which is exactly the committed index's shape for `daily`.
+
+     MUTATION: compute `reach_rank_without_scan` from the same merged list as
+     `reach_rank_with_scan` (or from the scan's rows). The target stops being
+     absent in the no-scan column, `reach_lost` goes false, and this goes
+     red — which is the shape of a probe that reports a reach gap as fine. */
+  const target = "The Daily";
+  const prefix = () => [{ title: "Daily Dose of Dana" }, { title: "Daily Stoic" }];
+  const scan = () => [{ title: "Some Other Show" }, { title: target }];
+  const rows = indexPassBattery(prefix, scan, { keys: [], rows: [] }, ["daily"], 2,
+    { targets: { daily: target } });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].reach_target, target);
+  assert.equal(rows[0].reach_rank_without_scan, null,
+    "absent without the scan — `null` and not 0, because a 0 would read as \"first\"");
+  assert.equal(rows[0].reach_rank_with_scan, 4,
+    "and present with it, at its position in the merged answer");
+  assert.equal(rows[0].reach_lost, true,
+    "`reach_lost` is the finding named as a boolean so a table scan cannot miss it");
+});
+
+test("a battery row with no named target reports null reach, never a fabricated rank", () => {
+  /* `QUERY_BATTERY`'s twelve queries have no named target between them, which
+     is why the reach cases are a separate list. A row with nothing to look for
+     has to say so: inventing a rank (say, the first row's) would make the
+     reach column read as "found it" for every timing query in the table and
+     quietly destroy the one signal it was added to carry.
+
+     MUTATION: default `target` to the first row's title when the map has no
+     entry. `reach_target` stops being null and this goes red. */
+  const rows = indexPassBattery((q) => new Array(q.length).fill({ title: "Anything" }),
+    () => [{ title: "Anything Else" }], { keys: [], rows: [] }, ["zzqx"], 2, { targets: {} });
+  assert.equal(rows[0].reach_target, null);
+  assert.equal(rows[0].reach_rank_without_scan, null);
+  assert.equal(rows[0].reach_rank_with_scan, null);
+  assert.equal(rows[0].reach_lost, null,
+    "null, not false — \"nothing was looked for\" and \"nothing was lost\" are different statements");
+});
+
+test("the reach cases are keyed lowercase and matched on the trimmed query, so a typed-in query still finds its target", () => {
+  /* The reach battery is fed query strings, and the app's own gate trims
+     before it measures length. A lookup that missed on case or on a stray
+     space would silently return the no-target shape above — a null reach
+     column that looks like "nothing to report" rather than a lookup that
+     failed, which is the quiet kind of wrong this file's validator cannot see.
+
+     MUTATION: key `SCAN_REACH_TARGETS` by the raw query and look up with the
+     raw query. " Daily " misses, `reach_target` is null, and this goes red. */
+  const target = SCAN_REACH_TARGETS.daily;
+  assert.ok(target, "premise: `daily` is one of the named reach cases");
+  const rows = indexPassBattery(() => [], () => [{ title: target }],
+    { keys: [], rows: [] }, [" Daily "], 2);
+  assert.equal(rows[0].reach_target, target);
+  assert.equal(rows[0].reach_rank_with_scan, 1);
+});
+
+test("validateReport refuses an index section that carries the scan's latency saving and not its reach cost", () => {
+  /* The half-measurement, made impossible to ship silently. A report that
+     dropped the reach rows would still print a full cost table and still exit
+     0 — which is precisely how the defect survived: the probe reported the
+     skipped scan as a saving, every column was correct, and the missing column
+     was the one that mattered.
+
+     MUTATION: drop the `report.index.reach` checks from validateReport. All
+     three cases below go green when they must not. */
+  const ok = validReport();
+  ok.index = validIndexSection();
+  assert.deepEqual(validateReport(ok), []);
+
+  const gone = validReport();
+  gone.index = validIndexSection();
+  delete gone.index.reach;
+  assert.ok(validateReport(gone).some((e) => /reach/.test(e)),
+    "a section with no reach rows at all must be invalid");
+
+  const oneRank = validReport();
+  oneRank.index = validIndexSection();
+  delete oneRank.index.reach[0].reach_rank_without_scan;
+  assert.ok(validateReport(oneRank).some((e) => /reach_rank_without_scan/.test(e)),
+    "and so must one that reports where the show landed without saying whether it was there at all");
+
+  const unnamed = validReport();
+  unnamed.index = validIndexSection();
+  unnamed.index.reach[0].reach_target = null;
+  assert.ok(validateReport(unnamed).some((e) => /reach_target/.test(e)),
+    "two ranks with no named show between them are unverifiable");
+});
+
+test("SCAN_REACH_CASES names `daily`/The Daily — the case the audit found, not a battery someone tuned afterwards", () => {
+  /* A weak but real guard, in the same spirit as the REPS test above. The
+     reach columns are worth exactly as much as the cases they are run over,
+     and dropping `daily` from the list would leave the machinery intact,
+     the validator green, and the one measured reach gap unobserved.
+
+     MUTATION: remove the `daily` entry. This goes red rather than the suite
+     quietly measuring four queries that never had a gap. */
+  const daily = SCAN_REACH_CASES.find((c) => c.query === "daily");
+  assert.ok(daily, "the reach battery must still carry the case it was written for");
+  assert.equal(daily.target, "The Daily");
+  assert.equal(SCAN_REACH_TARGETS[daily.query], daily.target,
+    "and the lookup map must be derived from the case list, not maintained beside it");
 });
 
 test("validateReport rejects an index section with no explicit skipped flag", () => {
