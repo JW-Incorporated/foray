@@ -2552,3 +2552,62 @@ lawyer's eye; it still is, and the policy is still marked DRAFT.
 **Wyatt updates the store listings' privacy copy himself** (the 2026-09-11
 ruling's own term). That is not something this repo can verify, so it is not
 claimed here as done.
+
+## 2026-09-14 (continuous playback is wanted: the "no autoplay chains" clause is struck)
+
+**Ruling (founder, verbatim):** *"Yeah 'autoplay chains' should not be banned.
+This isn't TikTok, we aren't hooking children here, I just want more podcasts to
+play while I'm in the car and can't pick something out for myself."*
+
+**What changed.** `CLAUDE.md` product principle 1 listed "no autoplay chains"
+beside "no streaks" and "no infinite scroll" as engagement dark patterns. That
+clause is struck. Continuous playback is now an explicitly wanted behaviour:
+when an episode ends, keep playing — the rest of the list the listener started
+from, and then more of what fits.
+
+**Why the clause was wrong, and it is worth being precise about it.** The three
+banned patterns were grouped because they share a mechanism: they extend a
+session past the point the person intended, by removing the moment where
+stopping is the default. That is a real objection to an endless feed, and it is
+not an objection to a car. **Hands-free is the case the clause never
+considered.** A listener at a wheel cannot pick the next thing; for them,
+stopping at the end of one episode is not a respectful default, it is a failure
+to work. The principle protected an attention that, in the moment it matters
+most, is not available to spend on us anyway.
+
+**What the exploration floor still governs.** Principle 1's ~30% exploration
+floor is untouched and is the half of the principle that was always doing the
+work. It constrains **what** gets queued, not **whether** playback continues. A
+chain that only ever serves more of the same show is the echo chamber the floor
+exists to prevent; a chain that keeps the floor is the product working as
+designed. Continuation is a transport decision; selection is a curation one, and
+the curation rule is unchanged.
+
+**The state before this ruling, measured.** Auto-advance already existed and was
+well built — `advanceQueueOnEnded` (`app.js:1601`) finds the finished id in the
+list, plays the next, stops cleanly at the end, and freezes rather than guesses
+if the list was reordered mid-playback. It was reachable from exactly one
+surface and was off by default: `app.js:1605` — `if (!wasFromQueue) return;`,
+with the origin stamped only at `app.js:3003` (`if (origin === "queue")`), and
+`app.js:1539` — `function autoAdvanceOn() { return lsGet("cp_autoadvance", false); }`.
+So the machinery was present, gated to the Up Next page, and defaulted off.
+**The founder was asking for a default, not a feature.**
+
+**The cost of the option not taken.** Reading the clause narrowly — "advance
+within a finite list the listener chose, never extend it" — was defensible, was
+what this session first proposed, and would have left the car case unsolved:
+a recommended row runs out and the silence returns. The founder rejected that
+reading explicitly. It is recorded here because it is the reading a future agent
+will reach for, and the ruling is that it is not enough.
+
+**What stays true.** A Foray is untouched: it has its own internal
+segment-advance machinery, and the player deliberately never reports `ended` for
+one (`player/client.js:686`). `cp_autoadvance` survives as an off-switch for
+anyone who wants silence at the end. And autoplay policy is **per element** on
+mobile (`player/html-audio-backend.js:1276`) — a chained play can be refused by
+the browser, the refusal is already recorded as `source: "autoplay"`
+(`diagnostic-log.js:777`), and a refused advance must fail visibly rather than
+look like the end of the list.
+
+**Tracked in issue #691**, whose scope this ruling widens from "walk the chosen
+list" to "keep playing".
