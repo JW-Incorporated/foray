@@ -272,7 +272,7 @@ S-04b). Read first: `CLAUDE.md`; this file; `generation-architecture.md` §1.2, 
 `mobile/plugins/foray-tts/README.md` and both native sources; the onnx-community model
 card linked above; HUMAN-ACTIONS #21 (copying diagnostics out) and #29.
 
-#### K-01 · Measure Kokoro on real phones before anything is built on it — **L** — *design comment first* — **BUILT, NOT YET MEASURED** (probe 2026-09-12 `feat/bundled-voice-k-deck`; the three blockers cleared 2026-09-12 `feat/kokoro-probe-measurable`). The `engine: "kokoro-probe"` path exists on both platforms behind a `cp_voice_probe` drawer switch and writes a `voiceProbe` row into the Playback-diagnostics record. It was inert on four counts and **three of them are now cleared**: the passage carries real ids, the weights are fetched into both shell builds and both release actions, and ONNX Runtime 1.20.0 is linked with an engine behind the seam. The fourth — a founder's phone — is `HUMAN-ACTIONS.md` #45 and **still open**; §10 of `on-device-tts.md` is the empty table it fills. The probe still refuses with a named reason rather than a zero on every path that can still fail
+#### K-01 · Measure Kokoro on real phones before anything is built on it — **L** — *design comment first* — **BUILT, NOT YET MEASURED** (probe 2026-09-12 `feat/bundled-voice-k-deck`; the three blockers cleared 2026-09-12 `feat/kokoro-probe-measurable`). The `engine: "kokoro-probe"` path exists on both platforms behind a `cp_voice_probe` drawer switch and writes a `voiceProbe` row into the Playback-diagnostics record. It was inert on four counts and **three of them are now cleared**: the passage carries real ids, the weights are fetched into both shell builds and both release actions, and ONNX Runtime 1.20.0 is linked with an engine behind the seam. The fourth — a founder's phone — is `HUMAN-ACTIONS.md` #45 and **still open**; §10 of `on-device-tts.md` is the empty table it fills. The probe still refuses with a named reason rather than a zero on every path that can still fail. **First real reading, 2026-09-13, build 2026091316 (#685):** `rtf cold 0.00 warm 0.00  load 467ms/388ms  peak 290.9MB  locked=n  over 77.4s`. The load and memory figures are real and both clear the card; the two zeroes were an instrument fault, now fixed. The engines measured the audio they rendered and **both plugins dropped it before it crossed the bridge**, so `kokoro-probe.js` divided synthesis time by the passage's PLANNING ESTIMATE — always positive — and a synthesis that produced nothing came out as `0.00`, which beats every ceiling here. Fixed three ways: the rendered seconds are now reported and are the divisor (split cold/warm, which also un-deflates the warm figure by the cold line's ~25% share of the audio); a run where no line rendered refuses as `synthesis-failed/<code>` instead of resolving `ok`; and `probeVerdict` now fails an RTF at or below `RTF_FLOOR = 0.01` as a failed measurement. **Which of `session-absent` / `inference-threw` / `no-output` / `zero-samples` actually fired on that phone is still unknown** — all four collapsed to the same `(0, 0)` and their diagnostics went only to `os_log`/logcat, which a founder cannot read. The next run names it. The locked-screen clause is **still untested** (`locked=n`). The CPU-only finding is K-08
 - **Ask:** a throwaway measurement path, not a product feature. Add an `engine: "kokoro-probe"`
   branch to `foray-tts` on both platforms that loads a bundled q8f16 model and one
   voice, synthesizes a pre-phonemized 90 s passage (ids computed offline and shipped as
@@ -474,6 +474,38 @@ The passage records this per line (`espeak_fallback`) and at the top
   pointer here; STATE.md; `docs/research/self-hosted-tts.md` gains a note that the
   server-side Kokoro fallback and the on-device engine now share one phonemizer.
 - **Governance:** `docs/DECISIONS.md` → `founder-approved`; the rest auto-merges.
+
+#### K-08 · The accelerator execution provider — **M** — *finding first, from #685*
+- **The finding, 2026-09-13.** K-01's own Ask says "Try ORT's default CPU provider
+  first; on iOS also record the CoreML EP if it loads." **The second half was never
+  built.** Neither `KokoroOrtProbeEngine.swift` nor `KokoroOrtProbeEngine.java`
+  appends an execution provider of any kind, so ORT runs its CPU provider because
+  nothing else was ever registered. The `kokoro-probe/**cpu**` in the founder's
+  reading is therefore **not a CoreML attempt that fell back** — it is the whole
+  implementation. Anything in this deck whose viability rested on the Neural Engine
+  rested on something that does not exist yet, and K-04's cost estimate has to carry
+  this card's weight. The probe now reports the fact rather than leaving it to be
+  inferred from a provider string that reads like a fallback: `acceleratorWired` is
+  on the record and `(cpu-only)` is on the diagnostics line.
+- **Why it is not folded into a fix.** On iOS the CoreML EP is not a line of Swift —
+  it needs an ONNX Runtime build that carries the provider, which is a change to the
+  **one binary dependency `ios-shell` compiles**, and `ios-shell` is the only thing in
+  this repo that compiles that file at all. Adding it speculatively risks a red CI job
+  on a card whose gate is a founder's phone. Android's NNAPI EP is cheaper to add and
+  much less likely to help: Kokoro's graph is q8f16 and NNAPI's partitioner falls back
+  to CPU for anything it cannot place, often at a net loss.
+- **Ask:** link an ORT build with the CoreML EP on iOS; append it with a documented
+  fallback to CPU when it does not load; report the provider ORT actually chose (not
+  the one requested) and flip `acceleratorWired`. Android: measure NNAPI before
+  adopting it; a no is a legitimate outcome and belongs in §10 of `on-device-tts.md`.
+- **Owned:** `mobile/plugins/foray-tts/**` (both engines, `Package.swift`,
+  `android/build.gradle`), `docs/research/on-device-tts.md` §10.
+- **Dependencies:** a CPU baseline from K-01 first — an accelerated number with no CPU
+  number beside it cannot tell anyone whether the accelerator is worth the dependency.
+- **Acceptance:** a `voiceProbe` row from a real phone whose `provider` is `coreml`
+  and whose `acceleratorWired` is true, beside the CPU row from the same phone and the
+  same build, both in §10.
+- **Governance:** `mobile/` auto-merges. Brief: do not self-apply `founder-approved`.
 
 ## 10. Sequencing
 

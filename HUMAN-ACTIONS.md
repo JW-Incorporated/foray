@@ -33,21 +33,37 @@ The go/no-go rule was written before the run so it cannot be read generously
 afterwards: RTF ≤ 0.8 warm on the newest phone, ≤ 1.5 on the oldest tried, peak
 memory ≤ 400 MB, and the passage completes with the screen locked.
 
-**Status, 2026-09-12 (second attempt):** you ran this on build **2026091212** and
-the entire result was `voiceProbe kokoro-probe could not measure:
-passage-unphonemized`. That was the probe refusing honestly rather than timing the
-wrong engine — the passage it was told to speak had no phonemes in it, and two more
-refusals were waiting behind that one (no weights in the app, no runtime linked).
-All three are fixed and merged. **Nothing you did was wrong and the record you
-pasted was the right thing to paste.** It needs one more run, on a newer build.
+**Status, 2026-09-13 (third attempt — most of the way there):** you ran this on
+build **2026091316** and got
+
+```
+voiceProbe kokoro-probe/cpu  rtf cold 0.00 warm 0.00  load 467ms/388ms  peak 290.9MB  locked=n  batt —  over 77.4s
+```
+
+**Most of that is real and it is the first time any of it existed.** The weights
+reached your phone, the model loaded in 467 ms cold / 388 ms warm, and it peaked at
+290.9 MB — comfortably under the 400 MB ceiling. **Nothing you did was wrong.**
+
+The two RTF zeroes were ours, not yours: the app was dividing the synthesis time by
+an audio length it had **estimated** rather than one the phone had **rendered**, so
+a synthesis that produced nothing came out as `0.00` — which happens to beat every
+ceiling in the go rule. That is fixed (#685): the phone now reports the audio it
+actually made, an impossibly fast RTF is rejected as a failed measurement instead of
+celebrated, and if synthesis produces nothing the line says
+`could not measure: synthesis-failed/<which failure>` in plain words. **A `could not
+measure` line on the next run is a useful result, not a wasted trip — paste it.**
+
+One clause is still completely untested: `locked=n` means the phone was never
+locked, so we do not know whether our voice keeps speaking with the screen off.
+That is one of the four go/no-go conditions.
 
 **Steps:**
-1. Install the first TestFlight (or Play internal) build numbered **higher than 2026091212**. Nothing at or below that number can produce a measurement, so check the build number before you start.
+1. Install the first TestFlight (or Play internal) build numbered **higher than 2026091316**. Nothing at or below that number can produce a trustworthy measurement — 2026091316 is the build that reported the two zeroes — so check the build number before you start.
 2. Open Settings, scroll to Playback diagnostics, turn on **"Voice engine probe"**, and tap **"Run the voice engine probe"**.
 3. **Lock the phone immediately — within a second or two, and in any case BEFORE the passage finishes.** It runs about 78 seconds. This is not tidiness: whether synthesis survives the lock screen is one of the four go/no-go clauses, the app can only report the weaker fact that it was not frontmost when the last line ended, and locking in time is what turns that into the real answer. Locking late reads as a FAILURE, not as a missing number — so if you mistime it, say so and run it again rather than sending the record.
 4. When the passage stops, unlock, tap **Copy** in the sheet that is already open, and paste the whole record here.
 5. Do the same on Joey's Pixel 10 Pro, and on the oldest phone either of you can find — say which record is which phone and which OS version.
-6. If a record says "could not measure" rather than giving numbers, paste it anyway and stop there. `model-absent` means the build did not fetch the weights; `engine-absent` means it fetched them but the runtime did not load. Both are build problems, not phone ones, and both are ours to fix.
+6. If a record says "could not measure" rather than giving numbers, paste it anyway and stop there. `model-absent` means the build did not fetch the weights; `engine-absent` means it fetched them but the runtime did not load; `synthesis-failed/…` means both worked and the inference itself did not, and the part after the slash names which. All three are build problems, not phone ones, and all three are ours to fix. Likewise an `rtf … 0.00!` with an exclamation mark, or `over 0.0s` — those mean the run measured nothing and we need the line, not a re-run.
 
 **Worked if:** a pasted diagnostics record carrying a `voiceProbe` line with real
 numbers on it, one per phone, each labelled with the device and OS version. Those

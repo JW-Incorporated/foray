@@ -628,6 +628,37 @@ test("kokoroProbe: the native reason code is carried through verbatim", async ()
   }
 });
 
+test("kokoroProbe: a refusal carries the numbers the phone DID produce (#685)", async () => {
+  /* `runKokoroProbe` hands THIS object to `summarizeProbe` as the native
+     payload, so anything left one level down in `native` never reaches the
+     record. That cost nothing while every refusal was `model-absent`-shaped
+     and carried no numbers — but `synthesis-failed` comes from a phone that
+     loaded the model and reached its peak memory, and its `detail` sub-code is
+     the difference between "no number" and "no number because there was no
+     ONNX session".
+     TO SEE IT FAIL: drop the spread and name only `reason` again — `detail`,
+     `modelLoadColdMs` and `peakMemoryBytes` all come back undefined. */
+  const bridge = { nativePromise: async () => ({
+    ok: false, reason: "synthesis-failed", detail: "inference-threw", synthFailures: 4,
+    modelLoadColdMs: 467, modelLoadWarmMs: 388, peakMemoryBytes: 305_000_000, lines: 4,
+  }) };
+  const out = await kokoroProbe({ bridge });
+  assert.equal(out.ok, false, "a spread native payload must never talk its way into a success");
+  assert.equal(out.reason, "synthesis-failed");
+  assert.equal(out.detail, "inference-threw");
+  assert.equal(out.modelLoadColdMs, 467);
+  assert.equal(out.peakMemoryBytes, 305_000_000);
+});
+
+test("kokoroProbe: a native `ok: true` in the payload cannot override a refusal", async () => {
+  /* The spread above is written BEFORE `ok`/`reason` for exactly this reason.
+     TO SEE IT FAIL: move `...native` after them. */
+  const bridge = { nativePromise: async () => ({ ok: "yes", reason: "model-absent" }) };
+  const out = await kokoroProbe({ bridge });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, "model-absent");
+});
+
 test("kokoroProbe: a rejecting bridge is `engine-absent`, not a throw", async () => {
   /* Capacitor rejects an unknown method, which is exactly what an older shell
      build — one whose flattened `foray-tts.js` predates this card — does.

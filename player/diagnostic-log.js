@@ -1125,6 +1125,15 @@ export class PlayerDiagnostics {
       rtfCold: num(record.rtfCold),
       rtfWarm: num(record.rtfWarm),
       audioSec: num(record.audioSec),
+      /* #685. `over 77.4s` read as a measured length and was a planning
+         estimate; the RTFs were divided by it while the phone rendered
+         nothing. Which of the two it is now travels WITH the number, and the
+         synthesis sub-reason with it, because "could not measure" and "could
+         not measure because there was no ONNX session" are one re-run apart. */
+      audioFrom: typeof record.audioFrom === "string" ? record.audioFrom : null,
+      synthReason: typeof record.synthReason === "string" ? record.synthReason : null,
+      synthFailures: num(record.synthFailures),
+      acceleratorWired: record.acceleratorWired === true,
       peakMemoryMb: num(record.peakMemoryMb),
       lockedOk: record.lockedScreenCompleted === true,
       batteryPct: num(record.batteryDeltaPct),
@@ -1449,21 +1458,50 @@ function lineFor(e) {
        are different bugs. */
     /* K-01. ONE LINE, and it has to survive being read aloud over a phone:
        `voiceProbe kokoro-probe rtf cold 0.94 warm 0.61  load 1840/120ms
-       peak 312MB  locked=y  batt −3%  over 76.5s`. A refusal prints its code
-       and nothing else — the fields are all null on that path and printing
-       seven dashes would bury the one thing that matters, which is WHY. */
+       peak 312MB  locked=y  batt −3%  over 76.5s(rendered)`. A refusal prints
+       its code and nothing else — the fields are all null on that path and
+       printing seven dashes would bury the one thing that matters, which is
+       WHY — EXCEPT for `synthesis-failed` (#685), the one refusal that comes
+       from a phone which did load the model, where the load and memory
+       figures exist and are kept.
+
+       `(rendered)`/`(est)` and the `!` after an RTF are #685's other half: the
+       line as it shipped could not distinguish 77 seconds of audio a phone
+       made from 77 seconds a planner guessed, and printed the zero that
+       distinction was hiding as a triumph. */
     case "voiceProbe": {
       if (e.probeOk !== true) {
-        return `${head} ${e.engine ?? "?"} could not measure: ${e.reason ?? "unknown"}`;
+        /* A refusal used to print its code and NOTHING else, because every
+           field was null on that path. `synthesis-failed` broke that premise:
+           it is a refusal from a phone that loaded the model, so the load and
+           memory figures are real and are the numbers #675 fought for. They
+           are appended only when they exist, so `model-absent` still prints
+           the one thing that matters and no dashes. */
+        const got = (e.loadColdMs != null || e.peakMemoryMb != null)
+          ? `  load ${ms(e.loadColdMs)}/${ms(e.loadWarmMs)}` +
+            `  peak ${e.peakMemoryMb == null ? "—" : `${e.peakMemoryMb}MB`}`
+          : "";
+        return `${head} ${e.engine ?? "?"} could not measure: ${e.reason ?? "unknown"}` +
+          (e.synthReason ? `/${e.synthReason}` : "") + got;
       }
       const f2 = (v) => (Number.isFinite(v) ? v.toFixed(2) : "—");
+      /* `(est)` vs `(rendered)` — #685. The zero that started that issue was a
+         real synthesis time of ~0 divided by a length nobody rendered, and the
+         line gave a reader no way to tell. `!` marks an RTF below the floor no
+         engine can beat: on one line, with no room for a sentence, it is the
+         difference between "spectacular" and "broken". */
+      const RTF_FLOOR = 0.01; // === kokoro-probe.js's RTF_FLOOR; this module imports nothing (header), so the two are pinned to each other by a test instead.
+      const floor = (v) => (Number.isFinite(v) && v < RTF_FLOOR ? "!" : "");
       return `${head} ${e.engine ?? "?"}${e.provider ? `/${e.provider}` : ""}` +
-        `  rtf cold ${f2(e.rtfCold)} warm ${f2(e.rtfWarm)}` +
+        (e.acceleratorWired ? "" : "(cpu-only)") +
+        `  rtf cold ${f2(e.rtfCold)}${floor(e.rtfCold)} warm ${f2(e.rtfWarm)}${floor(e.rtfWarm)}` +
         `  load ${ms(e.loadColdMs)}/${ms(e.loadWarmMs)}` +
         `  peak ${e.peakMemoryMb == null ? "—" : `${e.peakMemoryMb}MB`}` +
         `  locked=${e.lockedOk ? "y" : "n"}` +
         `  batt ${e.batteryPct == null ? "—" : `${e.batteryPct}%`}` +
-        `  over ${e.audioSec == null ? "—" : `${e.audioSec.toFixed(1)}s`}`;
+        `  over ${e.audioSec == null ? "—" : `${e.audioSec.toFixed(1)}s`}` +
+        `(${e.audioFrom === "rendered" ? "rendered" : "est"})` +
+        (e.synthFailures ? `  failed ${e.synthFailures}/${e.synthReason ?? "?"}` : "");
     }
     /* L-06. The three fields, in the order the lock screen stacks them, with
        `—` for an empty one — because "empty" is the whole finding for F15 and

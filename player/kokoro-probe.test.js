@@ -20,9 +20,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  PROBE_ENGINE, PROBE_REASONS, CHARS_PER_SEC,
+  PROBE_ENGINE, PROBE_REASONS, SYNTH_REASONS, CHARS_PER_SEC, RTF_FLOOR,
   GO_RTF_NEWEST, GO_RTF_OLDEST, GO_PEAK_MEMORY_MB,
-  passageSeconds, passageProblem, realTimeFactor, toMegabytes,
+  passageSeconds, passageProblem, realTimeFactor, rtfIsPlausible, toMegabytes,
   probeVerdict, summarizeProbe, formatProbeReport, runKokoroProbe,
 } from "./kokoro-probe.js";
 
@@ -265,6 +265,220 @@ test("formatProbeReport names every field K-01 asks for", () => {
     assert.match(text, want);
   }
   assert.match(text, /locked screen completed the passage/);
+});
+
+/* ==================================================================== */
+/* #685: the probe returned a zero and the gate read it as a triumph     */
+/* ==================================================================== */
+
+/** The founder's first real reading, build 2026091316, as the native half
+    actually shaped it — note what is NOT in it: no `audioColdSec`, no
+    `audioWarmSec`, no `detail`. That absence is the bug. */
+const READING_685 = Object.freeze({
+  ok: true, provider: "cpu", model: "kokoro-82m-v1.0-q8f16",
+  modelLoadColdMs: 467, modelLoadWarmMs: 388,
+  synthColdMs: 0, synthWarmMs: 0,
+  peakMemoryBytes: 290.9 * 1024 * 1024, lockedScreenCompleted: false, lines: 4,
+});
+
+test("#685's exact reading is a NO-GO, on both device ages", () => {
+  /* THE REGRESSION THIS WHOLE CHANGE EXISTS FOR. Replayed verbatim, the line
+     the founder pasted — `rtf cold 0.00 warm 0.00 ... peak 290.9MB` — used to
+     clear every ceiling in the card by two orders of magnitude and would have
+     been read as a spectacular pass on a build where synthesis never produced
+     a sample.
+     MUTATION: delete the `rtf-below-floor` branch in `probeVerdict`. The only
+     remaining failure is `locked-screen-not-proven`, and a founder who locks
+     his phone next time gets a `go` out of a probe that rendered no audio. */
+  const rec = summarizeProbe({ native: READING_685, audioSec: passageSeconds(PASSAGE) });
+  assert.equal(rec.rtfWarm, 0, "the record still carries the zero it was given");
+  for (const age of ["newest", "oldest"]) {
+    const v = probeVerdict(rec, age);
+    assert.equal(v.go, false);
+    assert.ok(v.failures.some((f) => f.startsWith("rtf-below-floor")),
+      `the floor must fire on ${age}: ${v.failures.join(", ")}`);
+  }
+});
+
+test("the floor can never fail a reading an engine could actually produce", () => {
+  /* A floor set carelessly would be worse than no floor: it would reject the
+     one measurement this card is waiting for. 0.01 is two orders of magnitude
+     below the TIGHTEST ceiling, so there is no RTF this instrument both
+     believes and rejects.
+     MUTATION: raise RTF_FLOOR to anything at or above 0.8 — the passing record
+     below stops being a go, and the assertion on the gap goes red first. */
+  assert.ok(RTF_FLOOR * 50 < GO_RTF_NEWEST, "the floor must sit far below the tightest ceiling");
+  assert.equal(rtfIsPlausible(RTF_FLOOR), true, "the floor itself is plausible; below it is not");
+  assert.equal(rtfIsPlausible(RTF_FLOOR - 0.001), false);
+  assert.equal(rtfIsPlausible(null), false, "absent was never plausible either");
+  const good = summarizeProbe({
+    native: { ...READING_685, synthColdMs: 60_000, synthWarmMs: 30_000,
+      audioColdSec: 15, audioWarmSec: 62.4, lockedScreenCompleted: true },
+    audioSec: passageSeconds(PASSAGE),
+  });
+  assert.equal(probeVerdict(good, "newest").go, true);
+});
+
+test("rendered seconds of zero make the RTF unmeasured, not zero", () => {
+  /* THE CAUSE, not the symptom. Both native halves promised — in their own
+     comments — that a `(0 ms, 0 s)` failure would reach the page as an
+     unmeasured RTF. It did not, because the rendered seconds were computed on
+     the device and never put on the wire, so this module divided by the
+     passage's PLANNING ESTIMATE, which is positive whatever the engine did.
+     MUTATION: make `summarizeProbe` fall back to the estimate when the native
+     side reports `audioColdSec: 0` — `rtfWarm` becomes 0 again and this is
+     red. */
+  const rec = summarizeProbe({
+    native: { ...READING_685, audioColdSec: 0, audioWarmSec: 0, synthFailures: 4, detail: "session-absent" },
+    audioSec: passageSeconds(PASSAGE),
+  });
+  assert.equal(rec.rtfCold, null);
+  assert.equal(rec.rtfWarm, null);
+  assert.equal(rec.audioSec, 0, "the line says 0 s of audio, not 77.4");
+  assert.equal(rec.audioFrom, "rendered");
+  assert.equal(rec.passageSec, passageSeconds(PASSAGE), "the estimate is kept, just not used as the divisor");
+  assert.equal(rec.synthReason, "session-absent");
+  assert.ok(probeVerdict(rec, "oldest").failures.includes("rtf-not-measured"));
+});
+
+test("RTF is a ratio of two numbers measured over the SAME audio", () => {
+  /* `synthWarmMs` is the sum over lines 2..N; it used to be divided by the
+     whole passage including line 1, understating warm RTF by the cold line's
+     share of the audio — about a quarter on the shipped four-line passage. A
+     go rule stated on the warm figure alone cannot be fed a warm figure that
+     is 25% optimistic.
+     MUTATION: divide both by `audioColdSec + audioWarmSec` — `rtfWarm` lands
+     at 0.4808 instead of 0.6 and this is red. */
+  const rec = summarizeProbe({
+    native: { ...READING_685, synthColdMs: 12_000, synthWarmMs: 36_000,
+      audioColdSec: 15, audioWarmSec: 60 },
+    audioSec: passageSeconds(PASSAGE),
+  });
+  assert.ok(Math.abs(rec.rtfCold - 0.8) < 1e-9, `cold: ${rec.rtfCold}`);
+  assert.ok(Math.abs(rec.rtfWarm - 0.6) < 1e-9, `warm: ${rec.rtfWarm}`);
+  assert.equal(rec.audioSec, 75);
+});
+
+test("a shell built before this fix still gets a record — and still fails the gate", () => {
+  /* The founder's phone is carrying the OLD plugin until he installs a new
+     build, and an instrument that answered nothing at all for it would be a
+     second wasted trip. With no rendered seconds reported, the estimate is
+     still the divisor and `audioFrom` says so — and the floor is what catches
+     the zero on that path.
+     MUTATION: make the rendered seconds mandatory (`audioColdSec ?? 0` with no
+     `rendered` check) — `audioSec` becomes 0 for every old build and the
+     record loses the one number it did have. */
+  const rec = summarizeProbe({ native: READING_685, audioSec: passageSeconds(PASSAGE) });
+  assert.equal(rec.audioFrom, "estimated");
+  assert.equal(rec.audioSec, passageSeconds(PASSAGE));
+  assert.equal(rec.rtfWarm, 0, "an old build still reports the zero — the floor is what rejects it");
+  assert.equal(probeVerdict(rec, "newest").go, false);
+});
+
+test("`synthesis-failed` is a refusal that keeps the numbers it did produce", () => {
+  /* The native halves now refuse outright when not one line rendered, rather
+     than resolving `ok: true` with zeroes. But the model DID load on that
+     path, so the load and memory figures are real — and they are the numbers
+     PR #675 fought for. A refusal that threw them away would make the next
+     failed probe less informative than #685's was.
+     MUTATION: return early from `summarizeProbe` on a refusal without reading
+     `native` — `modelLoadColdMs` goes null and this is red. */
+  const rec = summarizeProbe({
+    native: { ...READING_685, ok: false, reason: "synthesis-failed",
+      detail: "inference-threw", synthFailures: 4, audioColdSec: 0, audioWarmSec: 0 },
+    reason: "synthesis-failed",
+    audioSec: passageSeconds(PASSAGE),
+  });
+  assert.equal(rec.ok, false);
+  assert.equal(rec.reason, "synthesis-failed");
+  assert.equal(rec.synthReason, "inference-threw");
+  assert.equal(rec.modelLoadColdMs, 467);
+  assert.equal(rec.peakMemoryMb, 290.9);
+  assert.ok(PROBE_REASONS.includes("synthesis-failed"), "the page must know the code the phone sends");
+  assert.match(formatProbeReport(rec), /could not measure \(synthesis-failed\/inference-threw\)/);
+});
+
+test("the report SAYS a below-floor RTF is not a measurement, in words", () => {
+  /* The drawer text is what a founder reads before he decides whether the run
+     was worth anything. `RTF cold 0.00 warm 0.00` with no comment on it reads
+     as a triumph; that is exactly how #685 got filed as a pass.
+     MUTATION: drop the floor clause from `formatProbeReport`. */
+  const text = formatProbeReport(summarizeProbe({ native: READING_685, audioSec: passageSeconds(PASSAGE) }));
+  assert.match(text, /BELOW THE 0\.01 FLOOR/);
+  assert.match(text, /of estimated audio/, "and it says the seconds were never rendered");
+  assert.match(text, /CPU only — no accelerator wired/);
+});
+
+/* ---------- the three copies of one contract ---------- */
+
+const IOS_PLUGIN = fs.readFileSync(
+  path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"), "utf8");
+const IOS_ENGINE = fs.readFileSync(
+  path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/KokoroOrtProbeEngine.swift"), "utf8");
+const AND_PLUGIN = fs.readFileSync(
+  path.join(REPO, "mobile/plugins/foray-tts/android/src/main/java/ai/jwlabs/foura/tts/ForayTtsPlugin.java"), "utf8");
+const AND_ENGINE = fs.readFileSync(
+  path.join(REPO, "mobile/plugins/foray-tts/android/src/main/java/ai/jwlabs/foura/tts/KokoroOrtProbeEngine.java"), "utf8");
+
+test("both native halves put the RENDERED audio seconds on the wire", () => {
+  /* #685's root cause, asserted against source because nothing in Node can run
+     either half. iOS summed the rendered seconds into a local it never wrote
+     into `result`; Android never read `out[1]` at all. The engines measured
+     the audio and the plugins dropped it, which is what left the page dividing
+     by a planning estimate.
+     MUTATION: delete either `audioColdSec` line from either plugin — this goes
+     red, and the phone goes back to reporting 0.00 as a pass. */
+  for (const [name, src] of [["ios", IOS_PLUGIN], ["android", AND_PLUGIN]]) {
+    assert.match(src, /audioColdSec/, `${name} must report the cold line's rendered seconds`);
+    assert.match(src, /audioWarmSec/, `${name} must report the warm lines' rendered seconds`);
+    assert.match(src, /synthesis-failed/, `${name} must refuse when nothing rendered`);
+  }
+});
+
+test("every synthesis failure the phones can name is one the page knows", () => {
+  /* A closed vocabulary is only closed if both ends hold it. A code a native
+     half invents and this module has never heard of arrives as an opaque
+     string in a record somebody has to interpret over a phone call.
+     MUTATION: write `"session-missing"` in either engine — this is red. */
+  const quoted = (src) => (src.match(/"[a-z]+-[a-z]+"/g) ?? []).map((s) => s.slice(1, -1));
+  const suspects = new Set([...quoted(IOS_ENGINE), ...quoted(AND_ENGINE)]
+    .filter((s) => /^(session|inference|no|zero)-/.test(s)));
+  assert.ok(suspects.size >= 4, `expected the four synthesis codes, saw ${[...suspects]}`);
+  for (const s of suspects) {
+    assert.ok(SYNTH_REASONS.includes(s), `${s} is not in SYNTH_REASONS`);
+  }
+});
+
+test("`cpu` is the whole implementation, not a fallback — and the probe says so", () => {
+  /* The bundled-voice deck's viability estimates assume an accelerator. #685's
+     `kokoro-probe/cpu` was never a CoreML attempt that fell back: no execution
+     provider is appended on either platform, so ORT runs its CPU provider
+     because nothing else was ever registered. The record reports that as a
+     FACT (`acceleratorWired`) rather than leaving a reader to infer it from a
+     provider string that reads like a fallback.
+     MUTATION: append a CoreML or NNAPI provider without flipping
+     `acceleratorWired` — the first half goes red and the deck keeps reading a
+     CPU number as an accelerated one. */
+  const appends = /appendCoreML|appendNnapi|addNnapi|CoreMLExecutionProvider|NNAPIExecutionProvider/;
+  for (const [name, src] of [["ios", IOS_ENGINE], ["android", AND_ENGINE]]) {
+    const wired = appends.test(src);
+    const claims = /acceleratorWired[^\n]*\n?[^\n]*\btrue\b/.test(src);
+    assert.equal(wired, claims,
+      `${name}: the source and the flag disagree about whether an accelerator is wired`);
+  }
+  assert.equal(summarizeProbe({ native: READING_685, audioSec: 10 }).acceleratorWired, false);
+});
+
+test("the RTF floor is written once in kokoro-probe.js and mirrored nowhere else silently", () => {
+  /* `diagnostic-log.js` imports NOTHING (its header's rule), so the floor it
+     marks an impossible RTF with is a second copy of this module's constant.
+     Drift would mean a line that prints a `!` at a threshold the gate does not
+     use, or none at a threshold it does.
+     MUTATION: change either number. */
+  const diag = fs.readFileSync(path.join(REPO, "player/diagnostic-log.js"), "utf8");
+  const m = diag.match(/const RTF_FLOOR = ([\d.]+);/);
+  assert.ok(m, "diagnostic-log.js must name its floor");
+  assert.equal(Number(m[1]), RTF_FLOOR);
 });
 
 /* ---------- the run ---------- */

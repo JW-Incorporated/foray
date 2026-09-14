@@ -69,6 +69,10 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
     private OrtEnvironment env;
     private OrtSession session;
     private String provider = "cpu";
+    /** Why the last {@link #synthesize} produced no audio, or null. See the
+     *  interface's own note: before #685 all three failures were the same
+     *  {@code [0, 0]} and the diagnosis lived only in logcat. */
+    private volatile String lastSynthReason = null;
 
     private KokoroOrtProbeEngine(String modelPath, float[] style) {
         this.modelPath = modelPath;
@@ -179,6 +183,12 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
             if (env == null) env = OrtEnvironment.getEnvironment();
             OrtSession.SessionOptions opts = new OrtSession.SessionOptions();
             opts.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
+            /* NO EXECUTION PROVIDER IS APPENDED, and {@code acceleratorWired()}
+             * says so rather than leaving a reader to infer it from
+             * {@code provider: "cpu"}. ORT runs its CPU provider when nothing
+             * else is registered, so the `cpu` in #685's reading was not an
+             * NNAPI attempt that fell back — nothing else was ever wired.
+             * Wiring one is K-08's card, not a line smuggled into a fix. */
             provider = "cpu";
             return env.createSession(modelPath, opts);
         } catch (Throwable t) {
@@ -187,17 +197,43 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
         }
     }
 
+    @Override
+    public String lastSynthReason() {
+        return lastSynthReason;
+    }
+
+    /** No accelerator EP is registered on any build today. See
+     *  {@link #makeSession()}. */
+    @Override
+    public boolean acceleratorWired() {
+        return false;
+    }
+
     /**
-     * One line. Returns {@code [0, 0]} on any failure, which
-     * {@code kokoro-probe.js} turns into an unmeasured RTF — and
-     * {@code probeVerdict} FAILS an unmeasured RTF rather than passing it.
+     * One line. On failure the audio seconds are 0 AND
+     * {@link #lastSynthReason()} names which failure, from
+     * {@code player/kokoro-probe.js}'s {@code SYNTH_REASONS}.
+     *
+     * <p>THE REASON IS THE FIX FOR #685. This used to return a bare
+     * {@code [0, 0]} and claim, in this very comment, that
+     * {@code kokoro-probe.js} would read it as an unmeasured RTF. It did not:
+     * the plugin never put the rendered seconds on the wire, so the page
+     * divided a zero synthesis time by the passage's planning estimate and got
+     * {@code 0.00} — a real number, better than every ceiling in the card. A
+     * failure has to arrive as a failure, by name.
      */
     @Override
     public double[] synthesize(int[] ids, double speed) {
-        if (session == null || ids == null || ids.length <= 2) return new double[]{0, 0};
+        if (session == null) { lastSynthReason = "session-absent"; return new double[]{0, 0}; }
+        if (ids == null || ids.length <= 2) { lastSynthReason = "zero-samples"; return new double[]{0, 0}; }
+        lastSynthReason = null;
         long t0 = System.nanoTime();
         int samples = run(ids, speed);
         long t1 = System.nanoTime();
+        if (samples <= 0) {
+            if (lastSynthReason == null) lastSynthReason = "zero-samples";
+            return new double[]{ (t1 - t0) / 1e6, 0 };
+        }
         return new double[]{ (t1 - t0) / 1e6, samples / SAMPLE_RATE };
     }
 
@@ -231,10 +267,25 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
                    workstation from the same graph and the same weights.
                    Playing it here would mean an AudioTrack, which is how this
                    file would become the narration path by accident. */
-                return countSamples(value);
+                int n = countSamples(value);
+                /* The two zeroes are different findings and the record has to
+                   keep them apart: an output tensor of the shape we expect
+                   carrying nothing is `zero-samples`; a shape `countSamples`
+                   refuses to guess at — a re-export that moved the batch axis
+                   — is `no-output`. */
+                if (n <= 0) {
+                    lastSynthReason = (value instanceof float[] || value instanceof float[][])
+                            ? "zero-samples" : "no-output";
+                }
+                return n;
             }
         } catch (Throwable t) {
+            /* THE LOG LINE IS NOT THE REPORT. This logcat line is unreachable
+             * from the founder's phone; the code stored here is what reaches
+             * the diagnostics record he pastes, and #685 is what it costs when
+             * only the unreachable half exists. */
             Log.e(TAG, "Kokoro inference failed", t);
+            lastSynthReason = "inference-threw";
             return 0;
         } finally {
             for (OnnxTensor t : inputs.values()) {
