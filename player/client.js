@@ -737,6 +737,36 @@ function isRunning() {
 }
 
 /**
+ * THE ONE PLACE BELIEF IS CHECKED AGAINST THE ELEMENT (#689).
+ *
+ * `isRunning()` above is the app's BELIEF, and every transport surface used to
+ * decide from it alone. A belief is a cache, and this file has now been handed
+ * two field reports of it being wrong in each direction:
+ *
+ *   - we say playing, the element is paused (#263, #688) — a stop that happened
+ *     while the page was suspended, so no event was ever delivered. Corrected by
+ *     `manager.reconcileWithBackend`, which is why `setRunning` awaits it first.
+ *   - we say paused, the element is audible (#689 report 3) — *"I scrubbed
+ *     ahead, the podcast started playing, but the button still said play"*.
+ *     Nothing can correct this into a reducer state without inventing a `play`
+ *     nobody pressed, but it can be READ, and reading it is enough: the press
+ *     that follows then does what the listener meant instead of being spent on
+ *     the disagreement.
+ *
+ * Composed rather than replaced: `isRunning()` is the wider answer in the states
+ * only this app knows about (the 2.0 s seam beat, a spoken narration item, the
+ * instant between `playing` and `startPlayback`), and `elementIsAudible` is the
+ * wider answer in the states only the element knows about. Either one saying yes
+ * is a yes, because both mean "the listener should be pressing STOP".
+ *
+ * A new surface — another scrub bar, another sheet, a native transport — cannot
+ * add a fifth way to drift without going through a control that asks this.
+ */
+function transportIsRunning() {
+  return isRunning() || manager?.elementIsAudible === true;
+}
+
+/**
  * Where we are in the Foray's own seconds, or NULL when the player cannot say.
  *
  * Null is the whole point of this function existing (#263). The element's clock
@@ -993,9 +1023,16 @@ function forayProgressSegments() {
 function render() {
   if (!ui || !current) return;
   syncForaySegment();
-  // A seam beat reads as playing everywhere, or the mini bar shows "▶" while
-  // the Foray page shows "❚❚ Pause" for the same two seconds.
-  const running = isRunning();
+  /* A seam beat reads as playing everywhere, or the mini bar shows "▶" while
+     the Foray page shows "❚❚ Pause" for the same two seconds.
+     `transportIsRunning()` rather than `isRunning()` since #689: the founder's
+     third report is a button that said Play with sound coming out of it, and the
+     button the listener presses has to be painted from the same answer the press
+     is decided by, or the label and the behaviour are two opinions again. This
+     repaints at the next media event or tick — it cannot repaint at the instant
+     of a drift nothing announced — but it stops the surface holding the lie
+     indefinitely, which is what it did before. */
+  const running = transportIsRunning();
   const glyph = running ? "❚❚" : "▶";
   ui.playBtn.textContent = glyph;
   ui.bigPlay.textContent = glyph;
@@ -1327,7 +1364,30 @@ async function setRunning(want, source = "tap") {
      logged the presses that changed something would be silent for precisely
      the presses being complained about. */
   diag.transport(source, want ? "play" : "pause");
-  if (want === isRunning()) { render(); return; }
+  /* ASK THE ELEMENT BEFORE ACTING ON A BELIEF (#689, #688).
+     Until now the only comparison of belief against reality in the whole app
+     happened on `visibilitychange`, and a press was decided from the cache. That
+     is the shape of #688 — the car's pause was honoured, the play that followed
+     found `isRunning()` already false and repainted instead of resuming — and
+     `visibilitychange` does not fire for a remote command arriving at an app
+     that never went away. A press is the other boundary at which a lie becomes
+     both observable and expensive, so it gets the same check.
+     Awaited, and the short-circuit below reads the corrected answer: a reconcile
+     that ran after the decision would be a diagnostic rather than a fix. It only
+     ever moves the machine towards paused (see its own header), so this cannot
+     start audio; the `want` branch below is still the only thing that can.
+     GUARDED WITH THE RECONCILE'S OWN FIRST CONDITION, and that is about #225
+     rather than about speed. `reconcileWithBackend` opens with
+     `if (this.state.type !== "playing") return false`, so this changes no
+     outcome — but it keeps the RESUME path (which is never in `playing`) free of
+     an await between the tap and `manager.resume()`. A microtask does not end
+     Safari's gesture window, so this is belt and braces; it is cheap, and #225
+     is the bug where the belt broke. */
+  if (isPlaying()) await manager.reconcileWithBackend(`transport:${source}`);
+  /* `transportIsRunning()`, NOT `isRunning()`. The belief alone is what made a
+     press a no-op when it was wrong — "the button said play, sound was coming
+     out, and pressing it did nothing but repaint". */
+  if (want === transportIsRunning()) { render(); return; }
   if (want) await manager.resume();
   else await manager.pause();
   render();
@@ -1401,8 +1461,20 @@ const episodeMediaSurface = {
   play: () => setRunning(true, "remote"),
   pause: () => setRunning(false, "remote"),
   stop: () => { diag.transport("remote", "stop"); return stopAndClose(); },
-  seekBy: (offset) => manager.seek(Math.max(0, (backend?.currentTime ?? 0) + offset), { precise: true }),
-  seekTo: (position) => manager.seek(position, { precise: true }),
+  /* REPAINTED AFTER THE SEEK, like every other control in this file (#689).
+     The Foray half of this surface got that for free — it delegates to
+     `foraySeek`, which renders — and these two did not, so a scrub from the lock
+     screen or the car moved the audio and left the page, the mini bar and the
+     OS's own clock painting the position from before it. `render()` starts no
+     audio and costs one pass over a handful of nodes. */
+  seekBy: async (offset) => {
+    await manager.seek(Math.max(0, (backend?.currentTime ?? 0) + offset), { precise: true });
+    render();
+  },
+  seekTo: async (position) => {
+    await manager.seek(position, { precise: true });
+    render();
+  },
 };
 
 /**
@@ -1499,7 +1571,14 @@ function syncMediaSession() {
 /* ---------- wiring ---------- */
 
 function bind() {
-  const toggle = () => setRunning(!isRunning());
+  /* `transportIsRunning()`, not `isRunning()` (#689). A toggle derives WHAT IT
+     IS ASKING FOR from the current answer, so reading the belief here puts the
+     stale value back into the request the moment it is wrong: with sound coming
+     out and the machine saying paused, `!isRunning()` asks for PLAY, and
+     `setRunning` — correctly — sees that as already true and does nothing. The
+     short-circuit and the toggle have to read the same authority or the fix in
+     one is undone by the other. */
+  const toggle = () => setRunning(!transportIsRunning());
   ui.playBtn.addEventListener("click", toggle);
   ui.bigPlay.addEventListener("click", toggle);
 
@@ -1645,9 +1724,22 @@ function bind() {
   // Corner case #17: pocketing the phone must not lose the position. This is
   // the path that actually matters on mobile — beforeunload is unreliable there.
   const flush = () => {
-    if (current && isPlaying()) manager._persistPosition();
-    // Unconditional, unlike the line above: a Foray paused at 23:14 and then
-    // backgrounded must still remember 23:14.
+    /* ONE RULE, BOTH STORES (#689). This line used to read
+       `if (current && isPlaying())`, and the comment below — written for the
+       Foray store on the very next line — is the argument against it: an EPISODE
+       paused at 23:14 and then backgrounded must still remember 23:14 for
+       exactly the reason a Foray must. Pause, pocket the phone, and the episode
+       row kept whatever was last written, which is the founder's *"it jumped
+       back to several minutes ago in the podcast, I assume the last time the app
+       was open"*.
+       The condition was doing a second job by accident — "a load landed, so the
+       element's clock is about this item" — and dropping it here would have
+       started writing fabricated positions from a failed load. That question is
+       now asked where it belongs, inside `_persistPosition`, against
+       `playheadItemId` rather than against the transport. */
+    if (current) manager._persistPosition();
+    // Same rule, the store it was first written for: a Foray paused at 23:14 and
+    // then backgrounded must still remember 23:14.
     persistForayProgress({ force: true });
     /* The durable write cannot be awaited here — `pagehide` has no way to hold
        the page open, and an IndexedDB commit is asynchronous. That is survivable
@@ -2488,7 +2580,11 @@ const ForayPlayer = {
       bar and the lock screen, including the forced position write. */
   async forayToggle() {
     if (!foray) return;
-    await setRunning(!isRunning());
+    /* The same authority the mini bar's toggle reads, for the same reason
+       (#689). A block comment, not a line one, because `media-session.test.js`'s
+       `codeOnly` strips line comments LAST and an apostrophe in one opens a
+       string that swallows the next two hundred lines of this file. */
+    await setRunning(!transportIsRunning());
   },
 
   async forayJump(index) {

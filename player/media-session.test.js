@@ -1294,8 +1294,16 @@ test("the lock screen's play/pause is the same call the in-page button makes", (
      names is the next test's job. */
   assert.match(surface, /play:\s*\(\)\s*=>\s*setRunning\(true(,[^)]*)?\)/);
   assert.match(surface, /pause:\s*\(\)\s*=>\s*setRunning\(false(,[^)]*)?\)/);
-  // ...and the button really does go through the same function.
-  assert.match(CLIENT_CODE, /const toggle = \(\) => setRunning\(!isRunning\(\)\)/);
+  /* ...and the button really does go through the same function.
+     `transportIsRunning()` since #689, and the change is load-bearing rather than
+     cosmetic: a toggle derives what it is ASKING for from the current answer, so
+     reading the belief here puts a stale value straight back into the request.
+     With sound coming out and the machine saying paused, `!isRunning()` asks for
+     PLAY and `setRunning` correctly does nothing — the founder's third report.
+     The short-circuit inside `setRunning` and the toggle that feeds it have to
+     read the same authority, so this pattern and the one in the next test move
+     together. */
+  assert.match(CLIENT_CODE, /const toggle = \(\) => setRunning\(!transportIsRunning\(\)\)/);
 });
 
 /* M-03(b), founder feedback F16 / #548: the record must be able to say WHO
@@ -1324,7 +1332,7 @@ test("a lock-screen press is recorded as `remote` and an in-page tap as `tap`", 
      silent for the presses being complained about. */
   const body = CLIENT.slice(CLIENT.indexOf("async function setRunning("));
   const diagAt = body.indexOf("diag.transport(source");
-  const returnAt = body.indexOf("if (want === isRunning())");
+  const returnAt = body.indexOf("if (want === transportIsRunning())");
   assert.ok(diagAt > 0 && returnAt > 0, "setRunning must record the source and keep its early return");
   assert.ok(diagAt < returnAt, "the source is recorded BEFORE the no-op early return, or F5 leaves no row");
 });
