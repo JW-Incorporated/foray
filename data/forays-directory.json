@@ -1,19 +1,19 @@
 {
-  "version": "4fb4bdc7d20953fd",
-  "built_at": "2026-09-14T06:59:55.166Z",
+  "version": "71dcc34abe6d11b7",
+  "built_at": "2026-09-14T12:51:09.091Z",
   "files": {
     "forays": "data/forays.json",
     "segments": "data/segments.json",
     "sources": "data/segment-sources.json"
   },
   "bytes": {
-    "forays": 128005,
-    "segments": 200528,
-    "sources": 72475
+    "forays": 137687,
+    "segments": 205859,
+    "sources": 77638
   },
   "sha256": {
-    "forays": "e2fe2e76371261c335814f0387cbb70de78aba1fe82f186c009e29c2a2854c61",
-    "segments": "b710e0cadc4fb476e561ecf740e6c71ba5038db63438574867f0429110eda0cb",
-    "sources": "26ec6df6bd87a091ae64b536e167c14202bcba44cddf1b51bacb8a32eccd56f9"
+    "forays": "bb23841a883b2313c5bac19c1d418e15f9871436fb0abe92c76be2a536f623fa",
+    "segments": "4eee05963f5838c89cfff47c350788bc22e73abd5d8b61640c2c7efd6879423c",
+    "sources": "3cffa4aa1984bcf70cf811d48f6a9e894706079b5241e5e1d3a142de5cb37cfa"
   }
 }
