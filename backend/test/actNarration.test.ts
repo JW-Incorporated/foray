@@ -34,7 +34,7 @@ import {
 } from "../src/generation/veracityMetrics";
 import { MODE_CHAR_BANDS, TAPE_SOURCE_MODES, negativeRecordSentence, tapeDocIdFor, validateNarratedBeat, type NarratedBeat } from "../src/types/narration";
 import type { EvidenceBeat, EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
-import type { ActWriteRequest, ActWriteResult, NarrationBuildContext } from "../src/generation/NarrationWriterBuilder";
+import type { ActWriteRequest, ActWriteResult, NarrationBuildContext, SeamBrief } from "../src/generation/NarrationWriterBuilder";
 import type { ActVerifyRequest, ActVerifyResult } from "../src/generation/NarrationVerifierBuilder";
 import type { SourcedAct, TapePointer } from "../src/types/tapeSourcing";
 import type { Voice } from "../src/types/spine";
