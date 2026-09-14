@@ -726,9 +726,13 @@ Stated as flatly as the gates above, because the absence is the finding:
 4a's catalogue, A–Z", shows, above)` where `above` is, in order:
 
 1. `#sh-form` — a text input (`maxlength=120`) and a **Go** button.
-2. `app.js:browsePillsHtml()` — 41 subject pills.
-3. `#sh-note` — the empty-state line: `No shows match "<q>" in 4a's catalogue.`
-4. `#sh-results` — show rows, curated first then breadth.
+2. `app.js:browsePillsHtml()` — 41 subject pills, each linking to
+   `#/shows/q/<its own label>` since #684 (was `#/category/:id`).
+3. `#sh-results` — show rows, curated first then breadth. A later pass APPENDS
+   beneath these and never reorders them (#684).
+4. `#sh-note` — the empty-state line, `No results for "<q>".`, rendered BELOW
+   the results so it can never push them (#684; it used to sit above them and
+   to name 4a's catalogue as the reason).
 5. `#ep-search-results` — an "Episodes" section, captioned
    *"from Apple's index"* when `data.source` includes `apple`.
 6. `#pl-search-results` — the listener's own matching playlists, then generated
@@ -906,18 +910,37 @@ rather than a playlist. F-59's proposed fix (inspect the node's terms, add a
 regression test) is necessary and not sufficient: a 1.23-nodes-per-show label
 space cannot express similarity however clean each label is.
 
-### 6.7 32 of 41 browse pills lead to an empty page — NOT RECORDED ANYWHERE
+### 6.7 32 of 41 browse pills lead to an empty page — RESOLVED (issue #684, 2026-09-13)
 
-`app.js:browsePillsHtml` renders every taxonomy root; `app.js:showsForCategory`
+> **RESOLVED, and not by the fix this section proposed.** The founder reported
+> it himself ("clicking on any of the tiles on the search page gives 0 results.
+> It should just search for that text"), and the tiles now link to
+> `#/shows/q/<label>` — the ordinary show search, run on the tile's own label —
+> rather than to `#/category/:id`. `app.js:browseTile` is the renderer;
+> `app.js:taxonomyChip` is unchanged and still serves the show page's own chips.
+>
+> The expand-the-root fix below was measured against it rather than argued
+> away: expanding takes the 32 empty pills to **4**, with a median of **4**
+> shows behind a pill, because it can still only answer out of the curated 220.
+> Searching the label reaches the local catalogue, the breadth endpoint and
+> Apple's directory: measured live on 2026-09-13, all 41 labels return between
+> **10 and 50** shows, median **37**, none empty.
+>
+> `app.js:showsForCategory` is deliberately still an exact match. Every id that
+> now reaches it comes off a show's own record, so the page it opens holds at
+> least that show by construction — pinned in
+> `test/category-browse.test.js`.
+
+`app.js:browsePillsHtml` rendered every taxonomy root; `app.js:showsForCategory`
 matches node ids **exactly** and never walks children. Only 9 of 41 roots appear
-directly in a curated show's `taxonomy_node_ids`, so 32 pills render *"No shows
+directly in a curated show's `taxonomy_node_ids`, so 32 pills rendered *"No shows
 here yet."* More broadly, **118 of 194 taxonomy nodes have no curated show at
 all.**
 
-The one-line fix in the existing idiom is to make `showsForCategory` accept a
-root by expanding it the way `app.js:expandTaxonomyPick` already does (the
-taxonomy is capped at two levels, so one parent-lookup covers it). Nothing
-records the defect or the fix.
+The one-line fix in the existing idiom would have been to make
+`showsForCategory` accept a root by expanding it the way
+`app.js:expandTaxonomyPick` already does (the taxonomy is capped at two levels,
+so one parent-lookup covers it).
 
 ### 6.8 A breadth show page is not linkable or reloadable — RESOLVED (PR #658, 2026-09-12)
 
@@ -1070,12 +1093,13 @@ code grows the local-hit branch or the sentence loses its condition.
 | `showArtworkUrl(show)` | 1700 | show artwork, falling back to a pool-built title→artwork index |
 | `showIdForShowName(name)` | 1728 | reverse title→`show_id` lookup |
 | `showNameLink(name)` | 1743 | an `<a>` to `#/show/:id`, or plain escaped text |
-| `taxonomyChip(nodeId)` | 1755 | an `<a>` to `#/category/:id` |
+| `taxonomyChip(nodeId)` | 1755 | an `<a>` to `#/category/:id` — the show page's chips only, since #684 |
 | `showsForCategory(nodeId)` | 1765 | curated shows whose nodes include an exact id |
 | `renderShowIndexPage(title, sub, shows, above)` | 1777 | the shared shell for the category page and the A–Z index |
 | `renderCategory(nodeId)` | 1799 | the category landing page |
-| `browsePillsHtml()` | 1847 | one chip per taxonomy root (41) |
-| `renderAllShows()` | 1854 | the `#/shows` page |
+| `browseTile(nodeId)` | — | an `<a>` to `#/shows/q/<label>` — the browse tiles, since #684 |
+| `browsePillsHtml()` | 1847 | one tile per taxonomy root (41) |
+| `renderAllShows(initialQuery = "")` | 1854 | the `#/shows` page; a non-empty query is `#/shows/q/:q`, searched on arrival |
 | `fullCatalogueRowToEpRowItem(show, ep)` | 1886 | a full-catalogue API row → a playable `epRow` item |
 | `fetchShowEpisodes(show_id, cursor)` | 1918 | one page of `/api/shows/:id/episodes` |
 | `similarShows(show, limit = 6)` | 1949 | taxonomy-overlap similarity |

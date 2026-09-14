@@ -528,33 +528,48 @@ test("the delete-data sheet names the app", () => {
   assert.equal(m[1], APP_NAME);
 });
 
-/* THE PLAYLIST-SHORTFALL COPY: five app-sense uses across four lines, all of
-   them about the CATALOGUE (what the product has today), none about a
+/* THE PLAYLIST-SHORTFALL COPY: the app-sense uses in this feature are all
+   about the CATALOGUE (what the product has today), never about a
    stitched-audio unit -- a playlist part was never "in a foray"; there is no
    foray anywhere in this feature. Judged individually and they all came out the
    same way, which is why they are one test.
 
-   FIVE, NOT FOUR. `app.js:1170` says the name TWICE in one sentence ("saved
-   before ... kept episode details" and "what ... has today"), and the KNOWN GAP
-   record this file used to carry quoted that line as ALREADY half-renamed. It
-   was not: on `main` both halves said "Foray". A per-line record miscounting a
-   line it quoted is the argument for pinning strings instead of listing them.
+   IT USED TO PIN FIVE PHRASES. Two of them said "not in 4a's catalogue right
+   now" and are gone as of issue #684 -- founder, 2026-09-13: "there is every
+   now and then messages that say 'no shows in 4a's catalogue.' Get rid of
+   that, just give some standard 'no results' response or something, don't
+   blame it on 4a." The EXPLANATION those two carried is kept in full (a row
+   that cannot play still says why); only our own catalogue stopped being named
+   as the reason. So they are pinned here in their new wording rather than
+   dropped from the list, which keeps this test's real subject -- that nothing
+   in this feature's rendered copy says "Foray" -- reading over the same two
+   function bodies as before.
+
+   WHAT DID NOT CHANGE, and why the remaining three still name 4a: "saved
+   before 4a kept episode details" and "what 4a has today" are statements about
+   OUR OWN history and OUR OWN holdings, where the app is genuinely the
+   subject of the sentence rather than a culprit being blamed for an empty
+   result. `app.js:1170` says the name twice in that one sentence, and a KNOWN
+   GAP record this file used to carry miscounted it -- which is the argument
+   for pinning strings instead of listing them.
 
    READ OUT OF THE TWO FUNCTIONS THAT RENDER THEM, not out of the file: the
    caption is `archivedRow`'s, the note is `partsNote`'s, and `partsNote`
    carries a block comment of its own that a file-wide search would read.
 
    KILLED BY: reverting any one of the five. `test/playlist-durability.test.js`
-   asserts three of them (its lines 529/564/594 for the caption, 679/681 for the
-   note) and was updated in this same commit -- so reverting the caption alone
-   fails there too, but reverting "what 4a has today" fails ONLY here. */
+   asserts three of them (the caption and the note) and was updated in the same
+   commit -- so reverting the caption alone fails there too, but reverting
+   "what 4a has today" fails ONLY here. MUTATION: put "in 4a's catalogue" back
+   into either function -- the two `not available right now` assertions go
+   red. */
 test("the playlist-shortfall copy names the app, not the unit", () => {
   const row = fnBody("app.js", "archivedRow");
   const note = fnBody("app.js", "partsNote");
   for (const [where, body, phrase] of [
-    ["archivedRow", row, `not in ${APP_NAME}'s catalogue right now`],
+    ["archivedRow", row, `not available right now`],
     ["archivedRow", row, `Saved before ${APP_NAME} kept episode details`],
-    ["partsNote", note, `not in ${APP_NAME}'s catalogue right now`],
+    ["partsNote", note, `not available right now`],
     ["partsNote", note, `saved before ${APP_NAME} kept episode details`],
     ["partsNote", note, `from what ${APP_NAME} has today`],
   ]) {
@@ -563,6 +578,20 @@ test("the playlist-shortfall copy names the app, not the unit", () => {
       !/Foray/.test(body),
       `${where}() still capitalises the name somewhere in its rendered copy`
     );
+  }
+  /* The direction the rewrite was FOR, and the one a careless revert would
+     undo: neither function may name OUR catalogue as the reason a row cannot
+     play.
+
+     The possessive specifically, not the bare word. `archivedRow` still titles
+     a detail-less row "Part no longer in the catalogue" — that is a statement
+     about a row we have nothing left to say about, not an explanation that
+     points at us, and the founder's complaint was about the latter. Widening
+     this to /catalogue/ would fail on that line and push a rewrite nobody
+     asked for. */
+  for (const [where, body] of [["archivedRow", row], ["partsNote", note]]) {
+    assert.ok(!new RegExp(`${APP_NAME}'s catalogue`).test(body),
+      `${where}() blames ${APP_NAME}'s catalogue for something the listener only needs told plainly`);
   }
 });
 

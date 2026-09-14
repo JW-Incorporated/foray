@@ -213,19 +213,31 @@ test("the Shows page renders no '220 shows in 4a's catalogue' subtitle at all", 
 });
 
 test("the category page still renders its own subtitle — the parameter was kept, not deleted", () => {
-  /* The category page's "N shows in 4a's catalogue" is the only thing that
-     says how big the category is, and it is not a restatement of the heading
-     the way the Shows page's was.
+  /* The category page's count is the only thing that says how big the category
+     is, and it is not a restatement of the heading the way the Shows page's
+     was.
      MUTATION: delete `subtitle` from renderShowIndexPage's signature/template
      (the tempting "it has no callers now" cleanup). This fails. RUN: failed
-     as named. */
+     as named.
+
+     IT NO LONGER NAMES THE CATALOGUE (issue #684; founder, 2026-09-13: "don't
+     blame it on 4a"). "in 4a's catalogue" carried no information here — a
+     category page can only ever list shows we hold — so it was pure
+     self-explanation and went. The COUNT is untouched, because a count is not
+     a blame; the episode counts in showEpisodeCountLabel keep the phrase for
+     the opposite reason, that there it distinguishes a curated slice from the
+     publisher's full list.
+     MUTATION: restore "in 4a's catalogue" in renderCategory -> the second and
+     third assertions go red. */
   const m = mount();
   m.state.catalog.shows[0].taxonomy_node_ids = ["science"];
   m.ctx.renderCategory("science");
   const html = m.view();
   assert.ok(html.includes("<h2>Science</h2>"), "fixture assumption: the category rendered");
-  assert.ok(html.includes('<p class="sub">1 show in 4a&#39;s catalogue</p>'),
+  assert.ok(html.includes('<p class="sub">1 show</p>'),
     `the category page must keep its count subtitle, got: ${html.slice(0, 400)}`);
+  assert.ok(!html.includes("4a"),
+    `the subtitle must not name our own catalogue as the reason for anything: ${html.slice(0, 400)}`);
 });
 
 /* ==================================================================== */

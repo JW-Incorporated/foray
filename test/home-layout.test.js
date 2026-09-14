@@ -420,7 +420,12 @@ test("every offset that reserves room for the fixed topbar equals the topbar's o
     cascade defect is page-independent: an author `display` on an id or class
     beats the UA `[hidden]` rule on any page. */
 function hiddenElementsIn(fnName) {
-  const start = APP.indexOf(`function ${fnName}()`);
+  /* `function <name>(` rather than `function <name>()`: renderAllShows took
+     an optional `initialQuery` when the browse tiles started routing through
+     it (#684), and a matcher pinned to the empty parameter list would have
+     stopped finding the function and failed with "must exist in app.js" —
+     a red that says nothing about the cascade defect this guards. */
+  const start = APP.indexOf(`function ${fnName}(`);
   assert.ok(start > 0, `${fnName}() must exist in app.js`);
   const template = APP.slice(start, APP.indexOf("\n}", start));
   const out = [];

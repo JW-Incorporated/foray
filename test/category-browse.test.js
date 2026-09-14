@@ -64,6 +64,9 @@ const PAGE_IDS = [
   "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note", "tab-topics", "tab-shows", "sh-form", "sh-input",
   "sh-note", "sh-results", "browse-all-link",
+  /* #684: the browse tiles now run the ordinary search, so a #/shows/q/:q
+     render reaches the same nodes a submit does. */
+  "sh-browse", "sh-dismiss", "ep-search-results", "pl-search-results",
 ];
 
 function mount({ seed = {}, boot = false } = {}) {
@@ -328,4 +331,149 @@ test("nothing renders a 'Browse all shows' link any more — the menu replaced i
   const src = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
   assert.ok(!/id="browse-all-link"/.test(src), "the browse-all-link element must be gone from app.js");
   assert.ok(!/Browse all shows\s*›/.test(src), "the rendered 'Browse all shows ›' label must be gone from app.js");
+});
+
+/* ==================================================================== */
+/* 7. THE BROWSE TILES SEARCH THEIR OWN TEXT (issue #684, report 1)      */
+/*                                                                      */
+/* Founder, 2026-09-13: "clicking on any of the tiles on the search      */
+/* page gives 0 results. It should just search for that text."           */
+/*                                                                      */
+/* THE MEASUREMENT, over the committed data, is section 7.1 below: 32 of */
+/* the 41 rendered tiles matched ZERO shows, because a tile emits a      */
+/* taxonomy ROOT and shows are tagged with LEAVES. Searching each label  */
+/* instead returns 10-50 shows (median 37) once the directory answers —  */
+/* measured live against api/shows/search the same day.                  */
+/* ==================================================================== */
+
+/* 7.1 — THE DIAGNOSIS, pinned on the real data rather than argued. */
+test("a taxonomy ROOT is not what a show is tagged with — the join the tiles used cannot answer", async () => {
+  /* This is the defect itself, stated structurally so it does not rot into a
+     threshold: `science` is a root, real curated shows carry `science/...`
+     leaves, and `showsForCategory` matches ids EXACTLY. So the root finds
+     nothing while its children find plenty — which is what put "No shows here
+     yet." behind four fifths of the pill row.
+
+     MUTATION: teach showsForCategory to expand a root (`id === nodeId ||
+     id.startsWith(nodeId + "/")`). The first assertion goes red — which is the
+     honest signal that the alternative fix landed and this test should be
+     re-read, not deleted. */
+  const m = await mountBooted();
+  const leafTagged = (m.state.catalog.shows || []).filter((s) =>
+    (s.taxonomy_node_ids || []).some((id) => id.startsWith("science/")));
+  assert.ok(leafTagged.length > 0, "fixture assumption: the committed catalogue tags shows under science/*");
+  assert.strictEqual(m.ctx.showsForCategory("science").length, 0,
+    "the root itself matches nothing, though its children match real shows");
+
+  const roots = m.ctx.taxonomyRootNodes();
+  const empty = roots.filter((r) => m.ctx.showsForCategory(r.id).length === 0);
+  assert.ok(empty.length > roots.length / 2,
+    `most taxonomy roots match no show at all (${empty.length} of ${roots.length}) — a category link cannot be the tiles' destination`);
+});
+
+/* 7.2 — WHAT THE TILE DOES NOW. */
+test("a browse tile links to the search for its own label, never to a category page", async () => {
+  /* MUTATION: put `roots.map(n => taxonomyChip(n.id))` back into
+     browsePillsHtml. Every href becomes `#/category/:id` and both assertions
+     go red. */
+  const m = await mountBooted();
+  const html = m.ctx.browsePillsHtml();
+  assert.ok(html.includes('class="sh-browse-pills"'), "fixture assumption: the pill row rendered");
+  assert.ok(!/href="#\/category\//.test(html), "no tile may point at a category page any more");
+  assert.ok(html.includes('href="#/shows/q/Science"'),
+    `each tile must run the ordinary search for its own label: ${html.slice(0, 300)}`);
+});
+
+test("a tile's label is escaped in both the href and the text, and survives the round trip", () => {
+  /* The labels are not all tidy identifiers — "Craft & making", "Kids &
+     Family", "TV & Film". An ampersand has to be percent-encoded in the URL
+     and entity-escaped in the attribute, and it has to decode back to the
+     literal label the search then runs.
+
+     MUTATION: drop `encodeURIComponent` from browseTile. The href carries a
+     bare `&`, and the label the search receives is half of the one on the
+     tile. */
+  const m = mount();
+  m.state.taxonomy = { nodes: [{ id: "craft", label: "Craft & making", parent: null }] };
+  const html = m.ctx.browseTile("craft");
+  assert.ok(html.includes('href="#/shows/q/Craft%20%26%20making"'), `got: ${html}`);
+  assert.ok(html.includes(">Craft &amp; making<"), `the visible label stays escaped: ${html}`);
+
+  const href = /href="([^"]+)"/.exec(html)[1].replace(/&amp;/g, "&");
+  const q = /^#\/shows\/q\/(.*)$/.exec(href)[1];
+  assert.strictEqual(decodeURIComponent(q), "Craft & making", "the route must decode back to the exact label");
+});
+
+test("route() dispatches #/shows/q/:query to the Shows page with that search already run", () => {
+  /* The other end of the tile's href, pinned through route() rather than by
+     calling renderAllShows directly — a tile linking to an address nothing
+     dispatches is the same class of dead end as the empty category page it
+     replaced.
+
+     MUTATION: delete the `#/shows/q/` branch from renderCurrentPage. The hash
+     falls through to renderHome, and the heading assertion goes red. */
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "sf", title: "Science Friday", taxonomy_node_ids: [] }] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.state.cardSlots = [];
+  m.state.ready = true;
+
+  m.ctx.location.hash = "#/shows/q/Science";
+  m.ctx.route();
+
+  assert.ok(m.view().includes("<h2>Shows</h2>"), "it is the Shows page, not a new one");
+  assert.strictEqual(m.byId.get("sh-input").value, "Science",
+    "the field must hold the query, so it can be edited rather than retyped");
+  assert.ok(m.byId.get("sh-results").innerHTML.includes("Science Friday"),
+    `the search must already have run: ${m.byId.get("sh-results").innerHTML}`);
+  assert.strictEqual(m.byId.get("sh-browse").hidden, true,
+    "and the browse furniture must be out of the way, by the page's own predicate");
+});
+
+test("a malformed #/shows/q/ hash lands on the plain Shows page instead of throwing", () => {
+  /* A hash is user-authored text. `decodeURIComponent("%")` raises a URIError,
+     and an uncaught one inside renderCurrentPage takes the whole render down —
+     a blank screen for a typo.
+
+     MUTATION: replace `safeDecode(m[1])` with `decodeURIComponent(m[1])`.
+     route() throws and this goes red. */
+  const m = mount();
+  m.state.catalog = { shows: [] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.state.cardSlots = [];
+  m.state.ready = true;
+
+  m.ctx.location.hash = "#/shows/q/%";
+  assert.doesNotThrow(() => m.ctx.route());
+  assert.ok(m.view().includes("<h2>Shows</h2>"), "an undecodable query is not a query — the browse page stands");
+});
+
+/* 7.3 — WHAT WAS NOT DELETED, AND WHY. */
+test("#/category/:id is NOT a dead route — the show page's chips still lead there, and they always land on something", async () => {
+  /* The repo rule is that a change which supersedes a path deletes the path
+     (docs/curation/listening-quality-plan.md §5). This one supersedes the
+     TILES' use of the category page, not the category page.
+
+     Its live caller is renderShow's chip strip, and those chips are built from
+     a show's OWN taxonomy_node_ids — so the page they open contains at least
+     that show BY CONSTRUCTION and can never be the empty one #684 reports.
+     Asserted over the whole committed catalogue rather than one example.
+
+     MUTATION: delete renderCategory and its route -> the third assertion goes
+     red. MUTATION: rewire renderShow's chips to browseTile as well -> the same
+     assertion goes red, which is where a future decision to retire the
+     category page would have to be recorded. */
+  const m = await mountBooted();
+  const shows = m.state.catalog.shows || [];
+  const everyTaggedId = [...new Set(shows.flatMap((s) => s.taxonomy_node_ids || []))];
+  assert.ok(everyTaggedId.length > 0, "fixture assumption: the catalogue carries taxonomy ids");
+
+  const barren = everyTaggedId.filter((id) => m.ctx.showsForCategory(id).length === 0);
+  assert.deepStrictEqual(barren, [],
+    "every id a show page can emit must open a category page with at least that show on it");
+
+  assert.ok(m.ctx.taxonomyChip(everyTaggedId[0]).includes('href="#/category/'),
+    "the show page's chips still go to the category page");
 });
