@@ -200,7 +200,7 @@ carries the inputs; add the two derived fields and the G-42 harness columns.
 **Owned.** roadmap §1.2, `veracityMetrics.ts`, `generateForays.ts` report.
 **Dependencies.** none. **Human gate.** D0 (Wyatt confirms the numbers).
 
-### Q-07 · Every Foray opens with a prelude — **H · M — overlord (backend)** — **DONE** (2026-09-13)
+### Q-07 · Every Foray opens with a prelude — **H · M — overlord (backend)** — **DONE** (#705, 2026-09-13)
 **Ask.** Wyatt, 2026-09-13, verbatim: "we should add a prelude to each foray
 that we generate. It should briefly mention that this is AI generated and
 there's risk of fake content but we try hard to avoid that. Most of that text
@@ -244,7 +244,7 @@ are tested; the four Forays that predate the rule are named once in
 `FORAYS_PREDATING_THE_NARRATOR_RULES` because their scripts are already
 voiced.
 
-### Q-08 · The narrator never mentions the Foray's own structure — **H · M — overlord (backend)** — **DONE** (2026-09-13)
+### Q-08 · The narrator never mentions the Foray's own structure — **H · M — overlord (backend)** — **DONE** (#705, 2026-09-13)
 **Ask.** Wyatt, 2026-09-13, verbatim: "the narrator should never mention acts
 or beats in the context of the foray formatting (for example, saying 'this
 foray has 3 acts' is NOK but mentioning 'in the first act of Macbeth' is fine
@@ -290,7 +290,7 @@ one path a developer can run without an API key was the one path that
 reliably produced the banned prose. Both now speak from the subject and the
 act's own strand instead.
 
-### Q-09 · A clip introduction names the podcast it came from — **M · S — overlord (backend)** — **DONE** (2026-09-13)
+### Q-09 · A clip introduction names the podcast it came from — **M · S — overlord (backend)** — **DONE** (#705, 2026-09-13)
 **Ask.** Wyatt, 2026-09-13, verbatim: "we should try to introduce any podcast
 with a brief mention of what podcast it is, for example 'here's a clip from
 XYZ emphasizing this point'". This extends Q-02, which already put a light

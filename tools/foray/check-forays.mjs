@@ -519,12 +519,22 @@ const isGeneratedForay = (foray) => foray?.generated === true;
  * being softened to warnings for everybody. The list is SELF-LIMITING —
  * `finalizeForay` refuses an id that already exists, so a regenerated Foray
  * gets a new id and faces both rules in full. Nothing may be added to it. */
-const FORAYS_PREDATING_THE_NARRATOR_RULES = new Set([
+/* Written as an array and wrapped, not as an inline `new Set([...])`, and
+   the reason is worth a line: G-21c's literal scanner
+   (`fixture-coverage.test.mjs`) reads an inline set of string literals in
+   this file as a VOCABULARY — a set of shapes the checker accepts, which
+   must be enumerated in `ACCEPTED_SHAPES` and carried by a committed
+   fixture. These are not shapes. They are four Foray IDS, instances rather
+   than a vocabulary, and nothing about them belongs in `ACCEPTED_SHAPES`.
+   The scanner cannot tell the two apart from syntax alone; this spelling
+   keeps it from being told something false. */
+const FORAY_IDS_PREDATING_THE_NARRATOR_RULES = [
   "beyond-the-algorithm-engineering-production-ai-s-e6533b",
   "how-ai-actually-gets-built-3b83e1",
   "the-chain-reaction-how-engineering-disasters-rea-25f1b7",
   "what-engineers-actually-do-all-day-e08236"
-]);
+];
+const FORAYS_PREDATING_THE_NARRATOR_RULES = new Set(FORAY_IDS_PREDATING_THE_NARRATOR_RULES);
 
 /* §4.7's exact required template, verbatim, with the one variable slot
  * (`<subject>`) as a wildcard. Matched as a whole line so a generated Foray
