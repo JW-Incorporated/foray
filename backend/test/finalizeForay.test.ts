@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest";
 import { buildCandidateFiles, finalizeForay, isGeneratedDraft, type FinalizeForayInput } from "../src/generation/finalizeForay";
 import type { MintedSegmentSource } from "../src/generation/audioSourceLookup";
 import type { NewSegment } from "../src/types/tapeSourcing";
-import { disclosureNarratedBeat } from "../src/types/narration";
+import { disclosureNarratedBeat, preludeTemplate } from "../src/types/narration";
 import type { ForayItem } from "../src/generation/forayItems";
 
 /**
@@ -29,6 +29,15 @@ import type { ForayItem } from "../src/generation/forayItems";
 const FIXTURE_ROOT = path.resolve(__dirname, "..", "..", "tools", "foray", "fixtures", "boundary");
 
 const disclosure = disclosureNarratedBeat("a finalize-stage test topic");
+/* Q-07: what `runPipeline`'s `preludeItem` actually prepends — the shared
+   boilerplate and then THIS Foray's overview. The bare disclosure above is
+   kept for the "items[0] is missing" case, which must still be exercised
+   against a real candidate. The overview says nothing structural: the
+   prelude is narration and faces Q-08 like every other line. */
+const PRELUDE_SCRIPT = preludeTemplate(
+  "a finalize-stage test topic",
+  "We follow one bolt from a drawing board to a walkway that fell, and talk to the people who signed it off."
+);
 
 const tapeItems: ForayItem[] = [
   { type: "segment", slot: "one", label: "A-1", segment_id: "boundary-ep-a#200", role: "explanation" },
@@ -76,10 +85,10 @@ function validCandidate(id = "finalize-test-1"): FinalizeForayInput {
       { id: "three", title: "The third block" }
     ],
     items: [
-      { type: "narration", id: "disclosure", script: disclosure.script, mode: "marker", slot: "one" },
+      { type: "narration", id: "prelude", script: PRELUDE_SCRIPT, mode: "marker", slot: "one" },
       ...tapeItems
     ],
-    runtimeSec: TAPE_RUNTIME_SEC + disclosure.script.length / 17
+    runtimeSec: TAPE_RUNTIME_SEC + PRELUDE_SCRIPT.length / 17
   };
 }
 
@@ -99,14 +108,14 @@ describe("finalizeForay — §4.9 validate-then-write", () => {
     for (const t of result.timings) expect(t.ms).toBeGreaterThanOrEqual(0);
   });
 
-  it("fails a candidate missing the disclosure as items[0], and writes nothing", async () => {
+  it("fails a candidate missing the prelude as items[0], and writes nothing", async () => {
     const candidate = validCandidate("finalize-test-2");
     candidate.items = tapeItems; // disclosure dropped
     const result = await finalizeForay(candidate, FIXTURE_ROOT);
 
     expect(result.validation.ok).toBe(false);
     expect(result.forayRecord).toBeUndefined();
-    expect(result.validation.checkForaysErrors.some((e) => e.toLowerCase().includes("disclosure"))).toBe(true);
+    expect(result.validation.checkForaysErrors.some((e) => e.toLowerCase().includes("prelude"))).toBe(true);
   });
 
   it("fails a candidate whose runtime_sec disagrees with its items' actual sum", async () => {

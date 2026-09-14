@@ -1027,7 +1027,7 @@ function stampQ01(f, boundaryKind = "sentence") {
   foray.generated = true;
   const firstSlot = Array.isArray(foray.slots) && foray.slots.length ? foray.slots[0].id : undefined;
   foray.items.unshift({
-    type: "narration", id: "disclosure", mode: "marker", script: DISCLOSURE_SCRIPT,
+    type: "narration", id: "prelude", mode: "marker", script: DISCLOSURE_SCRIPT,
     ...(firstSlot !== undefined ? { slot: firstSlot } : {}),
   });
   if (typeof foray.runtime_sec === "number") {
@@ -2092,11 +2092,20 @@ test("the CLI exits 1 on a bridge nothing can time", () => {
    5. §7 items 4-5 — the jingle, and generated-Foray narration validation
    ========================================================================= */
 
-/** The exact §4.7 disclosure template, with a subject filled in. Any generated
-    Foray's items[0] must be a narration item carrying this verbatim. */
-const DISCLOSURE_SCRIPT =
+/** The exact §4.7 boilerplate, with a subject filled in — Q-07's part one.
+    Any generated Foray's items[0] must OPEN with this verbatim. */
+const PRELUDE_BOILERPLATE_LINE =
   "This is a Foray about grilling. Much of what you'll hear is written by AI. We work hard to " +
-  "get the facts right, but AI gets things wrong — so take it as a starting point, not a source.";
+  "get the facts right, but AI gets things wrong — and sometimes it invents things that were never said — " +
+  "so take it as a starting point, not a source.";
+
+/** Q-07's part two: what THIS Foray covers, which the boilerplate cannot say.
+    Deliberately free of any structural word — the prelude is narration and
+    faces Q-08 like every other line. */
+const PRELUDE_OVERVIEW =
+  "We follow one bolt from a drawing board to a walkway that fell, and talk to the people who signed it off.";
+
+const DISCLOSURE_SCRIPT = `${PRELUDE_BOILERPLATE_LINE} ${PRELUDE_OVERVIEW}`;
 
 /** A minimal `generated: true` Foray built from the boundary fixture: the
     disclosure spliced in as items[0], with every narration item on it given a
@@ -2107,7 +2116,7 @@ function generatedFixture() {
   foray.generated = true;
   const firstSlot = Array.isArray(foray.slots) && foray.slots.length ? foray.slots[0].id : undefined;
   foray.items.unshift({
-    type: "narration", id: "disclosure", mode: "marker", script: DISCLOSURE_SCRIPT,
+    type: "narration", id: "prelude", mode: "marker", script: DISCLOSURE_SCRIPT,
     ...(firstSlot !== undefined ? { slot: firstSlot } : {}),
   });
   if (typeof foray.runtime_sec === "number") {
@@ -2120,16 +2129,75 @@ test("a well-formed generated Foray — disclosure first, moded narration — pa
   assert.deepEqual(errorsFor(generatedFixture()), []);
 });
 
-test("a generated Foray whose first item is not the disclosure is rejected", () => {
+/** Splices one more narration item into a generated fixture, after the
+    prelude and inside the first slot, and keeps `runtime_sec` honest — the
+    boundary fixture carries no narration of its own, so a rule about
+    narration SCRIPTS has nothing to act on without this. */
+function spliceNarration(f, id, script) {
+  const foray = boundary(f);
+  const slot = foray.items[1] && foray.items[1].slot;
+  foray.items.splice(1, 0, { type: "narration", id, mode: "hinge", script, ...(slot !== undefined ? { slot } : {}) });
+  if (typeof foray.runtime_sec === "number") {
+    foray.runtime_sec = +(foray.runtime_sec + Math.round((script.length / 17) * 1000) / 1000).toFixed(2);
+  }
+  return foray;
+}
+
+test("a generated Foray whose items[0] is not the prelude boilerplate is rejected", () => {
+  /* Q-07. The boilerplate is a PREFIX now, not the whole line, but it is
+     still matched verbatim: "It should be impossible to publish without it"
+     is a statement about the exact words legal signed off on, not the gist.
+
+     MUTATION THAT KILLS THIS: relax PRELUDE/DISCLOSURE_RX to a substring or
+     a keyword test. A paraphrase then ships, and the one item whose value is
+     that it is always the same stops being always the same. */
   const f = generatedFixture();
-  boundary(f).items[0].script = "Welcome to today's Foray about grilling!";
-  assert.match(errorsFor(f).join("\n"), /items\[0\] is not the required disclosure/);
+  boundary(f).items[0].script = "Welcome to today's Foray about grilling! Here is what we will cover.";
+  assert.match(errorsFor(f).join("\n"), /items\[0\] is not the required prelude/);
+});
+
+test("a generated Foray whose prelude is boilerplate and nothing else is rejected", () => {
+  /* Q-07 part two, which is the half the founder actually asked for:
+     "Then give a brief overview of what's to be covered in this foray to
+     give the listener some context."
+
+     MUTATION THAT KILLS THIS: stop checking what follows the boilerplate.
+     A prelude that is boilerplate alone tells the listener what EVERY Foray
+     would have told them, and a template cannot supply the rest. */
+  const f = generatedFixture();
+  boundary(f).items[0].script = PRELUDE_BOILERPLATE_LINE;
+  const errors = errorsFor(f).filter((e) => /items\[0\]/.test(e));
+  assert.equal(errors.length, 1, errors.join("\n"));
+  assert.match(errors[0], /no overview after it/);
+});
+
+test("a generated Foray whose narration mentions its own acts is rejected", () => {
+  /* Q-08 — Wyatt, 2026-09-13: "the narrator should never mention acts or
+     beats in the context of the foray formatting". MUTATION THAT KILLS
+     THIS: drop the `narratorStructureErrors` call from the narration-item
+     block. Measured on `main` the same day: the four generated Forays break
+     this 25 times, which is why the rule exists and why those four are
+     named in `FORAYS_PREDATING_THE_NARRATOR_RULES`. */
+  const f = generatedFixture();
+  spliceNarration(f, "nar-q07", "By the end of this act the model looks less like a program and more like a compiled output.");
+  assert.match(errorsFor(f).join("\n"), /never mentions the Foray's own acts/);
+});
+
+test("Q-08 leaves a structural word that belongs to something else alone", () => {
+  /* The founder's own example of a LEGITIMATE mention, at the gate rather
+     than in the unit test: "mentioning 'in the first act of Macbeth' is fine
+     if it's relevant". MUTATION THAT KILLS THIS: check for the bare word
+     `act` — this goes red, and so does every Foray that ever discusses a
+     play, a treaty or a crisis. */
+  const f = generatedFixture();
+  spliceNarration(f, "nar-q07-ok", "In the first act of Macbeth the witches speak, and the second act of the crisis began in March.");
+  assert.equal(errorsFor(f).filter((e) => /own acts/.test(e)).length, 0);
 });
 
 test("a generated Foray with no narration item first is rejected the same way", () => {
   const f = generatedFixture();
   boundary(f).items.shift(); // drop the disclosure; a segment now opens the Foray
-  assert.match(errorsFor(f).join("\n"), /items\[0\] is not the required disclosure/);
+  assert.match(errorsFor(f).join("\n"), /items\[0\] is not the required prelude/);
 });
 
 test("an admin-authored (non-generated) Foray needs no disclosure at all", () => {

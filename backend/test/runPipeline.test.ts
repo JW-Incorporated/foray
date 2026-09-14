@@ -404,7 +404,7 @@ describe("runForayPipeline against the REAL §4.9 validator", () => {
     if (out.outcome !== "generated") return;
     expect(out.result.validation).toBeDefined();
     expect(Array.isArray(out.result.validation.checkForaysErrors)).toBe(true);
-    expect(out.input.items[0]).toMatchObject({ type: "narration", id: "disclosure" });
+    expect(out.input.items[0]).toMatchObject({ type: "narration", id: "prelude" });
   });
 });
 
@@ -692,7 +692,7 @@ describe("runForayPipeline — each act is stitched as soon as it is narrated (F
 
     /* The disclosure is the one item §4.8 never produces — §4.9 prepends it
        (see `disclosureItem`), on both paths, exactly once. */
-    expect(out.input.items[0]).toMatchObject({ type: "narration", id: "disclosure" });
+    expect(out.input.items[0]).toMatchObject({ type: "narration", id: "prelude" });
     expect(out.input.items.slice(1)).toEqual(reference.items);
   });
 

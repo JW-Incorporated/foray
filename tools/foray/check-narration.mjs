@@ -34,6 +34,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+/* Q-08's rule, defined once — see `spokenLineStructureWarnings` below for
+   why it lives in `backend/src/copy/` rather than in this file. */
+import narratorStructure from "../../backend/src/copy/narratorStructure.js";
+const { narratorStructureLeaks, narratorStructureErrors } = narratorStructure;
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const NARRATION_DIR = path.join("docs", "curation", "narration");
@@ -184,6 +188,37 @@ export function spokenLineErrors(text, where, opts = {}) {
 
   return out;
 }
+
+/**
+ * Q-08: THE NARRATOR NEVER MENTIONS THE FORAY'S OWN STRUCTURE, on a
+ * hand-authored curation line — as a WARNING, not an error.
+ *
+ * The rule and its whole reasoning live in
+ * `backend/src/copy/narratorStructure.js`, next to `copy/rules.js` and for
+ * that file's own reason: three consumers with no shared build step — this
+ * checker, `check-forays.mjs`, and `writeAct.ts`'s in-code gate — and one
+ * definition between them rather than three that drift.
+ *
+ * WHY THE SEVERITY DIFFERS HERE. A curation beat has an AUTHOR. "The next
+ * part changes the arithmetic" (alcohol-forms-1, beat-08, measured
+ * 2026-09-13) is the rule's own worst case: "the next part" of the argument
+ * is ordinary English, "the next part" of the Foray is the thing Wyatt
+ * banned, and no regular expression can tell those two apart. A person can
+ * be asked; that is what a warning is for. A GENERATED line has no author
+ * to ask — it has a retry loop instead — so on that side the same rule is
+ * an error, in `check-forays.mjs` and again in the writer before it ever
+ * gets that far.
+ *
+ * @param {string} text
+ * @param {string} where
+ * @returns {string[]} warnings, empty when clean
+ */
+export function spokenLineStructureWarnings(text, where) {
+  if (!isStr(text)) return [];
+  return narratorStructureErrors(text, where);
+}
+
+export { narratorStructureLeaks, narratorStructureErrors };
 
 /** The spoken text of a beat: its sentences, joined. There is deliberately no
  *  `script` field on a beat file — a stored copy would be one edit away from
@@ -343,6 +378,9 @@ export function checkForay(foray) {
       /* N7-N9 — every spoken-line rule, including ruling 3's leak check. */
       for (const e of spokenLineErrors(s?.text, where, { hasTape: beat?.coverage_verdict !== "empty" }))
         errors.push(at(e));
+      /* Q-08, as a warning on a hand-authored line — see
+         `spokenLineStructureWarnings` for why the severity differs here. */
+      for (const w of spokenLineStructureWarnings(s?.text, where)) warnings.push(at(w));
     }
 
     /* ---- claims: the evidence contract ---- */
@@ -587,6 +625,7 @@ export function checkForay(foray) {
       for (const [i, seam] of arr(item?.seam_sentences).entries()) {
         const hasTape = beats.some((b) => b?.coverage_verdict !== "empty");
         for (const e of spokenLineErrors(seam, `${iw} seam ${i + 1}`, { hasTape })) errors.push(at(e));
+        for (const w of spokenLineStructureWarnings(seam, `${iw} seam ${i + 1}`)) warnings.push(at(w));
       }
       const chars =
         beats.map(beatScript).join(" ").length +

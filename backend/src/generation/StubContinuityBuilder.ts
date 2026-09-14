@@ -30,12 +30,20 @@ export class StubContinuityBuilder implements ContinuityBuilder {
       sessionId: ctx.sessionId
     });
 
-    // Deterministic, seeded only by the two act titles + the previous
-    // exit's own text (never randomness — a stub must be reproducible
-    // across runs, matching StubNarrationWriterBuilder's discipline).
+    /* Deterministic, seeded only by the previous exit's own text (never
+       randomness — a stub must be reproducible across runs, matching
+       StubNarrationWriterBuilder's discipline).
+
+       Q-08: IT NO LONGER SPEAKS THE ACT'S TITLE. An act title is production
+       metadata and reads "Act 2: how the tools get chosen"; this string is
+       SPOKEN, as the next act's opening narration item, so echoing the title
+       put "Act 2" in the listener's ear. `validateSmoothedSeam` refuses that
+       now, which means a stub that kept the old wording would fail every
+       dry run. The callback out of the previous exit is what actually
+       smooths the seam, and it is still what makes the result observably
+       different from the introduction it was handed. */
     const callback = shortCallback(request.previousActExit);
-    const smoothed =
-      `Coming out of "${request.previousActTitle}" — ${callback} — ${lowerFirst(request.nextActIntroduction.trim())}`.trim();
+    const smoothed = `Coming out of all that — ${callback} — ${lowerFirst(request.nextActIntroduction.trim())}`.trim();
 
     return { nextIntroduction: smoothed };
   }

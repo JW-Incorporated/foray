@@ -46,7 +46,7 @@ import {
 import { slugifySlotTitle } from "./forayItems";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { NARRATION_CHARS_PER_SEC } from "../types/narration";
-import { disclosureTemplate } from "../types/narration";
+import { disclosureTemplate, preludeTemplate } from "../types/narration";
 import { buildPartialCandidate, type PartialCandidate } from "./partialCandidate";
 import { resetUsageTracking, getUsageTotals } from "./usageTracking";
 import { buildVeracityMetrics } from "./veracityMetrics";
@@ -524,6 +524,40 @@ export function disclosureItem(subject: string, firstSlotId: string): ForayItem 
     type: "narration",
     id: "disclosure",
     script: disclosureTemplate(subject),
+    mode: "marker",
+    slot: firstSlotId
+  } as ForayItem;
+}
+
+/**
+ * Q-07's prelude, as the `items[0]` `check-forays.mjs` demands — the
+ * boilerplate every Foray shares plus this Foray's own overview, in one
+ * item, before anything else plays.
+ *
+ * WHY IT IS MINTED HERE AND NOT IN THE STITCHER. The stitcher was the
+ * obvious guess and the code disagrees, for the reason its own doc comment
+ * gives: `stitchForay` "assembles what the acts contain, and the disclosure
+ * is not part of any act". More concretely, `ForayStitcher` runs ONE ACT AT
+ * A TIME (F-66) so act 1 can reach a listener while act 4 is still being
+ * written, and `items[0]` has to exist on the first partial candidate as
+ * well as on the finished Foray. This orchestrator is the one place that
+ * prepends it on BOTH paths (see the two call sites below) — minting it in
+ * the stitcher would either produce it once per act or need a second
+ * producer for the partial path, which is the un-deleted-predecessor
+ * mistake the deck's §5 spends a page on. One producer, two call sites.
+ *
+ * `runtimeSecFor` needs no change: it already charges every narration item
+ * its script at `NARRATION_CHARS_PER_SEC`, and the prelude is a narration
+ * item like any other. The checker counts it the same way.
+ *
+ * It carries a `slot`, and must: an item that opens a Foray has no preceding
+ * item to inherit one from, and check-forays rejects that case explicitly.
+ */
+export function preludeItem(subject: string, overview: string, firstSlotId: string): ForayItem {
+  return {
+    type: "narration",
+    id: "prelude",
+    script: preludeTemplate(subject, overview),
     mode: "marker",
     slot: firstSlotId
   } as ForayItem;
@@ -1323,7 +1357,7 @@ export async function runForayPipeline(
                something `finalizeForay` inside `buildPartialCandidate`
                validates with those same gates, so it needs the same
                opening item the final candidate gets. */
-            const itemsWithDisclosure = [disclosureItem(intent.subject, slots[0]!.id), ...itemsSoFar];
+            const itemsWithDisclosure = [preludeItem(intent.subject, spine.overview, slots[0]!.id), ...itemsSoFar];
             const candidate = await buildPartialCandidate(
               {
                 actIndex,
@@ -1524,7 +1558,7 @@ export async function runForayPipeline(
      Foray-level obligation, not an act's content, and stitch has no concept of
      "the whole Foray" to attach it to. Prepending also keeps it out of the
      runtime sum below by construction — it is a spoken marker, not tape. */
-  const items = [disclosureItem(intent.subject, slots[0]!.id), ...stitchedItems];
+  const items = [preludeItem(intent.subject, spine.overview, slots[0]!.id), ...stitchedItems];
 
   /* WS-B: computed here, with the resolved `topic` (`tapeRelevance` needs
      it) and before `finalize` runs, so `meta.veracity` rides along on

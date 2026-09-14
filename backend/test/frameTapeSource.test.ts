@@ -83,8 +83,13 @@ const TAPE_DOC: EvidenceDoc = {
    is speaking, in the Frame band (70–170 characters), and every sentence
    is declarative — which is exactly what F-36/F-37/F-44 refuses without a
    source, and what run 5 refused eight times. */
+/* Q-09: names the SHOW, because this is the first clip this act plays from
+   it. Before 2026-09-13 an introduction satisfied the naming rule by saying
+   "comma" — a word out of the episode TITLE — and the listener was never told
+   whose podcast they were listening to. What this fixture is actually about
+   is F-81's tape-source rules, which the added two words do not touch. */
 const RUN5_FRAME =
-  "Here is an engineer at comma on why their open-source stack learned to drive from thousands of dashcams, not from hand-written rules.";
+  "On Practical AI, here is an engineer at comma on why their open-source stack learned to drive from thousands of dashcams, not from hand-written rules.";
 
 const TAPE_SOURCE: TapeSource = {
   kind: "tape",

@@ -137,6 +137,7 @@ function spineOf(beats: Beat[]): Spine {
   return {
     subject: "The real arc of an engineering career",
     angle: "identity shifts, not a technical ladder",
+    overview: "We look at what happens when the thing you built meets the world that has to run it, told by the people who were there.",
     duration: "short",
     generatedAt: "2026-09-12T00:00:00.000Z",
     voice: { style: "warm", register: "plain", sentenceRhythm: "varied", narratorPresence: "light" },

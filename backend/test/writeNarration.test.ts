@@ -35,6 +35,8 @@ import type { NarrationVerifierBuilder } from "../src/generation/NarrationVerifi
 import type { EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
 import {
   disclosureTemplate,
+  preludeTemplate,
+  PRELUDE_BOILERPLATE,
   hasDeclarativeSentence,
   normalizeForQuoteMatch,
   purposeWasRevised,
@@ -609,12 +611,51 @@ describe("writeNarration — contested claims say so explicitly", () => {
 });
 
 describe("disclosureTemplate / disclosureNarratedBeat — the mandatory first item", () => {
-  it("renders correctly with a real subject substituted", () => {
+  it("renders correctly with a real subject substituted, and names invention as well as error", () => {
+    /* MUTATION THAT KILLS THIS: drop the "invents things that were never
+       said" clause. Wyatt asked for "risk of fake content" in so many words,
+       and "AI gets things wrong" is heard as a mistake, not as invention. */
     const text = disclosureTemplate("the history of grilling");
     expect(text).toBe(
       "This is a Foray about the history of grilling. Much of what you'll hear is written by AI. " +
-        "We work hard to get the facts right, but AI gets things wrong — so take it as a starting point, not a source."
+        "We work hard to get the facts right, but AI gets things wrong — and sometimes it invents things that were never said — " +
+        "so take it as a starting point, not a source."
     );
+  });
+
+  it("the boilerplate is a constant, identical in every Foray, and only the subject moves", () => {
+    /* MUTATION THAT KILLS THIS: interpolate anything else into
+       PRELUDE_BOILERPLATE, or let a caller pass it in. Wyatt: "Most of that
+       text can likely be boilerplate that's used in every foray" — the
+       listener hears it dozens of times, and a version that varies is a
+       version somebody will eventually let the model write. */
+    const a = disclosureTemplate("grilling");
+    const b = disclosureTemplate("marine navigation");
+    expect(a.endsWith(PRELUDE_BOILERPLATE)).toBe(true);
+    expect(b.endsWith(PRELUDE_BOILERPLATE)).toBe(true);
+    expect(a.slice(0, a.length - PRELUDE_BOILERPLATE.length)).toBe("This is a Foray about grilling. ");
+    /* Short: it plays before every Foray. Three sentences, not a page. */
+    expect(PRELUDE_BOILERPLATE.split(/(?<=\.)\s+/).length).toBeLessThanOrEqual(3);
+    expect(PRELUDE_BOILERPLATE.length).toBeLessThan(260);
+  });
+
+  it("the prelude is the boilerplate and then this Foray's own overview, in one item", () => {
+    /* Q-07. MUTATION THAT KILLS THIS: return the boilerplate alone from
+       `preludeTemplate`, or emit the overview as a second item. The founder
+       asked for one thing the listener hears first; two narration items
+       would be two pauses and two renders for one thought. */
+    const overview = "We follow one bolt from a drawing board to a walkway that fell, and the people who signed it off.";
+    const text = preludeTemplate("engineering failure", overview);
+    expect(text.startsWith(disclosureTemplate("engineering failure"))).toBe(true);
+    expect(text.endsWith(overview)).toBe(true);
+  });
+
+  it("refuses an empty overview rather than shipping boilerplate on its own", () => {
+    /* MUTATION THAT KILLS THIS: default the overview to "". A prelude that
+       is boilerplate and nothing else tells the listener what EVERY Foray
+       would have told them — which is exactly the half a template cannot
+       supply, and the half Wyatt asked for. */
+    expect(() => preludeTemplate("grilling", "   ")).toThrow();
   });
 
   it("round-trips through check-forays.mjs's own DISCLOSURE_RX", () => {

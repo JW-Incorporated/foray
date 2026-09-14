@@ -240,7 +240,7 @@ describe("F-86 — the spine is re-asked once with the structural violations nam
        model. Ran it — red. */
     const { sink, guard } = guardAndSink();
     const previous = await new StubSpineBuilder(guard).buildSpine(intent, researchShape, "short", ctx);
-    const validRawSpine = { voice: previous.voice, acts: previous.acts };
+    const validRawSpine = { overview: previous.overview, voice: previous.voice, acts: previous.acts };
     const { client, create } = makeFakeAnthropicClient([textBlock(JSON.stringify(validRawSpine))]);
     const violation =
       'act 2 ("The Anatomy of a Defensible Shortcut"), slot "Specs are guesses about the future": beat claim is 2 sentences, must be one — "The epoxy that held the Big Dig\'s ceiling panels wasn\'t chosen recklessly; it passed the tests it was given. The failure"';

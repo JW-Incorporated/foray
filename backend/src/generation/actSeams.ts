@@ -351,6 +351,30 @@ const TITLE_STOPWORDS = new Set([
 ]);
 
 /**
+ * Q-09's structural verification: the script says the SHOW's name, as a
+ * whole phrase, on the canonical form both sides are put through.
+ *
+ * Wyatt, 2026-09-13: "we should try to introduce any podcast with a brief
+ * mention of what podcast it is". This is the half of `introNamesSource`
+ * that is specifically about the show, split out because the two questions
+ * now have different answers: naming the show is REQUIRED the first time
+ * this Foray plays a clip from it (`ClipBrief.showFirstHeard`) and never
+ * required again, while naming SOMEONE is what a full introduction owes
+ * whenever the episode changes.
+ *
+ * A show with no name on record (no catalogue or registry row — the
+ * dry-run stub's tape, a tier-2 item whose row was not minted) can never
+ * satisfy this, so the caller waives it rather than failing three times;
+ * see `writeAct.ts`'s `nameable`.
+ */
+export function introNamesShow(script: string, clip: { show: string }): boolean {
+  const canonScript = ` ${canonicalizeForAnchorMatch(script)} `;
+  if (canonScript.trim().length === 0) return false;
+  const show = canonicalizeForAnchorMatch(clip.show ?? "");
+  return show.length >= 3 && canonScript.includes(` ${show} `);
+}
+
+/**
  * Q-02's structural verification of a full Intro: the script names the
  * show (the source row's `show`, as a whole phrase) or someone the episode
  * title names (a capitalised title token of four letters or more, outside
@@ -359,10 +383,9 @@ const TITLE_STOPWORDS = new Set([
  * source row actually carries.
  */
 export function introNamesSource(script: string, clip: { show: string; title: string }): boolean {
+  if (introNamesShow(script, clip)) return true;
   const canonScript = ` ${canonicalizeForAnchorMatch(script)} `;
   if (canonScript.trim().length === 0) return false;
-  const show = canonicalizeForAnchorMatch(clip.show);
-  if (show.length >= 3 && canonScript.includes(` ${show} `)) return true;
   for (const token of String(clip.title ?? "").split(/\s+/)) {
     const bare = token.replace(/^[^A-Za-z]+/, "").replace(/[^A-Za-z]+$/, "");
     if (!/^[A-Z][A-Za-z'’-]{3,}$/.test(bare)) continue;

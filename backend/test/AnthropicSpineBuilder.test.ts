@@ -42,6 +42,7 @@ describe("AnthropicSpineBuilder", () => {
   };
 
   const validRawSpine = {
+    overview: "We look at what happens when the thing you built meets the world that has to run it, told by the people who were there.",
     voice: { style: "s", register: "r", sentenceRhythm: "sr", narratorPresence: "np" },
     acts: [
       {
@@ -183,6 +184,7 @@ describe("AnthropicSpineBuilder — WS-L: the spine prompt sees the tape (F-63)"
     subtopics: shapeWithWindows.subtopics.map((s) => ({ ...s, tapeWindows: [], windowsUnavailable: "no transcript text index" }))
   };
   const rawSpine = {
+    overview: "We look at what happens when the thing you built meets the world that has to run it, told by the people who were there.",
     voice: { style: "s", register: "r", sentenceRhythm: "sr", narratorPresence: "np" },
     acts: [
       {

@@ -55,6 +55,16 @@ export const STUB_TWO_SENTENCE_CLAIM =
  * exploration marking, single spine-level voice) can be tested and used
  * without API spend, exactly like every other stage's dry-run path.
  */
+/** Q-07: the stub's overview — what this Foray covers, from the act titles
+ * the stub just wrote. Exported so a test can name the mutation that empties
+ * it (the spine schema then refuses the spine, which is the point: an
+ * overview is not optional). */
+export function stubOverview(subject: string, acts: ReadonlyArray<{ title: string; thesis: string }>): string {
+  const strands = acts.map((act) => act.title.replace(/^Act \d+:\s*/, "").trim()).filter((t) => t.length > 0);
+  const list = strands.length > 1 ? `${strands.slice(0, -1).join(", ")} and ${strands[strands.length - 1]}` : (strands[0] ?? subject);
+  return `Over the next hour we look at ${subject} from a few directions: ${list}. Along the way you'll hear from the people who do this work, in their own words.`;
+}
+
 export class StubSpineBuilder implements SpineBuilder {
   readonly providerName = "stub";
   /** F-86: every re-ask this builder was handed, in order — a test's only
@@ -183,9 +193,16 @@ export class StubSpineBuilder implements SpineBuilder {
       }
 
       acts.push({
+        /* Q-08: the act TITLE keeps its "Act N:" prefix — a title is
+           production metadata and is never spoken — but the thesis and the
+           states are interpolated into `StubDeepenActBuilder`'s spoken
+           introduction and exit, so they must not name the running order.
+           Before this they read "Act 1 establishes..." and "has just finished
+           act 1", which reached the listener verbatim through the dry-run
+           path. */
         title: `Act ${a + 1}: ${actTitleFor(intent.subject, a, seed)}`,
-        thesis: `Act ${a + 1} establishes ${actTitleFor(intent.subject, a, seed).toLowerCase()} as it relates to ${intent.subject}.`,
-        startState: a === 0 ? intent.priorKnowledge : `The listener has just finished act ${a}.`,
+        thesis: `the story turns on ${actTitleFor(intent.subject, a, seed).toLowerCase()} as it relates to ${intent.subject}.`,
+        startState: a === 0 ? intent.priorKnowledge : `The listener has just heard about ${actTitleFor(intent.subject, a - 1, seed).toLowerCase()}.`,
         endState: `The listener now understands ${actTitleFor(intent.subject, a, seed).toLowerCase()} and how it changes their view of ${intent.subject}.`,
         slots: actSlots
       });
@@ -194,6 +211,12 @@ export class StubSpineBuilder implements SpineBuilder {
     const spine: Spine = {
       subject: intent.subject,
       angle: intent.angle,
+      /* Q-07: the prelude's second half, deterministically — the acts this
+         spine just built, named in prose, so a dry-run candidate carries a
+         real overview and `check-forays.mjs`'s prelude gate runs for real
+         rather than being dead code without an API key. Never says how many
+         acts there are: Q-08 applies to the prelude like any other line. */
+      overview: stubOverview(intent.subject, acts),
       duration,
       generatedAt: new Date().toISOString(),
       voice: stubVoice(intent),

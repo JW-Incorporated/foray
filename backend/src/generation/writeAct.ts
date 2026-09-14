@@ -1,4 +1,6 @@
+import { canonicalizeForAnchorMatch } from "../types/anchorText";
 import { BANNED } from "../copy/rules";
+import { narratorStructureLeaks } from "../copy/narratorStructure";
 import { decodeEntities } from "../feeds/html";
 import type { SourcedAct } from "../types/tapeSourcing";
 import type { Voice } from "../types/spine";
@@ -35,6 +37,7 @@ import {
   clipDurationSec,
   clipOpening,
   decideIntro,
+  introNamesShow,
   introNamesSource,
   introRestatesClip,
   planActSeams,
@@ -195,6 +198,18 @@ export interface WriteActOptions {
   segmentSources?: ReadonlyArray<{ id: string; show: string; title: string }>;
   /** F-97: F-88's ground — the verified pages of the acts already landed. */
   ground?: ReadonlyArray<GroundPageBrief>;
+  /**
+   * Q-09: the shows this Foray has ALREADY named, from the acts before this
+   * one. Foray-wide, like `ground` and for the same reason — the listener's
+   * memory does not reset at an act boundary, and a show introduced in act 1
+   * does not need introducing again in act 3.
+   *
+   * Omitted means "none yet", which is what act 1 passes and what every
+   * caller that does not care passes. `writeActNarration` returns the set as
+   * it stands after this act (`showsNamed` on the result of
+   * `clipBriefsFor`), and `runPipeline` carries it forward.
+   */
+  showsIntroduced?: ReadonlyArray<string>;
 }
 
 interface ClipState {
@@ -263,6 +278,31 @@ interface ActSource {
   pageId?: string;
 }
 
+/**
+ * Q-09: the key a show is remembered by — the same canonicalisation the
+ * Intro's own naming check uses (`introNamesShow` through
+ * `canonicalizeForAnchorMatch`), so "Practical AI" and "practical ai" are
+ * one show and the set cannot disagree with the checker about whether the
+ * name was said.
+ */
+export function canonicalShowKey(show: string): string {
+  return canonicalizeForAnchorMatch(show ?? "").trim();
+}
+
+/**
+ * Q-09: whether this clip is the first from its show, recording that the
+ * show has now been heard. A clip whose show is not on record (no
+ * catalogue or registry row) is `true` — the stricter answer — and the
+ * naming rule is waived for it separately, on `nameable`.
+ */
+function noteShowHeard(heard: Set<string>, show: string): boolean {
+  const key = canonicalShowKey(show);
+  if (key.length === 0) return true;
+  if (heard.has(key)) return false;
+  heard.add(key);
+  return true;
+}
+
 export async function writeActNarration(act: SourcedAct, options: WriteActOptions, voice: Voice, ctx: NarrationBuildContext): Promise<WrittenAct> {
   const { writer, verifier, evidence, stats } = options;
   if (!writer.writeAct || !verifier.verifyAct) {
@@ -295,6 +335,9 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
   const seamPlans = planActSeams(act);
   const clips: ClipState[] = [];
   let previousClip: SeamClip | undefined;
+  /* Q-09: every show this Foray has already named, canonicalised. Seeded from
+     the acts before this one and added to as this act's clips are laid out. */
+  const showsHeard = new Set<string>((options.showsIntroduced ?? []).map((show) => canonicalShowKey(show)).filter((k) => k.length > 0));
   for (const plan of seamPlans) {
     if (!plan.introduces) continue;
     const clip = plan.introduces;
@@ -317,6 +360,11 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
         opening,
         durationSec: clipDurationSec(clip.tape),
         intro: decideIntro(clip.tape, previousClip?.tape, opening),
+        /* Q-09: is this the first time the listener meets this show? Keyed on
+           the show's canonical name, not the episode id — two episodes of one
+           show are one show. The set carries across acts (`showsIntroduced`),
+           because a listener does not forget a name at an act boundary. */
+        showFirstHeard: noteShowHeard(showsHeard, titles.show),
         /* F-99: every beat this one clip carries — its own, and any beat
            §4.5 merged into it. Printed on the CLIP line so the writer
            knows what the tape already says and the verifier judges both
@@ -842,6 +890,17 @@ function validateSeam(
     actSourceQuotes: actScope.actSourceQuotes
   });
   const issues = structural.issues.map((i) => i.message);
+  /* Q-08: the narrator never mentions the Foray's own structure. Asked in
+     CODE, before the verifier, so a structural aside is a re-ask of one seam
+     rather than a Foray that fails at the publish gate with nothing left to
+     retry. Same rule, one definition (`copy/narratorStructure.js`), and the
+     same rule §4.4's act introductions and §4.8's smoothed ones face. */
+  for (const leak of narratorStructureLeaks(script)) {
+    issues.push(
+      `the script says "${leak.phrase}", which ${leak.why} — never mention this Foray's own acts, beats or segments (Q-08). ` +
+        'A structural word is fine when it belongs to something else ("the first act of Macbeth"); say what changed, not where the listener is.'
+    );
+  }
   for (const source of sources) {
     if (looksLikeSlug(source.publication)) {
       issues.push(`publication "${source.publication}" is a tape item id, not a publication — cite the real work the quote comes from, or drop the claim`);
@@ -859,7 +918,22 @@ function validateSeam(
        whose row was not minted) is introduced from what the tape itself
        says, and the rule is waived rather than failed three times. */
     const nameable = clip.brief.show.trim().length > 0 || clip.brief.title.trim().length > 0;
-    if (seam.intro === "full" && nameable && !introNamesSource(script, clip.brief)) {
+    /* Q-09 — THE FIRST CLIP FROM A SHOW SAYS THE SHOW'S NAME. Wyatt,
+       2026-09-13: "we should try to introduce any podcast with a brief mention
+       of what podcast it is, for example 'here's a clip from XYZ emphasizing
+       this point'". `showFirstHeard` is what "try to" resolves to: the show is
+       named the first time this Foray plays it and never required again, so a
+       sixty-minute Foray does not say "on Practical AI" nine times. A later
+       clip from the same show still owes a full introduction when the EPISODE
+       is new (Q-02's weight, unchanged) — it just owes a NAME, not the show's
+       name, and `introNamesSource` accepts either. */
+    const showNamed = clip.brief.show.trim().length > 0;
+    const firstFromShow = clip.brief.showFirstHeard !== false;
+    if (seam.intro === "full" && showNamed && firstFromShow && !introNamesShow(script, clip.brief)) {
+      issues.push(
+        `this is the first clip this Foray plays from "${clip.brief.show}" and the introduction before clip ${clip.brief.clipId} never says its name — tell the listener whose voice this is, in your own words (Q-09)`
+      );
+    } else if (seam.intro === "full" && nameable && !introNamesSource(script, clip.brief)) {
       issues.push(
         `the introduction before clip ${clip.brief.clipId} names neither the show ("${clip.brief.show}") nor anyone the episode title names ("${clip.brief.title}") — say who is speaking and on which show (Q-02)`
       );

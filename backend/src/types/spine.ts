@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { narratorStructureLeaks } from "../copy/narratorStructure";
 
 /**
  * §4.3 spine types (docs/curation/generation-architecture.md §4.3).
@@ -199,6 +200,26 @@ export const SpineSchema = z
   .object({
     subject: z.string().trim().min(1),
     angle: z.string().trim().min(1),
+    /**
+     * Q-07: THE SECOND HALF OF THE PRELUDE — a few sentences telling the
+     * listener what this Foray covers, before the first clip.
+     *
+     * Wyatt, 2026-09-13: "Then give a brief overview of what's to be covered
+     * in this foray to give the listener some context."
+     *
+     * IT LIVES ON THE SPINE because the spine is the only document that
+     * knows the whole Foray at once, and it is written in the SAME call that
+     * writes the acts — one more field on a reply the run already pays for,
+     * rather than a tenth stage and a tenth API call for four sentences. It
+     * is therefore frozen with the spine (§6.1: the spine never reorders),
+     * checkpointed with it, and identical across a resumed run.
+     *
+     * It is prose the listener HEARS, so it faces the spoken-line rules like
+     * any other narration — including Q-08's: an overview that says "this
+     * Foray has four acts" is exactly what the founder banned in the same
+     * breath as asking for it.
+     */
+    overview: z.string().trim().min(1),
     duration: DurationTierSchema,
     generatedAt: z.string(),
     voice: VoiceSchema,
@@ -238,7 +259,7 @@ export const DeepenedActSchema = ActSchema.extend({
 export type DeepenedAct = z.infer<typeof DeepenedActSchema>;
 
 export interface DeepenedActValidationIssue {
-  code: "beat-not-claim-shaped" | "introduction-missing" | "exit-missing" | "slot-count-changed";
+  code: "beat-not-claim-shaped" | "introduction-missing" | "exit-missing" | "slot-count-changed" | "structure-self-reference";
   message: string;
 }
 
@@ -279,6 +300,36 @@ export function validateDeepenedAct(original: Act, deepened: DeepenedAct): Deepe
   }
   if (deepened.exit.trim().length === 0) {
     issues.push({ code: "exit-missing", message: "Deepened act has no exit" });
+  }
+
+  /* Q-08 — THE NARRATOR NEVER MENTIONS THE FORAY'S OWN STRUCTURE. Wyatt,
+     2026-09-13: "the narrator should never mention acts or beats in the
+     context of the foray formatting (for example, saying 'this foray has 3
+     acts' is NOK but mentioning 'in the first act of Macbeth' is fine if it's
+     relevant)."
+
+     ASKED HERE BECAUSE HERE IS WHERE IT HAPPENS. Measured on the four
+     generated Forays on `main` (2026-09-13): 25 violations across 157
+     narration items, and every single one of them is an act INTRODUCTION or
+     EXIT — "Act one opens with", "Every fault this act named", "The next
+     act", "four acts". Those two strings are written here, by §4.4, and
+     nowhere else; a rule enforced only at the seam writer or only at the
+     publish gate would have caught none of them. `deepenActs.ts` retries an
+     act whose validation fails, so a violation costs a re-ask rather than a
+     Foray. */
+  for (const [field, text] of [
+    ["introduction", deepened.introduction],
+    ["exit", deepened.exit]
+  ] as const) {
+    for (const leak of narratorStructureLeaks(text)) {
+      issues.push({
+        code: "structure-self-reference",
+        message:
+          `The act's ${field} says "${leak.phrase}", which ${leak.why} — the narrator never mentions this Foray's own acts, ` +
+          'beats or segments. A structural word is fine when it belongs to something else ("the first act of Macbeth"); ' +
+          "say what changed, not where the listener is in the running order."
+      });
+    }
   }
 
   return { valid: issues.length === 0, issues };

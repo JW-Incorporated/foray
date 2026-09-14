@@ -260,9 +260,11 @@ const ACT_CLAIM_RULES = [
 const ACT_PROSE_RULES = [
   "One voice, one story. The beats are the checklist the prose must carry, not its template: make each beat's point where it belongs, in your own words, joined to what comes before and after it. A beat may be carried in any seam, and by what a clip itself says.",
   "Never announce a beat, never list the beats, never say what the next clip is going to say.",
+  "NEVER MENTION THIS FORAY'S OWN STRUCTURE (Q-08). No \"this act\", no \"the next beat\", no \"in this segment\", no \"part one of three\", no \"this Foray has three acts\", no \"this documentary\" - the listener cannot see a running order and does not need one. Say what changed, not where they are. The same words are FINE when they belong to something else: \"in the first act of Macbeth\", \"the second act of the crisis\", \"his first act as chairman\". A machine checks this after you answer and sends the seam back.",
   "A seam that follows a clip may restate what that clip said once, in the act's own words — then move on.",
   "Introductions, by the weight given on the SEAM line:",
   "  full  — one or two sentences: who is speaking (name and role, as the tape or the episode title gives them) and on which show, and what to listen for. Write it from the clip's OPENING as printed on its CLIP line — what the listener is about to hear — never from the point the clip goes on to make. Do not repeat the clip's first sentences.",
+  "The FIRST clip from a show says the show's name (Q-09) — its CLIP line says when that is: \"first clip from this show\". Say it however the sentence wants it; there is no formula, and the same sentence twice in one Foray is worse than not saying it at all. When the line says the show has already been introduced, do NOT name it again: refer back lightly (\"back with the same guest\", \"the engineer from earlier\") or say nothing about the show at all.",
   "  light — the same guest and show as the clip before: one clause at most, or nothing.",
   "  none  — the host introduces the guest in the clip itself: add nothing about who is speaking.",
   "A seam with no beats and a light or none introduction may return an empty script: the clips then run together.",
@@ -363,7 +365,15 @@ function actLayout(seams: SeamBrief[], clips: Map<string, ClipBrief>): string {
         lines.push(
           `CLIP ${clip.clipId} — "${clip.title}" on ${clip.show || "an unnamed show"}, ${Math.round(clip.durationSec)} s of tape` +
             (clip.docId ? ` (document ${clip.docId})` : " (no transcript window is held)") +
-            (carried.length > 1 ? ` — carries beats ${carried.map((b) => b.beatId).join(", ")}` : "")
+            (carried.length > 1 ? ` — carries beats ${carried.map((b) => b.beatId).join(", ")}` : "") +
+            /* Q-09: said on the CLIP line, in the imperative, because the
+               general rule above is not what a writer reads when it is
+               looking at one clip. */
+            (clip.show
+              ? clip.showFirstHeard === false
+                ? ` — ${clip.show} has already been introduced in this Foray: do not name it again`
+                : " — FIRST CLIP FROM THIS SHOW: say its name"
+              : "")
         );
         if (carried.length > 1) for (const beat of carried) lines.push(`  it carries beat ${beat.beatId}: ${beat.claim}`);
         lines.push(clip.opening ? `  it opens: ${JSON.stringify(clip.opening)}` : "  its opening is not held — introduce it from the show and episode only");

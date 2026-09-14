@@ -1,6 +1,6 @@
 # Deck: listening quality — the Foray has to sound like a story, not a checklist
 
-**Status:** **Q-01..Q-05 landed 2026-09-12** (#646, #647, #650, #651 — per-card markers
+**Status:** **Q-01..Q-05 landed 2026-09-12; Q-07..Q-09 landed 2026-09-13** (#646, #647, #650, #651 — per-card markers
 below). **Q-06, the listening test, is open and is Wyatt's.** Written 2026-09-12 by the
 founder's Claude session from Wyatt's listening notes below; the deck had **one commit in
 its entire history** (#645, the day it was written) while four PRs landed five of its six
@@ -199,6 +199,120 @@ and narration ≤ 25 % of runtime with ≤ 1 page per seam. `report.json` alread
 carries the inputs; add the two derived fields and the G-42 harness columns.
 **Owned.** roadmap §1.2, `veracityMetrics.ts`, `generateForays.ts` report.
 **Dependencies.** none. **Human gate.** D0 (Wyatt confirms the numbers).
+
+### Q-07 · Every Foray opens with a prelude — **H · M — overlord (backend)** — **DONE** (#705, 2026-09-13)
+**Ask.** Wyatt, 2026-09-13, verbatim: "we should add a prelude to each foray
+that we generate. It should briefly mention that this is AI generated and
+there's risk of fake content but we try hard to avoid that. Most of that text
+can likely be boilerplate that's used in every foray. Then give a brief
+overview of what's to be covered in this foray to give the listener some
+context."
+
+**What was already there, measured before writing anything.** Part one EXISTS
+and has since PR #391: `disclosureTemplate` is the boilerplate, it is already
+`items[0]` of every generated Foray, `check-forays.mjs` already refuses to
+publish without it, and a round-trip test pins the two together. Exactly two
+things were missing. The boilerplate said "AI gets things wrong", which a
+listener hears as a mistake rather than as invention — so one clause naming
+invention was added, which is strictly MORE disclosure than legal signed off
+on, never less. And there was no overview at all.
+
+**Shipped.** One item, not two — the founder described one thing the listener
+hears first, and two adjacent narration items are two pauses and two renders
+for one thought. `preludeTemplate(subject, overview)` in `types/narration.ts`
+is the single producer; `PRELUDE_BOILERPLATE` is a named constant the model
+never sees, concatenated in code, so it cannot be rewritten per Foray. The
+overview is a new REQUIRED field on `SpineSchema`, written by the model in
+the same call that writes the acts — one more field on a reply the run
+already pays for, rather than a tenth stage for four sentences — and so it is
+frozen with the spine, checkpointed with it and identical across a resumed
+run. `CHECKPOINT_VERSION` 2 → 3, no shim.
+
+**Where it is minted, and why not the stitcher.** `runPipeline.ts`'s
+`preludeItem`, where the disclosure was already minted. The stitcher looks
+like the natural home and the code disagrees, for the reason its own doc
+comment gives: it "assembles what the acts contain, and the disclosure is not
+part of any act". More concretely, `ForayStitcher` runs one act at a time
+(F-66) so act 1 can reach a listener while act 4 is still being written, and
+`items[0]` has to exist on the first partial candidate as well as on the
+finished Foray. The orchestrator is the one place that prepends it on both
+paths. `runtimeSecFor` needed no change: it already charges every narration
+item its script at `NARRATION_CHARS_PER_SEC`.
+**Done when.** `check-forays.mjs` fails a generated Foray with no prelude, and
+fails one whose prelude is boilerplate with no overview after it. Both cases
+are tested; the four Forays that predate the rule are named once in
+`FORAYS_PREDATING_THE_NARRATOR_RULES` because their scripts are already
+voiced.
+
+### Q-08 · The narrator never mentions the Foray's own structure — **H · M — overlord (backend)** — **DONE** (#705, 2026-09-13)
+**Ask.** Wyatt, 2026-09-13, verbatim: "the narrator should never mention acts
+or beats in the context of the foray formatting (for example, saying 'this
+foray has 3 acts' is NOK but mentioning 'in the first act of Macbeth' is fine
+if it's relevant)."
+
+**The measurement that decided the design.** On `main`, 2026-09-13, before
+any of this: the four generated Forays break the rule **25 times across 157
+narration items** — "Act one opens with", "Every fault this act named", "The
+next act", "four acts", "this documentary", "this Foray leaves you with". And
+every single one of those 25 is an act INTRODUCTION or EXIT, written by §4.4's
+`deepenActs` or replaced by §4.8's continuity agent — not one is a seam. A
+rule enforced only at the seam writer, or only at the publish gate, would have
+caught none of them.
+
+**The rule.** `backend/src/copy/narratorStructure.js` (plain JS beside
+`copy/rules.js`, for that file's own reason: three consumers, no shared build
+step). A structural noun — act, beat, segment, part, chapter, section — must be
+ANCHORED to something outside this Foray, by an "of" phrase after it ("the
+first act OF MACBETH") or a possessive before it ("MACBETH'S first act").
+Unanchored, it can only mean the thing playing. Two holes in the "of" anchor,
+because both are the banned shape in an anchor's clothes: "part one OF THREE"
+counts the Foray's own pieces, and "the first act OF THIS FORAY" is the
+self-reference spelled out.
+
+**Where it is enforced — four places, because the prose has four producers.**
+`validateDeepenedAct` (act introductions and exits, where the 25 were),
+`validateSmoothedSeam` (the one stage that REPLACES an already-validated
+introduction), `writeAct.ts`'s `validateSeam` (act prose, in code, so a
+violation costs one re-ask rather than a Foray), and `check-forays.mjs` as the
+ship gate. Plus the three prompts.
+
+**Where it is imprecise, stated in the module.** It WRONGLY FLAGS a structural
+noun whose external referent was named an earlier sentence ago ("Macbeth opens
+in a storm. The second act is where it turns."), "the next part" meaning the
+next stage of a process, "three parts hydrogen", and "the police beat". It
+WRONGLY PASSES every self-reference that avoids those nouns — "coming up", "in
+a moment", "before the break", "the second half".
+
+**It caught the stubs.** `StubDeepenActBuilder` and `StubContinuityBuilder`
+both spoke the running order ("the last act", "the next act", "this Foray",
+and act TITLES, which are production metadata reading "Act 2: ..."), so the
+one path a developer can run without an API key was the one path that
+reliably produced the banned prose. Both now speak from the subject and the
+act's own strand instead.
+
+### Q-09 · A clip introduction names the podcast it came from — **M · S — overlord (backend)** — **DONE** (#705, 2026-09-13)
+**Ask.** Wyatt, 2026-09-13, verbatim: "we should try to introduce any podcast
+with a brief mention of what podcast it is, for example 'here's a clip from
+XYZ emphasizing this point'". This extends Q-02, which already put a light
+introduction before every clip.
+
+**What was already there.** `introNamesSource` already required a full Intro
+to name the show OR someone the episode title names, and `decideIntro` already
+gave `full` whenever the EPISODE changed. So the show was already named on
+every new episode — including the second, third and ninth episode of the same
+show, which is exactly the grating repetition "try to" is hedging against.
+
+**The rule chosen.** The show is named the FIRST time this Foray plays a clip
+from it, and never required again. `ClipBrief.showFirstHeard`, computed from a
+Foray-wide set of shows already named (`WriteActOptions.showsIntroduced`,
+carried across acts like F-88's ground, because a listener does not forget a
+name at an act boundary). A later clip from the same show still gets a full
+introduction when the episode is new — Q-02's weight is unchanged — but it
+owes a NAME, not the show's name, and may refer back lightly instead. The CLIP
+line says which case it is, in the imperative, because the general rule is not
+what a writer reads when it is looking at one clip. No template: the prompt
+says to say it however the sentence wants it, and that the same sentence twice
+is worse than not saying it.
 
 ### Q-06 · The acceptance test is a listening test — **founder gate**
 **Ask.** After Q-01–Q-03 land, regenerate the run-8 prompt (the best-supplied

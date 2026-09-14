@@ -931,13 +931,50 @@ export function tapeWindowHolding(
  * by `backend/test/disclosureTemplate.test.ts`'s round-trip against that
  * validator, not merely asserted in prose here).
  */
+export const PRELUDE_BOILERPLATE =
+  "Much of what you'll hear is written by AI. We work hard to get the facts right, but AI gets things wrong — " +
+  "and sometimes it invents things that were never said — so take it as a starting point, not a source.";
+
 export function disclosureTemplate(subject: string): string {
   const trimmedSubject = subject.trim();
   if (!trimmedSubject) throw new Error("disclosureTemplate: subject must not be empty");
-  return (
-    `This is a Foray about ${trimmedSubject}. Much of what you'll hear is written by AI. ` +
-    "We work hard to get the facts right, but AI gets things wrong — so take it as a starting point, not a source."
-  );
+  return `This is a Foray about ${trimmedSubject}. ${PRELUDE_BOILERPLATE}`;
+}
+
+/**
+ * Q-07 — THE PRELUDE. The first thing the listener hears: the boilerplate
+ * above, then a few sentences about what this Foray covers.
+ *
+ * Wyatt, 2026-09-13: "we should add a prelude to each foray that we
+ * generate. It should briefly mention that this is AI generated and there's
+ * risk of fake content but we try hard to avoid that. Most of that text can
+ * likely be boilerplate that's used in every foray. Then give a brief
+ * overview of what's to be covered in this foray to give the listener some
+ * context."
+ *
+ * WHAT WAS ALREADY HERE, measured before writing any of this: part one
+ * EXISTS and has since PR #391 — `disclosureTemplate` is the boilerplate,
+ * it is already `items[0]` of every generated Foray, and `check-forays.mjs`
+ * already refuses to publish without it. Two things were missing, and only
+ * two: the boilerplate said "AI gets things wrong", which a listener hears
+ * as a mistake, not as invention — so the clause about inventing things is
+ * added, which is strictly MORE disclosure than legal signed off on, never
+ * less — and there was no overview at all.
+ *
+ * IT IS ONE ITEM, not two, because the founder described one thing the
+ * listener hears first and because two adjacent narration items would be two
+ * pauses and two TTS renders for one thought.
+ *
+ * THE BOILERPLATE IS A CONSTANT AND THE MODEL NEVER SEES IT. It plays before
+ * every single Foray and a listener will hear it dozens of times; it is the
+ * same every time BY DESIGN, so it is written once, here, and concatenated
+ * in code. `PRELUDE_RX` in `check-forays.mjs` matches it verbatim, pinned by
+ * `backend/test/disclosureTemplate.test.ts`'s round trip.
+ */
+export function preludeTemplate(subject: string, overview: string): string {
+  const trimmedOverview = overview.trim();
+  if (!trimmedOverview) throw new Error("preludeTemplate: overview must not be empty");
+  return `${disclosureTemplate(subject)} ${trimmedOverview}`;
 }
 
 /** The disclosure as a full narration beat, ready to prepend as

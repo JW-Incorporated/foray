@@ -81,7 +81,7 @@ import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
  * mode budgets to) as `MODE_CHAR_BANDS`; a second copy of the six keys here
  * is exactly the kind of drift `copyRules` above exists to prevent — two
  * lists of "the modes" that could disagree about a seventh. */
-import { MODE_CHAR_BANDS } from "./check-narration.mjs";
+import { MODE_CHAR_BANDS, narratorStructureErrors } from "./check-narration.mjs";
 const NARRATION_MODES = new Set(Object.keys(MODE_CHAR_BANDS));
 
 const { BANNED, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
@@ -487,13 +487,91 @@ export function maxStartsInWindow(starts, windowSec = D1_WINDOW_SEC) {
  */
 const isGeneratedForay = (foray) => foray?.generated === true;
 
+/* THE FOUR GENERATED FORAYS THAT PREDATE THE 2026-09-13 NARRATOR RULES.
+ *
+ * Two rules landed that day, both from the founder, both about what the
+ * listener hears:
+ *
+ *   Q-07, the PRELUDE — "add a prelude to each foray that we generate...
+ *     Then give a brief overview of what's to be covered in this foray."
+ *     The boilerplate gained a clause naming invention, and an overview
+ *     after it became mandatory.
+ *   Q-08, NO STRUCTURAL SELF-REFERENCE — "the narrator should never mention
+ *     acts or beats in the context of the foray formatting (for example,
+ *     saying 'this foray has 3 acts' is NOK but mentioning 'in the first act
+ *     of Macbeth' is fine if it's relevant)." The rule is
+ *     `backend/src/copy/narratorStructure.js`, and it is an ERROR here, on
+ *     every generated Foray, because a generated line has no author to ask
+ *     what it meant — it has a retry loop, and by the time a script reaches
+ *     this file that loop is over.
+ *
+ * MEASURED ON `main` BEFORE EITHER LANDED (2026-09-13): these four break Q-08
+ * twenty-five times across 157 narration items — "Act one opens with", "Every
+ * fault this act named", "The next act", "four acts", "this documentary",
+ * "this Foray leaves you with" — and every single one of those is an act
+ * INTRODUCTION or EXIT (§4.4's `deepenActs`, §4.8's continuity), which is why
+ * the fix that matters is upstream of this gate and not in it. All four also
+ * carry the pre-Q-07 boilerplate and no overview.
+ *
+ * They cannot be rewritten from here: a script is VOICED, and editing the
+ * words on disk would leave them disagreeing with the audio a listener
+ * already has. So they are named once, with the date, rather than both gates
+ * being softened to warnings for everybody. The list is SELF-LIMITING —
+ * `finalizeForay` refuses an id that already exists, so a regenerated Foray
+ * gets a new id and faces both rules in full. Nothing may be added to it. */
+/* Written as an array and wrapped, not as an inline `new Set([...])`, and
+   the reason is worth a line: G-21c's literal scanner
+   (`fixture-coverage.test.mjs`) reads an inline set of string literals in
+   this file as a VOCABULARY — a set of shapes the checker accepts, which
+   must be enumerated in `ACCEPTED_SHAPES` and carried by a committed
+   fixture. These are not shapes. They are four Foray IDS, instances rather
+   than a vocabulary, and nothing about them belongs in `ACCEPTED_SHAPES`.
+   The scanner cannot tell the two apart from syntax alone; this spelling
+   keeps it from being told something false. */
+const FORAY_IDS_PREDATING_THE_NARRATOR_RULES = [
+  "beyond-the-algorithm-engineering-production-ai-s-e6533b",
+  "how-ai-actually-gets-built-3b83e1",
+  "the-chain-reaction-how-engineering-disasters-rea-25f1b7",
+  "what-engineers-actually-do-all-day-e08236"
+];
+const FORAYS_PREDATING_THE_NARRATOR_RULES = new Set(FORAY_IDS_PREDATING_THE_NARRATOR_RULES);
+
 /* §4.7's exact required template, verbatim, with the one variable slot
  * (`<subject>`) as a wildcard. Matched as a whole line so a generated Foray
  * cannot ship a paraphrase that drifts from what legal signed off on — "It
  * should be impossible to publish without it" is a statement about the exact
  * words, not the gist. */
 const DISCLOSURE_RX =
-  /^This is a Foray about .+\. Much of what you'll hear is written by AI\. We work hard to get the facts right, but AI gets things wrong — so take it as a starting point, not a source\.$/;
+  /^This is a Foray about .+\. Much of what you'll hear is written by AI\. We work hard to get the facts right, but AI gets things wrong — and sometimes it invents things that were never said — so take it as a starting point, not a source\./;
+
+/* Q-07 — THE PRELUDE: the boilerplate, then this Foray's own overview.
+ *
+ * Wyatt, 2026-09-13: "we should add a prelude to each foray that we generate.
+ * It should briefly mention that this is AI generated and there's risk of fake
+ * content but we try hard to avoid that. Most of that text can likely be
+ * boilerplate that's used in every foray. Then give a brief overview of what's
+ * to be covered in this foray to give the listener some context."
+ *
+ * `DISCLOSURE_RX` above is part one and is no longer anchored at the end: the
+ * boilerplate is now a PREFIX, matched verbatim so a generated Foray still
+ * cannot ship a paraphrase of the words legal signed off on ("It should be
+ * impossible to publish without it" is a statement about the exact words, not
+ * the gist). The one clause added to it — "and sometimes it invents things
+ * that were never said" — is strictly MORE disclosure than before, never
+ * less, and is the founder's "risk of fake content" said out loud: "AI gets
+ * things wrong" reads as a mistake, not as invention.
+ *
+ * `PRELUDE_OVERVIEW_MIN_CHARS` is what makes the second half real rather than
+ * a full stop. Deliberately low — this is a floor against an EMPTY overview,
+ * not a judgement about length, which is the writer's business and the
+ * spine's schema's (`overview: z.string().trim().min(1)`).
+ *
+ * Both halves are produced by `backend/src/types/narration.ts`'s
+ * `preludeTemplate`, which is the single producer of this string; the round
+ * trip between it and this regex is pinned by
+ * `backend/test/disclosureTemplate.test.ts`, not merely asserted in prose
+ * here. */
+const PRELUDE_OVERVIEW_MIN_CHARS = 60;
 
 const isPlainObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 /** Same predicate `player/foray-queue.js` uses to decide an asset is present, so
@@ -611,10 +689,26 @@ export function checkForays(files) {
      * able to hide behind `itemsOk` reporting a different failure first, and
      * this is cheap enough to always run before anything else touches
      * `foray.items`. */
-    if (isGeneratedForay(foray)) {
+    if (isGeneratedForay(foray) && !FORAYS_PREDATING_THE_NARRATOR_RULES.has(fid)) {
       const first = foray.items[0];
-      if (!isPlainObject(first) || first.type !== NARRATION || typeof first.script !== "string" || !DISCLOSURE_RX.test(first.script.trim())) {
-        E("items[0] is not the required disclosure — generation-architecture.md §4.7's exact template must be the first narration item's `script` in every generated Foray");
+      const script = isPlainObject(first) && first.type === NARRATION && typeof first.script === "string" ? first.script.trim() : null;
+      if (script === null || !DISCLOSURE_RX.test(script)) {
+        E(
+          "items[0] is not the required prelude — generation-architecture.md §4.7's exact boilerplate must OPEN the first narration item's `script` in every generated Foray (Q-07)"
+        );
+      } else {
+        /* Q-07 part two: the boilerplate is a prefix, and what follows it is
+         * this Foray's own overview. A prelude that is boilerplate and
+         * nothing else tells the listener what every Foray would have told
+         * them, which is the half the founder asked for and the half a
+         * template cannot supply. */
+        const overview = script.replace(DISCLOSURE_RX, "").trim();
+        if (overview.length < PRELUDE_OVERVIEW_MIN_CHARS) {
+          E(
+            `items[0] carries the prelude boilerplate but no overview after it (${overview.length} chars, floor ${PRELUDE_OVERVIEW_MIN_CHARS}) — ` +
+              "every generated Foray says what it covers before the first clip (Q-07)"
+          );
+        }
       }
     }
 
@@ -742,6 +836,13 @@ export function checkForays(files) {
           );
           itemsOk = false;
           continue;
+        }
+        /* Q-08: the narrator never mentions the Foray's own structure. Read off
+         * the SCRIPT, on a generated Foray only — an admin-authored bridge has
+         * an author who can be asked what "the next part" meant, and
+         * `check-narration.mjs` warns on that side for exactly that reason. */
+        if (isGeneratedForay(foray) && hasScript && !FORAYS_PREDATING_THE_NARRATOR_RULES.has(fid)) {
+          for (const problem of narratorStructureErrors(item.script, where)) E(problem);
         }
         /* K-02: an item that CLAIMS to be phonemized must be. Inert on every
          * item in `data/forays.json` today (none carries a `tts` block), which
