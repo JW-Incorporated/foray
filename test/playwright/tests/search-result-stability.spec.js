@@ -166,7 +166,23 @@ test("a row that has been painted never moves again, however late the next pass 
 
   await page.click("#sh-input");
   await page.fill("#sh-input", "science");
-  await page.click("#sh-form button[type=submit]");
+  /* SUBMIT FROM THE KEYBOARD, NOT FROM A BUTTON.
+     This line clicked `#sh-form button[type=submit]` — the "Go" pill — until
+     2026-09-14, when #696 deleted it at the founder's request ("since the
+     search results are live, the go button is useless"). #692 added this test
+     and #696 removed the control it clicked; each PR was green on its own
+     branch and `main` went red the moment both were in, because `page.click`
+     waits for an element that no longer exists and times out at 180 s.
+
+     Enter is not a substitute for the deleted button, it is the path that
+     always mattered: it is how a phone keyboard dismisses, and it is the
+     reason #696 kept the form's submit handler when it deleted the control.
+     A test that drives the real submit path cannot be invalidated by a
+     change of chrome again.
+
+     MUTATION: restore `page.click("#sh-form button[type=submit]")`. It fails
+     with a 180 s timeout, which is how this was found. */
+  await page.press("#sh-input", "Enter");
 
   /* Both endpoints have answered and the last merge has painted. */
   await page.waitForFunction(
