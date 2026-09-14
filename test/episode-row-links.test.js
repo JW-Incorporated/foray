@@ -21,7 +21,7 @@ function loadApp() {
     const node = {
       addEventListener: noop, removeEventListener: noop, appendChild: noop,
       setAttribute: noop, removeAttribute: noop,
-      classList: { add: noop, remove: noop, toggle: noop },
+      classList: { add: noop, remove: noop, toggle: noop, contains: () => false },
       style: {}, dataset: {}, children: [], hidden: false,
       innerHTML: "", textContent: "", className: "",
       querySelector: () => makeEl(), querySelectorAll: () => [],

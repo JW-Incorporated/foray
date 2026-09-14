@@ -254,7 +254,9 @@ test("the search field renders inside #sh-compose, a sibling of the page header"
   const bar = html.slice(html.indexOf('<div id="sh-compose">'), html.indexOf("</div>", html.indexOf('id="sh-form"')));
   assert.ok(bar.includes('id="sh-form"'), "…and it must hold the form");
   assert.ok(bar.includes('id="sh-input"'), "…and the field itself");
-  assert.ok(bar.includes('type="submit"'), "…and the Go button, which G2 kept");
+  /* Was `type="submit"`, the Go button, until the founder deleted it on
+     2026-09-14. What the bar must hold is the form and the field; the
+     trailing slot's emptiness is its own test further down. */
 });
 
 test("the compose bar is emitted FIRST, ahead of the results and the browse furniture", () => {
@@ -383,53 +385,78 @@ test("the row is fixed, inset from both edges, and rises by --kb-inset", () => {
     `the lift must compose the keyboard inset with the dock, got: ${rule}`);
   assert.match(rule, /left:\s*var\(--sh-gap\);\s*right:\s*var\(--sh-gap\)/,
     `the row must be inset from BOTH screen edges, not full-bleed, got: ${rule}`);
-  assert.match(rule, /--sh-dock:\s*var\(--sh-gap\)/,
-    "the dock default is the bare gap — the keyboard-open case, which matches no dock rule");
+  /* REWRITTEN 2026-09-14 with the block itself: the dock stopped being one
+     value enumerated per combination and became a SUM OF PER-OBJECT TERMS,
+     when the tab bar became the third thing that can be absent (founder:
+     "when the search bar is up, this home ribbon should go away"). The
+     property being pinned is unchanged — with nothing on screen the dock is
+     the bare gap — it is just now expressed as "every term defaults to 0". */
+  assert.match(rule, /--sh-dock:\s*calc\(var\(--sh-gap\)\s*\+\s*var\(--sh-tab\)\s*\+\s*var\(--sh-fp\)\s*\+\s*var\(--sh-safe\)\)/,
+    `the dock must be the sum of the gap and one term per optional object, got: ${rule}`);
+  for (const term of ["--sh-tab", "--sh-fp", "--sh-safe"]) {
+    assert.match(rule, new RegExp(`${term}:\\s*0px`),
+      `\`${term}\` must default to 0 — the keyboard-open case, which matches no term rule`);
+  }
 });
 
 test("--sh-dock composes the tab bar, the player and the safe-area inset, counting each once", () => {
   /* The same "reserve, don't overlap; add the home-indicator inset exactly
-     once" rule `body.fp-open`'s own reservations follow. Four cases, because
-     the tab bar and the player are independent.
-     MUTATION: drop `env(safe-area-inset-bottom)` from the ui-v2 rule (the
-     tempting "the tab bar already pads itself"). That case fails — and on a
-     notched phone the field would sit on the tab bar's padding rather than
-     above its content. RUN: failed as named. */
-  const cases = {
-    "body:not(.kb-open).ui-v2 #sh-compose": ["--tab-bar-h"],
-    "body:not(.kb-open).fp-open #sh-compose": ["--fp-bar-h"],
-    "body:not(.kb-open).ui-v2.fp-open #sh-compose": ["--fp-bar-h", "--tab-bar-h"],
+     once" rule `body.fp-open`'s own reservations follow — now enforced by
+     construction rather than by four rules each remembering to.
+
+     MUTATION: give a term a SECOND rule — e.g. add
+     `body:not(.kb-open).view-page #sh-compose { --sh-fp: var(--fp-bar-h); }`
+     beside the existing one, which is how "the mini bar needs covering on
+     this page too" would naturally be written. The exactly-one-rule
+     assertion below fails, and on a phone the pill would float a mini
+     player's height too high. RUN: failed as named. A second, independent
+     mutation kills it from the other side: delete the `--sh-safe` rule
+     entirely, and on a notched phone the pill sits on the home indicator.
+     RUN: failed as named. */
+  const termRules = {
+    /* The tab bar's height leaves the dock through the SAME selector that
+       takes the bar off the screen — `.sh-searching` — which is the only
+       reason the pill does not jump at the moment the bar goes. */
+    "--sh-tab": { selector: "body:not(.kb-open).ui-v2:not(.sh-searching) #sh-compose", token: "var(--tab-bar-h)" },
+    "--sh-fp": { selector: "body:not(.kb-open).fp-open #sh-compose", token: "var(--fp-bar-h)" },
+    "--sh-safe": { selector: "body:not(.kb-open) #sh-compose", token: "env(safe-area-inset-bottom" },
   };
-  for (const [selector, tokens] of Object.entries(cases)) {
+  for (const [term, { selector, token }] of Object.entries(termRules)) {
     const rule = cssRule(selector);
-    assert.ok(rule, `missing the dock rule for \`${selector}\``);
-    for (const t of tokens) {
-      assert.ok(rule.includes(`var(${t})`), `\`${selector}\` must account for ${t}, got: ${rule}`);
-    }
-    const insets = rule.match(/env\(safe-area-inset-bottom/g) || [];
-    assert.strictEqual(insets.length, 1,
-      `\`${selector}\` must add the home-indicator inset exactly once, got ${insets.length}`);
+    assert.ok(rule, `missing the term rule for \`${selector}\``);
+    assert.ok(rule.includes(`${term}:`), `\`${selector}\` must set ${term}, got: ${rule}`);
+    assert.ok(rule.includes(token), `\`${selector}\` must account for ${token}, got: ${rule}`);
+    /* EXACTLY ONE RULE PER TERM IS THE WHOLE POINT of the rewrite: a term
+       that two selectors can set is a term that can be counted twice, which
+       is the bug the old four-rule enumeration had to be careful about by
+       hand. Counted over the whole sheet, not just this block, and the
+       defaults-to-zero declaration is excluded by value rather than by
+       position — `--sh-tab: 0px` is the floor, not a setter. */
+    const declarations = STYLES.match(new RegExp(`${term}:\\s*[^;]+;`, "g")) || [];
+    const setters = declarations.filter((d) => !/:\s*0px;$/.test(d));
+    assert.strictEqual(setters.length, 1,
+      `exactly one rule may turn \`${term}\` on, found ${setters.length}: ${JSON.stringify(setters)}`);
+    assert.strictEqual(declarations.length - setters.length, 1,
+      `\`${term}\` must have exactly one 0px default, or the keyboard-open case has no floor`);
   }
-  const bare = cssRule("body:not(.kb-open):not(.ui-v2):not(.fp-open) #sh-compose");
-  assert.ok(bare && bare.includes("env(safe-area-inset-bottom"),
-    "with no tab bar and no player the home indicator is still down there");
 });
 
-test("every dock rule is scoped :not(.kb-open) — an override would lose on specificity", () => {
+test("every dock term rule is scoped :not(.kb-open) — an override would lose on specificity", () => {
   /* While the keyboard is up there is nothing left to dock above: the player
      is display:none, and the tab bar and the home indicator are behind the
-     keyboard. So --sh-dock must fall back to 0. Writing that as a
+     keyboard. So every term must fall back to 0. Writing that as a
      `body.kb-open #sh-compose` override would NOT work — `body.ui-v2.fp-open
      #sh-compose` is the more specific selector and keeps winning. Scoping the
-     dock rules is what makes the fallback happen by not matching.
-     MUTATION: delete `:not(.kb-open)` from any one of the dock selectors.
+     term rules is what makes the fallback happen by not matching.
+     MUTATION: delete `:not(.kb-open)` from any one of the term selectors.
      This fails, and on a phone the field would float a tab bar's height above
      the keyboard. RUN: failed as named. */
-  const dockRules = STYLES.match(/^[^\n{]*#sh-compose\s*\{[^}]*--sh-dock:[^}]*\}/gm) || [];
-  assert.ok(dockRules.length >= 4, `expected the four dock cases, found ${dockRules.length}`);
-  for (const rule of dockRules) {
+  const termRules = STYLES.match(/^[^\n{]*#sh-compose\s*\{[^}]*--sh-(?:tab|fp|safe):[^}]*\}/gm) || [];
+  assert.ok(termRules.length >= 4,
+    `expected the default plus one rule per term, found ${termRules.length}`);
+  for (const rule of termRules) {
     const selector = rule.slice(0, rule.indexOf("{")).trim();
-    if (selector === "#sh-compose") continue;   // the default declaration itself
+    if (selector === "#sh-compose") continue;   // the defaults-to-zero declaration itself
     assert.ok(selector.includes(":not(.kb-open)"),
       `\`${selector}\` must not apply while a keyboard is up`);
   }
@@ -693,9 +720,7 @@ test("the field gives up its own box so the pill is the only box", () => {
 test("there is a leading magnifier and NO microphone", () => {
   /* Apple's pill has a magnifier at the leading edge and a microphone at the
      trailing one. We copy the first and refuse the second: we have no
-     dictation, and a glyph wired to nothing is worse than an empty slot. The
-     trailing slot keeps the Go button, which G2 decided and this change does
-     not revoke.
+     dictation, and a glyph wired to nothing is worse than an empty slot.
      MUTATION: add a `<svg class="sh-mic">` beside the input. This fails on
      the microphone assertion. RUN: failed as named. */
   const m = mount();
@@ -705,8 +730,61 @@ test("there is a leading magnifier and NO microphone", () => {
   assert.ok(html.indexOf('class="sh-glyph"') < html.indexOf('id="sh-input"'),
     "…leading it, not trailing it");
   assert.ok(!/mic/i.test(html), "no microphone: we have no dictation to wire one to");
-  assert.ok(html.includes('type="submit"'), "the Go button keeps the trailing slot");
   assert.ok(cssRule("#sh-compose .sh-glyph"), "and the glyph must be styled, not a raw 24px SVG");
+});
+
+test("the trailing slot is empty — the Go button is gone", () => {
+  /* Founder, 2026-09-14: "since the search results are live, the 'go' button
+     is useless, delete it." He is right, and the reason is in this repo's own
+     history: G2's "keep the button, keep Enter, make neither required" was
+     decided when the button was the only way to run a search at all, and S-02
+     then made the results filter live on every keystroke. By the time a thumb
+     reached the button, the results it would have produced were already on
+     screen. Its only remaining effect was skipping a 250ms debounce on work
+     that had finished.
+
+     MUTATION: put `<button type="submit">Go</button>` back inside #sh-form.
+     This fails. RUN: failed as named. */
+  const m = mount();
+  m.ctx.renderAllShows();
+  const html = m.view();
+  const form = html.slice(html.indexOf('id="sh-form"'), html.indexOf("</form>"));
+  assert.ok(!/<button/.test(form), `the pill holds the field and nothing else, got: ${form}`);
+  assert.ok(!/>Go</.test(html), "no Go button anywhere on the search page");
+});
+
+test("removing the button did not remove the submit path — return still searches", () => {
+  /* THE HALF THAT HAD TO SURVIVE. `submit` is what a phone keyboard's return
+     key fires, and firing it is how the keyboard is dismissed from inside the
+     field; it is also still the way to skip the debounce. A `<form>` with no
+     submit control still submits on Enter, so deleting the button costs
+     neither. Driven through the real listener renderAllShows binds.
+
+     MUTATION: delete the `$("#sh-form").addEventListener("submit", …)`
+     binding along with the button — the tempting "remove the control and its
+     handler" reading. This fails: submitting does nothing, and on a phone the
+     return key would stop dismissing the keyboard. RUN: failed as named. */
+  const m = mount();
+  m.ctx.renderAllShows();
+  const form = m.byId.get("sh-form");
+  assert.ok(form, "sanity: the form element is still there");
+  m.byId.get("sh-input").value = "radiolab";
+  assert.strictEqual(form.dispatch("submit"), 1,
+    "the form must still carry a submit handler with no button to press it");
+});
+
+test("no orphan CSS is left behind the deleted button", () => {
+  /* `#sh-form` is the only form those rules ever selected and it now contains
+     no button, so both the base rule and its `body.ui-v2` override select
+     nothing at all. Dead rules are how a later reader concludes the control
+     still exists.
+     MUTATION: restore either `#sh-form button { … }` or
+     `body.ui-v2 #sh-form button { … }`. This fails. RUN: failed as named,
+     for each. */
+  assert.ok(!/^#sh-form button\s*\{/m.test(STYLES), "the Go button's base rule must go with it");
+  assert.ok(!/^body\.ui-v2 #sh-form button\s*\{/m.test(STYLES), "…and so must its v2 override");
+  assert.ok(!/#sh-compose #sh-form button\[type="submit"\]\s*\{/.test(STYLES),
+    "…and the compose-bar sizing rule that had nothing left to size");
 });
 
 test("the companion button is absent when idle and present once the field is live", () => {

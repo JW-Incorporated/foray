@@ -746,18 +746,12 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   color: var(--text);
   font-size: 1rem;
 }
-#sh-form button {
-  flex: none;
-  min-width: 72px;
-  border-radius: var(--radius);
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: #fff;
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-}
+/* REMOVED 2026-09-14: `#sh-form button`, the Go button's base styling. The
+   button is gone (app.js, renderAllShows — founder: "since the search results
+   are live, the 'go' button is useless, delete it"), `#sh-form` is the only
+   form this ever selected, and it now contains no button at all. Left as a
+   note rather than silently deleted because the v2 override of it, further
+   down this file, went with it and the two were written as a pair. */
 .show-results {
   display: flex;
   flex-direction: column;
@@ -1334,8 +1328,37 @@ body.ui-v2.fp-open {
      visibly the same on every side. */
   --sh-gap: 10px;
 }
+
+/* ONE TERM PER OBJECT, NOT ONE RULE PER COMBINATION (rewritten 2026-09-14,
+   when the tab bar became the third thing that can be absent — founder: "when
+   the search bar is up, this home ribbon should go away").
+
+   This block used to enumerate the combinations: four rules for two optional
+   objects plus a catch-all for the case the other three missed. That is 2^n
+   rules for n objects and it had already produced one rule
+   (`:not(.ui-v2):not(.fp-open)`) whose only job was to re-add a term the
+   other three each added separately. A third object would have taken it to
+   eight, and the founder's change makes the tab bar exactly that.
+
+   So each object now contributes its OWN term, switched by its OWN selector,
+   and `--sh-dock` sums them. The header's rule is unchanged and is now
+   literal rather than restated per combination: `--sh-dock` is the room
+   already taken at the bottom edge, and the home-indicator inset is added
+   exactly once because it is added by exactly one rule.
+
+   THE `:not(.kb-open)` PREFIX STAYS ON EVERY TERM, for the reason above: with
+   the keyboard up, nothing down there is on screen, every term is 0, and the
+   dock is the bare gap. It is repeated per term rather than factored out
+   because the terms have to be able to be zeroed independently, and because
+   a factored version would need a higher-specificity override to win — the
+   trap the header paragraph describes. */
 #sh-compose {
-  --sh-dock: var(--sh-gap);
+  /* Every optional object defaults to contributing nothing; the rules below
+     turn on only the terms that are actually on screen. */
+  --sh-tab: 0px;
+  --sh-fp: 0px;
+  --sh-safe: 0px;
+  --sh-dock: calc(var(--sh-gap) + var(--sh-tab) + var(--sh-fp) + var(--sh-safe));
   position: fixed;
   left: var(--sh-gap); right: var(--sh-gap);
   /* `--kb-inset` is written by app.js's installKeyboardChrome (see
@@ -1348,20 +1371,33 @@ body.ui-v2.fp-open {
   align-items: center;
   gap: 8px;
 }
-body:not(.kb-open).ui-v2 #sh-compose {
-  --sh-dock: calc(var(--sh-gap) + var(--tab-bar-h) + env(safe-area-inset-bottom));
-}
-body:not(.kb-open).fp-open #sh-compose {
-  --sh-dock: calc(var(--sh-gap) + var(--fp-bar-h) + env(safe-area-inset-bottom));
-}
-body:not(.kb-open).ui-v2.fp-open #sh-compose {
-  --sh-dock: calc(var(--sh-gap) + var(--fp-bar-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
-}
-/* With no keyboard and no tab bar or player, the home indicator is still down
-   there — the one case none of the three rules above covers. */
-body:not(.kb-open):not(.ui-v2):not(.fp-open) #sh-compose {
-  --sh-dock: calc(var(--sh-gap) + env(safe-area-inset-bottom, 0px));
-}
+/* The tab bar: present under ui-v2, and `sh-searching` is the class that
+   takes it away while the field holds focus (see the rule further down that
+   actually hides it, and updateShowBrowseVisibility for why both live on one
+   class). The bar leaving and its height leaving the dock are the SAME
+   selector, which is the only reason the pill does not jump when it goes. */
+body:not(.kb-open).ui-v2:not(.sh-searching) #sh-compose { --sh-tab: var(--tab-bar-h); }
+/* The mini-player, for as long as something is playing. */
+body:not(.kb-open).fp-open #sh-compose { --sh-fp: var(--fp-bar-h); }
+/* The home indicator is down there whatever else is or is not — once. */
+body:not(.kb-open) #sh-compose { --sh-safe: env(safe-area-inset-bottom, 0px); }
+
+/* THE TAB BAR YIELDS TO THE KEYBOARD (founder, 2026-09-14, with a screenshot
+   of it wedged between the search pill and the keyboard — the strip where
+   Apple Podcasts shows nothing at all).
+
+   `display: none`, not `[hidden]`, and that is not a style preference.
+   `.tab-bar` below carries `display: flex`; an author `display` declaration
+   beats the UA stylesheet's `[hidden] { display: none }` at any specificity,
+   which is the cascade trap renderTabBar's own header documents and
+   test/home-layout.test.js's BUG 3 exists to catch. This is an author rule
+   (0,2,1) against `.tab-bar` (0,1,0), so it wins on the terms the cascade
+   actually judges.
+
+   It also has to beat `body.ui-v2 .tab-bar`-shaped rules if any appear later;
+   `body.sh-searching` is the same weight as `body.ui-v2`, so this is placed
+   AFTER the tab-bar block rather than relying on specificity alone. */
+body.sh-searching .tab-bar { display: none; }
 
 /* THE PILL. `#sh-form`'s own rule earlier in this file is the page-content
    version (a plain flex row with a 14px bottom margin); inside the floating
@@ -1418,7 +1454,11 @@ body:not(.kb-open):not(.ui-v2):not(.fp-open) #sh-compose {
   stroke-linecap: round;
   fill: none;
 }
-#sh-compose #sh-form button[type="submit"] { flex: none; }
+/* REMOVED 2026-09-14 with the Go button it sized: `#sh-compose #sh-form
+   button[type="submit"] { flex: none; }`. Founder: "since the search results
+   are live, the 'go' button is useless, delete it." The form still submits on
+   the keyboard's return key — a <form> needs no submit control for that —
+   so the path survived the control; this rule had nothing left to select. */
 
 /* THE COMPANION — Apple's circular button beside the pill. Driven by the
    `hidden` attribute from the same predicate that hides the browse furniture
@@ -2611,10 +2651,12 @@ body.fy-sheet-open { overflow: hidden; }
 /* ===========================================================================
    U-05: Search restyle + Playlists results section
    (docs/ui-transition-plan.md). Everything below is SCOPED to `body.ui-v2`
-   -- the flag-off/v1 rules for `#sh-form`/`#sh-input`/`#sh-form button`/
-   `.show-results` above are untouched, so a v1 listener's Shows page (field,
-   button, result rows) looks and behaves exactly as it did before this
-   card. `body.ui-v2`'s higher specificity means these override the v1
+   -- the flag-off/v1 rules for `#sh-form`/`#sh-input`/`.show-results` above
+   are untouched, so a v1 listener's Shows page (field, result rows) looks and
+   behaves exactly as it did before this card. (The `#sh-form button` pair
+   this paragraph also named is gone from both sides as of 2026-09-14; the
+   button it styled was deleted.) `body.ui-v2`'s higher specificity means
+   these override the v1
    rules only for a listener who has opted in (U-02's cp_ui_v2), same
    pattern U-01/U-02 already established.
 
@@ -2638,12 +2680,10 @@ body.ui-v2 #sh-input {
   color: var(--text);
   font-family: var(--font-body);
 }
-body.ui-v2 #sh-form button {
-  border-radius: 16px;
-  border-color: var(--violet);
-  background: var(--violet);
-  color: var(--text);
-}
+/* REMOVED 2026-09-14: `body.ui-v2 #sh-form button`, which is the violet pill
+   visible inside the field in the founder's screenshot. Deleted with the
+   button itself — see `#sh-form button` earlier in this file, and
+   renderAllShows in app.js. */
 body.ui-v2 .show-result-title { font-family: var(--font-body); }
 body.ui-v2 .show-result-by { font-family: var(--font-body); color: var(--muted); }
 
