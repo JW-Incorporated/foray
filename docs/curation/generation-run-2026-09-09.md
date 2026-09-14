@@ -13,8 +13,14 @@ instead of by the API. Built in series; anything reasonable is fixed between run
   `npm run generate-forays -- --prompts <one prompt> --duration medium` — "~1 hour" is
   the **medium** tier (§3: ~60 min, 3–4 acts, 5–7 slots, 28–36 items, "the proven
   shape"); *long* is "up to ~180 min, unproven at every layer" and was not what was asked.
-- **Transport:** `ANTHROPIC_BASE_URL` points the official SDK at a local relay
-  (`scratchpad/relay/relay.mjs`). The relay receives each request **unchanged** (model
+- **Transport:** `ANTHROPIC_BASE_URL` points the official SDK at a local relay.
+  *(Path updated 2026-09-14 by #697: the relay was `scratchpad/relay/relay.mjs` — untracked,
+  and so rebuilt by hand from this paragraph before every run, which is I-28. It is now the
+  committed, tested `tools/generation/relay.mjs`, started together with the driver by
+  `node tools/generation/start-run.mjs -- <driver args>`. A keyless run still needs a key-SHAPED
+  value in `ANTHROPIC_API_KEY`: `env.anthropicDryRun` is `key === undefined`, so with no key every
+  `create*()` returns a Stub and nothing reaches the relay at all. The launcher sets a placeholder.)*
+  The relay receives each request **unchanged** (model
   name, `max_tokens`, the prompt text the builder composed), parks it, and returns
   whatever the orchestrator writes back, in the Messages API shape. The orchestrator
   dispatches one subagent per request with the exact prompt and the mapped tier:
@@ -22,7 +28,8 @@ instead of by the API. Built in series; anything reasonable is fixed between run
   `parseWithRetry` / `parseLastJsonBlock` then parse the reply exactly as they would a
   real one. Zero pipeline code changed for the transport.
 - **KPIs** come from two taps: the relay's `kpi.jsonl` (per call: model, ~tokens in,
-  ~tokens out, wall time) and the driver's `report.json` (per Foray: outcome, wall ms
+  ~tokens out, wall time — and, since #697, `agent_ms` beside `wall_ms`, the `tools` the request
+  offered (I-22), and whether a markdown fence had to be stripped (I-06)) and the driver's `report.json` (per Foray: outcome, wall ms
   from `outcome.timings`, per-stage timings via `measureStage`). Token counts are
   estimates (chars/4) because there is no API meter on this path — recorded as such.
 - **"Time until the user can start listening"** = the whole pipeline + publish. §6's

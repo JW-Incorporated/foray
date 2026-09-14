@@ -1124,6 +1124,19 @@ const FLOORS = {
      columns and an undeclared unit is never guessed into one; `tape_share`
      reads the renamed report field and falls back to the old name. */
   "tools/generation-bench/run.test.mjs": 40,
+  /* The keyless-run transport (#697). This suite is the ONLY thing in the repo
+     that can notice the relay losing a behaviour, and every one of those
+     behaviours was bought by a finding that cost a run something: I-23's
+     ~15-minute deadlock (identity is the request, not the body; `/reset` clears
+     the map and the queue together), I-10's stale answer served to a legitimate
+     re-ask, I-06's fence strip AND its count, I-19's `agent_ms` kept apart from
+     `wall_ms`, I-22's per-request `tools`, F-67's readable-before-answered
+     prompt, and P-01's concurrency. Nothing in `backend/src/` knows this
+     transport exists — that is the point of it — so nothing there would go red
+     if it regressed; a run would simply hang, or publish orchestrator latency
+     as pipeline latency. The 12 mutations named in the suite header were each
+     applied and observed to fail before it landed. */
+  "tools/generation/relay.test.mjs": 27,
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,
