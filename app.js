@@ -4164,8 +4164,17 @@ function whenIdle(fn, timeoutMs = 2000) {
   else setTimeout(fn, 0);
 }
 
+/* THE COST FLOOR ON THE INDEX SCAN (defect 1, 2026-09-13). Derived from a
+   measurement, not chosen: see the long note at the call site in
+   `runShowSearchCostly` for the table it comes from and for why a floor on
+   query LENGTH is the right shape of gate where a floor on LOCAL HIT COUNT was
+   not. Kept separate from `SHOW_DIRECTORY_MIN_QUERY_LENGTH` even though both
+   are 3 today — one bounds a local CPU cost, the other bounds calls to Apple,
+   and tying them would make either number impossible to move on its evidence. */
+const SHOW_SCAN_MIN_QUERY_LENGTH = 3;
+
 /** THE DEBOUNCE TICK. Everything §1.5 measured as expensive, in one place:
-    the index's linear scan (only when the prefix pass under-delivered), the
+    the index's linear scan (only on searches long enough to pay for it), the
     breadth endpoint (only on a hot-cache miss), the episode endpoint (only on
     ITS hot-cache miss), and the playlist section whose CTA schedules a 1.3-8 s
     relaxation scan.
@@ -4211,11 +4220,73 @@ function runShowSearchCostly(query, myToken, local) {
     if (--owed === 0) recordSearchDiagnostic(record);
   };
 
-  /* The scan pass, gated twice: the index must be loaded, and the prefix pass
-     must have under-delivered. `scanShowIndex` returns word-start and
-     substring hits only, so there is nothing here to dedupe against the
-     prefix answer beyond the curated rows. */
-  if (showIndex && shown().length < SHOW_PREFIX_UNDERDELIVERS_BELOW) {
+  /* THE SCAN PASS, GATED ON COST RATHER THAN ON HOW MANY ROWS THE DEVICE
+     ALREADY PAINTED, and that swap is the whole of defect 1 (2026-09-13).
+
+     WHAT THE OLD GATE WAS AND WHY IT STOPPED BEING TRUE. It read
+     `shown().length < SHOW_PREFIX_UNDERDELIVERS_BELOW` — skip the scan once
+     the prefix pass has filled the list — and that was sound while the
+     comparator read the BUCKET first, because then a word-start row could
+     never outrank the prefix rows already on screen and scanning for it bought
+     nothing but latency. P-08 (docs/search-parity-plan.md) interposed a MATCH
+     TIER above the bucket precisely so a popular word-start row CAN lead a
+     wall of prefix rows; this gate was not revisited, so the pass that FINDS
+     those rows is still switched off exactly when there are prefix rows for
+     them to beat.
+
+     THE MEASURED CONSEQUENCE, over the committed data/show-index.tsv and
+     data/catalog-client.json (2026-09-13): `daily` returns 25 local rows from
+     curated + prefix, the scan is skipped, and THE DAILY — `chart_rank` 1,
+     `show_id` 1200361736, a row the device is physically holding — is ABSENT
+     from the client's answer. With the scan it is 17 of 218. This is a REACH
+     gap, not the ranking gap P-09/P-10 describe: P-10 explains the 17, it does
+     not explain the absence. `history`, `american`, `money` and `science` also
+     skip the scan and lose 82, 20, 32 and 86 rows respectively (their own
+     intended shows were already curated, so those four lose breadth rather
+     than the named show — the audit expected absence there and the measurement
+     says otherwise). Off-network, or in the ~250 ms + RTT window before the
+     endpoint lands, none of it is reachable.
+
+     WHY A LENGTH FLOOR IS THE COST GATE, and why 3. The scan's cost tracks its
+     HIT COUNT (it allocates a record per hit and sorts them), not the index
+     size, so the cheap thing to test before paying it is the only proxy
+     available without scanning: query length. Measured on the committed index
+     (2026-09-13, desktop node, 15 reps per query with a forced GC between
+     them, worst case taken over the highest-hit 1..6-character substrings of
+     real titles, which is the adversarial population, not a friendly battery):
+
+       floor      worst scan median   worst p95   worst query
+       no gate    331 ms              473 ms      `l`   (5,332 hits)
+       >= 2       220 ms              917 ms      `e `  (8,517 hits)
+       >= 3       139 ms              319 ms      `dcast ` (2,477 hits)
+
+     The bar was "stay under `l`'s ~500 ms", and >= 3 is the only floor that
+     clears it on BOTH statistics. It also costs nothing in reach: every query
+     in the measured defect is five characters or more, and at one or two
+     characters the local pass already returns 404-938 rows, so there is no
+     named show to be absent from — the same argument
+     `SHOW_DIRECTORY_MIN_QUERY_LENGTH` makes two hundred lines up, reached
+     independently and landing on the same number.
+
+     WHAT THIS COSTS, because deleting a gate must not be reported as free. The
+     old gate and the cost were ANTI-correlated — the queries with plenty of
+     local rows are the same queries with thousands of scan hits — so today the
+     app almost never pays a big scan (worst actually reached over the same
+     population: 18 ms median). After this, a >= 3-character search pays up to
+     139 ms median on the DEBOUNCE TICK. It is not on a keystroke, the local
+     rows are already painted before it runs, and `mergeShowRows` only
+     repaints when the scan added something.
+
+     `SHOW_PREFIX_UNDERDELIVERS_BELOW` is deliberately left declared: it is
+     cited by name as a counterexample both above (the directory gate) and in
+     test/show-search-fallthrough.test.js, whose `tim` case already argues that
+     a count of local hits is the wrong gate for a pass like this one. That
+     argument was always about this constant; it simply had not been applied
+     here.
+
+     `scanShowIndex` returns word-start and substring hits only, so there is
+     nothing here to dedupe against the prefix answer beyond the curated rows. */
+  if (showIndex && query.trim().length >= SHOW_SCAN_MIN_QUERY_LENGTH) {
     const scanned = SearchEngine.scanShowIndex(query, showIndex);
     const merged = mergeShowRows(query, shown(), scanned);
     if (merged) paintShowResults(query, merged, myToken);
@@ -4894,6 +4965,17 @@ function renderEpisodeSearchResults(query, myToken, report = () => {}, localEpis
     return;
   }
 
+  /* `limit=10` IS NOW A PROMISE OF TEN ROWS, which it was not (defect 2,
+     2026-09-13). Apple's `entity=podcastEpisode` returns far fewer rows than
+     the number asked for when that number is small — measured the same day,
+     `history` yielded 4 rows at an ask of 10 and 38 at an ask of 50 — and the
+     endpoint used to forward this 10 straight through, so the Episodes
+     section was 4 rows long on a query with hundreds of episodes behind it.
+     `api/episodes/search.ts` now over-fetches from Apple and takes the
+     caller's cut after mapping, so this number is the section length and
+     nothing else. It stays 10 deliberately: the fix was the endpoint's
+     shortfall, not the section's height, and how tall that section should be
+     is a layout decision with an owner. */
   const epStart = nowMs();
   fetchApiJson(`api/episodes/search?q=${encodeURIComponent(query)}&limit=10`).then((data) => {
     const epMs = nowMs() - epStart;

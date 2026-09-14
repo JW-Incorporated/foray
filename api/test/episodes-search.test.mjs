@@ -582,6 +582,82 @@ test("show-scoped: a healthy feed is never poisoned by another show's failure", 
   assert.strictEqual(healthy.body.episodes.length, 1);
 });
 
+/* ------------------- defect 2: the Apple ask is not the caller's limit ----- */
+
+test("appleEpisodeAsk over-fetches: the number asked of Apple is never the caller's small limit", () => {
+  /* THE RULE, DERIVED FROM A MEASUREMENT rather than picked. Measured against
+     Apple directly 2026-09-13, `entity=podcastEpisode` returns far fewer rows
+     than the number asked for when that number is small — `history` 4 rows at
+     an ask of 10, 38 at an ask of 50; `sleep` 9 at 10, 37 at 50 — so the worst
+     observed YIELD at an ask of 10 is 0.40 and at an ask of 50 or more is
+     0.74. Doubling the caller's limit, floored at 50, covers every limit the
+     handler accepts (1..100); forwarding the limit itself does not.
+
+     MUTATION: return `limit` (the old behaviour). The first assertion goes
+     red. MUTATION: drop the floor and return `limit * 2`. A limit of 10 asks
+     for 20, which the table says yields far fewer than 10 rows, and the second
+     assertion goes red. MUTATION: drop the cap. Apple's own ceiling is 200 and
+     the last assertion goes red. */
+  assert.ok(searchModule.appleEpisodeAsk(10) > 10, "the caller's limit must not be forwarded unchanged");
+  assert.strictEqual(searchModule.appleEpisodeAsk(10), 50, "a limit of 10 asks Apple for 50 — the floor, not 10 and not 20");
+  assert.strictEqual(searchModule.appleEpisodeAsk(25), 50, "and a limit of 25 still clears its own yield at 50");
+  assert.strictEqual(searchModule.appleEpisodeAsk(50), 100);
+  assert.strictEqual(searchModule.appleEpisodeAsk(100), 200, "capped at Apple's own documented ceiling");
+  assert.strictEqual(searchModule.appleEpisodeAsk(1), 50, "a tiny limit is exactly where the shortfall is worst");
+});
+
+test("the URL sent to Apple carries the over-fetch, and the caller still gets exactly its limit back", async () => {
+  /* THE WIRING, asserted on the URL rather than inferred from the constant —
+     a correct `appleEpisodeAsk` that nothing calls is the no-op this change is
+     most at risk of being. The handler's own `.slice(0, limit)` is asserted in
+     the same test, because over-fetching without slicing would hand the client
+     50 rows when it asked for 10 and break every caller that sizes a section
+     by what it asked for.
+
+     MUTATION: pass `limit` to `searchApple` again. The URL assertion goes red.
+     MUTATION: drop the handler's `.slice(0, limit)`. The row-count assertion
+     goes red. */
+  resetSharedState();
+  const idMap = await loadShowIdMap({ fetchImpl: globalThis.fetch });
+  const knownCollectionId = [...idMap.byCollectionId.keys()][0];
+  assert.ok(knownCollectionId, "premise: the id-map has at least one known collection id");
+
+  let appleUrl = null;
+  const fetchImpl = async (url) => {
+    const u = String(url);
+    if (u.includes("itunes.apple.com")) {
+      appleUrl = u;
+      // 30 mappable rows — more than the caller's limit of 10, which is the
+      // situation the over-fetch exists to create.
+      const results = Array.from({ length: 30 }, (_, i) => ({
+        collectionId: knownCollectionId, collectionName: "Known Show",
+        trackName: `Episode ${i}`, episodeGuid: `g${i}`,
+        episodeUrl: `https://cdn.example.com/${i}.mp3`,
+      }));
+      return new Response(JSON.stringify({ results }), { status: 200 });
+    }
+    throw new Error(`unexpected fetch: ${u}`);
+  };
+
+  const req = { method: "GET", query: { q: `overfetch-${Date.now()}`, limit: "10" }, headers: {} };
+  const res = mockRes();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  try {
+    await handler(req, res);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.ok(appleUrl, "Apple must have been asked");
+  assert.match(appleUrl, /[?&]limit=50(&|$)/,
+    `the Apple ask must be the over-fetch, not the caller's 10: ${appleUrl}`);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.episodes.length, 10,
+    "and the caller still gets exactly the limit it asked for — the over-fetch is the endpoint's business, not the client's");
+});
+
+
 /* THIS TEST MUST STAY LAST IN THE FILE. It deliberately drains
    appleBucket.ts's 20/min bucket, which is module state shared by every test
    above it — node:test runs a file's top-level tests in source order, so any
