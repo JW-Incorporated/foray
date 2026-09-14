@@ -806,10 +806,18 @@ class MemoryStorage {
  * at module scope and Node caches a module for the life of the process — two
  * tests sharing one instance would share a booted player and a storage tier.
  */
+/* `seed` is rows this device already held when the page loaded — a cold launch
+   after the app was killed, which is half of what #689 reports 1 and 4 are
+   about. It has to be written BEFORE the import and cannot be written after:
+   `durable-store.js` reads its localStorage tier ONCE, at construction, into
+   memory ("reads never touch a tier"), and the store is constructed at module
+   scope. A test that booted first and seeded second would be asserting against
+   an empty store and would pass for the wrong reason. */
 let bootSeq = 0;
-async function bootClient(t) {
+async function bootClient(t, { seed = [] } = {}) {
   const audio = new Element();
   const storage = new MemoryStorage();
+  for (const [k, v] of seed) storage.setItem(k, v);
   const doc = {
     hidden: false,
     body: new Node("body"),
@@ -1164,4 +1172,324 @@ test("a position that CAN be read is still written, so the refusal is not a mute
   assert.equal(row.segment_id, "sa");
   assert.ok(Math.abs(row.into_sec - 50) < 1, `into_sec=${row.into_sec}`);
   restore();
+});
+
+/* ==================================================================== */
+/* part 4 — #689: four founder reports from one sitting in a car         */
+/* ==================================================================== */
+
+/* WHAT THIS PART IS FOR, said plainly before the code.
+
+   Four reports, 2026-09-14, all from one listening session:
+
+     1. "I paused a podcast and left my car. When I later opened the app, the
+        podcast started playing without me pressing play."
+     2. "Then, when i did press pause, it jumped back to several minutes ago in
+        the podcast, I assume the last time the app was open."
+     3. "I scrubbed ahead, the podcast started playing, but the button still said
+        play (not pause)."
+     4. "When I pressed the play button, it again jumped backwards in the
+        podcast."
+
+   Every test below names the mutation that kills it. Reports 2, 3 and 4 are
+   reproduced end to end through the real `client.js`; report 1 is pinned only as
+   an INVARIANT — "nothing on the boot or visible path starts audio" — because
+   the reading that says this repo can start audio by itself is not supported by
+   the code, and a test that claimed to reproduce it would be fiction. That
+   test's own header says what was checked and what is left for the device.
+
+   THESE ARE EPISODE TESTS, NOT FORAY TESTS, and that is the whole point. The
+   background flush in `client.js` and the `resumingInPlace` branch in
+   `_loadItem` were both written for a Foray and both stopped at its edge. The
+   founder was listening to a podcast. */
+
+const episodeItem = (id = "ep-a") => ({
+  id, kind: "episode", title: "Ep A", show: "Show A",
+  audio_url: `https://cdn.test/${id}.mp3`, duration_sec: 3600,
+});
+
+const posRow = (storage, id) => {
+  const raw = storage.getItem(`cp_pos:${id}`);
+  return raw ? JSON.parse(raw) : null;
+};
+
+/** A whole listening session that got to `seconds`, paused, and was
+    backgrounded — handed back as the rows the NEXT launch would find on disk.
+    A helper rather than four lines inline, because "what a cold launch actually
+    has" is a real question with a real answer, and hand-poking a `cp_pos:` key
+    would let a test assert against a row the app could never have produced. */
+async function aSessionThatReached(t, seconds) {
+  const first = await bootClient(t);
+  await first.client.play(episodeItem());
+  await settle();
+  first.audio.currentTime = seconds;
+  first.audio.fire("timeupdate");
+  await settle();
+  transport(first.doc).press();          // the pause writes the row
+  await settle();
+  first.doc.hidden = true;               // and the phone goes into a pocket
+  first.doc.fire("visibilitychange");
+  await settle();
+  const rows = [...first.storage.map];
+  first.restore();
+  return rows;
+}
+
+test("REPORT 2: an episode backgrounded while PAUSED remembers where it was paused", async (t) => {
+  /* THE CASE THE EXISTING COVERAGE DOES NOT REACH. Every background-flush test
+     in this repo backgrounds while PLAYING, which is exactly the case the old
+     condition allowed through.
+
+     KILLING MUTATION: restore `if (current && isPlaying())` on the flush in
+     `client.js`. A paused clock moves nowhere, so the row read back here is
+     written by the flush and by nothing else — put the condition back and the
+     row still says 1200, the position the transport's own `savePosition`
+     recorded on the way into the pause, which is the founder's "several minutes
+     ago". */
+  const { client, doc, audio, storage, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+
+  // Twenty minutes in, written down by the ordinary path.
+  audio.currentTime = 1200;
+  audio.fire("timeupdate");
+  await settle();
+
+  // He presses pause, then scrubs forward while stopped. `handleSeek` on
+  // `interrupted` emits `savePosition` BEFORE `seekTo`, so the store is left
+  // holding the second he has just left — the trap this test is standing on.
+  transport(doc).press();
+  await settle();
+  assert.equal(audio.paused, true, "precondition: stopped");
+  audio.currentTime = 2400;
+  audio.fire("seeked");
+  await settle();
+  assert.ok(
+    Math.abs(posRow(storage, "ep-a").seconds - 1200) < 1,
+    "precondition: the row is behind the element, which is the state that is lost"
+  );
+
+  // Pocket the phone.
+  doc.hidden = true;
+  doc.fire("visibilitychange");
+  await settle();
+
+  const row = posRow(storage, "ep-a");
+  assert.ok(row, "a paused episode that is backgrounded must leave a row");
+  assert.ok(
+    Math.abs(row.seconds - 2400) < 1,
+    `the row must hold where it was paused, got ${row && row.seconds}`
+  );
+  restore();
+});
+
+test("REPORT 4: pressing play resumes where the audio IS, not where the row says", async (t) => {
+  /* The founder's fourth report, end to end through the real client.
+
+     `handlePlay` on `interrupted` re-primes the load, and `_loadItem` used to
+     take `startOffset` from the stored row for any UNBOUNDED item — so a resume
+     was a jump to wherever the row happened to be, however stale. The element
+     was sitting right there holding this episode at the playhead the listener
+     was actually at.
+
+     KILLING MUTATION: put `bounds &&` back at the front of `resumingInPlace` in
+     `queue-manager.js:_loadItem`. The load then starts at the stored 1200
+     instead of the 2400 the listener scrubbed to. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  audio.currentTime = 1200;
+  audio.fire("timeupdate");
+  await settle();
+
+  transport(doc).press();               // pause
+  await settle();
+  audio.currentTime = 2400;             // scrub ahead while stopped
+  audio.fire("seeked");
+  await settle();
+
+  transport(doc).press();               // play
+  await settle();
+  await settle();
+
+  assert.equal(audio.paused, false, "the press started it");
+  assert.ok(
+    Math.abs(audio.currentTime - 2400) < 1,
+    `resumed at ${audio.currentTime}s, not where the listener scrubbed to`
+  );
+  restore();
+});
+
+test("A COLD resume still reads the stored row — the fix above is not a mute", async (t) => {
+  /* The other half of the assertion above, and the reason the guard is
+     `_loadedId === item.id` rather than "always prefer the element". A page that
+     has just booted has loaded nothing: its element's clock is 0 and says
+     nothing about this episode, so the row is the only thing that knows where
+     the listener was. A fix that preferred the element unconditionally would
+     start every session at 0:00 and pass the test above.
+
+     KILLING MUTATION: drop `this._loadedId === item.id` from
+     `reEnteringLoadedItem`. */
+  const carried = await aSessionThatReached(t, 1800);
+
+  const { client, audio, restore } = await bootClient(t, { seed: carried });
+  await client.play(episodeItem());
+  await settle();
+  assert.ok(
+    Math.abs(audio.currentTime - 1800) < 1,
+    `a cold start must resume from the row, got ${audio.currentTime}s`
+  );
+  restore();
+});
+
+test("REPORT 3 / #688: one press does what the listener meant when the belief is stale", async (t) => {
+  /* BELIEF AND ELEMENT DISAGREE, IN THE DIRECTION NOTHING USED TO CATCH.
+
+     `reconcileWithBackend` only ever corrects "we say playing, the element is
+     paused". The founder met the other one: *"I scrubbed ahead, the podcast
+     started playing, but the button still said play"* — sound coming out of a
+     transport that believes it is stopped. Simulated the only way it can be, by
+     its observable consequence: the element is audible and no event was
+     delivered. You cannot simulate a car.
+
+     TWO KILLING MUTATIONS, each failing a different assertion:
+       - `transportIsRunning()` -> `isRunning()` in `setRunning`: the press is
+         swallowed by the short-circuit and `audio.paused` stays false.
+       - delete the `elementIsAudible` postcondition in
+         `PlayerQueueManager.pause`: the press gets past the short-circuit, the
+         reducer is idempotent against a repeated interruption and emits no
+         `pausePlayback` at all, and the sound carries on regardless. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+
+  transport(doc).press();               // the app believes it is stopped
+  await settle();
+  assert.equal(transport(doc).label, "Play", "precondition: the button says Play");
+
+  // Something outside this app made the element audible again and told nobody.
+  audio.paused = false;
+
+  transport(doc).press();               // the listener presses the "play" button
+  await settle();
+  await settle();
+
+  assert.equal(
+    audio.paused, true,
+    "a press while sound is coming out has to stop it, whatever the button said"
+  );
+  assert.equal(transport(doc).label, "Play", "and the surface agrees afterwards");
+  restore();
+});
+
+test("the button says what the AUDIO is doing, not what we last believed", async (t) => {
+  /* The other half of report 3, and the founder's own bar for it: *"the button
+     always agrees with whether sound is coming out"*. A surface cannot repaint
+     at the instant of a drift nobody announced — there is no event — but it must
+     not hold the lie for the rest of the session either, and before #689 it did:
+     every repaint read the belief, so the label was wrong until something moved
+     the state machine.
+
+     KILLING MUTATION: `const running = transportIsRunning()` back to
+     `const running = isRunning()` in `render()`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  transport(doc).press();
+  await settle();
+  assert.equal(transport(doc).label, "Play", "precondition: stopped, and saying so");
+
+  audio.paused = false;          // audible again, and nobody was told
+  audio.fire("timeupdate");      // the next ordinary tick, which is all it gets
+
+  assert.equal(
+    transport(doc).label, "Pause",
+    "the surface stops holding the lie at the first repaint after it"
+  );
+  restore();
+});
+
+test("REPORT 1 (invariant): nothing on the boot or visible path starts audio", async (t) => {
+  /* WHAT IS PINNED HERE AND WHAT IS NOT, because the difference matters more
+     than the test does.
+
+     The founder's first report is audio starting with no press. Read against the
+     code, nothing in this repo can do that. The three methods on
+     `PlayerQueueManager` that can start audio without a listener —
+     `restoreColdLaunchState({ autoplay })`, `routeChanged`'s known-car resume and
+     `interruptionEnded(shouldResume)` — have NO production caller between them;
+     every reference outside the manager is in a test. `reconcileWithBackend`
+     moves towards paused only, which part 2 already pins. So the cause is
+     outside JavaScript — a remote `play` from the car or the lock screen, or the
+     native audio session — and `diag.transport(source, …)` is what will name it
+     on the founder's device, because it records the presses that changed nothing
+     as well as the ones that did.
+
+     This test pins the invariant rather than claiming the fix: a page that boots
+     holding a stored position, and then becomes visible, must not make a sound.
+     It is what stops the eventual native wiring, or a future "carry on where you
+     left off" convenience, from arriving as this report again.
+
+     KILLING MUTATION: add a `manager.resume()` to `reconcileOnReturn`, or an
+     `autoplay: true` restore to `ensureBooted`. */
+  const carried = await aSessionThatReached(t, 1800);   // the row survives the app dying
+
+  const { doc, audio, restore } = await bootClient(t, { seed: carried });
+
+  // A cold page becoming visible, exactly as it does when the app is re-opened.
+  doc.hidden = false;
+  doc.fire("visibilitychange");
+  await settle();
+  await settle();
+
+  assert.ok(
+    !audio.calls.includes("play"),
+    `the boot/visible path started audio: ${audio.calls.join(", ") || "(no calls)"}`
+  );
+  assert.equal(audio.paused, true, "and nothing is coming out");
+  restore();
+});
+
+test("a position is never written against an item the element is not holding", async (t) => {
+  /* The guard that makes the unconditional flush safe, at the manager. The old
+     `isPlaying()` condition was doing this job by accident — a state of `playing`
+     implies a load that landed — so dropping it needed the real question asked
+     somewhere. `_loadItem` moves `currentIndex` BEFORE `backend.load`, and
+     assigning `src` resets the clock to 0, so a failed load leaves a current item
+     whose audio the element never received and a playhead of 0. Writing that is
+     not a weak position, it is a fabricated one, and it lands on a good row.
+
+     KILLING MUTATION: delete the `this._loadedId !== item.id` refusal in
+     `_persistPosition`. The row for `ep-b` is then created at 0. */
+  const { m, backend, saved } = playerWith([audioItem("ep-a"), audioItem("ep-b")]);
+  await m.play(0);
+  backend.currentTime = 1200;
+  m._persistPosition();
+  assert.equal(Math.round(saved.get("ep-a").seconds), 1200, "the loaded item writes normally");
+
+  // The element is still holding ep-a; the manager has been moved to ep-b by a
+  // load that never landed.
+  m.currentIndex = 1;
+  backend.currentTime = 0;
+  m._persistPosition();
+  assert.equal(saved.has("ep-b"), false, "a playhead about another item is not a position");
+  assert.equal(Math.round(saved.get("ep-a").seconds), 1200, "and the good row is untouched");
+});
+
+test("pause() is a postcondition, not a state transition: an audible element is silenced", async () => {
+  /* The manager-level half of report 3. `interruptionBegan` is idempotent by
+     design, so from `interrupted` it emits nothing at all — correct for a
+     duplicate notification from the OS, wrong for a press.
+
+     KILLING MUTATION: revert `pause()` to
+     `this._transport("pause", () => this._handle(E.interruptionBegan()))`. */
+  const { m, backend } = playerWith([audioItem("s0")]);
+  await m.play(0);
+  await m.pause();
+  assert.equal(backend.paused, true, "precondition: we and the element agree");
+
+  backend.paused = false;               // audible again, and nobody was told
+  await m.pause();
+  assert.equal(backend.paused, true, "the second pause has to reach the element");
+  assert.equal(m.state.type, "interrupted");
 });
