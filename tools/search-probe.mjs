@@ -143,19 +143,64 @@ export function localPassBattery(searchShows, shows, queries = QUERY_BATTERY, re
   return rows;
 }
 
+/** app.js's `SHOW_SCAN_MIN_QUERY_LENGTH`, mirrored so `scan_reached` reports
+    the gate the app actually has. Mirrored rather than imported because
+    app.js is a browser script with no module shape this file can read, which
+    is the same reason `SHOW_PREFIX_UNDERDELIVERS_BELOW`'s 10 was mirrored here
+    before it. A drift between the two makes this column wrong, so if the app's
+    floor moves, move this. */
+export const SCAN_MIN_QUERY_LENGTH = 3;
+
+/** THE REACH CASES: queries with a show the listener is demonstrably reaching
+    for, used to measure what SKIPPING the scan costs rather than what it
+    saves. `daily` is the case the audit found and is the reason this exists —
+    The Daily is `chart_rank` 1 in the committed index and a WORD-START match,
+    so the prefix pass cannot return it at any position.
+
+    The other four are the queries that shared the old gate's fate: enough
+    rows from curated + prefix together to trip a gate of ten (25, 14, 11 and
+    20 respectively — note `money` gets there on 9 prefix rows plus curated,
+    because the gate counted what was PAINTED, never the prefix count alone),
+    so the scan was skipped. Their targets were already curated, so the
+    listener still saw them; what those rows measure is that the index alone
+    could not, which is the state the app is in off-network before the curated
+    catalogue and the endpoint have both answered.
+
+    Keyed lowercase, matched against the trimmed lowercased query. A SEPARATE
+    list from `QUERY_BATTERY` for the same reason `PARITY_CASES` is: the
+    battery's length is part of `validateReport`'s contract and adding a query
+    to it silently changes what every committed before-table means. */
+export const SCAN_REACH_CASES = [
+  { query: "daily", target: "The Daily" },
+  { query: "history", target: "Dan Carlin's Hardcore History" },
+  { query: "american", target: "This American Life" },
+  { query: "money", target: "Planet Money" },
+  { query: "science", target: "Science Vs" },
+];
+export const SCAN_REACH_TARGETS = Object.fromEntries(
+  SCAN_REACH_CASES.map((c) => [c.query, c.target])
+);
+
 /** The INDEX pass over `data/show-index.tsv` for the whole battery (S-03
     landed the file S-01 said there was nothing to measure yet).
 
     TWO PASSES, REPORTED SEPARATELY, because they run at different moments and
     are graded against different budgets: `prefix` is what a KEYSTROKE costs
     (binary search, must fit a 16 ms frame), `scan` is what the DEBOUNCE TICK
-    costs (linear, runs only when the prefix pass under-delivers). Averaging
-    them would hide exactly the number S-03 exists to move.
+    costs (linear, runs on the debounce tick for any query long enough to pay
+    for it). Averaging them would hide exactly the number S-03 exists to move.
+
+    THE ROWS NOW CARRY REACH AS WELL AS COST. `scan_reached` was a latency
+    column and its comment said the skipped scan was "never paid in the app",
+    which is true and was the whole story only because nobody had asked what
+    the skip costs in rows the device is already holding. `reach_*` is that
+    question; see `reachColumns`.
 
     Both functions are injected rather than imported, for the same reason
     `localPassBattery` injects `searchShows`: this file must stay runnable
     against a fake. */
-export function indexPassBattery(prefixSearch, scan, index, queries = QUERY_BATTERY, reps = REPS) {
+export function indexPassBattery(prefixSearch, scan, index, queries = QUERY_BATTERY, reps = REPS,
+                                 { targets = SCAN_REACH_TARGETS, rank = null } = {}) {
   /* TWO SEPARATE SWEEPS OVER THE BATTERY, not one interleaved loop, and this
      is a measurement decision worth stating. The scan pass allocates a result
      object per hit — 5,332 of them for "l", times `reps` — so running the two
@@ -175,13 +220,62 @@ export function indexPassBattery(prefixSearch, scan, index, queries = QUERY_BATT
     scan_hits: scanned[i].last.length,
     scan_ms_median: scanned[i].median,
     scan_ms_p95: scanned[i].p95,
-    /* Whether app.js would EVER run the scan for this query. It runs the scan
-       only on the debounce tick and only when the prefix pass under-delivered
-       (`SHOW_PREFIX_UNDERDELIVERS_BELOW`, 10). "l" returns 418 prefix hits, so
-       its ~500 ms scan is measured here and never paid in the app — without
-       this column the table reads as if it were. */
-    scan_reached: prefix[i].last.length < 10,
+    /* Whether app.js would EVER run the scan for this query, so a table row
+       showing a 331 ms scan for "l" is not read as a cost the app pays.
+
+       THE GATE THIS MIRRORS CHANGED (defect 1, 2026-09-13) and so did this
+       column. It used to be `prefix_hits < 10`, mirroring
+       `SHOW_PREFIX_UNDERDELIVERS_BELOW`; app.js now gates on query LENGTH
+       instead, because the old gate was measured to cost REACH — see the
+       three `reach_*` columns beside this one, which are the measurement that
+       moved it. Keeping the old expression here would make the probe assert a
+       policy the app no longer has. */
+    scan_reached: q.trim().length >= SCAN_MIN_QUERY_LENGTH,
+    /* THE REACH COLUMNS. `scan_reached` says what the skipped scan SAVES; on
+       its own it presented the skip as pure latency ("never paid in the app")
+       and nobody had asked what it COSTS. These three say that: for a query
+       with a named target show, where that show lands in the index's answer
+       with the scan and without it.
+
+       SCOPED TO THE INDEX'S OWN TWO PASSES, deliberately — this battery is
+       handed `prefixSearch` and `scan` and nothing else, and the question it
+       is answering is what the INDEX can reach. The curated 220 sit in front
+       of the index in the app, so a `null` here means "the index cannot reach
+       this row without the scan", not necessarily "the listener sees nothing".
+       For `daily` the two coincide and that is the defect: The Daily is in
+       `data/show-index.tsv` at `chart_rank` 1, it is not curated, and it is a
+       word-start match, so the prefix pass cannot see it and the old gate
+       switched off the only pass that could.
+
+       `rank` is injected (`SearchEngine.rankShows`) for the same reason the
+       two passes are: this file must stay runnable against a fake. Without it
+       the merged order is plain concatenation, which is honest about presence
+       but not about position. */
+    ...reachColumns(q, targets, prefix[i].last, scanned[i].last, rank),
   }));
+}
+
+/** The three `reach_*` fields for one battery row. Split out so the row above
+    stays readable and so the "no named target" case is one obvious shape
+    rather than three scattered ternaries. */
+function reachColumns(query, targets, prefixRows, scanRows, rank) {
+  const target = (targets || {})[String(query).trim().toLowerCase()] ?? null;
+  if (!target) {
+    return { reach_target: null, reach_rank_without_scan: null, reach_rank_with_scan: null, reach_lost: null };
+  }
+  const without = prefixRows;
+  const concatenated = without.concat(scanRows);
+  const withScan = typeof rank === "function" ? rank(query, concatenated) : concatenated;
+  const before = targetRank(without, target);
+  const after = targetRank(withScan, target);
+  return {
+    reach_target: target,
+    reach_rank_without_scan: before,
+    reach_rank_with_scan: after,
+    /* The finding, named as a boolean so a table scan cannot miss it: the row
+       is reachable WITH the scan and absent WITHOUT it. */
+    reach_lost: before === null && after !== null,
+  };
 }
 
 /** One-time decode cost of the client catalogue JSON, timed `reps` times.
@@ -396,7 +490,17 @@ export async function runProbe({ searchShows, engine, noNetwork = false } = {}) 
         rows: decoded.last.rows.length,
         bytes: Buffer.byteLength(raw, "utf8"),
         decode: { ms_median: decoded.median, ms_p95: decoded.p95 },
-        battery: indexPassBattery(engine.prefixSearchShows, engine.scanShowIndex, decoded.last),
+        battery: indexPassBattery(engine.prefixSearchShows, engine.scanShowIndex, decoded.last,
+          QUERY_BATTERY, REPS, { rank: engine.rankShows }),
+        /* THE REACH BATTERY (defect 1, 2026-09-13). Same function, same
+           columns, a different query list: `QUERY_BATTERY`'s twelve queries
+           have no named target between them, so the reach columns there are
+           all null and the finding would have nowhere to land. These five do.
+           Reported as its own section rather than appended to the battery
+           because `validateReport` pins that battery's length, and because a
+           reader must be able to tell the timing corpus from the reach one. */
+        reach: indexPassBattery(engine.prefixSearchShows, engine.scanShowIndex, decoded.last,
+          SCAN_REACH_CASES.map((c) => c.query), REPS, { rank: engine.rankShows }),
       };
     } else {
       index = { ...index, reason: "data/show-index.tsv decoded to zero rows" };
@@ -404,10 +508,12 @@ export async function runProbe({ searchShows, engine, noNetwork = false } = {}) 
   }
 
   return {
-    /* v3: the `parity` section is new and `validateReport` now requires it.
-       Bumped rather than added silently — §1.6/§1.7 quote a v2 report and a
-       reader has to be able to tell which shape they are holding. */
-    v: 3,
+    /* v4: the index section's `reach` battery is new and `validateReport` now
+       requires it, and the `scan_reached` column changed meaning along with
+       the gate it mirrors (defect 1, 2026-09-13). Bumped rather than added
+       silently — §1.6/§1.7 quote a v2 report and §1.8 a v3 one, and a reader
+       has to be able to tell which shape they are holding. */
+    v: 4,
     run_at: new Date().toISOString(),
     catalog_shows: catalog.shows.length,
     battery: QUERY_BATTERY.map((q, i) => ({ ...local[i], query_len: q.length })),
@@ -452,6 +558,22 @@ export function formatTable(report) {
         `${r.prefix_ms_median.toFixed(3).padStart(10)}  ${r.prefix_ms_p95.toFixed(3).padStart(7)}  ` +
         `${String(r.scan_hits).padStart(9)}  ${r.scan_ms_median.toFixed(3).padStart(11)}  ${r.scan_ms_p95.toFixed(3).padStart(8)}  ${(r.scan_reached ? "yes" : "no").padStart(8)}`
       );
+    }
+    /* REACH, printed under the cost table rather than beside it: the two
+       answer opposite questions about the same skipped pass and a reader has
+       to be able to tell which number is which. `—` is absent, and absent is
+       the finding, so it is printed rather than blanked. */
+    lines.push("  reach — where a named show lands in the INDEX's answer, with the scan and without it:");
+    lines.push("  query       target                          no-scan  with-scan  lost");
+    for (const r of report.index.reach ?? []) {
+      lines.push(
+        `  ${(SCAN_REACH_CASES.find((c) => c.target === r.reach_target)?.query ?? "?").padEnd(10)}  ` +
+        `${String(r.reach_target ?? "—").padEnd(30)}  ${String(r.reach_rank_without_scan ?? "—").padStart(7)}  ` +
+        `${String(r.reach_rank_with_scan ?? "—").padStart(9)}  ${(r.reach_lost ? "YES" : "no").padStart(4)}`
+      );
+    }
+    if ((report.index.reach ?? []).some((r) => r.reach_lost)) {
+      lines.push("  ^ a row the device is already holding is absent from its own answer without the scan.");
     }
   }
   lines.push("");
@@ -518,6 +640,29 @@ export function validateReport(report) {
     for (const row of report.index.battery ?? []) {
       if (typeof row.prefix_ms_p95 !== "number" || typeof row.scan_ms_p95 !== "number") {
         errors.push("every index battery row needs a p95 for BOTH passes — the prefix pass and the scan pass are graded against different budgets and must never be reported as one number");
+        break;
+      }
+    }
+    /* THE REACH SECTION IS REQUIRED (defect 1, 2026-09-13), on the same
+       footing as the parity section and for the same reason. `scan_reached`
+       alone reported the skipped scan as a saving; a report that quietly
+       stopped carrying the cost side would read as "nothing is wrong" while
+       being silent about the exact thing this section was added to see. */
+    if (!Array.isArray(report.index.reach) || report.index.reach.length !== SCAN_REACH_CASES.length) {
+      errors.push(`index section must carry exactly ${SCAN_REACH_CASES.length} reach rows, got ${report.index.reach?.length} — the scan's LATENCY saving without its REACH cost is the half-measurement this column exists to end`);
+    }
+    for (const row of report.index.reach ?? []) {
+      /* BOTH RANKS OR NEITHER, the same rule the parity cases follow: "17th"
+         alone is a ranking observation (P-10 already owns that), and it is
+         only "absent without the scan AND 17th with it" that names a reach
+         gap. `null` is a legitimate value for either — it means absent — so
+         the check is that the KEYS are present, not that they are numbers. */
+      if (!("reach_rank_with_scan" in row) || !("reach_rank_without_scan" in row)) {
+        errors.push("every reach row needs BOTH reach_rank_with_scan and reach_rank_without_scan — one rank alone cannot distinguish a ranking gap from a reach gap");
+        break;
+      }
+      if (!row.reach_target) {
+        errors.push("every reach row needs a named reach_target — an unnamed target makes the two ranks unverifiable");
         break;
       }
     }

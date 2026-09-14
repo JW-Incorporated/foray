@@ -58,6 +58,48 @@ const EPISODE_USER_AGENT = "Foray/0.1 (personal podcast client; contact wjduvall
 const APPLE_TIMEOUT_MS = 8_000; // keeps the <1.5s acceptance target reachable even with cache misses
 const MAX_RESULTS = 25;
 
+/* THE APPLE ASK IS NOT THE CALLER'S `limit` (defect 2, 2026-09-13).
+ *
+ * `entity=podcastEpisode` returns far fewer rows than the number asked for
+ * when that number is small, and the shortfall is worst exactly where the app
+ * lives. Measured against Apple directly, 2026-09-13, three samples per cell:
+ *
+ *   query          ask=10   ask=25   ask=50   ask=100   ask=200
+ *   history           4       16       38        82        82
+ *   true crime        6       21       46        91        91
+ *   sleep             9       19       37        81        81
+ *   fridman          10       25       50       100       100
+ *
+ * End to end, the live endpoint returned 4 / 15 / 36 rows for `history` at
+ * limit 10 / 25 / 50 on the same day, so the shortfall is Apple's and not
+ * ours: `mapAppleHit`'s drop rule accounts for 0-2 rows at every limit.
+ * `api/episodes/search?q=history&limit=10` — which is what app.js asks on
+ * every search — therefore filled 4 of the 10 slots it had.
+ *
+ * So the ask is decoupled: over-fetch from Apple, then `.slice(0, limit)`
+ * after mapping, which the handler already did. `limit * 2`, floored at
+ * OVERFETCH_MIN and capped at Apple's own 200, is what the table above
+ * supports — the worst observed YIELD at an ask of 50 or more is 0.74
+ * (`sleep`, 37 of 50), so doubling covers every caller limit the handler
+ * accepts, while an ask of 10 yields as little as 0.40 and cannot.
+ *
+ * WHAT IT COSTS, because this is the one change here that could make search
+ * feel slower. Paired alternating samples against Apple, 12 reps per arm,
+ * 2026-09-13: ask=10 median 35-44 ms, ask=50 median 46-51 ms, ask=100 median
+ * 60-63 ms. The over-fetch a limit=10 caller now triggers is +5 to +15 ms
+ * (median +11 ms) on the Vercel -> Apple leg. The listener's device pays NONE
+ * of the extra bytes: the response is sliced to `limit` before it is
+ * serialised, so the client payload is the same size it was. The bigger
+ * response (12 KB -> 103 KB for `history`) is entirely inside the function. */
+const APPLE_OVERFETCH_FACTOR = 2;
+const APPLE_OVERFETCH_MIN = 50;
+const APPLE_OVERFETCH_MAX = 200; // Apple's own documented ceiling for `limit`
+
+/** How many rows to ask Apple for when the caller wants `limit` of them. */
+export function appleEpisodeAsk(limit: number): number {
+  return Math.min(APPLE_OVERFETCH_MAX, Math.max(APPLE_OVERFETCH_MIN, limit * APPLE_OVERFETCH_FACTOR));
+}
+
 interface ApiRequest {
   method?: string;
   query: Record<string, string | string[] | undefined>;
@@ -147,12 +189,16 @@ function mapLiveEpisode(showId: string, showTitle: string | null, ep: ParsedEpis
   };
 }
 
+/** `limit` here is the CALLER's limit, not the number asked of Apple — see
+    `appleEpisodeAsk` and the table above it. The caller's cut is taken after
+    mapping, by the handler. */
 async function searchApple(
   query: string,
   limit: number,
   fetchImpl: typeof fetch
 ): Promise<{ hits: AppleEpisodeHit[]; error: string | null }> {
-  const url = `${APPLE_SEARCH_URL}?entity=podcastEpisode&limit=${encodeURIComponent(String(Math.min(limit, 200)))}&term=${encodeURIComponent(query)}`;
+  const ask = appleEpisodeAsk(limit);
+  const url = `${APPLE_SEARCH_URL}?entity=podcastEpisode&limit=${encodeURIComponent(String(ask))}&term=${encodeURIComponent(query)}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), APPLE_TIMEOUT_MS);
   try {

@@ -729,6 +729,15 @@ const FLOORS = {
      its rows render and cache like any other breadth row, and a breadth show page survives
      a cold open. Restored with the card after a merge took main's side on app.js. */
   "test/show-search-fallthrough.test.js": 24, // adversarial review (2026-09-12): a degraded/rate-limited directory answer is HTTP 200 and was cached as an answer for the session (with the fixture that could not model it, and the telemetry that hid it), the title dedup missed the subtitle divergence the committed catalogue already carries, and the show index landing mid-query replaced the painted list instead of merging into it; 19 -> 24 // P-03 (docs/search-parity-plan.md, 2026-09-12): the BYLINE — the half of "index the author" that survived measurement. A directory row renders its author, a row without one renders no byline element (the shared curated callers stay byte-identical), and the string is escaped rather than trusted; 16 -> 19 // P-02 (docs/search-parity-plan.md, 2026-09-12): the directory became a SECOND PASS instead of a last resort — the reversal itself, the `tim` case that kills every count threshold, the 3-character floor in both directions, Apple's duplicate-title collapse and its catalogue-row boundary, "a failed directory pass leaves the local list exactly as it was", the directory's own hot-query cache, and the two-language pin on the normalised-title rule; 10 -> 16 // client audit (2026-09-12): Apple's ranking survives the merge instead of being re-sorted A-Z; 7 -> 10
+  /* REACH (defect 1, 2026-09-13): can the app answer with a row the device is
+     already holding? Floored new rather than folded into show-search*.test.js
+     because it is the only suite that runs the app over the COMMITTED
+     data/show-index.tsv with no endpoint answering at all — the three suites
+     beside it each cover a correct component (the scan finds, the comparator
+     orders, the directory is asked) and none of them could see the app simply
+     not calling the scan, which is how a `chart_rank` 1 show went missing from
+     the client's answer at any position. */
+  "test/show-search-reach.test.js": 5,
   /* U-05 (docs/ui-transition-plan.md, kanban t_53381ee4, resolves issue
      #135): the Playlists results section under Shows/Episodes on the Shows
      page, plus the "Create a playlist about X" CTA. Floored new rather than
@@ -1004,7 +1013,7 @@ const FLOORS = {
      network contract, the report validator) -- driven by fakes and an
      injected fetch, no real catalogue/network. See
      test/search-probe-record.test.js for the wiring/mutation-guard half. */
-  "tools/search-probe.test.mjs": 45, // P-06 (docs/search-parity-plan.md §2.1, 2026-09-13): +15 — the THREE NAMED PARITY CASES (`tim ferriss`, `lex fridman`, `sam harris`) become a battery of their own, asked plain AND with `fallthrough=1` so that "one row" cannot read as a thin catalogue instead of a gate that was never asked; the target show's 1-indexed rank rides along because `tim ferriss` measured 1 -> 14 rows while The Tim Ferriss Show slid from first to third, and a count-only table calls that an unqualified win; the validator now refuses a report that dropped the section, a case, either column, or the titles; 30 -> 45 // S-03/S-08 (2026-09-12): +3 — the index battery reports the prefix and scan passes separately, and the validator refuses a report that lost either p95 or the whole section; 27 -> 30
+  "tools/search-probe.test.mjs": 50, // defect 1 (2026-09-13): +5 — the index battery gained REACH columns beside `scan_reached`, which reported only what a skipped scan SAVES; the rank of a named target show with the scan and without it, a null-not-fabricated rank where no target is named, the lowercase/trimmed key lookup, the validator that refuses a report carrying the latency half and not the reach half, and a pin on `daily`/The Daily so the case the audit found cannot quietly leave the list; 45 -> 50 // P-06 (docs/search-parity-plan.md §2.1, 2026-09-13): +15 — the THREE NAMED PARITY CASES (`tim ferriss`, `lex fridman`, `sam harris`) become a battery of their own, asked plain AND with `fallthrough=1` so that "one row" cannot read as a thin catalogue instead of a gate that was never asked; the target show's 1-indexed rank rides along because `tim ferriss` measured 1 -> 14 rows while The Tim Ferriss Show slid from first to third, and a count-only table calls that an unqualified win; the validator now refuses a report that dropped the section, a case, either column, or the titles; 30 -> 45 // S-03/S-08 (2026-09-12): +3 — the index battery reports the prefix and scan passes separately, and the validator refuses a report that lost either p95 or the whole section; 27 -> 30
   /* S-03 (docs/search-plan.md): the BUILD half of the show index — the merge,
      the in_curated dedupe, the chart_rank cut, the control-character sanitiser,
      the four-column row shape, and the parity of the committed
