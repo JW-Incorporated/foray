@@ -1081,7 +1081,7 @@ function makeDocument() {
     const el = {
       tagName, id: "", className: "", textContent: "", hidden: false,
       children: [], parentNode: null, listeners: {},
-      style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {} },
+      style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
       addEventListener(type, fn) { (el.listeners[type] = el.listeners[type] || []).push(fn); },
       removeEventListener() {},
       setAttribute() {}, removeAttribute() {},

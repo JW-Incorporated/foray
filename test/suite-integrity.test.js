@@ -466,8 +466,21 @@ const FLOORS = {
      follows the pool it was built from (rendered twice on purpose — this
      harness gives every test a fresh vm context and a browser gives a whole
      session ONE); and the implication over the real data, pool has artwork
-     => the show resolves artwork. */
-  "test/show-page.test.js": 43,
+     => the show resolves artwork.
+     2026-09-14, +1 (issue #687): two tests here CHANGED SUBJECT rather than
+     being deleted, and one was added. They used to pin that a breadth show
+     and a curated show with zero discover-pool episodes get DIFFERENT empty
+     copy — and both of those strings were the ones the founder told us to
+     stop shipping ("don't blame it on 4a"), the first of which is #687's bug.
+     The tier distinction went with them, deliberately: `tier` is a fact about
+     which ingestion path found the show, invisible and unactionable to a
+     listener. What the two tests now pin is what they were really protecting —
+     a breadth show_id RESOLVES rather than 404ing, and neither kind of show
+     claims to be empty while its fetch is in flight — and the third asserts
+     the copy itself, at the two states most likely to regress. The four
+     OUTCOME states those two used to conflate are floored separately at
+     test/show-episode-load-states.test.js. 43 -> 44. */
+  "test/show-page.test.js": 44,
   /* Founder reports, 2026-09-13. The "Show more episodes" control came out of
      the show page, so show-page-pagination.test.js was RE-POINTED rather than
      shrunk — same five tests, now pinning the absence of the control, the
@@ -491,6 +504,45 @@ const FLOORS = {
      bar comes BACK, and the no-visualViewport fail-open. Those are exactly the
      assertions a future edit is most likely to drop as redundant. */
   "test/now-playing-keyboard.test.js": 7,
+
+  /* The bottom edge of the screen while a soft keyboard is up — three founder
+     reports from 2026-09-14, on build 2026091419, all on the search page.
+     Floored as one suite because all three are answered by state that has to
+     survive things it previously did not:
+
+       the tab bar yields to the keyboard    ("when the search bar is up, this
+                                              home ribbon should go away")
+       the pill stops re-docking every frame ("the search text box moves a
+                                              bunch and tries to stay above
+                                              the keyboard")
+       a downward scroll dismisses           ("the keyboard should naturally
+                                              collapse")
+
+     THE THREE MOST DELETABLE-LOOKING ASSERTIONS IN IT, named because a floor
+     cannot see which tests it is holding up and these are the ones a future
+     edit would call redundant:
+
+       - "setBodyClass still discards the page-scoped classes". The allowlist
+         reads like a bug ("why not just keep everything?") until you see that
+         `sh-compose` reserves room for a bar that exists on one screen.
+       - "the tab bar stays while results are being read with the field
+         blurred". This is a DELIBERATE narrowing — the predicate beside it is
+         right there and looks like it should be reused — and getting it wrong
+         traps a listener on the search page with no navigation.
+       - "resize is NOT throttled". The throttle is the fix; the exemption
+         looks like an oversight and is the thing keeping the mini-player off
+         the top of the keyboard.
+       - "styles.css parses to the end". It looks like it belongs to no
+         feature, and it belongs to all of them: this change shipped a
+         comment closer with no opener into styles.css, every brace still
+         balanced, every text-reading node suite stayed green, and Chromium
+         silently discarded the last ~800 rules of the file. A CSS syntax
+         error has no error.
+
+     The neighbouring files keep their own subjects: search-field-bottom.js
+     owns where the pill sits, now-playing-keyboard.test.js owns the keyboard
+     DETECTOR, collapsing-header-scroll.test.js owns the header. */
+  "test/keyboard-chrome-and-scroll.test.js": 16,
 
   /* Kanban t_d5079285 (recreated — was mistakenly archived as t_623d16a7) —
      episode page: publish date (A1.2), full episode description additive to
@@ -531,6 +583,29 @@ const FLOORS = {
      backend/test/showEpisodesStore.test.ts and ingestShowFeed.test.ts for
      the ingestion/storage side. */
   "test/show-pages-3b-full-catalogue.test.js": 7,
+
+  /* Issue #687: the show page's episode region has four states and ONE
+     WRITER. Founder screenshot, 2026-09-14, with "Couldn't load this show's
+     episodes right now." and "Fetching this show's episodes… Check back
+     soon." on screen at the same time.
+
+     ITS OWN SUITE, not additions to show-pages-3b above, because the subject
+     is different in kind. That file is about the FETCH — does the endpoint
+     get called, does a row come back playable, does a failure degrade. This
+     one is about the CONTRADICTION that was possible between two regions
+     describing one outcome, and the reason it was possible: the body was
+     composed inline in the initial innerHTML, painted once before the fetch
+     resolved, and exactly one of three terminal outcomes ever wrote it
+     again. A suite whose subject is "these two can never disagree" reads as
+     noise inside a suite whose subject is "the endpoint works".
+
+     THE ASSERTION MOST AT RISK, named for the same reason as the suite
+     above: "a curated show keeps its real rows when the full-list fetch
+     fails". It looks like it contradicts the failure states around it. It is
+     the branch that stops a careless version of this fix from deleting
+     playable content in order to display an error about content the listener
+     cannot tell is missing. */
+  "test/show-episode-load-states.test.js": 9,
 
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):
@@ -638,8 +713,17 @@ const FLOORS = {
      against a guess — a floating translucent pill inset from both edges with
      content reading through it, a circular companion button that arrives with
      the keyboard, a leading magnifier and no microphone, and Escape and that
-     button as one code path. 22 -> 31. */
-  "test/search-field-bottom.test.js": 31,
+     button as one code path. 22 -> 31.
+     2026-09-14, +3: the founder deleted the Go button from inside the pill
+     ("since the search results are live, the 'go' button is useless"), which
+     is three separate claims and not one — the trailing slot is empty, the
+     `submit` path SURVIVED the control (it is what a phone keyboard's return
+     key fires, and how the keyboard is dismissed from inside the field), and
+     neither of the two CSS rules that styled it is left selecting nothing.
+     The middle one is the reason this is not a one-line deletion, and a floor
+     that let it be deleted would let the return key stop working with every
+     other test in this file still green. 31 -> 34. */
+  "test/search-field-bottom.test.js": 34,
   "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
   /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
      its rows render and cache like any other breadth row, and a breadth show page survives
