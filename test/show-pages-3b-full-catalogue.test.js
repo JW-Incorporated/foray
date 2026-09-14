@@ -241,6 +241,20 @@ async function flushMicrotasks(n = 50) {
   for (let i = 0; i < n; i++) await new Promise((r) => setTimeout(r, 0));
 }
 
+/* WHAT IS ON SCREEN IN THE EPISODE LIST, wherever renderShow chose to put it.
+   Until 2026-09-14 the curated rows were baked into #view's own innerHTML and
+   only the full-catalogue list went into `[data-show-episodes]`, so these
+   assertions read #view and happened to see both. Issue #687 moved the FIRST
+   paint into the container too — one writer for every state of that region,
+   see paintEpisodeOutcome — so "the curated rows are on screen" is now a
+   question about the container, and asking #view would answer it by accident
+   or not at all. Both are concatenated here so a row is found wherever it is
+   legitimately rendered, and so this helper cannot quietly stop looking. */
+function screenHtml(m) {
+  const container = m.viewEl.querySelector("[data-show-episodes]");
+  return `${m.viewEl.innerHTML}${container ? container.innerHTML : ""}`;
+}
+
 function seedShowAndPool(ctx, { show, discoverItems = [] } = {}) {
   ctx.state.catalog = { shows: [show] };
   ctx.state.discover = { items: discoverItems };
@@ -257,7 +271,7 @@ test("renderShow renders the curated pool synchronously, before the full-catalog
   seedShowAndPool(m.ctx, { show, discoverItems: [{ id: "a--1", show: "Show A", title: "Curated Ep", audio_url: "https://cdn.example.com/a.mp3" }] });
 
   m.ctx.renderShow("show-a");
-  const html = m.viewEl.innerHTML;
+  const html = screenHtml(m);
   assert.ok(html.includes("Curated Ep"), "must render the curated episode immediately, not wait on the network");
 });
 
@@ -337,7 +351,7 @@ test("a fetch failure degrades to the already-rendered curated pool, never a bla
   m.ctx.renderShow("show-a");
   await flushMicrotasks();
 
-  const html = m.viewEl.innerHTML;
+  const html = screenHtml(m);
   assert.ok(html.includes("Curated Ep"), "curated episode must remain visible after a fetch failure");
   assert.ok(!html.includes("undefined"), "must never render a literal undefined into the page");
 });
@@ -353,7 +367,7 @@ test("a non-2xx response also degrades to the curated pool rather than throwing"
 
   assert.doesNotThrow(() => m.ctx.renderShow("show-a"));
   await flushMicrotasks();
-  assert.ok(m.viewEl.innerHTML.includes("Curated Ep"));
+  assert.ok(screenHtml(m).includes("Curated Ep"));
 });
 
 test("a stale:true response surfaces a plain-English note rather than hiding the staleness", async () => {

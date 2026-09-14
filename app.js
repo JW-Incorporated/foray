@@ -538,7 +538,11 @@ function interestSliderRow(node) {
 }
 
 function renderInterests() {
-  document.body.className = "view-page";
+  /* Was a direct `document.body.className = "view-page"`, the one render
+     function that never got routed through setBodyClass when that helper was
+     introduced — so the Interests page dropped `ui-v2` itself, not just the
+     runtime classes, and rendered the whole page off the pre-cutover sheet. */
+  setBodyClass("view-page");
   const groups = interestGroups();
   $("#view").innerHTML = `
     <div class="page">
@@ -768,8 +772,59 @@ function isNativeShell(win = window) {
     renderHome/renderShow/etc.), which would otherwise silently drop `ui-v2` on
     every single navigation. Route every one of those assignments through this
     instead of writing document.body.className directly. */
+
+/* CLASSES THAT OUTLIVE A RENDER, and why a wholesale write needed an
+   allowlist (founder report 2026-09-14: "when I scroll, the search text box
+   moves a bunch"; and two bugs he had not reported yet, both diagnosed from
+   this same line).
+
+   `ui-v2` was not the only class on <body> that a page render must not
+   destroy. Four more are written by things whose lifetime has nothing to do
+   with the current page, and every one of them was being silently wiped by
+   the wholesale assignment below, with nothing to put it back:
+
+     kb-open       installKeyboardChrome, from the soft keyboard's own
+                   viewport events. THE ONE THAT MATTERS HERE.
+     fp-open       the mini-player, for as long as something is playing.
+     fp-expanded   the Now Playing sheet, for as long as it is open.
+     fy-sheet-open the modal sheets, for as long as one is open.
+
+   WHY kb-open IS THE INTERESTING ONE. installKeyboardChrome writes TWO
+   things from one evaluation: this class on <body>, and `--kb-inset` on
+   <html>. Its own comment claims they "can never disagree" because they come
+   from the same `apply()`. They can, and the reason is entirely here: only
+   ONE of the two lives on the element this function overwrites. A render
+   with the keyboard up dropped `kb-open` and kept `--kb-inset`, and
+   `#sh-compose`'s `bottom: calc(var(--kb-inset) + var(--sh-dock))` then
+   composed a keyboard-open inset with the keyboard-SHUT dock.
+
+   MEASURED, not reasoned (test/playwright/tests/search-chrome-dock.spec.js,
+   Chromium at 390x844 with the keyboard-open state and something playing):
+   the pill moved 56px across a single render, and 0px after this change.
+   56px is the tab bar's height and nothing else, because Chromium reports a
+   zero `env(safe-area-inset-bottom)` and because the same wholesale write
+   also dropped `fp-open`, so the mini bar's term left the dock at the same
+   moment — two errors partially cancelling in the one place they happen to
+   be measured. On a notched iPhone the same arithmetic adds the ~34pt home
+   indicator. The cancellation is not a consolation: dropping `fp-open` is
+   itself the second, unreported bug — `body.fp-open`'s content reservation
+   goes with it, so after navigating while something plays the now-playing
+   bar covers the page's last row.
+
+   WHAT IS DELIBERATELY NOT ON THIS LIST. `sh-compose` and `sh-searching` are
+   set by the search page for the search page, and being wiped on navigation
+   is precisely how they are cleaned up (see renderAllShows, which re-adds
+   `sh-compose` after its own render for exactly that reason). An allowlist
+   that "helpfully" preserved them would leave the compose bar's content
+   reservation on every other screen in the app. The test for membership is
+   not "is this class important" but "does this class describe something that
+   is still true after the page underneath it changed". */
+const PERSISTENT_BODY_CLASSES = ["kb-open", "fp-open", "fp-expanded", "fy-sheet-open"];
+
 function setBodyClass(base) {
-  document.body.className = `${base} ui-v2`;
+  const body = document.body;
+  const kept = PERSISTENT_BODY_CLASSES.filter((c) => body.classList.contains(c));
+  body.className = [base, "ui-v2", ...kept].join(" ");
 }
 
 function poolFiltered() {
@@ -1960,6 +2015,14 @@ function showBrowseSections() {
    renderAllShows on every render. */
 let showSearchFieldFocused = false;
 
+/* When that focus landed, in ms. Read by exactly one thing —
+   maybeDismissKeyboardOnScroll — for exactly one reason, spelled out in that
+   function's header: on iOS the keyboard's own arrival fires scroll events,
+   so "the user scrolled" and "the keyboard just opened" are the same signal
+   for a moment, and a dismiss-on-scroll rule with no settle window tears the
+   keyboard down the instant it comes up. */
+let showSearchFocusedAt = 0;
+
 /* Founder, 2026-09-13: "The cards below the search box are kind of helpful
    initially, but should go away when I click on the search box to start
    typing."
@@ -2006,6 +2069,41 @@ function updateShowBrowseVisibility() {
      separate predicate would be one more thing to drift. */
   const dismiss = $("#sh-dismiss");
   if (dismiss) dismiss.hidden = !hide;
+
+  /* THE TAB BAR GOES AWAY WHILE THE FIELD HOLDS FOCUS (founder, 2026-09-14,
+     with a screenshot of it wedged between the pill and the keyboard: "when
+     the search bar is up, this home ribbon should go away"). Apple Podcasts
+     shows nothing in that strip, and his own reference screenshot of it —
+     which this whole row was built against — is the target.
+
+     ON `showSearchFieldFocused`, NOT ON `hide`, and the difference is not an
+     oversight. `hide` answers "is there a search in progress", which stays
+     true across a blur with a live query — and that is the state where the
+     listener is READING RESULTS with the keyboard gone. Taking the app's only
+     navigation away from someone reading a page of results traps them: there
+     would be no way off the search page but to empty the field. What the
+     founder is describing, and what Apple actually does, is narrower: the bar
+     yields to the KEYBOARD, for as long as the keyboard is up. Focus is that
+     fact, it is the fact this function is already built out of, and no second
+     listener is needed to observe it.
+
+     A CLASS ON <body>, NOT `hidden` ON THE ELEMENT. `.tab-bar` carries
+     `display: flex`, and any author `display` beats the UA sheet's
+     `[hidden] { display: none }` at any specificity — the exact cascade trap
+     renderTabBar's own header documents and test/home-layout.test.js's BUG 3
+     exists to catch. `body.sh-searching .tab-bar { display: none }` is an
+     author rule that outranks `.tab-bar`, so it wins on the terms the
+     cascade actually judges.
+
+     AND IT IS THE SAME CLASS THAT PAYS FOR IT. `--sh-dock` (styles.css) is
+     the sum of the room already taken at the bottom edge, and `--tab-bar-h`
+     is one of its terms. A bar that left without that term leaving with it
+     would drop the pill by exactly the bar's height at the moment the bar
+     vanished — the founder's report is a pill that MOVES, so fixing it by
+     introducing one more way for it to move would be a poor trade. One class
+     switches the visibility and the arithmetic together, which is the only
+     reason they cannot disagree. */
+  document.body.classList.toggle("sh-searching", showSearchFieldFocused);
 }
 
 /* "Never mind" — empty the field, drop the painted results (the same reset a
@@ -2070,19 +2168,35 @@ function renderAllShows() {
      Escape". This button is that key, for a thumb \u2014 it runs the identical
      path, `dismissShowSearch`, rather than a parallel implementation.
 
-     NO MICROPHONE. Apple's pill has one at its trailing edge; we have no
-     dictation, and a glyph that does nothing is worse than an empty slot.
-     The trailing slot keeps the Go button instead \u2014 G2's standing decision
-     ("keep the button, keep Enter, make neither required"), which is not
-     this change's to revoke, and which unlike a microphone is wired to
-     something. The leading magnifier is kept: it is what tells you the pill
-     is a search field rather than a compose box. */
+     NOTHING IN THE TRAILING SLOT. Apple's pill has a microphone there; we
+     have no dictation, and a glyph that does nothing is worse than an empty
+     slot. It held a "Go" submit button until 2026-09-14, and the founder
+     deleted it on sight: "since the search results are live, the 'go' button
+     is useless, delete it."
+
+     HE IS RIGHT, AND THE REASON IS IN THIS FILE. G2's standing decision was
+     "keep the button, keep Enter, make neither required" \u2014 written when the
+     button was the only way to run a search at all. S-02 then made the
+     results filter live on every keystroke (see the three bindings below),
+     which retired the button's job without retiring the button: by the time
+     a thumb travelled to it, the results it would have produced were already
+     on screen. A control whose only effect is to skip a 250ms debounce on
+     work that has already finished is not a shortcut, it is furniture.
+
+     THE FORM AND ITS `submit` HANDLER STAY. Deleting the button is not
+     deleting the path: `submit` is what a phone keyboard's return key fires,
+     and that is how the keyboard is DISMISSED from inside the field. A
+     `<form>` with no submit control still submits on Enter, so the return
+     key keeps working and keeps skipping the debounce; what is gone is only
+     the tappable duplicate of it.
+
+     The leading magnifier is kept: it is what tells you the pill is a search
+     field rather than a compose box. */
   renderShowIndexPage("Shows", "", shows, `
       <div id="sh-compose">
         <form id="sh-form" autocomplete="off">
           <svg class="sh-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
           <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
-          <button type="submit">Go</button>
         </form>
         <button id="sh-dismiss" type="button" aria-label="Clear search" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
@@ -2115,10 +2229,11 @@ function renderAllShows() {
                   S-03's 10,113-row index — inside a 16 ms frame either way.
                   Then a 250 ms trailing debounce for everything that costs
                   something.
-       submit  -> the same thing with the debounce SKIPPED. Enter and the Go
-                  button both land here. The button survives (G2's default:
-                  "keep the button, keep Enter, make neither required" — it is
-                  now "search now, skip the debounce", not "search at all").
+       submit  -> the same thing with the debounce SKIPPED. The keyboard's
+                  return key is the only thing that lands here now — the Go
+                  button was deleted 2026-09-14 (see the compose-bar comment
+                  above for why, and for why this path outlived it: return is
+                  how a phone keyboard is dismissed from inside the field).
        focus   -> S-03's lazy index load, once. Never at init(): the decode is
                   ~113 ms measured, and it must not sit on the boot path or on
                   a keystroke.
@@ -2157,6 +2272,14 @@ function renderAllShows() {
     input.addEventListener("focus", () => {
       loadShowIndex();
       showSearchFieldFocused = true;
+      /* The two things scroll-to-dismiss needs, both stamped here rather than
+         in the scroll handler, because here is where the event actually is.
+         Re-baselining `lastScrollY` matters as much as the timestamp: without
+         it the first post-focus scroll is measured against wherever the page
+         last sat, and a stale baseline can hand the handler a large fake
+         downward delta on the very first frame after focus. */
+      showSearchFocusedAt = Date.now();
+      lastScrollY = window.scrollY || 0;
       updateShowBrowseVisibility();
     });
     input.addEventListener("blur", () => {
@@ -2360,7 +2483,27 @@ function showForaysHtml(show) {
        refresh" is a failure the listener can act on (pull to refresh,
        come back on a better connection); silence about it would be a
        different lie from the one we just deleted. */
-function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBreadthTier, stale, loadError }) {
+function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBreadthTier, stale, loadError, loadState }) {
+  /* THE LOADING BRANCH MOVED IN HERE (issue #687). It used to be written by
+     hand, inline, into renderShow's initial `innerHTML` — a second author for
+     this one label, with its own phrasing, that the fetch's terminal paths
+     never revisited. That is the same two-writers-one-state defect this issue
+     is about, on the subtitle instead of the body, and leaving it in place
+     while fixing the body would have been fixing one half of a matched pair.
+     Now the initial render calls this function with `loadState: "loading"`
+     and there is exactly one place the subtitle is ever composed.
+
+     The count is still stated while loading when we have one: those curated
+     episodes are on screen and playable right now, so naming them is a fact,
+     not a hedge. What is gone with the inline version is the breadth-tier
+     branch's "4a's wider catalogue — loading full episode list…", which
+     explained our catalogue's internal tiering to a listener who has no idea
+     what a tier is (founder's standing instruction: don't blame it on 4a). */
+  if (loadState === "loading") {
+    return curatedCount
+      ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} · loading the rest…`
+      : "Loading episodes…";
+  }
   if (loadError && loadedCount === 0) {
     return curatedCount
       ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue (couldn't load the full list)`
@@ -2504,11 +2647,11 @@ function renderShow(show_id) {
       <a class="back" href="#/">‹</a>
       <div>
         <h2>${esc(show.title)}${explicitBadge(show.explicit)}</h2>
-        <p class="sub" data-show-count>${curatedEps.length
-          ? `${curatedEps.length} episode${curatedEps.length === 1 ? "" : "s"} in 4a's catalogue — loading full episode list…`
-          : isBreadthTier
-            ? "4a's wider catalogue — loading full episode list…"
-            : "Loading full episode list…"}</p>
+        <!-- EMPTY. paintCount() fills it on the very next statement after
+             this template is installed, and is the only thing that ever
+             writes it — see paintEpisodeOutcome. An initial value composed
+             here would be a second author for one label (issue #687). -->
+        <p class="sub" data-show-count></p>
       </div>
     </div>
     ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
@@ -2529,15 +2672,26 @@ function renderShow(show_id) {
       <p class="note" data-show-ep-search-note hidden></p>
     </div>`;
 
-  // Render immediately with the curated pool so the page is never blank
-  // while the full-catalogue fetch is in flight.
-  $("#view").innerHTML = `<div class="page">${head}${searchBox}<div data-show-episodes>
-    ${curatedEps.length
-      ? curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("")
-      : isBreadthTier
-        ? `<p class="note">Fetching this show's episodes — 4a is adding full episode lists for shows outside its curated picks. Check back soon.</p>`
-        : `<p class="note">No episodes from this show are in 4a's catalogue right now.</p>`}
-  </div>
+  /* THE EPISODE CONTAINER IS EMITTED EMPTY (issue #687, founder screenshot
+     2026-09-14 showing "Couldn't load this show's episodes right now." and
+     "Fetching this show's episodes… Check back soon." on screen at the same
+     time).
+
+     It used to be composed right here, inline, and that was the bug — not the
+     wording. A body painted once, synchronously, before the fetch resolves,
+     with no error branch and nothing that ever revisits it, is a CLAIM ABOUT
+     THE FETCH made by something that will never learn how the fetch turned
+     out. Two of the three terminal outcomes then called paintCount() alone,
+     so the optimistic placeholder outlived a failure and an empty result and
+     sat there contradicting the subtitle beside it, permanently.
+
+     Everything this template used to decide is now decided by
+     paintEpisodeOutcome() below, which is called on EVERY terminal path
+     including this one (the "loading" outcome, on the line after the binds).
+     The page is still never blank — the first paint happens synchronously in
+     the same task, exactly as before — it just happens through the one writer
+     instead of beside it. */
+  $("#view").innerHTML = `<div class="page">${head}${searchBox}<div data-show-episodes></div>
   ${similarShowsSection(show)}
   ${showForaysHtml(show)}
   </div>`;
@@ -2560,6 +2714,23 @@ function renderShow(show_id) {
   let fullyLoaded = false;
   let anyStale = false;     // sticky once any page reports stale/degraded
   let lastLoadError = null;
+  /* WHAT STATE THE EPISODE CONTAINER IS ACTUALLY IN (issue #687). Four
+     values, one of which used to be invisible to the code entirely:
+
+       "loading" — the fetch is in flight. Used to be a string painted once
+                   into the initial innerHTML and then forgotten; it is a
+                   STATE, and the only reason the bug existed is that nothing
+                   modelled it as one, so nothing could leave it.
+       "loaded"  — the fetch returned episodes. The only state in which the
+                   search box, the scoped-search modes and paintList() mean
+                   anything.
+       "empty"   — the fetch succeeded and the show has no episodes.
+       "failed"  — the fetch failed.
+
+     This is the variable the container and the subtitle are BOTH derived
+     from, which is the whole fix: they cannot contradict each other because
+     there is no longer anything for them to disagree about. */
+  let loadState = "loading";
   let searchQuery = "";
   /* S-06/S-07 wiring: `searchMode` tracks which result set the container is
      currently showing so paintSearchNote() can label it honestly.
@@ -2581,9 +2752,18 @@ function renderShow(show_id) {
   const searchNote = () => $("#view [data-show-ep-search-note]");
   const stillMounted = () => !!container();
 
-  function paintList() {
-    const c = container();
-    if (!c) return;
+  function bindRows(c) {
+    bindPickLogging(c);
+    bindStars(c);
+    bindUpNext(c);
+    bindPlay(c);
+  }
+
+  /* The full-catalogue list, search-aware. PRIVATE to paintBody() now — it is
+     what "loaded" looks like, not a thing a caller gets to choose. It was
+     public-ish before, and the fact that exactly one of three outcomes
+     remembered to call it is issue #687. */
+  function paintList(c) {
     const visible = searchMode === "scoped" ? scopedResults : filterLoadedEpisodes(loaded, searchQuery);
     if (searchQuery.trim() && !visible.length && searchMode !== "loading") {
       c.innerHTML = `<p class="note">No episodes match "${esc(searchQuery.trim())}".</p>`;
@@ -2591,10 +2771,65 @@ function renderShow(show_id) {
     }
     const rows = visible.map((ep) => fullCatalogueRowToEpRowItem(show, ep));
     c.innerHTML = rows.map((item, i) => epRow(item, i, ctx, -1)).join("");
-    bindPickLogging(c);
-    bindStars(c);
-    bindUpNext(c);
-    bindPlay(c);
+    bindRows(c);
+  }
+
+  /* NO COPY THAT BLAMES 4a (founder's standing instruction, given twice;
+     issue #687 repeats it). What was here read "Fetching this show's
+     episodes — 4a is adding full episode lists for shows outside its curated
+     picks. Check back soon." and "No episodes from this show are in 4a's
+     catalogue right now." Both explain OUR catalogue's internal structure to
+     a listener who came here for a podcast, and one of them was a promise
+     ("check back soon") that nothing in the system actually keeps.
+
+     The breadth-tier distinction went with them. It was never a difference
+     the listener could see or act on — it is a fact about which of our two
+     ingestion paths found the show — and encoding it in the empty state is
+     how "4a's wider catalogue" ended up on a phone screen. `isBreadthTier`
+     still does real work in showEpisodeCountLabel; it just no longer picks
+     the listener's words. */
+  const BODY_PLACEHOLDER = {
+    loading: "Loading episodes…",
+    empty: "No episodes yet.",
+    failed: "Couldn't load these episodes. Pull to refresh.",
+  };
+
+  /* THE ONE WRITER OF THE EPISODE CONTAINER (issue #687).
+
+     Every path that changes what should be on screen goes through here, and
+     it derives the answer from `loadState` rather than being told what to
+     paint — so there is no call site that can paint the wrong thing, and no
+     outcome that can forget to paint at all.
+
+     THE CURATED ROWS BRANCH IS THE SUBTLE ONE, and getting it wrong would
+     have traded one contradiction for another. A breadth show's full-list
+     fetch failing is a real failure and the subtitle says so. But a CURATED
+     show's fetch failing while its curated episodes are already on screen is
+     not an empty screen — those rows are real, playable, and the best thing
+     we have. Replacing them with "Couldn't load these episodes" would delete
+     working content to display an error about content the listener cannot
+     tell is missing. So: real rows whenever we have any, a placeholder only
+     when we have none. The subtitle covers the difference honestly
+     ("N episodes in 4a's catalogue (couldn't load the full list)"), which is
+     what it is for. */
+  function paintBody() {
+    const c = container();
+    if (!c) return;
+    if (loadState === "loaded") { paintList(c); return; }
+    if (curatedEps.length) {
+      c.innerHTML = curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("");
+      bindRows(c);
+      return;
+    }
+    /* NOT esc()'d, and that is deliberate rather than an oversight: every
+       value here is a literal from the frozen map three lines up, written in
+       this file, containing no markup — the same footing as every other
+       `<p class="note">…</p>` on this page (see resolveMissingShow). Running
+       an HTML escaper over a constant you wrote yourself buys no safety and
+       costs correctness: it turns the apostrophe in "Couldn't" into `&#39;`
+       in the DOM, which is what the string looks like to anything reading
+       textContent. */
+    c.innerHTML = `<p class="note">${BODY_PLACEHOLDER[loadState] || BODY_PLACEHOLDER.loading}</p>`;
   }
 
   function paintCount() {
@@ -2607,7 +2842,19 @@ function renderShow(show_id) {
       isBreadthTier,
       stale: anyStale,
       loadError: loaded.length === 0 ? lastLoadError : null,
+      loadState,
     });
+  }
+
+  /* THE TERMINAL PATHS' ONLY ENTRY POINT. Taking the outcome as its argument
+     and writing BOTH regions is the entire structural fix for issue #687: the
+     body and the subtitle can no longer describe different outcomes, because
+     no caller is able to update one without the other. Compare what it
+     replaced — three `return`s, two of which called paintCount() alone. */
+  function paintEpisodeOutcome(outcome) {
+    loadState = outcome;
+    paintBody();
+    paintCount();
   }
 
   function paintSearchNote() {
@@ -2686,7 +2933,7 @@ function renderShow(show_id) {
     const query = searchQuery;
     if (!query.trim()) {
       searchMode = "idle";
-      paintList();
+      paintBody();
       paintSearchNote();
       return;
     }
@@ -2703,7 +2950,11 @@ function renderShow(show_id) {
         searchMode = "fallback";
         scopedResults = [];
       }
-      paintList();
+      /* Through paintBody(), not paintList(), even though `loadState` is
+         necessarily "loaded" here (the search box only reveals once episodes
+         land). One writer means one writer — a second entry point into the
+         container is how the first one grew a hole. */
+      paintBody();
       paintSearchNote();
     });
   }
@@ -2729,25 +2980,32 @@ function renderShow(show_id) {
     });
   }
 
+  /* THE FIRST PAINT, and it is a terminal path like any other — the terminal
+     path of "nothing has happened yet". Synchronous, in the same task as the
+     innerHTML above it, so the page is on screen with its curated rows before
+     a frame is drawn, exactly as when this was baked into the template.
+     Placed immediately before the fetch that will supersede it, so the four
+     outcomes of one load read as four calls to one function. */
+  paintEpisodeOutcome("loading");
+
   fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, error }) => {
     if (!stillMounted()) return; // navigated away before the fetch resolved
 
     if (episodes === null) {
       lastLoadError = error || "load failed";
-      paintCount();
+      paintEpisodeOutcome("failed");
       return;
     }
 
     if (episodes.length === 0) {
-      paintCount();
+      paintEpisodeOutcome("empty");
       return;
     }
 
     if (stale) anyStale = true;
     loaded = episodes;
     fullyLoaded = nc === null;
-    paintList();
-    paintCount();
+    paintEpisodeOutcome("loaded");
     revealSearchIfEligible();
   });
 }
@@ -4069,7 +4327,13 @@ function paintShowResults(query, shows, myToken) {
   if (!shows.length) {
     results.innerHTML = "";
     results.hidden = true;
-    note.textContent = `No shows match "${query}" in 4a's catalogue.`;
+    /* "…in 4a's catalogue" until 2026-09-14. The founder's standing
+       instruction is "don't blame it on 4a", and that trailing clause was
+       doing exactly that: a listener who searched for a show and found
+       nothing does not need to be told whose catalogue fell short, and the
+       qualifier reads as an excuse for the result rather than as the result.
+       A search that found nothing says so. */
+    note.textContent = `No results for "${query}".`;
     note.hidden = false;
     return;
   }
@@ -9436,11 +9700,74 @@ function setPageHeadHidden(hidden) {
   if (head) head.classList.toggle("page-head-hidden", hidden);
 }
 
+/* A deliberate downward scroll puts the keyboard away (founder, 2026-09-14:
+   "when I scroll, the keyboard should naturally collapse"). Standard iOS list
+   behaviour, and what Apple Podcasts does on the screen this was reported
+   against.
+
+   WHY IT HANGS OFF THE HEADER'S HANDLER RATHER THAN A LISTENER OF ITS OWN.
+   The question is the same question — "has the user just moved the page
+   down past the dead zone" — and the answer is already computed, once per
+   animation frame, by the one throttled `scroll` subscription `init()`
+   registers. A second listener for one fact is how the two drift out of step
+   (the comment on `rememberScrollPosition`'s piggy-back beside it makes the
+   same argument for the same reason), and on a long episode list it is also a
+   second handler running on a path that has to stay cheap.
+
+   THE DEAD ZONE IS REUSED, NOT RE-PICKED. `SCROLL_HIDE_DELTA` already encodes
+   "more movement than reading micro-jitter and rubber-band bounce", which is
+   exactly the threshold this needs, and a second constant for the same
+   judgement would let the header collapse and the keyboard dismiss at
+   different flicks of the same thumb.
+
+   THE SETTLE WINDOW IS THE PART THAT IS NOT OBVIOUS, and it is the one that
+   makes a naive version of this feature unusable. On iOS the keyboard's own
+   appearance moves the viewport, and the page fires `scroll` (and `resize`)
+   as it does — so at the moment of focus, "the user scrolled down" and "the
+   keyboard just opened" are indistinguishable from here. With no guard, the
+   first frame after focus dismisses the keyboard the user has just asked
+   for, every time, and the field reads as broken. `showSearchFocusedAt` plus
+   `KB_SETTLE_MS` ignores movement until the keyboard has had time to finish
+   arriving; the focus handler additionally re-baselines `lastScrollY` so the
+   first delta measured after the window is a real one.
+
+   NOT PROVEN OFF A PHONE, and this is the item most in need of one: that
+   350ms actually covers the iOS keyboard animation on a cold first open
+   (Apple's own animation is ~250ms, but the first open of a session also
+   builds the keyboard). What IS proven here is the rule and the guard —
+   scrolling down during the window does nothing, scrolling down after it
+   blurs, scrolling up never blurs.
+
+   UPWARD SCROLLING DELIBERATELY DOES NOT DISMISS. Same asymmetry the header
+   already has: down is "I want to see more of the page", up is "I am coming
+   back", and pulling the keyboard down on a user who is scrolling back
+   toward the field they are typing in would be the opposite of natural. */
+const KB_SETTLE_MS = 350;
+
+function maybeDismissKeyboardOnScroll(delta) {
+  if (!showSearchFieldFocused) return;
+  if (delta <= SCROLL_HIDE_DELTA) return;
+  if (Date.now() - showSearchFocusedAt < KB_SETTLE_MS) return;
+  const input = $("#sh-input");
+  /* Blur only. NOT dismissShowSearch: the query and the results it produced
+     are what the listener scrolled down to read, and throwing them away
+     would make a scroll destructive. The blur alone is enough for everything
+     that has to follow — the keyboard goes, and the field's own blur handler
+     puts the tab bar back through the one predicate. */
+  if (input && typeof input.blur === "function") input.blur();
+}
+
 function onWindowScroll() {
   const y = window.scrollY || 0;
   const head = currentPageHead();
-  if (!head) { lastScrollY = y; return; } // no page head on this page (e.g. home) — nothing to do
+  /* Computed and consumed BEFORE the no-page-head early return below: the
+     keyboard rule is about the window, not about this page's header, and a
+     page that happens to have no `.page-head` must not silently opt out of
+     it. (#/shows does have one today; depending on that is how this would
+     quietly stop working the day the search page's chrome changed again.) */
   const delta = y - lastScrollY;
+  maybeDismissKeyboardOnScroll(delta);
+  if (!head) { lastScrollY = y; return; } // no page head on this page (e.g. home) — nothing to do
   if (y <= head.offsetHeight) {
     setPageHeadHidden(false);           // never hide near the very top of the page
   } else if (delta > SCROLL_HIDE_DELTA) {
@@ -9758,6 +10085,15 @@ function installKeyboardChrome(win) {
   if (!vv || !doc || !doc.body || typeof vv.addEventListener !== "function") {
     return () => {}; // no visualViewport (desktop Safari <13, jsdom, a test stub): never hide the bar
   }
+  /* THE LAST VALUE WE WROTE, so a re-evaluation that reaches the same answer
+     writes nothing at all. `--kb-inset` is read by `#sh-compose`'s `bottom`
+     calc, so every setProperty on it invalidates style and forces a layout of
+     a fixed element; doing that on a frame where the number did not change is
+     pure cost, and during a scroll on a settled keyboard that is EVERY frame.
+     `null` (not 0) as the initial value, so the first evaluation always
+     writes — a document that has never carried the variable and one carrying
+     `0px` are not the same thing to the cascade's fallback. */
+  let lastInset = null;
   const apply = () => {
     const open = keyboardIsOpen(w) && editableHasFocus(doc);
     doc.body.classList.toggle("kb-open", open);
@@ -9767,30 +10103,89 @@ function installKeyboardChrome(win) {
        measurement, so that everything the class's own predicate rejects
        (nothing editable focused, an inset below the threshold, a WebView
        mis-reporting during a splash fade) leaves the bar exactly where it
-       sits with no keyboard at all. */
-    setKeyboardInsetVar(doc, open ? keyboardInsetPx(w) : 0);
+       sits with no keyboard at all.
+
+       (The "can never disagree" claim above was not true until 2026-09-14,
+       and the reason was not here: setBodyClass overwrote <body> wholesale
+       and dropped the class while this variable, which lives on <html>,
+       survived. See PERSISTENT_BODY_CLASSES.) */
+    const px = open ? keyboardInsetPx(w) : 0;
+    if (px !== lastInset) {
+      lastInset = px;
+      setKeyboardInsetVar(doc, px);
+    }
   };
   const onFocusOut = () => {
     /* Runs BEFORE focus lands on the next element, so re-evaluate on the next
        turn rather than reading a momentarily-empty activeElement. */
     setTimeout(apply, 0);
   };
+  /* ONE EVALUATION PER FRAME FOR SCROLL, AND ONLY FOR SCROLL (founder,
+     2026-09-14: "when I scroll, the search text box moves a bunch and tries
+     to stay above the keyboard but seems to need to update every time the
+     page moves").
+
+     He is describing this handler. `visualViewport` fires `scroll` at the
+     rate the compositor moves the viewport — many times per frame under
+     momentum and rubber-banding — and every one of those ran a full
+     measure-and-write: three layout reads (`innerHeight`, `vv.height`,
+     `vv.offsetTop`) feeding a `setProperty` that a fixed element's `bottom`
+     depends on. `offsetTop` genuinely changes while the viewport is moving,
+     so the write was not even redundant; it was a real, per-event reposition
+     of the pill. That is the "moves a bunch" he sees.
+
+     Coalescing to one evaluation per animation frame is the same idiom, and
+     the same boolean-flag implementation, the window scroll listener in
+     `init()` already uses — and it is the correct granularity for both
+     reasons: the browser cannot paint more than once a frame anyway, and
+     reading layout once per frame is what keeps this off the
+     read/write/read-again thrash path.
+
+     RESIZE IS NOT THROTTLED, deliberately. That is the keyboard actually
+     opening or closing — it fires a handful of times, it is the event the
+     `kb-open` class has to be on for BEFORE the next paint (the whole point
+     of the scroll subscription's own comment below), and deferring it by a
+     frame is how the mini-player gets one frame on top of the keyboard. The
+     two subscriptions want different things from the same evaluation, so
+     they get different scheduling, which is why this is two lines rather
+     than one throttled `apply`.
+
+     NOT PROVEN OFF A PHONE: that one-per-frame is enough to make the pill
+     look welded to the keyboard under iOS momentum scrolling. What IS proven
+     here (test/now-playing-keyboard.test.js) is the count — N scroll events
+     inside one frame produce exactly one evaluation, where they used to
+     produce N. */
+  let scrollScheduled = false;
+  const raf = typeof w.requestAnimationFrame === "function"
+    ? w.requestAnimationFrame.bind(w)
+    /* A window with no rAF (a stripped WebView, the suite's fake windows):
+       fall back to running inline rather than dropping the evaluation. The
+       throttle is an optimisation; correctness must not depend on it. */
+    : (cb) => { cb(); return 0; };
+  const onViewportScroll = () => {
+    if (scrollScheduled) return;
+    scrollScheduled = true;
+    raf(() => { scrollScheduled = false; apply(); });
+  };
   vv.addEventListener("resize", apply);
   /* `scroll` is the exact moment WebKit re-anchors fixed elements — the frame
      Wyatt described the bar jumping in. Re-evaluating here means the class is
      already on before the bar can be repainted in its new place. */
-  vv.addEventListener("scroll", apply);
+  vv.addEventListener("scroll", onViewportScroll);
   doc.addEventListener("focusout", onFocusOut, true);
   apply();
   return () => {
     vv.removeEventListener("resize", apply);
-    vv.removeEventListener("scroll", apply);
+    vv.removeEventListener("scroll", onViewportScroll);
     doc.removeEventListener("focusout", onFocusOut, true);
     doc.body.classList.remove("kb-open");
     /* Teardown must undo the measurement as well as the class. A document
        left carrying `--kb-inset: 312px` after the listeners are gone would
        hold the compose bar a keyboard's height off the floor with nothing
-       left running to correct it. */
+       left running to correct it. `lastInset` is reset with it, so a
+       re-install on the same document does not memo its way out of the first
+       write. */
+    lastInset = 0;
     setKeyboardInsetVar(doc, 0);
   };
 }
