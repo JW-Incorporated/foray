@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
 import { corpusCoverage, corpusCoverageLine, corpusSafeKey, scanNormalizedCorpus } from "../generation/transcriptCorpus";
+import { DEFAULT_FEED_USER_AGENT } from "../feeds/userAgent";
 import { FileTranscriptTextIndex } from "../generation/transcriptTextIndex";
 
 /**
@@ -175,7 +176,11 @@ async function loadFeed(showId: string, feedUrl: string | null, offline: boolean
   }
   if (!xml && !offline && feedUrl) {
     try {
-      const res = await fetch(feedUrl, { headers: { "user-agent": "foray-warm-transcript-index/1.0 (+https://github.com/wjduvall-cmd/foray)" } });
+      /* The project's ONE outbound identity, imported rather than spelled
+         (#316): `tools/segments/politeness.test.mjs` refuses any file under
+         `backend/src/` that writes its own, and it is right to — two identities
+         is how a publisher blocks half a corpus and nobody can tell which half. */
+      const res = await fetch(feedUrl, { headers: { "user-agent": DEFAULT_FEED_USER_AGENT } });
       if (res.ok) {
         xml = await res.text();
         fs.mkdirSync(FEED_CACHE, { recursive: true });
