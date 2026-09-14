@@ -2302,6 +2302,165 @@
           "slot": "the-fork-is-a-repeated-choice"
         }
       ]
+    },
+    {
+      "id": "why-doctors-didn-t-believe-in-germs-a83180",
+      "kind": "deep-dive",
+      "title": "Why Doctors Didn't Believe In Germs",
+      "topic": "medicine/biology",
+      "status": "draft",
+      "summary": "Why good evidence for microbes took decades to persuade the doctors who needed it.",
+      "runtime_sec": 2239.843,
+      "generated": true,
+      "slots": [
+        {
+          "id": "the-theory-that-worked",
+          "title": "The theory that worked"
+        },
+        {
+          "id": "looking-for-something-you-cannot-name",
+          "title": "Looking for something you cannot name"
+        },
+        {
+          "id": "what-a-nameable-cause-buys",
+          "title": "What a nameable cause buys"
+        }
+      ],
+      "items": [
+        {
+          "type": "narration",
+          "id": "prelude",
+          "script": "This is a Foray about How medicine accepted the biology of infectious disease. Much of what you'll hear is written by AI. We work hard to get the facts right, but AI gets things wrong — and sometimes it invents things that were never said — so take it as a starting point, not a source. For about fifty years the evidence that invisible living things cause disease sat in plain sight, published and repeatable, and most of the medical profession did not believe it. This is the story of that gap rather than of the discovery, which is the part everyone already knows. The theory germs replaced was cleverer than its reputation, the man who saw it first was right and unpersuasive, and the habits of mind that kept good evidence unhearable have not gone anywhere.",
+          "mode": "marker",
+          "slot": "the-theory-that-worked"
+        },
+        {
+          "type": "narration",
+          "id": "act-1-introduction",
+          "script": "Start with the thing nobody says out loud about the years before germs, which is that the doctors were not idiots and their theory was not useless. It told cities to do something, they did it, and fewer people died. Any explanation with that record earns the benefit of the doubt, and for about fifty years it got it, while the evidence that would replace it sat in print where anyone could read it.",
+          "mode": "frame",
+          "slot": "the-theory-that-worked"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-0-beat",
+          "script": "Before germs, the best explanation on offer was that disease rose out of rotting matter as bad air. That is not a superstition. It is a theory with a mechanism, and it told you what to do: drain the marsh, clear the waste, build the sewer. Waves of cholera in the early nineteenth century gave the old idea new urgency, and the sanitary movement it justified went to work on urban filth, regulating waste removal and building sewers.\n\nAnd it worked. Cities that cleaned themselves got less disease, to great benefit.\n\nThat is the part which makes the next fifty years hard to wave away. Every success of sanitation was read as a success for the theory behind it, because the theory had called for it. An idea that keeps being right about what to do is not easily dislodged by someone pointing out that it is wrong about why. What nobody could do yet was look up and see what was actually there. On This Podcast Will Kill You, the science writer Carl Zimmer describes the air as something closer to an ocean we are all standing at the bottom of.",
+          "mode": "patch",
+          "slot": "the-theory-that-worked",
+          "cites": [
+            {
+              "kind": "print",
+              "publication": "When filth became dangerous: the miasmatic and contagionistic origins of nineteenth-century cleanliness practices among Swedish provincial doctors",
+              "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12041326/"
+            },
+            {
+              "kind": "print",
+              "publication": "A History of Public Health - The New Public Health",
+              "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7170188/"
+            },
+            {
+              "kind": "tape",
+              "segment_id": "this-podcast-will-kill-you--special-episode-carl-zimmer-airborne#242"
+            }
+          ]
+        },
+        {
+          "type": "segment",
+          "slot": "the-theory-that-worked",
+          "segment_id": "this-podcast-will-kill-you--special-episode-carl-zimmer-airborne#242"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-3-beat",
+          "script": "The trouble with an invisible cause is not that it is hidden. It is that it cannot be named, and an argument about a thing with no name has nowhere to go. This is the shape of the whole fifty years. Someone counts the dead in two wards, changes one practice, watches the number fall, and publishes. His colleagues can accept every figure he prints and still decline his conclusion, because he cannot tell them what the change took off anyone's hands. Nothing in that exchange requires either side to be stupid. It only requires the cause to be unnameable, and for a long time it was.\n\nThe predicament outlived the century. What follows is Cyclospora being noticed for the first time, in routine stool samples out of Papua New Guinea at the end of the nineteen seventies, by a parasitologist who could tell he had found something and could not tell what.",
+          "mode": "frame",
+          "slot": "looking-for-something-you-cannot-name",
+          "cites": [
+            {
+              "kind": "tape",
+              "segment_id": "this-podcast-will-kill-you--ep-216-cyclospora-explosive-diarrhea-everywhere#1271"
+            }
+          ]
+        },
+        {
+          "type": "segment",
+          "slot": "looking-for-something-you-cannot-name",
+          "segment_id": "this-podcast-will-kill-you--ep-216-cyclospora-explosive-diarrhea-everywhere#1271"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-5-connective",
+          "script": "Still on This Podcast Will Kill You, the same difficulty with a virus and a blood supply, and what happens when the ability to transfuse runs well ahead of the ability to name what is in the bag.",
+          "mode": "intro",
+          "slot": "looking-for-something-you-cannot-name",
+          "cites": [
+            {
+              "kind": "tape",
+              "segment_id": "this-podcast-will-kill-you--from-the-vault-hepatitis-b-hepatiti-take-2-ep-89#3270"
+            }
+          ]
+        },
+        {
+          "type": "segment",
+          "slot": "looking-for-something-you-cannot-name",
+          "segment_id": "this-podcast-will-kill-you--from-the-vault-hepatitis-b-hepatiti-take-2-ep-89#3270"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-6-beat",
+          "script": "What changed, when germs finally won, was not that the evidence got better. It was that the profession acquired a name to put on the cause, and a procedure for pinning one organism to one disease. That bought an enormous amount, and it is why the story is usually told as a straightforward victory.\n\nIt also cost something, and the cost is easier to see from here. A framework that expects one microbe and one disease is superb at every case with that shape, and blind in a particular way to the rest. What follows is that framing meeting an organism which refused to fit it.",
+          "mode": "frame",
+          "slot": "looking-for-something-you-cannot-name"
+        },
+        {
+          "type": "segment",
+          "slot": "what-a-nameable-cause-buys",
+          "segment_id": "this-podcast-will-kill-you--ep-188-candida-yeast-here-there-and-everywhere#2109"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-8-connective",
+          "script": "A treatment can lose an argument it was never given. Lina Zeldovich, on why phage medicine, which demonstrably worked, did not become the thing everyone did next.",
+          "mode": "intro",
+          "slot": "what-a-nameable-cause-buys",
+          "cites": [
+            {
+              "kind": "tape",
+              "segment_id": "this-podcast-will-kill-you--special-episode-lina-zeldovich-the-living-medicine#1818"
+            }
+          ]
+        },
+        {
+          "type": "segment",
+          "slot": "what-a-nameable-cause-buys",
+          "segment_id": "this-podcast-will-kill-you--special-episode-lina-zeldovich-the-living-medicine#1818"
+        },
+        {
+          "type": "narration",
+          "id": "narration-act-1-9-connective",
+          "script": "And it runs the other way too. Jon Adams and Edmund Ramsden, on a body of experiments everybody invoked, right up until nobody did.",
+          "mode": "intro",
+          "slot": "what-a-nameable-cause-buys",
+          "cites": [
+            {
+              "kind": "tape",
+              "segment_id": "this-podcast-will-kill-you--special-episode-jon-adams-and-edmund-ramsden-rat-city#2905"
+            }
+          ]
+        },
+        {
+          "type": "segment",
+          "slot": "what-a-nameable-cause-buys",
+          "segment_id": "this-podcast-will-kill-you--special-episode-jon-adams-and-edmund-ramsden-rat-city#2905"
+        },
+        {
+          "type": "narration",
+          "id": "act-1-exit",
+          "script": "What the story leaves behind is not a lesson about handwashing. It is a question about what a profession can hear, and the answer turns out to depend less on how good the evidence is than on whether anyone can yet put a name to what it points at.",
+          "mode": "frame",
+          "slot": "what-a-nameable-cause-buys"
+        }
+      ]
     }
   ]
 }
