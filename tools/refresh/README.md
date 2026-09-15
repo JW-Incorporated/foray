@@ -20,6 +20,7 @@ scan.mjs ──▶ fresh-pending.json ──▶ resolve.mjs ──▶ resolved.j
 | `scan.mjs`    | ✅ | Poll curated RSS feeds, emit episodes newer than last run |
 | `resolve.mjs` | ✅ (iTunes lookup) | Resolve `apple_track_id`, dedup, drop unresolvable/dupe/invalid-topic |
 | `merge.mjs`   | ✅ | Apply agent-authored hooks/tags, enforce copy rules, write data files |
+| `candidates.mjs` | — | S-11: change-index loading + curated-scan-selection + curation-candidates helpers (not a stage) |
 | `enclosure.mjs` | — | Shared audio-provenance helpers (not a stage) |
 | `dai.mjs` | — | DAI host classification (not a stage) |
 | `watch-nightly.mjs` | ✅ | **Not a stage.** Watches for the ABSENCE of a night — see below |
@@ -313,6 +314,50 @@ cron was supposed to make. `nightly-watch.yml` runs this check **and** the
 `absence` check every evening; either one failing turns the job red, because
 they are answering different questions and a green answer to one must never
 paper over a red answer to the other.
+
+## Reading the change stream instead of polling all feeds nightly (S-11)
+
+`scan.mjs --source index` is the pre-database answer to a real gap: with
+220+ curated feeds polled every night regardless of activity, a show that
+sits quiet for weeks costs the same THROTTLE_MS budget as one that
+publishes daily, and nothing distinguishes "we checked and it was quiet"
+from "we're wasting a slot". S-04's release (`tools/shows/*`) already
+computes, off the full PodcastIndex dump, which pi_ids advanced since the
+last release (`changed.json`) and which curated shows map to which pi_ids
+(`id-map.json`) — `candidates.mjs` reuses that instead of re-deriving it.
+
+```sh
+node tools/refresh/scan.mjs --source index                # scan only changed curated feeds
+node tools/refresh/scan.mjs                                # --source full (default): unchanged behaviour
+```
+
+What `--source index` does, end to end:
+
+1. Reads `data/shows-index-pointer.json` (S-04b's published pointer) and
+   fetches `changed.json` + `id-map.json` + `top.json` from its
+   `asset_base_url`.
+2. Scans only curated shows whose feed the release says changed
+   (`selectChangedCuratedShows`). A curated show **absent** from
+   `id-map.json` — a join gap in that release, not evidence the show is
+   quiet — is scanned unconditionally rather than silently skipped; the
+   scan summary line names how many of the curated total were selected.
+3. Emits a `candidates` section: `changed.json` ∩ `top.json`'s **not**-
+   curated rows (`curationCandidates`) — fresh activity on shows nobody has
+   curated in, surfaced to the curation agent without a database. It rides
+   through `fresh-pending.json` → `resolved.json` unchanged (see
+   `docs/agents/runner-prompts/foray-nightly.md` step 3) as a plain
+   informational array; the runner never authors edits from it.
+
+**Never a dark night.** Any failure loading the change index — no release
+published yet, a network error, a malformed asset, or a **stale** pointer
+(no release run in the last 9 days, tolerant of the weekly cadence plus a
+delayed run) — degrades to scanning every curated feed, exactly like
+`--source full` always has. The scan output's `index` field
+(`{ used: true, changed, total }` or `{ used: false, reason }`) says which
+path a given night actually took; `changed` counts every show actually
+scanned this run (including any unmapped-so-fail-open shows, not only ones
+the release flagged as changed) and is computed after `--limit` is applied,
+so it always matches `scanned_count` rather than a pre-slice count.
 
 ## Running locally
 

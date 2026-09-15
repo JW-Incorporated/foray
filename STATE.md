@@ -3257,6 +3257,36 @@ backfill is a future, separate pass.
   `protect-main`'s required checks — a founder call, per `api`/`ios-kit`'s
   own precedent.
 - **Decision entry:** `docs/DECISIONS.md`, 2026-09-15.
+### S-11: curation reads the change stream instead of polling all feeds nightly (2026-09-15) — `foray/t_d75ed069-s11-curation-candidates`
+
+- **What:** `tools/refresh/candidates.mjs` (new) + `scan.mjs --source index`.
+  Reads S-04's published `data/shows-index-pointer.json` -> fetches
+  `changed.json` + `id-map.json` + `top.json` from the release, scans only
+  curated feeds the release says changed since last time
+  (`selectChangedCuratedShows`), and emits a `candidates` section —
+  `changed.json` ∩ `top.json`'s non-curated rows — that rides through
+  `fresh-pending.json` -> `resolved.json` unchanged for the curation agent.
+  Fails OPEN on any load error (no release yet, network, malformed asset,
+  or a **stale** pointer — no release run in 9+ days, tolerant of the
+  weekly `shows-import.yml` cadence plus a delayed run): falls back to a
+  full scan of every curated feed, never a dark night. A curated show
+  absent from `id-map.json` (join gap, not "quiet") is also scanned
+  unconditionally rather than silently skipped.
+- **Tests:** `tools/refresh/candidates.test.mjs`, 19 tests — the fail-open
+  behaviour for pointer-missing / no-`asset_base_url` / no-`published_at` /
+  stale / fetch-error / malformed-asset / curated-show-unmapped is asserted
+  directly, since it is the one thing that must never regress. A first
+  review round (fresh-context, opus) caught that staleness wasn't checked
+  at all and that the summary's `changed` count was computed before
+  `--limit` was applied; both fixed in this same pass.
+- **Not yet exercised against a real release**: `data/shows-index-pointer.json`
+  does not exist on `main` yet (S-04b has not published its first release),
+  so `--source index` will report `used: false` and fall back to
+  `--source full` on every run until that lands — this is by design, not a
+  gap in this card.
+- **Out of scope, untouched:** `tools/shows/*` (S-04's own pipeline),
+  `merge.mjs`'s copy-rule preflight, `data/catalog.json`.
+
 
 - **The bundled voice (K-deck) — K-01's probe, K-02, K-03, K-06, K-07 landed;
   K-04 and K-05 deliberately unstarted.** `docs/bundled-voice-plan.md` was written

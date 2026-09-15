@@ -1491,6 +1491,14 @@ const FLOORS = {
      alone cannot catch), and cap the item count after parsing — plus the
      end-to-end wiring through fetchFeedCapped. */
   "tools/refresh/fetch-limits.test.mjs": 14,
+  /* S-11: the curated-scan-selection and curation-candidates helpers behind
+     scan.mjs --source index (4a-shows-pipeline-plan.md card S-11). The
+     fail-OPEN behaviour for a curated show absent from S-04's id-map is the
+     one test here that must never be weakened -- it is what stops a join
+     gap in the release from silently starving a feed of scans, which is
+     the exact "we miss episodes if nothing refreshes them" bug this card
+     exists to fix. */
+  "tools/refresh/candidates.test.mjs": 19,
 
   "tools/refresh/enclosure.test.mjs": 18,
   /* Per-episode topics (#292). ZERO SLACK. This suite is the only thing between
