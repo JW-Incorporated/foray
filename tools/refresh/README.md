@@ -349,13 +349,15 @@ What `--source index` does, end to end:
    informational array; the runner never authors edits from it.
 
 **Never a dark night.** Any failure loading the change index — no release
-published yet, a network error, a malformed asset — degrades to scanning
-every curated feed, exactly like `--source full` always has. The scan
-output's `index` field (`{ used: true, changed, total }` or
-`{ used: false, reason }`) says which path a given night actually took;
-`scanned_count` is the number of feeds this run actually polled either way,
-so a `--source index` night with `used: false` should show the same
-`scanned_count` as a full-scan night, not a silently reduced one.
+published yet, a network error, a malformed asset, or a **stale** pointer
+(no release run in the last 9 days, tolerant of the weekly cadence plus a
+delayed run) — degrades to scanning every curated feed, exactly like
+`--source full` always has. The scan output's `index` field
+(`{ used: true, changed, total }` or `{ used: false, reason }`) says which
+path a given night actually took; `changed` counts every show actually
+scanned this run (including any unmapped-so-fail-open shows, not only ones
+the release flagged as changed) and is computed after `--limit` is applied,
+so it always matches `scanned_count` rather than a pre-slice count.
 
 ## Running locally
 

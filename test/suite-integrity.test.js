@@ -1498,7 +1498,7 @@ const FLOORS = {
      gap in the release from silently starving a feed of scans, which is
      the exact "we miss episodes if nothing refreshes them" bug this card
      exists to fix. */
-  "tools/refresh/candidates.test.mjs": 16,
+  "tools/refresh/candidates.test.mjs": 19,
 
   "tools/refresh/enclosure.test.mjs": 18,
   /* Per-episode topics (#292). ZERO SLACK. This suite is the only thing between

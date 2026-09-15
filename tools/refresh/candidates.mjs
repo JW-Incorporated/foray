@@ -39,11 +39,26 @@ import { POINTER_PATH } from "../shows/config.mjs";
 /** Fetches and parses the three release assets a change-index run needs.
     Returns { ok:true, changedIds, idMap, topRows } on success or
     { ok:false, reason } on ANY failure — missing pointer (S-04 hasn't
-    published yet), missing asset_base_url, a failed fetch, or an
-    unexpected shape. Never throws: the whole point of this function is to
-    let scan.mjs's --source index fall back to a full scan instead of a
-    dark night. */
-export async function loadChangeIndex({ pointerPath = POINTER_PATH, fetchImpl = fetch } = {}) {
+    published yet), missing asset_base_url, a failed fetch, an unexpected
+    shape, or a STALE release. Never throws: the whole point of this
+    function is to let scan.mjs's --source index fall back to a full scan
+    instead of a dark night.
+
+    Staleness (maxAgeHours, default 9 days): S-04b's release runs WEEKLY
+    (`.github/workflows/shows-import.yml`, Sun 06:00 UTC), not nightly, so
+    the freshness ceiling has to tolerate a full week between releases plus
+    slack for a delayed run — an 8-day cadence with a ~24h margin, not
+    scan.mjs's own 48h episode WINDOW_H (a much shorter, unrelated clock).
+    The failure this guards against is a release run that stalled or
+    silently stopped updating the pointer entirely: that pointer is
+    otherwise indistinguishable from a healthy weekly one, and trusting it
+    once it is well past due would mean `changed.json` no longer reflects
+    reality — a curated show whose feed changed after the last real release
+    would read as unchanged and get skipped, exactly the "we miss episodes
+    if nothing refreshes them" bug this card exists to fix. A pointer with
+    no parseable `published_at` degrades to stale (fail open), never
+    trusted by default. */
+export async function loadChangeIndex({ pointerPath = POINTER_PATH, fetchImpl = fetch, maxAgeHours = 24 * 9, now = Date.now() } = {}) {
   let pointer;
   try {
     pointer = JSON.parse(readFileSync(pointerPath, "utf8"));
@@ -53,6 +68,15 @@ export async function loadChangeIndex({ pointerPath = POINTER_PATH, fetchImpl = 
 
   const base = pointer && pointer.asset_base_url;
   if (!base) return { ok: false, reason: "pointer has no asset_base_url" };
+
+  const publishedAt = pointer.published_at ? Date.parse(pointer.published_at) : NaN;
+  if (Number.isNaN(publishedAt)) {
+    return { ok: false, reason: "pointer has no parseable published_at (cannot verify freshness)" };
+  }
+  const ageHours = (now - publishedAt) / 3_600_000;
+  if (ageHours > maxAgeHours) {
+    return { ok: false, reason: `pointer is stale: published_at ${pointer.published_at} is ${ageHours.toFixed(1)}h old (ceiling ${maxAgeHours}h)` };
+  }
 
   let changedRes, idMapRes, topRes;
   try {

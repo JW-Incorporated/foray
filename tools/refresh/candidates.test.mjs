@@ -34,6 +34,12 @@ function fakeFetch(routes) {
   };
 }
 
+// A published_at + now pair that always lands safely inside the default
+// 9-day staleness ceiling, for tests that aren't exercising staleness
+// itself.
+const FRESH_PUBLISHED_AT = "2026-01-01T00:00:00Z";
+const FRESH_NOW = Date.parse(FRESH_PUBLISHED_AT) + 2 * 24 * 3600_000;
+
 /* ---------- loadChangeIndex ---------- */
 
 test("loadChangeIndex returns ok:false when the pointer file is missing (S-04 hasn't published yet)", async () => {
@@ -48,10 +54,41 @@ test("loadChangeIndex returns ok:false when the pointer has no asset_base_url", 
   assert.match(result.reason, /asset_base_url/);
 });
 
-test("loadChangeIndex returns ok:false on a fetch failure, never throws", async () => {
+test("loadChangeIndex returns ok:false when the pointer has no parseable published_at (fails open, not trusted by default)", async () => {
   const result = await withPointer(
     { asset_base_url: "https://example.com/rel" },
-    (path) => loadChangeIndex({ pointerPath: path, fetchImpl: async () => { throw new Error("network down"); } }),
+    (path) => loadChangeIndex({ pointerPath: path }),
+  );
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /published_at/);
+});
+
+test("loadChangeIndex returns ok:false when the pointer is stale (release run stalled)", async () => {
+  const staleDate = new Date(Date.parse("2026-01-01T00:00:00Z"));
+  const now = staleDate.getTime() + 10 * 24 * 3600_000; // 10 days later, over the 9-day ceiling
+  const result = await withPointer(
+    { asset_base_url: "https://example.com/rel", published_at: staleDate.toISOString() },
+    (path) => loadChangeIndex({ pointerPath: path, now }),
+  );
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /stale/);
+});
+
+test("loadChangeIndex succeeds for a fresh pointer within the staleness ceiling", async () => {
+  const publishedAt = new Date(Date.parse("2026-01-01T00:00:00Z"));
+  const now = publishedAt.getTime() + 2 * 24 * 3600_000; // 2 days later, well within default 9-day ceiling
+  const fetchImpl = fakeFetch({ "changed.json": [1], "id-map.json": {}, "top.json": [] });
+  const result = await withPointer(
+    { asset_base_url: "https://example.com/rel", published_at: publishedAt.toISOString() },
+    (path) => loadChangeIndex({ pointerPath: path, fetchImpl, now }),
+  );
+  assert.equal(result.ok, true);
+});
+
+test("loadChangeIndex returns ok:false on a fetch failure, never throws", async () => {
+  const result = await withPointer(
+    { asset_base_url: "https://example.com/rel", published_at: FRESH_PUBLISHED_AT },
+    (path) => loadChangeIndex({ pointerPath: path, now: FRESH_NOW, fetchImpl: async () => { throw new Error("network down"); } }),
   );
   assert.equal(result.ok, false);
   assert.match(result.reason, /fetch error/);
@@ -60,8 +97,8 @@ test("loadChangeIndex returns ok:false on a fetch failure, never throws", async 
 test("loadChangeIndex returns ok:false when any asset 404s", async () => {
   const fetchImpl = fakeFetch({ "changed.json": [1, 2], "id-map.json": {} }); // top.json missing -> 404
   const result = await withPointer(
-    { asset_base_url: "https://example.com/rel" },
-    (path) => loadChangeIndex({ pointerPath: path, fetchImpl }),
+    { asset_base_url: "https://example.com/rel", published_at: FRESH_PUBLISHED_AT },
+    (path) => loadChangeIndex({ pointerPath: path, now: FRESH_NOW, fetchImpl }),
   );
   assert.equal(result.ok, false);
   assert.match(result.reason, /top\.json fetch failed/);
@@ -70,8 +107,8 @@ test("loadChangeIndex returns ok:false when any asset 404s", async () => {
 test("loadChangeIndex returns ok:false on malformed asset shapes", async () => {
   const fetchImpl = fakeFetch({ "changed.json": { not: "an array" }, "id-map.json": {}, "top.json": [] });
   const result = await withPointer(
-    { asset_base_url: "https://example.com/rel" },
-    (path) => loadChangeIndex({ pointerPath: path, fetchImpl }),
+    { asset_base_url: "https://example.com/rel", published_at: FRESH_PUBLISHED_AT },
+    (path) => loadChangeIndex({ pointerPath: path, now: FRESH_NOW, fetchImpl }),
   );
   assert.equal(result.ok, false);
   assert.match(result.reason, /unexpected asset shape/);
@@ -84,8 +121,8 @@ test("loadChangeIndex succeeds and parses all three assets", async () => {
     "top.json": [{ id: 10, t: "Show A", c: true }, { id: 500, t: "Big Show", c: false }],
   });
   const result = await withPointer(
-    { asset_base_url: "https://example.com/rel" },
-    (path) => loadChangeIndex({ pointerPath: path, fetchImpl }),
+    { asset_base_url: "https://example.com/rel", published_at: FRESH_PUBLISHED_AT },
+    (path) => loadChangeIndex({ pointerPath: path, now: FRESH_NOW, fetchImpl }),
   );
   assert.equal(result.ok, true);
   assert.deepStrictEqual([...result.changedIds].sort((a, b) => a - b), [10, 20, 30]);

@@ -85,8 +85,7 @@ async function main() {
     if (index.ok) {
       shows = selectChangedCuratedShows(curatedFeedShows, index.idMap, index.changedIds);
       candidates = curationCandidates(index.topRows, index.changedIds);
-      indexMode = { used: true, changed: shows.length, total: curatedFeedShows.length };
-      console.log(`--source index: scanning ${shows.length}/${curatedFeedShows.length} curated feeds (changed since last release)`);
+      console.log(`--source index: scanning ${shows.length}/${curatedFeedShows.length} curated feeds (changed since last release, or unmapped)`);
     } else {
       indexMode = { used: false, reason: index.reason };
       console.log(`--source index unavailable (${index.reason}) — falling back to full scan of ${curatedFeedShows.length} feeds`);
@@ -94,6 +93,12 @@ async function main() {
   }
 
   shows = shows.slice(0, LIMIT);
+  // Computed AFTER the --limit slice so index.changed/scanned_count always
+  // describe what was actually polled this run, never a pre-slice count a
+  // consumer could mistake for the real number scanned (review finding).
+  if (SOURCE === "index" && indexMode === null) {
+    indexMode = { used: true, changed: shows.length, total: curatedFeedShows.length };
+  }
   const pending = [];
   const withheld = [];
   let polled = 0, failed = 0;

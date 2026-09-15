@@ -3230,14 +3230,19 @@ backfill is a future, separate pass.
   (`selectChangedCuratedShows`), and emits a `candidates` section —
   `changed.json` ∩ `top.json`'s non-curated rows — that rides through
   `fresh-pending.json` -> `resolved.json` unchanged for the curation agent.
-  Fails OPEN on any load error (no release yet, network, malformed asset):
-  falls back to a full scan of every curated feed, never a dark night. A
-  curated show absent from `id-map.json` (join gap, not "quiet") is also
-  scanned unconditionally rather than silently skipped.
-- **Tests:** `tools/refresh/candidates.test.mjs`, 16 tests — the fail-open
-  behaviour for pointer-missing / fetch-error / malformed-asset / curated-
-  show-unmapped is asserted directly, since it is the one thing that must
-  never regress.
+  Fails OPEN on any load error (no release yet, network, malformed asset,
+  or a **stale** pointer — no release run in 9+ days, tolerant of the
+  weekly `shows-import.yml` cadence plus a delayed run): falls back to a
+  full scan of every curated feed, never a dark night. A curated show
+  absent from `id-map.json` (join gap, not "quiet") is also scanned
+  unconditionally rather than silently skipped.
+- **Tests:** `tools/refresh/candidates.test.mjs`, 19 tests — the fail-open
+  behaviour for pointer-missing / no-`asset_base_url` / no-`published_at` /
+  stale / fetch-error / malformed-asset / curated-show-unmapped is asserted
+  directly, since it is the one thing that must never regress. A first
+  review round (fresh-context, opus) caught that staleness wasn't checked
+  at all and that the summary's `changed` count was computed before
+  `--limit` was applied; both fixed in this same pass.
 - **Not yet exercised against a real release**: `data/shows-index-pointer.json`
   does not exist on `main` yet (S-04b has not published its first release),
   so `--source index` will report `used: false` and fall back to
