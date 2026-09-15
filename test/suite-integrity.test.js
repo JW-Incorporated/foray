@@ -1638,7 +1638,7 @@ const FLOORS = {
      own "inert without a database" contract. */
   "tools/shows/load-postgres.test.mjs": 9,
   "tools/shows/search-shows.test.mjs": 7,
-  "tools/shows/shows-postgres-integration.test.mjs": 6,
+  "tools/shows/shows-postgres-integration.test.mjs": 8,
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced

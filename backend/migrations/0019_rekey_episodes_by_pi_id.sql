@@ -74,16 +74,23 @@ alter table catalog_show_feed_state rename column show_id to legacy_show_id;
 alter table catalog_show_episodes alter column legacy_show_id drop not null;
 alter table catalog_show_feed_state alter column legacy_show_id drop not null;
 
--- Equivalent to the dropped 0016 primary keys, just nullable (an orphan row
--- with no show_id_map entry keeps legacy_show_id but never gets a pi_id —
--- see the orphan handling above — so this cannot be NOT NULL anymore).
+-- Equivalent to the dropped 0016 primary keys, non-partial (Fable ruling,
+-- 2026-09-15, second review rejection: a PARTIAL index cannot be inferred
+-- as an ON CONFLICT arbiter unless the ON CONFLICT clause repeats the
+-- same WHERE predicate, and PostgresShowEpisodesStore's `on conflict
+-- (legacy_show_id, guid)` / `on conflict (legacy_show_id)` do not — every
+-- upsert through the store would fail closed with "no unique or
+-- exclusion constraint matching the ON CONFLICT specification". A plain
+-- (non-partial) unique index needs no such predicate: standard SQL
+-- NULL-distinctness already means two rows with legacy_show_id NULL never
+-- collide with each other, which is exactly the "orphan rows don't need
+-- to be unique among themselves" property this index existed to express —
+-- partial was never required to get that behavior.
 create unique index if not exists idx_cse_legacy_show_id_guid
-  on catalog_show_episodes (legacy_show_id, guid)
-  where legacy_show_id is not null;
+  on catalog_show_episodes (legacy_show_id, guid);
 
 create unique index if not exists idx_csfs_legacy_show_id
-  on catalog_show_feed_state (legacy_show_id)
-  where legacy_show_id is not null;
+  on catalog_show_feed_state (legacy_show_id);
 
 -- New primary keys, pi_id-based, only over rows that resolved (orphans have
 -- pi_id null and cannot be part of a not-null primary key — they remain

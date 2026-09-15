@@ -23,10 +23,11 @@ const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const MIGRATIONS_DIR = join(ROOT, "backend", "migrations");
 
-async function applyMigrations(client) {
+async function applyMigrations(client, { upTo } = {}) {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort();
+  const toApply = upTo ? files.filter((f) => f <= upTo) : files;
   await client.query(`create table if not exists schema_migrations (filename text primary key, applied_at timestamptz not null default now())`);
-  for (const file of files) {
+  for (const file of toApply) {
     const already = await client.query("select 1 from schema_migrations where filename = $1", [file]);
     if ((already.rowCount ?? 0) > 0) continue;
     const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf-8");
@@ -257,6 +258,54 @@ test("integration: the real COPY loader (loadCatalogRows) inserts, updates, and 
   }
 });
 
+test("integration: retirement uses an anti-join against staging, not export_version equality — a row missing from a run with the SAME export_version is still retired", { skip: !TEST_DATABASE_URL && "TEST_DATABASE_URL not set" }, async () => {
+  // Regression for the second review rejection (Fable ruling, 2026-09-15):
+  // reverting the retirement predicate to `export_version <> $1` is the
+  // exact mutation this test exists to kill. export_version can
+  // legitimately repeat across two runs (the `local:` fallback hashes the
+  // dump file; the remote path reuses the dump's own Last-Modified header
+  // until a new dump is published) while D1's staleness filter depends on
+  // wall-clock time, not the dump's bytes — so a byte-identical re-import
+  // after a show ages past D1's cutoff must still retire it even though
+  // export_version is IDENTICAL on both runs.
+  const { Client } = await import("pg");
+  const { loadCatalogRows } = await import("./load-postgres.mjs");
+  const client = new Client({ connectionString: TEST_DATABASE_URL });
+  await client.connect();
+  try {
+    await applyMigrations(client);
+    await client.query("delete from show_id_map");
+    await client.query("delete from catalog_show_episodes");
+    await client.query("delete from catalog_show_feed_state");
+    await client.query("delete from shows_catalog");
+
+    const row = (pi_id, title) => ({
+      pi_id, title, author: "Author", itunes_id: null,
+      feed_url: `https://feeds.example.com/${pi_id}`, image_url: null, episode_count: 10,
+      popularity_score: 5, explicit: false, language: "en", dead: false,
+      newest_item_at: "2026-01-01T00:00:00.000Z", curated: false,
+      category1: null, category2: null, category3: null,
+      export_version: "same-version-both-runs",
+    });
+
+    // Run 1: two rows, one export_version.
+    const run1 = await loadCatalogRows(client, [row(910, "Show A"), row(911, "Show B")], { exportVersion: "same-version-both-runs" });
+    assert.equal(run1.inserted, 2);
+
+    // Run 2: SAME export_version, but pi_id 911 aged past D1's cutoff and
+    // is no longer in the canonical set. If retirement were keyed on
+    // export_version equality, this row would survive forever (its
+    // export_version never changes) — it must be retired anyway.
+    const run2 = await loadCatalogRows(client, [row(910, "Show A")], { exportVersion: "same-version-both-runs" });
+    assert.equal(run2.retired, 1, "pi_id 911 must be retired even though export_version is unchanged across runs");
+
+    const remaining = await client.query("select pi_id from shows_catalog order by pi_id");
+    assert.deepEqual(remaining.rows.map((r) => Number(r.pi_id)), [910]);
+  } finally {
+    await client.end();
+  }
+});
+
 test("integration: checkMissingMapping fails closed over the exact MAX_UNMAPPED_CURATED_FRACTION ceiling", async () => {
   const { checkMissingMapping } = await import("./load-postgres.mjs");
   // 6 of 100 missing = 6%, over the 5% ceiling.
@@ -276,4 +325,72 @@ test("integration: checkMissingMapping passes under the ceiling and warns rather
     checkMissingMapping({ missing, idMap });
   });
 });
+
+test("integration: migration 0019 itself preserves pre-existing 0016 rows (applied against a genuinely fresh schema, 0018 first, seed, THEN 0019)", { skip: !TEST_DATABASE_URL && "TEST_DATABASE_URL not set" }, async () => {
+  // Second review rejection, finding 6 (Fable-reviewed 2026-09-15): the
+  // earlier version of this suite seeded rows AFTER all migrations
+  // (including 0019) had already run, so it only ever tested
+  // backfillLegacyShowIdKeys() in isolation — it never actually ran 0019's
+  // own UPDATE...FROM / rename / index-rebuild sequence against
+  // pre-existing 0016-shaped data. This test does exactly that, in a
+  // dedicated schema so it doesn't collide with schema_migrations state
+  // built up by the other tests in this file (which have already applied
+  // every migration including 0019 in the shared `public` schema).
+  const { Client } = await import("pg");
+  const client = new Client({ connectionString: TEST_DATABASE_URL });
+  await client.connect();
+  const schema = "s09_migration_0019_test";
+  try {
+    await client.query(`drop schema if exists ${schema} cascade`);
+    await client.query(`create schema ${schema}`);
+    await client.query(`set search_path to ${schema}, public`);
+
+    // Apply every migration EXCEPT 0019 first (0019 sorts last alphabetically
+    // among 0001-0019, so upTo: "0018_show_id_map.sql" stops right before it).
+    await applyMigrations(client, { upTo: "0018_show_id_map.sql" });
+
+    // Seed exactly the 0016 shape: shows_catalog + show_id_map as they'd
+    // exist after a real import, then a catalog_show_episodes /
+    // catalog_show_feed_state row keyed by the ORIGINAL `show_id` column
+    // (0019 has not renamed it yet in this schema).
+    await client.query(
+      `insert into shows_catalog (pi_id, title, feed_url, export_version, dead)
+       values (555, 'Pre-migration Show', 'https://feeds.example.com/555', 'pre-v1', false)`
+    );
+    await client.query(
+      `insert into show_id_map (show_id, pi_id, export_version)
+       values ('pre-show', 555, 'pre-v1')`
+    );
+    await client.query(
+      `insert into catalog_show_episodes (show_id, guid, title, audio_url)
+       values ('pre-show', 'guid-pre', 'Pre-migration Episode', 'https://audio.example.com/pre')`
+    );
+    await client.query(
+      `insert into catalog_show_feed_state (show_id, feed_url)
+       values ('pre-show', 'https://feeds.example.com/555')`
+    );
+
+    // NOW run 0019 against this pre-populated schema.
+    await applyMigrations(client, { upTo: "0019_rekey_episodes_by_pi_id.sql" });
+
+    const episodeRow = await client.query(
+      `select pi_id, legacy_show_id, guid, title, audio_url from catalog_show_episodes where legacy_show_id = 'pre-show'`
+    );
+    assert.equal(episodeRow.rows.length, 1, "the pre-existing episode row must survive 0019, not be dropped");
+    assert.equal(Number(episodeRow.rows[0].pi_id), 555, "0019's own UPDATE...FROM must resolve pi_id from the show_id_map row seeded before it ran");
+    assert.equal(episodeRow.rows[0].guid, "guid-pre");
+    assert.equal(episodeRow.rows[0].title, "Pre-migration Episode");
+    assert.equal(episodeRow.rows[0].audio_url, "https://audio.example.com/pre");
+
+    const feedStateRow = await client.query(
+      `select pi_id, legacy_show_id, feed_url from catalog_show_feed_state where legacy_show_id = 'pre-show'`
+    );
+    assert.equal(feedStateRow.rows.length, 1, "the pre-existing feed-state row must survive 0019 too");
+    assert.equal(Number(feedStateRow.rows[0].pi_id), 555);
+  } finally {
+    await client.query(`drop schema if exists ${schema} cascade`);
+    await client.end();
+  }
+});
+
 

@@ -112,6 +112,41 @@ shipped as `tools/shows/import-dump.mjs` + submodules, PR #483).
   rows. All fixes re-verified against a real Postgres 17 (migrations
   clean-twice, 88/88 `tools/shows` tests, 102/102 backend suites) before
   re-review.
+- **Second review rejection → Fable arbiter ruling (2026-09-15), per
+  `policy/review-matrix.yaml`'s second-rejection escalation.** Codex
+  found two more real defects in the first repair: (1) 0019's
+  `legacy_show_id`-keyed unique indexes were PARTIAL (`where
+  legacy_show_id is not null`), which Postgres cannot infer as an `ON
+  CONFLICT` arbiter unless the `ON CONFLICT` clause repeats the same
+  predicate — `PostgresShowEpisodesStore`'s upserts did not, so every
+  write through the store would have failed at runtime with "no unique or
+  exclusion constraint matching the ON CONFLICT specification"; (2)
+  retirement compared `export_version <> current`, but `export_version`
+  can legitimately repeat across two runs of the identical dump (the
+  `local:` fallback hashes the file; the real path reuses the dump's own
+  `Last-Modified` header) while D1's staleness filter depends on
+  wall-clock time — a byte-identical re-import after a show aged past the
+  24-month cutoff would never retire it under that predicate. Ruling
+  (`claude --model claude-fable-5`) confirmed both as genuine blockers and
+  authorized one further repair cycle. **Fixes**: the two indexes became
+  plain non-partial unique indexes (NULL-distinctness already gives the
+  "orphans don't collide with each other" property, without a predicate
+  mismatch trap); retirement now anti-joins against the staging table's
+  actual `pi_id` set (ground truth for "was in this run"), not a version
+  label. Verified: a hand-run `ON CONFLICT` insert/update against the
+  fixed index succeeds and updates in place (not a duplicate row);
+  `shows-postgres-integration.test.mjs` gained a regression that reuses
+  one `export_version` across two loads with a shrunk row set and asserts
+  the missing row is retired anyway (the exact mutation the earlier
+  version would have missed), plus a genuine pre-migration test that
+  applies 0001-0018, seeds 0016-shaped data under the OLD `show_id`
+  column, THEN runs 0019 and asserts the row survives (the earlier
+  version only ever seeded after 0019 had already run, so it never
+  actually exercised 0019's own UPDATE/rename/index sequence against
+  real pre-existing data). Re-verified against a real Postgres 17: 19
+  migrations apply clean; 90/90 `tools/shows` tests pass (stable across
+  two consecutive runs); 102/102 backend suites pass; typecheck clean;
+  298/298 `test/suite-integrity.test.js`.
 
 ## 2026-09-12 (the bundled voice: engine chosen, phonemes move to the server, measurement pending)
 

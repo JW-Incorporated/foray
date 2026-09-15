@@ -152,36 +152,43 @@ export async function loadCatalogRows(client, rows, { exportVersion }) {
       returning (xmax = 0) as inserted
     `);
 
-    // RETIREMENT (fresh-context review finding, 2026-09-15): shows_catalog
+    // RETIREMENT (fresh-context review finding, 2026-09-15; corrected per
+    // Fable ruling after second rejection, 2026-09-15): shows_catalog
     // reflects the FULL canonical set of ONE import run, not an
     // append-only log — a show that fails D1 on a later run (goes dead,
     // ages out, or loses a dedupe tie-break) must stop being searchable,
-    // not linger with stale values forever. Every row this run's COPY
-    // touched now carries `export_version` = the CURRENT run's version
-    // (the upsert above sets it unconditionally); any row still carrying
-    // an OLDER export_version was not in this run's canonical output at
-    // all, so it is deleted here rather than left orphaned in search.
-    // Scoped to rows this loader itself has ever written (there is no
-    // other writer of shows_catalog), so this can never delete data from
-    // an unrelated source.
+    // not linger with stale values forever. Retiring by
+    // `export_version <> current` is WRONG: export_version can legitimately
+    // repeat across two runs of the SAME dump bytes (the `local:` fallback
+    // hashes the file; the real remote path reuses the upstream
+    // `Last-Modified` header until a new dump is published) while D1's
+    // staleness filter depends on wall-clock `now`, not the dump's
+    // contents — so a byte-identical re-import after a show crosses D1's
+    // 24-month cutoff would keep the same export_version, match nothing
+    // in the `<>` predicate, and never retire. The correct ground truth is
+    // an anti-join against THIS run's actual staging rows (still alive
+    // here — dropped only after this delete), not a version-label
+    // comparison.
     //
     // show_id_map may still reference a retiring pi_id (a curated show
-    // whose dedupe winner moved to a DIFFERENT pi_id this run — D13's
-    // canonical pick can change across dump releases even though the show
-    // itself is D1-exempt) — the FK from show_id_map to shows_catalog is
-    // ON DELETE RESTRICT, so those stale mappings are cleared here too;
-    // `loadIdMap` (called by the caller right after this function returns)
-    // re-inserts the CURRENT run's correct mapping for every curated show,
-    // so this never leaves a curated show unmapped — it only removes a
-    // mapping this same run is about to replace.
-    await client.query(
-      `delete from show_id_map where pi_id in (select pi_id from shows_catalog where export_version <> $1)`,
-      [exportVersion]
-    );
-    const retiredResult = await client.query(
-      `delete from shows_catalog where export_version <> $1 returning pi_id`,
-      [exportVersion]
-    );
+    // whose dedupe winner moved to a DIFFERENT pi_id this run) — the FK
+    // from show_id_map to shows_catalog is ON DELETE RESTRICT, so those
+    // stale mappings must be cleared first, using the SAME anti-join
+    // ground truth; `loadIdMap` (called right after this function
+    // returns) re-inserts the current run's correct mapping for every
+    // curated show, so this never leaves a curated show unmapped.
+    await client.query(`
+      delete from show_id_map
+      where pi_id in (
+        select pi_id from shows_catalog s
+        where not exists (select 1 from shows_catalog_staging st where st.pi_id = s.pi_id)
+      )
+    `);
+    const retiredResult = await client.query(`
+      delete from shows_catalog s
+      where not exists (select 1 from shows_catalog_staging st where st.pi_id = s.pi_id)
+      returning pi_id
+    `);
 
     await client.query("drop table shows_catalog_staging");
     await client.query("commit");
