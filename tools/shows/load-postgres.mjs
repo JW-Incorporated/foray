@@ -237,7 +237,28 @@ export async function loadIdMap(client, idMap, { exportVersion }) {
     the migration's one-shot pass can never see mappings that arrive later;
     this makes the backfill re-runnable on every load rather than a single
     missed opportunity). Idempotent — only touches rows where pi_id is
-    still null, so a row already resolved is never re-written. */
+    still null, so a row already resolved is never re-written.
+
+    KNOWN LIMITATION (third review pass, Fable ruling, 2026-09-15): this
+    does NOT reconcile a row whose pi_id is already set but has gone STALE
+    — a curated show's slug remapping to a different pi_id across import
+    runs (D13's dedupe winner changing, or a feed migrating to a new
+    PodcastIndex id while the old id survives D1's 24-month window) leaves
+    that row's episodes/feed-state attached to the OLD pi_id forever. Ruled
+    deliberately deferred, not fixed here: (1) nothing shipped by this card
+    reads or writes these tables by pi_id yet — `search-shows.mjs` never
+    touches them, and `PostgresShowEpisodesStore` explicitly stays on
+    `legacy_show_id` (see that file's own note) — so today this column is
+    write-only plumbing with no consumer, and drift in it has zero
+    observable effect; (2) the "obvious" one-line fix (`is distinct from`
+    instead of `is null`) is UNSAFE to rush: `idx_csfs_pi_id` and
+    `idx_cse_pi_id_guid` are unique indexes, so reconciling into a pi_id
+    that already has rows (the exact group-split case that causes drift)
+    would raise a unique-violation and crash the whole load rather than
+    silently drift — trading a latent, consumer-less bug for a pipeline
+    outage. A correct fix needs merge/collision semantics (which row wins,
+    what happens to the loser's polling history) and belongs to the future
+    card that actually rewires `PostgresShowEpisodesStore` onto `pi_id`. */
 export async function backfillLegacyShowIdKeys(client) {
   const episodes = await client.query(
     `update catalog_show_episodes e set pi_id = m.pi_id

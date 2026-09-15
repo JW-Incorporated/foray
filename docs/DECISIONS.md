@@ -147,6 +147,30 @@ shipped as `tools/shows/import-dump.mjs` + submodules, PR #483).
   migrations apply clean; 90/90 `tools/shows` tests pass (stable across
   two consecutive runs); 102/102 backend suites pass; typecheck clean;
   298/298 `test/suite-integrity.test.js`.
+- **Third review pass: one more real, reproduced finding — deferred by a
+  second Fable ruling (2026-09-15), not fixed in this card.**
+  `backfillLegacyShowIdKeys()` only backfills a `catalog_show_episodes`/
+  `catalog_show_feed_state` row's `pi_id` when it is still `null`. If a
+  curated show's `show_id_map` mapping REMAPS to a different `pi_id`
+  across import runs (D13's dedupe winner changes, or a feed migrates to
+  a new PodcastIndex id while the old one survives D1's 24-month window),
+  a row already resolved to the OLD `pi_id` never gets reconciled to the
+  new one — reproduced live by the reviewer against a real Postgres.
+  Ruling: **defer, do not fix now.** Nothing shipped by this card reads
+  or writes those two tables by `pi_id` — `search-shows.mjs` never
+  touches them, and `PostgresShowEpisodesStore` deliberately stays on
+  `legacy_show_id` (this card's own scope boundary, noted in that file) —
+  so the column is write-only plumbing today with zero observable
+  consumer effect. The naive fix (`is distinct from` instead of `is
+  null`) is unsafe to rush: `idx_csfs_pi_id`/`idx_cse_pi_id_guid` are
+  unique indexes, so reconciling into an already-occupied `pi_id` (the
+  exact scenario that causes the drift) would raise a unique-violation
+  and crash the whole load — a real merge/collision design (which row
+  wins, what happens to the loser's polling history) is needed first, and
+  belongs to the future card that actually rewires
+  `PostgresShowEpisodesStore` onto `pi_id`. Documented as a known
+  limitation in `backfillLegacyShowIdKeys()`'s own doc comment; follow-up
+  filed as kanban `t_aeed5440`.
 
 ## 2026-09-12 (the bundled voice: engine chosen, phonemes move to the server, measurement pending)
 
