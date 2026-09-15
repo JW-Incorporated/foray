@@ -164,7 +164,18 @@ for (const ep of pending.episodes) {
   });
 }
 
-writeFileSync(RESOLVED_PATH, JSON.stringify({ generated_at: new Date().toISOString(), resolved, dropped }, null, 2));
+writeFileSync(RESOLVED_PATH, JSON.stringify({
+  generated_at: new Date().toISOString(),
+  resolved,
+  dropped,
+  // S-11: passed through verbatim from fresh-pending.json (scan.mjs
+  // --source index) so the digest carries the curation-candidates section
+  // all the way to the agent that authors edits.json — changed.json ∩
+  // top.json's NOT-curated shows, i.e. fresh activity nobody has curated
+  // in. Absent/full-scan nights simply carry an empty array; nothing here
+  // treats that as an error.
+  candidates: pending.candidates || [],
+}, null, 2));
 console.log(`RESOLVED ${resolved.length} / DROPPED ${dropped.length} -> ${RESOLVED_PATH}`);
 console.log(`audio: ${audioFromRss} from RSS, ${audioFromItunes} from iTunes fallback, ${audioMissing} unresolved` +
   (hostDisagreements ? ` (${hostDisagreements} RSS/iTunes host disagreement(s) — RSS wins)` : ""));

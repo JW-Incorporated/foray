@@ -77,6 +77,17 @@ from its show's label) and run the committed merge. See
 3. **If `resolved.resolved` is empty**, there is nothing to do. Stop. Do not
    open a PR, do not commit.
 
+   **Curation candidates (S-11).** `resolved.json` may also carry a
+   top-level `candidates` array — shows that are NOT in the curated
+   catalogue but whose PodcastIndex activity changed since the last S-04
+   release (fresh episodes on shows nobody has curated in). This is
+   informational only: do not author edits for it, do not add these shows
+   to `data/catalog.json` yourself. Read it, and if something looks like an
+   obvious curation gap worth a human's attention, say so in your PR body
+   (or the run output on an empty-`resolved` night) so a daytime session can
+   pick it up. Empty or absent `candidates` is normal on a `--source full`
+   night or before S-04 has published a release; never treat it as an error.
+
 4. **Author `data-local/edits.json`** — a JSON object `{ "<id>": { "hook",
    "tags", "topics"? } }` with one entry per resolved item you intend to
    publish. For each item in `resolved.json` (each carries `_description`, the
