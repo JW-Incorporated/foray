@@ -5,10 +5,26 @@
    Committed successor to tools/refresh-feeds.mjs, with configurable paths so the
    same script runs locally (state in data-local/) and in CI (ephemeral paths).
 
-   Usage:  node tools/refresh/scan.mjs [--limit N] [--window-hours H]
+   Usage:  node tools/refresh/scan.mjs [--limit N] [--window-hours H] [--source index]
    Env overrides:
      STATE_PATH    seen-guid state    (default data-local/refresh-state.json)
-     PENDING_PATH  scan output        (default data-local/fresh-pending.json)   */
+     PENDING_PATH  scan output        (default data-local/fresh-pending.json)
+
+   --source index (S-11, 4a-shows-pipeline-plan.md card S-11): instead of
+   polling all 220 curated feeds every night, read S-04's published
+   changed.json (tools/refresh/candidates.mjs) and scan only the curated
+   shows it says advanced since the last release, intersected with the
+   feeds S-04's id-map maps them to. The output shape is identical either
+   way — resolve.mjs and everything downstream cannot tell the difference —
+   plus a top-level `candidates` array: changed.json ∩ top.json's NOT-
+   curated rows, so the curation agent sees fresh activity from shows
+   nobody has curated in yet, without a database.
+
+   FAILS OPEN, NEVER DARK: any failure loading the change index (S-04
+   hasn't published a release yet, a network error, a malformed asset)
+   falls back to scanning every curated feed, exactly as --source full
+   (the default) always has. A missing/stale index must never mean fewer
+   feeds get scanned than before S-11 shipped.                            */
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -17,6 +33,7 @@ import { createRequire } from "node:module";
 import { audioFieldsFrom } from "./enclosure.mjs";
 import { UA } from "../segments/politeness.mjs";
 import { fetchFeedCapped, capItems } from "./fetch-limits.mjs";
+import { loadChangeIndex, selectChangedCuratedShows, curationCandidates } from "./candidates.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
@@ -26,6 +43,7 @@ const THROTTLE_MS = 1800;
 const args = process.argv.slice(2);
 const LIMIT = args.includes("--limit") ? Number(args[args.indexOf("--limit") + 1]) : Infinity;
 const WINDOW_H = args.includes("--window-hours") ? Number(args[args.indexOf("--window-hours") + 1]) : 48;
+const SOURCE = args.includes("--source") ? args[args.indexOf("--source") + 1] : "full";
 
 mkdirSync(join(ROOT, "data-local"), { recursive: true });
 const STATE_PATH = process.env.STATE_PATH || join(ROOT, "data-local", "refresh-state.json");
@@ -57,7 +75,25 @@ async function main() {
   const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
   const cutoff = Date.now() - WINDOW_H * 3600_000;
 
-  const shows = catalog.shows.filter((s) => s.feed_url).slice(0, LIMIT);
+  const curatedFeedShows = catalog.shows.filter((s) => s.feed_url);
+  let shows = curatedFeedShows;
+  let candidates = [];
+  let indexMode = null; // null (full scan) | { used: true, ... } | { used: false, reason }
+
+  if (SOURCE === "index") {
+    const index = await loadChangeIndex();
+    if (index.ok) {
+      shows = selectChangedCuratedShows(curatedFeedShows, index.idMap, index.changedIds);
+      candidates = curationCandidates(index.topRows, index.changedIds);
+      indexMode = { used: true, changed: shows.length, total: curatedFeedShows.length };
+      console.log(`--source index: scanning ${shows.length}/${curatedFeedShows.length} curated feeds (changed since last release)`);
+    } else {
+      indexMode = { used: false, reason: index.reason };
+      console.log(`--source index unavailable (${index.reason}) — falling back to full scan of ${curatedFeedShows.length} feeds`);
+    }
+  }
+
+  shows = shows.slice(0, LIMIT);
   const pending = [];
   const withheld = [];
   let polled = 0, failed = 0;
@@ -117,10 +153,19 @@ async function main() {
 
   state.last_run = new Date().toISOString();
   writeFileSync(STATE_PATH, JSON.stringify(state));
-  writeFileSync(OUT_PATH, JSON.stringify({ generated_at: state.last_run, window_hours: WINDOW_H, episodes: pending }, null, 2));
+  writeFileSync(OUT_PATH, JSON.stringify({
+    generated_at: state.last_run,
+    window_hours: WINDOW_H,
+    source: SOURCE,
+    ...(indexMode ? { index: indexMode } : {}),
+    scanned_count: shows.length,
+    episodes: pending,
+    candidates,
+  }, null, 2));
   const withAudio = pending.filter((e) => e.audio_url).length;
   console.log(`polled ${polled}/${shows.length} feeds (${failed} failed); ${pending.length} new episodes -> ${OUT_PATH}`);
   console.log(`audio urls: ${withAudio}/${pending.length}`);
+  if (candidates.length) console.log(`curation candidates: ${candidates.length} (changed, not curated)`);
   // Not fatal: an episode with no playable URL still belongs in discovery, it
   // just links out instead of playing (issue #24). Visible so a feed that
   // starts withholding enclosures doesn't degrade silently.
