@@ -212,7 +212,13 @@ export async function writeBuildOutput(result, { outDir = BUILD_OUT_DIR, exportV
   for (const [key, rows] of result.shards) {
     const gz = await gzipJson(rows);
     shardSizes.push(gz.length);
-    shardEntries.push([key, gz]);
+    // gzBytes is captured on the SAME entry as gz itself (not read back out
+    // of the sibling shardSizes array by position) so shard_inventory below
+    // can never desync from shardEntries even if either array's
+    // construction changes later — a fresh-context review flagged the
+    // positional-index version of this as an unverified alignment
+    // assumption, so this stores the size directly.
+    shardEntries.push([key, gz, gz.length]);
   }
   const shardP95 = p95(shardSizes);
   if (shardP95 > MAX_SHARD_GZ_P95_BYTES) {
@@ -264,7 +270,7 @@ export async function writeBuildOutput(result, { outDir = BUILD_OUT_DIR, exportV
        real numbers without re-running the build. */
     shards_published: false,
     shard_inventory: shardEntries
-      .map(([key], idx) => ({ key, row_count: result.shards.get(key).length, gz_bytes: shardSizes[idx] }))
+      .map(([key, , gzBytes]) => ({ key, row_count: result.shards.get(key).length, gz_bytes: gzBytes }))
       .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)),
   };
 

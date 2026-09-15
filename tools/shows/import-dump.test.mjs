@@ -243,3 +243,39 @@ test("acceptance: two builds over the same fixture produce byte-identical output
     rmSync(dirB, { recursive: true, force: true });
   }
 });
+
+test("writeBuildOutput: manifest's shard_inventory reports the real per-shard size, and shards_published is false", async () => {
+  // Fable ruling FR-t_30a53ba2-1: shards are still built and size-validated
+  // but never uploaded as a release asset (GitHub's 1,000-asset-per-release
+  // ceiling). The manifest must say so explicitly, and shard_inventory's
+  // gz_bytes must match the shard file actually written to disk — a
+  // fresh-context review flagged an earlier version of this as an
+  // unverified array-alignment assumption (gz_bytes read out of a sibling
+  // array by position rather than off the same entry as the gzip buffer).
+  const rows = Array.from({ length: 20 }, (_, i) => fixtureRow({
+    id: i + 1,
+    url: `https://feeds.example.com/show${i + 1}`,
+    title: `Show ${i + 1}`,
+    itunesAuthor: `Author ${i % 3}`,
+    popularityScore: (i * 37) % 97,
+  }));
+  const curatedShows = [{ show_id: "show-one", title: "Show 1", feed_url: "https://feeds.example.com/show1" }];
+  const db = buildFixtureDb(rows);
+  const outDir = mkdtempSync(join(tmpdir(), "shows-build-"));
+  try {
+    const result = runPipeline(db, { curatedShows, now: NOW });
+    const manifest = await writeBuildOutput(result, { outDir, exportVersion: "v1", builtAt: "2026-09-05T00:00:00.000Z" });
+
+    assert.equal(manifest.shards_published, false);
+    assert.equal(manifest.shard_inventory.length, manifest.shard_count);
+
+    for (const entry of manifest.shard_inventory) {
+      const onDisk = readFileSync(join(outDir, "shards", `${entry.key}.json.gz`));
+      assert.equal(entry.gz_bytes, onDisk.length, `shard_inventory gz_bytes for "${entry.key}" must match the real file size`);
+      assert.ok(entry.row_count > 0, `shard_inventory row_count for "${entry.key}" must be positive`);
+    }
+  } finally {
+    db.close();
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
