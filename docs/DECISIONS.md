@@ -2,6 +2,88 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-15 — S-09: Postgres path for the shows pipeline (`backend/migrations/0017-0019`, `tools/shows/load-postgres.mjs`, `tools/shows/search-shows.mjs`)
+
+Source: `4a-shows-pipeline-plan.md` (Wyatt, 2026-09-04) §3.3; kanban card
+S-09 (`t_f00c0a28`), depends on S-04a's row parser (`t_c175e965`, already
+shipped as `tools/shows/import-dump.mjs` + submodules, PR #483).
+
+- **New tables, keyed on `pi_id` (PodcastIndex's own dump id), not the
+  curated `show_id` slug.** `shows_catalog` (0017) is the Postgres mirror
+  of S-04a's canonical dump rows — every show that passed D1/D13, not only
+  the 220 curated ones — with a generated `search_tsv` (title weight A,
+  author weight B) and a `pg_trgm` index on `title` for fuzzy matching.
+  `show_id_map` (0018) is the durable twin of S-04a's `id-map.json`: which
+  curated slug resolves to which `pi_id`. Deliberately separate from
+  0002/0003's `shows`/`episodes` (per-user tracked feeds) and from 0016's
+  `catalog_show_episodes`/`catalog_show_feed_state` (curated-slug-keyed
+  episode cache) — this is show-level breadth data across every dump row,
+  existing to answer "which shows are there" search queries the client's
+  static shard index (S-04a/§3.2) already answers offline; the Postgres
+  path exists for a real ranked FTS+trgm search once a backend Postgres is
+  provisioned.
+- **0019 rekeys `catalog_show_episodes`/`catalog_show_feed_state` from
+  `show_id` to `pi_id`** via `show_id_map`, renaming the old column to
+  `legacy_show_id` (kept, not dropped) rather than deleting it — an orphan
+  row (a `show_id` with no `show_id_map` entry) stays queryable by
+  `legacy_show_id` and is simply excluded from the new `pi_id`-keyed
+  indexes/foreign keys, so the migration can never destroy data even if
+  the "every curated show maps" guarantee S-04a enforces at import time
+  were ever violated by a stale row from before this migration existed.
+- **`load-postgres.mjs` reuses S-04a's `runPipeline`** (fetch/filter/
+  dedupe/id-map is one pipeline, not reimplemented) and adds exactly the
+  Postgres-specific step: COPY into an `unlogged` staging table, then one
+  `insert ... on conflict (pi_id) do update` upsert into `shows_catalog` —
+  the card's own "COPY into staging → upsert" ask, verified against a real
+  Postgres 17 to actually load a fixture end to end (not just typecheck).
+  Also computes the `changed_in_dump` reasons (per-pi_id, from S-04a's
+  `changed.json` ids) and the bytes/row × in_4a sizing report the card
+  asks for to feed the later Supabase-tier-sizing human gate.
+- **`search-shows.mjs`**: `ts_rank_cd` against `search_tsv` via
+  `websearch_to_tsquery`, with a `pg_trgm` similarity fallback when the FTS
+  pass returns nothing (a query too short/sparse for a lexeme, or a real
+  typo FTS's exact-token matching can't bridge) — verified with a golden
+  query set (exact title match, author-field match, typo tolerance via the
+  trgm fallback, a no-match query returning nothing, and curated shows
+  outranking equally-popular non-curated ones) against a real Postgres.
+  Curated shows get a small additive rank boost, same "curated is never
+  displaced" principle as `shard-build.mjs`'s `top.json`, applied to
+  ranking rather than a size-budget list.
+- **Inert in production, verified**: `resolveDatabaseUrl()` checks
+  `SHOWS_DATABASE_URL` then `DATABASE_URL`; with neither set,
+  `load-postgres.mjs` exits 0 and names the Supabase-tier-sizing human gate
+  rather than failing or silently doing nothing unexplained — the exact
+  behavior the card asks for, confirmed by actually running the CLI with
+  no DB configured.
+- **New CI `db` job** (`.github/workflows/ci.yml`) runs a real
+  `postgres:17` service container, applies all 19 migrations twice
+  (idempotency), then runs `backend`'s and `tools/shows`'s test suites
+  with `SHOWS_DATABASE_URL`/`TEST_DATABASE_URL` set so the DB-gated tests
+  (`backend/test/showsPostgresLive.test.ts`,
+  `tools/shows/shows-postgres-integration.test.mjs`) actually execute
+  instead of skipping. Deliberately uses `SHOWS_DATABASE_URL`, not
+  `DATABASE_URL`, for the `backend` step: `userInterests.test.ts`'s
+  `createUserInterestsProvider` suite asserts `DATABASE_URL` is absent
+  (guarding a genuinely not-yet-implemented `PostgresUserInterestsProvider`
+  — different card, future work) — found by actually running the full
+  backend suite with `DATABASE_URL` set and watching that assertion fail,
+  not by inspection. Not (yet) added to `protect-main`'s required-checks
+  list (`backend`, `data-and-site`) — same reasoning `api`/`ios-kit`
+  document for themselves: promoting a new job to required is a founder
+  call.
+- **Verified against a real Postgres 17** (not mocked, not typechecked
+  only): every migration applied clean, twice, from a fresh database;
+  `load-postgres.mjs`'s CLI ran end to end against a fixture sqlite dump
+  and landed real rows via COPY+upsert, confirmed idempotent on a second
+  run (0 inserted / N updated); the golden-query search set and the 0019
+  rekey-preserves-a-seeded-row acceptance criterion both passed against
+  live data, not fixtures alone.
+- **Test floors**: `test/suite-integrity.test.js` gained
+  `tools/shows/load-postgres.test.mjs` (10), `tools/shows/search-shows.test.mjs`
+  (7, pure query-builder — no DB), `tools/shows/shows-postgres-integration.test.mjs`
+  (3, gated on `TEST_DATABASE_URL`), and `backend/test/showsPostgresLive.test.ts`
+  (3, gated on `SHOWS_DATABASE_URL`/`DATABASE_URL`).
+
 ## 2026-09-12 (the bundled voice: engine chosen, phonemes move to the server, measurement pending)
 
 - **The narration voice will be our own, bundled in the app: Kokoro-82M, ONNX,

@@ -3221,6 +3221,43 @@ backfill is a future, separate pass.
   GITHUB_TOKEN/automerge gap, and the published-vs-pointerChanged
   idempotency gate).
 
+### S-09: Postgres path for the shows pipeline (2026-09-15) — `foray/t_f00c0a28`
+
+- **What:** `backend/migrations/0017-0019` (`shows_catalog` with a
+  generated `search_tsv` + `pg_trgm` index, `show_id_map`, rekey of
+  `catalog_show_episodes`/`catalog_show_feed_state` from `show_id` to
+  `pi_id`); `tools/shows/load-postgres.mjs` (COPY-into-staging → upsert,
+  reusing S-04a's `runPipeline`, plus `changed_in_dump` reasons and a
+  bytes/row sizing report); `tools/shows/search-shows.mjs` (FTS+trgm
+  ranking module with a golden-query test set); a new CI `db` job running
+  a real `postgres:17` service container.
+- **Verified against a real Postgres 17**, not mocked and not
+  typecheck-only: built actual Postgres 17 binaries from the
+  `io.zonky.test.postgres` Maven artifact (no root/Docker needed in this
+  sandbox), ran a live cluster, applied all 19 migrations twice from a
+  fresh database (idempotent), ran `load-postgres.mjs`'s CLI end to end
+  against a fixture sqlite dump (real COPY + upsert, confirmed idempotent
+  on a second run), and ran the golden-query search set plus the 0019
+  rekey-preserves-a-seeded-row acceptance test against live data.
+- **Inert in production, confirmed by running it**: with neither
+  `SHOWS_DATABASE_URL` nor `DATABASE_URL` set, `load-postgres.mjs` exits 0
+  and names the Supabase-tier-sizing human gate rather than failing.
+- **Tests**: 20 new tests across 4 suites — `load-postgres.test.mjs` (10,
+  pure functions, no DB), `search-shows.test.mjs` (7, pure query-builder,
+  no DB), `shows-postgres-integration.test.mjs` (3, gated on
+  `TEST_DATABASE_URL` — migrations-apply-twice, golden queries, rekey),
+  `backend/test/showsPostgresLive.test.ts` (3, gated on
+  `SHOWS_DATABASE_URL`/`DATABASE_URL` — schema assertions). All pass
+  against a real database; all skip cleanly (not fail) without one.
+- **CI `db` job note:** uses `SHOWS_DATABASE_URL` (not `DATABASE_URL`) for
+  the `backend` test step — `userInterests.test.ts` asserts `DATABASE_URL`
+  is absent to guard a not-yet-implemented `PostgresUserInterestsProvider`
+  (a different, future card); found by actually running the suite with
+  `DATABASE_URL` set and watching that assertion fail. Not added to
+  `protect-main`'s required checks — a founder call, per `api`/`ios-kit`'s
+  own precedent.
+- **Decision entry:** `docs/DECISIONS.md`, 2026-09-15.
+
 - **The bundled voice (K-deck) — K-01's probe, K-02, K-03, K-06, K-07 landed;
   K-04 and K-05 deliberately unstarted.** `docs/bundled-voice-plan.md` was written
   2026-09-06 and never started; the 2026-09-11 verdict on the platform voices
