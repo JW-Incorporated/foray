@@ -188,8 +188,10 @@ test("writeBuildOutput: enforces the top.json size budget", async () => {
   const outDir = mkdtempSync(join(tmpdir(), "shows-build-"));
   try {
     const result = runPipeline(db, { curatedShows, now: NOW });
-    // Force an oversized top.json by padding one row's title.
-    result.top[0].t = "x".repeat(300_000);
+    // Force an oversized top.json by padding one row's title well past the
+    // 900KB budget (MAX_TOP_JSON_BYTES, config.mjs — raised from 250KB to
+    // 900KB in t_30a53ba2 against a measured real-dump top.json size).
+    result.top[0].t = "x".repeat(1_000_000);
     await assert.rejects(
       () => writeBuildOutput(result, { outDir, exportVersion: "v1" }),
       (err) => err.code === "TOP_TOO_LARGE",

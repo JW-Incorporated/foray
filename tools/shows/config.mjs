@@ -97,7 +97,7 @@ export const BUILD_OUT_DIR = join(ROOT, "data-local", "shows-import", "out");
     worst buckets, for no client benefit — the client already only fetches
     the one shard matching what the user typed.
 
-    Set to 2.5MB: ~22% headroom over the measured 2,046,984B p95, room for
+    Set to 2.5MB: ~28% headroom over the measured 2,046,984B p95, room for
     the dump to grow before this trips again, while still bounding the
     reasonable common case (only 158 of 1,298 shards / ~12% measured over
     the old 400KB, none anywhere near 2.5MB except the extreme top of the
@@ -119,7 +119,7 @@ export const MAX_SHARD_GZ_P95_BYTES = 2.5 * 1024 * 1024;
     budgets for that access pattern, and every consumer already reads the
     same {id,t,a,i,u,img,n,c} row shape as the shards — trimming top.json's
     shape alone would be a second row shape to maintain for no measured
-    problem. Set to 900KB: ~46% headroom over the measured 616,389B so a
+    problem. Set to 900KB: ~49% headroom over the measured 616,389B so a
     modest curated-list or TOP_N growth doesn't immediately retrip this. */
 export const MAX_TOP_JSON_BYTES = 900 * 1024;
 export const TOP_N_BY_POPULARITY = 2000;
