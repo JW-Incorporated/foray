@@ -103,13 +103,23 @@ export async function publishRelease({ tag, title, notes, assets, exec = execFil
   if (!assets || assets.length === 0) {
     throw new PublishError("NO_ASSETS", "refusing to publish a release with zero assets");
   }
+  // maxBuffer: node's execFile default caps combined stdout+stderr at 1MB.
+  // `gh release create` with ~1,300 shard assets (the real S-04a build
+  // output) prints per-file upload progress that blows well past 1MB,
+  // throwing ERR_CHILD_PROCESS_STDOUT_MAXBUFFER — which the caller's catch
+  // block then reported as a useless truncated command-line string instead
+  // of the real gh output, masking every actual upload failure behind a
+  // fake "release create failed" (found while verifying this pipeline
+  // against the real dump end-to-end, t_30a53ba2). 64MB matches the
+  // maxBuffer run-and-publish.mjs's own runBuild() already uses for the
+  // build step's stdout, for the same reason.
   await exec("gh", [
     "release", "create", tag,
     ...assets,
     "--repo", repo,
     "--title", title,
     "--notes", notes,
-  ]);
+  ], { maxBuffer: 64 * 1024 * 1024 });
   return {
     tag,
     asset_base_url: assetBaseUrlFor(tag, repo),
