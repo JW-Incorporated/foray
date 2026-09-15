@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "export_version": "Sat, 12 Sep 2026 23:24:31 GMT",
+  "release_tag": "shows-index-sat-12-sep-2026-23-24-31-gmt",
+  "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-12-sep-2026-23-24-31-gmt",
+  "manifest_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-12-sep-2026-23-24-31-gmt/manifest.json",
+  "published_at": "2026-09-15T06:20:47.348Z",
+  "counts": {
+    "read": 4728574,
+    "in_4a": 902712,
+    "canonical": 891121
+  }
+}
