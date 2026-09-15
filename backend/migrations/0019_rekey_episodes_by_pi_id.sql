@@ -56,9 +56,15 @@ begin
   end if;
 end $$;
 
--- Rename the old show_id-keyed columns for audit rather than dropping them
--- — 0016's original primary keys/indexes named them directly, so drop those
--- constraints first.
+-- Rename the old show_id-keyed columns to legacy_show_id (kept, not
+-- dropped — PostgresShowEpisodesStore, the show-page read path shipped in
+-- Stage 3b, still reads/writes by that key and is NOT rewired to pi_id by
+-- this card; see backend/src/catalog/showEpisodesStore.ts, updated in this
+-- same change to use legacy_show_id). 0016's original primary keys named
+-- the old column directly, so drop those constraints, rename, then
+-- RE-CREATE an equivalent unique constraint on the renamed column — the
+-- store's `on conflict` clauses need a constraint to target, and nothing
+-- about this card removes the show_id-keyed read path from production.
 alter table catalog_show_episodes drop constraint if exists catalog_show_episodes_pkey;
 alter table catalog_show_feed_state drop constraint if exists catalog_show_feed_state_pkey;
 
@@ -67,6 +73,17 @@ alter table catalog_show_feed_state rename column show_id to legacy_show_id;
 
 alter table catalog_show_episodes alter column legacy_show_id drop not null;
 alter table catalog_show_feed_state alter column legacy_show_id drop not null;
+
+-- Equivalent to the dropped 0016 primary keys, just nullable (an orphan row
+-- with no show_id_map entry keeps legacy_show_id but never gets a pi_id —
+-- see the orphan handling above — so this cannot be NOT NULL anymore).
+create unique index if not exists idx_cse_legacy_show_id_guid
+  on catalog_show_episodes (legacy_show_id, guid)
+  where legacy_show_id is not null;
+
+create unique index if not exists idx_csfs_legacy_show_id
+  on catalog_show_feed_state (legacy_show_id)
+  where legacy_show_id is not null;
 
 -- New primary keys, pi_id-based, only over rows that resolved (orphans have
 -- pi_id null and cannot be part of a not-null primary key — they remain
@@ -89,3 +106,16 @@ alter table catalog_show_episodes
 
 alter table catalog_show_feed_state
   add constraint fk_csfs_pi_id foreign key (pi_id) references shows_catalog(pi_id) on delete set null;
+
+-- Re-runnable backfill, not just this one-shot migration pass: when this
+-- migration applies, show_id_map (0018) is freshly created and EMPTY (no
+-- import has run yet), so the UPDATE above resolves nothing on a normal
+-- first deploy — every existing row lands as an "orphan" the moment this
+-- migration runs, which is correct for that instant but would stay wrong
+-- forever if nothing ever re-ran the join. load-postgres.mjs's
+-- `backfillLegacyShowIdKeys()` (tools/shows/load-postgres.mjs) re-runs this
+-- exact UPDATE...FROM after every real import populates show_id_map, so a
+-- row that was an orphan at migration time gets its pi_id filled in on the
+-- very next import that maps its show_id — this migration's own pass is
+-- the first attempt, not the only one.
+

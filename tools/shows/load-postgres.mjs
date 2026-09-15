@@ -29,7 +29,7 @@ import { from as copyFrom } from "pg-copy-streams";
 import { Readable } from "node:stream";
 import { pipeline as streamPipeline } from "node:stream/promises";
 
-import { CATALOG_PATH } from "./config.mjs";
+import { CATALOG_PATH, MAX_UNMAPPED_CURATED_FRACTION } from "./config.mjs";
 import { runPipeline } from "./import-dump.mjs";
 
 export const SHOWS_DATABASE_URL_VARS = ["SHOWS_DATABASE_URL", "DATABASE_URL"];
@@ -152,12 +152,43 @@ export async function loadCatalogRows(client, rows, { exportVersion }) {
       returning (xmax = 0) as inserted
     `);
 
+    // RETIREMENT (fresh-context review finding, 2026-09-15): shows_catalog
+    // reflects the FULL canonical set of ONE import run, not an
+    // append-only log — a show that fails D1 on a later run (goes dead,
+    // ages out, or loses a dedupe tie-break) must stop being searchable,
+    // not linger with stale values forever. Every row this run's COPY
+    // touched now carries `export_version` = the CURRENT run's version
+    // (the upsert above sets it unconditionally); any row still carrying
+    // an OLDER export_version was not in this run's canonical output at
+    // all, so it is deleted here rather than left orphaned in search.
+    // Scoped to rows this loader itself has ever written (there is no
+    // other writer of shows_catalog), so this can never delete data from
+    // an unrelated source.
+    //
+    // show_id_map may still reference a retiring pi_id (a curated show
+    // whose dedupe winner moved to a DIFFERENT pi_id this run — D13's
+    // canonical pick can change across dump releases even though the show
+    // itself is D1-exempt) — the FK from show_id_map to shows_catalog is
+    // ON DELETE RESTRICT, so those stale mappings are cleared here too;
+    // `loadIdMap` (called by the caller right after this function returns)
+    // re-inserts the CURRENT run's correct mapping for every curated show,
+    // so this never leaves a curated show unmapped — it only removes a
+    // mapping this same run is about to replace.
+    await client.query(
+      `delete from show_id_map where pi_id in (select pi_id from shows_catalog where export_version <> $1)`,
+      [exportVersion]
+    );
+    const retiredResult = await client.query(
+      `delete from shows_catalog where export_version <> $1 returning pi_id`,
+      [exportVersion]
+    );
+
     await client.query("drop table shows_catalog_staging");
     await client.query("commit");
 
     const inserted = upsertResult.rows.filter((r) => r.inserted).length;
     const updated = upsertResult.rows.length - inserted;
-    return { total: upsertResult.rows.length, inserted, updated };
+    return { total: upsertResult.rows.length, inserted, updated, retired: retiredResult.rowCount };
   } catch (err) {
     await client.query("rollback");
     throw err;
@@ -188,6 +219,54 @@ export async function loadIdMap(client, idMap, { exportVersion }) {
     throw err;
   }
   return { mapped: entries.length };
+}
+
+/** Backfills `catalog_show_episodes.pi_id` / `catalog_show_feed_state.pi_id`
+    for any row still null — the exact UPDATE...FROM 0019's migration itself
+    runs, re-executed here so a row that was an orphan when 0019 first
+    applied (because show_id_map was empty at migration time — no import had
+    ever run yet) gets resolved the moment a real import populates
+    show_id_map with its show_id (fresh-context review finding, 2026-09-15:
+    the migration's one-shot pass can never see mappings that arrive later;
+    this makes the backfill re-runnable on every load rather than a single
+    missed opportunity). Idempotent — only touches rows where pi_id is
+    still null, so a row already resolved is never re-written. */
+export async function backfillLegacyShowIdKeys(client) {
+  const episodes = await client.query(
+    `update catalog_show_episodes e set pi_id = m.pi_id
+     from show_id_map m
+     where m.show_id = e.legacy_show_id and e.pi_id is null
+     returning e.legacy_show_id`
+  );
+  const feedState = await client.query(
+    `update catalog_show_feed_state f set pi_id = m.pi_id
+     from show_id_map m
+     where m.show_id = f.legacy_show_id and f.pi_id is null
+     returning f.legacy_show_id`
+  );
+  return { episodes_backfilled: episodes.rowCount, feed_state_backfilled: feedState.rowCount };
+}
+
+/** Reads the prior release's per-pi_id `newest_item_at` snapshot straight
+    from `shows_catalog` (the durable store this loader itself maintains),
+    so `changed.json`'s diff has a real baseline on every run after the
+    first — fresh-context review finding, 2026-09-15: `runPipeline` was
+    being called with an always-empty `previousNewest`, so every canonical
+    row reported as "changed" on every single run, including a byte-
+    identical re-import of the same dump. Called BEFORE `loadCatalogRows`
+    upserts the current run's values, so it reflects the PREVIOUS run's
+    state, not the one about to be written. Returns a plain object keyed by
+    pi_id (string, matching Postgres's bigint-as-string return shape) to
+    epoch seconds, the same unit `buildChanged`/`newestItemPubdate` use. */
+export async function fetchPreviousNewest(client) {
+  const result = await client.query(
+    `select pi_id, newest_item_at from shows_catalog where newest_item_at is not null`
+  );
+  const previousNewest = {};
+  for (const row of result.rows) {
+    previousNewest[String(row.pi_id)] = Math.floor(new Date(row.newest_item_at).getTime() / 1000);
+  }
+  return previousNewest;
 }
 
 /** `changed_in_dump` reasons: for each pi_id in `changed` (S-04a's
@@ -244,6 +323,36 @@ async function loadCuratedShows() {
   return shows;
 }
 
+/** Fail-closed on an incomplete id-map, mirroring import-dump.mjs's
+    `writeBuildOutput` guard (fresh-context review finding, 2026-09-15:
+    `runPipeline` alone does not enforce this — the check lives in
+    `writeBuildOutput`, which this loader never calls — so this file was
+    silently able to commit a dump missing most curated shows straight to
+    Postgres and print LOAD_COMPLETE). Throws ImportError-shaped so the
+    caller's existing FATAL/exit-1 handling in `main()` covers it without a
+    special case. */
+export function checkMissingMapping(result) {
+  const curatedTotal = result.curatedTotal ?? (result.missing.length + Object.keys(result.idMap).length);
+  const unmappedFraction = curatedTotal > 0 ? result.missing.length / curatedTotal : 0;
+  if (unmappedFraction > MAX_UNMAPPED_CURATED_FRACTION) {
+    const err = new Error(
+      `${result.missing.length} of ${curatedTotal} curated show(s) did not resolve to a pi_id ` +
+        `(${(unmappedFraction * 100).toFixed(1)}%, over the ${(MAX_UNMAPPED_CURATED_FRACTION * 100).toFixed(0)}% ceiling) — ` +
+        `refusing to load into Postgres: ` +
+        result.missing.map((m) => `${m.show_id} (${m.title})`).join(", ")
+    );
+    err.code = "ID_MAP_INCOMPLETE";
+    throw err;
+  }
+  if (result.missing.length > 0) {
+    console.warn(
+      `WARN: ${result.missing.length} of ${curatedTotal} curated show(s) are not in this dump ` +
+        `(under the ${(MAX_UNMAPPED_CURATED_FRACTION * 100).toFixed(0)}% ceiling, loading continues): ` +
+        result.missing.map((m) => `${m.show_id} (${m.title})`).join(", ")
+    );
+  }
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   const get = (flag) => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] : null; };
@@ -266,40 +375,57 @@ async function main() {
   }
 
   const curatedShows = await loadCuratedShows();
-  const { DatabaseSync } = await import("node:sqlite");
-  const db = new DatabaseSync(dumpFileArg, { readOnly: true });
-  let result;
-  try {
-    result = runPipeline(db, { curatedShows });
-  } finally {
-    db.close();
-  }
-
-  const bytes = await readFile(dumpFileArg);
-  const exportVersion = get("--export-version") || `local:${createHash("sha256").update(bytes).digest("hex").slice(0, 12)}`;
-
-  const curatedIds = new Set(Object.values(result.idMap));
-  const catalogRows = result.canonical.map((row) => toCatalogRow(row, { curatedIds, exportVersion }));
-  const changedReasons = buildChangedInDumpReasons(result.canonical, result.changed);
-  const sizing = sizingReport(catalogRows, { exportVersion });
-
-  console.log(`parsed ${result.canonical.length} canonical rows (export_version ${exportVersion})`);
-  console.log(`sizing report: ${JSON.stringify(sizing)}`);
-  console.log(`changed_in_dump: ${changedReasons.length} row(s) flagged`);
-
-  if (dryRun) {
-    console.log("DRY_RUN: not writing to Postgres");
-    return;
-  }
 
   const { Client } = await import("pg");
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
   try {
+    // Real previous-release baseline for changed.json's diff, read BEFORE
+    // this run's values overwrite them — see fetchPreviousNewest's own doc
+    // comment for why this replaced the always-empty {} that used to go
+    // into runPipeline here.
+    const previousNewest = dryRun ? {} : await fetchPreviousNewest(client);
+
+    const { DatabaseSync } = await import("node:sqlite");
+    const db = new DatabaseSync(dumpFileArg, { readOnly: true });
+    let result;
+    try {
+      result = runPipeline(db, { curatedShows, previousNewest });
+    } finally {
+      db.close();
+    }
+
+    checkMissingMapping(result);
+
+    const bytes = await readFile(dumpFileArg);
+    const exportVersion = get("--export-version") || `local:${createHash("sha256").update(bytes).digest("hex").slice(0, 12)}`;
+
+    const curatedIds = new Set(Object.values(result.idMap));
+    const catalogRows = result.canonical.map((row) => toCatalogRow(row, { curatedIds, exportVersion }));
+    const changedReasons = buildChangedInDumpReasons(result.canonical, result.changed);
+    const sizing = sizingReport(catalogRows, { exportVersion });
+
+    console.log(`parsed ${result.canonical.length} canonical rows (export_version ${exportVersion})`);
+    console.log(`sizing report: ${JSON.stringify(sizing)}`);
+    console.log(`changed_in_dump: ${changedReasons.length} row(s) flagged: ${JSON.stringify(changedReasons)}`);
+
+    if (dryRun) {
+      console.log("DRY_RUN: not writing to Postgres");
+      return;
+    }
+
     const loadResult = await loadCatalogRows(client, catalogRows, { exportVersion });
-    console.log(`shows_catalog: ${loadResult.inserted} inserted, ${loadResult.updated} updated (via ${varName})`);
+    console.log(
+      `shows_catalog: ${loadResult.inserted} inserted, ${loadResult.updated} updated, ` +
+      `${loadResult.retired} retired (via ${varName})`
+    );
     const idMapResult = await loadIdMap(client, result.idMap, { exportVersion });
     console.log(`show_id_map: ${idMapResult.mapped} curated show(s) mapped`);
+    const backfillResult = await backfillLegacyShowIdKeys(client);
+    console.log(
+      `legacy_show_id backfill: ${backfillResult.episodes_backfilled} episode row(s), ` +
+      `${backfillResult.feed_state_backfilled} feed-state row(s)`
+    );
   } finally {
     await client.end();
   }

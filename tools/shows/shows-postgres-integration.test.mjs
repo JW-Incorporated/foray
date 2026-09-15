@@ -125,8 +125,9 @@ test("integration: golden-query search set ranks correctly", { skip: !TEST_DATAB
   }
 });
 
-test("integration: rekey (0019) preserves a seeded 0016 row set", { skip: !TEST_DATABASE_URL && "TEST_DATABASE_URL not set" }, async () => {
+test("integration: rekey (0019) preserves a seeded 0016 row set, backfilled via the real loader function", { skip: !TEST_DATABASE_URL && "TEST_DATABASE_URL not set" }, async () => {
   const { Client } = await import("pg");
+  const { backfillLegacyShowIdKeys } = await import("./load-postgres.mjs");
   const client = new Client({ connectionString: TEST_DATABASE_URL });
   await client.connect();
   try {
@@ -136,40 +137,143 @@ test("integration: rekey (0019) preserves a seeded 0016 row set", { skip: !TEST_
     await client.query("delete from catalog_show_episodes");
     await client.query("delete from catalog_show_feed_state");
 
-    // Seed shows_catalog + show_id_map as they'd exist after a real import,
-    // then insert a 0016-shaped row keyed by the OLD show_id column
-    // (legacy_show_id post-rekey) to simulate pre-existing data from before
-    // this migration ran, and re-run 0019's logic by hand (the migration
-    // itself already ran via applyMigrations above against an empty table,
-    // so this proves the update-by-join logic directly).
+    // Seed a 0016-shaped episode row AND a feed-state row, keyed by
+    // legacy_show_id with pi_id still null — simulating data that existed
+    // before 0019 ever ran (0018's show_id_map was empty at migration
+    // time, so every pre-existing row landed as an orphan per 0019's own
+    // comment). show_id_map gets its mapping only NOW, after the fact —
+    // the exact "mapping arrives later" scenario backfillLegacyShowIdKeys
+    // exists to resolve (fresh-context review finding, 2026-09-15: the
+    // migration's one-shot UPDATE...FROM can never see a mapping that
+    // doesn't exist yet at migration time).
     await client.query(
       `insert into shows_catalog (pi_id, title, feed_url, export_version, dead)
        values (777, 'Seeded Show', 'https://feeds.example.com/777', 'test-v1', false)
        on conflict (pi_id) do nothing`
     );
     await client.query(
+      `insert into catalog_show_episodes (legacy_show_id, guid, title, audio_url, pi_id)
+       values ('seeded-show', 'guid-1', 'Episode One', 'https://audio.example.com/1', null)`
+    );
+    await client.query(
+      `insert into catalog_show_feed_state (legacy_show_id, feed_url, pi_id)
+       values ('seeded-show', 'https://feeds.example.com/777', null)`
+    );
+
+    // Confirm nothing resolved yet — show_id_map has no entry for
+    // 'seeded-show' at this point.
+    let episodeRow = await client.query(
+      `select pi_id from catalog_show_episodes where legacy_show_id = 'seeded-show'`
+    );
+    assert.equal(episodeRow.rows[0].pi_id, null, "pi_id should still be null before show_id_map is populated");
+
+    // NOW a real import maps 'seeded-show' -> 777 (this is what
+    // loadIdMap does on every real run).
+    await client.query(
       `insert into show_id_map (show_id, pi_id, export_version)
        values ('seeded-show', 777, 'test-v1')
        on conflict (show_id) do update set pi_id = excluded.pi_id`
     );
-    await client.query(
-      `insert into catalog_show_episodes (legacy_show_id, guid, title, audio_url, pi_id)
-       values ('seeded-show', 'guid-1', 'Episode One', 'https://audio.example.com/1', null)`
-    );
 
-    await client.query(
-      `update catalog_show_episodes e set pi_id = m.pi_id
-       from show_id_map m where m.show_id = e.legacy_show_id and e.pi_id is null`
-    );
+    // Run the ACTUAL exported function, not a hand-copy of its SQL.
+    const backfillResult = await backfillLegacyShowIdKeys(client);
+    assert.equal(backfillResult.episodes_backfilled, 1);
+    assert.equal(backfillResult.feed_state_backfilled, 1);
 
-    const row = await client.query(
+    episodeRow = await client.query(
       `select pi_id, legacy_show_id, guid, title from catalog_show_episodes where legacy_show_id = 'seeded-show'`
     );
-    assert.equal(row.rows.length, 1);
-    assert.equal(Number(row.rows[0].pi_id), 777);
-    assert.equal(row.rows[0].guid, "guid-1");
-    assert.equal(row.rows[0].title, "Episode One");
+    assert.equal(episodeRow.rows.length, 1);
+    assert.equal(Number(episodeRow.rows[0].pi_id), 777);
+    assert.equal(episodeRow.rows[0].guid, "guid-1");
+    assert.equal(episodeRow.rows[0].title, "Episode One");
+
+    const feedStateRow = await client.query(
+      `select pi_id, legacy_show_id, feed_url from catalog_show_feed_state where legacy_show_id = 'seeded-show'`
+    );
+    assert.equal(feedStateRow.rows.length, 1);
+    assert.equal(Number(feedStateRow.rows[0].pi_id), 777);
+    assert.equal(feedStateRow.rows[0].feed_url, "https://feeds.example.com/777");
+
+    // Idempotent: running it again touches nothing (pi_id already set).
+    const secondRun = await backfillLegacyShowIdKeys(client);
+    assert.equal(secondRun.episodes_backfilled, 0);
+    assert.equal(secondRun.feed_state_backfilled, 0);
   } finally {
     await client.end();
   }
 });
+
+test("integration: the real COPY loader (loadCatalogRows) inserts, updates, and retires rows across two runs", { skip: !TEST_DATABASE_URL && "TEST_DATABASE_URL not set" }, async () => {
+  const { Client } = await import("pg");
+  const { loadCatalogRows, fetchPreviousNewest } = await import("./load-postgres.mjs");
+  const client = new Client({ connectionString: TEST_DATABASE_URL });
+  await client.connect();
+  try {
+    await applyMigrations(client);
+    await client.query("delete from show_id_map");
+    await client.query("delete from catalog_show_episodes");
+    await client.query("delete from catalog_show_feed_state");
+    await client.query("delete from shows_catalog");
+
+    const baseRow = (over) => ({
+      pi_id: 900, title: "Run One Show", author: "Author", itunes_id: null,
+      feed_url: "https://feeds.example.com/900", image_url: null, episode_count: 10,
+      popularity_score: 5, explicit: false, language: "en", dead: false,
+      newest_item_at: "2026-01-01T00:00:00.000Z", curated: false,
+      category1: null, category2: null, category3: null,
+      export_version: "run-1",
+      ...over,
+    });
+
+    // Run 1: insert two rows.
+    const run1 = await loadCatalogRows(client, [baseRow({ pi_id: 900 }), baseRow({ pi_id: 901, title: "Run One Show B" })], { exportVersion: "run-1" });
+    assert.equal(run1.inserted, 2);
+    assert.equal(run1.updated, 0);
+    assert.equal(run1.retired, 0);
+
+    const previousNewest = await fetchPreviousNewest(client);
+    assert.equal(previousNewest["900"], Math.floor(Date.parse("2026-01-01T00:00:00.000Z") / 1000));
+
+    // Run 2: pi_id 900 persists with a changed title (update), pi_id 901
+    // is ABSENT from this run's canonical output (it failed D1 on the
+    // re-import, or lost a dedupe tie-break) — it must be retired, not
+    // left stale in shows_catalog forever.
+    const run2 = await loadCatalogRows(
+      client,
+      [baseRow({ pi_id: 900, title: "Run One Show (renamed)", export_version: "run-2" })],
+      { exportVersion: "run-2" }
+    );
+    assert.equal(run2.inserted, 0);
+    assert.equal(run2.updated, 1);
+    assert.equal(run2.retired, 1, "pi_id 901, absent from run 2's canonical set, must be retired");
+
+    const remaining = await client.query("select pi_id, title from shows_catalog order by pi_id");
+    assert.equal(remaining.rows.length, 1);
+    assert.equal(Number(remaining.rows[0].pi_id), 900);
+    assert.equal(remaining.rows[0].title, "Run One Show (renamed)");
+  } finally {
+    await client.end();
+  }
+});
+
+test("integration: checkMissingMapping fails closed over the exact MAX_UNMAPPED_CURATED_FRACTION ceiling", async () => {
+  const { checkMissingMapping } = await import("./load-postgres.mjs");
+  // 6 of 100 missing = 6%, over the 5% ceiling.
+  const missing = Array.from({ length: 6 }, (_, i) => ({ show_id: `show-${i}`, title: `Show ${i}` }));
+  const idMap = Object.fromEntries(Array.from({ length: 94 }, (_, i) => [`mapped-${i}`, i]));
+  assert.throws(
+    () => checkMissingMapping({ missing, idMap }),
+    /6 of 100 curated show\(s\)/
+  );
+});
+
+test("integration: checkMissingMapping passes under the ceiling and warns rather than throwing", () => {
+  return import("./load-postgres.mjs").then(({ checkMissingMapping }) => {
+    const missing = [{ show_id: "show-0", title: "Show 0" }];
+    const idMap = Object.fromEntries(Array.from({ length: 99 }, (_, i) => [`mapped-${i}`, i]));
+    // 1 of 100 = 1%, under the 5% ceiling -- must not throw.
+    checkMissingMapping({ missing, idMap });
+  });
+});
+

@@ -81,8 +81,37 @@ shipped as `tools/shows/import-dump.mjs` + submodules, PR #483).
 - **Test floors**: `test/suite-integrity.test.js` gained
   `tools/shows/load-postgres.test.mjs` (10), `tools/shows/search-shows.test.mjs`
   (7, pure query-builder — no DB), `tools/shows/shows-postgres-integration.test.mjs`
-  (3, gated on `TEST_DATABASE_URL`), and `backend/test/showsPostgresLive.test.ts`
+  (6, gated on `TEST_DATABASE_URL`), and `backend/test/showsPostgresLive.test.ts`
   (3, gated on `SHOWS_DATABASE_URL`/`DATABASE_URL`).
+- **Fresh-context review (codex/gpt-6-astra) found and fixed six real
+  defects before merge, all against a live Postgres, not just re-read**:
+  (1) 0019 renamed `catalog_show_episodes`/`catalog_show_feed_state`'s
+  `show_id` to `legacy_show_id` and dropped its unique constraint without
+  updating `PostgresShowEpisodesStore`, which still queried/upserted by
+  the old name — fixed by re-creating an equivalent unique index on
+  `legacy_show_id` and updating the store to match; (2) 0019's
+  `show_id_map` join only ever sees whatever exists at MIGRATION time,
+  which is always empty on a fresh deploy — added
+  `backfillLegacyShowIdKeys()`, re-run on every real import so a mapping
+  that arrives later still resolves; (3) `loadCatalogRows` never removed a
+  show that stopped appearing in a later import's canonical set — added
+  retirement (delete any `shows_catalog` row not carrying the current
+  run's `export_version`, clearing any `show_id_map` reference first to
+  satisfy the FK); (4) `changed_in_dump` was computed with an always-empty
+  `previousNewest`, so every row reported changed on every run including
+  an unchanged re-import — added `fetchPreviousNewest()`, reading the
+  prior release's snapshot straight from `shows_catalog` before the
+  current run's upsert overwrites it; (5) the loader never checked
+  S-04a's `MAX_UNMAPPED_CURATED_FRACTION` id-map-completeness guard before
+  writing to Postgres — added `checkMissingMapping()`, mirroring
+  `import-dump.mjs`'s own `writeBuildOutput` check; (6) the integration
+  test suite exercised a hand-copied SQL snippet instead of the real
+  loader functions and never seeded feed-state — rewritten to call
+  `backfillLegacyShowIdKeys`/`loadCatalogRows`/`fetchPreviousNewest`/
+  `checkMissingMapping` directly and to seed both episode and feed-state
+  rows. All fixes re-verified against a real Postgres 17 (migrations
+  clean-twice, 88/88 `tools/shows` tests, 102/102 backend suites) before
+  re-review.
 
 ## 2026-09-12 (the bundled voice: engine chosen, phonemes move to the server, measurement pending)
 

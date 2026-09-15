@@ -1,0 +1,36 @@
+fix(shows): repair review findings — legacy_show_id constraint, backfill, retirement, previousNewest, missing-mapping guard
+
+Fresh-context review (codex/gpt-6-astra) found six real defects; all fixed
+and re-verified against a live Postgres 17:
+
+1. 0019 renamed show_id -> legacy_show_id and dropped its unique
+   constraint without updating PostgresShowEpisodesStore, which still
+   queried/upserted by the old column name. Fixed: re-created an
+   equivalent unique index on legacy_show_id in 0019, updated the store's
+   four queries to match.
+2. 0019's show_id_map join only sees mappings that exist at MIGRATION
+   time (always empty on first deploy, before any import has run).
+   Fixed: added backfillLegacyShowIdKeys(), re-run on every real import.
+3. loadCatalogRows never retired a show that stopped appearing in a later
+   import's canonical output. Fixed: rows not carrying the current run's
+   export_version are deleted, clearing any show_id_map reference first
+   to satisfy the FK.
+4. changed_in_dump was computed with an always-empty previousNewest, so
+   every row reported changed on every run. Fixed: added
+   fetchPreviousNewest(), reading the prior release's snapshot from
+   shows_catalog before the current run's upsert overwrites it.
+5. The loader never checked S-04a's MAX_UNMAPPED_CURATED_FRACTION
+   id-map-completeness guard before writing to Postgres. Fixed: added
+   checkMissingMapping(), mirroring import-dump.mjs's writeBuildOutput.
+6. The integration suite exercised hand-copied SQL instead of the real
+   loader functions and never seeded feed-state. Rewritten to call
+   backfillLegacyShowIdKeys/loadCatalogRows/fetchPreviousNewest/
+   checkMissingMapping directly, seeding both episode and feed-state rows.
+
+Re-verified: migrations apply clean twice from fresh; 88/88 tools/shows
+tests pass (was 85, +3 net new across the repair); 102 files / 1536 tests
+pass in backend with SHOWS_DATABASE_URL set; typecheck clean;
+test/suite-integrity.test.js 298/298 (floor for
+shows-postgres-integration.test.mjs raised 3 -> 6 to match its real count).
+
+docs/DECISIONS.md updated with the review findings.
