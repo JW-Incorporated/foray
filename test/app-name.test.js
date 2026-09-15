@@ -468,6 +468,13 @@ test("both shell notices name the app", () => {
    in flight and the existing "Show not found." only after it confirms the
    miss. Two notes where there was one. The unit rule below applies to the new
    one exactly as it does to the others. */
+/* RAISED 8 -> 9 on 2026-09-15 (S-05, 4a-shows-pipeline-plan.md §3.2, kanban
+   t_546eac9f): `resolveMissingShow`'s new `pi:` early-return branch renders
+   the identical "Show not found." shape as the existing catalogue-miss
+   branch a few lines below it — same string, second call site, because a
+   `pi:` id has no id-map/network fallback to attempt (see that branch's own
+   comment). The unit rule below applies to it exactly as it does to every
+   other note. */
 test("no note this app renders into #view capitalises the unit", () => {
   const notes = [
     ...read("app.js").matchAll(
@@ -476,8 +483,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    8,
-    `expected eight one-line #view notes, found ${notes.length}. More is fine -- ` +
+    9,
+    `expected nine one-line #view notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );

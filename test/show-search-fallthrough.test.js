@@ -182,6 +182,13 @@ function mount({
     if (u.includes("api/episodes/search")) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ episodes: [] }) });
     }
+    /* S-05's shard pass fires its own request alongside the ones above.
+       Answered with the real endpoint's own "not published yet" 404
+       rather than left hanging (test/show-search-shard.test.js and
+       test/offline-search.test.js own that pass's own behaviour). */
+    if (u.includes("api/shows/index/")) {
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ available: false }) });
+    }
     return new Promise(() => {}); // anything else hangs rather than resolving something invented
   };
 
