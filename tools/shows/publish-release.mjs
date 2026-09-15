@@ -91,35 +91,60 @@ export function assetBaseUrlFor(tag, repo = REPO_SLUG) {
   return `https://github.com/${repo}/releases/download/${tag}`;
 }
 
-/** Creates the release and uploads every asset in one `gh release create`
-    call — uploading separately from creation would be two points of
-    partial failure (a release created with zero assets, e.g.) instead of
-    one atomic-from-the-caller's-view step. Returns the asset base URL the
-    pointer file needs: `.../releases/download/<tag>/<name>` is a stable,
-    directly-constructible URL shape that needs no further API call to
-    resolve per-asset — verified against a real release in this repo (see
-    docs/DECISIONS.md's S-04b entry for the exact redirect chain). */
+/** Creates the release and uploads every asset — uploading separately from
+    creation would be two points of partial failure (a release created with
+    zero assets, e.g.) instead of one atomic-from-the-caller's-view step.
+    Returns the asset base URL the pointer file needs:
+    `.../releases/download/<tag>/<name>` is a stable, directly-constructible
+    URL shape that needs no further API call to resolve per-asset —
+    verified against a real release in this repo (see docs/DECISIONS.md's
+    S-04b entry for the exact redirect chain).
+
+    BATCHED: GitHub Releases caps a single release at 1,000 assets (HTTP
+    422 "file_count limited to 1000 assets per release" — hit for real
+    against this repo, verified locally). The real build has ~1,298 shard
+    files + 4 top-level files (~1,302 total), over that ceiling.
+    `gh release create` cannot take more than 1,000 files in one call, so
+    this uploads the first CREATE_BATCH_SIZE assets at creation time and
+    the rest via `gh release upload` in further batches against the same
+    tag — `gh` returns the same asset URL shape either way, so
+    assetBaseUrlFor is unaffected. 900 leaves headroom under 1,000 without
+    needing many round trips for a build this size. */
+const CREATE_BATCH_SIZE = 900;
+
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out.length ? out : [[]];
+}
+
 export async function publishRelease({ tag, title, notes, assets, exec = execFileP, repo = REPO_SLUG }) {
   if (!assets || assets.length === 0) {
     throw new PublishError("NO_ASSETS", "refusing to publish a release with zero assets");
   }
   // maxBuffer: node's execFile default caps combined stdout+stderr at 1MB.
-  // `gh release create` with ~1,300 shard assets (the real S-04a build
-  // output) prints per-file upload progress that blows well past 1MB,
-  // throwing ERR_CHILD_PROCESS_STDOUT_MAXBUFFER — which the caller's catch
-  // block then reported as a useless truncated command-line string instead
-  // of the real gh output, masking every actual upload failure behind a
-  // fake "release create failed" (found while verifying this pipeline
-  // against the real dump end-to-end, t_30a53ba2). 64MB matches the
-  // maxBuffer run-and-publish.mjs's own runBuild() already uses for the
-  // build step's stdout, for the same reason.
+  // `gh release create`/`gh release upload` with hundreds of assets print
+  // per-file upload progress that blows well past 1MB, throwing
+  // ERR_CHILD_PROCESS_STDOUT_MAXBUFFER — which the caller's catch block
+  // then reported as a useless truncated command-line string instead of
+  // the real gh output, masking every actual upload failure (including
+  // the 1,000-asset ceiling this function now handles) behind a fake
+  // "release create failed" (found while verifying this pipeline against
+  // the real dump end-to-end, t_30a53ba2). 64MB matches the maxBuffer
+  // run-and-publish.mjs's own runBuild() already uses for the build
+  // step's stdout, for the same reason.
+  const execOpts = { maxBuffer: 64 * 1024 * 1024 };
+  const [firstBatch, ...restBatches] = chunk(assets, CREATE_BATCH_SIZE);
   await exec("gh", [
     "release", "create", tag,
-    ...assets,
+    ...firstBatch,
     "--repo", repo,
     "--title", title,
     "--notes", notes,
-  ], { maxBuffer: 64 * 1024 * 1024 });
+  ], execOpts);
+  for (const batch of restBatches) {
+    await exec("gh", ["release", "upload", tag, ...batch, "--repo", repo], execOpts);
+  }
   return {
     tag,
     asset_base_url: assetBaseUrlFor(tag, repo),
