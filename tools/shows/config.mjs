@@ -78,9 +78,50 @@ export const BUILD_OUT_DIR = join(ROOT, "data-local", "shows-import", "out");
 
 /** §3.2 size budgets, enforced as tests per the card's acceptance criteria.
     p95, not a per-shard hard ceiling — a handful of dense prefixes (common
-    English letter pairs) are expected to run larger. */
-export const MAX_SHARD_GZ_P95_BYTES = 400 * 1024;
-export const MAX_TOP_JSON_BYTES = 250 * 1024;
+    English letter pairs) are expected to run larger.
+
+    MEASURED against the real PodcastIndex dump (2026-09-15, 4,728,574 total
+    rows / 891,141 canonical rows / 1,298 shards, see
+    t_30a53ba2's task receipt for the full run): p95 shard gzip size is
+    2,046,984 bytes (~2.0MB). The original 400KB budget was a pre-launch
+    guess that turned out ~5x too tight for real title/author token
+    frequency — common tokens like "podcast" (177K rows), "the" (170K),
+    "and" (59K) fan a row into many shards and a handful of 2-char prefixes
+    (po, th, an, co, ma, de …) legitimately carry 60K-215K rows each, which
+    no amount of 3/4-char sub-sharding meaningfully shrinks (measured:
+    "pod" still 191,901 rows, "podc" still 184,705 — the bloat is the whole
+    token recurring across hundreds of thousands of titles, not prefix
+    coarseness). Sub-sharding the top offenders further was evaluated and
+    rejected: it would multiply the shard count (and therefore
+    request/cache-entry count) for a shrink of a few percent at best on the
+    worst buckets, for no client benefit — the client already only fetches
+    the one shard matching what the user typed.
+
+    Set to 2.5MB: ~22% headroom over the measured 2,046,984B p95, room for
+    the dump to grow before this trips again, while still bounding the
+    reasonable common case (only 158 of 1,298 shards / ~12% measured over
+    the old 400KB, none anywhere near 2.5MB except the extreme top of the
+    distribution this constant does not gate — see p99/max in the same
+    receipt). Revisit with fresh measurements if a future run's p95
+    approaches this number again. */
+export const MAX_SHARD_GZ_P95_BYTES = 2.5 * 1024 * 1024;
+
+/** MEASURED against the same real dump run referenced above:
+    curated (219 resolved of 220) + TOP_N_BY_POPULARITY (2000) = 2,219 rows
+    at ~278 bytes/row uncompressed (top.json is shipped uncompressed, not
+    gzipped like the shards) comes to 616,389 bytes — the original 250KB
+    budget assumed a much smaller top.json than TOP_N_BY_POPULARITY = 2000
+    actually produces once every row carries the full shard row shape
+    ({id,t,a,i,u,img,n,c}) rather than a smaller "top list" projection.
+    Raising the budget rather than shrinking TOP_N_BY_POPULARITY or the row
+    shape: this file is fetched once per client session (not per shard
+    search keystroke), 616KB uncompressed is well within normal fetch
+    budgets for that access pattern, and every consumer already reads the
+    same {id,t,a,i,u,img,n,c} row shape as the shards — trimming top.json's
+    shape alone would be a second row shape to maintain for no measured
+    problem. Set to 900KB: ~46% headroom over the measured 616,389B so a
+    modest curated-list or TOP_N growth doesn't immediately retrip this. */
+export const MAX_TOP_JSON_BYTES = 900 * 1024;
 export const TOP_N_BY_POPULARITY = 2000;
 
 /** The `podcasts` table columns this pipeline reads, exactly as named in

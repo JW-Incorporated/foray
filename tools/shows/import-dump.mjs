@@ -295,10 +295,16 @@ async function main() {
   let checksum, exportVersion, dbPath;
   if (dumpFileArg) {
     // Fixture / manual path: caller supplies an already-extracted sqlite
-    // file directly, skipping fetch+extract entirely.
+    // file directly, skipping fetch+extract entirely. Hashed via a stream,
+    // not readFile(dumpFileArg) — the real PodcastIndex db is ~4.7GB
+    // uncompressed, well over node:fs/promises readFile's 2GiB ceiling
+    // (ERR_FS_FILE_TOO_LARGE), which made this documented "re-run against
+    // a real dump" path unusable for exactly the real dump it exists for
+    // (found while measuring the SHARD_TOO_LARGE root cause, t_30a53ba2).
     dbPath = dumpFileArg;
-    const bytes = await readFile(dumpFileArg);
-    checksum = createHash("sha256").update(bytes).digest("hex");
+    const hash = createHash("sha256");
+    await pipeline(createReadStream(dumpFileArg), hash);
+    checksum = hash.digest("hex");
     exportVersion = get("--export-version") || `local:${checksum.slice(0, 12)}`;
   } else {
     const archivePath = join(DOWNLOAD_DIR, "podcastindex_feeds.db.tgz");
