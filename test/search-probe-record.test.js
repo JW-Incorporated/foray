@@ -58,7 +58,22 @@ const PAGE_IDS = [
 function mockFetch(handler) {
   return (url) => {
     const res = handler(String(url));
-    return res === undefined ? new Promise(() => {}) : Promise.resolve(res);
+    if (res !== undefined) return Promise.resolve(res);
+    /* S-05's shard pass fires its own request (`api/shows/index/shards/...`)
+       on every uncached, online, non-empty-shard-key search alongside the
+       catalogue/directory passes this suite already mocks. None of the
+       tests below care about the shard pass's own behaviour — that is
+       test/show-search-shard.test.js's and test/offline-search.test.js's
+       job — so answer it with an honest "not published yet" 404
+       (matching `api/shows/index/[...path].ts`'s own real degrade) rather
+       than leaving it unmatched, which would hang forever and starve this
+       suite's `settle()`-driven record of ever firing. Every OTHER
+       unmatched URL still hangs, unchanged — that hang is what the
+       supersession test above deliberately relies on. */
+    if (String(url).includes("api/shows/index/")) {
+      return Promise.resolve({ ok: false, status: 404, json: async () => ({ available: false }) });
+    }
+    return new Promise(() => {});
   };
 }
 function jsonResponse(body) {

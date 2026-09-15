@@ -60,6 +60,7 @@ const state = {
   segmentSources: null,     // data/segment-sources.json
   catalog: null,            // data/catalog-client.json — show-level records, #/show/:id (Stage 1)
   breadthShowCache: {},     // show_id -> minimal show record from /api/shows/search (A3.1/Q3), see showById
+  shardShowCache: {},       // "pi:<id>" -> mapped show record from a shard-search result (S-05), see showById
   foray: null,              // the resolved Foray currently on screen
   forayResume: null,        // its stored resume point, or null — see paintForay
   forayPlaying: null,       // id of the Foray the player is inside, or null
@@ -1739,8 +1740,24 @@ const TITLE_ALIASES = {
 /* A3.1/Q3: the curated 220-show catalogue first, then the breadth-search
    cache (populated by renderShow when a show_id isn't in the curated set —
    see there) so a show page for a breadth-tier show found via Shows search
-   still resolves once its record has been fetched once this session. */
+   still resolves once its record has been fetched once this session.
+
+   S-05: a `pi:<id>` id (a raw PodcastIndex row id from the shard index,
+   never one of catalog.json's own show_id slugs — see
+   `tools/shows/shard-build.mjs:toShardRow`) resolves from
+   `state.shardShowCache`, populated the same way `breadthShowCache` is:
+   the moment a shard-search result lands, before the listener ever taps
+   it. There is deliberately no id-map/network fallback for a `pi:` id that
+   is NOT in that cache (e.g. a cold open of a shared `#/show/pi:<n>` link)
+   — S-04a/b's release pipeline is not live yet (SHARD_TOO_LARGE, tracked
+   separately), so there is no published shard/id-map to resolve against;
+   `resolveMissingShow` below renders the honest "Show not found." rather
+   than querying `api/shows/search`, which is keyed on a different id space
+   entirely and would never answer a `pi:` id correctly. */
 function showById(id) {
+  if (typeof id === "string" && id.startsWith("pi:")) {
+    return state.shardShowCache[id] || null;
+  }
   return (state.catalog?.shows || []).find(s => s.show_id === id)
     || state.breadthShowCache[id]
     || null;
@@ -2302,6 +2319,7 @@ function renderAllShows(initialQuery = "") {
         </button>
       </div>
       <p id="sh-note" class="note" hidden></p>
+      <p id="sh-offline-note" class="note" hidden>Showing shows available offline</p>
       <div id="sh-results" class="show-results" hidden></div>
       <div id="ep-search-results" hidden></div>
       <div id="pl-search-results" hidden></div>
@@ -2708,6 +2726,16 @@ async function searchShowEpisodesScoped(show_id, query) {
    when `showById` now answers. */
 function resolveMissingShow(show_id) {
   const view = $("#view");
+  /* S-05: a `pi:` id has no fallback lookup at all — see showById's own
+     header for why `api/shows/search?id=` (a different id space) can never
+     answer one, and why that is correct today rather than a gap: no
+     shard-index release is published yet. Rendering the honest empty state
+     immediately, with no "Loading show…" flash for a fetch that would
+     never have resolved this id anyway. */
+  if (typeof show_id === "string" && show_id.startsWith("pi:")) {
+    if (view) view.innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`;
+    return;
+  }
   const fromIndex = showIndex
     ? showIndex.rows.find((r) => r.show_id === show_id)
     : null;
@@ -4223,6 +4251,149 @@ function localShowMatches(query) {
 const SHOW_BREADTH_CACHE_MAX = 200;
 const showBreadthQueryCache = new Map();
 
+/* ---------- S-05: the shard-backed show index (4a-shows-pipeline-plan.md §3.2) ----------
+
+   A THIRD source alongside S-03's title-only `show-index.tsv` (still the
+   INSTANT local pass, unchanged, and still first — see `localShowMatches`)
+   and the catalogue/directory passes above: a richer per-show row (author,
+   artwork, episode count, curated flag) fetched from the shard published by
+   S-04a/b and proxied same-origin through `api/shows/index/[...path].ts`
+   (S-05's own file — see its header for the CORS/Fable-ruling context and
+   for why no CSP change lands with this card).
+
+   OFFLINE (D9): the fetch is skipped entirely, not attempted-and-failed —
+   `navigator.onLine === false` is checked BEFORE building the request, the
+   same guard `renderEpisodeSearchResults` already uses for the identical
+   reason (this file's "absence is a real state, a network-only feature
+   does not get a spinner that will never resolve" rule). Skipped means
+   zero requests, which is the card's literal acceptance criterion, not an
+   approximation of it — a request that starts and is expected to fail
+   would still be a request.
+
+   IN-MEMORY FIRST, THEN CACHE STORAGE. `shardMemoryCache` is a session-
+   scoped `Map<shardKey, rows[]>` — the same trip cost the hot-query cache
+   above exists to avoid. Beneath it, the Cache Storage entry (this
+   session's `caches.open(SHARD_CACHE_NAME)`) survives a reload and is
+   checked before any network request; the entry named on the card ("in-
+   memory + Cache Storage") is deliberately two tiers, not one, because
+   Cache Storage read/write is itself an async round trip through the
+   browser's own storage layer and paying it on every keystroke inside one
+   session would be silly when a plain Map already answers for free.
+
+   KNOWN FOLLOW-UP (Fable ruling FR-t_546eac9f-2, kanban t_30a53ba2): a
+   Cache Storage entry here carries no release-version tag, so once a real
+   shows-index release exists it cannot invalidate a previously-cached
+   shard until browser eviction. Deferred rather than built now because
+   S-04a/b's pipeline has never actually published a release (SHARD_TOO_LARGE,
+   t_30a53ba2) — there is no version identifier yet to tag entries with, and
+   no real staleness scenario to design or test against. The `-v1` suffix on
+   `SHARD_CACHE_NAME` is a manual escape hatch (bump it to invalidate every
+   cached shard at once) until that follow-up lands a real scheme. */
+const SHARD_CACHE_NAME = "foray-shows-index-v1";
+const shardMemoryCache = new Map(); // shardKey -> rows[] | null (null = "fetched, came back empty/unavailable")
+
+/** True only when the runtime has told us we are offline. A browser that
+    never sets `navigator.onLine` (or an older WebKit) defaults to "assume
+    online" — the same posture `renderEpisodeSearchResults` already takes —
+    rather than silently disabling the shard pass everywhere that API is
+    absent. */
+function isOfflineForShardSearch() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+/** Reads `shards/<key>.json` from Cache Storage, or null on any miss/error
+    (a private-browsing context that refuses `caches.open`, a corrupt entry,
+    Cache Storage genuinely absent). Never throws — this is a best-effort
+    read on the way to a network fetch, not a source of truth. */
+async function readShardFromCacheStorage(shardKey) {
+  if (typeof caches === "undefined") return null;
+  try {
+    const cache = await caches.open(SHARD_CACHE_NAME);
+    const res = await cache.match(`shards/${shardKey}.json`);
+    if (!res) return null;
+    return await res.json();
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Writes a successfully-fetched shard's rows into Cache Storage, keyed the
+    same way `readShardFromCacheStorage` reads. Best-effort and silent on
+    failure — a shard search that works this session but cannot persist is
+    still a working search, matching every other cache in this file's
+    "caching failing is never the same as searching failing" posture. */
+async function writeShardToCacheStorage(shardKey, rows) {
+  if (typeof caches === "undefined") return;
+  try {
+    const cache = await caches.open(SHARD_CACHE_NAME);
+    await cache.put(`shards/${shardKey}.json`, new Response(JSON.stringify(rows), {
+      headers: { "Content-Type": "application/json" },
+    }));
+  } catch (_) {
+    // Cache Storage write failures (quota, private browsing) are silent —
+    // see this section's own header.
+  }
+}
+
+/** Fetches one shard's rows through S-05's same-origin proxy, checking the
+    in-memory cache, then Cache Storage, before any network request. Returns
+    `[]` on any miss/failure/offline (never throws, never null) so every
+    caller can treat the result uniformly — S-05's own "absence is a real
+    state" rule, same as every other pass in this file.
+
+    ONLY A SUCCESSFUL FETCH IS MEMOIZED (review finding, 2026-09-15): a
+    failed/degraded response used to be cached as `null` right alongside a
+    real empty shard, so one transient failure (a cold-start 502, the
+    pipeline's own "no release published yet" 404 before S-04a/b's
+    SHARD_TOO_LARGE bug is fixed) permanently suppressed that shard for the
+    rest of the session — every later keystroke landing on the same prefix
+    would read the cached failure and never retry, unlike every other
+    fetch-backed cache in this file (`showBreadthQueryCache`,
+    `showDirectoryQueryCache` both key ONLY on `data`'s presence). A
+    genuinely empty shard (the release exists and this prefix has no rows)
+    is still memoized as `[]`, which is the correct "asked, got nothing"
+    answer. */
+async function fetchShardRows(shardKey) {
+  if (shardMemoryCache.has(shardKey)) return shardMemoryCache.get(shardKey);
+  if (isOfflineForShardSearch()) return []; // D9: no request, not a failed one — and not memoized
+
+  const fromCacheStorage = await readShardFromCacheStorage(shardKey);
+  if (fromCacheStorage) {
+    shardMemoryCache.set(shardKey, fromCacheStorage);
+    return fromCacheStorage;
+  }
+
+  const data = await fetchApiJson(`api/shows/index/shards/${encodeURIComponent(shardKey)}.json`);
+  if (!Array.isArray(data)) return []; // failure/unavailable: not memoized, so a later search retries
+  shardMemoryCache.set(shardKey, data);
+  if (data.length) writeShardToCacheStorage(shardKey, data);
+  return data;
+}
+
+/** Maps one shard row (`{ id, t, a, i, u, img, n, c }`,
+    `tools/shows/shard-build.mjs:toShardRow`'s shape) to the show record
+    shape every other search source already produces — the same fields
+    `mapAppleShow` (`api/shows/appleShowSearch.ts`) and the catalogue
+    endpoint answer with, so `mergeShowRows`/`showResultRow`/`showById` need
+    no shard-specific branch anywhere else in this file. `show_id` is
+    `pi:<id>` — a PodcastIndex row id, deliberately namespaced so it can
+    never collide with a curated `show_id` slug or an Apple `collectionId`
+    string (both already live in this same id space via `breadthShowCache`)
+    — matching `showById`'s own `pi:` branch and the new `#/show/pi:<n>`
+    route. */
+function mapShardRow(row) {
+  return {
+    show_id: `pi:${row.id}`,
+    title: row.t || "",
+    artwork_url: row.img || null,
+    artist_name: row.a || null,
+    editorial_note: null,
+    taxonomy_node_ids: [],
+    tier: row.c ? "curated" : "breadth",
+    source: "shard",
+  };
+}
+
 /* ---------- P-02: the DIRECTORY pass (docs/search-parity-plan.md) ----------
 
    Its own cache, bounded and cleared by the same FIFO-with-wholesale-clear
@@ -4428,12 +4599,21 @@ function clearShowSearchResults() {
 }
 
 /** Paints one set of show rows into `#sh-results`, or the honest empty state.
-    Token-guarded so a slow costly pass cannot repaint over a newer query. */
+    Token-guarded so a slow costly pass cannot repaint over a newer query.
+
+    S-05/D9: `#sh-offline-note` ("Showing shows available offline") is shown
+    whenever the runtime reports offline, independent of whether `shows` is
+    empty — the local/curated pass still answers instantly offline, so this
+    is not the same state as the "No results" note below it (both can be
+    visible in principle; the offline note explains WHY the shard/directory
+    tiers are absent, the results note or list is WHAT the local pass found). */
 function paintShowResults(query, shows, myToken) {
   if (myToken !== showSearchToken) return; // a newer query already superseded this one
   const note = $("#sh-note");
   const results = $("#sh-results");
+  const offlineNote = $("#sh-offline-note");
   if (!note || !results) return;
+  if (offlineNote) offlineNote.hidden = !isOfflineForShardSearch();
   /* Recorded whether or not there is anything to draw, and BEFORE the empty
      branch returns: "nothing matched" is a painted answer like any other, and a
      later merge has to append to it rather than to whatever the last non-empty
@@ -4526,7 +4706,23 @@ function mergeShowRows(query, existing, incoming) {
   for (const s of incoming) {
     if (ids.has(s.show_id)) continue;
     const keys = showDedupKeys(s.title);
-    if (s.source === "apple" && keys.some((k) => titleKeys.has(k))) continue;
+    /* S-05 review finding (2026-09-15): shard rows dedupe by title exactly
+       like Apple rows do, and for the identical reason — a shard row's
+       show_id is `pi:<PodcastIndex id>` (mapShardRow), a DIFFERENT id space
+       from a curated slug or a catalogue/breadth show_id, so the `ids.has`
+       check above cannot catch "the same show, reached through two
+       sources". Without this, a curated show already painted from the
+       local pass would reappear a second time the moment the shard pass
+       for its own prefix landed — the exact duplicate-row defect the
+       `source === "apple"` branch already exists to prevent for Apple's
+       directory. */
+    /* S-05 review follow-up (Fable ruling FR-t_546eac9f-2, kanban t_5e674545):
+       this dedup is still arrival-order-dependent across ALL sources, not
+       just the apple/shard pair checked below — if an untagged (local/
+       catalogue/directory) row for a title arrives AFTER a tagged one, it
+       is never checked against the tagged row's keys. Pre-existing gap,
+       narrowed but not closed by S-05; see t_5e674545 for the tracked fix. */
+    if ((s.source === "apple" || s.source === "shard") && keys.some((k) => titleKeys.has(k))) continue;
     ids.add(s.show_id);
     for (const k of keys) titleKeys.add(k);
     additions.push(s);
@@ -4632,16 +4828,17 @@ function runShowSearchCostly(query, myToken, local) {
     dirMs: null, dirHits: null,
     epMs: null, epHits: null,
     ctaMs: null,
+    shardMs: null, shardHits: null,
     path: null,
   };
-  /* Three halves owed; `settle` is called exactly once by each, on EVERY exit
-     path including the early returns — a half that decided not to run still
-     has to say so, or the record never fires at all and a superseded search
-     goes unrecorded. A fetch that never settles is the one case with no
-     record, which was already true of the breadth half alone: `fetchApiJson`
-     swallows errors to `null` but cannot invent an answer for a socket that
-     simply hangs. */
-  let owed = 4;
+  /* Three halves owed, plus S-05's shard pass; `settle` is called exactly
+     once by each, on EVERY exit path including the early returns — a half
+     that decided not to run still has to say so, or the record never fires
+     at all and a superseded search goes unrecorded. A fetch that never
+     settles is the one case with no record, which was already true of the
+     breadth half alone: `fetchApiJson` swallows errors to `null` but cannot
+     invent an answer for a socket that simply hangs. */
+  let owed = 5;
   const settle = (patch) => {
     Object.assign(record, patch);
     if (--owed === 0) recordSearchDiagnostic(record);
@@ -4837,6 +5034,36 @@ function runShowSearchCostly(query, myToken, local) {
          value and it is the honest one here. */
       settle({ dirMs, dirHits: answered ? rows.length : null });
     }); // fetchApiJson swallows network/parse errors to null — a failed directory pass adds nothing and removes nothing
+  }
+
+  /* ---------- S-05: THE SHARD PASS, a FOURTH pass and a THIRD request ----------
+
+     Skipped entirely (settled as "did not run", zero requests) offline —
+     see `fetchShardRows`'s own header for D9. Otherwise fetches the one
+     shard the query's longest token keys into (`SearchEngine.shardKeyForQuery`),
+     ranks its rows (`SearchEngine.rankShardRows`, exact > prefix > word-start
+     > substring, curated boost, AND-filtered on every token), maps them to
+     the shared show-record shape (`mapShardRow`) and merges through the same
+     `mergeBreadth`/`mergeShowRows` path every other source uses — so a shard
+     row dedupes against a curated/catalogue/directory row exactly as those
+     dedupe against each other, and `state.shardShowCache` is seeded the same
+     way `state.breadthShowCache` is, so a tapped `pi:` result resolves
+     through `showById` without a second network round trip. */
+  const shardKey = SearchEngine.shardKeyForQuery(query);
+  if (isOfflineForShardSearch()) {
+    settle({ shardMs: null, shardHits: null }); // D9: no request, a real "did not run" state
+  } else if (!shardKey) {
+    settle({ shardMs: null, shardHits: null });
+  } else {
+    const shardStart = nowMs();
+    fetchShardRows(shardKey).then((rows) => {
+      const shardMs = nowMs() - shardStart;
+      const ranked = SearchEngine.rankShardRows(query, rows);
+      const mapped = ranked.map(mapShardRow);
+      for (const s of mapped) state.shardShowCache[s.show_id] = s;
+      if (myToken === showSearchToken && mapped.length) mergeBreadth(mapped);
+      settle({ shardMs, shardHits: mapped.length });
+    }); // fetchShardRows never throws/rejects (see its own header) — no .catch needed
   }
 
   renderEpisodeSearchResults(query, myToken, (epMs, epHits) => settle({ epMs, epHits }), local.localEpisodes);

@@ -725,6 +725,28 @@ const FLOORS = {
      other test in this file still green. 31 -> 34. */
   "test/search-field-bottom.test.js": 34,
   "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
+  /* S-05 (4a-shows-pipeline-plan.md §3.2, kanban t_546eac9f): the shard-index
+     client's PURE functions in search-engine.js — tokenising a query into a
+     shard key with the same NFKD-fold the builder uses, picking the longest
+     token's shard, filtering a shard's rows by every remaining token (AND),
+     and ranking exact > prefix > word-start > substring with a curated tie-
+     break and the shard's own popularity order preserved beneath it. Own
+     suite rather than folded into show-search-ranking.test.js because its
+     subject is a different data source entirely (the shard row shape, not
+     the title-only show-index.tsv/catalogue), and it is pinned against the
+     real tools/shows/shard-build.mjs builder rather than trusted by
+     inspection — two of the seventeen tests import that file directly and
+     assert agreement over a fixture vocabulary. */
+  "test/show-search-shard.test.js": 19,
+  /* S-05 (4a-shows-pipeline-plan.md §3.2, kanban t_546eac9f): the offline
+     rule (D9) — the shard fetch is skipped, not attempted-and-failed, when
+     `navigator.onLine === false`, painting zero shard requests and showing
+     "Showing shows available offline"; plus `showById`'s `pi:` resolution
+     and the `#/show/pi:<n>` route a shard result opens. Own suite because
+     its subject is the OFFLINE/network-skip contract and the new id space,
+     neither of which show-search-shard.test.js's pure-function tests touch
+     (those never construct a DOM or a fetch at all). */
+  "test/offline-search.test.js": 13,
   /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
      its rows render and cache like any other breadth row, and a breadth show page survives
      a cold open. Restored with the card after a merge took main's side on app.js. */
