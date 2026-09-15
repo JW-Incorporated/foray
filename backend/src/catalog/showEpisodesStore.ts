@@ -97,12 +97,20 @@ export class InMemoryShowEpisodesStore implements ShowEpisodesStore {
 export class PostgresShowEpisodesStore implements ShowEpisodesStore {
   constructor(private readonly client: Client) {}
 
+  // NOTE (S-09, kanban t_f00c0a28): 0019_rekey_episodes_by_pi_id.sql renamed
+  // catalog_show_episodes/catalog_show_feed_state's `show_id` column to
+  // `legacy_show_id` (kept, not dropped) and re-created an equivalent
+  // unique constraint on it so this store's existing show_id-keyed read
+  // path keeps working unchanged after that migration — this class is
+  // NOT rewired to pi_id by S-09; that is a future card's job once the
+  // show-page feature itself moves off curated show_id slugs.
+
   async episodesForShow(showId: string): Promise<CatalogShowEpisode[]> {
     const result = await this.client.query(
-      `select show_id, guid, title, description_html, description_text, published_at,
+      `select legacy_show_id as show_id, guid, title, description_html, description_text, published_at,
               duration_seconds, audio_url, season_number, episode_number, chapters_url, chapters
        from catalog_show_episodes
-       where show_id = $1
+       where legacy_show_id = $1
        order by published_at desc nulls last`,
       [showId]
     );
@@ -114,10 +122,10 @@ export class PostgresShowEpisodesStore implements ShowEpisodesStore {
     for (const ep of episodes) {
       await this.client.query(
         `insert into catalog_show_episodes
-           (show_id, guid, title, description_html, description_text, published_at,
+           (legacy_show_id, guid, title, description_html, description_text, published_at,
             duration_seconds, audio_url, season_number, episode_number, chapters_url, chapters, updated_at)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now())
-         on conflict (show_id, guid) do update set
+         on conflict (legacy_show_id, guid) do update set
            title = excluded.title,
            description_html = excluded.description_html,
            description_text = excluded.description_text,
@@ -150,10 +158,10 @@ export class PostgresShowEpisodesStore implements ShowEpisodesStore {
 
   async getFeedState(showId: string): Promise<ShowFeedState | null> {
     const result = await this.client.query(
-      `select show_id, feed_url, etag, last_modified, last_fetched_at, last_fetch_ok,
+      `select legacy_show_id as show_id, feed_url, etag, last_modified, last_fetched_at, last_fetch_ok,
               last_error, consecutive_failures
        from catalog_show_feed_state
-       where show_id = $1`,
+       where legacy_show_id = $1`,
       [showId]
     );
     const row = result.rows[0];
@@ -173,9 +181,9 @@ export class PostgresShowEpisodesStore implements ShowEpisodesStore {
   async recordFeedFetch(state: ShowFeedState): Promise<void> {
     await this.client.query(
       `insert into catalog_show_feed_state
-         (show_id, feed_url, etag, last_modified, last_fetched_at, last_fetch_ok, last_error, consecutive_failures, updated_at)
+         (legacy_show_id, feed_url, etag, last_modified, last_fetched_at, last_fetch_ok, last_error, consecutive_failures, updated_at)
        values ($1,$2,$3,$4,$5,$6,$7,$8, now())
-       on conflict (show_id) do update set
+       on conflict (legacy_show_id) do update set
          feed_url = excluded.feed_url,
          etag = excluded.etag,
          last_modified = excluded.last_modified,
@@ -196,6 +204,7 @@ export class PostgresShowEpisodesStore implements ShowEpisodesStore {
       ]
     );
   }
+
 }
 
 function rowToEpisode(row: Record<string, unknown>): CatalogShowEpisode {
