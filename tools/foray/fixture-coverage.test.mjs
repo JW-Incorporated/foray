@@ -110,14 +110,6 @@ const KNOWN_UNCOVERED = [
     why: "neither generated Foray on main wrote a Correction beat; the pipeline may emit one on any run.",
   },
   {
-    field: "narration.mode",
-    value: "intro",
-    why:
-      "Q-02 (listening-quality deck): the introduction before a clip, written per act since Q-03. No generation run has " +
-      "been launched since the mode landed (the deck forbids one until Q-06), so no committed Foray carries it yet; the " +
-      "first re-narrated candidate (Q-06's listening test) is its fixture.",
-  },
-  {
     field: "narration.duration_source",
     value: "measured",
     why: "tools/narrate/ has not stamped `duration_sec` on any committed narration item yet.",
@@ -137,57 +129,14 @@ const KNOWN_UNCOVERED = [
     value: "asset",
     why: "as above — `asset` is the second field the player reads for rendered audio.",
   },
-  /* F-103 (2026-09-12): a narrated beat ships the sources it rests on. The
-     provenance used to die at §4.8 (`stitchAct.ts` copied `mode` and `script`
-     off the page and nothing else), so the four generated Forays on main were
-     written with no `cites` to carry and CANNOT gain one without being
-     regenerated — this PR deliberately re-publishes nothing. Both kinds land
-     together, from the same `citesFor` call, on the first Foray generated
-     after this; that run is their fixture, and these two entries go with it. */
-  {
-    field: "narration.cite_kind",
-    value: "print",
-    why:
-      "no committed Foray carries `cites` at all: the four generated drafts predate the provenance being carried past " +
-      "§4.8, and F-103 re-publishes nothing. The next generation run is the fixture — print is the shape every Patch " +
-      "and Carry cites, so it lands on the first run that writes one.",
-  },
-  {
-    field: "narration.cite_kind",
-    value: "tape",
-    why:
-      "as above. The tape shape (F-81) is what a Frame/Hinge/Marker/Intro that describes the clip beside it cites, so it " +
-      "lands on the same first run — earlier than print, if anything, since every generated Foray opens its acts with Frames.",
-  },
   {
     field: "segment.role",
     value: "narrative",
     why: "no committed Foray plays a `narrative`-role segment (quote/explanation/exchange are all carried).",
   },
-  /* Q-01 (2026-09-12): `boundary` is written by the tier-2 mint once the claim
-     window has been extended to its thought (`tapeExtent.ts`). No generation
-     run has been launched since — the listening-quality deck forbids one until
-     Q-06 — so no committed row carries any of the three values yet. The first
-     Q-01 Foray to publish carries `turn` and `sentence` on the run-8 measurement
-     (10 and 5 of 16); `claim-only` was 1 of 16 there. */
-  {
-    field: "segment.boundary",
-    value: "turn",
-    why: "no Foray has been generated under Q-01 yet; the deck holds generation runs until Q-06.",
-  },
-  {
-    field: "segment.boundary",
-    value: "sentence",
-    why: "as above.",
-  },
-  {
-    field: "segment.boundary",
-    value: "claim-only",
-    why: "as above — 1 of 16 run-8 clips landed here (a clip the floor growth carried past its boundary).",
-  },
 ];
 /** Raise this only with a written reason in the same PR. Lowering it is free. */
-const KNOWN_UNCOVERED_CEILING = 12; // 6 (jingle carrier landed with #632, 2026-09-11) + 1 narration.mode=intro (Q-02, 2026-09-12) + 3 segment.boundary values (Q-01, 2026-09-12) + 2 narration.cite_kind values (F-103, 2026-09-12), all until the next generation run lands their carriers
+const KNOWN_UNCOVERED_CEILING = 6; // was 12. The generation run of 2026-09-14 ("Why Doctors Didn't Believe In Germs") is the fixture those six were waiting for: narration.mode=intro (Q-02), both narration.cite_kind values (F-103), and all three segment.boundary values (Q-01) now have a committed carrier, so their entries are deleted rather than kept. The six that remain have no carrier on main.
 /* RAISED 10 -> 12 by F-103, and the reason it is a raise rather than a fixture
    is the one case this list exists for. Both new shapes are written by the
    GENERATOR and by nothing else, and the four committed Forays were generated

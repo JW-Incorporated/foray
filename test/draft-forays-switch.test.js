@@ -363,6 +363,17 @@ test("switch off is byte-identical to an app with no switch at all, on every sur
 /* ON                                                                   */
 /* ==================================================================== */
 
+/* The app escapes five characters (`esc` in app.js), not one. Until 2026-09-14
+   every committed Foray title happened to contain none of them beyond `&`, so a
+   lone `&`-replacement passed; the first title with an apostrophe ("Why Doctors
+   Didn't Believe In Germs") turned both assertions below red against correctly
+   rendered HTML. Mirror the real escaper rather than a subset of it.
+   MUTATION: drop any entry from the map — the title with that character stops
+   matching its own row and the test fails, which is how this was found. */
+const escLikeApp = (s) =>
+  String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
 test("switch on: #/forays lists every draft with the draft kicker — published first, generated drafts newest first, then hand-authored", async () => {
   /* M1 in reverse is not the risk here; M4 is: make `draftTrackOrder` return
      its input unchanged and the order assertion goes red (the generated ones
@@ -377,7 +388,7 @@ test("switch on: #/forays lists every draft with the draft kicker — published 
     const row = rows.find((r) => r.includes(`href="#/foray/${f.id}"`));
     assert.ok(row, `${f.id} has a row`);
     assert.ok(row.includes("foray · draft"), `${f.id} carries the draft kicker`);
-    assert.ok(row.includes(f.title.replace(/&/g, "&amp;")), `${f.id} is named`);
+    assert.ok(row.includes(escLikeApp(f.title)), `${f.id} is named`);
   }
   const genPos = GENERATED_NEWEST_FIRST.map((id) => html.indexOf(`href="#/foray/${id}"`));
   for (let i = 1; i < genPos.length; i++) assert.ok(genPos[i - 1] < genPos[i], "generated drafts are newest first");
@@ -425,7 +436,7 @@ test("switch on: a generated draft opens at #/foray/<id> and plays through the s
     h.route(`#/foray/${id}`);
     await h.settle();
     assert.strictEqual(h.state().foray?.id, id, `${id} resolved`);
-    assert.ok(h.view().includes(`<h2>${titleOf(id).replace(/&/g, "&amp;")}</h2>`), `${id} painted`);
+    assert.ok(h.view().includes(`<h2>${escLikeApp(titleOf(id))}</h2>`), `${id} painted`);
     const btn = findIn(h.body, "#fy-play");
     assert.ok(btn, "the play button is on the page");
     await btn.click();

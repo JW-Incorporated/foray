@@ -1409,6 +1409,78 @@
       "duration_sec": 1837,
       "dai_suspected": true,
       "source": "generation-tier-2"
+    },
+    {
+      "id": "this-podcast-will-kill-you--special-episode-carl-zimmer-airborne",
+      "show": "This Podcast Will Kill You",
+      "title": "Special Episode: Carl Zimmer & Airborne",
+      "feed_url": "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/64b4c224-562e-4b2f-9f31-b24c0111ae53/podcast.rss",
+      "episode_guid": "c66e2838-4aaf-4be1-a1f9-b325012d5d90",
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/c66e2838-4aaf-4be1-a1f9-b325012d5d90/audio.mp3?utm_source=Podcast&in_playlist=64b4c224-562e-4b2f-9f31-b24c0111ae53",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2944,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "this-podcast-will-kill-you--ep-216-cyclospora-explosive-diarrhea-everywhere",
+      "show": "This Podcast Will Kill You",
+      "title": "Ep 216 Cyclospora: Explosive Diarrhea Everywhere",
+      "feed_url": "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/64b4c224-562e-4b2f-9f31-b24c0111ae53/podcast.rss",
+      "episode_guid": "44db8d51-e423-4673-8a72-b48d016e4676",
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/44db8d51-e423-4673-8a72-b48d016e4676/audio.mp3?utm_source=Podcast&in_playlist=64b4c224-562e-4b2f-9f31-b24c0111ae53",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3278,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "this-podcast-will-kill-you--from-the-vault-hepatitis-b-hepatiti-take-2-ep-89",
+      "show": "This Podcast Will Kill You",
+      "title": "From the Vault - Hepatitis B: Hepatiti, Take 2 (Ep 89)",
+      "feed_url": "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/64b4c224-562e-4b2f-9f31-b24c0111ae53/podcast.rss",
+      "episode_guid": "dfbe2a7b-b646-4a2b-b4d5-b3b0013f291b",
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/dfbe2a7b-b646-4a2b-b4d5-b3b0013f291b/audio.mp3?utm_source=Podcast&in_playlist=64b4c224-562e-4b2f-9f31-b24c0111ae53",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 5451,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "this-podcast-will-kill-you--ep-188-candida-yeast-here-there-and-everywhere",
+      "show": "This Podcast Will Kill You",
+      "title": "Ep 188 Candida yeast: Here, there, and everywhere",
+      "feed_url": "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/64b4c224-562e-4b2f-9f31-b24c0111ae53/podcast.rss",
+      "episode_guid": "a97c9bd4-186f-477f-88ff-b35b000888a1",
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/a97c9bd4-186f-477f-88ff-b35b000888a1/audio.mp3?utm_source=Podcast&in_playlist=64b4c224-562e-4b2f-9f31-b24c0111ae53",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 4637,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "this-podcast-will-kill-you--special-episode-lina-zeldovich-the-living-medicine",
+      "show": "This Podcast Will Kill You",
+      "title": "Special Episode: Lina Zeldovich & The Living Medicine",
+      "feed_url": "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/64b4c224-562e-4b2f-9f31-b24c0111ae53/podcast.rss",
+      "episode_guid": "f17d9a50-3664-4c81-b34e-b3390101400d",
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/f17d9a50-3664-4c81-b34e-b3390101400d/audio.mp3?utm_source=Podcast&in_playlist=64b4c224-562e-4b2f-9f31-b24c0111ae53",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3104,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    },
+    {
+      "id": "this-podcast-will-kill-you--special-episode-jon-adams-and-edmund-ramsden-rat-city",
+      "show": "This Podcast Will Kill You",
+      "title": "Special Episode: Jon Adams and Edmund Ramsden & Rat City",
+      "feed_url": "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/64b4c224-562e-4b2f-9f31-b24c0111ae53/podcast.rss",
+      "episode_guid": "50acaac0-3d3f-4410-af5a-b3ed01518bcf",
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/50acaac0-3d3f-4410-af5a-b3ed01518bcf/audio.mp3?utm_source=Podcast&in_playlist=64b4c224-562e-4b2f-9f31-b24c0111ae53",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3385,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
     }
   ]
 }
