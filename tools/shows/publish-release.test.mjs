@@ -47,7 +47,14 @@ test("releaseExists: fails closed (throws) on any other error — auth, network,
   );
 });
 
-test("listReleaseAssets: top-level files plus every shard, sorted", async () => {
+test("listReleaseAssets: only the 4 top-level files — shards/ is never a release asset", async () => {
+  // Per Fable ruling FR-t_30a53ba2-1: GitHub Releases hard-caps a single
+  // release at 1,000 assets (confirmed via GitHub's own docs and a real
+  // HTTP 422 against this repo), and the real build's ~1,298 shard files
+  // put a release well over that ceiling with no batching workaround
+  // (the limit is per-release, not per-API-call). No client reads a
+  // shard file from a release yet (S-05's cache is unwired), so shard
+  // publishing is deferred to a follow-up card instead of shipping here.
   const outDir = await mkdtemp(join(tmpdir(), "shows-publish-"));
   try {
     await mkdir(join(outDir, "shards"));
@@ -57,20 +64,10 @@ test("listReleaseAssets: top-level files plus every shard, sorted", async () => 
     for (const f of ["zz.json.gz", "aa.json.gz", "__.json.gz"]) {
       await writeFile(join(outDir, "shards", f), "");
     }
-    // A stray non-shard file must never be picked up as an asset.
-    await writeFile(join(outDir, "shards", "README.md"), "not an asset");
 
     const assets = await listReleaseAssets(outDir);
-    /* `basename`, not `split("/")`: listReleaseAssets returns paths built with
-       `join`, which is backslash-separated on Windows, so splitting on a forward
-       slash returned the whole absolute path and this test failed for every
-       Windows checkout while passing on CI's Linux runner. The assertion was
-       always right; the way it reached the filename was not. */
     const names = assets.map((p) => basename(p));
-    assert.deepEqual(names, [
-      "manifest.json", "top.json", "id-map.json", "changed.json",
-      "__.json.gz", "aa.json.gz", "zz.json.gz",
-    ]);
+    assert.deepEqual(names, ["manifest.json", "top.json", "id-map.json", "changed.json"]);
   } finally {
     await rm(outDir, { recursive: true, force: true });
   }
@@ -103,38 +100,6 @@ test("publishRelease: calls gh release create once with every asset, returns the
   ]);
   assert.equal(result.tag, "shows-index-v1");
   assert.equal(result.asset_base_url, "https://github.com/org/repo/releases/download/shows-index-v1");
-});
-
-test("publishRelease: batches over GitHub's 1,000-asset-per-release ceiling via gh release upload", async () => {
-  // The real build has ~1,302 assets (S-04a's shard output), well over
-  // GitHub's documented 1,000-asset-per-release cap (HTTP 422
-  // "file_count limited to 1000 assets per release" — hit for real
-  // against this repo, t_30a53ba2). This exercises the batching without
-  // needing 1,302 real files: 1,200 fake asset paths split into a
-  // 900-asset `release create` plus a 300-asset `release upload`.
-  const assets = Array.from({ length: 1200 }, (_, i) => `/tmp/asset-${i}.json.gz`);
-  const calls = [];
-  const exec = async (cmd, args) => { calls.push([cmd, args]); return { stdout: "" }; };
-  const result = await publishRelease({
-    tag: "shows-index-v2",
-    title: "Shows index v2",
-    notes: "notes",
-    assets,
-    exec,
-    repo: "org/repo",
-  });
-  assert.equal(calls.length, 2, "expected one create call plus one upload call");
-  assert.equal(calls[0][1][0], "release");
-  assert.equal(calls[0][1][1], "create");
-  assert.equal(calls[0][1][2], "shows-index-v2");
-  const createAssets = calls[0][1].slice(3, 3 + 900);
-  assert.deepEqual(createAssets, assets.slice(0, 900));
-  assert.deepEqual(calls[1][1], [
-    "release", "upload", "shows-index-v2",
-    ...assets.slice(900),
-    "--repo", "org/repo",
-  ]);
-  assert.equal(result.asset_base_url, "https://github.com/org/repo/releases/download/shows-index-v2");
 });
 
 test("assetBaseUrlFor: derives the same URL shape publishRelease returns, with no gh call needed", () => {

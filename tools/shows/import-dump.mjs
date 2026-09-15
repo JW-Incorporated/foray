@@ -247,6 +247,25 @@ export async function writeBuildOutput(result, { outDir = BUILD_OUT_DIR, exportV
       unmapped: result.missing,
     },
     shard_size_bytes: { p95: shardP95, max: Math.max(0, ...shardSizes), count: shardSizes.length },
+    /* Per Fable ruling FR-t_30a53ba2-1: shard files are built and size-
+       validated (the SHARD_TOO_LARGE check above still runs against
+       every one of them) but are NOT uploaded as release assets —
+       GitHub Releases hard-caps a single release at 1,000 assets and
+       the real build's ~1,298 shards put a release well over that
+       ceiling, with no batching workaround (the limit is per-release,
+       not per-API-call). `shards_published: false` is explicit so no
+       future reader of this manifest mistakes it for a promise that
+       `<asset_base_url>/shards/<key>.json.gz` exists — it does not, for
+       any release this pipeline has produced so far. `shard_inventory`
+       lists every shard key this build produced (with its row count and
+       gzip size) so a follow-up card designing the real shard-publishing
+       shape (multi-release layout, coarser bucketing, etc., decided
+       together with whichever client ends up reading it) has the exact
+       real numbers without re-running the build. */
+    shards_published: false,
+    shard_inventory: shardEntries
+      .map(([key], idx) => ({ key, row_count: result.shards.get(key).length, gz_bytes: shardSizes[idx] }))
+      .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)),
   };
 
   /* ---- writes: every check above passed; nothing left to fail on ---- */
