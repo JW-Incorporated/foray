@@ -102,6 +102,38 @@ test("publishRelease: calls gh release create once with every asset, returns the
   assert.equal(result.asset_base_url, "https://github.com/org/repo/releases/download/shows-index-v1");
 });
 
+test("publishRelease: batches over GitHub's 1,000-asset-per-release ceiling via gh release upload", async () => {
+  // The real build has ~1,302 assets (S-04a's shard output), well over
+  // GitHub's documented 1,000-asset-per-release cap (HTTP 422
+  // "file_count limited to 1000 assets per release" — hit for real
+  // against this repo, t_30a53ba2). This exercises the batching without
+  // needing 1,302 real files: 1,200 fake asset paths split into a
+  // 900-asset `release create` plus a 300-asset `release upload`.
+  const assets = Array.from({ length: 1200 }, (_, i) => `/tmp/asset-${i}.json.gz`);
+  const calls = [];
+  const exec = async (cmd, args) => { calls.push([cmd, args]); return { stdout: "" }; };
+  const result = await publishRelease({
+    tag: "shows-index-v2",
+    title: "Shows index v2",
+    notes: "notes",
+    assets,
+    exec,
+    repo: "org/repo",
+  });
+  assert.equal(calls.length, 2, "expected one create call plus one upload call");
+  assert.equal(calls[0][1][0], "release");
+  assert.equal(calls[0][1][1], "create");
+  assert.equal(calls[0][1][2], "shows-index-v2");
+  const createAssets = calls[0][1].slice(3, 3 + 900);
+  assert.deepEqual(createAssets, assets.slice(0, 900));
+  assert.deepEqual(calls[1][1], [
+    "release", "upload", "shows-index-v2",
+    ...assets.slice(900),
+    "--repo", "org/repo",
+  ]);
+  assert.equal(result.asset_base_url, "https://github.com/org/repo/releases/download/shows-index-v2");
+});
+
 test("assetBaseUrlFor: derives the same URL shape publishRelease returns, with no gh call needed", () => {
   // This is what run-and-publish.mjs's reconciliation path relies on: a
   // release that already exists (published on a PRIOR run) still needs its
