@@ -7,6 +7,56 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Four founder UX reports from 2026-09-17 — `fix/episode-page-ux`
+
+- **Why:** Wyatt, in one message: (1) "It should not be possible to scroll
+  left/right on episode pages." (2) "When I click search, it jumps down to the
+  bottom, so then I need to scroll up to find the top search result for shows."
+  (3) episode descriptions with links and chapter timestamps "needs to improve
+  dramatically, such that it's readable and I can click the links, including to
+  time stamps within the episode (those then result in jumping to that timestamp
+  in 4a)". (4) "It should also not be possible to zoom on the episode slide,
+  when I was trying to skip forward several times it zoomed in instead."
+- **What:** (1) `html, body { max-width: 100%; overflow-x: hidden; overflow-x:
+  clip }` — `clip` wins, `hidden` is the pre-Safari-16 fallback, and `clip` is
+  deliberate: `hidden` would make body a scroll container and break `sticky`
+  `.fy-transport`. Plus the wrapping that stops an over-wide box existing at all
+  (`overflow-wrap: anywhere` on the description, `min-width: 0` on the flex
+  chapter title). (2) the show-search focus handler scrolls the page to the top
+  and re-baselines `lastScrollY` AFTER that scroll. (3) a linkifier: escape
+  everything, then promote http(s) URLs to links and timestamps to `.ep-ts`
+  buttons that seek; chapter rows became seek controls too; a new public
+  `ForayPlayer.seekTo` is what they call. (4) `touch-action: manipulation` on
+  `.fy-btn, .fy-rate, .ep-chapter-row, .ep-ts` — kills double-tap-to-zoom, keeps
+  pinch, and a test pins that the viewport meta never gains `user-scalable=no`.
+- **Touches:** `app.js`, `styles.css`, `player/client.js`,
+  `test/episode-description-links.test.js` (new, 20, floored),
+  `test/no-horizontal-scroll.test.js` (new, 8, floored),
+  `test/search-field-bottom.test.js` (34 -> 36),
+  `test/suite-integrity.test.js`, `STATE.md`.
+- **What is NOT reproducible in CI, said plainly.** (1) and (4) are WKWebView
+  touch behaviours; (2) needs a software keyboard. (1) could not be reproduced
+  in desktop Chrome on the real page either — Chrome breaks long URLs at `/` and
+  `-`, so the mechanism only shows with a genuinely unbreakable token: measured
+  in a 390px harness, a 140-character run of one letter took the document to
+  1321px and made it pan, and today's rules bring it back to 375px. **The
+  specific content that panned Wyatt's episode page was never identified** —
+  this is a general backstop plus the wrapping rule, not a diagnosis. For (2)
+  the measurement that matters is that the #/shows document is **17,712px tall**
+  while the compose pill is `position: fixed`.
+- **NOT done here, and it is the bigger half of (3):** the app does not render
+  publisher HTML. `description_html` IS parsed and stored
+  (`backend/src/catalog/ingestShowFeed.ts`, `showEpisodesStore.ts` — it round
+  trips through `rowToEpisode`) and then **dropped at the API boundary**:
+  `api/shows/[show_id]/episodes.ts:165` and `api/episodes/search.ts:184` return
+  `description_text` only, so the markup has never reached a client. Carrying it
+  needs a sanitizer and touches `api/**`, which is UNLISTED in
+  `tools/ci/path-policy.mjs` — one such file makes a whole PR wait on a human
+  merge click — so it is its own PR. Everything in this one works on the plain
+  text we already ship.
+- **Owns** `app.js`'s episode-page and show-search-focus paths, `styles.css`,
+  and `ForayPlayer`'s public surface in `player/client.js` until it lands.
+
 ### The Foray gate's blind spot: L4 never ran on generated tape (2026-09-15) — `fix/foray-gate-blind-spots`
 
 - **Why:** a review of the two long-stuck generated-Foray PRs (#711, nine days;

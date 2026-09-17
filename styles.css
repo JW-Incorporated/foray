@@ -166,6 +166,41 @@ body {
   color: var(--text);
   line-height: 1.4;
 }
+
+/* ---------- the page never pans sideways (founder, 2026-09-17) ----------
+
+   "It should not be possible to scroll left/right on episode pages."
+
+   Nothing here scrolled sideways ON PURPOSE — the horizontal rails
+   (`.hv2-hscroll`) are their own scroll containers and are unaffected by this.
+   What panned was the DOCUMENT, whenever one descendant happened to be wider
+   than the viewport: a long unbreakable URL in an episode description, a
+   flex row whose child refused to shrink below its content. Until now nothing
+   on `html` or `body` said the page may not do that, so every such overflow
+   became a sideways drag on a phone.
+
+   `clip` rather than `hidden`, and the pair is deliberate:
+
+   - `hidden` makes the element a SCROLL CONTAINER. On `body` that moves the
+     scrollport off the viewport, which breaks `position: sticky` children
+     (`.fy-transport` is sticky at z-index 5) and hands iOS a second scrolling
+     box to rubber-band. It is the fix that trades a pan for a worse bug.
+   - `clip` paints nothing outside the box and creates NO scroll container, so
+     sticky, fixed and the rubber-band all behave exactly as they do today.
+
+   The `hidden` line first is the fallback for engines without `clip` (Safari
+   gained it in 16.0); anything newer takes `clip` from the second line. Both
+   axes stay scrollable vertically — this constrains x only.
+
+   THIS IS A BACKSTOP, NOT THE FIX. An element wider than the viewport is still
+   a layout bug; it is now an invisible one rather than a draggable one, so the
+   wrapping rules that keep text inside its box (see `.ep-description-text`)
+   matter just as much. `test/no-horizontal-scroll.test.js` pins both halves. */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
 /* Was `overflow: hidden` on `body.view-home` — the home screen is designed
    to fit one viewport with no internal scroll, but on iOS Safari a page with
    no scrollable overflow anywhere also has no rubber-band bounce, which reads
@@ -1712,7 +1747,34 @@ body.fp-expanded { overflow: hidden; }
   letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--text-dim);
 }
-.ep-description-text { font-size: 0.88rem; color: var(--text); line-height: 1.5; white-space: pre-line; margin: 0; }
+/* `overflow-wrap: anywhere` is the half of the no-sideways-pan fix that keeps
+   the text INSIDE its box rather than merely clipping what escapes. A feed
+   description routinely carries a sponsor URL 120 characters long with no
+   space in it; `normal` refuses to break inside a word, so that one token set
+   the width of the page. `anywhere` also lets the box shrink in a flex/grid
+   parent, which `break-word` does not. */
+.ep-description-text {
+  font-size: 0.88rem; color: var(--text); line-height: 1.5;
+  white-space: pre-line; margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A link the publisher wrote into the description. Underlined rather than
+   colour-only: these sit inside a paragraph of body text, where colour alone
+   is the one distinction a red/green-colourblind reader does not get. */
+.ep-description-text a { color: var(--accent); text-decoration: underline; }
+
+/* A timestamp in the description ("01:23:45 The interesting bit"), turned into
+   a control that seeks. A <button>, not an <a>: it goes nowhere, and a screen
+   reader announcing "link" for something that moves playback is a lie. Styled
+   to sit in running text without breaking the line box. */
+.ep-ts {
+  display: inline; padding: 0; border: 0; background: none;
+  font: inherit; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline; cursor: pointer;
+}
+.ep-ts:hover { color: var(--text); }
 /* A1.5: chapter markers — a genuinely separate mechanism from the foray
    segment-strip (player/segment-strip.js), per Joey's Q5 answer. Plain list,
    no shared classes with the strip's capsule/gap/bridge visual language. */
@@ -1725,7 +1787,23 @@ body.fp-expanded { overflow: hidden; }
 }
 .ep-chapters-list li:last-child { border-bottom: none; }
 .ep-chapter-time { flex: none; font-variant-numeric: tabular-nums; color: var(--text-dim); min-width: 3.5em; }
-.ep-chapter-title { flex: 1 1 auto; }
+/* `min-width: 0` so a chapter title with a long unbroken token shrinks instead
+   of forcing the row — and therefore the page — wider than the viewport. A
+   flex item's default `min-width: auto` is exactly the sideways-pan source the
+   `overflow-x: clip` backstop above exists to catch. */
+.ep-chapter-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+
+/* The whole chapter row seeks (founder: timestamps "then result in jumping to
+   that timestamp in 4a"). A button filling the row rather than a link on the
+   title alone: the time and the title are one target, and a 48px row is the
+   tap size the rest of the app uses. `text-align: left` because a button
+   centres its text by default and these are list rows, not labels. */
+.ep-chapter-row {
+  display: flex; gap: 10px; align-items: baseline; width: 100%;
+  padding: 0; border: 0; background: none; color: inherit;
+  font: inherit; text-align: left; cursor: pointer;
+}
+.ep-chapter-row:hover .ep-chapter-title { color: var(--accent); }
 /* A1.8 "More from this show" — same section-label language as .fy-slot h3. */
 .ep-more { margin: 24px 0 0; }
 .ep-more h3 {
@@ -2095,6 +2173,24 @@ body.fp-expanded { overflow: hidden; }
   margin-top: 6px;
 }
 .fy-controls { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; }
+/* `touch-action: manipulation` — founder, 2026-09-17: "It should also not be
+   possible to zoom on the episode slide, when I was trying to skip forward
+   several times it zoomed in instead."
+
+   That is iOS's double-tap-to-zoom, not a pinch. Two taps inside ~300 ms on the
+   same spot are a zoom gesture unless the element opts out, and tapping skip
+   twice in a row is exactly that shape — the faster you skip, the more reliably
+   you zoom instead. `manipulation` keeps panning and pinch-zoom and drops
+   double-tap-to-zoom, which is the whole of the complaint.
+
+   Deliberately NOT `touch-action: none`, and deliberately not on a container:
+   pinch-to-zoom is an accessibility affordance and the page keeps it. This is
+   scoped to the controls a listener taps repeatedly. The same reasoning is why
+   the viewport meta keeps `user-scalable` alone — see index.html. */
+.fy-btn, .fy-rate, .ep-chapter-row, .ep-ts {
+  touch-action: manipulation;
+}
+
 .fy-btn {
   min-width: 60px; min-height: 48px;
   border-radius: 10px;

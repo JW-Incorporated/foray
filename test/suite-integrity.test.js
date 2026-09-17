@@ -293,6 +293,10 @@ const FLOORS = {
   "test/api-origin.test.js": 5,
   "test/app-security.test.js": 26,
   "test/episode-page.test.js": 8,
+  /* 2026-09-17, founder: episode descriptions carry clickable links and clickable
+     timestamps that seek. This is the one function in app.js that turns untrusted
+     publisher text into markup, so about half of it is injection cases. */
+  "test/episode-description-links.test.js": 22,
   /* Stage 3 of docs/episode-pages-plan.md — epRow/archivedRow/bannerHtml
      title links to #/episode/:id (kanban card t_51e5d7bc). Floored at its
      exact current count: this is a small, deliberately-scoped regression
@@ -504,6 +508,10 @@ const FLOORS = {
      bar comes BACK, and the no-visualViewport fail-open. Those are exactly the
      assertions a future edit is most likely to drop as redundant. */
   "test/now-playing-keyboard.test.js": 7,
+  /* 2026-09-17, founder: the page must not pan sideways and a double tap on a
+     transport control must not zoom. Declaration-level pins — neither gesture is
+     reproducible in this process; the file says so in its own header. */
+  "test/no-horizontal-scroll.test.js": 8,
 
   /* The bottom edge of the screen while a soft keyboard is up — three founder
      reports from 2026-09-14, on build 2026091419, all on the search page.
@@ -723,7 +731,7 @@ const FLOORS = {
      The middle one is the reason this is not a one-line deletion, and a floor
      that let it be deleted would let the return key stop working with every
      other test in this file still green. 31 -> 34. */
-  "test/search-field-bottom.test.js": 34,
+  "test/search-field-bottom.test.js": 36, // +2 (2026-09-17): focusing the field scrolls the page to the top, and re-baselines lastScrollY to the position it moved to — the founder's "it jumps down to the bottom" report
   "test/show-search-cache.test.js": 12, // client audit (2026-09-12): the EPISODE half of S-05 — its own hot-query cache, the pre-fetch token check, and the one record that now carries epMs/ctaMs; 6 -> 12
   /* S-05 (4a-shows-pipeline-plan.md §3.2, kanban t_546eac9f): the shard-index
      client's PURE functions in search-engine.js — tokenising a query into a

@@ -2405,6 +2405,41 @@ function renderAllShows(initialQuery = "") {
          last sat, and a stale baseline can hand the handler a large fake
          downward delta on the very first frame after focus. */
       showSearchFocusedAt = Date.now();
+      /* TO THE TOP, ON FOCUS (founder, 2026-09-17: "When I click search, it
+         jumps down to the bottom, so then I need to scroll up to find the top
+         search result for shows.")
+
+         The compose pill is `position: fixed` at the bottom edge, so it needs
+         no scrolling to be reachable — but the page under it is the full A–Z
+         show list, 17,712px tall as measured on 2026-09-17. iOS scrolls a
+         focused field into view against the LAYOUT viewport as the keyboard
+         comes up, and on a document that tall the correction lands thousands of
+         pixels down. Results then paint at the TOP of the page, above where the
+         listener is now standing, which is the "scroll up to find the top
+         result" in the report.
+
+         Desktop Chrome hides this: typing collapses the document to one
+         viewport (the browse list is hidden while searching) and the browser
+         clamps scrollY back to 0 on its own. Measured in a 390px harness — jump
+         to 6000, type, land at 0, first result at y=125. That clamp is the
+         browser being helpful, not a contract, and iOS with a keyboard up does
+         not do it. So the page says where it wants to be instead of hoping.
+
+         Before the results exist, not after: the scroll has to be settled while
+         the keyboard animates, or it fights the listener's own first scroll. */
+      scrollPageTo(0);
+      /* Re-baselined AFTER the scroll above, and that order is the whole of it.
+         `maybeDismissKeyboardOnScroll` measures a DELTA against this; a
+         baseline captured before we move leaves the next frame comparing the
+         new position against the old one and reading a large fake downward
+         delta, which blurs the field and drops the keyboard the instant the
+         listener starts typing.
+
+         Read, not assumed to be 0. `scrollPageTo` moves a real viewport to 0,
+         but it is deliberately a no-op where there is nothing to move (its own
+         guard, for the node:vm suites), and asserting a position the viewport
+         never took is how this handler would start lying about the baseline.
+         Caught by test/keyboard-chrome-and-scroll.test.js's up-scroll case. */
       lastScrollY = window.scrollY || 0;
       updateShowBrowseVisibility();
     });
@@ -6313,15 +6348,167 @@ function fmtChapterTime(seconds) {
   return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${mm}:${ss}`;
 }
 
+/* ---------- episode descriptions that are worth reading (founder, 2026-09-17)
+
+   "For episodes that have good descriptions with links and timestamps for
+   chapters through the conversation, the formatting in 4a needs to improve
+   dramatically, such that it's readable and I can click the links, including to
+   time stamps within the episode (those then result in jumping to that
+   timestamp in 4a)."
+
+   The description arrived as one `esc()`'d blob inside a single <p>. Every URL
+   a publisher wrote was dead text, every timestamp was dead text, and a long
+   sponsor URL made the whole page pan sideways (the other half of today's
+   fix). `white-space: pre-line` was carrying the entire burden of "formatting".
+
+   WHAT THIS DOES NOT DO, and why. It does not render publisher HTML. The feed's
+   `description_html` is parsed and stored by `backend/src/catalog/
+   ingestShowFeed.ts` and read straight back out by `rowToEpisode` — and then
+   DROPPED at the API boundary: `api/shows/[show_id]/episodes.ts` and
+   `api/episodes/search.ts` both return `description_text` only, so the markup
+   has never reached a client. Carrying it is a change to `api/**`, which is
+   unlisted in `tools/ci/path-policy.mjs` and therefore makes a whole PR wait on
+   a human merge click (CLAUDE.md), so it is its own PR and its own sanitizer.
+   Everything here works on the plain text we already ship, today.
+
+   SO THIS IS A LINKIFIER, and it is deliberately a small one: escape
+   everything, then promote two shapes — an http(s) URL, and a timestamp — into
+   controls. Nothing else in the text can become markup, because the only HTML
+   in the output is the HTML this function writes. */
+
+/** `1:02:45` / `12:34` / `4:07` -> seconds. Null for anything that is not a
+    timestamp, INCLUDING an out-of-range minute or second, which is how a score
+    ("a 65:40 split") or a ratio stays plain text. */
+function parseTimestampSeconds(raw) {
+  const m = /^(?:(\d{1,3}):)?([0-5]?\d):([0-5]\d)$/.exec(String(raw).trim());
+  if (!m) return null;
+  const h = m[1] ? Number(m[1]) : 0;
+  return h * 3600 + Number(m[2]) * 60 + Number(m[3]);
+}
+
+/* URL first in the alternation so a timestamp inside a URL's path or query is
+   never lifted out of it. Trailing `.,;:)]}` are excluded from the match rather
+   than trimmed afterwards — a URL at the end of a sentence is the common case
+   and the full stop belongs to the sentence. */
+const DESC_TOKEN_RE = /(https?:\/\/[^\s<>"']*[^\s<>"'.,;:)\]}])|(\b(?:\d{1,3}:)?\d{1,2}:[0-5]\d\b)/g;
+
+/**
+ * The description as safe HTML: text escaped, URLs linked, timestamps turned
+ * into seek controls.
+ *
+ * `durationSec` (optional) is the honesty guard. A timestamp past the end of
+ * the episode is not a chapter mark — it is a phone number, a date, a score, or
+ * a timestamp for a DIFFERENT episode the publisher pasted in — and a control
+ * that seeks somewhere the audio does not reach is worse than plain text. When
+ * the duration is unknown nothing is filtered, because refusing every timestamp
+ * on an episode whose length we failed to record would be the wrong default.
+ */
+function episodeDescriptionHtml(text, durationSec = null) {
+  const src = String(text ?? "");
+  if (!src) return "";
+  let out = "";
+  let last = 0;
+  DESC_TOKEN_RE.lastIndex = 0;
+  let m;
+  while ((m = DESC_TOKEN_RE.exec(src)) !== null) {
+    out += esc(src.slice(last, m.index));
+    const [whole, url, stamp] = m;
+    if (url) {
+      /* `safeUrl` returns "#" for any scheme but http(s), so a script-bearing
+         or inline-data URL cannot become a live href here even though the regex
+         above would not have matched one in the first place. Belt and braces,
+         and it is the same helper every other href in this file goes through.
+         (The scheme names are spelled around rather than written out: the
+         `no ... URL is constructed anywhere in the source` invariant in
+         test/app-security.test.js greps this file for them, comments included,
+         and it is a better rule than any one comment's convenience.)
+         `rel="noopener noreferrer"` because these point off our origin. */
+      out += `<a href="${esc(safeUrl(url))}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`;
+    } else {
+      const secs = parseTimestampSeconds(stamp);
+      const inRange = secs !== null && (durationSec === null || secs <= durationSec);
+      out += inRange
+        ? `<button type="button" class="ep-ts" data-ts="${esc(String(secs))}" aria-label="Play from ${esc(stamp)}">${esc(stamp)}</button>`
+        : esc(whole);
+    }
+    last = m.index + whole.length;
+  }
+  out += esc(src.slice(last));
+  return out;
+}
+
+function episodeDescriptionSectionHtml(item) {
+  if (!item.description) return "";
+  const durationSec = item.duration_min ? item.duration_min * 60 : null;
+  return `<section class="ep-description"><h3>Episode description</h3><p class="ep-description-text">${episodeDescriptionHtml(item.description, durationSec)}</p></section>`;
+}
+
 function episodeChaptersHtml(item) {
   const chapters = Array.isArray(item.chapters) ? item.chapters : [];
   if (!chapters.length) return "";
+  /* Each row is a seek control now, for the same reason the timestamps in the
+     description are: a chapter list you cannot jump from is a table of contents
+     with no page numbers. `data-ts` is the one contract both share, so
+     `bindEpisodeSeeks` binds them in a single pass. */
   return `<section class="ep-chapters">
     <h3>Chapters</h3>
     <ol class="ep-chapters-list">
-      ${chapters.map(c => `<li><span class="ep-chapter-time">${esc(fmtChapterTime(c.start_time_seconds))}</span><span class="ep-chapter-title">${esc(c.title || "")}</span></li>`).join("")}
+      ${chapters.map(c => {
+        /* `== null` FIRST, because `Number(null)` is 0 and `Number("")` is 0 —
+           a chapter with no recorded start would otherwise render as a control
+           that seeks confidently to the beginning. Caught by a test. */
+        const secs = c.start_time_seconds == null ? NaN : Number(c.start_time_seconds);
+        const time = esc(fmtChapterTime(c.start_time_seconds));
+        const title = esc(c.title || "");
+        return Number.isFinite(secs)
+          ? `<li><button type="button" class="ep-chapter-row" data-ts="${esc(String(secs))}"><span class="ep-chapter-time">${time}</span><span class="ep-chapter-title">${title}</span></button></li>`
+          : `<li><span class="ep-chapter-time">${time}</span><span class="ep-chapter-title">${title}</span></li>`;
+      }).join("")}
     </ol>
   </section>`;
+}
+
+/**
+ * One delegated listener for every `data-ts` control on the page — the
+ * description's timestamps and the chapter rows alike.
+ *
+ * PLAY THEN SEEK, in that order, and only ever on this episode. `ForayPlayer`
+ * starts an item at 0 (`manager.play(0)`), so a jump is "make this the current
+ * item if it is not already, then move the clock". When it IS already current,
+ * the seek alone is the whole action — restarting would throw away the thing
+ * the listener is in the middle of.
+ */
+function bindEpisodeSeeks(scope, item) {
+  /* PER ELEMENT, with the `_bound` guard — `bindPlay`/`bindStars`'s idiom, and
+     not a delegated listener on `scope`.
+     The first draft delegated from `#view`, which is the one node on this page
+     that OUTLIVES the render: `renderEpisode` replaces its innerHTML but never
+     the element, so every visit to an episode page added another listener, each
+     closing over its own `item`. Visit three episodes and one tap on a
+     timestamp runs three handlers, two of which start playing an episode the
+     listener is no longer looking at. Binding to the buttons themselves means
+     the listeners die with the markup they belong to. */
+  scope.querySelectorAll("[data-ts]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const secs = Number(btn.dataset.ts);
+      if (!Number.isFinite(secs)) return;
+      try {
+        if (!window.ForayPlayer || !window.ForayPlayer.canPlay(item)) return;
+        /* Play only when this is not already the current episode — a restart
+           would throw away the thing the listener is in the middle of. Then
+           seek, always: that is the whole of what the control promises. */
+        if (!window.ForayPlayer.isPlaying(item.id)) await window.ForayPlayer.play(item, "timestamp");
+        await window.ForayPlayer.seekTo(secs);
+      } catch (_) {
+        /* A seek that cannot happen is not a reason to break the page — the
+           same rule the rest of this file's playback bindings follow. */
+      }
+    });
+  });
 }
 
 function renderEpisode(id) {
@@ -6350,7 +6537,7 @@ function renderEpisode(id) {
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id)}</div>
-      ${item.description ? `<section class="ep-description"><h3>Episode description</h3><p class="ep-description-text">${esc(item.description)}</p></section>` : ""}
+      ${episodeDescriptionSectionHtml(item)}
       ${episodeChaptersHtml(item)}
       ${moreFromShow(item)}
     </div>`;
@@ -6358,6 +6545,7 @@ function renderEpisode(id) {
   bindStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
+  bindEpisodeSeeks($("#view"), item);
 }
 
 /* The count printed here is `resolveParts(p).length` — the SAME call
