@@ -1286,21 +1286,42 @@ export function checkForays(files) {
       i = j;
     }
 
-    /* ---- L2/L3/L4: per-role duration bounds, checkable at last (see above) */
+    /* ---- L2/L3: per-role duration bounds, checkable at last (see above).
+     *
+     * These two genuinely need a `role` — their bounds are indexed by it — so a
+     * segment without one is skipped, and the absence is reported below rather
+     * than passed over in silence (see the `roles.every` branch after D4). */
     for (const p of played) {
       if (!p.role) continue;
       const name = p.label ?? p.segment_id;
       if (p.duration < ROLE_FLOOR_SEC[p.role]) E(`L2 FAIL: ${name} is ${p.duration.toFixed(1)} s, under the ${ROLE_FLOOR_SEC[p.role]} s floor for \`${p.role}\``);
       if (p.duration > ROLE_MAX_SEC[p.role]) E(`L3 FAIL: ${name} is ${p.duration.toFixed(1)} s, over the ${ROLE_MAX_SEC[p.role]} s maximum for \`${p.role}\``);
-      /* L4 is a burden-of-proof flip, not a ceiling: past 240 s a segment must
-       * say WHY. The escape hatch has to be reachable or the rule is silently a
-       * hard reject — and `long_reason` is one of §9's *proposed* additive
-       * fields, so `merge-segments.mjs` does not write it today. It is
-       * therefore accepted from the Foray item as well, the same interim home
-       * `role` uses, and the segment's own value wins the day it exists. */
+    }
+
+    /* ---- L4: a flat soft maximum, and NOT a per-role bound — which is why it
+     * sits in its own loop with no `role` guard.
+     *
+     * It used to share the L2/L3 loop above, and so inherited that loop's
+     * `if (!p.role) continue`. No generated Foray records `role` on any segment
+     * (measured 2026-09-15: 0/11, 0/11, 0/10, 0/16 on the four on `main`, versus
+     * 32/32, 10/10, 22/22, 19/19 hand-cut), so L4 had never once run on
+     * generated tape. The candidate in PR #711 carried a 1,096-second clip — an
+     * eighteen-minute unbroken stretch of one episode — and the checker printed
+     * `forays ok`. L4 asks a question no role is needed to ask, so it now asks
+     * it of every played segment.
+     *
+     * L4 is a burden-of-proof flip, not a ceiling: past 240 s a segment must
+     * say WHY. The escape hatch has to be reachable or the rule is silently a
+     * hard reject — and `long_reason` is one of §9's *proposed* additive
+     * fields, so `merge-segments.mjs` does not write it today. It is
+     * therefore accepted from the Foray item as well, the same interim home
+     * `role` uses, and the segment's own value wins the day it exists. */
+    for (const p of played) {
+      if (p.duration <= L4_SOFT_MAX_SEC) continue;
+      const name = p.label ?? p.segment_id;
       const longReason = p.seg.long_reason ?? p.long_reason ?? null;
       const flagged = p.seg.needs_review === true || p.needs_review === true;
-      if (p.duration > L4_SOFT_MAX_SEC && !(flagged && longReason)) {
+      if (!(flagged && longReason)) {
         E(
           `L4 FAIL: ${name} is ${p.duration.toFixed(1)} s, past the ${L4_SOFT_MAX_SEC} s soft maximum, ` +
             `without \`needs_review: true\` and a \`long_reason\`. Neither field is in the segment schema yet ` +
@@ -1325,7 +1346,18 @@ export function checkForays(files) {
         if (run > D4_ADJACENT_QUOTE_MAX) { E(`D4 FAIL: ${run} adjacent \`quote\` segments ending at ${played[i].label ?? played[i].segment_id}`); break; }
       }
     } else {
-      W("D4 not evaluated — not every item records a `role`");
+      /* Names every rule the absence costs, and how much of the Foray is
+       * missing one. The old text said only "D4 not evaluated", which read as
+       * one variety rule being skipped on a stray item; what it actually meant,
+       * on a generated Foray where NO segment carries a role, was that the
+       * per-role length bounds were not evaluated either — on any of it. A
+       * reader of this line has to be able to see that. */
+      const missing = roles.filter((r) => r === null).length;
+      W(
+        `L2, L3 and D4 not evaluated on ${missing}/${roles.length} segment(s) — they record no \`role\`, ` +
+          `and all three rules are indexed by it. L4 is unaffected (it is a flat soft maximum and runs regardless). ` +
+          `\`tools/segments/merge-segments.mjs\` and the generation path should stamp \`role\`.`
+      );
     }
 
     /* ---- D5: anti-uniformity — no two consecutive clips within 20 % of the
