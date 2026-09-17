@@ -1823,6 +1823,20 @@ const SHOW_MATCH_NONE = -1;
     on belongs with the vocabulary the comparator is written in. */
 const SHOW_MATCH_UNMATCHED = SHOW_MATCH_SUBSTRING + 1;
 
+/** Folds a-with-diacritics down to plain a-z0-9 the same way `parseShowIndex`
+    et al. already lowercase (NFKD decompose, strip combining marks). Shared
+    by `rankShows` (below) and S-05's shard functions (`shardQueryTokens`/
+    `shardRowText`, further down this file) so an accent-insensitive match
+    behaves identically everywhere `showMatchBucket` decides a bucket —
+    folding is the identity transform for plain ASCII, so this is a pure
+    widening with no effect on any existing unaccented title. */
+function foldDiacritics(s) {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 /* ---------- THE MATCH TIER, and why the bucket is no longer the first key ----
 
    MEASURED 2026-09-12, end to end (local index + `api/shows/search` + the live
@@ -2076,9 +2090,16 @@ function searchShows(query, shows) {
  *  and not to rank on it. `test/show-search-ranking.test.js` pins this: a row
  *  matched only on `artist_name` must stay unmatched and in arrival order. */
 function rankShows(query, shows) {
-  const q = String(query || "").trim().toLowerCase();
+  /* MUST FOLD, same reason `rankShardRows` does (S-05 review finding,
+     2026-09-15): an accented exact/prefix title compared against an
+     unfolded query silently demotes to the substring tier here too — this
+     function is what `mergeShowRows` calls to re-rank every source's
+     additions together (catalogue, directory, AND shard rows since S-05),
+     so a fix only inside `rankShardRows` would have been undone the moment
+     a shard addition passed back through this shared path. */
+  const q = foldDiacritics(query).trim();
   const scored = (shows || []).map((show) => {
-    const { bucket } = q ? showMatchBucket(show?.title, q) : { bucket: SHOW_MATCH_NONE };
+    const { bucket } = q ? showMatchBucket(foldDiacritics(show?.title), q) : { bucket: SHOW_MATCH_NONE };
     return { show, bucket: bucket === SHOW_MATCH_NONE ? SHOW_MATCH_UNMATCHED : bucket };
   });
   scored.sort(compareShowMatches);
@@ -2191,6 +2212,158 @@ function scanShowIndex(query, index, limit = 0) {
   return limit > 0 ? picked.slice(0, limit) : picked;
 }
 
+/* ---------- S-05: the shard-backed show index (4a-shows-pipeline-plan.md §3.2) ----------
+
+   The shard index is a different data source from S-03's `show-index.tsv`
+   (title-only, curated + breadth) and from S-04's rank table: it is the
+   *shard* format S-04a's builder (`tools/shows/shard-build.mjs`) writes —
+   one gzipped JSON array per normalised 2-char token prefix of every show's
+   title+author, row shape `{ id, t, a, i, u, img, n, c }` — fetched
+   on-demand through S-05's `api/shows/index/[...path].ts` proxy rather than
+   downloaded whole. Everything below is pure (no fetch, no DOM, no Cache
+   Storage): app.js owns picking which shard(s) to fetch and caching them;
+   this module only tokenises a query into a shard key and ranks the rows
+   a shard fetch returned. */
+
+/** Every 2-char normalised prefix a query token could land in, using the
+    IDENTICAL text transform `tools/shows/shard-build.mjs:tokenPrefixesFor`
+    applies to a row's title+author — NFKD-normalise, strip combining marks,
+    split on non [a-z0-9]. A client tokenizer that instead relied on plain
+    `.toLowerCase().split(/[^a-z0-9]+/)` (this file's own `tokenize`, built
+    for the topic search STOPWORD/GENERIC_WORDS vocabulary) would silently
+    disagree with the builder on any accented title — "café" folds to "cafe"
+    on the builder's side and would otherwise split into "caf" on the
+    client's, landing in the wrong shard entirely. Deliberately NOT
+    STOPWORDS/GENERIC_WORDS-filtered: those lists exist to keep topic-search
+    concept expansion honest and would silently drop a real show-title word
+    ("The Daily" tokenizes to ["the","daily"] here, on purpose — a show
+    search query is never expanded, only matched literally). */
+function shardQueryTokens(query) {
+  return String(query || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+/** The exact `normalizePrefixKey` rule from `tools/shows/shard-build.mjs`,
+    duplicated rather than imported — that file is an ES module under
+    `tools/shows/` and this one loads as a classic `<script>` under the
+    strict CSP with no build step (see this file's own header); the two are
+    pinned equal by `test/show-search-shard.test.js`, which requires both
+    and asserts agreement over a fixture vocabulary rather than trusting the
+    copy. */
+function normalizeShardPrefixKey(raw) {
+  const s = String(raw || "");
+  if (/^[a-z0-9]{2}$/.test(s)) return s;
+  if (/^[a-z0-9]$/.test(s)) return `${s}_`;
+  return "__";
+}
+
+/** The single token a shard fetch is keyed on: the LONGEST token in the
+    query (4a-shows-pipeline-plan.md S-05's own example — "fridman" is the
+    only token in "fridman" and picks shard "fr"; "science friday" has two
+    and this picks whichever is longer). Ties broken by code-unit order so
+    the choice is deterministic and testable. Every token still has to
+    match for a row to survive `rankShardRows` below — this function only
+    decides which ONE shard is worth a network request, not which rows
+    qualify. */
+function longestShardToken(tokens) {
+  let longest = null;
+  for (const t of tokens) {
+    if (!longest || t.length > longest.length || (t.length === longest.length && t < longest)) longest = t;
+  }
+  return longest;
+}
+
+/** The shard key app.js should fetch for `query`, or null for an empty/
+    all-stopword-character query (nothing to shard on). */
+function shardKeyForQuery(query) {
+  const tokens = shardQueryTokens(query);
+  const longest = longestShardToken(tokens);
+  if (!longest) return null;
+  const prefix = longest.length >= 2 ? longest.slice(0, 2) : longest.padEnd(1, "");
+  return normalizeShardPrefixKey(prefix);
+}
+
+/** Folded the SAME way `shardQueryTokens` folds a query (NFKD, strip
+    combining marks, lowercase) — not merely lowercased. Fixed a review
+    finding: with only `.toLowerCase()` here, a query for "café" (which
+    `shardQueryTokens` folds to "cafe") could never match a row titled
+    "Café" (whose folded text still carried the accent), even though both
+    sides land in the same shard "ca" and a listener would reasonably
+    expect the accent-insensitive match search-engine.js already promises
+    everywhere else (see search() 's own NFKD handling elsewhere in this
+    file). Matching on the FOLDED text, not the raw substring, is what
+    makes shard search accent-insensitive the same way the shard KEY
+    already is. Uses the shared `foldDiacritics` (declared beside
+    `SHOW_MATCH_UNMATCHED`, near the top of the match-tier vocabulary) —
+    the same fold `rankShows` now applies, so a shard row is folded
+    identically whether `rankShardRows` or a later `mergeShowRows` ->
+    `rankShows` re-rank ever bucket-compares it. */
+function shardRowText(row) {
+  return `${foldDiacritics(row?.t)} ${foldDiacritics(row?.a)}`;
+}
+
+/** AND semantics: every token in the query must appear somewhere in the
+    row's title+author (case-insensitive substring), not just the token the
+    shard was keyed on — "science friday" fetches the "sc"/"fr" shard (per
+    `shardKeyForQuery`) but a row whose title contains "science" and not
+    "friday" is not a match for the two-word query. */
+function shardRowMatchesAllTokens(row, tokens) {
+  const text = shardRowText(row);
+  return tokens.every((t) => text.indexOf(t) !== -1);
+}
+
+/** Ranks a shard's rows against `query`: filters to rows matching every
+    query token (see above), then orders exact > prefix > word-start >
+    substring (reusing `showMatchBucket`'s bucket table against the row's
+    FOLDED title and the joined, already-folded query — same rule
+    `rankShows` applies to a directory response, so a shard row and an
+    Apple row sort by the same logic), with a curated boost as the
+    tie-break inside each bucket and the shard's own popularity order (rows
+    arrive sorted by popularity desc, `tools/shows/shard-build.mjs:buildShards`)
+    preserved beneath that via a stable sort. A row that passed the
+    AND-filter but whose title doesn't literally contain the joined query
+    (out-of-order tokens, e.g. "friday science" against "Science Friday")
+    still ranks — at the substring tier, never dropped, matching
+    `rankShows`'s own "an already-chosen row is never dropped" rule for a
+    source that chose its own rows.
+
+    THE TITLE IS FOLDED BEFORE BUCKETING (review finding, 2026-09-15):
+    `showMatchBucket` itself only lowercases its input, so passing the raw
+    `row.t` against the already-NFKD-folded `joined` query meant an EXACT
+    accented title ("Café") could never reach `SHOW_MATCH_EXACT`/`_PREFIX`
+    against the folded query "cafe" — it fell all the way to the substring
+    tier and ranked BELOW an unrelated unaccented row ("Cafe Society")
+    that matched literally. Folding the title with the shared
+    `foldDiacritics` (also used by `shardRowText` and now `rankShows`)
+    makes the two sides comparable on the same terms the AND-filter already
+    guarantees they match on — and keeps the fold applied even after a
+    shard addition is later re-ranked through `mergeShowRows` -> `rankShows`
+    (see that function's own note on this same finding). */
+function rankShardRows(query, rows) {
+  const tokens = shardQueryTokens(query);
+  if (!tokens.length || !rows || !rows.length) return [];
+  const joined = tokens.join(" ");
+  const filtered = [];
+  for (const row of rows) {
+    if (shardRowMatchesAllTokens(row, tokens)) filtered.push(row);
+  }
+  const scored = filtered.map((row, order) => {
+    const { bucket } = showMatchBucket(foldDiacritics(row?.t), joined);
+    const tier = bucket === SHOW_MATCH_NONE ? SHOW_MATCH_SUBSTRING : bucket;
+    return { row, tier, curated: !!row?.c, order };
+  });
+  scored.sort((a, b) =>
+    a.tier - b.tier ||
+    (b.curated ? 1 : 0) - (a.curated ? 1 : 0) ||
+    a.order - b.order
+  );
+  return scored.map((s) => s.row);
+}
+
 const SearchEngine = {
   STOPWORDS, GENERIC_WORDS, ALIASES, BROAD_DF_THRESHOLD,
   TAG_DF_TOO_BROAD, TAG_DF_COMMON, TAG_DF_RARE,
@@ -2213,6 +2386,11 @@ const SearchEngine = {
   SHOW_TIER_EXACT, SHOW_TIER_BOUNDARY, SHOW_TIER_SUBSTRING, SHOW_TIER_UNMATCHED, showMatchTier,
   showMatchBucket, isBreadthShow, popularityBand, compareShowMatches, rankShows,
   parseShowIndex, showIndexLowerBound, prefixSearchShows, scanShowIndex,
+  /* S-05 (4a-shows-pipeline-plan.md §3.2). Exported for app.js's shard fetch
+     integration and for test/show-search-shard.test.js and
+     test/offline-search.test.js. */
+  shardQueryTokens, normalizeShardPrefixKey, longestShardToken, shardKeyForQuery,
+  shardRowMatchesAllTokens, rankShardRows,
 };
 
 if (typeof module !== "undefined" && module.exports) {

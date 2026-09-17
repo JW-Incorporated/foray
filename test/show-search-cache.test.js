@@ -100,6 +100,15 @@ function mount({ breadthOk = true, episodesOk = true, episodes = [] } = {}) {
         json: () => Promise.resolve({ episodes, source: ["apple"] }),
       });
     }
+    /* S-05's shard pass fires its own request alongside the two above.
+       This suite's subject is the episode/CTA halves of the diagnostics
+       record, not the shard pass itself (test/show-search-shard.test.js
+       and test/offline-search.test.js own that) — answered with the real
+       endpoint's own "not published yet" 404 rather than left hanging,
+       which would starve every settle()-driven assertion below. */
+    if (u.includes("api/shows/index/")) {
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ available: false }) });
+    }
     return new Promise(() => {});
   };
 
