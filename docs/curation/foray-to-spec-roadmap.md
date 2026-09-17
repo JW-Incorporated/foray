@@ -865,6 +865,20 @@ which is why G-30 sits in this phase, ahead of G-20.
   fixture-coverage test is red when a shape the checker accepts has no
   committed carrier (proved by mutation: remove the jingle fixture → red).
 - **Dependencies.** none. **Human gate.** none.
+- **Part (1) DONE** (`backend/src/cli/publishSuites.ts`, called from
+  `publishForay.ts:551` and `:794`; `REAL_DATA_SUITES` is 13 suites and
+  `backend/test/publishSuites.test.ts` greps the repo so the list cannot rot).
+  Recorded 2026-09-15 — this card still read as open and cost a session a
+  re-derivation. Part (2), the fixture rule, is live too:
+  `tools/foray/fixture-coverage.test.mjs` with its `KNOWN_UNCOVERED` ceiling.
+- **What the gate still could not see, found 2026-09-15** (fixed in
+  `fix/foray-gate-blind-spots`): running the app's suites does not help when the
+  CHECKER itself is the thing skipping a rule. L4 sat inside the L2/L3 loop and
+  inherited its `if (!p.role) continue`; no generated Foray records a `role`, so
+  L4 had never run on generated tape and a 1,096 s clip passed. The general
+  lesson for this card: a rule that is skipped reports the same "ok" as a rule
+  that passed, and only the warning text distinguishes them — so the warnings
+  have to name what was skipped, and they now do.
 
 #### G-21b · The digest — **H · S — Hermes**
 - **Owner:** Hermes (`docs/`, `tools/` lanes).

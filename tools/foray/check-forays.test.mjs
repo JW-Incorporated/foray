@@ -311,15 +311,27 @@ test("every played segment past L4's soft maximum carries both escape-hatch fiel
      itself is not left unproven: three tests on the boundary fixture cover it
      ("L4 FAILS on a segment over 240 s with no long_reason", "L4's escape hatch is
      reachable", "L4's escape hatch needs BOTH fields"), and they own the data they
-     need. What this loop is for is the live case, whenever there is one. */
+     need. What this loop is for is the live case, whenever there is one.
+
+     WHERE THE FIELDS LIVE (corrected 2026-09-15). This loop used to read
+     `item.needs_review` and `item.long_reason` only. The checker reads
+     `p.seg.<field> ?? p.<field>` — the SEGMENT first, the item as the interim
+     home — and generated data puts `needs_review` on the segment, so the two
+     disagreed about data neither was wrong about. A gate whose second opinion
+     reads a different field is not a second opinion. It now reads the same two
+     places in the same order; what it does NOT share with the checker is the
+     verdict, which is still recomputed here from the data. */
   let found = 0;
   for (const f of live.forays.forays) {
     for (const item of segmentItems(f)) {
       if (durationOf(live, item.segment_id) <= L4_SOFT_MAX_SEC) continue;
       found += 1;
-      assert.equal(item.needs_review, true, `${f.id} ${item.label} is past ${L4_SOFT_MAX_SEC} s without needs_review`);
+      const seg = live.segments.segments.find((s) => s.id === item.segment_id);
+      const flagged = seg?.needs_review === true || item.needs_review === true;
+      const longReason = seg?.long_reason ?? item.long_reason ?? null;
+      assert.equal(flagged, true, `${f.id} ${item.label} is past ${L4_SOFT_MAX_SEC} s without needs_review`);
       assert.ok(
-        item.long_reason && item.long_reason.length > 40,
+        longReason && longReason.length > 40,
         `${f.id} ${item.label}: long_reason must say what the extra minutes do`
       );
     }
@@ -345,7 +357,23 @@ test("M4's concentration cap holds on every Foray, recomputed here rather than r
      The editorial claim in foray2-capital.md §0 — that only one of its episodes
      is a VC show — is NOT checked: "is this a VC show" is not a property of the
      data. An earlier version asserted no source id began with `fr-`, which was
-     vacuous (no such id exists) and read as if it were checking the claim. */
+     vacuous (no such id exists) and read as if it were checking the claim.
+
+     RESTATED 2026-09-15, to the rule the checker actually holds. Q-04 changed M4
+     on 2026-09-12 (`check-forays.mjs`, the length-rules note above the
+     constants): the COUNT clause is unchanged, the RUNTIME clause became "at
+     most one clip over `M4_LONG_CLIP_SEC` per episode, and an episode's tape
+     seconds BEYOND ITS LONGEST CLIP at most 25 % of the tape" — so one
+     let-it-ride clip cannot trip the cap by construction. This recompute was not
+     restated with it and went on implementing the raw-share rule for three days.
+     That is a false red, and it is the more expensive kind: the candidate in
+     PR #711 failed here ("55.3 % of the tape") while `check-forays.mjs` passed
+     it, and the disagreement reads as a data defect rather than as a stale test.
+
+     A second implementation earns its place by deriving the same verdict
+     independently, not by preserving an older one. When M4 changes again, this
+     changes with it in the same PR — otherwise delete it, because a second
+     opinion on last month's rule is worse than none. */
   let checked = 0;
   for (const f of live.forays.forays) {
     const played = segmentItems(f).map((i) => live.segments.segments.find((s) => s.id === i.segment_id));
@@ -353,8 +381,11 @@ test("M4's concentration cap holds on every Foray, recomputed here rather than r
     assert.ok(tape > 0, `${f.id} plays no tape`);
     const byEpisode = new Map();
     for (const s of played) {
-      const e = byEpisode.get(s.item_id) ?? { n: 0, sec: 0 };
-      e.n += 1; e.sec += s.end_sec - s.start_sec;
+      const d = s.end_sec - s.start_sec;
+      const e = byEpisode.get(s.item_id) ?? { n: 0, sec: 0, longest: 0, long: 0 };
+      e.n += 1; e.sec += d;
+      e.longest = Math.max(e.longest, d);
+      if (d > M4_LONG_CLIP_SEC) e.long += 1;
       byEpisode.set(s.item_id, e);
     }
     for (const [id, e] of byEpisode) {
@@ -363,8 +394,13 @@ test("M4's concentration cap holds on every Foray, recomputed here rather than r
         `${f.id}: "${id}" is ${e.n}/${played.length} = ${(100 * e.n / played.length).toFixed(1)} % of the segments`
       );
       assert.ok(
-        e.sec / tape <= M4_SHARE_MAX,
-        `${f.id}: "${id}" is ${(100 * e.sec / tape).toFixed(1)} % of the tape`
+        e.long <= 1,
+        `${f.id}: "${id}" supplies ${e.long} clips over ${M4_LONG_CLIP_SEC} s; an episode may supply one`
+      );
+      const beyondShare = (e.sec - e.longest) / tape;
+      assert.ok(
+        beyondShare <= M4_SHARE_MAX,
+        `${f.id}: "${id}" is ${(100 * beyondShare).toFixed(1)} % of the tape beyond its longest clip`
       );
       checked += 1;
     }
@@ -640,8 +676,18 @@ test("L2/L3 hold for every played segment, per §4's role table", () => {
   const floors = { quote: 30, explanation: 60, exchange: 75, narrative: 120 };
   const maxes = { quote: 90, explanation: 360, exchange: 480, narrative: 480 };
   let checked = 0;
-  /* Generated Forays record no per-item `role` (check-forays reports "D4 not evaluated"
-     for them); the D-tier duration rules cover their segments instead. */
+  /* Generated Forays record no per-item `role`, so the role-indexed bounds
+     cannot be checked on them and this loop skips them.
+
+     THE SECOND HALF OF THIS COMMENT USED TO READ "the D-tier duration rules
+     cover their segments instead", and it was wrong (corrected 2026-09-15).
+     The D-tier rules are about ORDER and UNIFORMITY — D2's short-run rule, D5's
+     adjacent-pair spread — not about how long any one segment may be. Nothing
+     covered generated segment lengths: L2 and L3 need the role, and L4 (which
+     does not) was skipping them too, because it sat inside their loop and
+     inherited its role guard. L4 now runs on them; L2 and L3 still cannot, and
+     `check-forays.mjs` says so by name on every run rather than leaving a
+     reader to infer coverage that is not there. */
   const curated = live.forays.forays.filter((f) => !f.generated);
   for (const f of curated) {
     for (const item of segmentItems(f)) {
@@ -1317,6 +1363,39 @@ test("L4's escape hatch needs BOTH fields, not either", () => {
   delete boundary(f).runtime_sec;
   itemAt(f, "D-1").long_reason = "reason but no flag";
   assert.match(errorsFor(f).join("\n"), /L4 FAIL: D-1/);
+});
+
+test("L4 runs on a segment that records NO role — the regression that let generated tape past", () => {
+  /* THE DEFECT (found 2026-09-15, fixed in the same PR). L4 used to share the
+     L2/L3 loop, which opens `if (!p.role) continue` because those two index
+     their bounds BY role. L4 does not: it is a flat 240 s soft maximum. So a
+     segment with no role skipped a rule that never needed one.
+
+     That is not a hypothetical. No generated Foray records `role` on any
+     segment — 0/11, 0/11, 0/10 and 0/16 on the four committed to `main`,
+     against 32/32, 10/10, 22/22 and 19/19 hand-cut — so L4 had never run on a
+     single second of generated tape. The candidate in PR #711 played a 1,096 s
+     clip with no `long_reason` anywhere on it and `check-forays.mjs` printed
+     `forays ok`; the suite caught it only because the live-gate loop above
+     reads the data directly.
+
+     Every fixture item carries a role (30/30), which is why the three L4 proofs
+     above passed throughout and proved nothing about this path.
+
+     MUTATION: put L4 back inside the L2/L3 loop (restore its `if (!p.role)
+     continue`) → this test goes red and the three above stay green. */
+  const f = fx();
+  const seg = segmentAt(f, "D-1");
+  seg.end_sec = seg.start_sec + 250;
+  delete boundary(f).runtime_sec;
+  const item = itemAt(f, "D-1");
+  delete item.role;
+  assert.equal(seg.role, undefined, "the segment must not supply a role either, or this proves nothing");
+
+  const errors = errorsFor(f);
+  assert.match(errors.join("\n"), /L4 FAIL: D-1 is 250\.0 s/);
+  // And only L4: the two rules that genuinely need a role stay quiet about it.
+  assert.deepEqual(errors.filter((e) => /L[23] FAIL: D-1/.test(e)), []);
 });
 
 test("D2 FAILS when two sub-60 s segments are followed by a short one", () => {

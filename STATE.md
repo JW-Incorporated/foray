@@ -7,6 +7,44 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### The Foray gate's blind spot: L4 never ran on generated tape (2026-09-15) — `fix/foray-gate-blind-spots`
+
+- **Why:** a review of the two long-stuck generated-Foray PRs (#711, nine days;
+  #648, thirteen) found that `check-forays.mjs` printed `forays ok` on a
+  candidate CI rejected. Root cause: **L4 sat inside the L2/L3 loop and
+  inherited its `if (!p.role) continue`.** L2 and L3 index their bounds by role
+  and need it; L4 is a flat 240 s soft maximum and does not. **No generated
+  Foray records `role` on any segment** — 0/11, 0/11, 0/10, 0/16 on the four on
+  `main`, against 32/32, 10/10, 22/22, 19/19 hand-cut — so L4 had never run on a
+  single second of generated tape. #711 played a **1,096 s clip** (eighteen
+  unbroken minutes of one episode) with no `long_reason` and the gate passed it.
+- **What:** (1) L4 moved to its own loop with no role guard; it now runs on
+  every played segment. **Green on today's data** — the longest generated clip
+  on `main` is 237.8 s, so this arms the rule for future candidates rather than
+  failing committed content. (2) The role-absence warning names every rule the
+  absence costs and how much of the Foray is affected ("L2, L3 and D4 not
+  evaluated on 11/11 segment(s)"); it used to say only "D4 not evaluated", which
+  read as one stray item rather than the whole Foray. (3) Two stale live-gate
+  loops in the suite: **M4's recompute** still implemented the pre-Q-04 rule
+  three days after Q-04 restated it (this is what failed #711 at "55.3 % of the
+  tape" while the checker passed it — a false red that reads as a data defect),
+  and **L4's gate loop** read `item.needs_review` where the checker reads the
+  segment first. (4) A new proof that L4 fires on a role-less over-length
+  segment; the mutation (putting L4 back in the L2/L3 loop) reddens it and
+  nothing else, which is also the measurement that the three existing L4 proofs
+  were blind to this path — every fixture item carries a role, 30/30.
+- **Touches:** `tools/foray/check-forays.mjs`, `tools/foray/check-forays.test.mjs`
+  (161 -> 162), `test/suite-integrity.test.js` (floor 158 -> 159),
+  `docs/curation/foray-to-spec-roadmap.md` (G-21c), `STATE.md`.
+- **Not done here:** stamping `role` on generated segments, which is what would
+  actually turn L2, L3 and D4 back on for generated content — it is a generator
+  change plus an editorial judgement per clip, and it wants its own PR. The
+  warning now says so on every run. Also not done: any change to the F-103
+  guard — it is green and working as designed (its carrier was #711, now closed).
+- **G-21c part (1) is already built** (`backend/src/cli/publishSuites.ts`,
+  called from `publishForay.ts:551`), contrary to the roadmap's open framing;
+  the roadmap is corrected in this PR.
+
 ### Kokoro probe: the three blockers under HUMAN-ACTIONS #45 (2026-09-12) — `feat/kokoro-probe-measurable`
 
 - **Why:** Wyatt ran the voice probe on build 2026091212 and the whole result
