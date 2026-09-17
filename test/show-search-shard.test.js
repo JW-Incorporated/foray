@@ -14,11 +14,21 @@
  * rule is why this is a comparison rather than a restatement.
  *
  * Every test names the mutation that kills it.
+ *
+ * THE TWO DYNAMIC IMPORTS GO THROUGH `pathToFileURL` (fixed 2026-09-15). A bare
+ * absolute path is a valid ESM specifier on POSIX and not on Windows, where it
+ * parses as the scheme `c:` — so these two tests threw
+ * ERR_UNSUPPORTED_ESM_URL_SCHEME on every Windows checkout while Ubuntu CI
+ * stayed green. This repo is developed on Windows against a Unix-normalised
+ * tree (CLAUDE.md), so "green in CI" and "runnable by the person writing the
+ * code" are different claims, and a suite that only holds on the runner is half
+ * a suite. Use `pathToFileURL(...).href` for any `import()` of a computed path.
  */
 const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const ROOT = path.join(__dirname, "..");
 const SearchEngine = require(path.join(ROOT, "search-engine.js"));
@@ -74,7 +84,7 @@ test("accented characters fold the same way the builder folds them (café -> caf
 });
 
 test("client normalizeShardPrefixKey agrees with tools/shows/shard-build.mjs's normalizePrefixKey", async () => {
-  const builder = await import(path.join(ROOT, "tools", "shows", "shard-build.mjs"));
+  const builder = await import(pathToFileURL(path.join(ROOT, "tools", "shows", "shard-build.mjs")).href);
   const cases = ["fr", "a_", "__", "1", "z", "9", "ab", "0a", "-", "é", ""];
   for (const raw of cases) {
     assert.strictEqual(
@@ -86,7 +96,7 @@ test("client normalizeShardPrefixKey agrees with tools/shows/shard-build.mjs's n
 });
 
 test("client shardKeyForQuery agrees with the builder's tokenPrefixesFor over real title/author pairs", async () => {
-  const builder = await import(path.join(ROOT, "tools", "shows", "shard-build.mjs"));
+  const builder = await import(pathToFileURL(path.join(ROOT, "tools", "shows", "shard-build.mjs")).href);
   const fixtures = [
     { title: "Lex Fridman Podcast", itunesAuthor: "Lex Fridman" },
     { title: "Science Friday", itunesAuthor: null },
