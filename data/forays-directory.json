@@ -1,6 +1,6 @@
 {
-  "version": "db4b47e1c137947e",
-  "built_at": "2026-09-18T01:38:48.533Z",
+  "version": "86b313bf321eb063",
+  "built_at": "2026-09-18T15:03:59.843Z",
   "files": {
     "forays": "data/forays.json",
     "segments": "data/segments.json",

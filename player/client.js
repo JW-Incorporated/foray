@@ -2047,6 +2047,36 @@ const ForayPlayer = {
     return isPlaying() && current?.id === id;
   },
 
+  /**
+   * Move the clock of the ORDINARY episode that is playing (founder,
+   * 2026-09-17: a timestamp in an episode description "then results in jumping
+   * to that timestamp in 4a"). Seconds from the start of the episode.
+   *
+   * This is `episodeMediaSurface.seekTo` made reachable from the page. That
+   * surface exists for the lock screen and the car; the same move from a tap in
+   * the description had no public path at all, and app.js cannot reach
+   * `manager` — the whole point of this module's boundary.
+   *
+   * REFUSES ON A FORAY, deliberately, rather than doing something plausible. A
+   * Foray's clock is the Foray's, not any one episode's: `foraySeek` takes a
+   * position on the assembled tape, and handing it a timestamp read off one
+   * source episode's description would seek to a confidently wrong place.
+   * Returns false so a caller can tell "did not happen" from "happened".
+   *
+   * `render()` afterwards for the reason #689 gives on the two surfaces below:
+   * a seek that moves the audio and leaves the page painting the old position
+   * is the bug that fix exists to prevent.
+   */
+  async seekTo(position) {
+    if (foray) return false;
+    if (!current) return false;
+    const secs = Number(position);
+    if (!Number.isFinite(secs)) return false;
+    await manager.seek(Math.max(0, secs), { precise: true });
+    render();
+    return true;
+  },
+
   /** Subscribe to "an ordinary (non-Foray) episode just finished playing".
       Returns an unsubscribe function. Fires at most once per finished
       episode — see `_announceEpisodeEndedIfNeeded`'s header. Never fires for
