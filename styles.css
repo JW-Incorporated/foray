@@ -1733,13 +1733,52 @@ body.fp-expanded { overflow: hidden; }
 /* Episode page (#/episode/:id) — page wrapper only; artwork/title/show
    typography is the existing .fp-s-title/.fp-s-show pair above, body copy
    the existing .fp-s-why, both already used by the player sheet. */
-.ep-art { width: 100%; max-width: 320px; display: block; border-radius: 10px; margin: 0 0 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+/* The artwork LEADS the episode page (founder, 2026-09-18: "the default should
+   be I mostly see album artwork"). Centred, and sized against the viewport as
+   well as in pixels: `min(100%, 68vmin)` keeps it the dominant object on a
+   phone without letting it become a billboard on a wide screen, and the square
+   aspect means a publisher's non-square art is fitted rather than stretched. */
+.ep-art {
+  width: min(100%, 68vmin);
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  max-width: 100%;
+  display: block;
+  margin: 0 auto 16px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
 .ep-actions { display: flex; align-items: center; gap: 12px; }
 /* A1.1: full publisher episode description — additive to .fp-s-why (4a's
    curated hook), never replacing it, so both stay visible with distinct
    section labelling. Plain paragraph text, matches the app's existing
    body-copy scale rather than inventing a second one. */
 .ep-description { margin: 20px 0 0; }
+
+/* The disclosure control for the notes. A <summary> is a button in everything
+   but name, so it gets a real tap target and the app's own control language
+   rather than the browser's 13px default. `list-style: none` + the ::-webkit-
+   pair removes the native triangle on both engines; the chevron below is ours,
+   so it can rotate with the open state and match the rest of the app. */
+.ep-description-toggle {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 0 2px;
+  font-family: var(--font-display); font-weight: 600; font-size: 0.95rem;
+  color: var(--text-dim);
+  cursor: pointer; list-style: none;
+  touch-action: manipulation;
+}
+.ep-description-toggle::-webkit-details-marker { display: none; }
+.ep-description-toggle::marker { content: ""; }
+.ep-description-toggle::after {
+  content: "A";                 /* › — rotated to point down when open */
+  margin-left: auto;
+  font-size: 1.2rem; line-height: 1;
+  transform: rotate(90deg);
+  transition: transform 120ms ease;
+}
+.ep-description[open] > .ep-description-toggle::after { transform: rotate(-90deg); }
+.ep-description[open] > .ep-description-toggle { color: var(--text); }
 .ep-description h3, .ep-chapters h3 {
   margin: 0 0 8px;
   font-family: var(--serif);

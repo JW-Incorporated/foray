@@ -119,6 +119,11 @@ const FLOORS = {
      existed to support. See HUMAN-ACTIONS #29 and docs/curation/
      tts-locked-screen-check.md (kept as the historical record). */
   "player/foray-playback.test.js": 87,
+  /* 2026-09-18, founder: "the podcast I was listening to should still be in the
+     now playing ribbon". The POINTER to the last ordinary episode — position is
+     not stored here, `cp_pos:` has owned that since #26, and two of these tests
+     exist only to pin that separation. */
+  "player/episode-progress.test.js": 19,
   "player/foray-progress.test.js": 59, // FD-05 (2026-09-10): a Foray gone from the directory reads `dropped`; 58 -> 59
   "player/foray-queue.test.js": 38, // F-90 (2026-09-11): the jingle item asset is the interlude asset; 37 -> 38
   /* The interlude jingle (queue-manager.js §13): the rule, the element wrapper
@@ -293,10 +298,17 @@ const FLOORS = {
   "test/api-origin.test.js": 5,
   "test/app-security.test.js": 26,
   "test/episode-page.test.js": 8,
+  /* 2026-09-18, founder: "Only forays are in the jump back in section, podcasts
+     and playlists should be there too." The episode card existed but was
+     unreachable — it read cp_lastpick, written only for discover-pool episodes. */
+  "test/jump-back-in-kinds.test.js": 14,
+  /* 2026-09-18, founder: Lex's episode list reloading from the network on every
+     visit. Most of this suite is the three ways a cache goes subtly wrong. */
+  "test/show-episodes-cache.test.js": 10,
   /* 2026-09-17, founder: episode descriptions carry clickable links and clickable
      timestamps that seek. This is the one function in app.js that turns untrusted
      publisher text into markup, so about half of it is injection cases. */
-  "test/episode-description-links.test.js": 22,
+  "test/episode-description-links.test.js": 25, // +3 (2026-09-18): the notes collapse into a closed <details> so artwork leads the page, the timestamps still bind inside it, and chapters stay out of it
   /* Stage 3 of docs/episode-pages-plan.md — epRow/archivedRow/bannerHtml
      title links to #/episode/:id (kanban card t_51e5d7bc). Floored at its
      exact current count: this is a small, deliberately-scoped regression
