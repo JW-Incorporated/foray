@@ -192,6 +192,22 @@ function firstParam(v: string | string[] | undefined): string[] {
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
   if (applyCors(req, res)) return; // OPTIONS preflight already answered
 
+  // `X-Shows-Index-Version` (set below, on a 200) is a CUSTOM response
+  // header — per the Fetch spec, a cross-origin caller's JS cannot read
+  // any response header outside the CORS-safelisted set (Cache-Control,
+  // Content-Type, etc.) unless the server explicitly exposes it via
+  // `Access-Control-Expose-Headers`. Every real caller of this endpoint IS
+  // cross-origin (the web build at jwlabs.ai/GitHub Pages and the
+  // Capacitor shells all call `API_ORIGIN`, a different origin — see
+  // `app.js`'s own `API_ORIGIN` comment) — without this, S-04c's client
+  // staleness check (`app.js:fetchShardRows`'s `lastSeenShardVersion`)
+  // would silently read `null` from every fetch forever and never
+  // invalidate a stale Cache Storage entry, exactly the bug this card
+  // exists to fix (review finding). Set unconditionally, not only on the
+  // 200 path below, so a preflight-less simple GET always carries it
+  // regardless of which branch answers.
+  res.setHeader("Access-Control-Expose-Headers", "X-Shows-Index-Version");
+
   if (req.method !== "GET") {
     res.status(405).json({ error: "method not allowed" });
     return;

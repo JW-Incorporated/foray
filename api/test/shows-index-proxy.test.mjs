@@ -341,3 +341,30 @@ test("a top-level file request still uses asset_base_url and carries the version
     )
   );
 });
+
+test("X-Shows-Index-Version is exposed via Access-Control-Expose-Headers — otherwise a cross-origin caller's JS can never read it (review finding)", async () => {
+  // Every real caller of this endpoint is cross-origin (app.js's API_ORIGIN
+  // is a different origin than the page) — per the Fetch spec a custom
+  // response header is invisible to cross-origin JS unless explicitly
+  // exposed. Asserted on both the success path and the 404 "not published
+  // yet" path, since the header is set unconditionally before the method
+  // check.
+  const pointer = { asset_base_url: "https://example.test/rel" };
+  await withPointerFile(pointer, () =>
+    withMockedFetch(
+      async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      async () => {
+        const req = { method: "GET", query: { path: ["manifest.json"] }, headers: {} };
+        const res = mockRes();
+        await handler(req, res);
+        assert.strictEqual(res.headers["Access-Control-Expose-Headers"], "X-Shows-Index-Version");
+      }
+    )
+  );
+  await withPointerFile(null, async () => {
+    const req = { method: "GET", query: { path: ["manifest.json"] }, headers: {} };
+    const res = mockRes();
+    await handler(req, res);
+    assert.strictEqual(res.headers["Access-Control-Expose-Headers"], "X-Shows-Index-Version");
+  });
+});
