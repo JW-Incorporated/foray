@@ -27,7 +27,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
-const SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+/* CRLF NORMALISED ON READ. This repo is developed on Windows against a
+   Unix-normalised tree, so whole-tree line-ending churn is the expected state of
+   the working copy (CLAUDE.md § "Never discard uncommitted work"). The
+   multi-line regexes below match a bare LF and would silently stop matching — not
+   fail loudly, just find nothing — the first time a checkout landed with CRLF.
+   Caught exactly that way: a `git stash` round trip rewrote the endings and this
+   suite went red without a line of source changing. */
+const SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8").replace(/\r\n/g, "\n");
 
 function loadApp() {
   const noop = () => {};
@@ -275,4 +282,38 @@ test("a seek does not restart an episode that is already the current one", () =>
   const fn = /function bindEpisodeSeeks\(scope, item\) \{([\s\S]*?)\n\}/.exec(SRC);
   assert.match(fn[1], /if \(!window\.ForayPlayer\.isPlaying\(item\.id\)\) await window\.ForayPlayer\.play\(/);
   assert.match(fn[1], /await window\.ForayPlayer\.seekTo\(secs\)/, "…and the seek happens either way");
+});
+
+/* ---------- the notes are collapsed by default (founder, 2026-09-18) -------
+
+   "When I'm listening to a podcast with a lot of notes the episode page is just
+   notes; the default should be I mostly see album artwork and need to
+   intentionally scroll somewhere to see notes." */
+
+test("the description renders inside a closed <details>, not in flow", () => {
+  /* MUTATION: change `<details>` back to `<section>`. This goes red, and in a
+     browser a two-thousand-word sponsor block is the whole page again.
+     RUN: failed as named. */
+  const out = app.episodeDescriptionSectionHtml({ description: "notes here", duration_min: 60 });
+  assert.match(out, /^<details class="ep-description">/, "the notes must be a disclosure");
+  assert.ok(!/\bopen\b/.test(out.slice(0, out.indexOf(">"))), "…and closed by default, which is the whole ask");
+  assert.match(out, /<summary class="ep-description-toggle">/, "…with a control to open it");
+});
+
+test("the timestamps still work inside the collapsed notes", () => {
+  /* A `<details>` keeps its content in the DOM, so `bindEpisodeSeeks` still
+     finds the controls — the collapse must not have cost the feature added the
+     day before. */
+  const out = app.episodeDescriptionSectionHtml({ description: "12:34 the bit", duration_min: 60 });
+  assert.match(out, /data-ts="754"/);
+});
+
+test("chapters stay OUT of the disclosure", () => {
+  /* They are navigation, not prose: short, scannable, and individually tappable
+     to seek. Burying the one part of the notes that DOES something would be the
+     wrong half to hide.
+     MUTATION: wrap episodeChaptersHtml in a <details> too. */
+  const out = app.episodeChaptersHtml({ chapters: [{ start_time_seconds: 0, title: "Intro" }] });
+  assert.ok(!out.includes("<details"), "the chapter list is not hidden behind a disclosure");
+  assert.match(out, /^<section class="ep-chapters">/);
 });

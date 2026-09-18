@@ -7,6 +7,57 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Four founder reports from 2026-09-18 — `fix/resume-and-home` (STACKED on `fix/episode-page-ux`, PR #722)
+
+- **Stacked, not on `main`.** Issue 3 below edits `episodeDescriptionSectionHtml`,
+  which #722 introduces. **Merge #722 first.**
+- **1. The ribbon survives a day.** "The podcast I was listening to should still
+  be in the now playing ribbon at the bottom." Position was never the problem —
+  `position-store.js` has written `cp_pos:<id>` durably since #26. What nothing
+  recorded was the POINTER: which episode that was. `client.js` held it in a
+  module-level `let current = null` and the app booted with no idea. New
+  `player/episode-progress.js` stores one row (`cp_last_episode`) carrying the id
+  plus the snapshot needed to repaint before any catalogue loads — an id alone
+  restores nothing for an episode opened from a show page, which is the founder's
+  own case. `ForayPlayer.restoreLastEpisode()` paints the bar and arms the first
+  press; nothing autoplays.
+- **2. Jump back in holds all three kinds.** The episode card was not missing, it
+  was unreachable: it read `cp_lastpick`, written ONLY when
+  `state.poolIds.has(id)` — so an episode from a show page was never recorded —
+  and additionally gated on `duration_min > commute + 5`, and it recorded what
+  was TAPPED rather than played. It now reads the pointer from (1). Playlists
+  needed no new storage at all: `last_played_at` has been stamped since #558 and
+  two other surfaces already sort by it. All three sort by recency, not by kind.
+- **3. Artwork leads the episode page.** The notes moved into a closed
+  `<details>`; artwork is `min(100%, 68vmin)`, square, centred. Native disclosure
+  rather than a JS toggle — no script under the CSP, accessible for free,
+  find-in-page still opens it. Chapters stay OUT of it: they are navigation, not
+  prose, and they are the part that seeks.
+- **4. The show episode list is cached.** `fetchShowEpisodes` passed
+  `cache: "no-cache"`, forcing a revalidation round trip on EVERY call, and no
+  caller kept the answer. First page per show, in memory, 30-minute TTL,
+  stale-while-revalidate: a cached list paints in the same task and the refresh
+  still goes out, repainting only when the ids actually differ.
+- **Touches:** `player/episode-progress.js` (new) + its test (19, floored),
+  `player/client.js`, `app.js`, `styles.css`,
+  `test/jump-back-in-kinds.test.js` (new, 14, floored),
+  `test/show-episodes-cache.test.js` (new, 10, floored),
+  `test/episode-description-links.test.js` (22 -> 25),
+  `test/suite-integrity.test.js`, `test/data-deletion.test.js` (26 -> 27 cp_ key
+  families), `docs/legal/privacy-policy.md` (the `cp_last_episode` row),
+  `STATE.md`.
+- **Not reproducible here:** (1) needs a relaunch on a device; (4)'s "many
+  seconds" is a real network against a real API. What is pinned is the mechanism
+  in each case — the pointer round-trips, the rail orders across kinds, the load
+  path paints from cache before it fetches and survives a failed refresh.
+- **A trap worth knowing about:** three of these suites read `app.js` with
+  multi-line regexes, which silently stop matching under CRLF — they find
+  nothing rather than failing loudly. A `git stash` round trip rewrote the
+  endings mid-session and turned one red with no source change. All three now
+  normalise on read and are verified green under both.
+- **Owns** `player/client.js`'s `ForayPlayer` surface, `app.js`'s home rail and
+  show-page load path, and the episode page, until it lands.
+
 ### Four founder UX reports from 2026-09-17 — `fix/episode-page-ux`
 
 - **Why:** Wyatt, in one message: (1) "It should not be possible to scroll

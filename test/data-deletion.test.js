@@ -469,11 +469,22 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      itself (`player/kokoro-probe.js`) takes no flag, because whether to OFFER
      a 90-second synthesis run is the page's decision, not the player's. Same
      mechanism as every prior addition: this count failed first, then the
-     policy check, until privacy-policy.md §1 got the row. */
+     policy check, until privacy-policy.md §1 got the row.
+
+     26 -> 27 on 2026-09-18: `cp_last_episode`, the pointer to the ordinary
+     episode that was last playing (player/episode-progress.js). Wyatt: "When I
+     come back to 4a after a day, the podcast I was listening to should still be
+     in the now playing ribbon at the bottom." It holds an episode id plus the
+     snapshot needed to repaint the mini bar before any catalogue has loaded —
+     title, show, artwork and audio url — and it is ONE row, not a history. The
+     POSITION it resumes to is deliberately not stored here: `cp_pos:` has owned
+     that since #26 and there is exactly one definition of it. Same mechanism as
+     every prior addition: this count failed first, then the policy check, until
+     privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 26,
-    `expected 26 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 27,
+    `expected 27 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

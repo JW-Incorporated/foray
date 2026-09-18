@@ -96,6 +96,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
 | `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in | **No** |
 | `cp_pos:<id>` | Your position in seconds inside an individual episode | **No** |
+| `cp_last_episode` | Which single episode was playing most recently, plus the title, show name, artwork address and audio address needed to redraw the now-playing bar before anything else has loaded. One row, overwritten each time you start something — not a listening history. Your position in it is not stored here; that is `cp_pos:<id>` above | **No** |
 | `cp_rate` | Your playback speed | **No** |
 | `cp_voice` | Your chosen narration voice — an identifier the device's own voice list reported | **No** |
 | `cp_interlude` | Whether the short jingle between a foray's segments is on or off — a local per-device preference. On unless you turn it off | **No** |
