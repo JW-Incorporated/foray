@@ -4251,7 +4251,7 @@ function localShowMatches(query) {
 const SHOW_BREADTH_CACHE_MAX = 200;
 const showBreadthQueryCache = new Map();
 
-/* ---------- S-05: the shard-backed show index (4a-shows-pipeline-plan.md §3.2) ----------
+/** ---------- S-05: the shard-backed show index (4a-shows-pipeline-plan.md §3.2) ----------
 
    A THIRD source alongside S-03's title-only `show-index.tsv` (still the
    INSTANT local pass, unchanged, and still first — see `localShowMatches`)
@@ -4280,17 +4280,36 @@ const showBreadthQueryCache = new Map();
    browser's own storage layer and paying it on every keystroke inside one
    session would be silly when a plain Map already answers for free.
 
-   KNOWN FOLLOW-UP (Fable ruling FR-t_546eac9f-2, kanban t_30a53ba2): a
-   Cache Storage entry here carries no release-version tag, so once a real
-   shows-index release exists it cannot invalidate a previously-cached
-   shard until browser eviction. Deferred rather than built now because
-   S-04a/b's pipeline has never actually published a release (SHARD_TOO_LARGE,
-   t_30a53ba2) — there is no version identifier yet to tag entries with, and
-   no real staleness scenario to design or test against. The `-v1` suffix on
-   `SHARD_CACHE_NAME` is a manual escape hatch (bump it to invalidate every
-   cached shard at once) until that follow-up lands a real scheme. */
+   VERSION-TAGGED CACHE STORAGE ENTRIES (S-04c, Fable ruling FR-t_546eac9f-2):
+   a Cache Storage entry used to carry no release-version tag at all, so once
+   a real shows-index release existed it could never invalidate a
+   previously-cached shard until browser eviction — this was the exact
+   follow-up S-04a/b's own header named. `api/shows/index/[...path].ts` now
+   answers every request with an `X-Shows-Index-Version` header carrying the
+   pointer's `release_tag` (the same export_version-derived tag
+   `tools/shows/publish-release.mjs:releaseTagFor` produces); this module
+   stores that tag ALONGSIDE the rows in the same Cache Storage entry
+   (`{ version, rows }`, see `readShardFromCacheStorage`/
+   `writeShardToCacheStorage`) and `fetchShardRows` compares it against the
+   most recently seen version (`lastSeenShardVersion`, updated from every
+   successful network fetch this session) before trusting a Cache Storage
+   hit — a version mismatch is treated as a cache miss and the shard is
+   re-fetched, overwriting the stale entry. `SHARD_CACHE_NAME`'s `-v1`
+   suffix remains as a manual escape hatch (bump it to invalidate the whole
+   cache at once, e.g. if the entry shape itself ever changes again) but is
+   no longer the ONLY invalidation path. */
 const SHARD_CACHE_NAME = "foray-shows-index-v1";
 const shardMemoryCache = new Map(); // shardKey -> rows[] | null (null = "fetched, came back empty/unavailable")
+
+/** The most recently observed `X-Shows-Index-Version` from a successful
+    shard/index fetch THIS session — null until the first one lands. Used
+    only to decide whether a Cache Storage hit is stale (see
+    `fetchShardRows`); never persisted itself, so a fresh page load always
+    trusts a Cache Storage entry's OWN stored version until a live network
+    response says otherwise — exactly the "in-memory first, but Cache
+    Storage survives a reload" posture this section's header already
+    describes, extended to the version tag itself. */
+let lastSeenShardVersion = null;
 
 /** True only when the runtime has told us we are offline. A browser that
     never sets `navigator.onLine` (or an older WebKit) defaults to "assume
@@ -4304,29 +4323,42 @@ function isOfflineForShardSearch() {
 /** Reads `shards/<key>.json` from Cache Storage, or null on any miss/error
     (a private-browsing context that refuses `caches.open`, a corrupt entry,
     Cache Storage genuinely absent). Never throws — this is a best-effort
-    read on the way to a network fetch, not a source of truth. */
+    read on the way to a network fetch, not a source of truth.
+
+    RETURNS `{ version, rows }`, NOT BARE ROWS (S-04c) — `fetchShardRows`
+    needs the stored version to decide whether this hit is stale before it
+    can be trusted; a caller wanting only the rows reads `.rows`. An entry
+    written before this change (bare `rows[]`, from `-v1`'s original shape)
+    reads back as `Array.isArray(parsed)` and is treated as `{ version:
+    null, rows: parsed }` — version `null` never matches a real tag, so an
+    old entry is correctly treated as stale exactly once (re-fetched, then
+    rewritten in the new shape) rather than thrown away as corrupt. */
 async function readShardFromCacheStorage(shardKey) {
   if (typeof caches === "undefined") return null;
   try {
     const cache = await caches.open(SHARD_CACHE_NAME);
     const res = await cache.match(`shards/${shardKey}.json`);
     if (!res) return null;
-    return await res.json();
+    const parsed = await res.json();
+    if (Array.isArray(parsed)) return { version: null, rows: parsed }; // pre-S-04c entry shape
+    if (parsed && Array.isArray(parsed.rows)) return { version: parsed.version ?? null, rows: parsed.rows };
+    return null;
   } catch (_) {
     return null;
   }
 }
 
-/** Writes a successfully-fetched shard's rows into Cache Storage, keyed the
-    same way `readShardFromCacheStorage` reads. Best-effort and silent on
-    failure — a shard search that works this session but cannot persist is
-    still a working search, matching every other cache in this file's
-    "caching failing is never the same as searching failing" posture. */
-async function writeShardToCacheStorage(shardKey, rows) {
+/** Writes a successfully-fetched shard's rows, tagged with the version that
+    produced them, into Cache Storage, keyed the same way
+    `readShardFromCacheStorage` reads. Best-effort and silent on failure —
+    a shard search that works this session but cannot persist is still a
+    working search, matching every other cache in this file's "caching
+    failing is never the same as searching failing" posture. */
+async function writeShardToCacheStorage(shardKey, rows, version) {
   if (typeof caches === "undefined") return;
   try {
     const cache = await caches.open(SHARD_CACHE_NAME);
-    await cache.put(`shards/${shardKey}.json`, new Response(JSON.stringify(rows), {
+    await cache.put(`shards/${shardKey}.json`, new Response(JSON.stringify({ version: version ?? null, rows }), {
       headers: { "Content-Type": "application/json" },
     }));
   } catch (_) {
@@ -4352,21 +4384,45 @@ async function writeShardToCacheStorage(shardKey, rows) {
     `showDirectoryQueryCache` both key ONLY on `data`'s presence). A
     genuinely empty shard (the release exists and this prefix has no rows)
     is still memoized as `[]`, which is the correct "asked, got nothing"
-    answer. */
+    answer.
+
+    A CACHE STORAGE HIT IS DISCARDED WHEN STALE (S-04c, FR-t_546eac9f-2):
+    if this session has already seen a network response with a NEWER/
+    DIFFERENT version tag than the Cache Storage entry carries
+    (`lastSeenShardVersion`), the stored rows are treated as a miss and a
+    fresh network fetch runs instead — the entry is then overwritten with
+    the current version, self-healing on next read. A Cache Storage hit
+    whose version is unknown-but-unconfronted (no network fetch has run
+    yet this session to compare against) is trusted, matching the
+    "Cache Storage survives a reload, checked before any network request"
+    posture the rest of this section already documents — this is a
+    staleness check against what THIS session has actually observed, not a
+    guarantee no newer release exists anywhere. */
 async function fetchShardRows(shardKey) {
   if (shardMemoryCache.has(shardKey)) return shardMemoryCache.get(shardKey);
   if (isOfflineForShardSearch()) return []; // D9: no request, not a failed one — and not memoized
 
-  const fromCacheStorage = await readShardFromCacheStorage(shardKey);
-  if (fromCacheStorage) {
-    shardMemoryCache.set(shardKey, fromCacheStorage);
-    return fromCacheStorage;
+  const cached = await readShardFromCacheStorage(shardKey);
+  if (cached && (lastSeenShardVersion === null || cached.version === lastSeenShardVersion)) {
+    shardMemoryCache.set(shardKey, cached.rows);
+    return cached.rows;
   }
 
-  const data = await fetchApiJson(`api/shows/index/shards/${encodeURIComponent(shardKey)}.json`);
+  let data = null;
+  let version = null;
+  try {
+    const res = await fetch(apiUrl(`api/shows/index/shards/${encodeURIComponent(shardKey)}.json`), { cache: "no-cache" });
+    if (res && res.ok) {
+      data = await res.json();
+      version = res.headers && typeof res.headers.get === "function" ? res.headers.get("X-Shows-Index-Version") : null;
+    }
+  } catch (_) {
+    data = null;
+  }
+  if (version) lastSeenShardVersion = version;
   if (!Array.isArray(data)) return []; // failure/unavailable: not memoized, so a later search retries
   shardMemoryCache.set(shardKey, data);
-  if (data.length) writeShardToCacheStorage(shardKey, data);
+  if (data.length) writeShardToCacheStorage(shardKey, data, version);
   return data;
 }
 

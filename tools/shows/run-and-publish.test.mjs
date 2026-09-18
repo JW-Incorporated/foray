@@ -28,7 +28,11 @@ async function seedBuildOutput({ buildOutDir, statePath, exportVersion, checksum
   await writeFile(join(buildOutDir, "top.json"), "[]");
   await writeFile(join(buildOutDir, "id-map.json"), "{}");
   await writeFile(join(buildOutDir, "changed.json"), "[]");
-  const manifest = { export_version: exportVersion, counts: { read: 10, in_4a: 8, canonical: 7 } };
+  const manifest = {
+    export_version: exportVersion,
+    counts: { read: 10, in_4a: 8, canonical: 7 },
+    shard_inventory: [{ key: "sh", row_count: 1, gz_bytes: 16 }],
+  };
   await writeFile(join(buildOutDir, "manifest.json"), JSON.stringify(manifest));
   await mkdir(join(statePath, ".."), { recursive: true });
   await writeFile(statePath, JSON.stringify({ export_version: exportVersion, checksum }));
@@ -76,12 +80,18 @@ test("acceptance: two runs against the same dump version publish exactly one rel
     assert.equal(result1.published, true);
     assert.equal(result1.pointerChanged, true);
     assert.equal(result1.tag, "shows-index-local-abc123");
-    assert.equal(created.size, 1);
+    // S-04c: one top-level release (manifest/top/id-map/changed) PLUS one
+    // shard batch release (the fixture's single-entry shard_inventory fits
+    // in one batch) — see seedBuildOutput's own shard_inventory.
+    assert.equal(created.size, 2);
 
     const pointer = JSON.parse(await readFile(pointerPath, "utf8"));
     assert.equal(pointer.release_tag, "shows-index-local-abc123");
     assert.equal(pointer.export_version, "local:abc123");
     assert.equal(pointer.counts.canonical, 7);
+    assert.equal(pointer.shards_published, true);
+    assert.equal(pointer.shard_releases.length, 1);
+    assert.equal(pointer.shard_releases[0].tag, "shows-index-local-abc123-shards-1");
 
     // ---- Run 2: SAME dump version. Simulate S-04a's own skip-if-already-built
     // firing (buildExec emits SKIP: — exactly what import-dump.mjs prints and
@@ -93,7 +103,7 @@ test("acceptance: two runs against the same dump version publish exactly one rel
     assert.equal(result2.published, false);
     assert.equal(result2.pointerChanged, false);
     assert.equal(result2.reason, "build-skipped");
-    assert.equal(created.size, 1, "no second release was created");
+    assert.equal(created.size, 2, "no second release (of either kind) was created");
 
     // ---- Run 3: the OTHER idempotency path — state.json lost (fresh
     // checkout) so the build "ran" again, but the release already exists on
@@ -105,7 +115,7 @@ test("acceptance: two runs against the same dump version publish exactly one rel
     assert.equal(result3.published, false);
     assert.equal(result3.pointerChanged, false);
     assert.equal(result3.reason, "release-exists-pointer-current");
-    assert.equal(created.size, 1, "still exactly one release after the release-already-exists path");
+    assert.equal(created.size, 2, "still exactly one top-level + one shard batch release after the release-already-exists path");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -134,7 +144,7 @@ test("reconciliation: a release that exists with no landed pointer PR is still r
     });
     assert.equal(result1.published, true);
     assert.equal(result1.pointerChanged, true);
-    assert.equal(created.size, 1);
+    assert.equal(created.size, 2, "one top-level + one shard batch release");
 
     // Simulate the pointer PR never landing: the pointer file this run just
     // wrote is now gone from a "fresh checkout" perspective on the next run.
@@ -146,7 +156,7 @@ test("reconciliation: a release that exists with no landed pointer PR is still r
     assert.equal(result2.published, false, "the release already exists — must not publish a duplicate");
     assert.equal(result2.pointerChanged, true, "the pointer was missing and MUST be reconciled even though nothing new was published");
     assert.equal(result2.reason, "reconciled-existing-release");
-    assert.equal(created.size, 1, "still exactly one release");
+    assert.equal(created.size, 2, "still exactly one top-level + one shard batch release");
 
     const pointer = JSON.parse(await readFile(pointerPath, "utf8"));
     assert.equal(pointer.release_tag, "shows-index-local-abc123");
@@ -173,14 +183,14 @@ test("a genuinely new dump version (different export_version) DOES publish a sec
     await seedBuildOutput({ buildOutDir, statePath, exportVersion: "local:v1", checksum: "v1" });
     const buildExecV1 = async () => ({ stdout: "BUILD_COMPLETE: out (export_version local:v1)" });
     await runAndPublish(["--dump-file", "a"], { buildExec: buildExecV1, ghExec, statePath, buildOutDir, pointerPath, repo: "org/repo", log });
-    assert.equal(created.size, 1);
+    assert.equal(created.size, 2, "one top-level + one shard batch release");
 
     await seedBuildOutput({ buildOutDir, statePath, exportVersion: "local:v2", checksum: "v2" });
     const buildExecV2 = async () => ({ stdout: "BUILD_COMPLETE: out (export_version local:v2)" });
     const result = await runAndPublish(["--dump-file", "b"], { buildExec: buildExecV2, ghExec, statePath, buildOutDir, pointerPath, repo: "org/repo", log });
     assert.equal(result.published, true);
     assert.equal(result.pointerChanged, true);
-    assert.equal(created.size, 2);
+    assert.equal(created.size, 4, "a second top-level + a second shard batch release");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -201,6 +211,92 @@ test("--dry-run never publishes even on a fresh build", async () => {
     assert.equal(result.pointerChanged, false);
     assert.equal(result.reason, "dry-run");
     assert.equal(created.size, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+/* ==================================================================== */
+/* S-04c: shard batch release publishing, end to end                     */
+/* ==================================================================== */
+
+test("shards_published is true and shard_releases is populated in the written pointer", async () => {
+  const root = await mkdtemp(join(tmpdir(), "shows-e2e-"));
+  const buildOutDir = join(root, "out");
+  const statePath = join(root, "state", "last-build.json");
+  const pointerPath = join(root, "shows-index-pointer.json");
+  const { ghExec } = fakeGhRegistry();
+  const log = () => {};
+  try {
+    await seedBuildOutput({ buildOutDir, statePath, exportVersion: "local:abc123", checksum: "abc123" });
+    const buildExec = async () => ({ stdout: "BUILD_COMPLETE: out (export_version local:abc123)" });
+    await runAndPublish(["--dump-file", "a"], { buildExec, ghExec, statePath, buildOutDir, pointerPath, repo: "org/repo", log });
+
+    const pointer = JSON.parse(await readFile(pointerPath, "utf8"));
+    assert.equal(pointer.shards_published, true);
+    assert.equal(pointer.shard_releases.length, 1);
+    const batch = pointer.shard_releases[0];
+    assert.equal(batch.first_key, "sh");
+    assert.equal(batch.last_key, "sh");
+    assert.equal(batch.count, 1);
+    assert.match(batch.asset_base_url, /^https:\/\/github\.com\/org\/repo\/releases\/download\//);
+
+    // The manifest.json written back to buildOutDir must carry the same
+    // shards_published/shard_releases values it uploads as the release
+    // asset — a run that already knows shards published must not still
+    // ship a manifest claiming shards_published: false.
+    const manifestOnDisk = JSON.parse(await readFile(join(buildOutDir, "manifest.json"), "utf8"));
+    assert.equal(manifestOnDisk.shards_published, true);
+    assert.equal(manifestOnDisk.shard_releases.length, 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("a run that publishes the top-level release but not the shard batch (interrupted) reconciles on the next run", async () => {
+  // Simulates a prior run that created the top-level release but never got
+  // to the shard batch (process killed between the two publish steps) —
+  // the NEXT run for the SAME export_version must still publish the
+  // missing shard batch and update the pointer's shards_published, even
+  // though the top-level release_tag is unchanged.
+  const root = await mkdtemp(join(tmpdir(), "shows-e2e-"));
+  const buildOutDir = join(root, "out");
+  const statePath = join(root, "state", "last-build.json");
+  const pointerPath = join(root, "shows-index-pointer.json");
+  const log = () => {};
+
+  // Pre-seed GitHub with the top-level release already existing, but no
+  // shard batch release yet.
+  const created = new Set(["shows-index-local-abc123"]);
+  const ghExec = async (cmd, args) => {
+    if (args[0] === "release" && args[1] === "view") {
+      const tag = args[2];
+      if (created.has(tag)) return { stdout: "exists" };
+      const e = new Error("not found"); e.stderr = "release not found"; throw e;
+    }
+    if (args[0] === "release" && args[1] === "create") {
+      created.add(args[2]);
+      return { stdout: "created" };
+    }
+    throw new Error(`unexpected gh invocation: ${args.join(" ")}`);
+  };
+
+  try {
+    await seedBuildOutput({ buildOutDir, statePath, exportVersion: "local:abc123", checksum: "abc123" });
+    const buildExec = async () => ({ stdout: "BUILD_COMPLETE: out (export_version local:abc123)" });
+
+    const result = await runAndPublish(["--dump-file", "a"], {
+      buildExec, ghExec, statePath, buildOutDir, pointerPath, repo: "org/repo", log,
+    });
+    // The top-level release itself was NOT re-published (releaseExists was
+    // true for it), but the pointer still changes because shard publishing
+    // just completed for the first time.
+    assert.equal(result.published, false);
+    assert.equal(result.pointerChanged, true);
+    assert.ok(created.has("shows-index-local-abc123-shards-1"), "the missing shard batch must be published this run");
+
+    const pointer = JSON.parse(await readFile(pointerPath, "utf8"));
+    assert.equal(pointer.shards_published, true);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

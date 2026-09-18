@@ -70,6 +70,26 @@ export const RELEASE_TAG_PREFIX = "shows-index-";
     `manifest.json`'s `version`. */
 export const POINTER_SCHEMA_VERSION = 1;
 
+/** S-04c: shard publishing. GitHub Releases hard-caps a single release at
+    1,000 total assets (confirmed via GitHub's own docs and a real HTTP 422
+    "file_count limited to 1000 assets per release" against this repo, see
+    publish-release.mjs's own header). The real build carries ~1,298 shard
+    files, so they are split across MULTIPLE releases instead of coarsening
+    shard granularity (see this card's own kanban body for why: a coarser
+    first-char bucket would multiply the per-shard payload a listener's
+    device fetches on every keystroke, which is the exact cost sharding
+    exists to avoid — splitting release COUNT is free on the client, since
+    the client only ever fetches the one shard it needs regardless of which
+    release it lives on).
+
+    900, not 1000: headroom under the hard ceiling for a future dump that
+    grows past 1,298 keys without silently tripping the 1,000 limit again on
+    the SAME batch boundary this constant already committed to (the
+    partition is recomputed fresh every run from whatever shard_inventory
+    the current build produced, so growth only ever adds another batch, it
+    never risks exceeding 1,000 on an existing one). */
+export const MAX_SHARD_ASSETS_PER_RELEASE = 900;
+
 /** Local scratch for the downloaded archive + extracted db + build output.
     Gitignored (data-local/), never committed — same pattern as
     tools/transcribe and tools/segments. */

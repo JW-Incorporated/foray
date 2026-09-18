@@ -21,7 +21,8 @@ import {
   BUILD_OUT_DIR, POINTER_PATH, STATE_PATH,
 } from "./config.mjs";
 import {
-  assetBaseUrlFor, buildPointer, listReleaseAssets, publishRelease, releaseExists, releaseTagFor,
+  assetBaseUrlFor, buildPointer, listReleaseAssets, publishRelease, publishShardReleases,
+  releaseExists, releaseTagFor,
 } from "./publish-release.mjs";
 
 const execFileP = promisify(execFile);
@@ -102,13 +103,48 @@ export async function runAndPublish(argv, {
   }
 
   const state = JSON.parse(await readFile(statePath, "utf8"));
-  const manifest = JSON.parse(await readFile(`${buildOutDir}/manifest.json`, "utf8"));
+  let manifest = JSON.parse(await readFile(`${buildOutDir}/manifest.json`, "utf8"));
   const tag = releaseTagFor(state.export_version);
+
+  // S-04c: publish every shard batch release BEFORE the top-level release,
+  // always — independent of whether the top-level release already exists,
+  // so the manifest.json this run uploads (or reconciles) can carry the
+  // real `shards_published`/`shard_releases` state rather than a stale
+  // `false` baked in at build time. `publishShardReleases`'s own
+  // `releaseExists` check per batch (mirroring `releaseExists` below)
+  // makes re-running this unconditionally cheap and idempotent: an
+  // already-published batch is a single `gh release view`, not a
+  // re-upload, so a run interrupted after batch 1 resumes cleanly at
+  // batch 2 on the next run. Only reachable once `build.skipped` is
+  // false, so `buildOutDir`/`manifest.json`'s `shard_inventory` (and the
+  // shard .gz files on disk under `buildOutDir/shards/`) are guaranteed
+  // fresh from THIS run's build step.
+  const shardReleases = await publishShardReleases({
+    baseTag: tag,
+    outDir: buildOutDir,
+    shardInventory: manifest.shard_inventory || [],
+    exec: ghExec,
+    repo,
+    log,
+  });
+  manifest = { ...manifest, shards_published: shardReleases.length > 0, shard_releases: shardReleases };
+  await writeFile(`${buildOutDir}/manifest.json`, `${JSON.stringify(manifest, null, 2)}\n`);
 
   // Belt-and-braces idempotency check, independent of S-04a's own
   // state.json skip above — see releaseExists's doc comment for why both
   // checks matter. A tag that already exists here means state.json was
   // lost (fresh checkout, evicted cache) while the release survived.
+  //
+  // NOTE: if the top-level release ALREADY exists, the manifest.json
+  // asset it shipped on the run that created it is now stale relative to
+  // the freshly-rewritten one above (that upload cannot be amended
+  // in-place without `--clobber`, which risks a partial-release window on
+  // a release listReleaseAssets/S-11 already reads) — the POINTER file
+  // (written below, which every consumer of shard_releases actually
+  // reads — see api/shows/index/[...path].ts) is reconciled every run
+  // regardless, so this staleness is confined to the release's own
+  // manifest.json asset, not to anything a client's shard fetch depends
+  // on.
   let assetBaseUrl;
   let published = false;
   if (await releaseExists(tag, { exec: ghExec, repo })) {
@@ -137,13 +173,17 @@ export async function runAndPublish(argv, {
     assetBaseUrl,
     exportVersion: state.export_version,
     manifest,
+    shardReleases,
+    shardsPublished: shardReleases.length > 0,
   });
 
   // Reconcile against whatever is currently committed, REGARDLESS of
-  // `published` — this is the fix. Compare on release_tag alone (not the
-  // whole object, which includes a fresh `published_at` timestamp every
-  // run) so re-running against an unchanged release never reports a
-  // spurious diff.
+  // `published` — this is the fix. Compare on release_tag AND
+  // shards_published/shard_releases (not the whole object, which includes
+  // a fresh `published_at` timestamp every run) so re-running against an
+  // unchanged release never reports a spurious diff, but a run that
+  // finishes publishing shards a PRIOR run left incomplete still updates
+  // the pointer even though `release_tag` alone is unchanged.
   let currentPointer = null;
   try {
     currentPointer = JSON.parse(await readFile(pointerPath, "utf8"));
@@ -151,7 +191,10 @@ export async function runAndPublish(argv, {
     // No pointer file yet — this is the first release ever, or it was
     // never committed. Either way, a write is needed.
   }
-  const pointerChanged = !currentPointer || currentPointer.release_tag !== pointer.release_tag;
+  const pointerChanged = !currentPointer
+    || currentPointer.release_tag !== pointer.release_tag
+    || currentPointer.shards_published !== pointer.shards_published
+    || JSON.stringify(currentPointer.shard_releases || []) !== JSON.stringify(pointer.shard_releases);
 
   if (!pointerChanged) {
     log(`SKIP: data/shows-index-pointer.json already points at ${tag} — nothing to reconcile`);
