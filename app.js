@@ -4754,33 +4754,70 @@ function paintedShowRows(query, myToken, fallback) {
     answer that needs collapsing. Both sides apply the same rule to the same
     rows — `api/shows/search.ts` merges Apple beneath the catalogue server-side,
     and this merges whatever arrives beneath what is already painted. */
+/** A "directory-sourced" row is one reached through Apple's breadth
+    directory or the PodcastIndex shard index — the two sources whose
+    `show_id` lives in a namespace (`collectionId` / `pi:<id>`) that
+    cannot collide with a curated/catalogue `show_id`, so `mergeShowRows`'s
+    `ids.has` check can never catch "the same show, reached through two
+    sources" for them and a title-based check is the only defense. An
+    untagged row (local index / catalogue / directory-of-catalogue passes
+    that don't set `source`) has no such id-collision problem against
+    OTHER untagged rows — that's the deliberate "'The Daily' is not one
+    show" carve-out `mergeShowRows` has always preserved for pure
+    catalogue-vs-catalogue collisions, and this function must not weaken
+    it. */
+function isDirectorySourcedShow(s) {
+  return s.source === "apple" || s.source === "shard";
+}
+
+/** Direction-agnostic title dedup across all 4 show-search sources
+    (local/index, catalogue, directory/Apple, shard).
+
+    kanban t_5e674545 (Fable ruling FR-t_546eac9f-2): before this, a NEW
+    row was checked against titles collected from EARLIER-arriving rows,
+    but only in one direction, and only for directory-sourced incoming
+    rows. If a directory-sourced row (Apple or shard) painted BEFORE the
+    catalogue/local row for the same title arrived, the later untagged
+    row carried no `source` flag requiring a title check and was never
+    checked against the earlier row's title keys — it could duplicate on
+    screen. Fixed by tracking two key sets:
+
+      - `titleKeys`: every accepted row's title keys, any source. A
+        directory-sourced incoming row is checked against this set
+        (unchanged from before — this is the direction that already
+        worked).
+      - `directoryTitleKeys`: only directory-sourced accepted rows'
+        title keys. An untagged incoming row is checked against THIS
+        set (the fix — makes the untagged-arrives-second case symmetric
+        with the already-working directory-arrives-second case).
+
+    An untagged row is never checked against another untagged row's
+    keys — `directoryTitleKeys` only ever gains entries from
+    directory-sourced rows — which is exactly the existing "two
+    genuinely different shows can share a title" carve-out: pure
+    catalogue-vs-catalogue collisions are still governed by `show_id`
+    alone, per `ids.has` above. */
 function mergeShowRows(query, existing, incoming) {
   const ids = new Set(existing.map((s) => s.show_id));
   const titleKeys = new Set();
-  for (const s of existing) for (const k of showDedupKeys(s.title)) titleKeys.add(k);
+  const directoryTitleKeys = new Set();
+  for (const s of existing) {
+    const keys = showDedupKeys(s.title);
+    for (const k of keys) titleKeys.add(k);
+    if (isDirectorySourcedShow(s)) for (const k of keys) directoryTitleKeys.add(k);
+  }
   const additions = [];
   for (const s of incoming) {
     if (ids.has(s.show_id)) continue;
     const keys = showDedupKeys(s.title);
-    /* S-05 review finding (2026-09-15): shard rows dedupe by title exactly
-       like Apple rows do, and for the identical reason — a shard row's
-       show_id is `pi:<PodcastIndex id>` (mapShardRow), a DIFFERENT id space
-       from a curated slug or a catalogue/breadth show_id, so the `ids.has`
-       check above cannot catch "the same show, reached through two
-       sources". Without this, a curated show already painted from the
-       local pass would reappear a second time the moment the shard pass
-       for its own prefix landed — the exact duplicate-row defect the
-       `source === "apple"` branch already exists to prevent for Apple's
-       directory. */
-    /* S-05 review follow-up (Fable ruling FR-t_546eac9f-2, kanban t_5e674545):
-       this dedup is still arrival-order-dependent across ALL sources, not
-       just the apple/shard pair checked below — if an untagged (local/
-       catalogue/directory) row for a title arrives AFTER a tagged one, it
-       is never checked against the tagged row's keys. Pre-existing gap,
-       narrowed but not closed by S-05; see t_5e674545 for the tracked fix. */
-    if ((s.source === "apple" || s.source === "shard") && keys.some((k) => titleKeys.has(k))) continue;
+    const directorySourced = isDirectorySourcedShow(s);
+    const collides = directorySourced
+      ? keys.some((k) => titleKeys.has(k))
+      : keys.some((k) => directoryTitleKeys.has(k));
+    if (collides) continue;
     ids.add(s.show_id);
     for (const k of keys) titleKeys.add(k);
+    if (directorySourced) for (const k of keys) directoryTitleKeys.add(k);
     additions.push(s);
   }
   if (!additions.length) return null;
