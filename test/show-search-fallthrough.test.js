@@ -1123,3 +1123,139 @@ test("the empty-state note names no catalogue of ours — it says nothing matche
   assert.ok(!/4a/.test(m.note().textContent),
     `the note must not name our own catalogue as the reason: ${m.note().textContent}`);
 });
+
+/* ==================================================================== */
+/* kanban t_5e674545 (Fable ruling FR-t_546eac9f-2): mergeShowRows's title */
+/* dedup made direction-agnostic across all 4 sources (local/catalogue    */
+/* untagged, directory/Apple, shard) and every arrival order.             */
+/* ==================================================================== */
+
+test("mergeShowRows: a directory-sourced row arriving AFTER an untagged row for the same title is dropped (pre-existing direction, unchanged)", () => {
+  const m = mount();
+  const existingCatalogue = [{ show_id: "curated-1", title: "Radio Lab", source: undefined }];
+  const incomingApple = [{ show_id: "apple-1", title: "Radio Lab", source: "apple" }];
+  const result = m.evalIn(`mergeShowRows(
+    "radio lab",
+    ${JSON.stringify(existingCatalogue)},
+    ${JSON.stringify(incomingApple)}
+  )`);
+  assert.strictEqual(result, null, "the Apple row must be dropped as a title duplicate of the already-painted catalogue row");
+});
+
+test("mergeShowRows: a directory-sourced row arriving AFTER a shard row for the same title is dropped (pre-existing direction, unchanged)", () => {
+  const m = mount();
+  const existingShard = [{ show_id: "pi:1", title: "Radio Lab", source: "shard" }];
+  const incomingApple = [{ show_id: "apple-1", title: "Radio Lab", source: "apple" }];
+  const result = m.evalIn(`mergeShowRows(
+    "radio lab",
+    ${JSON.stringify(existingShard)},
+    ${JSON.stringify(incomingApple)}
+  )`);
+  assert.strictEqual(result, null, "an Apple row must be dropped as a title duplicate of an already-painted shard row");
+});
+
+test("mergeShowRows: an UNTAGGED row arriving AFTER an Apple row for the same title is dropped (THE FIX — this direction used to be missed)", () => {
+  /* This is the exact gap t_5e674545 exists to close: before the fix, only
+     an incoming directory-sourced row was checked against titleKeys; an
+     incoming untagged row was never checked against anything, so this
+     scenario duplicated on screen. MUTATION: revert to checking
+     `s.source === "apple" && keys.some(...)` only (drop the
+     directoryTitleKeys branch for untagged incoming rows). */
+  const m = mount();
+  const existingApple = [{ show_id: "apple-1", title: "Radio Lab", source: "apple" }];
+  const incomingCatalogue = [{ show_id: "curated-1", title: "Radio Lab", source: undefined }];
+  const result = m.evalIn(`mergeShowRows(
+    "radio lab",
+    ${JSON.stringify(existingApple)},
+    ${JSON.stringify(incomingCatalogue)}
+  )`);
+  assert.strictEqual(result, null,
+    "an untagged catalogue/local row arriving after an Apple row for the same title must be dropped, not duplicated");
+});
+
+test("mergeShowRows: an UNTAGGED row arriving AFTER a shard row for the same title is dropped (THE FIX — the card's own headline scenario)", () => {
+  /* The card's literal acceptance fixture: "shard row arrives first,
+     catalogue row for the same title arrives second" shows no duplicate. */
+  const m = mount();
+  const existingShard = [{ show_id: "pi:1", title: "Science Friday", source: "shard" }];
+  const incomingCatalogue = [{ show_id: "curated-1", title: "Science Friday", source: undefined }];
+  const result = m.evalIn(`mergeShowRows(
+    "science friday",
+    ${JSON.stringify(existingShard)},
+    ${JSON.stringify(incomingCatalogue)}
+  )`);
+  assert.strictEqual(result, null,
+    "a catalogue/local row arriving after a shard row for the same title must be dropped, not duplicated");
+});
+
+test("mergeShowRows: two untagged rows sharing a title never collide with each other (carve-out preserved)", () => {
+  /* The deliberate "'The Daily' is not one show" carve-out: pure
+     catalogue-vs-catalogue / local-vs-catalogue collisions are governed by
+     show_id alone, never by title. MUTATION: check untagged incoming rows
+     against titleKeys (the full set) instead of directoryTitleKeys (the
+     directory-only set) — this test would then wrongly drop the second row. */
+  const m = mount();
+  const existingCatalogue = [{ show_id: "the-daily", title: "The Daily", source: undefined }];
+  const incomingLocal = [{ show_id: "the-daily-stoic", title: "The Daily", source: undefined }];
+  const result = m.evalIn(`mergeShowRows(
+    "the daily",
+    ${JSON.stringify(existingCatalogue)},
+    ${JSON.stringify(incomingLocal)}
+  )`);
+  assert.ok(result && result.length === 1 && result[0].show_id === "the-daily-stoic",
+    `two genuinely different untagged shows sharing a title must both survive, got ${JSON.stringify(result)}`);
+});
+
+test("mergeShowRows: an Apple row and a shard row for the same title never both survive, in either arrival order", () => {
+  const m1 = mount();
+  const appleFirst = m1.evalIn(`mergeShowRows(
+    "radio lab",
+    ${JSON.stringify([{ show_id: "apple-1", title: "Radio Lab", source: "apple" }])},
+    ${JSON.stringify([{ show_id: "pi:1", title: "Radio Lab", source: "shard" }])}
+  )`);
+  assert.strictEqual(appleFirst, null, "a shard row must be dropped as a title duplicate of an existing Apple row");
+
+  const m2 = mount();
+  const shardFirst = m2.evalIn(`mergeShowRows(
+    "radio lab",
+    ${JSON.stringify([{ show_id: "pi:1", title: "Radio Lab", source: "shard" }])},
+    ${JSON.stringify([{ show_id: "apple-1", title: "Radio Lab", source: "apple" }])}
+  )`);
+  assert.strictEqual(shardFirst, null, "an Apple row must be dropped as a title duplicate of an existing shard row");
+});
+
+test("mergeShowRows: all four sources pairwise — every arrival order covering local/catalogue/directory/shard collides exactly once, never twice", () => {
+  /* Enumerates every ordered pair among the four sources this card names
+     (local index and catalogue both paint as untagged rows in this
+     function, so "local" and "catalogue" are the same case here — the
+     fixture below names the row `origin` for clarity and drives it through
+     both slots). Each pair must produce exactly one survivor. */
+  const SOURCES = [
+    { label: "local/index", source: undefined },
+    { label: "catalogue", source: undefined },
+    { label: "directory/apple", source: "apple" },
+    { label: "shard", source: "shard" },
+  ];
+  let n = 0;
+  for (const first of SOURCES) {
+    for (const second of SOURCES) {
+      n += 1;
+      const m = mount();
+      const existing = [{ show_id: `first-${n}`, title: "Same Show Title", source: first.source }];
+      const incoming = [{ show_id: `second-${n}`, title: "Same Show Title", source: second.source }];
+      const bothUntagged = first.source === undefined && second.source === undefined;
+      const result = m.evalIn(`mergeShowRows(
+        "same show title",
+        ${JSON.stringify(existing)},
+        ${JSON.stringify(incoming)}
+      )`);
+      if (bothUntagged) {
+        assert.ok(result && result.length === 1,
+          `${first.label} -> ${second.label}: two untagged rows sharing a title must NOT collide (carve-out), got ${JSON.stringify(result)}`);
+      } else {
+        assert.strictEqual(result, null,
+          `${first.label} -> ${second.label}: a title collision involving a directory-sourced row must drop the later arrival, got ${JSON.stringify(result)}`);
+      }
+    }
+  }
+});
