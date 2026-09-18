@@ -117,6 +117,35 @@ export function isGzippedAsset(requestPath: string): boolean {
   return SHARD_FILE_RE.test(String(requestPath || ""));
 }
 
+/** Extracts the 2-char (or 1-char+`_`, or `__`) shard key from a
+ *  `shards/<pp>.json` request path, or null for a non-shard path (the four
+ *  top-level files never resolve through `shard_releases` — see
+ *  `resolveShardRelease` below, which only needs this for a shard
+ *  request). */
+export function shardKeyFromRequestPath(requestPath: string): string | null {
+  const m = SHARD_FILE_RE.exec(String(requestPath || ""));
+  return m ? m[1] : null;
+}
+
+/** S-04c: resolves which of `pointer.shard_releases` (an ordered list of
+ *  `{ tag, asset_base_url, first_key, last_key, count }` ranges —
+ *  `tools/shows/publish-release.mjs:buildPointer`'s own doc comment has
+ *  the full shape and why it's ranges, not a per-key map) a shard key
+ *  lives on, by a simple linear scan (at most a few dozen batches even at
+ *  the real build's ~1,298-shard scale with 900/batch) for
+ *  `first_key <= key <= last_key`. Returns null when no release covers the
+ *  key — either `shard_releases` is empty (pre-S-04c pointer, or a build
+ *  whose shard publish step hasn't landed) or the key genuinely has no
+ *  shard (a builder bug, never expected against a real pointer). Pure —
+ *  no I/O — so the range-resolution logic is unit-testable without a
+ *  fixture pointer file. */
+export function resolveShardRelease(shardReleases: ShardRelease[] | undefined, key: string): ShardRelease | null {
+  for (const r of shardReleases || []) {
+    if (key >= r.first_key && key <= r.last_key) return r;
+  }
+  return null;
+}
+
 /** Repo-relative pointer path, overridable for tests the same way
  *  `api/episodes/search.ts`'s `_setShowMetaRootForTests` overrides its own
  *  root — see that file's convention note. */
@@ -126,8 +155,19 @@ export function _setPointerPathForTests(absPath?: string): void {
   pointerPath = absPath ?? path.resolve(__dirname, "..", "..", "..", "data", "shows-index-pointer.json");
 }
 
+interface ShardRelease {
+  tag: string;
+  asset_base_url: string;
+  first_key: string;
+  last_key: string;
+  count: number;
+}
+
 interface Pointer {
   asset_base_url?: string;
+  release_tag?: string;
+  shard_releases?: ShardRelease[];
+  shards_published?: boolean;
 }
 
 /** Reads the committed pointer file. Returns null (never throws) when it is
@@ -181,7 +221,29 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  const upstreamUrl = `${pointer.asset_base_url}/${upstreamAsset}`;
+  // S-04c: a SHARD request resolves its upstream base URL against
+  // `pointer.shard_releases` (the shard lives on its own batch release —
+  // see this file's header and `resolveShardRelease`'s own doc comment),
+  // never against the top-level `pointer.asset_base_url`, which only ever
+  // carries manifest/top/id-map/changed. A top-level file request keeps
+  // using `pointer.asset_base_url` unchanged. Honest 404 (not a 502) when
+  // shards genuinely aren't published yet for this pointer — the same
+  // "absence is a real state" rule the top-level branch above already
+  // follows, distinguished from a genuine upstream failure so a client
+  // can tell "try again later" apart from "this build has no shards".
+  const shardKey = shardKeyFromRequestPath(requestPath);
+  let upstreamBase = pointer.asset_base_url;
+  if (shardKey !== null) {
+    const shardRelease = resolveShardRelease(pointer.shard_releases, shardKey);
+    if (!shardRelease) {
+      res.setHeader("Cache-Control", "no-store");
+      res.status(404).json({ available: false, error: `no shard release published for key "${shardKey}" yet` });
+      return;
+    }
+    upstreamBase = shardRelease.asset_base_url;
+  }
+
+  const upstreamUrl = `${upstreamBase}/${upstreamAsset}`;
   let upstreamRes: Response;
   try {
     upstreamRes = await fetch(upstreamUrl);
@@ -221,7 +283,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
   // Content-addressed by the release tag (one immutable release per
   // export_version, S-04b's idempotency contract) — safe to cache hard.
+  // `X-Shows-Index-Version` carries the pointer's own `release_tag` (S-04c)
+  // so the client's Cache Storage layer (`app.js`'s `readShardFromCacheStorage`/
+  // `writeShardToCacheStorage`) can tag a cached entry with the version that
+  // produced it and detect staleness on a later pointer bump, without a
+  // second round trip to fetch `manifest.json`/the pointer separately —
+  // see this file's header, FR-t_546eac9f-2.
   res.setHeader("Cache-Control", "public, max-age=3600, immutable");
+  if (pointer.release_tag) res.setHeader("X-Shows-Index-Version", pointer.release_tag);
   res.status(200);
   res.json(parsed);
 }

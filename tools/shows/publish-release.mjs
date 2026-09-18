@@ -10,7 +10,7 @@
 import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { RELEASE_TAG_PREFIX, REPO_SLUG } from "./config.mjs";
+import { MAX_SHARD_ASSETS_PER_RELEASE, RELEASE_TAG_PREFIX, REPO_SLUG } from "./config.mjs";
 
 const execFileP = promisify(execFile);
 
@@ -68,25 +68,24 @@ export async function releaseExists(tag, { exec = execFileP, repo = REPO_SLUG } 
   }
 }
 
-/** Lists the exact files a release ships. Per Fable ruling FR-t_30a53ba2-1:
-    only manifest.json, top.json, id-map.json, changed.json — NOT the
-    shards/ directory. GitHub Releases hard-caps a single release at 1,000
-    assets (confirmed via GitHub's own docs and a real HTTP 422
-    "file_count limited to 1000 assets per release" against this repo);
-    the real build's ~1,298 shard files put the release well over that
-    ceiling, and no batching trick works around it because the limit is
-    per-release (total assets attached), not per-API-call — a fresh-
-    context review caught an earlier attempt at exactly that (PR #718,
-    reverted) before it could ship a permanently-broken publish step.
+/** Lists the exact top-level (non-shard) files a release ships: manifest,
+    top, id-map, changed. Shard files are published SEPARATELY, across one
+    or more batch releases (`publishShardReleases` below) — this function's
+    own scope stays the 4 top-level files per Fable ruling FR-t_30a53ba2-1,
+    which is also why `outDir`'s `shards/` directory is never walked here.
 
-    The only live consumer of any release today (tools/refresh/
-    candidates.mjs, S-11) reads exactly these four files via
-    pointer.asset_base_url and never touches a shard file — S-05's shard
-    cache reads nothing yet. Shard publishing (multi-release layout, or a
-    coarser bucketing that fits under 1,000 assets) is deferred to a
-    follow-up card designed together with whichever client ends up
-    reading it, per the ruling, rather than shipping a speculative shape
-    now. */
+    WHY SHARDS ARE A SEPARATE RELEASE, NOT MORE ASSETS ON THIS ONE: GitHub
+    Releases hard-caps a single release at 1,000 assets (confirmed via
+    GitHub's own docs and a real HTTP 422 "file_count limited to 1000
+    assets per release" against this repo); the real build's ~1,298 shard
+    files alone exceed that, before even counting these 4 — a fresh-context
+    review caught an earlier attempt at batching CREATE+UPLOAD calls
+    against the SAME tag (PR #718, reverted) before it could ship a
+    permanently-broken publish step: the ceiling is per-release (total
+    assets attached), not per-API-call, so no batching trick against one
+    tag works around it. `publishShardReleases` instead creates MULTIPLE
+    releases (S-04c), each under its own tag and its own 1,000-asset
+    budget — see that function's own header. */
 export async function listReleaseAssets(outDir) {
   const top = ["manifest.json", "top.json", "id-map.json", "changed.json"];
   return top.map((f) => join(outDir, f));
@@ -144,8 +143,27 @@ export async function publishRelease({ tag, title, notes, assets, exec = execFil
 
 /** The pointer payload for data/shows-index-pointer.json — a plain object
     the caller writes to disk. Kept pure (no I/O) so its shape is
-    unit-testable on its own. */
-export function buildPointer({ tag, assetBaseUrl, exportVersion, manifest, publishedAt = new Date().toISOString() }) {
+    unit-testable on its own.
+
+    S-04c: `shard_releases` (when non-empty) is the ordered list of shard
+    batch releases (see `publishShardReleases` below) that together cover
+    every shard key this build produced, each `{ tag, asset_base_url,
+    first_key, last_key, count }`. Deliberately RANGES, not a per-key map —
+    with ~1,298 keys a flat `key -> release` map would roughly triple this
+    file's size for no benefit, since `shard-build.mjs`'s own
+    `normalizePrefixKey` output is already lexicographically sortable and
+    `listReleaseAssets`'s batches are built in that same sorted order
+    (`partitionShardBatches`), so a consumer only needs `first_key <= key
+    <= last_key` to resolve which release a shard lives on — see
+    `api/shows/index/[...path].ts`'s `resolveShardRelease`, S-04c's own
+    file, for the reader. `shards_published` is false until every batch in
+    `shard_releases` has actually been created (or already existed) on
+    GitHub — see `run-and-publish.mjs`'s caller for how that's guaranteed
+    rather than assumed. */
+export function buildPointer({
+  tag, assetBaseUrl, exportVersion, manifest, publishedAt = new Date().toISOString(),
+  shardReleases = [], shardsPublished = false,
+}) {
   return {
     version: 1,
     export_version: exportVersion,
@@ -154,5 +172,71 @@ export function buildPointer({ tag, assetBaseUrl, exportVersion, manifest, publi
     manifest_url: `${assetBaseUrl}/manifest.json`,
     published_at: publishedAt,
     counts: manifest.counts ?? null,
+    shards_published: shardsPublished,
+    shard_releases: shardReleases,
   };
+}
+
+/** Splits a manifest's `shard_inventory` (already alphabetically sorted by
+    `writeBuildOutput`, but re-sorted here defensively — this function's own
+    contract does not trust the caller's ordering) into contiguous batches
+    of at most `maxPerBatch` entries, so each batch fits under GitHub's
+    1,000-asset-per-release ceiling (see `MAX_SHARD_ASSETS_PER_RELEASE`'s
+    own comment in config.mjs for the exact number and why). Pure — no I/O,
+    unit-testable on a plain array of `{ key, row_count, gz_bytes }`. */
+export function partitionShardBatches(shardInventory, maxPerBatch = MAX_SHARD_ASSETS_PER_RELEASE) {
+  const sorted = [...(shardInventory || [])].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  const batches = [];
+  for (let i = 0; i < sorted.length; i += maxPerBatch) {
+    batches.push(sorted.slice(i, i + maxPerBatch));
+  }
+  return batches;
+}
+
+/** Deterministic per-batch release tag, namespaced under the export's own
+    top-level tag so `gh release list` groups a shard batch with the run
+    that produced it, and so a re-run for the SAME export_version resolves
+    to the SAME shard tags (idempotency, exactly like `releaseTagFor`
+    itself) — `batchIndex` is 0-based internally, 1-based in the tag for a
+    human reading `gh release list`. */
+export function shardReleaseTagFor(baseTag, batchIndex) {
+  return `${baseTag}-shards-${batchIndex + 1}`;
+}
+
+/** Publishes every shard batch as its own release, idempotently — each
+    batch's `releaseExists` check and `publishRelease` call mirror the
+    top-level release's own idempotency contract exactly (see
+    `releaseExists`'s doc comment), so a run interrupted after batch 1 but
+    before batch 2 resumes cleanly on the next run: batch 1's `gh release
+    view` succeeds and is skipped, batch 2 is created. Returns the ordered
+    `shard_releases` array `buildPointer` embeds in the pointer — ordered
+    by batch index, which is also alphabetical key order (see
+    `partitionShardBatches`), so a consumer never needs to sort it. */
+export async function publishShardReleases({
+  baseTag, outDir, shardInventory, exec = execFileP, repo = REPO_SLUG, log = () => {},
+}) {
+  const batches = partitionShardBatches(shardInventory);
+  const releases = [];
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    const tag = shardReleaseTagFor(baseTag, i);
+    const firstKey = batch[0].key;
+    const lastKey = batch[batch.length - 1].key;
+    let assetBaseUrl;
+    if (await releaseExists(tag, { exec, repo })) {
+      log(`SKIP: shard release ${tag} already exists on GitHub — nothing new to publish`);
+      assetBaseUrl = assetBaseUrlFor(tag, repo);
+    } else {
+      const assets = batch.map((e) => join(outDir, "shards", `${e.key}.json.gz`));
+      const title = `Shows index shards — batch ${i + 1}/${batches.length} (${firstKey}\u2013${lastKey})`;
+      const notes = [
+        "Automated shows-index shard release (S-04c).",
+        `keys: ${firstKey}\u2013${lastKey} (${batch.length} shards)`,
+      ].join("\n");
+      ({ asset_base_url: assetBaseUrl } = await publishRelease({ tag, title, notes, assets, exec, repo }));
+      log(`PUBLISHED: ${tag} (${batch.length} shard assets, ${firstKey}\u2013${lastKey})`);
+    }
+    releases.push({ tag, asset_base_url: assetBaseUrl, first_key: firstKey, last_key: lastKey, count: batch.length });
+  }
+  return releases;
 }

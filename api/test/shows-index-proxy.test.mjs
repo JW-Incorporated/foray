@@ -9,7 +9,10 @@ import * as zlib from "node:zlib";
 import * as indexModule from "../shows/index/[...path].ts";
 
 const handler = typeof indexModule.default === "function" ? indexModule.default : indexModule.default.default;
-const { resolveUpstreamAsset, isGzippedAsset, IndexPathError, _setPointerPathForTests } = indexModule;
+const {
+  resolveUpstreamAsset, isGzippedAsset, IndexPathError, _setPointerPathForTests,
+  shardKeyFromRequestPath, resolveShardRelease,
+} = indexModule;
 
 function mockRes() {
   const headers = {};
@@ -136,7 +139,11 @@ test("a recognised top-level file is fetched from asset_base_url and returned as
 test("a shard request fetches the .gz asset and gunzips it before responding", async () => {
   const shardRows = [{ id: 1, t: "Lex Fridman Podcast", a: null, i: null, u: null, img: null, n: null, c: true }];
   const gz = zlib.gzipSync(Buffer.from(JSON.stringify(shardRows)));
-  await withPointerFile({ asset_base_url: "https://example.test/rel" }, () =>
+  const pointer = {
+    asset_base_url: "https://example.test/rel",
+    shard_releases: [{ tag: "t-shards-1", asset_base_url: "https://example.test/rel", first_key: "aa", last_key: "zz", count: 1 }],
+  };
+  await withPointerFile(pointer, () =>
     withMockedFetch(
       async (url) => {
         assert.strictEqual(url, "https://example.test/rel/fr.json.gz");
@@ -186,7 +193,11 @@ test("an upstream non-200 is a 502, not forwarded verbatim, and never cached", a
 });
 
 test("a corrupt (non-gzip) shard asset is a 502, never a crash", async () => {
-  await withPointerFile({ asset_base_url: "https://example.test/rel" }, () =>
+  const pointer = {
+    asset_base_url: "https://example.test/rel",
+    shard_releases: [{ tag: "t-shards-1", asset_base_url: "https://example.test/rel", first_key: "aa", last_key: "zz", count: 1 }],
+  };
+  await withPointerFile(pointer, () =>
     withMockedFetch(
       async () => new Response("not actually gzip", { status: 200 }),
       async () => {
@@ -222,4 +233,111 @@ test("method other than GET/OPTIONS is 405", async () => {
   const res = mockRes();
   await handler(req, res);
   assert.strictEqual(res.statusCode, 405);
+});
+
+/* ==================================================================== */
+/* S-04c: shard batch release resolution                                 */
+/* ==================================================================== */
+
+test("shardKeyFromRequestPath: extracts the key from a shard request, null for a top-level file", () => {
+  assert.strictEqual(shardKeyFromRequestPath("shards/fr.json"), "fr");
+  assert.strictEqual(shardKeyFromRequestPath("shards/a_.json"), "a_");
+  assert.strictEqual(shardKeyFromRequestPath("shards/__.json"), "__");
+  assert.strictEqual(shardKeyFromRequestPath("manifest.json"), null);
+});
+
+test("resolveShardRelease: finds the batch whose first_key/last_key range covers the key", () => {
+  const releases = [
+    { tag: "t-shards-1", asset_base_url: "https://x/t-shards-1", first_key: "aa", last_key: "mm", count: 500 },
+    { tag: "t-shards-2", asset_base_url: "https://x/t-shards-2", first_key: "mn", last_key: "zz", count: 500 },
+  ];
+  assert.strictEqual(resolveShardRelease(releases, "fr").tag, "t-shards-1");
+  assert.strictEqual(resolveShardRelease(releases, "mm").tag, "t-shards-1");
+  assert.strictEqual(resolveShardRelease(releases, "mn").tag, "t-shards-2");
+  assert.strictEqual(resolveShardRelease(releases, "zz").tag, "t-shards-2");
+});
+
+test("resolveShardRelease: returns null when no batch covers the key or the list is empty/undefined", () => {
+  assert.strictEqual(resolveShardRelease([], "fr"), null);
+  assert.strictEqual(resolveShardRelease(undefined, "fr"), null);
+  const releases = [{ tag: "t-shards-1", asset_base_url: "https://x", first_key: "aa", last_key: "mm", count: 1 }];
+  assert.strictEqual(resolveShardRelease(releases, "zz"), null);
+});
+
+test("a shard request fetches from the SHARD RELEASE's asset_base_url, not the top-level one", async () => {
+  const shardRows = [{ id: 1, t: "Lex Fridman Podcast", a: null, i: null, u: null, img: null, n: null, c: true }];
+  const gz = zlib.gzipSync(Buffer.from(JSON.stringify(shardRows)));
+  const pointer = {
+    asset_base_url: "https://example.test/top",
+    release_tag: "shows-index-v1",
+    shard_releases: [
+      { tag: "shows-index-v1-shards-1", asset_base_url: "https://example.test/shard-batch-1", first_key: "aa", last_key: "zz", count: 1298 },
+    ],
+    shards_published: true,
+  };
+  await withPointerFile(pointer, () =>
+    withMockedFetch(
+      async (url) => {
+        assert.strictEqual(url, "https://example.test/shard-batch-1/fr.json.gz",
+          "a shard request must resolve against shard_releases, never the top-level asset_base_url");
+        return new Response(gz, { status: 200 });
+      },
+      async () => {
+        const req = { method: "GET", query: { path: ["shards", "fr.json"] }, headers: {} };
+        const res = mockRes();
+        await handler(req, res);
+        assert.strictEqual(res.statusCode, 200);
+        assert.deepStrictEqual(res.body, shardRows);
+        assert.strictEqual(res.headers["X-Shows-Index-Version"], "shows-index-v1");
+      }
+    )
+  );
+});
+
+test("a shard request for a key with no covering shard_releases batch is a 404, not a 502", async () => {
+  const pointer = {
+    asset_base_url: "https://example.test/top",
+    release_tag: "shows-index-v1",
+    shard_releases: [], // shards not published yet for this pointer
+    shards_published: false,
+  };
+  await withPointerFile(pointer, () =>
+    withMockedFetch(
+      async () => { assert.fail("fetch must not be called when no shard release covers the key"); },
+      async () => {
+        const req = { method: "GET", query: { path: ["shards", "fr.json"] }, headers: {} };
+        const res = mockRes();
+        await handler(req, res);
+        assert.strictEqual(res.statusCode, 404);
+        assert.strictEqual(res.body.available, false);
+        assert.strictEqual(res.headers["Cache-Control"], "no-store");
+      }
+    )
+  );
+});
+
+test("a top-level file request still uses asset_base_url and carries the version header", async () => {
+  const manifest = { export_version: "local:abc123", row_count: 42 };
+  const pointer = {
+    asset_base_url: "https://example.test/top",
+    release_tag: "shows-index-v1",
+    shard_releases: [{ tag: "shows-index-v1-shards-1", asset_base_url: "https://example.test/shard-batch-1", first_key: "aa", last_key: "zz", count: 1 }],
+    shards_published: true,
+  };
+  await withPointerFile(pointer, () =>
+    withMockedFetch(
+      async (url) => {
+        assert.strictEqual(url, "https://example.test/top/manifest.json");
+        return new Response(JSON.stringify(manifest), { status: 200 });
+      },
+      async () => {
+        const req = { method: "GET", query: { path: ["manifest.json"] }, headers: {} };
+        const res = mockRes();
+        await handler(req, res);
+        assert.strictEqual(res.statusCode, 200);
+        assert.deepStrictEqual(res.body, manifest);
+        assert.strictEqual(res.headers["X-Shows-Index-Version"], "shows-index-v1");
+      }
+    )
+  );
 });
