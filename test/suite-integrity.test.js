@@ -1657,6 +1657,18 @@ const FLOORS = {
      REAL node subprocess (no fake exec anywhere) to prove the forwarding
      actually reaches the child's argv. */
   "tools/shows/run-and-publish-execargv.test.mjs": 1,
+  /* S-09 (kanban t_f00c0a28): Postgres path (migrations 0017-0019,
+     load-postgres.mjs, search-shows.mjs). load-postgres.test.mjs and
+     search-shows.test.mjs are the always-run pure-function halves (row
+     shaping, sizing report, query building) — no DB, run everywhere.
+     shows-postgres-integration.test.mjs is the real-Postgres acceptance
+     suite (migrations apply clean twice, golden-query ranking, the 0019
+     rekey preserving a seeded 0016 row) — gated on TEST_DATABASE_URL, so it
+     SKIPS (not fails) outside CI's new `db` job, matching this pipeline's
+     own "inert without a database" contract. */
+  "tools/shows/load-postgres.test.mjs": 9,
+  "tools/shows/search-shows.test.mjs": 7,
+  "tools/shows/shows-postgres-integration.test.mjs": 8,
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
@@ -2163,6 +2175,11 @@ const BACKEND_FLOORS = {
      feed fetch failure — plus that a missing enclosure never fabricates an
      audio_url. */
   "test/ingestShowFeed.test.ts": 8,
+  /* S-09 (kanban t_f00c0a28): shows_catalog/show_id_map schema + pg_trgm
+     assertions against a live Postgres — gated on DATABASE_URL/
+     SHOWS_DATABASE_URL, so it skips (not fails) in the plain `backend`
+     job and only actually runs in the new `db` job's service container. */
+  "test/showsPostgresLive.test.ts": 3,
   /* §4.8 end to end (kanban card t_7f410ffc): within-act stitching rules
      (silence bridge, jingle marks cuts, measured cadence, coverage
      hard-gate), the forward-only cross-act continuity Builder (§6.2),
