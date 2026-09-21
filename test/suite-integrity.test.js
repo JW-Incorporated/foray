@@ -305,6 +305,12 @@ const FLOORS = {
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
   "test/show-episodes-cache.test.js": 10,
+  /* 2026-09-21, founder: "the show description looks like it's something we
+     generated. Is there a field from the show's host that we can pull instead?"
+     There was, and the API had been returning it all along — fetchShowEpisodes
+     discarded it. Mostly guards that it cannot quietly revert to ours, and that
+     arbitrary feed text cannot become markup. */
+  "test/show-description-source.test.js": 11,
   /* 2026-09-17, founder: episode descriptions carry clickable links and clickable
      timestamps that seek. This is the one function in app.js that turns untrusted
      publisher text into markup, so about half of it is injection cases. */

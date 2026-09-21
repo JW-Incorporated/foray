@@ -190,7 +190,12 @@ test("an unchanged refresh does not repaint", () => {
 test("the refresh caches what it fetched, before deciding whether to repaint", () => {
   /* Otherwise the next visit pays the round trip again for a list we already
      have in hand — the original complaint, surviving its own fix. */
-  const idx = SRC.indexOf("cacheShowEpisodes(show.show_id, { episodes, nextCursor: nc, stale: !!stale });");
+  /* `show: header` joined this call on 2026-09-21 — the publisher's show
+     description rides the same cache entry, so a revisit paints it without
+     waiting for the network (test/show-description-source.test.js owns that
+     claim). Matched loosely on the prefix so adding a further field is not a
+     test edit; what this test is about is the ORDER, below. */
+  const idx = SRC.indexOf("cacheShowEpisodes(show.show_id, { episodes, nextCursor: nc, stale: !!stale");
   const repaintIdx = SRC.indexOf("if (cached && sameEpisodeList(cached.episodes, episodes)) return;");
   assert.ok(idx > 0 && repaintIdx > idx, "the write happens first");
 });

@@ -2602,6 +2602,23 @@ async function fetchShowEpisodes(show_id, cursor) {
     return {
       episodes: body.episodes || [],
       nextCursor: body.next_cursor || null,
+      /* THE PUBLISHER'S OWN SHOW DESCRIPTION (founder, 2026-09-21: "the show
+         description looks like it's something we generated. Is there a field
+         from the show's host that we can pull instead?").
+
+         There is, and it has been arriving here all along — this function was
+         simply dropping it. `api/shows/:id/episodes` returns a `show` header,
+         and on the live-fetch path (the one production runs — there is no
+         DATABASE_URL, and that endpoint's own comment says the DB branch is
+         dormant) it carries `description` straight from the feed's
+         `<channel><description>`, sanitised to text by
+         `backend/src/feeds/parser.ts`. Verified against production on
+         2026-09-21: `lex-fridman-podcast` returns his real channel blurb.
+
+         Kept as the whole header rather than just the description: `title` and
+         `image` come with it, and a breadth show that is not in `catalog.json`
+         has no other source for either. */
+      show: body.show || null,
       // `degraded` (no-DB live-fetch failure, S-02) and `stale` (DB-mode
       // cached-stale) are two different backends' names for the same
       // "this isn't a fresh fetch, say so" signal — surfaced identically.
@@ -2905,7 +2922,15 @@ function renderShow(show_id) {
     </div>
     ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
     ${showStarBtn(show.show_id)}
-    ${show.editorial_note ? `<p class="note">${esc(show.editorial_note)}</p>` : ""}
+    <!-- The publisher's own description. EMPTY at first paint and filled by
+         paintShowDescription() when the episode fetch resolves (or instantly
+         from the cache on a revisit) - it comes from the feed, which this page
+         does not have yet when the template is installed. One writer, the same
+         rule the count label above follows.
+         NO BACKTICKS IN THIS COMMENT: it sits inside a template literal, so one
+         would end the string. Caught by node --check. -->
+    <div data-show-description hidden></div>
+    ${show.editorial_note ? `<p class="note ep-why">Why it's in 4a — ${esc(show.editorial_note)}</p>` : ""}
     ${chips ? `<div class="fy-chips">${chips}</div>` : ""}`;
 
   /* S-06: the search box is a real requirement from Wyatt's original ask,
@@ -3245,12 +3270,13 @@ function renderShow(show_id) {
     loaded = cached.episodes;
     fullyLoaded = cached.nextCursor === null;
     paintEpisodeOutcome("loaded");
+    paintShowDescription(cached.show);
     revealSearchIfEligible();
   } else {
     paintEpisodeOutcome("loading");
   }
 
-  fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, error }) => {
+  fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, error, show: header }) => {
     if (!stillMounted()) return; // navigated away before the fetch resolved
 
     if (episodes === null) {
@@ -3271,7 +3297,11 @@ function renderShow(show_id) {
       return;
     }
 
-    cacheShowEpisodes(show.show_id, { episodes, nextCursor: nc, stale: !!stale });
+    cacheShowEpisodes(show.show_id, { episodes, nextCursor: nc, stale: !!stale, show: header });
+    /* BEFORE the unchanged-list early return below. A description is not part
+       of the list, so a refresh that agrees about the episodes must still be
+       able to fill in a description the first paint did not have. */
+    paintShowDescription(header);
 
     /* REPAINT ONLY ON A REAL CHANGE. The common case is that the refresh agrees
        with what is already on screen, and repainting then would throw away the
@@ -3285,6 +3315,43 @@ function renderShow(show_id) {
     paintEpisodeOutcome("loaded");
     revealSearchIfEligible();
   });
+}
+
+/**
+ * Fill the show page's description slot from the PUBLISHER'S feed.
+ *
+ * FOUNDER, 2026-09-21: "the show description looks like it's something we
+ * generated. Is there a field from the show's host that we can pull instead?"
+ *
+ * It did, and there is. What the page showed was `editorial_note` — 220 lines of
+ * our own curatorial copy in `data/catalog.json`, one per curated show ("the
+ * widest bench in fusion/fission podcasting"). Good writing, but it is not the
+ * show's description and it reads as ours because it IS ours. It now sits below
+ * this, labelled as ours.
+ *
+ * The publisher's own text needed no new plumbing at all: it is parsed from the
+ * feed's channel-level description by `backend/src/feeds/parser.ts`, returned by
+ * `api/shows/:id/episodes` in its `show` header, and was being discarded by
+ * `fetchShowEpisodes`, which kept only the episode list.
+ *
+ * TWO REASONS THIS IS A STRICT IMPROVEMENT, not a swap:
+ *   - Every show gets one. `editorial_note` exists for the 220 curated shows
+ *     only; the ~19,900 breadth shows had no description at all.
+ *   - It is the publisher's, so it is right by construction and stays right
+ *     when they rewrite it.
+ *
+ * ESCAPED, not rendered as HTML. This is third-party text from an arbitrary
+ * feed. The episode page's linkifier could be pointed at it later, but that is
+ * a deliberate second step with its own tests, not something to inherit by
+ * accident.
+ */
+function paintShowDescription(header) {
+  const el = $("#view [data-show-description]");
+  if (!el) return;
+  const text = header && typeof header.description === "string" ? header.description.trim() : "";
+  if (!text) { el.hidden = true; el.innerHTML = ""; return; }
+  el.innerHTML = `<p class="show-description">${esc(text)}</p>`;
+  el.hidden = false;
 }
 
 /** Do two fetched pages hold the same episodes, in the same order? Ids only —
