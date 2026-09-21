@@ -47,6 +47,78 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  db:
+    # S-09 (kanban t_f00c0a28): the Postgres path (migrations 0017-0019,
+    # tools/shows/load-postgres.mjs, tools/shows/search-shows.mjs) is inert
+    # in production without DATABASE_URL/SHOWS_DATABASE_URL (both this
+    # job's own steps and the `backend`/tools/shows test suites above
+    # degrade to a documented no-op/skip when neither is set — see
+    # migrate.ts's own "degrades gracefully" contract and
+    # load-postgres.mjs's NO-OP path). This job is the one place either
+    # variable IS set, so it is the only CI job that actually exercises
+    # this code against a real database: applies every migration twice
+    # (idempotency), runs the golden-query search set, and re-runs the
+    # `backend` suite's DB-gated tests (showsPostgresLive.test.ts) plus
+    # tools/shows's DB-gated suite (shows-postgres-integration.test.mjs).
+    #
+    # NOT (yet) added to protect-main's required-checks list (`backend`,
+    # `data-and-site`) — same reasoning `api`/`ios-kit` above document for
+    # themselves: promoting a new job to required is a founder call, not an
+    # implementation default, and this job runs and reports regardless.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: foray_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: install backend deps
+        working-directory: backend
+        run: npm ci
+      - name: apply migrations (0001-0019) — proves clean-twice idempotency
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/foray_ci
+        run: |
+          set -euo pipefail
+          npx tsx src/cli/migrate.ts
+          npx tsx src/cli/migrate.ts   # second pass: every file must report "skip", none may error
+      - name: backend tests against the live database (showsPostgresLive.test.ts + full suite)
+        working-directory: backend
+        # SHOWS_DATABASE_URL, not DATABASE_URL: userInterests.test.ts's
+        # createUserInterestsProvider suite asserts DATABASE_URL is ABSENT
+        # (it guards a genuinely not-yet-implemented PostgresUserInterestsProvider
+        # — a different card's future work, not this one's). showsPostgresLive.test.ts
+        # already checks SHOWS_DATABASE_URL || DATABASE_URL for exactly this reason,
+        # so this job exercises it without setting the variable that test depends
+        # on staying unset.
+        env:
+          SHOWS_DATABASE_URL: postgres://postgres:postgres@localhost:5432/foray_ci
+        run: npm test
+      - name: install tools/shows deps
+        working-directory: tools/shows
+        run: npm install
+      - name: tools/shows tests against the live database (golden-query set, migration idempotency, rekey)
+        working-directory: tools/shows
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/foray_ci
+        run: node --experimental-sqlite --test
+
   api:
     # S-02 (kanban t_4bd3c0a3): api/package.json now declares dependencies
     # (pg, fast-xml-parser) and its own test script, so this mirrors the
