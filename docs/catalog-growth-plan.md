@@ -1,5 +1,18 @@
 # Plan: path to ~every English-language podcast being playable in 4a
 
+> **SUPERSEDED, 2026-09-21 (`4a-shows-pipeline-plan.md`, S-deck,
+> `docs/DECISIONS.md`'s 2026-09-21 S-12 entry).** This plan's whole premise
+> — grow the catalogue in editorial waves toward "every English podcast" —
+> is superseded by the shows-pipeline deck's universal-list-plus-overlay
+> model: the full PodcastIndex dump (millions of shows) is now the list,
+> imported and shard-indexed weekly (S-04), and the curated 220 are an
+> overlay (D8) rather than a wave-grown set this plan's Stages 0–4 would
+> have kept expanding by hand. None of Stages 0–4 below were ever built
+> (as this file's own header already said), so nothing here needed
+> unwinding — this banner exists so a reader doesn't start Stage 0. The
+> language question this plan never reached is still open, tracked as
+> gate **G6** (`HUMAN-ACTIONS.md` #111, card S-17).
+
 *2026-08-31. Requested by Joey, decoupled from the show-pages UI work
 (`docs/show-pages-plan.md`, PR #358, merged) so the two don't block each
 other. Planning only — no implementation in this change.*
