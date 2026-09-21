@@ -7,6 +7,107 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Four founder reports from 2026-09-18 — `fix/resume-and-home` (STACKED on `fix/episode-page-ux`, PR #722)
+
+- **Stacked, not on `main`.** Issue 3 below edits `episodeDescriptionSectionHtml`,
+  which #722 introduces. **Merge #722 first.**
+- **1. The ribbon survives a day.** "The podcast I was listening to should still
+  be in the now playing ribbon at the bottom." Position was never the problem —
+  `position-store.js` has written `cp_pos:<id>` durably since #26. What nothing
+  recorded was the POINTER: which episode that was. `client.js` held it in a
+  module-level `let current = null` and the app booted with no idea. New
+  `player/episode-progress.js` stores one row (`cp_last_episode`) carrying the id
+  plus the snapshot needed to repaint before any catalogue loads — an id alone
+  restores nothing for an episode opened from a show page, which is the founder's
+  own case. `ForayPlayer.restoreLastEpisode()` paints the bar and arms the first
+  press; nothing autoplays.
+- **2. Jump back in holds all three kinds.** The episode card was not missing, it
+  was unreachable: it read `cp_lastpick`, written ONLY when
+  `state.poolIds.has(id)` — so an episode from a show page was never recorded —
+  and additionally gated on `duration_min > commute + 5`, and it recorded what
+  was TAPPED rather than played. It now reads the pointer from (1). Playlists
+  needed no new storage at all: `last_played_at` has been stamped since #558 and
+  two other surfaces already sort by it. All three sort by recency, not by kind.
+- **3. Artwork leads the episode page.** The notes moved into a closed
+  `<details>`; artwork is `min(100%, 68vmin)`, square, centred. Native disclosure
+  rather than a JS toggle — no script under the CSP, accessible for free,
+  find-in-page still opens it. Chapters stay OUT of it: they are navigation, not
+  prose, and they are the part that seeks.
+- **4. The show episode list is cached.** `fetchShowEpisodes` passed
+  `cache: "no-cache"`, forcing a revalidation round trip on EVERY call, and no
+  caller kept the answer. First page per show, in memory, 30-minute TTL,
+  stale-while-revalidate: a cached list paints in the same task and the refresh
+  still goes out, repainting only when the ids actually differ.
+- **Touches:** `player/episode-progress.js` (new) + its test (19, floored),
+  `player/client.js`, `app.js`, `styles.css`,
+  `test/jump-back-in-kinds.test.js` (new, 14, floored),
+  `test/show-episodes-cache.test.js` (new, 10, floored),
+  `test/episode-description-links.test.js` (22 -> 25),
+  `test/suite-integrity.test.js`, `test/data-deletion.test.js` (26 -> 27 cp_ key
+  families), `docs/legal/privacy-policy.md` (the `cp_last_episode` row),
+  `STATE.md`.
+- **Not reproducible here:** (1) needs a relaunch on a device; (4)'s "many
+  seconds" is a real network against a real API. What is pinned is the mechanism
+  in each case — the pointer round-trips, the rail orders across kinds, the load
+  path paints from cache before it fetches and survives a failed refresh.
+- **A trap worth knowing about:** three of these suites read `app.js` with
+  multi-line regexes, which silently stop matching under CRLF — they find
+  nothing rather than failing loudly. A `git stash` round trip rewrote the
+  endings mid-session and turned one red with no source change. All three now
+  normalise on read and are verified green under both.
+- **Owns** `player/client.js`'s `ForayPlayer` surface, `app.js`'s home rail and
+  show-page load path, and the episode page, until it lands.
+
+### Four founder UX reports from 2026-09-17 — `fix/episode-page-ux`
+
+- **Why:** Wyatt, in one message: (1) "It should not be possible to scroll
+  left/right on episode pages." (2) "When I click search, it jumps down to the
+  bottom, so then I need to scroll up to find the top search result for shows."
+  (3) episode descriptions with links and chapter timestamps "needs to improve
+  dramatically, such that it's readable and I can click the links, including to
+  time stamps within the episode (those then result in jumping to that timestamp
+  in 4a)". (4) "It should also not be possible to zoom on the episode slide,
+  when I was trying to skip forward several times it zoomed in instead."
+- **What:** (1) `html, body { max-width: 100%; overflow-x: hidden; overflow-x:
+  clip }` — `clip` wins, `hidden` is the pre-Safari-16 fallback, and `clip` is
+  deliberate: `hidden` would make body a scroll container and break `sticky`
+  `.fy-transport`. Plus the wrapping that stops an over-wide box existing at all
+  (`overflow-wrap: anywhere` on the description, `min-width: 0` on the flex
+  chapter title). (2) the show-search focus handler scrolls the page to the top
+  and re-baselines `lastScrollY` AFTER that scroll. (3) a linkifier: escape
+  everything, then promote http(s) URLs to links and timestamps to `.ep-ts`
+  buttons that seek; chapter rows became seek controls too; a new public
+  `ForayPlayer.seekTo` is what they call. (4) `touch-action: manipulation` on
+  `.fy-btn, .fy-rate, .ep-chapter-row, .ep-ts` — kills double-tap-to-zoom, keeps
+  pinch, and a test pins that the viewport meta never gains `user-scalable=no`.
+- **Touches:** `app.js`, `styles.css`, `player/client.js`,
+  `test/episode-description-links.test.js` (new, 20, floored),
+  `test/no-horizontal-scroll.test.js` (new, 8, floored),
+  `test/search-field-bottom.test.js` (34 -> 36),
+  `test/suite-integrity.test.js`, `STATE.md`.
+- **What is NOT reproducible in CI, said plainly.** (1) and (4) are WKWebView
+  touch behaviours; (2) needs a software keyboard. (1) could not be reproduced
+  in desktop Chrome on the real page either — Chrome breaks long URLs at `/` and
+  `-`, so the mechanism only shows with a genuinely unbreakable token: measured
+  in a 390px harness, a 140-character run of one letter took the document to
+  1321px and made it pan, and today's rules bring it back to 375px. **The
+  specific content that panned Wyatt's episode page was never identified** —
+  this is a general backstop plus the wrapping rule, not a diagnosis. For (2)
+  the measurement that matters is that the #/shows document is **17,712px tall**
+  while the compose pill is `position: fixed`.
+- **NOT done here, and it is the bigger half of (3):** the app does not render
+  publisher HTML. `description_html` IS parsed and stored
+  (`backend/src/catalog/ingestShowFeed.ts`, `showEpisodesStore.ts` — it round
+  trips through `rowToEpisode`) and then **dropped at the API boundary**:
+  `api/shows/[show_id]/episodes.ts:165` and `api/episodes/search.ts:184` return
+  `description_text` only, so the markup has never reached a client. Carrying it
+  needs a sanitizer and touches `api/**`, which is UNLISTED in
+  `tools/ci/path-policy.mjs` — one such file makes a whole PR wait on a human
+  merge click — so it is its own PR. Everything in this one works on the plain
+  text we already ship.
+- **Owns** `app.js`'s episode-page and show-search-focus paths, `styles.css`,
+  and `ForayPlayer`'s public surface in `player/client.js` until it lands.
+
 ### The Foray gate's blind spot: L4 never ran on generated tape (2026-09-15) — `fix/foray-gate-blind-spots`
 
 - **Why:** a review of the two long-stuck generated-Foray PRs (#711, nine days;

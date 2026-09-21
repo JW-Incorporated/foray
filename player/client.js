@@ -90,6 +90,10 @@
 import { PlayerQueueManager } from "./queue-manager.js";
 import { HtmlAudioBackend } from "./html-audio-backend.js";
 import { PositionStore } from "./position-store.js";
+import {
+  makeLastEpisode, writeLastEpisode, readLastEpisode, lastEpisodeState,
+  episodePercentDone, episodeRemainingLabel,
+} from "./episode-progress.js";
 import { SINGLE_ITEM } from "./queue-strategy.js";
 import { seekPrecision, formatTimestamp, EXACT, OWN } from "./seek-policy.js";
 import { itemRuntimeSec } from "./foray-queue.js";
@@ -1041,7 +1045,14 @@ function render() {
 
   // In a Foray the clock is the Foray's, not the source episode's: 31 minutes
   // into somebody else's podcast is not a position this listener recognises.
-  const pos = foray ? forayPosition() : (backend?.currentTime ?? 0);
+  /* A restored bar paints its STORED position, not the element's zero. The
+     element has no src yet — that is what makes the restore cheap — so reading
+     `backend.currentTime` would show a day-old half-listened episode sitting at
+     0:00 with an empty progress bar, which is a quieter version of the bug this
+     restore exists to fix. */
+  const pos = foray
+    ? forayPosition()
+    : (restoredPending ? restoredPending.positionSec : (backend?.currentTime ?? 0));
   const dur = foray ? foray.resolved.totalSec : (backend?.duration ?? current.duration_sec ?? null);
 
   if (!scrubbing && dur) {
@@ -1075,6 +1086,14 @@ function syncCardButtons() {
 }
 
 function setNowPlaying(item, why) {
+  /* CLEARED HERE, because this is the one function every path to "something
+     else is current now" goes through — an ordinary play, a Foray segment, a
+     restore. Clearing it in `play()` alone would leave a restored bar armed
+     while a DIFFERENT episode played, and the next press of the mini bar would
+     abandon what was playing to start yesterday's episode instead.
+     `restoreLastEpisode` sets it immediately AFTER calling this, which is why
+     the order there is not an accident. */
+  restoredPending = null;
   current = item;
   ui.root.hidden = false;
   document.body.classList.add("fp-open");
@@ -1355,8 +1374,35 @@ function openRatePicker() {
  * as two separate actions and a `play` that arrived while already playing must
  * not pause.
  */
+/**
+ * A bar restored from storage that has never loaded audio (founder, 2026-09-18).
+ *
+ * The restored ribbon is a real `current` with a real position and NO loaded
+ * media behind it — the whole point is that it costs nothing until it is
+ * wanted. `manager.resume()` has nothing to resume in that state, so the first
+ * press has to be a full start-then-seek instead. One flag, cleared by the
+ * press, and `setRunning` is the choke point every press goes through — the tap,
+ * the lock screen, the car, the headphone pinch — so none of them can miss it.
+ */
+let restoredPending = null;
+
 async function setRunning(want, source = "tap") {
   if (!manager) return;
+  if (want && restoredPending) {
+    const { item, positionSec } = restoredPending;
+    restoredPending = null;
+    diag.transport(source, "play-restored");
+    const started = await ForayPlayer.play(item, null);
+    /* Seek AFTER the start, not by handing `play` an offset: `play` sets the
+       queue and begins at 0, and the two-step is the same shape a Foray resume
+       already uses (`foray.resumeSeekPending`). A start that failed leaves the
+       position alone rather than seeking a dead element. */
+    if (started && positionSec > 0) {
+      await manager.seek(positionSec, { precise: true });
+      render();
+    }
+    return;
+  }
   /* M-03(b). RECORDED BEFORE THE EARLY RETURN, and that is the interesting
      case rather than an accident: a remote command that arrives while the
      player already believes it is in that state does nothing, and "the car's
@@ -1414,6 +1460,11 @@ async function stopAndClose({ persist = true } = {}) {
   ui.sheet.hidden = true;
   document.body.classList.remove("fp-open", "fp-expanded");
   current = null;
+  /* The bar is gone, so there is nothing armed to resume into. The stored
+     POINTER stays: closing the bar is "get this off my screen", not "forget
+     what I was listening to" — the same distinction the Foray resume point
+     makes two lines above. */
+  restoredPending = null;
   // Same shape the live snapshot has, so the page never has to guess which
   // fields it got.
   const wasForay = foray;
@@ -2037,14 +2088,113 @@ const ForayPlayer = {
     // nobody is on is the one wiring bug this surface can hide.
     media.setActions(episodeMediaSurface);
     setNowPlaying(item, why);
+    /* THE POINTER, written here and nowhere else (founder, 2026-09-18: "the
+       podcast I was listening to should still be in the now playing ribbon").
+       Here because this is the one place an ordinary episode becomes the
+       current one — position is already durable per episode
+       (`position-store.js`), so what was missing was only WHICH episode, and
+       one writer for it means it cannot drift from `current`.
+
+       A refused write is not a reason to refuse the play. The listener loses
+       the ribbon on next launch, which is the old behaviour, not a new
+       failure. */
+    writeLastEpisode(storage, makeLastEpisode(item));
     manager.setQueueFromPick(item);
     await manager.play(0);
     render();
     return true;
   },
 
+  /**
+   * Repaint the mini bar from storage, without loading any audio.
+   *
+   * Called by app.js at init. It is a separate entry point rather than
+   * something `ensureBooted` does on its own because the player deliberately
+   * does not boot until it is needed — but a ribbon that only appears after you
+   * press play is exactly the thing being fixed, so the restore has to be able
+   * to say "boot, paint, and stop there".
+   *
+   * Nothing plays. Autoplay would be both surprising and, on mobile, blocked
+   * for want of a gesture; the press that follows is what starts it
+   * (`restoredPending` in `setRunning`).
+   *
+   * Returns the restored item, or null — so a caller and a test can tell "there
+   * was nothing to restore" from "it happened".
+   */
+  /**
+   * The stored pointer as a home-rail row, or null — "Jump back in"'s episode
+   * card (founder, 2026-09-18: "podcasts and playlists should be there too").
+   *
+   * Needs no `ensureBooted`, unlike `restoreLastEpisode`: this reads storage and
+   * returns data. Home must be able to paint the card without the player having
+   * been built, or the rail would depend on whether something had played this
+   * session — which is the class of bug being fixed.
+   */
+  lastEpisodeCard() {
+    const rec = readLastEpisode(storage);
+    if (!rec) return null;
+    const offset = positions
+      ? positions.resumeOffset(rec.id, { duration: rec.duration_sec ?? null })
+      : 0;
+    if (lastEpisodeState(rec, { positionSec: offset }).state !== "resume") return null;
+    const pct = episodePercentDone(rec, offset);
+    return {
+      ...rec,
+      position_sec: offset,
+      percent: pct === null ? undefined : Math.round(pct * 100),
+      label: episodeRemainingLabel(rec, offset),
+    };
+  },
+
+  restoreLastEpisode() {
+    if (current) return null; // something is already playing; never stomp it
+    const rec = readLastEpisode(storage);
+    if (!rec) return null;
+    ensureBooted();
+    /* The position comes from `PositionStore`, which has owned it since #26 —
+       this module stores no positions of its own, so the bar and the home rail
+       cannot disagree about where the listener got to. */
+    const offset = positions.resumeOffset(rec.id, { duration: rec.duration_sec ?? null });
+    const verdict = lastEpisodeState(rec, { positionSec: offset });
+    if (verdict.state !== "resume") return null;
+    setNowPlaying(rec, null);
+    restoredPending = { item: rec, positionSec: verdict.positionSec };
+    render();
+    return rec;
+  },
+
   isPlaying(id) {
     return isPlaying() && current?.id === id;
+  },
+
+  /**
+   * Move the clock of the ORDINARY episode that is playing (founder,
+   * 2026-09-17: a timestamp in an episode description "then results in jumping
+   * to that timestamp in 4a"). Seconds from the start of the episode.
+   *
+   * This is `episodeMediaSurface.seekTo` made reachable from the page. That
+   * surface exists for the lock screen and the car; the same move from a tap in
+   * the description had no public path at all, and app.js cannot reach
+   * `manager` — the whole point of this module's boundary.
+   *
+   * REFUSES ON A FORAY, deliberately, rather than doing something plausible. A
+   * Foray's clock is the Foray's, not any one episode's: `foraySeek` takes a
+   * position on the assembled tape, and handing it a timestamp read off one
+   * source episode's description would seek to a confidently wrong place.
+   * Returns false so a caller can tell "did not happen" from "happened".
+   *
+   * `render()` afterwards for the reason #689 gives on the two surfaces below:
+   * a seek that moves the audio and leaves the page painting the old position
+   * is the bug that fix exists to prevent.
+   */
+  async seekTo(position) {
+    if (foray) return false;
+    if (!current) return false;
+    const secs = Number(position);
+    if (!Number.isFinite(secs)) return false;
+    await manager.seek(Math.max(0, secs), { precise: true });
+    render();
+    return true;
   },
 
   /** Subscribe to "an ordinary (non-Foray) episode just finished playing".

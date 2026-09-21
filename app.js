@@ -2405,6 +2405,58 @@ function renderAllShows(initialQuery = "") {
          last sat, and a stale baseline can hand the handler a large fake
          downward delta on the very first frame after focus. */
       showSearchFocusedAt = Date.now();
+      /* TO THE TOP, ON FOCUS (founder, 2026-09-17: "When I click search, it
+         jumps down to the bottom, so then I need to scroll up to find the top
+         search result for shows.")
+
+         The compose pill is `position: fixed` at the bottom edge, so it needs
+         no scrolling to be reachable — but the page under it is the full A–Z
+         show list, 17,712px tall as measured on 2026-09-17. iOS scrolls a
+         focused field into view against the LAYOUT viewport as the keyboard
+         comes up, and on a document that tall the correction lands thousands of
+         pixels down. Results then paint at the TOP of the page, above where the
+         listener is now standing, which is the "scroll up to find the top
+         result" in the report.
+
+         Desktop Chrome hides this: typing collapses the document to one
+         viewport (the browse list is hidden while searching) and the browser
+         clamps scrollY back to 0 on its own. Measured in a 390px harness — jump
+         to 6000, type, land at 0, first result at y=125. That clamp is the
+         browser being helpful, not a contract, and iOS with a keyboard up does
+         not do it. So the page says where it wants to be instead of hoping.
+
+         Before the results exist, not after: the scroll has to be settled while
+         the keyboard animates, or it fights the listener's own first scroll.
+
+         ONLY WHEN THE FIELD IS EMPTY, and that qualifier is the whole rule
+         rather than a detail. The first draft scrolled on EVERY focus, which
+         broke the opposite case just as badly: a listener scrolled down into
+         their results who taps the field to edit the query got yanked back to
+         the top — the same rudeness, pointed the other way. It also made the
+         very next upward scroll read as a large DOWNWARD delta (the page had
+         just moved to 0 under it), so `maybeDismissKeyboardOnScroll` blurred the
+         field and dropped the keyboard. Caught by
+         test/playwright/tests/search-chrome-dock.spec.js's "a downward scroll
+         blurs the field; an upward one does not", in a real browser, which is
+         the only place that arithmetic is observable.
+
+         An empty field is the case the founder reported: you are STARTING a
+         search, whatever is under you is the A-Z browse list, and the results
+         will paint at the top. A field with a query in it means you are already
+         reading results, and where you are standing is where you chose to be. */
+      if (!input.value.trim()) scrollPageTo(0);
+      /* Re-baselined AFTER the scroll above, and that order is the whole of it.
+         `maybeDismissKeyboardOnScroll` measures a DELTA against this; a
+         baseline captured before we move leaves the next frame comparing the
+         new position against the old one and reading a large fake downward
+         delta, which blurs the field and drops the keyboard the instant the
+         listener starts typing.
+
+         Read, not assumed to be 0. `scrollPageTo` moves a real viewport to 0,
+         but it is deliberately a no-op where there is nothing to move (its own
+         guard, for the node:vm suites), and asserting a position the viewport
+         never took is how this handler would start lying about the baseline.
+         Caught by test/keyboard-chrome-and-scroll.test.js's up-scroll case. */
       lastScrollY = window.scrollY || 0;
       updateShowBrowseVisibility();
     });
@@ -2486,11 +2538,65 @@ function fullCatalogueRowToEpRowItem(show, ep) {
    as "the full list is now loaded" (see its own honesty rule below: a
    present cursor must never be silently dropped by a caller that stops
    paging on its own accord). */
+/* ---------- the first page of a show's episodes, remembered ----------------
+
+   FOUNDER, 2026-09-18: "I've had to load Lex's entire episode list multiple
+   times now and each time takes many seconds to load."
+
+   Nothing was cached. `fetchShowEpisodes` passed `cache: "no-cache"`, which
+   forces a revalidation against the origin on EVERY call, and no caller kept
+   the answer — so every visit to a show page paid the full round trip again,
+   and so did every "load more" page the listener had already scrolled past.
+
+   WHAT IS CACHED, and what deliberately is not. The FIRST page only, per show.
+   That is the page every visit starts from and therefore the one that is paid
+   for repeatedly; deeper pages are reached by scrolling, which is a thing you
+   did on purpose and do not usually repeat. Caching the whole keyset walk would
+   also mean storing an unbounded list per show against a cursor scheme whose
+   invalidation rules we do not control.
+
+   STALE-WHILE-REVALIDATE, not a read-through cache. A podcast gains episodes;
+   a cache that served yesterday's list until it expired would answer the
+   founder's complaint by creating a subtler one. So a cached page paints
+   IMMEDIATELY and a fetch still goes out behind it, and the list is replaced
+   only if the answer actually differs — see `renderShow`. The listener sees
+   episodes in one frame instead of several seconds, and still sees today's.
+
+   TTL exists only to bound how stale the FIRST paint can be, not to gate the
+   refresh. The refresh is unconditional.
+
+   In memory, not durable. `state` dies with the tab, which is the right
+   lifetime for a list the API can re-derive cheaply; an IndexedDB copy would
+   add an eviction policy and a schema for no gain the founder asked about. */
+const SHOW_EPISODES_TTL_MS = 30 * 60 * 1000;
+
+/** Cached first pages, `show_id -> { at, episodes, nextCursor, stale }`. */
+const showEpisodesCache = new Map();
+
+/** The cached first page, or null when absent or past its TTL. */
+function cachedShowEpisodes(show_id) {
+  const hit = showEpisodesCache.get(show_id);
+  if (!hit) return null;
+  if (Date.now() - hit.at > SHOW_EPISODES_TTL_MS) { showEpisodesCache.delete(show_id); return null; }
+  return hit;
+}
+
+function cacheShowEpisodes(show_id, payload) {
+  showEpisodesCache.set(show_id, { ...payload, at: Date.now() });
+}
+
 async function fetchShowEpisodes(show_id, cursor) {
   try {
     const path = `api/shows/${encodeURIComponent(show_id)}/episodes`;
     const url = cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
-    const res = await fetch(apiUrl(url), { cache: "no-cache" });
+    /* `cache: "no-cache"` is gone. It forced a full revalidation round trip on
+       every single call — the HTTP cache was never allowed to answer, so the
+       endpoint's own `Cache-Control` could not help either. `"default"` lets a
+       fresh response be reused and a stale one be revalidated, which is what
+       those headers are for. Our own `showEpisodesCache` sits above this and is
+       what makes the first paint instant; this is the second line of defence,
+       and it is the one that also covers the deeper pages. */
+    const res = await fetch(apiUrl(url));
     if (!res.ok) return { episodes: null, nextCursor: null, error: `status ${res.status}` };
     const body = await res.json();
     return {
@@ -3129,21 +3235,49 @@ function renderShow(show_id) {
      a frame is drawn, exactly as when this was baked into the template.
      Placed immediately before the fetch that will supersede it, so the four
      outcomes of one load read as four calls to one function. */
-  paintEpisodeOutcome("loading");
+  /* A CACHED FIRST PAGE PAINTS NOW (founder, 2026-09-18 — Lex's list taking
+     many seconds on every visit). "loading" is still the terminal path when
+     there is nothing cached; when there is, the list is on screen in this same
+     task and the fetch below becomes a background refresh. */
+  const cached = cachedShowEpisodes(show.show_id);
+  if (cached && cached.episodes.length) {
+    if (cached.stale) anyStale = true;
+    loaded = cached.episodes;
+    fullyLoaded = cached.nextCursor === null;
+    paintEpisodeOutcome("loaded");
+    revealSearchIfEligible();
+  } else {
+    paintEpisodeOutcome("loading");
+  }
 
   fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, error }) => {
     if (!stillMounted()) return; // navigated away before the fetch resolved
 
     if (episodes === null) {
+      /* A FAILED REFRESH BEHIND A GOOD CACHED LIST CHANGES NOTHING ON SCREEN.
+         Replacing a list the listener is already reading with "couldn't load"
+         because the revalidation missed would be a regression introduced by the
+         cache — the episodes are right there and still valid. The error is only
+         terminal when there is nothing painted. */
+      if (cached && cached.episodes.length) return;
       lastLoadError = error || "load failed";
       paintEpisodeOutcome("failed");
       return;
     }
 
     if (episodes.length === 0) {
+      if (cached && cached.episodes.length) return; // same reasoning as above
       paintEpisodeOutcome("empty");
       return;
     }
+
+    cacheShowEpisodes(show.show_id, { episodes, nextCursor: nc, stale: !!stale });
+
+    /* REPAINT ONLY ON A REAL CHANGE. The common case is that the refresh agrees
+       with what is already on screen, and repainting then would throw away the
+       listener's scroll position and any "load more" pages they had already
+       pulled in — turning a silent background refresh into a visible jump. */
+    if (cached && sameEpisodeList(cached.episodes, episodes)) return;
 
     if (stale) anyStale = true;
     loaded = episodes;
@@ -3151,6 +3285,15 @@ function renderShow(show_id) {
     paintEpisodeOutcome("loaded");
     revealSearchIfEligible();
   });
+}
+
+/** Do two fetched pages hold the same episodes, in the same order? Ids only —
+    a description edit upstream is not a reason to yank the list out from under
+    someone who is reading it. */
+function sameEpisodeList(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) if (a[i].id !== b[i].id) return false;
+  return true;
 }
 
 function touchPlaylistPlayed(id) {
@@ -5878,35 +6021,137 @@ function homeGreeting() {
     section (docs/ux/foray-mockup.jsx `HomeScreen`'s first row). Degrades
     to "" when neither has anything to resume, so the section simply does
     not render rather than showing an empty rail. */
+/**
+ * "Jump back in" — FORAYS, PODCASTS AND PLAYLISTS, most recent first.
+ *
+ * FOUNDER, 2026-09-18: "Only forays are in the jump back in section, podcasts
+ * and playlists should be there too."
+ *
+ * WHY ONLY FORAYS WERE THERE, because the episode card was not missing — it was
+ * unreachable. It came from `currentContinue()`, which reads `cp_lastpick`, and
+ * that key has three gates the founder's own listening fails:
+ *
+ *   1. `cp_lastpick` is written ONLY when `state.poolIds.has(id)` — the discover
+ *      pool. An episode opened from a show page (Lex's episode list, which is
+ *      what he was listening to) is not in the pool, so nothing was ever
+ *      recorded for it.
+ *   2. It is gated on `duration_min > commute + 5`, so a short episode never
+ *      qualified however recently it was played.
+ *   3. It records what you TAPPED, not what you PLAYED or how far you got.
+ *
+ * So the episode card now comes from the same durable pointer that restores the
+ * now-playing ribbon (`player/episode-progress.js` + `PositionStore`), which has
+ * none of those three problems: it is written when playback actually starts, for
+ * any episode from anywhere, and the position behind it is the real one.
+ *
+ * PLAYLISTS need no new storage at all — `last_played_at` has been stamped on
+ * every play since #558, and two other surfaces already sort by it. They were
+ * simply never offered here.
+ *
+ * ORDERED BY RECENCY ACROSS ALL THREE, not grouped by kind. A rail that always
+ * put Forays first would reproduce the complaint the day a Foray was the oldest
+ * thing on it. Forays carry no timestamp in `forayResumeList`'s rows, so they
+ * sort on the store's own `updated_at` where present and fall to the end
+ * otherwise — deliberately conservative: an unknown time must not out-rank a
+ * known one.
+ */
 function jumpBackInV2Html() {
-  const resumeRows = forayResumeRows();
-  const continueItem = currentContinue();
-  if (!resumeRows.length && !continueItem) return "";
-
-  const forayCards = resumeRows.map(p => `
-    <a class="hv2-jbi-card" href="#/foray/${esc(p.id)}">
-      <span class="hv2-jbi-kicker">Jump back in</span>
-      <span class="hv2-jbi-title">${esc(p.title || p.id)}</span>
-      <span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(p.percent))}"></span></span>
-      <span class="hv2-jbi-left">${esc(p.label)}</span>
-    </a>`).join("");
-
-  let episodeCard = "";
-  if (continueItem) {
-    snapshot(continueItem.id, continueItem);
-    episodeCard = `
-    <a class="hv2-jbi-card" href="#/episode/${esc(encodeURIComponent(continueItem.id))}"
-       data-ev="picked" data-ep="${esc(continueItem.id)}" data-ctx="jbi-episode">
-      <span class="hv2-jbi-kicker">Jump back in</span>
-      <span class="hv2-jbi-title">${esc(continueItem.title)}</span>
-      <span class="hv2-jbi-sub">${esc(continueItem.show || "")}</span>
-    </a>`;
-  }
-
+  const cards = jumpBackInEntries();
+  if (!cards.length) return "";
   return `<section class="hv2-section hv2-jbi">
     <h2 class="hv2-title">Jump back in</h2>
-    <div class="hv2-hscroll">${forayCards}${episodeCard}</div>
+    <div class="hv2-hscroll">${cards.map(jumpBackInCardHtml).join("")}</div>
   </section>`;
+}
+
+/** The rail's contents as data — one array of `{kind, at, ...}`, sorted, capped.
+    Split out from the markup so the ORDERING is testable without parsing HTML. */
+function jumpBackInEntries(limit = 6) {
+  const entries = [];
+
+  for (const p of forayResumeRows()) {
+    entries.push({
+      /* `updated_at`, the shape `forayResumeList` actually returns — spelling
+         this `updatedAt` silently sorted every Foray to the end of the rail,
+         which is the founder's complaint with the kinds swapped round. */
+      kind: "foray", id: p.id, at: p.updated_at || null,
+      title: p.title || p.id, sub: "Foray", percent: p.percent, left: p.label,
+    });
+  }
+
+  const ep = lastEpisodeCard();
+  if (ep) entries.push(ep);
+
+  /* `.filter(p => p.last_played_at)` and not "or created": a playlist you built
+     and never played is not something you are jumping BACK into. It has its own
+     home on the playlists page. */
+  for (const p of playlists().filter(p => p.last_played_at)) {
+    entries.push({
+      kind: "playlist", id: p.id, at: p.last_played_at,
+      title: p.title || p.name || "Playlist",
+      sub: `${resolveParts(p).length} parts`,
+    });
+  }
+
+  /* An entry with no timestamp sorts last rather than first — an unknown time
+     must never out-rank a known one. */
+  return entries
+    .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))
+    .slice(0, limit);
+}
+
+/** The episode entry, from the durable pointer the ribbon restores from. */
+function lastEpisodeCard() {
+  const player = window.ForayPlayer;
+  if (typeof player?.lastEpisodeCard !== "function") return null;
+  try {
+    const r = player.lastEpisodeCard();
+    if (!r) return null;
+    /* Seeded into the item index so a tap can play it without waiting for a
+       catalogue that may not hold it at all — the pointer's snapshot carries
+       `audio_url` precisely so this is possible. */
+    snapshot(r.id, r);
+    return {
+      kind: "episode", id: r.id, at: r.updated_at || null,
+      title: r.title || r.id, sub: r.show || "",
+      percent: r.percent, left: r.label,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function jumpBackInCardHtml(c) {
+  const bar = typeof c.percent === "number"
+    ? `<span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(c.percent))}"></span></span>`
+    : "";
+  const left = c.left ? `<span class="hv2-jbi-left">${esc(c.left)}</span>` : "";
+  const sub = c.sub ? `<span class="hv2-jbi-sub">${esc(c.sub)}</span>` : "";
+  /* The `picked` logging attributes ride on the episode card only, as before —
+     a Foray and a playlist are not pool episodes and `bindPickLogging`'s
+     handler reads `data-ep` as an episode id. */
+  const ev = c.kind === "episode"
+    ? ` data-ev="picked" data-ep="${esc(c.id)}" data-ctx="jbi-episode"`
+    : "";
+  const id = esc(encodeURIComponent(c.id));
+  /* THE `#/` IS LITERAL IN THE TEMPLATE, and only the route segment and the id
+     are interpolated — the form every other link in this file uses.
+
+     Two earlier drafts got this wrong and the security suite caught both. The
+     first built one `c.href` string and interpolated it whole, which
+     "every interpolated href and src passes through safeUrl" rejects. The
+     obvious repair — wrapping it in `safeUrl` — would have been WORSE than
+     noisy: `safeUrl` admits http(s) only and answers "#" for anything else, so
+     every in-app route here would have become a dead link. The real rule
+     underneath that test is that a link's SCHEME must be fixed by the code and
+     never carried in data, and a literal `#/` prefix is how this file says so. */
+  const route = c.kind === "foray" ? "foray" : c.kind === "playlist" ? "playlist" : "episode";
+  return `
+    <a class="hv2-jbi-card" href="#/${route}/${id}"${ev}>
+      <span class="hv2-jbi-kicker">Jump back in</span>
+      <span class="hv2-jbi-title">${esc(c.title)}</span>
+      ${sub}${bar}${left}
+    </a>`;
 }
 
 /** One Foray card for "Forays for you", carrying its SegmentStrip (U-04) —
@@ -6313,15 +6558,194 @@ function fmtChapterTime(seconds) {
   return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${mm}:${ss}`;
 }
 
+/* ---------- episode descriptions that are worth reading (founder, 2026-09-17)
+
+   "For episodes that have good descriptions with links and timestamps for
+   chapters through the conversation, the formatting in 4a needs to improve
+   dramatically, such that it's readable and I can click the links, including to
+   time stamps within the episode (those then result in jumping to that
+   timestamp in 4a)."
+
+   The description arrived as one `esc()`'d blob inside a single <p>. Every URL
+   a publisher wrote was dead text, every timestamp was dead text, and a long
+   sponsor URL made the whole page pan sideways (the other half of today's
+   fix). `white-space: pre-line` was carrying the entire burden of "formatting".
+
+   WHAT THIS DOES NOT DO, and why. It does not render publisher HTML. The feed's
+   `description_html` is parsed and stored by `backend/src/catalog/
+   ingestShowFeed.ts` and read straight back out by `rowToEpisode` — and then
+   DROPPED at the API boundary: `api/shows/[show_id]/episodes.ts` and
+   `api/episodes/search.ts` both return `description_text` only, so the markup
+   has never reached a client. Carrying it is a change to `api/**`, which is
+   unlisted in `tools/ci/path-policy.mjs` and therefore makes a whole PR wait on
+   a human merge click (CLAUDE.md), so it is its own PR and its own sanitizer.
+   Everything here works on the plain text we already ship, today.
+
+   SO THIS IS A LINKIFIER, and it is deliberately a small one: escape
+   everything, then promote two shapes — an http(s) URL, and a timestamp — into
+   controls. Nothing else in the text can become markup, because the only HTML
+   in the output is the HTML this function writes. */
+
+/** `1:02:45` / `12:34` / `4:07` -> seconds. Null for anything that is not a
+    timestamp, INCLUDING an out-of-range minute or second, which is how a score
+    ("a 65:40 split") or a ratio stays plain text. */
+function parseTimestampSeconds(raw) {
+  const m = /^(?:(\d{1,3}):)?([0-5]?\d):([0-5]\d)$/.exec(String(raw).trim());
+  if (!m) return null;
+  const h = m[1] ? Number(m[1]) : 0;
+  return h * 3600 + Number(m[2]) * 60 + Number(m[3]);
+}
+
+/* URL first in the alternation so a timestamp inside a URL's path or query is
+   never lifted out of it. Trailing `.,;:)]}` are excluded from the match rather
+   than trimmed afterwards — a URL at the end of a sentence is the common case
+   and the full stop belongs to the sentence. */
+const DESC_TOKEN_RE = /(https?:\/\/[^\s<>"']*[^\s<>"'.,;:)\]}])|(\b(?:\d{1,3}:)?\d{1,2}:[0-5]\d\b)/g;
+
+/**
+ * The description as safe HTML: text escaped, URLs linked, timestamps turned
+ * into seek controls.
+ *
+ * `durationSec` (optional) is the honesty guard. A timestamp past the end of
+ * the episode is not a chapter mark — it is a phone number, a date, a score, or
+ * a timestamp for a DIFFERENT episode the publisher pasted in — and a control
+ * that seeks somewhere the audio does not reach is worse than plain text. When
+ * the duration is unknown nothing is filtered, because refusing every timestamp
+ * on an episode whose length we failed to record would be the wrong default.
+ */
+function episodeDescriptionHtml(text, durationSec = null) {
+  const src = String(text ?? "");
+  if (!src) return "";
+  let out = "";
+  let last = 0;
+  DESC_TOKEN_RE.lastIndex = 0;
+  let m;
+  while ((m = DESC_TOKEN_RE.exec(src)) !== null) {
+    out += esc(src.slice(last, m.index));
+    const [whole, url, stamp] = m;
+    if (url) {
+      /* `safeUrl` returns "#" for any scheme but http(s), so a script-bearing
+         or inline-data URL cannot become a live href here even though the regex
+         above would not have matched one in the first place. Belt and braces,
+         and it is the same helper every other href in this file goes through.
+         (The scheme names are spelled around rather than written out: the
+         `no ... URL is constructed anywhere in the source` invariant in
+         test/app-security.test.js greps this file for them, comments included,
+         and it is a better rule than any one comment's convenience.)
+         `rel="noopener noreferrer"` because these point off our origin. */
+      out += `<a href="${esc(safeUrl(url))}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`;
+    } else {
+      const secs = parseTimestampSeconds(stamp);
+      const inRange = secs !== null && (durationSec === null || secs <= durationSec);
+      out += inRange
+        ? `<button type="button" class="ep-ts" data-ts="${esc(String(secs))}" aria-label="Play from ${esc(stamp)}">${esc(stamp)}</button>`
+        : esc(whole);
+    }
+    last = m.index + whole.length;
+  }
+  out += esc(src.slice(last));
+  return out;
+}
+
+/* COLLAPSED BY DEFAULT (founder, 2026-09-18): "When I'm listening to a podcast
+   with a lot of notes the episode page is just notes; the default should be I
+   mostly see album artwork and need to intentionally scroll somewhere to see
+   notes."
+
+   Some publishers write two thousand words of links, sponsor copy and chapter
+   lists into every episode. Rendered in full and in flow, that is the entire
+   page: the artwork, the play button and "more from this show" all get pushed
+   off the first screen by the least important thing on it.
+
+   A NATIVE `<details>`, not a JS toggle. It needs no script (the page is
+   `script-src 'self'` with no inline handlers), it is keyboard- and
+   screen-reader-accessible for free, it holds its own state, and browser find-
+   in-page can still open it. A hand-rolled class-swap would be more code and
+   less accessible.
+
+   NOT a line-clamp with a fade. A clamp still renders the whole block into the
+   layout and still needs a control to undo it — it just makes the page a fixed
+   amount of notes instead of an unbounded amount, and the founder's ask is
+   about what the page IS by default, not about how tall the notes are.
+
+   Chapters stay OUT of this and remain visible: they are navigation, not prose —
+   short, scannable, and now individually tappable to seek. Burying the one part
+   of the notes that does something would be the wrong half to hide. */
+function episodeDescriptionSectionHtml(item) {
+  if (!item.description) return "";
+  const durationSec = item.duration_min ? item.duration_min * 60 : null;
+  return `<details class="ep-description">
+      <summary class="ep-description-toggle">Episode notes</summary>
+      <p class="ep-description-text">${episodeDescriptionHtml(item.description, durationSec)}</p>
+    </details>`;
+}
+
 function episodeChaptersHtml(item) {
   const chapters = Array.isArray(item.chapters) ? item.chapters : [];
   if (!chapters.length) return "";
+  /* Each row is a seek control now, for the same reason the timestamps in the
+     description are: a chapter list you cannot jump from is a table of contents
+     with no page numbers. `data-ts` is the one contract both share, so
+     `bindEpisodeSeeks` binds them in a single pass. */
   return `<section class="ep-chapters">
     <h3>Chapters</h3>
     <ol class="ep-chapters-list">
-      ${chapters.map(c => `<li><span class="ep-chapter-time">${esc(fmtChapterTime(c.start_time_seconds))}</span><span class="ep-chapter-title">${esc(c.title || "")}</span></li>`).join("")}
+      ${chapters.map(c => {
+        /* `== null` FIRST, because `Number(null)` is 0 and `Number("")` is 0 —
+           a chapter with no recorded start would otherwise render as a control
+           that seeks confidently to the beginning. Caught by a test. */
+        const secs = c.start_time_seconds == null ? NaN : Number(c.start_time_seconds);
+        const time = esc(fmtChapterTime(c.start_time_seconds));
+        const title = esc(c.title || "");
+        return Number.isFinite(secs)
+          ? `<li><button type="button" class="ep-chapter-row" data-ts="${esc(String(secs))}"><span class="ep-chapter-time">${time}</span><span class="ep-chapter-title">${title}</span></button></li>`
+          : `<li><span class="ep-chapter-time">${time}</span><span class="ep-chapter-title">${title}</span></li>`;
+      }).join("")}
     </ol>
   </section>`;
+}
+
+/**
+ * One delegated listener for every `data-ts` control on the page — the
+ * description's timestamps and the chapter rows alike.
+ *
+ * PLAY THEN SEEK, in that order, and only ever on this episode. `ForayPlayer`
+ * starts an item at 0 (`manager.play(0)`), so a jump is "make this the current
+ * item if it is not already, then move the clock". When it IS already current,
+ * the seek alone is the whole action — restarting would throw away the thing
+ * the listener is in the middle of.
+ */
+function bindEpisodeSeeks(scope, item) {
+  /* PER ELEMENT, with the `_bound` guard — `bindPlay`/`bindStars`'s idiom, and
+     not a delegated listener on `scope`.
+     The first draft delegated from `#view`, which is the one node on this page
+     that OUTLIVES the render: `renderEpisode` replaces its innerHTML but never
+     the element, so every visit to an episode page added another listener, each
+     closing over its own `item`. Visit three episodes and one tap on a
+     timestamp runs three handlers, two of which start playing an episode the
+     listener is no longer looking at. Binding to the buttons themselves means
+     the listeners die with the markup they belong to. */
+  scope.querySelectorAll("[data-ts]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const secs = Number(btn.dataset.ts);
+      if (!Number.isFinite(secs)) return;
+      try {
+        if (!window.ForayPlayer || !window.ForayPlayer.canPlay(item)) return;
+        /* Play only when this is not already the current episode — a restart
+           would throw away the thing the listener is in the middle of. Then
+           seek, always: that is the whole of what the control promises. */
+        if (!window.ForayPlayer.isPlaying(item.id)) await window.ForayPlayer.play(item, "timestamp");
+        await window.ForayPlayer.seekTo(secs);
+      } catch (_) {
+        /* A seek that cannot happen is not a reason to break the page — the
+           same rule the rest of this file's playback bindings follow. */
+      }
+    });
+  });
 }
 
 function renderEpisode(id) {
@@ -6350,7 +6774,7 @@ function renderEpisode(id) {
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id)}</div>
-      ${item.description ? `<section class="ep-description"><h3>Episode description</h3><p class="ep-description-text">${esc(item.description)}</p></section>` : ""}
+      ${episodeDescriptionSectionHtml(item)}
       ${episodeChaptersHtml(item)}
       ${moreFromShow(item)}
     </div>`;
@@ -6358,6 +6782,7 @@ function renderEpisode(id) {
   bindStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
+  bindEpisodeSeeks($("#view"), item);
 }
 
 /* The count printed here is `resolveParts(p).length` — the SAME call
@@ -8498,6 +8923,27 @@ function forayListHtml() {
    not leave it on someone else's home screen. A resume row that ignored that
    would reintroduce exactly the leak that rule closed — so with no `?foray=` in
    the URL, a draft's progress is remembered and simply not advertised. */
+/** Ask the player to repaint the mini bar from the stored pointer, once the
+    bridge exists. Re-renders home afterwards so "Jump back in" picks up the
+    restored episode on the same paint rather than on the next navigation. */
+function restoreNowPlayingRibbon() {
+  const go = () => {
+    try {
+      const restored = window.ForayPlayer?.restoreLastEpisode?.();
+      if (restored && isHomeRoute()) renderCurrentPage();
+    } catch (_) { /* a ribbon that cannot be restored is not a reason to fail boot */ }
+  };
+  if (window.ForayPlayer) go();
+  else window.addEventListener("forayplayer:ready", go, { once: true });
+}
+
+/** True when the current route is the home screen — the only page whose content
+    changes as a result of the restore. */
+function isHomeRoute() {
+  const h = location.hash || "#/";
+  return h === "#/" || h === "#";
+}
+
 function forayResumeRows() {
   if (typeof window.ForayPlayer?.forayResumeList !== "function") return [];
   const visible = new Set(forayCards().map(f => f.id));
@@ -10735,6 +11181,22 @@ async function init() {
   state.ready = true;
   enterForayFromQuery();
   route();
+  /* THE RIBBON COMES BACK (founder, 2026-09-18: "When I come back to 4a after a
+     day, the podcast I was listening to should still be in the now playing
+     ribbon at the bottom.")
+
+     AFTER `route()`, for the same reason the directory refresh below is: the
+     first paint is the thing on the critical path and this is not. It loads no
+     audio — it paints the bar from the stored pointer and arms the first press
+     — so the cost is building the player's UI once, which pressing play would
+     have done anyway.
+
+     Guarded on the bridge existing at all: `player/client.js` is a deferred
+     module and app.js is a classic script, so on a slow parse this runs before
+     `window.ForayPlayer` is there. The `forayplayer:ready` event is the app's
+     existing answer to exactly that race, and this rides it rather than
+     inventing a poll. */
+  restoreNowPlayingRibbon();
   logEvent("session_shown", { session_id: state.session.session_id });
   trySyncEvents();
 

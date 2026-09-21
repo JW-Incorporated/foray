@@ -909,3 +909,69 @@ test("there is still exactly one keyboard detector in the app", () => {
   assert.match(APP_SRC, /vv\.addEventListener\("resize"/, "…the resize half");
   assert.match(APP_SRC, /vv\.addEventListener\("scroll"/, "…and the scroll half, which is the re-anchor frame");
 });
+
+/* ---------- focusing the field lands the page at the top -------------------
+
+   FOUNDER, 2026-09-17, verbatim: "When I click search, it jumps down to the
+   bottom, so then I need to scroll up to find the top search result for shows."
+
+   This is the cost of the very thing this file pins. The pill is fixed to the
+   bottom edge and needs no scrolling to reach — but the document under it is
+   the whole A-Z show list, measured at 17,712px in a 390px harness on
+   2026-09-17. iOS scrolls a focused field into view against the LAYOUT viewport
+   as the keyboard rises, and on a document that tall the correction lands
+   thousands of pixels down. Results paint at the TOP, above where the listener
+   now stands, and the only way back to the best match is a long scroll up.
+
+   THE LIMIT, stated rather than papered over: desktop Chrome cannot reproduce
+   it. Typing hides the browse list, the document collapses to one viewport, and
+   the browser clamps scrollY to 0 by itself — measured in the same harness:
+   jump to 6000, type, land at 0, first result at y=125. That clamp is the
+   browser being helpful, not a contract, and it is absent on iOS with a
+   keyboard up. So what is pinned here is that the app states the position
+   itself rather than inheriting whatever the browser chose. */
+
+test("focusing the show-search field scrolls the page to the top", () => {
+  /* MUTATION: delete the `scrollPageTo(0)` line from the focus handler. This
+     goes red. RUN: failed as named. */
+  const focusHandler = /input\.addEventListener\("focus",\s*\(\)\s*=>\s*\{([\s\S]*?)\n\s{4}\}\);/.exec(APP_SRC);
+  assert.ok(focusHandler, "the show-search field must still have a focus handler");
+  /* GATED ON AN EMPTY FIELD, and that gate is load-bearing. Scrolling on EVERY
+     focus — the first draft — broke the mirror-image case: a listener scrolled
+     into their results who taps the field to edit the query was yanked to the
+     top, and the next upward scroll then read as a large DOWNWARD delta and
+     dropped the keyboard. A real browser caught that and these node:vm suites
+     could not: test/playwright/tests/search-chrome-dock.spec.js, "a downward
+     scroll blurs the field; an upward one does not".
+     MUTATION: drop the `if (!input.value.trim())` guard — this stays green, and
+     that playwright spec goes red. Which is the honest note to leave here: the
+     guard's REASON lives in a browser, not in this file. */
+  assert.match(focusHandler[1], /if \(!input\.value\.trim\(\)\) scrollPageTo\(0\)/,
+    "focus on an EMPTY field must put the page at the top, where the results paint");
+});
+
+test("the scroll-dismiss baseline is re-read AFTER the scroll, not before it", () => {
+  /* Not cosmetic, and the ORDER is the invariant — not the value.
+     `maybeDismissKeyboardOnScroll` measures a DELTA against `lastScrollY`. Read
+     it before `scrollPageTo(0)` and the next frame compares the new position
+     against the old one, sees a large fake downward delta, and blurs the field
+     the instant the listener starts typing.
+
+     The first draft of this fix asserted `lastScrollY = 0` instead, reasoning
+     that we had just scrolled there. That was wrong, and
+     test/keyboard-chrome-and-scroll.test.js caught it: `scrollPageTo` is
+     deliberately a no-op where there is no viewport to move (its own guard, for
+     the node:vm suites), so pinning the literal made this handler assert a
+     position the viewport had never taken — and an up-scroll after a re-focus
+     then read as a 200px scroll DOWN and dismissed the keyboard.
+
+     MUTATION: move the `lastScrollY` line above `scrollPageTo(0)`. This goes
+     red, and so does that other suite — which is the part worth having. */
+  const focusHandler = /input\.addEventListener\("focus",\s*\(\)\s*=>\s*\{([\s\S]*?)\n\s{4}\}\);/.exec(APP_SRC);
+  const body = focusHandler[1];
+  assert.match(body, /lastScrollY\s*=\s*window\.scrollY/, "the baseline is read from the viewport");
+  assert.ok(
+    body.indexOf("scrollPageTo(0)") < body.indexOf("lastScrollY ="),
+    "…and read after the scroll it is meant to describe"
+  );
+});
