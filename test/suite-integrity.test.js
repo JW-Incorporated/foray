@@ -301,7 +301,7 @@ const FLOORS = {
   /* 2026-09-18, founder: "Only forays are in the jump back in section, podcasts
      and playlists should be there too." The episode card existed but was
      unreachable — it read cp_lastpick, written only for discover-pool episodes. */
-  "test/jump-back-in-kinds.test.js": 14,
+  "test/jump-back-in-kinds.test.js": 18, // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
   "test/show-episodes-cache.test.js": 10,
