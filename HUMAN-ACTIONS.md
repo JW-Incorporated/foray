@@ -12,25 +12,25 @@
 **Why:** Merging to `main` updates the website only. The iOS/Android app bundles `app.js` at BUILD time, and `release.yml` runs on a `v*` tag or a manual dispatch — nothing else. Every fix from 2026-09-17 and 2026-09-18 will sit on `main` and never appear on your phone until one is triggered.
 
 **Steps:**
-1. Wait until PR #722 and PR #725 are both merged (see #106 — they are blocked on a click first).
+1. Wait until PR #725 is merged (see #106 — it is blocked on an approval click first).
 2. Open https://github.com/JW-Incorporated/foray/actions/workflows/release.yml and press **Run workflow**.
 3. Leave `bump` on `patch` unless you want a specific version. Run it from `main`.
 4. Wait for the App Store and Play emails, then install the new build from TestFlight / Play internal testing.
 
 **Worked if:** a TestFlight or Play build numbered higher than 2026091316 is installed and the now-playing bar survives force-quitting the app.
 
-## #106 🔴 [BLOCKING] PR #722's checks are waiting for your "Approve and run" click (~1 min)
+## #106 🔴 [BLOCKING] PR #725's checks are waiting for your "Approve and run" click (~1 min)
 <!-- ha filed=2026-09-20 kind=default -->
 
-**Why:** All seven workflows on PR #722 show `action_required` with 0s runtime — GitHub is holding them for a maintainer's approval, so the required `backend`/`data-and-site` checks never report and the PR cannot merge. PR #725 is stacked on it, so both sets of founder fixes are stuck behind this one click.
+**Why:** Every workflow on PR #725 shows `action_required` with 0s runtime — GitHub is holding them for a maintainer's approval, so the required `backend`/`data-and-site` checks never report and the PR cannot merge. This is every founder fix from 2026-09-17 and 2026-09-18, stuck behind one click.
 
 **Steps:**
-1. Open https://github.com/JW-Incorporated/foray/pull/722/checks — if a yellow "workflows awaiting approval" banner is there, press **Approve and run**.
-2. If there is no banner, open https://github.com/JW-Incorporated/foray/actions and look for the same banner at the top of the run list.
-3. If it keeps recurring on every PR, change https://github.com/organizations/JW-Incorporated/settings/actions → *Fork pull request workflows* to not require approval for this repo's own branches.
-4. Both PRs auto-merge once green — their files are all on the auto-merge allowlist, so no further click is needed.
+1. Open https://github.com/JW-Incorporated/foray/pull/725/checks and press **Approve and run** on the yellow "workflows awaiting approval" banner.
+2. If there is no banner there, open https://github.com/JW-Incorporated/foray/actions — the same banner sits at the top of the run list.
+3. It appeared on every PR targeting `main` from 2026-09-18 on, so expect it again: https://github.com/organizations/JW-Incorporated/settings/actions → *Workflow permissions* / approval settings is where it is turned off for good.
+4. #725 auto-merges once green — every file in it is on the auto-merge allowlist, so no second click is needed.
 
-**Worked if:** PR #722's checks tab shows `data-and-site` and `backend` running or passed, instead of "waiting for approval".
+**Worked if:** PR #725's checks tab shows `data-and-site` and `backend` running or passed, instead of "waiting for approval".
 
 ## #46 🔴 [BLOCKING] nightly-refresh.yml and nightly-watch.yml haven't fired since 2026-09-12 11:12 UTC
 <!-- ha filed=2026-09-13 kind=default -->
