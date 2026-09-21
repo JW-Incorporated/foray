@@ -2,6 +2,41 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-21 (Claude merges and releases without asking; the condition for taking it back)
+
+- **The "never merge or deploy without approval" rule is withdrawn.** Wyatt,
+  2026-09-21, verbatim: *"Delete that rule for now. We might bring it back once
+  we have a large user base, but for the time being you can push at will."* It
+  was the first of `CLAUDE.md`'s three decision-authority items; the file now
+  carries two, and `docs/roles.md` § Merge authority supersedes its narrower
+  2026-07-30 arrangement (Joey could direct a merge, for product/content/UX PRs
+  only). Claude now merges a green PR and cuts a release when the work is ready.
+
+- **What forced it.** Eight founder-reported fixes — four from 2026-09-17, four
+  from 2026-09-18 — sat unshipped for four days. Not because anything was wrong
+  with them: PR #722's checks never ran at all (GitHub held every workflow at
+  `action_required`, waiting for a maintainer click nobody knew was needed), and
+  once #725 finally merged, the fixes still could not reach a phone because
+  `release.yml` fires only on a tag or a manual dispatch. Two separate human
+  gates, neither of them reviewing anything. A rule written to prevent a bad
+  deploy was preventing every deploy, and the founder's report was "doesn't look
+  like the fixes have landed in the app yet."
+
+- **THE CONDITION FOR REINSTATING IT IS THE POINT OF THIS ENTRY.** A large user
+  base. Right now the blast radius of a bad release is a founder reinstalling a
+  build; with real listeners it is not, and the calculation that made this
+  correct today stops holding. "For now" is exactly the qualifier that
+  evaporates from an operating manual, so it is written down here with the
+  reasoning attached: when the user base is no longer two people, restore the
+  rule from git history rather than re-deriving it from scratch.
+
+- **What did NOT change, and could not have been changed by editing a document.**
+  `main` stays protected by the `protect-main` ruleset — PR required, green
+  `backend`/`data-and-site` checks, `bypass_actors: []`. A direct push or a
+  force-push to `main` is refused by GitHub, not by an agreement, and this entry
+  does not touch it. Secrets/credentials/production infra and spending
+  money/changing product direction both remain founder-only in `CLAUDE.md`.
+
 ## 2026-09-12 (the bundled voice: engine chosen, phonemes move to the server, measurement pending)
 
 - **The narration voice will be our own, bundled in the app: Kokoro-82M, ONNX,

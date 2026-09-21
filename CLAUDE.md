@@ -19,20 +19,31 @@ project, Long Live / Swift2.)
 Humans make strategic decisions; AI executes. Humans review **behavior and
 outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
 
-## Decision authority — three things AI never does without explicit approval
+## Decision authority — two things AI never does without explicit approval
 
-1. **Merge/push to `main` or deploy.** `main` is protected (ruleset
-   `protect-main`: PR + green `backend`/`data-and-site` checks, zero bypass).
-   Exception (added 2026-07-30, see `docs/roles.md` § Merge authority):
-   for PRs scoped to product/content/UX, Joey may direct Claude to merge
-   once required checks are green, without waiting on Wyatt. This does not
-   extend to anything touching architecture, infra, secrets, or CI/CD —
-   those still require Wyatt's approval. This exception is provisional
-   pending Wyatt's sign-off.
-   Work on a branch; propose via PR. Never push `main`, never force-push.
-2. **Touch secrets, credentials, or production infra** (incl. deleting data).
+**Merging and releasing are NOT on this list any more.** Wyatt, 2026-09-21:
+*"Delete that rule for now. We might bring it back once we have a large user
+base, but for the time being you can push at will."* The rule had become the
+bottleneck it was meant to prevent — eight founder-reported fixes sat merged-but-
+unreleased, and then unmerged, because every step waited on a click. Merge a
+green PR and cut a release when the work is ready; say what you did.
+
+**THE CONDITION FOR BRINGING IT BACK IS RECORDED, because "for now" is the part
+that gets lost:** a large user base. Until then the cost of a bad release is a
+founder reinstalling a build; after then it is not. When that changes, restore
+this from git history rather than re-deriving it, and see `docs/DECISIONS.md`
+(2026-09-21).
+
+**What has NOT changed, and cannot be changed by editing this file:** `main` is
+protected by the `protect-main` ruleset — PR plus green `backend`/`data-and-site`
+checks, `bypass_actors: []`. A direct push or a force-push to `main` is refused
+by GitHub, not by this paragraph. So: still work on a branch, still propose via
+PR, still never force-push `main`. What is gone is waiting for a human to press
+the button once the checks are green.
+
+1. **Touch secrets, credentials, or production infra** (incl. deleting data).
    This repo's cloud automation is deliberately keyless — keep it that way.
-3. **Spend money or change product direction.** Any new paid API, any deviation
+2. **Spend money or change product direction.** Any new paid API, any deviation
    from the product principles below, goes to the founders first.
 
 ## Workflow rules (non-negotiable)

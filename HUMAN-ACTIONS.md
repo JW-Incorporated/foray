@@ -14,7 +14,7 @@
 **Steps:**
 1. Wait until PR #725 is merged (see #106 — it is blocked on an approval click first).
 2. Open https://github.com/JW-Incorporated/foray/actions/workflows/release.yml and press **Run workflow**.
-3. Leave `bump` on `patch` unless you want a specific version. Run it from `main`.
+3. Leave `bump` on `none` — the workflow will NOT bump `mobile/VERSION` for you (main is protected), so any other value needs that file pre-bumped in its own PR first.
 4. Wait for the App Store and Play emails, then install the new build from TestFlight / Play internal testing.
 
 **Worked if:** a TestFlight or Play build numbered higher than 2026091316 is installed and the now-playing bar survives force-quitting the app.
