@@ -976,6 +976,11 @@ const FLOORS = {
      "SIZES still names exactly the three icons we publish", so an entry cannot
      be dropped to shed tests while the static count holds still. */
   "tools/brand/build-icons.test.mjs": 10,
+  /* 2026-09-21, founder: "$134 for this month. Most of that was build CPU
+     minutes." The Vercel Ignored Build Step. Most of this suite is the FAILING
+     OPEN — a rule that wrongly skips leaves production on older bytes, and the
+     saving is a few cents, so every uncertain case must build. */
+  "tools/web/vercel-should-build.test.mjs": 17,
   /* 82 -> 84: the app icon's deny entry, and the reason it is a DENY rather than
      an entry in that file's `ACKNOWLEDGED_UNDENIED_GATES` beside its own
      neighbour. Pinned as a named test because the gate-script scan there is
