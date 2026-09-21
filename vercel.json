@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "node tools/web/prepare-dist.mjs",
   "outputDirectory": "dist",
-  "installCommand": "npm install --prefix api && npm install --omit=dev --prefix backend",
+  "installCommand": "npm ci --prefix api --prefer-offline --no-audit --no-fund && npm ci --omit=dev --prefix backend --prefer-offline --no-audit --no-fund",
+  "ignoreCommand": "node tools/web/vercel-should-build.mjs",
   "framework": null,
   "functions": {
     "api/**/*.ts": {
