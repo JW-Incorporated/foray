@@ -52,18 +52,39 @@ recommendation rather than silently picking.
 - Both founders have admin on the repo. Neither pushes `main` directly — the
   branch-protection ruleset applies to everyone, by design.
 
-## Merge authority (updated 2026-07-30)
+## Merge authority (updated 2026-09-21 — supersedes 2026-07-30)
 
-Joey can direct Claude Code to merge a PR to `main` once required checks
-(`backend`, `data-and-site`) are green, without waiting on a review from
+**Claude Code merges green PRs and cuts releases without asking.** Wyatt,
+2026-09-21: *"Delete that rule for now. We might bring it back once we have a
+large user base, but for the time being you can push at will."*
+
+This supersedes the narrower 2026-07-30 arrangement below, which covered only
+product/content/UX PRs and kept architecture, infra, CI/CD and the release
+process as Wyatt's call. That distinction no longer gates anything.
+
+**Why it changed.** Eight founder-reported fixes sat unshipped across four days
+— first waiting on a workflow-approval click nobody knew was needed, then merged
+but unreleased because the release needed a second one. A rule written to
+prevent a bad deploy was preventing every deploy.
+
+**What is still not delegated:** secrets, credentials and production infra; and
+spending money or changing product direction. Both remain in `CLAUDE.md`'s
+decision-authority list. `main`'s branch protection is untouched and is enforced
+by GitHub rather than by agreement — no direct pushes, no force-pushes, green
+checks required.
+
+**The condition for reinstating it:** a large user base. Recorded in
+`docs/DECISIONS.md` (2026-09-21) so that "for now" does not quietly become
+"forever".
+
+### The superseded arrangement (2026-07-30), kept for its reasoning
+
+Joey could direct Claude Code to merge a PR to `main` once required checks
+(`backend`, `data-and-site`) were green, without waiting on a review from
 Wyatt — for PRs scoped to product/content/UX (the prototype, copy, data,
-curation). This was changed at Joey's request on the reasoning that if he
-can click "merge" himself, routing the same call through Claude shouldn't
-require more than his own approval.
-
-This does **not** extend to anything touching architecture, infra, secrets,
-CI/CD config, or release process — those stay Wyatt's final call per the
-"Decision authority" rules in `CLAUDE.md`, unchanged.
+curation). The reasoning was that if he can click "merge" himself, routing the
+same call through Claude shouldn't require more than his own approval. That
+reasoning is what generalised.
 
 **Flag for Wyatt:** this change was made unilaterally at Joey's instruction,
 not discussed with Wyatt first. Wyatt should review this section and the
