@@ -2,9 +2,22 @@
 
 <!-- ha-format: 2 -->
 
-> **33 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **34 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #108 🔴 [BLOCKING] Paste the diagnostics record from the car — it is the one measurement nobody here can take (~3 min)
+<!-- ha filed=2026-09-21 kind=default -->
+
+**Why:** The head unit shows `4a / blank / blank`. Two very different faults produce that — we computed the wrong strings, or we computed the right ones and they never reached iOS. `docs/ios-lock-screen.md` line 86 records that whether our metadata reaches the plugin is **instrumented but never measured**, so this is the first real observation of that path.
+
+**Steps:**
+1. Play a podcast episode in the car until the wrong credits are on the head unit. Leave it playing.
+2. In 4a, open the menu, scroll to **Playback diagnostics**, and tap **Copy**.
+3. Paste the whole record here. The lines that matter start with `nowplaying` — they carry the exact title/artist/album we sent and whether the native shim got them across.
+4. Say which it was: CarPlay, Android Auto, or plain Bluetooth. They read different fields and a fix for one is not automatically a fix for another.
+
+**Worked if:** a pasted record containing at least one `nowplaying` line recorded while the wrong credits were on screen.
 
 ## #46 🔴 [BLOCKING] nightly-refresh.yml and nightly-watch.yml haven't fired since 2026-09-12 11:12 UTC
 <!-- ha filed=2026-09-13 kind=default -->
@@ -127,7 +140,6 @@ assets. Measured against a real release already in this repo
 and why, and the CSP change (if any) lands in that same PR per the
 project's existing rule.
 
-
 ---
 
 ## #35 🟡 [DECIDE] Merge PR #429 (Stage 3b full-catalogue RSS ingestion) — first Vercel serverless function, needs Wyatt's architecture sign-off
@@ -160,7 +172,6 @@ web-dashboar
 **Worked if:** App Store Connect shows the new name and the "name already in
 use" submission error is gone.
 
-
 ---
 
 ## #33 🟡 [DECIDE] Enable leaked-password protection in Supabase Auth settings
@@ -179,7 +190,6 @@ migration, so no worker/agent can apply it.
 
 **Worked if:** the toggle shows enabled, and the Supabase linter no longer
 lists this WARN on a re-run of Advisors → Security.
-
 
 ---
 
@@ -220,7 +230,6 @@ either error outrig
 **Worked if:** you have a real `realtime_multiple` number for your RX 6700
 XT on at least one model size, and the Vulkan device line confirms the GPU
 (not the CPU) produced it.
-
 
 ---
 
@@ -349,7 +358,6 @@ reached and the deadline it was measured against, whi
 error rather than a new session, and the run page shows no `ios-shell-evidence`
 artifact.
 
-
 ---
 
 ## #19 🟡 [DECIDE] Get an Apple Developer account and add seven secrets, so CI can put a build on TestFlight
@@ -398,7 +406,6 @@ Capacitor injects its native bridge (`native-bridge.js`, the app config, and eve
 
 **Worked if:** #40 says whether it gates the first public release, and the status below says DONE.
 
-
 ---
 
 ## #16 🟡 [DECIDE] On a Mac: generate the iOS shell, add one `Info.plist` line, and build it
@@ -446,7 +453,6 @@ Capacitor injects its native bridge (`native-bridge.js`, the app config, and eve
 
 **Worked if:** `docs/legal/privacy-policy.md` contains no `TODO(founder)` markers, and the answers in `docs/legal/data-safety.md` can be pasted into both forms without a judgement call left in them.
 
-
 ---
 
 ## #12 🟡 [DECIDE] Decide: does Android's native audio backend land before the Play release?
@@ -459,7 +465,6 @@ Capacitor injects its native bridge (`native-bridge.js`, the app config, and eve
 2. Reply with one of the three phrases above and change the status below. A session will re-scope #28, #27 and #34 to match.
 
 **Worked if:** #28 and #27 say the same thing about Android as #34's milestone order does, and nobody has to re-derive it.
-
 
 ---
 
@@ -507,7 +512,6 @@ locally — either from six `classify/*` PRs, or from one
 **Worked if:** you say one of exactly three things — "publish it", "publish it
 and raise N", or "here is what I heard that the rules missed".
 
-
 ---
 
 ## #7 🟡 [DECIDE] Confirm the fleet's target list stays the chart-200 catalogue
@@ -528,7 +532,6 @@ Apple genre charts" — `CH
 **Worked if:** nobody re-opens "should we have classified a different list?" in
 week three.
 
-
 ---
 
 ## #6 🟡 [DECIDE] Decide: add the usability fields before the four-week run, or after
@@ -548,7 +551,6 @@ five recording provenance. **None of them records whether a show is *u
 
 **Worked if:** a session can start the four-week run without having to guess
 whether it will need to be run twice.
-
 
 ---
 

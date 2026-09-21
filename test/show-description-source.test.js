@@ -1,4 +1,5 @@
-/* The show page shows the PUBLISHER'S description, not ours.
+/* The show page shows the PUBLISHER'S description, not ours — and the row an
+ * episode plays from carries the credits a car displays.
  *
  * FOUNDER, 2026-09-21: "the show description looks like it's something we
  * generated. Is there a field from the show's host that we can pull instead?"
@@ -161,4 +162,29 @@ test("a feed blurb cannot widen the page", () => {
   /* Same rule the episode description carries, for the same reason: feed text
      routinely holds an unbroken URL. */
   assert.match(CSS, /\.show-description\s*\{[^}]*overflow-wrap:\s*anywhere/);
+});
+
+/* ---------- the row an episode plays from carries the car's credits ------ */
+
+test("an episode from a show page carries the show's artwork", () => {
+  /* FOUNDER, 2026-09-21: the car shows no art beside the credits.
+     `api/shows/:id/episodes` returns no per-episode image and most podcasts set
+     none, so the show's square is the right art — it is what Apple Podcasts
+     shows. Without it every breadth episode reached `mediaMetadata` with
+     `artwork_url: null` and the car fell back to the 4a icon. Curated pool
+     episodes carry their own, which is why this only bites on the breadth path
+     — the one the founder listens on.
+     MUTATION: delete the `artwork_url` line from fullCatalogueRowToEpRowItem. */
+  const fn = /function fullCatalogueRowToEpRowItem\([\s\S]*?\n\}/.exec(SRC)[0];
+  assert.match(fn, /artwork_url:\s*show\.artwork_url\s*\|\|\s*null/);
+});
+
+test("the credit fields a car reads are all carried by that row", () => {
+  /* `mediaMetadata` builds title from `item.title` and artist from `item.show`.
+     A row missing either renders as "4a" with a blank credit — the shape of the
+     founder's report — so all three are pinned together rather than left to be
+     discovered one at a time on a head unit. */
+  const fn = /function fullCatalogueRowToEpRowItem\([\s\S]*?\n\}/.exec(SRC)[0];
+  assert.match(fn, /show:\s*show\.title/, "artist comes from item.show");
+  assert.match(fn, /title:\s*ep\.title/, "title comes from item.title");
 });

@@ -310,7 +310,7 @@ const FLOORS = {
      There was, and the API had been returning it all along — fetchShowEpisodes
      discarded it. Mostly guards that it cannot quietly revert to ours, and that
      arbitrary feed text cannot become markup. */
-  "test/show-description-source.test.js": 11,
+  "test/show-description-source.test.js": 13,
   /* 2026-09-17, founder: episode descriptions carry clickable links and clickable
      timestamps that seek. This is the one function in app.js that turns untrusted
      publisher text into markup, so about half of it is injection cases. */

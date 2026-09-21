@@ -2512,6 +2512,17 @@ function fullCatalogueRowToEpRowItem(show, ep) {
     show: show.title,
     title: ep.title,
     hook: ep.description_text || "",
+    /* THE SHOW'S ARTWORK, which this mapping did not carry (founder,
+       2026-09-21: the car shows no art alongside the blank credits).
+
+       `api/shows/:id/episodes` returns no per-episode image, and most podcasts
+       do not set one -- the show's square is the right art for its episodes and
+       is what Apple Podcasts displays. Without it, EVERY episode played from a
+       show page reached `mediaMetadata` with `artwork_url: null`, so the lock
+       screen and the car fell back to the 4a icon. Curated pool episodes carry
+       their own and were unaffected, which is why this only shows up on the
+       breadth path -- the one the founder actually listens on. */
+    artwork_url: show.artwork_url || null,
     audio_url: ep.audio_url,
     duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
     duration_sec: ep.duration_seconds ?? null,
