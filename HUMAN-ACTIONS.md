@@ -6,18 +6,18 @@
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
-## #108 🔴 [BLOCKING] Paste the diagnostics record from the car — it is the one measurement nobody here can take (~3 min)
+## #108 🔴 [BLOCKING] One more car trip — the record now says whether the write LANDED (~3 min)
 <!-- ha filed=2026-09-21 kind=default -->
 
-**Why:** The head unit shows `4a / blank / blank`. Two very different faults produce that — we computed the wrong strings, or we computed the right ones and they never reached iOS. `docs/ios-lock-screen.md` line 86 records that whether our metadata reaches the plugin is **instrumented but never measured**, so this is the first real observation of that path.
+**Why:** Your first record settled half of it: the strings are right ("#502 …" / "Lex Fridman Podcast", art=1). What it could not say is whether they reached iOS, because the write sat inside a catch-all and the row was logged either way. It now reports `write=FAILED/<reason>` when the assignment throws, so one more trip decides it.
 
 **Steps:**
-1. Play a podcast episode in the car until the wrong credits are on the head unit. Leave it playing.
-2. In 4a, open the menu, scroll to **Playback diagnostics**, and tap **Copy**.
-3. Paste the whole record here. The lines that matter start with `nowplaying` — they carry the exact title/artist/album we sent and whether the native shim got them across.
-4. Say which it was: CarPlay, Android Auto, or plain Bluetooth. They read different fields and a fix for one is not automatically a fix for another.
+1. Install the next TestFlight build (higher than 2026092121) — the new field only exists in that build.
+2. Play a podcast in the car until the head unit shows the wrong credits. Leave it playing.
+3. In 4a: menu → **Playback diagnostics** → **Copy**, and paste it here.
+4. Say whether it was CarPlay, Android Auto, or plain Bluetooth.
 
-**Worked if:** a pasted record containing at least one `nowplaying` line recorded while the wrong credits were on screen.
+**Worked if:** a pasted record whose `nowplaying` rows carry either `write=FAILED/…` or a `sent=` that climbs while audio plays.
 
 ## #46 🔴 [BLOCKING] nightly-refresh.yml and nightly-watch.yml haven't fired since 2026-09-12 11:12 UTC
 <!-- ha filed=2026-09-13 kind=default -->

@@ -644,12 +644,35 @@ export function createMediaSession({ nav = null, MediaMetadata = null, onWrite =
         const key = `${metadata.title}\u0000${metadata.artist}\u0000${metadata.album}\u0000` +
           (metadata.artwork ?? []).map((a) => a.src).join(",");
         if (key !== lastMetaKey) {
-          lastMetaKey = key;
-          attempt(() => {
+          /* THE WRITE AND THE REPORT NOW AGREE (founder, 2026-09-21: the car
+             showed "4a / blank / blank" while the field record said five
+             now-playing writes, none with an empty credit).
+
+             The record was right about what we COMPUTED and silent about what
+             happened next, because this assignment sat inside `attempt()`,
+             which swallows a throw and returns undefined -- and the report fired
+             afterwards regardless. "After the assignment, so what is reported is
+             what was sent" is only true if the assignment SUCCEEDED, and nothing
+             checked. A diagnostic that cannot tell a completed write from a
+             failed one is the one thing this row exists to tell apart, and it is
+             why the first field record could not settle the question.
+
+             `writeOk` is that answer and `writeError` is the reason when it is
+             false. Both ride the same row, so one more car trip decides it. */
+          let writeOk = true;
+          let writeError = "";
+          try {
             ms.metadata = typeof MediaMetadata === "function" ? new MediaMetadata(metadata) : { ...metadata };
-          });
-          // L-06. After the assignment, so what is reported is what was sent.
-          if (report) attempt(() => report({ metadata, playbackState }));
+          } catch (e) {
+            writeOk = false;
+            writeError = String((e && (e.message || e.name)) || e);
+          }
+          /* STAMPED ONLY ON A SUCCESSFUL WRITE. Stamping it before meant a throw
+             poisoned the dedupe: the next render computed the same key, saw it
+             unchanged, skipped the write, and the metadata could never recover
+             for as long as that item played. */
+          if (writeOk) lastMetaKey = key;
+          if (report) attempt(() => report({ metadata, playbackState, writeOk, writeError }));
         }
       }
       if (playbackState && playbackState !== lastState) {

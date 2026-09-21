@@ -1510,3 +1510,75 @@ test("this module is TEXT to every search tool: no raw NUL byte anywhere in it",
   assert.match(src, /\$\{metadata\.title\}\\u0000\$\{metadata\.artist\}/,
     "the separator is still there, written as an escape");
 });
+
+/* ---------- the write and the report agree (founder, 2026-09-21) ---------- */
+
+test("a metadata write that THROWS is reported as failed, not as written", () => {
+  /* THE DEFECT THIS REPLACES. The assignment sat inside `attempt()`, which
+     swallows a throw, and `report` fired afterwards regardless — so the field
+     record could truthfully say "5 now playing written, 0 with an empty credit"
+     while the car showed "4a / blank / blank" and nothing had reached the
+     platform. That is exactly what the founder's 2026-09-21 record said, and it
+     is why that record could not settle the question.
+     MUTATION: put the assignment back inside `attempt(...)` and report
+     unconditionally — `writeOk` goes true and this test fails. */
+  const writes = [];
+  const ms = {
+    set metadata(_v) { throw new TypeError("bad artwork url"); },
+    get metadata() { return null; },
+    setActionHandler() {},
+  };
+  const bridge = createMediaSession({
+    nav: { mediaSession: ms },
+    MediaMetadata: null,
+    onWrite: (row) => writes.push(row),
+  });
+  bridge.update({ metadata: { title: "T", artist: "A", album: "", artwork: [] } });
+  assert.equal(writes.length, 1, "the row is still recorded — silence would be worse");
+  assert.equal(writes[0].writeOk, false, "and it says the write did not land");
+  assert.match(writes[0].writeError, /TypeError|bad artwork url/);
+});
+
+test("a metadata write that SUCCEEDS reports writeOk true", () => {
+  const writes = [];
+  let stored = null;
+  const bridge = createMediaSession({
+    nav: { mediaSession: { set metadata(v) { stored = v; }, get metadata() { return stored; }, setActionHandler() {} } },
+    MediaMetadata: null,
+    onWrite: (row) => writes.push(row),
+  });
+  bridge.update({ metadata: { title: "T", artist: "A", album: "", artwork: [] } });
+  assert.equal(writes[0].writeOk, true);
+  assert.equal(writes[0].writeError, "");
+  assert.equal(stored.title, "T");
+});
+
+test("a throw does not poison the dedupe — the next identical render retries", () => {
+  /* The second half, and the one that decides whether a listener EVER recovers.
+     `lastMetaKey` used to be stamped before the write, so one throw meant every
+     later render computed the same key, saw it unchanged, and skipped the write
+     for as long as that item played. Stamping only on success makes the failure
+     transient instead of permanent.
+     MUTATION: move `lastMetaKey = key` back above the try — the second update
+     below stops attempting and `attempts` stays 1. */
+  let attempts = 0;
+  let failing = true;
+  const bridge = createMediaSession({
+    nav: {
+      mediaSession: {
+        set metadata(_v) { attempts += 1; if (failing) throw new Error("nope"); },
+        get metadata() { return null; },
+        setActionHandler() {},
+      },
+    },
+    MediaMetadata: null,
+  });
+  const meta = { title: "T", artist: "A", album: "", artwork: [] };
+  bridge.update({ metadata: meta });
+  assert.equal(attempts, 1);
+  failing = false;
+  bridge.update({ metadata: meta });
+  assert.equal(attempts, 2, "the identical render must be retried after a failure");
+  bridge.update({ metadata: meta });
+  assert.equal(attempts, 2, "…and deduped again once it has landed");
+});
