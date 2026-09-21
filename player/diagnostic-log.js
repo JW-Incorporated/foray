@@ -986,7 +986,7 @@ export class PlayerDiagnostics {
    * @param {string} [fields.playbackState]
    * @param {object} [fields.native] `{ installed, sends, lastReason }`
    */
-  nowPlaying({ metadata = null, playbackState = null, native = null } = {}) {
+  nowPlaying({ metadata = null, playbackState = null, native = null, writeOk = true, writeError = "" } = {}) {
     const m = metadata && typeof metadata === "object" ? metadata : {};
     const artwork = Array.isArray(m.artwork) ? m.artwork : [];
     return this.log.record("nowplaying", {
@@ -1000,6 +1000,17 @@ export class PlayerDiagnostics {
          question a blank square raises: was one offered at all. */
       artworkCount: artwork.length,
       state: dataTokenOf(playbackState) ?? "",
+      /* Did the assignment to `navigator.mediaSession.metadata` complete
+         (2026-09-21)? Everything above this line describes what we COMPUTED;
+         without this the row said nothing about whether it landed, and a record
+         could read "5 written, 0 with an empty credit" while the car showed the
+         app name. Defaults to true so every existing caller and fixture keeps
+         its meaning -- only a caller that KNOWS it failed says so.
+         The reason is admitted by shape, like `native.reason` below: an
+         exception message is arbitrary text and this record gets pasted into
+         issues. */
+      writeOk: writeOk !== false,
+      writeError: writeOk === false ? (errorNameOf(writeError) ?? "") : "",
       /* The shim's verdict, admitted by SHAPE. `installed` and `sends` are a
          boolean and a number; `lastReason` is an exception message from an
          arbitrary throw, so only an `errorNameOf`-shaped identifier survives
@@ -1515,8 +1526,16 @@ function lineFor(e) {
       const native = n == null
         ? "native=—"
         : `native=${n.installed ? "on" : "off"}/sent=${n.sends ?? "—"}` + (n.reason ? `/${n.reason}` : "");
+      /* `write=` is whether the assignment to `navigator.mediaSession.metadata`
+         actually completed (2026-09-21). It used to be unknowable from here:
+         `media-session.js` did that write inside `attempt()`, which swallows a
+         throw, and reported this row afterwards either way -- so a record could
+         truthfully say "5 written, 0 with an empty credit" while nothing had
+         reached the platform at all. Printed ONLY when it failed, so a healthy
+         row keeps its shape and a broken one is impossible to miss. */
+      const write = e.writeOk === false ? `  write=FAILED/${f(e.writeError)}` : "";
       return `${head} "${f(e.title)}" / "${f(e.artist)}" / "${f(e.album)}"` +
-        `  art=${e.artworkCount ?? 0}  state=${f(e.state)}  ${native}  hidden=${e.hidden ? "y" : "n"}`;
+        `  art=${e.artworkCount ?? 0}  state=${f(e.state)}  ${native}${write}  hidden=${e.hidden ? "y" : "n"}`;
     }
     /* M-03. `lag` is the delivery lag between the plugin's own stamp and the
        page handling the event — on a suspended WebView it is the length of

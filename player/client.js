@@ -2009,8 +2009,8 @@ function ensureBooted() {
        Capacitor shim got it across. `media-session.js` fires this only on a
        real write, so a Foray that produced no `nowplaying` rows is the
        measurement, not a hole in it: the payload never left the page. */
-    onWrite: ({ metadata, playbackState }) =>
-      diag.nowPlaying({ metadata, playbackState, native: mediaSessionShimState() }),
+    onWrite: ({ metadata, playbackState, writeOk, writeError }) =>
+      diag.nowPlaying({ metadata, playbackState, writeOk, writeError, native: mediaSessionShimState() }),
   });
 
   ui = buildUI();

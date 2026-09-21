@@ -3271,3 +3271,18 @@ body.ui-v2 .hv2-test-track {
    unchanged (miniCardV2() wraps it rather than forking it) — only the
    section container and the appended `.hv2-bridge` line are new here. */
 body.ui-v2 .hv2-episodes .mini-card { min-height: 0; }
+
+/* The publisher's own show description (founder, 2026-09-21). Body copy, not a
+   `.note`: it is the show speaking for itself and should read like prose, while
+   `.ep-why` below it stays visibly ours. `overflow-wrap: anywhere` for the same
+   reason the episode description has it -- a feed blurb can carry an unbroken
+   URL, and nothing on this page may widen it. */
+.show-description {
+  margin: 10px 0 0;
+  font-size: 0.9rem; line-height: 1.5; color: var(--text);
+  overflow-wrap: anywhere;
+}
+/* Our curatorial line, marked as ours. Dimmer and smaller than the publisher's
+   words above it, which is the visual half of the same claim the 'Why it's in
+   4a' prefix makes in words. */
+.ep-why { font-size: 0.85rem; color: var(--text-dim); }
