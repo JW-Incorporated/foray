@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **33 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **38 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -130,18 +130,75 @@ project's existing rule.
 
 ---
 
-## #35 🟡 [DECIDE] Merge PR #429 (Stage 3b full-catalogue RSS ingestion) — first Vercel serverless function, needs Wyatt's architecture sign-off
-<!-- ha filed=2026-09-11 kind=default -->
+## #113 🟡 [DECIDE] G8 — Supabase tier vs. `in_4a`-only storage, once S-09's sizing report exists
+<!-- ha filed=2026-09-21 kind=default -->
 
-**Why:** `t_a36252bb` ("remove the listen-elsewhere link-out, play everything in-app") depends on `t_567b570f` shipping real `audio_url`s at scale. That work is done and reviewed (round 3, 216/216 local tests pass, GitHub CI green) in PR #429, but it is genuinely gated on a human decision, not just a routine
+**Why:** `4a-shows-pipeline-plan.md` §6 gate G8. S-09 (`t_f00c0a28`, PR #714, still open — not merged) adds `tools/shows/load-postgres.mjs`'s bytes/row sizing report specifically to answer this. The PR is open but not merged (`CONFLICTING` mergeable state as of 2026-09-21), so there is no real sizing number to decide against yet — this item is filed as a placeholder naming the dependency, per S-12's card body.
 
 **Steps:**
-1. Read the "For Wyatt: one thing to look at specifically" section at the top of PR #429: https://github.com/JW-Incorporated/foray/pull/429
-2. Decide: is reusing the existing Vercel project + existing Supabase service-role connection an acceptable way to stand up the first live backend endpoint, or do you want a different shape?
-3. If acceptable: add the `founder-approved` label (or ask Hermes to add it) and merge (or authorize Hermes to merge) the PR.
-4. If not acceptable: say what should change; the implementing lane will revise.
+1. Wait for S-09 (PR #714) to merge and produce a real bytes/row report (or ask Hermes for status).
+2. Once the report exists: decide whether Supabase's current tier is adequate, or the loader should store only `in_4a` + mapped rows rather than the full merged catalogue.
+3. Say which, in a comment here.
 
-**Worked if:** PR #429 is merged to `main` (or explicitly redirected), unblocking `t_a36252bb`.
+**Worked if:** a decision is recorded here and, if storage-shape changes, S-09's loader reflects it before it goes live (S-18, unclaimed).
+
+## #112 🟡 [DECIDE] G7 — Joey's PodcastIndex export: format, location, cadence (D3)
+<!-- ha filed=2026-09-21 kind=default -->
+
+**Why:** `4a-shows-pipeline-plan.md` §0/§3.1 (D3). Every shows-pipeline card (S-04a onward) currently builds against the **public** PodcastIndex dump as an interim source, with the source URL kept as a one-line config value (`tools/shows/config.mjs`) specifically so this swap is cheap once Joey's own export exists. Nothing is blocked today, but D1's language-filter/liveness numbers (G6, filed separately below) can't be finally re-confirmed until this lands.
+
+**Steps:**
+1. Decide the export's format (SQLite/CSV/Parquet, dump column names per §3.1's table), where it lands, and how often it refreshes.
+2. Say so here or on kanban card S-16.
+
+**Worked if:** S-16 can start (source URL swap + column-contract verification against the plan's §3.1 table).
+
+## #111 🟡 [DECIDE] G6 — Re-confirm D1's liveness/count/recency filter, and settle the language question
+<!-- ha filed=2026-09-21 kind=default -->
+
+**Why:** `4a-shows-pipeline-plan.md` §0 (D1) shipped as a default — `dead != 1`, `episodeCount >= 3`, updated within 24 months — with the language column stored but never applied, explicitly pending "re-confirm with Joey's export in hand." `tools/shows/filter.mjs` (S-04a) already names this open gate in its own code comment.
+
+**Steps:**
+1. Once G7 (Joey's export, filed above as #112) lands, ask Hermes to run S-04's importer against it and produce fresh per-filter counts.
+2. Review those counts and confirm or adjust the liveness thresholds.
+3. Decide whether English becomes a catalogue-level filter (drops non-English shows from the list entirely) or stays a tape-level-only concern (ADR-0008 flags this as still unsettled) — see `docs/product/suggested-shows-requirements.md` §6's open-questions table, row 3.
+
+**Worked if:** a decision is recorded here and card S-17 (unclaimed) applies it.
+
+## #110 🟡 [DECIDE] G4 — Repo secret `SHOWS_DATABASE_URL` for GitHub Actions
+<!-- ha filed=2026-09-21 kind=default -->
+
+**Why:** `4a-shows-pipeline-plan.md` §6 (G3 in the plan's own numbering — filed here as HUMAN-ACTIONS #110 to avoid colliding with this file's pre-existing item numbers). S-10's poller (`tools/poll/`, built, not yet PR'd) and S-04/S-14's loader need a **service-role** Postgres credential in Actions secrets to write anything; this is the first database credential ever held by this repo's automation, so it is being called out explicitly rather than silently assumed.
+
+**Steps:**
+1. Decide whether to grant it, and if so create a Supabase service-role connection string.
+2. Add it as repo secret `SHOWS_DATABASE_URL` (Settings → Secrets and variables → Actions).
+3. Confirm here once added.
+
+**Worked if:** the secret exists, and S-10/S-14 (once their PRs are up) can flip out of dry-run.
+
+## #109 🟡 [DECIDE] G3 — Apply migrations 0017–0020 on Supabase
+<!-- ha filed=2026-09-21 kind=default -->
+
+**Why:** `4a-shows-pipeline-plan.md` §6 (G2 in the plan's own numbering — filed here as #109). `0016_catalog_show_episodes.sql` is already applied (Stage 3b/S-02 is live). `0017_shows_catalog.sql`, `0018_show_id_map.sql`, `0019_show_episodes_rekey.sql` (S-09) and `0020_watchlist.sql` (S-10) are **not** — S-09's PR #714 is open and conflicting, not merged, so there is nothing to apply yet against production. Filed now so the gate is visible the moment S-09/S-10 are ready, rather than discovered later.
+
+**Steps:**
+1. Once S-09's PR is mergeable and reviewed, apply 0017–0019 (then 0020 once S-10 opens) to the Supabase project — normal migration run, same process as every prior migration in this repo.
+2. Confirm here.
+
+**Worked if:** `shows_catalog`, `show_id_map`, the `pi_id` rekey, and `watchlist` tables exist on production Supabase.
+
+## #108 🟡 [DECIDE] G2 — `DATABASE_URL` on the Vercel project (`foray-web`)
+<!-- ha filed=2026-09-21 kind=default -->
+
+**Why:** `4a-shows-pipeline-plan.md` §6 (G1 in the plan's own numbering — filed here as #108 to avoid colliding with this file's own #1). Every Postgres-backed function (`api/shows/search`'s DB branch, S-09's search module) is coded and unit-tested but stays in no-DB mode in production because `DATABASE_URL` is absent on Vercel — confirmed absent as of the original plan's 2026-09-04 measurement and unchanged since (no PR has added it; it is an env-var action, not a code change).
+
+**Steps:**
+1. Get the Supabase transaction-pooler connection string (port 6543).
+2. Add it as `DATABASE_URL` on the Vercel project `foray-web`, both Production and Preview environments.
+3. Confirm here.
+
+**Worked if:** a fresh deploy's `/api/shows/search` response reports DB-mode fields instead of the no-DB shape (card S-13, unclaimed, is the verification card).
 
 ## #34 🟡 [DECIDE] Type the new App Store Connect listing name into Apple's dashboard
 <!-- ha filed=2026-09-11 kind=default -->

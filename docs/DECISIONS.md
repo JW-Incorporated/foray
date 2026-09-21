@@ -2646,3 +2646,77 @@ look like the end of the list.
 
 **Tracked in issue #691**, whose scope this ruling widens from "walk the chosen
 list" to "keep playing".
+
+## 2026-09-21 (S-12: the shows-pipeline decisions, D1–D14, as shipped)
+
+Source: `4a-shows-pipeline-plan.md` (Wyatt, 2026-09-04). Fourteen decisions
+were taken in that plan's §0 to unblock a Track A that ships without any
+human gate. This entry records what actually landed against each one,
+cut last in the S-deck (S-12, kanban `t_5f7cadcd`) so it reports shipped
+state, not the plan. Card-by-card detail already lives in this file under
+its own 2026-09-05/09-12 headings (S-04a, S-04b, search ranking, S-07/G1);
+this entry is the index by D-number plus the six D's with no prior entry.
+
+| # | Decision (2026-09-04) | Shipped as |
+|---|---|---|
+| **D1** | "In 4a" = alive, ≥3 episodes, updated within 24 months. Language filter open. | **Shipped exactly**, `tools/shows/filter.mjs` (S-04a, see this file's 2026-09-05 S-04a entry) — liveness/count/recency gates applied, `language` stored and never used to drop a row. **Not re-confirmed with Joey's export** — D3 is still pending, so D1 still reads "default," per gate **G6** below (card S-17, unclaimed). |
+| **D2** | PodcastIndex id is show identity; feed URL is the join key; Apple id is a cross-reference. | **Shipped**, `tools/shows/identity.mjs` / `buildIdMap` (S-04a): feed URL first, `apple_collection_id` fallback for a moved feed, fails closed (refuses to write) on any of the curated 220 left unresolved. `pi:<id>` is the new-show route (S-05); no curated slug was renamed. |
+| **D3** | Joey's export: contract in plan §3.1; format/location/cadence pending. Agents build against the public dump until then. | **Still pending Joey.** Every card in Track A built against the public PodcastIndex dump, exactly as planned as the interim source. `tools/shows/config.mjs` keeps the dump URL as a named export so the swap is one line once G7 clears (card S-16, unclaimed). |
+| **D4** | Show search runs server-side or against a fetched index; the privacy policy's promise must change *before* shipping, with a mechanical tripwire. | **Shipped and the gate has since cleared.** `test/release-gates.test.js` (S-08, PR #476) is the tripwire; `docs/legal/privacy-policy.md` §2 was edited (PR #482) and Wyatt ruled the underlying question **Option B** 2026-09-11 (gate **G1** below, HUMAN-ACTIONS #43, closed) — typed search text may leave the device. `SHOWS_SEARCH_OFF_DEVICE = true` in `app.js` is the flag the tripwire reads. |
+| **D5** | Episodes fetched lazily on show open, plus a scheduled poller over a watchlist so curation sees episodes nobody opened. | **Both halves shipped.** Lazy fetch is S-02/S-03 (`api/shows/:id/episodes`, `fetchShowEpisodes`). The poller is S-10 (`tools/poll/`, migration `0020_watchlist.sql`) — **built and unit-tested, not yet live**: it ships in dry-run only (no `DATABASE_URL`), same D14 shape as every other DB-shaped card, and its PR has not opened yet (based on S-09's still-open branch, per that card's own note). |
+| **D6** | Episode search = episodes we hold, plus Apple's keyless episode search as breadth fallback. No 4.7M-feed crawl. | **Shipped**, S-07 (`api/episodes/search.ts`): a `show=`-scoped live-feed search reuses S-02's fetch path; the unscoped path calls Apple's `entity=podcastEpisode` behind a 20/min token bucket. No crawl of the dump for episode content, matching the plan's D6(b) choice and `catalogue-broadening.md` §2's finding that the dump has no episode table. |
+| **D7** | A search box on the show page. | **Shipped**, S-06 (`renderShow`'s in-page episode search) — local-filter over loaded pages until S-07 landed, then upgraded to ask S-07's scoped endpoint first per `docs/product/suggested-shows-requirements.md` §3.3. |
+| **D8** | Curated tier becomes an overlay on the universal list; Home/forays/playlists keep drawing from the curated subset; Joey's appended columns stay out of the app path. | **Shipped as the overlay model**, S-04a/S-04c: `catalog.json`'s 220 are `curated: true` on every shard/top.json row and are never dropped by D1's liveness filter regardless of what it would otherwise say (S-04c, PR #486, "a curated show is in 4a by definition"). Home/Forays/Playlists are untouched — they still read `state.catalog` only (§3.5, `suggested-shows-requirements.md`). No column from Joey's future export reaches the client; D3 hasn't landed so this is not yet exercised against real appended data. |
+| **D9** | Offline: search only what is already on the device. | **Shipped**, S-05: zero network requests when `navigator.onLine === false`, results header *"Showing shows available offline."* |
+| **D10** | Vercel functions + Supabase Postgres stay; GitHub Actions cron for scheduled work. | **Confirmed, unchanged.** No new hosting decision was made or needed — S-02/S-07's functions are Vercel, S-09's schema is Supabase Postgres (inert until `DATABASE_URL`), S-04/S-10's schedules are GitHub Actions cron (`shows-import.yml` weekly, `episode-poll.yml` hourly dry-run). |
+| **D11** | Revalidate a show's feed on open when the cached copy is older than one hour. | **Shipped as the no-DB path's actual behavior**, S-02: `s-maxage=3600, stale-while-revalidate=86400` on `/api/shows/:id/episodes` makes the CDN itself the one-hour cache; DB-mode's own revalidate-if-stale rule is unbuilt because DB mode is not live (same D14 gating as D5's poller half). |
+| **D12** | Three decoupled loops: show-list refresh, episode refresh, curation. | **Shipped as designed.** Loop 1 = S-04 (weekly import → shard release). Loop 2 = S-02's lazy fetch (2a) + S-10's poller (2b, dry-run). Loop 3 = S-11 (`scan.mjs --source index`), reading Loop 1's `changed.json` rather than polling feeds itself. |
+| **D13** | Dedupe: several feeds for one show collapse to the one Apple lists, else the most recently updated. | **Shipped, refined beyond the plan's one-line default** (S-04a; full rule in this file's 2026-09-05 S-04a entry): group by `podcastGuid` case-insensitively, else normalised title+author; canonical = has a non-null `itunesId` (matching the plan's "Apple lists" reading), tie-broken by lowest dump id; without any `itunesId` in the group, newest `newestItemPubdate` wins, same tie-break — chosen over the plan's bare default so two runs on one fixture are byte-identical (the card's own acceptance bar). |
+| **D14** | Everything DB-shaped ships first in a no-DB mode that is honest and useful, and switches to Postgres by the presence of `DATABASE_URL`. No card may block on a credential. | **The organizing principle of the whole deck, and it held.** S-02/S-07's episode and search endpoints run live-fetch/Apple-fallback with no `DATABASE_URL`; S-09's Postgres schema (migrations 0017–0019) and search module exist and pass CI against a real `postgres:17` service container but write nothing in production; S-10's poller computes its due set and prints a would-poll summary without ever opening a DB connection. Every DB-shaped entry point in the deck names the gate it is waiting on (G1/G2/G3 below) in its own exit message rather than failing. |
+
+**What is NOT yet true, despite the table above reading mostly "shipped."**
+S-09 (Postgres path) has an **open, CI-conflicting PR (#714)**, not a merged
+one — its migrations are not on `main`. S-10 (the poller) has **no PR at
+all yet** — its commits exist on a local branch based on S-09's
+still-open one. So DB mode for search, episodes, and polling is built and
+tested but genuinely not live; every "shipped" line above about D5's
+poller half, D10's Postgres half, D11's DB-mode revalidation, and D14's DB
+branch describes code that exists and passes CI, not code running in
+production. `HUMAN-ACTIONS.md` gates G1–G3 (below) are what flips that.
+
+### Human gates, D-deck (G1–G9, HUMAN-ACTIONS numbering below)
+
+The plan's own §6 table named G1–G9. Two have already been answered in
+session and are recorded elsewhere in this file / `HUMAN-ACTIONS-DONE.md`;
+the rest are filed fresh in `HUMAN-ACTIONS.md` by this same card (S-12) as
+items **#108–#113** (G6–G9, plus G2/G3 reiterated against the now-real
+migrations and secret), since the original plan's G1/G4/G5 numbering
+collided with this repo's pre-existing HUMAN-ACTIONS numbering and had
+already been answered under different item numbers (#43 for G1, #39 for
+the CORS half of G4) before this card was cut:
+
+- **G1** (Wyatt: is the privacy-policy/search-transmission tradeoff
+  acceptable) — **answered**, HUMAN-ACTIONS #43 (closed), Option B,
+  2026-09-11. See this file's 2026-09-12 S-07 entry.
+- **G2** (Wyatt: `DATABASE_URL` on the Vercel project) — **open**, filed as
+  HUMAN-ACTIONS **#108**.
+- **G3** (Wyatt: apply migrations 0016–0020 on Supabase) — **open**, filed
+  as HUMAN-ACTIONS **#109**. (0016 is already applied per Stage 3b/S-02;
+  0017–0020 are not, since S-09/S-10 haven't merged.)
+- **G4** (Wyatt: repo secret `SHOWS_DATABASE_URL` for Actions) — **open**,
+  filed as HUMAN-ACTIONS **#110**.
+- **G5** (Wyatt: edit the privacy policy sentence) — **answered**, folded
+  into G1's ruling and PR #482; see D4 above.
+- **G6** (Wyatt + Joey: re-confirm D1 and settle the language filter, with
+  S-04's real summary in hand) — **open**, filed as HUMAN-ACTIONS **#111**.
+  Card S-17.
+- **G7** (Joey: D3's export format/location/cadence) — **open**, filed as
+  HUMAN-ACTIONS **#112**. Card S-16.
+- **G8** (Wyatt: Supabase tier vs. `in_4a`-only storage, once S-09's sizing
+  report exists) — **open**, filed as HUMAN-ACTIONS **#113**. S-09's PR is
+  not merged, so this gate has no report to size against yet; filed as a
+  placeholder naming that dependency.
+- **G9** (Wyatt: watchlist N and weekly request budget) — **not yet
+  filed** — S-10 has no live-poll numbers to set N against (dry-run only,
+  per D5/D14 above); will be filed once S-10 opens a PR with a weekly
+  projection.

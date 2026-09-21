@@ -3,6 +3,7 @@
 <!-- ha-format: 2. Machine record: nothing here needs you. One line per item, newest first.
      Full bodies are in git history. Numbers here are never reused. -->
 
+- #35 · 2026-09-21 · done · Merge PR #429 (Stage 3b full-catalogue RSS ingestion) — first Vercel serverless function, needed Wyatt's architecture sign-off — "PR #429 merged 2026-09-05 (merged by Wyatt). Item was stale in the open list; closed while cutting S-12's docs pass." · by s-12
 - #107 · 2026-09-21 · done · Cut a release build, or the merged fixes never reach your phone — "Claude cut it: run 35616351870, v1.0.0 build 2026092121, uploaded to both App Store and Play. The founder deleted the approval rule that had made this a human action." · by founder
 - #106 · 2026-09-21 · done · PR #725's checks are waiting for your "Approve and run" click — "Approved and merged as 37554f6; all eight founder fixes from 2026-09-17/18 are on main." · by founder
 - #43 · 2026-09-11 · done · Rule on `docs/search-plan.md`'s privacy gate (G1) — it blocks four cards of the search rebuild — "Wyatt ruled **B** (2026-09-11, in session): the privacy policy loses its conditional — typed search text may be sent to our origin and to Apple's directory; Wyatt updates the store listing himself. S-07 executes the Option-B diff; S-02's network half, S-05, S-06, S-08 are unblocked." · by founder

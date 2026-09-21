@@ -5,6 +5,28 @@ Accepted (initial version — polling scheduler itself not yet built; this ADR
 governs the primitives already implemented: `src/feeds/conditionalGet.ts`,
 `src/feeds/politeness.ts`, `shows.polling_tier` / `shows.next_poll_due_at`).
 
+**Updated 2026-09-21 (S-10, `4a-shows-pipeline-plan.md`).** The scheduler
+this ADR called "not yet built" now exists: `tools/poll/poll-episodes.mjs`
++ `tools/poll/tiers.mjs`, built and unit-tested (68 tests), against a
+`watchlist` table (migration `0020_watchlist.sql`) keyed on `pi_id`. It
+consumes exactly the primitives this ADR specifies — `conditionalGet.ts`
+for the always-conditional-GET rule, `politeness.ts`'s per-host budget for
+the "don't hammer one host" rule — with no change to either. Cadence
+tiering, the piece this ADR explicitly deferred ("a small statistics job
+... deliberately deferred until there's a populated `episodes` table"),
+is now implemented as `tools/poll/tiers.mjs`'s cadence-based correction:
+seed a tier from `watch_reason` (curated/starred/changed/top-popularity/
+curation-candidate/opened — see the plan's §4 table), then correct it
+from the median gap between a show's observed published episodes once
+there are enough of them, with a separate failure-based backoff
+correction layered on top. **Still not live**: the scheduler runs in
+dry-run only (no `DATABASE_URL`/`SHOWS_DATABASE_URL` in production, same
+D14 no-DB-first rule as the rest of the shows deck — see
+`docs/DECISIONS.md`'s 2026-09-21 S-12 entry) and has not yet opened a PR.
+Once it does and the DB gates clear (HUMAN-ACTIONS #108–#110), this ADR's
+status line should move from "scheduler itself not yet built" to
+"scheduler live" — not done here, since the scheduler isn't live yet.
+
 ## Context
 01_PROMPT.md item 1 asks for a polite conditional-GET polling cadence that's
 release-pattern aware (daily shows vs weekly), with ETag/Last-Modified

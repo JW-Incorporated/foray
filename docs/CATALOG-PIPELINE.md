@@ -27,6 +27,30 @@ Keep it for the curated tier; build a programmatic harvester for breadth.
 
 ## Two-tier catalog architecture
 
+> **AMENDED, 2026-09-21 (S-04/S-04c/S-05, `4a-shows-pipeline-plan.md`).** A
+> **third** layer now sits over this table and is the one a listener
+> actually meets: the PodcastIndex-dump-derived shard index (4.7M+ rows,
+> `tools/shows/`, published as GitHub Release assets) plus its inert
+> Postgres twin (`shows_catalog`, S-09). Read the table below as **"the
+> two tiers this repo hand-built before 2026-09"**, both of which are
+> still live and **not retired** — `data/catalog-breadth.json` remains a
+> real server-side dependency (`backend/src/catalog/breadthCatalog.ts`,
+> `api/shows/[show_id]/episodes.ts`, `api/episodes/search.ts` all still
+> read it directly, confirmed 2026-09-21) even though S-05 shipped the
+> client-side shard search that replaced the *client's* old breadth
+> round-trip. **The overlay model, not a three-tier stack, is the
+> mental model going forward:** the curated 220 (this table's left
+> column) are a `curated: true` overlay flag on rows in the new
+> universal shard/Postgres list (D8, `docs/DECISIONS.md`'s 2026-09-21
+> S-12 entry) — Home/Forays/Playlists keep reading only the curated
+> overlay, exactly as this table's "Consumers" row already said. The
+> Apple-chart-harvested `data/catalog-breadth.json`/`-intl.json.gz`
+> files are a **fourth, older, and now largely superseded** source
+> (~150K rows from Apple's charts, no PodcastIndex id) that server
+> code still reads as a search/episode fallback; they are not marked
+> retired because nothing has replaced their specific server-side role
+> yet — that is a real follow-up, not done by this banner.
+
 | | Curated tier | Breadth tier |
 |---|---|---|
 | File | `data/catalog.json` + `data/discover.json` | `data/catalog-breadth.json` |
