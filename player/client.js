@@ -141,6 +141,25 @@ const SEEK_FWD = SEEK_FORWARD_SEC;
 let manager = null;
 let backend = null;
 let positions = null;
+/** Read-only position access that does NOT require the player to be booted.
+ *
+ *  Founder, 2026-09-21: "there is a progress bar on Forays but not on episodes".
+ *  `lastEpisodeCard` is called while HOME renders, which happens in `route()` --
+ *  before `restoreNowPlayingRibbon` calls `ensureBooted`. So `positions` was
+ *  still null, the offset defaulted to 0, and the card drew an empty bar.
+ *
+ *  Deliberately NOT solved by booting the player from a home render: that would
+ *  build the manager, the backend and two <audio> elements to paint a progress
+ *  bar. `PositionStore` over the same durable store is a thin reader on the same
+ *  `cp_pos:<id>` rows the booted one writes, so there is still ONE definition of
+ *  a position -- this just reaches it earlier. The booted instance is preferred
+ *  whenever it exists so a live session never reads a staler copy of itself. */
+let positionsRead = null;
+function positionReader() {
+  if (positions) return positions;
+  if (!positionsRead) positionsRead = new PositionStore({ storage });
+  return positionsRead;
+}
 /** The interlude jingle's own element (queue-manager.js §13). Built with the
     manager, primed on every play tap beside `backend.notePlayGesture()`. */
 let interlude = null;
@@ -2133,16 +2152,24 @@ const ForayPlayer = {
   lastEpisodeCard() {
     const rec = readLastEpisode(storage);
     if (!rec) return null;
-    const offset = positions
-      ? positions.resumeOffset(rec.id, { duration: rec.duration_sec ?? null })
-      : 0;
+    const store = positionReader();
+    /* THE DURATION THE PLAYER MEASURED, when the catalogue row has none.
+       `PositionStore` records `duration` beside every position, read off the
+       media element itself, so it is both more available and more accurate than
+       a feed's `itunes:duration` -- some feeds carry none at all, and an episode
+       whose duration we never learned produced `percent: undefined` and no bar. */
+    const stored = store.load(rec.id);
+    const durationSec = Number.isFinite(Number(rec.duration_sec))
+      ? Number(rec.duration_sec)
+      : (Number.isFinite(Number(stored?.duration)) ? Number(stored.duration) : null);
+    const offset = store.resumeOffset(rec.id, { duration: durationSec });
     if (lastEpisodeState(rec, { positionSec: offset }).state !== "resume") return null;
-    const pct = episodePercentDone(rec, offset);
+    const pct = episodePercentDone({ ...rec, duration_sec: durationSec }, offset);
     return {
       ...rec,
       position_sec: offset,
       percent: pct === null ? undefined : Math.round(pct * 100),
-      label: episodeRemainingLabel(rec, offset),
+      label: episodeRemainingLabel({ ...rec, duration_sec: durationSec }, offset),
     };
   },
 

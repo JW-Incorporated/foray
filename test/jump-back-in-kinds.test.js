@@ -244,3 +244,70 @@ test("a card with no progress renders no bar rather than an empty one", () => {
 
 let _app0 = null;
 function app0() { if (!_app0) _app0 = loadApp(); return _app0; }
+
+/* ---------- episodes get a progress bar too (founder, 2026-09-21) --------- */
+
+/* CR stripped with no escape sequences at all -- writing an escaped CRLF through
+   a shell heredoc kept turning it into a real one and breaking the regex literal
+   it lived in. `fromCharCode(13)` cannot be mangled by any quoting layer. */
+const CLIENT_SRC = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8")
+  .split(String.fromCharCode(13)).join("");
+
+/* Slice a function body out by its delimiters rather than matching it with a
+   regex. Same reason as above: a pattern needing an escaped newline is one more
+   thing that can be silently mangled between here and the file. */
+function block(src, startMarker, endMarker) {
+  const i = src.indexOf(startMarker);
+  if (i < 0) return "";
+  const j = src.indexOf(endMarker, i);
+  return j < 0 ? src.slice(i) : src.slice(i, j + endMarker.length);
+}
+
+test("the episode card renders a bar at 0 %, not no bar", () => {
+  /* `typeof c.percent === "number"` has to admit 0. A listener who has just
+     started an episode has an honest 0 %, and the Foray cards draw theirs at
+     every value -- the episode card matching them is the whole report.
+     MUTATION: change the guard to `c.percent` (truthy) and 0 stops drawing a
+     bar. This goes red. */
+  const out = app0().jumpBackInCardHtml({ kind: "episode", id: "e", title: "E", percent: 0 });
+  assert.match(out, /fy-bar-fill/, "a zero-percent bar is still a bar");
+  assert.match(out, /data-pct="0"/);
+});
+
+test("lastEpisodeCard does not need the player booted to read a position", () => {
+  /* THE REPORT. `lastEpisodeCard` runs while HOME renders, which happens in
+     `route()` -- before `restoreNowPlayingRibbon` calls `ensureBooted`. It read
+     the module-level `positions`, still null at that moment, so the offset
+     defaulted to 0 and every episode card drew an empty bar.
+     MUTATION: restore `positions ? positions.resumeOffset(...) : 0`. */
+  const fn = block(CLIENT_SRC, "lastEpisodeCard() {", "},");
+  assert.ok(fn, "lastEpisodeCard must still exist");
+  assert.match(fn, /const store = positionReader\(\);/, "it goes through the reader");
+  assert.ok(!/positions \? positions\.resumeOffset/.test(fn),
+    "...and never falls back to 0 for want of a boot");
+});
+
+test("the reader prefers the booted store, and builds a thin one otherwise", () => {
+  /* One definition of a position. The read-only instance is over the SAME durable
+     store and the same `cp_pos:` rows, so the two cannot disagree -- and the
+     booted one wins whenever it exists, so a live session never reads a staler
+     copy of itself. */
+  const fn = block(CLIENT_SRC, "function positionReader() {", "return positionsRead;");
+  assert.match(fn, /if \(positions\) return positions;/, "the booted store wins");
+  assert.match(fn, /new PositionStore\(\{ storage \}\)/, "...and the fallback shares its storage");
+});
+
+test("a duration the feed never gave us comes from the position store", () => {
+  /* The second reason a bar went missing: `episodePercentDone` returns null when
+     the duration is unknown, and `percent: undefined` renders no bar at all. Some
+     feeds carry no `itunes:duration`. `PositionStore` records the duration it read
+     off the media element beside every position, which is both more available and
+     more accurate than a feed's own claim.
+     MUTATION: drop the `stored?.duration` branch and an episode with no catalogue
+     duration goes back to having no bar. */
+  const fn = block(CLIENT_SRC, "lastEpisodeCard() {", "},");
+  assert.match(fn, /const stored = store\.load\(rec\.id\);/);
+  assert.match(fn, /Number\(stored\?\.duration\)/, "the stored duration is the fallback");
+  assert.match(fn, /episodePercentDone\(\{ \.\.\.rec, duration_sec: durationSec \}/,
+    "...and it is what the percent is computed from");
+});
