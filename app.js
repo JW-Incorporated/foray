@@ -2426,8 +2426,25 @@ function renderAllShows(initialQuery = "") {
          not do it. So the page says where it wants to be instead of hoping.
 
          Before the results exist, not after: the scroll has to be settled while
-         the keyboard animates, or it fights the listener's own first scroll. */
-      scrollPageTo(0);
+         the keyboard animates, or it fights the listener's own first scroll.
+
+         ONLY WHEN THE FIELD IS EMPTY, and that qualifier is the whole rule
+         rather than a detail. The first draft scrolled on EVERY focus, which
+         broke the opposite case just as badly: a listener scrolled down into
+         their results who taps the field to edit the query got yanked back to
+         the top — the same rudeness, pointed the other way. It also made the
+         very next upward scroll read as a large DOWNWARD delta (the page had
+         just moved to 0 under it), so `maybeDismissKeyboardOnScroll` blurred the
+         field and dropped the keyboard. Caught by
+         test/playwright/tests/search-chrome-dock.spec.js's "a downward scroll
+         blurs the field; an upward one does not", in a real browser, which is
+         the only place that arithmetic is observable.
+
+         An empty field is the case the founder reported: you are STARTING a
+         search, whatever is under you is the A-Z browse list, and the results
+         will paint at the top. A field with a query in it means you are already
+         reading results, and where you are standing is where you chose to be. */
+      if (!input.value.trim()) scrollPageTo(0);
       /* Re-baselined AFTER the scroll above, and that order is the whole of it.
          `maybeDismissKeyboardOnScroll` measures a DELTA against this; a
          baseline captured before we move leaves the next frame comparing the

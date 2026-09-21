@@ -936,8 +936,18 @@ test("focusing the show-search field scrolls the page to the top", () => {
      goes red. RUN: failed as named. */
   const focusHandler = /input\.addEventListener\("focus",\s*\(\)\s*=>\s*\{([\s\S]*?)\n\s{4}\}\);/.exec(APP_SRC);
   assert.ok(focusHandler, "the show-search field must still have a focus handler");
-  assert.match(focusHandler[1], /scrollPageTo\(0\)/,
-    "focus must put the page at the top, where the results paint");
+  /* GATED ON AN EMPTY FIELD, and that gate is load-bearing. Scrolling on EVERY
+     focus — the first draft — broke the mirror-image case: a listener scrolled
+     into their results who taps the field to edit the query was yanked to the
+     top, and the next upward scroll then read as a large DOWNWARD delta and
+     dropped the keyboard. A real browser caught that and these node:vm suites
+     could not: test/playwright/tests/search-chrome-dock.spec.js, "a downward
+     scroll blurs the field; an upward one does not".
+     MUTATION: drop the `if (!input.value.trim())` guard — this stays green, and
+     that playwright spec goes red. Which is the honest note to leave here: the
+     guard's REASON lives in a browser, not in this file. */
+  assert.match(focusHandler[1], /if \(!input\.value\.trim\(\)\) scrollPageTo\(0\)/,
+    "focus on an EMPTY field must put the page at the top, where the results paint");
 });
 
 test("the scroll-dismiss baseline is re-read AFTER the scroll, not before it", () => {
