@@ -186,7 +186,7 @@ const FLOORS = {
      actual, and the pre-push review proved what that bought: all four pins could
      be deleted and the floor stayed green — the exact failure this file exists to
      make loud. Raise it when the suite grows. */
-  "player/media-session.test.js": 143, // 2026-09-21: the write and the report agree — a throwing metadata assignment is reported as failed and does not poison the dedupe; 140 -> 143 // client audit (2026-09-12): no raw NUL byte in player/*.js — a binary file is invisible to every search; 139 -> 140 // L-06 (2026-09-12): the Apple Podcasts parity rule + the onWrite hook; 132 -> 139 // F-89 (2026-09-11): a jingle item is credited to 4a; 131 -> 132
+  "player/media-session.test.js": 146, // 2026-09-22: client.js defers the shim-counter read past the shim's own flush (the founder's sent=0). The suite was already at 145 against a floor of 143 -- two cells had landed without a bump, so this closes that slack too; 143 -> 146 // 2026-09-21: the write and the report agree — a throwing metadata assignment is reported as failed and does not poison the dedupe; 140 -> 143 // client audit (2026-09-12): no raw NUL byte in player/*.js — a binary file is invisible to every search; 139 -> 140 // L-06 (2026-09-12): the Apple Podcasts parity rule + the onWrite hook; 132 -> 139 // F-89 (2026-09-11): a jingle item is credited to 4a; 131 -> 132
   /* Playback speed (#242). Floored with ZERO SLACK, like media-session and
      data-deletion above and for the same reason: what this suite guards is a set of
      PRODUCT decisions, each one edit from its opposite and none of them visible in
@@ -631,7 +631,7 @@ const FLOORS = {
      the branch that stops a careless version of this fix from deleting
      playable content in order to display an error about content the listener
      cannot tell is missing. */
-  "test/show-episode-load-states.test.js": 9,
+  "test/show-episode-load-states.test.js": 10, // 2026-09-22 audit: the loading+CURATED cell, the one quadrant the case list never covered — and the one the subtitle/body contradiction lived in; 9 -> 10
 
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):
@@ -1316,7 +1316,7 @@ const FLOORS = {
      only thing standing between a lock screen that works and one that silently says
      the wrong episode. Section 7 of that doc maps each mechanism to the mutation that
      kills it, which is where to look before concluding these are vacuous. */
-  "tools/mobile/foray-media-session.test.mjs": 79, // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
+  "tools/mobile/foray-media-session.test.mjs": 80, // 2026-09-22: `sends` cannot be read in the turn of the write, against the REAL default scheduler; 79 -> 80 // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
      deletion unusually attractive to a future session that finds them

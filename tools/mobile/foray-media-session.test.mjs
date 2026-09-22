@@ -1461,3 +1461,63 @@ test("a transport event is NOT re-broadcast as a session event", () => {
     assert.equal(seen.length, 0);
   });
 });
+
+/* --------------------------- 8. the counter is not readable in its own turn */
+
+test("`sends` CANNOT BE READ IN THE TURN OF THE WRITE — the founder's `sent=0`", async () => {
+  /* FOUNDER FIELD RECORD, 2026-09-22. Every `nowplaying` row in it read
+     `native=on/sent=0`. Zero is the shape of "the payload never reached
+     MPNowPlayingInfoCenter", which is F15's third explanation and the only one
+     that would mean this whole file is inert on the device.
+
+     It is the INSTRUMENT. `player/media-session.js` assigns `ms.metadata` and
+     calls its `onWrite` hook synchronously, in the same turn. This polyfill's
+     setter only ENQUEUES `flush`; `send()` — the one line that increments
+     `sends` — runs inside it. So a hook that reads `inspect().sends` can never
+     see its own write, and a record made of first-writes-after-boot reads `0`
+     however healthy the bridge is. Two device records were spent on a number
+     that could not have said anything else.
+
+     THE DEFAULT SCHEDULER, DELIBERATELY. `setup()` injects a controllable one,
+     which makes the asynchrony visible and therefore makes this bug
+     un-reproducible — the fake is more forgiving than the thing it stands for,
+     which is the failure CLAUDE.md names five times. What ships is the
+     microtask, so that is what this test drives.
+
+     MUTATION: make the default `schedule` synchronous, `(fn) => fn()`. The
+     first assertion goes red — and that would be the other honest fix, at the
+     cost of the coalescing that stops a 4 Hz repaint making four native calls a
+     second. RUN: failed as named. */
+  const capacitor = makeCapacitor();
+  const nav = {};
+  const session = createForayMediaSession({ capacitor, nav, baseUrl: BASE, origin: ORIGIN });
+  assert.equal(session.install(), true);
+
+  /* The real bridge, wired exactly as `client.js` wires it — including reading
+     the shim's own state from inside the hook, which is the line under test. */
+  const readInsideTheHook = [];
+  const media = createMediaSession({
+    nav,
+    MediaMetadata: null,
+    onWrite: () => readInsideTheHook.push(session.inspect().sends),
+  });
+  media.update(mediaSessionView({
+    item: { title: "One episode", show: "A show" },
+    forayTitle: "", index: 0, total: 0,
+    durationSec: 1800, positionSec: 0, playbackRate: 1, playing: true,
+  }));
+
+  assert.deepEqual(readInsideTheHook, [0], "the hook fired, and could not yet see its own write");
+  assert.equal(session.inspect().sends, 0, "…and it has still not moved when that turn ends");
+
+  /* One microtask later it has. Ordering, not a race: the setter enqueued the
+     flush BEFORE `media-session.js` called the hook, and microtasks run FIFO. */
+  await Promise.resolve();
+  assert.equal(session.inspect().sends, 1, "the payload left on the very next microtask");
+
+  await flush();
+  assert.equal(
+    capacitor.calls.filter((c) => c.method === SET_METHOD).length, 1,
+    "and it really was one native call, not a counter moving on its own",
+  );
+});
