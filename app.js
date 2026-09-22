@@ -2839,9 +2839,22 @@ function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBread
      explained our catalogue's internal tiering to a listener who has no idea
      what a tier is (founder's standing instruction: don't blame it on 4a). */
   if (loadState === "loading") {
-    return curatedCount
-      ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} · loading the rest…`
-      : "Loading episodes…";
+    /* ALWAYS the plain placeholder while loading — the curated count is no
+       longer stated here, and this is a correction to my own 2026-09-21 change.
+
+       The old branch named the curated count on the reasoning, written in the
+       comment above, that "those curated episodes are on screen and playable
+       right now, so naming them is a fact, not a hedge". That premise was TRUE
+       until the same day's other edit stopped painting curated rows while
+       loading (paintBody, below) — after which the subtitle asserted a count of
+       episodes the body underneath was not showing. A listener saw
+       "33 episodes · loading the rest…" over "Loading episodes…" and zero rows.
+
+       That is precisely the subtitle/body contradiction issue #687 exists to
+       remove, reintroduced by a body-only fix that left its own justification
+       standing 550 lines away. A count and the rows it labels must come from
+       the same state. */
+    return "Loading episodes…";
   }
   if (loadError && loadedCount === 0) {
     return curatedCount

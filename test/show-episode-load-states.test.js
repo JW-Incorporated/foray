@@ -460,3 +460,35 @@ test("the replacement copy is the plain, short, listener-facing text asked for",
     assert.ok(APP_SRC.includes(s), `app.js must carry the replacement string ${JSON.stringify(s)}`);
   }
 });
+
+test("a CURATED show still loading does not state a count over an empty body", async () => {
+  /* THE MISSING CELL, and it is the one that mattered.
+
+     The case list above runs failed / empty / loaded, and every one of them is
+     seeded with BREADTH — a show with zero curated episodes. So `curatedCount`
+     was always 0, the subtitle's `curatedCount ? …` branch was never taken, and
+     the whole loading + curated quadrant went untested.
+
+     That is exactly where the defect lived. On 2026-09-21 the body stopped
+     painting curated rows while loading (founder: stale rows that swap a second
+     later are worse than a brief blank) and the subtitle was left naming the
+     curated count — so a listener saw "33 episodes · loading the rest…" above
+     "Loading episodes…" and no rows at all. The suite stayed green because no
+     case combined a still-loading fetch with a show that HAS curated episodes.
+
+     MUTATION: restore the `curatedCount ? ... : "Loading episodes…"` branch in
+     showEpisodeCountLabel. This goes red; every case above stays green, which is
+     the whole reason this cell had to be added rather than the others widened. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) }); // never resolves: stays "loading"
+  seed(m.ctx, { show: CURATED, discoverItems: [CURATED_EP] });
+  m.ctx.renderShow("show-a");
+  await flushMicrotasks();
+
+  const body = m.body();
+  const sub = m.subtitle();
+  assert.ok(body && body.trim(), "the episode container must never be left empty");
+  assert.ok(sub && sub.trim(), "…nor the subtitle");
+  assert.ok(!/Curated Ep/.test(body), "no stale curated row may stand in for the list still loading");
+  assert.ok(!/^\d+ episode/.test(sub.trim()),
+    `the subtitle must not state a count while the body shows none — subtitle: "${sub}" / body: "${body}"`);
+});

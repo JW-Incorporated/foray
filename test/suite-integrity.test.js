@@ -631,7 +631,7 @@ const FLOORS = {
      the branch that stops a careless version of this fix from deleting
      playable content in order to display an error about content the listener
      cannot tell is missing. */
-  "test/show-episode-load-states.test.js": 9,
+  "test/show-episode-load-states.test.js": 10, // 2026-09-22 audit: the loading+CURATED cell, the one quadrant the case list never covered — and the one the subtitle/body contradiction lived in; 9 -> 10
 
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):

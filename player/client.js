@@ -2193,6 +2193,25 @@ const ForayPlayer = {
     const offset = positions.resumeOffset(rec.id, { duration: rec.duration_sec ?? null });
     const verdict = lastEpisodeState(rec, { positionSec: offset });
     if (verdict.state !== "resume") return null;
+    /* THE HANDLERS, NOT JUST THE METADATA (both audit fleets, 2026-09-22).
+
+       `setNowPlaying` -> `render()` publishes title, artist and artwork to
+       `navigator.mediaSession`, and that was ALL the restore did. `setActions`
+       is called in exactly two places — `play()` and `playForay()` — so a
+       session that only ever restored a ribbon published a full now-playing
+       entry with NO action handlers behind it. The car and the lock screen
+       showed the episode and their play button did nothing.
+
+       That is founder report F5 word for word, quoted eighteen lines from here:
+       "pressed play on the car's controls, nothing happened". I reintroduced it
+       on 2026-09-18 by adding a path that makes something current without
+       playing it — a state that did not exist when `setActions` was placed.
+
+       `episodeMediaSurface` is the right set: a restored bar is always a single
+       episode (a Foray restores through its own resume path), and its `play`
+       goes through `setRunning`, which is where `restoredPending` turns the
+       first press into a real load-and-seek. */
+    media.setActions(episodeMediaSurface);
     setNowPlaying(rec, null);
     restoredPending = { item: rec, positionSec: verdict.positionSec };
     render();
