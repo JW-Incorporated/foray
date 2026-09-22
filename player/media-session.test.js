@@ -1618,3 +1618,29 @@ test("play() calls invalidate before setNowPlaying", () => {
   const j = src.indexOf("setNowPlaying(item, why);", i);
   assert.ok(i > 0 && j > i, "invalidate() must come before setNowPlaying in play()");
 });
+
+test("client.js reads the shim's counter AFTER its flush, not in the turn of the write", () => {
+  /* FOUNDER FIELD RECORD, 2026-09-22: every `nowplaying` row read
+     `native=on/sent=0` — the shape of "nothing ever reached
+     MPNowPlayingInfoCenter", and the reason two device records were spent on
+     the car without settling it.
+
+     The counter was fine; the read was one turn early. `update()` above calls
+     `onWrite` SYNCHRONOUSLY with the assignment, and the Capacitor shim's
+     `metadata` setter only ENQUEUES the flush that increments `sends`. So the
+     hook cannot see its own write. `tools/mobile/foray-media-session.test.mjs`
+     §8 pins that against the real shim, with the real default scheduler; this
+     pins that `client.js` is the side that defers, because the deferral has to
+     live where the global lookup does and `media-session.js` is pure.
+
+     MUTATION: drop the `afterShimFlush(` wrapper and read inline again. Both
+     assertions go red. RUN: failed as named. */
+  const hook = /onWrite:[\s\S]{0,240}?nowPlaying\(/.exec(CLIENT_CODE);
+  assert.ok(hook, "the onWrite hook must still be wired here at all");
+  assert.match(hook[0], /afterShimFlush\(/,
+    "the shim's own state must be read after its flush, or the row reports the count before the write");
+  /* Two live lines: the helper and its one call site. A helper that exists and
+     is never called is the commented-out-proof failure §6 opens with. */
+  assert.equal(liveLines(CLIENT, "afterShimFlush(").length, 2,
+    "defined once and called once, both in live code");
+});

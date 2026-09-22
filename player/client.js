@@ -1574,6 +1574,44 @@ function mediaSessionShimState() {
   } catch (_) { return null; }
 }
 
+/**
+ * Run `read` after the shim has had its turn, so a counter read from it is the
+ * state AFTER this write rather than before it.
+ *
+ * FOUNDER FIELD RECORD, 2026-09-22: every `nowplaying` row read
+ * `native=on/sent=0`, which reads as "the payload never reached
+ * MPNowPlayingInfoCenter" — F15's third explanation, and the alarming one.
+ * It was the instrument. `media-session.js` assigns `ms.metadata` and calls
+ * this hook SYNCHRONOUSLY, in the same turn; the shim's setter only ENQUEUES
+ * its coalescing flush, and the line that increments `sends` runs inside it.
+ * So the hook could never see its own write, and a record made of
+ * first-writes-after-boot read `0` however healthy the bridge was. Two field
+ * records were spent on a number that could not have said anything else.
+ *
+ * ONE MICROTASK IS ENOUGH, AND IT IS ORDERING RATHER THAN A RACE. The shim
+ * enqueued its flush during the assignment, which is strictly before
+ * `media-session.js` called us; microtasks run FIFO, so ours cannot overtake
+ * it. A second write in the same turn finds the shim's `flushQueued` already
+ * set and enqueues nothing new — still ahead of this one. There is no delay to
+ * tune and nothing to wait on.
+ *
+ * TOTAL, like the read it defers: `media-session.js` calls this inside its own
+ * `attempt()` guard, and deferring would carry the callback OUT of that guard,
+ * so the guard is re-made here. A diagnostics sink must not be able to cost the
+ * page its lock screen.
+ */
+function afterShimFlush(read) {
+  const run = () => { try { read(); } catch (_) { /* diagnostics are never load-bearing */ } };
+  try {
+    if (typeof queueMicrotask === "function") queueMicrotask(run);
+    else Promise.resolve().then(run);
+  } catch (_) {
+    /* No microtask source at all: report early rather than not at all. The row
+       is then the pre-write count, which is what it has always been. */
+    run();
+  }
+}
+
 /** Live state -> the pure view the bridge writes. Called from `render()`, which
     every media event and the seam-beat hook already drive, so there is no second
     timer and no polling. */
@@ -2028,8 +2066,8 @@ function ensureBooted() {
        Capacitor shim got it across. `media-session.js` fires this only on a
        real write, so a Foray that produced no `nowplaying` rows is the
        measurement, not a hole in it: the payload never left the page. */
-    onWrite: ({ metadata, playbackState, writeOk, writeError }) =>
-      diag.nowPlaying({ metadata, playbackState, writeOk, writeError, native: mediaSessionShimState() }),
+    onWrite: (written) => afterShimFlush(() =>
+      diag.nowPlaying({ ...written, native: mediaSessionShimState() })),
   });
 
   ui = buildUI();
