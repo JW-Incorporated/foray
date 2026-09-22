@@ -691,6 +691,28 @@ export function createMediaSession({ nav = null, MediaMetadata = null, onWrite =
       }
     },
 
+    /**
+     * Forget what was last written, so the NEXT `update` re-asserts everything.
+     *
+     * FOUNDER, 2026-09-21. His field record showed `nowplaying` rows ONLY ever
+     * following a `boot` — never after a `play from tap`. The cause is this
+     * file's own dedupe working exactly as designed against a state that did not
+     * exist when it was written: the restored mini bar (2026-09-18) writes the
+     * metadata at launch, with nothing loaded and `state=paused`. When the
+     * listener then presses play, `setNowPlaying` runs with the SAME item, the
+     * key is unchanged, and the write is skipped — so the moment audio actually
+     * starts is the one moment the platform is never told about.
+     *
+     * That is harmless when the launch write landed and fatal when it did not:
+     * there is no second chance. A play is cheap and rare, and re-asserting
+     * three strings on it costs one write.
+     */
+    invalidate() {
+      lastMetaKey = null;
+      lastPositionKey = null;
+      lastState = null;
+    },
+
     clear() {
       lastMetaKey = null;
       lastPositionKey = null;
@@ -715,6 +737,7 @@ function inertBridge() {
     supported: false,
     setActions() { return []; },
     update() {},
+    invalidate() {},
     clear() {},
     release() {},
   };

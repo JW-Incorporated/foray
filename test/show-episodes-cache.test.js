@@ -94,7 +94,7 @@ test("fetchShowEpisodes does not pass cache: no-cache", () => {
   /* Comments stripped first — the function's own comment explains what was
      removed and names the string, and prose is not a code path. The same trick
      test/data-deletion.test.js uses on `cp_` keys. */
-  const fn = /async function fetchShowEpisodes\([\s\S]*?\n\}/.exec(SRC)[0]
+  const fn = /async function fetchShowEpisodesUncached\([\s\S]*?\n\}/.exec(SRC)[0]
     .replace(/\/\*[\s\S]*?\*\//g, " ")
     .replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
   assert.ok(!/cache:\s*["']no-cache["']/.test(fn), "the HTTP cache must be allowed to answer");

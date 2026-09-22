@@ -262,17 +262,34 @@ function seedShowAndPool(ctx, { show, discoverItems = [] } = {}) {
   ctx.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
 }
 
-test("renderShow renders the curated pool synchronously, before the full-catalogue fetch resolves", () => {
-  /* MUTATION: make renderShow await fetchShowEpisodes before its first
-     innerHTML write. This assertion fails because the view is empty at the
-     point renderShow() returns (a genuinely blank page while loading). */
+test("renderShow paints the page synchronously, and the episode list says it is LOADING", () => {
+  /* REWRITTEN 2026-09-21. This used to assert the opposite of what it now does:
+     that the curated-pool episode appears immediately, before the network.
+
+     The founder asked for that to stop — "it first shows some old episodes that
+     were already loaded, then all the latest episodes show up. That is bad ... it
+     probably makes sense to just show no episodes for a second until all the most
+     recent episodes show up". The curated rows are a handful of hand-picked
+     episodes, often years old, and replacing them a moment later moves the page
+     under a listener's thumb and shows stale content as if it were the list.
+
+     WHAT IS STILL WORTH PINNING, and is the half this test was really protecting:
+     `renderShow` must not AWAIT the fetch before painting. The header, the
+     artwork and the chrome are on screen in the same task; only the episode LIST
+     is deferred. A genuinely blank page while loading is still the failure.
+     MUTATION: make renderShow await fetchShowEpisodes before its first innerHTML
+     write — the title assertion fails.
+     MUTATION 2: paint `curatedEps` in the `loading` branch again — the "no stale
+     rows" assertion fails, and the founder's report comes back. */
   const m = mount({ fetchImpl: () => new Promise(() => {}) }); // never resolves
   const show = { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] };
   seedShowAndPool(m.ctx, { show, discoverItems: [{ id: "a--1", show: "Show A", title: "Curated Ep", audio_url: "https://cdn.example.com/a.mp3" }] });
 
   m.ctx.renderShow("show-a");
   const html = screenHtml(m);
-  assert.ok(html.includes("Curated Ep"), "must render the curated episode immediately, not wait on the network");
+  assert.ok(html.includes("Show A"), "the page itself must be on screen without waiting on the network");
+  assert.ok(!html.includes("Curated Ep"), "no stale curated row may stand in for the list that is still loading");
+  assert.ok(/Loading episodes/i.test(html), "the list says what it is doing instead");
 });
 
 test("a successful fetch swaps in the full-catalogue episode list", async () => {

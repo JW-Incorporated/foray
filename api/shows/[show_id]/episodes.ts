@@ -154,6 +154,40 @@ function firstParam(v: string | string[] | undefined): string | null {
  * (only the pointer is ever stored/returned, the body is fetched separately
  * per-episode). A missing enclosure never fabricates an audio_url — dropped,
  * matching ingestShowFeed's own toCatalogEpisode rule. */
+/**
+ * The row as the LIST is served: everything except `description_html`.
+ *
+ * FOUNDER, 2026-09-21: "I'm still confused why it takes so long to load all
+ * these episodes compared to other podcast apps."
+ *
+ * Measured against production on 2026-09-21, one page of Lex Fridman:
+ * 709 KB for 100 episodes, 7.1 KB each. NINETY-THREE PER CENT of it was
+ * description — `description_html` 412 KB (58 %) and `description_text` 251 KB
+ * (35 %). Everything the list actually renders — title, date, duration, audio
+ * url, guid — came to under 25 KB combined.
+ *
+ * `description_html` is the half that is pure waste: NOTHING reads it. The
+ * client maps `description_text` into `hook` and `description`
+ * (`fullCatalogueRowToEpRowItem` in app.js) and has never touched the HTML. It
+ * was serialised because `toLiveEpisode` builds a whole `CatalogShowEpisode`
+ * and the handler serialised the object it had.
+ *
+ * Dropping it takes a page from 709 KB to ~297 KB with no behaviour change at
+ * all — and a show like Lex is five pages, so it is ~2 MB off loading one show.
+ *
+ * `description_text` STAYS. It is what the episode page renders, and removing
+ * it would trade this round trip for a second one per episode.
+ *
+ * Applied at the RESPONSE boundary rather than by narrowing
+ * `CatalogShowEpisode`: the type is shared with the store, which genuinely
+ * holds the HTML, and a store that stopped persisting it could not serve it
+ * later without a re-ingest.
+ */
+function toListRow(ep: CatalogShowEpisode) {
+  const { description_html: _dropped, ...rest } = ep;
+  return rest;
+}
+
 function toLiveEpisode(showId: string, ep: ParsedEpisode, idx: number): CatalogShowEpisode | null {
   if (!ep.enclosureUrl) return null;
   const guid = ep.guid ?? `noguid:${ep.title}:${ep.publishedAt ?? idx}`;
@@ -232,7 +266,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     res.status(200).json({
       show_id: showId,
       show: { ...showHeader, description: parsed.descriptionText || null },
-      episodes: page,
+      episodes: page.map(toListRow),
       next_cursor: nextCursor,
       source: "live",
       degraded: false,
@@ -257,7 +291,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       // null rather than guessed. Production has no DATABASE_URL today, so
       // this branch is currently dormant.
       show: showHeader,
-      episodes,
+      episodes: episodes.map(toListRow),
       source: "db",
       stale: result.status === "cached_stale",
       error: result.status === "cached_stale" || result.status === "no_cache_error" ? result.error ?? null : null

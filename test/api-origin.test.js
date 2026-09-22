@@ -88,7 +88,10 @@ test("every api/* call in app.js goes through apiUrl(), none through pinnedUrl()
 
      MUTATION THAT KILLS THIS: change fetchApiJson back to `fetch(path, …)`, or
      fetchShowEpisodes back to `pinnedUrl(url)`. Ran both — red. */
-  const fetchers = ["fetchApiJson", "fetchShowEpisodes"];
+  /* `fetchShowEpisodesUncached`, not `fetchShowEpisodes`: the latter became a
+     thin in-flight-dedupe wrapper on 2026-09-21 and contains no fetch at all, so
+     grepping it would have passed vacuously. The invariant follows the fetch. */
+  const fetchers = ["fetchApiJson", "fetchShowEpisodesUncached"];
   for (const name of fetchers) {
     const fn = new RegExp(`async function ${name}\\([^)]*\\) \\{([\\s\\S]*?)\\n\\}`).exec(APP);
     assert.ok(fn, `app.js does not define ${name}()`);
