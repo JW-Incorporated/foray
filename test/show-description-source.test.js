@@ -81,7 +81,7 @@ test("fetchShowEpisodes keeps the show header instead of dropping it", () => {
   /* THE WHOLE BUG. The endpoint has always returned it; this function returned
      only the episode list, so the publisher's description never reached a page.
      MUTATION: delete the `show: body.show || null` line. This goes red. */
-  const fn = /async function fetchShowEpisodes\([\s\S]*?\n\}/.exec(SRC)[0];
+  const fn = /async function fetchShowEpisodesUncached\([\s\S]*?\n\}/.exec(SRC)[0];
   assert.match(fn, /show:\s*body\.show\s*\|\|\s*null/);
 });
 
@@ -146,16 +146,31 @@ test("feed text is escaped — it is third-party HTML from an arbitrary publishe
 
 /* ---------- our own line is still there, and still visibly ours --------- */
 
-test("the editorial note is kept, and labelled as ours", () => {
-  /* The 220 curatorial lines are not deleted — they just stop impersonating the
-     show's own description, which is what the report was about.
-     MUTATION: drop the prefix and it reads as the show's description again. */
-  assert.match(SRC, /Why it's in 4a — \$\{esc\(show\.editorial_note\)\}/);
+test("NOTHING renders the editorial note to a listener", () => {
+  /* FOUNDER, 2026-09-21: "Delete the 'why it's in 4a' field from anything the
+     user can read." It briefly sat under the publisher's description, labelled
+     as ours. The label was not the problem — a second blurb about the same show
+     is noise whoever wrote it.
+
+     The FIELD stays in data/catalog.json and is still load-bearing: it is what
+     `showsWeVouchFor` filters on to choose the "Shows we vouch for" rail. So
+     this asserts the field is never RENDERED, not that it is unused — those are
+     different claims and only one of them is wanted.
+     MUTATION: put the paragraph back on the show page. This goes red. */
+  const rendered = SRC.match(/esc\(show\.editorial_note\)/g) || [];
+  assert.deepStrictEqual(rendered, [], "no template may interpolate the note as text");
+  assert.ok(!/Why it's in 4a/.test(SRC), "and the label is gone with it");
+  assert.ok(!/ep-why/.test(SRC), "…along with the class that styled it");
 });
 
-test("the two are styled differently, so the page says which is which", () => {
+test("the note is still used as a CURATION filter, which is not the same thing", () => {
+  /* If this ever fails, "Shows we vouch for" has quietly lost its input.
+     MUTATION: delete the `.filter(s => s.editorial_note ...)` in showsWeVouchFor. */
+  assert.match(SRC, /\.filter\(s => s\.editorial_note && s\.editorial_note\.trim\(\)\)/);
+});
+
+test("the publisher's description is styled as body copy", () => {
   assert.match(CSS, /\.show-description\s*\{[^}]*color:\s*var\(--text\)/);
-  assert.match(CSS, /\.ep-why\s*\{[^}]*color:\s*var\(--text-dim\)/);
 });
 
 test("a feed blurb cannot widen the page", () => {

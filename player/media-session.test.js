@@ -1582,3 +1582,39 @@ test("a throw does not poison the dedupe — the next identical render retries",
   bridge.update({ metadata: meta });
   assert.equal(attempts, 2, "…and deduped again once it has landed");
 });
+
+test("a play RE-ASSERTS the metadata even when it has not changed", () => {
+  /* FOUNDER, 2026-09-21. The field record showed `nowplaying` rows only ever
+     after a `boot`, never after a `play from tap`. The restored mini bar
+     (2026-09-18) writes the metadata at launch with nothing loaded; pressing
+     play on that same episode then hit the dedupe below and wrote nothing, so
+     the one moment the OS most needs telling — audio is starting now — was the
+     one moment it was never told. Harmless if the launch write landed, fatal if
+     it did not, because there was no second chance.
+     MUTATION: delete `media.invalidate()` from ForayPlayer.play, or make
+     invalidate() a no-op. The second write below disappears. */
+  const writes = [];
+  let stored = null;
+  const bridge = createMediaSession({
+    nav: { mediaSession: { set metadata(v) { stored = v; }, get metadata() { return stored; }, setActionHandler() {} } },
+    MediaMetadata: null,
+    onWrite: (row) => writes.push(row),
+  });
+  const meta = { title: "T", artist: "A", album: "", artwork: [] };
+  bridge.update({ metadata: meta });
+  assert.equal(writes.length, 1, "the launch write");
+  bridge.update({ metadata: meta });
+  assert.equal(writes.length, 1, "…deduped, which is the behaviour that caused this");
+  bridge.invalidate();
+  bridge.update({ metadata: meta });
+  assert.equal(writes.length, 2, "…and re-asserted after invalidate()");
+});
+
+test("play() calls invalidate before setNowPlaying", () => {
+  /* Order matters: invalidating AFTER the write would clear the key that the
+     write just set and re-assert on the next tick instead of this one. */
+  const src = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  const i = src.indexOf("media.invalidate();");
+  const j = src.indexOf("setNowPlaying(item, why);", i);
+  assert.ok(i > 0 && j > i, "invalidate() must come before setNowPlaying in play()");
+});

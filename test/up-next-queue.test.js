@@ -243,6 +243,13 @@ test("renderShow's episode rows (via epRow) each carry the '+ Up Next' control",
   assert.ok(show, "fixture assumption: lex-fridman-podcast must be in catalog-client.json");
 
   m.ctx.renderShow("lex-fridman-podcast");
+  /* SETTLED FIRST. Since 2026-09-21 a show page paints a placeholder while the
+     episode fetch is in flight rather than the curated-pool rows (founder: stale
+     rows that swap a second later are worse than a brief blank), so reading the
+     view synchronously now finds no rows at all. This harness 404s the endpoint,
+     so the page settles into `failed`, which is where those curated rows — the
+     ones carrying the Up Next control this test is about — are painted. */
+  for (let i = 0; i < 50; i++) await new Promise((r) => setTimeout(r, 0));
   const html = m.view();
   const discover = readJson("data/discover.json");
   const expected = discover.items.filter((it) => it.show === "Lex Fridman Podcast");

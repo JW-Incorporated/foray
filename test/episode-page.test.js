@@ -83,7 +83,7 @@ test("route() sends #/episode/:id to renderEpisode, per the plan's §1 pattern",
   // route() itself reads `location.hash` at call time via the real DOM path.
   assert.match(
     SRC,
-    /else if \(\(m = \/\^#\\\/episode\\\/\(\.\+\)\$\/\.exec\(h\)\)\) renderEpisode\(m\[1\]\);/,
+    /else if \(\(m = \/\^#\\\/episode\\\/\(\.\+\)\$\/\.exec\(h\)\)\) renderEpisode\(safeDecode\(m\[1\]\)\);/,
     "route() must match #/episode/:id and call renderEpisode(m[1]), exactly the plan's §1 regex"
   );
 });

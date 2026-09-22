@@ -208,19 +208,42 @@ async function mountBooted(seed) {
 
 const rowCount = (html) => (html.match(/class="ep-row/g) || []).length;
 
+/**
+ * Let the show page settle after `renderShow`.
+ *
+ * `renderShow` is synchronous but its episode fetch is not, and since 2026-09-21
+ * the two states paint DIFFERENTLY: while `loading` the page shows a placeholder,
+ * and only once the fetch has settled does it show rows — the full list on
+ * success, the curated-pool rows on failure. (Founder: "it first shows some old
+ * episodes that were already loaded, then all the latest episodes show up. That
+ * is bad.")
+ *
+ * This harness 404s the episodes endpoint, so these tests settle into `failed`,
+ * which is exactly the state whose curated rows they are about. Reading the view
+ * without waiting used to work only because `loading` painted those rows too.
+ */
+async function settled(m) {
+  for (let i = 0; i < 50; i++) await new Promise((r) => setTimeout(r, 0));
+  return m.view();
+}
+
 /* ==================================================================== */
 /* 1. A VALID show_id RENDERS HEADER + EPISODES, AGAINST THE REAL DATA   */
 /* ==================================================================== */
 
-test("a valid show_id renders artwork, title, editorial note and taxonomy chips", async () => {
+test("a valid show_id renders artwork, title and taxonomy chips — and NOT the editorial note", async () => {
   /* "making-chips" is picked deliberately: it joins on show_id cleanly (not the
      fallback path — that is tested separately below) AND carries a non-null
      artwork_url in catalog.json, which not every show does (e.g.
      lex-fridman-podcast's show-level record has none, even though its
      episodes do) — so this is the header test, not the episode-count one.
 
-     MUTATION: drop the `show.editorial_note ?` branch from renderShow's
-     template. The editorial-note assertion fails. MUTATION 2: drop the chips
+     THE EDITORIAL NOTE IS NO LONGER RENDERED (founder, 2026-09-21: "Delete the
+     'why it's in 4a' field from anything the user can read"). The field stays in
+     catalog.json and still decides the "Shows we vouch for" rail; what is gone is
+     showing a listener our copy. This test now pins the NEGATIVE, which is the
+     claim that can regress silently.
+     MUTATION: put the paragraph back. The negative assertion fails. MUTATION 2: drop the chips
      line. The taxonomy label assertion fails. MUTATION 3: drop the
      `show.artwork_url ?` branch. The artwork assertion fails. */
   const m = await mountBooted();
@@ -232,7 +255,8 @@ test("a valid show_id renders artwork, title, editorial note and taxonomy chips"
   m.ctx.renderShow("making-chips");
   const html = m.view();
   assert.ok(html.includes(m.ctx.esc(show.title)), "must render the show title");
-  assert.ok(html.includes(m.ctx.esc(show.editorial_note)), "must render the editorial note");
+  assert.ok(!html.includes(m.ctx.esc(show.editorial_note)), "must NOT render the editorial note");
+  assert.ok(!html.includes("Why it's in 4a"), "…nor the label it briefly carried");
   assert.ok(html.includes('class="show-art"'), "must render the artwork image");
   const taxonomy = readJson("data/taxonomy.json");
   for (const nodeId of show.taxonomy_node_ids) {
@@ -401,7 +425,7 @@ test("every discover-pool episode for the show renders as a playable ep-row", as
   assert.ok(expected.length > 1, "fixture assumption: need a multi-episode show");
 
   m.ctx.renderShow("lex-fridman-podcast");
-  const html = m.view();
+  const html = await settled(m);
   assert.strictEqual(rowCount(html), expected.length, "row count must match the discover pool exactly");
   for (const ep of expected.slice(0, 3)) {
     assert.ok(html.includes(m.ctx.esc(ep.title)), `must render episode "${ep.title}"`);
@@ -605,7 +629,7 @@ test("Lingthusiasm resolves via the title-alias fallback, not the show_id join",
   assert.ok(expected.length > 0, "fixture assumption: discover.json must carry Lingthusiasm episodes under the short name");
 
   m.ctx.renderShow("lingthusiasm");
-  const html = m.view();
+  const html = await settled(m);
   assert.strictEqual(rowCount(html), expected.length, "the fallback join must find every Lingthusiasm episode");
   for (const ep of expected) {
     assert.ok(html.includes(m.ctx.esc(ep.title)), `must render "${ep.title}" via the fallback join`);
@@ -687,7 +711,7 @@ test("epRow links its show-name text to #/show/:show_id when the show is in cata
   assert.ok(show, "fixture assumption: lex-fridman-podcast must be in catalog-client.json");
 
   m.ctx.renderShow("lex-fridman-podcast");
-  const html = m.view();
+  const html = await settled(m);
   assert.ok(
     html.includes(`<a class="show-link" href="#/show/lex-fridman-podcast">${m.ctx.esc(show.title)}</a>`),
     "every epRow on the show's own page must link its show name back to that show's page"
@@ -1284,7 +1308,7 @@ test("a show used by no Foray renders no forays footer at all", () => {
   assert.ok(!html.includes('class="show-forays"'), "no Foray uses Unused Show, so no footer section may render");
 });
 
-test("the forays footer never interleaves with the episode list above it", () => {
+test("the forays footer never interleaves with the episode list above it", async () => {
   /* Pins B1's rule literally: the last ep-row must close before the
      show-forays section opens, never nested inside or between rows.
 
@@ -1299,8 +1323,24 @@ test("the forays footer never interleaves with the episode list above it", () =>
   m.state.poolIds = new Set();
 
   m.ctx.renderShow("grill-show");
-  const html = m.view();
-  const lastEpRow = html.lastIndexOf('class="ep-row');
+  const html = await settled(m);
+  /* ASSERTED AGAINST THE EPISODE CONTAINER, not against a painted row.
+
+     This used to read the last `ep-row`, which worked only because a page still
+     loading painted the curated-pool rows. Since 2026-09-21 it paints a
+     placeholder instead (founder: stale rows that swap a second later are worse
+     than a brief blank), and this harness uses `mount()` rather than
+     `mountBooted()` — its fetch never resolves at all — so the page stays in
+     `loading` by construction and there are no rows to order against.
+
+     The claim was never really about rows. It is about renderShow's TEMPLATE:
+     the footer must come after the container the episodes are painted into,
+     whatever is in it at the time. Asserted that way, it holds in every load
+     state rather than in the one that happened to paint rows.
+     MUTATION (unchanged): move showForaysHtml's call above the episode
+     container in renderShow's template. This goes red. */
+  const episodeContainer = html.indexOf("data-show-episodes");
   const foraysSection = html.indexOf('class="show-forays"');
-  assert.ok(lastEpRow >= 0 && foraysSection > lastEpRow, "the forays footer must come after every episode row, never interleaved");
+  assert.ok(episodeContainer >= 0, "the episode container must be in the template");
+  assert.ok(foraysSection > episodeContainer, "the forays footer must come after the episode list, never interleaved");
 });

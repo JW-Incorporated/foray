@@ -2106,6 +2106,15 @@ const ForayPlayer = {
     // rather than adding to it: a stale `nexttrack` still pointed at a Foray
     // nobody is on is the one wiring bug this surface can hide.
     media.setActions(episodeMediaSurface);
+    /* RE-ASSERT THE METADATA ON EVERY PLAY (founder, 2026-09-21).
+
+       His field record showed `nowplaying` rows only ever after a `boot`, never
+       after a `play from tap`: the restored mini bar writes the metadata at
+       launch, and when the same episode is then played the dedupe in
+       `media-session.js` sees an unchanged key and skips the write. The one
+       moment the OS most needs telling — audio is starting now — was the one
+       moment it was never told. */
+    media.invalidate();
     setNowPlaying(item, why);
     /* THE POINTER, written here and nowhere else (founder, 2026-09-18: "the
        podcast I was listening to should still be in the now playing ribbon").

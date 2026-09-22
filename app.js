@@ -2596,7 +2596,79 @@ function cacheShowEpisodes(show_id, payload) {
   showEpisodesCache.set(show_id, { ...payload, at: Date.now() });
 }
 
+/** First-page fetches currently in flight, by show id.
+ *
+ *  Two callers now want the same page at almost the same moment: the prefetch
+ *  fired when a listener presses a show link, and `renderShow` a fraction of a
+ *  second later. Without this they are two round trips for one answer, and the
+ *  prefetch buys nothing at all — the page would start its own.
+ *
+ *  Deduped on the FIRST PAGE only. Deeper pages are reached by scrolling, which
+ *  is deliberate and not raced.
+ */
+const showEpisodesInFlight = new Map();
+
+/**
+ * Start a show's first page BEFORE the listener arrives on its page.
+ *
+ * FOUNDER, 2026-09-21: "it should be preloaded by the time I open the show
+ * (perhaps we can get clever about loading most recent episodes for the top
+ * shows in a search result while still on a search page, or somehow speed this
+ * up)".
+ *
+ * Bound to `pointerdown`, which fires on press rather than on release — worth
+ * 100-200 ms of head start on a phone, and more if the listener is scrolling and
+ * pauses on a row. By the time `renderShow` asks, the request is in flight and
+ * `showEpisodesInFlight` hands it the same promise rather than starting a second.
+ *
+ * DELIBERATELY NOT a prefetch of every show in a search result. That is the
+ * founder's other suggestion and it is the more expensive one: ten results is
+ * ten feed fetches and ten cache entries for the one the listener opens, paid on
+ * every keystroke's worth of results. A press is a much stronger signal than a
+ * result, and it arrives early enough to be worth almost as much.
+ *
+ * Fire-and-forget by construction: the result lands in `showEpisodesCache` and
+ * a rejection is swallowed, because a prefetch that fails must cost nothing —
+ * `renderShow` will ask again and handle the failure in the one place that knows
+ * how to paint it.
+ */
+function prefetchShowEpisodes(show_id) {
+  if (!show_id || cachedShowEpisodes(show_id) || showEpisodesInFlight.has(show_id)) return;
+  fetchShowEpisodes(show_id).then((r) => {
+    if (r && Array.isArray(r.episodes) && r.episodes.length) {
+      cacheShowEpisodes(show_id, { episodes: r.episodes, nextCursor: r.nextCursor, stale: !!r.stale, show: r.show });
+    }
+  }).catch(() => { /* a prefetch that fails costs nothing */ });
+}
+
+/** One delegated listener for every show link on the page, present and future. */
+function bindShowPrefetch() {
+  if (typeof document.addEventListener !== "function") return;
+  document.addEventListener("pointerdown", (e) => {
+    const a = e.target && e.target.closest && e.target.closest('a[href^="#/show/"]');
+    if (!a) return;
+    const href = a.getAttribute("href") || "";
+    const id = safeDecode(href.slice("#/show/".length));
+    if (id) prefetchShowEpisodes(id);
+  }, { passive: true });
+}
+
 async function fetchShowEpisodes(show_id, cursor) {
+  if (!cursor) {
+    const live = showEpisodesInFlight.get(show_id);
+    if (live) return live;
+  }
+  const p = fetchShowEpisodesUncached(show_id, cursor);
+  if (!cursor) {
+    showEpisodesInFlight.set(show_id, p);
+    /* Cleared however it settles. A rejected promise left in the map would make
+       every later attempt replay the same failure. */
+    p.finally(() => { if (showEpisodesInFlight.get(show_id) === p) showEpisodesInFlight.delete(show_id); });
+  }
+  return p;
+}
+
+async function fetchShowEpisodesUncached(show_id, cursor) {
   try {
     const path = `api/shows/${encodeURIComponent(show_id)}/episodes`;
     const url = cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path;
@@ -2941,7 +3013,22 @@ function renderShow(show_id) {
          NO BACKTICKS IN THIS COMMENT: it sits inside a template literal, so one
          would end the string. Caught by node --check. -->
     <div data-show-description hidden></div>
-    ${show.editorial_note ? `<p class="note ep-why">Why it's in 4a — ${esc(show.editorial_note)}</p>` : ""}
+    <!-- NO EDITORIAL NOTE HERE. Founder, 2026-09-21: "Delete the 'why it's in
+         4a' field from anything the user can read."
+
+         It briefly sat under the publisher's description, labelled as ours. The
+         label was not the problem: a second blurb about the same show is noise
+         whoever it is attributed to, and the publisher's own words are the ones
+         that belong on a show page.
+
+         editorial_note STAYS IN THE DATA and is still load-bearing -- it is what
+         showsWeVouchFor filters on to pick the "Shows we vouch for" rail. That is
+         curation deciding what to surface, which is not the same thing as showing
+         a listener our copy. Nothing renders its text any more, and
+         test/show-description-source.test.js pins that.
+
+         NO BACKTICKS IN THIS COMMENT: it sits inside a template literal, so one
+         would end the string. Caught by node --check, twice now. -->
     ${chips ? `<div class="fy-chips">${chips}</div>` : ""}`;
 
   /* S-06: the search box is a real requirement from Wyatt's original ask,
@@ -3101,7 +3188,26 @@ function renderShow(show_id) {
     const c = container();
     if (!c) return;
     if (loadState === "loaded") { paintList(c); return; }
-    if (curatedEps.length) {
+    /* WHILE LOADING, SHOW THE PLACEHOLDER — NOT the curated rows (founder,
+       2026-09-21: "it first shows some old episodes that were already loaded,
+       then all the latest episodes show up. That is bad ... it probably makes
+       sense to just show no episodes for a second until all the most recent
+       episodes show up").
+
+       The curated rows are a handful of hand-picked episodes from the discover
+       pool, often years old. Painting them first and replacing them a moment
+       later is a visible jump that makes the page look wrong twice: once for
+       showing stale episodes as if they were the list, and again for moving
+       under the listener's thumb.
+
+       THE ARGUMENT BELOW STILL HOLDS FOR `failed`, and is why this is a split
+       rather than a deletion: when the fetch has FAILED those rows are the best
+       thing we have, they are real and playable, and replacing them with
+       "Couldn't load these episodes" would delete working content to display an
+       error about content the listener cannot tell is missing. The difference is
+       that `loading` is a state that RESOLVES — the stale rows buy a second of
+       false content and then take it away — while `failed` is terminal. */
+    if (loadState !== "loading" && curatedEps.length) {
       c.innerHTML = curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("");
       bindRows(c);
       return;
@@ -6190,7 +6296,10 @@ function lastEpisodeCard() {
        `audio_url` precisely so this is possible. */
     snapshot(r.id, r);
     return {
-      kind: "episode", id: r.id, at: r.updated_at || null,
+      /* `item` is the snapshot itself, carried so the card can render a play
+         button: `playBtn` needs `audio_url` to decide whether to render at all,
+         and `title` for its aria-label. */
+      kind: "episode", id: r.id, at: r.updated_at || null, item: r,
       title: r.title || r.id, sub: r.show || "",
       percent: r.percent, left: r.label,
     };
@@ -6211,6 +6320,24 @@ function jumpBackInCardHtml(c) {
   const ev = c.kind === "episode"
     ? ` data-ev="picked" data-ep="${esc(c.id)}" data-ctx="jbi-episode"`
     : "";
+  /* PLAY WITHOUT OPENING THE EPISODE (founder, 2026-09-21: "It would be good if
+     there were a play button directly on that card, as it is I need to press the
+     card then press play").
+
+     Episodes only. A Foray and a playlist are sequences whose card is a way IN to
+     a running order, and a one-tap play on either would be choosing a starting
+     point on the listener's behalf; an episode has exactly one thing to play.
+
+     `playBtn` is the same control every row and card already uses, so it inherits
+     `bindPlay` (already called on this page) and with it the `preventDefault` +
+     `stopPropagation` that stops the press ALSO following the card's own link —
+     the exact reason that handler has them. It renders "" when the item has no
+     `audio_url`, which is the honest outcome for a card we cannot play from.
+
+     `lastEpisodeCard` has already `snapshot()`ed the row into `state.itemIndex`,
+     which is where `bindPlay` looks the id up — so the button can play an episode
+     the catalogue has never heard of, which is the whole point of the pointer. */
+  const play = c.kind === "episode" ? playBtn(c.item, "jbi-episode") : "";
   const id = esc(encodeURIComponent(c.id));
   /* THE `#/` IS LITERAL IN THE TEMPLATE, and only the route segment and the id
      are interpolated — the form every other link in this file uses.
@@ -6228,7 +6355,7 @@ function jumpBackInCardHtml(c) {
     <a class="hv2-jbi-card" href="#/${route}/${id}"${ev}>
       <span class="hv2-jbi-kicker">Jump back in</span>
       <span class="hv2-jbi-title">${esc(c.title)}</span>
-      ${sub}${bar}${left}
+      ${sub}${bar}${left}${play}
     </a>`;
 }
 
@@ -10471,7 +10598,24 @@ function renderCurrentPage() {
   if (forayId) renderForay(forayId);
   else if ((m = /^#\/playlist\/(.+)$/.exec(h))) renderPlaylistDetail(m[1]);
   else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
-  else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(m[1]);
+  /* DECODED, like `#/show/` and `#/category/` below — and unlike this line until
+     2026-09-21, which is a bug that hid in plain sight for as long as episode ids
+     were slugs.
+
+     A breadth episode's id is `<show_id>--<guid>`, and a guid is very often a
+     URL: `lex-fridman-podcast--https://lexfridman.com/?p=6554`. Every link to it
+     goes through `encodeURIComponent`, so the hash carries
+     `...--https%3A%2F%2Flexfridman.com%2F%3Fp%3D6554` — and this line handed that
+     STILL-ENCODED string to `resolveEpisode`, which looked it up in an index
+     keyed by the decoded id and found nothing. Every breadth episode page said
+     "Episode not found"; pool episodes have plain slugs where encoding is a
+     no-op, which is why nobody saw it until a Jump back in card made a breadth
+     episode reachable in one tap.
+
+     `safeDecode`, not `decodeURIComponent`: a lone `%` in a hash throws a
+     URIError, and a malformed hash must not take the router down (its own
+     header makes the same argument). */
+  else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(safeDecode(m[1]));
   else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
   else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(decodeURIComponent(m[1]));
   /* Before the bare `#/shows`, because `h === "#/shows"` is an exact match
@@ -11275,6 +11419,7 @@ async function init() {
      existing answer to exactly that race, and this rides it rather than
      inventing a poll. */
   restoreNowPlayingRibbon();
+  bindShowPrefetch();
   logEvent("session_shown", { session_id: state.session.session_id });
   trySyncEvents();
 
