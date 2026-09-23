@@ -321,6 +321,14 @@ const FLOORS = {
      standing rule that no control's text in app.js or player/client.js is
      written except through the label helpers. ZERO SLACK. */
   "test/toggle-labels.test.js": 12, // 2026-09-22: new
+  /* Audit 2026-09-22, theme H + the jargon ledger: no production vocabulary
+     (segment, beat, act, piece, running order) in any listener-facing literal
+     of app.js or the player modules — read by a small lexer that is itself
+     pinned to see templates and interpolations — and each string that outlived
+     its cause (pull to refresh, the home-screen builder, browser copy in the
+     shell, the four-queue popup, raw resolver reasons) stays gone, with the
+     behaviour behind the copy. ZERO SLACK. */
+  "test/listener-copy.test.js": 13, // 2026-09-22: new
   "test/jump-back-in-kinds.test.js": 18, // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
@@ -424,7 +432,7 @@ const FLOORS = {
      as diagnostics-surface.test.js: `player/queue-manager.test.js` covers
      the manager's own voice logic in isolation; this is the app.js surface
      nothing else can see. */
-  "test/voice-settings.test.js": 11,
+  "test/voice-settings.test.js": 20, // 2026-09-22 (audit qa row 81): the voices are one named radio group with one tab stop and arrow keys; floor raised to the live count, 11 -> 20
   /* S-08's mechanical privacy tripwire: SHOWS_SEARCH_OFF_DEVICE flag detection
      (source and env), the pinned current-sentence check, the core AND-gate
      that fails release builds only when the flag is on AND the old sentence

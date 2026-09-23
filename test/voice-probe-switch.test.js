@@ -340,7 +340,7 @@ test("with no player module loaded the run says so instead of throwing", async (
   h.openDrawer();
   await h.run().click();
   await h.settle();
-  assert.match(h.status().textContent, /player module has not loaded/);
+  assert.match(h.status().textContent, /player hasn.t loaded/);
 });
 
 test("a rejecting player is caught and reported, never left as an unhandled rejection", async () => {

@@ -875,9 +875,13 @@ test("Escape and the button are one path, not two implementations", () => {
 
   assert.deepStrictEqual(afterEscape, afterButton, "the two triggers must land identically");
   /* CALL sites only — the trailing `;` excludes the `function
-     dismissShowSearch(input) {` declaration, which is not a caller. */
+     dismissShowSearch(input) {` declaration, which is not a caller.
+     THREE since 2026-09-22 (audit qa row 62): Escape, the button's pointer
+     `mousedown`, and the button's keyboard `click` — Enter and Space fire
+     click, never mousedown, so the ✕ did nothing from a keyboard. Still one
+     function; a third TRIGGER, not a second implementation. */
   const calls = APP_SRC.match(/dismissShowSearch\(input\);/g) || [];
-  assert.strictEqual(calls.length, 2, `one function, two callers, got ${calls.length}`);
+  assert.strictEqual(calls.length, 3, `one function, three callers, got ${calls.length}`);
   assert.strictEqual((APP_SRC.match(/function dismissShowSearch\(/g) || []).length, 1,
     "…and exactly one definition of it");
 });

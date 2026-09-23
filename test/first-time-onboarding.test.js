@@ -641,7 +641,7 @@ function seedHomeForRedeal(m) {
 const homeHtml = (m) => m.byId.get("view").innerHTML;
 const dealtRoots = (html) => [...html.matchAll(/class="mini-card" data-branch="([^"]+)"/g)].map((mm) => mm[1]);
 const leadEpisode = (html, root) =>
-  (new RegExp(`data-branch="${root}"[\\s\\S]*?Starts with "([^"]+)\\."`).exec(html) || [])[1];
+  (new RegExp(`data-branch="${root}"[\\s\\S]*?Starts with "([^"]+?)\\.?"`).exec(html) || [])[1];
 
 /** Renders the first Home of the session (which deals cardSlots and opens the
     sheet over it) and returns the four dealt subjects, stretch slot first. */

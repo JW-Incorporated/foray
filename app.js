@@ -522,7 +522,6 @@ function interestSliderRow(node) {
   return `<div class="interest-row${isRoot ? " interest-row-root" : ""}">
     <div class="interest-row-head">
       <span class="interest-row-name">${esc(node.label)}</span>
-      <span class="interest-row-path">${esc(node.id)}</span>
     </div>
     <div class="interest-row-controls">
       <input type="range" class="interest-slider" role="slider"
@@ -532,8 +531,8 @@ function interestSliderRow(node) {
         aria-valuemin="0" aria-valuemax="1" aria-valuenow="${value}"
         aria-valuetext="${pct}%">
       <span class="interest-row-pct">${pct}%</span>
-      <button type="button" class="interest-reset" data-interest-reset="${esc(node.id)}"
-        ${value === Math.max(0, node.weight) ? "disabled" : ""}>Reset to learned</button>
+      <button type="button" class="interest-reset" data-interest-reset="${esc(node.id)}"${controlLabelAttr("Back to 4a's pick", `${node.label}: back to 4a's pick`)}
+        ${value === Math.max(0, node.weight) ? "disabled" : ""}>Back to 4a's pick</button>
     </div>
   </div>`;
 }
@@ -549,7 +548,7 @@ function renderInterests() {
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
-        <div><h2>Interests</h2><p class="sub">Drag a slider to overrule what 4a has learned</p></div>
+        <div><h2>Interests</h2><p class="sub">Drag a slider to change what 4a suggests.</p></div>
       </div>
       ${groups.map(g => `
         <div class="interest-group">
@@ -2429,15 +2428,15 @@ function renderAllShows(initialQuery = "") {
      field rather than a compose box. */
   renderShowIndexPage("Shows", "", shows, `
       <div id="sh-compose">
-        <form id="sh-form" autocomplete="off">
+        <form id="sh-form" role="search" autocomplete="off">
           <svg class="sh-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
-          <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
+          <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026" aria-label="Search shows">
         </form>
         <button id="sh-dismiss" type="button" aria-label="Clear search" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
         </button>
       </div>
-      <p id="sh-note" class="note" hidden></p>
+      <p id="sh-note" class="note" role="status" aria-live="polite" hidden></p>
       <p id="sh-offline-note" class="note" hidden>Showing shows available offline</p>
       <div id="sh-results" class="show-results" hidden></div>
       <div id="ep-search-results" hidden></div>
@@ -2604,6 +2603,15 @@ function renderAllShows(initialQuery = "") {
        tap, so one listener covers both. */
     dismiss.addEventListener("mousedown", (e) => {
       if (typeof e.preventDefault === "function") e.preventDefault();
+      dismissShowSearch(input);
+    });
+    /* AND `click`, for the keyboard (audit 2026-09-22, qa row 62). Enter and
+       Space on a <button> fire `click`, never `mousedown`, so a keyboard or
+       switch user reached a named, focusable control that did nothing. A
+       key-made click has `detail === 0`; a pointer's has already been handled
+       by the mousedown above, so it is skipped rather than run twice. */
+    dismiss.addEventListener("click", (e) => {
+      if (e && e.detail !== 0) return;
       dismissShowSearch(input);
     });
   }
@@ -2938,8 +2946,8 @@ function showForaysHtml(show) {
        honesty rule forbids, so the partial case says nothing at all
        rather than saying something wrong;
      - the stale note, promoted here to a standalone sentence. "Couldn't
-       refresh" is a failure the listener can act on (pull to refresh,
-       come back on a better connection); silence about it would be a
+       refresh" is a failure the listener can act on (come back on a
+       better connection); silence about it would be a
        different lie from the one we just deleted. */
 function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBreadthTier, stale, loadError, loadState }) {
   /* THE LOADING BRANCH MOVED IN HERE (issue #687). It used to be written by
@@ -3170,10 +3178,10 @@ function renderShow(show_id) {
      for). bindShowEpisodeSearch() below reveals it the moment page 1 lands. */
   const searchBox = `
     <div class="show-ep-search" data-show-ep-search hidden>
-      <form data-show-ep-search-form autocomplete="off">
-        <input data-show-ep-search-input type="text" maxlength="120" placeholder="Search this show's episodes…">
+      <form data-show-ep-search-form role="search" autocomplete="off">
+        <input data-show-ep-search-input type="text" maxlength="120" placeholder="Search this show's episodes…" aria-label="Search this show's episodes">
       </form>
-      <p class="note" data-show-ep-search-note hidden></p>
+      <p class="note" data-show-ep-search-note role="status" aria-live="polite" hidden></p>
     </div>`;
 
   /* THE EPISODE CONTAINER IS EMITTED EMPTY (issue #687, founder screenshot
@@ -3295,7 +3303,10 @@ function renderShow(show_id) {
   const BODY_PLACEHOLDER = {
     loading: "Loading episodes…",
     empty: "No episodes yet.",
-    failed: "Couldn't load these episodes. Pull to refresh.",
+    /* It said "Pull to refresh", and there is no pull-to-refresh anywhere in
+       4a — the shell suppresses the rubber-band on purpose (styles.css,
+       overscroll-behavior). A failure line names only an action that exists. */
+    failed: "Couldn't load these episodes. Check your connection, then open the show again.",
   };
 
   /* THE ONE WRITER OF THE EPISODE CONTAINER (issue #687).
@@ -3787,6 +3798,10 @@ function bindPlaylistFormSubmit(e) {
   const originalLabel = btn.textContent;
   btn.disabled = true;
   setControlLabel(btn, "Building…", null);
+  /* The last query's "Not much on …" must not sit under the next one's
+     "Building…" — bindCreateFormSubmit already hid its own; this did not. */
+  const staleNote = $("#pl-note");
+  if (staleNote) staleNote.hidden = true;
   setTimeout(() => {
     try {
       const result = buildPlaylist(query);
@@ -3973,18 +3988,29 @@ function subjectBlurb(slot) {
   return `From ${shows[0]}, ${shows[1]}, and ${shows.length - 2} more.`;
 }
 
+/* "Starts with …" LEADS the hook, and closes its own sentence only when the
+   title has not already. Two defects, one line (audit 2026-09-22, qa rows 136 and
+   148): the full stop was appended unconditionally, so 210 of the pool's 2,167
+   titles read `Starts with "…Save The World?."`; and the clause came AFTER the
+   blurb, so on a short screen — where styles.css clamps the hook to one line —
+   the episode title, the one concrete thing the card says, was the part cut. */
+function startsWithLine(title) {
+  const t = String(title || "").trim();
+  return `Starts with "${esc(t)}${/[.?!…]$/.test(t) ? "" : "."}"`;
+}
+
 function miniCard(slot) {
   const item = slot.item;
   const totalMin = slot.items.reduce((s, it) => s + (it.duration_min || 0), 0);
   const stretchTag = slot.role === "stretch"
-    ? `<span class="mc-stretch" title="Outside your usual topics, on purpose">Stretch</span>` : "";
+    ? `<span class="mc-stretch" title="Outside your usual subjects, on purpose">Stretch</span>` : "";
   return `<a class="mini-card" data-branch="${esc(slot.branch)}"
       href="#/subject/${esc(slot.branch)}">
     ${item.artwork_url ? `<img src="${esc(safeUrl(item.artwork_url))}" alt="" loading="lazy">` : `<div class="art-ph"></div>`}
     <div class="mc-info">
       <p class="mc-kicker">${stretchTag}${joinMeta(countLabel(slot.items.length, "episode"), fmtDur(totalMin))}</p>
       <h3>${esc(subjectLabel(slot.branch))}</h3>
-      <p class="mc-hook">${esc(subjectBlurb(slot))} Starts with "${esc(item.title)}."</p>
+      <p class="mc-hook">${startsWithLine(item.title)} ${esc(subjectBlurb(slot))}</p>
     </div>
     ${starBtn(item.id)}
   </a>`;
@@ -4331,6 +4357,7 @@ function showFirstTimeExplainerOnce() {
     typedInput.id = "first-time-sheet-typed";
     typedInput.className = "ft-typed-input";
     typedInput.placeholder = "Or type a subject yourself…";
+    typedInput.setAttribute("aria-label", "Type a subject yourself");
     typedWrap.append(typedInput);
 
     const actions = ddEl("div", "fy-sheet-actions");
@@ -4368,7 +4395,7 @@ function showFirstTimeExplainerOnce() {
 
 /* First-run explainer (#128 follow-up). Used to be a permanent card at the top
    of the home screen — after the first read it was dead weight that pushed the
-   four topic queues down the screen for good. It is now a one-time popup shown
+   subject cards down the screen for good. It is now a one-time popup shown
    right after the very first app open (gated on the same cp_intro_dismissed
    flag, so an existing install that already dismissed the card never sees it
    again) and nothing about it lives in the home layout any more.
@@ -4401,7 +4428,12 @@ function showIntroPopupOnce() {
   panel.setAttribute("aria-labelledby", "intro-sheet-title");
 
   const sub = ddEl("p", "fy-sheet-sub",
-    "Grouped into four topic queues — not one long feed to scroll. Three queues are topics you're already into. One is deliberately something else, on purpose. Tap a card to open its queue and see what's in it.");
+    /* It described the retired four-card Home ("Grouped into four topic
+       queues…"), so the first thing a returning listener read was about a
+       screen they were not looking at (audit 2026-09-22, persona row 23). It
+       describes the Home that ships, and it is where a listener who skipped
+       the first-run sheet learns what a foray is. */
+    "Forays stitch clips from several shows into one listen. Below them are playlists and episodes picked for you, each with one pick outside your usual subjects, on purpose.");
 
   const actions = ddEl("div", "fy-sheet-actions");
   const ok = ddEl("button", "fy-sheet-go", "Got it");
@@ -5129,6 +5161,10 @@ function clearShowSearchResults() {
   if (note) { note.textContent = ""; note.hidden = true; }
   if (eps) { eps.innerHTML = ""; eps.hidden = true; }
   if (pls) { pls.innerHTML = ""; pls.hidden = true; }
+  /* The offline note explains a search. With the search gone it explained
+     nothing, and stayed up after the connection came back (qa row 103). */
+  const offline = $("#sh-offline-note");
+  if (offline) offline.hidden = true;
 }
 
 /** Paints one set of show rows into `#sh-results`, or the honest empty state.
@@ -6341,9 +6377,23 @@ function stretchBridgeLine(subjectLabelText) {
   return `Outside your usual subjects — a deliberate change of pace into ${esc(subjectLabelText)}.`;
 }
 
+function greetingWord(now = new Date()) {
+  const h = now.getHours();
+  return h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+
+/* The greeting is a fact about NOW, and a page left open overnight kept saying
+   "Good evening" at 7am (audit 2026-09-22, qa row 193): it was computed once per
+   render and nothing re-rendered Home on return. `refreshGreeting` runs from the
+   foreground hook in init() and rewrites the one word, only when it changed —
+   not the whole of Home under the listener's thumb. */
+function refreshGreeting(now = new Date()) {
+  const el = document.querySelector(".hv2-greeting-word");
+  if (el) setStatusText(el, greetingWord(now));
+}
+
 function homeGreeting() {
-  const h = new Date().getHours();
-  const word = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  const word = greetingWord();
   return `<div class="hv2-greeting">
     <span class="hv2-greeting-word">${word}</span>
     <span class="hv2-greeting-brand">4a</span>
@@ -6838,7 +6888,7 @@ function renderPlaylistDetail(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2>${esc(p.title)}</h2>
-          <p class="sub">${rows.length} episode${rows.length === 1 ? "" : "s"}${p.isSubject ? " · today's queue" : (p.isGenerated ? " · generated for you" : " playlist")} · ${played} played</p>
+          <p class="sub">${joinMeta(countLabel(rows.length, "episode"), p.isSubject ? "picked for you" : (p.isGenerated ? "generated for you" : "playlist"), `${played} played`)}</p>
         </div>
       </div>
       ${p.sparse ? `<p class="note">Only found a few on this — here's what we've got.</p>` : ""}
@@ -7340,7 +7390,10 @@ function renderLibrary() {
     ? allPlaylists.slice(0, 5).map(p =>
         libSummaryRow(`/playlist/${p.id}`, p.title, playlistLengthLabel(p))).join("")
       + (allPlaylists.length > 5 ? `<a class="lib-more" href="#/playlists">All ${allPlaylists.length} playlists ›</a>` : "")
-    : `<p class="note">No playlists yet — build one from the home screen.</p>`;
+    /* It said "build one from the home screen", and the builder left Home on
+       2026-09-03 — the note named the one screen certain not to have it. It
+       names the Create tab, and links there. */
+    : `<p class="note">No playlists yet — <a href="#/create">build one on the Create tab</a>.</p>`;
 
   const queueHtml = queued.length
     ? libSummaryRow("/queue", "Up Next", `${queued.length} queued`)
@@ -7374,7 +7427,7 @@ function renderPlaylists() {
         <div><h2>Playlists</h2><p class="sub">${all.length} built</p></div>
       </div>
       <form id="pl-form" autocomplete="off">
-        <input id="pl-input" type="text" maxlength="120" placeholder="build me a playlist…">
+        <input id="pl-input" type="text" maxlength="120" placeholder="build me a playlist…" aria-label="Build a playlist on a subject">
         <button type="submit">Go</button>
       </form>
       <p id="pl-note" class="note" hidden></p>
@@ -7428,9 +7481,9 @@ function createToggleHtml() {
   return `<div class="cr-toggle" role="group" aria-label="Create mode">
     <button type="button" class="cr-toggle-btn is-on" data-cr-mode="playlist" aria-pressed="true">Playlist</button>
     <button type="button" class="cr-toggle-btn is-disabled" data-cr-mode="foray" disabled aria-disabled="true" aria-pressed="false"
-        title="Custom Forays aren't available yet">Foray</button>
+        aria-describedby="cr-foray-note">Foray</button>
   </div>
-  <p class="note cr-foray-note">Custom Forays aren't available yet — you can still build a playlist below.</p>`;
+  <p class="note cr-foray-note" id="cr-foray-note">Custom Forays aren't available yet — you can still build a playlist below.</p>`;
 }
 
 /** Loading-state guard around #cr-form's submit -- the same shape as
@@ -7487,7 +7540,7 @@ function renderCreate() {
       </div>
       ${createToggleHtml()}
       <form id="cr-form" autocomplete="off">
-        <input id="cr-input" type="text" maxlength="120" placeholder="e.g. the semiconductor supply chain">
+        <input id="cr-input" type="text" maxlength="120" placeholder="e.g. the semiconductor supply chain" aria-label="Subject for your playlist">
         <button type="submit">Build</button>
       </form>
       <div class="cr-suggestions">
@@ -7951,6 +8004,12 @@ function forayRow(entry) {
      always did: the 52px curation-code gutter that used to indent this line is
      gone, so the hoisted line lands flush left where the indented one used to
      start. */
+  /* THE LISTENER GETS A SENTENCE; THE REASON STAYS FOR US. It printed
+     `Can't play: ${entry.reason}`, and the reasons are foray-resolve's own —
+     "segment X is not in data/segments.json" — so the showcase page named a
+     JSON file on our server to a listener (audit 2026-09-22, persona row 62).
+     The raw reason rides on `data-reason`, where a field report can read it off
+     the page and nobody reads it aloud. */
   if (!entry.playable) {
     return `<div class="fy-row is-out">
       <div class="fy-meta">${metaHtml}</div>
@@ -7958,7 +8017,7 @@ function forayRow(entry) {
         <div class="fy-jump">
           <div class="fy-body">
             <p class="fy-why">${esc(entry.why)}</p>
-            <p class="fy-out">Can't play: ${esc(entry.reason || "unresolved")}</p>
+            <p class="fy-out" data-reason="${esc(entry.reason || "unresolved")}">This clip isn't available right now.</p>
           </div>
         </div>
       </div>
@@ -8140,7 +8199,7 @@ function foraySourcesHtml(r, player) {
     </div>`).join("");
   return `<section class="fy-sources">
     <h3>Where this came from</h3>
-    <p class="fy-src-note">${esc(summary)}. Every clip plays from the show's own feed, so the download counts for them.</p>
+    <p class="fy-src-note">${esc(summary)}. Every clip plays from the show's own feed.</p>
     ${rows}
   </section>`;
 }
@@ -8156,8 +8215,8 @@ function bindSourceLinks(r) {
 function forayHeadSub(r) {
   const fmt = window.ForayPlayer ? window.ForayPlayer.fmtClock : (s => String(Math.round(s)));
   const parts = [
-    `${r.playable.length} segment${r.playable.length === 1 ? "" : "s"}`,
-    `${r.shows.length} show${r.shows.length === 1 ? "" : "s"}`,
+    countLabel(r.playable.length, "clip"),
+    countLabel(r.shows.length, "show"),
     fmt(r.totalSec),
   ];
   return parts.join(" · ");
@@ -8177,7 +8236,7 @@ async function renderForay(id) {
   if (forayRouteId() !== id) return;
 
   if (!player) {
-    $("#view").innerHTML = `<div class="page"><p class="note">The player didn't load — reload the page.</p></div>`;
+    $("#view").innerHTML = `<div class="page"><p class="note">The player didn't load — restart 4a to try again.</p></div>`;
     return;
   }
   if (!state.forays) {
@@ -8290,7 +8349,7 @@ async function renderForay(id) {
              without moving focus off the button that was just pressed. -->
         <p class="fy-error" id="fy-error" role="status" aria-live="polite" hidden></p>
       </div>
-      ${lost ? `<p class="note">${lost} segment${lost === 1 ? "" : "s"} can't play — listed below.</p>` : ""}
+      ${lost ? `<p class="note">${countLabel(lost, "clip")} can't play — listed below.</p>` : ""}
       ${r.slots.map(foraySlotHtml).join("")}
       ${foraySourcesHtml(r, player)}
       ${feedbackSheetHtml()}
@@ -8691,12 +8750,16 @@ const FORAY_IDLE = { index: -1, playing: false, ended: false, elapsedSec: 0 };
    the service worker (see the note in `renderForay`), so this page is regularly
    paired with a module of a different vintage. `NotAllowedError` is a DOM
    exception name — it is stable in both directions across that skew. */
-const FY_AUTOPLAY_HINT = "Your browser held the audio back until it was sure you asked for it — press play again and it will start.";
-const FY_START_FAILED = "That segment wouldn't load. Check the connection, then press play.";
+/* WORDED FOR BOTH HOMES OF THIS FILE (audit 2026-09-22, qa row 141). The same
+   bytes run in a browser tab and inside the Capacitor shell, where there is no
+   visible browser and no reload button, so "your browser" and "reload the page"
+   were instructions a phone listener could not follow. */
+const FY_AUTOPLAY_HINT = "4a couldn't start the audio on its own — press play again and it will start.";
+const FY_START_FAILED = "That clip wouldn't load. Check the connection, then press play.";
 /* A control that threw while the Foray was already running is a third thing, and
    it must not claim a segment failed to load: nothing did, the audio is still
    going, and the honest report is that the button did not take. */
-const FY_TAP_FAILED = "That control didn't take. Try it again, or reload the page if it keeps happening.";
+const FY_TAP_FAILED = "That didn't register. Try it again, or restart 4a if it keeps happening.";
 
 const FY_VOICE_FALLBACK = "Your chosen voice isn't installed; using the best available.";
 
@@ -9555,7 +9618,7 @@ function bindDrawerToggles() {
      were each called from their own test and nowhere else, and `client.js` read
      the key once at boot. A disclosed setting with no surface is a disclosure
      that is not true. */
-  drawerToggle("interlude-toggle", "Jingle between segments", interludeOn, setInterludeOn);
+  drawerToggle("interlude-toggle", "Jingle between clips", interludeOn, setInterludeOn);
 
   /* The founder's test track (see § showDraftsOn). No event is logged: this is
      his own switch, not listener behaviour worth a row. */
@@ -9607,7 +9670,7 @@ async function runVoiceProbe() {
   openDiagSheet();
   ui.status.textContent = "Running the voice probe — this takes about 90 seconds.";
   if (!player || typeof player.runVoiceProbe !== "function") {
-    ui.status.textContent = "The player module has not loaded on this page, so the probe cannot run.";
+    ui.status.textContent = "The player hasn't loaded, so the probe can't run.";
     return null;
   }
   try {
@@ -10291,10 +10354,15 @@ function buildVoiceSheet() {
   panel.setAttribute("aria-labelledby", "voice-title");
 
   const sub = ddEl("p", "fy-sheet-sub",
-    "Pick which voice reads 4a's narration. Tap Audition to hear it count to ten at your current playback speed. Greyed voices are free downloads \u2014 fetch one in Settings and it appears here when you return.");
+    "Pick which voice reads 4a's narration. Tap Preview to hear it count to ten at your playback speed. Dimmed voices are free to download from your phone's Settings, and appear here when you come back.");
 
+  /* A RADIO GROUP, OWNED (audit 2026-09-22, qa row 81). The rows were
+     `role="radio"` with no radiogroup around them, so a screen reader gave no
+     group name and no "2 of 5", and arrow keys did nothing. */
   const list = ddEl("div", "voice-list");
   list.id = "voice-list";
+  list.setAttribute("role", "radiogroup");
+  list.setAttribute("aria-labelledby", "voice-title");
 
   const notice = ddEl("p", "dd-status voice-notice");
   notice.id = "voice-notice";
@@ -10322,27 +10390,45 @@ function voiceSheet() {
     name that is not installed (greyed, with the Settings path and an Open
     Settings button). Built with createElement/textContent like every other
     sheet in this file — the CSP is strict and index.html is out of reach. */
-function buildVoiceRow({ installed, name, sub, id, selected }) {
+function buildVoiceRow({ installed, name, sub, id, selected, tabStop }) {
   const row = ddEl("div", `voice-row${installed ? "" : " voice-row-missing"}${selected ? " voice-row-selected" : ""}`);
-  row.setAttribute("role", installed ? "radio" : "listitem");
-  if (installed) row.setAttribute("aria-checked", selected ? "true" : "false");
 
   const text = ddEl("div", "voice-row-text");
   text.append(ddEl("div", "voice-row-name", name), ddEl("div", "voice-row-sub", sub));
-  row.append(text);
 
   if (installed) {
-    const btn = ddEl("button", "voice-row-audition", voiceState.auditioning === id ? "Playing\u2026" : "Audition");
+    /* THE RADIO IS THE NAME, NOT THE ROW. The row used to be the radio and
+       held the Preview button inside it — a control nested in a control, so
+       the radio announced as "Samantha, …, Audition, radio button" and Preview
+       was a second tab stop inside the first. Now the radio and Preview are
+       siblings in a plain row, and only ONE radio in the group is a tab stop
+       (the chosen one, or the first): arrows move between them, as a native
+       radio group's do. */
+    const choice = ddEl("div", "voice-row-choice");
+    choice.setAttribute("role", "radio");
+    choice.setAttribute("aria-checked", selected ? "true" : "false");
+    choice.dataset.voiceId = id;
+    choice.tabIndex = tabStop ? 0 : -1;
+    choice.append(text);
+    choice.addEventListener("click", () => selectVoiceRow(id));
+    choice.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectVoiceRow(id); return; }
+      const step = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1
+        : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0;
+      if (step) { e.preventDefault(); moveVoiceChoice(id, step); }
+    });
+    row.append(choice);
+
+    const btn = ddEl("button", "voice-row-audition", voiceState.auditioning === id ? "Playing\u2026" : "Preview");
     btn.type = "button";
     btn.disabled = voiceState.auditioning === id;
+    /* Named with the voice: five identical "Preview" buttons tell a screen
+       reader nothing about which voice each one speaks in. */
+    btn.setAttribute("aria-label", `Preview ${name}`);
     btn.addEventListener("click", (e) => { e.stopPropagation(); return auditionVoiceRow(id); });
     row.append(btn);
-    row.addEventListener("click", () => selectVoiceRow(id));
-    row.tabIndex = 0;
-    row.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectVoiceRow(id); }
-    });
   } else {
+    row.append(text);
     /* NO OPEN SETTINGS BUTTON HERE, deliberately — confirmed by reading
        `@capacitor/app@8.1.1`'s own `AppPlugin` interface
        (`mobile/node_modules/@capacitor/app/dist/esm/definitions.d.ts`):
@@ -10386,7 +10472,12 @@ function paintVoiceList() {
   voiceState.selected = selected;
 
   const rows = [];
-  for (const entry of curateVoices(voiceState.voices)) {
+  const curated = curateVoices(voiceState.voices);
+  /* The group's one tab stop: the chosen voice, or the first when none is. */
+  const stopId = curated.some((e) => e.installed && e.installed.identifier === selected)
+    ? selected
+    : (curated.find((e) => e.installed)?.installed.identifier ?? null);
+  for (const entry of curated) {
     const v = entry.installed;
     if (v) {
       rows.push(buildVoiceRow({
@@ -10395,6 +10486,7 @@ function paintVoiceList() {
         sub: `${entry.about} \u00b7 ${voiceQualityLabel(v)} \u00b7 ${v.language || "unknown language"}`,
         id: v.identifier,
         selected: v.identifier === selected,
+        tabStop: v.identifier === stopId,
       }));
       continue;
     }
@@ -10415,7 +10507,7 @@ function paintVoiceList() {
   } else if (!rows.length) {
     ui.list.append(ddEl("p", "voice-loading",
       voiceState.voices.length
-        ? "None of 4a's trial voices are installed here."
+        ? "None of the voices 4a suggests are installed on this device."
         : "No voices reported by this device."));
   } else {
     rows.forEach((r) => ui.list.append(r));
@@ -10447,6 +10539,20 @@ function selectVoiceRow(id) {
   logEvent("voice_pref", { voice: id });
   paintVoiceNotice("");
   paintVoiceList();
+}
+
+/** Arrow keys in the voice radio group: select the neighbour (a native radio
+    group selects on arrow, so this does too) and put focus back on it, since
+    selecting repaints the list and the old node is gone. Wraps at the ends. */
+function moveVoiceChoice(id, step) {
+  const ui = voiceSheet();
+  const ids = [...ui.list.querySelectorAll(".voice-row-choice")].map((c) => c.dataset.voiceId);
+  const at = ids.indexOf(id);
+  if (at < 0 || ids.length < 2) return;
+  const next = ids[(at + step + ids.length) % ids.length];
+  selectVoiceRow(next);
+  const target = [...ui.list.querySelectorAll(".voice-row-choice")].find((c) => c.dataset.voiceId === next);
+  if (target && typeof target.focus === "function") target.focus();
 }
 
 /** V-01's Audition: speak the fixed counting line, in this row's voice, at
@@ -10540,10 +10646,9 @@ function bindVoiceControl() {
 let diagUi = null;
 
 const DIAG_SUB =
-  "What the player measured on this device: seam gaps, load deadlines, "
-  + "out-point overshoot, stops, resume decisions, and any press that didn't take. "
-  + "It is stored on this device only and is never sent anywhere. "
-  + "Copy it into a bug report.";
+  "Technical details about how audio played on this device. "
+  + "Stored here only, never sent anywhere. "
+  + "Copy this into a bug report if we ask for it.";
 
 function buildDiagSheet() {
   const root = ddEl("div", "fy-sheet");
@@ -11600,6 +11705,7 @@ async function init() {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) return;
     refreshForayDirectory("foreground");
+    refreshGreeting();
   });
 
   /* Warm the concept-vocabulary DF caches now, while the app is idle between
@@ -11762,8 +11868,21 @@ function shouldRegisterServiceWorker(win) {
    updates — and a loop would take the whole site out, which is worse than the
    bug being fixed. The listener presses it, or ignores it and keeps listening. */
 const SHELL_NOTICE = {
-  "stale-shell": "4a is showing its last saved copy — the network didn't answer while this page was loading.",
-  "generation-changed": "4a updated in the background, so this page is one version behind.",
+  "stale-shell": "4a is showing its last saved copy — the network didn't answer while it was starting.",
+  "generation-changed": "4a updated in the background, so what you're looking at is one version behind.",
+};
+
+/* WHAT TO DO ABOUT IT, per reason — they have opposite remedies (audit
+   2026-09-22, qa row 138). Both used to end "Reload to get the current version."
+   beside a Reload button, and for `stale-shell` — a dead zone — reloading just
+   reproduces the notice, which this file's own comment in showShellNotice
+   already said. So the stale copy says WHEN a reload helps, and the button
+   stays for that moment; the version-behind copy says reload helps now.
+   "this page" left both sentences: inside the native shell there is no page a
+   listener can see, only 4a. */
+const SHELL_REMEDY = {
+  "stale-shell": "Reload once you're back online.",
+  "generation-changed": "Reload to get the current version.",
 };
 
 /* THE PAGE'S HALF OF THE GENERATION PIN (#233/M4, sw.js's `handleShell`).
@@ -11806,7 +11925,7 @@ function showShellNotice(reason) {
     view.parentNode.insertBefore(bar, view);
   }
   bar.innerHTML =
-    `<p class="note">${esc(said)} Reload to get the current version.</p>` +
+    `<p class="note">${esc(said)} ${esc(SHELL_REMEDY[reason] || "")}</p>` +
     `<button type="button" id="shell-notice-reload">Reload</button>` +
     `<button type="button" id="shell-notice-dismiss" aria-label="Dismiss this message">×</button>`;
   const reload = $("#shell-notice-reload");

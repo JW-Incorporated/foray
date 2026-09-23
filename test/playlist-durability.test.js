@@ -1199,7 +1199,9 @@ test("today's subject queue renders through the same one path as a saved playlis
   const html = m.view();
   assert.strictEqual(rowCount(html), 2);
   assert.strictEqual(goneCount(html), 0, "a live queue has nothing archived in it");
-  assert.ok(html.includes("today's queue"));
+  /* "picked for you", not "today's queue": buildCards() re-deals on every load,
+     so nothing about the queue is daily (audit 2026-09-22, qa row 149). */
+  assert.ok(html.includes("picked for you"));
   assert.ok(!html.includes("remove this playlist"), "a subject queue is not removable");
 });
 

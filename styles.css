@@ -980,7 +980,6 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   margin-bottom: 8px;
 }
 .interest-row-name { font-weight: 700; font-size: 0.95rem; }
-.interest-row-path { font-size: 0.72rem; color: var(--text-dim); }
 .interest-row-controls { display: flex; align-items: center; gap: 10px; }
 /* The old prototype fixed this exact regression twice (docs/ux/foray-m3-prototype.html):
    a slider with no touch-action fights the page's own vertical scroll on a
@@ -2727,6 +2726,14 @@ body.fy-sheet-open { overflow: hidden; }
   border: 1px solid var(--line);
   background: var(--surface-2);
   cursor: pointer;
+}
+/* The radio is a child of the row now, beside Preview rather than around it
+   (app.js buildVoiceRow). It takes the row's whole left side, padding
+   included, so the tap target is the same row it always was. */
+.voice-row-choice {
+  flex: 1; min-width: 0; align-self: stretch;
+  display: flex; align-items: center;
+  margin: -10px 0 -10px -12px; padding: 10px 0 10px 12px;
 }
 .voice-row-missing { opacity: 0.55; cursor: default; }
 .voice-row-selected { border-color: var(--accent); }

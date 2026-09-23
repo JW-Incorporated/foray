@@ -914,15 +914,17 @@ function syncForaySegment() {
     `MiniPlayer` does the same, and for the same reason: the episode title
     changes nine times over the hour and is not the thing being listened to. The
     show is on the second line, which is where the mockup puts it too
-    (`Now: <show name>`), extended with the part number because a Foray's second
-    line has room and "part 12 of 32" is the one fact a mini bar can add. */
+    (`Now: <show name>`), extended with the clip number because a Foray's second
+    line has room and "clip 12 of 32" is the one fact a mini bar can add.
+    "Clip", not "part": a part is one of a Foray's titled sections, and a clip is
+    the listener's word for the pieces inside them (audit 2026-09-22). */
 function forayNowPlaying(item, index) {
   const total = foray.resolved.playable.length;
   const show = item.show ? `Now: ${item.show}` : "Now playing";
   return {
     id: item.id,
     title: foray.resolved.title || item.title || "",
-    show: `${show} · part ${index + 1} of ${total}`,
+    show: `${show} · clip ${index + 1} of ${total}`,
     duration_sec: null,
     dai_suspected: Boolean(item.dai_suspected),
   };

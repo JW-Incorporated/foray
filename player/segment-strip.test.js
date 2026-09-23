@@ -554,9 +554,12 @@ test("the strip is a labelled graphic, and the label says what the picture says"
   assert.equal(el.getAttribute("tabindex"), null);
   const label = el.getAttribute("aria-label");
   assert.equal(label, stripSummary(model));
-  assert.match(label, /^Running order: \d+ segments from \d+ shows, \d+ min in all\.$/);
-  assert.ok(label.includes(`${model.segmentCount} segments`));
+  /* Plain English, one count (audit 2026-09-22): no "running order", no
+     "segments", and the total is the item count the position is "of". */
+  assert.match(label, /^\d+ clips from \d+ shows, \d+ min in all\.$/);
+  assert.ok(label.includes(`${model.itemCount} clips`));
   assert.ok(label.includes(`${model.shows.length} shows`));
+  assert.ok(!/running order|segment|piece|bridge/i.test(label), label);
   /* MUTATION (killed): in mountStrip,
      `el.setAttribute("aria-label", stripSummary(model))` -> `…, "Segment strip")`.
      A screen reader hears the element's name and nothing about the Foray.
@@ -568,12 +571,13 @@ test("the label carries the position and the bridges when there are any", () => 
   const starts = segmentStarts(r.playable);
   const model = stripModel(r.playable, { elapsed: starts[4] + 10 });
   const label = stripSummary(model);
-  assert.ok(label.includes("2 narrator bridges"), label);
-  assert.ok(label.includes(`piece ${model.currentIndex + 1} of ${model.segments.length}`), label);
+  assert.ok(label.includes("2 from 4a's narrator"), label);
+  assert.ok(label.startsWith(`${model.itemCount} clips: `), `the total is the same count the position is "of": ${label}`);
+  assert.ok(label.includes(`clip ${model.currentIndex + 1} of ${model.segments.length}`), label);
   assert.ok(label.includes(model.segments[model.currentIndex].show), label);
 
   const quiet = stripSummary(stripModel(real("grilling-history-2").playable));
-  assert.ok(!quiet.includes("bridge"), "a Foray with no narration must not mention it");
+  assert.ok(!quiet.includes("narrator"), "a Foray with no narration must not mention it");
   assert.ok(!quiet.includes("Now on"), "a Foray nobody is playing has no position to report");
   /* MUTATION (killed): in stripSummary, delete the
      `if (m.narrationCount > 0) parts.push(...)` block. The two bridges the
@@ -648,7 +652,7 @@ test("an empty or broken running order renders nothing rather than throwing", ()
     assert.equal(el.children.length, 0);
     assert.equal(model.totalSec, 0);
     assert.equal(model.runs.length, 0);
-    assert.equal(stripSummary(model), "Running order: nothing to play.");
+    assert.equal(stripSummary(model), "Nothing to play yet.");
   }
   /* MUTATION (killed): in stripModel, `const list = Array.isArray(items) ? items.filter(...)`
      -> `const list = items ?? [];`. `null ?? []` is `[]`, so the null case
@@ -1281,7 +1285,7 @@ test("the accessible label still names the show the listener is actually inside,
   const at = starts[to] + lengths[to] / 2;
   const label = stripSummary(stripModel(r.playable, { mergeNarration: true, elapsed: at }));
   assert.ok(from < to);
-  assert.match(label, new RegExp(`Now on piece ${to + 1} of ${r.playable.length}, from the narrator,`));
+  assert.match(label, new RegExp(`Now on clip ${to + 1} of ${r.playable.length}, from 4a's narrator,`));
 
   // And the whole sentence is unchanged by merging — it describes the Foray.
   for (const elapsed of [0, at, starts[starts.length - 1] + 1]) {

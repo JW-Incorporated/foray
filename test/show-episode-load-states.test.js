@@ -456,7 +456,9 @@ test("the replacement copy is the plain, short, listener-facing text asked for",
   /* Pinned so a later edit cannot drift back toward explaining ourselves.
      MUTATION: reword any one of the three. This fails. RUN: failed as
      named. */
-  for (const s of ["Loading episodes…", "No episodes yet.", "Couldn't load these episodes. Pull to refresh."]) {
+  /* 2026-09-22 (audit qa row 134): the failed line named a pull-to-refresh
+     gesture 4a does not have; it names an action that exists now. */
+  for (const s of ["Loading episodes…", "No episodes yet.", "Couldn't load these episodes. Check your connection, then open the show again."]) {
     assert.ok(APP_SRC.includes(s), `app.js must carry the replacement string ${JSON.stringify(s)}`);
   }
 });
