@@ -343,7 +343,7 @@ const NOT_CONTROLS = {
   "app.js": new Set([
     "pct", "el", "note", "$(\"#fy-total\")", "$(\"#fy-sheet-sub\")", "now", "ui.status", "ui.notice", "ddUi.status", "n",
     "link", // a drawer <a> with fixed text, written once
-    "num", // L1's Up Next reorder renumbers a row's position badge (.q-num), not a control
+    "region", // L3's announce(): the sr-only live region, a status line (integration)
   ]),
   "player/client.js": new Set([
     "n", "ui.tNow", "ui.tLeft", "ui.title", "ui.show", "ui.sTitle", "ui.sShow", "ui.sWhy", "ui.sDesc", "ui.note",

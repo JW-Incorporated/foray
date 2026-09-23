@@ -620,12 +620,14 @@ test("after selecting a voice, focus is on that voice's (new) row, and the choic
   const { ctx, ui } = mount();
   await ui.open.click();
   await tick();
-  const before = installedRows(ui)[0];
+  /* The radio, not the row, since L4 (integration): the row is a plain
+     container holding the radio and Preview as siblings. */
+  const before = choiceOf(installedRows(ui)[0]);
   before.focus();
   await before.click();
-  const after = installedRows(ui)[0];
+  const after = choiceOf(installedRows(ui)[0]);
   assert.notStrictEqual(after, before, "fixture assumption: the list really was rebuilt");
-  assert.strictEqual(ctx.document.activeElement, after, "focus follows the voice into its rebuilt row");
+  assert.strictEqual(ctx.document.activeElement, after, "focus follows the voice into its rebuilt radio");
   assert.strictEqual(ui.notice.hidden, false);
   assert.match(ui.notice.textContent, /^Samantha selected\.$/);
 });
