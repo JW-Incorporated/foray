@@ -2585,3 +2585,80 @@ test("VISUAL PASS: previous/next clip are their own labelled row, shown only whi
   assert.equal(client.forayStatus().index, 0, "Previous clip, just into a clip, goes back one");
   restore();
 });
+
+/* ---------- the sheet's three staples, and what ◀◀ means (audit round 2) ---------- */
+
+/** A node by class TOKEN, since the staples borrow `.fp-rate`'s box and carry
+    two classes. */
+function findByToken(node, token) {
+  if (String(node.className).split(/\s+/).includes(token)) return node;
+  for (const k of node.children) { const hit = findByToken(k, token); if (hit) return hit; }
+  return null;
+}
+
+test("the sheet shows ⏭, Up Next (N) and Save from the page's episode surface, and each does the page's own thing (audit round 2, p-impatient-7 / p-switcher-5)", async (t) => {
+  /* With five episodes queued there was no in-app way to the next one, no way
+     to see the queue and no Save on the sheet. The three read the object the
+     page hands `setEpisodeNavigation`; ⏭ IS the steering wheel's next.
+     KILLING MUTATIONS: drop `paintEpisodeSurface()` from setEpisodeNavigation
+     -> the three stay hidden; wire ⏭ to anything but `episodeNeighbour("next")`
+     -> `nexts` stays 0; drop the `queueLink.textContent` write -> the count is
+     wrong. */
+  const { client, doc, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const nextBtn = findByToken(doc.body, "fp-next");
+  const saveBtn = findByToken(doc.body, "fp-save");
+  const queueLink = findByToken(doc.body, "fp-upnext");
+  assert.ok(nextBtn && saveBtn && queueLink, "the three controls are built into the sheet");
+  assert.ok(nextBtn.hidden && saveBtn.hidden && queueLink.hidden, "and hidden until the page offers a surface");
+
+  let nexts = 0;
+  const saved = new Set();
+  const nav = {
+    get next() { return () => { nexts++; }; },
+    get previous() { return null; },
+    get upNextCount() { return 2; },
+    isSaved: (id) => saved.has(id),
+    toggleSaved: (id) => { if (saved.has(id)) saved.delete(id); else saved.add(id); return saved.has(id); },
+  };
+  client.setEpisodeNavigation(nav);
+  assert.equal(nextBtn.hidden, false, "⏭ appears when the page has a next");
+  assert.equal(queueLink.hidden, false);
+  assert.equal(queueLink.textContent, "Up Next (2)", "the link carries the count");
+  assert.equal(queueLink.href, "#/queue", "…and goes to the page that owns the list");
+  assert.equal(saveBtn.hidden, false);
+  assert.equal(saveBtn.textContent, "Save");
+
+  await nextBtn.click();
+  assert.equal(nexts, 1, "⏭ is the steering wheel's next");
+
+  await saveBtn.click();
+  assert.ok(saved.has("ep-a"), "Save is the page's own star for the current episode");
+  assert.equal(saveBtn.textContent, "Saved ✓", "…and the sheet says so at once");
+  assert.equal(saveBtn.getAttribute("aria-pressed"), "true");
+  await saveBtn.click();
+  assert.equal(saveBtn.textContent, "Save", "a second press unsaves");
+
+  client.setEpisodeNavigation({ get next() { return null; }, get upNextCount() { return 0; }, isSaved: () => false, toggleSaved: () => false });
+  assert.equal(nextBtn.hidden, true, "no next, no ⏭");
+  assert.equal(queueLink.hidden, true, "an empty Up Next has no link");
+  restore();
+});
+
+test("previousMeansRestart is the player's own window: false at the start, true once past it, null with nothing current (audit round 2, p-car-5)", async (t) => {
+  /* The page's ◀◀ asks this rather than holding a second RESTART_WINDOW_SEC.
+     KILLING MUTATION: compare with `>` 0 instead of `>= RESTART_WINDOW_SEC` ->
+     the 2 s case reads true. */
+  const { client, audio, restore } = await bootClient(t);
+  assert.equal(client.previousMeansRestart(), null, "nothing current: no answer");
+  await client.play(episodeItem());
+  await settle();
+  audio.currentTime = 2;
+  assert.equal(client.previousMeansRestart(), false, "two seconds in, previous means the row before");
+  audio.currentTime = 4;
+  assert.equal(client.previousMeansRestart(), true, "at the window, previous means restart");
+  audio.currentTime = 2400;
+  assert.equal(client.previousMeansRestart(), true);
+  restore();
+});
