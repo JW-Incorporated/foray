@@ -25,7 +25,7 @@ import assert from "node:assert/strict";
 
 import {
   DISMISS_DISTANCE_PX, DISMISS_VELOCITY_PX_PER_MS, FLICK_MIN_PX, DIRECTION_LOCK_PX,
-  startDrag, moveDrag, endDrag, dragOffset, releaseVelocity,
+  startDrag, moveDrag, endDrag, dragOffset, releaseVelocity, claimsTouch,
 } from "./sheet-drag-dismiss.js";
 
 /** Replay a whole gesture: a press at `y0`, then `[y, t]` samples, then release. */
@@ -212,4 +212,33 @@ test("a gesture that never engaged reports no dismiss and no offset", () => {
   assert.equal(dragOffset(s), 0);
   assert.equal(endDrag(null).dismiss, false);
   assert.equal(dragOffset(null), 0);
+});
+
+/* ---------- who owns the finger: the sheet or the scroller (touch-2) ---------- */
+
+test("an eligible pull claims the touch from the first downward pixel, before the direction lock", () => {
+  /* The browser decides "scroll or not" on the first touchmove past ITS slop,
+     which on iOS is under DIRECTION_LOCK_PX — so waiting for `engaged` hands
+     the pan to the scroller and the sheet springs back on pointercancel.
+     MUTATION: `return !!(state && state.engaged)` -> the 3px sample below is
+     not claimed; red. */
+  let s = startDrag(200, 0, { atTop: true });
+  assert.equal(claimsTouch(s), false, "a press that has not moved claims nothing (a tap on the body must scroll-lock nothing)");
+  s = moveDrag(s, 203, 10);
+  assert.equal(s.engaged, false, "precondition: still under the direction lock");
+  assert.equal(claimsTouch(s), true);
+  s = moveDrag(s, 260, 40);
+  assert.equal(claimsTouch(s), true, "and keeps claiming it once engaged");
+});
+
+test("a finger moving UP, or a drag that started mid-scroll, never claims the touch — the scroller scrolls", () => {
+  /* MUTATION: drop the `state.allowed` guard -> the mid-scroll pull below is
+     claimed and a flick back up a long description would cancel the scroll. */
+  let up = startDrag(200, 0, { atTop: true });
+  up = moveDrag(up, 150, 10);
+  assert.equal(claimsTouch(up), false, "upward movement clamps to 0 and is the scroller's");
+  let mid = startDrag(200, 0, { atTop: false });
+  mid = moveDrag(mid, 300, 10);
+  assert.equal(claimsTouch(mid), false, "not eligible: the body was scrolled");
+  assert.equal(claimsTouch(null), false);
 });

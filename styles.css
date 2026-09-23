@@ -3915,3 +3915,44 @@ body.ui-v2 .hv2-episodes .mini-card > .hv2-bridge { flex-basis: 100%; }
 }
 /* `.ep-why` is gone with the line it styled (founder, 2026-09-21: "Delete the
    'why it's in 4a' field from anything the user can read"). */
+
+/* ---------- overlays: the drawer is modal, and sheets move (audit round 2) ----------
+
+   nav-5: `body.drawer-open` is the drawer's page lock, the twin of
+   `body.fp-expanded` above — a drag on its scrim, or on a panel too short to
+   scroll, scrolled the page behind it and the listener lost their place.
+   `overscroll-behavior: contain` keeps the panel's own scroll from chaining
+   into the document; `touch-action: none` on the scrim is what stops a thumb
+   resting on it from panning what it dims. app.js's `openDrawer` writes the
+   class and takes the page `inert`, the same contract every sheet has.
+
+   touch-4 / touch-8: every `.fy-panel` slides in, and can be pulled down.
+   `--fy-panel-dy` is the drag offset app.js's owner writes (the same custom-
+   property division `.fp-sheet` keeps with `--fp-sheet-dy`); the transition
+   belongs to the RELEASE and to the entrance, never to the drag, so the panel
+   tracks the thumb without lag. `fy-panel-in` runs each time the panel is
+   shown — `hidden` is toggled on the wrap, and an element that leaves
+   `display: none` restarts its animation. The .22s must agree with
+   `SHEET_MOTION_MS` in app.js, which waits on it.
+
+   Reduced motion: no entrance and no slide, for both sheet kinds. The
+   selectors repeat the `:not(...-dragging)` form so they outrank the rules
+   that switch the transitions on; app.js's `slideIn`/`slideOut` decline under
+   the same query, so nothing waits on a transition that will not run. */
+body.drawer-open { overflow: hidden; }
+#drawer { overscroll-behavior: contain; }
+#drawer-overlay { touch-action: none; }
+
+.fy-panel {
+  transform: translateY(var(--fy-panel-dy, 0px));
+  animation: fy-panel-in .22s ease;
+}
+.fy-panel:not(.fy-panel-dragging) { transition: transform .22s ease; }
+@keyframes fy-panel-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(var(--fy-panel-dy, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fp-sheet:not(.fp-sheet-dragging), .fy-panel:not(.fy-panel-dragging) { transition: none; }
+  .fy-panel { animation: none; }
+}

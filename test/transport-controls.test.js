@@ -62,12 +62,14 @@ const px = (v) => { const m = /^(\d+(?:\.\d+)?)px$/.exec(String(v || "")); retur
 /* ---------- the mini bar ---------- */
 
 test("the mini bar carries ▶ and a back-15 nudge, in that order, and nothing else", () => {
-  /* MUTATION: `bar.append(art, info, playBtn, announce)` (the one-control bar)
+  /* MUTATION: `bar.append(art, info, playBtn)` (the one-control bar)
      -> red. MUTATION 2: add `fwdBtn` to the bar -> the third assertion names
-     the crowding. */
+     the crowding. (The live region is no longer on the bar — audit round 2,
+     a11y-2: it is a sibling of the bar and the sheet, so expanding Now
+     Playing cannot make it inert; player/now-playing-sheet.test.js pins it.) */
   assert.match(CODE, /const skipBtn = el\("button", "fp-skip", `↺ \$\{SEEK_BACK\}`\);/);
   assert.match(CODE, /skipBtn\.setAttribute\("aria-label", `Back \$\{SEEK_BACK\} seconds`\);/);
-  assert.match(CODE, /bar\.append\(art, info, skipBtn, playBtn, announce\);/, "art · title · ↺15 · ▶");
+  assert.match(CODE, /bar\.append\(art, info, skipBtn, playBtn\);/, "art · title · ↺15 · ▶");
   const appended = /bar\.append\(([^)]*)\)/.exec(CODE)[1].split(",").map((s) => s.trim());
   assert.deepStrictEqual(appended.filter((n) => /Btn$/.test(n)), ["skipBtn", "playBtn"], "two controls on the bar, not three");
   assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => nudgeBy\(-SEEK_BACK\)\);/);

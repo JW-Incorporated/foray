@@ -4701,8 +4701,32 @@ function isGenuineFirstTimeUser() {
   return (
     pickedHistory().length === 0 &&
     Object.keys(savedMap()).length === 0 &&
-    playlists().length === 0
+    playlists().length === 0 &&
+    !hasForayTrace()
   );
+}
+
+/* A FORAY PLAY IS PRIOR USE (audit round 2, p-first-5). Foray playback goes
+   through `player.playForay` and never `recordHistory`, so a newcomer whose
+   whole use of 4a was a shared Foray link — the product's one viral path —
+   was still "first-time" the moment they tapped Home, and met the Welcome
+   sheet over their own playing Foray. The Foray's resume row is the trace:
+   player/foray-progress.js writes one under `KEY_PREFIX` the moment a Foray
+   starts, and test/first-time-onboarding.test.js pins that the two spellings
+   agree. Read through the same shim every other `cp_` read takes
+   (`storageBackend`, #40 — the durable store keeps the Storage shape, `length`
+   and `key()` included); a store with no `key()` (a harness) has no trace. */
+const FORAY_PROGRESS_PREFIX = "cp_foray:";
+function hasForayTrace() {
+  try {
+    const store = storageBackend();
+    const n = store && typeof store.length === "number" ? store.length : 0;
+    for (let i = 0; i < n; i++) {
+      const k = typeof store.key === "function" ? store.key(i) : null;
+      if (typeof k === "string" && k.startsWith(FORAY_PROGRESS_PREFIX)) return true;
+    }
+  } catch (_) { /* no storage to read: no trace */ }
+  return false;
 }
 
 /* ---------- U-09: Preferences chips — subtree write path ----------
@@ -5015,7 +5039,19 @@ function syncSheetBodyClasses() {
   for (const cls of sheetManagedClasses) document.body.classList.toggle(cls, want.has(cls));
 }
 
+/** The one document keydown listener for every overlay. Bound lazily by the
+    first `openSheet` and by `bindDrawerChrome`, whichever comes first. */
+function bindOverlayKeys() {
+  if (sheetKeysBound || typeof document.addEventListener !== "function") return;
+  document.addEventListener("keydown", onSheetKeydown);
+  sheetKeysBound = true;
+}
+
 function onSheetKeydown(e) {
+  /* The drawer sits over every sheet (F17) and has its own rules: while it is
+     open the keys are its, or Escape over Now Playing would collapse the sheet
+     under a drawer that stayed. */
+  if (drawerIsOpen()) { onDrawerKeydown(e); return; }
   pruneDeadSheets();
   const top = sheetStack[sheetStack.length - 1];
   if (!top) return;
@@ -5103,10 +5139,7 @@ function openSheet(wrap, opts = {}) {
     if (twin) closeSheet(twin.wrap, { removeIfOwned: true });
   }
   if (wrap.isConnected === false || !wrap.parentElement) document.body.appendChild(wrap);
-  if (!sheetKeysBound && typeof document.addEventListener === "function") {
-    document.addEventListener("keydown", onSheetKeydown);
-    sheetKeysBound = true;
-  }
+  bindOverlayKeys();
   const panel = opts.panel
     || (typeof wrap.querySelector === "function" && wrap.querySelector('[role="dialog"]'))
     || wrap;
@@ -5137,7 +5170,165 @@ function openSheet(wrap, opts = {}) {
     panel.setAttribute("tabindex", "-1");
   }
   focusQuietly(panel);
+  bindPanelDrag(entry);
   return entry;
+}
+
+/* ---------- a sheet moves, and every panel can be pulled down ----------
+
+   Audit round 2, touch-4 and touch-8. Every `.fy-panel` in the app paints the
+   same 38×4 handle the Now Playing sheet does — "so a fifth sheet cannot look
+   like a different product" (client.js) — and only Now Playing answered a
+   drag: eight false affordances, learned on the one sheet that taught the
+   gesture. And no sheet had any motion at all: Now Playing appeared with a
+   hard cut and, dismissed by a pull, vanished from mid-screen.
+
+   THE OWNER BINDS THE GESTURE, because the owner is the one place every sheet
+   already passes through: `openSheet` knows the panel and knows how to ask the
+   sheet to close (`entry.requestClose`, the same path Escape takes). The
+   decision — how far, what counts as a flick, and the rule that a pull
+   started inside a scrolled body is a scroll — is player/sheet-drag-dismiss.js,
+   read through `window.ForayPlayer.sheetDrag` (a classic script cannot import
+   it), so the Now Playing sheet and these panels drag by one rule. Absent
+   bridge (a harness, a page paired with an older cached module): no drag, and
+   the handle is what it was.
+
+   THE MOTION IS ONE FUNCTION PAIR for both sheet kinds: `slideIn` unhides a
+   panel at its own height and releases it to 0 through the transition
+   styles.css gives it; `slideOut` sends it to its height and reports when it
+   has settled (`transitionend`, or a timer a beat longer than the transition,
+   because a `display: none` mid-flight or a tab in the background fires no
+   event). `prefers-reduced-motion` is honoured HERE, once, by not moving at
+   all — styles.css switches the transitions off for the same query, and a
+   caller that waited for a transition that never runs would hang on the
+   timer. */
+const SHEET_MOTION_MS = 220;   // styles.css: `.fp-sheet` and `.fy-panel` transitions are .22s
+
+function reducedMotion() {
+  try {
+    return !!(typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  } catch (_) { return false; }
+}
+
+/** Force a style flush so a property written before this and one written after
+    it are two states the transition can run between. */
+function reflow(el) {
+  try { if (typeof el.getBoundingClientRect === "function") el.getBoundingClientRect(); } catch (_) { /* a stub */ }
+}
+
+function canSlide(el, px) {
+  return !!(el && el.style && typeof el.style.setProperty === "function" && px > 0) && !reducedMotion();
+}
+
+/** Unhidden and off the bottom, then released to rest. `noMotionClass` is the
+    caller's "no transition" class (the sheet's dragging class), put on for the
+    first write so the panel jumps to its start rather than sliding there. */
+function slideIn(el, prop, px, noMotionClass) {
+  if (!canSlide(el, px)) return false;
+  if (noMotionClass && el.classList) el.classList.add(noMotionClass);
+  el.style.setProperty(prop, `${px}px`);
+  reflow(el);
+  if (noMotionClass && el.classList) el.classList.remove(noMotionClass);
+  el.style.setProperty(prop, "0px");
+  return true;
+}
+
+/** Sent to its full height from wherever it is; `done` runs once, when it has
+    settled. Returns false — and runs nothing — when it cannot move, so the
+    caller closes at once. */
+function slideOut(el, prop, px, done) {
+  if (!canSlide(el, px)) return false;
+  let settled = false;
+  let timer = null;
+  const onEnd = (e) => { if (!e || e.target === el) finish(); };
+  const finish = () => {
+    if (settled) return;
+    settled = true;
+    if (timer != null) clearTimeout(timer);
+    if (typeof el.removeEventListener === "function") el.removeEventListener("transitionend", onEnd);
+    done();
+  };
+  if (typeof el.addEventListener === "function") el.addEventListener("transitionend", onEnd);
+  timer = setTimeout(finish, SHEET_MOTION_MS + 80);
+  reflow(el);
+  el.style.setProperty(prop, `${px}px`);
+  return true;
+}
+
+function panelHeightPx(el) {
+  try {
+    const h = typeof el.getBoundingClientRect === "function" ? el.getBoundingClientRect().height : 0;
+    return Number.isFinite(h) && h > 0 ? h : 0;
+  } catch (_) { return 0; }
+}
+
+/** Drag-to-dismiss on a `.fy-panel`, bound once per panel. The Now Playing
+    sheet (`.fp-sheet`) binds its own in client.js against the same module;
+    this is the same wiring for the panels the owner builds or is handed. */
+function bindPanelDrag(entry) {
+  const panel = entry && entry.panel;
+  if (!panel || panel._dragBound || typeof panel.addEventListener !== "function") return;
+  if (!panel.classList || typeof panel.classList.contains !== "function" || !panel.classList.contains("fy-panel")) return;
+  panel._dragBound = true;
+  const gest = () => (window.ForayPlayer && window.ForayPlayer.sheetDrag) || null;
+  let drag = null;
+  let pointer = null;
+  /* The property is named in full here, not through a constant: styles.css
+     reads `--fy-panel-dy` and test/ui-tokens.test.js accepts a token nothing
+     declares only when a `setProperty` names it. */
+  const paint = (px) => {
+    if (!panel.style || typeof panel.style.setProperty !== "function") return;
+    panel.style.setProperty("--fy-panel-dy", `${px > 0 ? px : 0}px`);
+    panel.classList.toggle("fy-panel-dragging", px > 0);
+  };
+  panel.addEventListener("pointerdown", (e) => {
+    const g = gest();
+    if (!g || pointer != null) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const t = e.target;
+    /* A press on a control is that control's — the same rule client.js keeps
+       for the scrub thumb; `summary` because the Developer disclosure lives
+       in a panel too. */
+    if (t && typeof t.closest === "function" && t.closest("button, a, input, select, textarea, summary, label")) return;
+    const fromHandle = !!(t && typeof t.closest === "function" && t.closest(".fy-grab"));
+    drag = g.start(e.clientY, e.timeStamp, { fromHandle, atTop: (panel.scrollTop || 0) <= 0 });
+    pointer = e.pointerId;
+  });
+  panel.addEventListener("pointermove", (e) => {
+    const g = gest();
+    if (!drag || !g || e.pointerId !== pointer) return;
+    drag = g.move(drag, e.clientY, e.timeStamp);
+    paint(g.offset(drag));
+  });
+  /* NON-passive, or the cancel is ignored: the panel is its own scroller and
+     only a cancelled touchmove keeps a pull-down at scrollTop 0 from becoming
+     a rubber-band scroll (touch-2, the same mechanism on the Now Playing
+     sheet and the Foray strip). */
+  panel.addEventListener("touchmove", (e) => {
+    const g = gest();
+    if (drag && g && g.claimsTouch(drag) && e.cancelable !== false && typeof e.preventDefault === "function") e.preventDefault();
+  }, { passive: false });
+  panel.addEventListener("pointerup", (e) => {
+    const g = gest();
+    if (!drag || !g || e.pointerId !== pointer) return;
+    const { dismiss } = g.end(drag);
+    drag = null;
+    pointer = null;
+    if (!dismiss) { paint(0); return; }
+    /* The release transition applies from wherever the finger left it. Then
+       the sheet's OWN close (Escape's path): a sheet that declines — Delete my
+       data mid-delete — springs back, and one that closed is reset while
+       hidden so its next open starts at rest. */
+    panel.classList.remove("fy-panel-dragging");
+    const finish = () => { entry.requestClose(); paint(0); };
+    if (!slideOut(panel, "--fy-panel-dy", panelHeightPx(panel), finish)) finish();
+  });
+  panel.addEventListener("pointercancel", (e) => {
+    if (!drag || e.pointerId !== pointer) return;
+    drag = null;
+    pointer = null;
+    paint(0);
+  });
 }
 
 /** Close `wrap` if the owner holds it: lift what open did, hide it, hand focus
@@ -5161,7 +5352,17 @@ function closeSheet(wrap, { removeIfOwned = false } = {}) {
     (el) => el && el.isConnected !== false && typeof el.focus === "function" && el !== document.body
       && !inHiddenSubtree(el),
   );
-  focusQuietly(back);
+  /* ONLY IF THE SHEET STILL HOLDS FOCUS (audit round 2, touch-8). A close can
+     now settle a beat after it was asked — the sheet slides out first — and
+     a navigation under Now Playing lands focus on the new page's heading in
+     that beat (`landOnPage`). Handing it back to the opener then would take it
+     off the page the listener just asked for. Focus that is inside the sheet,
+     on <body>, or stranded in something hidden is the sheet's to return;
+     focus that has moved on is left where it is. */
+  const active = document.activeElement;
+  const held = !active || active === document.body || inHiddenSubtree(active)
+    || (typeof wrap.contains === "function" && wrap.contains(active));
+  if (held) focusQuietly(back);
   return true;
 }
 
@@ -5218,7 +5419,7 @@ function openSheetCount() {
 }
 
 if (typeof window !== "undefined") {
-  window.ForaySheets = { openSheet, closeSheet, closeAllSheets, openSheetCount };
+  window.ForaySheets = { openSheet, closeSheet, closeAllSheets, openSheetCount, slideIn, slideOut };
 }
 
 /* ---------- ONCE MEANS ONCE, INCLUDING WITHIN A SINGLE VISIT ----------
@@ -5262,11 +5463,23 @@ if (typeof window !== "undefined") {
    screen. The stub is crude, but the tests were right and the order was wrong.
 
    MUTATION: delete either early return below and
-   test/onboarding-sheet-once.test.js fails on the duplicate-mount assertion. */
+   test/onboarding-sheet-once.test.js fails on the duplicate-mount assertion.
+
+   PARKED FOR THE VISIT (audit round 2, p-first-4). A tap on the dimmed area
+   above the panel — a stray thumb, a peek at Home behind it — used to end
+   onboarding for good, and lose the chips picked so far; the drawn handle,
+   meanwhile, did nothing. The scrim, Escape, a navigation, hardware back and
+   the drag the handle now answers are all "not now, for this visit":
+   `cp_intro_dismissed` is written only by the two Skip buttons and the
+   Preferences step's primary — the considered presses. `firstRunParked` is
+   this-visit state, a sibling of the on-screen check above, and returns
+   `true` for the same reason that check does: the explainer owns the visit,
+   so the returning-user popup must not take its place. */
+let firstRunParked = false;
 function showFirstTimeExplainerOnce() {
   if (!isGenuineFirstTimeUser()) return false;
   if (lsGet("cp_intro_dismissed", false)) return false;
-  if ($("#first-time-sheet")) return true;   // already on screen this visit
+  if ($("#first-time-sheet") || firstRunParked) return true;   // already on screen, or parked, this visit
 
   const wrap = ddEl("div", "fy-sheet");
   wrap.id = "first-time-sheet";
@@ -5285,14 +5498,20 @@ function showFirstTimeExplainerOnce() {
 
   wrap.append(scrim, panel);
 
-  /* Escape and a navigation away both mean "not now" — the same Skip the
-     buttons offer — so they route through `dismiss`, not a bare close. */
   const dismiss = () => {
     lsSet("cp_intro_dismissed", true);
     closeSheet(wrap, { removeIfOwned: true });
   };
-  openSheet(wrap, { panel, onRequestClose: dismiss });
-  scrim.addEventListener("click", dismiss);
+  const park = () => {
+    firstRunParked = true;
+    closeSheet(wrap, { removeIfOwned: true });
+  };
+  /* The player stays reachable (audit round 2, p-first-5): a newcomer who
+     arrived by a shared Foray link, pressed play and then tapped Home meets
+     this sheet over audio that keeps playing, and the mini bar's ▶ and ↺15
+     must not go inert with the page. */
+  openSheet(wrap, { panel, onRequestClose: park, keepReachable: ONBOARDING_KEEPS_REACHABLE });
+  scrim.addEventListener("click", park);
 
   /* Live SegmentStrip illustration for the second value prop — reads off
      window.ForayPlayer exactly as forayCards()/renderForay() do (app.js is a
@@ -5368,7 +5587,24 @@ function showFirstTimeExplainerOnce() {
     if (stripHtml) applyStripGrowIfBridged(propForay);
 
     skip.addEventListener("click", dismiss);
-    go.addEventListener("click", renderPreferences);
+    go.addEventListener("click", () => { renderPreferences(); landOnStep(); });
+  }
+
+  /* A STEP SWAP LANDS FOCUS ON THE NEW STEP'S TITLE (audit round 2, a11y-5).
+     "Get started" empties the dialog's body, which destroys the focused button:
+     focus fell to <body> inside an open modal, and the new `aria-labelledby`
+     is a name change, which nothing announces. The qa 64 rule — every action
+     that destroys the element just activated puts focus somewhere that
+     survived — applied here. The title is the programmatic target
+     (tabindex=-1, the same way `landOnPage` treats a page heading), so the
+     step is read and Tab continues from its top. Not on the FIRST render: the
+     owner has just focused the panel, which announces the dialog with its
+     name, and that is the right first thing to hear. */
+  function landOnStep() {
+    const title = $("#first-time-sheet-title");
+    if (!title) return;
+    if (typeof title.getAttribute !== "function" || title.getAttribute("tabindex") == null) title.setAttribute("tabindex", "-1");
+    focusQuietly(title);
   }
 
   function applyStripGrowIfBridged(scope) {
@@ -5461,8 +5697,9 @@ function showIntroPopupOnce() {
      persisted gate, never before it) as `showFirstTimeExplainerOnce` above.
      This one is reachable by RETURNING users, who are not
      `isGenuineFirstTimeUser()`, so it has only ever had the one flag between
-     it and a duplicate mount. */
-  if ($("#intro-sheet")) return;
+     it and a duplicate mount. `introParked` is the same this-visit state the
+     first-run sheet keeps. */
+  if ($("#intro-sheet") || introParked) return;
   const wrap = ddEl("div", "fy-sheet");
   wrap.id = "intro-sheet";
 
@@ -5503,10 +5740,21 @@ function showIntroPopupOnce() {
     lsSet("cp_intro_dismissed", true);
     closeSheet(wrap, { removeIfOwned: true });
   };
-  openSheet(wrap, { panel, onRequestClose: dismiss });
-  scrim.addEventListener("click", dismiss);
+  /* The same rule as the first-run sheet (p-first-4): only "Got it" is the
+     considered press; everything else parks it for this visit. */
+  const park = () => {
+    introParked = true;
+    closeSheet(wrap, { removeIfOwned: true });
+  };
+  openSheet(wrap, { panel, onRequestClose: park, keepReachable: ONBOARDING_KEEPS_REACHABLE });
+  scrim.addEventListener("click", park);
   ok.addEventListener("click", dismiss);
 }
+
+/** What the two onboarding sheets leave reachable: the player, so audio that
+    a shared Foray link started stays controllable under them (p-first-5). */
+const ONBOARDING_KEEPS_REACHABLE = ["#foray-player"];
+let introParked = false;
 
 /* One result row per matched show -- deliberately not epRow/miniCard: a show
    search result has no play control, duration, or star (it names a SHOW, not
@@ -8308,37 +8556,70 @@ const DESC_TOKEN_RE = /(https?:\/\/[^\s<>"']*[^\s<>"'.,;:)\]}])|(\b(?:\d{1,3}:)?
  * on an episode whose length we failed to record would be the wrong default.
  */
 function episodeDescriptionHtml(text, durationSec = null) {
+  return episodeDescriptionTokens(text, durationSec).map((t) => {
+    if (t.kind === "link") {
+      /* `rel="noopener noreferrer"` because these point off our origin. The
+         token's href is already through `safeUrl`; it goes through again here
+         because "every interpolated href passes through safeUrl" is a rule
+         test/app-security.test.js reads off this line, not off the tokeniser. */
+      return `<a href="${esc(safeUrl(t.href))}" target="_blank" rel="noopener noreferrer">${esc(t.text)}</a>`;
+    }
+    if (t.kind === "stamp") {
+      return `<button type="button" class="ep-ts" data-ts="${esc(String(t.secs))}" aria-label="${esc(t.label)}">${esc(t.text)}</button>`;
+    }
+    return esc(t.text);
+  }).join("");
+}
+
+/**
+ * The description as TOKENS — prose, links and seek stamps — the one pass that
+ * recognises a URL or a timestamp in publisher text. `episodeDescriptionHtml`
+ * above renders them for the episode page; the Now Playing sheet renders the
+ * same tokens as DOM nodes (client.js `paintNotes`, through `window.ForayNotes`
+ * below), because that file builds nothing from an HTML string. Audit round 2,
+ * p-switcher-2: the sheet used to paint the same text dead, so the founder's
+ * 2026-09-17 ruling held on one of the two surfaces that show the notes.
+ *
+ *   { kind: "text",  text }
+ *   { kind: "link",  text, href }          href already through `safeUrl`
+ *   { kind: "stamp", text, secs, label }   label is the control's accessible name
+ *
+ * `safeUrl` returns "#" for any scheme but http(s), so a script-bearing or
+ * inline-data URL cannot become a live href even though the regex would not
+ * have matched one in the first place. Belt and braces, and it is the same
+ * helper every other href in this file goes through. (The scheme names are
+ * spelled around rather than written out: the `no ... URL is constructed
+ * anywhere in the source` invariant in test/app-security.test.js greps this
+ * file for them, comments included, and it is a better rule than any one
+ * comment's convenience.)
+ */
+function episodeDescriptionTokens(text, durationSec = null) {
   const src = String(text ?? "");
-  if (!src) return "";
-  let out = "";
+  const out = [];
+  if (!src) return out;
   let last = 0;
   DESC_TOKEN_RE.lastIndex = 0;
   let m;
   while ((m = DESC_TOKEN_RE.exec(src)) !== null) {
-    out += esc(src.slice(last, m.index));
+    if (m.index > last) out.push({ kind: "text", text: src.slice(last, m.index) });
     const [whole, url, stamp] = m;
     if (url) {
-      /* `safeUrl` returns "#" for any scheme but http(s), so a script-bearing
-         or inline-data URL cannot become a live href here even though the regex
-         above would not have matched one in the first place. Belt and braces,
-         and it is the same helper every other href in this file goes through.
-         (The scheme names are spelled around rather than written out: the
-         `no ... URL is constructed anywhere in the source` invariant in
-         test/app-security.test.js greps this file for them, comments included,
-         and it is a better rule than any one comment's convenience.)
-         `rel="noopener noreferrer"` because these point off our origin. */
-      out += `<a href="${esc(safeUrl(url))}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`;
+      out.push({ kind: "link", text: url, href: safeUrl(url) });
     } else {
       const secs = parseTimestampSeconds(stamp);
       const inRange = secs !== null && (durationSec === null || secs <= durationSec);
-      out += inRange
-        ? `<button type="button" class="ep-ts" data-ts="${esc(String(secs))}" aria-label="Play from ${esc(stamp)}">${esc(stamp)}</button>`
-        : esc(whole);
+      out.push(inRange
+        ? { kind: "stamp", text: stamp, secs, label: `Play from ${stamp}` }
+        : { kind: "text", text: whole });
     }
     last = m.index + whole.length;
   }
-  out += esc(src.slice(last));
+  if (last < src.length) out.push({ kind: "text", text: src.slice(last) });
   return out;
+}
+
+if (typeof window !== "undefined") {
+  window.ForayNotes = { tokens: episodeDescriptionTokens };
 }
 
 /* COLLAPSED BY DEFAULT (founder, 2026-09-18): "When I'm listening to a podcast
@@ -9964,13 +10245,36 @@ function segLenOf(item) {
 function stripElapsedAt(e, r) {
   const strip = $("#fy-strip");
   if (!strip || typeof strip.getBoundingClientRect !== "function") return null;
-  const rect = strip.getBoundingClientRect();
   const x = e && typeof e.clientX === "number" ? e.clientX : null;
-  if (x == null || !rect || !(rect.width > 0)) return null;
-  const measured = stripElapsedFromBars(strip, x, rect, r);
+  return stripElapsedAtX(x, strip.getBoundingClientRect(), stripBarBoxes(strip), r);
+}
+
+/* The same question for a clientX and boxes the CALLER measured — at the click
+   for a tap, or before the zoom for a held gesture (bindStripZoomScrub), whose
+   release must not read the live rects: by then the zoom transform is being
+   removed, and under reduced motion the strip is drawn un-zoomed while the
+   finger is still in zoomed space (audit round 2, touch-1). One answer for
+   both, so the two commits cannot drift. */
+function stripElapsedAtX(x, rect, boxes, r) {
+  if (x == null || !Number.isFinite(x) || !rect || !(rect.width > 0) || !r) return null;
+  const measured = stripElapsedFromBoxes(boxes, x, rect, r);
   if (measured != null) return measured;
+  if (!Number.isFinite(r.totalSec)) return null;
   const frac = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
   return frac * r.totalSec;
+}
+
+/** The bars' boxes, or null when any bar cannot report one. */
+function stripBarBoxes(strip) {
+  const bars = strip && strip.children ? [...strip.children] : [];
+  const boxes = [];
+  for (const bar of bars) {
+    if (typeof bar.getBoundingClientRect !== "function") return null;
+    const box = bar.getBoundingClientRect();
+    if (!box || !(box.width > 0)) return null;
+    boxes.push(box);
+  }
+  return boxes;
 }
 
 /* The same question answered from the bars' own boxes, or null when they cannot
@@ -9978,19 +10282,12 @@ function stripElapsedAt(e, r) {
    with the queue, or a DOM whose elements do not report distinct geometry. Null
    rather than a confident wrong answer: the caller still has the flat map, which
    is approximate but never nonsense. */
-function stripElapsedFromBars(strip, x, rect, r) {
-  const bars = strip.children ? [...strip.children] : [];
-  if (bars.length !== r.playable.length || bars.length === 0) return null;
+function stripElapsedFromBoxes(boxes, x, rect, r) {
+  const count = Array.isArray(r.playable) ? r.playable.length : -1;
+  if (!boxes || boxes.length !== count || boxes.length === 0) return null;
 
-  const boxes = [];
   let spanned = 0;
-  for (const bar of bars) {
-    if (typeof bar.getBoundingClientRect !== "function") return null;
-    const box = bar.getBoundingClientRect();
-    if (!box || !(box.width > 0)) return null;
-    boxes.push(box);
-    spanned += box.width;
-  }
+  for (const box of boxes) spanned += box.width;
   // The bars have to actually TILE the row: each one starting at or after the
   // end of the last, and the whole set no wider than the strip. Anything else
   // is a DOM that is not laying out (or a stub reporting one box for every
@@ -10057,17 +10354,25 @@ function ensureBubbleEls() {
    only owns the real pointerdown/pointermove/pointerup listeners and the
    real setTimeout, and translates the module's state into DOM.
 
-   THE SEEK IS NOT HERE EITHER. `#fy-strip`'s existing `click` handler
-   (bound just above this call site) still does the seek, unchanged — a
-   `click` fires at the release point whether or not this handler ever
-   entered zoom, so "commit wherever the finger ended" falls out of the
-   platform. This function must never call `foraySeek`/`startAt` itself,
-   or the seek logic forks in two places that can drift.
+   THE SEEK IS THE CALLER'S, THROUGH `commit`. A plain tap still commits in
+   `#fy-strip`'s `click` handler (bound just above this call site); a gesture
+   that entered zoom commits HERE, on `pointerup`, through the same
+   `commitStripSeek` the click handler uses — one implementation of "where did
+   they drop it", two entry points. This file shipped believing a `click`
+   follows every release; it does for a mouse, and WebKit and Chrome on
+   Android both withhold it once a touch has moved past tap slop (and WebKit
+   again once the touchmove below is cancelled), so on a phone the whole
+   gesture — zoom, bubble, marker — ended in nothing (audit round 2, touch-1).
+   The release position is read against the PRE-zoom rect and bar boxes,
+   mapped through the origin the zoom was drawn with (`unzoomedX`), never
+   from a rect measured at release — see `stripElapsedAtX`. A mouse does still
+   deliver the click after a committed release, and `_seekCommitted` tells the
+   click handler that one has been answered.
 
    `setPointerCapture` keeps events routed to the strip even though scaling
    moves it visually out from under the finger mid-gesture — without it a
    drag toward the zoomed edge would silently stop delivering pointermove. */
-function bindStripZoomScrub(r, player) {
+function bindStripZoomScrub(r, player, commit = null) {
   const strip = $("#fy-strip");
   const gest = player?.scrubGesture;
   if (!strip || !gest) return;
@@ -10076,24 +10381,45 @@ function bindStripZoomScrub(r, player) {
   let holdTimer = null;
   let pointerId = null;
   let preZoomRect = null;
+  let preZoomBoxes = null;
+  let zoomOriginPct = null;
 
   const clearHoldTimer = () => {
     if (holdTimer != null) { clearTimeout(holdTimer); holdTimer = null; }
   };
 
-  /* `preZoomRect` is captured once, at pointerdown, before any zoom transform
-     exists — re-measuring mid-zoom would feed the origin math a box already
-     distorted by the previous frame's scale() (see zoomOriginPercent's own
-     header). It is cleared on release so the next gesture measures fresh. */
+  /* `preZoomRect` (and the bars' boxes with it) is captured once, before any
+     zoom transform exists — re-measuring mid-zoom would feed the origin math a
+     box already distorted by the previous frame's scale() (see
+     zoomOriginPercent's own header). It is cleared on release so the next
+     gesture measures fresh. */
+  const measurePreZoom = () => {
+    if (preZoomRect) return;
+    preZoomRect = strip.getBoundingClientRect();
+    preZoomBoxes = stripBarBoxes(strip);
+  };
   const applyZoomVisual = (clientX) => {
-    if (!preZoomRect) preZoomRect = strip.getBoundingClientRect();
+    measurePreZoom();
     const pct = gest.originPercent(clientX, preZoomRect);
     if (pct == null) return;
+    zoomOriginPct = pct;
     // CSSOM, not a style attribute — the page CSP is style-src 'self', same
     // rule segment-strip.js and paintSegFill already live under.
     strip.style.setProperty("--zoom-origin", `${pct}%`);
     strip.style.setProperty("--zoom-scale", String(gest.ZOOM_SCALE));
     strip.classList.add("is-zooming");
+  };
+
+  /* Where a zoomed release lands in the hour, from what was measured BEFORE
+     the zoom. A bridge without `unzoomedX` (an older cached module) gets the
+     finger's own x, which is what the mapping returns whenever the origin was
+     anchored under the finger — every move re-anchors it there. */
+  const zoomedElapsedAt = (clientX) => {
+    if (!preZoomRect) return null;
+    const x = typeof gest.unzoomedX === "function"
+      ? gest.unzoomedX(clientX, preZoomRect, zoomOriginPct, gest.ZOOM_SCALE)
+      : clientX;
+    return stripElapsedAtX(x, preZoomRect, preZoomBoxes, r);
   };
 
   /* The bubble's cloned content is built ONCE per gesture, at the moment it
@@ -10103,7 +10429,7 @@ function bindStripZoomScrub(r, player) {
      strip during a hold (the pointer has captured input). Re-cloning every
      pointermove would be wasted DOM churn for no visible difference. */
   const openBubble = (clientX, clientY) => {
-    if (!preZoomRect) preZoomRect = strip.getBoundingClientRect();
+    measurePreZoom();
     const { bubble, viewport } = ensureBubbleEls();
     viewport.replaceChildren();
     const clone = strip.cloneNode(true);
@@ -10150,6 +10476,8 @@ function bindStripZoomScrub(r, player) {
     strip.style.removeProperty("--zoom-origin");
     strip.style.removeProperty("--zoom-scale");
     preZoomRect = null;
+    preZoomBoxes = null;
+    zoomOriginPct = null;
     closeBubble();
   };
 
@@ -10173,6 +10501,7 @@ function bindStripZoomScrub(r, player) {
        produces a click at all, so a flag cleared only by a click would sit
        armed and eat the next genuine tap.) */
     strip._scrollGesture = false;
+    strip._seekCommitted = false;
     pointerId = e.pointerId;
     gesture = gest.start(e.clientX, e.clientY);
     if (typeof strip.setPointerCapture === "function") {
@@ -10219,7 +10548,13 @@ function bindStripZoomScrub(r, player) {
 
   strip.addEventListener("pointerup", (e) => {
     if (pointerId == null || e.pointerId !== pointerId) return;
+    /* Read BEFORE finish(): it clears the pre-zoom measurements. A gesture
+       that never zoomed is a tap, and a tap's click commits it. */
+    const at = gesture && gesture.zooming ? zoomedElapsedAt(e.clientX) : null;
     finish();
+    if (at == null) return;
+    strip._seekCommitted = true;
+    if (typeof commit === "function") commit(at);
   });
   strip.addEventListener("pointercancel", (e) => {
     if (pointerId == null || e.pointerId !== pointerId) return;
@@ -10556,6 +10891,9 @@ function bindForayTransport(r, player, resume = null) {
 
      The exact-segment jump did not go away — it is the running-order rows,
      which are also the keyboard-reachable half of this control. */
+  /* ONE COMMIT for the strip: a tap's click and a zoomed gesture's release
+     (bindStripZoomScrub, on pointerup) both land here. */
+  const commitStripSeek = (at) => (playerHasForay(r) ? guardForayTap(() => player.foraySeek(at)) : startAt(at));
   $("#fy-strip").addEventListener("click", async (e) => {
     /* A gesture bindStripZoomScrub read as a SCROLL (mostly vertical, before
        any scrub began) is not a position in the hour. Without this, the click
@@ -10564,16 +10902,19 @@ function bindForayTransport(r, player, resume = null) {
       e.currentTarget._scrollGesture = false;
       return;
     }
+    /* A zoomed gesture was committed on its release; the click a MOUSE still
+       delivers after it must not seek a second time (a touch sends none). */
+    if (e.currentTarget && e.currentTarget._seekCommitted) {
+      e.currentTarget._seekCommitted = false;
+      return;
+    }
     /* Position FIRST, and only then look for a bar. The strip is 32 bars with a
        2px gap between each, which is roughly a fifth of its width — requiring a
        `[data-seg]` hit before reading the coordinate made every one of those
        gaps a dead zone, and "a click anywhere on it is a position in the hour"
        has to be true or the control is lying. */
     const at = stripElapsedAt(e, r);
-    if (at != null) {
-      if (playerHasForay(r)) return guardForayTap(() => player.foraySeek(at));
-      return startAt(at);
-    }
+    if (at != null) return commitStripSeek(at);
     // No coordinate to work from (a synthetic or assistive click). Fall back to
     // the bar that was hit, which is what the strip did before it could scrub.
     const seg = e.target.closest("[data-seg]");
@@ -10582,7 +10923,7 @@ function bindForayTransport(r, player, resume = null) {
     return playerHasForay(r) ? guardForayTap(() => player.forayJump(index)) : start(index);
   });
 
-  bindStripZoomScrub(r, player);
+  bindStripZoomScrub(r, player, commitStripSeek);
 
   /* Re-entering the page mid-Foray must paint the segment that is actually
      audible, and route this page's callback at the live player — otherwise the
@@ -11052,10 +11393,162 @@ function renderDrawer() {
   syncVoiceProbeRun();
 }
 
-function openDrawer(open) {
-  $("#drawer").hidden = !open;
-  $("#drawer-overlay").hidden = !open;
-  if (open) renderDrawer();
+/* ---------- THE DRAWER IS A MODAL, WITH THE SAME CONTRACT AS A SHEET ----------
+
+   Audit round 2, nav-5 (with touch-7 and a11y-4 folded in). The drawer is
+   painted over everything (z 80/81) and behaved like a modal in no other
+   sense: a drag on its scrim, or on the panel itself when its content fit the
+   screen, scrolled the page behind it — close the drawer and you had lost
+   your place; Escape did nothing; opening moved no focus and closing returned
+   none; Tab walked out of it into the page; the ☰ said nothing about what it
+   controls. Every sheet had all of that from the owner (`openSheet`) and the
+   drawer, not being a sheet, had none.
+
+   The same contract, from the same helpers: `body.drawer-open` locks the page
+   scroll the way `body.fp-expanded` does (styles.css also gives the panel
+   `overscroll-behavior: contain` and the scrim `touch-action: none`); the page,
+   the tab bar and the player go `inert` through `inertOutside` — the topbar
+   stays reachable (the ☰ must work at every moment, F17), so does the scrim
+   (its tap closes the drawer) and so does the page's live region; focus moves
+   to the first link on open. ON CLOSE, focus goes back to the ☰ only for a
+   DISMISSAL (Escape, the scrim, hardware back): a link that navigates hands
+   focus to the new page's heading through `landOnPage`, and a button that
+   opens a sheet hands it to the ☰ through `openSheet`'s own drawer rule —
+   returning it here first would make both of those think focus had survived.
+   Not on the sheet stack, deliberately: the drawer is navigation chrome that
+   sits OVER sheets (F17), never under them, and the one thing the stack would
+   add — Escape — is `onDrawerKeydown`, which takes precedence while it is open
+   (`onSheetKeydown` yields). */
+const DRAWER_KEEPS_REACHABLE = [".topbar", "#drawer-overlay", "#a11y-status"];
+let drawerInerted = [];
+
+function drawerIsOpen() {
+  const drawer = $("#drawer");
+  return !!(drawer && !drawer.hidden);
+}
+
+function openDrawer(open, { toMenu = false } = {}) {
+  const drawer = $("#drawer");
+  const overlay = $("#drawer-overlay");
+  const menu = $("#menu-btn");
+  const was = !!(drawer && !drawer.hidden);
+  drawer.hidden = !open;
+  overlay.hidden = !open;
+  if (menu && typeof menu.setAttribute === "function") {
+    menu.setAttribute("aria-expanded", open ? "true" : "false");
+    if (typeof menu.getAttribute !== "function" || !menu.getAttribute("aria-controls")) menu.setAttribute("aria-controls", "drawer");
+  }
+  document.body.classList.toggle("drawer-open", !!open);
+  if (open) {
+    renderDrawer();
+    if (was) return;                       // a re-render of an open drawer: nothing to take again
+    drawerInerted = inertOutside(drawer, DRAWER_KEEPS_REACHABLE);
+    const first = sheetFocusables(drawer)[0];
+    if (!first && typeof drawer.setAttribute === "function"
+        && (typeof drawer.getAttribute !== "function" || drawer.getAttribute("tabindex") == null)) {
+      drawer.setAttribute("tabindex", "-1");
+    }
+    focusQuietly(first || drawer);
+    return;
+  }
+  for (const el of drawerInerted) if (typeof el.removeAttribute === "function") el.removeAttribute("inert");
+  drawerInerted = [];
+  if (was && toMenu) focusQuietly(menu);
+}
+
+/** The drawer's half of the keyboard contract, reached through the one overlay
+    listener (`onSheetKeydown`) while the drawer is open: Escape closes it and
+    puts focus back on the ☰; Tab cycles the topbar and the drawer — the same
+    belt-and-braces behind `inert` the sheets keep, for a WebView without it,
+    and the reason a Tab from the ☰ walks into the open drawer rather than
+    back into a covered sheet. */
+function onDrawerKeydown(e) {
+  if (!drawerIsOpen()) return;
+  if (e.key === "Escape" || e.key === "Esc") {
+    if (typeof e.preventDefault === "function") e.preventDefault();
+    openDrawer(false, { toMenu: true });
+    return;
+  }
+  if (e.key !== "Tab") return;
+  const cycle = [];
+  for (const root of [$(".topbar"), $("#drawer")]) {
+    if (!root || root.hidden) continue;
+    for (const el of sheetFocusables(root)) if (!cycle.includes(el)) cycle.push(el);
+  }
+  if (!cycle.length) return;
+  if (typeof e.preventDefault === "function") e.preventDefault();
+  const at = cycle.indexOf(document.activeElement);
+  const next = at < 0
+    ? (e.shiftKey ? cycle[cycle.length - 1] : cycle[0])
+    : cycle[(at + (e.shiftKey ? cycle.length - 1 : 1)) % cycle.length];
+  focusQuietly(next);
+}
+
+/* ---------- THE SAME LINK, TAPPED AGAIN (audit round 2, nav-8) ----------
+
+   A drawer link, or the wordmark, to the page already on screen was a silent
+   no-op: assigning the hash that is current fires no `hashchange`, so
+   `route()` — the only thing that closes every sheet and scrolls to the top —
+   never ran. Under the expanded Now Playing sheet, which keeps the drawer
+   reachable (F17), that left the sheet covering the page the listener had
+   just asked for. The tab bar has answered this gesture since the 2026-09-22
+   audit ("tapping the tab you are on takes you to the top"); this is that
+   rule for the two other same-page routes, with the one addition they need:
+   the sheets close, because the tab bar is inert under a sheet and these two
+   are not. */
+function sameHashTap(a, e) {
+  if (!a || String(a.tagName || "").toUpperCase() !== "A") return false;
+  const href = typeof a.getAttribute === "function" ? a.getAttribute("href") : null;
+  if (!href || currentHash(href) !== currentHash()) return false;
+  if (e && typeof e.preventDefault === "function") e.preventDefault();
+  closeAllSheets();
+  scrollPageTo(0);
+  return true;
+}
+
+/* ---------- HARDWARE BACK (audit round 2, nav-2) ----------
+
+   Android's back was the raw WebView back: with the drawer or the Now
+   Playing sheet open it closed the overlay AND stepped the page underneath
+   (the drawer and the sheets push no history entry, so the step was a real
+   one), and on a first page it left the app with the sheet still up. Every
+   Android app treats back as "dismiss the top-most thing"; this is that
+   ordering, in one place, beside the ownership model the drawer and the
+   sheets already follow: the drawer (it sits over everything), then the top
+   sheet through its own close (Escape's path — a sheet may decline), then one
+   step of the app's own history, else leave the app. iOS has no back button
+   and registers the same listener harmlessly. `docs/DECISIONS.md` 2026-09-23
+   records the order. */
+function handleBack() {
+  if (drawerIsOpen()) { openDrawer(false, { toMenu: true }); return "drawer"; }
+  if (openSheetCount() > 0) {
+    sheetStack[sheetStack.length - 1].requestClose();
+    return "sheet";
+  }
+  if (canGoBackInApp()) {
+    if (!backPending) { backPending = true; history.back(); }   // one step per press, as ‹ does
+    return "history";
+  }
+  return "exit";
+}
+
+/** Register with the Capacitor App plugin when the shell provides it. Returns
+    whether a listener was installed — false on the web, where the browser's
+    own back is the right one. */
+function bindHardwareBack(win = window) {
+  let app = null;
+  try { app = win && win.Capacitor && win.Capacitor.Plugins && win.Capacitor.Plugins.App; } catch (_) { app = null; }
+  if (!app || typeof app.addListener !== "function") return false;
+  try {
+    app.addListener("backButton", () => {
+      if (handleBack() === "exit" && typeof app.exitApp === "function") app.exitApp();
+    });
+  } catch (_) { return false; }
+  return true;
+}
+
+if (typeof window !== "undefined") {
+  window.ForayNav = { handleBack, landOnPage, announce };
 }
 
 /* ---------- THE DRAWER LEAVES WHEN IT IS USED (founder, 2026-09-23) ----------
@@ -11100,15 +11593,20 @@ function onDrawerAction(e) {
   if (!item) return;
   if (typeof item.closest === "function" && item.closest(DRAWER_STAYS_OPEN_FOR)) return;
   openDrawer(false);
+  sameHashTap(item, e);
 }
 
-/** The ☰, the overlay and the drawer's own leave rule. Bound once from init(). */
+/** The ☰, the overlay, the wordmark, Escape and the drawer's own leave rule.
+    Bound once from init(). */
 function bindDrawerChrome() {
   $("#menu-btn").addEventListener("click", () => openDrawer($("#drawer").hidden));
-  $("#drawer-overlay").addEventListener("click", () => openDrawer(false));
+  $("#drawer-overlay").addEventListener("click", () => openDrawer(false, { toMenu: true }));
   /* CAPTURE, deliberately: the drawer closes before the item acts, not after —
      see the block comment above. */
   $("#drawer").addEventListener("click", onDrawerAction, true);
+  bindOverlayKeys();
+  const mark = $(".wordmark");
+  if (mark) mark.addEventListener("click", (e) => sameHashTap(mark, e));
 }
 
 /* ---------- U-02: the four-tab bar (docs/ui-transition-plan.md) ----------
@@ -14008,6 +14506,9 @@ async function init() {
   });
 
   bindDrawerChrome();
+  /* Android's back button, ordered like every other overlay close — see
+     `handleBack`. A no-op on the web and on iOS. */
+  bindHardwareBack();
   $("#view").addEventListener("click", onBackClick);
   $("#view").addEventListener("click", onForayScriptClick);   // once — see its header
   /* The listener's settings switches, in one call — see `bindDrawerToggles`.
