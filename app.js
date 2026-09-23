@@ -1501,10 +1501,13 @@ function loadSearchData() {
   searchDataWanted = true;
   if (state.semantic && state.itemTags) return Promise.resolve();
   if (!searchDataLoading) {
-    searchDataLoading = Promise.all([
+    /* Bounded (SEARCH_DATA_DEADLINE_MS): past it the load counts as failed, so
+       a waiting build runs degraded and "Still looking" ends, instead of both
+       waiting on a socket that will never answer. */
+    searchDataLoading = withDeadline(Promise.all([
       fetchJson("data/semantic-index.json"),
       fetchJson("data/item-tags.json"),
-    ]).then(([semantic, itemTags]) => {
+    ]), SEARCH_DATA_DEADLINE_MS, () => [null, null]).then(([semantic, itemTags]) => {
       state.semantic = semantic;
       state.itemTags = itemTags;
       state._searchCtx = null;
@@ -5853,17 +5856,22 @@ async function fetchShardRows(shardKey) {
     return cached.rows;
   }
 
-  let data = null;
-  let version = null;
-  try {
-    const res = await fetch(apiUrl(`api/shows/index/shards/${encodeURIComponent(shardKey)}.json`), { cache: "no-cache" });
-    if (res && res.ok) {
-      data = await res.json();
-      version = res.headers && typeof res.headers.get === "function" ? res.headers.get("X-Shows-Index-Version") : null;
-    }
-  } catch (_) {
-    data = null;
-  }
+  /* Under the same deadline as fetchApiJson: a shard that never answers is a
+     failed pass, so the search can say so and offer Try again. */
+  const got = await withDeadline((async () => {
+    try {
+      const res = await fetch(apiUrl(`api/shows/index/shards/${encodeURIComponent(shardKey)}.json`), { cache: "no-cache" });
+      if (res && res.ok) {
+        return {
+          data: await res.json(),
+          version: res.headers && typeof res.headers.get === "function" ? res.headers.get("X-Shows-Index-Version") : null,
+        };
+      }
+    } catch (_) { /* a failure is the null below */ }
+    return { data: null, version: null };
+  })(), API_DEADLINE_MS, () => ({ data: null, version: null }));
+  const data = got.data;
+  const version = got.version;
   if (version) lastSeenShardVersion = version;
   if (!Array.isArray(data)) return []; // failure/unavailable: not memoized, so a later search retries
   shardMemoryCache.set(shardKey, data);
@@ -12998,10 +13006,40 @@ async function fetchJson(path) {
    fetchJson, so callers don't need their own try/catch for a down or
    unreachable endpoint. */
 async function fetchApiJson(path) {
-  try {
-    const res = await fetch(apiUrl(path), { cache: "no-cache" });
-    return res.ok ? await res.json() : null;
-  } catch (_) { return null; }
+  const ctl = typeof AbortController === "function" ? new AbortController() : null;
+  const attempt = (async () => {
+    try {
+      const res = await fetch(apiUrl(path), ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" });
+      return res.ok ? await res.json() : null;
+    } catch (_) { return null; }
+  })();
+  /* A deadline, then the same `null` a failure gives (see withDeadline). */
+  return withDeadline(attempt, API_DEADLINE_MS, () => {
+    try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ }
+    return null;
+  });
+}
+
+/* NO REQUEST WAITS FOREVER (review 2026-09-23). A stalled socket — a captive
+   portal, a cell dead zone — never answers and never throws, so a bare `fetch`
+   never settles, and every state that waits on one ("Searching for …",
+   "Still looking for playlists…", a disabled "Building…") could spin for good,
+   with no way to reach its failed state and its Try again. The loading rule is
+   that loading ends as loaded, failed or empty; these deadlines are what make
+   "failed" reachable. `let`, so a suite can shorten them. */
+let API_DEADLINE_MS = 15000;
+/* The two search documents are ~0.5 MB together and are fetched after the first
+   paint; generous, so a slow connection still gets them. On expiry a build runs
+   with the degraded scorer, as it does when they fail. */
+let SEARCH_DATA_DEADLINE_MS = 30000;
+
+/** `promise`, or `onLate()`'s value once `ms` pass without an answer. */
+function withDeadline(promise, ms, onLate) {
+  let timer = null;
+  const late = new Promise(resolve => { timer = setTimeout(() => resolve(onLate()), ms); });
+  return Promise.race([promise, late]).then(
+    (v) => { clearTimeout(timer); return v; },
+    (e) => { clearTimeout(timer); throw e; });
 }
 
 /* ---------- the Foray directory (FD-03; FD-01 for the diagnostics row) ----------

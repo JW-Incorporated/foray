@@ -420,12 +420,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     fast pass, `directory` the fall-through, `directoryError` models the
     endpoint's own 200-with-an-error on a limiter trip. Episodes answer empty
     and the shard pass answers the real "not published" 404. */
-function mountSearch({ catalogue = [], directory = [], directoryError = null, catalogueDelayMs = 0, taxonomy = null, catalog = CATALOG } = {}) {
+function mountSearch({ catalogue = [], directory = [], directoryError = null, catalogueDelayMs = 0, taxonomy = null, catalog = CATALOG, hangApi = false } = {}) {
   const calls = [];
   const m = mount({
     hash: "#/shows",
     fetchImpl: (url) => {
       calls.push(url);
+      if (hangApi && url.includes("api/")) return new Promise(() => {});   // a stalled socket
       if (url.includes("api/shows/search") && url.includes("fallthrough=1")) {
         return okJson({ shows: directoryError ? [] : directory, fallthrough: { attempted: true, error: directoryError } });
       }
@@ -495,6 +496,35 @@ test("an empty answer behind a pass that FAILED says part of the search did not 
   assert.ok(m.retry(m.offer()), "the failure offers Try again");
   await sleep(150);
   assert.ok(m.calls.filter((u) => u.includes("fallthrough=1")).length > before, "Try again asks the directory again");
+});
+
+test("REVIEW: a search whose requests never answer ends as a failed search with Try again, not 'Searching' for good", async () => {
+  /* A stalled socket never settles a bare fetch, so showPassDone never ran
+     and the note said "Searching for …" forever. MUTATION: return `attempt`
+     from fetchApiJson without withDeadline -> the note never leaves
+     "Searching", red. */
+  const m = mountSearch({ hangApi: true });
+  vm.runInContext("API_DEADLINE_MS = 30", m.ctx);
+  m.ctx.renderShowSearchResults("zzqx");
+  assert.match(m.note.textContent, /Searching for "zzqx"/, "precondition: it starts out searching");
+  await sleep(250);
+  assert.doesNotMatch(m.note.textContent, /Searching/, `the note must end: "${m.note.textContent}"`);
+  assert.match(m.offer().innerHTML, /Part of this search didn't load\./, "and say the search did not load, with Try again");
+});
+
+test("REVIEW: a playlist build whose search documents never arrive still runs, and the button comes back", async () => {
+  /* whenSearchDataReady waited on loadSearchData, and a hung fetch left the
+     builder's "Building…" disabled for good. MUTATION: drop withDeadline from
+     loadSearchData -> the build never runs, red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  vm.runInContext("SEARCH_DATA_DEADLINE_MS = 30", m.ctx);
+  m.state.semantic = null;
+  m.state.itemTags = null;
+  m.ctx.loadSearchData();
+  let ran = false;
+  m.ctx.whenSearchDataReady(() => { ran = true; });
+  await sleep(150);
+  assert.strictEqual(ran, true, "the build runs with the degraded scorer once the deadline passes");
 });
 
 test("a subject's own name that finds no show by title offers that subject's categories that hold shows", async () => {
