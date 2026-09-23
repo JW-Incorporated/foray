@@ -168,6 +168,17 @@ export const DENIED_PREFIXES = [
   // an audition behind it.
   "tools/mobile/fetch-models.mjs",
   "tools/mobile/inject-models.mjs",
+  // The release machinery (2026-09-22, docs/release-reliability-plan.md). Two
+  // live exposures, either one enough on its own: `upload-retry.mjs` runs inside
+  // the ios-archive step that holds the decoded App Store Connect key, and
+  // `watch-release.mjs` decides, from a workflow with `actions: write`, when a
+  // 10x-billed macOS release is dispatched and whether the founder's only
+  // release alarm is raised or closed. A one-line neuter of the second silences
+  // the alarm or dispatches a release every three hours, and `tools/` is
+  // allowlisted, so without this entry a bot PR doing either would land unread.
+  // Denied as a directory so the next file placed beside them is governed from
+  // birth. Change frequency: a handful of commits a month at most.
+  "tools/release/",
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):

@@ -1001,7 +1001,7 @@ const FLOORS = {
      that `deploy-manifest.json` and `sw.js` are on ALLOWED_PREFIXES. Removing
      either entry restores the state in which every nightly PR sat green and
      unmerged, and nothing else in the repo would say so. */
-  "tools/ci/path-policy.test.mjs": 88,
+  "tools/ci/path-policy.test.mjs": 90, // 2026-09-22: +1 (and the one-test slack closed) -- tools/release/ is denied; 88 -> 90
   /* The LF-checkout guard on the deploy manifest. Small, and every test is one
      branch of a function whose whole job is to refuse. The load-bearing one is
      the binary exclusion: both committed icons really do carry `\r\n` bytes, so

@@ -140,6 +140,19 @@ test("mobile/ auto-merges, but the signing scripts under tools/mobile/ still don
   assert.ok(DENIED_PREFIXES.includes("tools/mobile/wire-signing.mjs"));
 });
 
+test("tools/release/ is denied: the release watchdog, the trigger and the upload retry all run with live power", () => {
+  // 2026-09-22. watch-release.mjs decides from an `actions: write` job when a
+  // release is dispatched and whether the release alarm is raised; upload-retry
+  // runs beside the App Store Connect key. MUTATION: drop the entry and a bot PR
+  // that neuters either lands unread under the `tools/` allowance.
+  assert.ok(DENIED_PREFIXES.includes("tools/release/"));
+  for (const f of ["tools/release/watch-release.mjs", "tools/release/upload-retry.mjs"]) {
+    const p = pathPolicy([f]);
+    assert.equal(p.denied.length, 1, `${f} must be denied`);
+    assert.equal(p.allowed.length, 0, `${f} must not also read as allowed`);
+  }
+});
+
 test("tools/ci/ is denied even though tools/ is allowed", () => {
   // This directory is the gate: without the deny entry, the first PR editing
   // the policy would auto-merge under the policy it was rewriting.
