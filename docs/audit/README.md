@@ -42,6 +42,7 @@ change that produces it.**
 | `persona-synthesis.md` | The newcomer report: first-five-minutes walkthrough, jargon ledger, needless vs deliberate deviations from Apple Podcasts, explanation-debt table, a 35-item fix order in 5 tiers |
 | `persona-findings.tsv` | One row per persona finding, 84 rows, same schema |
 | `persona-findings-detail.md` | Full JSON per persona finding |
+| `status.tsv` | What became of every finding, one row each (see STATUS below) |
 
 `findJL` / `verdictJL` point into the corresponding `-detail.md` by journal line,
 so a TSV row can always be expanded to its evidence.
@@ -95,11 +96,161 @@ report, and the fix is two functions and about ten lines.
 
 ## STATUS
 
-**Not yet worked through.** A handful of the highest-severity items were fixed
-separately before this directory existed, because the founder hit them in the
-field first rather than because they were on this list — the restored ribbon
-publishing no media handlers (both fleets flagged it) among them.
+**Worked through, 2026-09-22/23.** Every finding has a row in
+[`status.tsv`](status.tsv) — `src, tsvRow, title, disposition, where, note` —
+including the refuted and deliberate ones, which keep the verifier's verdict.
+`src` + `tsvRow` name a line of `qa-findings.tsv` / `persona-findings.tsv`
+(1-based). `where` names the lane, the merge or PR, and the commits.
 
-Nothing here should be treated as still-true without checking: these are findings
-against the tree as of 2026-09-22, and every `file:line` needs verifying before
-it is acted on.
+The work was split into eight lanes. L1–L6 are merged into
+`audit-fix/integration` (PR #742); L7 (release reliability, from its own brief
+rather than audit rows) is PR #739; L8 (Foray data) is PR #741. A completeness
+sweep then re-verified, on the integration branch, every row a lane handed to
+another lane and every row no lane was given, and fixed the six still live
+(qa 79, 80, 161, 163, 168, 169).
+
+| disposition | QA | persona | total |
+|---|---:|---:|---:|
+| fixed | 166 | 57 | 223 |
+| already-fixed (before the lanes, or when audited) | 1 | 3 | 4 |
+| refuted (verifier) | 16 | — | 16 |
+| deliberate (verifier) | — | 16 | 16 |
+| deferred-founder | 8 | 8 | 16 |
+| deferred-device | 1 | 0 | 1 |
+| open | 1 | 0 | 1 |
+| **all rows** | **193** | **84** | **277** |
+
+"Fixed" means fixed in code with a test that fails without the fix (each new
+rule mutation-checked, each new suite floored in `test/suite-integrity.test.js`),
+not verified on a phone. Where only a device can confirm something, the row's
+note says so: the notched-inset change (qa 13), the native Preferences tier
+(qa 172), and how VoiceOver voices the new focus and live regions (qa 80).
+
+### Still open, and why
+
+- **qa 152** (open) — `data/session.json`'s `fit_line` / `archetype_label` carry
+  commute framing and no test gates them. Nothing in `app.js` or `player/`
+  renders them; only `backend/src/curation/sessionBuilder.ts` writes the field.
+  It belongs with the backend copy-rules gate (L8's area), which did not take it.
+- **qa 78** (deferred-device) — buttons nested inside anchors on the Jump back in
+  and subject cards. The fix is a stretched-link restructure that moves card
+  geometry pinned by `test/home-layout.test.js`; it needs a layout and device pass.
+- **deferred-founder** (16): qa 28, 43, 47, 51, 54, 59, 60, 146; persona 10, 14,
+  40, 44, 56, 58, 65, 82. Each is one of the questions below.
+
+### Founder questions
+
+Playback
+1. Spoken (synthesized) narration plays at the listener's speed; `resetRateForTTS`
+   says that is deliberate, while pre-rendered narration and corner case #18 say
+   1.0x. Which? Either way the `rate.deferred … plays at 1.0x` log line is wrong
+   for spoken lines (qa 28).
+2. When a call, Siri or a navigation prompt ends and iOS says audio may resume,
+   should 4a resume by itself like Apple Podcasts? Doing it safely first needs
+   #699 §1 (telling a chosen pause from an interruption).
+3. A head unit's STOP now pauses and keeps the controls; the Android
+   notification's own Stop still closes the player. OK?
+4. Founder report 2 (stops while backgrounded): if the next field record shows
+   stops on a healthy element with background rows and no interruption rows, the
+   cause is native (WebKit's audio session) and needs a native card and a device.
+5. Inside a Foray the two buttons beside play are previous/next clip, not ↺15 /
+   30↻. Keep the nudges inside a Foray too and move clip navigation elsewhere?
+   That redesigns the Foray transport on three surfaces (persona 58).
+6. Mini player: add a back-15 (or forward-30) button beside play (persona 10)?
+7. "Start over" on a Foray: keep the stored resume point until the new position
+   passes it, so a mis-tap can be undone (persona 12)?
+8. Now Playing has three dismiss affordances (✕, Close, drag): collapse to one
+   chevron plus drag (persona 79)?
+
+Continuous playback and Home
+9. Continuous playback plays Up Next, then the rest of the list you started from,
+   then stops. Is #691's "then more of what fits" the next step?
+10. "Episodes for you" (your name, from the ui-transition brief) holds subject
+    cards. Make the cards episode-shaped, or rename the section "Subjects for
+    you" (persona 56, 82)?
+11. Should Home's subject cards get a one-tap play that starts "Starts with …"
+    and continues through the subject list (persona 44)? The code's rationale
+    today says sequence cards are only a way in.
+12. The header tagline "a daily podcast picker" promises a daily cadence Home
+    does not have (it re-deals every load). Keep, drop "daily", or seed the deal
+    by day (qa 149)?
+13. Create: remove the permanently disabled Foray half of the toggle until
+    custom Forays exist, or keep it visible as D8 says (persona 26)?
+14. Starred shows are now "Followed shows" with Follow/Followed, per the
+    Apple-parity vocabulary ruling (Joey's A2.4 said "starred"). Confirm, given
+    following pushes no new episodes (the page says so).
+15. The playlist check behind "Create a playlist about …" now says it is still
+    working but still locks the page on a phone. Worth a Web Worker card
+    (persona 28)?
+
+Look and feel (R12: these visibly change the app)
+16. Typography: Home's "Episodes for you" titles (Georgia 1.2rem beside
+    Fraunces), the topbar wordmark (the `.wordmark` rule is unused), and the
+    Georgia section labels. Convert all to Fraunces (qa 43, 47, 51)?
+17. Consolidate the two "Generated for you" badge shapes, the two subject-pill
+    components, one artwork treatment and a radius scale (qa 45, 54, 59, 60)?
+18. Episode rows leave ~114px for the title at 390px: icon-only "+ Up Next" at
+    phone width, or controls on a second line as Up Next rows now have
+    (persona 40)?
+
+Data and release
+19. Only 1 of 8 Forays is published, and it has no narration although
+    onboarding promises a narrator. Publish a narrated Foray after a listen, or
+    hedge the onboarding sentence (persona 14, 83)?
+20. HUMAN-ACTIONS #2 ("listen to Foray #1") no longer applies now that
+    grilling-history-1 is retired: skip it, or point it at grilling-history-2?
+21. House style for Foray titles and summaries (sentence case, a summary ends
+    with a period)? Once set it is enforced in `check-forays.mjs` and the
+    generator's `forayCopy` (qa 146). The narrator's spoken "act" needs a
+    generation run (persona 65).
+22. HUMAN-ACTIONS #46: re-enable the `foray-nightly-enrich` Cloud routine
+    (disabled since 2026-09-13, and the only reason nightly-refresh and
+    nightly-watch are red), and clear the stranded 2026-09-14 digest by losing
+    its 40 episodes or recovering them?
+23. PR #739 adds two scheduled release workflows; the trigger dispatches
+    `release.yml` at most every 3h when release-relevant commits wait
+    (RETRY_BUDGET=2). OK to merge?
+24. After the next TestFlight/Play build, check that
+    `window.forayStorageHealth().durableTiers` lists `['native','idb']` and that
+    resume and the anonymous account survive a relaunch (qa 172).
+25. The Developer group sits directly above Delete my data (which stays the
+    drawer's last item). Want Developer last instead?
+
+### Rulings applied
+
+- **R1**: a real episode is a pool member OR a held snapshot with `audio_url`
+  (`liveEpisode`); queue, play and save all write the same snapshot.
+- **R2**: continuous playback is on by default, named "Continuous playback",
+  Up Next first then the chosen list; the car's next/previous come from the page
+  (`setEpisodeNavigation`); the stale "no autoplay chains" comments are updated.
+- **R3**: listener vocabulary. A Foray's pieces are clips, its sections parts;
+  shows are Follow/Followed, episodes Save/Saved; lowercase "this foray" per
+  DECISIONS 2026-08-21. Raw developer strings (tags, keys, error classes,
+  taxonomy ids, resolver reasons) never reach the screen.
+- **R4**: loading claims nothing; a failure says so and offers Try again wired
+  to the same fetch; empty only after the source answered; a count and its rows
+  come from one source; a failed play says so and the retry is the same press.
+- **R5**: one `openSheet`/`closeSheet` owner for every sheet, Now Playing
+  included (focus in/out, inert, Tab trap, Escape, single instance).
+- **R6**: Forays and Followed shows are Library sections; the drawer uses the
+  tab bar's names; the Search field's position and tile behaviour stand.
+- **R7**: "Open in" deleted with everything it governed.
+- **R8**: founder tools in one collapsed Developer group; no hidden unlock.
+- **R9**: the header ↻ refreshes the current page in place.
+- **R10**: the durability claim is made true (native Preferences tier), not
+  amended.
+- **R11**: Delete my data deletes every store the code opens, re-reads to
+  confirm, and reports failures in plain words.
+- **R12**: only ≤2px accidental duplicates consolidated; typography, badges,
+  pills, artwork and a radius scale are founder questions.
+- **R13**: 44px hit areas through one zero-specificity rule, so visual sizes
+  do not jump; Stop gets the danger colour and moves away from Close.
+- **R14**: founder rulings and in-code rationales were read before touching
+  anything they cover (#699 before the native session, Joey's tap-to-seek, D7/D8,
+  "Episodes for you", the Jump back in play button), and kept.
+- Sweep additions: `--faint` is for disabled states and borders only (text and
+  live controls read `--muted`, pinned in `test/ui-tokens.test.js`); a route
+  names the document after its page heading and lands lost focus on it.
+
+Nothing here should be treated as still true of a later tree without checking:
+`file:line` in the finding TSVs is against 2026-09-22.
