@@ -12499,7 +12499,7 @@ function route() {
        remembered position, so the second ‹ was broken too. When the restore did
        not land, it is kept, re-applied by `pageDidPaint()` once the page has
        its real height, and nothing is remembered for this page until then. */
-    if ((window.scrollY || 0) < target - 1) pendingRestore = { hash: h, y: target };
+    if ((window.scrollY || 0) < target - 1) pendingRestore = { hash: h, y: target, at: Date.now() };
   }
 }
 
@@ -12582,13 +12582,36 @@ function refreshCurrentPage() {
   renderCurrentPage();
   if (y > 0) {
     scrollPageTo(y);
-    if ((window.scrollY || 0) < y - 1) pendingRestore = { hash: renderedHash, y };
+    if ((window.scrollY || 0) < y - 1) pendingRestore = { hash: renderedHash, y, at: Date.now() };
   }
 }
 
 /* A restore route() could not complete because the page had not painted yet.
    See route(). */
 let pendingRestore = null;
+
+/* HOW LONG A RESTORE MAY BE OWED (review 2026-09-23). Only the show page and
+   the Foray page call pageDidPaint(); the Search page (whose directory results
+   paint later), a "Show not found" page and a failed Foray never do. Their
+   clamped restore stayed owed for the whole visit, so every scroll on it was
+   ignored and the next ‹ went back to the stale offset. A page slow enough to
+   outlive this is one the listener has started using anyway. */
+const PENDING_RESTORE_MS = 4000;
+
+/** Is a clamped restore still waiting for its page? Expires, so memory always
+    resumes — see PENDING_RESTORE_MS. */
+function restoreStillOwed() {
+  if (!pendingRestore) return false;
+  if (!(Date.now() - (pendingRestore.at || 0) <= PENDING_RESTORE_MS)) {
+    pendingRestore = null;
+    return false;
+  }
+  return true;
+}
+
+/** The listener touched, wheeled or keyed the page: where they scroll from here
+    is theirs, not a clamp, so the owed restore is dropped and memory resumes. */
+function abandonPendingRestore() { pendingRestore = null; }
 
 /** Called by an async page once its REAL content is on screen (the terminal
     paint: loaded, empty or failed — never "loading"). Re-applies a back-step's
@@ -12621,7 +12644,7 @@ function rememberScrollPosition() {
   /* Not while a restore is still owed: the clamped position on screen is the
      failure, not a place the listener chose, and filing it would make the next
      ‹ fail too. */
-  if (renderedHash === null || pendingRestore) return;
+  if (renderedHash === null || restoreStillOwed()) return;
   navScrollY.set(renderedHash, window.scrollY || 0);
 }
 
@@ -13599,6 +13622,11 @@ async function init() {
       rememberScrollPosition();
     });
   }, { passive: true });
+  /* A scroll the LISTENER starts ends any owed restore (see
+     abandonPendingRestore); a scroll event alone cannot say whose it was. */
+  for (const type of ["touchstart", "wheel", "keydown"]) {
+    window.addEventListener(type, abandonPendingRestore, { passive: true });
+  }
 }
 
 init();

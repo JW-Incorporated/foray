@@ -348,6 +348,42 @@ test("the clamped position is not filed as the page's memory while the restore i
   assert.strictEqual(m.evalIn('navScrollY.get("#/foray/f1")'), 3000);
 });
 
+test("REVIEW: a restore no terminal paint ever settles expires, and memory resumes", () => {
+  /* The Search page (async directory results), "Show not found" and a failed
+     Foray never call pageDidPaint(), so the owed restore froze the page's memory
+     for the whole visit and the next ‹ went back to the stale offset.
+     MUTATION: put `|| pendingRestore` back in rememberScrollPosition's guard. */
+  const m = mount({ startHash: "#/" });
+  m.go("#/shows/q/radio");
+  m.go("#/show/s1", { scrolledTo: 3000 });
+  m.ctx.maxScroll = 200;                          // the local pass is short
+  m.back();
+  const RealDate = m.ctx.Date;
+  const now = RealDate.now();
+  m.ctx.Date = { now: () => now + 60_000 };       // a minute on, no terminal paint
+  try {
+    m.ctx.maxScroll = Infinity;
+    m.ctx.scrollY = 800;                          // the listener scrolled the page
+    m.evalIn("rememberScrollPosition()");
+    assert.strictEqual(m.evalIn('navScrollY.get("#/shows/q/radio")'), 800, "the new position is remembered");
+  } finally {
+    m.ctx.Date = RealDate;
+  }
+});
+
+test("REVIEW: the listener's own touch ends an owed restore at once", () => {
+  /* MUTATION: make abandonPendingRestore a no-op. */
+  const m = mount({ startHash: "#/" });
+  m.go("#/shows/q/radio");
+  m.go("#/show/s1", { scrolledTo: 3000 });
+  m.ctx.maxScroll = 200;
+  m.back();
+  m.evalIn("abandonPendingRestore()");            // touchstart / wheel / keydown
+  m.ctx.scrollY = 150;
+  m.evalIn("rememberScrollPosition()");
+  assert.strictEqual(m.evalIn('navScrollY.get("#/shows/q/radio")'), 150);
+});
+
 /* ==================================================================== */
 /* 4. THE COLLAPSING HEADER IS RE-BASELINED, NOT LEFT LYING              */
 /* ==================================================================== */
