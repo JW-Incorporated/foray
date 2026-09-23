@@ -11894,7 +11894,15 @@ function buildVoiceSheet() {
   panel.setAttribute("aria-labelledby", "voice-title");
 
   const sub = ddEl("p", "fy-sheet-sub",
-    "Pick which voice reads 4a's narration. Tap Preview to hear it count to ten at your playback speed. Dimmed voices are free to download from your phone's Settings, and appear here when you come back.");
+    "Pick which voice reads 4a's narration. Tap Preview to hear it count to ten at your playback speed.");
+  /* ONLY WHEN THERE ARE DIMMED VOICES (review 2026-09-23). This sentence was
+     part of the fixed subtitle, and the sheet also opens on the Web Speech path
+     in a desktop browser, which never shows a dimmed row — so a desktop listener
+     read about greyed voices that do not exist and a phone they are not using.
+     `paintVoiceList` shows it exactly when it renders a missing (native) row. */
+  const missingNote = ddEl("p", "fy-sheet-sub voice-missing-note",
+    "Dimmed voices are free to download from your phone's Settings, and appear here when you come back.");
+  missingNote.hidden = true;
 
   /* A RADIO GROUP, OWNED (audit 2026-09-22, qa row 81). The rows were
      `role="radio"` with no radiogroup around them, so a screen reader gave no
@@ -11915,10 +11923,10 @@ function buildVoiceSheet() {
   close.type = "button";
   actions.append(close);
 
-  panel.append(ddEl("div", "fy-grab"), title, sub, list, notice, actions);
+  panel.append(ddEl("div", "fy-grab"), title, sub, missingNote, list, notice, actions);
   root.append(scrim, panel);
   document.body.appendChild(root);
-  return { root, scrim, panel, list, notice, close };
+  return { root, scrim, panel, list, notice, close, missingNote };
 }
 
 function voiceSheet() {
@@ -12016,6 +12024,7 @@ function paintVoiceList() {
   voiceState.selected = selected;
 
   const rows = [];
+  let anyMissing = false;
   const curated = curateVoices(voiceState.voices);
   /* The group's one tab stop: the chosen voice, or the first when none is. */
   const stopId = curated.some((e) => e.installed && e.installed.identifier === selected)
@@ -12038,6 +12047,7 @@ function paintVoiceList() {
        greyed section, no Open Settings button, per the design comment. Only
        a native path (`"native"`) can honestly say "not downloaded". */
     if (voiceState.path !== "native") continue;
+    anyMissing = true;
     rows.push(buildVoiceRow({
       installed: false,
       name: entry.name,
@@ -12064,6 +12074,7 @@ function paintVoiceList() {
     || (focusVoice != null && voiceState.returnToAudition === focusVoice);
   voiceState.returnToAudition = null;
 
+  if (ui.missingNote) ui.missingNote.hidden = !anyMissing || voiceState.loading;
   ui.list.innerHTML = "";
   if (voiceState.loading) {
     ui.list.append(ddEl("p", "voice-loading", "Looking for voices\u2026"));

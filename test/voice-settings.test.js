@@ -484,6 +484,22 @@ test("Web Speech (path: web-speech) shows installed allowlisted voices only, no 
   assert.strictEqual(nameOf(rows[0]), "Samantha");
   assert.ok(!rows[0].classes.includes("voice-row-missing"));
   assert.match(subOf(rows[0]), /voice/, "unknown quality reads as a bare noun");
+  /* REVIEW 2026-09-23: no dimmed rows, so no sentence about dimmed voices or a
+     phone's Settings. MUTATION: put the sentence back in the fixed subtitle, or
+     leave .voice-missing-note always visible. */
+  const note = findIn(ui.sheet, ".voice-missing-note");
+  assert.ok(!note || note.hidden, "the dimmed-voices note is not shown on the Web Speech path");
+  assert.doesNotMatch(ui.sub.textContent, /Dimmed|phone's Settings/, "and the fixed subtitle does not say it");
+});
+
+test("REVIEW: on the native path with a voice to download, the dimmed-voices note is shown", async () => {
+  const { ui } = mount();
+  await ui.open.click();
+  await tick();
+  assert.ok(rowsOf(ui).some((r) => r.classes.includes("voice-row-missing")), "fixture: a dimmed row is shown");
+  const note = findIn(ui.sheet, ".voice-missing-note");
+  assert.ok(note && !note.hidden, "the note explains the dimmed rows");
+  assert.match(note.textContent, /Dimmed voices are free to download/);
 });
 
 test("a device with voices but none on the list says so, rather than 'no voices reported'", async () => {
