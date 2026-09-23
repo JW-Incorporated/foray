@@ -34,6 +34,20 @@ lock-screen model in `docs/ios-lock-screen.md` §2.1 + §8):
   gap line naming key + tiers when the counters do not add up, and the record's
   wait on hydration is bounded at 5 s (`storage=not-hydrated` on the boot row).
 
+**Review pass, same day (11 verified findings, all applied on the branch):** the
+record dropped every skip/next/prev/scrub from WebKit's door and from Android (the
+command was spelled by the spec action; the shim's `remoteCommandFor` now translates
+at the one seam, pinned against the Java and the record's set); the resume
+deactivated the session narration speaks through (now `.supersede`, no `setActive`);
+the hold fired for OS-caused pauses (now `interrupted` gates it); a lost hold was
+never retaken (now on interruption-ended / new-device); a paused scrub cancelled the
+3 s re-assert (generation moves with the state); the car's play queued behind a
+synchronous artwork download on `stateQueue` (cached, async, 10 s bound); the
+5 s hydration bound also short-circuited the rate restore (back on real hydration);
+and a slow-but-successful durable read lost the older ring to the boot row
+(`DiagnosticLog` holds writes until the store hydrates, then appends them after the
+adopted ring; a 60 s give-up keeps a hung tier from costing the rows).
+
 **Verified here:** `test/` + `player/` (3144), `tools/mobile` (900), `tools/foray`
 (261), all green after the merge; manifest regenerated. **Not verifiable here:**
 the Swift (`ForayAudioPluginTests.swift`, compiled by `ios-kit` in CI, never run on

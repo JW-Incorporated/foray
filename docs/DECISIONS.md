@@ -70,11 +70,19 @@ this entry records the rulings that picked it.
   well as to the plugin; the plugin stays the only writer during narration. L-06 is
   reopened in the plan until H6 reads back on a device.
 - **A paused 4a keeps the car by holding the app's own `.playback` session while
-  paused** — taken on the playing → paused transition only, released quietly on
-  resume and with `notifyOthers` on close — and re-asserting its entry after WebKit's
-  category change, on background and on a new route. **Ruling: this does not touch
-  the F11/F13 rule.** The playing path still never calls `setActive`; the hold runs
-  when nothing is sounding, and `shell-invariants` pins both.
+  paused** — taken on the playing → paused transition only (and only for a pause the
+  listener made, never inside an `AVAudioSession` interruption), *superseded* on
+  resume (forgotten, not deactivated: the resumed producer's own activation stands
+  in — for narration that producer is `ForayTtsPlugin` on the same shared instance,
+  and a deactivation there silenced it), released with `notifyOthers` on close, and
+  taken back when an interruption ends with `shouldResume` or a new route appears —
+  and re-asserting its entry after WebKit's category change, on background and on a
+  new route. **Ruling: this does not touch the F11/F13 rule.** The playing path still
+  never calls `setActive`; the hold runs when nothing is sounding, and
+  `shell-invariants` pins both. (The same-day review that found the narration
+  deactivation, the interruption-caused hold, the un-retaken hold, the cancelled
+  re-assert and the artwork download on the command queue is `docs/ios-lock-screen.md`
+  §8.2, "Review, same day".)
 - **15/30 has one source** (`player/media-session.js`): the page ignores any
   `seekOffset` a platform sends back, the natives read the pair from the payload, and
   the Swift holds no literal. **Ruling: a press is applied exactly once** even though

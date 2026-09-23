@@ -166,13 +166,17 @@ paragraph refreshed 2026-09-10; the text above it had described the pre-#537 plu
 
 *Superseded again, 2026-09-23 — see §8.* The plugin now holds the app's own
 `.playback` session **while the transport is paused**, taken on the playing → paused
-transition and released when the transport plays again (quietly) or closes/finishes
-(with `notifyOthersOnDeactivation`). It still never touches the session from the
-playing path: #537's loop was activation re-asserted against an audible element, and
-a pause has no audible element. `shell-invariants.test.mjs` now pins that `setActive`
-appears only inside `holdSession`/`releaseSession`, that those are reachable only
-through the pure transition table `sessionMove(from:to:holding:)` (plus a remote play
-while paused), and that the table's one `.hold` is `(.playing, .paused)`.
+transition (for a pause the listener made — never inside an `AVAudioSession`
+interruption), *superseded* when the transport plays again (the hold is forgotten,
+nothing is deactivated: the resumed producer's own activation stands in for it) and
+released when it closes/finishes (with `notifyOthersOnDeactivation`). It still never
+touches the session from the playing path: #537's loop was activation re-asserted
+against an audible element, and a pause has no audible element.
+`shell-invariants.test.mjs` now pins that `setActive` appears only inside
+`holdSession`/`releaseSession`, that those are reachable only through the pure
+transition table `sessionMove(from:to:holding:interrupted:)` (plus the re-holds on
+interruption-ended / new-device and a remote play while paused), that the table's
+one `.hold` is `(.playing, .paused)`, and that the resume transition reaches neither.
 
 ### 2.3 `stop`: declined outright on iOS, not just on a finished Foray
 
@@ -527,28 +531,69 @@ plugin never held a session in the app process (by design since #537), so a paus
 backgrounded 4a had no session anywhere, and the car's play went to the last app that
 did. While paused the page writes nothing, so nothing re-asserted the entry.
 
-**What changed (`ForayAudioPlugin.swift`).** `sessionMove(from:to:holding:)` is the
-whole rule, pure: `.hold` on `(.playing, .paused)` and nowhere else (never
+**What changed (`ForayAudioPlugin.swift`).** `sessionMove(from:to:holding:interrupted:)`
+is the whole rule, pure: `.hold` on `(.playing, .paused)` and nowhere else (never
 `(.none, .paused)` — the restored mini bar writes `paused` at launch, and a non-mixable
-session then would silence another app's music for opening ours), `.releaseQuietly`
-when the transport plays again, `.releaseAndNotify` when it closes or finishes.
-`holdSession`/`releaseSession` are the only two places `setActive` appears; a remote
-play that finds the hold gone takes it once before the page is told. The entry and the
-command set are re-asserted 3 s after a hold (past WebKit's 2 s category change), on
-`didEnterBackground` and on a `new-device` route change — the car connecting is the
-moment before it sends play. `MPNowPlayingInfoCenter.playbackState` follows the state.
-`togglePlayPause` resolves from the last reported state (a one-button car could never
-pause before). Every transport event carries `command`/`origin`/`at` and writes a
-`ForayAudio.remote` unified-log line; `interruptionBegan` reads `began-while-held`.
+session then would silence another app's music for opening ours; and never while
+`interrupted` — see the review paragraph below), `.supersede` when the transport plays
+again, `.releaseAndNotify` when it closes or finishes. `holdSession`/`releaseSession`
+are the only two places `setActive` appears; a remote play that finds the hold gone
+takes it once before the page is told. The entry and the command set are re-asserted
+3 s after a hold (past WebKit's 2 s category change), on `didEnterBackground` and on a
+`new-device` route change — the car connecting is the moment before it sends play.
+`MPNowPlayingInfoCenter.playbackState` follows the state. `togglePlayPause` resolves
+from the last reported state (a one-button car could never pause before). Every
+transport event carries `command`/`origin`/`at` and writes a `ForayAudio.remote`
+unified-log line; `interruptionBegan` reads `began-while-held`.
+
+**Review, same day — five holes in the hold, each now a line of Swift and a pin.**
+(1) *The resume deactivated the session the narration was speaking through.* The
+first cut called `setActive(false)` on paused → playing ("WebKit's element has its own
+session; ours would be a second one") — true for tape, false for narration, where
+`ForayTtsPlugin` speaks through the SAME app-process shared instance and had just
+called `setActive(true)` one bridge hop earlier. The deactivation either failed against
+the synthesizer's running I/O (`sessionReleased failed` on every narration resume) or
+landed first and resumed the narration into an inactive session: silence. Apple's
+NowPlayable guidance keeps the session active across play/pause anyway. **Now:** the
+resume *supersedes* the hold — `holdsSession = false`, no `setActive`, a
+`sessionReleased superseded` row; only close/finish deactivates. (2) *The hold fired
+for a pause the OS caused.* Another app's non-mixable audio, Siri or a call interrupts
+the element; the page reconciles to `paused`; the plugin saw the same playing → paused
+and activated a non-mixable session while the interrupter was still sounding — 4a
+re-interrupting the app that interrupted it (allowed in the foreground; refused in the
+background with `sessionActivated failed`). **Now:** `interrupted` runs from
+`interruptionBegan` to `interruptionEnded` (cleared too by a `playing` payload, a remote
+play and a media-services reset, since Apple promises no `.ended`), and the table
+answers `.none` inside it. (3) *A lost hold was never taken back.* `began-while-held`
+dropped `holdsSession` and `.ended` only emitted, so a call or a steering-wheel Siri
+press between the pause and the car left 4a without the session this section says the
+car's play needs — and `remotePlay`'s re-hold cannot help, because that press never
+arrives. **Now:** `.ended` with `shouldResume`, and a `new-device` route, re-hold
+through `shouldRehold(state:holding:interrupted:)` (paused, not holding, not
+interrupted) and re-assert the entry (`sessionActivated interruption-ended` /
+`route`). (4) *A paused scrub cancelled the 3 s re-assert.* `reassertGeneration` moved
+on every payload, so a lock-screen scrub while paused (which the shim supports) inside
+the window cancelled the pause-settled re-assert, and `(.paused, .paused)` re-armed
+nothing. **Now:** the generation moves with the STATE. (5) *The car's play queued
+behind an artwork download.* `artworkItem(for:)` ran `Data(contentsOf:)` — blocking,
+default ~60 s timeout — on `stateQueue`, the queue every remote-command handler now
+shares, and `reassertNowPlaying` re-ran it on the car connecting and on the screen
+going off; a Wi-Fi → cellular handoff as the car connected could hold the car's play
+for seconds to a minute. **Now:** artwork is cached per URI, the bundle icon and file
+URLs are read once, and a remote image is fetched off the queue with a 10 s bound and
+re-posted when it lands. `ForayAudioPluginTests.swift` tables (1)–(3);
+`shell-invariants.test.mjs` pins all five against the Swift text.
 
 **Why this cannot bring back the F11/F13 loop.** That loop was `setActive(true)` on the
 4 Hz position path against an AUDIBLE element: our activation interrupted WebKit's
 session (which is how we know the two sessions are separate — activating one interrupts
 the other; a no-op re-activation of one shared session could not have). The hold runs
-only on the pause transition, when nothing is sounding; the playing path never touches
-the session; releasing ours never touches WebKit's. `shell-invariants.test.mjs` pins
-`setActive` to `holdSession`/`releaseSession`, their callers to `applySessionMove` and
-`remotePlay`, and the table's single `.hold`; the XCTests table `sessionMove`.
+only on the pause transition, when nothing of ours is sounding and nothing else is
+interrupting; the playing path never touches the session — the resume transition now
+touches it *least of all*, since it deactivates nothing. `shell-invariants.test.mjs`
+pins `setActive` to `holdSession`/`releaseSession`, their callers to `applySessionMove`,
+the two re-holds and `remotePlay`, and the table's single `.hold`; the XCTests table
+`sessionMove` and `shouldRehold`.
 
 **Android** already keeps the Media3 session READY while paused (the foreground service
 lives while the transport is usable); now pinned, and its transport events carry
@@ -586,10 +631,22 @@ plugin's client can read 15 / 30. A press on either steps 15 / 30 once.
 - `remote commands 0` against a drive that resumed Spotify: the car's play never reached
   4a at all — the OS gave it to somebody else. `sessionActivated (paused)` rows before
   the car connected, with no `began-while-held`, mean the hold was standing and lost
-  anyway (§8.5's first question).
+  anyway (§8.5's first question). `began-while-held` followed by `interruptionEnded
+  should-resume` and `sessionActivated interruption-ended` is a call or a Siri press
+  between the pause and the car, and the hold taken back; `began-while-held` followed
+  by `interruptionEnded no-resume` and nothing is a hold iOS said not to retake, which
+  a `sessionActivated route` row (the car connecting) may still recover.
+- `sessionReleased superseded` on every resume is the resume no longer deactivating
+  anything; a `sessionReleased failed` there was the old bug (the TTS plugin's session,
+  deactivated under the synthesizer) and should not appear again. `sessionActivated
+  paused` right after an `interruptionBegan` should not appear either: a pause the OS
+  caused takes no hold.
 - `remote … from webkit` rows with no `from command-center` twin (or vice versa) say
   which client iOS delivers to; twins with one `dup=y` are the de-duplication working;
-  a skip that moved twice with no `dup=y` is the window missing it.
+  a skip that moved twice with no `dup=y` is the window missing it. A skip on either
+  door is `remote skip-forward -> seekforward from …` — the review found the webkit
+  door and Android naming the command by the spec action (`seekforward`), which the
+  record dropped, so before this fix every skip through those doors wrote no row.
 - `remote … handled=n` without `dup=y`: the press arrived and the page had no handler
   (a `setActions()` race).
 - A `nowplaying … state=paused via=state` row is the pause being told to the platform;
@@ -615,10 +672,20 @@ plugin's client can read 15 / 30. A press on either steps 15 / 30 once.
 5. **The car.** Pause in the app, lock the phone, wait two minutes, connect the car,
    press play on the wheel: 4a resumes, not Spotify. If the phone has a one-button
    headset, press it while playing: it must pause.
-6. **Copy diagnostics** (Developer → Playback diagnostics → Copy) and paste it. The
+6. **The car, after a call.** Pause in the app, lock the phone, take (or place) a short
+   phone call or press the wheel's Siri button and dismiss it, THEN connect the car
+   and press play: 4a resumes. The record should show `interruptionBegan
+   began-while-held`, `interruptionEnded should-resume`, `sessionActivated
+   interruption-ended`.
+7. **A narration resume.** Play a Foray, wait for a narration line, pause during it,
+   lock, press play on the lock screen: the narration continues audibly and the record
+   shows `sessionReleased superseded`, never `sessionReleased failed`.
+8. **Copy diagnostics** (Developer → Playback diagnostics → Copy) and paste it. The
    lines that decide: the `remote commands …` header (count, `unhandled`, `duplicates
-   dropped`), the `remote …` rows and their origins, the `session … sessionActivated`
-   / `nowPlayingReasserted` / `began-while-held` rows, and the `nowplaying …
+   dropped`), the `remote …` rows and their origins — a lock-screen skip must be a
+   `remote skip-forward -> seekforward from webkit` (or `command-center`) row; before
+   this fix it was no row — the `session … sessionActivated` / `sessionReleased` /
+   `nowPlayingReasserted` / `began-while-held` rows, and the `nowplaying …
    state=paused via=state` row.
 
 ### 8.6 What was merged, and what was deleted
