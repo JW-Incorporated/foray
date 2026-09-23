@@ -181,7 +181,8 @@ design is that the page owns the only one.
 | **next / previous** | `nexttrack`/`previoustrack` → `ForayPlayer.forayNext()`/`forayPrevious()` | **the next and previous SEGMENT.** §4.2 |
 | seek −15 / +30 | `seekbackward`/`seekforward` with a `seekOffset`, → `foraySeek(position + offset)` | sent as an **offset**, not the absolute target Media3 computed, so the page's own handler runs |
 | scrub (`seekto`) | `seekto` with a `seekTime` → `foraySeek` | on the **Foray's** clock |
-| stop | `stop` → `stopAndClose()` | load-bearing, not decorative — §5.1 |
+| stop (car, Bluetooth, any Media3 controller) | `stop` → `setRunning(false)`, a **pause** | a head unit's square used to close the whole player mid-drive (audit 2026-09-22) |
+| stop (the notification's own button, and its swipe) | `close` → the page's `stop` handler with `{ close: true }` → `stopAndClose()` | load-bearing, not decorative — §5.1. A separate action name because the button is a `PendingIntent` to our own service and never passes through `handleStop`, so the page can tell the listener's exit from a car's stop |
 
 **A finished Foray offers none of the first six**, and that is the faithful mirror of
 `player/media-session.js` §4: it reports the spec's `"none"` for a finished Foray on
@@ -335,9 +336,10 @@ listener who pauses mid-Foray and walks away keeps it until they stop the player
 There are two exits, and **only one of them exists on most Android versions**:
 
 - **The stop button.** Always present whenever a notification is (it is deliberately
-  *not* gated on the transport being usable — §4.1), routed to the page's
-  `stopAndClose`, which clears the metadata, which stops the service. This is the exit.
-- **Swiping the notification away**, wired to the same `stop` through
+  *not* gated on the transport being usable — §4.1). It sends `close`, not `stop`
+  (a `stop` is a pause — §4.1), which the page routes to `stopAndClose`, which clears
+  the metadata, which stops the service. This is the exit.
+- **Swiping the notification away**, wired to the same `close` through
   `setDeleteIntent`. **This only works from Android 14.** The platform ORs
   `FLAG_FOREGROUND_SERVICE`/`FLAG_NO_CLEAR` onto a foreground service's notification
   and user dismissal of one arrived in API 34; minSdk here is 24, so on API 24–33 the

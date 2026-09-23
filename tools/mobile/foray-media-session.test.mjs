@@ -62,7 +62,7 @@ import { fileURLToPath } from "node:url";
 import {
   createForayMediaSession, mediaSessionApplies, nowPlayingPayload, identityKey,
   transportState, assetUri,
-  PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, SESSION_EVENT, SESSION_DOM_EVENT, ROUTABLE_ACTIONS,
+  PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, SESSION_EVENT, SESSION_DOM_EVENT, ROUTABLE_ACTIONS, CLOSE_ACTION,
   SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC, POSITION_MIN_INTERVAL_MS, ASSET_BASE, IOS_ASSET_BASE,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 
@@ -1055,6 +1055,25 @@ test("each action reaches the handler the page registered", () => {
   }
   assert.deepEqual(seen.map((s) => s.action), ["play", "pause", "stop", "previoustrack", "nexttrack"]);
   assert.deepEqual(seen.map((s) => s.details), [undefined, undefined, undefined, undefined, undefined]);
+});
+
+test("the notification's CLOSE reaches the page's stop handler as `{ close: true }`", () => {
+  /* Review 2026-09-23. A remote `stop` is a pause (a car's square must not tear the
+     player down), but the notification's own Stop is the listener's only exit on
+     Android 24-33, so the Java sends it as CLOSE_ACTION and the page must be able to
+     tell it apart. KILLING MUTATION: drop the `closing` branch in `dispatch` — the
+     close then finds no handler at all and the notification cannot be closed. */
+  const { session, nav, capacitor } = setup();
+  session.install();
+  const seen = withHandlers(session, nav);
+  capacitor.emit({ action: CLOSE_ACTION });
+  capacitor.emit({ action: "stop" });
+  assert.deepEqual(seen, [
+    { action: "stop", details: { close: true } },
+    { action: "stop", details: undefined },
+  ]);
+  assert.equal(ROUTABLE_ACTIONS.includes(CLOSE_ACTION), false, "no page may register a handler for it");
+  assert.throws(() => nav.mediaSession.setActionHandler(CLOSE_ACTION, () => {}), TypeError);
 });
 
 test("MILLISECONDS BECOME SECONDS, because the spec's details are in seconds", () => {

@@ -524,7 +524,11 @@ export function mediaSessionActions(surface = {}, {
   const out = [];
   if (play) out.push(["play", () => play()]);
   if (pause) out.push(["pause", () => pause()]);
-  if (stop) out.push(["stop", () => stop()]);
+  /* The details reach `stop` — and only the one field that means anything there:
+     the Android shell's notification Stop arrives as `{ close: true }`
+     (`CLOSE_ACTION` in foray-media-session.js), the one stop that may tear the
+     player down. Every other stop — a browser's, a car's — carries no `close`. */
+  if (stop) out.push(["stop", (details) => stop(details?.close === true ? { close: true } : undefined)]);
   if (previous) out.push(["previoustrack", () => previous()]);
   if (next) out.push(["nexttrack", () => next()]);
   if (seekBy) {

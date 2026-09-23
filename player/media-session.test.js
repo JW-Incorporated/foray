@@ -1323,8 +1323,10 @@ test("a lock-screen press is recorded as `remote` and an in-page tap as `tap`", 
   for (const [name, surface] of [["foray", foraySurface], ["episode", episodeSurface]]) {
     assert.match(surface, /play:\s*\(\)\s*=>\s*setRunning\(true,\s*"remote"\)/, name);
     assert.match(surface, /pause:\s*\(\)\s*=>\s*setRunning\(false,\s*"remote"\)/, name);
-    assert.match(surface, /diag\.transport\("remote",\s*"stop"\)/, name);
+    assert.match(surface, /stop:\s*\(details\)\s*=>\s*remoteStop\(details\)/, name);
   }
+  const remoteStop = /function remoteStop\(details\) \{[\s\S]*?\n\}/.exec(CLIENT)[0];
+  assert.match(remoteStop, /^\s*diag\.transport\("remote",\s*"stop"\);/m, "the stop is recorded before it branches");
   // The default is the page's own tap, so the in-page button needs no argument.
   assert.match(CLIENT, /async function setRunning\(want, source = "tap"\)/);
   /* RECORDED BEFORE THE EARLY RETURN. A remote command that arrives while the
@@ -1359,15 +1361,34 @@ test("an episode's next/previous are the PAGE's, and absent until the page offer
   assert.ok(actions.includes("previoustrack"));
 });
 
-test("a REMOTE stop pauses and keeps the session; only the in-page Stop tears it down", () => {
+test("a REMOTE stop pauses and keeps the session; only the in-page Stop and the notification's close tear it down", () => {
   /* Audit 2026-09-22: a head unit's stop used to call `stopAndClose()`, whose
-     `release()` unregisters every handler, leaving the car with no transport. */
+     `release()` unregisters every handler, leaving the car with no transport.
+     Review 2026-09-23: but the Android notification's Stop is the listener's only
+     exit on API 24-33, so it arrives as `{ close: true }` and DOES close. */
   for (const name of ["forayMediaSurface", "episodeMediaSurface"]) {
     const surface = new RegExp(`const ${name} = \\{[\\s\\S]*?\\n\\};`).exec(CLIENT_CODE)[0];
-    assert.doesNotMatch(surface, /stopAndClose/, `${name}: a remote stop must not tear down`);
-    assert.match(surface, /stop:\s*\(\)\s*=>\s*\{[^}]*setRunning\(false,\s*""\)/, name);
+    assert.doesNotMatch(surface, /stopAndClose/, `${name}: a remote stop must not tear down on its own`);
+    assert.match(surface, /stop:\s*\(details\)\s*=>\s*remoteStop\(details\)/, name);
   }
+  const remote = /function remoteStop\(details\) \{[\s\S]*?\n\}/.exec(CLIENT_CODE);
+  assert.ok(remote, "player/client.js must define remoteStop");
+  assert.match(remote[0], /if \(details\?\.close === true\) return stopAndClose\(\);/);
+  assert.match(remote[0], /return setRunning\(false, ""\);/);
   assert.match(CLIENT_CODE, /ui\.stopBtn\.addEventListener\("", \(\) => stopAndClose\(\)\)/);
+});
+
+test("the stop action carries `close` through to the surface, and nothing else does", () => {
+  /* KILLING MUTATION: put `["stop", () => stop()]` back in mediaSessionActions —
+     the notification's close then reaches the page as a plain pause, and a paused
+     listener on Android 24-33 has no way to take the notification down. */
+  const seen = [];
+  const actions = new Map(mediaSessionActions({ stop: (d) => seen.push(d) }));
+  actions.get("stop")({ close: true });
+  actions.get("stop")(undefined);
+  actions.get("stop")({ action: "stop" });
+  actions.get("stop")({ close: "yes" });
+  assert.deepEqual(seen, [{ close: true }, undefined, undefined, undefined]);
 });
 
 test("the Foray surface is installed INSIDE playForay, not merely defined somewhere", () => {

@@ -1965,6 +1965,21 @@ async function stopAndClose({ persist = true } = {}) {
    the transport would be a second opinion about it, and the two would diverge
    the first time either changed. */
 
+/**
+ * A stop from outside the page. A PAUSE, unless it is the Android notification's
+ * own Stop button (`details.close`, sent as `CLOSE_ACTION` by
+ * foray-media-session.js), which closes the player: `stopAndClose()` ->
+ * `media.release()` clears the metadata, which is what stops the foreground
+ * service and takes the notification away (docs/android-lock-screen.md §4.1).
+ * A car's or a Bluetooth stack's stop reaches Media3's `handleStop` instead and
+ * never carries `close`, so the drive-safety half of the 2026-09-22 audit holds.
+ */
+function remoteStop(details) {
+  diag.transport("remote", "stop");
+  if (details?.close === true) return stopAndClose();
+  return setRunning(false, "remote");
+}
+
 /** In a Foray, previous/next are SEGMENTS — the same functions the ‹‹ / ››
     buttons call, so `forayPrevious`'s restart-vs-previous window is inherited
     rather than restated. Seeking is on the Foray's clock, through the scrubber's
@@ -1983,8 +1998,11 @@ const forayMediaSurface = {
      wired to nothing, recoverable only by unlocking the phone mid-drive. Apple
      Podcasts has no destructive control on the lock screen, and iOS declines
      `stop` natively anyway (ForayAudioPlugin.swift). The teardown stays behind
-     the in-page Stop button, which is the one place a person asks for it. */
-  stop: () => { diag.transport("remote", "stop"); return setRunning(false, "remote"); },
+     the in-page Stop button, which is the one place a person asks for it —
+     and behind the Android notification's own Stop button, which arrives as
+     `{ close: true }` (`remoteStop`): on API 24-33 that notification cannot be
+     swiped away, so its Stop is the listener's only exit. */
+  stop: (details) => remoteStop(details),
   next: () => ForayPlayer.forayNext(),
   previous: () => ForayPlayer.forayPrevious(),
   seekBy: (offset) => ForayPlayer.foraySeek(Math.max(0, forayPosition() + offset)),
@@ -2018,7 +2036,7 @@ const episodeMediaSurface = {
   play: () => setRunning(true, "remote"),
   pause: () => setRunning(false, "remote"),
   /* A remote stop is a pause — see `forayMediaSurface` above for why. */
-  stop: () => { diag.transport("remote", "stop"); return setRunning(false, "remote"); },
+  stop: (details) => remoteStop(details),
   get next() { return episodeNeighbour("next"); },
   get previous() { return episodeNeighbour("previous"); },
   /* THE SAME SEEK THE PAGE'S BUTTONS MAKE (audit 2026-09-22), so a car scrub

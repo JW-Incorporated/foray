@@ -1976,6 +1976,28 @@ test("AUDIT: the head unit's STOP pauses and leaves every other control working"
   restore();
 });
 
+test("REVIEW: the Android notification's own Stop (`close`) still closes a PAUSED player", async (t) => {
+  /* On Android 24-33 a foreground-service notification cannot be swiped away, so
+     its Stop button is the listener's only exit. It arrives as the `stop` handler
+     with `{ close: true }` (foray-media-session.js `CLOSE_ACTION`). When the audit
+     made every remote stop a pause, a listener who had already paused pressed Stop
+     and nothing changed — the notification stayed until they unlocked the phone.
+     KILLING MUTATION: drop the `details?.close` branch from `remoteStop`. */
+  const ms = fakeMediaSession();
+  const { client, doc, audio, restore } = await bootClient(t, { mediaSession: ms });
+  await client.play(episodeItem());
+  await settle();
+  await ms.handlers.get("pause")();
+  await settle();
+  assert.equal(audio.paused, true, "precondition: the listener paused first");
+  assert.equal(find(doc.body, "fp").hidden, false, "precondition: the bar is up");
+  await ms.handlers.get("stop")({ close: true });
+  await settle();
+  assert.equal(find(doc.body, "fp").hidden, true, "the notification's Stop closed the player");
+  assert.equal(ms.handlers.has("play"), false, "and released the session, which is what stops the service");
+  restore();
+});
+
 test("AUDIT: the steering wheel's next/previous appear when the page offers them, and not before", async (t) => {
   /* KILLING MUTATION: make `setEpisodeNavigation` store the answer without
      re-installing the actions — the OS keeps the greyed-out buttons until the
