@@ -7,6 +7,40 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-23 — `fix/founder-reports-2026-09-23`: six founder reports from one drive + the empty diagnostics log, in ONE PR
+
+Owned: nothing held. One branch, cut from the visual pass (now `main` 92001af),
+with four fix branches merged `--no-ff` in the order `fix/fr-ui`, `fix/fr-media`,
+`fix/fr-lockscreen-skip`, `fix/fr-diag`, each resolved hunk by hunk; none has a
+PR of its own — **this PR supersedes them.** `index.html` changed (the viewport
+meta), so the PR needs a human merge. Never labelled, never merged by an agent.
+
+**What it carries** (the founder's words in `docs/DECISIONS.md` 2026-09-23; the
+lock-screen model in `docs/ios-lock-screen.md` §2.1 + §8):
+
+- **Zoom removed** at every layer (viewport meta, `touch-action`, `gesturestart`,
+  `zoomEnabled: false`) — reverses 2026-09-17; the pin is inverted, not deleted.
+- **The drawer closes when used**: `onDrawerAction`, one capture-phase rule; what
+  stays declares `data-drawer-stay`. `test/drawer-ownership.test.js` is new.
+- **One Now Playing ownership model**: the page tees metadata/state/handlers onto
+  WebKit's real MediaSession (display during tape), the plugin holds the app's
+  `.playback` session only on playing → paused (the car while paused), a press
+  through two doors is applied once (`deliver()`, 500 ms across origins, the dropped
+  copy is a `remote … dup=y` row), 15/30 has one source and the page ignores
+  `seekOffset`. `fr-ui`'s `CommandSnapshot` republish was deleted (§8.6).
+- **The empty diagnostics log** (`recorded 939 · entries 0 · dropped 0`, no build
+  row) is what `DiagnosticLog.clear()` leaves: the clear is now written down
+  (`cleared: { seq, wall }`), the build survives it, the header prints a MISSING
+  gap line naming key + tiers when the counters do not add up, and the record's
+  wait on hydration is bounded at 5 s (`storage=not-hydrated` on the boot row).
+
+**Verified here:** `test/` + `player/` (3144), `tools/mobile` (900), `tools/foray`
+(261), all green after the merge; manifest regenerated. **Not verifiable here:**
+the Swift (`ForayAudioPluginTests.swift`, compiled by `ios-kit` in CI, never run on
+Windows) and everything that needs a phone and a car — the numbered on-device
+script is in the PR body and §8.5. L-06 is REOPENED in
+`docs/ios-controls-and-voice-plan.md` until H6 reads back on a device.
+
 ### 2026-09-23 — `audit-fix/integration`: the 2026-09-22 design and QA audit, lanes L1–L6, in ONE PR
 
 Owned: nothing held. One branch, cut from `main` 2fbdbb9, with the six fix lanes
