@@ -5,6 +5,7 @@
  */
 export declare const BANNED: RegExp[];
 export declare const INTERNAL_VOCABULARY: RegExp[];
+export declare const COMMUTE_FRAMING: RegExp[];
 export declare function toListenerWords(text: string): { text: string; changed: boolean };
 export declare function wordCount(text: string): number;
 export declare const MAX_WHY_LINE_WORDS: number;
