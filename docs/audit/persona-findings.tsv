@@ -1,0 +1,86 @@
+car	real_friction	high	high	app.js:1660	Audio stops dead at the end of every episode, and the setting that would fix it is off, jargon-named, and only works from one screen	findJL=8	verdictJL=18
+car	real_friction	high	high	player/client.js:2196	After the app launches, the car's play button is dead — metadata is sent to the head unit but no action handlers are installed	findJL=8	verdictJL=30
+car	real_friction	medium	high	player/client.js:1520	A "stop" press on the head unit tears the whole player down and unregisters every control, leaving the car with no transport at all	findJL=8	verdictJL=24
+car	real_friction	medium	high	app.js:3733	An episode that fails to play says nothing, anywhere — the tap is simply swallowed	findJL=8	verdictJL=63
+car	real_friction	high	high	player/client.js:2073	A network stall is completely silent: no spinner, no message, and the button keeps saying Pause with no sound coming out	findJL=8	verdictJL=31
+car	real_friction	medium	high	player/client.js:1530	The steering-wheel next/previous buttons are permanently dead for ordinary episodes, even with a full Up Next list	findJL=8	verdictJL=28
+car	real_friction	high	high	player/client.js:2129	A part-played Foray cannot be resumed from the mini bar — and the bar may show a stale single episode instead	findJL=8	verdictJL=26
+car	real_friction	medium	high	styles.css:2084	The Foray scrubber is a 12px-high strip where any stray tap instantly jumps you minutes through the hour	findJL=8	verdictJL=20
+car	deliberate_choice	low	high	player/client.js:636	"Stop" and "Close" are identical ~30px pills side by side, and only one of them keeps your place	findJL=8	verdictJL=29
+car	real_friction	medium	high	player/client.js:539	The mini bar has exactly one control, so every other transport action costs two deliberate taps	findJL=8	verdictJL=32
+car	real_friction	medium	medium	app.js:7059	Up Next rows pack five targets including 22px-tall reorder arrows immediately beside a destructive remove	findJL=8	verdictJL=22
+car	real_friction	medium	medium	app.js:8099	"Start over" wipes your place in an hour-long programme from behind an 11px underlined text link	findJL=8	verdictJL=42
+car	real_friction	medium	medium	app.js:7990	The app talks to me in its own production vocabulary — "segments", "beats", "part 12 of 32"	findJL=8	verdictJL=40
+car	real_friction	medium	medium	data/forays.json:1	The only Foray a newcomer can actually play has no narration in it, so it does not do what onboarding just promised	findJL=8	verdictJL=44
+impatient	real_friction	medium	high	styles.css:1164	Tapping ▶ paints the button as "playing" before any audio exists, and a failed play says nothing at all	findJL=33	verdictJL=52
+impatient	real_friction	medium	high	player/client.js:1103	The row's play button turns into a pause glyph, and pressing it does not pause	findJL=33	verdictJL=54
+impatient	already_handled	low	high	app.js:9091	A brand-new user's first Home screen can be missing the Forays row entirely — and the code says so	findJL=33	verdictJL=57
+impatient	real_friction	medium	high	app.js:4119	Nothing in the app explains what a Foray is once the one-time sheet is gone	findJL=33	verdictJL=64
+impatient	deliberate_choice	medium	high	app.js:2148	Touching the search box empties the screen and throws away my scroll position	findJL=33	verdictJL=48
+impatient	real_friction	medium	high	app.js:9237	Two navigation systems, different names for the same pages, and Forays is on neither tab	findJL=33	verdictJL=56
+impatient	deliberate_choice	medium	high	app.js:6484	The "Episodes for you" section contains no episodes	findJL=33	verdictJL=50
+impatient	real_friction	medium	high	app.js:3166	A failed episode load tells me to pull to refresh, and there is no pull to refresh	findJL=33	verdictJL=46
+impatient	real_friction	medium	medium	app.js:4252	The returning-user intro popup describes a Home screen that no longer exists	findJL=33	verdictJL=60
+impatient	real_friction	low	medium	data/forays.json:284	A Foray title ships the internal word "beats" to the listener	findJL=33	verdictJL=94
+impatient	real_friction	medium	medium	app.js:7193	The Library's empty state sends me to a screen that has no playlist builder	findJL=33	verdictJL=58
+impatient	real_friction	low	medium	app.js:7280	The Create tab ships a permanently dead "Foray" button, and its suggestion chips don't create anything	findJL=33	verdictJL=61
+impatient	real_friction	medium	medium	app.js:7074	Reordering Up Next rebuilds the whole list, so the row moves out from under my thumb	findJL=33	verdictJL=59
+impatient	real_friction	medium	medium	app.js:5205	A search can lock the page for seconds and then grow a new section, with nothing on screen saying to wait	findJL=33	verdictJL=62
+switcher	real_friction	high	high	app.js:1561	Anything I queue from a show page or search shows up in Up Next as "Episode no longer available"	findJL=65	verdictJL=88
+switcher	real_friction	high	high	app.js:1672	Up Next never plays through: auto-advance is off by default, buried in a drawer, and then still refuses most episodes	findJL=65	verdictJL=93
+switcher	deliberate_choice	medium	high	app.js:976	Following a show has no consequence anywhere in the app	findJL=65	verdictJL=78
+switcher	real_friction	medium	high	app.js:7205	My followed shows are not in Library — they are hidden behind the Search tab	findJL=65	verdictJL=82
+switcher	real_friction	medium	medium	app.js:919	One star glyph, three meanings, and none of them is "follow"	findJL=65	verdictJL=85
+switcher	real_friction	high	medium	app.js:9374	"Open in: Apple Podcasts" is one of only three settings I can see, and it controls nothing	findJL=65	verdictJL=84
+switcher	real_friction	medium	medium	app.js:11492	The ↻ button in the header throws me back to Home from whatever I was reading	findJL=65	verdictJL=76
+switcher	real_friction	medium	medium	app.js:9237	The same page is called "Shows" in the menu, "Search" in the tab bar, and its search box claims to search only shows	findJL=65	verdictJL=86
+switcher	real_friction	medium	medium	app.js:6539	Nothing in the app I can go back and read tells me what a Foray is	findJL=65	verdictJL=89
+switcher	deliberate_choice	medium	medium	app.js:7283	A primary tab named "Create" greets me with a disabled button and an apology	findJL=65	verdictJL=80
+switcher	deliberate_choice	low	medium	app.js:7341	There is no way to put a specific episode into a playlist	findJL=65	verdictJL=91
+switcher	real_friction	medium	medium	app.js:6569	Episode rows leave about 114px for the title at phone width	findJL=65	verdictJL=87
+switcher	deliberate_choice	medium	low	app.js:6191	On my first day Home tells me a pick is "Outside your usual subjects" — I have no usual subjects	findJL=65	verdictJL=92
+switcher	real_friction	medium	low	data/forays.json:284	A Foray title I can actually reach is written in internal vocabulary: "eight beats of a forty-beat history"	findJL=65	verdictJL=90
+first-launch	real_friction	medium	high	app.js:11351	First launch is a blank screen behind a header — ~3.5 MB of JSON with no spinner, no skeleton, no text	findJL=95	verdictJL=118
+first-launch	real_friction	medium	high	app.js:6491	There is not one play button anywhere on the first-run Home screen	findJL=95	verdictJL=121
+first-launch	real_friction	medium	high	app.js:4141	The only explanation of what a Foray is lives behind one dismissable sheet, and the left-hand button destroys it forever	findJL=95	verdictJL=119
+first-launch	deliberate_choice	medium	high	app.js:6191	Sixty seconds after install the app tells me what my "usual subjects" are	findJL=95	verdictJL=117
+first-launch	real_friction	high	high	app.js:1595	Continuous playback — the thing the founder explicitly wants for the car — is off by default, buried in the drawer, and never fires for anything I played from Home or a show page	findJL=95	verdictJL=108
+first-launch	real_friction	medium	high	app.js:9364	The settings menu shows me the founder's debug switches: "Show draft Forays", "Voice engine probe", "Playback diagnostics"	findJL=95	verdictJL=114
+first-launch	real_friction	medium	medium	app.js:9374	"Open in: Apple Podcasts" is a setting that does literally nothing — its only consumer is dead code	findJL=95	verdictJL=115
+first-launch	real_friction	medium	medium	app.js:7195	The Library tab does not contain Forays or Starred Shows, even though the tab bar routes #/forays to Library	findJL=95	verdictJL=120
+first-launch	real_friction	low	medium	app.js:7193	An empty state tells me to do something on a screen that has no such control	findJL=95	verdictJL=112
+first-launch	deliberate_choice	medium	medium	app.js:9241	"Create" is one of four primary tabs, and half of what it offers is permanently switched off	findJL=95	verdictJL=113
+first-launch	deliberate_choice	medium	medium	app.js:9237	The tab labelled "Search" opens a page headed "Shows" with 220 alphabetical rows and the search field pinned at the bottom	findJL=95	verdictJL=116
+first-launch	real_friction	medium	medium	index.html:36	The ↻ button reads as "reload" and actually teleports me to Home from whatever page I was on	findJL=95	verdictJL=110
+first-launch	deliberate_choice	medium	medium	app.js:6418	"Forays for you" is a section of one, and it is a startup-finance programme regardless of what I picked in onboarding	findJL=95	verdictJL=122
+first-launch	real_friction	medium	medium	app.js:6486	"Episodes for you" contains no episodes — the cards are subject queues named after topics	findJL=95	verdictJL=123
+jargon	real_friction	high	high	app.js:1595	Continuous playback is OFF by default and only works if you started from Up Next — so in the car, one episode ends and the app goes silent	findJL=124	verdictJL=142
+jargon	real_friction	medium	high	player/client.js:2846	Inside a Foray the 15/30-second skip buttons silently turn into previous/next-clip, and there is no way left to nudge back a few seconds	findJL=124	verdictJL=140
+jargon	real_friction	medium	high	app.js:9395	Three developer tools ship in every listener's Settings drawer: "Show draft Forays", "Voice engine probe", "Playback diagnostics"	findJL=124	verdictJL=141
+jargon	real_friction	medium	high	player/client.js:624	"Back to the running order" — broadcast-industry jargon on a visible button in the expanded player	findJL=124	verdictJL=158
+jargon	real_friction	medium	high	app.js:7990	One thing has five names in user-visible copy: segment, clip, piece, part, beat	findJL=124	verdictJL=144
+jargon	real_friction	medium	high	app.js:7815	Internal error strings with file paths are printed to the listener: "Can't play: segment X is not in data/segments.json"	findJL=124	verdictJL=156
+jargon	real_friction	medium	high	app.js:9232	Forays — the app's whole differentiator — are not a tab, and the drawer and tab bar give the same pages two different names	findJL=124	verdictJL=154
+jargon	real_friction	medium	medium	player/segment-strip.js:407	The progress strip's accessible name — which is read aloud — is four pieces of jargon and two counts that contradict each other	findJL=124	verdictJL=173
+jargon	real_friction	medium	medium	data/forays.json:1	The narrator says "this act", "Act one", "two acts back" out loud — a word the app never defines and never shows	findJL=124	verdictJL=164
+jargon	deliberate_choice	medium	medium	data/forays.json:1	A Foray's title is "Barbecue: eight beats of a forty-beat history" — "beat" is the codebase's private word for a clip	findJL=124	verdictJL=160
+jargon	deliberate_choice	low	medium	app.js:6388	"STRETCH" in bold uppercase is the app's internal word for an exploration pick, and its explanation is the quietest line on the card	findJL=124	verdictJL=143
+jargon	real_friction	medium	medium	app.js:525	The Interests page prints raw taxonomy ids ("engineering/energy-fusion") under every slider, and the reset button says "Reset to learned"	findJL=124	verdictJL=152
+jargon	real_friction	medium	medium	app.js:10127	The voice picker says "Audition", "trial voices" and "Greyed voices are free downloads — fetch one in Settings"	findJL=124	verdictJL=138
+jargon	real_friction	low	medium	app.js:10375	"Playback diagnostics" — a drawer item every user can open — describes itself with "seam gaps", "out-point overshoot" and "load deadlines"	findJL=124	verdictJL=162
+apple-loyalist	deliberate_choice	medium	high	app.js:7205	There is no Download button anywhere — offline listening does not exist	findJL=145	verdictJL=176
+apple-loyalist	deliberate_choice	medium	high	app.js:939	Starring a show is inert — new episodes of shows I follow appear nowhere	findJL=145	verdictJL=178
+apple-loyalist	real_friction	high	high	app.js:1595	When an episode ends, playback just stops — continuous play is off by default and only works inside Up Next	findJL=145	verdictJL=169
+apple-loyalist	real_friction	medium	high	app.js:9237	The "Search" tab does not open a search — it opens an A–Z list of 220 shows with the field at the bottom	findJL=145	verdictJL=171
+apple-loyalist	real_friction	medium	high	app.js:3166	The show-page error state tells me to use a gesture the app does not have	findJL=145	verdictJL=168
+apple-loyalist	real_friction	high	high	index.html:49	Two navigation systems that name the same places differently	findJL=145	verdictJL=170
+apple-loyalist	deliberate_choice	medium	high	app.js:9241	"Create" is a primary tab, and half of its only control is permanently dead	findJL=145	verdictJL=174
+apple-loyalist	real_friction	medium	high	app.js:6559	Nothing on any list tells me which episodes I already played, or how far in I am	findJL=145	verdictJL=175
+apple-loyalist	real_friction	medium	medium	player/client.js:539	The now-playing bar: tapping the artwork does nothing, there is no skip, and Stop sits next to Close	findJL=145	verdictJL=166
+apple-loyalist	real_friction	medium	medium	app.js:9395	The Settings menu is full of developer switches	findJL=145	verdictJL=172
+apple-loyalist	real_friction	medium	medium	app.js:9374	"Open in: Apple Podcasts / Pocket Casts" is a setting that changes nothing	findJL=145	verdictJL=177
+apple-loyalist	real_friction	medium	medium	app.js:6486	"Episodes for you" contains no episodes	findJL=145	verdictJL=180
+apple-loyalist	real_friction	medium	medium	app.js:9116	Forays — the whole point of the app — are unexplained after one dismissible sheet, and there is only one to play	findJL=145	verdictJL=181
+apple-loyalist	real_friction	medium	medium	player/client.js:2848	Producer jargon in listener-facing copy: "segments", "beats", "the download counts"	findJL=145	verdictJL=179
+
+# unmatched verdicts:

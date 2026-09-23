@@ -1,0 +1,195 @@
+touch	confirmed	medium	high	styles.css:2009	A vertical swipe that starts on the Foray strip seeks instead of scrolling	findJL=12	verdictJL=28
+touch	confirmed	medium	high	styles.css:1874	The Now Playing scrub bar has no touch-action, so dragging the thumb scrolls the sheet	findJL=12	verdictJL=32
+touch	refuted	low	high	app.js:3811	The Continue banner's ✓ "Done with this" button has no handler and navigates instead	findJL=12	verdictJL=20
+touch	confirmed	medium	medium	styles.css:1840	Chapter rows are a ~19px tap target although the CSS comment claims 48px	findJL=12	verdictJL=30
+touch	confirmed	medium	medium	styles.css:1119	Up Next reorder arrows are 28x22px, stacked 2px apart	findJL=12	verdictJL=22
+touch	confirmed	low	medium	styles.css:2407	Per-segment thumbs are 30x30px, though a neighbouring comment sizes the layout around "the 44px-ish thumb target"	findJL=12	verdictJL=24
+touch	confirmed	medium	medium	styles.css:1810	Inline description timestamps are zero-padding inline buttons that seek playback	findJL=12	verdictJL=36
+touch	confirmed	medium	medium	styles.css:2560	"Start over" is a ~16px underlined target sitting 10px above the 12px scrub strip	findJL=12	verdictJL=54
+touch	confirmed	medium	medium	styles.css:2509	Modal sheets with text inputs are stranded behind the soft keyboard	findJL=12	verdictJL=34
+touch	confirmed	low	medium	styles.css:1540	The mini player's artwork is a 40px dead target where every podcast app opens the player	findJL=12	verdictJL=42
+touch	confirmed	medium	medium	styles.css:1541	The mini player's "Open player" button is ~35px tall inside a ~56px bar, with dead strips above and below	findJL=12	verdictJL=44
+touch	confirmed	medium	medium	styles.css:1017	Every episode row stacks two unpadded navigation links ~2px apart	findJL=12	verdictJL=38
+touch	confirmed	low	medium	styles.css:1198	The mini player applies the home-indicator inset twice, leaving a dead band above the tab bar	findJL=12	verdictJL=40
+touch	confirmed	low	medium	styles.css:2316	A narration beat's play button is a 30px-tall strip	findJL=12	verdictJL=100
+touch	confirmed	medium	medium	app.js:10168	The Audition button inside a voice row is ~29px, and a miss silently changes the narration voice	findJL=12	verdictJL=66
+touch	confirmed	medium	medium	styles.css:1132	Up Next's remove ✕ is a 32px destructive button crowded against the 22px reorder arrows	findJL=12	verdictJL=46
+touch	confirmed	medium	low	styles.css:609	Row play and star buttons are 40x40, with the row's only other targets 10px away	findJL=12	verdictJL=112
+touch	confirmed	low	low	styles.css:277	Topbar menu and refresh buttons are 42x42	findJL=12	verdictJL=68
+touch	confirmed	low	low	player/client.js:1722	The sheet drag-dismiss gesture ignores pointerId, so a second finger restarts it mid-drag	findJL=12	verdictJL=48
+touch	confirmed	medium	low	styles.css:1686	The Now Playing sheet's collapse ✕ is 36x36	findJL=12	verdictJL=50
+player	confirmed	medium	high	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\queue-state.js:582	Scrubber and ±seek buttons are dead once playback has ended; the thumb silently snaps back	findJL=14	verdictJL=80
+player	confirmed	high	high	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\html-audio-backend.js:809	Dragging the Foray scrubber fully right disarms the out-point and free-plays into the source episode	findJL=14	verdictJL=56
+player	confirmed	high	high	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:2197	A restored Now Playing ribbon installs no MediaSession handlers — the car/lock-screen play button does nothing	findJL=14	verdictJL=126
+player	confirmed	medium	high	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:2131	`ForayPlayer.play()` reports success even when the episode audio 404s, and nothing on screen says it failed	findJL=14	verdictJL=58
+player	confirmed	medium	high	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:8968	The Foray page's main button is painted from the stale belief, not the #689 authority — it says "Resume" while audio plays, and the press pauses	findJL=14	verdictJL=62
+player	confirmed	medium	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:1787	Every transport control except play/pause is dead on a restored ribbon, and a scrub there is silently discarded	findJL=14	verdictJL=64
+player	confirmed	medium	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:2172	An episode you just finished shows an empty progress bar and "60 min left" in Jump back in	findJL=14	verdictJL=74
+player	confirmed	medium	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\queue-manager.js:1317	Spoken narration bridges play at the listener's chosen speed, contradicting the 1.0x rule, and the Foray clock jumps at the seam	findJL=14	verdictJL=108
+player	confirmed	low	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:1077	Mini-bar progress fill and scrub thumb keep the previous episode's position when the new duration is unknown	findJL=14	verdictJL=170
+player	confirmed	low	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:1101	The in-list card's play glyph disagrees with the mini bar's during a seam beat and in the #689 drift case	findJL=14	verdictJL=72
+player	confirmed	medium	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:1636	Lock screen / car reports PAUSED while audio is coming out (the #689 drift is not fixed on the OS surface)	findJL=14	verdictJL=76
+player	refuted	low	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\queue-manager.js:1685	After a narration bridge the next segment loads cold — the jingle plays, then several seconds of unexplained silence	findJL=14	verdictJL=78
+player	refuted	low	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:1165	"Timings on this show are approximate." can never appear	findJL=14	verdictJL=172
+player	refuted		medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:2789	Two quick taps of "››" advance one segment and freeze the clock in between	findJL=14	verdictJL=86
+player	confirmed	low	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:1775	"30 ↻" has no upper clamp while "↺ 15" clamps at zero	findJL=14	verdictJL=84
+player	confirmed	low	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:2787	"››" on the last segment does nothing and is never disabled	findJL=14	verdictJL=82
+player	confirmed	low	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:2828	Scrubbing into a narration bridge computes a NaN target and restarts the bridge from the top	findJL=14	verdictJL=96
+player	confirmed	low	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:6946	A timestamp tap passes a string where the player expects `{ why }`	findJL=14	verdictJL=90
+player	confirmed	medium	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:8970	A finished Foray's main button says "▶ Resume" while the lock screen shows no transport at all	findJL=14	verdictJL=92
+player	confirmed	low	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\player\client.js:1082	Remaining time reads "-0:00" at the exact end instead of settling at zero or saying finished	findJL=14	verdictJL=94
+visual	confirmed	high	high	styles.css:21	v1's light-mode palette leaks onto the permanently-dark ui-v2 page	findJL=26	verdictJL=98
+visual	confirmed	medium	high	styles.css:2772	"Delete everything" is violet like every other primary button — its red is overridden	findJL=26	verdictJL=102
+visual	confirmed	high	high	styles.css:585	Home's "Episodes for you" cards are v1: Georgia titles at 1.2rem beside Fraunces at 0.95rem	findJL=26	verdictJL=104
+visual	confirmed	high	high	app.js:6472	The stretch bridge line is injected inside .mini-card's flex row, so it lands beside the star button	findJL=26	verdictJL=186
+visual	confirmed	medium	high	styles.css:3243	"Generated for you" is amber on Home and violet on Search — and amber contradicts the documented split	findJL=26	verdictJL=124
+visual	confirmed	low	high	styles.css:574	The "Stretch" tag is blue on one Home card and violet on the next	findJL=26	verdictJL=130
+visual	confirmed	medium	high	styles.css:254	The brand wordmark in the topbar is Georgia; the .wordmark rule written for it is never used	findJL=26	verdictJL=106
+visual	confirmed	medium	high	styles.css:1934	A Foray page's sticky transport pins behind the sticky page header	findJL=26	verdictJL=110
+visual	confirmed	low	medium	styles.css:392	Home always scrolls by the height of the tab bar into empty background	findJL=26	verdictJL=206
+visual	confirmed	medium	medium	styles.css:695	The Create page's primary button is v1 blue; the identical button on Playlists is violet	findJL=26	verdictJL=114
+visual	confirmed	low	medium	styles.css:1782	Section labels on one page are half Fraunces, half Georgia	findJL=26	verdictJL=116
+visual	confirmed	medium	medium	styles.css:1981	On a light-set device the segment strip's narration hatch turns black on a dark page	findJL=26	verdictJL=122
+visual	confirmed	low	medium	styles.css:795	Search results show three row shapes, and the Playlists section's rows sit at double the gap	findJL=26	verdictJL=118
+visual	confirmed	medium	medium	styles.css:716	"Tap a subject" pills are two different components on two screens	findJL=26	verdictJL=120
+visual	confirmed	low	medium	styles.css:2559	"N min left" is gold on a Foray page and amber on Home	findJL=26	verdictJL=190
+visual	confirmed	low	medium	styles.css:2755	The menu's only coloured item is "Delete my data", in a retired v1 gold	findJL=26	verdictJL=128
+visual	confirmed	medium	medium	styles.css:2732	v1 accent blue survives in five live v2 controls	findJL=26	verdictJL=132
+visual	confirmed	low	medium	styles.css:1845	Chapter rows, Foray rows and source links have hover-only feedback on a touch-first app	findJL=26	verdictJL=136
+visual	confirmed	low	low	styles.css:1710	The same square artwork is flat-and-bordered on the Episode page and heavily lifted-and-unbordered in the Now Playing sheet	findJL=26	verdictJL=134
+visual	confirmed	low	low	styles.css:10	There is no radius scale: --radius is used 13 times out of 74, and one sheet contains four radii	findJL=26	verdictJL=144
+visual	refuted	low	low	styles.css:1964	Token values are duplicated as raw hex, so the palette can drift against itself	findJL=26	verdictJL=146
+a11y	confirmed	medium	high	app.js:2486	Clear-search ✕ is bound to mousedown only, so Enter/Space do nothing	findJL=52	verdictJL=138
+a11y	refuted	low	high	app.js:8106	The Foray segment strip is clickable but keyboard-unreachable and nameless	findJL=52	verdictJL=142
+a11y	confirmed	medium	high	app.js:10282	Every action in the Narration-voice sheet destroys the element that was just activated	findJL=52	verdictJL=140
+a11y	confirmed	medium	high	app.js:7074	Up Next reorder and remove rebuild the whole page, so focus is lost on every press	findJL=52	verdictJL=148
+a11y	confirmed	medium	high	app.js:9026	The voice-fallback hint is rewritten into an aria-live region four times a second	findJL=52	verdictJL=152
+a11y	confirmed	medium	high	app.js:919	Star buttons' accessible names are frozen — and the show star's is inverted after one tap	findJL=52	verdictJL=150
+a11y	confirmed	medium	medium	app.js:719	A playing card's play button still announces "Play <title>" while it means Pause	findJL=52	verdictJL=160
+a11y	confirmed	medium	medium	player/client.js:502	The mini bar's info button hides the episode title from screen readers and lies about collapsing	findJL=52	verdictJL=156
+a11y	confirmed	medium	high	app.js:4049	No sheet in the app moves focus, traps Tab, or closes on Escape	findJL=52	verdictJL=154
+a11y	confirmed	medium	medium	player/client.js:567	The Now Playing sheet is a full-screen overlay with no dialog semantics at all	findJL=52	verdictJL=158
+a11y	confirmed	medium	medium	player/client.js:595	The scrub slider announces raw 0–1000 ticks instead of a time	findJL=52	verdictJL=162
+a11y	confirmed	medium	medium	app.js:2323	Search results and result counts paint with no live region	findJL=52	verdictJL=164
+a11y	confirmed	medium	medium	app.js:2315	Six text fields are labelled by placeholder alone	findJL=52	verdictJL=192
+a11y	confirmed	medium	medium	app.js:8972	The Foray main button says "Resume" / "Loading…" but announces "Play"	findJL=52	verdictJL=166
+a11y	confirmed	medium	medium	app.js:9054	Which Foray beat is playing, and which are done, is conveyed only visually	findJL=52	verdictJL=176
+a11y	confirmed	medium	medium	app.js:7933	Down-vote reason chips signal selection with colour only, no aria-pressed	findJL=52	verdictJL=168
+a11y	confirmed	medium	medium	app.js:3811	Play and star buttons are nested inside the anchors they sit on	findJL=52	verdictJL=174
+a11y	confirmed	medium	medium	styles.css:2961	ui-v2's --faint fails contrast on real copy and on the Up Next remove button	findJL=52	verdictJL=403
+a11y	confirmed	medium	medium	app.js:10683	A route change moves no focus, announces nothing, and never updates the page title	findJL=52	verdictJL=180
+a11y	confirmed	medium	low	app.js:10160	Voice rows use an orphan radio role with a nested button and all rows as tab stops	findJL=52	verdictJL=178
+races	confirmed	medium	high	app.js:7776	`bindForayScripts` adds a click listener to the persistent `#view` on every Foray render, so "Show more" toggles N times per tap	findJL=60	verdictJL=340
+races	confirmed	high	high	app.js:3125	Show page's "still mounted" check is not show-specific: show A's episodes, description and count paint onto show B's page	findJL=60	verdictJL=230
+races	confirmed	medium	high	app.js:2240	Leaving and re-entering #/shows does not supersede in-flight search passes, so the previous query's results paint onto an empty search box	findJL=60	verdictJL=334
+races	confirmed	low	medium	app.js:3427	`anyStale` is sticky and the unchanged-list early return skips the repaint, so the show page keeps saying "couldn't refresh just now" after a refresh that succeeded	findJL=60	verdictJL=184
+races	confirmed	medium	medium	app.js:11102	A foreground directory refresh re-renders the whole show/Foray page under the listener, dropping a typed episode search and the keyboard	findJL=60	verdictJL=182
+races	confirmed	medium	medium	app.js:11632	The "4a is showing its last saved copy" bar reappears after being dismissed, because the worker sends one `stale-shell` per code file	findJL=60	verdictJL=188
+races	confirmed	low	medium	player/client.js:1103	`syncCardButtons` rewrites a row's play glyph but never its `aria-label`, so a screen reader is told "Play <episode>" on a button that pauses	findJL=60	verdictJL=196
+races	confirmed	medium	medium	player/queue-manager.js:1233	`_loadItem` stamps `_loadedId` before its supersession check, so a superseded load can claim the element and cost the listener their position on the next resume	findJL=60	verdictJL=200
+races	confirmed	high	medium	player/html-audio-backend.js:1553	`HtmlAudioBackend.load()` installs media listeners with no `_loadSeq` guard, so an overlapping load seeks the element to the abandoned segment's in-point	findJL=60	verdictJL=194
+races	confirmed	low	medium	app.js:8892	The Foray page's speed menu has no single-instance guard, so two taps stack two modals and one Cancel leaves the page covered	findJL=60	verdictJL=198
+races	refuted	low	low	app.js:10289	Auditioning a second narration voice before the first answers clears the spinner and can show the wrong voice-fallback notice	findJL=60	verdictJL=202
+races	confirmed	medium	low	app.js:823	`body.fy-sheet-open` is in `PERSISTENT_BODY_CLASSES`, so the Foray feedback sheet leaves a modal scroll-lock class behind when the page navigates	findJL=60	verdictJL=208
+states	confirmed	medium	high	app.js:2843	Show page subtitle says "7 episodes" over a body that shows none — the 2026-09-21 fix broke its own premise	findJL=70	verdictJL=204
+states	confirmed	high	high	app.js:7048	Up Next says "Episode no longer available" for every episode added from a show page	findJL=70	verdictJL=210
+states	confirmed	high	high	app.js:7178	Library → History reads "No longer available" for every episode you actually played from a show page	findJL=70	verdictJL=212
+states	confirmed	medium	high	app.js:7181	Library → Saved renders a starred show-page episode as unplayable, though its snapshot carries audio_url	findJL=70	verdictJL=214
+states	confirmed	medium	high	app.js:5014	Shows search flashes "No results for X." on the keystroke, before any of the four network passes has run	findJL=70	verdictJL=407
+states	confirmed	medium	high	app.js:6545	#/forays says "0 forays" and "No forays right now" whenever the player module has not evaluated, and never corrects itself	findJL=70	verdictJL=404
+states	refuted	low	high	app.js:6494	Home is a bare greeting when any data file fails to load — a success state with zero content	findJL=70	verdictJL=402
+states	confirmed	medium	medium	index.html:61	Cold boot shows an empty page with no loading state at all	findJL=70	verdictJL=218
+states	uncertain	medium	medium	app.js:2077	The Shows page's browse-subject pills land on "No results for …" for a third of the taxonomy	findJL=70	verdictJL=406
+states	confirmed	low	medium	app.js:4977	"Showing shows available offline" outlives the search it explained	findJL=70	verdictJL=408
+states	confirmed	high	medium	app.js:1671	Up Next auto-advance stops silently at any episode added from a show page	findJL=70	verdictJL=220
+states	confirmed	medium	medium	app.js:6960	"Episode not found." / "Show not found." / "Loading show…" pages have no back button	findJL=70	verdictJL=222
+states	confirmed	low	medium	app.js:3411	A show with zero episodes loses its publisher description	findJL=70	verdictJL=226
+states	confirmed	low	low	app.js:7235	"1 parts" on three surfaces	findJL=70	verdictJL=234
+states	confirmed	low	low	app.js:7193	Library's empty-playlists state points at a control Home no longer has	findJL=70	verdictJL=224
+states	confirmed	low	low	app.js:6567	Episode rows show a dangling " · " when the feed carries no duration	findJL=70	verdictJL=232
+states	confirmed	low	low	app.js:1964	#/shows reads "No shows here yet." when the catalogue file failed to load	findJL=70	verdictJL=238
+states	confirmed	low	low	player/client.js:1123	The Now Playing sheet keeps an empty paragraph's worth of gap where the hook and the timing note would be	findJL=70	verdictJL=244
+states	confirmed	low	low	app.js:3657	The playlist builder leaves the previous query's failure note up while building the next one	findJL=70	verdictJL=236
+states	confirmed	low	low	app.js:2858	A cached show page claims "couldn't refresh just now" before any refresh has been attempted	findJL=70	verdictJL=242
+nav	confirmed	high	high	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:3125	Show A's episode list paints into show B's page — the "still mounted" guard only checks that *some* show page is on screen	findJL=88	verdictJL=240
+nav	confirmed	medium	high	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:10696	Back-step scroll restore fires before async pages have painted, so the position is lost AND the memory is overwritten with 0	findJL=88	verdictJL=246
+nav	confirmed	high	high	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:1126	Reloading or sharing a subject-queue page (#/subject/:branch) says "Playlist not found" — the four branches are re-dealt at random on every load, with a penalty against the ones you just saw	findJL=88	verdictJL=250
+nav	confirmed	low	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:10807	After removing a playlist reached from anywhere but #/playlists, ‹ lands back on the playlist that was just deleted	findJL=88	verdictJL=248
+nav	confirmed	medium	high	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:10558	A malformed percent-escape in a #/show/, #/category/ or #/foray/ hash throws out of route() — and on a cold load that kills init() before the hashchange listener is ever bound, so the whole app is dead until reload	findJL=88	verdictJL=252
+nav	confirmed	low	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:10599	#/playlist/ and #/subject/ are the two routes that still never decode their param, while one live link generator encodes it	findJL=88	verdictJL=260
+nav	confirmed	low	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:9262	Tapping a browse pill on the Search tab un-highlights the Search tab	findJL=88	verdictJL=258
+nav	confirmed	low	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:9259	The Interests page highlights no tab at all	findJL=88	verdictJL=256
+nav	confirmed	low	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:10636	An unrecognised hash renders the Home screen but lights no tab	findJL=88	verdictJL=254
+nav	confirmed	medium	high	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:6719	"Open episode" on the restored now-playing bar leads to "Episode not found" for the episode that is playing	findJL=88	verdictJL=262
+nav	confirmed	low	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:2936	#/show/pi:<n> is a route the app links to that can never render after a reload	findJL=88	verdictJL=272
+nav	confirmed	low	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:6960	Every "not found" page is a dead end: no page-head, no ‹	findJL=88	verdictJL=264
+nav	confirmed	medium	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:2384	Coming back from a show loses the show search you did to find it	findJL=88	verdictJL=268
+nav	confirmed	medium	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:3121	Coming back from an episode loses the in-show episode search	findJL=88	verdictJL=266
+nav	refuted	low	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:5650	"Create a playlist about X" inserts a phantom #/playlists step, so ‹ from the new playlist lands on a page the listener never visited	findJL=88	verdictJL=274
+nav	confirmed	low	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:10571	A ?foray= link permanently hijacks Home: reloading while on the home screen bounces back to the Foray	findJL=88	verdictJL=270
+nav	confirmed	medium	medium	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:10778	noteNavigation counts a forward tap onto the page two steps back as a back-step, so a tab tap restores an old scroll position instead of starting at the top	findJL=88	verdictJL=278
+nav	confirmed	low	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:9273	Tapping the tab you are already on does nothing — not even scroll to top	findJL=88	verdictJL=276
+nav	confirmed	low	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:10685	Three spellings of Home mean the first Home-tab tap of a session costs a dead back press	findJL=88	verdictJL=282
+nav	confirmed	low	low	C:\Users\wjduv\Desktop\Vibe Coding\foray\app.js:2222	Clearing the show search leaves the query in the URL, so a reload or back-step brings it back	findJL=88	verdictJL=280
+copy	confirmed	low	high	app.js:3166	Error copy tells the listener to "Pull to refresh" — no pull-to-refresh exists anywhere	findJL=216	verdictJL=288
+copy	confirmed	low	high	app.js:7193	Library's empty playlist state sends the listener to a screen with no playlist builder	findJL=216	verdictJL=284
+copy	confirmed	low	high	app.js:3837	Home mini-card renders double punctuation: Starts with "…Save The World?."	findJL=216	verdictJL=286
+copy	confirmed	low	medium	app.js:7235	The same playlist length is "N parts" on three screens and "N episodes" on two, and only one of the five pluralises	findJL=216	verdictJL=296
+copy	confirmed	low	medium	app.js:11642	Stale-shell banner offers "Reload to get the current version" — the code's own comment says reloading reproduces the state	findJL=216	verdictJL=290
+copy	refuted	low	medium	app.js:6545	The product noun "Foray" is capitalised in half the user-facing strings and lowercase in the other half — including twice on one screen	findJL=216	verdictJL=292
+copy	confirmed	low	medium	app.js:1025	"Starred Shows" on the page, "Starred shows" on the link that opens it	findJL=216	verdictJL=294
+copy	confirmed	low	medium	app.js:8525	Browser-centric copy in a shipping native app: "Your browser held the audio back", "reload the page", "This browser has taken storage away"	findJL=216	verdictJL=304
+copy	confirmed	low	medium	app.js:6607	An aged-out playlist part states its unavailability twice, in two different wordings, on one row	findJL=216	verdictJL=298
+copy	confirmed	medium	medium	app.js:9729	"0 key(s) would not clear." — a lazy plural and developer jargon in the delete-my-data result	findJL=216	verdictJL=302
+copy	confirmed	low	medium	app.js:7235	The Playlists page prints a raw locale date ("9/21/2026") while every other date in the app goes through fmtDate ("Sep 21, 2026")	findJL=216	verdictJL=300
+copy	confirmed	medium	medium	app.js:7672	A Foray's pieces are called segments, clips, parts and beats — all user-visible, sometimes on the same screen	findJL=216	verdictJL=316
+copy	confirmed	low	medium	data/forays.json:806	Agent-generated Foray titles are Title Case with no closing period, next to sentence-case curated ones in the same rail	findJL=216	verdictJL=310
+copy	confirmed	low	low	app.js:851	fmtDur renders an exact hour as "1h 0m" — 49 episodes in the shipped pool	findJL=216	verdictJL=306
+copy	confirmed	low	medium	styles.css:606	On short screens the mini-card hook is clamped to one line, hiding the only concrete thing it says	findJL=216	verdictJL=312
+copy	confirmed	low	medium	app.js:6691	"today's queue" and "a daily podcast picker" promise a daily cadence buildCards() does not have	findJL=216	verdictJL=308
+copy	confirmed	medium	medium	app.js:919	The episode star announces "Save" — never the state, and in a different word from every other star surface	findJL=216	verdictJL=314
+copy	confirmed	low	low	app.js:6191	The same idea is "your usual topics" in one Home tooltip and "your usual subjects" in the bridge line beneath it	findJL=216	verdictJL=322
+copy	confirmed	low	low	data/session.json:14	session.json's fit_line field carries four commute-length violations and no test gates it	findJL=216	verdictJL=320
+copy	confirmed	low	low	app.js:7203	Library's subtitle lists its sections in an order the page does not use, and page subtitles have three incompatible shapes	findJL=216	verdictJL=318
+persist	confirmed	high	high	player/durable-store.js:663	A write localStorage refuses but IndexedDB accepts is silently reverted on the next launch — and the good durable copy is overwritten with the stale one	findJL=228	verdictJL=324
+persist	confirmed	medium	high	player/queue-manager.js:1192	Pressing play on an episode you already finished starts it ~15 seconds before the end — `_loadItem` reads the raw stored position, never `resumeOffset`	findJL=228	verdictJL=330
+persist	confirmed	medium	high	player/client.js:1419	Restored mini bar shows 0:00 for a finished episode and then plays its last seconds — the restore path skips its seek when the offset is 0	findJL=228	verdictJL=332
+persist	confirmed	medium	high	app.js:9645	"Delete my data" reports success while the entire local listening queue survives in a second IndexedDB database	findJL=228	verdictJL=328
+persist	confirmed	medium	medium	player/client.js:2161	A finished episode comes back to "Jump back in" claiming 0% played and the full runtime left	findJL=228	verdictJL=326
+persist	confirmed	medium	medium	player/client.js:2563	An hour in a Foray leaves the now-playing ribbon restoring a much older ordinary episode	findJL=228	verdictJL=336
+persist	confirmed	medium	medium	app.js:416	A missing data/taxonomy.json wipes the listener's whole interests profile on their first play or thumb	findJL=228	verdictJL=344
+persist	confirmed	medium	medium	player/client.js:1627	The restored ribbon publishes lock-screen metadata with no action handlers and a 0:00 playhead	findJL=228	verdictJL=342
+persist	confirmed	low	medium	player/client.js:1075	Restored mini bar shows "--:--" and a flat progress bar when the snapshot has no duration_sec, even though the position store recorded the real duration	findJL=228	verdictJL=338
+persist	confirmed	medium	medium	player/client.js:2691	"Jump back in" Foray rows compute percent and "min left" against the STORED runtime, never the live one	findJL=228	verdictJL=348
+persist	refuted	low	medium	app.js:1636	The jingle toggle's label snaps back while the session honours the flip, when the write is refused	findJL=228	verdictJL=346
+persist	confirmed	medium	medium	app.js:9134	"Open episode" from the restored ribbon says "Episode not found" when the app launches on any route but Home	findJL=228	verdictJL=350
+persist	confirmed	low	low	app.js:6276	"1 parts" on a one-part playlist's Jump back in card	findJL=228	verdictJL=354
+persist	confirmed	low	low	app.js:9152	On a cold launch where the player module evaluates after route(), "Jump back in" loses every Foray row and nothing ever repaints it	findJL=228	verdictJL=357
+persist	confirmed	low	low	player/client.js:1194	The stored playback speed can be lost for the whole session when hydration overruns app.js's 5-second race	findJL=228	verdictJL=352
+persist	confirmed	low	low	player/episode-progress.js:68	Playing an item with no id erases the last-episode pointer instead of leaving it alone	findJL=228	verdictJL=358
+persist	refuted	low	low	player/episode-progress.js:143	`episodeRemainingLabel`'s "finished" state is unreachable from its only caller, and is lowercase where the rest of the rail is sentence case	findJL=228	verdictJL=355
+persist	refuted	low	low	app.js:1468	Reading the playlist list mutates it: a playlist you never played is stamped `created: now`, so the drawer's recency order is invented at first read	findJL=228	verdictJL=356
+persist	confirmed	medium	low	player/durable-store.js:22	The durable store advertises a Capacitor Preferences tier it does not have, so inside the iOS shell every tier is still script-writable	findJL=228	verdictJL=360
+persist	refuted	low	low	player/position-store.js:52	`refusedWrites` — the counter built to prove positions are being recorded — cannot increment against the durable store	findJL=228	verdictJL=359
+honesty	confirmed	low	high	app.js:3427	A stale show list stays labelled "couldn't refresh" after the refresh succeeds	findJL=361	verdictJL=376
+honesty	confirmed	medium	high	player/client.js:2181	"Jump back in" tells you a finished episode has its whole runtime left	findJL=361	verdictJL=374
+honesty	confirmed	medium	high	app.js:7990	The Foray page prints two different segment counts, from two sources, one above the other	findJL=361	verdictJL=382
+honesty	confirmed	medium	high	app.js:5014	"No results for X." renders directly above a full list of results	findJL=361	verdictJL=370
+honesty	confirmed	medium	medium	app.js:6539	The Forays page asserts "0 forays" when the data or the player module failed to load	findJL=361	verdictJL=384
+honesty	confirmed	low	medium	app.js:8124	"N segments can't play — listed below" counts segments that are not listed below	findJL=361	verdictJL=378
+honesty	confirmed	medium	medium	app.js:7992	41% of a Foray's advertised runtime is a character-count estimate shown as a measured clock	findJL=361	verdictJL=380
+honesty	confirmed	low	medium	app.js:9374	The "Open in" setting governs nothing — both link-out builders are dead	findJL=361	verdictJL=372
+honesty	confirmed	low	medium	app.js:6567	Episode rows print an empty field between two separators when the duration is unknown	findJL=361	verdictJL=392
+honesty	confirmed	medium	medium	app.js:9729	Delete my data can report "This device is NOT fully clear. 0 key(s) would not clear."	findJL=361	verdictJL=390
+honesty	confirmed	low	low	app.js:851	An exactly-one-hour episode reads "1h 0m"	findJL=361	verdictJL=386
+honesty	confirmed	low	low	app.js:5602	Three surfaces print "1 parts"; the fourth, in the same file, prints "1 part"	findJL=361	verdictJL=400
+honesty	confirmed	low	low	app.js:7991	The Foray header counts shows that will never be heard; the credit block below counts only the ones that will	findJL=361	verdictJL=401
+honesty	confirmed	low	low	app.js:1976	A category page claims a category is empty when catalog-client.json failed to load	findJL=361	verdictJL=395
+honesty	refuted	low	low	app.js:6436	Home's playlist card counts parts from a different source than every other surface	findJL=361	verdictJL=388
+honesty	confirmed	medium	low	app.js:6682	A playlist's "N played" silently decreases as the 200-entry history ring rotates	findJL=361	verdictJL=394
+honesty	refuted	low	low	app.js:10511	"There is nothing to clear on this page" is also what a failed clear says	findJL=361	verdictJL=399
+honesty	confirmed	low	low	app.js:3833	The subject-card duration silently omits episodes whose length is unknown	findJL=361	verdictJL=398
+honesty	confirmed	low	low	app.js:7235	"played <date>" is formatted in local time by a raw toLocaleDateString, and can read "Invalid Date"	findJL=361	verdictJL=396
+honesty	confirmed	low	low	app.js:6195	Home's greeting is computed once per render and goes stale on a page left open	findJL=361	verdictJL=397
+
+# unmatched verdicts:
