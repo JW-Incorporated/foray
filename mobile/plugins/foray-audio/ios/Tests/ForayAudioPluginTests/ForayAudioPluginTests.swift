@@ -294,4 +294,86 @@ final class ForayAudioPluginTests: XCTestCase {
         )
     }
 
+    // MARK: - the command list is PUBLISHED, not merely assigned (founder, 2026-09-23)
+    // "In the app, I can jump back 15s and forward 30s. On the lock screen,
+    // it's 10s in both directions. Both should be 15/30." See
+    // `publishCommands` for the mechanism: WebKit's own registration replaces
+    // ours, and a write that changes nothing is never re-published.
+
+    /// A finished or idle Foray enables nothing, whatever flags it carries —
+    /// the same rule `applyCommandAvailability` used to compute inline.
+    /// MUTATION: drop the `guard transportable` in `CommandSnapshot.from` -> red.
+    func testSnapshotOfNoneOrEndedIsSilent() {
+        let ended = NowPlayingPayload.from([
+            "state": "ended", "canPlay": true, "canPause": true, "hasNext": true,
+            "canSeekBack": true, "canSeekForward": true, "canSeekTo": true, "title": "t",
+        ])
+        XCTAssertEqual(ForayAudioPlugin.CommandSnapshot.from(ended), .silent)
+        XCTAssertEqual(ForayAudioPlugin.CommandSnapshot.from(.empty), .silent)
+    }
+
+    /// A playing payload's snapshot carries every flag and the item's identity.
+    /// MUTATION: drop any one field from `from` -> the matching assertion is red.
+    func testSnapshotOfPlayingCarriesEveryFlagAndTheIdentity() {
+        let playing = NowPlayingPayload.from([
+            "state": "playing", "title": "Clip 3", "canPlay": false, "canPause": true,
+            "hasNext": true, "hasPrevious": false, "canSeekBack": true, "canSeekForward": true,
+            "canSeekTo": false,
+        ])
+        let snap = ForayAudioPlugin.CommandSnapshot.from(playing)
+        XCTAssertFalse(snap.play)
+        XCTAssertTrue(snap.pause)
+        XCTAssertTrue(snap.next)
+        XCTAssertFalse(snap.previous)
+        XCTAssertTrue(snap.seekBack)
+        XCTAssertTrue(snap.seekForward)
+        XCTAssertFalse(snap.seekTo)
+        XCTAssertEqual(snap.identity, "Clip 3")
+    }
+
+    /// THE FIRST WRITE ALWAYS PUBLISHES — that is the write WebKit's
+    /// registration had beaten. A position-only write (same flags, same item)
+    /// does not: 4 Hz of MediaRemote traffic is what `foray-media-session.js`
+    /// §1 rate-limits away on the other side of the bridge.
+    /// MUTATION: make `shouldRepublish` return `previous == nil` only -> the
+    /// seam case below is red; make it return `true` -> the position case is red.
+    func testFirstWritePublishesAndAPositionOnlyWriteDoesNot() {
+        let a = ForayAudioPlugin.CommandSnapshot.from(NowPlayingPayload.from([
+            "state": "playing", "title": "Clip 1", "canPlay": true, "positionMs": 1_000,
+        ]))
+        let b = ForayAudioPlugin.CommandSnapshot.from(NowPlayingPayload.from([
+            "state": "playing", "title": "Clip 1", "canPlay": true, "positionMs": 1_250,
+        ]))
+        XCTAssertTrue(ForayAudioPlugin.shouldRepublish(previous: nil, next: a))
+        XCTAssertFalse(ForayAudioPlugin.shouldRepublish(previous: a, next: b), "the playhead moving is not a change to the command list")
+    }
+
+    /// A SEAM IS A CHANGE even when the flags are identical: a new `<audio>`
+    /// element is a new WebKit registration, so the list must be pushed
+    /// again or the second clip's lock screen is WebKit's.
+    /// MUTATION: drop `identity` from `CommandSnapshot` -> red.
+    func testASeamWithUnchangedFlagsStillPublishes() {
+        let clip1 = ForayAudioPlugin.CommandSnapshot.from(NowPlayingPayload.from([
+            "state": "playing", "title": "Clip 1", "canPause": true, "canSeekBack": true, "canSeekForward": true,
+        ]))
+        let clip2 = ForayAudioPlugin.CommandSnapshot.from(NowPlayingPayload.from([
+            "state": "playing", "title": "Clip 2", "canPause": true, "canSeekBack": true, "canSeekForward": true,
+        ]))
+        XCTAssertTrue(ForayAudioPlugin.shouldRepublish(previous: clip1, next: clip2))
+    }
+
+    /// Pause and resume are changes (play/pause flags flip), and so is the
+    /// end of a Foray (everything goes silent).
+    func testPauseResumeAndEndingArePublished() {
+        let playing = ForayAudioPlugin.CommandSnapshot.from(NowPlayingPayload.from([
+            "state": "playing", "title": "t", "canPause": true,
+        ]))
+        let paused = ForayAudioPlugin.CommandSnapshot.from(NowPlayingPayload.from([
+            "state": "paused", "title": "t", "canPlay": true,
+        ]))
+        XCTAssertTrue(ForayAudioPlugin.shouldRepublish(previous: playing, next: paused))
+        XCTAssertTrue(ForayAudioPlugin.shouldRepublish(previous: paused, next: playing))
+        XCTAssertTrue(ForayAudioPlugin.shouldRepublish(previous: playing, next: .silent))
+    }
+
 }

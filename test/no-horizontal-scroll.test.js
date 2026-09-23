@@ -1,4 +1,4 @@
-/* The page never pans sideways, and a tap never zooms. Two founder reports
+/* The page never pans sideways, and the page never zooms. Two founder reports
  * from 2026-09-17, kept in one file because they are the same class of bug —
  * a gesture the app never meant to offer — and because both fixes are one
  * declaration each, which is exactly the kind of thing a later "tidy up the
@@ -7,6 +7,18 @@
  *   1. "It should not be possible to scroll left/ right on episode pages."
  *   2. "It should also not be possible to zoom on the episode slide, when I was
  *       trying to skip forward several times it zoomed in instead."
+ *
+ * AND THE REVERSAL, 2026-09-23. The 09-17 fix kept pinch-to-zoom on purpose
+ * (this file's last test said "the page must remain zoomable by pinch") and
+ * dropped only double-tap, on the controls. The founder then ruled zoom out
+ * entirely: "I can zoom by double tapping. This is super annoying and gets me
+ * trapped in certain parts of the app. Remove the zoom functionality." So the
+ * last test is INVERTED — it now pins that the viewport forbids zoom — and
+ * three more pin the layers behind it: `touch-action: manipulation` on
+ * html/body (double-tap, even where the meta is ignored), the `gesturestart`
+ * guard in app.js (pinch, ditto), and `zoomEnabled: false` in the shell's
+ * Capacitor config (Android's native WebView zoom). docs/DECISIONS.md
+ * 2026-09-23 records the ruling with his words.
  *
  * WHAT A UNIT TEST CAN AND CANNOT DO HERE, stated plainly. Neither report can
  * be reproduced in this process: both are touch behaviours of a real WKWebView,
@@ -29,6 +41,8 @@ const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const CSS = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
 const INDEX = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+const APP = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const CAP_CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, "mobile", "capacitor.config.json"), "utf8"));
 
 /** The body of the first rule with exactly this selector text. Same approach as
     test/ui-tokens.test.js: anchor on the brace-delimited block so a mention in
@@ -108,22 +122,68 @@ test("the controls a listener taps repeatedly opt out of double-tap zoom", () =>
   assert.match(rule, /touch-action:\s*manipulation/);
 });
 
-test("it is `manipulation`, not `none` — pinch-to-zoom stays", () => {
-  /* `none` would also kill panning and pinch, which is an accessibility
-     regression dressed as a fix. The founder asked for the accidental zoom to
-     stop, not for zoom to be taken away. */
+test("it is `manipulation`, not `none` — a control must not eat the scroll", () => {
+  /* `none` would also kill panning: a thumb that lands on a skip button and
+     drags could no longer scroll the page. Zoom is gone by the founder's
+     ruling below, but scrolling is not, and `none` takes both. */
   const rule = cssRule(".fy-btn, .fy-rate, .ep-chapter-row, .ep-ts");
-  assert.ok(!/touch-action:\s*none/.test(rule), "must not disable panning and pinch on a control");
+  assert.ok(!/touch-action:\s*none/.test(rule), "must not disable panning on a control");
 });
 
-test("the viewport meta still permits zooming at all", () => {
-  /* The other way this complaint could have been 'fixed' — `user-scalable=no`
-     or `maximum-scale=1` — disables pinch-to-zoom for the whole app. It is the
-     single most common accessibility defect in a mobile web view, and it is
-     also not what was asked for.
-     MUTATION: add `user-scalable=no` to the viewport meta. This goes red. */
+/* ---------- 3. the page does not zoom at all (founder, 2026-09-23) --------- */
+
+test("the viewport meta forbids zooming — the 2026-09-17 'keep pinch' choice is reversed", () => {
+  /* This test used to assert the OPPOSITE ("the page must remain zoomable by
+     pinch"). Founder, 2026-09-23: "I can zoom by double tapping. This is super
+     annoying and gets me trapped in certain parts of the app. Remove the zoom
+     functionality." `maximum-scale=1` + `user-scalable=no` is the one
+     declaration WKWebView honours for pinch; `maximum-scale=1` is also what
+     stops iOS zooming onto a focused text field, which is why the pair is
+     required and not either alone. `viewport-fit=cover` and `width=device-
+     width` are unrelated and must survive — a "fix" that rewrote the meta from
+     scratch would lose the notch inset.
+     MUTATION: remove `user-scalable=no`, or `maximum-scale=1`. Red. */
   const meta = /<meta name="viewport" content="([^"]*)"/.exec(INDEX);
   assert.ok(meta, "index.html must still declare a viewport");
-  assert.ok(!/user-scalable\s*=\s*no/.test(meta[1]), "the page must remain zoomable by pinch");
-  assert.ok(!/maximum-scale\s*=\s*1/.test(meta[1]), "…and must not cap the scale to defeat it another way");
+  assert.match(meta[1], /user-scalable\s*=\s*no/, "the page must not be zoomable by pinch");
+  assert.match(meta[1], /maximum-scale\s*=\s*1(\b|,)/, "…and the scale must be capped, or a focused input still zooms");
+  assert.match(meta[1], /width\s*=\s*device-width/);
+  assert.match(meta[1], /initial-scale\s*=\s*1(\b|,)/);
+  assert.match(meta[1], /viewport-fit\s*=\s*cover/, "the notch inset is not part of this change and must survive it");
+});
+
+test("html and body opt the whole page out of double-tap zoom", () => {
+  /* The meta alone is not enough: Safari has ignored `user-scalable=no` since
+     iOS 10 and a WebView can follow in any release, but `touch-action:
+     manipulation` on the root is resolved along the ancestor chain, so it
+     kills double-tap-to-zoom for every descendant regardless of the meta. On
+     the ROOT rule, not a container: a container leaves the chrome outside it
+     zoomable, which is where "trapped" happens.
+     MUTATION: delete `touch-action: manipulation` from `html, body`. Red. */
+  const rule = cssRule("html, body");
+  assert.ok(rule, "the root rule must still exist");
+  assert.match(rule, /touch-action:\s*manipulation/, "double-tap zoom must be off from the root down");
+  assert.ok(!/touch-action:\s*none/.test(rule), "…but the page must still scroll");
+});
+
+test("app.js cancels `gesturestart`, so a pinch is refused even where the meta is ignored", () => {
+  /* WebKit fires `gesturestart` at the start of a pinch, before any scale is
+     applied; preventDefault there refuses the zoom. It must be a NON-passive
+     listener — `{ passive: true }` (or the default on document for touch-shaped
+     events in some engines) makes the preventDefault a no-op with a console
+     warning nobody has open. Named in the assertion so a "tidy up: make every
+     listener passive" pass cannot pass this test.
+     MUTATION: delete the listener, or change `passive: false` to `true`. Red. */
+  const m = /document\.addEventListener\(\s*"gesturestart"\s*,\s*\(?(\w+)\)?\s*=>\s*\1\.preventDefault\(\)\s*,\s*\{\s*passive:\s*false\s*\}\s*\)/.exec(APP);
+  assert.ok(m, "app.js must cancel gesturestart with a non-passive listener");
+});
+
+test("the native shell does not enable WebView zoom either (Android's own pinch)", () => {
+  /* Capacitor's Android bridge follows `zoomEnabled` into `setSupportZoom` /
+     `setBuiltInZoomControls`. Its default is false today, but a default is a
+     fact about a dependency; this is a decision, so it is written down and
+     read back: a future config that sets it true, or a Capacitor major that
+     flips the default and a config that stays silent, both fail here.
+     MUTATION: delete the key, or set it true. Red. */
+  assert.strictEqual(CAP_CONFIG.zoomEnabled, false, "mobile/capacitor.config.json must set zoomEnabled: false explicitly");
 });

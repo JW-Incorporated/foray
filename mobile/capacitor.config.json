@@ -2,6 +2,8 @@
   "appId": "ai.jwlabs.foura",
   "appName": "4a",
   "webDir": "www",
+  "//zoomEnabled": "Founder ruling 2026-09-23 (docs/DECISIONS.md): no zoom in the app at all. Capacitor's default is already false, but the default is a fact about a dependency and this is a decision; stated here so an upgrade that flips the default cannot re-enable pinch on Android (setSupportZoom/setBuiltInZoomControls follow this flag). The page's own layers are the viewport meta in index.html, touch-action on html/body in styles.css and the gesturestart guard in app.js; test/no-horizontal-scroll.test.js pins all four.",
+  "zoomEnabled": false,
   "ios": {
     "path": "ios"
   },

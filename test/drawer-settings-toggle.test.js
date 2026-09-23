@@ -227,12 +227,16 @@ test("family-toggle's re-render still reaches the page behind the drawer (render
 /* ==================================================================== */
 
 test("clicking a link inside the drawer still closes it (route() unchanged for real navigation)", async () => {
-  /* MUTATION: remove `openDrawer(false)` from route(), or from the
-     drawer's own click-delegate handler. The drawer would stay open after
-     a real navigation, regressing the pre-existing (correct) behaviour. */
+  /* MUTATION: remove `openDrawer(false)` from route(), or from
+     `onDrawerAction` (the drawer's capture-phase leave rule since 2026-09-23,
+     which asks `closest("a, button, summary")` and then whether the item
+     declares `data-drawer-stay`). The drawer would stay open after a real
+     navigation, regressing the pre-existing (correct) behaviour. */
   const m = await mountBooted();
   m.byId.get("drawer").hidden = false;
-  const fakeLink = { closest: (sel) => (sel === "a" ? {} : null) };
+  const fakeLink = {
+    closest: (sel) => (sel.split(",").map((s) => s.trim()).includes("a") ? fakeLink : null),
+  };
   m.byId.get("drawer")._fire("click", { target: fakeLink });
   assert.strictEqual(m.byId.get("drawer").hidden, true, "a real navigation (drawer link) must still close the drawer");
 });

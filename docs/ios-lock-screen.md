@@ -423,3 +423,54 @@ anywhere in this repository and this change was written on Windows, so the Swift
 added by these three cards is **compiled by `ios-kit` and never executed**. The
 XCTest targets under `ios/Tests/` remain what `mobile/plugins/foray-tts/README.md`
 calls them — authored, not run.
+
+## 8. The skip glyphs read "10" (founder, 2026-09-23) — the command list is a last-writer register
+
+**Report, verbatim (iPhone, build 2026092326):** *"In the app, I can jump back 15s
+and forward 30s. On the lock screen, it's 10s in both directions. Both should be
+15/30."*
+
+**What was true in the source.** `ForayAudioPlugin.swift` had set
+`skipBackwardCommand.preferredIntervals = [15]` / `skipForwardCommand … = [30]`
+since L-01 (§3.1's table), and the offsets it sends back are 15 000 / 30 000 ms.
+The numbers were never wrong; they were never shown.
+
+**Why (read from WebKit's source, not measured on a device).**
+`MRMediaRemoteSetSupportedCommands` replaces the process's whole supported-command
+list, and this app has two writers: `MPRemoteCommandCenter` (ours) and WebKit's own
+`RemoteCommandListenerCocoa`, which registers a default set — play, pause, seek-to,
+begin/end seeking, **skip forward and skip backward** — for every audible `<audio>`
+element (`Source/WebCore/platform/cocoa/RemoteCommandListenerCocoa.mm`,
+`defaultCommands()`). WebKit trunk writes those skip commands with a 15 s option; on
+shipped iOS the option went under a wrong key until WebKit commit `2d26a621`
+(2025-08-28, *"kMRMediaRemoteCommandInfoPreferredIntervalsKey macro gets the wrong
+symbol"*), so the OS saw no interval and drew its default glyph — the "10" the founder
+read. WebKit writes when an element starts, which is after `load()`, so its list
+replaced ours; and nothing put ours back, because `applyCommandAvailability` assigned
+the same `isEnabled` values every command already had from launch (an
+`MPRemoteCommand` is enabled by default), and a setter that changes nothing gives the
+command centre nothing to publish. §2.1's "our write is structurally the later one"
+holds for the metadata because a metadata write always happens; it did not hold for a
+command list that was never re-written.
+
+**What changed (`publishCommands`, `CommandSnapshot`).** Every command starts
+*disabled* at `load()` (nothing is playing — Android's `acceptsTransport()` for IDLE).
+Every `setNowPlaying` reduces its payload to a `CommandSnapshot` (the seven enable
+flags plus the item's title); a write whose snapshot differs from the last is published
+as a real change — everything off, then the real flags on the next main-queue turn,
+because same-turn writes coalesce — and the ±15/30 intervals are re-written with every
+publish. A position-only write changes nothing and publishes nothing (no 4 Hz
+MediaRemote traffic). A seam is a change even with identical flags: a new element is a
+new WebKit registration.
+
+**Pinned by** `ForayAudioPluginTests` (the snapshot and the republish decision, pure)
+and `tools/mobile/shell-invariants.test.mjs` (the intervals live in the per-write
+function and equal the page's `SEEK_BACKWARD_SEC`/`SEEK_FORWARD_SEC`).
+
+**What this cannot promise, and the device check that answers it (H8).** A Simulator
+has no lock screen. Whether MediaRemote delivers a skip press to our `MPRemoteCommand`
+target, to WebKit's listener, or to both once our list is current is a device
+question; both firing would seek twice (15 + 15, 30 + 30). The founder's report of
+exactly "10" says only WebKit's fires today. **H8, Wyatt:** on the next build, lock
+the phone mid-Foray, read the two skip glyphs (expected 15 / 30), press each once and
+check the in-app playhead moved by exactly that much, then repeat after one seam.

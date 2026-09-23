@@ -619,7 +619,7 @@ const FLOORS = {
   /* 2026-09-17, founder: the page must not pan sideways and a double tap on a
      transport control must not zoom. Declaration-level pins — neither gesture is
      reproducible in this process; the file says so in its own header. */
-  "test/no-horizontal-scroll.test.js": 8,
+  "test/no-horizontal-scroll.test.js": 11, // 2026-09-23, founder: "Remove the zoom functionality." — the 'keep pinch' pin is inverted and three layers join it (root touch-action, the gesturestart guard, the shell's zoomEnabled: false); 8 -> 11
 
   /* The bottom edge of the screen while a soft keyboard is up — three founder
      reports from 2026-09-14, on build 2026091419, all on the search page.
@@ -963,6 +963,12 @@ const FLOORS = {
   /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
      three toggles' click handlers, plus the two real-navigation regression
      guards. */
+  /* The drawer leaves when it is used (founder, 2026-09-23: "the menu should
+     automatically collapse"). One owner rule in the capture phase, the two
+     declared stays (toggles, the Developer summary), the overlay and scrim
+     each closing only their own thing, focus back to the ☰, and the founder's
+     exact tap sequence. Floored at its count: every cell is one mutation. */
+  "test/drawer-ownership.test.js": 11,
   "test/drawer-settings-toggle.test.js": 13, // 2026-09-22 audit (R7, R8): "Open in" and its dead code are gone (replacing the test of its switch), and the founder tools sit in one collapsed Developer group above Delete my data; 12 -> 13 // client audit (2026-09-12): the sixth switch (cp_interlude, disclosed since FD-06 with no control), the one `drawerToggle` shape, and the retired ui-v2 debris; 6 -> 12
   /* "Up Next" auto-advance (docs/listening-queue-plan.md §8 addendum, kanban
      card t_b9880844). Floored for the same reason as up-next-queue.test.js
@@ -1367,7 +1373,7 @@ const FLOORS = {
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
   "tools/mobile/prepare-webdir.test.mjs": 84, // 2026-09-22 audit (L2), founder report 3: the bundle carries build-stamp.json with the committed deploy_id; 83 -> 84 // +1 audit finding E (2026-09-12): seedCarries is exactly the negation of the one `isGeneratedDraft`; 82 -> 83 // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
-  "tools/mobile/shell-invariants.test.mjs": 57, // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
+  "tools/mobile/shell-invariants.test.mjs": 59, // 2026-09-23 (founder: the lock screen's 15/30): +2 — the iOS skip intervals are written on every publish, and are the page's own numbers; 57 -> 59 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only

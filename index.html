@@ -2,7 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- NO ZOOM, BY FOUNDER RULING (Wyatt, 2026-09-23, docs/DECISIONS.md): "I can
+     zoom by double tapping. This is super annoying and gets me trapped in
+     certain parts of the app. Remove the zoom functionality." This reverses
+     the 2026-09-17 choice to keep pinch (test/no-horizontal-scroll.test.js
+     pinned it; it now pins this). maximum-scale=1 + user-scalable=no is the
+     declaration WKWebView honours; styles.css (touch-action on html/body)
+     and app.js (gesturestart) are the two belts behind it, because Safari
+     itself ignores this meta for accessibility and a WebView may some day. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <!-- DARK IS THE DESIGN (styles.css, body.ui-v2): the page ships one palette,
      so it declares one scheme. "dark light" let the browser paint its own
      surfaces — the focus ring, form-control chrome, scrollbars, the default
