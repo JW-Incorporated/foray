@@ -2030,6 +2030,15 @@ function episodeNeighbour(which) {
   return typeof fn === "function" ? () => fn() : null;
 }
 
+/** The page answers "next after WHAT" from `currentEpisodeId()`, and the
+    actions are installed BEFORE `setNowPlaying` moves `current` (the F5 order
+    above), so the first install asked about the previous episode. Asked again
+    once `current` is the new item — only when the page has offered neighbours
+    at all, so a page without Up Next costs nothing. */
+function reaskEpisodeNeighbours() {
+  if (episodeNavigation && media && current && !foray) media.setActions(episodeMediaSurface);
+}
+
 /** Previous/next are the page's (see `episodeNavigation`), read at the moment
     `setActions` installs the surface — so they are getters, not fields. */
 const episodeMediaSurface = {
@@ -2727,6 +2736,7 @@ const ForayPlayer = {
        moment it was never told. */
     media.invalidate();
     setNowPlaying(item, why);
+    reaskEpisodeNeighbours();
     /* THE POINTER, written here and nowhere else (founder, 2026-09-18: "the
        podcast I was listening to should still be in the now playing ribbon").
        Here because this is the one place an ordinary episode becomes the
@@ -2925,6 +2935,7 @@ const ForayPlayer = {
        first press into a real load-and-seek. */
     media.setActions(episodeMediaSurface);
     setNowPlaying(rec, null);
+    reaskEpisodeNeighbours();
     restoredPending = { item: rec, positionSec: verdict.positionSec };
     render();
     return rec;
@@ -2965,6 +2976,14 @@ const ForayPlayer = {
    */
   isCurrent(id) {
     return Boolean(id) && current?.id === id;
+  },
+
+  /** The id of the ORDINARY episode on the bar, or null — null during a Foray,
+      whose next/previous are segments and never the page's. What app.js's
+      `setEpisodeNavigation` getters ask "next after what?". */
+  currentEpisodeId() {
+    /* A restored Foray's bar is `foray:<id>` with no `foray` yet: not an episode. */
+    return !foray && current?.id && !current.forayId ? current.id : null;
   },
 
   /**

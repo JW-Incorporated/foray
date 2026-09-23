@@ -71,13 +71,26 @@ const PAGE_IDS = [
     player/*.test.js). `play()` records calls instead of touching audio. */
 function makeFakePlayer() {
   const calls = [];
+  const navCalls = [];
+  let currentId = null;
   return {
     calls,
+    navCalls,
     async play(item, opts) {
       calls.push({ item, opts });
+      currentId = item.id;
       return true;
     },
     onEpisodeEnded() { return () => {}; },
+    /* The two halves of the steering wheel's skip (review 2026-09-23). */
+    setEpisodeNavigation(nav) { navCalls.push(nav); return true; },
+    currentEpisodeId() { return currentId; },
+    /** What the OS would be offered right now: the getters, read as the real
+        surface reads them at install time. */
+    offered() {
+      const nav = navCalls[navCalls.length - 1];
+      return { next: nav ? nav.next : null, previous: nav ? nav.previous : null };
+    },
   };
 }
 
@@ -283,6 +296,86 @@ test("the list is the rows sharing the tapped row's data-ctx, not the whole scre
   m.ctx.advanceQueueOnEnded(a.id);
 
   assert.strictEqual(fake.calls[1].item.id, b.id, "the next SAVED row, not the History one between");
+});
+
+test("REVIEW: Up Next first, THEN the rest of the chosen list — queue [X], tap ep1, and ep2 follows X", async () => {
+  /* The two branches used to be exclusive: with anything queued the list was
+     never reached, and once X had played, X was not in the list, so nothing
+     played. MUTATION: restore `else if (queued.length) candidates = queued` —
+     the second advance plays nothing. MUTATION 2: anchor the list on the
+     finished id only (drop `state.playListCursor`) — same silence. */
+  const m = mount();
+  const [x, ep1, ep2, ep3] = m.playable;
+  seedLivePool(m, [x, ep1, ep2, ep3]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  m.ctx.addToQueue(x.id);
+  const rows = [ep1, ep2, ep3].map((it) => ({ id: it.id, ctx: "show-x" }));
+
+  await clickRow(m, rows, 0);
+  m.ctx.advanceQueueOnEnded(ep1.id);
+  assert.strictEqual(fake.calls[1]?.item.id, x.id, "Up Next comes first");
+  m.ctx.advanceQueueOnEnded(x.id);
+  await new Promise((r) => setImmediate(r));
+  assert.strictEqual(fake.calls[2]?.item.id, ep2.id, "then the list resumes after the last row that played");
+  m.ctx.advanceQueueOnEnded(ep2.id);
+  await new Promise((r) => setImmediate(r));
+  assert.strictEqual(fake.calls[3]?.item.id, ep3.id);
+});
+
+test("REVIEW: an Up Next with nothing playable falls through to the list", async () => {
+  /* MUTATION: return `fromQueue.find(...) || null` without looking at the list. */
+  const m = mount();
+  const [ep1, ep2] = m.playable;
+  const silent = { ...m.playable[2], id: "queued-no-audio", audio_url: null };
+  seedLivePool(m, [ep1, ep2, silent]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  m.ctx.addToQueue(silent.id);
+  await clickRow(m, [ep1, ep2].map((it) => ({ id: it.id, ctx: "show-x" })), 0);
+  m.ctx.advanceQueueOnEnded(ep1.id);
+  assert.strictEqual(fake.calls[1]?.item.id, ep2.id);
+});
+
+test("REVIEW: an episode started off the chain does not resume a list from an earlier visit", async () => {
+  /* The cursor must not outlive the chain. MUTATION: drop the `onChain` test in
+     planAfterEnded — the unrelated episode's end plays ep2. */
+  const m = mount();
+  const [ep1, ep2] = m.playable;
+  seedLivePool(m, [ep1, ep2]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await clickRow(m, [ep1, ep2].map((it) => ({ id: it.id, ctx: "show-x" })), 0);
+  m.ctx.advanceQueueOnEnded("started-from-a-timestamp");
+  assert.strictEqual(fake.calls.length, 1, "only the tap itself played");
+});
+
+test("REVIEW: the page gives the player its next/previous, so the steering wheel's skip is live", async () => {
+  /* `setEpisodeNavigation` had no caller in app.js: the car's skip stayed
+     greyed out with a full Up Next. MUTATION: delete the
+     `refreshEpisodeNavigation()` call from setPlayList (and saveQueueIds) —
+     the player is never told, and `offered()` is empty. */
+  const m = mount();
+  const [a, b, c] = m.playable;
+  seedLivePool(m, [a, b, c]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await clickRow(m, [a, b].map((it) => ({ id: it.id, ctx: "show-x" })), 0);
+  assert.ok(fake.navCalls.length > 0, "the page must hand the player its navigation");
+  let offered = fake.offered();
+  assert.strictEqual(typeof offered.next, "function", "a list with a row after this one offers the skip");
+  assert.strictEqual(offered.previous, null, "the first row has nothing before it");
+
+  await offered.next();
+  assert.strictEqual(fake.calls[1]?.item.id, b.id, "the skip plays what the end of the episode would");
+  offered = fake.offered();
+  assert.strictEqual(offered.next, null, "the last row of the list offers no skip");
+  assert.strictEqual(typeof offered.previous, "function", "but it can go back");
+
+  const before = fake.navCalls.length;
+  m.ctx.addToQueue(c.id);
+  assert.ok(fake.navCalls.length > before, "an Up Next edit re-asks, so the skip appears at once");
+  assert.strictEqual(typeof fake.offered().next, "function", "Up Next now has something after this");
 });
 
 /* ==================================================================== */

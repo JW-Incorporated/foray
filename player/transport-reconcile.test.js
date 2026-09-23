@@ -2018,6 +2018,26 @@ test("AUDIT: the steering wheel's next/previous appear when the page offers them
   restore();
 });
 
+test("REVIEW: the page's neighbours are asked about the episode that is NOW current", async (t) => {
+  /* app.js answers "next after what?" from `currentEpisodeId()`, and play()
+     installs the actions BEFORE `setNowPlaying` moves `current` — so the only
+     ask was about the PREVIOUS episode, and a skip wired from it would replay
+     or skip the wrong row. KILLING MUTATION: drop `reaskEpisodeNeighbours()`
+     from play(). */
+  const ms = fakeMediaSession();
+  const { client, restore } = await bootClient(t, { mediaSession: ms });
+  await client.play(episodeItem("ep-a"));
+  await settle();
+  const askedAbout = [];
+  client.setEpisodeNavigation({
+    get next() { askedAbout.push(client.currentEpisodeId()); return () => {}; },
+  });
+  await client.play(episodeItem("ep-b"));
+  await settle();
+  assert.equal(askedAbout[askedAbout.length - 1], "ep-b", "the last ask is about the episode on the bar");
+  restore();
+});
+
 /* ==================================================================== */
 /* part 6 — founder report 1 (2026-09-22): a resumed episode restarts     */
 /*          from a stale position                                        */

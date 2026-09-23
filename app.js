@@ -1797,7 +1797,12 @@ function queueIds() {
   return Array.isArray(ids) ? ids.filter(id => typeof id === "string" && id) : [];
 }
 
-function saveQueueIds(ids) { return lsSet("cp_queue", ids); }
+function saveQueueIds(ids) {
+  const ok = lsSet("cp_queue", ids);
+  /* Up Next changed, so the car's skip may have appeared or gone. */
+  refreshEpisodeNavigation();
+  return ok;
+}
 
 function isQueued(id) { return !!id && queueIds().includes(id); }
 
@@ -1965,9 +1970,14 @@ function queueRows() { return rowsForIds(queueIds()); }
      - UP NEXT FIRST. An episode that finishes leaves Up Next (Apple parity), and
        whatever is still in Up Next plays next. Without the removal, "Up Next
        first" would replay last week's finished list after any unrelated episode.
-     - ELSE THE LIST THE LISTENER CHOSE. bindPlay records the ordered row list a
-       play button sat in (`state.playList`), and the next row of it plays — the
-       rest of the show page, the rest of Saved, the rest of a playlist.
+     - THEN THE LIST THE LISTENER CHOSE. bindPlay records the ordered row list a
+       play button sat in (`state.playList`), and once Up Next has nothing
+       playable left, the next row of it plays — the rest of the show page, the
+       rest of Saved, the rest of a playlist. "Then", not "else" (review
+       2026-09-23): the two were exclusive, so anything queued ended the list
+       for good — queue [X], tap ep1 of a show, and after X nothing played.
+       The list resumes after `state.playListCursor`, the last row of it that
+       actually played, because the episode that just ended (X) is not in it.
      - AN UNPLAYABLE ROW IS PASSED OVER, not stopped at: stopping is the silence
        the ruling is about. liveEpisode() decides, so a show-page episode counts.
      - The end of both is the end. "And then more of what fits" — pulling in
@@ -2023,31 +2033,98 @@ function setInterludeOn(on) {
    anywhere that is not a row list (the mini bar, a Foray, Jump back in's own
    card) leaves a list that does not contain the new episode, so its end finds
    no position in it and stops — which is the honest answer for "no list". */
-function setPlayList(ids) {
+function setPlayList(ids, playedId = null) {
   const list = Array.isArray(ids) ? [...new Set(ids.filter(x => typeof x === "string" && x))] : [];
   state.playList = list.length ? list : null;
+  /* Where in the list we are, and which episode the chain is on. See
+     `planAfterEnded`: the list continues after the cursor only while the
+     episode ending is one this chain started. */
+  state.playListCursor = playedId && list.includes(playedId) ? playedId : null;
+  state.playChainId = playedId || null;
+  refreshEpisodeNavigation();
 }
 
-/** What plays after `finishedId`, or null. Pure apart from the Up Next removal,
-    which is the one write the decision implies. */
-function nextAfterEnded(finishedId) {
+function isPlayableId(id) { return Boolean(liveEpisode(id)?.audio_url); }
+
+/**
+ * What plays after `finishedId`, with no writes: `{ nextId, rest, fromList }`.
+ * `rest` is Up Next with the finished episode removed (or null when it was not
+ * queued) — the caller saves it. Shared by the end of an episode and by the
+ * steering wheel's skip, which must agree on what "next" is.
+ *
+ * UP NEXT FIRST, THEN THE LIST. The list continues only when the episode that
+ * ended belongs to this chain (`state.playChainId`: started by bindPlay from the
+ * list, or by an advance), so an episode started from somewhere with no list
+ * (a timestamp, the restored bar) does not resume a list from an earlier visit.
+ */
+function planAfterEnded(finishedId) {
   const queued = queueIds();
   const at = queued.indexOf(finishedId);
-  let candidates;
+  let rest = null;
+  let fromQueue;
   if (at >= 0) {
-    const rest = queued.filter(x => x !== finishedId);
-    saveQueueIds(rest);
+    rest = queued.filter(x => x !== finishedId);
     /* The row that took its place first, then anything above it the listener
        skipped past — every one of them is still unheard, or it would have left. */
-    candidates = rest.slice(at).concat(rest.slice(0, at));
-  } else if (queued.length) {
-    candidates = queued;
+    fromQueue = rest.slice(at).concat(rest.slice(0, at));
   } else {
-    const list = state.playList || [];
-    const i = list.indexOf(finishedId);
-    candidates = i >= 0 ? list.slice(i + 1) : [];
+    fromQueue = queued;
   }
-  return candidates.find(id => liveEpisode(id)?.audio_url) || null;
+  const queuedNext = fromQueue.find(isPlayableId);
+  if (queuedNext) return { nextId: queuedNext, rest, fromList: false };
+  const list = state.playList || [];
+  const onChain = Boolean(finishedId) && finishedId === state.playChainId;
+  const anchor = list.includes(finishedId) ? finishedId : (onChain ? state.playListCursor : null);
+  const i = anchor ? list.indexOf(anchor) : -1;
+  const listNext = i >= 0 ? list.slice(i + 1).find(isPlayableId) : null;
+  return { nextId: listNext || null, rest, fromList: Boolean(listNext) };
+}
+
+/** What plays after `finishedId`, or null. Applies the plan's one write (the
+    finished episode leaves Up Next) and moves the chain on to the pick. */
+function nextAfterEnded(finishedId) {
+  const plan = planAfterEnded(finishedId);
+  if (plan.rest) saveQueueIds(plan.rest);
+  if (plan.nextId) {
+    state.playChainId = plan.nextId;
+    if (plan.fromList) state.playListCursor = plan.nextId;
+  }
+  return plan.nextId;
+}
+
+/**
+ * The steering wheel's next/previous for an ordinary episode (review
+ * 2026-09-23). The player's surface asks `ForayPlayer.setEpisodeNavigation`'s
+ * object at the moment it installs the lock-screen actions, and nothing ever
+ * called it, so the car's skip stayed greyed out with a full Up Next. GETTERS,
+ * so every install reads the list as it is now: `next` exists exactly when
+ * `planAfterEnded` has something to play, and `previous` when the episode is a
+ * row of the chosen list with a playable row before it.
+ */
+const EPISODE_NAVIGATION = {
+  get next() {
+    const cur = window.ForayPlayer?.currentEpisodeId?.();
+    if (!cur || !planAfterEnded(cur).nextId) return null;
+    return () => playNextAfter(cur, "skip");
+  },
+  get previous() {
+    const cur = window.ForayPlayer?.currentEpisodeId?.();
+    const list = state.playList || [];
+    const i = cur ? list.indexOf(cur) : -1;
+    const prev = i > 0 ? list.slice(0, i).reverse().find(isPlayableId) : null;
+    if (!prev) return null;
+    return () => {
+      state.playChainId = prev;
+      state.playListCursor = prev;
+      return startChained(prev, "skip");
+    };
+  },
+};
+
+/** Tell the player the answer changed (a play, an Up Next edit), so the OS
+    re-reads EPISODE_NAVIGATION now rather than at the next play. */
+function refreshEpisodeNavigation() {
+  try { window.ForayPlayer?.setEpisodeNavigation?.(EPISODE_NAVIGATION); } catch (_) { /* best-effort */ }
 }
 
 /** Called from `ForayPlayer.onEpisodeEnded` (player/client.js) with the id of
@@ -2061,19 +2138,46 @@ function nextAfterEnded(finishedId) {
     episode. */
 function advanceQueueOnEnded(id) {
   if (!autoAdvanceOn()) return;
+  return playNextAfter(id, "autoadvance");
+}
+
+/** Play whatever follows `id` — the end of an episode, or the car's skip. */
+function playNextAfter(id, ctx) {
+  if (!window.ForayPlayer) return;
   const nextId = nextAfterEnded(id);
-  if (!nextId || !window.ForayPlayer) return;
+  refreshEpisodeNavigation();
+  if (!nextId) return;
+  return startChained(nextId, ctx);
+}
+
+function startChained(nextId, ctx) {
   const nextItem = liveEpisode(nextId);
-  window.ForayPlayer.play(nextItem, { why: whyFor(nextId, nextItem) }).then(ok => {
-    /* A chained play the browser refuses (autoplay policy is per element on
-       mobile) is already recorded by the player's own diagnostics as
-       `source: "autoplay"` (diagnostic-log.js); no new event type is logged
-       here, because every event type is a disclosure in the privacy policy. */
-    if (!ok) return;
-    logEvent("play_started", { episode_id: nextId, topics: nextItem.topics || [], ctx: "autoadvance" });
-    recordHistory(nextId);
-    trySyncEvents();
-  });
+  if (!nextItem || !window.ForayPlayer) return;
+  /* Called synchronously (the play belongs to this turn, as the end-of-episode
+     event's), with a synchronous throw folded into the same rejection path. */
+  let started;
+  try {
+    started = Promise.resolve(window.ForayPlayer.play(nextItem, { why: whyFor(nextId, nextItem) }));
+  } catch (err) {
+    started = Promise.reject(err);
+  }
+  return started
+    .then(ok => {
+      /* A chained play the browser refuses (autoplay policy is per element on
+         mobile) is already recorded by the player's own diagnostics as
+         `source: "autoplay"` (diagnostic-log.js); no new event type is logged
+         here, because every event type is a disclosure in the privacy policy. */
+      if (!ok) return;
+      logEvent("play_started", { episode_id: nextId, topics: nextItem.topics || [], ctx });
+      recordHistory(nextId);
+      trySyncEvents();
+    }, (err) => {
+      /* A THROW SAYS SO, as bindPlay's does (review 2026-09-23): this used to
+         be an unhandled rejection and a silent stop. */
+      console.warn("[4a] chained play failed", err);
+      try { window.ForayPlayer.reportPlayFailure?.(err); } catch (_) { /* the bar is best-effort */ }
+      noteTapFailure("start", err);
+    });
 }
 
 /* One row per saved part, in saved order, each tagged with what the live pool
@@ -4395,7 +4499,7 @@ function bindPlay(scope) {
       const listCtx = btn.dataset.ctx || null;
       setPlayList(listCtx
         ? [...scope.querySelectorAll("[data-play]")].filter(b => b.dataset.ctx === listCtx).map(b => b.dataset.play)
-        : [id]);
+        : [id], id);
       /* A PLAY THAT FAILS SAYS SO (persona audit #4, 2026-09-22). It used to be
          `if (!ok) return;` with no try at all: a refused play said nothing, and a
          throw out of `play()` was an unhandled rejection in an async listener —
@@ -13429,6 +13533,7 @@ async function init() {
     if (player && typeof player.onEpisodeEnded === "function") {
       player.onEpisodeEnded(advanceQueueOnEnded);
     }
+    refreshEpisodeNavigation();
   });
 
   $("#menu-btn").addEventListener("click", () => openDrawer($("#drawer").hidden));
