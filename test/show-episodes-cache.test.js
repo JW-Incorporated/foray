@@ -183,8 +183,16 @@ test("an unchanged refresh does not repaint", () => {
   /* Repainting on every refresh throws away scroll position and any "load more"
      pages already pulled in — turning a silent background refresh into a
      visible jump.
-     MUTATION: delete the `sameEpisodeList` early return. */
-  assert.match(SRC, /if \(cached && sameEpisodeList\(cached\.episodes, episodes\)\) return;/);
+     MUTATION: delete the `sameEpisodeList` early return.
+     2026-09-22 (audit qa 85): the branch now repaints the COUNT LABEL before
+     returning — the list stays put, but a stale "couldn't refresh" label must
+     not outlive a refresh that succeeded (test/async-identity.test.js owns
+     that). What this test pins is unchanged: the branch returns before the
+     list is repainted. */
+  const branch = /if \(cached && sameEpisodeList\(cached\.episodes, episodes\)\) \{[\s\S]*?\n    \}/.exec(SRC);
+  assert.ok(branch, "the unchanged-list branch is gone");
+  assert.match(branch[0], /return;/);
+  assert.doesNotMatch(branch[0], /paintEpisodeOutcome/, "an unchanged list must not be repainted");
 });
 
 test("the refresh caches what it fetched, before deciding whether to repaint", () => {
@@ -196,6 +204,6 @@ test("the refresh caches what it fetched, before deciding whether to repaint", (
      claim). Matched loosely on the prefix so adding a further field is not a
      test edit; what this test is about is the ORDER, below. */
   const idx = SRC.indexOf("cacheShowEpisodes(show.show_id, { episodes, nextCursor: nc, stale: !!stale");
-  const repaintIdx = SRC.indexOf("if (cached && sameEpisodeList(cached.episodes, episodes)) return;");
+  const repaintIdx = SRC.indexOf("if (cached && sameEpisodeList(cached.episodes, episodes)) {");
   assert.ok(idx > 0 && repaintIdx > idx, "the write happens first");
 });

@@ -21,6 +21,11 @@
  *  9. The Library screen is reachable — linked from the Playlists page
  *     (demoted off the drawer by the founder's later 5-item mandate; same
  *     precedent as Starred Shows).
+ * 10. Forays and Followed shows are Library sections (2026-09-22), the Forays
+ *     one claiming no count before the player can list them; the drawer and
+ *     the tab bar name #/shows the same.
+ * 11. The header ↻ refreshes the page it is pressed on and never navigates.
+ * 12. An Up Next reorder moves one row in place instead of rebuilding the list.
  *
  * Every test names the mutation that kills it, per CLAUDE.md "a green test
  * is not evidence until you have broken it".
@@ -357,4 +362,157 @@ test("Library stays reachable via the tab bar (the interim Playlists link is ret
   const lib = bar.children.find((a) => a.dataset.tabKey === "library");
   assert.ok(lib, "a library tab must exist");
   assert.strictEqual(lib.href, "#/library");
+});
+
+/* ==================================================================== */
+/* 10. FORAYS AND FOLLOWED SHOWS ARE LIBRARY SECTIONS (2026-09-22)       */
+/* ==================================================================== */
+
+/* Founder, 2026-09-22: "Forays into Library, no new tab". The tab bar lit
+   Library for every Foray page while Library listed no Forays, and followed
+   shows were reachable only from a row inside the Search page's browse
+   furniture (audit personas 32, 50, 76). */
+
+/** The least a Library render needs: an empty catalogue, as a fresh page has
+    before anything is saved. */
+function seedEmpty(m) {
+  m.state.session = { session_id: "s-1", episodes: {}, cards: [], commute: {} };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [] };
+}
+
+test("Library lists the Forays, linking each to its own page", () => {
+  /* MUTATION: drop the `libSection("Forays", …)` line from renderLibrary. */
+  const m = mount();
+  seedEmpty(m);
+  m.state.forays = { forays: [] };
+  m.ctx.window.ForayPlayer = {
+    listForays: () => [
+      { id: "capital-types-1", title: "What capital is", status: "published" },
+      { id: "draft-1", title: "A draft", status: "draft" },
+    ],
+    forayResumeList: () => [],
+  };
+  m.ctx.renderLibrary();
+  const html = m.view();
+  assert.ok(html.includes(">Forays<"), "a Forays section heading");
+  assert.ok(html.includes('href="#/foray/capital-types-1"'), "each Foray links to its page");
+  assert.ok(html.includes("What capital is"));
+});
+
+test("before the player has loaded, the Forays section offers the way in and claims no count", () => {
+  /* Loading is not empty (the three-state rule): "No forays" before the list
+     could be read would be a claim about the catalogue. MUTATION: return the
+     empty-state note when window.ForayPlayer is missing. */
+  const m = mount();
+  seedEmpty(m);
+  m.state.forays = { forays: [] };
+  m.ctx.renderLibrary();
+  const html = m.view();
+  assert.ok(html.includes('href="#/forays"'));
+  assert.ok(!html.includes("No forays"), "an unknown list is not an empty one");
+});
+
+test("Library lists the shows the listener follows, linking to each show", () => {
+  /* MUTATION: drop the `libSection("Followed shows", …)` line. */
+  const m = mount({ seed: { cp_starred_shows: JSON.stringify({
+    "s-1": { show_id: "s-1", title: "A Followed Show", artwork_url: null, starred_at: "2026-09-01" },
+  }) } });
+  seedEmpty(m);
+  m.state.catalog = { shows: [] };
+  m.ctx.renderLibrary();
+  const html = m.view();
+  assert.ok(html.includes(">Followed shows<"));
+  assert.ok(html.includes('href="#/show/s-1"'));
+  assert.ok(html.includes("A Followed Show"));
+});
+
+test("the drawer and the tab bar use one name for #/shows", () => {
+  /* The tab bar's names win (founder default R6). MUTATION: put "Shows" back in
+     index.html's drawer, or the page heading. */
+  const drawerName = /<a class="drawer-section" href="#\/shows">([^<]+)<\/a>/.exec(INDEX_HTML)[1];
+  const tabName = /\{ key: "search", label: "([^"]+)", hash: "#\/shows"/.exec(APP_SRC)[1];
+  assert.strictEqual(drawerName, tabName);
+  assert.match(APP_SRC, /renderShowIndexPage\("Search", /, "and the page's own heading agrees");
+});
+
+/* ==================================================================== */
+/* 11. THE HEADER ↻ REFRESHES THE PAGE YOU ARE ON                          */
+/* ==================================================================== */
+
+test("↻ on any page but Home re-renders that page in place and never navigates", () => {
+  /* Founder default R9 (audit personas 35, 54): it re-dealt Home and then set
+     `location.hash = "#/"` from wherever it was pressed. MUTATION: restore the
+     `else location.hash = "#/"` branch. */
+  const m = mount();
+  m.ctx.location.hash = "#/library";
+  let rendered = 0;
+  m.ctx.renderCurrentPage = () => { rendered++; };
+  m.ctx.scrollY = 0;
+  m.ctx.refreshCurrentPage();
+  assert.strictEqual(m.ctx.location.hash, "#/library", "the listener stays where they are");
+  assert.strictEqual(rendered, 1, "and the page is refreshed");
+  assert.match(INDEX_HTML, /id="refresh-btn" aria-label="Refresh this page"/, "its name says what it does");
+});
+
+test("↻ on Home still deals new suggestions", () => {
+  /* MUTATION: drop buildCards() from the Home branch. */
+  const m = mount();
+  m.ctx.location.hash = "#/";
+  let dealt = 0;
+  m.ctx.buildCards = () => { dealt++; };
+  m.ctx.renderCurrentPage = () => {};
+  m.ctx.refreshCurrentPage();
+  assert.strictEqual(dealt, 1);
+});
+
+/* ==================================================================== */
+/* 12. AN UP NEXT REORDER MOVES ONE ROW, NOT THE WHOLE LIST                */
+/* ==================================================================== */
+
+/** A list of three up-next rows, with just enough DOM for a row move. */
+function fakeQueueList() {
+  const list = { rows: [] };
+  const mk = (id) => {
+    const btn = (dir) => ({ dataset: dir < 0 ? { reorderUp: id } : { reorderDown: id }, disabled: false, focused: 0, focus() { this.focused++; } });
+    const r = {
+      id, parentNode: list, classList: { contains: (c) => c === "up-next-row" },
+      num: { textContent: "" }, up: btn(-1), down: btn(1),
+      get previousElementSibling() { return list.rows[list.rows.indexOf(this) - 1] || null; },
+      get nextElementSibling() { return list.rows[list.rows.indexOf(this) + 1] || null; },
+      querySelector(sel) {
+        if (sel === ".q-num") return this.num;
+        if (sel === "[data-reorder-up]") return this.up;
+        if (sel === "[data-reorder-down]") return this.down;
+        return null;
+      },
+    };
+    r.up.closest = r.down.closest = () => r;
+    return r;
+  };
+  list.rows = ["a", "b", "c"].map(mk);
+  list.insertBefore = (node, ref) => {
+    list.rows.splice(list.rows.indexOf(node), 1);
+    list.rows.splice(list.rows.indexOf(ref), 0, node);
+  };
+  list.querySelectorAll = () => list.rows;
+  return list;
+}
+
+test("moving an Up Next row moves that row, renumbers, and keeps focus — no full re-render", () => {
+  /* MUTATION: restore `renderQueue()` in the ↓ handler (or make
+     moveQueueRowInPlace always fall back) — the render count below becomes 1
+     and the rows do not move. */
+  const m = mount();
+  let renders = 0;
+  m.ctx.renderQueue = () => { renders++; };
+  const list = fakeQueueList();
+  const b = list.rows[1];
+  m.ctx.moveQueueRowInPlace(b.down, 1);
+  assert.deepStrictEqual(list.rows.map((r) => r.id), ["a", "c", "b"]);
+  assert.deepStrictEqual(list.rows.map((r) => r.num.textContent), ["1", "2", "3"]);
+  assert.strictEqual(b.down.disabled, true, "the row now last cannot move further down");
+  assert.strictEqual(list.rows[1].down.disabled, false);
+  assert.strictEqual(b.up.focused, 1, "focus moves to the arrow still usable, not to the body");
+  assert.strictEqual(renders, 0, "the list is not rebuilt under the thumb");
 });

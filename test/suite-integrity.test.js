@@ -274,7 +274,7 @@ const FLOORS = {
      needing a special case, and a deep link into a tab-owned route is a
      cold open like any other -- two more journeys added to the list this
      suite already existed to protect. */
-  "test/back-navigation.test.js": 11,
+  "test/back-navigation.test.js": 13, // 2026-09-22: the step comes from the real history entry (a forward tap onto the page two back; a reload keeps ‹) and a removed playlist is not one ‹ away; 11 -> 13
   /* Collapsing page header reappears on scroll-up (kanban t_0faae03f, same
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
@@ -292,7 +292,17 @@ const FLOORS = {
      reproduces the reported bug, and losing the back-step restore quietly
      ruins every deep browse instead — the failure mode that has no bug report
      because it feels like the app forgetting rather than like a defect. */
-  "test/route-scroll-position.test.js": 11,
+  "test/route-scroll-position.test.js": 14, // 2026-09-22: a tab tap onto the page two back starts at the top, and an async page's clamped restore lands at its terminal paint without filing the clamp; 11 -> 14
+  /* 2026-09-22, audit: the router's own rules — safe decoding on every param
+     route, one playlist-route spelling, a first route that throws cannot skip
+     init()'s wiring, a bare URL is #/, ?foray= enters once per tab, the current
+     tab scrolls to top, a show page reports its terminal paint. Two cells boot
+     the REAL init(). */
+  "test/router.test.js": 13, // 2026-09-22: + screen state in the address (subject queue for any branch, deterministic; the Search query; the in-show search); 8 -> 13
+  /* 2026-09-22, audit theme B: async work knows which page asked for it. The
+     harness answers a region selector with the SAME element across pages, as a
+     browser does — the forgiving fake would have hidden the show-A-into-B bug. */
+  "test/async-identity.test.js": 7,
   /* Where `api/*` actually lives, and the CSP entry that lets the client reach
      it. Floored because this is the suite standing between the app and a
      REGRESSION THAT LOOKS LIKE NOTHING: every caller degrades a failed api
@@ -312,8 +322,12 @@ const FLOORS = {
      that is REACHED. The two source-text cells guard the seam to
      `player/client.js`, where a rename would otherwise make the card silently go
      back to restarting episodes rather than throwing. */
-  "test/card-play-pause.test.js": 7,
-  "test/foray-ribbon-restore.test.js": 4, // 2026-09-22 audit (L2): new -- the ribbon asks for the Foray played last first, through the forayViewOpts() gate, and falls back to the episode pointer // 2026-09-22: new -- a card showing the pause glyph must pause, and the paused current item must resume rather than restart
+  "test/card-play-pause.test.js": 7, // 2026-09-22: new -- a card showing the pause glyph must pause, and the paused current item must resume rather than restart
+  "test/foray-ribbon-restore.test.js": 4, // 2026-09-22 audit (L2): new -- the ribbon asks for the Foray played last first, through the forayViewOpts() gate, and falls back to the episode pointer
+  /* 2026-09-22, audit theme A: "playable" means a snapshot with audio, not
+     curated-pool membership. ZERO SLACK: most cells reboot app.js over the same
+     storage to model a reload, which is the only place the defect lived. */
+  "test/playable-episodes.test.js": 12, // 2026-09-22: new -- Up Next, History, Saved, continuous playback, Open episode and #/show/pi: all survive a reload
   "test/jump-back-in-kinds.test.js": 18, // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
@@ -870,7 +884,7 @@ const FLOORS = {
      Also pins that Playlists/Up Next stay LINKED summaries rather than
      embedded row lists, and that no interpolated href on the page bypasses
      the in-app hash-route/safeUrl composition every other page uses. */
-  "test/library-screen.test.js": 11,
+  "test/library-screen.test.js": 18, // 2026-09-22: Forays and Followed shows are Library sections, one name for #/shows, the ↻ refreshes in place, an Up Next reorder moves one row; 11 -> 18
   /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
      three toggles' click handlers, plus the two real-navigation regression
      guards. */
@@ -882,7 +896,7 @@ const FLOORS = {
      of silent-wrong-behavior this repo's floors exist to catch, not a crash
      path any other suite would notice going missing. Every test names its
      mutation; see the suite header for the full list of what each pins. */
-  "test/up-next-autoadvance.test.js": 6,
+  "test/up-next-autoadvance.test.js": 11, // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
      t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
      wrong row set, a wrong slider range, or a drag that silently fails to
@@ -975,7 +989,7 @@ const FLOORS = {
      disabled-Foray control is a product promise (D8 — the pipeline exists,
      its key/segment pool don't) and each test is one line from silently
      no longer holding it. Every test names the mutation that kills it. */
-  "test/create-page.test.js": 8,
+  "test/create-page.test.js": 9, // 2026-09-22: a suggestion pill builds from one tap (persona 26); 8 -> 9
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   /* The icons are generated from tools/brand/4a-logo.png, and this suite is the

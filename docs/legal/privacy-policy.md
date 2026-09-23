@@ -91,7 +91,9 @@ The app also asks the browser to mark its storage as persistent
 | `cp_lastpick` | A snapshot of the last episode you picked | **No** (but marking it Done sends `finished` — §2) |
 | `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
-| `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; does not copy episode details, only the id | **No** |
+| `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; holds only the ids — the details it shows are in `cp_episode_snaps` | **No** |
+| `cp_episode_snaps` | A copy of the details of each episode in your Up Next list and your recent history — title, show name, length, publish date, artwork and audio addresses, topic ids and the first couple of sentences of its description — so those lists can still show and play an episode after the app reloads, including episodes from outside 4a's own catalogue. An episode is dropped from it once neither list names it any more | **No** |
+| `cp_shard_shows` | The last 50 shows from the wider podcast directory whose page you opened — title, publisher name and artwork address — so a link to one of them still opens after the app reloads | **No** |
 | `cp_starred_shows` | A per-device map of shows you starred from a show page — a lightweight favorite, separate from episode saves (`cp_saved`). No notifications, no auto-download, and starring a show never changes what 4a surfaces to you elsewhere | **No** |
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
 | `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in | **No** |
@@ -104,7 +106,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
 | `cp_show_drafts` | Whether the settings switch that lists unpublished (draft) forays on this device is on — a local per-device preference for testing them before they are published. Off by default | **No** |
 | `cp_voice_probe` | Whether the settings switch that offers the voice-engine measurement on this device is on — a local per-device preference used to test a bundled narration voice before it ships. Off by default; when it is off the control is not shown at all | **No** |
-| `cp_autoadvance` | Up Next auto-advance on/off — a local per-device preference for whether finishing an episode played from your Up Next list starts the next queued item. Off by default | **No** (but see `autoadvance_pref` in §2) |
+| `cp_autoadvance` | Continuous playback on/off — a local per-device preference for whether finishing an episode starts the next one: your Up Next list first, then the rest of the list you started from. On by default | **No** (but see `autoadvance_pref` in §2) |
 | `cp_intro_dismissed` | Whether you dismissed the intro card | **No** |
 | `cp_foray_feedback` | Your per-segment thumbs: direction, reason codes, any note you typed, timestamp | **Yes, via `thumbs`** — see §2 |
 | `cp_profile_id` | A random local id (e.g. `p-a1b2c3d4...`) generated on this device | **No** — it is stamped on local events but is **not** included in anything sent |
@@ -151,7 +153,7 @@ position; stored about every 15 seconds, recorded as an event at most once a
 minute per episode — `player/position-store.js:save()`), `foray_play`,
 `foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
 `unsaved`, `playlist_built`, `playlist_removed`, `player_pref`, `family_mode`,
-`autoadvance_pref` (toggling Up Next auto-advance on or off), `voice_pref`
+`autoadvance_pref` (toggling continuous playback on or off), `voice_pref`
 (choosing a narration voice — V-01), `refreshed_all`,
 `storage_fault`, `queued` and its counterpart `unqueued`
 (added to your Up Next list, or removed from it), `show_starred` and its

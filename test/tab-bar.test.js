@@ -221,14 +221,24 @@ test("the tab bar renders all four tabs in the mockup's order: Home, Search, Cre
 test("every route highlights exactly one tab, and it is the right one", () => {
   /* MUTATION: change tabForHash's Search branch to also match `#/library`
      (an overlapping regex). Both "search" and "library" would then read
-     current for a #/library hash and the "exactly one" assertion fails. */
+     current for a #/library hash and the "exactly one" assertion fails.
+     MUTATION 2: restore `shows$` (no `($|\/)`), or `return null` as the
+     fallback — the new #/shows/q/ and #/bogus rows fail. */
   const m = mount();
   const cases = [
     ["#/", "home"],
     ["#/shows", "search"],
     ["#/show/abc", "search"],
     ["#/category/tech", "search"],
-    ["#/starred-shows", "search"],
+    /* Followed shows moved into Library (R6, 2026-09-22), and every route
+       lights a tab: a browse pill's #/shows/q/, Interests, and anything the
+       router renders as Home (audit 2026-09-22). */
+    ["#/starred-shows", "library"],
+    ["#/shows/q/Science", "search"],
+    ["#/interests", "library"],
+    ["#", "home"],
+    ["", "home"],
+    ["#/bogus", "home"],
     ["#/episode/xyz", "search"],
     ["#/playlists", "create"],
     ["#/playlist/abc", "create"],
