@@ -235,7 +235,7 @@ test("all four pointer phases are bound on the sheet, and cancel springs back ra
       `the sheet must listen for ${phase}`
     );
   }
-  assert.match(FLAT_TEXT, /const endSheetDrag = \(\) => \{[\s\S]{0,200}?endDrag\(drag\)/);
+  assert.match(FLAT_TEXT, /const endSheetDrag = \((?:e)?\) => \{[\s\S]{0,200}?endDrag\(drag\)/);
   assert.match(FLAT_TEXT, /addEventListener\("pointerup", endSheetDrag\)/);
   const cancel = /addEventListener\("pointercancel",[\s\S]{0,200}?\}\);/.exec(FLAT_TEXT);
   assert.ok(cancel, "there must be a pointercancel handler to inspect");
@@ -335,4 +335,77 @@ test("an ordinary episode that fails to play says so on the bar and in the sheet
   // CLIENT, not CODE: the attribute values are string literals, which CODE blanks.
   assert.match(CLIENT, /err\.setAttribute\("role", "status"\);/, "the bar's line is a live region");
   assert.match(CLIENT, /reportPlayFailure\(err\) \{/, "app.js has a bridge to report a throw from its side");
+});
+
+/* ==================================================================== */
+/* AUDIT 2026-09-22: the sheet is a dialog, the bar is one target, one  */
+/* finger drives the drag, and Stop is not Close                         */
+/* ==================================================================== */
+
+test("the Now Playing sheet is a named, modal dialog", () => {
+  /* It covers the page from the topbar down and had no role, no name and no
+     focus move, so a screen reader kept exploring the hidden page behind it.
+     MUTATION: delete `sheet.setAttribute("role", "dialog")` -> red. */
+  assert.match(TEXT, /sheet\.setAttribute\("role", "dialog"\)/);
+  assert.match(TEXT, /sheet\.setAttribute\("aria-modal", "true"\)/);
+  assert.match(TEXT, /sheet\.setAttribute\("aria-labelledby", "fp-s-title"\)/);
+  assert.match(TEXT, /sTitle\.id = "fp-s-title"/, "the name must point at an element that exists");
+});
+
+test("opening and closing go through app.js's sheet owner, with the topbar left reachable", () => {
+  /* The owner is what moves focus in and back, makes the page inert, binds
+     Escape and derives the body lock (test/modal-and-focus.test.js exercises
+     it for real). This pins that the Now Playing sheet USES it, and that the
+     U-12/F17 invariant — the ☰ works at every moment — survives the inert.
+     MUTATION: drop `".topbar"` from keepReachable -> red (the ☰ would go
+     inert while the sheet is open). MUTATION: move `owner.closeSheet` below
+     `ui.sheet.hidden = !open` -> focus is handed back AFTER the sheet (and its
+     inert page) changed; the order assertion fails. */
+  const fn = /const setExpanded = \(open\) => \{[\s\S]*?\n  \};/.exec(TEXT);
+  assert.ok(fn, "setExpanded must exist");
+  const body = fn[0];
+  assert.match(body, /owner\.openSheet\(ui\.sheet, \{/);
+  assert.match(body, /keepReachable: \[[^\]]*"\.topbar"[^\]]*"#drawer"/);
+  assert.match(body, /onRequestClose: \(\) => setExpanded\(false\)/, "Escape and navigation collapse through the same path");
+  assert.ok(body.indexOf("owner.closeSheet(ui.sheet)") < body.indexOf("ui.sheet.hidden = !open;"),
+    "closing must release the owner before the sheet hides");
+  assert.match(TEXT, /window\.ForaySheets/, "the owner is read from app.js's published bridge");
+});
+
+test("Stop, pressed from inside the sheet, releases the owner too", () => {
+  /* MUTATION: delete the `owner.closeSheet(ui.sheet)` from stopAndClose -> the
+     page stays inert with no sheet on screen; red. */
+  const fn = /async function stopAndClose\([^)]*\) \{[\s\S]*?\n\}/.exec(TEXT);
+  assert.ok(fn);
+  assert.match(fn[0], /owner\.closeSheet\(ui\.sheet\)/);
+});
+
+test("tapping the mini bar's artwork opens the player, like the title beside it", () => {
+  /* The 40px artwork was an inert <img>. MUTATION: delete the `ui.art`
+     click listener -> red. */
+  assert.match(FLAT_TEXT, /ui\.art\.addEventListener\("click", \(\) => setExpanded\(ui\.sheet\.hidden\)\)/);
+});
+
+test("Stop and Close sit at opposite ends of the sheet's second row", () => {
+  /* They were neighbours, Stop in the middle, identical pills. The row is
+     space-between, so first and last are as far apart as the row allows.
+     MUTATION: restore `row2.append(rateBtn, openLink, forayLink, stopBtn, collapse)`. */
+  const m = /row2\.append\(([^)]*)\)/.exec(CODE);
+  assert.ok(m);
+  const order = m[1].split(",").map((x) => x.trim());
+  assert.strictEqual(order[0], "stopBtn", "Stop first");
+  assert.strictEqual(order[order.length - 1], "collapse", "Close last");
+});
+
+test("one finger drives the drag-to-dismiss; a second finger cannot restart or end it", () => {
+  /* A second pointerdown used to reset the origin to that finger, and a lift
+     of EITHER finger committed a dismiss nobody made. The Foray strip's own
+     gesture already filtered on pointerId; the sheet now does the same.
+     MUTATION: delete `if (dragPointer != null) return;` -> red. MUTATION: drop
+     the pointerId check from pointermove -> red. */
+  assert.match(FLAT_TEXT, /addEventListener\("pointerdown", \(e\) => \{ if \(ui\.sheet\.hidden\) return; if \(dragPointer != null\) return;/);
+  assert.match(FLAT_TEXT, /addEventListener\("pointermove", \(e\) => \{ if \(!drag \|\| e\.pointerId !== dragPointer\) return;/);
+  assert.match(FLAT_TEXT, /const endSheetDrag = \(e\) => \{ if \(!drag \|\| e\.pointerId !== dragPointer\) return;/);
+  const cancel = /addEventListener\("pointercancel", \(e\) => \{[\s\S]{0,120}?\}\);/.exec(FLAT_TEXT);
+  assert.ok(cancel && /e\.pointerId !== dragPointer/.test(cancel[0]), "pointercancel filters on the same finger");
 });

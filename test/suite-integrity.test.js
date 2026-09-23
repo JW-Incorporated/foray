@@ -220,7 +220,10 @@ const FLOORS = {
      tone, and that both themes' palettes clear 3:1. Every test names the
      mutation that kills it. */
   "player/segment-strip.test.js": 48, // 2026-09-22 audit theme L: `stripTally`, the Foray header's counts from the strip's own model — clips are tape, and an unmeasured duration makes the runtime an estimate; 46 -> 48 // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
-  "player/strip-scrub-gesture.test.js": 41,
+  /* 41 -> 45 (2026-09-22 audit, theme F): a vertical flick that starts on the
+     sticky strip ends as a SCROLL, never a zoom (it used to seek on release);
+     a sideways drag and a hold-then-drift still scrub. */
+  "player/strip-scrub-gesture.test.js": 45,
   /* Drag the Now Playing sheet down to dismiss it (founder report,
      2026-09-13). Same pure-state-machine shape as the scrub gesture above and
      floored for the same reason: the numbers ARE the product decision — how
@@ -233,8 +236,14 @@ const FLOORS = {
      attribute still hides it. A source-text suite (client.js builds DOM at
      import and cannot be loaded under node — see its own header), floored
      because a perfect gesture module wired to nothing passes every other test
-     in this repo. */
-  "player/now-playing-sheet.test.js": 18, // 2026-09-22 audit: emptied hook/timing paragraphs are hidden, and an ordinary episode that fails to play says so on the bar and in the sheet; 16 -> 18
+     in this repo.
+     16 -> 24 (2026-09-22 audit, merged): L5 -- emptied hook/timing paragraphs
+     are hidden, and an ordinary episode that fails to play says so on the bar
+     and in the sheet (+2); L3, themes E/F -- the sheet is a named modal dialog
+     opened through app.js's sheet owner with the topbar kept reachable, Stop
+     releases the owner, the artwork opens the player, Stop and Close sit at
+     opposite ends of their row, and one finger drives the drag (+6). */
+  "player/now-playing-sheet.test.js": 24,
   "player/seek-policy.test.js": 33,
   /* The wire between the page and on-device speech (#29). Floored with no
      slack, because what it holds down is a connection that was ABSENT for
@@ -278,7 +287,10 @@ const FLOORS = {
   /* Collapsing page header reappears on scroll-up (kanban t_0faae03f, same
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
-  "test/collapsing-header-scroll.test.js": 6,
+  /* 6 -> 8 (2026-09-22 audit, theme I): the reappearing header publishes its
+     height, and styles.css pins the Foray transport beneath a SHOWING header
+     instead of behind it. */
+  "test/collapsing-header-scroll.test.js": 8,
   /* The onboarding sheet mounts once per VISIT, not once per persisted flag
      (found 2026-09-13 by the Playwright drawer spec: two `#first-time-sheet`
      nodes, duplicate ids, three-minute click timeouts behind them). Floored
@@ -450,8 +462,26 @@ const FLOORS = {
      counting line, the voiceFallback notice, and close controls. Same split
      as diagnostics-surface.test.js: `player/queue-manager.test.js` covers
      the manager's own voice logic in isolation; this is the app.js surface
-     nothing else can see. */
-  "test/voice-settings.test.js": 20, // 2026-09-22 (audit qa row 81): the voices are one named radio group with one tab stop and arrow keys; floor raised to the live count, 11 -> 20
+     nothing else can see.
+     11 -> 22 (2026-09-22 audit, merged): the floor had drifted to eleven under
+     a nineteen-test suite; L4 added the one-radio-group cell (qa row 81) and L3
+     the two "a rebuild must not throw focus out of the sheet" cells. Set to the
+     post-merge count. */
+  "test/voice-settings.test.js": 22,
+  /* Theme F of the 2026-09-22 audit: tap targets sized by a RULE. Enumerates
+     every control the audit measured below 44px and requires a 44px hit area
+     by size or by the one `:where(...)::after` rule, checks that rule's shape,
+     and pins the gesture findings (the strip's vertical flick, the scrubber's
+     touch-action, the double home-indicator inset, Stop vs Close, hover vs
+     playing). Sixteen tests, each mutation-checked red. */
+  "test/tap-targets.test.js": 16,
+  /* Theme E of the same audit: ONE owner for "a modal is open" — focus in and
+     back, `inert`, Tab trap, Escape, one instance, the body lock derived from
+     what is open (the back-gesture scroll-lock leak) — plus focus and the
+     thumb surviving Up Next's rebuild, and the strip's click suppression.
+     Seventeen tests over a small DOM with real parent links and focus, each
+     mutation-checked red. */
+  "test/modal-and-focus.test.js": 17,
   /* S-08's mechanical privacy tripwire: SHOWS_SEARCH_OFF_DEVICE flag detection
      (source and env), the pinned current-sentence check, the core AND-gate
      that fails release builds only when the flag is on AND the old sentence
@@ -644,7 +674,10 @@ const FLOORS = {
      across these five tests were run and all six went red. A review round then
      found four MORE wrong stylesheets the first draft passed — see that file's
      header for what each of them broke and which line now stops it. */
-  "test/home-layout.test.js": 6, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
+  /* 6 -> 8 (2026-09-22 audit): Home v2's element no longer inherits `.home`'s
+     one-screen floor through its second class (it always scrolled by the tab
+     bar's height), and a stretch card's bridge line is a row of its own. */
+  "test/home-layout.test.js": 8, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
 
   /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
      (kanban card t_567b570f): renders the curated pool synchronously so
@@ -913,7 +946,7 @@ const FLOORS = {
      Also pins that Playlists/Up Next stay LINKED summaries rather than
      embedded row lists, and that no interpolated href on the page bypasses
      the in-app hash-route/safeUrl composition every other page uses. */
-  "test/library-screen.test.js": 18, // 2026-09-22: Forays and Followed shows are Library sections, one name for #/shows, the ↻ refreshes in place, an Up Next reorder moves one row; 11 -> 18
+  "test/library-screen.test.js": 17, // 2026-09-22: Forays and Followed shows are Library sections, one name for #/shows, the ↻ refreshes in place; 11 -> 17 (L1's in-place Up Next reorder cell went at integration: L3's afterQueueMove fixes the same finding and is pinned in test/modal-and-focus.test.js)
   /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
      three toggles' click handlers, plus the two real-navigation regression
      guards. */
@@ -991,8 +1024,15 @@ const FLOORS = {
      the nine tokens' names+values, the "no raw hex leaks outside the block"
      mutation guard, the amber/violet consumption check, and the self-hosted
      font-src proof. Zero slack: each one guards a distinct way the token
-     system could quietly stop being a token system. */
-  "test/ui-tokens.test.js": 4,
+     system could quietly stop being a token system.
+     4 -> 8 (2026-09-22 audit, theme I): the four above enumerate what v2
+     ADDED, and passed while five v1 tokens leaked onto every v2 page on a
+     phone set to Light. The new four enumerate what live rules READ (every
+     name owned by body.ui-v2, component-scoped, JS-written or structural),
+     re-own everything a colour-scheme query can change, check the JS-written
+     claim, and resolve the cascade for "Delete everything" to the danger
+     token. */
+  "test/ui-tokens.test.js": 8,
   /* U-02 (docs/ui-transition-plan.md, kanban t_806e5d01): the cp_ui_v2 flag
      and the four-tab bar shell. Eleven tests -- off by default, all four
      tabs in order when on, removed (not hidden) when turned back off, the

@@ -399,6 +399,11 @@ test("the retired ui-v2 flag leaves nothing behind, and the ui-v2 class stays", 
   }
   const m = await mountBooted();
   assert.ok(!m.findById("ui2-toggle"), "no element, and nothing trying to remove one");
+  /* A fresh profile boots with the first-run explainer OPEN, and since
+     2026-09-22 the modal lock is derived from the sheets actually open (the
+     sheet owner), so `fy-sheet-open` would rightly be on the body here. Close
+     them first: this test is about ui-v2 and nothing else. */
+  m.ctx.closeAllSheets();
   m.ctx.setBodyClass("home");
   assert.strictEqual(m.body.className, "home ui-v2", "the class styles.css needs is untouched");
 });

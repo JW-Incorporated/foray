@@ -466,53 +466,7 @@ test("↻ on Home still deals new suggestions", () => {
   assert.strictEqual(dealt, 1);
 });
 
-/* ==================================================================== */
-/* 12. AN UP NEXT REORDER MOVES ONE ROW, NOT THE WHOLE LIST                */
-/* ==================================================================== */
-
-/** A list of three up-next rows, with just enough DOM for a row move. */
-function fakeQueueList() {
-  const list = { rows: [] };
-  const mk = (id) => {
-    const btn = (dir) => ({ dataset: dir < 0 ? { reorderUp: id } : { reorderDown: id }, disabled: false, focused: 0, focus() { this.focused++; } });
-    const r = {
-      id, parentNode: list, classList: { contains: (c) => c === "up-next-row" },
-      num: { textContent: "" }, up: btn(-1), down: btn(1),
-      get previousElementSibling() { return list.rows[list.rows.indexOf(this) - 1] || null; },
-      get nextElementSibling() { return list.rows[list.rows.indexOf(this) + 1] || null; },
-      querySelector(sel) {
-        if (sel === ".q-num") return this.num;
-        if (sel === "[data-reorder-up]") return this.up;
-        if (sel === "[data-reorder-down]") return this.down;
-        return null;
-      },
-    };
-    r.up.closest = r.down.closest = () => r;
-    return r;
-  };
-  list.rows = ["a", "b", "c"].map(mk);
-  list.insertBefore = (node, ref) => {
-    list.rows.splice(list.rows.indexOf(node), 1);
-    list.rows.splice(list.rows.indexOf(ref), 0, node);
-  };
-  list.querySelectorAll = () => list.rows;
-  return list;
-}
-
-test("moving an Up Next row moves that row, renumbers, and keeps focus — no full re-render", () => {
-  /* MUTATION: restore `renderQueue()` in the ↓ handler (or make
-     moveQueueRowInPlace always fall back) — the render count below becomes 1
-     and the rows do not move. */
-  const m = mount();
-  let renders = 0;
-  m.ctx.renderQueue = () => { renders++; };
-  const list = fakeQueueList();
-  const b = list.rows[1];
-  m.ctx.moveQueueRowInPlace(b.down, 1);
-  assert.deepStrictEqual(list.rows.map((r) => r.id), ["a", "c", "b"]);
-  assert.deepStrictEqual(list.rows.map((r) => r.num.textContent), ["1", "2", "3"]);
-  assert.strictEqual(b.down.disabled, true, "the row now last cannot move further down");
-  assert.strictEqual(list.rows[1].down.disabled, false);
-  assert.strictEqual(b.up.focused, 1, "focus moves to the arrow still usable, not to the body");
-  assert.strictEqual(renders, 0, "the list is not rebuilt under the thumb");
-});
+/* 12. The Up Next reorder cell that lived here went at integration
+   (2026-09-22): L1 and L3 fixed the same finding, and L3's afterQueueMove
+   (focus, thumb position and an announcement, shared with remove) was kept.
+   It is pinned in test/modal-and-focus.test.js. */

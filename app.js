@@ -795,7 +795,8 @@ function isNativeShell(win = window) {
                    viewport events. THE ONE THAT MATTERS HERE.
      fp-open       the mini-player, for as long as something is playing.
      fp-expanded   the Now Playing sheet, for as long as it is open.
-     fy-sheet-open the modal sheets, for as long as one is open.
+     fy-sheet-open the modal sheets, for as long as one is open — now DERIVED
+                   from the sheet owner rather than carried (see below).
 
    WHY kb-open IS THE INTERESTING ONE. installKeyboardChrome writes TWO
    things from one evaluation: this class on <body>, and `--kb-inset` on
@@ -827,12 +828,20 @@ function isNativeShell(win = window) {
    reservation on every other screen in the app. The test for membership is
    not "is this class important" but "does this class describe something that
    is still true after the page underneath it changed". */
-const PERSISTENT_BODY_CLASSES = ["kb-open", "fp-open", "fp-expanded", "fy-sheet-open"];
+const PERSISTENT_BODY_CLASSES = ["kb-open", "fp-open", "fp-expanded"];
 
+/* `fy-sheet-open` LEFT THIS LIST (audit 2026-09-22). Carrying it forward
+   because it was THERE is how a back gesture over the Foray feedback sheet —
+   which lives inside #view and dies with the render — left `overflow: hidden`
+   on <body> with no sheet on screen. The modal lock is now a function of the
+   sheet owner's stack (`sheetBodyClasses()`, which first drops any sheet whose
+   element has left the document): a render keeps it exactly while a sheet is
+   actually open. */
 function setBodyClass(base) {
   const body = document.body;
   const kept = PERSISTENT_BODY_CLASSES.filter((c) => body.classList.contains(c));
-  body.className = [base, "ui-v2", ...kept].join(" ");
+  const modal = typeof sheetBodyClasses === "function" ? sheetBodyClasses() : [];
+  body.className = [...new Set([base, "ui-v2", ...kept, ...modal])].join(" ");
 }
 
 /* ---------- loading / failed / empty: ONE convention (audit theme G, 2026-09-22) ----------
@@ -4689,6 +4698,282 @@ const PREFS_CHIP_IDS = [
     Both steps' exits set the SAME cp_intro_dismissed flag showIntroPopupOnce()
     already uses, so this flow and the older popup can never both show on the
     same visit and neither shows again after. */
+/* ---------- ONE OWNER FOR "A MODAL IS OPEN" (audit 2026-09-22, theme E) ----------
+
+   Before this, nothing in the app owned the question. Eight sheets — the
+   first-run explainer, the intro popup, the Foray feedback sheet, both speed
+   pickers, Delete my data, Narration voice, Playback diagnostics — each
+   declared `role="dialog"` + `aria-modal="true"` and then implemented none of
+   what those attributes promise: focus stayed behind the scrim, Tab walked the
+   covered page, Escape did nothing, and a screen reader kept reading the page
+   underneath. Each one also wrote `body.fy-sheet-open` with its own add/remove
+   pair, so the Foray speed menu could stack two copies (and one Cancel took the
+   lock off with a sheet still up), and a back gesture over the feedback sheet —
+   which lives inside #view and dies with it — left `overflow: hidden` on
+   <body> with no sheet on screen. The full-screen Now Playing sheet had no
+   dialog semantics at all.
+
+   The fix the audit asked for, at the level the defect is at: ONE owner, and
+   every sheet opens and closes through it.
+
+     openSheet(wrap, opts)  remember what had focus; take the rest of the page
+                            out of reach (`inert` on every sibling up the tree
+                            from the sheet, except `keepReachable`); move focus
+                            into the panel; keep Tab inside it; route Escape to
+                            the sheet's own close; single instance per element
+                            and per id; derive the body class from the stack.
+     closeSheet(wrap)       undo exactly what open did, hand focus back, and
+                            re-derive the body class. Idempotent.
+     closeAllSheets() /     ASK each sheet to close through its own handler (a
+     closeSheetsWithin(el)  sheet may refuse — Delete my data never vanishes
+                            mid-delete), for navigation and for a page render
+                            that is about to destroy the sheet's DOM.
+
+   THE BODY CLASS IS A FUNCTION OF THE STACK, not a flag toggled by eight
+   callers. `setBodyClass()` asks `sheetBodyClasses()` instead of carrying
+   `fy-sheet-open` forward blindly, and an entry whose element has left the
+   document is dropped first — so a sheet that died with #view can no longer
+   leave the page scroll-locked.
+
+   `--kb-inset` is the other half of theme E and lives in styles.css: every
+   `.fy-panel` sits on the keyboard's top edge, so a sheet with a text field
+   (feedback note, "Type DELETE") is no longer stranded behind it.
+
+   Focus goes to the PANEL, not its first control: the panel carries the
+   dialog's name, so a screen reader announces the dialog, and focusing a text
+   field would throw a soft keyboard over the sheet the instant it opened.
+
+   player/client.js is an ES module and cannot import from this classic
+   script, so the owner is published as `window.ForaySheets` for the Now
+   Playing sheet and the mini player's speed picker. app.js runs first (the
+   module is deferred), so it is always there by the time either can open. */
+const SHEET_FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const sheetStack = [];
+const sheetManagedClasses = new Set(["fy-sheet-open"]);
+let sheetKeysBound = false;
+
+function sheetIsLive(entry) {
+  /* `isConnected` is undefined on the node:vm DOM stubs several suites use;
+     only an explicit `false` means the element has left the document. */
+  return !!entry && !!entry.wrap && entry.wrap.isConnected !== false;
+}
+
+function sheetFocusables(root) {
+  if (!root || typeof root.querySelectorAll !== "function") return [];
+  return [...root.querySelectorAll(SHEET_FOCUSABLE)].filter(
+    (el) => !el.hidden && !(typeof el.closest === "function" && el.closest("[hidden]")),
+  );
+}
+
+function focusQuietly(el) {
+  if (!el || typeof el.focus !== "function") return;
+  try { el.focus({ preventScroll: true }); } catch (_) { /* a detached node */ }
+}
+
+/* Every sibling of the sheet, and of each of its ancestors up to <body>, is
+   taken out of reach — the page, the tab bar, the mini player, another sheet
+   underneath. `inert` (not only `aria-hidden`) because it removes pointer AND
+   keyboard AND assistive-technology access in one attribute. Only elements
+   this call actually changed are recorded, so closing restores exactly what
+   opening did and never un-inerts something another sheet still needs. */
+function inertOutside(wrap, keepReachable) {
+  const changed = [];
+  const keep = (el) => keepReachable.some((sel) => typeof el.matches === "function" && el.matches(sel));
+  let node = wrap;
+  while (node && node.parentElement && node !== document.body) {
+    const parent = node.parentElement;
+    for (const sib of [...(parent.children || [])]) {
+      if (sib === node || keep(sib)) continue;
+      const tag = String(sib.tagName || "").toUpperCase();
+      if (tag === "SCRIPT" || tag === "STYLE") continue;
+      if (typeof sib.hasAttribute === "function" && sib.hasAttribute("inert")) continue;
+      if (typeof sib.setAttribute !== "function") continue;
+      sib.setAttribute("inert", "");
+      changed.push(sib);
+    }
+    node = parent;
+  }
+  return changed;
+}
+
+function releaseInert(entry) {
+  for (const el of entry.inerted) {
+    if (typeof el.removeAttribute === "function") el.removeAttribute("inert");
+  }
+  entry.inerted = [];
+}
+
+/** Drop entries whose element has left the document (a sheet that lived in
+    #view and died with a render), releasing what they held. */
+function pruneDeadSheets() {
+  for (let i = sheetStack.length - 1; i >= 0; i--) {
+    if (sheetIsLive(sheetStack[i])) continue;
+    releaseInert(sheetStack[i]);
+    sheetStack.splice(i, 1);
+  }
+}
+
+/** The body classes the open sheets imply. Read by setBodyClass(), so a page
+    render keeps a lock that is still true and drops one that is not. */
+function sheetBodyClasses() {
+  pruneDeadSheets();
+  return [...new Set(sheetStack.map((s) => s.bodyClass))];
+}
+
+function syncSheetBodyClasses() {
+  const want = new Set(sheetBodyClasses());
+  for (const cls of sheetManagedClasses) document.body.classList.toggle(cls, want.has(cls));
+}
+
+function onSheetKeydown(e) {
+  pruneDeadSheets();
+  const top = sheetStack[sheetStack.length - 1];
+  if (!top) return;
+  if (e.key === "Escape" || e.key === "Esc") {
+    e.preventDefault();
+    top.requestClose();
+    return;
+  }
+  if (e.key !== "Tab") return;
+  /* The trap is belt and braces behind `inert`: a WebView without `inert`
+     support still keeps Tab inside the dialog. */
+  const items = sheetFocusables(top.panel);
+  const active = document.activeElement;
+  const inside = !!(active && typeof top.panel.contains === "function" && top.panel.contains(active));
+  if (!items.length) { e.preventDefault(); focusQuietly(top.panel); return; }
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (e.shiftKey && (!inside || active === first || active === top.panel)) {
+    e.preventDefault(); focusQuietly(last);
+  } else if (!e.shiftKey && (!inside || active === last)) {
+    e.preventDefault(); focusQuietly(first);
+  }
+}
+
+/**
+ * Open `wrap` as THE modal. Returns its stack entry.
+ * @param {Element} wrap  the sheet's outermost element (`.fy-sheet`, or the
+ *   Now Playing `.fp-sheet`); appended to <body> if it is not in the document.
+ * @param {object} [opts]
+ * @param {Element} [opts.panel]  what focus goes to and Tab cycles within;
+ *   default the `[role="dialog"]` inside `wrap`, else `wrap`.
+ * @param {Function} [opts.onRequestClose]  what Escape / navigation call — the
+ *   sheet's OWN close, which must end in closeSheet(wrap). Default: closeSheet.
+ * @param {string} [opts.bodyClass]  the body lock this sheet implies.
+ * @param {string[]} [opts.keepReachable]  selectors left out of `inert`.
+ * @param {Element} [opts.returnFocus]  where focus goes on close when the
+ *   element that opened the sheet is gone.
+ */
+function openSheet(wrap, opts = {}) {
+  if (!wrap) return null;
+  pruneDeadSheets();
+  const already = sheetStack.find((s) => s.wrap === wrap);
+  if (already) return already;
+  /* SINGLE INSTANCE BY ID: a second, different element claiming the same id
+     (the Foray speed menu, built fresh on each open) replaces the first
+     rather than stacking over it with duplicate ids. */
+  if (wrap.id) {
+    const twin = sheetStack.find((s) => s.wrap.id === wrap.id);
+    if (twin) closeSheet(twin.wrap, { removeIfOwned: true });
+  }
+  if (wrap.isConnected === false || !wrap.parentElement) document.body.appendChild(wrap);
+  if (!sheetKeysBound && typeof document.addEventListener === "function") {
+    document.addEventListener("keydown", onSheetKeydown);
+    sheetKeysBound = true;
+  }
+  const panel = opts.panel
+    || (typeof wrap.querySelector === "function" && wrap.querySelector('[role="dialog"]'))
+    || wrap;
+  const entry = {
+    wrap, panel,
+    requestClose: typeof opts.onRequestClose === "function" ? opts.onRequestClose : () => closeSheet(wrap),
+    bodyClass: opts.bodyClass || "fy-sheet-open",
+    opener: document.activeElement || null,
+    returnFocus: opts.returnFocus || null,
+    inerted: [],
+  };
+  sheetManagedClasses.add(entry.bodyClass);
+  wrap.hidden = false;
+  entry.inerted = inertOutside(wrap, opts.keepReachable || []);
+  sheetStack.push(entry);
+  syncSheetBodyClasses();
+  if (typeof panel.getAttribute === "function" && panel.getAttribute("tabindex") == null
+      && typeof panel.setAttribute === "function") {
+    panel.setAttribute("tabindex", "-1");
+  }
+  focusQuietly(panel);
+  return entry;
+}
+
+/** Close `wrap` if the owner holds it: lift what open did, hide it, hand focus
+    back. Sheets above it close first — they were opened over it. Returns
+    whether anything was open. `removeIfOwned` also removes the element (for
+    sheets built fresh on each open). */
+function closeSheet(wrap, { removeIfOwned = false } = {}) {
+  const i = sheetStack.findIndex((s) => s.wrap === wrap);
+  if (i === -1) return false;
+  while (sheetStack.length - 1 > i) closeSheet(sheetStack[sheetStack.length - 1].wrap);
+  const [entry] = sheetStack.splice(i, 1);
+  releaseInert(entry);
+  wrap.hidden = true;
+  if (removeIfOwned && typeof wrap.remove === "function") wrap.remove();
+  syncSheetBodyClasses();
+  const back = [entry.opener, entry.returnFocus].find(
+    (el) => el && el.isConnected !== false && typeof el.focus === "function" && el !== document.body,
+  );
+  focusQuietly(back);
+  return true;
+}
+
+/** Ask every open sheet to close through its own handler, top first. A sheet
+    that declines (Delete my data while it is deleting) stays. */
+function closeAllSheets() {
+  pruneDeadSheets();
+  for (const entry of [...sheetStack].reverse()) {
+    if (sheetStack.includes(entry)) entry.requestClose();
+  }
+}
+
+/** The sheets living inside `root` — asked to close before a render replaces
+    it, so the owner's stack and the body lock never outlive their DOM. */
+function closeSheetsWithin(root) {
+  if (!root || typeof root.contains !== "function") return;
+  for (const entry of [...sheetStack].reverse()) {
+    if (!sheetStack.includes(entry) || !root.contains(entry.wrap)) continue;
+    entry.requestClose();
+    if (sheetStack.includes(entry)) closeSheet(entry.wrap); // its DOM is about to go regardless
+  }
+}
+
+/** Say something to a screen reader without moving focus: one polite live
+    region, created once on <body> OUTSIDE #view — a region inside #view is
+    replaced by the very render whose result it is meant to announce, and a
+    region that is new in the DOM is often not read at all. Cleared first so
+    the same sentence twice ("Moved to position 2 of 5.") is still a change. */
+function announce(text) {
+  let region = $("#a11y-status");
+  if (!region) {
+    region = document.createElement("p");
+    region.id = "a11y-status";
+    region.className = "sr-only";
+    region.setAttribute("role", "status");
+    region.setAttribute("aria-live", "polite");
+    document.body.appendChild(region);
+  }
+  region.textContent = "";
+  const say = () => { region.textContent = String(text || ""); };
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(say); else say();
+}
+
+function openSheetCount() {
+  pruneDeadSheets();
+  return sheetStack.length;
+}
+
+if (typeof window !== "undefined") {
+  window.ForaySheets = { openSheet, closeSheet, closeAllSheets, openSheetCount };
+}
+
 /* ---------- ONCE MEANS ONCE, INCLUDING WITHIN A SINGLE VISIT ----------
 
    Both `…Once` functions below guarded only on PERSISTED state — "is this a
@@ -4752,14 +5037,14 @@ function showFirstTimeExplainerOnce() {
   panel.append(body);
 
   wrap.append(scrim, panel);
-  document.body.appendChild(wrap);
-  document.body.classList.add("fy-sheet-open");
 
+  /* Escape and a navigation away both mean "not now" — the same Skip the
+     buttons offer — so they route through `dismiss`, not a bare close. */
   const dismiss = () => {
     lsSet("cp_intro_dismissed", true);
-    wrap.remove();
-    document.body.classList.remove("fy-sheet-open");
+    closeSheet(wrap, { removeIfOwned: true });
   };
+  openSheet(wrap, { panel, onRequestClose: dismiss });
   scrim.addEventListener("click", dismiss);
 
   /* Live SegmentStrip illustration for the second value prop — reads off
@@ -4962,14 +5247,12 @@ function showIntroPopupOnce() {
 
   panel.append(grab, title, sub, actions);
   wrap.append(scrim, panel);
-  document.body.appendChild(wrap);
-  document.body.classList.add("fy-sheet-open");
 
   const dismiss = () => {
     lsSet("cp_intro_dismissed", true);
-    wrap.remove();
-    document.body.classList.remove("fy-sheet-open");
+    closeSheet(wrap, { removeIfOwned: true });
   };
+  openSheet(wrap, { panel, onRequestClose: dismiss });
   scrim.addEventListener("click", dismiss);
   ok.addEventListener("click", dismiss);
 }
@@ -8011,35 +8294,53 @@ function upNextRow(r, idx, total) {
   </div>`;
 }
 
-/* A REORDER MOVES ONE ROW, NOT THE PAGE (audit 2026-09-22). Each ↑/↓ used to
-   call renderQueue(), rebuilding the whole list under the thumb: focus was
-   lost, every row was replaced, and a second tap aimed at the same arrow landed
-   on whatever the rebuild had put there. The stored order has already changed
-   (moveQueueItem); this makes the screen agree by moving the one row past its
-   neighbour and renumbering, and keeps focus on the arrow that was pressed.
-   Anything it cannot find (a row that is not where the markup puts it) falls
-   back to the full render, which is always correct, only rougher. */
-function moveQueueRowInPlace(btn, dir) {
-  const row = btn && typeof btn.closest === "function" ? btn.closest(".up-next-row") : null;
-  const list = row && row.parentNode;
-  const other = row && (dir < 0 ? row.previousElementSibling : row.nextElementSibling);
-  if (!list || !other || !other.classList || !other.classList.contains("up-next-row")) { renderQueue(); return; }
-  if (dir < 0) list.insertBefore(row, other);
-  else list.insertBefore(other, row);
-  const rows = [...list.querySelectorAll(".up-next-row")];
-  rows.forEach((r, i) => {
-    const num = r.querySelector(".q-num");
-    if (num) num.textContent = String(i + 1);
-    const up = r.querySelector("[data-reorder-up]");
-    const down = r.querySelector("[data-reorder-down]");
-    if (up) up.disabled = i === 0;
-    if (down) down.disabled = i === rows.length - 1;
-  });
-  /* If the arrow just pressed is now disabled (the row reached an end), focus
-     would fall to the body; its twin is the useful place to leave it. */
-  const twin = row.querySelector(dir < 0 ? "[data-reorder-down]" : "[data-reorder-up]");
-  const target = btn.disabled && twin ? twin : btn;
-  if (typeof target.focus === "function") target.focus();
+/* AFTER A REORDER OR A REMOVE, THE LISTENER IS STILL WHERE THEY WERE (audit
+   2026-09-22: two a11y findings and a persona, one cause). Every press used to
+   end in `renderQueue()` and nothing else: the pressed button was destroyed, so
+   focus fell to <body> and a keyboard or screen-reader user had to tab in from
+   the top of the document for every single step; nothing announced the new
+   position; and on a phone the row moved out from under the thumb, so the ↑
+   now under it belonged to the episode that had just moved DOWN — three fast
+   taps shuffled three different episodes one place each.
+
+   The render stays (it is the honest way to repaint a reordered list); what
+   follows it is new. Focus goes to the same episode's button in its new row
+   (the other arrow once it reaches an end, where its own is disabled), the
+   page scrolls by exactly how far that button moved so it lands back under
+   the finger, and the new position is announced. A remove focuses the ✕ of
+   the row that took its place. */
+function queueButtonFor(attr, id) {
+  const view = $("#view");
+  if (!view) return null;
+  return [...view.querySelectorAll(`[${attr}]`)].find((b) => b.getAttribute(attr) === id) || null;
+}
+
+function buttonTop(btn) {
+  if (!btn || typeof btn.getBoundingClientRect !== "function") return null;
+  const r = btn.getBoundingClientRect();
+  return r && Number.isFinite(r.top) ? r.top : null;
+}
+
+function afterQueueMove(id, dir, topBefore) {
+  const ids = queueIds();
+  const pos = ids.indexOf(id) + 1;
+  const same = dir < 0 ? "data-reorder-up" : "data-reorder-down";
+  const other = dir < 0 ? "data-reorder-down" : "data-reorder-up";
+  let target = queueButtonFor(same, id);
+  if (!target || target.disabled) target = queueButtonFor(other, id);
+  const topAfter = buttonTop(target);
+  if (topBefore != null && topAfter != null && topAfter !== topBefore && typeof window.scrollBy === "function") {
+    window.scrollBy(0, topAfter - topBefore);
+  }
+  focusQuietly(target);
+  if (pos > 0) announce(`Moved to position ${pos} of ${ids.length}.`);
+}
+
+function afterQueueRemove(index) {
+  const view = $("#view");
+  const left = view ? [...view.querySelectorAll("[data-dequeue]")] : [];
+  focusQuietly(left[Math.min(index, left.length - 1)] || (view && view.querySelector("h2")));
+  announce(left.length ? "Removed from Up Next." : "Removed from Up Next. Up Next is empty.");
 }
 
 function bindUpNextReorder(scope) {
@@ -8048,8 +8349,11 @@ function bindUpNextReorder(scope) {
     btn._bound = true;
     btn.addEventListener("click", (e) => {
       e.preventDefault(); e.stopPropagation();
-      moveQueueItem(btn.dataset.reorderUp, -1);
-      moveQueueRowInPlace(btn, -1);
+      const id = btn.dataset.reorderUp;
+      const top = buttonTop(btn);
+      moveQueueItem(id, -1);
+      renderQueue();
+      afterQueueMove(id, -1, top);
     });
   });
   scope.querySelectorAll("[data-reorder-down]").forEach(btn => {
@@ -8057,8 +8361,11 @@ function bindUpNextReorder(scope) {
     btn._bound = true;
     btn.addEventListener("click", (e) => {
       e.preventDefault(); e.stopPropagation();
-      moveQueueItem(btn.dataset.reorderDown, 1);
-      moveQueueRowInPlace(btn, 1);
+      const id = btn.dataset.reorderDown;
+      const top = buttonTop(btn);
+      moveQueueItem(id, 1);
+      renderQueue();
+      afterQueueMove(id, 1, top);
     });
   });
   scope.querySelectorAll("[data-dequeue]").forEach(btn => {
@@ -8066,8 +8373,10 @@ function bindUpNextReorder(scope) {
     btn._bound = true;
     btn.addEventListener("click", (e) => {
       e.preventDefault(); e.stopPropagation();
+      const index = queueIds().indexOf(btn.dataset.dequeue);
       removeFromQueue(btn.dataset.dequeue);
       renderQueue();
+      afterQueueRemove(Math.max(0, index));
     });
   });
 }
@@ -8931,8 +9240,7 @@ function openFeedbackSheet(entry) {
   $("#fy-sheet-note").value = "";
   sheet.querySelectorAll("[data-chip]").forEach(c => setChipPressed(c, false));
   syncSheetCta();
-  sheet.hidden = false;
-  document.body.classList.add("fy-sheet-open");
+  openSheet(sheet, { onRequestClose: closeFeedbackSheet });
 }
 
 function closeFeedbackSheet() {
@@ -8940,8 +9248,7 @@ function closeFeedbackSheet() {
   // submit, and a vote with no reason is the signal this sheet exists to avoid.
   fbTarget = null;
   const sheet = $("#fy-sheet");
-  if (sheet) sheet.hidden = true;
-  document.body.classList.remove("fy-sheet-open");
+  if (sheet) { closeSheet(sheet); sheet.hidden = true; }
 }
 
 /** A reason chip's selection, for the eye AND the ear. It was a class and a
@@ -9538,6 +9845,12 @@ function bindStripZoomScrub(r, player) {
     // Right/middle-click never means "press and hold" on desktop; only the
     // primary pointer starts a gesture.
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    /* A new press is a new question: whatever the LAST gesture turned out to
+       be must not swallow this one's click. (Reset here rather than in the
+       click handler because a touch scroll that the browser takes over never
+       produces a click at all, so a flag cleared only by a click would sit
+       armed and eat the next genuine tap.) */
+    strip._scrollGesture = false;
     pointerId = e.pointerId;
     gesture = gest.start(e.clientX, e.clientY);
     if (typeof strip.setPointerCapture === "function") {
@@ -9555,6 +9868,21 @@ function bindStripZoomScrub(r, player) {
     if (pointerId == null || e.pointerId !== pointerId || !gesture) return;
     const wasZooming = gesture.zooming;
     gesture = gest.move(gesture, e.clientX, e.clientY);
+    /* The finger went mostly VERTICAL before a scrub began: the listener is
+       scrolling the running order, not aiming at a second of the hour
+       (audit 2026-09-22 — the sticky strip sits in the path of every scroll
+       flick, and this used to end in a seek). Let go of the pointer so the
+       page can have it, and arm the click handler to ignore the click a
+       mouse release would still deliver. `touch-action: pan-y` in
+       styles.css is what lets a touch flick actually scroll. */
+    if (gesture.scrolled) {
+      strip._scrollGesture = true;
+      if (typeof strip.releasePointerCapture === "function") {
+        try { strip.releasePointerCapture(pointerId); } catch { /* already released */ }
+      }
+      finish();
+      return;
+    }
     if (gesture.zooming) {
       // Entered zoom by dragging past tolerance rather than by waiting out
       // the hold timer — the timer would otherwise still fire later and flip
@@ -9878,6 +10206,13 @@ function bindForayTransport(r, player, resume = null) {
      The exact-segment jump did not go away — it is the running-order rows,
      which are also the keyboard-reachable half of this control. */
   $("#fy-strip").addEventListener("click", async (e) => {
+    /* A gesture bindStripZoomScrub read as a SCROLL (mostly vertical, before
+       any scrub began) is not a position in the hour. Without this, the click
+       a release delivers seeked to wherever the finger happened to stop. */
+    if (e.currentTarget && e.currentTarget._scrollGesture) {
+      e.currentTarget._scrollGesture = false;
+      return;
+    }
     /* Position FIRST, and only then look for a bar. The strip is 32 bars with a
        2px gap between each, which is roughly a fifth of its width — requiring a
        `[data-seg]` hit before reading the coordinate made every one of those
@@ -9994,13 +10329,16 @@ function openRateMenu(player, onChange) {
 
   panel.append(grab, title, list, actions);
   wrap.append(scrim, panel);
-  document.body.appendChild(wrap);
-  document.body.classList.add("fy-sheet-open");
 
-  const close = () => {
-    wrap.remove();
-    document.body.classList.remove("fy-sheet-open");
-  };
+  /* ONE INSTANCE (audit 2026-09-22): this menu is built fresh on every open
+     with a fixed id, and nothing stopped a second activation (a repeated
+     Enter, key-repeat) mounting a second `#rate-sheet` over the first — two
+     modals, duplicate ids, and one Cancel taking the scroll lock off with a
+     sheet still up. openSheet() replaces an open sheet with the same id
+     rather than stacking on it, the way the mini player's own picker always
+     did (`closeRatePicker()` first). */
+  const close = () => closeSheet(wrap, { removeIfOwned: true });
+  openSheet(wrap, { panel, onRequestClose: close });
   scrim.addEventListener("click", close);
   cancel.addEventListener("click", close);
 }
@@ -11004,16 +11342,15 @@ function openDeleteSheet() {
   ui.deviceOnly.hidden = true;
   ddBusy = false;
   syncDeleteCta();
-  ui.root.hidden = false;
-  document.body.classList.add("fy-sheet-open");
+  openSheet(ui.root, { panel: ui.panel, onRequestClose: closeDeleteSheet });
 }
 
 function closeDeleteSheet() {
   if (!ddUi || ddBusy) return;     // never vanish mid-delete
+  closeSheet(ddUi.root);
   ddUi.root.hidden = true;
   ddUi.input.value = "";
   syncDeleteCta();
-  document.body.classList.remove("fy-sheet-open");
 }
 
 /**
@@ -11322,6 +11659,7 @@ function voiceSheet() {
     sheet in this file — the CSP is strict and index.html is out of reach. */
 function buildVoiceRow({ installed, name, sub, id, selected, tabStop }) {
   const row = ddEl("div", `voice-row${installed ? "" : " voice-row-missing"}${selected ? " voice-row-selected" : ""}`);
+  if (id) row.dataset.voiceId = id;
 
   const text = ddEl("div", "voice-row-text");
   text.append(ddEl("div", "voice-row-name", name), ddEl("div", "voice-row-sub", sub));
@@ -11340,9 +11678,9 @@ function buildVoiceRow({ installed, name, sub, id, selected, tabStop }) {
     choice.dataset.voiceId = id;
     choice.tabIndex = tabStop ? 0 : -1;
     choice.append(text);
-    choice.addEventListener("click", () => selectVoiceRow(id));
+    choice.addEventListener("click", () => selectVoiceRow(id, name));
     choice.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectVoiceRow(id); return; }
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectVoiceRow(id, name); return; }
       const step = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1
         : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0;
       if (step) { e.preventDefault(); moveVoiceChoice(id, step); }
@@ -11431,6 +11769,25 @@ function paintVoiceList() {
     }));
   }
 
+  /* THE REBUILD MUST NOT THROW THE LISTENER OUT OF THE SHEET (audit
+     2026-09-22). Every select and every Audition repaints this list, which
+     destroyed the row or button that had just been activated — focus fell to
+     <body>, behind the scrim, and a keyboard or screen-reader user had to find
+     their way back into the dialog from the top of the document after every
+     single action. Remember what had focus, by voice, and put it back on the
+     same voice's row (or its Audition button, unless that is now disabled
+     while it plays). */
+  const had = document.activeElement;
+  const hadRow = had && typeof ui.list.contains === "function" && ui.list.contains(had)
+    && typeof had.closest === "function" ? had.closest("[data-voice-id]") : null;
+  const focusVoice = hadRow ? hadRow.dataset.voiceId : null;
+  /* An Audition press rebuilds the button DISABLED while it plays, so focus
+     waits on the row; `returnToAudition` remembers to take it back to the
+     button on the repaint that re-enables it. */
+  const focusAudition = !!(had && had.classList && had.classList.contains("voice-row-audition"))
+    || (focusVoice != null && voiceState.returnToAudition === focusVoice);
+  voiceState.returnToAudition = null;
+
   ui.list.innerHTML = "";
   if (voiceState.loading) {
     ui.list.append(ddEl("p", "voice-loading", "Looking for voices\u2026"));
@@ -11441,6 +11798,14 @@ function paintVoiceList() {
         : "No voices reported by this device."));
   } else {
     rows.forEach((r) => ui.list.append(r));
+  }
+  if (focusVoice) {
+    const row = rows.find((r) => r.dataset.voiceId === focusVoice);
+    const btn = row && focusAudition ? row.querySelector(".voice-row-audition") : null;
+    if (btn && btn.disabled) voiceState.returnToAudition = focusVoice;
+    /* The row is a plain container since L4; the radio inside it is what takes focus. */
+    const choice = row && typeof row.querySelector === "function" ? row.querySelector(".voice-row-choice") : null;
+    focusQuietly(btn && !btn.disabled ? btn : (choice || row));
   }
 }
 
@@ -11462,12 +11827,15 @@ async function refreshVoiceList() {
   }
 }
 
-function selectVoiceRow(id) {
+function selectVoiceRow(id, name) {
   const player = window.ForayPlayer;
   if (!player || typeof player.setNarrationVoice !== "function") return;
   player.setNarrationVoice(id);
   logEvent("voice_pref", { voice: id });
-  paintVoiceNotice("");
+  /* Said, not only shown: the notice is the sheet's polite live region, so the
+     choice is announced — a radio that changes with no word is a silent
+     change to how 4a narrates. */
+  paintVoiceNotice(name ? `${name} selected.` : "");
   paintVoiceList();
 }
 
@@ -11512,15 +11880,14 @@ async function auditionVoiceRow(id) {
 function openVoiceSheet() {
   const ui = voiceSheet();
   paintVoiceNotice("");
-  ui.root.hidden = false;
-  document.body.classList.add("fy-sheet-open");
+  openSheet(ui.root, { panel: ui.panel, onRequestClose: closeVoiceSheet });
   refreshVoiceList();
 }
 
 function closeVoiceSheet() {
   if (!voiceUi) return;
+  closeSheet(voiceUi.root);
   voiceUi.root.hidden = true;
-  document.body.classList.remove("fy-sheet-open");
 }
 
 /** Appended to the drawer at startup, next to "Playback diagnostics" per the
@@ -11663,14 +12030,13 @@ function openDiagSheet() {
   const ui = diagSheet();
   refreshDiagSheet();
   ui.status.textContent = "";
-  ui.root.hidden = false;
-  document.body.classList.add("fy-sheet-open");
+  openSheet(ui.root, { panel: ui.panel, onRequestClose: closeDiagSheet });
 }
 
 function closeDiagSheet() {
   if (!diagUi) return;
+  closeSheet(diagUi.root);
   diagUi.root.hidden = true;
-  document.body.classList.remove("fy-sheet-open");
 }
 
 /**
@@ -11805,6 +12171,10 @@ function renderCurrentPage() {
      next time someone reuses the sheet. */
   fbTarget = null;
   state.forayResume = null;
+  /* And the sheets that live INSIDE #view (the Foray feedback sheet) go through
+     the owner before their DOM does, so the modal lock and the `inert` they
+     put on the page cannot outlive them (audit 2026-09-22). */
+  closeSheetsWithin($("#view"));
   resetPageHeadScrollState();
   renderEpoch++;
   const h = currentHash();
@@ -11910,12 +12280,20 @@ function route() {
   /* Read BEFORE the render: renderCurrentPage() replaces #view's innerHTML,
      and a shorter page clamps window.scrollY on the spot. */
   const target = step === "back" ? (navScrollY.get(h) || 0) : 0;
+  const previousHash = renderedHash;
   renderedHash = h;
   pendingRestore = null;
   /* To the top first, THEN render: the new page is laid out with the viewport
      already where it is going rather than painted and yanked. */
   scrollPageTo(0);
   openDrawer(false);
+  /* A NAVIGATION closes whatever modal was up — a back gesture over a sheet
+     used to leave it stranded over a different page (the speed menu, the
+     delete sheet) — through each sheet's own close, so a sheet that must not
+     vanish (Delete my data mid-delete) still refuses. Only when the hash
+     actually changed: route() is also how a settings toggle or a finished
+     deletion re-renders the page UNDER an open sheet on purpose. */
+  if (h !== previousHash) closeAllSheets();
   renderCurrentPage();
   if (target > 0) {
     scrollPageTo(target);
@@ -12227,6 +12605,28 @@ function setPageHeadHidden(hidden) {
   pageHeadHiddenNow = hidden;
   const head = currentPageHead();
   if (head) head.classList.toggle("page-head-hidden", hidden);
+  publishPageHeadHeight(head);
+}
+
+/* THE HEADER'S HEIGHT, FOR WHATEVER ELSE STICKS BENEATH IT (audit 2026-09-22,
+   "A Foray page's sticky transport pins behind the sticky page header").
+   `.page-head` and the Foray page's `.fy-transport` are siblings that both
+   stick at the topbar's offset. Scrolling down hides the header and the
+   transport pins where it was — right. Scrolling UP brings the header back
+   (the behaviour Wyatt asked for, above) ON TOP of the transport, so the
+   resume line and the top of the strip vanish under an opaque bar exactly when
+   the listener has come back to use them. styles.css pins a visible header's
+   later siblings at topbar + THIS height; a hidden header reserves nothing.
+   Written on the header's own parent (a CSSOM write, CSP-safe), so a page
+   whose content never reads it pays one property; and on every toggle rather
+   than once per render, because the title can wrap differently after a
+   rotation. `offsetHeight` ignores the hide transform, so either state
+   measures the same box. */
+function publishPageHeadHeight(head) {
+  const page = head && head.parentElement;
+  if (!page || !page.style || typeof page.style.setProperty !== "function") return;
+  const h = Math.round(Number(head.offsetHeight) || 0);
+  page.style.setProperty("--page-head-h", `${h}px`);
 }
 
 /* A deliberate downward scroll puts the keyboard away (founder, 2026-09-14:
@@ -12317,6 +12717,7 @@ function resetPageHeadScrollState() {
   lastScrollY = window.scrollY || 0;
   const head = currentPageHead();
   if (head) head.classList.remove("page-head-hidden");
+  publishPageHeadHeight(head);
 }
 
 /* ---------- init ---------- */
@@ -12596,8 +12997,10 @@ function keyboardIsOpen(win) {
 
 /* HOW FAR A BOTTOM-ANCHORED FIXED BAR MUST RISE to sit on the keyboard's top
    edge instead of behind it, in CSS pixels. Published as `--kb-inset` on
-   <html> so CSS can use it; today the search page's compose bar
-   (`#sh-compose`) is its only consumer.
+   <html> so CSS can use it. Two readers: the search page's compose bar
+   (`#sh-compose`), and every modal sheet's `.fy-panel`, which sits on the
+   keyboard's top edge so a sheet's own text field and buttons are not
+   stranded behind it (audit 2026-09-22).
 
    ONE DETECTOR, TWO ANSWERS. This is not a second keyboard detector: it runs
    inside the same `apply()`, off the same `visualViewport` listeners, and

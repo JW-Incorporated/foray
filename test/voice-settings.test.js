@@ -67,7 +67,8 @@ class El {
     this.classList = {
       add: (c) => this._c.add(c),
       remove: (c) => this._c.delete(c),
-      contains: (c) => this._c.has(c),
+      // A class set through `className` (ddEl's way) counts too, as in a browser.
+      contains: (c) => this._c.has(c) || String(this.className).split(/\s+/).includes(c),
       toggle: (c, on) => {
         const want = on ?? !this._c.has(c);
         if (want) this._c.add(c); else this._c.delete(c);
@@ -91,7 +92,23 @@ class El {
     for (const fn of [...(this._on.get("click") ?? [])]) out.push(fn({ stopPropagation() {}, preventDefault() {} }));
     return Promise.all(out);
   }
-  closest() { return null; }
+  /* Focus and ancestry, added 2026-09-22 for the "a rebuild must not throw
+     focus out of the sheet" tests at the end of this file: `focus()` moves
+     the mounted document's activeElement, and `contains`/`closest` walk the
+     real parent links (`[data-voice-id]` is the one attribute selector the
+     page asks about). */
+  focus() { if (CURRENT_DOC) CURRENT_DOC.activeElement = this; }
+  contains(o) { for (let n = o; n; n = n.parent) if (n === this) return true; return false; }
+  closest(sel) {
+    const data = /^\[data-([\w-]+)\]$/.exec(String(sel).trim());
+    for (let n = this; n; n = n.parent) {
+      if (data) {
+        const key = data[1].replace(/-([a-z])/g, (_m, c) => c.toUpperCase());
+        if (key in n.dataset) return n;
+      } else if (matches(n, sel)) return n;
+    }
+    return null;
+  }
   querySelector(sel) { return findIn(this, sel); }
   querySelectorAll(sel) { return findAllIn(this, sel); }
   get classes() { return [...new Set(String(this.className).split(/\s+/).filter(Boolean)), ...this._c]; }
@@ -100,6 +117,10 @@ class El {
   set innerHTML(v) { if (v === "") this.children = []; }
   get innerHTML() { return ""; }
 }
+
+/** The document the most recent mount() built, so `El.focus()` can move its
+    activeElement. One mount per test, so a module-level pointer is enough. */
+let CURRENT_DOC = null;
 
 function matches(el, sel) {
   const s = String(sel).trim();
@@ -216,6 +237,7 @@ function mount({
   };
   ctx.window = ctx;
   ctx.globalThis = ctx;
+  CURRENT_DOC = ctx.document;
   vm.createContext(ctx);
   process.on("unhandledRejection", () => {});
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
@@ -580,4 +602,46 @@ test("Close and the scrim both dismiss the sheet", async () => {
   await tick();
   await ui.scrim.click();
   assert.strictEqual(ui.sheet.hidden, true);
+});
+
+/* ==================================================================== */
+/* 9. a rebuild must not throw focus out of the sheet (audit 2026-09-22) */
+/* ==================================================================== */
+
+/* Every select and every Audition repaints the list, which destroyed the row
+   or button that had just been activated: focus fell to <body>, behind the
+   scrim, and a keyboard or screen-reader user had to find their way back into
+   the dialog from the top of the document after every action. */
+
+test("after selecting a voice, focus is on that voice's (new) row, and the choice is announced", async () => {
+  /* MUTATION: delete the `if (focusVoice) { ... }` block at the end of
+     paintVoiceList -> focus is left on a row that is no longer in the
+     document; red. MUTATION: `paintVoiceNotice("")` in selectVoiceRow -> red. */
+  const { ctx, ui } = mount();
+  await ui.open.click();
+  await tick();
+  const before = installedRows(ui)[0];
+  before.focus();
+  await before.click();
+  const after = installedRows(ui)[0];
+  assert.notStrictEqual(after, before, "fixture assumption: the list really was rebuilt");
+  assert.strictEqual(ctx.document.activeElement, after, "focus follows the voice into its rebuilt row");
+  assert.strictEqual(ui.notice.hidden, false);
+  assert.match(ui.notice.textContent, /^Samantha selected\.$/);
+});
+
+test("after Audition, focus is back on that voice's Audition button", async () => {
+  /* The button is rebuilt twice (disabled while it plays, then enabled);
+     while it is disabled focus waits on the row, then returns to the button.
+     MUTATION: drop `focusAudition` (always focus the row) -> red. */
+  const { ctx, ui } = mount();
+  await ui.open.click();
+  await tick();
+  const btn = findIn(installedRows(ui)[0], ".voice-row-audition");
+  btn.focus();
+  await btn.click();
+  const rebuilt = findIn(installedRows(ui)[0], ".voice-row-audition");
+  assert.notStrictEqual(rebuilt, btn, "fixture assumption: the button was rebuilt");
+  assert.strictEqual(ctx.document.activeElement, rebuilt,
+    "once it plays out, focus is back on the (rebuilt) Audition button — never on <body>");
 });
