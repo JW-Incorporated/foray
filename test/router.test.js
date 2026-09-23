@@ -19,6 +19,11 @@
  *  7. A show page's terminal paint re-applies a back-step restore the loading
  *     paint clamped (qa 115; the Foray page's call is the same line at the end
  *     of renderForay).
+ *  8. Screen state that matters lives in the address: `#/subject/<branch>`
+ *     answers for any real branch and gives the same queue every time (qa 116);
+ *     the Search page's settled query is `#/shows/q/<q>` and dismissing it
+ *     takes it out (qa 126, qa 133); a show page's episode search is
+ *     `#/show/<id>/q/<q>` and is re-run on return (qa 127).
  *
  * Every test names the one-line mutation that kills it.
  */
@@ -36,12 +41,15 @@ const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 process.on("unhandledRejection", () => {});
 
 function makeEl(tag) {
+  const heard = [];
   return {
     tagName: String(tag || "div").toUpperCase(),
     id: null, className: "", innerHTML: "", textContent: "", value: "",
-    hidden: false, disabled: false, dataset: {}, style: {}, children: [],
+    hidden: false, disabled: false, dataset: {}, style: {}, children: [], heard,
     classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
-    addEventListener() {}, removeEventListener() {},
+    addEventListener(type, fn) { heard.push([type, fn]); }, removeEventListener() {},
+    /* Fire what the app bound, as the browser would. */
+    fire(type, e = {}) { for (const [t, fn] of heard) if (t === type) fn({ preventDefault() {}, stopPropagation() {}, ...e }); },
     appendChild(k) { this.children.push(k); return k; },
     append(...k) { this.children.push(...k); },
     prepend(...k) { this.children.unshift(...k); },
@@ -274,4 +282,95 @@ test("an uncached show page re-applies a pending back-step restore when its epis
   resolve({ episodes: [{ guid: "g1", title: "E1", audio_url: "https://a.test/1.mp3" }], nextCursor: null });
   await new Promise((r) => setTimeout(r, 0));
   assert.ok(m.scrolls.includes(1800), `the restore must land on the loaded paint: ${m.scrolls}`);
+});
+
+/* ==================================================================== */
+/* 8. SCREEN STATE THAT MATTERS LIVES IN THE ADDRESS                      */
+/* ==================================================================== */
+
+function seedPool(m) {
+  m.evalIn(`state.ready = true;
+    state.session = { session_id: 's', episodes: {}, cards: [], commute: {} };
+    state.taxonomy = { nodes: [{ id: "history", label: "History", parent: null }, { id: "science", label: "Science", parent: null }] };
+    state.catalog = { shows: [{ show_id: "s1", title: "S1", taxonomy_node_ids: [] }] };
+    state.discover = { items: [
+      { id: "h1", title: "H one",   show: "A", topics: ["history/rome"], release_date: "2026-09-01", audio_url: "https://a.test/h1.mp3" },
+      { id: "h2", title: "H two",   show: "A", topics: ["history/rome"], release_date: "2026-09-03", audio_url: "https://a.test/h2.mp3" },
+      { id: "h3", title: "H three", show: "B", topics: ["history/war"],  release_date: "2026-09-02", audio_url: "https://a.test/h3.mp3" },
+      { id: "h4", title: "H four",  show: "B", topics: ["history/war"],  release_date: "2026-08-01", audio_url: "https://a.test/h4.mp3" },
+      { id: "s1e", title: "S one",  show: "C", topics: ["science/physics"], release_date: "2026-09-05", audio_url: "https://a.test/s1.mp3" },
+    ] };
+    state.cardSlots = [];`);
+}
+
+test("#/subject/<branch> answers for a branch that was not dealt, and gives the same queue every time", () => {
+  /* qa 116: the four branches are re-dealt at random each boot, so a reload or
+     a shared link was "Playlist not found". MUTATION: return null from
+     subjectItemsForBranch when the branch is not in state.cardSlots — both
+     assertions on `a` fail. MUTATION 2: shuffle the fallback (`Math.random()`
+     in its sort) — the two boots disagree. */
+  const a = mount(); seedPool(a);
+  const b = mount(); seedPool(b);
+  const qa = a.evalIn('JSON.stringify(subjectQueueById("subject-history").items.map(p => p.id))');
+  const qb = b.evalIn('JSON.stringify(subjectQueueById("subject-history").items.map(p => p.id))');
+  assert.strictEqual(qa, '["h2","h3","h1"]', "the branch's episodes, newest first, a slot's size");
+  assert.strictEqual(qa, qb, "the same hash is the same queue on another load or device");
+  assert.strictEqual(a.evalIn('subjectQueueById("subject-no-such-branch")'), null, "a branch the catalogue does not have is still not found");
+});
+
+test("a branch dealt THIS load answers with its slot, so the Home card and its page agree", () => {
+  /* MUTATION: drop the cardSlots lookup — the page lists the catalogue order
+     instead of what the card promised. */
+  const m = mount(); seedPool(m);
+  m.evalIn(`state.cardSlots = [{ slot: 1, branch: "history", role: "top",
+    item: state.discover.items[3], items: [state.discover.items[3], state.discover.items[0]] }];`);
+  assert.strictEqual(m.evalIn('JSON.stringify(subjectQueueById("subject-history").items.map(p => p.id))'), '["h4","h1"]');
+});
+
+test("a settled Search query is written into the address, and dismissing it takes it out", () => {
+  /* qa 126 / qa 133: ‹ back from a show opened an empty Search page, and ✕ on
+     #/shows/q/Science left the query in the URL for a reload to bring back.
+     MUTATION: drop `noteShowQueryInRoute(query)` from renderShowSearchResults
+     (first assertion), or from dismissShowSearch (second). */
+  const m = mount({ hash: "#/shows" });
+  seedPool(m);
+  m.evalIn('renderShowSearchResults("radio lab")');
+  assert.strictEqual(m.ctx.location.hash, "#/shows/q/radio%20lab");
+  m.evalIn('dismissShowSearch({ value: "radio lab", blur() {} })');
+  assert.strictEqual(m.ctx.location.hash, "#/shows");
+});
+
+test("the address only follows the Search page's query while the Search page is on screen", () => {
+  /* A pass that settles after the listener left must not rewrite the address
+     of the page they went to. MUTATION: drop the `#/shows` guard in
+     noteShowQueryInRoute. */
+  const m = mount({ hash: "#/library" });
+  seedPool(m);
+  m.evalIn('noteShowQueryInRoute("radio")');
+  assert.strictEqual(m.ctx.location.hash, "#/library");
+});
+
+test("a show page's episode search is in the address, and coming back to it re-runs the search", async () => {
+  /* qa 127: ‹ back from an episode found through the in-show search opened the
+     bare list. MUTATION: drop the restored-search block from
+     revealSearchIfEligible — the scoped search never runs for "war". MUTATION
+     2: drop `rewriteRouteInPlace(...)` from runSearch — typing leaves the
+     address at #/show/s1. */
+  const m = mount({ hash: "#/show/s1/q/war" });
+  seedPool(m);
+  const asked = [];
+  let answer;
+  m.ctx.cachedShowEpisodes = () => null;
+  m.ctx.cacheShowEpisodes = () => {};
+  m.ctx.fetchShowEpisodes = () => new Promise((r) => { answer = r; });
+  m.ctx.searchShowEpisodesScoped = async (id, q) => { asked.push(q); return { episodes: [] }; };
+  m.evalIn("renderCurrentPage()");
+  answer({ episodes: [{ guid: "g1", title: "The war", audio_url: "https://a.test/w.mp3" }], nextCursor: null });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepStrictEqual(asked, ["war"], "the search the address carries runs once the list is in");
+
+  const input = m.el("#view [data-show-ep-search-input]");
+  input.value = "peace";
+  m.el("#view [data-show-ep-search-form]").fire("submit");
+  assert.strictEqual(m.ctx.location.hash, "#/show/s1/q/peace", "typing moves the address with it, in place");
 });

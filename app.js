@@ -1112,7 +1112,6 @@ function buildCards() {
 
   const chosenBranches = (stretchBranch ? [stretchBranch] : []).concat(topRanked).slice(0, 4);
 
-  const QUEUE_SIZE = 3;
   state.cardSlots = chosenBranches.map((branch, i) => {
     const chain = branchChain(byBranch[branch], history, seen);
     return {
@@ -1120,7 +1119,7 @@ function buildCards() {
       branch,
       role: branch === stretchBranch ? "stretch" : "top",
       item: chain[0] || null,
-      items: chain.slice(0, QUEUE_SIZE)
+      items: chain.slice(0, SUBJECT_QUEUE_SIZE)
     };
   }).filter(sl => sl.item);
 
@@ -1134,12 +1133,38 @@ function subjectLabel(branch) {
 
 /* Subject queues are today's auto-built groupings (state.cardSlots), distinct
    from user-saved playlists (cp_playlists) — same shape so renderPlaylistDetail
-   can render either, but not persisted and not removable. */
+   can render either, but not persisted and not removable.
+
+   ANY REAL BRANCH IS ANSWERABLE (audit 2026-09-22). This used to find the
+   branch among the four dealt this load or answer "Playlist not found" — and
+   the four are re-dealt at random on every boot, with a penalty against the
+   ones just shown, so reloading `#/subject/history`, restoring the tab or
+   sending the link to anyone was "not found" most of the time.
+
+   Two sources, in order. A branch dealt THIS load answers with its slot, so the
+   Home card and the page it opens agree on what is in it. Any other branch is
+   built from the catalogue alone — the branch's episodes, newest first, ties
+   by id, the same size as a slot — with no history, no seen-list and no
+   randomness in it, so the same hash gives the same queue on every reload and
+   every device until the catalogue itself changes. */
+const SUBJECT_QUEUE_SIZE = 3;
+
+function subjectItemsForBranch(branch) {
+  const slot = (state.cardSlots || []).find(sl => sl.branch === branch);
+  if (slot) return slot.items;
+  const items = poolFiltered()
+    .filter(i => branchOf(i) === branch)
+    .sort((a, b) => String(b.release_date || "").localeCompare(String(a.release_date || "")) || String(a.id).localeCompare(String(b.id)))
+    .slice(0, SUBJECT_QUEUE_SIZE);
+  return items.length ? items : null;
+}
+
 function subjectQueueById(id) {
   const m = /^subject-(.+)$/.exec(id);
   if (!m) return null;
-  const slot = (state.cardSlots || []).find(sl => sl.branch === m[1]);
-  if (!slot) return null;
+  const items = subjectItemsForBranch(m[1]);
+  if (!items) return null;
+  const slot = { branch: m[1], items };
   /* `items` in the same shape a saved playlist now carries (#276), so
      resolveParts and renderPlaylistDetail stay one code path. Nothing here is
      persisted — today's queue is rebuilt every load — so the projection costs
@@ -2394,6 +2419,9 @@ function dismissShowSearch(input) {
   if (!input) return;
   input.value = "";
   clearShowSearchResults();
+  /* And the address: dismissing on `#/shows/q/Science` left the query in the
+     URL, so a reload or a return brought "Science" back (audit 2026-09-22). */
+  noteShowQueryInRoute("");
   showSearchFieldFocused = false;
   if (typeof input.blur === "function") input.blur();
   updateShowBrowseVisibility();
@@ -3120,12 +3148,28 @@ async function searchShowEpisodesScoped(show_id, query) {
    the `renderShow` call below takes the resolving branch and cannot come back
    here. If the seed somehow did not take, the guard is that we only re-render
    when `showById` now answers. */
-/** Whether the hash on screen is `#/show/<show_id>`, compared DECODED — the
-    hash carries the encoded id, and comparing it with the raw one never
-    matched an id that needed encoding. */
+/** `#/show/<id>` or `#/show/<id>/q/<query>`, parsed once, both halves DECODED
+    (safeDecode). The `/q/` half is the show page's own episode search, kept in
+    the address so ‹ back from an episode, a reload or a shared link comes back
+    to the search rather than the bare list (audit 2026-09-22). An id never
+    carries a raw `/`: every producer encodes it. */
+function parseShowRoute(hash = currentHash()) {
+  const m = /^#\/show\/([^/]+)(?:\/q\/(.*))?$/.exec(hash);
+  if (!m) return null;
+  return { id: safeDecode(m[1]), query: m[2] === undefined ? "" : safeDecode(m[2]) };
+}
+
+function showRouteHash(show_id, query = "") {
+  const q = String(query || "").trim();
+  return `#/show/${encodeURIComponent(show_id)}${q ? "/q/" + encodeURIComponent(q) : ""}`;
+}
+
+/** Whether the page on screen is `show_id`'s — compared DECODED: the hash
+    carries the encoded id, and comparing it with the raw one never matched an
+    id that needed encoding. */
 function onShowRoute(show_id) {
-  const m = /^#\/show\/(.+)$/.exec(currentHash());
-  return !!m && safeDecode(m[1]) === show_id;
+  const r = parseShowRoute();
+  return !!r && r.id === show_id;
 }
 
 function resolveMissingShow(show_id) {
@@ -3148,7 +3192,7 @@ function resolveMissingShow(show_id) {
       show_id: fromIndex.show_id, title: fromIndex.title, artwork_url: null,
       editorial_note: null, taxonomy_node_ids: [], tier: fromIndex.tier,
     };
-    renderShow(show_id);
+    renderShow(show_id, parseShowRoute()?.query || "");
     return;
   }
 
@@ -3169,11 +3213,11 @@ function resolveMissingShow(show_id) {
       return;
     }
     state.breadthShowCache[show_id] = row;
-    if (showById(show_id)) renderShow(show_id);
+    if (showById(show_id)) renderShow(show_id, parseShowRoute()?.query || "");
   }); // fetchApiJson swallows network/parse errors to null — the branch above covers it
 }
 
-function renderShow(show_id) {
+function renderShow(show_id, initialQuery = "") {
   setBodyClass("view-page");
   const show = showById(show_id);
   if (!show) { resolveMissingShow(show_id); return; }
@@ -3305,7 +3349,9 @@ function renderShow(show_id) {
      from, which is the whole fix: they cannot contradict each other because
      there is no longer anything for them to disagree about. */
   let loadState = "loading";
-  let searchQuery = "";
+  /* Seeded from the address (see parseShowRoute): a return to this page puts
+     the listener back inside the search they left. */
+  let searchQuery = String(initialQuery || "");
   /* S-06/S-07 wiring: `searchMode` tracks which result set the container is
      currently showing so paintSearchNote() can label it honestly.
        "idle"     — no query typed; showing the full `loaded` list.
@@ -3521,7 +3567,17 @@ function renderShow(show_id) {
   function revealSearchIfEligible() {
     const wrap = searchWrap();
     if (wrap && loaded.length) wrap.hidden = false;
+    /* A search carried in the address runs once there is something to search:
+       the field is only shown, and the scoped endpoint only meaningful, once a
+       page of episodes is in. */
+    if (loaded.length && searchQuery.trim() && !restoredSearchRan) {
+      restoredSearchRan = true;
+      const input = $("#view [data-show-ep-search-input]");
+      if (input) input.value = searchQuery;
+      runSearch();
+    }
   }
+  let restoredSearchRan = false;
 
   /* Debounced (250ms) so a fast typist doesn't fire a request per
      keystroke — S-07's endpoint does a live feed fetch server-side on a
@@ -3530,6 +3586,9 @@ function renderShow(show_id) {
      showSearchToken uses for the Shows-page search above. */
   function runSearch() {
     const query = searchQuery;
+    /* The address follows the search, in place — no history entry per
+       keystroke, and ‹ still leaves the page in one step. */
+    rewriteRouteInPlace(showRouteHash(show.show_id, query));
     if (!query.trim()) {
       searchMode = "idle";
       paintBody();
@@ -4675,6 +4734,18 @@ let showSearchPainted = { token: -1, query: "", rows: [] };
 let showSearchDebounceTimer = null;
 const SHOW_SEARCH_DEBOUNCE_MS = 250;
 
+/** THE SEARCH PAGE'S QUERY LIVES IN THE ADDRESS (audit 2026-09-22). A typed
+    search changed only the field, so ‹ back from a show opened the Search page
+    empty — the query, its results and the scroll offset gone — and a reload or
+    a shared link did the same. `#/shows/q/<q>` already existed for the browse
+    pills; a settled query now writes it, in place, and clearing writes it back
+    to `#/shows`. Only while the Search page is the page on screen. */
+function noteShowQueryInRoute(query) {
+  if (!/^#\/shows($|\/)/.test(currentHash())) return;
+  const q = String(query || "").trim();
+  rewriteRouteInPlace(q ? "#/shows/q/" + encodeURIComponent(q) : "#/shows");
+}
+
 /** Invalidate every show-search pass in flight and forget what they painted:
     the work that has not started (the debounce tick) and the work that has
     (the token). Called when the page that owned them is replaced. */
@@ -5743,11 +5814,12 @@ function onShowSearchInput(rawValue) {
   const myToken = ++showSearchToken; // supersedes any in-flight costly pass
   if (showSearchDebounceTimer) clearTimeout(showSearchDebounceTimer);
   showSearchDebounceTimer = null;
-  if (!query) { clearShowSearchResults(); return; }
+  if (!query) { clearShowSearchResults(); noteShowQueryInRoute(""); return; }
   const local = paintShowSearchLocal(query, myToken);
   showSearchDebounceTimer = setTimeout(() => {
     showSearchDebounceTimer = null;
     if (myToken !== showSearchToken) return; // a newer keystroke already owns the page
+    noteShowQueryInRoute(query);   // the query has settled: the address can say so
     runShowSearchCostly(query, myToken, local);
   }, SHOW_SEARCH_DEBOUNCE_MS);
 }
@@ -5756,6 +5828,7 @@ function onShowSearchInput(rawValue) {
     the debounce SKIPPED — the exact idiom the show page's episode search
     already ships (`onSearchInputChange`/`runSearch`, above). */
 function renderShowSearchResults(query) {
+  noteShowQueryInRoute(query);
   const myToken = ++showSearchToken;
   if (showSearchDebounceTimer) { clearTimeout(showSearchDebounceTimer); showSearchDebounceTimer = null; }
   const local = paintShowSearchLocal(query, myToken);
@@ -10944,7 +11017,7 @@ function renderCurrentPage() {
      URIError, and a malformed hash must not take the router down (its own
      header makes the same argument). */
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(safeDecode(m[1]));
-  else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(safeDecode(m[1]));
+  else if ((m = parseShowRoute(h))) renderShow(m.id, m.query);
   else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(safeDecode(m[1]));
   /* Before the bare `#/shows`, because `h === "#/shows"` is an exact match
      and would otherwise never see this one — and the browse tiles link here
@@ -11077,6 +11150,21 @@ function replaceHash(hash) {
   } catch (_) {
     return false;
   }
+}
+
+/** Rewrite the page-on-screen's own address to a new spelling of the SAME page
+    (a search query joining or leaving it) — no render, no history entry. The
+    router's own record of the entry follows it, so the scroll position is
+    remembered under the address a later back-step will actually arrive at. */
+function rewriteRouteInPlace(hash) {
+  if (currentHash() === hash) return;
+  if (!replaceHash(hash)) return;
+  if (renderedHash !== null) {
+    const y = navScrollY.get(renderedHash);
+    renderedHash = hash;
+    if (y !== undefined) navScrollY.set(hash, y);
+  }
+  if (navIndex !== null) navHashes[navIndex] = hash;
 }
 
 /* A restore route() could not complete because the page had not painted yet.
@@ -11525,9 +11613,9 @@ function isForaySurface(hash) {
    this page shows had changed. Most adoptions change nothing here. */
 function foraySurfaceSignature() {
   try {
-    const m = /^#\/show\/(.+)$/.exec(currentHash());
-    if (m) {
-      const show = showById(safeDecode(m[1]));
+    const r = parseShowRoute();
+    if (r) {
+      const show = showById(r.id);
       return show ? showForaysHtml(show) : "";
     }
     const id = forayRouteId();
@@ -11546,10 +11634,10 @@ function foraySurfaceSignature() {
 /** Repaint only what the new set changed: on a show page that is its "Used in
     the following forays" footer, in place; anywhere else the page itself. */
 function repaintForaySurface() {
-  const m = /^#\/show\/(.+)$/.exec(currentHash());
-  if (m) {
+  const r = parseShowRoute();
+  if (r) {
     const slot = $("#view [data-show-forays]");
-    const show = showById(safeDecode(m[1]));
+    const show = showById(r.id);
     if (slot && show) slot.innerHTML = showForaysHtml(show);
     return;
   }

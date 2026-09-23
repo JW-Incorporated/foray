@@ -294,7 +294,7 @@ const FLOORS = {
      init()'s wiring, a bare URL is #/, ?foray= enters once per tab, the current
      tab scrolls to top, a show page reports its terminal paint. Two cells boot
      the REAL init(). */
-  "test/router.test.js": 8,
+  "test/router.test.js": 13, // 2026-09-22: + screen state in the address (subject queue for any branch, deterministic; the Search query; the in-show search); 8 -> 13
   /* 2026-09-22, audit theme B: async work knows which page asked for it. The
      harness answers a region selector with the SAME element across pages, as a
      browser does — the forgiving fake would have hidden the show-A-into-B bug. */
