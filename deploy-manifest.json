@@ -1,11 +1,11 @@
 {
-  "deploy_id": "96d50f1abc3f48e7",
+  "deploy_id": "6e92b4bb11652051",
   "files": {
-    "app.js": "sha256:042483083b5d4f92fb4bb8b44b345be7f26cba82ecbb726e5b080f0be2ffde1b",
+    "app.js": "sha256:801b13b67a07c9238983a5a1ef349414c5e89d6e9d8c3489a457061e2d1d81e5",
     "data/catalog-client.json": "sha256:734c542d08decc62fd401593cbf19c25216c366fe99ebc86fce2192dcf9d85c4",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:4e50f24a3829ca6f9264a13ae6ea327d0acaa2a0b898ba1e13b5c97aa53ea3b7",
-    "data/forays-directory.json": "sha256:7031e1e4d59ddcdd272d5c9ed8375d363a03c0eb3f997e370ab149b17a4167a3",
+    "data/forays-directory.json": "sha256:28f2c77c1595172a64edba2ab5b2f9be5297b76c5eece0c3316ea2a4e07465ec",
     "data/forays.json": "sha256:e2fe2e76371261c335814f0387cbb70de78aba1fe82f186c009e29c2a2854c61",
     "data/item-tags.json": "sha256:d4a1eccdbf270a4982cf79c6f737e68052b80a91569bbe45aba70ce576d6c064",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
@@ -21,7 +21,7 @@
     "index.html": "sha256:e83f8aa82367520db2beb9e26f5546b466de5027310d8d4dd9e5b820a22f1c88",
     "manifest.json": "sha256:e99d17d7b18d314cf6a60286c9f28e77761f5642d44117115c219b2acfb9c118",
     "player/build-stamp.js": "sha256:0aa452a1b831afd05b661c910a50e65082a81e9587e0187ce491e41837849dfd",
-    "player/client.js": "sha256:b145a3bef55516d4cd6105bee4b0b50f12a5d35e94338f2814f2db1b94187cc0",
+    "player/client.js": "sha256:0157f58221104d72932573a87c9ba3e96a597f593624776c62e63ddea23d7f52",
     "player/default-voice.js": "sha256:ebdd4cb5067b937ec0ba02e1be6d8fc84c7e73e58078bcafc2ce8911d26ba82f",
     "player/diagnostic-log.js": "sha256:d1c05f2d5b78bf8d7721fcfbfc4cb1775e8752b94bae619a9b6cc385f9683187",
     "player/durable-store.js": "sha256:0b0e47397cce25751ed93823bb7e920cd36c7ea01bb56246c9422b01ab2c3fed",
