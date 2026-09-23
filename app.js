@@ -4932,6 +4932,58 @@ function releaseInert(entry) {
     if (typeof el.removeAttribute === "function") el.removeAttribute("inert");
   }
   entry.inerted = [];
+  /* Hand back what this sheet LIFTED from a sheet below it (see liftInertFrom),
+     if that sheet is still open. */
+  for (const { el, owner } of entry.lifted || []) {
+    if (!sheetStack.includes(owner) || typeof el.setAttribute !== "function") continue;
+    el.setAttribute("inert", "");
+    owner.inerted.push(el);
+  }
+  entry.lifted = [];
+}
+
+/**
+ * A SHEET OPENED OVER ANOTHER MAY ALREADY BE INERT (review 2026-09-23).
+ * The voice, diagnostics and delete sheets are built at startup as hidden
+ * <body> children, so expanding Now Playing inerts them with everything else;
+ * the drawer stays reachable over Now Playing (F17) and opens them, and
+ * `openSheet` only un-hid the wrap. The new sheet came up inert — its scrim,
+ * Close and rows ignored every tap — over a drawer and topbar it had just
+ * inerted itself: on a phone with no Escape key, the app was stuck.
+ * So an `inert` on the wrap or its ancestors that a sheet BELOW set is lifted
+ * for as long as this one is open, and handed back when it closes.
+ */
+function liftInertFrom(wrap) {
+  const lifted = [];
+  for (let n = wrap; n && n !== document.body; n = n.parentElement) {
+    if (typeof n.hasAttribute !== "function" || !n.hasAttribute("inert")) continue;
+    const owner = sheetStack.find((s) => s.inerted.includes(n));
+    if (!owner) continue; // someone else's inert is not ours to lift
+    n.removeAttribute("inert");
+    owner.inerted = owner.inerted.filter((x) => x !== n);
+    lifted.push({ el: n, owner });
+  }
+  return lifted;
+}
+
+/**
+ * An element added to <body> while a sheet is open joins what the top sheet
+ * took out of reach (review 2026-09-23). `inertOutside` runs once, when the
+ * sheet opens, and the first-run explainer opens from Home's render BEFORE
+ * `renderTabBar` creates the tab bar on a first visit — so the first modal a
+ * new listener saw left the four tab links live behind it, where assistive
+ * tech that ignores aria-modal could reach them (and a tab navigation
+ * dismisses onboarding for good). Kept-reachable chrome stays reachable.
+ */
+function inertUnderOpenSheet(el) {
+  pruneDeadSheets();
+  const top = sheetStack[sheetStack.length - 1];
+  if (!top || !el || typeof el.setAttribute !== "function") return;
+  if (typeof top.wrap.contains === "function" && top.wrap.contains(el)) return;
+  if (typeof el.hasAttribute === "function" && el.hasAttribute("inert")) return;
+  if ((top.keep || []).some((sel) => typeof el.matches === "function" && el.matches(sel))) return;
+  el.setAttribute("inert", "");
+  top.inerted.push(el);
 }
 
 /** Drop entries whose element has left the document (a sheet that lived in
@@ -5022,10 +5074,13 @@ function openSheet(wrap, opts = {}) {
     opener: document.activeElement || null,
     returnFocus: opts.returnFocus || null,
     inerted: [],
+    lifted: [],
+    keep: opts.keepReachable || [],
   };
   sheetManagedClasses.add(entry.bodyClass);
   wrap.hidden = false;
-  entry.inerted = inertOutside(wrap, opts.keepReachable || []);
+  entry.lifted = liftInertFrom(wrap);
+  entry.inerted = inertOutside(wrap, entry.keep);
   sheetStack.push(entry);
   syncSheetBodyClasses();
   if (typeof panel.getAttribute === "function" && panel.getAttribute("tabindex") == null
@@ -10968,6 +11023,9 @@ function renderTabBar() {
        nothing at all. Delegated once, on the bar that lives for the page. */
     bar.addEventListener("click", onTabBarClick);
     document.body.append(bar);
+    /* Created under an open sheet (the first-run explainer on a first visit):
+       out of reach like everything else behind it. */
+    inertUnderOpenSheet(bar);
   }
   const active = tabForHash(location.hash);
   bar.querySelectorAll(".tab-btn").forEach((a) => {

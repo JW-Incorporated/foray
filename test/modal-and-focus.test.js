@@ -274,6 +274,45 @@ test("an element that was already inert is left inert by a close (only what open
   assert.ok(inert(m.tabBar), "someone else's inert is not ours to lift");
 });
 
+test("REVIEW: a sheet opened over Now Playing is live, even though Now Playing had inerted it", () => {
+  /* The voice/diagnostics/delete roots are hidden <body> children built at
+     startup; expanding Now Playing (topbar and drawer kept reachable) inerts
+     them, and the drawer then opens one. openSheet only un-hid it, so the new
+     sheet came up inert over a drawer and topbar it had just inerted — stuck.
+     MUTATION: drop `entry.lifted = liftInertFrom(wrap)` from openSheet. */
+  const m = mount();
+  const voice = sheet(m, "voice-sheet");
+  voice.wrap.hidden = true;
+  m.doc.body.appendChild(voice.wrap);             // built at startup, hidden
+  const np = sheet(m, "np");
+  m.ctx.openSheet(np.wrap, { keepReachable: [".topbar", "#drawer"] });
+  assert.ok(inert(voice.wrap), "precondition: Now Playing inerted the hidden sheet root");
+  m.ctx.openSheet(voice.wrap);                    // the drawer's "Narration voice"
+  assert.ok(!inert(voice.wrap), "the sheet the listener opened is not inert");
+  assert.strictEqual(m.doc.activeElement, voice.panel, "and focus is inside it");
+  assert.ok(inert(np.wrap), "the sheet below is what is out of reach now");
+  m.ctx.closeSheet(voice.wrap);
+  assert.ok(inert(voice.wrap), "closing hands the inert back to Now Playing, which is still open");
+  assert.ok(!inert(m.topbar) && !inert(m.drawer), "and Now Playing's reachable chrome is reachable again");
+  m.ctx.closeSheet(np.wrap);
+  assert.ok(!inert(voice.wrap), "and nothing is left inert once both are closed");
+});
+
+test("REVIEW: a tab bar created while the first-run explainer is open is out of reach too", () => {
+  /* The explainer opens from Home's render, before renderTabBar creates the bar
+     on a first visit, so inertOutside never saw it. MUTATION: drop the
+     inertUnderOpenSheet(bar) call from renderTabBar. */
+  const m = mount();
+  m.tabBar.remove();                               // a first visit: no bar yet
+  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true, "fixture: a fresh profile gets the explainer");
+  m.ctx.renderTabBar();
+  const bar = m.doc.body.querySelector("#tab-bar");
+  assert.ok(bar, "fixture: the bar was created");
+  assert.ok(inert(bar), "the new bar is behind the dialog like everything else");
+  m.doc.key("Escape");
+  assert.ok(!inert(bar), "and is released with the rest when the explainer closes");
+});
+
 test("Escape asks the TOP sheet to close through its own handler", () => {
   /* MUTATION: delete the Escape branch in onSheetKeydown -> red. */
   const m = mount();
