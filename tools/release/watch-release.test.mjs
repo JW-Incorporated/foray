@@ -31,6 +31,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 import {
   releaseTier, bundleSet, parseGitLog, pendingWork, lastSuccess, failuresSinceSuccess,
@@ -39,7 +40,7 @@ import {
   GIT_LOG_FORMAT, ISSUE_MARKER, ISSUE_TITLE, GRACE_MINUTES, STALL_HOURS, STUCK_MINUTES,
   RETRY_BUDGET, TRIGGER_STALE_HOURS, WATCHDOG_STALE_HOURS,
 } from "./watch-release.mjs";
-import { code, block } from "../mobile/workflow-yaml.mjs";
+import { code, block, step } from "../mobile/workflow-yaml.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -429,6 +430,100 @@ test("the watchdog's issue step runs after a failure too", () => {
   const issueStep = WATCH_WF.slice(WATCH_WF.indexOf("- name: Keep the one issue in step"));
   assert.match(issueStep, /^\s*if: always\(\)/m);
   assert.match(issueStep, /--mode self-broken --runs own-runs\.json \\\s*\n\s*--current "\$GITHUB_RUN_ID"/);
+});
+
+/** The `run: |` body of one workflow step, dedented — the text bash runs. */
+function runBody(wf, nameFragment) {
+  const lines = step(wf, nameFragment).split(/\r?\n/);
+  const at = lines.findIndex((l) => /^\s*run: \|\s*$/.test(l));
+  assert.ok(at >= 0, `step "${nameFragment}" has no run block`);
+  const body = [];
+  let indent = null;
+  for (const l of lines.slice(at + 1)) {
+    if (l.trim() === "") { body.push(""); continue; }
+    const n = l.length - l.trimStart().length;
+    if (indent === null) indent = n;
+    if (n < indent) break;
+    body.push(l.slice(indent));
+  }
+  return body.join("\n");
+}
+
+test("EXECUTED: an expired summary log (404 after 90 days) does not fail the Fetch step — G2 reads the job conclusions instead", async () => {
+  /* The REAL step text, run by bash, with `gh`/`jq`/`git`/`sleep` shimmed.
+   * Actions keeps logs 90 days; the runs list and jobs list outlive them. The
+   * step once fetched the log fatally, so after a quiet quarter the watchdog
+   * went red every hour and then raised WATCHDOG_BROKEN over a log that can
+   * never come back. MUTATION: drop the `if !` guard and this test fails at
+   * the execFileSync, with gh's 404 as the reason. */
+  const posix = (p) => p.replaceAll("\\", "/");
+  const script = runBody(WATCH_WF, "Fetch the release history")
+    .replaceAll("tools/release/watch-release.mjs", JSON.stringify(posix(path.join(HERE, "watch-release.mjs"))));
+  /* Under the repo, not os.tmpdir(): /tmp is noexec in some sandboxes, and the
+   * shims must execute (the same call publish-digest.test.mjs made). */
+  const scratch = fs.mkdtempSync(path.join(ROOT, ".scratch-release-watch-"));
+  try {
+    const bin = path.join(scratch, "bin");
+    const work = path.join(scratch, "work");
+    const fx = path.join(scratch, "fx");
+    for (const d of [bin, work, fx]) fs.mkdirSync(d);
+    fs.writeFileSync(path.join(fx, "runs.json"), JSON.stringify({ workflow_runs: RUNS }));
+    fs.writeFileSync(path.join(fx, "jobs.json"), JSON.stringify({ jobs: JOBS_0906 }));
+    const shim = (name, body) => fs.writeFileSync(path.join(bin, name), body, { mode: 0o755 });
+    // gh: everything the step asks for, except the log — which is gone. `gh api`
+    // prints the error BODY to stdout on a 4xx, so the step must not keep it.
+    shim("gh", [
+      "#!/bin/bash",
+      '[ "$1" = "api" ] || { echo "mock gh: $*" >&2; exit 2; }',
+      `echo "$2" >> "${posix(fx)}/calls.txt"`,
+      'case "$2" in',
+      `  */actions/jobs/*/logs) echo '{"message":"Not Found","status":"404"}'; echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;`,
+      `  */workflows/release.yml/runs*) cat "${posix(fx)}/runs.json" ;;`,
+      `  */actions/runs/*/jobs) cat "${posix(fx)}/jobs.json" ;;`,
+      `  */workflows/release-trigger.yml/runs*) echo '{"workflow_runs":[]}' ;;`,
+      `  */workflows/release-trigger.yml) echo '{"state":"active"}' ;;`,
+      '  *) echo "mock gh: unexpected endpoint $2" >&2; exit 2 ;;',
+      "esac",
+      "",
+    ].join("\n"));
+    // jq: exactly the one filter the step uses; anything else fails loudly.
+    shim("jq", [
+      "#!/usr/bin/env node",
+      "const [flag, filter, file] = process.argv.slice(2);",
+      'if (flag !== "-r" || !filter.includes(\'select(.name == "summary" and .conclusion != "skipped") | .id\')) {',
+      '  console.error("jq shim: unexpected invocation " + process.argv.slice(2).join(" ")); process.exit(2);',
+      "}",
+      'for (const j of JSON.parse(require("fs").readFileSync(file, "utf8")).jobs) {',
+      '  if (j.name === "summary" && j.conclusion !== "skipped") console.log(j.id);',
+      "}",
+      "",
+    ].join("\n"));
+    shim("git", "#!/bin/bash\nexit 0\n");
+    shim("sleep", "#!/bin/bash\nexit 0\n");
+    const scriptPath = path.join(work, "fetch-step.sh");
+    fs.writeFileSync(scriptPath, script);
+    const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, REPO: "JW-Incorporated/foray" };
+    const out = execFileSync("bash", [scriptPath], { cwd: work, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    const calls = fs.readFileSync(path.join(fx, "calls.txt"), "utf8");
+    assert.ok(calls.includes("/actions/jobs/101513086385/logs"), `the step never asked for the summary log:\n${calls}`);
+    assert.match(out, /::warning::.*summary job's log/);
+    assert.equal(fs.readFileSync(path.join(work, "summary.log"), "utf8"), "",
+      "the 404 body gh printed must not be left in summary.log as if it were the log");
+    for (const f of ["runs.json", "jobs.json", "peer-workflow.json", "peer-runs.json"]) {
+      assert.ok(fs.existsSync(path.join(work, f)), `the step stopped before writing ${f}`);
+    }
+    // …and the Judge step, given exactly those files, still reaches a G2 reading.
+    const W = (f) => path.join(work, f);
+    const res = await run(["--mode", "watch", "--now", "2026-09-24T00:00:00Z", "--runs", W("runs.json"),
+      "--jobs", W("jobs.json"), "--summary-log", W("summary.log"), "--commits", W("commits.txt"),
+      "--peer-workflow", W("peer-workflow.json"), "--peer-runs", W("peer-runs.json"),
+      "--verdict-out", W("verdict.json")], {});
+    assert.equal(res.code, 0, res.text);
+    const g2 = JSON.parse(fs.readFileSync(W("verdict.json"), "utf8")).gates.find((g) => g.id === "G2");
+    assert.equal(g2.facts.source, "jobs", "with no log, G2 must still read the store jobs");
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
 });
 
 /* ═════════════════════════════════ the issue ═════════════════════════════ */

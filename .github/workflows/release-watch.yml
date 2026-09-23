@@ -75,7 +75,9 @@ jobs:
       # No `npm ci`: watch-release.mjs has no dependencies and makes no network
       # calls of its own. Everything it reads is fetched here into a file. A
       # fetch that fails after its retries fails the JOB — "I could not tell" is
-      # not a verdict and must never reach the issue dressed up as one.
+      # not a verdict and must never reach the issue dressed up as one. The one
+      # exception is the summary job's log, below: it expires, and G2 has a
+      # fallback that does not need it.
       - name: Fetch the release history, the waiting commits and the trigger's pulse
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -98,13 +100,24 @@ jobs:
 
           # The newest completed run's jobs, and its summary job's log — the
           # only place the per-store outcome is readable (see parseOutcome()).
+          #
+          # THE LOG IS THE ONE FETCH ALLOWED TO FAIL. Actions keeps logs for 90
+          # days; the run history and jobs list outlive them. After a quiet
+          # stretch (a pause, or only data commits, which never release) the
+          # newest release's log is gone for good, and a fatal fetch would turn
+          # the watchdog red every hour — and then raise WATCHDOG_BROKEN — over a
+          # log that will never come back. An empty log is a reading, not a
+          # guess: divergentGate() falls back to the store jobs' conclusions.
           echo '{"jobs":[]}' > jobs.json
           : > summary.log
           if RUN=$(node tools/release/watch-release.mjs --mode latest-completed --runs runs.json); then
             fetch "repos/$REPO/actions/runs/$RUN/jobs" jobs.json
             SUMMARY=$(jq -r '.jobs[] | select(.name == "summary" and .conclusion != "skipped") | .id' jobs.json | head -n1)
             if [ -n "$SUMMARY" ]; then
-              fetch "repos/$REPO/actions/jobs/$SUMMARY/logs" summary.log
+              if ! fetch "repos/$REPO/actions/jobs/$SUMMARY/logs" summary.log; then
+                echo "::warning::the summary job's log (job $SUMMARY) is unreadable — expired past log retention? G2 reads job conclusions instead."
+                : > summary.log
+              fi
             fi
           fi
 

@@ -281,9 +281,15 @@ can say so.
   commit. git has neither limit.
 - G2 reads one `RELEASE_OUTCOME` line from the summary job's log rather than
   grepping each platform job's log. Runs from before that line existed are read
-  from the runner's own echo of the summary step's `env:` block, then from job
-  conclusions — which is what catches §5's first blind spot (run 34042838342:
-  android died before its gate, the summary job went green, G2 names it).
+  from the runner's own echo of the summary step's `env:` block. Per PLATFORM, a
+  blank state ("not reached": the job died before its credential gate) is
+  unknown, not "not ready", and falls back to that platform's job conclusion —
+  which is what catches §5's first blind spot (run 34042838342: android died
+  before its gate, the summary job went green, G2 names it; replayed from that
+  run's real summary log, which echoes `ANDROID_STATE: ` blank). Only an
+  explicit non-ready state (`absent`, `partial`) is the documented gap. The
+  summary log is also the one fetch allowed to fail: logs expire after 90 days,
+  and G2's job-conclusion fallback does not need it.
 
 **Still open, not built here:** the build number is still derived from the
 lifetime `run_number` (§3's warning stands; the trigger simply never re-runs);
