@@ -348,6 +348,7 @@ const NOT_CONTROLS = {
   "player/client.js": new Set([
     "n", "ui.tNow", "ui.tLeft", "ui.title", "ui.show", "ui.sTitle", "ui.sShow", "ui.sWhy", "ui.sDesc", "ui.note",
     "ui.err", "ui.sErr", // the bar's and the sheet's status lines (L5 + L2, painted by paintStatus)
+    "ui.announce", // the bar's sr-only live region, a sibling of its button (review 2026-09-23)
   ]),
 };
 const HELPERS = { "app.js": ["setControlLabel", "setStatusText"], "player/client.js": ["paintControl"] };
