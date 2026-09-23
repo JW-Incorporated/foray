@@ -36,6 +36,10 @@ import {
   nowPlayingFieldOf, NOWPLAYING_FIELD_MAX, NOWPLAYING_VIA, SESSION_KINDS, SESSION_PRODUCERS,
   TRANSPORT_SOURCES, TRANSPORT_ACTIONS, REMOTE_COMMANDS, REMOTE_ORIGINS,
 } from "./diagnostic-log.js";
+/* The REAL store for the held-write tests below: whether a row written before a
+   slow hydration overwrites the durable ring is a fact about `DurableStore`'s
+   first-writer rule, and a fake that did not have that rule would prove nothing. */
+import { DurableStore, localStorageTier } from "./durable-store.js";
 
 /* ==================================================================== */
 /* fakes                                                                */
@@ -1650,6 +1654,40 @@ test("REPORT 2026-09-23: the remote row admits closed vocabularies and drops the
   assert.deepEqual([...REMOTE_ORIGINS].sort(), ["command-center", "media-session", "notification", "webkit"]);
 });
 
+test("REVIEW 2026-09-23: a skip through WebKit's door is a row when named by the record's word, and the spec action is NOT that word", () => {
+  /* The founder's phone shows WebKit's client during tape, so a lock-screen skip
+     arrives as `seekforward` through the `webkit` door — and the tee named the
+     command by that spec action, which this set does not hold: `remoteCommand`
+     returned null for every skip, next and previous from that door, so the
+     record could never say whether a press arrived twice. The record's word is
+     the dashed one; the translation is the shim's (`REMOTE_COMMAND_FOR_ACTION`)
+     and `shell-invariants.test.mjs` pins its range into `REMOTE_COMMANDS`. This
+     pins both halves of the contract from the record's side: the dashed row is
+     written and rendered, and the action spelling is refused rather than
+     admitted — so a shim that stopped translating would be caught by the row's
+     absence, never papered over by a widened set.
+     MUTATION: add "seekforward" to REMOTE_COMMANDS — the second half goes red;
+     drop "skip-forward" — the first half does. */
+  const { diag, log, clock: c } = mk();
+  const row = diag.remoteCommand({ command: "skip-forward", action: "seekforward", origin: "webkit", handled: true, at: c.now() - 40 });
+  assert.ok(row, "a webkit-door skip is a row");
+  assert.equal(row.command, "skip-forward");
+  assert.equal(row.origin, "webkit");
+  assert.match(formatDiagnosticReport(log.read()), /remote\s+skip-forward -> seekforward from webkit  handled=y  lag 40ms/);
+  for (const [spec, door] of [
+    ["seekforward", "webkit"], ["seekbackward", "webkit"], ["nexttrack", "webkit"], ["previoustrack", "webkit"],
+    ["nexttrack", "media-session"], ["seekbackward", "notification"], ["seekto", "media-session"],
+  ]) {
+    assert.equal(diag.remoteCommand({ command: spec, action: spec, origin: door }), null,
+      `"${spec}" is an action, not a command; the shim must translate it before it reaches the record`);
+    assert.ok(!REMOTE_COMMANDS.has(spec), `REMOTE_COMMANDS must not be widened to admit the spec action "${spec}"`);
+  }
+  for (const dashed of ["next-track", "previous-track", "skip-backward", "skip-forward", "change-position"]) {
+    assert.ok(REMOTE_COMMANDS.has(dashed), dashed);
+  }
+  assert.equal(log.read().entries.length, 1, "exactly the one translated row landed");
+});
+
 test("REPORT 2026-09-23: a dropped duplicate is a remote row saying dup=y, counted on the header and never as unhandled", () => {
   /* On iOS one lock-screen press can arrive through two doors — WebKit's own
      MediaSession (the tee) and the plugin's MPRemoteCommandCenter — and the shim
@@ -1987,4 +2025,172 @@ test("the boot row says when the page wrote BEFORE the store had hydrated", () =
   assert.match(lines[1], /hidden=n$/);
   assert.match(lines[2], /hidden=n$/);
   assert.equal(log.entries[2].hydrated, undefined, "a caller that did not say stores nothing");
+});
+
+/* ==================================================================== */
+/* REVIEW 2026-09-23: a write before a SLOW hydration must not overwrite  */
+/* the older ring. The store adopts a durable row only if nothing wrote   */
+/* the key first; the boot row used to be that first writer.              */
+/* ==================================================================== */
+
+/** A `Storage` the local tier can walk: what a swept WebView leaves behind. */
+function memoryStorage(initial = {}) {
+  const map = new Map(Object.entries(initial));
+  return {
+    map,
+    get length() { return map.size; },
+    key(i) { return [...map.keys()][i] ?? null; },
+    getItem(k) { return map.has(k) ? map.get(k) : null; },
+    setItem(k, v) { map.set(k, String(v)); },
+    removeItem(k) { map.delete(k); },
+  };
+}
+
+/** A durable tier whose `readAll` answers only when released — a cold
+    Preferences read over the bridge, six seconds in, not a hang. */
+function gatedDurable(rows = {}) {
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const store = new Map(Object.entries(rows));
+  const tier = {
+    name: "native", sync: false, durable: true,
+    async readAll(prefix) {
+      await gate;
+      const out = new Map();
+      for (const [k, v] of store) if (!prefix || k.startsWith(prefix)) out.set(k, v);
+      return out;
+    },
+    async write(k, v) { store.set(k, String(v)); },
+    async remove(k) { store.delete(k); },
+  };
+  return { tier, store, release: () => release() };
+}
+
+/** Three rows from an earlier drive, in the durable tier and nowhere else. */
+function olderRing(c) {
+  const wall = c.now() - 60 * 60 * 1000;
+  return JSON.stringify({
+    v: DIAG_VERSION, cap: DIAG_CAP, seq: 3, dropped: 0, cleared: null, build: null,
+    saveErrors: 0, loadError: null, updatedAt: new Date(wall).toISOString(),
+    entries: [
+      { seq: 1, wall, type: "boot", hidden: false },
+      { seq: 2, wall: wall + 1000, type: "transport", source: "tap", action: "play", hidden: false },
+      { seq: 3, wall: wall + 2000, type: "seam", openedBy: "boundary", stages: [], hidden: false },
+    ],
+  });
+}
+
+test("REVIEW 2026-09-23: a row written before a slow hydration is HELD, then written after the adopted ring", async () => {
+  /* The branch bounded the record's wait on hydration at five seconds and wrote
+     the boot row at the bound. `record()` -> `_load()` read the swept
+     localStorage (empty), `save()` marked `cp_diag` dirty, and when the durable
+     read landed at six seconds `DurableStore` skipped the durable ring (dirty:
+     "this session wins") and pushed the fresh one-row ring down over it. The
+     older ring was gone and the only trace was `storage=not-hydrated`. The
+     comment called the case "a durable tier that hung"; a merely slow one lost
+     the ring the same way, and a timer cannot tell the two apart. Now the write
+     is held while the store says it has not hydrated, and `flush()` re-reads
+     the ring — the adopted one — and appends the held rows after it.
+     KILLING MUTATION: drop the `_deferring()` check from `save()`. The first
+     assertion fails (the boot row reaches localStorage at once) and so does the
+     fourth (the durable ring is skipped as dirty and the write holds one row).
+     MUTATION 2: skip the re-read in `flush()` — the held row is written over an
+     in-memory ring that never saw the adopted one; the fourth assertion fails. */
+  const c = clock();
+  const local = memoryStorage();
+  const durable = gatedDurable({ [DIAG_KEY]: olderRing(c) });
+  const store = new DurableStore({ tiers: [localStorageTier(local), durable.tier], now: c.now });
+  const hydration = store.hydrate();
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  const diag = new PlayerDiagnostics({ log, now: c.now });
+
+  const boot = diag.boot({ hydrated: false });
+  assert.equal(store.getItem(DIAG_KEY), null, "nothing is written while the store has not hydrated");
+  assert.equal(log.read().entries.length, 1, "but the sheet shows the row at once");
+  assert.equal(log.read().store.hydrated, false, "and the header says why it is not on disk yet");
+  assert.match(formatDiagnosticReport(log.read()), /storage=not-hydrated/);
+
+  durable.release();
+  await hydration;
+  assert.match(store.getItem(DIAG_KEY) ?? "", /"type":"seam"/, "the durable ring was ADOPTED, not skipped as this session's");
+
+  assert.equal(log.flush(), true, "hydration landed: the held row is written");
+  const written = JSON.parse(store.getItem(DIAG_KEY));
+  assert.deepEqual(written.entries.map((e) => e.type), ["boot", "transport", "seam", "boot"], "the older ring first, the held row after it");
+  assert.equal(boot.seq, 4, "the held row continues the adopted sequence rather than restarting it");
+  assert.equal(written.seq, 4);
+  assert.equal(log.read().entries[3], boot, "the same live object, so a caller's reference still points at its row");
+  await store.flush();
+  assert.deepEqual(JSON.parse(durable.store.get(DIAG_KEY)).entries.map((e) => e.type), ["boot", "transport", "seam", "boot"],
+    "and the durable tier holds the merged ring, not the one-row one");
+  assert.equal(log.flush(), false, "nothing left to write");
+});
+
+test("REVIEW 2026-09-23: the next write after hydration carries the held rows by itself, and keeps the running build over the disk's", async () => {
+  /* Nobody has to call `flush()`: `record()` does, first. And the build stamp
+     set while the write was held is the RUNNING build; the disk's is an older
+     boot's. KILLING MUTATION: drop the `this.flush()` at the top of `record()`
+     — the transport row is written and the boot row is lost with the older
+     ring's sequence; or drop the `if (build)` restore in `flush()`. */
+  const c = clock();
+  const durable = gatedDurable({ [DIAG_KEY]: olderRing(c) });
+  const store = new DurableStore({ tiers: [localStorageTier(memoryStorage()), durable.tier], now: c.now });
+  const hydration = store.hydrate();
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  const diag = new PlayerDiagnostics({ log, now: c.now });
+  diag.boot({ hydrated: false });
+  diag.build({ web: "deadbeefcafef00d", shell: false });
+  assert.equal(store.getItem(DIAG_KEY), null);
+  durable.release();
+  await hydration;
+  diag.transport("tap", "play");
+  const written = JSON.parse(store.getItem(DIAG_KEY));
+  assert.deepEqual(written.entries.map((e) => e.type), ["boot", "transport", "seam", "boot", "build", "transport"]);
+  assert.deepEqual(written.entries.map((e) => e.seq), [1, 2, 3, 4, 5, 6]);
+  assert.equal(written.build?.web, "deadbeefcafef00d", "the running build, not null from the older ring");
+});
+
+test("REVIEW 2026-09-23: a store that never hydrates still gets the held rows once the page gives up waiting", () => {
+  /* The documented trade, kept, but at a distance a slow read cannot reach:
+     `client.js` calls `flush({ force: true })` a minute after the bound, and a
+     tier that has not answered by then has earned the name "hung". Without
+     the force the rows would stay in memory forever and a reload would lose
+     them. KILLING MUTATION: ignore `force` in `flush()`. */
+  const c = clock();
+  const durable = gatedDurable({});
+  const local = memoryStorage();
+  const store = new DurableStore({ tiers: [localStorageTier(local), durable.tier], now: c.now });
+  store.hydrate();
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  const diag = new PlayerDiagnostics({ log, now: c.now });
+  diag.boot({ hydrated: false });
+  diag.transport("tap", "play");
+  assert.equal(local.map.get(DIAG_KEY), undefined, "held");
+  assert.equal(log.flush(), false, "a plain flush still waits for hydration");
+  assert.equal(log.flush({ force: true }), true, "the give-up writes what was held");
+  assert.deepEqual(JSON.parse(local.map.get(DIAG_KEY)).entries.map((e) => e.type), ["boot", "transport"]);
+  diag.transport("tap", "pause");
+  assert.equal(JSON.parse(local.map.get(DIAG_KEY)).entries.length, 3, "and every write after the give-up lands at once");
+});
+
+test("REVIEW 2026-09-23: a Clear while writes are held drops them, and a plain Storage holds nothing", () => {
+  /* A clear is the listener's word and removes the key at once; nothing held
+     for hydration may come back on the next flush. And a store with no
+     hydration state — a page with no durable store, every fake in this file —
+     writes on `record()` as it always did (the durability test above pins the
+     other half). KILLING MUTATION: leave `_buffered` alone in `clear()`. */
+  const c = clock();
+  const durable = gatedDurable({});
+  const store = new DurableStore({ tiers: [localStorageTier(memoryStorage()), durable.tier], now: c.now });
+  store.hydrate();
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  log.record("boot", { hidden: false });
+  log.clear();
+  assert.equal(log.flush({ force: true }), false, "nothing held survives a clear");
+  assert.equal(store.getItem(DIAG_KEY), null);
+
+  const plain = mk();
+  plain.log.record("boot", { hidden: false });
+  assert.ok(plain.store.map.get(DIAG_KEY), "no hydration state: written on record(), as before");
+  assert.equal(plain.log.flush(), false);
 });

@@ -368,6 +368,18 @@ test("the first write waits for storage to hydrate", () => {
     (code.match(/diag\.visibility\(/g) || []).length, 1,
     "and so must the visibility listener"
   );
+  /* AND THE HELD ROWS ARE FLUSHED (review, 2026-09-23): when the bound was hit,
+     hydration landing writes them after the adopted ring, and a minute later
+     the page stops waiting. Both inside the same `then`, where `hydrated` is
+     known. MUTATION: drop either line -- the first loses a slow store's rows
+     until the next write, the second loses a hung store's forever. */
+  assert.match(deferred[1], /if \(hydrated !== true\) \{[\s\S]*?storageHydrated\.then\(\(\) => diag\.flush\(\)\)/,
+    "held rows are written when hydration lands");
+  assert.match(deferred[1], /setTimeout\(\(\) => diag\.flush\(\{ force: true \}\), HYDRATE_GIVE_UP_MS\)/,
+    "and written anyway once the tier is called hung");
+  const giveUp = /const HYDRATE_GIVE_UP_MS = ([\d_]+);/.exec(code);
+  assert.ok(giveUp, "HYDRATE_GIVE_UP_MS must be a literal");
+  assert.ok(Number(giveUp[1].replace(/_/g, "")) >= 30_000, "the give-up must sit far past any plausible slow read");
 });
 
 test("a real cross-episode seam records observedGapMs, the deadline and both ids", async (t) => {
@@ -1004,11 +1016,32 @@ test("REPORT 2026-09-23: a durable tier that never answers cannot cost the boot 
 
   t.mock.timers.tick(1);
   await drain();
-  assert.ok(record(), "at the bound, the record exists");
+  /* AT THE BOUND THE ROWS EXIST AND ARE HELD (review, 2026-09-23). The first
+     cut of this bound wrote the boot row to storage here, and a durable read
+     that landed at six seconds then found the key dirty and lost the older
+     ring. So at five seconds the record has the rows -- the sheet shows them,
+     marked -- and storage does not; the ring writes them once hydration lands
+     (`diagnostic-log.test.js` drives that with the real store) or, for a tier
+     that never answers, once the page has waited long enough to call it hung.
+     KILLING MUTATION 3: drop the `_deferring()` check from `DiagnosticLog.save`
+     -- storage holds the rows at five seconds and the first assertion here
+     fails. MUTATION 4: drop the `flush({ force: true })` timer from client.js
+     -- the last block fails: a hung tier costs the rows again, this time in
+     memory. */
+  assert.equal(record(), null, "at the bound the rows are held, not written over what the durable tier may still hold");
+  const held = globalThis.window.forayDiagnosticReport();
+  assert.match(held, /storage=not-hydrated/, "the boot row is in the record and says the store had not hydrated");
+  assert.match(held, /\bbuild\b/, "and so is the build row");
+
+  t.mock.timers.tick(60_000 - 1);
+  await drain();
+  assert.equal(record(), null, "held for a full minute past the bound: a slow read is not a hung one");
+  t.mock.timers.tick(1);
+  await drain();
+  assert.ok(record(), "a tier that has not answered a minute past the bound is hung, and the rows are written");
   assert.equal(rows("boot").length, 1, "the boot row landed without the durable tier");
   assert.equal(rows("build").length, 1, "and so did the build row");
   assert.equal(rows("boot")[0].hydrated, false, "and the boot row says the store had not hydrated");
-  assert.match(globalThis.window.forayDiagnosticReport(), /storage=not-hydrated/);
   restore();
 });
 

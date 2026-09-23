@@ -204,6 +204,73 @@ export class DiagnosticLog {
        user data. */
     this._cleared = null;
     this._build = null;
+    /* WRITES BEFORE HYDRATION ARE HELD IN MEMORY (review, 2026-09-23). The
+       store behind this ring adopts the durable tier's copy of a key only if
+       nothing wrote that key first (`durable-store.js`, property 2), and
+       `client.js`'s wait on hydration is BOUNDED at five seconds. So a durable
+       read that was merely slow -- a cold Capacitor Preferences `readAll` over
+       the bridge, not a hang -- met a boot row already written, skipped the
+       durable ring as dirty, and pushed the fresh one-row ring down over it:
+       the sweep case `preferencesTier` exists for lost the older ring, and the
+       only trace was `storage=not-hydrated`. (The same held on main for any
+       row written before hydration: a play press at two seconds was the first
+       writer just the same.) So while the store says it has not hydrated, an
+       entry goes into the ring in memory -- `read()` shows it, the sheet shows
+       it -- and its `save()` is DEFERRED; `flush()` re-reads the store once
+       hydration has landed (the adopted ring, if there was one), puts the
+       buffered rows after it, and writes once. A store that reports no
+       hydration state at all (a plain `Storage`, the tests' fakes) defers
+       nothing. `_forced` is the give-up: `client.js` sets it long after the
+       bound, so a tier that truly hung still gets the rows into localStorage
+       -- the documented trade, at a distance a slow read cannot reach. */
+    this._buffered = [];
+    this._pendingSave = false;
+    this._forced = false;
+    this._loadedUnhydrated = false;
+  }
+
+  /** Whether persistence is being held for hydration -- see the constructor. */
+  _deferring() {
+    if (this._forced) return false;
+    return this._describeStore().hydrated === false;
+  }
+
+  /**
+   * Write what was held. Called by `client.js` when hydration lands (and, with
+   * `force`, when it has waited long enough to call the tier hung); also by
+   * `record()` before every write, so a write after hydration carries the
+   * buffered rows with it even if nobody called this. Returns whether a write
+   * was made.
+   *
+   * THE RE-READ IS THE FIX. Between the buffered write and now the store may
+   * have adopted the durable tier's ring -- the one the buffered write would
+   * have overwritten -- so the ring is read again from the store and the
+   * buffered rows go AFTER it, renumbered to continue its sequence (the
+   * entries are the same live objects a caller may still hold). The running
+   * build is kept over the disk's older one; the clear mark and the drop count
+   * are the disk's, which is the truth about the ring being written over.
+   */
+  flush({ force = false } = {}) {
+    if (force) this._forced = true;
+    if (!this._pendingSave || this._deferring()) return false;
+    if (this._loadedUnhydrated && this._buffered.length) {
+      const buffered = this._buffered;
+      const build = this._build;
+      this._entries = null;
+      this._buffered = [];
+      this._loadedUnhydrated = false;
+      const entries = this._load();
+      if (build) this._build = build;
+      for (const e of buffered) {
+        e.seq = ++this._seq;
+        entries.push(e);
+      }
+      while (entries.length > this.cap) { entries.shift(); this._dropped += 1; }
+    }
+    this._buffered = [];
+    this._loadedUnhydrated = false;
+    this._pendingSave = false;
+    return this.save();
   }
 
   /**
@@ -229,6 +296,10 @@ export class DiagnosticLog {
   _load() {
     if (this._entries) return this._entries;
     this._entries = [];
+    /* Read before the store had hydrated: what is read now is the localStorage
+       copy only, and `flush()` reads again once the durable one may have been
+       adopted. */
+    this._loadedUnhydrated = this._describeStore().hydrated === false;
     let raw = null;
     try { raw = this.storage ? this.storage.getItem(this.key) : null; } catch (_) { raw = null; }
     if (!raw) return this._entries;
@@ -296,6 +367,8 @@ export class DiagnosticLog {
 
   /** Append one entry and persist immediately. Returns the live entry. */
   record(type, fields = {}) {
+    /* A write after hydration landed carries whatever was held before it. */
+    this.flush();
     const entries = this._load();
     /* THE FRAME LAST, so no caller field can overwrite it. Spread first and a stray
        `wall` or `seq` in `fields` silently replaces the two values every ordering,
@@ -303,7 +376,13 @@ export class DiagnosticLog {
        is the only reason this was not already a bug. */
     const entry = { ...fields, seq: ++this._seq, wall: this._now(), type: String(type) };
     entries.push(entry);
-    while (entries.length > this.cap) { entries.shift(); this._dropped += 1; }
+    if (this._deferring()) this._buffered.push(entry);
+    while (entries.length > this.cap) {
+      const gone = entries.shift();
+      this._dropped += 1;
+      const held = this._buffered.indexOf(gone);
+      if (held >= 0) this._buffered.splice(held, 1);
+    }
     this.save();
     return entry;
   }
@@ -358,6 +437,12 @@ export class DiagnosticLog {
    */
   save() {
     if (!this.storage) return false;
+    if (this._deferring()) {
+      /* Held, not lost: `flush()` writes it once the store has hydrated, or
+         once `client.js` gives up waiting -- see the constructor. */
+      this._pendingSave = true;
+      return false;
+    }
     try {
       this.storage.setItem(this.key, JSON.stringify(this._blob()));
       return true;
@@ -413,6 +498,11 @@ export class DiagnosticLog {
     this._entries = [];
     this._dropped = 0;
     this.loadError = null;
+    /* A clear is the listener's word, and it removes the key at once: nothing
+       held for hydration outlives it, and the ring read after it is this one. */
+    this._buffered = [];
+    this._pendingSave = false;
+    this._loadedUnhydrated = false;
     if (!this.storage) return;
     try { this.storage.removeItem(this.key); } catch (_) { this.saveErrors += 1; }
   }
@@ -662,7 +752,12 @@ export const REMOTE_ORIGINS = new Set(["command-center", "webkit", "media-sessio
     page action. Kept beside the action because the mapping is the finding:
     a `toggle-play-pause` that became `play` on a playing transport is the bug
     where a car's one button could pause nothing. Dashed tokens, so both
-    natives spell them the same way. */
+    natives spell them the same way — and the SHIM translates for the doors
+    that name a press by its spec action instead (`REMOTE_COMMAND_FOR_ACTION`
+    in `foray-media-session.js`: WebKit's tee and Android's Media3 sink both
+    said `nexttrack`, which this set does not hold, so every skip through those
+    doors was a row `remoteCommand` dropped). `shell-invariants.test.mjs` pins
+    the translation's range into this set. */
 export const REMOTE_COMMANDS = new Set([
   "play", "pause", "toggle-play-pause", "stop", "next-track", "previous-track",
   "skip-backward", "skip-forward", "change-position", "close",
@@ -798,6 +893,12 @@ export class PlayerDiagnostics {
 
   _isHidden() {
     try { return this._hidden() === true; } catch (_) { return false; }
+  }
+
+  /** Write what the ring held for hydration -- `DiagnosticLog.flush`. `client.js`
+      calls it when hydration lands and, with `force`, when it stops waiting. */
+  flush(opts = {}) {
+    try { return this.log.flush(opts); } catch (_) { return false; }
   }
 
   /** Called once, after storage has hydrated, so the record says when the page

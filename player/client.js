@@ -259,16 +259,25 @@ const storageHydrated = storage.hydrate().catch(() => storage);
    that never recorded anything: no build row, no rows, and a header that said
    so in a way that read as a broken instrument. `app.js` has bounded its own
    wait on the same promise at five seconds since the store shipped; this is
-   that bound, applied to the one writer that had none.
+   that bound, for the FIELD RECORD's writers and for nothing else -- the
+   `boot`/`build`/visibility/native-session writers below, and the two
+   `diag.dataSource` bridges. The playback-rate restore further down reads a
+   VALUE hydration provides and stays on `storageHydrated`: run at the bound it
+   would read the default, apply it, and never run again (review, 2026-09-23).
 
    Resolves `true` when hydration landed in time and `false` when the bound was
-   hit, and the boot row carries the answer (`storage=not-hydrated`). The trade
-   is stated rather than hidden: a write after the bound wins over the durable
-   tier's copy of the ring (`durable-store.js`, property 2), so a page whose
-   localStorage was swept AND whose durable tier hung loses the older ring. It
-   used to lose the whole instrument. The timer is cleared when hydration lands
-   so a healthy boot holds nothing open. */
+   hit, and the boot row carries the answer (`storage=not-hydrated`). A row
+   written after the bound does NOT overwrite the durable tier's copy of the
+   ring: `DiagnosticLog` holds every write in memory while the store says it has
+   not hydrated and `flush()`es once it has, putting the held rows after the
+   adopted ring (review, 2026-09-23 -- a durable read that was merely slow, not
+   hung, used to lose the older ring the moment the boot row landed, because the
+   store treats the first writer of a key as its owner). Only after
+   `HYDRATE_GIVE_UP_MS` is the tier called hung and the held rows written
+   anyway; a read that slow is not a read. The timer is cleared when hydration
+   lands so a healthy boot holds nothing open. */
 const HYDRATE_WAIT_MS = 5000;
+const HYDRATE_GIVE_UP_MS = 60_000;
 const storageReady = new Promise((resolve) => {
   const timer = setTimeout(() => resolve(false), HYDRATE_WAIT_MS);
   storageHydrated.then(() => { clearTimeout(timer); resolve(true); }, () => { clearTimeout(timer); resolve(true); });
@@ -357,6 +366,15 @@ const diag = new PlayerDiagnostics({
    the bound — see `HYDRATE_WAIT_MS` — and the boot row records that. */
 storageReady.then((hydrated) => {
   diag.boot({ hydrated: hydrated === true });
+  if (hydrated !== true) {
+    /* The bound was hit, so the rows below are being HELD by the ring (see
+       `HYDRATE_WAIT_MS`). Write them when hydration lands -- after the adopted
+       ring, never over it -- and, if it never does, when the tier has earned
+       the name "hung". The give-up timer is left to fire on a healthy late
+       hydration too: `flush({ force })` with nothing pending is a no-op. */
+    storageHydrated.then(() => diag.flush()).catch(() => {});
+    setTimeout(() => diag.flush({ force: true }), HYDRATE_GIVE_UP_MS);
+  }
   /* WHICH BUILD (founder report 3, 2026-09-22) — see `player/build-stamp.js`.
      Beside `boot()` and after hydration for the same reason `boot()` waits:
      it is a write into the durable record. Asynchronous, so it lands a moment
@@ -1681,8 +1699,17 @@ function currentRate() {
    whole session. So when hydration lands, the stored speed is handed to a
    manager that already exists. A speed the listener chose inside the window is
    safe without a flag here: `applyRate` wrote it, and hydration never clobbers
-   a key written since the store was built, so `readRate` answers their choice. */
-storageReady.then(() => {
+   a key written since the store was built, so `readRate` answers their choice.
+
+   ON `storageHydrated`, NOT THE BOUNDED `storageReady` (review, 2026-09-23). The
+   bound exists for the field record, whose rows are only worth writing while
+   the page is alive; this block reads a VALUE that only hydration can supply.
+   Run at the five-second bound it read the default speed, found it equal to
+   the manager's, corrected nothing, and never ran again -- so a listener whose
+   localStorage had been swept and whose durable tier answered at six seconds
+   kept 1x for the session. That is the exact regression this block was written
+   to prevent. */
+storageHydrated.then(() => {
   if (manager) {
     const stored = readRate(storage);
     if (stored !== manager.rate) manager.setRate(stored);
