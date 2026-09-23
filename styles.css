@@ -235,6 +235,61 @@ html, body {
   overflow-x: hidden;
   overflow-x: clip;
 }
+/* ---------- THE TAP-TARGET RULE (audit 2026-09-22, theme F) ----------
+
+   Every control a thumb has to hit gets at least a 44x44 CSS-px HIT AREA —
+   Apple's HIG floor, and the size this file already chose for the player's own
+   transport ("Big targets — this is still a car product"). Before this there
+   was no rule, only sizes picked by eye: four 44px targets in 3,300 lines, and
+   two comments promising sizes the CSS did not deliver. The consequences were
+   not neutral — a missed reorder arrow removed an episode, a missed Audition
+   changed the narration voice, a missed star started audio.
+
+   HIT AREA, NOT VISUAL SIZE. The pseudo-element below is an invisible box
+   centred on the control, at least 44px in each direction, and the browser
+   hit-tests it as part of the control. So a 40px star still LOOKS 40px and
+   still sits where it did, and the row's title column does not lose width to
+   a size bump. Controls that are genuinely too small to look right at 40 get a
+   real size change at their own rule instead.
+
+   `:where()` on purpose: zero specificity, so this can never out-rank a
+   component's own `position` (the ✕ in the Now Playing grab row is
+   `position: absolute`, and stays so) — it only supplies `relative` to the
+   controls that had no position at all, which the pseudo-element needs to
+   anchor to. A control that joins this list must be one whose ::after is free;
+   test/tap-targets.test.js enumerates the list and checks that. */
+:where(
+  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
+  .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-collapse, .fp-openep,
+  .voice-row-audition
+) {
+  position: relative;
+}
+:where(
+  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
+  .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-collapse, .fp-openep,
+  .voice-row-audition
+)::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* Visually hidden, still read: the one live region app.js's announce() writes
+   ("Moved to position 2 of 5."). Not `display: none` / `hidden`, which would
+   take it out of the accessibility tree too. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* Was `overflow: hidden` on `body.view-home` — the home screen is designed
    to fit one viewport with no internal scroll, but on iOS Safari a page with
    no scrollable overflow anywhere also has no rubber-band bounce, which reads
@@ -309,6 +364,10 @@ html, body {
   .topbar-tag { display: none; }
 }
 .topbar button {
+  /* 42px to look at — the bar's content box is 43px (44 less its hairline),
+     which test/home-layout.test.js pins — and 44px to hit, through the
+     tap-target rule: these are the two most-reached controls in the app
+     (audit 2026-09-22). */
   width: 42px; height: 42px;
   border: none; border-radius: 10px;
   background: none;
@@ -982,7 +1041,7 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
    the header exactly as before this fix. */
 .page-head.page-head-hidden { transform: translateY(-130%); }
 .page-head .back {
-  width: 42px; height: 42px;
+  width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 10px;
   border: 1px solid var(--line);
@@ -1061,6 +1120,17 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 .ep-row .s, .pl-row .s { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
 .ep-title-link { color: inherit; text-decoration: none; }
 .ep-title-link:active { text-decoration: underline; }
+/* THE WHOLE TEXT BLOCK OPENS THE EPISODE (audit 2026-09-22). A row carried two
+   bare links ~2px apart — the title (episode page) over the show name (show
+   page) — and nothing else: a tap aimed at the title often landed on the show
+   and left for a different page, and a tap in the empty space right of a short
+   title did nothing although the card looks like one big target. The title
+   link's ::after now covers the whole `.info` block (the "stretched link"
+   pattern — still one real `<a href>`, so long-press and open-in-new-tab keep
+   working), and the show link is the one explicit exception, lifted above it. */
+.ep-row .info { position: relative; }
+.ep-row .ep-title-link::after { content: ""; position: absolute; inset: 0; }
+.ep-row .info .show-link { position: relative; z-index: 1; }
 /* Publisher-set explicit-content marker (kanban card t_02c6bb0b), matching the
    small square "E" every mainstream podcast app puts next to a title —
    deliberately not a color-only signal (text label, not a dot) so it still
@@ -1157,26 +1227,46 @@ button.up-next {
 }
 button.up-next.on { color: var(--accent); border-color: var(--accent); }
 
+/* THE UP NEXT ROW HAS TWO LINES (audit 2026-09-22: three QA findings and a
+   persona, one cause). It carried six things on one line at phone width — a
+   number, the title, ▶, ☆, a stacked ↑/↓ pair at 28x22px two pixels apart,
+   and a 32px ✕ ten pixels to their right — which left the title ~124px and
+   made "move down" and "remove" one thumb-width apart. Remove is immediate
+   and has no undo, so a missed arrow deleted the episode.
+
+   Now the number and the title own the first line, full width, and the
+   controls sit on a second line: ▶ and ☆ on the left, then — pushed to the
+   right edge — ↑ and ↓ side by side, then ✕ with a clear 20px gap so the
+   destructive control is never the neighbour a near-miss lands on. Every
+   control there has at least a 44px hit area (the tap-target rule). */
+.up-next-row { flex-wrap: wrap; row-gap: 8px; }
+.up-next-row > .info { flex: 1 1 calc(100% - 36px); }
+/* Whichever control opens the second line lines up under the title, not
+   under the number (a row whose audio is gone has no ▶, so it may be ☆). */
+.up-next-row > .info + :is(.play-btn, button.star) { margin-left: 36px; }
 .up-next-reorder {
   flex: none;
-  display: flex; flex-direction: column; gap: 2px;
+  margin-left: auto;
+  display: flex; flex-direction: row; gap: 8px;
 }
 button.reorder {
   flex: none;
-  width: 28px; height: 22px;
-  border-radius: 6px;
+  width: 40px; height: 40px;
+  border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--surface-2);
   color: var(--text);
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   cursor: pointer;
   padding: 0;
 }
 button.reorder:disabled { opacity: 0.35; cursor: default; }
+button.reorder:not(:disabled):active { transform: scale(0.94); }
 
 button.up-next-remove {
   flex: none;
-  width: 32px; height: 32px;
+  width: 40px; height: 40px;
+  margin-left: 20px;
   border-radius: 50%;
   border: 1px solid var(--line);
   background: var(--surface-2);
@@ -1335,6 +1425,14 @@ body.ui-v2 .tab-btn[aria-current="page"] { color: var(--amber); }
    account for, open or closed. */
 body.ui-v2.fp-open #foray-player {
   bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
+  /* The inset is applied ONCE, by the tab bar underneath (its own box already
+     contains it). `#foray-player`'s base rule pads itself by the inset for the
+     case where it sits on the screen's bottom edge; docked above the tab bar it
+     is not on that edge, so the same padding became a ~34px dead band of bar
+     surface above the tab bar on a home-indicator iPhone — the exact
+     "applied exactly once" trap the reservation comment above warns about
+     (audit 2026-09-22). */
+  padding-bottom: 0;
 }
 body.ui-v2.fp-open {
   padding-bottom: calc(var(--fp-bar-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
@@ -1593,9 +1691,18 @@ body.sh-compose #view { padding-bottom: var(--sh-compose-h); }
 
 .fp-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
 .fp-art { width: 40px; height: 40px; border-radius: 6px; flex: none; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+/* The artwork opens Now Playing, like the title beside it (player/client.js
+   wires the same handler) — it is the most obvious 40px target on the bar and
+   every podcast app opens the player from it (audit 2026-09-22). */
+.fp-bar .fp-art { cursor: pointer; }
+/* `align-self: stretch` + centred content: the button fills the bar's full
+   height instead of shrinking to its two lines of text, so the ~8px bands
+   above the title and below the show name — which look like the bar — open
+   the player too, rather than being dead (audit 2026-09-22). */
 .fp-info {
   flex: 1 1 auto; min-width: 0;
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  align-self: stretch; min-height: 44px;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px;
   background: none; border: 0; color: inherit; text-align: left; cursor: pointer; padding: 0;
 }
 .fp-title, .fp-show { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1741,6 +1848,10 @@ body.fp-expanded { overflow: hidden; }
 .fp-grab-zone .fp-close {
   position: absolute; right: 10px; top: 50%;
   transform: translateY(-50%);
+  /* 36px to look at, 44px to hit: the tap-target rule's ::after supplies the
+     hit area (this is the one visible, non-gestural way out of the sheet, the
+     fallback for anyone who cannot drag). The grab zone is 48px tall, so the
+     44px box fits inside it. */
   width: 36px; height: 36px;
   touch-action: auto;
 }
@@ -1863,7 +1974,14 @@ body.fp-expanded { overflow: hidden; }
    reader announcing "link" for something that moves playback is a lie. Styled
    to sit in running text without breaking the line box. */
 .ep-ts {
-  display: inline; padding: 0; border: 0; background: none;
+  display: inline; border: 0; background: none;
+  /* HIT AREA INTO THE LEADING (audit 2026-09-22): the stamp was ~13px of
+     underlined text with no padding, so most taps missed and some landed on a
+     publisher link in the same paragraph and left the page. Vertical padding
+     on an INLINE box grows what the finger can hit without touching the line
+     box, and the equal negative margin cancels the horizontal padding's
+     effect on the text around it — the paragraph does not reflow. */
+  padding: 10px 4px; margin: -10px -4px;
   font: inherit; color: var(--accent);
   font-variant-numeric: tabular-nums;
   text-decoration: underline; cursor: pointer;
@@ -1876,7 +1994,9 @@ body.fp-expanded { overflow: hidden; }
 .ep-chapters-list { list-style: none; margin: 0; padding: 0; }
 .ep-chapters-list li {
   display: flex; gap: 10px; align-items: baseline;
-  padding: 6px 0; border-bottom: 1px solid var(--line);
+  /* No padding here: it belongs to the button (below). On the `<li>` it made
+     the row LOOK tall while the live target inside it was ~19px. */
+  padding: 0; border-bottom: 1px solid var(--line);
   font-size: 0.85rem; color: var(--text);
 }
 .ep-chapters-list li:last-child { border-bottom: none; }
@@ -1889,12 +2009,17 @@ body.fp-expanded { overflow: hidden; }
 
 /* The whole chapter row seeks (founder: timestamps "then result in jumping to
    that timestamp in 4a"). A button filling the row rather than a link on the
-   title alone: the time and the title are one target, and a 48px row is the
-   tap size the rest of the app uses. `text-align: left` because a button
-   centres its text by default and these are list rows, not labels. */
+   title alone: the time and the title are one target, and a 44px row is the
+   tap floor the rest of the app uses (the tap-target rule near the top of
+   this file). `text-align: left` because a button centres its text by default
+   and these are list rows, not labels.
+   THE PADDING IS ON THE BUTTON. It used to be on the `<li>`, which made the
+   row look ~31px tall while only the ~19px of text in the middle was live —
+   and this comment claimed 48 over it (audit 2026-09-22). */
 .ep-chapter-row {
   display: flex; gap: 10px; align-items: baseline; width: 100%;
-  padding: 0; border: 0; background: none; color: inherit;
+  min-height: 44px; padding: 12px 0;
+  border: 0; background: none; color: inherit;
   font: inherit; text-align: left; cursor: pointer;
 }
 .ep-chapter-row:hover .ep-chapter-title,
@@ -1927,7 +2052,18 @@ body.fp-expanded { overflow: hidden; }
   font-size: 0.78rem;
 }
 
-.fp-scrub { width: 100%; accent-color: var(--accent); }
+.fp-scrub {
+  width: 100%; accent-color: var(--accent);
+  /* The sheet body is an `overflow-y: auto` scroller, and a range input with
+     no touch-action loses every drag to it: trying to move the thumb scrolls
+     the description instead. `pan-y` hands vertical pans to the scroller and
+     keeps horizontal ones for the slider — the exact fix `.interest-slider`
+     carries a comment about (audit 2026-09-22). 44px tall so the thumb's
+     track is a real target, not the UA's ~16px default. */
+  touch-action: pan-y;
+  min-height: 44px;
+  margin: 0;
+}
 .fp-times { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); }
 .fp-row { display: flex; justify-content: center; align-items: center; gap: 18px; margin: 14px 0 6px; }
 .fp-btn {
@@ -1943,6 +2079,13 @@ body.fp-expanded { overflow: hidden; }
   border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
   border-radius: 6px; padding: 8px 12px; font-size: 0.75rem; cursor: pointer;
 }
+/* STOP IS NOT CLOSE (audit 2026-09-22, persona "Stop sits next to Close").
+   Stop ends playback and takes the bar away; Close only collapses the sheet.
+   They were identical grey pills side by side, the destructive one in the
+   middle. Stop now sits at the far end of the row from Close (client.js's
+   append order) and carries the danger colour, so the two can never read as
+   the same control. No confirmation: stopping is recoverable (press play). */
+.fp-stop { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
 /* NOT .fp-open: that class is also set on <body> while the mini-player is up
    (see client.js), so a bare .fp-open rule painted the whole page accent-blue
    through inheritance. Nothing showed it until a page had a heading with no
@@ -2078,10 +2221,17 @@ body.fp-expanded { overflow: hidden; }
      `gap` + `--seam`, not `--seam` alone. Measured in Chrome at a 362px strip
      (a 390px phone less the page's padding) rather than reasoned about. */
   --seg-min: 7px;
-  /* Press-and-hold zoom-to-scrub (V1). `touch-action: none` stops the browser
-     from interpreting a held-and-dragged finger as a page scroll/pan, which
-     would otherwise fight the gesture on exactly the input it exists for. */
-  touch-action: none;
+  /* Press-and-hold zoom-to-scrub (V1). `pan-y`, not `none` (audit
+     2026-09-22): the strip is a HORIZONTAL control, so the browser only has
+     to stay out of horizontal drags for the scrub to work. `none` also
+     refused vertical pans, and the strip is sticky right under the topbar in
+     the path of every "scroll the running order" flick — so the flick
+     scrolled nothing, and the click on release seeked. With `pan-y` a
+     vertical flick scrolls the page (the browser cancels the pointer, so no
+     click), a sideways drag or a hold still scrubs, and
+     player/strip-scrub-gesture.js ends a vertical-first gesture as a scroll
+     for the input that does deliver a click (a mouse). */
+  touch-action: pan-y;
   transform: scale(1);
   transform-origin: 50% 50%;
   transition: transform 0.12s ease-out;
@@ -2157,6 +2307,20 @@ body.fp-expanded { overflow: hidden; }
 .fy-strip--sm { --strip-h: 5px; --seam: 3px; --seg-min: 5px; }
 .fy-strip--md { --strip-h: 8px; --seam: 4px; --seg-min: 6px; }
 .fy-strip--lg { --strip-h: 12px; --seam: 5px; --seg-min: 7px; }
+/* The Foray page's scrubber is 12px to LOOK at and 44px to HIT (the app's
+   tap-target floor): an invisible box 16px above and below the bars, so a
+   thumb that lands a little off the strip still lands on it (audit
+   2026-09-22, "a 12px-high strip where any stray tap jumps you minutes").
+   Only the live strip, by id — the magnifier's clone drops the id, and the
+   static card strips are not controls. The 16px each way is exactly the gap
+   `.fy-resume` leaves above and `.fy-controls` leaves below (plus 4px), so
+   this box can never sit over "Start over" or the transport buttons. */
+#fy-strip::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  top: -16px; bottom: -16px;
+}
 /* U-04: `segmentStripHtml`'s static strip — a card in a rail (Home's Foray
    cards, U-03; the show/episode restyle, U-08), not the full player's
    scrubber. No click handler is bound to it and no press-and-hold zoom
@@ -2286,7 +2450,7 @@ body.fp-expanded { overflow: hidden; }
   font-size: 0.72rem; color: var(--text-dim);
   margin-top: 6px;
 }
-.fy-controls { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; }
+.fy-controls { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 20px; }
 /* `touch-action: manipulation` — founder, 2026-09-17: "It should also not be
    possible to zoom on the episode slide, when I was trying to skip forward
    several times it zoomed in instead."
@@ -2375,7 +2539,7 @@ body.fp-expanded { overflow: hidden; }
 .fy-jump {
   display: flex; align-items: flex-start; gap: 10px;
   flex: 1; min-width: 0;
-  min-height: 30px;
+  min-height: 44px;
   text-align: left;
   background: none;
   border: 0;
@@ -2387,8 +2551,11 @@ body.fp-expanded { overflow: hidden; }
 /* A narration beat has no `why`, so without this its play button would be a
    zero-height strip with nothing to aim at. The floor plus the resting ▶ keep
    it a real target on a touch screen; the transcript beneath is NOT part of it,
-   so reading a transcript can never start playback by accident. */
-.fy-jump.is-bare { min-height: 30px; align-items: center; }
+   so reading a transcript can never start playback by accident.
+   44, not 30: this comment used to call a 30px strip "a real target", and the
+   misses it caused landed on the transcript (nothing) or sideways on the
+   thumbs (audit 2026-09-22). The floor is the app's tap-target floor. */
+.fy-jump.is-bare { min-height: 44px; align-items: center; }
 .fy-jump.is-bare .fy-state::before { content: "▶"; font-size: 0.7rem; opacity: 0.45; }
 /* Hover follows the PLAY affordance, not the whole card — the thumbs are not a
    way to start a segment and should not look like one. */
@@ -2411,9 +2578,12 @@ body.fp-expanded { overflow: hidden; }
 .fy-meta { font-size: 0.74rem; color: var(--text-dim); }
 .fy-row:has(.fy-jump.is-played) .fy-meta { opacity: 0.55; }
 .fy-row:has(.fy-jump.is-playing) .fy-meta { color: var(--accent); }
-/* The show link. Padded vertically so it clears the 44px-ish thumb target on a
-   phone without pushing the credit line taller than the text it wraps — the
-   padding overlaps the row's own gap rather than adding to it. */
+/* The show link. Padded vertically so it is a little easier to hit than the
+   bare line of text, without pushing the credit line taller than the text it
+   wraps — the padding overlaps the row's own gap rather than adding to it.
+   (This comment used to size the layout around "the 44px-ish thumb target"
+   when the thumbs were 30px; they now have a real 44px hit area — see
+   `.fy-fb` below.) */
 .fy-credit { color: inherit; }
 a.fy-credit { padding: 2px 0; }
 .fy-why {
@@ -2477,12 +2647,15 @@ a.fy-credit { padding: 2px 0; }
 
 /* ---------- per-segment feedback ----------
    Up is one quiet tap; down opens the sheet. The controls are the same size so
-   the pair does not read as a recommendation to press the friendly one. */
-.fy-fb { flex: none; display: flex; gap: 6px; padding-top: 1px; }
+   the pair does not read as a recommendation to press the friendly one.
+   30px to look at, 44px to hit (the tap-target rule near the top of this
+   file). The pair's gap is 14px so the two 44px hit boxes meet instead of
+   overlapping: a near-miss on 👍 must not open 👎's "What missed?" sheet. */
+.fy-fb { flex: none; display: flex; gap: 14px; padding-top: 1px; }
 .fy-thumb {
   width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 15px;
+  border-radius: 50%;
   border: 1px solid transparent;
   background: var(--surface-2);
   font-size: 0.8rem;
@@ -2502,10 +2675,19 @@ body.fy-sheet-open { overflow: hidden; }
    its scrim reads as a stuck overlay. */
 .fy-sheet { position: fixed; inset: 0; z-index: 70; }
 .fy-scrim { position: absolute; inset: 0; background: rgba(8, 5, 12, 0.62); }
+/* ON THE KEYBOARD, NOT BEHIND IT (audit 2026-09-22). A sheet with a text
+   field — the feedback note, "Type DELETE to confirm" — is bottom-anchored,
+   so the soft keyboard rose over the field AND the Cancel/Send row beneath
+   it, and the page behind is scroll-locked, so there was no way to bring them
+   back. `--kb-inset` is installKeyboardChrome's measurement of exactly how far
+   a bottom-anchored fixed box must rise (0 whenever no keyboard is up); the
+   search compose bar was its only reader. Every `.fy-panel` now sits on the
+   keyboard's top edge, and gives up the same height from its max-height so
+   its top cannot leave the screen. */
 .fy-panel {
-  position: absolute; left: 0; right: 0; bottom: 0;
+  position: absolute; left: 0; right: 0; bottom: var(--kb-inset, 0px);
   max-width: 680px; margin: 0 auto;
-  max-height: 88vh; overflow-y: auto;
+  max-height: calc(88vh - var(--kb-inset, 0px)); overflow-y: auto;
   padding: 8px 18px calc(20px + env(safe-area-inset-bottom));
   background: var(--surface);
   border: 1px solid var(--line);
@@ -2616,7 +2798,12 @@ body.fy-sheet-open { overflow: hidden; }
 }
 
 /* ---------- resume ---------- */
-.fy-resume { margin-bottom: 10px; }
+/* 16px to the strip below, not 10: "Start over" (which discards the resume
+   point) and the strip (which seeks) are two very different controls, and at
+   10px a thumb meant for one regularly landed on the other. The strip's own
+   hit area grows 16px upward (see `.fy-strip--lg`), so this gap is exactly
+   what keeps the two hit boxes from overlapping (audit 2026-09-22). */
+.fy-resume { margin-bottom: 16px; }
 .fy-bar {
   display: block;
   height: 5px; width: 100%;
@@ -2633,11 +2820,18 @@ body.fy-sheet-open { overflow: hidden; }
 .fy-resume-at { color: var(--text-dim); }
 .fy-resume-left { color: var(--gold); font-weight: 700; }
 .fy-restart {
-  margin-top: 6px;
-  padding: 0;
+  /* Still deliberately quiet — it must not compete with Play — but a real
+     44px target: it was ~16px of 11.5px underlined text, sitting 10px above
+     the seek strip, for an action that throws away an hour's place (audit
+     2026-09-22). The negative left margin keeps the text aligned with the
+     resume line above while the padding widens what a thumb can hit. */
+  display: inline-flex; align-items: center;
+  min-height: 44px;
+  margin: 2px 0 0 -8px;
+  padding: 0 8px;
   border: 0; background: none;
   color: var(--text-dim);
-  font: inherit; font-size: 0.72rem;
+  font: inherit; font-size: 0.78rem;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -2812,7 +3006,10 @@ body.fy-sheet-open { overflow: hidden; }
 .voice-row-audition {
   flex: none;
   padding: 7px 12px;
-  border-radius: 14px;
+  /* The token it was a literal copy of (R12: same value, one name). Its hit
+     area is the tap-target rule's: a ~29px button inside a row whose own tap
+     SELECTS the voice, so a near-miss silently changed the narrator. */
+  border-radius: var(--radius);
   border: 1px solid var(--line);
   background: none;
   color: var(--text);
@@ -3243,6 +3440,9 @@ body.ui-v2 .fp-rate, body.ui-v2 .fp-stop, body.ui-v2 .fp-collapse {
   background: var(--surface2);
   color: var(--text);
 }
+/* After the shared rule, so Stop keeps the weight `.fp-stop`'s own comment
+   explains (it is not Close). */
+body.ui-v2 .fp-stop { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
 body.ui-v2 .fp-openep { color: var(--violet); }
 body.ui-v2 .fp-note { color: var(--faint); }
 

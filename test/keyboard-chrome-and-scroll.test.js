@@ -266,13 +266,17 @@ test("setBodyClass preserves every runtime class instead of clobbering it", () =
      MUTATION: restore `document.body.className = `${base} ui-v2``. Every
      class below is lost, and on a phone the search pill composes a
      keyboard-open inset with the keyboard-SHUT dock. RUN: failed as named. */
+  /* `fy-sheet-open` is not in this list any more (audit 2026-09-22): it is
+     derived from the sheets the owner holds, not carried because it was there
+     — test/sheet-owner.test.js pins both halves of that (kept while a sheet is
+     open, dropped once its element is gone). */
   const m = mount();
-  for (const c of ["kb-open", "fp-open", "fp-expanded", "fy-sheet-open"]) {
+  for (const c of ["kb-open", "fp-open", "fp-expanded"]) {
     m.body.classList.add(c);
   }
   m.ctx.setBodyClass("view-page");
 
-  for (const c of ["kb-open", "fp-open", "fp-expanded", "fy-sheet-open"]) {
+  for (const c of ["kb-open", "fp-open", "fp-expanded"]) {
     assert.ok(m.body.classList.contains(c), `\`${c}\` describes something still true after the page changed — it must survive`);
   }
   assert.ok(m.body.classList.contains("ui-v2"), "ui-v2 is what styles.css hangs the v2 sheet on");

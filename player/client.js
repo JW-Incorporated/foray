@@ -566,6 +566,17 @@ function buildUI() {
          this is only the element it is measured against. */
   const sheet = el("div", "fp-sheet");
   sheet.hidden = true;
+  /* A DIALOG, and it says so (audit 2026-09-22). It covers the page from the
+     topbar down, yet it had no role, no name and no focus move, so a screen
+     reader kept exploring the page hidden behind it and could activate
+     controls nobody could see. The name is the episode title below
+     (`aria-labelledby`); opening and closing go through app.js's sheet owner
+     (see `setExpanded`), which moves focus in, makes the page behind inert and
+     binds Escape. `aria-modal` is true although the topbar stays reachable by
+     pointer (U-12/F17: the ☰ must work at every moment) — the owner leaves the
+     topbar and the drawer out of `inert` for exactly that. */
+  sheet.setAttribute("role", "dialog");
+  sheet.setAttribute("aria-modal", "true");
   /* `.fy-grab` is the app's existing grabber (the reason sheet, the feedback
      sheet, the delete sheet and the voice sheet all already paint one) —
      reused by class rather than restyled under a new name, so a fifth sheet
@@ -584,6 +595,8 @@ function buildUI() {
   sArt.alt = "";
   sArt.hidden = true;
   const sTitle = el("h2", "fp-s-title");
+  sTitle.id = "fp-s-title";
+  sheet.setAttribute("aria-labelledby", "fp-s-title");
   const sShow = el("p", "fp-s-show");
   const sWhy = el("p", "fp-s-why");
 
@@ -633,7 +646,13 @@ function buildUI() {
   const stopBtn = el("button", "fp-stop", "Stop");
   stopBtn.type = "button";
   stopBtn.setAttribute("aria-label", "Stop");
-  row2.append(rateBtn, openLink, forayLink, stopBtn, collapse);
+  /* STOP FIRST, CLOSE LAST (audit 2026-09-22, persona "Stop sits next to
+     Close"). They used to be neighbours with Stop in the middle, identical grey
+     pills — and Stop ends playback and takes the bar away while Close only
+     collapses the sheet. The row is `justify-content: space-between`, so this
+     order puts them at opposite ends; styles.css gives `.fp-stop` the danger
+     colour. No confirmation (a stop is undone by pressing play). */
+  row2.append(stopBtn, rateBtn, openLink, forayLink, collapse);
 
   const note = el("p", "fp-note");
 
@@ -1328,11 +1347,24 @@ async function resolveDefaultVoice() {
     never shows a stale "current" mark, and torn down on any dismissal. */
 let rateMenuEl = null;
 
+/** app.js's one modal owner (`openSheet`/`closeSheet`: focus in and back out,
+    `inert` on the page behind, Tab kept inside, Escape, one instance, and the
+    body lock derived from what is actually open). app.js is a classic script
+    and this is a module, so it is published on `window`; app.js evaluates
+    first, so it is there by the time anything here can open. `null` only in a
+    harness that loads this file without app.js — and then the sheet still
+    opens and closes, it just owns none of the above. */
+function sheetOwner() {
+  return (typeof window !== "undefined" && window.ForaySheets) || null;
+}
+
 function closeRatePicker() {
   if (!rateMenuEl) return;
+  const owner = sheetOwner();
+  if (owner) owner.closeSheet(rateMenuEl);
+  else document.body.classList.remove("fy-sheet-open");
   rateMenuEl.remove();
   rateMenuEl = null;
-  document.body.classList.remove("fy-sheet-open");
 }
 
 function openRatePicker() {
@@ -1375,8 +1407,10 @@ function openRatePicker() {
   wrap.append(scrim, panel);
   scrim.addEventListener("click", closeRatePicker);
   document.body.append(wrap);
-  document.body.classList.add("fy-sheet-open");
   rateMenuEl = wrap;
+  const owner = sheetOwner();
+  if (owner) owner.openSheet(wrap, { panel, onRequestClose: closeRatePicker });
+  else document.body.classList.add("fy-sheet-open");
 }
 
 /* ---------- transport, in one place ---------- */
@@ -1517,6 +1551,11 @@ async function stopAndClose({ persist = true } = {}) {
   if (persist) persistForayProgress({ force: true });
   await manager.stop();
   if (media) media.release();
+  /* Stop is pressed from INSIDE the open sheet, so the owner has to let go of
+     it first — otherwise the page behind would stay `inert` with no sheet on
+     screen to account for it. */
+  const owner = sheetOwner();
+  if (owner) owner.closeSheet(ui.sheet);
   ui.root.hidden = true;
   ui.sheet.hidden = true;
   document.body.classList.remove("fp-open", "fp-expanded");
@@ -1761,11 +1800,35 @@ function bind() {
      by the fix for it. Moving the line below `hidden = false` makes it 0. */
   const setExpanded = (open) => {
     setSheetDragOffset(0);
+    const owner = sheetOwner();
+    /* Closing: the owner first, while the sheet is still shown — it lifts
+       `inert` off the bar and hands focus back to the button that opened
+       the sheet, which must not be inert when it receives focus. */
+    if (!open && owner) owner.closeSheet(ui.sheet);
     ui.sheet.hidden = !open;
     document.body.classList.toggle("fp-expanded", open);
+    /* Opening: the page behind (and the mini bar under the sheet) goes inert
+       and focus moves into the dialog. The topbar and the drawer stay
+       reachable (U-12/F17 above). Escape, and a navigation, collapse it
+       through this same function. */
+    if (open && owner) {
+      owner.openSheet(ui.sheet, {
+        panel: ui.sheet,
+        bodyClass: "fp-expanded",
+        keepReachable: [".topbar", "#drawer", "#drawer-overlay"],
+        onRequestClose: () => setExpanded(false),
+        returnFocus: ui.info,
+      });
+    }
     if (open) ui.scroll.scrollTop = 0;
   };
   ui.info.addEventListener("click", () => setExpanded(ui.sheet.hidden));
+  /* The artwork too — the biggest thing on the bar, and where every podcast
+     app opens the player from. It was an inert <img> beside the one button
+     that did (audit 2026-09-22). Not a second button in the tab order: the
+     title button beside it already is that control for keyboard and screen
+     reader, and the art stays `alt=""` decoration to them. */
+  ui.art.addEventListener("click", () => setExpanded(ui.sheet.hidden));
   ui.collapse.addEventListener("click", () => setExpanded(false));
   /* Same path as `fp-collapse` above, on purpose — one behaviour, two controls,
      not two behaviours. Declared after `setExpanded` because it is a `const`. */
@@ -1799,8 +1862,15 @@ function bind() {
      scrub gesture makes in app.js, and the one that makes this testable with
      a mouse in a desktop browser as well as a thumb on a phone. */
   let drag = null;
+  /* ONE FINGER AT A TIME (audit 2026-09-22). Without this a second finger —
+     a pinch attempt, a thumb resting while the other hand drags — restarted
+     the drag from ITS position, every pointermove from EITHER finger was then
+     measured against that, and lifting either one committed a dismiss nobody
+     made. The same guard the Foray strip's scrub gesture carries in app.js. */
+  let dragPointer = null;
   ui.sheet.addEventListener("pointerdown", (e) => {
     if (ui.sheet.hidden) return;
+    if (dragPointer != null) return;
     /* A press that lands on a control is that control's, never the sheet's.
        Without this, starting a scrub by pressing the range thumb and pulling
        slightly down would begin dismissing the sheet underneath it. */
@@ -1812,9 +1882,10 @@ function bind() {
       fromHandle,
       atTop: (ui.scroll.scrollTop || 0) <= 0,
     });
+    dragPointer = e.pointerId;
   });
   ui.sheet.addEventListener("pointermove", (e) => {
-    if (!drag) return;
+    if (!drag || e.pointerId !== dragPointer) return;
     const next = moveDrag(drag, e.clientY, e.timeStamp);
     drag = next;
     const offset = dragOffset(next);
@@ -1825,10 +1896,11 @@ function bind() {
        scrollTop 0, which the scroller would otherwise rubber-band. */
     if (offset > 0 && e.cancelable) e.preventDefault();
   });
-  const endSheetDrag = () => {
-    if (!drag) return;
+  const endSheetDrag = (e) => {
+    if (!drag || e.pointerId !== dragPointer) return;
     const { dismiss } = endDrag(drag);
     drag = null;
+    dragPointer = null;
     if (dismiss) setExpanded(false);
     else setSheetDragOffset(0);
   };
@@ -1836,9 +1908,10 @@ function bind() {
   /* A cancelled pointer (the browser took it for a system gesture, the finger
      left the screen edge) is a release that never happened — spring back
      rather than dismiss, because nobody decided anything. */
-  ui.sheet.addEventListener("pointercancel", () => {
-    if (!drag) return;
+  ui.sheet.addEventListener("pointercancel", (e) => {
+    if (!drag || e.pointerId !== dragPointer) return;
     drag = null;
+    dragPointer = null;
     setSheetDragOffset(0);
   });
 

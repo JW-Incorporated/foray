@@ -216,7 +216,10 @@ const FLOORS = {
      tone, and that both themes' palettes clear 3:1. Every test names the
      mutation that kills it. */
   "player/segment-strip.test.js": 46, // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
-  "player/strip-scrub-gesture.test.js": 41,
+  /* 41 -> 45 (2026-09-22 audit, theme F): a vertical flick that starts on the
+     sticky strip ends as a SCROLL, never a zoom (it used to seek on release);
+     a sideways drag and a hold-then-drift still scrub. */
+  "player/strip-scrub-gesture.test.js": 45,
   /* Drag the Now Playing sheet down to dismiss it (founder report,
      2026-09-13). Same pure-state-machine shape as the scrub gesture above and
      floored for the same reason: the numbers ARE the product decision — how
@@ -229,8 +232,12 @@ const FLOORS = {
      attribute still hides it. A source-text suite (client.js builds DOM at
      import and cannot be loaded under node — see its own header), floored
      because a perfect gesture module wired to nothing passes every other test
-     in this repo. */
-  "player/now-playing-sheet.test.js": 16,
+     in this repo.
+     16 -> 22 (2026-09-22 audit, themes E/F): the sheet is a named modal dialog
+     opened through app.js's sheet owner with the topbar kept reachable, Stop
+     releases the owner, the artwork opens the player, Stop and Close sit at
+     opposite ends of their row, and one finger drives the drag. */
+  "player/now-playing-sheet.test.js": 22,
   "player/seek-policy.test.js": 33,
   /* The wire between the page and on-device speech (#29). Floored with no
      slack, because what it holds down is a connection that was ABSENT for
@@ -414,8 +421,25 @@ const FLOORS = {
      counting line, the voiceFallback notice, and close controls. Same split
      as diagnostics-surface.test.js: `player/queue-manager.test.js` covers
      the manager's own voice logic in isolation; this is the app.js surface
-     nothing else can see. */
-  "test/voice-settings.test.js": 11,
+     nothing else can see.
+     11 -> 21 (2026-09-22 audit): the floor had drifted to eleven under a
+     nineteen-test suite; raised to the real count, which now includes the two
+     "a rebuild must not throw focus out of the sheet" tests. */
+  "test/voice-settings.test.js": 21,
+  /* Theme F of the 2026-09-22 audit: tap targets sized by a RULE. Enumerates
+     every control the audit measured below 44px and requires a 44px hit area
+     by size or by the one `:where(...)::after` rule, checks that rule's shape,
+     and pins the gesture findings (the strip's vertical flick, the scrubber's
+     touch-action, the double home-indicator inset, Stop vs Close, hover vs
+     playing). Sixteen tests, each mutation-checked red. */
+  "test/tap-targets.test.js": 16,
+  /* Theme E of the same audit: ONE owner for "a modal is open" — focus in and
+     back, `inert`, Tab trap, Escape, one instance, the body lock derived from
+     what is open (the back-gesture scroll-lock leak) — plus focus and the
+     thumb surviving Up Next's rebuild, and the strip's click suppression.
+     Seventeen tests over a small DOM with real parent links and focus, each
+     mutation-checked red. */
+  "test/modal-and-focus.test.js": 17,
   /* S-08's mechanical privacy tripwire: SHOWS_SEARCH_OFF_DEVICE flag detection
      (source and env), the pinned current-sentence check, the core AND-gate
      that fails release builds only when the flag is on AND the old sentence
