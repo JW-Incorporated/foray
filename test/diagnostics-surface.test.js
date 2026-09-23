@@ -275,7 +275,10 @@ test("the drawer carries a Playback diagnostics item", () => {
   const { ui } = mount();
   assert.ok(ui.open, "no #diag-open in the drawer");
   assert.strictEqual(ui.open.textContent, "Playback diagnostics");
-  assert.strictEqual(ui.open.parent.id, "drawer", "it has to be IN the drawer");
+  /* In the drawer's Developer group since the 2026-09-22 audit (R8): still one
+     tap from the menu, the way a founder in a car needs it. */
+  assert.strictEqual(ui.open.parent.id, "drawer-dev", "it has to be in the Developer group");
+  assert.strictEqual(ui.open.parent.parent.id, "drawer", "which has to be IN the drawer");
 });
 
 test("THE REAL init() wires it, and leaves Delete my data as the drawer's LAST item", async () => {
@@ -294,7 +297,9 @@ test("THE REAL init() wires it, and leaves Delete my data as the drawer's LAST i
      MUTATION 2: move it below `bindDeleteControl()`. This fails. */
   const { body } = await mountBooted();
   const drawer = findIn(body, "#drawer");
-  const ids = drawer.children.map((c) => c.id).filter(Boolean);
+  const ids = drawer.children
+    .flatMap((c) => (c.id === "drawer-dev" ? c.children : [c]))
+    .map((c) => c.id).filter(Boolean);
   assert.ok(ids.includes("diag-open"), `init() never wired the control: ${ids.join(", ")}`);
   assert.strictEqual(ids[ids.length - 1], "delete-data", `drawer order was ${ids.join(", ")}`);
   assert.ok(ids.indexOf("diag-open") < ids.indexOf("delete-data"));

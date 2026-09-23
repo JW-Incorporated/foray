@@ -389,6 +389,14 @@ html, body {
   font-family: inherit;
   cursor: pointer;
 }
+/* The Developer group (app.js § the Developer group): the founder's field-report
+   tools in one collapsed <details> at the bottom of Settings. The summary is an
+   ordinary drawer item; its chevron replaces the UA marker, which `.drawer-item`'s
+   `display: block` would hide anyway, and turns when the group is open. */
+.drawer-dev > summary { list-style: none; cursor: pointer; }
+.drawer-dev > summary::-webkit-details-marker { display: none; }
+.drawer-dev > summary::after { content: "\203A"; float: right; transition: transform 120ms; }
+.drawer-dev[open] > summary::after { transform: rotate(90deg); }
 
 /* ---------- home: one screen, and only one screen ---------- */
 #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }

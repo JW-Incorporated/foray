@@ -409,3 +409,35 @@ test("the retired ui-v2 flag leaves nothing behind, and the ui-v2 class stays", 
   m.ctx.setBodyClass("home");
   assert.strictEqual(m.body.className, "home ui-v2", "the class styles.css needs is untouched");
 });
+
+test("the founder's tools sit in ONE collapsed Developer group, directly above Delete my data", async () => {
+  /* The persona audit read "Show draft Forays", "Voice engine probe" and
+     "Playback diagnostics" as the founder's debug switches shipped in every
+     listener's Settings. Founder ruling R8 (2026-09-22): they stay reachable —
+     he files field reports with them — but move into one collapsed "Developer"
+     group at the bottom of Settings. No hidden unlock.
+
+     MUTATION THAT KILLS THIS: drop `{ into }` from either founder switch, or
+     append `#diag-open` to the drawer again — red, a founder tool is back
+     among the listener's settings. */
+  const m = await mountBooted();
+  const drawer = m.byId.get("drawer");
+  const group = m.findById("drawer-dev");
+  assert.ok(group, "there is no Developer group");
+  assert.strictEqual(group.tagName, "DETAILS", "a native disclosure: keyboard and screen-reader operable");
+  assert.ok(!group.open, "it starts collapsed");
+  assert.strictEqual(group.children[0].tagName, "SUMMARY");
+  assert.strictEqual(group.children[0].textContent, "Developer");
+  assert.deepStrictEqual(group.children.slice(1).map((c) => c.id),
+    ["drafts-toggle", "voice-probe-toggle", "diag-open"]);
+
+  const top = drawer.children.map((c) => c.id).filter(Boolean);
+  assert.deepStrictEqual(top.slice(-2), ["drawer-dev", "delete-data"],
+    "the group is the bottom of Settings, and Delete my data stays the last item");
+  for (const id of ["drafts-toggle", "voice-probe-toggle", "diag-open"]) {
+    assert.ok(!top.includes(id), `${id} is loose among the listener's settings again`);
+  }
+  for (const id of ["interlude-toggle", "voice-open"]) {
+    assert.ok(top.includes(id), `${id} is a listener setting and belongs outside the group`);
+  }
+});

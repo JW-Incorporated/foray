@@ -485,8 +485,13 @@ test("the drawer carries the toggle: it reads its state, flips the key, re-rende
   const h = await mount();
   const btn = h.draftsToggle();
   assert.ok(btn, "#drafts-toggle is in the DOM after init");
-  assert.strictEqual(btn.parent, h.drawer(), "appended to the drawer");
-  const order = h.drawer().children.map((c) => c.id);
+  /* Inside the drawer's Developer group since the 2026-09-22 audit (R8): a
+     founder switch, reachable, and no longer among a listener's settings. */
+  assert.strictEqual(btn.parent && btn.parent.id, "drawer-dev", "in the Developer group");
+  assert.strictEqual(btn.parent.parent, h.drawer(), "which is in the drawer");
+  const order = h.drawer().children
+    .flatMap((c) => (c.id === "drawer-dev" ? c.children : [c]))
+    .map((c) => c.id);
   assert.ok(order.indexOf("drafts-toggle") < order.indexOf("diag-open"), "above Playback diagnostics");
   assert.ok(order.indexOf("drafts-toggle") < order.indexOf("delete-data"), "above Delete my data");
 

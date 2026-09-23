@@ -80,7 +80,7 @@ transmitted. `cp_storage_health` records storage failures. `cp_diag` records how
 the audio player behaved — see its row below — and exists because two playback
 faults were reported from a car with no measurements attached, so there was
 nothing to diagnose them with. It is capped, the oldest entries are dropped
-first, and the drawer's **Playback diagnostics** is where you read it, copy it or
+first, and the menu's **Developer** → **Playback diagnostics** is where you read it, copy it or
 clear it (`player/diagnostic-log.js`).
 
 The app also asks the browser to mark its storage as persistent
@@ -114,7 +114,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_sb_session` | The access and refresh token for your anonymous account, and its user id | It **is** your credential for our database — see §3 |
 | `cp_storage_health` | A diagnostic record of storage failures, for troubleshooting | **No** |
 | `cp_storage_stale` | The names (never the values) of any of the keys above that this device's `localStorage` refused to update while IndexedDB accepted the change, so the next launch reads the newer IndexedDB copy instead of the stale one. Usually absent; kept in IndexedDB only | **No** |
-| `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the drawer's **Playback diagnostics** shows it and lets you copy or clear it |
+| `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the menu's **Developer** → **Playback diagnostics** shows it and lets you copy or clear it |
 
 **The event queue is not a `cp_` key.** Until 2026-09, the buffer of events
 waiting to be sent lived at `cp_events` (with a `cp_synced_ts` bookmark) inside

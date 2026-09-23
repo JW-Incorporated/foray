@@ -9361,8 +9361,10 @@ const drawerToggles = [];
  * @param {object}   [opts]
  * @param {string[]} [opts.words]    the two state words, `[off, on]`
  * @param {boolean}  [opts.repaint]  redraw the page behind the drawer too
+ * @param {Element}  [opts.into]     the container to append to — the drawer,
+ *   unless it is a founder switch, which goes in `drawerDevGroup()`
  */
-function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint = false } = {}) {
+function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint = false, into = null } = {}) {
   const drawer = $("#drawer");
   if (!drawer) return;
   if (!drawerToggles.some(t => t.id === id)) drawerToggles.push({ id, label, read, words });
@@ -9371,7 +9373,7 @@ function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint =
     btn = ddEl("button", "drawer-item as-btn", "");
     btn.type = "button";
     btn.id = id;
-    drawer.appendChild(btn);
+    (into || drawer).appendChild(btn);
   }
   if (btn._drawerToggleBound) return; // init() runs once, but a re-bind must never stack handlers
   btn._drawerToggleBound = true;
@@ -9392,11 +9394,11 @@ function paintDrawerToggles() {
   }
 }
 
-/** The five, in the drawer's reading order: the listener's two from
-    index.html, the listener's third (the jingle) appended, then the two
-    founder switches. ("Open in", the sixth, was deleted 2026-09-22 — it chose
-    a link-out that no longer existed.) The diagnostic and destructive controls `init()` binds
-    after these are not switches and stay below them. */
+/** The listener's three, in the drawer's reading order: two from index.html,
+    the jingle appended. The founder's two are `bindDeveloperToggles`', which
+    `init()` binds later so they land in the Developer group below the
+    listener's settings. ("Open in", once a sixth switch, was deleted on
+    2026-09-22 — it chose a link-out that no longer existed.) */
 function bindDrawerToggles() {
   drawerToggle("family-toggle", "Family mode", familyMode, (on) => {
     lsSet("cp_family", on);
@@ -9417,16 +9419,47 @@ function bindDrawerToggles() {
      the key once at boot. A disclosed setting with no surface is a disclosure
      that is not true. */
   drawerToggle("interlude-toggle", "Jingle between segments", interludeOn, setInterludeOn);
+}
 
+/* ---------- the Developer group (2026-09-22 audit, founder ruling R8) ----------
+
+   "Show draft Forays", "Voice engine probe" and "Playback diagnostics" are the
+   founder's field-report tools, and they sat among a listener's three real
+   settings: the persona audit read them as debug switches shipped to everyone,
+   and one of them offers a button that blocks for ~90 seconds. They must stay
+   REACHABLE — the founder files reports from a car with them — so they are not
+   hidden behind an unlock. They are grouped instead: one collapsed "Developer"
+   disclosure at the bottom of Settings, directly above "Delete my data" (which
+   stays the drawer's last item, by `bindDeleteControl`'s rule).
+
+   A native <details>, so it opens from a tap, Enter or Space and announces its
+   state with no script, and it starts CLOSED on every launch. Built once;
+   every caller gets the same element. */
+function drawerDevGroup() {
+  const drawer = $("#drawer");
+  if (!drawer) return null;
+  const existing = $("#drawer-dev");
+  if (existing) return existing;
+  const group = ddEl("details", "drawer-dev", null);
+  group.id = "drawer-dev";
+  group.append(ddEl("summary", "drawer-item", "Developer"));
+  drawer.appendChild(group);
+  return group;
+}
+
+/** The founder's two switches, into the Developer group. */
+function bindDeveloperToggles() {
+  const into = drawerDevGroup();
+  if (!into) return;
   /* The founder's test track (see § showDraftsOn). No event is logged: this is
      his own switch, not listener behaviour worth a row. */
   drawerToggle("drafts-toggle", "Show draft Forays", showDraftsOn,
-    (on) => lsSet("cp_show_drafts", on), { repaint: true });
+    (on) => lsSet("cp_show_drafts", on), { repaint: true, into });
 
   /* K-01's measurement switch (see § voiceProbeOn). Its RUN button is not a
      switch and is added/removed by `syncVoiceProbeRun` instead. */
   drawerToggle("voice-probe-toggle", "Voice engine probe", voiceProbeOn,
-    (on) => lsSet("cp_voice_probe", on));
+    (on) => lsSet("cp_voice_probe", on), { into });
 }
 
 /** The run control, created on demand by `renderDrawer`. Returns nothing; the
@@ -9449,7 +9482,7 @@ function syncVoiceProbeRun() {
      control that appears BELOW it would be the one a scrolled thumb lands on
      instead. */
   if (toggle && toggle.parentNode) toggle.parentNode.insertBefore(run, toggle.nextSibling);
-  else drawer.appendChild(run);
+  else (drawerDevGroup() || drawer).appendChild(run);
   run.addEventListener("click", () => runVoiceProbe());
 }
 
@@ -10040,11 +10073,11 @@ function paintDeletion(result) {
    voice" — built and bound the same way `bindDiagnosticsControl()`/
    `bindDeleteControl()` are: appended in JS above "Delete my data", because
    `index.html`'s drawer markup is outside this card's owned files (same
-   constraint `ensureInterestsDrawerLink` states). Placed BELOW "Playback
-   diagnostics", which the card's own text asks for ("next to Playback
-   diagnostics"), and above the two destructive/settings toggles at the
-   bottom for the same "a scrolled thumb lands here" reason those two apply
-   to each other.
+   constraint `ensureInterestsDrawerLink` states). The card asked for it
+   "next to Playback diagnostics"; since the 2026-09-22 audit (R8) that item
+   lives in the collapsed Developer group, and this one is a listener setting,
+   so it sits directly ABOVE that group, still next to it and still above
+   "Delete my data".
 
    DESIGN COMMENT (posted to the card before this was written): there is no
    separate `#/settings` route on `main` post-U-11 — `cp_ui_v2` is retired
@@ -10408,10 +10441,10 @@ function closeVoiceSheet() {
   document.body.classList.remove("fy-sheet-open");
 }
 
-/** Appended to the drawer at startup, next to "Playback diagnostics" per the
-    card's own text, and ABOVE it in the drawer's build order (see
-    `bindDiagnosticsControl`'s own comment for the "field record must stay
-    just above Delete my data" rule this respects). Bound once. */
+/** Appended to the drawer at startup, after the listener's switches and
+    directly above the Developer group (see `init()`), so it is a listener
+    setting among listener settings and never below "Delete my data". Bound
+    once. */
 function bindVoiceControl() {
   const drawer = $("#drawer");
   if (!drawer || $("#voice-open")) return;
@@ -10600,15 +10633,15 @@ function clearDiagnostics() {
   return false;
 }
 
-/** Appended to the drawer at startup, ABOVE "Delete my data" — see the note in
-    `init()`. Bound once, like the control below it. */
+/** Appended at startup to the Developer group, which sits ABOVE "Delete my
+    data" — see the note in `init()`. Bound once, like the control below it. */
 function bindDiagnosticsControl() {
   const drawer = $("#drawer");
   if (!drawer || $("#diag-open")) return;
   const btn = ddEl("button", "drawer-item as-btn", "Playback diagnostics");
   btn.type = "button";
   btn.id = "diag-open";
-  drawer.appendChild(btn);
+  (drawerDevGroup() || drawer).appendChild(btn);
   btn.addEventListener("click", openDiagSheet);
 
   const ui = diagSheet();
@@ -11560,19 +11593,20 @@ async function init() {
   $("#drawer").addEventListener("click", (e) => {
     if (e.target.closest("a")) openDrawer(false);
   });
-  /* Every settings switch, in one call — see `bindDrawerToggles`. They land
-     ABOVE the diagnostic and destructive controls bound below, so "Delete my
-     data" stays last where a scrolled thumb expects it. */
+  /* The listener's settings switches, in one call — see `bindDrawerToggles`.
+     They land ABOVE everything bound below, so "Delete my data" stays last where
+     a scrolled thumb expects it. */
   bindDrawerToggles();
-  /* The field record's surface (#264), appended for the same reason as the
-     control below it and deliberately ABOVE it: "Delete my data" must stay the
-     drawer's last item, because it is the one control in there that cannot be
-     undone and the last item is where a scrolled thumb lands. */
-  bindDiagnosticsControl();
-  /* Narration voice (V-01), next to Playback diagnostics per the card's own
-     text — appended immediately after it, so it lands between diagnostics
-     and the destructive control at the very bottom. */
+  /* Narration voice (V-01): a listener setting, so it stays with the switches
+     above rather than inside the Developer group below (2026-09-22 audit, R8). */
   bindVoiceControl();
+  /* The Developer group (R8): the founder's two switches, then the field
+     record's surface (#264), all inside one collapsed disclosure. Deliberately
+     ABOVE the control below: "Delete my data" must stay the drawer's last item,
+     because it is the one control in there that cannot be undone and the last
+     item is where a scrolled thumb lands. */
+  bindDeveloperToggles();
+  bindDiagnosticsControl();
   /* The drawer's last item, appended rather than written into index.html — see
      the § delete my data header for why, and note it is deliberately BELOW the
      two settings toggles: it is the one control in there that cannot be undone. */
