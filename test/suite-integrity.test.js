@@ -301,6 +301,14 @@ const FLOORS = {
   /* 2026-09-18, founder: "Only forays are in the jump back in section, podcasts
      and playlists should be there too." The episode card existed but was
      unreachable — it read cp_lastpick, written only for discover-pool episodes. */
+  /* The card button that became a pause button (founder, 2026-09-22: "the pause
+     button on jump back in does not work"). ZERO SLACK: five of the seven cells
+     drive `bindPlay` FOR REAL through a captured click handler, and they are the
+     only thing in the repo that can tell a transport branch that EXISTS from one
+     that is REACHED. The two source-text cells guard the seam to
+     `player/client.js`, where a rename would otherwise make the card silently go
+     back to restarting episodes rather than throwing. */
+  "test/card-play-pause.test.js": 7, // 2026-09-22: new -- a card showing the pause glyph must pause, and the paused current item must resume rather than restart
   "test/jump-back-in-kinds.test.js": 18, // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */

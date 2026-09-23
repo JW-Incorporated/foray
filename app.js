@@ -3741,6 +3741,25 @@ function bindPlay(scope, { origin = null } = {}) {
       const id = btn.dataset.play;
       const item = state.itemIndex[id] || episode(id);
       if (!item || !window.ForayPlayer) return;
+      /* A BUTTON SHOWING "❚❚" MUST PAUSE.
+         FOUNDER, 2026-09-22: "the pause button on jump back in does not work,
+         while the pause button on now playing does work."
+         `syncCardButtons` in player/client.js repaints every `[data-play]` whose
+         id is the current episode as "❚❚" — so this button becomes a pause
+         button on screen — and everything below this line is a PLAY. Pressing it
+         rebuilt the queue and restarted the episode.
+         The mirror case is the same defect and was the next report waiting to
+         happen: pause from the bar, press this card's "▶", and `play()` starts
+         from zero instead of resuming. `isCurrent` covers both directions, so
+         the card delegates to the player whenever it is showing the player's own
+         item, and only starts something new when it is not.
+         Returned before `logEvent("play_started")` and the history append below:
+         a pause is not a start, and counting it as one would put the episode in
+         `cp_history` again on every toggle. */
+      if (window.ForayPlayer.isCurrent?.(id)) {
+        await window.ForayPlayer.togglePlayback();
+        return;
+      }
       if (origin === "queue") setQueuePlaybackOrigin(id);
       else clearQueuePlaybackOrigin();
       const ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });

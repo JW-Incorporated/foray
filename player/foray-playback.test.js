@@ -1795,7 +1795,11 @@ test("client.js spends the gesture on the element BEFORE its first await", async
   const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
   // BOTH entry points a tap can reach: a Foray, and a single episode from a card.
   // The episode path is the one a `playForay`-shaped assertion cannot see.
-  for (const signature of ["async playForay(resolved, {", "async play(item, { why"]) {
+  /* `async play(item, opts)` since 2026-09-22 — it was `async play(item, { why`
+     until a `play(item, null)` caller proved that destructuring in the signature
+     is a trap (see the next test). The anchor moved with it; the invariant did
+     not. */
+  for (const signature of ["async playForay(resolved, {", "async play(item, opts)"]) {
     const from = client.indexOf(signature);
     assert.ok(from > 0, `${signature} moved or was renamed`);
     const body = client.slice(from);
@@ -1807,6 +1811,44 @@ test("client.js spends the gesture on the element BEFORE its first await", async
       `notePlayGesture must run before the first await in ${signature}, or the tap is already spent`
     );
   }
+});
+
+test("play() does not destructure its options in the signature — a null caller must not throw", async () => {
+  /* FOUNDER, 2026-09-22, build 2026092224: "the play button works on the Jump
+     back in card but it does not work from the now playing bar down at the
+     bottom."
+
+     `play` was `async play(item, { why = "" } = {})`. A DEFAULT PARAMETER ONLY
+     APPLIES TO `undefined`, so `setRunning`'s restored branch — which called
+     `play(item, null)` — threw a TypeError before `ensureBooted`,
+     `setQueueFromPick` or `manager.play(0)` could run. That branch is the ONLY
+     thing that loads audio behind a ribbon restored at launch, and it cleared
+     `restoredPending` before calling, so the failure was unrecoverable: every
+     later press fell through to `manager.resume()` on an empty queue. Four
+     `play from tap` rows in the field record, no audio.
+
+     `play` is the single entry point to playback for every surface in the app,
+     so the shape of its second argument is worth a test of its own. A text
+     assertion for the reason the test above gives: this module cannot be
+     imported into a Node test.
+
+     MUTATION: restore `async play(item, { why = "" } = {})`. Both assertions go
+     red. RUN: failed as named. */
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  assert.doesNotMatch(
+    client,
+    /async play\(item,\s*\{/,
+    "destructuring in the signature means a null second argument throws"
+  );
+  assert.match(
+    client,
+    /const why = typeof opts === "string" \? opts : \(opts\?\.why \?\? ""\)/,
+    "read the reason defensively: null, undefined, a string and an object all reach this function"
+  );
+  /* And nothing may go back to handing it a bare `null`. `app.js` passes a
+     string ("timestamp"), which USED to destructure to `why = ""` and silently
+     lose the reason; that is now honoured rather than dropped. */
+  assert.doesNotMatch(client, /ForayPlayer\.play\([a-zA-Z.]+,\s*null\)/, "no caller may pass null again");
 });
 
 test("client.js only ever reports an error that describes the attempt in front of it", async () => {
