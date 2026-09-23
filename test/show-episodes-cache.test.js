@@ -153,13 +153,18 @@ test("a cached list paints before the fetch, and the fetch still goes out", () =
      unconditionally afterwards rather than inside an else.
      MUTATION: put the fetch inside the `else` branch — the list would then never
      refresh for the whole TTL, which is the staleness bug this avoids. */
-  const load = /const cached = cachedShowEpisodes\(show\.show_id\);[\s\S]*?revealSearchIfEligible\(\);\n  \}\);/.exec(SRC);
+  /* 2026-09-22 (audit theme G): the fetch moved into a named `loadEpisodes()`
+     so the failed state's "Try again" re-runs the same fetch rather than a
+     second path. The claim is unchanged — the cached paint first, then a
+     refresh that is not conditional on a miss — so the shape now also pins that
+     `loadEpisodes()` is CALLED unconditionally, at the end of renderShow. */
+  const load = /const cached = cachedShowEpisodes\(show\.show_id\);[\s\S]*?\n  loadEpisodes\(\);\n\}/.exec(SRC);
   assert.ok(load, "the show-page load path must still have this shape");
   const body = load[0];
   const paintIdx = body.indexOf('paintEpisodeOutcome("loaded")');
   const fetchIdx = body.indexOf("fetchShowEpisodes(show.show_id)");
   assert.ok(paintIdx >= 0 && fetchIdx > paintIdx, "the cached paint comes first, the refresh after");
-  assert.ok(!/else\s*\{[^}]*fetchShowEpisodes/.test(body), "the refresh must not be conditional on a cache miss");
+  assert.ok(!/else\s*\{[^}]*(fetchShowEpisodes|loadEpisodes\(\))/.test(body), "the refresh must not be conditional on a cache miss");
 });
 
 test("a failed refresh behind a good cached list changes nothing on screen", () => {
@@ -168,14 +173,18 @@ test("a failed refresh behind a good cached list changes nothing on screen", () 
      "couldn't load".
      MUTATION: delete the `if (cached && cached.episodes.length) return;` in the
      `episodes === null` branch. */
-  const body = /if \(episodes === null\) \{[\s\S]*?\n    \}/.exec(SRC)[0];
-  assert.match(body, /if \(cached && cached\.episodes\.length\) return;/);
+  /* 2026-09-22 (audit theme G): the branch now also says "couldn't refresh just
+     now" in the SUBTITLE — the moment that sentence becomes true — but it still
+     returns before the list is touched and before the error is recorded, which
+     is this test's claim. Indentation moved two spaces with `loadEpisodes()`. */
+  const body = /if \(episodes === null\) \{[\s\S]*?\n      \}/.exec(SRC)[0];
+  assert.match(body, /if \(cached && cached\.episodes\.length\) \{\s*anyStale = true;\s*paintCount\(\);\s*return;\s*\}/);
   assert.ok(body.indexOf("return;") < body.indexOf("lastLoadError"),
     "the early return must come before the error is recorded");
 });
 
 test("an empty refresh behind a good cached list is also survivable", () => {
-  const body = /if \(episodes\.length === 0\) \{[\s\S]*?\n    \}/.exec(SRC)[0];
+  const body = /if \(episodes\.length === 0\) \{[\s\S]*?\n      \}/.exec(SRC)[0];
   assert.match(body, /if \(cached && cached\.episodes\.length\) return;/);
 });
 

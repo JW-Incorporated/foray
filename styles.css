@@ -759,6 +759,11 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 }
 .cr-foray-note { margin: 0 0 14px; }
 .note { color: var(--text-dim); font-size: 0.85rem; margin: 0; flex: none; }
+/* The FAILED state of the three-state convention (app.js `failedNoteHtml`, audit
+   2026-09-22): the sentence, then "Try again" beneath it. The button is an
+   ordinary `.fy-btn` — its 48px height and tap behaviour come from there — so
+   this rule only stacks the two. */
+.load-failed { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin: 8px 0; }
 
 /* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
    Lives on the Shows page (#/shows). The `.search-tabs`/`.search-tab` pair

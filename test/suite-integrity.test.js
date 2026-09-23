@@ -639,7 +639,16 @@ const FLOORS = {
      the branch that stops a careless version of this fix from deleting
      playable content in order to display an error about content the listener
      cannot tell is missing. */
-  "test/show-episode-load-states.test.js": 10, // 2026-09-22 audit: the loading+CURATED cell, the one quadrant the case list never covered — and the one the subtitle/body contradiction lived in; 9 -> 10
+  "test/show-episode-load-states.test.js": 15, // 2026-09-22 audit theme G: the failed body's "Try again" re-runs the same fetch; "couldn't refresh" is said only once a refresh has failed and is cleared by one that succeeds; the description paints on the empty branch too; 10 -> 15 // 2026-09-22 audit: the loading+CURATED cell, the one quadrant the case list never covered — and the one the subtitle/body contradiction lived in; 9 -> 10
+  /* The three-state convention everywhere ELSE (audit 2026-09-22, theme G):
+     "No shows here yet." / "0 shows" over a failed catalogue, "Show not found."
+     for a dead endpoint, not-found pages with no ‹, and #/forays painting "0
+     forays" whenever the player module had not evaluated. The one to guard
+     hardest is "#/forays waits for the player instead of saying there are no
+     Forays": it is the one a "simplify renderForays back to synchronous" edit
+     would silently undo, because every existing harness mounts with the bridge
+     already present. */
+  "test/load-states.test.js": 10, // 2026-09-22: new
 
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):

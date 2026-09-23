@@ -828,6 +828,66 @@ function setBodyClass(base) {
   body.className = [base, "ui-v2", ...kept].join(" ");
 }
 
+/* ---------- loading / failed / empty: ONE convention (audit theme G, 2026-09-22) ----------
+
+   The audit found the same defect at ten sites: something still loading and
+   something that failed to load were both painted as a FACT about 4a — "0
+   forays", "No shows here yet.", `No results for "x".`, "7 episodes" over zero
+   rows. Every one of those pages knew, or could have known, which of three
+   states it was in, and threw the distinction away at the paint.
+
+   THE RULE, which every list painter now follows:
+
+     loading — say it is loading, and claim nothing: no count, no "no results",
+               no empty-state sentence. A count is painted only once the source
+               that produces its rows has answered, and from those same rows.
+     failed  — say it failed, in plain words, and offer "Try again" wired to
+               the SAME fetch that failed. Never an empty-state claim.
+     empty   — only when the source answered and the answer was "nothing".
+
+   These helpers are the shared half: the failed line with its button, and the
+   status page a route paints when it has nothing but a status to show. The
+   status page always carries a real page head with ‹ — a not-found or loading
+   page with no way back was a dead end reachable from any stale link, which is
+   the argument `renderPlaylistDetail`'s not-found branch already wrote down and
+   two sibling routes never applied.
+
+   `note` is NOT escaped: every caller passes a literal written in this file (the
+   same footing `BODY_PLACEHOLDER` in renderShow is on, and for the same reason —
+   escaping a constant turns the apostrophe in "Couldn't" into `&#39;`). `title`
+   can come from data, so it is. */
+const RETRY_LABEL = "Try again";
+
+function failedNoteHtml(note) {
+  return `<div class="load-failed" role="status">
+    <p class="note">${note}</p>
+    <button type="button" class="fy-btn load-retry" data-retry>${RETRY_LABEL}</button>
+  </div>`;
+}
+
+function statusPageHtml({ title = "", note, back = "#/", retry = false }) {
+  return `<div class="page">
+    <div class="page-head">
+      <a class="back" href="${esc(back)}">‹</a>
+      <div>${title ? `<h2>${esc(title)}</h2>` : ""}</div>
+    </div>
+    ${retry ? failedNoteHtml(note) : `<p class="note">${note}</p>`}
+  </div>`;
+}
+
+/** Wire the Retry button under `scope` to `run` — the same function that
+    failed, never a parallel "reload" path. Once: the retry repaints the region,
+    and a second press on a button that is about to be replaced would run the
+    fetch twice. */
+function bindRetry(scope, run) {
+  const btn = scope && typeof scope.querySelector === "function" ? scope.querySelector("[data-retry]") : null;
+  if (!btn) return;
+  btn.addEventListener("click", (e) => {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+    run();
+  }, { once: true });
+}
+
 function poolFiltered() {
   const pool = fullPool();
   if (!familyMode()) return pool;
@@ -1947,8 +2007,20 @@ function showsForCategory(nodeId) {
    onWindowScroll still hides and re-shows it exactly as it has since
    2026-09-05 (test/collapsing-header-scroll.test.js). Nothing about that
    mechanism changed; only the field stopped riding along inside it. */
+/* `shows === null` IS "THE CATALOGUE DID NOT LOAD", and it is a different page
+   from an empty list (audit 2026-09-22, theme G). `state.catalog` is
+   `fetchJson`'s answer, which is `null` for a 404, a parse error and a dead
+   network alike — and "No shows here yet." painted over that null was a claim
+   about 4a's catalogue standing in for a failed fetch, on a page whose search
+   box could still find shows through the endpoints. The empty-list copy is now
+   reachable only when the catalogue answered. */
 function renderShowIndexPage(title, subtitle, shows, above = "") {
   setBodyClass("view-page");
+  const list = shows === null
+    ? `<div class="show-index-failed">${failedNoteHtml("Couldn't load the show list.")}</div>`
+    : shows.length
+      ? `<div class="show-results show-index">${shows.map(showResultRow).join("")}</div>`
+      : `<p class="note">No shows here yet.</p>`;
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
@@ -1959,19 +2031,38 @@ function renderShowIndexPage(title, subtitle, shows, above = "") {
         </div>
       </div>
       ${above}
-      ${shows.length
-        ? `<div class="show-results show-index">${shows.map(showResultRow).join("")}</div>`
-        : `<p class="note">No shows here yet.</p>`}
+      ${list}
     </div>`;
+  if (shows === null) bindRetry($("#view .show-index-failed"), retryCatalog);
+}
+
+/** The Retry behind a failed catalogue: the same fetch init() made, then the
+    same page repainted from whatever it answered. A second failure lands on the
+    same failed state with a fresh button, never on an empty-list claim. */
+async function retryCatalog() {
+  const catalog = await fetchJson("data/catalog-client.json");
+  if (catalog) state.catalog = catalog;
+  renderCurrentPage();
+}
+
+/** The catalogue's shows, or `null` when the catalogue itself never loaded — the
+    one question both catalogue-backed pages have to ask before they may count. */
+function catalogShowsOrNull() {
+  return state.catalog ? (state.catalog.shows || []) : null;
 }
 
 /* A3.2's landing page. An unknown nodeId still renders — same "absence is a
    real state, not an error" rule renderShow's not-found guard follows —
    falling back to the raw id as its own label, and an empty result list
-   getting the shared "No shows here yet" copy rather than a dead end. */
+   getting the shared "No shows here yet" copy rather than a dead end.
+
+   NO COUNT WITHOUT A CATALOGUE: "0 shows" over a failed fetch was the same
+   false claim as the empty-state sentence under it, so both wait on the
+   catalogue having answered. */
 function renderCategory(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
   const label = node?.label || nodeId;
+  if (catalogShowsOrNull() === null) { renderShowIndexPage(label, "", null); return; }
   const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
   renderShowIndexPage(label, `${shows.length} show${shows.length === 1 ? "" : "s"}`, shows);
 }
@@ -2093,7 +2184,7 @@ function browsePillsHtml() {
    shares. Missing nodes are filtered out rather than guarded at each call
    site, so this is safe on a page that has no search box at all. */
 function showBrowseSections() {
-  return [$("#sh-browse"), $("#view .show-index")].filter(Boolean);
+  return [$("#sh-browse"), $("#view .show-index"), $("#view .show-index-failed")].filter(Boolean);
 }
 
 /* Tracks whether the Shows-page search field currently holds focus. A flag
@@ -2239,7 +2330,8 @@ function dismissShowSearch(input) {
    keyboard stays down. */
 function renderAllShows(initialQuery = "") {
   const query = String(initialQuery || "").trim();
-  const shows = (state.catalog?.shows || []).slice().sort((a, b) => a.title.localeCompare(b.title));
+  const catalogShows = catalogShowsOrNull();
+  const shows = catalogShows && catalogShows.slice().sort((a, b) => a.title.localeCompare(b.title));
   /* NO SUBTITLE (founder, 2026-09-13: "On the search page, delete '220 shows
      in 4a's\u2026'"). renderCategory keeps its own \u2014 see renderShowIndexPage. */
   /* THE FIELD IS A COMPOSE BAR AT THE BOTTOM (founder, 2026-09-13: "We should
@@ -2952,7 +3044,7 @@ function resolveMissingShow(show_id) {
      immediately, with no "Loading show…" flash for a fetch that would
      never have resolved this id anyway. */
   if (typeof show_id === "string" && show_id.startsWith("pi:")) {
-    if (view) view.innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`;
+    if (view) view.innerHTML = statusPageHtml({ note: "Show not found." });
     return;
   }
   const fromIndex = showIndex
@@ -2967,22 +3059,39 @@ function resolveMissingShow(show_id) {
     return;
   }
 
-  if (view) view.innerHTML = `<div class="page"><p class="note">Loading show…</p></div>`;
+  /* Every state here carries a page head with ‹ (audit 2026-09-22). These three
+     pages are reached almost only through stale or shared links, which is
+     exactly when there is nothing else on screen to leave by.
+
+     AND A DEAD ENDPOINT IS NOT A MISSING SHOW. The endpoint answers a genuine
+     miss with 200 and `show: null` precisely so the client can tell it from a
+     failure, which `fetchApiJson` reports as `null` — and this branch used to
+     throw that distinction away and say "Show not found." for both. A show we
+     could not ask about now says so, with "Try again" wired to this same
+     lookup. */
+  if (view) view.innerHTML = statusPageHtml({ note: "Loading show…" });
   const wanted = `#/show/${show_id}`;
   fetchApiJson(`api/shows/search?id=${encodeURIComponent(show_id)}`).then((data) => {
     /* Navigated away while the row was in flight — repainting #view now would
        clobber whatever page the listener is actually on. Same "still mounted"
        rule renderShow's own episode fetch follows. */
     if (location.hash !== wanted) return;
+    const v = $("#view");
+    if (data === null) {
+      if (v) {
+        v.innerHTML = statusPageHtml({ note: "Couldn't load this show.", retry: true });
+        bindRetry(v, () => resolveMissingShow(show_id));
+      }
+      return;
+    }
     const row = data?.show || null;
     if (!row) {
-      const v = $("#view");
-      if (v) v.innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`;
+      if (v) v.innerHTML = statusPageHtml({ note: "Show not found." });
       return;
     }
     state.breadthShowCache[show_id] = row;
     if (showById(show_id)) renderShow(show_id);
-  }); // fetchApiJson swallows network/parse errors to null — the branch above covers it
+  }); // fetchApiJson swallows network/parse errors to null — the `data === null` branch above is that case
 }
 
 function renderShow(show_id) {
@@ -3173,10 +3282,15 @@ function renderShow(show_id) {
      how "4a's wider catalogue" ended up on a phone screen. `isBreadthTier`
      still does real work in showEpisodeCountLabel; it just no longer picks
      the listener's words. */
+  /* `failed` offers "Try again" rather than "Pull to refresh" (audit
+     2026-09-22): there is no pull gesture on this page, and a failure the
+     listener cannot act on from where they are standing is a dead end. The
+     button re-runs `loadEpisodes` below — the same fetch — through
+     `failedNoteHtml`, the convention every failed list now shares. */
   const BODY_PLACEHOLDER = {
     loading: "Loading episodes…",
     empty: "No episodes yet.",
-    failed: "Couldn't load these episodes. Pull to refresh.",
+    failed: "Couldn't load these episodes.",
   };
 
   /* THE ONE WRITER OF THE EPISODE CONTAINER (issue #687).
@@ -3233,6 +3347,11 @@ function renderShow(show_id) {
        costs correctness: it turns the apostrophe in "Couldn't" into `&#39;`
        in the DOM, which is what the string looks like to anything reading
        textContent. */
+    if (loadState === "failed") {
+      c.innerHTML = failedNoteHtml(BODY_PLACEHOLDER.failed);
+      bindRetry(c, retryEpisodes);
+      return;
+    }
     c.innerHTML = `<p class="note">${BODY_PLACEHOLDER[loadState] || BODY_PLACEHOLDER.loading}</p>`;
   }
 
@@ -3396,7 +3515,13 @@ function renderShow(show_id) {
      task and the fetch below becomes a background refresh. */
   const cached = cachedShowEpisodes(show.show_id);
   if (cached && cached.episodes.length) {
-    if (cached.stale) anyStale = true;
+    /* NOT `anyStale = cached.stale` (audit 2026-09-22). The cache entry's flag
+       is a true fact about the response that was STORED, but the subtitle words
+       it as a present-tense failure — "couldn't refresh just now" — and at this
+       line no refresh has been attempted: the one that will decide it is the
+       fetch directly below. So the first paint claims nothing about freshness,
+       and the refresh's own answer (a failure, or its own `stale`) is what sets
+       the flag, in either direction. */
     loaded = cached.episodes;
     fullyLoaded = cached.nextCursor === null;
     paintEpisodeOutcome("loaded");
@@ -3406,45 +3531,86 @@ function renderShow(show_id) {
     paintEpisodeOutcome("loading");
   }
 
-  fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, error, show: header }) => {
-    if (!stillMounted()) return; // navigated away before the fetch resolved
+  /* THE ONE FETCH, named so "Try again" can run it again (audit 2026-09-22,
+     theme G). A retry that was a separate "reload" path would be a second
+     author for the same outcome — the shape issue #687 removed from this page. */
+  function loadEpisodes() {
+    fetchShowEpisodes(show.show_id).then(({ episodes, nextCursor: nc, stale, error, show: header }) => {
+      if (!stillMounted()) return; // navigated away before the fetch resolved
 
-    if (episodes === null) {
-      /* A FAILED REFRESH BEHIND A GOOD CACHED LIST CHANGES NOTHING ON SCREEN.
-         Replacing a list the listener is already reading with "couldn't load"
-         because the revalidation missed would be a regression introduced by the
-         cache — the episodes are right there and still valid. The error is only
-         terminal when there is nothing painted. */
-      if (cached && cached.episodes.length) return;
-      lastLoadError = error || "load failed";
-      paintEpisodeOutcome("failed");
-      return;
-    }
+      /* THE DESCRIPTION FIRST, BEFORE ANY OUTCOME BRANCH (audit 2026-09-22). It
+         used to be painted on the success path only, so a show whose feed parsed
+         but held no episodes — the emptiest page in the app — withheld the one
+         paragraph the response did carry. "A description is not part of the
+         list" was already this function's rule; it now holds on every branch,
+         including the unchanged-list return below. A failure carries no header,
+         and then the slot is left exactly as it was. */
+      if (header) paintShowDescription(header);
 
-    if (episodes.length === 0) {
-      if (cached && cached.episodes.length) return; // same reasoning as above
-      paintEpisodeOutcome("empty");
-      return;
-    }
+      if (episodes === null) {
+        /* A FAILED REFRESH BEHIND A GOOD CACHED LIST CHANGES NOTHING IN THE LIST.
+           Replacing a list the listener is already reading with "couldn't load"
+           because the revalidation missed would be a regression introduced by
+           the cache — the episodes are right there and still valid. The error is
+           only terminal when there is nothing painted.
 
-    cacheShowEpisodes(show.show_id, { episodes, nextCursor: nc, stale: !!stale, show: header });
-    /* BEFORE the unchanged-list early return below. A description is not part
-       of the list, so a refresh that agrees about the episodes must still be
-       able to fill in a description the first paint did not have. */
-    paintShowDescription(header);
+           But it IS now a refresh that failed, which is exactly what the
+           subtitle's "couldn't refresh just now" says — so that sentence is
+           painted here, at the moment it becomes true, rather than at first
+           paint from a flag some earlier visit stored. */
+        if (cached && cached.episodes.length) {
+          anyStale = true;
+          paintCount();
+          return;
+        }
+        lastLoadError = error || "load failed";
+        paintEpisodeOutcome("failed");
+        return;
+      }
 
-    /* REPAINT ONLY ON A REAL CHANGE. The common case is that the refresh agrees
-       with what is already on screen, and repainting then would throw away the
-       listener's scroll position and any "load more" pages they had already
-       pulled in — turning a silent background refresh into a visible jump. */
-    if (cached && sameEpisodeList(cached.episodes, episodes)) return;
+      if (episodes.length === 0) {
+        if (cached && cached.episodes.length) return; // same reasoning as above
+        paintEpisodeOutcome("empty");
+        return;
+      }
 
-    if (stale) anyStale = true;
-    loaded = episodes;
-    fullyLoaded = nc === null;
-    paintEpisodeOutcome("loaded");
-    revealSearchIfEligible();
-  });
+      cacheShowEpisodes(show.show_id, { episodes, nextCursor: nc, stale: !!stale, show: header });
+
+      /* FRESHNESS FROM THIS ANSWER, BEFORE THE UNCHANGED-LIST RETURN (audit
+         2026-09-22). `anyStale` used to be sticky and set only below that
+         return, so a refresh that SUCCEEDED with the same list left "couldn't
+         refresh just now" standing for the rest of the visit — while the cache
+         entry had just been rewritten `stale: false` one line up. Whether the
+         list changed and whether it is fresh are two questions; the early
+         return answers only the first, so the count repaints even when the
+         rows do not. */
+      anyStale = !!stale;
+      paintCount();
+
+      /* REPAINT ONLY ON A REAL CHANGE. The common case is that the refresh
+         agrees with what is already on screen, and repainting then would throw
+         away the listener's scroll position and any "load more" pages they had
+         already pulled in — turning a silent background refresh into a visible
+         jump. The subtitle is not the list, and was repainted just above. */
+      if (cached && sameEpisodeList(cached.episodes, episodes)) return;
+
+      loaded = episodes;
+      fullyLoaded = nc === null;
+      paintEpisodeOutcome("loaded");
+      revealSearchIfEligible();
+    });
+  }
+
+  /* "Try again" on the failed body: back to `loading` through the one writer,
+     then the same fetch. `lastLoadError` is cleared first so the subtitle does
+     not go on saying "couldn't" over a second attempt that is in flight. */
+  function retryEpisodes() {
+    lastLoadError = null;
+    paintEpisodeOutcome("loading");
+    loadEpisodes();
+  }
+
+  loadEpisodes();
 }
 
 /**
@@ -3872,6 +4038,15 @@ function miniCard(slot) {
   </a>`;
 }
 
+/* WHAT A FORAY IS, in one sentence, written ONCE (audit 2026-09-22, persona
+   #18/#37/#45/#83). It was a literal inside the first-run sheet below — the only
+   place in the product that said it — and that sheet is one-shot: "Skip for now"
+   sets `cp_intro_dismissed` and nothing ever re-opens it. So the sentence is
+   hoisted here and the Forays page subtitle reads it too, which gives the
+   explanation a permanent home and makes skipping the sheet cost nothing. One
+   constant, so the page and the sheet cannot drift into two descriptions. */
+const FORAY_ABOUT = "We clip the best parts of several podcasts on a subject and stitch them into one seamless listen, with a narrator bridging the gaps.";
+
 /* First-time explanation/consent screen (docs/ux/foray-m3-prototype.html +
    docs/ux/README.md § "First-time vs. returning user"). Ports the INTENT of
    the prototype's `V.signinNew` screen into the shipped stack — not a literal
@@ -4147,8 +4322,7 @@ function showFirstTimeExplainerOnce() {
     const propForay = ddEl("div", "ft-value-prop");
     propForay.append(
       ddEl("h4", null, "Forays: one subject, many shows"),
-      ddEl("p", "fy-sheet-sub",
-        "We clip the best parts of several podcasts on a subject and stitch them into one seamless listen, with a narrator bridging the gaps.")
+      ddEl("p", "fy-sheet-sub", FORAY_ABOUT)
     );
     const stripHtml = welcomeStripHtml();
     if (stripHtml) {
@@ -6558,19 +6732,62 @@ function renderHomeV2() {
    thing the founder asked to remove. Both are still gated by the same
    visibility rule (forayCards / forayResumeRows) — an unpublished Foray is
    listed only to someone who arrived with its `?foray=` link this session. */
+/* THE THREE STATES, AND WHAT THE PAGE SAYS ABOVE THEM (audit 2026-09-22).
+
+   It used to be synchronous and take `forayCards()` at face value — and that
+   function answers `[]` for "the player module has not evaluated yet", for "the
+   Forays document failed to load" and for "there genuinely are none" alike. So a
+   cold deep link, a slow phone or a stale cache painted "0 forays" and "No forays
+   right now", and nothing ever repainted it. The detail route one screen away
+   already awaited the player and named each failure; this page threw that
+   distinction away. Now:
+
+     loading — the module is not here yet: say so, claim nothing, wait for it the
+               bounded way `renderForay` does, then paint again.
+     failed  — the module never came, or the document did not load: say which,
+               with "Try again" wired to the thing that failed.
+     empty   — only when both are here and the list really is empty.
+
+   NO COUNT IN THE SUBTITLE. "1 foray" was the page's only line of text, and it
+   told a listener who skipped the first-run sheet nothing about what a Foray
+   IS — which, after that sheet, nothing in the app said again (persona audit
+   #18/#37/#45/#83: "Skip for now" deleted the product's only explanation of
+   itself). The subtitle is now that explanation, from the same constant the
+   sheet uses, so the two cannot drift and the sheet's "Skip for now" is no
+   longer destructive: the sentence has a permanent home a tap away. */
 function renderForays() {
   setBodyClass("view-page");
-  const list = forayCards();
-  const resume = forayResumeRows();
-  $("#view").innerHTML = `
-    <div class="page">
+  const head = `
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
           <h2>Forays</h2>
-          <p class="sub">${list.length} foray${list.length === 1 ? "" : "s"}</p>
+          <p class="sub">${esc(FORAY_ABOUT)}</p>
         </div>
-      </div>
+      </div>`;
+  const paintStatus = (body) => { $("#view").innerHTML = `<div class="page">${head}${body}</div>`; };
+
+  if (!window.ForayPlayer) {
+    paintStatus(`<p class="note">Loading…</p>`);
+    playerBridge().then((player) => {
+      if ((location.hash || "") !== "#/forays") return; // the listener has moved on
+      if (player) { renderForays(); return; }
+      paintStatus(failedNoteHtml("The player didn't load."));
+      bindRetry($("#view"), renderForays);
+    });
+    return;
+  }
+  if (!state.forays) {
+    paintStatus(failedNoteHtml("Couldn't load forays right now."));
+    bindRetry($("#view"), retryForayDocs);
+    return;
+  }
+
+  const list = forayCards();
+  const resume = forayResumeRows();
+  $("#view").innerHTML = `
+    <div class="page">
+      ${head}
       ${jumpBackInHtml(resume)}
       ${list.length
         ? forayListHtml()
@@ -6989,7 +7206,10 @@ function renderEpisode(id) {
   setBodyClass("view-page");
   const item = resolveEpisode(id);
   if (!item) {
-    $("#view").innerHTML = `<div class="page"><p class="note">Episode not found.</p></div>`;
+    /* With a ‹ (audit 2026-09-22): this page is reached through stale links —
+       a queued id whose snapshot is gone, a search row from an earlier session —
+       and a sentence with no way back was a dead end. */
+    $("#view").innerHTML = statusPageHtml({ note: "Episode not found." });
     return;
   }
   // populate itemIndex/poolIds so "more from this show" rows can play in-app;
@@ -8033,18 +8253,26 @@ function forayHeadSub(r) {
    link moved with it. */
 async function renderForay(id) {
   setBodyClass("view-page");
-  $("#view").innerHTML = `<div class="page"><p class="note">Loading…</p></div>`;
+  /* Every status this page can stop on has a ‹ back to the list, and each
+     failure offers "Try again" wired to the thing that failed (audit
+     2026-09-22, theme G). "Reload the page" was browser advice inside a native
+     shell that has no page to reload, and it threw away where the listener
+     was; the retry re-runs this route, which re-awaits the player, or re-fetches
+     the three Foray documents. */
+  $("#view").innerHTML = statusPageHtml({ note: "Loading…", back: "#/forays" });
 
   const player = await playerBridge();
   // Another route may have won while we waited for the module.
   if (forayRouteId() !== id) return;
 
   if (!player) {
-    $("#view").innerHTML = `<div class="page"><p class="note">The player didn't load — reload the page.</p></div>`;
+    $("#view").innerHTML = statusPageHtml({ note: "The player didn't load.", back: "#/forays", retry: true });
+    bindRetry($("#view"), () => renderForay(id));
     return;
   }
   if (!state.forays) {
-    $("#view").innerHTML = `<div class="page"><p class="note">Couldn't load forays right now.</p></div>`;
+    $("#view").innerHTML = statusPageHtml({ note: "Couldn't load forays right now.", back: "#/forays", retry: true });
+    bindRetry($("#view"), retryForayDocs);
     return;
   }
 
@@ -8060,7 +8288,7 @@ async function renderForay(id) {
   // Same answer for "no such Foray" and "not published": a client that
   // distinguishes them announces the existence of unpublished work.
   if (!r) {
-    $("#view").innerHTML = `<div class="page"><p class="note">That foray isn't available.</p></div>`;
+    $("#view").innerHTML = statusPageHtml({ note: "That foray isn't available.", back: "#/forays" });
     return;
   }
   state.foray = r;
@@ -9117,18 +9345,12 @@ function paintForay(s) {
     was empty for everyone before that.
 
     It reads the bridge synchronously rather than awaiting it, so on a cold load
-    where the module has not evaluated yet the row is simply absent until the
-    next render. That WAS the right trade while the list was empty for everyone.
-    It is not any more, and the trade has not been re-made: nothing re-renders
-    home on the `forayplayer:ready` event `player/client.js` already dispatches,
-    so a cold load that paints home before the module evaluates shows a home
-    screen with the published Foray missing from it until the visitor navigates.
-    In practice `init()` awaits eight JSON fetches before `route()` and the
-    module graph starts earlier, so the module almost always wins — "almost
-    always" is the defect. Fixing it wants the same await `renderForay` does, or
-    one re-render on that event; both need a harness that does not stub
-    `window.addEventListener` to a no-op, which is what the two suites that mount
-    this file do today. Recorded in docs/curation/foray2-capital.md §11c. */
+    where the module has not evaluated yet it answers `[]` — which is NOT a claim
+    that there are none, and no caller may paint it as one. The two pages that
+    list Forays now close the gap themselves (audit 2026-09-22, theme G):
+    `renderForays` awaits the bridge before it will say "No forays right now",
+    and `restoreNowPlayingRibbon` repaints Home once when the module arrives
+    after Home's first paint. Recorded in docs/curation/foray2-capital.md §11c. */
 function forayCards() {
   if (!state.forays || !window.ForayPlayer) return [];
   /* Published + `?foray=`-unlocked first, in file order, exactly as before;
@@ -9164,14 +9386,19 @@ function forayListHtml() {
     bridge exists. Re-renders home afterwards so "Jump back in" picks up the
     restored episode on the same paint rather than on the next navigation. */
 function restoreNowPlayingRibbon() {
-  const go = () => {
+  /* `late` is the module arriving AFTER Home's first paint — and then Home is
+     repainted whether or not a ribbon came back (audit 2026-09-22). That first
+     paint read `forayCards()` with no module to read it through, so its Forays
+     rail was missing for a listener who had never played anything, and until
+     now only a restored episode ever triggered the repaint that fixed it. */
+  const go = (late) => {
     try {
       const restored = window.ForayPlayer?.restoreLastEpisode?.();
-      if (restored && isHomeRoute()) renderCurrentPage();
+      if ((restored || late) && isHomeRoute()) renderCurrentPage();
     } catch (_) { /* a ribbon that cannot be restored is not a reason to fail boot */ }
   };
-  if (window.ForayPlayer) go();
-  else window.addEventListener("forayplayer:ready", go, { once: true });
+  if (window.ForayPlayer) go(false);
+  else window.addEventListener("forayplayer:ready", () => go(true), { once: true });
 }
 
 /** True when the current route is the home screen — the only page whose content
@@ -11060,6 +11287,21 @@ function applyForaySet(set) {
   state.forays = set.forays ?? null;
   state.segments = set.segments ?? null;
   state.segmentSources = set.sources ?? null;
+}
+
+/** "Try again" behind a Foray page that could not load its documents (audit
+    2026-09-22, theme G): the same three fetches `init()` made, swapped in as one
+    set through the one swap, then the page repainted. Adopted only when the
+    Foray list itself came back — a second failure must land on the same failed
+    state, not on a list half-replaced by nulls. */
+async function retryForayDocs() {
+  const [forays, segments, sources] = await Promise.all([
+    fetchJson("data/forays.json"),
+    fetchJson("data/segments.json"),
+    fetchJson("data/segment-sources.json"),
+  ]);
+  if (forays) applyForaySet({ forays, segments, sources });
+  renderCurrentPage();
 }
 
 /** Where the seed came from, for the diagnostics row: in the shell it is the

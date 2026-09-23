@@ -475,16 +475,28 @@ test("both shell notices name the app", () => {
    `pi:` id has no id-map/network fallback to attempt (see that branch's own
    comment). The unit rule below applies to it exactly as it does to every
    other note. */
+/* RESHAPED 9 -> 13 on 2026-09-22 (audit theme G, the three-state convention).
+   Eight of the nine one-line notes moved into `statusPageHtml({ note: "…" })`,
+   which gives every such page a head with ‹ — they were dead ends on stale links
+   — and the failures among them gained "Try again" through `failedNoteHtml("…")`.
+   The notes did not go anywhere, so this test now enumerates all three shapes
+   rather than letting the unit rule stop applying to them. The four new ones:
+   "Couldn't load this show." (a dead endpoint is not a missing show), and the
+   failed states of #/shows and #/forays, which used to paint "No shows here yet."
+   and "0 forays" over a failed fetch. "The player didn't load." lost its
+   "— reload the page": that was browser advice inside a native shell, and the
+   Retry beside it now does the reloading that matters. */
 test("no note this app renders into #view capitalises the unit", () => {
+  const src = read("app.js");
   const notes = [
-    ...read("app.js").matchAll(
-      /innerHTML = `<div class="page"><p class="note">([^<]*)<\/p><\/div>`/g
-    ),
+    ...src.matchAll(/innerHTML = `<div class="page"><p class="note">([^<]*)<\/p><\/div>`/g),
+    ...src.matchAll(/statusPageHtml\(\{[^}]*?note: "([^"]*)"/g),
+    ...src.matchAll(/failedNoteHtml\("([^"]*)"\)/g),
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    9,
-    `expected nine one-line #view notes, found ${notes.length}. More is fine -- ` +
+    13,
+    `expected thirteen #view status notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );

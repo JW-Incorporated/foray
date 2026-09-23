@@ -106,14 +106,22 @@ function makeViewEl() {
          precisely the leftover-paint class of bug the suite is about. */
       this._containerRef = null;
       this._countRef = null;
+      this._descRef = null;
     },
   });
   el.querySelector = (sel) => {
     const s = String(sel);
     if (s.includes("[data-show-episodes]")) {
       if (!el._hasContainer) return null;
-      if (!el._containerRef) el._containerRef = makeEl("div");
+      if (!el._containerRef) el._containerRef = makeContainerEl();
       return el._containerRef;
+    }
+    /* The publisher-description slot (2026-09-22). Present so the "description
+       on every outcome branch" test below can observe paintShowDescription. */
+    if (s.includes("[data-show-description]")) {
+      if (!el.innerHTML.includes("data-show-description")) return null;
+      if (!el._descRef) el._descRef = makeEl("div");
+      return el._descRef;
     }
     if (s.includes("[data-show-count]")) {
       if (!el._hasCount) return null;
@@ -126,6 +134,24 @@ function makeViewEl() {
     return null;
   };
   return el;
+}
+
+/* The episode container, plus the one thing inside it this suite presses: the
+   failed state's "Try again" (2026-09-22, audit theme G). A button stub is
+   returned only while the container's markup actually carries `data-retry`, and
+   it records the listener bindRetry attaches, so `retry()` below is the same
+   press a listener makes — not a direct call into renderShow's closure. */
+function makeContainerEl() {
+  const c = makeEl("div");
+  c._retryBtn = null;
+  c.querySelector = (sel) => {
+    if (!String(sel).includes("[data-retry]") || !String(c.innerHTML).includes("data-retry")) return null;
+    const btn = makeEl("button");
+    btn.addEventListener = (type, fn) => { if (type === "click") btn._onClick = fn; };
+    c._retryBtn = btn;
+    return btn;
+  };
+  return c;
 }
 
 function mount({ fetchImpl } = {}) {
@@ -186,6 +212,14 @@ function mount({ fetchImpl } = {}) {
     ctx, viewEl,
     body: () => (viewEl._containerRef ? viewEl._containerRef.innerHTML : null),
     subtitle: () => (viewEl._countRef ? viewEl._countRef.textContent : null),
+    description: () => (viewEl._descRef && !viewEl._descRef.hidden ? viewEl._descRef.innerHTML : ""),
+    /* Press the failed state's "Try again", or report that there is none. */
+    retry: () => {
+      const btn = viewEl._containerRef && viewEl._containerRef._retryBtn;
+      if (!btn || typeof btn._onClick !== "function") return false;
+      btn._onClick({ preventDefault() {} });
+      return true;
+    },
   };
 }
 
@@ -456,7 +490,10 @@ test("the replacement copy is the plain, short, listener-facing text asked for",
   /* Pinned so a later edit cannot drift back toward explaining ourselves.
      MUTATION: reword any one of the three. This fails. RUN: failed as
      named. */
-  for (const s of ["Loading episodes…", "No episodes yet.", "Couldn't load these episodes. Pull to refresh."]) {
+  /* "Pull to refresh" went on 2026-09-22 (audit theme G): there is no pull
+     gesture, and the failed state now carries a real "Try again" instead — see
+     "failed: 'Try again' re-runs the same fetch" below. */
+  for (const s of ["Loading episodes…", "No episodes yet.", "Couldn't load these episodes."]) {
     assert.ok(APP_SRC.includes(s), `app.js must carry the replacement string ${JSON.stringify(s)}`);
   }
 });
@@ -491,4 +528,126 @@ test("a CURATED show still loading does not state a count over an empty body", a
   assert.ok(!/Curated Ep/.test(body), "no stale curated row may stand in for the list still loading");
   assert.ok(!/^\d+ episode/.test(sub.trim()),
     `the subtitle must not state a count while the body shows none — subtitle: "${sub}" / body: "${body}"`);
+});
+
+/* ==================================================================== */
+/* 5. FAILURE OFFERS A WAY FORWARD; FRESHNESS IS TOLD IN THE RIGHT TENSE */
+/*    (audit 2026-09-22, theme G — the three-state convention)          */
+/* ==================================================================== */
+
+const RAW_EP = (id, title = id) => ({
+  id, guid: id, title, description_text: "", audio_url: `https://cdn.example.com/${id}.mp3`,
+  duration_seconds: 600, published_at: null,
+});
+
+test("failed: 'Try again' re-runs the same fetch and paints what it answers", async () => {
+  /* "Couldn't load these episodes. Pull to refresh." named a gesture this page
+     does not have, so a failure was a dead end. The failed state now carries a
+     real button, and the button is the SAME fetch (renderShow's loadEpisodes),
+     not a parallel reload path.
+
+     MUTATION: delete `bindRetry(c, retryEpisodes)` from paintBody. `m.retry()`
+     finds no bound listener and this goes red. MUTATION 2: have retryEpisodes
+     skip `loadEpisodes()`. The body stays on "Loading episodes…" and the second
+     assertion goes red. Both RUN: failed as named. */
+  let calls = 0;
+  const fetchImpl = () => {
+    calls += 1;
+    if (calls === 1) return Promise.reject(new Error("network down"));
+    return Promise.resolve({ ok: true, json: async () => ({ show_id: "show-b", next_cursor: null, episodes: [RAW_EP("e1", "Second Try Ep")] }) });
+  };
+  const m = mount({ fetchImpl });
+  seed(m.ctx, { show: BREADTH });
+
+  m.ctx.renderShow("show-b");
+  await flushMicrotasks();
+  assert.match(m.body(), /Couldn't load these episodes/);
+  assert.match(m.body(), /Try again/, `the failed state must offer a retry, got: ${m.body()}`);
+  assert.doesNotMatch(m.body(), /Pull to refresh/i, "no gesture this page does not have");
+
+  assert.ok(m.retry(), "the Try again button must be wired to something");
+  await flushMicrotasks();
+  assert.strictEqual(calls, 2, "the retry is the same fetch, made again");
+  assert.match(m.body(), /Second Try Ep/, `the retry's answer must be painted, got: ${m.body()}`);
+  assert.doesNotMatch(m.subtitle(), /couldn't/i, `a retry that worked must not leave the failure in the subtitle: "${m.subtitle()}"`);
+});
+
+test("a cached list does not claim 'couldn't refresh' before any refresh has been tried", async () => {
+  /* The cache entry's `stale` flag is a true fact about the STORED response,
+     but the subtitle words it as a present-tense failure. At first paint the
+     refresh that would decide it has not been sent.
+
+     MUTATION: restore `if (cached.stale) anyStale = true;` in the cached first
+     paint. This goes red. RUN: failed as named. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) }); // the refresh never answers
+  seed(m.ctx, { show: BREADTH });
+  m.ctx.cacheShowEpisodes("show-b", { episodes: [RAW_EP("e1"), RAW_EP("e2")], nextCursor: null, stale: true, show: null });
+
+  m.ctx.renderShow("show-b");
+  await flushMicrotasks();
+  assert.match(m.body(), /e1/, "the cached list paints");
+  assert.doesNotMatch(m.subtitle(), /couldn.t refresh/i,
+    `no refresh has happened yet, so none can have failed — got "${m.subtitle()}"`);
+});
+
+test("a refresh that succeeds with the same list clears 'couldn't refresh'", async () => {
+  /* `anyStale` used to be sticky and set only BELOW the unchanged-list early
+     return, so a fresh answer that agreed with the stale list left the warning
+     up for the whole visit.
+
+     MUTATION: move `anyStale = !!stale; paintCount();` back below the
+     `sameEpisodeList` return. The subtitle keeps the stale note. RUN: failed as
+     named. */
+  const eps = [RAW_EP("e1"), RAW_EP("e2")];
+  let calls = 0;
+  const fetchImpl = () => {
+    calls += 1;
+    return Promise.resolve({ ok: true, json: async () => ({ show_id: "show-b", next_cursor: null, stale: calls === 1, episodes: eps }) });
+  };
+  const m = mount({ fetchImpl });
+  seed(m.ctx, { show: BREADTH });
+
+  m.ctx.renderShow("show-b");   // first visit: the answer is stale
+  await flushMicrotasks();
+  assert.match(m.subtitle(), /couldn.t refresh/i, "a stale answer says so");
+
+  m.ctx.renderShow("show-b");   // revisit inside the TTL: cached paint, then a FRESH, identical answer
+  await flushMicrotasks();
+  assert.strictEqual(calls, 2);
+  assert.doesNotMatch(m.subtitle(), /couldn.t refresh/i,
+    `the refresh succeeded, so the note must go — got "${m.subtitle()}"`);
+  assert.match(m.subtitle(), /^2 episodes$/, `the count stays, got "${m.subtitle()}"`);
+});
+
+test("a failed refresh behind a cached list says 'couldn't refresh' once it has failed", async () => {
+  /* The other direction, and the reason the flag moved rather than vanished:
+     when the refresh really does fail, the sentence becomes true, and it is
+     painted then — without touching the list the listener is reading.
+
+     MUTATION: drop `anyStale = true; paintCount();` from the `episodes === null`
+     branch's cached case. The failure goes unsaid. RUN: failed as named. */
+  const m = mount({ fetchImpl: () => Promise.reject(new Error("down")) });
+  seed(m.ctx, { show: BREADTH });
+  m.ctx.cacheShowEpisodes("show-b", { episodes: [RAW_EP("e1")], nextCursor: null, stale: false, show: null });
+
+  m.ctx.renderShow("show-b");
+  await flushMicrotasks();
+  assert.match(m.body(), /e1/, "the cached list is untouched");
+  assert.match(m.subtitle(), /couldn.t refresh/i, `the failed refresh is reported, got "${m.subtitle()}"`);
+});
+
+test("a show with no episodes still shows the publisher's description", async () => {
+  /* The empty branch returned before the description was painted, so the
+     emptiest page in the app withheld the one paragraph the response carried.
+
+     MUTATION: move `if (header) paintShowDescription(header);` back below the
+     `episodes.length === 0` branch. The description is never painted. RUN:
+     failed as named. */
+  const m = mount({ fetchImpl: ok({ show_id: "show-b", episodes: [], show: { description: "A show about quiet things." } }) });
+  seed(m.ctx, { show: BREADTH });
+
+  m.ctx.renderShow("show-b");
+  await flushMicrotasks();
+  assert.match(m.body(), /No episodes yet/);
+  assert.match(m.description(), /A show about quiet things/, `got description: "${m.description()}"`);
 });
