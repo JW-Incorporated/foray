@@ -1836,3 +1836,155 @@ test("REPORT 3: the website says so, an unknown half is `?`, and nothing unshape
   assert.equal(row.native, null);
   assert.match(formatDiagnosticReport(log.read()), /^build web \? · native \?$/m);
 });
+
+/* ==================================================================== */
+/* 2026-09-23: the founder's empty record                                */
+/* ==================================================================== */
+
+/** A store shaped like `DurableStore` for the one thing the header asks it:
+    which tiers it has and whether it hydrated. Everything else is `fakeStore`. */
+function tieredStore({ tiers = ["local", "native", "idb"], hydrated = true } = {}) {
+  const s = fakeStore();
+  s.health = () => ({ hydrated, tiers: Object.fromEntries(tiers.map((t) => [t, {}])) });
+  return s;
+}
+
+test("REPORT 2026-09-23: `recorded 939 · entries 0 · dropped 0` is stated as MISSING rows, naming the key and the tiers", () => {
+  /* THE FOUNDER'S RECORD, VERBATIM IN ITS NUMBERS. The blob a build before this
+     one left behind after a Clear — `seq` kept, the ring empty, no mark — read
+     as an instrument that had recorded 939 rows and shown none, and nothing on
+     the header said which. The arithmetic  seq − cleared.seq == entries + dropped
+     has to hold, and when it does not the header says so and names WHERE the
+     ring was read from, because "cleared or lost" is only actionable with a key
+     and a tier list beside it.
+
+     KILLING MUTATION: delete `gapLine` from the header. The first assertion fails.
+     MUTATION 2: print the gap without `where`. The second fails. */
+  const store = tieredStore();
+  store.map.set(DIAG_KEY, JSON.stringify({
+    v: 1, cap: 200, seq: 939, dropped: 0, entries: [], updatedAt: "2026-09-23T12:00:00.000Z",
+  }));
+  const log = new DiagnosticLog({ storage: store, now: clock().now });
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /^MISSING 939 of 939 recorded rows: not in this ring, not dropped/m);
+  assert.match(text, /cp_diag \(local\+native\+idb, hydrated=y\) was cleared or lost/);
+  assert.match(text, /recorded 939/, "the counter is still printed; it is now explained");
+});
+
+test("the counters that DO add up print no warning — a wrapped ring is not a loss", () => {
+  /* The other direction, so the line cannot become noise: 205 recorded, 5
+     dropped, 200 in the ring is the ring working as designed.
+     MUTATION: compute `missing` without subtracting `dropped`. This fails. */
+  const { log } = mk({ cap: 200 });
+  for (let i = 0; i < 205; i++) log.record("outPoint", {});
+  const text = formatDiagnosticReport(log.read());
+  assert.doesNotMatch(text, /MISSING|INCONSISTENT/);
+  assert.match(text, /dropped 5 · recorded 205/);
+});
+
+test("a Clear is WRITTEN DOWN: the header says cleared at #N and how many rows since", () => {
+  /* `seq` survives a Clear on purpose (a wrapped ring must stay distinguishable
+     from a cleared one), and until now that was left for a reader to infer from
+     `entries[0].seq > 1` — which the founder's record, with no entries at all,
+     could not even offer.
+     KILLING MUTATION: stop setting `_cleared` in `clear()`. Both the `cleared at`
+     line and the `MISSING` suppression fail. */
+  const { log, diag, clock: c } = mk();
+  for (let i = 0; i < 5; i++) diag.boot();
+  c.tick(1000);
+  log.clear();
+  let text = formatDiagnosticReport(log.read());
+  assert.match(text, /^cleared at #5 \d\d:\d\d:\d\d\.\d{3} · 0 recorded since$/m);
+  assert.match(text, /Nothing recorded yet since the record was cleared at #5\./);
+  assert.doesNotMatch(text, /MISSING/, "a cleared ring is empty on purpose, not lost");
+  diag.boot();
+  text = formatDiagnosticReport(log.read());
+  assert.match(text, /cleared at #5 .* · 1 recorded since/);
+  assert.match(text, /entries 1 of 200/);
+  assert.doesNotMatch(text, /MISSING/);
+});
+
+test("the build SURVIVES a Clear: the header names it with no build row left in the ring", () => {
+  /* The founder's second line read `build unknown (no build row yet)` on a page
+     that had learned its build at boot — the row was a row, and the Clear took
+     it. The stamp now lives on the log, outside the ring.
+     KILLING MUTATION: null `_build` in `clear()`, or make the header read only
+     the newest `build` row. */
+  const { log, diag } = mk();
+  diag.build({ shell: true, web: "2b808ec9d50c5b98", native: "2026092326", version: "1.4.0" });
+  log.clear();
+  assert.equal(log.entries.length, 0, "the ring really is empty");
+  const lines = formatDiagnosticReport(log.read()).split("\n");
+  assert.equal(lines[1], "build web 2b808ec9d50c5b98 · native 2026092326 (1.4.0)");
+});
+
+test("the clear mark and the build stamp ride the blob, so a reload of the ring keeps both", () => {
+  /* A page killed after a Clear must not come back saying `build unknown` and
+     `MISSING 939` on its next boot. Both fields are persisted by the next
+     `save()` and restored by `_load`, admitted by shape like every other field.
+     `read()` also carries `key` and `store`, which `save()` must NOT persist —
+     a store's description inside the store it describes would be nonsense.
+     KILLING MUTATION 1: drop `cleared`/`build` from `_blob()`.
+     KILLING MUTATION 2: drop `clearedMarkOf`/`buildStampOf` from `_load`.
+     MUTATION 3: have `save()` write `read()` — the last assertion fails. */
+  const store = fakeStore();
+  const c = clock();
+  const first = new DiagnosticLog({ storage: store, now: c.now });
+  const diag = new PlayerDiagnostics({ log: first, now: c.now });
+  diag.build({ shell: false, web: "2b808ec9d50c5b98" });
+  diag.boot();
+  first.clear();
+  assert.equal(store.getItem(DIAG_KEY), null, "a Clear still removes the key");
+  diag.boot();                                   // the next write carries both down
+  const reloaded = new DiagnosticLog({ storage: store, now: c.now });
+  assert.deepEqual(reloaded.cleared, { seq: 2, wall: c.now() });
+  assert.deepEqual(reloaded.build, { shell: false, web: "2b808ec9d50c5b98", native: null, version: null });
+  const text = formatDiagnosticReport(reloaded.read());
+  assert.match(text, /^build web 2b808ec9d50c5b98 · website$/m);
+  assert.match(text, /cleared at #2/);
+  assert.doesNotMatch(text, /MISSING/);
+  const persisted = parse(store);
+  assert.ok(!("store" in persisted) && !("key" in persisted), "the store's description is read-side only");
+  /* And a corrupt mark reads as "never cleared" — the direction that makes the
+     gap line fire rather than hide a loss behind a forged clear. */
+  store.map.set(DIAG_KEY, JSON.stringify({ ...persisted, cleared: { seq: "3", wall: 1 }, entries: [] }));
+  const corrupt = new DiagnosticLog({ storage: store, now: c.now });
+  assert.equal(corrupt.cleared, null);
+  assert.match(formatDiagnosticReport(corrupt.read()), /MISSING 3 of 3/);
+});
+
+test("rows `_load` refused are counted as MISSING, never silently absent", () => {
+  /* The other way a ring can hold fewer rows than `seq` says: rows the loader
+     dropped because they could not be rendered. That is a finding about the
+     writer and the header must not round it down to a quiet short ring.
+     MUTATION: count `entries.length` before the loader's filter. This fails. */
+  const store = tieredStore({ tiers: ["local"], hydrated: false });
+  store.map.set(DIAG_KEY, JSON.stringify({
+    v: 1, cap: 200, seq: 3, dropped: 0,
+    entries: [
+      { seq: 1, wall: 1_700_000_000_000, type: "boot", hidden: false },
+      { seq: 2, wall: "not a clock", type: "seam" },
+      { seq: 3, wall: 1_700_000_001_000, type: "outPoint", overshootSec: 0.02 },
+    ],
+  }));
+  const log = new DiagnosticLog({ storage: store, now: clock().now });
+  assert.match(formatDiagnosticReport(log.read()), /^MISSING 1 of 3 recorded rows: .* cp_diag \(local, hydrated=n\)/m);
+});
+
+test("the boot row says when the page wrote BEFORE the store had hydrated", () => {
+  /* `client.js` now bounds its wait on hydration (a durable tier that never
+     answered used to cost the whole record). A row written after the bound is
+     the one case an older durable copy of the ring can have been superseded, so
+     the row says so — and a healthy boot's line is unchanged.
+     KILLING MUTATION: drop `hydrated` from `boot()`'s row or from `lineFor`. */
+  const { log, diag } = mk();
+  diag.boot({ hydrated: false });
+  diag.boot({ hydrated: true });
+  diag.boot();
+  const lines = formatDiagnosticReport(log.read()).split("\n").filter((l) => /\bboot\b/.test(l) && l.startsWith("#"));
+  assert.equal(lines.length, 3);
+  assert.match(lines[0], /hidden=n  storage=not-hydrated$/);
+  assert.match(lines[1], /hidden=n$/);
+  assert.match(lines[2], /hidden=n$/);
+  assert.equal(log.entries[2].hydrated, undefined, "a caller that did not say stores nothing");
+});
