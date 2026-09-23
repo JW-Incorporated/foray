@@ -3400,7 +3400,7 @@ function showForaysHtml(show) {
   if (!forays.length) return "";
   return `<footer class="show-forays">
     <h3 class="show-forays-h">Used in the following forays</h3>
-    <p class="show-forays-note">Not part of ${esc(show.title)}'s own catalogue — 4a stitched a clip from it into these.</p>
+    <p class="show-forays-note">Not part of ${esc(show.title)}'s own catalogue — each of these forays plays a moment from one of its episodes.</p>
     ${forays.map(f => `<a class="show-forays-row" href="#/foray/${esc(f.id)}">
       <span class="show-forays-title">${esc(f.title)}</span>${f.status === "published" ? "" : `<span class="show-forays-draft">draft</span>`}
     </a>`).join("")}
@@ -4658,8 +4658,14 @@ function miniCard(slot) {
    sets `cp_intro_dismissed` and nothing ever re-opens it. So the sentence is
    hoisted here and the Forays page subtitle reads it too, which gives the
    explanation a permanent home and makes skipping the sheet cost nothing. One
-   constant, so the page and the sheet cannot drift into two descriptions. */
-const FORAY_ABOUT = "We clip the best parts of several podcasts on a subject and stitch them into one seamless listen, with a narrator bridging the gaps.";
+   constant, so the page and the sheet cannot drift into two descriptions.
+   WORDED FROM THE MECHANISM (review 2026-09-23). It said we "clip" podcasts and
+   "stitch them into one seamless listen", which docs/DECISIONS.md's 2026-08-11
+   playback ruling rejects by name — it reads as the Stitcher/Luminary
+   behaviour: "Copy must follow the mechanism: no user-facing language implying
+   we produce a new audio file." A foray plays each moment from the show's own
+   feed, in turn. test/listener-copy.test.js now fails on the old verbs. */
+const FORAY_ABOUT = "One subject, heard across several podcasts: the best moment of each episode, played in turn from the show's own feed, with a narrator between them.";
 
 /* First-time explanation/consent screen (docs/ux/foray-m3-prototype.html +
    docs/ux/README.md § "First-time vs. returning user"). Ports the INTENT of
@@ -5352,8 +5358,12 @@ function showIntroPopupOnce() {
        queues…"), so the first thing a returning listener read was about a
        screen they were not looking at (audit 2026-09-22, persona row 23). It
        describes the Home that ships, and it is where a listener who skipped
-       the first-run sheet learns what a foray is. */
-    "Forays stitch clips from several shows into one listen. Below them are playlists and episodes picked for you, each with one pick outside your usual subjects, on purpose.");
+       the first-run sheet learns what a foray is.
+       Review 2026-09-23: no "stitch clips" (the 2026-08-11 playback ruling —
+       see FORAY_ABOUT), and only what Home renders: the stretch pick is in
+       Forays for you and Episodes for you (pickWithStretchFloor, the cardSlots
+       stretch role), not in Playlists, which are mostly the listener's own. */
+    "A foray plays moments from several shows, straight from each show's own feed, one after another. Below them are your playlists and episodes picked for you. The forays and the episodes each include one pick outside your usual subjects, on purpose.");
 
   const actions = ddEl("div", "fy-sheet-actions");
   const ok = ddEl("button", "fy-sheet-go", "Got it");
@@ -7811,9 +7821,9 @@ function renderForays() {
         <a class="back" href="#/">‹</a>
         <div>
           <h2>Forays</h2>
-          <p class="sub">${esc(FORAY_ABOUT)}</p>
         </div>
-      </div>`;
+      </div>
+      <p class="note fy-about">${esc(FORAY_ABOUT)}</p>`;
   const paintStatus = (body) => { $("#view").innerHTML = `<div class="page">${head}${body}</div>`; };
 
   if (!window.ForayPlayer) {
@@ -7840,7 +7850,7 @@ function renderForays() {
       ${jumpBackInHtml(resume)}
       ${list.length
         ? forayListHtml()
-        : `<p class="note">No forays right now — 4a stitches these by hand, so they arrive a few at a time.</p>`}
+        : `<p class="note">No forays right now — 4a puts these together by hand, so they arrive a few at a time.</p>`}
     </div>`;
   sizeProgressBars($("#view"));
 }

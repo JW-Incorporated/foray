@@ -391,7 +391,13 @@ test("#/forays explains what a Foray is, from the same sentence the first-run sh
   m.ctx.renderCurrentPage();
   const about = vm.runInContext("FORAY_ABOUT", m.ctx);
   assert.ok(about.length > 40, "the explanation is a real sentence");
-  assert.ok(m.html().includes(about), "the Forays page states what a Foray is");
+  const shown = vm.runInContext("esc(FORAY_ABOUT)", m.ctx);
+  assert.ok(m.html().includes(shown), "the Forays page states what a Foray is");
+  /* Review 2026-09-23: not inside the sticky header, which comes back on every
+     scroll-up. MUTATION: put it back as the head's `.sub`. */
+  const head = /<div class="page-head">[\s\S]*?<\/div>\s*<\/div>/.exec(m.html());
+  assert.ok(head, "fixture: the page has its header");
+  assert.ok(!head[0].includes(shown), "the sentence is below the sticky header, not in it");
   assert.doesNotMatch(m.html(), /\b\d+ forays?\b/, "and states no count in its place");
   assert.match(APP_SRC, /ddEl\("p", "fy-sheet-sub", FORAY_ABOUT\)/, "the first-run sheet reads the same constant");
 });

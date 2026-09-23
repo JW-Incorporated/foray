@@ -195,6 +195,12 @@ const STALE = [
   ["Reset to learned", /Reset to learned|overrule what 4a/i, "not English a listener uses"],
   ["seam gaps", /seam gaps|out-point overshoot|load deadlines/i, "diagnostics described in pipeline words"],
   ["usual topics", /usual topics/i, "the bridge line beneath it says 'subjects'"],
+  /* docs/DECISIONS.md 2026-08-11 (the playback ruling): "clipping" and
+     "stitching" read as the rejected Stitcher/Luminary behaviour, and "copy
+     must follow the mechanism: no user-facing language implying we produce a
+     new audio file". A foray plays each moment from the show's own feed. */
+  ["stitching", /stitch/i, "the 2026-08-11 playback ruling: no copy implying we produce a new audio file"],
+  ["clipping", /we clip|clip the best/i, "the 2026-08-11 playback ruling, same reason"],
 ];
 
 /* MUTATION: restore any one of the stale strings (e.g. "Pull to refresh." in
@@ -365,4 +371,29 @@ test("the Interests rows show a label, never a taxonomy id", () => {
   assert.ok(!html.includes(">engineering/energy-fusion<"), html);
   assert.match(html, />Back to 4a's pick</);
   assert.match(html, /aria-label="Fusion: back to 4a(&#39;|')s pick"/, "each reset names its row");
+});
+
+test("REVIEW: the returning-listener popup claims a stretch pick only where Home actually has one", () => {
+  /* It said playlists AND episodes each carry one pick outside the listener's
+     subjects; Playlists for you has no stretch logic (and is mostly their own
+     playlists), while Forays for you — which it did not name — does.
+     MUTATION: put "playlists" back into the popup's stretch sentence. */
+  const body = (name) => {
+    const at = APP_SRC.indexOf(`function ${name}(`);
+    assert.ok(at >= 0, `app.js defines ${name}`);
+    return APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
+  };
+  const hasStretch = {
+    forays: /pickWithStretchFloor/.test(body("foraysForYouHtml")),
+    playlists: /pickWithStretchFloor|stretch/.test(body("playlistsForYouHtml")),
+    episodes: /miniCardV2/.test(body("episodesForYouHtml")) && /role !== "stretch"/.test(body("miniCardV2")),
+  };
+  assert.deepStrictEqual(hasStretch, { forays: true, playlists: false, episodes: true }, "fixture: where the stretch picks live");
+  const popup = literals(APP_SRC).map((l) => l.text).find((t) => /outside your usual subjects/.test(t));
+  assert.ok(popup, "the popup sentence exists");
+  const claim = popup.split(/(?<=\.)\s+/).find((sentence) => /outside your usual subjects/.test(sentence));
+  for (const [section, has] of Object.entries(hasStretch)) {
+    const named = new RegExp(`\\b${section}\\b`, "i").test(claim);
+    assert.strictEqual(named, has, `the stretch claim ${has ? "must" : "must not"} name ${section}: "${claim}"`);
+  }
 });
