@@ -189,6 +189,24 @@ test("prepare copies the plan and reports its size", () => {
   assert.equal(r.total, r.files.reduce((n, f) => n + f.bytes, 0));
 });
 
+test("the bundle carries build-stamp.json with the committed deploy_id (founder report 3, 2026-09-22)", () => {
+  /* `sw.js` is the web's only statement of which deploy it is, and it is
+     excluded from this bundle, so a diagnostics record copied out of the shell
+     could not say which web code wrote it. KILLING MUTATION: delete the stamp
+     block in `prepare()` — no file, and `player/build-stamp.js` reads null. */
+  const fake = makeFakeRepo();
+  fs.writeFileSync(path.join(fake, "deploy-manifest.json"),
+    JSON.stringify({ deploy_id: "2B808EC9D50C5B98", files: { "app.js": "sha256:00" } }));
+  prepare({ root: fake, out: "www" });
+  const stamp = JSON.parse(fs.readFileSync(path.join(fake, "www", "build-stamp.json"), "utf8"));
+  assert.deepEqual(stamp, { deploy_id: "2b808ec9d50c5b98" }, "the id alone, never the per-file hashes");
+  assert.equal(fs.existsSync(path.join(fake, "www", "deploy-manifest.json")), false,
+    "the manifest itself stays out: its hashes describe the unminified files");
+  // A manifest with no usable id stops the build rather than stamping nothing.
+  fs.writeFileSync(path.join(fake, "deploy-manifest.json"), JSON.stringify({ files: {} }));
+  assert.throws(() => prepare({ root: fake, out: "www" }), /no usable deploy_id/);
+});
+
 test("prepare rebuilds from scratch, so a removed file does not linger", () => {
   /* A stale file in a build artefact is how "we deleted that months ago" ends up
      on a device. */

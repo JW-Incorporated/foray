@@ -453,7 +453,17 @@ const RE = {
   deadline: /^load\.deadline (\d+)ms \((hidden|visible)\) for (\S+)/,
   sameSource: /^load\.sameSource (\S+) -> (\d+)s/,
   externalStop: /^reconcile\.externalStop why=(\S+)/,
+  /* The other direction (2026-09-22, founder report 1): the element was playing
+     while the machine said paused — a lock-screen or car press WebKit honoured
+     without this page. Matched, and only the trigger token captured. */
+  externalPlay: /^reconcile\.externalPlay why=(\S+)/,
   unexpectedPause: /^audio\.pausedUnexpectedly/,
+  /* The element's own state at an unexplained pause (founder report 2). Each
+     field is optional so a line from before 2026-09-22 still records a row. */
+  elementTime: /\bt=(-?[\d.]+)/,
+  elementReady: /\brs=(\d)/,
+  elementNetwork: /\bns=(\d)/,
+  elementError: /\berr=(\d+)/,
   audioError: /^audio\.error code=(\S+)/,
   playRejected: /^play\.rejected (\S+)/,
   /* Matched, never CAPTURED — see the handler. The route name is a device a person
@@ -569,6 +579,19 @@ export const TRANSPORT_ACTIONS = new Set(["play", "pause", "stop", "play-restore
 /** A status, a trigger, a validation code: a lower-case dashed token, never a
     sentence. `sha256-forays`, `segment-missing`, `foreground` all pass; a reason
     with a space or a slash in it does not. */
+/* ---------- which build wrote this (founder report 3, 2026-09-22) ----------
+
+   `player/build-stamp.js` reads the two numbers; this is where they are admitted
+   (by shape, the same as every other field here) and printed. */
+const buildTokenOf = (v) => {
+  const s = typeof v === "number" && Number.isFinite(v) ? String(v) : asText(v).trim();
+  return /^[0-9][0-9.]{0,31}$/.test(s) ? s : null;
+};
+const deployTokenOf = (v) => {
+  const s = asText(v).trim().toLowerCase();
+  return /^[0-9a-f]{8,64}$/.test(s) ? s : null;
+};
+
 export function dataTokenOf(v) {
   const s = asText(v).trim();
   return /^[a-z][a-z0-9-]{0,47}$/.test(s) ? s : null;
@@ -624,6 +647,9 @@ export class PlayerDiagnostics {
         null. Identity, never shape — see `tapFailed` for the session-crossing
         defect that reading the ring's tail produced. */
     this._lastTap = null;
+    /** The `media` row THIS INSTANCE opened and is still counting into — the
+        same identity rule as `_lastTap`, for `waiting`/`stalled` runs. */
+    this._lastMedia = null;
     /** When the current visibility state began, for the DURATION half of a
         visibility transition — a hidden window is only correlatable with a stall
         if its length is known.
@@ -643,6 +669,24 @@ export class PlayerDiagnostics {
       already started in the constructor — see `_visSince`. */
   boot() {
     return this.log.record("boot", { hidden: this._isHidden() });
+  }
+
+  /**
+   * Which build this boot is (founder report 3, 2026-09-22): the web deploy id
+   * and, in the shell, the native build number and version. One row per boot,
+   * written when the answer arrives (it is asynchronous — a file read and a
+   * native call), so a ring that spans an app update says which rows came from
+   * which build. An unknown half is null, never a guess; the row is written
+   * even when both are unknown, because "this build could not say" is itself
+   * the finding a reader needs.
+   */
+  build({ web = null, native = null, version = null, shell = false } = {}) {
+    return this.log.record("build", {
+      shell: shell === true,
+      web: deployTokenOf(web),
+      native: buildTokenOf(native),
+      version: buildTokenOf(version),
+    });
   }
 
   /* ---------- telemetry ---------- */
@@ -762,9 +806,30 @@ export class PlayerDiagnostics {
       handled = true;
     }
 
+    hit = RE.externalPlay.exec(m);
+    if (hit) {
+      /* A PLAY THIS PAGE DID NOT MAKE. Recorded as a `transport` row from the
+         `reconcile` source so it sits in the same column as every other play:
+         a record of a drive where the car resumed the audio now says so,
+         instead of showing a stop followed by sound nobody explains. */
+      this.transport("reconcile", "play");
+      handled = true;
+    }
+
     if (RE.unexpectedPause.test(m)) {
+      /* FOUNDER REPORT 2 (2026-09-22): eight of these, all `hidden=y`, and the
+         record could not tell them apart. Three fields that can: HOW LONG the
+         page had been hidden (a suspension happens on a clock, an interruption
+         does not), and the element's `readyState`/`networkState`/`error` at the
+         pause (see `html-audio-backend.js`'s `_elementFingerprint`). Absent
+         fields are null, never zero — zero is a real `readyState`. */
       this.log.record("stop", {
         source: "element", why: "pausedUnexpectedly", state: null, hidden: this._isHidden(),
+        hiddenForMs: this._hiddenForMs(),
+        atSec: num(RE.elementTime.exec(m)?.[1]),
+        readyState: num(RE.elementReady.exec(m)?.[1]),
+        networkState: num(RE.elementNetwork.exec(m)?.[1]),
+        errorCode: num(RE.elementError.exec(m)?.[1]),
       });
       handled = true;
     }
@@ -841,8 +906,42 @@ export class PlayerDiagnostics {
     if (!MEDIA_STAGES.has(n)) return false;
     if (n === "ended") this._openSeam("ended");
     if (n === "playing") { this._closeSeam("playing", this._now()); return true; }
+    /* A STALL WITH NO SEAM IN FLIGHT IS STILL A STALL (founder report 2,
+       2026-09-22). `_stage` writes into the open seam and returns when there is
+       none — so on an ordinary episode, the case the founder reported, every
+       `waiting` and `stalled` was dropped, and a starvation that ended in the
+       page being suspended left no trace before its `stop` row. */
+    if (!this._seam && (n === "waiting" || n === "stalled")) {
+      this._mediaRow(n);
+      return true;
+    }
     this._stage(n);
     return true;
+  }
+
+  /** One `media` row per RUN of the same event — the `tapFailed` rule: a dead
+      zone fires `waiting` again and again, and uncoalesced it would evict the
+      very rows that explain it. Identity, never shape, and only while it is
+      still the tail. */
+  _mediaRow(name) {
+    const entries = this.log.entries;
+    if (this._lastMedia && this._lastMedia === entries[entries.length - 1] && this._lastMedia.name === name) {
+      this._lastMedia.repeated += 1;
+      this._lastMedia.lastWall = this._now();
+      this.log.save();
+      return this._lastMedia;
+    }
+    this._lastMedia = this.log.record("media", {
+      name, repeated: 1, lastWall: null, hidden: this._isHidden(), hiddenForMs: this._hiddenForMs(),
+    });
+    return this._lastMedia;
+  }
+
+  /** How long the page has been hidden right now, or null when it is visible.
+      The same clock `visibility()` measures its `forMs` against. */
+  _hiddenForMs() {
+    if (!this._isHidden() || this._visSince == null) return null;
+    return Math.max(0, this._now() - this._visSince);
   }
 
   /**
@@ -1074,6 +1173,7 @@ export class PlayerDiagnostics {
       at: nativeAt,
       lagMs: nativeAt == null ? null : this._now() - nativeAt,
       hidden: this._isHidden(),
+      hiddenForMs: this._hiddenForMs(),
     });
   }
 
@@ -1317,6 +1417,7 @@ export class PlayerDiagnostics {
        next failed tap would increment a counter on an orphan and `save()` it,
        putting a row back under a key a listener has just emptied. */
     this._lastTap = null;
+    this._lastMedia = null;
     this._visSince = this._now();
   }
 
@@ -1420,8 +1521,22 @@ function lineFor(e) {
     case "outPoint":
       return `${head} overshoot ${e.overshootSec == null ? "—" : `${e.overshootSec.toFixed(3)}s`}` +
         `  target ${e.targetSec ?? "—"}s  at ${e.atSec ?? "—"}s  hidden=${e.hidden ? "y" : "n"}`;
-    case "stop":
-      return `${head} ${e.source} ${e.why}  state=${e.state ?? "?"}  hidden=${e.hidden ? "y" : "n"}`;
+    case "stop": {
+      /* The founder-report-2 fields, only when present, so a row from an older
+         build reads exactly as it always did. */
+      const extra = [];
+      if (e.hiddenForMs != null) extra.push(`hiddenFor ${ms(e.hiddenForMs)}`);
+      if (e.atSec != null) extra.push(`at ${e.atSec}s`);
+      if (e.readyState != null) extra.push(`rs=${e.readyState}`);
+      if (e.networkState != null) extra.push(`ns=${e.networkState}`);
+      if (e.errorCode) extra.push(`err=${e.errorCode}`);
+      return `${head} ${e.source} ${e.why}  state=${e.state ?? "?"}  hidden=${e.hidden ? "y" : "n"}` +
+        (extra.length ? `  ${extra.join(" ")}` : "");
+    }
+    case "media":
+      return `${head} ${e.name}` + (e.repeated > 1 ? ` x${e.repeated}` : "") +
+        (e.repeated > 1 && e.lastWall != null ? ` over ${ms(e.lastWall - e.wall)}` : "") +
+        `  hidden=${e.hidden ? "y" : "n"}` + (e.hiddenForMs != null ? `  hiddenFor ${ms(e.hiddenForMs)}` : "");
     case "visibility":
       return `${head} -> ${e.to}  after ${ms(e.forMs)}`;
     case "resume": {
@@ -1434,6 +1549,8 @@ function lineFor(e) {
     }
     case "boot":
       return `${head} hidden=${e.hidden ? "y" : "n"}`;
+    case "build":
+      return `${head} ${buildLabel(e)}`;
     /* FD-01: `data boot forays=cache@9fc92a61 segments=cache@9fc92a61 …` names the
        source of each document on the one surface a founder pastes out. A refresh
        reads `data refresh(foreground) adopted v=… n=6`, or `… invalid why=segment-missing
@@ -1551,7 +1668,8 @@ function lineFor(e) {
        the suspension, which is the measurement the F16 drive could not make. */
     case "session":
       return `${head} ${e.producer ?? "?"} ${e.kind}${e.reason ? ` (${e.reason})` : ""}` +
-        `  lag ${ms(e.lagMs)}  hidden=${e.hidden ? "y" : "n"}`;
+        `  lag ${ms(e.lagMs)}  hidden=${e.hidden ? "y" : "n"}` +
+        (e.hiddenForMs != null ? `  hiddenFor ${ms(e.hiddenForMs)}` : "");
     case "transport":
       return `${head} ${e.action} from ${e.source}  hidden=${e.hidden ? "y" : "n"}`;
     case "tapFail":
@@ -1562,6 +1680,15 @@ function lineFor(e) {
     default:
       return `${head} ${JSON.stringify(e)}`;
   }
+}
+
+/** `web 2b808ec9d50c5b98 · native 2026092224 (1.4.0)`, with `?` for a half the
+    boot could not learn. On the website there is no native half at all, which
+    is said as `website` so it is not mistaken for a failed read. */
+function buildLabel(e) {
+  const web = `web ${e.web ?? "?"}`;
+  if (!e.shell) return `${web} · website`;
+  return `${web} · native ${e.native ?? "?"}${e.version ? ` (${e.version})` : ""}`;
 }
 
 /**
@@ -1608,8 +1735,14 @@ export function formatDiagnosticReport(record) {
      runs on stages that add no entry — "saves" would invite a reader to divide it
      by the elapsed wall clock and call the answer a write cadence, which it is
      not. */
+  /* THE BUILD, FIRST (founder report 3). The most recent `build` row — the
+     running build — because the first question about any pasted record is
+     which build wrote it, and until 2026-09-22 nothing in it could say. */
+  const builds = entries.filter((e) => e.type === "build");
+  const lastBuild = builds.length ? builds[builds.length - 1] : null;
   const head = [
     `4a playback diagnostics — v${r.v ?? "?"}`,
+    `build ${lastBuild ? buildLabel(lastBuild) : "unknown (no build row yet)"}`,
     `Local only. Nothing here is sent anywhere.`,
     "",
     `entries ${entries.length} of ${r.cap ?? DIAG_CAP} (oldest dropped first)`,

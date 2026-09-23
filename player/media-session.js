@@ -498,9 +498,10 @@ export function mediaSessionView(view = {}) {
  *
  * An action whose surface method is ABSENT is not returned, and therefore never
  * registered, so the OS greys the button out. That is the honest rendering of
- * single-episode playback: the queue is one item (`SINGLE_ITEM`, product
- * principle 1 — no autoplay chains), so `nexttrack` has nowhere to go and a
- * button that silently does nothing is worse than a dim one.
+ * an episode with nothing after it: a button that silently does nothing is
+ * worse than a dim one. (Whether an episode HAS a next is the page's Up Next,
+ * which `client.js` asks through `setEpisodeNavigation` — continuous playback is
+ * wanted since the founder's 2026-09-14 ruling on product principle 1.)
  *
  * @param {object} surface  any subset of
  *   `{ play, pause, stop, next, previous, seekBy(offsetSec), seekTo(positionSec) }`

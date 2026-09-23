@@ -6975,7 +6975,7 @@ function bindEpisodeSeeks(scope, item) {
         /* Play only when this is not already the current episode — a restart
            would throw away the thing the listener is in the middle of. Then
            seek, always: that is the whole of what the control promises. */
-        if (!window.ForayPlayer.isPlaying(item.id)) await window.ForayPlayer.play(item, "timestamp");
+        if (!window.ForayPlayer.isPlaying(item.id)) await window.ForayPlayer.play(item, { why: whyFor(item.id, item) });
         await window.ForayPlayer.seekTo(secs);
       } catch (_) {
         /* A seek that cannot happen is not a reason to break the page — the
@@ -8997,11 +8997,24 @@ function paintForay(s) {
     // it is between two segments on purpose, and the button has to mean "stop"
     // for the two seconds the silence lasts. Labelling those two seconds
     // "Loading…" would be the app apologising for its own edit.
-    const running = s.playing || s.gap;
+    //
+    // `s.running` FIRST (audit 2026-09-22): it is the player's
+    // `transportIsRunning()`, the same answer `forayToggle` decides the press
+    // by. `playing || gap` is the belief alone, and in the #689 drift it said
+    // "▶ Resume" over sound while the press paused. The fallback is for a
+    // player module of an older vintage, which sends no `running`.
+    //
+    // A FINISHED Foray is a fifth state, not a paused one: there is nothing to
+    // resume, the lock screen has already dropped its transport, and the press
+    // starts it from the top (`setRunning`'s ended branch in player/client.js).
+    const running = typeof s.running === "boolean" ? s.running : (s.playing || s.gap);
     const started = live || elapsed > 0;
-    const label = running ? "❚❚ Pause" : (s.loading ? "Loading…" : (started ? "▶ Resume" : "▶ Play"));
+    const label = running ? "❚❚ Pause"
+      : s.loading ? "Loading…"
+      : s.ended ? "▶ Start over"
+      : started ? "▶ Resume" : "▶ Play";
     playBtn.textContent = label;
-    playBtn.setAttribute("aria-label", running ? "Pause" : "Play");
+    playBtn.setAttribute("aria-label", running ? "Pause" : (s.ended ? "Start over" : "Play"));
   }
   // The beat, for CSS: the strip holds still at a boundary for 2.0 s and this
   // is how a stylesheet can say so without the page inventing new copy.
@@ -9166,12 +9179,39 @@ function forayListHtml() {
 function restoreNowPlayingRibbon() {
   const go = () => {
     try {
-      const restored = window.ForayPlayer?.restoreLastEpisode?.();
+      /* WHATEVER WAS PLAYED LAST (persona audit 2026-09-22, the car tier): a
+         part-played Foray that is newer than the last episode takes the bar;
+         otherwise the episode pointer does, as before. */
+      const restored = restoreLastForayRibbon(window.ForayPlayer)
+        || window.ForayPlayer?.restoreLastEpisode?.();
       if (restored && isHomeRoute()) renderCurrentPage();
     } catch (_) { /* a ribbon that cannot be restored is not a reason to fail boot */ }
   };
   if (window.ForayPlayer) go();
   else window.addEventListener("forayplayer:ready", go, { once: true });
+}
+
+/** The part-played Foray for the bar, when it is the most recent thing played —
+    or null, and the caller falls back to the episode pointer.
+
+    Resolved HERE because only the page holds the three Foray documents, and
+    through `forayViewOpts()` like every other Foray this page opens: a draft
+    the listener may not see resolves to null and is never advertised on the
+    bar. The resume point is read with the resolved running order in hand, so a
+    Foray whose segments moved resumes to the same audio (#40). Every step is
+    capability-checked: an older player module simply has no Foray ribbon. */
+function restoreLastForayRibbon(player) {
+  if (!player || typeof player.lastPlayedForay !== "function" || typeof player.restoreForay !== "function") return null;
+  if (!state.forays) return null;
+  const id = player.lastPlayedForay();
+  if (!id) return null;
+  const r = player.resolve(state.forays, {
+    id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
+  });
+  if (!r) return null;
+  const at = player.forayResume(id, { resolved: r });
+  if (!at) return null;
+  return player.restoreForay(r, { startElapsedSec: at.elapsedSec, discoverDoc: state.discover || null });
 }
 
 /** True when the current route is the home screen — the only page whose content
