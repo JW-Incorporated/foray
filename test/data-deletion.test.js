@@ -1463,3 +1463,37 @@ test("the confirm button is red under ui-v2, and the drawer item that opens the 
   assert.match(APP_SRC, /ddEl\("button", "fy-sheet-go dd-go", "Delete everything"\)/, "premise: the button carries both classes");
   assert.ok(!/\.dd-open\s*\{[^}]*color/.test(css), "the drawer item is coloured again");
 });
+
+test("REVIEW: the policy says where cp_storage_stale really lives — the app's preferences store included", async () => {
+  /* The row said "kept in IndexedDB only", but _persistStale writes through
+     _enqueue to EVERY live async tier, and in the iOS/Android shell that list
+     is [native, idb]. Measured here rather than assumed: a localStorage that
+     refuses a write, a native tier and an IndexedDB tier that record what
+     they are given. MUTATION: put "kept in IndexedDB only" back in the row. */
+  const { createDurableStore, LOCAL_STALE_KEY } = await import("../player/durable-store.js");
+  const tier = (name) => {
+    const rows = new Map();
+    return { name, sync: false, durable: true, rows,
+      async readAll() { return new Map(rows); },
+      async write(k, v) { rows.set(k, v); },
+      async remove(k) { rows.delete(k); } };
+  };
+  const native = tier("native");
+  const idb = tier("idb");
+  const refusing = {
+    get length() { return 0; }, key: () => null, getItem: () => null,
+    setItem() { throw Object.assign(new Error("full"), { name: "QuotaExceededError" }); },
+    removeItem() {},
+  };
+  const store = createDurableStore({ localStorage: refusing, idbTier: idb, nativeTier: native });
+  await store.hydrate();
+  store.setItem("cp_interests", "{}");
+  await store.flush();
+  assert.ok(native.rows.has(LOCAL_STALE_KEY), "the app's preferences store holds the stale ledger");
+  assert.ok(idb.rows.has(LOCAL_STALE_KEY), "and IndexedDB does");
+
+  const row = read("docs/legal/privacy-policy.md").split("\n").find((l) => l.startsWith("| `cp_storage_stale`"));
+  assert.ok(row, "the policy has the row");
+  assert.doesNotMatch(row, /IndexedDB only/, "the row may not say IndexedDB only");
+  assert.match(row, /preferences store/, "it names the app's preferences store");
+});
