@@ -699,10 +699,17 @@ const CSS_DARK = withoutLightBlocks(CSS);
     scope must never be part of what `cssVar` sees. Brace-counted for the same
     reason `withoutLightBlocks` is above it. */
 function withoutUiV2Blocks(css) {
-  const marker = "body.ui-v2 {";
+  /* A rule whose WHOLE selector is `body.ui-v2`, at the start of a line — not
+     any text containing it. Since 2026-09-22 the dark segment palette is
+     declared on `:root, body.ui-v2 { ... }` (so a v2 page on a phone set to
+     Light keeps the dark tones), and that rule applies to a v1 page too,
+     through `:root`. A substring match cut it in half and dropped the dark
+     palette from the v1 view this suite measures. */
+  const marker = /^body\.ui-v2 \{/m;
   let out = css;
   for (;;) {
-    const start = out.indexOf(marker);
+    const found = marker.exec(out);
+    const start = found ? found.index : -1;
     if (start < 0) return out;
     let i = out.indexOf("{", start);
     assert.ok(i > 0, "a body.ui-v2 block with no body");
