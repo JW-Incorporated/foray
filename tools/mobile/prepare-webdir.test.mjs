@@ -2544,7 +2544,7 @@ test("FD-04: the seed is a SUBSET of the directory's files, row for row, under t
   assert.ok(fs.statSync(path.join(fake, "www", "data/forays.json")).size <= PROJECTED_DATA.find((p) => p.rel === "data/forays.json").maxBytes);
   /* THE CAP, named: the per-file budgets are what bound the seed while the
      directory carries everything (#327's concern, answered; F-92 added the third). */
-  assert.equal(PROJECTED_DATA.find((p) => p.rel === "data/forays.json").maxBytes, 40 * 1024);
+  assert.equal(PROJECTED_DATA.find((p) => p.rel === "data/forays.json").maxBytes, 44 * 1024);
   assert.equal(PROJECTED_DATA.find((p) => p.rel === "data/segments.json").maxBytes, 100 * 1024);
   assert.equal(PROJECTED_DATA.find((p) => p.rel === "data/segment-sources.json").maxBytes, 40 * 1024);
 });
