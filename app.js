@@ -5931,6 +5931,11 @@ function renderShowSearchResults(query) {
    card adds no second path that can create a playlist -- there remains
    exactly one (#pl-form's bindPlaylistFormSubmit), matching D8's "the
    Foray half is not built, Playlist creation stays today's flow" scope. */
+/* The Playlists section while the topic scan behind the CTA is still owed —
+   see "AND IT SAYS SO WHILE IT IS OWED" below. A status line, not a claim:
+   it names the work, not an outcome. */
+const CTA_PENDING_HTML = `<p class="note" role="status" data-cta-pending>Still looking for playlists…</p>`;
+
 function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
   const container = $("#pl-search-results");
   if (!container) { reportCtaMs(null); return; } // page markup not present (e.g. a caller that reuses renderShowIndexPage without it)
@@ -5964,17 +5969,30 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
        was invisible before precisely because the record was written from the
        local pass and closed before this ran.
 
-       Clear the section first so nothing stale lingers, and guard with
-       `myToken` so a fast retype's OLD deferred computation can never clobber
-       a newer query's freshly-painted own/generated section. */
-    container.innerHTML = "";
-    container.hidden = true;
+       AND IT SAYS SO WHILE IT IS OWED (persona audit #28, 2026-09-22). The
+       defer only chose WHEN the scan blocks; the results still painted, the
+       page looked finished, and then taps went nowhere for seconds before a
+       section grew at the bottom. Loading claims nothing, but it does not
+       hide either: the section holds CTA_PENDING_HTML - the one line that
+       says work is still going - from this synchronous paint (so the frame
+       whenIdle waits for shows it) until the scan answers, and then becomes
+       the CTA or goes away. A shorter lock needs the scan off the main
+       thread (a Worker over search-engine.js), which is a separate change.
+
+       Guard with `myToken` so a fast retype's OLD deferred computation can
+       never clobber a newer query's freshly-painted own/generated section
+       (a newer query, or a cleared field, owns the container outright). */
+    container.innerHTML = CTA_PENDING_HTML;
+    container.hidden = false;
     whenIdle(() => searchDataSettled().then(() => {
       if (myToken !== showSearchToken) { reportCtaMs(null); return; } // a newer query already superseded this one
       const ctaStart = nowMs();
-      const cta = createPlaylistCtaHtml(query);
+      /* A scan that throws must not leave "Still looking" up for good: the
+         pending line is a promise that this callback always ends it. */
+      let cta = "";
+      try { cta = createPlaylistCtaHtml(query); } catch (err) { console.warn("[search] playlist CTA scan failed", err); }
       reportCtaMs(nowMs() - ctaStart);
-      if (!cta) return; // container already cleared above
+      if (!cta) { container.innerHTML = ""; container.hidden = true; return; } // answered: nothing to offer
       container.innerHTML = cta;
       container.hidden = false;
       bindCreatePlaylistCta(container);

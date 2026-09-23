@@ -520,6 +520,38 @@ test("a subject's own name that finds no show by title offers that subject's cat
   assert.doesNotMatch(html, /data-retry/, "nothing failed, so nothing to retry");
 });
 
+test("while the playlist check behind the results is still owed, the page says so, and the line always ends", async () => {
+  /* Persona audit #28: the topic scan behind "Create a playlist about…" runs
+     on an idle callback, blocks for seconds on a phone, then grows a section
+     at the bottom — with nothing on screen saying work was still going.
+     MUTATION: in renderPlaylistSearchResults, paint "" (hidden) instead of
+     CTA_PENDING_HTML before the whenIdle. The first assertion goes red. */
+  const m = mountSearch();
+  m.ctx.renderShowSearchResults("zzqx");
+  const pl = m.view.querySelector("#pl-search-results");
+  assert.ok(!pl.hidden && /data-cta-pending/.test(pl.innerHTML),
+    `the section says it is still looking before the scan runs: hidden=${pl.hidden} ${pl.innerHTML}`);
+  assert.doesNotMatch(pl.innerHTML, /Create a playlist|No /, "and claims no outcome while it does");
+  await sleep(150);
+  assert.doesNotMatch(pl.innerHTML, /data-cta-pending/, `the scan answered, so "still looking" is gone: ${pl.innerHTML}`);
+});
+
+test("a playlist check that throws still ends 'Still looking' — it is not a spinner that never resolves", async () => {
+  /* MUTATION: drop the try/catch round createPlaylistCtaHtml. The throw
+     escapes the idle callback, the pending line stays up for good, red. */
+  const m = mountSearch();
+  m.ctx.topicSearchStatus = () => { throw new Error("scorer blew up"); };
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    m.ctx.renderShowSearchResults("zzqx");
+    await sleep(150);
+  } finally { console.warn = warn; }
+  const pl = m.view.querySelector("#pl-search-results");
+  assert.doesNotMatch(pl.innerHTML, /data-cta-pending/, `a failed scan must not leave the line up: ${pl.innerHTML}`);
+  assert.ok(pl.hidden, "and nothing is offered from a scan that did not answer");
+});
+
 /* ==================================================================== */
 /* The Foray page: one model for its numbers (audit 2026-09-22, theme L) */
 /* ==================================================================== */
