@@ -1814,9 +1814,10 @@ function advanceQueueOnEnded(id) {
   const nextItem = liveEpisode(nextId);
   window.ForayPlayer.play(nextItem, { why: whyFor(nextId, nextItem) }).then(ok => {
     /* A chained play the browser refuses (autoplay policy is per element on
-       mobile) is already recorded by the player as `source: "autoplay"`; the
-       event here says which advance it was. */
-    if (!ok) { logEvent("autoadvance_refused", { episode_id: nextId }); return; }
+       mobile) is already recorded by the player's own diagnostics as
+       `source: "autoplay"` (diagnostic-log.js); no new event type is logged
+       here, because every event type is a disclosure in the privacy policy. */
+    if (!ok) return;
     logEvent("play_started", { episode_id: nextId, topics: nextItem.topics || [], ctx: "autoadvance" });
     recordHistory(nextId);
     trySyncEvents();
