@@ -371,13 +371,49 @@ test("no terminal outcome leaves the body and the subtitle describing different 
        exactly what dropping paintBody() from paintEpisodeOutcome() produces,
        and a mutation run caught this file green against that mutation. "The
        two never contradict each other" is only worth something if there are
-       two things. */
+       two things. The subtitle is allowed to be EMPTY since the round-2 audit
+       (states-8: one sentence per outcome) — but it must have been WRITTEN
+       (`null` here means paintCount never asked for its element), so the
+       one-writer property still has two regions to hold between. */
     assert.ok(body && body.trim(), `[${name}] the episode container must never be left empty`);
-    assert.ok(sub && sub.trim(), `[${name}] …nor the subtitle`);
+    assert.ok(sub !== null, `[${name}] …and the subtitle must have been painted by paintCount()`);
     const bodyStillWorking = /loading|fetching|check back/i.test(body);
     const subtitleFinished = /couldn't load|no episodes found|^\d+ episode/i.test(sub);
     assert.ok(!(bodyStillWorking && subtitleFinished),
       `[${name}] body and subtitle disagree — body: "${body}" / subtitle: "${sub}"`);
+  }
+});
+
+test("ONE SENTENCE PER OUTCOME: while the body carries the status, the subtitle is empty (states-8)", async () => {
+  /* Audit round 2, states-8: every outcome used to be said twice — "Loading
+     episodes…" under the title and again 200 px lower; "Couldn't load this
+     show's episodes right now." over "Couldn't load these episodes."; "No
+     episodes found for this show." over "No episodes yet.". Same fact, two
+     wordings, one screen. The body owns the status; the subtitle speaks only
+     where there are rows to count.
+
+     Counted on the RENDERED text, both regions together, so a status that
+     moved from one region to the other still passes and one that is said
+     twice does not.
+
+     MUTATION: restore `return "Loading episodes…"` (or either of the two
+     failed/empty sentences) in showEpisodeCountLabel. The count reads 2 and
+     this goes red. RUN: failed as named, for each of the three. */
+  const cases = [
+    { name: "loading", fetchImpl: () => new Promise(() => {}), settle: false, said: /loading episodes/gi },
+    { name: "failed", fetchImpl: () => Promise.reject(new Error("down")), settle: true, said: /couldn.t load/gi },
+    { name: "empty", fetchImpl: ok({ show_id: "show-b", episodes: [] }), settle: true, said: /no episodes/gi },
+  ];
+  for (const { name, fetchImpl, settle, said } of cases) {
+    const m = mount({ fetchImpl });
+    seed(m.ctx, { show: BREADTH });
+    m.ctx.renderShow("show-b");
+    if (settle) await flushMicrotasks();
+    const body = m.body();
+    const sub = m.subtitle();
+    assert.strictEqual((body.match(said) || []).length, 1, `[${name}] the body says it once — got: ${body}`);
+    assert.strictEqual(sub.trim(), "", `[${name}] the subtitle says nothing the body already says — got: "${sub}"`);
+    assert.strictEqual((`${body} ${sub}`.match(said) || []).length, 1, `[${name}] said exactly once on screen`);
   }
 });
 
@@ -400,7 +436,9 @@ test("the subtitle has one author too — it is not composed in the initial mark
   assert.ok(el, `expected the subtitle element in the markup, got: ${markup.slice(0, 400)}`);
   assert.strictEqual(el[1].trim(), "",
     `the subtitle element must be emitted empty and filled by paintCount(), got: "${el[1]}"`);
-  assert.ok(m.subtitle(), "…and paintCount() must have filled it synchronously, so the page is never headless");
+  /* `null` means paintCount() never asked for the element; "" is the loading
+     answer since states-8 (the body carries "Loading episodes…"). */
+  assert.notStrictEqual(m.subtitle(), null, "…and paintCount() must have written it synchronously, so the page is never headless");
 });
 
 /* ==================================================================== */
@@ -428,9 +466,74 @@ test("a curated show keeps its real rows when the full-list fetch fails", async 
   assert.match(m.body(), /Curated Ep/,
     `curated rows must survive a failed full-list fetch, got: ${m.body()}`);
   assert.ok(!/Couldn't load these episodes/.test(m.body()),
-    "the body shows the rows; the subtitle carries the failure");
-  assert.match(m.subtitle(), /couldn't load the full list/i,
-    `the subtitle must state the failure, got: ${m.subtitle()}`);
+    "the rows are real, so the body must not say THESE episodes failed");
+  /* Since the round-2 audit (states-2 / states-8) the failure line sits UNDER
+     the rows, beside its Try again, and the subtitle keeps to the count — one
+     sentence per outcome. */
+  assert.match(m.body(), /Couldn't load the full list\./,
+    `the body states the failure under the rows, got: ${m.body()}`);
+  assert.match(m.subtitle(), /^\d+ episodes? in 4a's catalogue$/,
+    `the subtitle keeps to the count and does not repeat the failure, got: "${m.subtitle()}"`);
+});
+
+test("a curated show whose full-list fetch failed offers Try again under its rows, wired to the same fetch (states-2)", async () => {
+  /* Audit round 2, states-2: the curated branch returned before the failed
+     branch, so all 220 catalogue shows — the ones Home and Search link to —
+     had no Try again when the full list failed. Only a breadth show (zero
+     curated rows) ever got the button.
+
+     MUTATION: drop the `if (loadState === "failed") bindRetry(c, retryEpisodes)`
+     line from the curated branch. `m.retry()` finds nothing and this goes red.
+     MUTATION 2: keep the button but bind it to a no-op. `calls` stays 1. Both
+     RUN: failed as named. */
+  let calls = 0;
+  const fetchImpl = () => {
+    calls += 1;
+    if (calls === 1) return Promise.reject(new Error("network down"));
+    return Promise.resolve({ ok: true, json: async () => ({ show_id: "show-a", next_cursor: null, episodes: [RAW_EP("e1", "Full List Ep")] }) });
+  };
+  const m = mount({ fetchImpl });
+  seed(m.ctx, { show: CURATED, discoverItems: [CURATED_EP] });
+
+  m.ctx.renderShow("show-a");
+  await flushMicrotasks();
+  assert.match(m.body(), /Curated Ep/, "premise: the curated rows are on screen");
+  assert.match(m.body(), /Try again/, `the failed curated page must offer a retry, got: ${m.body()}`);
+
+  assert.ok(m.retry(), "the Try again button must be wired");
+  await flushMicrotasks();
+  assert.strictEqual(calls, 2, "the retry is the same fetch, made again");
+  assert.match(m.body(), /Full List Ep/, `the retry's answer replaces the curated rows, got: ${m.body()}`);
+  assert.doesNotMatch(m.body(), /Couldn't load/, "a retry that worked leaves no failure line behind");
+});
+
+test("a show fetch that never answers ends as failed, with Try again, instead of loading for good (states-4)", async () => {
+  /* Audit round 2, states-4: `fetchShowEpisodesUncached` was a bare fetch to
+     API_ORIGIN — the one /api/* call the 2026-09-23 deadline review missed. In
+     the native shell there is no service worker to cut a stalled socket off, so
+     a captive portal left "Loading episodes…" on screen indefinitely, and
+     `showEpisodesInFlight` handed every later visit the same hung promise.
+
+     The bound is shortened through the same `let` the review left for suites.
+     MUTATION: replace `withDeadline(fetch(...), API_DEADLINE_MS, …)` with the
+     bare `await fetch(...)`. The body never leaves "Loading episodes…" and the
+     first assertion goes red. RUN: failed as named. */
+  let calls = 0;
+  const m = mount({ fetchImpl: () => { calls += 1; return new Promise(() => {}); } }); // a socket that never answers
+  vm.runInContext("API_DEADLINE_MS = 20", m.ctx);
+  seed(m.ctx, { show: BREADTH });
+
+  m.ctx.renderShow("show-b");
+  assert.match(m.body(), /Loading episodes/, "premise: loading first");
+  await new Promise((r) => setTimeout(r, 60));
+  await flushMicrotasks();
+  assert.match(m.body(), /Couldn't load these episodes/, `the deadline must reach the failed state, got: ${m.body()}`);
+  assert.match(m.body(), /Try again/, "…with a way forward");
+  /* And the retry is not handed the hung promise: `showEpisodesInFlight`
+     clears when the bounded promise settles, so the same fetch runs again. */
+  assert.ok(m.retry());
+  await flushMicrotasks();
+  assert.strictEqual(calls, 2, "Try again asks the network again rather than re-awaiting the stalled socket");
 });
 
 /* ==================================================================== */
@@ -524,7 +627,7 @@ test("a CURATED show still loading does not state a count over an empty body", a
   const body = m.body();
   const sub = m.subtitle();
   assert.ok(body && body.trim(), "the episode container must never be left empty");
-  assert.ok(sub && sub.trim(), "…nor the subtitle");
+  assert.notStrictEqual(sub, null, "…and the subtitle must have been painted (empty is the loading answer since states-8)");
   assert.ok(!/Curated Ep/.test(body), "no stale curated row may stand in for the list still loading");
   assert.ok(!/^\d+ episode/.test(sub.trim()),
     `the subtitle must not state a count while the body shows none — subtitle: "${sub}" / body: "${body}"`);

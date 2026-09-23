@@ -3311,8 +3311,24 @@ async function fetchShowEpisodesUncached(show_id, cursor) {
        fresh response be reused and a stale one be revalidated, which is what
        those headers are for. Our own `showEpisodesCache` sits above this and is
        what makes the first paint instant; this is the second line of defence,
-       and it is the one that also covers the deeper pages. */
-    const res = await fetch(apiUrl(url));
+       and it is the one that also covers the deeper pages.
+
+       BOUNDED (audit round 2, states-4). This was the one `/api/*` call the
+       2026-09-23 "no request waits forever" review did not reach: a bare fetch
+       to API_ORIGIN, which in the native shell — no service worker, no
+       NET_TIMEOUT_MS — could sit on a stalled socket for good, and with it the
+       show page on "Loading episodes…" with no Try again, while
+       `showEpisodesInFlight` handed every later visit to the same show the same
+       hung promise. Same AbortController + withDeadline shape as fetchApiJson;
+       past the bound it answers exactly what a failed fetch answers, so the
+       `failed` outcome and its Try again fire through the one writer. */
+    const ctl = typeof AbortController === "function" ? new AbortController() : null;
+    const res = await withDeadline(
+      fetch(apiUrl(url), ctl ? { signal: ctl.signal } : undefined),
+      API_DEADLINE_MS,
+      () => { try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ } return null; }
+    );
+    if (!res) return { episodes: null, nextCursor: null, error: "timeout" };
     if (!res.ok) return { episodes: null, nextCursor: null, error: `status ${res.status}` };
     const body = await res.json();
     return {
@@ -3486,20 +3502,22 @@ function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBread
        That is precisely the subtitle/body contradiction issue #687 exists to
        remove, reintroduced by a body-only fix that left its own justification
        standing 550 lines away. A count and the rows it labels must come from
-       the same state. */
-    return "Loading episodes…";
-  }
-  if (loadError && loadedCount === 0) {
-    return curatedCount
-      ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue (couldn't load the full list)`
-      : `Couldn't load this show's episodes right now.`;
+       the same state.
+
+       ONE SENTENCE PER OUTCOME (audit round 2, states-8). While the BODY carries
+       a status — "Loading episodes…", "Couldn't load these episodes.", "No
+       episodes yet." — this label is EMPTY. It used to say the same thing a
+       second time in its own words, 200 px above the body's: two regions that
+       agreed on the state and still read as a page repeating itself. The
+       subtitle speaks only where rows are on screen: a count for a loaded list,
+       and the catalogue count over the curated rows, whose failure line now
+       lives under those rows beside its Try again (paintBody). */
+    return "";
   }
   if (loadedCount === 0) {
     return curatedCount
       ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue`
-      : isBreadthTier
-        ? "No episodes found for this show yet."
-        : "No episodes found for this show.";
+      : "";
   }
   const staleNote = stale ? " (showing the last saved list — couldn't refresh just now)" : "";
   if (fullyLoaded) {
@@ -3859,8 +3877,10 @@ function renderShow(show_id, initialQuery = "") {
      the listener could see or act on — it is a fact about which of our two
      ingestion paths found the show — and encoding it in the empty state is
      how "4a's wider catalogue" ended up on a phone screen. `isBreadthTier`
-     still does real work in showEpisodeCountLabel; it just no longer picks
-     the listener's words. */
+     is still handed to showEpisodeCountLabel — a tier-specific subtitle would
+     be composed there and nowhere else — but since the round-2 audit
+     (states-8) no outcome's copy reads it: the "…yet." variant it used to pick
+     went with the doubled empty-state sentence. */
   /* `failed` offers "Try again" rather than "Pull to refresh" (audit
      2026-09-22): there is no pull gesture on this page, and a failure the
      listener cannot act on from where they are standing is a dead end. The
@@ -3870,6 +3890,10 @@ function renderShow(show_id, initialQuery = "") {
     loading: "Loading episodes…",
     empty: "No episodes yet.",
     failed: "Couldn't load these episodes.",
+    /* Under a curated show's rows when the FULL list failed (states-2): the rows
+       on screen are real, so "these episodes" would be wrong; what is missing
+       is the rest. */
+    failedCurated: "Couldn't load the full list.",
   };
 
   /* THE ONE WRITER OF THE EPISODE CONTAINER (issue #687).
@@ -3914,8 +3938,19 @@ function renderShow(show_id, initialQuery = "") {
        that `loading` is a state that RESOLVES — the stale rows buy a second of
        false content and then take it away — while `failed` is terminal. */
     if (loadState !== "loading" && curatedEps.length) {
-      c.innerHTML = curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("");
+      /* AND A WAY FORWARD UNDER THE ROWS (audit round 2, states-2). This branch
+         returned before the `failed` branch below, so every one of the 220
+         catalogue shows — the ones Home and Search link to — lost its Try again
+         the moment its full-list fetch failed: the rows were real, the subtitle
+         said "couldn't load the full list", and nothing on the page could run
+         the fetch again. Theme G's rule ("failed — say it failed, and offer Try
+         again wired to the SAME fetch") holds here too; the rows stay, the
+         failure line and its button sit under them, and the subtitle keeps to
+         the count (showEpisodeCountLabel: one sentence per outcome). */
+      const rows = curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("");
+      c.innerHTML = loadState === "failed" ? rows + failedNoteHtml(BODY_PLACEHOLDER.failedCurated) : rows;
       bindRows(c);
+      if (loadState === "failed") bindRetry(c, retryEpisodes);
       return;
     }
     /* NOT esc()'d, and that is deliberate rather than an oversight: every
@@ -5746,7 +5781,18 @@ function loadShowIndex() {
   showIndexFetchCount++;
   showIndexPromise = (async () => {
     try {
-      const res = await fetch(SHOW_INDEX_PATH, { cache: "no-cache" });
+      /* BOUNDED (audit round 2, states-4): a hung fetch here never reached the
+         `finally` that clears `showIndexPromise`, so every later focus was
+         handed the same hung promise and the index never loaded for the rest
+         of the session — the opposite of this header's "a later focus
+         retries". Past the bound it answers null like a failure, the promise
+         clears, and the next focus asks again. */
+      const ctl = typeof AbortController === "function" ? new AbortController() : null;
+      const res = await withDeadline(
+        fetch(SHOW_INDEX_PATH, ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" }),
+        DATA_DEADLINE_MS,
+        () => { try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ } return null; }
+      );
       if (!res || !res.ok) return null;
       const parsed = SearchEngine.parseShowIndex(await res.text());
       /* An empty parse is a failure, not an empty index: it means the file
@@ -13352,11 +13398,42 @@ function resetPageHeadScrollState() {
 
 /* ---------- init ---------- */
 
+/* BOUNDED (audit round 2, states-4 / races-7). The 2026-09-23 "no request
+   waits forever" review gave `fetchApiJson` and the two search documents a
+   deadline and left this one bare, on the reasoning that `data/*.json` is
+   answered by the worker (NET_TIMEOUT_MS) or the bundle. A first web visit has
+   no worker yet, and a pinned page or a shell with a missing file goes to the
+   network — so "Loading 4a…" and the Foray page's Try again (retryForayDocs)
+   could both wait on a black-holed socket for good. Past the bound the answer
+   is the same `null` a failure gives, which every caller already treats as
+   "absent", so the existing failed states and their Try again become
+   reachable.
+
+   ONE ARGUMENT, DELIBERATELY: `tools/mobile/prepare-webdir.mjs` derives the
+   native bundle's data-file list by matching the literal `fetchJson("data/…")`
+   call shape, so the bound is chosen from the path here rather than passed in.
+   `let`, so a suite can shorten them. */
+let DATA_DEADLINE_MS = 30000;
+/* The boot document gets longer: its failure already offers Try again, and a
+   slow-but-working first visit told "Couldn't load 4a" is the wrong trade. */
+let BOOT_DEADLINE_MS = 45000;
+
+function dataDeadlineMs(path) {
+  return /(^|\/)session\.json$/.test(String(path)) ? BOOT_DEADLINE_MS : DATA_DEADLINE_MS;
+}
+
 async function fetchJson(path) {
-  try {
-    const res = await fetch(pinnedUrl(path), { cache: "no-cache" });
-    return res.ok ? await res.json() : null;
-  } catch (_) { return null; }
+  const ctl = typeof AbortController === "function" ? new AbortController() : null;
+  const attempt = (async () => {
+    try {
+      const res = await fetch(pinnedUrl(path), ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" });
+      return res.ok ? await res.json() : null;
+    } catch (_) { return null; }
+  })();
+  return withDeadline(attempt, dataDeadlineMs(path), () => {
+    try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ }
+    return null;
+  });
 }
 
 /* A3.1/Q3: a plain, unpinned fetch for /api/* backend endpoints — deliberately
