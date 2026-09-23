@@ -1800,6 +1800,10 @@ function openRatePicker() {
  */
 let restoredPending = null;
 
+/** The last page's Foray callback (`watchForay`), for a Foray that is started
+    from somewhere other than its page. */
+let forayWatcher = null;
+
 async function setRunning(want, source = "tap") {
   if (!manager) return;
   if (want && restoredPending) {
@@ -3377,7 +3381,10 @@ const ForayPlayer = {
     backend.notePlayGesture();
     // The jingle's element needs the same tap, for the same reason (§13).
     if (interlude) interlude.prime();
-    foray = { resolved, index: -1, pendingFrom: null, onChange, error: null };
+    /* `onChange ?? forayWatcher`: a Foray started from somewhere that is not
+       its page (the restored mini bar, the lock screen) still reaches the page
+       that asked to watch — see `watchForay`. */
+    foray = { resolved, index: -1, pendingFrom: null, onChange: onChange ?? forayWatcher, error: null };
     setSkipButtonMode(true);
     // Once per Foray, not once per tick: this walks the whole discover pool.
     artworkByShow = artworkUrlsByShow(discoverDoc);
@@ -3554,8 +3561,17 @@ const ForayPlayer = {
     return true;
   },
 
-  /** Re-point the change callback at a freshly rendered page. */
+  /** Re-point the change callback at a freshly rendered page.
+
+      REMEMBERED EVEN WITH NOTHING LIVE (review 2026-09-23). A Foray page opened
+      over a RESTORED bar renders while `foray` is null, so this attached
+      nothing; the bar's press then started the Foray with no `onChange`, and the
+      page sat on "Resume" while the audio played — and its button restarted the
+      Foray from the render-time resume point instead of pausing. The page's
+      paint already ignores a Foray that is not its own (`paintForay`'s id
+      gate), so handing it any Foray that starts is safe. */
   watchForay(onChange) {
+    forayWatcher = typeof onChange === "function" ? onChange : null;
     if (foray) foray.onChange = onChange;
     return this.forayStatus();
   },

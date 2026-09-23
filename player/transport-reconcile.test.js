@@ -2306,6 +2306,30 @@ test("PERSONA: a Foray played after an episode takes the bar, and one press resu
   restore();
 });
 
+test("REVIEW: a Foray page opened over the restored bar hears the bar's press", async (t) => {
+  /* The page rendered while nothing was live, so `watchForay` attached nothing;
+     the bar's press then started the Foray with no `onChange`, the page kept
+     saying "Resume", and its button restarted the Foray instead of pausing.
+     KILLING MUTATION: `onChange ?? forayWatcher` back to `onChange` in
+     playForay (or drop the `forayWatcher =` line in watchForay). */
+  const carried = await aSessionThatPlayed(t, ["episode", "foray"]);
+  const { client, doc, restore } = await bootClient(t, { seed: carried });
+  const resolved = synthetic();
+  const at = client.forayResume("f263", { resolved });
+  assert.ok(client.restoreForay(resolved, { startElapsedSec: at.elapsedSec }), "precondition: the bar is painted");
+  const painted = [];
+  client.watchForay((s) => painted.push(s));   // the Foray page renders now
+  assert.equal(painted.length, 0, "precondition: nothing is live to report");
+  transport(doc).press();                      // ▶ on the mini bar
+  await settle();
+  await settle();
+  assert.ok(painted.length > 0, "the page is told the Foray started");
+  const last = painted[painted.length - 1];
+  assert.equal(last.forayId, "f263");
+  assert.equal(last.playing, true, "so it can paint Pause, and its button pauses rather than restarts");
+  restore();
+});
+
 test("PERSONA: an episode played AFTER the Foray keeps the bar", async (t) => {
   /* KILLING MUTATION: drop the `forayAt > episodeAt` comparison. */
   const carried = await aSessionThatPlayed(t, ["foray", "episode"]);
