@@ -48,13 +48,22 @@ struct NowPlayingPayload: Equatable {
     let canSeekBack: Bool
     let canSeekForward: Bool
     let canSeekTo: Bool
+    /// The seek pair, in ms, exactly as `NowPlaying.java` carries it: the
+    /// page's own ±15/30 (`player/media-session.js`'s constants, copied into
+    /// the shim and pinned equal there). `0` means the page never said, and
+    /// the plugin then leaves the OS its default rather than inventing one --
+    /// there is deliberately no `15_000` anywhere in this package (founder,
+    /// 2026-09-23: "Both should be 15/30"; one source of truth).
+    let seekBackMs: Int64
+    let seekForwardMs: Int64
 
     static let empty = NowPlayingPayload(
         state: .none, title: "", artist: "", album: "", artworkUri: "",
         durationMs: 0, positionMs: 0, playbackRate: 1,
         canPlay: false, canPause: false, canStop: false,
         hasNext: false, hasPrevious: false,
-        canSeekBack: false, canSeekForward: false, canSeekTo: false
+        canSeekBack: false, canSeekForward: false, canSeekTo: false,
+        seekBackMs: 0, seekForwardMs: 0
     )
 
     /// The longest duration/position this will believe: 24 hours in ms.
@@ -91,7 +100,11 @@ struct NowPlayingPayload: Equatable {
             hasPrevious: boolValue(data, "hasPrevious"),
             canSeekBack: boolValue(data, "canSeekBack"),
             canSeekForward: boolValue(data, "canSeekForward"),
-            canSeekTo: boolValue(data, "canSeekTo")
+            canSeekTo: boolValue(data, "canSeekTo"),
+            // `max(0, …)`, like Android's `Math.max(0L, …)`: a negative skip is
+            // a caller bug and reads as "not sent".
+            seekBackMs: max(0, longValue(data, "seekBackMs")),
+            seekForwardMs: max(0, longValue(data, "seekForwardMs"))
         )
     }
 

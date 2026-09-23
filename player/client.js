@@ -362,6 +362,15 @@ storageReady.then(() => {
          Until now these events reached `diag.sessionEvent` and nothing else. */
       try { onNativeSession(e?.detail ?? {}); } catch (_) { /* a session event must never break the page */ }
     });
+    /* WHAT THE NATIVE SIDE RECEIVED (founder, 2026-09-23: "got in my car, then
+       my car resumed Spotify"). The shim re-broadcasts every remote command the
+       plugin saw — the platform's own command, the action it became, which door,
+       and whether a handler existed — as `foray:remote`. The record only, on
+       purpose: the press itself already reached the handler by the time this
+       fires, and a second route to the transport would be a second opinion. */
+    window.addEventListener("foray:remote", (e) => {
+      try { diag.remoteCommand(e?.detail ?? {}); } catch (_) { /* diagnostics must never break the page */ }
+    });
   }
 }).catch(() => {});
 

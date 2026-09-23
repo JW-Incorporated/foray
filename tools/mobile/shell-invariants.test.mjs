@@ -98,7 +98,7 @@ import {
   PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS, CLOSE_ACTION,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
-import { SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC } from "../../player/media-session.js";
+import { REMOTE_ORIGINS, REMOTE_COMMANDS } from "../../player/diagnostic-log.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -1797,29 +1797,219 @@ test("the permission prompt is not issued through the serialised bridge queue", 
   assert.match(shellSrc, /call\("requestNotifications"\)\.then\(/);
 });
 
-test("the iOS ForayAudioPlugin never touches the AVAudioSession active state (F11/F13 pause loop)", () => {
+/** The Swift with its comments gone, so a pin reads the code and not the prose
+ *  about it: `///` doc comments, `//` line comments and the block comments this
+ *  file writes its WHY paragraphs in. */
+function stripSwiftComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/\/.*$/gm, "").replace(/\/\/.*$/gm, "");
+}
+
+/** One Swift `func <name>(`, from the keyword through its closing brace. */
+function swiftFuncDecl(code, name) {
+  const at = code.search(new RegExp(`func\\s+${name}\\s*\\(`));
+  if (at < 0) return null;
+  const open = code.indexOf("{", at);
+  let depth = 0;
+  for (let i = open; i < code.length; i++) {
+    if (code[i] === "{") depth += 1;
+    else if (code[i] === "}" && --depth === 0) return code.slice(at, i + 1);
+  }
+  return null;
+}
+
+/** The body of one Swift `func <name>(`, brace-balanced. */
+function swiftFuncBody(code, name) {
+  const decl = swiftFuncDecl(code, name);
+  return decl ? decl.slice(decl.indexOf("{")) : null;
+}
+
+/** The names of every Swift func in `code` whose body calls `callee(`. */
+function swiftCallersOf(code, callee) {
+  const names = [...code.matchAll(/func\s+(\w+)\s*\(/g)].map((m) => m[1]);
+  return [...new Set(names.filter((n) => n !== callee && new RegExp(`\\b${callee}\\(`).test(swiftFuncBody(code, n) ?? "")))].sort();
+}
+
+const AUDIO_SWIFT = path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift");
+
+test("the iOS ForayAudioPlugin touches AVAudioSession.setActive from its two session functions and NOWHERE on the playing path (F11/F13, 2026-09-23)", () => {
   /* Founder device diagnostics (2026-09-08/09): on iOS the play/pause button
      appeared dead because `setNowPlaying` called `AVAudioSession.setActive(true)`
      on `render()`'s up-to-4 Hz hot path. Re-asserting activation on the SHARED
      session WebKit holds for the audible `<audio>` element interrupts that
      element, which pauses; the player reconciles and resumes; the next ~1 s
      position write repeats it — an audible-playback-killing loop whose period
-     matched the write cadence exactly. WebKit (element) and ForayTtsPlugin
-     (narration) each own their own activation, and MPRemoteCommandCenter
-     handlers are process-level, so this plugin must never call setActive.
-     MUTATION: put `AVAudioSession.sharedInstance().setActive(true)` back into
-     ForayAudioPlugin.swift -> this fails, naming the loop. */
-  const swift = fs.readFileSync(
-    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift"),
-    "utf8"
-  );
-  // Strip line comments so the header's own description of the removed call
-  // (which legitimately names setActive) is not read as the call itself.
-  const code = swift.replace(/\/\/\/.*$/gm, "").replace(/\/\/.*$/gm, "");
+     matched the write cadence exactly.
+
+     Founder, 2026-09-23: "I started playing 4a, paused and turned off my
+     screen, got in my car, then my car resumed Spotify." iOS gives a car's play
+     to the app holding an active playback session, and the app process never
+     held one — so the plugin now takes the app's own session ON THE PAUSE
+     transition (nothing is sounding, so nothing can be interrupted) and lets
+     go when the transport plays again or closes. Both rules live here:
+       - `setActive(` appears ONLY inside `holdSession` and `releaseSession`;
+       - the only caller of those two is `applySessionMove`, plus `remotePlay`
+         for the hold, so `setNowPlaying`'s payload path reaches them through
+         `sessionMove(from:to:holding:)` alone — the pure transition table the
+         XCTests pin (`.hold` for playing -> paused and for nothing else).
+     MUTATION: call `setActive(true)` from `apply` or `applyNowPlayingInfo` ->
+     the first assertion names the file; call `holdSession` from `apply` -> the
+     caller assertion goes red. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const hold = swiftFuncDecl(code, "holdSession");
+  const release = swiftFuncDecl(code, "releaseSession");
+  assert.ok(hold && release, "ForayAudioPlugin.swift no longer has holdSession/releaseSession");
+  const outside = code.replace(hold, "").replace(release, "");
   assert.ok(
-    !/setActive\s*\(/.test(code),
-    "ForayAudioPlugin.swift calls AVAudioSession.setActive — the F11/F13 pause loop. The plugin must not touch session activation."
+    !/setActive\s*\(/.test(outside),
+    "ForayAudioPlugin.swift calls AVAudioSession.setActive outside holdSession/releaseSession — the F11/F13 pause loop."
   );
+  assert.match(hold, /setActive\(true/, "holdSession must activate");
+  assert.match(release, /setActive\(false/, "releaseSession must deactivate");
+  assert.match(release, /notifyOthersOnDeactivation/, "the end of playback tells the interrupted app it may resume");
+  // Who may call them.
+  assert.deepEqual(
+    swiftCallersOf(code, "holdSession"), ["applySessionMove", "remotePlay"],
+    "holdSession may be reached only from the transition table and a remote play while paused"
+  );
+  assert.deepEqual(swiftCallersOf(code, "releaseSession"), ["applySessionMove"]);
+  const apply = swiftFuncBody(code, "apply");
+  assert.match(apply, /applySessionMove\(Self\.sessionMove\(from:\s*previous\.state,\s*to:\s*payload\.state/,
+    "the payload path decides the session through the pure transition table");
+  // The table itself: playing -> paused is the ONE hold.
+  const table = swiftFuncBody(code, "sessionMove");
+  assert.match(table, /case \(\.playing, \.paused\):\s*return \.hold/);
+  assert.equal((table.match(/return \.hold/g) ?? []).length, 1, "exactly one transition may take the session");
+});
+
+test("the iOS ForayAudioPlugin keeps a paused transport ON the lock screen: rate 0, playbackState, and a re-assert on background (2026-09-23)", () => {
+  /* Apple's rule for staying the Now Playing app across a pause, each half a
+     line of code: `nowPlayingInfo` is cleared for `.none` ONLY (never for
+     paused, never on background), the rate written is 0 while paused,
+     `MPNowPlayingInfoCenter.playbackState` follows the state, and the entry is
+     re-written when the app goes to the background and when a route appears —
+     because WebKit lets go of its own claim a couple of seconds after its
+     element stops and a paused page writes nothing after that.
+     MUTATION: clear `nowPlayingInfo` in `handleDidEnterBackground`, or drop the
+     `reassertNowPlaying` call there. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const info = swiftFuncBody(code, "applyNowPlayingInfo");
+  assert.match(info, /guard payload\.state != \.none else \{[\s\S]*?nowPlayingInfo = nil/);
+  assert.equal((code.match(/nowPlayingInfo = nil/g) ?? []).length, 1, "nowPlayingInfo is cleared in exactly one place, for .none");
+  assert.match(info, /payload\.state == \.playing \? payload\.playbackRate : 0/);
+  assert.match(info, /center\.playbackState = Self\.playbackState\(for: payload\.state\)/);
+  assert.match(swiftFuncBody(code, "handleDidEnterBackground"), /reassertNowPlaying\(reason: "background"\)/);
+  assert.match(swiftFuncBody(code, "handleRouteChange"), /reason == "new-device"[\s\S]*?reassertNowPlaying\(reason: "route"\)/);
+  assert.match(swiftFuncBody(code, "applySessionMove"), /case \.hold:[\s\S]*?armReassert\(\)/);
+  const reassert = swiftFuncBody(code, "reassertNowPlaying");
+  assert.match(reassert, /applyNowPlayingInfo\(lastPayload\)/);
+  assert.match(reassert, /applyCommandAvailability\(lastPayload, force: true\)/);
+  assert.match(reassert, /emitSession\(kind: "nowPlayingReasserted"/);
+});
+
+test("the seek pair has ONE source — the payload — on both natives, and the Swift holds no copy (founder 2026-09-23)", () => {
+  /* "In the app, I can jump back 15s and forward 30s. On the lock screen, it's
+     10s in both directions. Both should be 15/30." The numbers are
+     `player/media-session.js`'s (copied into the shim and pinned equal by
+     foray-media-session.test.mjs); the shim sends them as `seekBackMs` /
+     `seekForwardMs`; Android's `WebViewPlayer` already read them into Media3's
+     seek increments; the Swift used to hold its own `[15]`/`[30]`/`15_000`
+     and write them ONCE at load — first, on a surface that shows whoever wrote
+     last. MUTATION: put `preferredIntervals = [15]` back, or restore the
+     `seekBackwardMs` constant. */
+  const swift = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  assert.doesNotMatch(swift, /preferredIntervals\s*=\s*\[\s*\d/, "a literal skip interval in the Swift");
+  assert.doesNotMatch(swift, /\b(15_000|30_000)\b/, "a millisecond copy of the seek pair in the Swift");
+  const availability = swiftFuncBody(swift, "applyCommandAvailability");
+  assert.match(availability, /skipBackwardCommand\.preferredIntervals = Self\.preferredIntervals\(ms: payload\.seekBackMs\)/);
+  assert.match(availability, /skipForwardCommand\.preferredIntervals = Self\.preferredIntervals\(ms: payload\.seekForwardMs\)/);
+  assert.doesNotMatch(swiftFuncBody(swift, "load"), /preferredIntervals/, "not once at load — per state change");
+  const payload = stripSwiftComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/NowPlayingPayload.swift"), "utf8"
+  ));
+  assert.match(payload, /seekBackMs: max\(0, longValue\(data, "seekBackMs"\)\)/);
+  assert.match(payload, /seekForwardMs: max\(0, longValue\(data, "seekForwardMs"\)\)/);
+  // The presses carry the payload's number, not a literal.
+  assert.match(swift, /skipOffsetMs\(payloadMs: self\.lastPayload\.seekBackMs/);
+  assert.match(swift, /skipOffsetMs\(payloadMs: self\.lastPayload\.seekForwardMs/);
+  // Android: the increments come from the same two fields.
+  const java = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/WebViewPlayer.java"), "utf8"
+  ));
+  assert.match(java, /setSeekBackIncrementMs\(np\.seekBackMs\)/);
+  assert.match(java, /setSeekForwardIncrementMs\(np\.seekForwardMs\)/);
+  // And the shim sends them from the constants the player exports.
+  const shim = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8"));
+  assert.match(shim, /seekBackMs: SEEK_BACKWARD_SEC \* 1000/);
+  assert.match(shim, /seekForwardMs: SEEK_FORWARD_SEC \* 1000/);
+});
+
+test("a one-button remote press resolves from the last reported state on iOS (2026-09-23)", () => {
+  /* `togglePlayPause` was mapped to `"play"` unconditionally; the page's
+     `setRunning(true)` on a playing transport is a deliberate no-op, so a car
+     with one button and a headphone pinch could never pause.
+     MUTATION: map the toggle back to a bare "play". */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const register = swiftFuncBody(code, "registerCommandHandlers");
+  const toggle = /togglePlayPauseCommand\.addTarget\s*\{([\s\S]*?)return \.success/.exec(register);
+  assert.ok(toggle, "togglePlayPauseCommand has no target");
+  assert.match(toggle[1], /Self\.toggleAction\(forState: self\.lastPayload\.state\)/);
+  assert.doesNotMatch(toggle[1], /emitTransport\(action: "play"/, "the toggle must not be a hard-wired play");
+  assert.match(swiftFuncBody(code, "toggleAction"), /state == \.playing \? "pause" : "play"/);
+});
+
+test("every transport event names its door and its command, on both natives, in the record's vocabulary (2026-09-23)", () => {
+  /* `player/diagnostic-log.js`'s `remote` row admits `REMOTE_ORIGINS` and
+     `REMOTE_COMMANDS` and drops anything else — so a native side that spells
+     a door differently records nothing, with every test green. Read from the
+     record's own exports, against the Swift and the Java.
+     MUTATION: rename ORIGIN_SESSION to "session" in NowPlayingHub.java. */
+  const swift = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const origin = /static let REMOTE_ORIGIN = "([^"]+)"/.exec(swift);
+  assert.ok(origin, "the Swift plugin no longer declares REMOTE_ORIGIN");
+  assert.ok(REMOTE_ORIGINS.has(origin[1]), `the Swift origin "${origin[1]}" is not in REMOTE_ORIGINS`);
+  const event = swiftFuncBody(swift, "transportEvent");
+  assert.match(event, /event\["origin"\] = REMOTE_ORIGIN/);
+  assert.match(event, /event\["command"\] = command \?\? action/);
+  assert.match(event, /event\["at"\] = Int\(at\.rounded\(\)\)/);
+  for (const c of [...swift.matchAll(/command: "([a-z-]+)"/g)].map((m) => m[1])) {
+    assert.ok(REMOTE_COMMANDS.has(c), `the Swift sends command "${c}", which the record would drop`);
+  }
+  const dir = path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio");
+  const hub = stripJavaComments(fs.readFileSync(path.join(dir, "NowPlayingHub.java"), "utf8"));
+  for (const name of ["ORIGIN_SESSION", "ORIGIN_NOTIFICATION"]) {
+    const m = new RegExp(`static final String ${name} = "([^"]+)"`).exec(hub);
+    assert.ok(m, `NowPlayingHub.java no longer declares ${name}`);
+    assert.ok(REMOTE_ORIGINS.has(m[1]), `the Java origin "${m[1]}" is not in REMOTE_ORIGINS`);
+  }
+  const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
+  assert.match(service, /NowPlayingHub\.dispatch\(action, 0L, 0L, NowPlayingHub\.ORIGIN_NOTIFICATION\)/,
+    "the notification's buttons must name their door");
+  const plugin = stripJavaComments(fs.readFileSync(path.join(dir, "ForayAudioPlugin.java"), "utf8"));
+  assert.match(plugin, /event\.put\("origin", origin\)/);
+  assert.match(plugin, /event\.put\("command", action\)/);
+  assert.match(plugin, /event\.put\("at", System\.currentTimeMillis\(\)\)/);
+});
+
+test("Android's session stays READY while paused, so a head unit's play reaches 4a (2026-09-23)", () => {
+  /* The Android half of the founder's report, pinned rather than changed: the
+     Media3 session lives in the foreground service, the service lives while
+     the transport is usable (`isTransportable` — playing OR paused), and a
+     paused transport is `STATE_READY` with `playWhenReady=false`, never IDLE.
+     An IDLE player declares no COMMAND_PLAY_PAUSE, and a media button pressed
+     against it goes to whichever app last had focus — the same outcome the
+     founder saw on iOS. MUTATION: return STATE_IDLE for PAUSED, or make
+     `isTransportable` playing-only. */
+  const dir = path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio");
+  const player = stripJavaComments(fs.readFileSync(path.join(dir, "WebViewPlayer.java"), "utf8"));
+  const state = /protected State getState\(\)\s*\{([\s\S]*?)\n    \}/.exec(player);
+  assert.ok(state, "WebViewPlayer must override getState");
+  assert.match(state[1], /setPlaybackState\(Player\.STATE_READY\)\s*\.setPlayWhenReady\(\s*np\.state == NowPlaying\.PLAYING/);
+  assert.match(state[1], /if \(!np\.isLoaded\(\)\)[\s\S]*?STATE_IDLE/, "only an unloaded transport is IDLE");
+  const now = stripJavaComments(fs.readFileSync(path.join(dir, "NowPlaying.java"), "utf8"));
+  assert.match(now, /boolean acceptsTransport\(\)\s*\{\s*return state == PLAYING \|\| state == PAUSED;/);
+  const shim = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8"));
+  assert.match(shim, /return payload\.state === "playing" \|\| payload\.state === "paused";/,
+    "the service (and the session in it) must live while paused");
 });
 
 test("the iOS ForayAudioPlugin writes exactly the unified-log line ios-ci greps for (L-02)", () => {
@@ -1963,77 +2153,4 @@ test("the session event name is one string across the Swift and the web half (M-
     client.includes(`"${domName[1]}"`),
     `player/client.js does not listen for ${domName[1]} — every native cause is dropped before the record`
   );
-});
-
-/* ---------- the lock screen's ±15/30 is PUBLISHED on every write (2026-09-23) ---------- */
-
-/** The body of one Swift function, by name: from its signature to the first
-    line that is exactly a closing brace at the method indent. Enough to say
-    "this assignment is inside THAT function", which a whole-file regex cannot. */
-function swiftFunctionBody(source, name) {
-  const start = source.search(new RegExp(String.raw`\n\s*(?:@objc\s+|private\s+|static\s+|public\s+|override\s+)*func\s+${name}\(`));
-  assert.ok(start >= 0, `ForayAudioPlugin.swift no longer declares ${name}()`);
-  const rest = source.slice(start);
-  const end = rest.search(/\n {4}\}\n/);
-  assert.ok(end > 0, `could not find the end of ${name}()`);
-  return rest.slice(0, end);
-}
-
-test("the iOS skip intervals are written on EVERY publish, not only at load (founder, 2026-09-23)", () => {
-  /* Founder, 2026-09-23: "In the app, I can jump back 15s and forward 30s. On
-     the lock screen, it's 10s in both directions. Both should be 15/30." The
-     Swift had said 15/30 since L-01 — in `load()`, once. WebKit registers its
-     own command set for every audible <audio> element AFTER that, replacing
-     the process's list; a value assigned once at launch is never seen again.
-     So the intervals live in the per-write path, and the per-write path is
-     entered from `setNowPlaying` through `publishCommands`.
-     MUTATION: move the two `preferredIntervals` lines back into
-     `registerCommandHandlers()`, or stop `setNowPlaying` calling
-     `publishCommands` -> red, naming which. */
-  const swift = fs.readFileSync(
-    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift"), "utf8",
-  );
-  const perWrite = swiftFunctionBody(swift, "applyCommandAvailability");
-  assert.match(perWrite, /skipBackwardCommand\.preferredIntervals\s*=\s*\[15\]/,
-    "applyCommandAvailability() must re-assert the 15 s backward interval on every publish");
-  assert.match(perWrite, /skipForwardCommand\.preferredIntervals\s*=\s*\[30\]/,
-    "applyCommandAvailability() must re-assert the 30 s forward interval on every publish");
-  const atLoad = swiftFunctionBody(swift, "registerCommandHandlers");
-  assert.ok(!/preferredIntervals\s*=/.test(atLoad),
-    "the intervals must not be assigned in registerCommandHandlers(): a load-time write is the one WebKit overwrites");
-
-  const setNowPlaying = swiftFunctionBody(swift, "setNowPlaying");
-  assert.match(setNowPlaying, /publishCommands\(/, "setNowPlaying must publish the command list through publishCommands()");
-  const publish = swiftFunctionBody(swift, "publishCommands");
-  assert.match(publish, /applyCommandAvailability\(\.silent\)/,
-    "a changed write must pass through the silent snapshot, or the command centre sees no change to publish");
-  assert.match(publish, /DispatchQueue\.main\.async/,
-    "…and re-enable on a LATER turn: off-then-on in one turn coalesces to 'unchanged'");
-
-  const load = swiftFunctionBody(swift, "load");
-  assert.match(load, /applyCommandAvailability\(CommandSnapshot\.silent\)/,
-    "load() must start every command disabled — nothing is playing, and the first real write must be a change");
-});
-
-test("the iOS skip offsets are the page's own numbers, both of them", () => {
-  /* The lock screen glyph (`preferredIntervals`) and the offset the press
-     sends back (`seekBackwardMs`/`seekForwardMs`) must be the same two
-     numbers `player/media-session.js` uses for the in-page buttons, or the
-     button says one thing and does another. `foray-media-session.test.mjs`
-     already pins the web constant against the player's; this closes the
-     Swift end. MUTATION: change either Swift constant -> red. */
-  const swift = fs.readFileSync(
-    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift"), "utf8",
-  );
-  const back = /seekBackwardMs:\s*Int64\s*=\s*([\d_]+)/.exec(swift);
-  const fwd = /seekForwardMs:\s*Int64\s*=\s*([\d_]+)/.exec(swift);
-  assert.ok(back && fwd, "ForayAudioPlugin.swift no longer declares seekBackwardMs/seekForwardMs");
-  assert.equal(Number(back[1].replace(/_/g, "")), SEEK_BACKWARD_SEC * 1000);
-  assert.equal(Number(fwd[1].replace(/_/g, "")), SEEK_FORWARD_SEC * 1000);
-  const perWrite = swiftFunctionBody(swift, "applyCommandAvailability");
-  const glyphBack = /skipBackwardCommand\.preferredIntervals\s*=\s*\[(\d+)\]/.exec(perWrite);
-  const glyphFwd = /skipForwardCommand\.preferredIntervals\s*=\s*\[(\d+)\]/.exec(perWrite);
-  assert.ok(glyphBack && glyphFwd);
-  assert.equal(Number(glyphBack[1]), SEEK_BACKWARD_SEC, "the backward glyph must say what the press does");
-  assert.equal(Number(glyphFwd[1]), SEEK_FORWARD_SEC, "the forward glyph must say what the press does");
 });

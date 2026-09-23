@@ -144,6 +144,16 @@ it again — the F11/F13 pause loop the founder's device diagnostics caught (loo
 pins that `setNowPlaying` contains no `setActive` so it cannot come back. *(This
 paragraph refreshed 2026-09-10; the text above it had described the pre-#537 plugin.)*
 
+*Superseded again, 2026-09-23 — see §8.* The plugin now holds the app's own
+`.playback` session **while the transport is paused**, taken on the playing → paused
+transition and released when the transport plays again (quietly) or closes/finishes
+(with `notifyOthersOnDeactivation`). It still never touches the session from the
+playing path: #537's loop was activation re-asserted against an audible element, and
+a pause has no audible element. `shell-invariants.test.mjs` now pins that `setActive`
+appears only inside `holdSession`/`releaseSession`, that those are reachable only
+through the pure transition table `sessionMove(from:to:holding:)` (plus a remote play
+while paused), and that the table's one `.hold` is `(.playing, .paused)`.
+
 ### 2.3 `stop`: declined outright on iOS, not just on a finished Foray
 
 Android's `stop` command exists because a foreground-service notification needs a
@@ -177,9 +187,9 @@ traffic.
 
 | Control | `MPRemoteCommandCenter` command | Routes to | Note |
 |---|---|---|---|
-| play / pause | `playCommand` / `pauseCommand` / `togglePlayPauseCommand` | `transport {action: "play"\|"pause"}` | `togglePlayPause` is mapped to `"play"` — the page's own handler resolves the actual toggle |
+| play / pause | `playCommand` / `pauseCommand` / `togglePlayPauseCommand` | `transport {action: "play"\|"pause"}` | `togglePlayPause` resolves **natively from the last reported state** (`toggleAction(forState:)`, 2026-09-23): playing → `"pause"`, else `"play"`. It used to be a hard-wired `"play"`, and the page's `setRunning(true)` on a playing transport is a deliberate no-op — so a one-button car and a headphone pinch could never pause. |
 | next / previous | `nextTrackCommand` / `previousTrackCommand` | `transport {action: "nexttrack"\|"previoustrack"}` | **the next and previous SEGMENT** — identical to Android's §4.2 argument; a Foray has no other boundary |
-| seek −15 / +30 | `skipBackwardCommand` (`preferredIntervals: [15]`) / `skipForwardCommand` (`[30]`) | `transport {action: "seekbackward"\|"seekforward", offsetMs}` | sent as an **offset**, not an absolute target, so the page's own `foraySeek` runs the arithmetic |
+| seek −15 / +30 | `skipBackwardCommand` / `skipForwardCommand`, `preferredIntervals` written **from the payload's `seekBackMs`/`seekForwardMs` on every state change** (2026-09-23; was `[15]`/`[30]` once at load) | `transport {action: "seekbackward"\|"seekforward", offsetMs}` | sent as an **offset**, not an absolute target, so the page's own `foraySeek` runs the arithmetic; the offset is the payload's number, and the page ignores any `seekOffset` a platform sends — §8 |
 | scrub | `changePlaybackPositionCommand` | `transport {action: "seekto", positionMs}` | on the **Foray's** clock — the same clock `positionMs` was reported on |
 | stop | registered, permanently disabled | — | §2.3 |
 
@@ -474,3 +484,118 @@ question; both firing would seek twice (15 + 15, 30 + 30). The founder's report 
 exactly "10" says only WebKit's fires today. **H8, Wyatt:** on the next build, lock
 the phone mid-Foray, read the two skip glyphs (expected 15 / 30), press each once and
 check the in-app playhead moved by exactly that much, then repeat after one seam.
+
+## 9. Founder report, 2026-09-23 (build 2026092326, iPhone) — the paused app loses the car, and the lock screen skips by 10
+
+Two of the five items in that report belong to this surface, verbatim:
+
+> 1. "I started playing 4a, paused and turned off my screen, got in my car, then my
+> car resumed Spotify. This is still wrong."
+>
+> 5. "In the app, I can jump back 15s and forward 30s. On the lock screen, it's 10s in
+> both directions. Both should be 15/30"
+
+Everything in this section is **read from code and from Apple's and WebKit's
+sources**, and nothing in it has been observed on a device — §8.4 is the list of what a
+phone and a car still have to settle.
+
+### 9.1 The rule iOS applies, and where 4a broke it
+
+iOS delivers a Bluetooth stack's or a head unit's *play* to the **Now Playing app**: the
+app that most recently held an **active, non-mixable `.playback` audio session** while
+producing audio, and that has a Now Playing entry and enabled remote-command targets.
+Apple's own guidance for *staying* that app across a pause (the `NowPlayable` sample,
+WWDC19 501) is four things: keep the session active, keep `nowPlayingInfo` with
+`MPNowPlayingInfoPropertyPlaybackRate = 0`, keep the command targets enabled, and clear
+nothing. Release the session (`notifyOthersOnDeactivation`) only when playback ends.
+
+4a's shipping shell violated the first of those by construction:
+
+- The only `.playback` session behind a tape segment is **WebKit's**, activated from
+  WebKit's own media process for the `<audio>` element. `MediaSessionManagerCocoa`
+  (WebKit main) moves the category to none **two seconds after the last session stops
+  playing** (`m_delayCategoryChangeTimer`, `delayBeforeSettingCategoryNone`) and clears
+  its Now Playing claim (`MRMediaRemoteSetCanBeNowPlayingApplication(false)`,
+  `MRMediaRemoteSetNowPlayingInfo(nullptr)`) once no session is eligible.
+- `ForayAudioPlugin.swift` **never held a session in the app process** (§2.2, by
+  design since #537), so once WebKit let go there was no active session anywhere
+  attributed to 4a. `MPNowPlayingInfoCenter` was still set with rate 0 and the
+  command targets were still enabled — the other three rules held — but they belong
+  to an app with no session, and iOS's next play went to the last app that had one.
+- While **paused**, the page writes nothing (the shim's identity and position are both
+  unchanged), so nothing on our side ever re-asserted the entry after WebKit's clear.
+  The record could not show any of this: a pause left **no `nowplaying` row** (the row
+  fired only when the three strings changed), and a remote command that reached the
+  plugin and found no page awake left **no row at all**.
+
+The skip intervals are the same story from the other side. `MPRemoteCommandCenter` and
+WebKit's `RemoteCommandListenerCocoa` register against the same media-remote surface
+for the same app; WebKit re-registers its command set on every play/pause, our
+`preferredIntervals` were written **once, at `load()`**, and the surface shows whoever
+wrote last. WebKit's own skip registration carries a 15 s option under a key that has
+been renamed between WebKit branches (`kMRMediaRemoteOptionSkipInterval` on main,
+`kMRMediaRemoteCommandInfoPreferredIntervalsKey` on safari-7620), and a skip the OS
+shows with **no** honoured interval is drawn with the system default — which is what
+"10s in both directions" is. And the page's own handler then *obeyed* that number:
+`media-session.js`'s `seekbackward`/`seekforward` honoured `details.seekOffset` ("a head
+unit may ask for 10 s"), so the lock screen moved the playhead by a number the in-page
+buttons never use.
+
+### 9.2 What changed
+
+| Where | Change |
+|---|---|
+| `ForayAudioPlugin.swift` | **Holds the app's own `.playback` session while paused.** `sessionMove(from:to:holding:)` is the rule: `.hold` on `(.playing, .paused)` and nowhere else (not `(.none, .paused)` — the restored mini bar writes `paused` at launch, and taking a non-mixable session then would silence another app's music for opening ours); `.releaseQuietly` when the transport plays again; `.releaseAndNotify` when it closes or finishes. `holdSession`/`releaseSession` are the only two places `setActive` appears. A remote play that finds the hold gone (a call ended, a route came and went) takes it again once, before the page is told. |
+| | **Re-asserts the entry** (`reassertNowPlaying`) 3 s after a hold (past WebKit's 2 s category change), on `didEnterBackground`, and on a `routeChange`/`new-device` — the car connecting is the moment before the car sends play. Each is a `nowPlayingReasserted` session row. |
+| | `MPNowPlayingInfoCenter.playbackState` follows the state (`.paused`/`.playing`/`.stopped`); Apple documents it as macOS-only and it is set anyway, named as such. |
+| | **The seek pair is read from the payload** (`seekBackMs`/`seekForwardMs`, which `NowPlaying.java` always read) and `preferredIntervals` is written on **every state change** and on every re-assert, so ours is the later writer. The Swift holds no `15`/`30`/`15_000` anywhere; `shell-invariants` pins it. |
+| | `togglePlayPause` resolves from the last reported state (§3.1). |
+| | Every `transport` event carries `command` (the platform's own, dashed), `origin` (`command-center`) and `at`, and writes a `ForayAudio.remote` line to the unified log; `interruptionBegan` reads `began-while-held` when the plugin was holding. |
+| `player/media-session.js` | Remote skips use `SEEK_BACKWARD_SEC`/`SEEK_FORWARD_SEC` and ignore `seekOffset`. The `playbackState` write and `clear()` report through `onWrite` (`via: "state"` / `"clear"`), so the pause is a row. |
+| `foray-media-session.js` | Every native transport event is re-broadcast as `foray:remote` (`command`, `action`, `origin`, `at`, `handled`) before the handler runs — whether or not one exists. |
+| `player/diagnostic-log.js` / `client.js` | The `remote` row and its header line (`remote commands N, M unhandled`); `via=` on a `nowplaying` row; `sessionActivated`/`sessionReleased`/`nowPlayingReasserted` as session kinds. |
+| Android (`NowPlayingHub`, `ForayAudioPlugin.java`, `PlaybackKeepAliveService`) | Nothing changes about the session: it already lives in the foreground service, which lives while the transport is usable (playing **or** paused), and a paused `WebViewPlayer` is `STATE_READY`/`playWhenReady=false` with `COMMAND_PLAY_PAUSE` declared — now pinned. The transport event carries `origin` (`media-session` / `notification`), `command` and `at`. |
+
+### 9.3 What the next record can say
+
+- `remote commands 0` against a drive that resumed Spotify: the car's play never
+  reached 4a's native side — the OS gave it to somebody else. `sessionActivated
+  (paused)` rows with no `began-while-held` before the car connected would then say
+  the hold was standing and lost anyway, which points at the origin question in §8.4.
+- `remote … handled=n`: the play arrived and the page had no handler (a
+  `setActions()` race) — different bug.
+- `remote … handled=y` with a large `lag`, and no `transport play from remote` after
+  it: the play arrived and the WebView was too asleep to run it — #548's half, the
+  Tier-0 gap in `docs/ios-native-player-gap.md`, and a native resume path is the fix.
+- A `nowplaying … state=paused via=state` row is the pause being told to the platform;
+  its absence is the shim never sending it.
+
+### 9.4 Not verifiable without a phone and a car — stated plainly
+
+1. **Whether the app-process origin is what the lock screen shows at all.** Two
+   earlier field symptoms — "the car showed 4a / blank / blank while the record said
+   five now-playing writes" (2026-09-21) and now 10 s skip icons — are both what
+   WebKit's *own* Now Playing rendering looks like, and would mean the plugin's
+   `MPNowPlayingInfoCenter`/`MPRemoteCommandCenter` registrations were never the
+   displayed ones, because the app process never held a session. Holding one while
+   paused is the first time that can be true; whether iOS then shows *ours* (title,
+   15/30 icons) while paused is the reading to take. If it does not, the remaining
+   fix is to stop taking over `navigator.mediaSession` on iOS and feed WebKit's own
+   (metadata, `setPositionState`, `playbackState`, the eight handlers), which is
+   L-02 reversed.
+2. **Whether taking the app's session on a pause interrupts anything.** Nothing is
+   audible at that moment, so the F11/F13 loop cannot recur by the same mechanism, but
+   whether WebKit's later re-activation on resume interrupts *our* session (expected;
+   harmless; it would read `began-while-held`) or the other way round is a device
+   fact.
+3. **Whether the WebView runs the handler when woken by a remote play.** If not, the
+   record will show `remote … handled=y` and nothing after — §8.3's third case.
+4. **Which door the car uses** (CarPlay, Bluetooth AVRCP, a wired head unit) and
+   whether it sends `play` or `togglePlayPause`; the `remote` row's `command` says.
+
+**Device checks, in order, on the next TestFlight build:** play a podcast; pause from
+the app; lock the screen; wait a minute; get in the car — note which app plays. Then
+copy Playback diagnostics and paste it. Separately, on the lock screen while paused
+and while playing, read the two skip icons (expect 15 and 30) and press each once
+(expect the playhead to move 15 back / 30 forward). Then press the car's play/pause
+button while playing (expect a pause).

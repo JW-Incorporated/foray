@@ -105,12 +105,34 @@ public class ForayAudioPlugin extends Plugin {
     @Override
     public void load() {
         super.load();
-        sink = (action, positionMs, offsetMs) -> {
-            JSObject event = new JSObject();
-            event.put("action", action);
-            event.put("positionMs", positionMs);
-            event.put("offsetMs", offsetMs);
-            notifyListeners(TRANSPORT_EVENT, event);
+        /* An anonymous class rather than a lambda, because it implements BOTH
+           arities: a lambda can only stand for the interface's one abstract
+           method, and the four-argument form is the one that carries the door. */
+        sink = new NowPlayingHub.TransportSink() {
+            @Override
+            public void onTransport(@androidx.annotation.NonNull String action, long positionMs, long offsetMs) {
+                onTransport(action, positionMs, offsetMs, NowPlayingHub.ORIGIN_SESSION);
+            }
+
+            @Override
+            public void onTransport(
+                @androidx.annotation.NonNull String action, long positionMs, long offsetMs,
+                @androidx.annotation.NonNull String origin
+            ) {
+                JSObject event = new JSObject();
+                event.put("action", action);
+                event.put("positionMs", positionMs);
+                event.put("offsetMs", offsetMs);
+                /* For the record's `remote` row (founder, 2026-09-23) and nothing
+                   else: which door, which command, and when — the same three the
+                   iOS plugin's `transportEvent` carries. On Android the platform's
+                   command IS the page action (Media3's `handleXxx` already named
+                   it), except the notification's close, which the shim names. */
+                event.put("origin", origin);
+                event.put("command", action);
+                event.put("at", System.currentTimeMillis());
+                notifyListeners(TRANSPORT_EVENT, event);
+            }
         };
         NowPlayingHub.setSink(sink);
 

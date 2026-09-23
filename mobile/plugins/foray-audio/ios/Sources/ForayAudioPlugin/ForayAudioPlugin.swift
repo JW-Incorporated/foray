@@ -21,10 +21,11 @@ import os
 /// everything a lock screen says (via `player/media-session.js`, which this
 /// plugin never sees and does not know exists): three metadata fields,
 /// previous/next are SEGMENTS, the position is the FORAY's clock, a finished
-/// Foray reports `"none"`. `NowPlaying.java` / `NowPlayingParsingTest.java` /
-/// `NowPlayingHubTest.java` on the Android side are this file's mirror --
-/// `ForayAudioPluginTests.swift` is written to test the same properties against
-/// the same payload shape.
+/// Foray reports `"none"`, and the seek pair is ±15/30 -- carried in the payload
+/// as `seekBackMs`/`seekForwardMs`, which this file READS and never restates.
+/// `NowPlaying.java` / `NowPlayingParsingTest.java` / `NowPlayingHubTest.java`
+/// on the Android side are this file's mirror -- `ForayAudioPluginTests.swift`
+/// is written to test the same properties against the same payload shape.
 ///
 /// ── L-01's DESIGN COMMENT (kanban card t_44e5da2a), SETTLED BEFORE THIS FILE ──
 ///
@@ -38,22 +39,32 @@ import os
 ///    every seam, with no need to suppress WebKit (there is no public API to
 ///    do that anyway). During narration there is no `<audio>` element, so
 ///    there is no second writer at all.
-/// 2. **Audio-session policy: this plugin NEVER touches the session.** It sets
-///    no category and does not change the session's active state — not
-///    `setActive(true)`, not `setActive(false)`. WebKit activates the shared
-///    `.playback` session for the audible `<audio>` element, and
-///    `ForayTtsPlugin` activates `.spokenAudio` for narration; each of the two
-///    real audio producers owns its own activation. An earlier version called
-///    `setActive(true)` from `setNowPlaying` "to ensure commands are delivered,"
-///    believing it a no-op on an already-active session. It is not harmless on
-///    the 4 Hz hot path: re-asserting activation on the session WebKit holds
-///    interrupts WebKit's element, which pauses; the player reconciles and
-///    resumes; the next position write repeats it — the F11/F13 pause loop
-///    (founder device diagnostics, 2026-09-08/09, loop period == the position
-///    write cadence). `MPRemoteCommandCenter` handlers are process-level and are
-///    delivered whichever producer activated the session, so this plugin needs
-///    no activation of its own. `shell-invariants.test.mjs` pins that
-///    `setNowPlaying` contains no `setActive` call so this cannot regress.
+/// 2. **Audio-session policy: this plugin holds the app's session ONLY WHILE
+///    THE TRANSPORT IS PAUSED, and never touches it from the playing path.**
+///    Founder, 2026-09-23: *"I started playing 4a, paused and turned off my
+///    screen, got in my car, then my car resumed Spotify. This is still
+///    wrong."* iOS hands a car's or a Bluetooth stack's play to the NOW
+///    PLAYING app, and Apple's rule for staying that app across a pause is:
+///    keep an active `.playback` session, keep `nowPlayingInfo` with
+///    `playbackRate = 0`, keep the remote-command targets enabled, and clear
+///    nothing. WebKit activates the session for its `<audio>` element from
+///    its own media process and lets go of it once nothing is playing
+///    (`MediaSessionManagerCocoa` moves the category to none two seconds after
+///    the last session stops), and nothing in the APP process ever held one --
+///    so a paused, backgrounded 4a had no session to be Now Playing with, and
+///    the car's play went to whoever had it last. `holdSession` now activates
+///    the app's own `.playback` session on the playing -> paused transition
+///    (nothing is sounding, so nothing can be interrupted by it) and keeps it
+///    until the transport is playing again (`releaseSession`, quietly) or
+///    closed/finished (with `.notifyOthersOnDeactivation`, so the app that was
+///    interrupted may resume -- Apple's own guidance). The playing path still
+///    calls `setActive` NEVER: an earlier version re-asserted activation from
+///    `setNowPlaying` on `render()`'s 4 Hz hot path and interrupted WebKit's
+///    audible element every write -- the F11/F13 pause loop (founder device
+///    diagnostics, 2026-09-08/09). `sessionMove(from:to:holding:)` is the
+///    whole rule, pure, so the XCTests pin it and `shell-invariants.test.mjs`
+///    pins that `setActive` is reachable from nowhere but `holdSession` /
+///    `releaseSession`.
 /// 3. **`stop` on iOS: declined outright**, not merely on a finished Foray.
 ///    Android exposes it because an ongoing foreground-service notification
 ///    needs a one-press exit; iOS has no equivalent ongoing surface -- Now
@@ -85,7 +96,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// M-03 (founder feedback F16, #548). The event this plugin raises when
     /// the SYSTEM changes something under the player: an `AVAudioSession`
     /// interruption, a route change, a media-services reset, the app moving
-    /// between background and foreground.
+    /// between background and foreground -- and, since 2026-09-23, the three
+    /// things this plugin DOES about them (`sessionActivated`,
+    /// `sessionReleased`, `nowPlayingReasserted`), so the record can say
+    /// whether 4a was holding on when the car took the audio elsewhere.
     ///
     /// ── WHY THIS IS A CARD AT ALL ────────────────────────────────────────
     /// The founder's record for the F16 drive holds exactly one finding:
@@ -97,16 +111,46 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// invocation and a media-services reset alike. This plugin can see all
     /// four, and until now threw them away.
     ///
-    /// REPORTED, NEVER ACTED ON. Nothing here resumes, pauses or reconciles:
-    /// `player/queue-manager.js` owns the transport, and a plugin that
-    /// resumed on `shouldResume` would be a second opinion about it. What is
-    /// added is evidence — `player/diagnostic-log.js`'s `session` entry — so
-    /// the next copy of the record answers the founder's question instead of
-    /// restarting the diagnosis.
+    /// REPORTED, NEVER ACTED ON as far as the TRANSPORT goes. Nothing here
+    /// resumes, pauses or reconciles: `player/queue-manager.js` owns the
+    /// transport, and a plugin that resumed on `shouldResume` would be a second
+    /// opinion about it. What the plugin does act on is its OWN Now Playing
+    /// entry: `reassertNowPlaying` re-writes it on the way into the background
+    /// and when a route appears, which changes what the OS shows and never
+    /// what the page plays.
     static let SESSION_EVENT = "session"
+
+    /// Where every command this plugin forwards came from, for the record's
+    /// `remote` row (`REMOTE_ORIGINS` in `player/diagnostic-log.js`). One
+    /// token: `MPRemoteCommandCenter` cannot tell a lock screen from CarPlay
+    /// from a headphone pinch, and inventing a distinction would be prose.
+    static let REMOTE_ORIGIN = "command-center"
 
     private let commandCenter = MPRemoteCommandCenter.shared()
     private var commandsRegistered = false
+
+    /// Everything after the bridge: the payload, the session, the command
+    /// centre and the Now Playing centre are touched from this ONE serial
+    /// queue. `setNowPlaying` arrives on Capacitor's bridge queue, the
+    /// notification observers on main, the remote-command handlers on main,
+    /// and the re-assert timer from wherever it was armed -- four writers of
+    /// `lastPayload` and `holdsSession` otherwise.
+    private let stateQueue = DispatchQueue(label: "ai.jwlabs.foura.audio.state")
+
+    /// The last payload the page sent, so a remote command and a re-assert
+    /// can read the state they are acting in without asking the page (which
+    /// may be asleep). `.empty` until the first `setNowPlaying`.
+    private var lastPayload: NowPlayingPayload = .empty
+
+    /// Whether THIS plugin currently holds the app's audio session active --
+    /// design comment §2. Read by the interruption observer so the record can
+    /// say `began-while-held`, and by `sessionMove` so a release is only
+    /// attempted for an activation we made.
+    private var holdsSession = false
+
+    /// Bumped on every payload, so a re-assert armed for an older pause does
+    /// not fire after the transport has moved on.
+    private var reassertGeneration: UInt64 = 0
 
     /// L-02's log-side needle (`FORAY_AUDIO_REACHED_NEEDLE` in
     /// `tools/mobile/ios-ci.mjs`, pinned to this string by
@@ -125,16 +169,21 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// L-06's log-side needle, written on the same state-change cadence as
     /// `lastLoggedState` — see `logNowPlayingFields`.
     private var lastLoggedFields: String?
+    /// The seek pair last handed to `MPRemoteCommandCenter`, so the two
+    /// `preferredIntervals` writes happen when the numbers or the state change
+    /// and not on every position report.
+    private var lastIntervalsKey: String?
 
     override public func load() {
         registerCommandHandlers()
-        // NOTHING IS PLAYING AT LOAD, so nothing is enabled — the same answer
-        // `NowPlaying.acceptsTransport()` gives for IDLE on Android. Before
-        // this, every command sat at MPRemoteCommand's default (enabled) from
-        // launch, so the first real `setNowPlaying` changed nothing the
-        // command centre could see; see `publishCommands` for why that is
-        // the whole bug behind the founder's 10-second skip glyphs.
-        applyCommandAvailability(CommandSnapshot.silent)
+        // NOTHING IS PLAYING AT LOAD, so nothing is enabled -- the same answer
+        // `NowPlaying.acceptsTransport()` gives for IDLE on Android. Without
+        // this, every command sits at `MPRemoteCommand`'s default (enabled)
+        // from launch, and a lock screen could offer a play button for a
+        // player that has not loaded anything. `.empty` is the payload the
+        // page has not sent yet, so the first real `setNowPlaying` is a
+        // change the command centre can see.
+        applyCommandAvailability(.empty)
         registerSessionObservers()
     }
 
@@ -188,27 +237,72 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         let began = raw == AVAudioSession.InterruptionType.began.rawValue
         let options = (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt) ?? 0
         let shouldResume = AVAudioSession.InterruptionOptions(rawValue: options).contains(.shouldResume)
-        emitSession(
-            kind: began ? "interruptionBegan" : "interruptionEnded",
-            reason: began ? "began" : (shouldResume ? "should-resume" : "no-resume")
-        )
+        stateQueue.async { [weak self] in
+            guard let self = self else { return }
+            /* WHETHER WE WERE HOLDING (2026-09-23). An interruption that lands
+               while this plugin holds the paused app's session is the OS taking
+               that hold away -- a phone call, another app's play, or WebKit's own
+               element resuming -- and the record has to tell it from an
+               interruption of WebKit's audible element, which is what every
+               `interruptionBegan` meant before today. The hold is gone either
+               way: iOS deactivates an interrupted session. */
+            let held = self.holdsSession
+            if began && held { self.holdsSession = false }
+            self.emitSession(
+                kind: began ? "interruptionBegan" : "interruptionEnded",
+                reason: began
+                    ? (held ? "began-while-held" : "began")
+                    : (shouldResume ? "should-resume" : "no-resume")
+            )
+        }
     }
 
     @objc private func handleRouteChange(_ note: Notification) {
         let raw = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) ?? 0
-        emitSession(kind: "routeChange", reason: Self.routeChangeReason(raw))
+        let reason = Self.routeChangeReason(raw)
+        stateQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.emitSession(kind: "routeChange", reason: reason)
+            /* A ROUTE APPEARING IS THE CAR CONNECTING (2026-09-23), and it is the
+               moment just before that car sends its play. A paused transport
+               re-asserts its Now Playing entry here so what the head unit reads --
+               and who it reads it from -- is us. Never on `old-device-gone`: that
+               is the car switching off, and `player/client.js` owns what the
+               transport does about it. */
+            if reason == "new-device" && Self.shouldReassert(for: self.lastPayload.state) {
+                self.reassertNowPlaying(reason: "route")
+            }
+        }
     }
 
     @objc private func handleServicesReset(_ note: Notification) {
-        emitSession(kind: "mediaServicesReset", reason: "reset")
+        stateQueue.async { [weak self] in
+            guard let self = self else { return }
+            /* The media server restarted: every session is gone, ours included. */
+            self.holdsSession = false
+            self.emitSession(kind: "mediaServicesReset", reason: "reset")
+        }
     }
 
     @objc private func handleDidEnterBackground(_ note: Notification) {
-        emitSession(kind: "background", reason: "did-enter")
+        stateQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.emitSession(kind: "background", reason: "did-enter")
+            /* THE SCREEN GOING OFF IS THE FOUNDER'S OWN SEQUENCE ("paused and
+               turned off my screen"). The page is about to be frozen and will
+               write nothing until it wakes; this is the last moment anything can
+               make sure the Now Playing entry the OS holds for us says "paused,
+               4a, here are the buttons" rather than whatever WebKit left. */
+            if Self.shouldReassert(for: self.lastPayload.state) {
+                self.reassertNowPlaying(reason: "background")
+            }
+        }
     }
 
     @objc private func handleWillEnterForeground(_ note: Notification) {
-        emitSession(kind: "foreground", reason: "will-enter")
+        stateQueue.async { [weak self] in
+            self?.emitSession(kind: "foreground", reason: "will-enter")
+        }
     }
 
     /// `AVAudioSession.RouteChangeReason` -> the closed vocabulary
@@ -270,29 +364,18 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// RESOLVES ALWAYS -- see class header. Payload parsing degrades a
     /// missing/garbage field to the honest empty value rather than throwing,
     /// the same rule `NowPlaying.java` states for Android.
+    ///
+    /// RESOLVED BEFORE IT IS APPLIED, and that is not a race worth closing:
+    /// the answer carries no field that depends on the apply (`ok`,
+    /// `platform`, `reason`), the apply runs on `stateQueue` in the order the
+    /// payloads arrived, and a page waiting a bridge round-trip for a lock
+    /// screen write would be a page waiting on a network artwork load
+    /// (`artworkItem(for:)` fetches synchronously).
     @objc func setNowPlaying(_ call: CAPPluginCall) {
         let payload = NowPlayingPayload.from(call.options as? [String: Any] ?? [:])
-        if lastLoggedState != payload.state {
-            lastLoggedState = payload.state
-            Self.logger.notice("ForayAudio.setNowPlaying reached state=\(payload.state.rawValue, privacy: .public)")
+        stateQueue.async { [weak self] in
+            self?.apply(payload)
         }
-        applyNowPlayingInfo(payload)
-        publishCommands(CommandSnapshot.from(payload))
-
-        // This plugin does NOT touch the audio session's active state. See
-        // design comment §2: `setNowPlaying` runs on `render()`'s hot path up to
-        // 4 Hz, and calling `AVAudioSession.setActive(true)` there — even though
-        // it reads as a no-op — repeatedly re-asserts activation on the SHARED
-        // session that WebKit is holding for the audible `<audio>` element. On a
-        // real device that reactivation interrupts WebKit's element, which fires
-        // an unheard `pause`; the player reconciles it, resumes, and the next
-        // ~1 s position write does it again — the F11/F13 pause loop, whose
-        // period matched this write cadence exactly (founder diagnostics,
-        // 2026-09-08/09). The two real audio producers each own activation:
-        // WebKit activates for the `<audio>` element, `ForayTtsPlugin` for
-        // narration. `MPRemoteCommandCenter` handlers are process-level and are
-        // delivered regardless of which of them activated the session, so
-        // nothing here needs to activate it.
 
         var result = JSObject()
         result["ok"] = true
@@ -301,11 +384,156 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(result)
     }
 
+    /// One payload, in order: the entry the OS shows, the commands it may
+    /// offer, then the session decision -- which reads the state BEFORE this
+    /// payload against the state IN it, so it fires on transitions and never
+    /// on the 4 Hz position write. On `stateQueue`.
+    private func apply(_ payload: NowPlayingPayload) {
+        let previous = lastPayload
+        lastPayload = payload
+        reassertGeneration &+= 1
+        if lastLoggedState != payload.state {
+            lastLoggedState = payload.state
+            Self.logger.notice("ForayAudio.setNowPlaying reached state=\(payload.state.rawValue, privacy: .public)")
+        }
+        applyNowPlayingInfo(payload)
+        applyCommandAvailability(payload)
+        applySessionMove(Self.sessionMove(from: previous.state, to: payload.state, holding: holdsSession))
+    }
+
+    // MARK: - the app's own audio session (design comment §2)
+
+    /// What the session does on a transport transition. Pure, so the XCTests
+    /// can table it; the ONLY caller of `holdSession`/`releaseSession` below is
+    /// `applySessionMove`, and `shell-invariants.test.mjs` pins that.
+    enum SessionMove: Equatable {
+        /// Nothing: a position write, a seam, a state we do not act on.
+        case none
+        /// The transport just PAUSED: take the app's `.playback` session so the
+        /// OS keeps 4a as the Now Playing app while nothing is sounding.
+        case hold
+        /// The transport is PLAYING again: let go quietly. WebKit's element has
+        /// its own session; ours would be a second one for the same app, and a
+        /// release with `notifyOthers` here would tell the app WE interrupted
+        /// to resume over our own audio.
+        case releaseQuietly
+        /// The player closed or the Foray finished: let go and tell whoever we
+        /// interrupted -- Apple's guidance for the end of playback, and the one
+        /// moment "Spotify resumed" is the correct outcome.
+        case releaseAndNotify
+    }
+
+    /// The rule. `holding` is whether this plugin's own activation is still
+    /// standing (an interruption or a media-services reset takes it away
+    /// without a payload); a release is only ever attempted for one we made.
+    static func sessionMove(
+        from previous: NowPlayingPayload.State, to next: NowPlayingPayload.State, holding: Bool
+    ) -> SessionMove {
+        switch (previous, next) {
+        /* PLAYING -> PAUSED ONLY. Not `anything -> paused`: the restored mini bar
+           writes `paused` at launch with nothing loaded, and taking a
+           non-mixable session then would silence whatever the listener was
+           playing in another app for opening ours. A pause of our OWN audio is
+           the only pause that has an audio session to keep. */
+        case (.playing, .paused):
+            return .hold
+        case (_, .playing):
+            return holding ? .releaseQuietly : .none
+        case (_, .none), (_, .ended):
+            return holding ? .releaseAndNotify : .none
+        default:
+            return .none
+        }
+    }
+
+    /// Whether a background or a new route should re-write the entry: only a
+    /// PAUSED transport. A playing one is being written every second anyway,
+    /// and an ended or empty one has nothing to assert.
+    static func shouldReassert(for state: NowPlayingPayload.State) -> Bool {
+        state == .paused
+    }
+
+    /// On `stateQueue`.
+    private func applySessionMove(_ move: SessionMove) {
+        switch move {
+        case .none:
+            return
+        case .hold:
+            holdSession(reason: "paused")
+            armReassert()
+        case .releaseQuietly:
+            releaseSession(reason: "playing", notifyOthers: false)
+        case .releaseAndNotify:
+            releaseSession(reason: "closed", notifyOthers: true)
+        }
+    }
+
+    /// Activate the app's own `.playback` session. `try?` throughout: a failure
+    /// here costs the car's play button, not the pause -- and the record says
+    /// so (`sessionActivated` with `failed`), which is the whole point of the
+    /// row. `mode: .default`, not `.spokenAudio`: `ForayTtsPlugin` sets that
+    /// for narration and navigation apps treat it as something to talk over
+    /// and resume; a paused podcast is not that.
+    private func holdSession(reason: String) {
+        let session = AVAudioSession.sharedInstance()
+        var ok = true
+        do {
+            try session.setCategory(.playback, mode: .default, options: [])
+            try session.setActive(true, options: [])
+        } catch {
+            ok = false
+        }
+        holdsSession = ok
+        emitSession(kind: "sessionActivated", reason: ok ? reason : "failed")
+    }
+
+    /// Let go of an activation WE made. `notifyOthersOnDeactivation` only at
+    /// the end of playback -- see `SessionMove`.
+    private func releaseSession(reason: String, notifyOthers: Bool) {
+        let session = AVAudioSession.sharedInstance()
+        var ok = true
+        do {
+            try session.setActive(false, options: notifyOthers ? [.notifyOthersOnDeactivation] : [])
+        } catch {
+            ok = false
+        }
+        holdsSession = false
+        emitSession(kind: "sessionReleased", reason: ok ? reason : "failed")
+    }
+
+    // MARK: - re-asserting the entry
+
+    /// WebKit lets go of its own Now Playing claim some time after its element
+    /// stops -- its category change is delayed two seconds -- and a paused
+    /// page writes nothing after that, so the entry the OS holds is whatever
+    /// the LAST writer left. Three seconds after a hold, ours is written again.
+    static let reassertDelaySec: Double = 3
+
+    private func armReassert() {
+        let generation = reassertGeneration
+        stateQueue.asyncAfter(deadline: .now() + Self.reassertDelaySec) { [weak self] in
+            guard let self = self, self.reassertGeneration == generation else { return }
+            guard Self.shouldReassert(for: self.lastPayload.state) else { return }
+            self.reassertNowPlaying(reason: "pause-settled")
+        }
+    }
+
+    /// Re-write the last payload's entry and command set, unchanged. What
+    /// changes is who wrote LAST, which on this surface is who is shown. On
+    /// `stateQueue`.
+    private func reassertNowPlaying(reason: String) {
+        applyNowPlayingInfo(lastPayload)
+        applyCommandAvailability(lastPayload, force: true)
+        emitSession(kind: "nowPlayingReasserted", reason: reason)
+    }
+
     // MARK: - MPNowPlayingInfoCenter
 
     private func applyNowPlayingInfo(_ payload: NowPlayingPayload) {
+        let center = MPNowPlayingInfoCenter.default()
         guard payload.state != .none else {
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            center.nowPlayingInfo = nil
+            center.playbackState = .stopped
             return
         }
 
@@ -318,7 +546,8 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // Written ONCE per report -- the OS extrapolates from the rate, same
         // reasoning `foray-media-session.js` §1 gives for its own 1 s write
         // floor (see that file's header, and NowPlayingPayload's doc comment
-        // below).
+        // below). ZERO while paused is half of Apple's "stay the Now Playing
+        // app across a pause" rule; the other half is `playbackState` below.
         info[MPNowPlayingInfoPropertyPlaybackRate] = Double(
             payload.state == .playing ? payload.playbackRate : 0
         )
@@ -328,8 +557,27 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             info[MPMediaItemPropertyArtwork] = artwork
         }
 
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        center.nowPlayingInfo = info
+        /* Apple's documentation for `playbackState` says "You must set this
+           property every time the app begins or halts playback, otherwise
+           remote control functionality may not work as expected" -- and, in the
+           next sentence, that it only applies to macOS. It is available from
+           iOS 13 and costs one enum write; it is set for the platform that
+           honours it (Catalyst, and whatever iOS release starts to) and named
+           here so nobody reads its absence as an oversight. */
+        center.playbackState = Self.playbackState(for: payload.state)
         logNowPlayingFields(payload, hasArtwork: info[MPMediaItemPropertyArtwork] != nil)
+    }
+
+    /// The transport word -> `MPNowPlayingPlaybackState`. A finished Foray is
+    /// `.stopped`, not `.paused`: `player/media-session.js` §4's "a play
+    /// button that cannot do anything is worse than none".
+    static func playbackState(for state: NowPlayingPayload.State) -> MPNowPlayingPlaybackState {
+        switch state {
+        case .playing: return .playing
+        case .paused: return .paused
+        case .ended, .none: return .stopped
+        }
     }
 
     /// L-06's log-side needle: WHICH of the three fields were non-empty in the
@@ -378,12 +626,12 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// that scheme is resolved, against `Bundle.main`.
     ///
     /// Loading is SYNCHRONOUS-ISH here (best-effort, cache-friendly) rather
-    /// than a fully async fetch-then-repost: `setNowPlaying` already runs off
-    /// the bridge's own call queue, not the main thread, and a missing or
-    /// slow artwork must never block or crash the metadata write that always
-    /// matters more (title/position/transport). A failed load simply omits
-    /// the key, which is the same "no artwork, never a guess" rule
-    /// `media-session.js`'s `artworkUrl()` already enforces upstream.
+    /// than a fully async fetch-then-repost: this runs on `stateQueue`, never
+    /// the main thread, and a missing or slow artwork must never block or
+    /// crash the metadata write that always matters more
+    /// (title/position/transport). A failed load simply omits the key, which
+    /// is the same "no artwork, never a guess" rule `media-session.js`'s
+    /// `artworkUrl()` already enforces upstream.
     private func artworkItem(for uri: String) -> MPMediaItemArtwork? {
         guard !uri.isEmpty else { return nil }
         let image: UIImage?
@@ -431,42 +679,71 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     // MARK: - MPRemoteCommandCenter
 
     /// Registered ONCE, in `load()`. Handlers are permanent; what changes per
-    /// report is which commands are ENABLED (`applyCommandAvailability`) --
-    /// mirroring Android's `WebViewPlayer` command-set-from-flags mapping,
-    /// which is also built once and toggled by availableCommands.
+    /// report is which commands are ENABLED and what the skip pair says
+    /// (`applyCommandAvailability`) -- mirroring Android's `WebViewPlayer`
+    /// command-set-from-flags mapping, which is also built once and toggled by
+    /// availableCommands.
+    ///
+    /// Every handler does its work on `stateQueue`, because it reads
+    /// `lastPayload` -- and returns `.success` at once: an
+    /// `MPRemoteCommandHandlerStatus` is a receipt, not an outcome, and the
+    /// outcome is the page's.
     private func registerCommandHandlers() {
         guard !commandsRegistered else { return }
         commandsRegistered = true
 
         commandCenter.playCommand.addTarget { [weak self] _ in
-            self?.emitTransport(action: "play")
+            self?.stateQueue.async { self?.remotePlay(command: "play") }
             return .success
         }
         commandCenter.pauseCommand.addTarget { [weak self] _ in
-            self?.emitTransport(action: "pause")
+            self?.stateQueue.async { self?.emitTransport(action: "pause", command: "pause") }
             return .success
         }
         commandCenter.togglePlayPauseCommand.addTarget { [weak self] _ in
-            self?.emitTransport(action: "play")
+            self?.stateQueue.async {
+                guard let self = self else { return }
+                /* RESOLVED HERE, FROM THE LAST STATE THE PAGE SENT (2026-09-23).
+                   This was mapped to `"play"` unconditionally, with a comment
+                   that "the page's own handler resolves the actual toggle" -- it
+                   does not: `setRunning(true)` on a playing transport is a no-op
+                   by design (`player/client.js`: "a `play` that arrived while
+                   already playing must not pause"). So a car with ONE button,
+                   and a headphone pinch, could never pause. */
+                let action = Self.toggleAction(forState: self.lastPayload.state)
+                if action == "play" { self.remotePlay(command: "toggle-play-pause") }
+                else { self.emitTransport(action: action, command: "toggle-play-pause") }
+            }
             return .success
         }
         commandCenter.nextTrackCommand.addTarget { [weak self] _ in
-            self?.emitTransport(action: "nexttrack")
+            self?.stateQueue.async { self?.emitTransport(action: "nexttrack", command: "next-track") }
             return .success
         }
         commandCenter.previousTrackCommand.addTarget { [weak self] _ in
-            self?.emitTransport(action: "previoustrack")
+            self?.stateQueue.async { self?.emitTransport(action: "previoustrack", command: "previous-track") }
             return .success
         }
-        // The ±15/30 intervals are NOT set here any more: they are written on
-        // every publish (`applyCommandAvailability`), because a one-time write
-        // at load is exactly what WebKit's later registration overwrote.
-        commandCenter.skipBackwardCommand.addTarget { [weak self] _ in
-            self?.emitTransport(action: "seekbackward", offsetMs: Self.seekBackwardMs)
+        commandCenter.skipBackwardCommand.addTarget { [weak self] event in
+            let interval = (event as? MPSkipIntervalCommandEvent)?.interval ?? 0
+            self?.stateQueue.async {
+                guard let self = self else { return }
+                self.emitTransport(
+                    action: "seekbackward", command: "skip-backward",
+                    offsetMs: Self.skipOffsetMs(payloadMs: self.lastPayload.seekBackMs, eventInterval: interval)
+                )
+            }
             return .success
         }
-        commandCenter.skipForwardCommand.addTarget { [weak self] _ in
-            self?.emitTransport(action: "seekforward", offsetMs: Self.seekForwardMs)
+        commandCenter.skipForwardCommand.addTarget { [weak self] event in
+            let interval = (event as? MPSkipIntervalCommandEvent)?.interval ?? 0
+            self?.stateQueue.async {
+                guard let self = self else { return }
+                self.emitTransport(
+                    action: "seekforward", command: "skip-forward",
+                    offsetMs: Self.skipOffsetMs(payloadMs: self.lastPayload.seekForwardMs, eventInterval: interval)
+                )
+            }
             return .success
         }
         commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
@@ -477,10 +754,13 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             // {action:"seekto", positionMs}` on the FORAY's clock -- the
             // conversion lives in `seekToTransportEvent` so
             // `ForayAudioPluginTests` can pin it without a live command center.
-            self?.notifyListeners(
-                Self.TRANSPORT_EVENT,
-                data: Self.seekToTransportEvent(positionTime: event.positionTime)
-            )
+            let positionTime = event.positionTime
+            self?.stateQueue.async {
+                self?.notifyListeners(
+                    Self.TRANSPORT_EVENT,
+                    data: Self.seekToTransportEvent(positionTime: positionTime)
+                )
+            }
             return .success
         }
 
@@ -492,147 +772,106 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         commandCenter.stopCommand.isEnabled = false
     }
 
-    /// What the command centre is told, reduced to the bits that change what
-    /// the lock screen SHOWS: which commands are enabled, and which item
-    /// they belong to. Pure and `Equatable` so `publishCommands` can ask
-    /// "does this write change anything?" and `ForayAudioPluginTests` can pin
-    /// the answers without a live `MPRemoteCommandCenter`.
-    ///
-    /// `identity` is the title: a seam is a NEW `<audio>` element, and a new
-    /// element is a new WebKit registration (see `publishCommands`), so a
-    /// write whose flags are unchanged but whose item is new must still be a
-    /// change here. A position-only write never is -- those arrive at up to
-    /// 4 Hz and must not become 4 Hz of MediaRemote traffic.
-    struct CommandSnapshot: Equatable {
-        let play: Bool
-        let pause: Bool
-        let next: Bool
-        let previous: Bool
-        let seekBack: Bool
-        let seekForward: Bool
-        let seekTo: Bool
-        let identity: String
-
-        /// Nothing enabled -- the truth at load, and the value every publish
-        /// passes through so the command centre sees a change.
-        static let silent = CommandSnapshot(
-            play: false, pause: false, next: false, previous: false,
-            seekBack: false, seekForward: false, seekTo: false, identity: ""
-        )
-
-        /// `nowPlayingPayload()`'s contract, exactly what `WebViewPlayer` does
-        /// with the same flags on Android. A finished Foray (`state == .none`
-        /// OR `state == .ended`) enables nothing, mirroring
-        /// `NowPlaying.acceptsTransport()`, which declines transport for both
-        /// IDLE and ENDED.
-        static func from(_ payload: NowPlayingPayload) -> CommandSnapshot {
-            let transportable = payload.state != .none && payload.state != .ended
-            guard transportable else { return .silent }
-            return CommandSnapshot(
-                play: payload.canPlay,
-                pause: payload.canPause,
-                next: payload.hasNext,
-                previous: payload.hasPrevious,
-                seekBack: payload.canSeekBack,
-                seekForward: payload.canSeekForward,
-                seekTo: payload.canSeekTo,
-                identity: payload.title
-            )
+    /// A remote PLAY, from whichever command carried it. If the transport is
+    /// paused and our hold was taken away in the meantime (a call ended, a
+    /// route came and went), take it again BEFORE the page is told: the page
+    /// will play through WebKit's session a moment later, and until then the
+    /// OS should already see an active session behind the app it just handed
+    /// a play to. Once per press, never on the playing path -- the F11/F13
+    /// rule. On `stateQueue`.
+    private func remotePlay(command: String) {
+        if lastPayload.state == .paused && !holdsSession {
+            holdSession(reason: "remote-play")
         }
+        emitTransport(action: "play", command: command)
     }
 
-    /// The last snapshot handed to `publishCommands`, so it can tell a write
-    /// that changes the command list from one that only moves the playhead.
-    private var publishedCommands: CommandSnapshot?
-
-    /// Whether a write must be pushed to MediaRemote as a CHANGE: the first
-    /// one always, then any whose snapshot differs. Pure; pinned by
-    /// `ForayAudioPluginTests`.
-    static func shouldRepublish(previous: CommandSnapshot?, next: CommandSnapshot) -> Bool {
-        previous != next
+    /// What a one-button press means, from the last state the page reported.
+    /// Pure, so the XCTests pin it: playing -> pause; anything else -> play,
+    /// because the page's own `setRunning` declines a play it cannot honour.
+    static func toggleAction(forState state: NowPlayingPayload.State) -> String {
+        state == .playing ? "pause" : "play"
     }
 
-    /// Push one write's command list to the OS -- and make sure it LANDS.
+    /// The offset a skip press carries: the PAYLOAD's number (the page's own
+    /// ±15/30, `player/media-session.js`'s constants), and only when the page
+    /// has never sent one, the interval the OS reports it used. Never a
+    /// literal in this file.
+    static func skipOffsetMs(payloadMs: Int64, eventInterval: TimeInterval) -> Int64 {
+        if payloadMs > 0 { return payloadMs }
+        guard eventInterval.isFinite, eventInterval > 0 else { return 0 }
+        return Int64((eventInterval * 1000).rounded())
+    }
+
+    /// The `preferredIntervals` the two skip commands should advertise, in
+    /// seconds, from the payload's milliseconds. Empty when the page sent
+    /// nothing, which leaves the OS its default rather than inventing one.
+    static func preferredIntervals(ms: Int64) -> [NSNumber] {
+        ms > 0 ? [NSNumber(value: Double(ms) / 1000.0)] : []
+    }
+
+    /// Enable/disable each command from the `can*`/`has*` flags -- exactly
+    /// `nowPlayingPayload()`'s contract, and exactly what `WebViewPlayer`
+    /// does with the same flags on Android. A finished Foray
+    /// (`state == .none` OR `state == .ended`) disables every transport
+    /// command, mirroring `NowPlaying.acceptsTransport()`, which declines
+    /// transport for both IDLE and ENDED.
     ///
-    /// ── WHY THIS IS NOT JUST `applyCommandAvailability(payload)` ────────────
-    /// Founder, 2026-09-23 (iPhone, build 2026092326): "In the app, I can jump
-    /// back 15s and forward 30s. On the lock screen, it's 10s in both
-    /// directions. Both should be 15/30." This plugin had set 15/30 in
-    /// `load()` since L-01, so the numbers were never wrong; they were never
-    /// SHOWN. The process's supported-command list is a single register in
-    /// MediaRemote (`MRMediaRemoteSetSupportedCommands`, whole list, last
-    /// writer wins) and it has two writers in this app: `MPRemoteCommandCenter`
-    /// here, and WebKit's own `RemoteCommandListenerCocoa`, which registers a
-    /// default command set for every audible `<audio>` element -- play, pause,
-    /// seek, and skip forward/backward at ITS interval (15 on today's WebKit
-    /// trunk; on shipped iOS the option was written under a wrong key,
-    /// WebKit commit 2d26a621 of 2025-08-28 fixed it, so the OS saw no
-    /// interval at all and drew its default glyph: the "10"). WebKit writes
-    /// when an element starts; that is AFTER `load()`, so WebKit's list
-    /// replaced ours. Then nothing put ours back: `applyCommandAvailability`
-    /// assigned the same `isEnabled` values every command already had from
-    /// launch, and a setter that changes nothing gives the command centre
-    /// nothing to publish. §2.1 of docs/ios-lock-screen.md argues the
-    /// metadata wins because our write is structurally the later one -- true,
-    /// but only for a write that HAPPENS.
-    ///
-    /// So: every write whose snapshot differs from the last is published as
-    /// a real change -- everything off, then the real flags on the NEXT main
-    /// turn (the command centre coalesces same-turn writes, and off-then-on
-    /// in one turn is "unchanged"). Commands start off at `load()` for the
-    /// same reason. The intervals are re-written with every publish. The
-    /// disabled moment is one runloop turn; the lock screen is repainted
-    /// asynchronously by the daemon and does not draw it.
-    ///
-    /// WHAT THIS CANNOT PROMISE, said plainly: whether MediaRemote delivers a
-    /// skip press to OUR handler, WebKit's, or both once our list is current
-    /// is a device question (a Simulator has no lock screen). Both firing
-    /// would seek twice; the founder's report of exactly 10 says only one
-    /// fires today. The device check is in docs/DECISIONS.md 2026-09-23.
-    private func publishCommands(_ next: CommandSnapshot) {
-        let republish = Self.shouldRepublish(previous: publishedCommands, next: next)
-        publishedCommands = next
-        if republish {
-            applyCommandAvailability(.silent)
-            DispatchQueue.main.async { [weak self] in
-                self?.applyCommandAvailability(next)
-            }
-        } else {
-            applyCommandAvailability(next)
+    /// THE SKIP PAIR IS WRITTEN HERE, PER STATE CHANGE, and not once in
+    /// `load()` (founder, 2026-09-23: "On the lock screen, it's 10s in both
+    /// directions"). `MPRemoteCommandCenter` and WebKit's own remote-command
+    /// listener register against the same media-remote surface, and WebKit
+    /// re-registers its set on every play/pause -- so a pair written once at
+    /// load is a pair written FIRST, and this surface shows whoever wrote
+    /// last. The numbers are the payload's (`seekBackMs`/`seekForwardMs`, the
+    /// page's own ±15/30); `force` is the re-assert path, which writes even
+    /// when nothing changed because "who wrote last" is the whole point.
+    private func applyCommandAvailability(_ payload: NowPlayingPayload, force: Bool = false) {
+        let transportable = payload.state != .none && payload.state != .ended
+
+        let intervalsKey = "\(payload.state.rawValue)/\(payload.seekBackMs)/\(payload.seekForwardMs)"
+        if force || intervalsKey != lastIntervalsKey {
+            lastIntervalsKey = intervalsKey
+            commandCenter.skipBackwardCommand.preferredIntervals = Self.preferredIntervals(ms: payload.seekBackMs)
+            commandCenter.skipForwardCommand.preferredIntervals = Self.preferredIntervals(ms: payload.seekForwardMs)
         }
-    }
 
-    /// Enable/disable each command from the snapshot, and re-assert the skip
-    /// intervals with it. Written on EVERY publish, never only at load --
-    /// see `publishCommands` for the founder report that made that rule.
-    private func applyCommandAvailability(_ snapshot: CommandSnapshot) {
-        commandCenter.skipBackwardCommand.preferredIntervals = [15]
-        commandCenter.skipForwardCommand.preferredIntervals = [30]
-
-        commandCenter.playCommand.isEnabled = snapshot.play
-        commandCenter.pauseCommand.isEnabled = snapshot.pause
-        commandCenter.togglePlayPauseCommand.isEnabled = snapshot.play || snapshot.pause
-        commandCenter.nextTrackCommand.isEnabled = snapshot.next
-        commandCenter.previousTrackCommand.isEnabled = snapshot.previous
-        commandCenter.skipBackwardCommand.isEnabled = snapshot.seekBack
-        commandCenter.skipForwardCommand.isEnabled = snapshot.seekForward
-        commandCenter.changePlaybackPositionCommand.isEnabled = snapshot.seekTo
+        commandCenter.playCommand.isEnabled = transportable && payload.canPlay
+        commandCenter.pauseCommand.isEnabled = transportable && payload.canPause
+        commandCenter.togglePlayPauseCommand.isEnabled =
+            transportable && (payload.canPlay || payload.canPause)
+        commandCenter.nextTrackCommand.isEnabled = transportable && payload.hasNext
+        commandCenter.previousTrackCommand.isEnabled = transportable && payload.hasPrevious
+        commandCenter.skipBackwardCommand.isEnabled = transportable && payload.canSeekBack
+        commandCenter.skipForwardCommand.isEnabled = transportable && payload.canSeekForward
+        commandCenter.changePlaybackPositionCommand.isEnabled = transportable && payload.canSeekTo
         // stopCommand stays disabled always -- design comment §3.
     }
 
-    private func emitTransport(action: String, positionMs: Int64? = nil, offsetMs: Int64? = nil) {
+    private func emitTransport(action: String, command: String, positionMs: Int64? = nil, offsetMs: Int64? = nil) {
+        /* The unified log too, for the same reason `emitSession` writes it: a
+           command that reached this process while the WebView was asleep is
+           exactly the one the on-device record cannot hold. */
+        Self.logger.notice(
+            "ForayAudio.remote command=\(command, privacy: .public) action=\(action, privacy: .public)"
+        )
         notifyListeners(
             Self.TRANSPORT_EVENT,
-            data: Self.transportEvent(action: action, positionMs: positionMs, offsetMs: offsetMs)
+            data: Self.transportEvent(action: action, positionMs: positionMs, offsetMs: offsetMs, command: command)
         )
     }
 
-    /// The wire shape of a `transport` event: `{action, positionMs?, offsetMs?}`
-    /// in MILLISECONDS (`foray-media-session.js`'s own doc comment on
-    /// `TRANSPORT_EVENT`), which the web half converts to seconds before
-    /// handing it to `media-session.js`'s spec-shaped handlers. Pure and
-    /// `internal` (not `private`) so `ForayAudioPluginTests` can pin it.
-    static func transportEvent(action: String, positionMs: Int64? = nil, offsetMs: Int64? = nil) -> JSObject {
+    /// The wire shape of a `transport` event: `{action, positionMs?, offsetMs?,
+    /// command, origin, at}` in MILLISECONDS (`foray-media-session.js`'s own
+    /// doc comment on `TRANSPORT_EVENT`), which the web half converts to
+    /// seconds before handing it to `media-session.js`'s spec-shaped handlers.
+    /// `command`/`origin`/`at` are for the record's `remote` row and nothing
+    /// else reads them. Pure and `internal` (not `private`) so
+    /// `ForayAudioPluginTests` can pin it.
+    static func transportEvent(
+        action: String, positionMs: Int64? = nil, offsetMs: Int64? = nil,
+        command: String? = nil, at: Double = Date().timeIntervalSince1970 * 1000
+    ) -> JSObject {
         var event = JSObject()
         event["action"] = action
         if let positionMs = positionMs {
@@ -641,6 +880,9 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         if let offsetMs = offsetMs {
             event["offsetMs"] = Int(offsetMs)
         }
+        event["command"] = command ?? action
+        event["origin"] = REMOTE_ORIGIN
+        event["at"] = Int(at.rounded())
         return event
     }
 
@@ -655,15 +897,6 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// way `NowPlayingPayload` clamps a negative `positionMs` it is sent.
     static func seekToTransportEvent(positionTime: TimeInterval) -> JSObject {
         let positionMs = Int64(max(0, positionTime * 1000).rounded())
-        return transportEvent(action: "seekto", positionMs: positionMs)
+        return transportEvent(action: "seekto", positionMs: positionMs, command: "change-position")
     }
-
-    /// `04_VOICE_AUDIO_SPEC.md`'s ±30/15 s, mirroring the constants
-    /// `foray-media-session.js` exports as `SEEK_BACKWARD_SEC`/
-    /// `SEEK_FORWARD_SEC`. Duplicated here rather than read from the web
-    /// file, same reason Android's plugin duplicates them: this file has no
-    /// access to `player/`'s module graph, and `foray-media-session.test.mjs`
-    /// already asserts the web constants match `player/media-session.js`.
-    private static let seekBackwardMs: Int64 = 15_000
-    private static let seekForwardMs: Int64 = 30_000
 }

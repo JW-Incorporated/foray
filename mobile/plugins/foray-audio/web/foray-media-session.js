@@ -153,6 +153,19 @@ export const SESSION_EVENT = "session";
  *  find. Namespaced so nothing else on the page can collide with it. */
 export const SESSION_DOM_EVENT = "foray:session";
 
+/** How a native `TRANSPORT_EVENT` reaches the RECORD, as distinct from the page's
+ *  handler (founder, 2026-09-23: "got in my car, then my car resumed Spotify").
+ *
+ *  `dispatch()` below hands the press to the handler `client.js` installed, and the
+ *  handler writes its own `transport … from remote` row — so a press that reached the
+ *  plugin and found NO handler, or one the page was too asleep to act on, left no
+ *  row at all, and "the car's play did nothing" and "the car's play never came" read
+ *  the same. Every native transport event is therefore re-broadcast here as well,
+ *  with what the plugin saw (`command`, `origin`, `at`) and what this file did with
+ *  it (`action`, `handled`), for `player/diagnostic-log.js`'s `remoteCommand()`. Same
+ *  channel and same reasons as `SESSION_DOM_EVENT`. */
+export const REMOTE_DOM_EVENT = "foray:remote";
+
 /** Every action we can route, which is exactly `MEDIA_ACTIONS` in
  *  `player/media-session.js`. An action outside this set THROWS from
  *  `setActionHandler`, which is what Chromium does and therefore what
@@ -715,10 +728,11 @@ export function createForayMediaSession(env) {
    *
    * The details objects are the SPEC's, not ours: `seekOffset` in seconds for
    * `seekbackward`/`seekforward`, `seekTime` in seconds for `seekto`. That is what
-   * makes `media-session.js`'s handlers — written for a browser — run unmodified,
-   * and it is why `offsetOf(details, fallback)` in that file honours a head unit's
-   * own number: on Android the number IS ours, sent back so the page applies the
-   * same ±15/30 the in-page buttons use.
+   * makes `media-session.js`'s handlers — written for a browser — run unmodified.
+   * `seekOffset` is still forwarded for the shape's sake, and since 2026-09-23 the
+   * page IGNORES it (founder: "Both should be 15/30"): the number native sends back
+   * is the page's own anyway, and a platform that sent its own would now be
+   * overruled rather than obeyed.
    *
    * `fastSeek` is deliberately never sent. Whether a seek may be approximate is
    * `player/seek-policy.js`'s decision (ADR-0007/0008) and `media-session.js` drops
@@ -731,6 +745,16 @@ export function createForayMediaSession(env) {
     const closing = sent === CLOSE_ACTION;
     const action = closing ? "stop" : sent;
     const handler = handlers.get(action);
+    /* BEFORE the handler runs and whether or not one exists — see REMOTE_DOM_EVENT.
+       `command` defaults to the action for a native side that sends none (an older
+       plugin), and the notification's close is its own command. */
+    dispatchRemote({
+      command: str(event?.command) || (closing ? CLOSE_ACTION : action),
+      action: action,
+      origin: str(event?.origin),
+      at: event?.at,
+      handled: Boolean(handler),
+    });
     if (!handler) {
       /* Not an error worth shouting about: native declares commands from the same
          action set, so this means a press raced a `setActions()` that removed one —
@@ -793,6 +817,22 @@ export function createForayMediaSession(env) {
 
   function subscribeSession() {
     return subscribeTo(SESSION_EVENT, dispatchSession);
+  }
+
+  /** One native transport event -> one `REMOTE_DOM_EVENT` on `window`, for the
+   *  record. Forwarded as data and judged nowhere here, exactly as `dispatchSession`
+   *  is: `player/diagnostic-log.js` admits the command and origin vocabularies and
+   *  drops the rest. Total, because it runs on the transport's own path and a
+   *  diagnostic must never cost a press. */
+  function dispatchRemote(detail) {
+    try {
+      if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") return;
+      const Ctor = window.CustomEvent;
+      if (typeof Ctor !== "function") return;
+      window.dispatchEvent(new Ctor(REMOTE_DOM_EVENT, { detail: detail }));
+    } catch (e) {
+      log("foray-media-session: could not re-broadcast a remote command", e);
+    }
   }
 
   /* `addListener` is on the injected bridge itself (`native-bridge.js`'s
