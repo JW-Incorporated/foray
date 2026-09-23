@@ -1,11 +1,11 @@
 {
-  "deploy_id": "2891c22e6e1d40d0",
+  "deploy_id": "f0b6a5e26e6e9019",
   "files": {
-    "app.js": "sha256:77ca15cb8de1861014b4daa080762091855e7bcb9df711217fff29db50329c6c",
+    "app.js": "sha256:10a82f4c5fafb0e5b9ca37ad130bba3b7726ba18fa7b3736dfb70eba8092028c",
     "data/catalog-client.json": "sha256:734c542d08decc62fd401593cbf19c25216c366fe99ebc86fce2192dcf9d85c4",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:4e50f24a3829ca6f9264a13ae6ea327d0acaa2a0b898ba1e13b5c97aa53ea3b7",
-    "data/forays-directory.json": "sha256:417d074f6d092a3ff6119f9eab66d269338b3455b93c471a698c2a2a5bc64cfd",
+    "data/forays-directory.json": "sha256:d527426105ec163d4d5e3bfeebfc44ebec65ea4f853aa5ce547275eabd1da37f",
     "data/forays.json": "sha256:e2fe2e76371261c335814f0387cbb70de78aba1fe82f186c009e29c2a2854c61",
     "data/item-tags.json": "sha256:d4a1eccdbf270a4982cf79c6f737e68052b80a91569bbe45aba70ce576d6c064",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
@@ -21,7 +21,7 @@
     "index.html": "sha256:e83f8aa82367520db2beb9e26f5546b466de5027310d8d4dd9e5b820a22f1c88",
     "manifest.json": "sha256:e99d17d7b18d314cf6a60286c9f28e77761f5642d44117115c219b2acfb9c118",
     "player/build-stamp.js": "sha256:0aa452a1b831afd05b661c910a50e65082a81e9587e0187ce491e41837849dfd",
-    "player/client.js": "sha256:0157f58221104d72932573a87c9ba3e96a597f593624776c62e63ddea23d7f52",
+    "player/client.js": "sha256:f54ec82dc100c9758ad7bb53537de355488215366eafe9ae24a179e354c63ca5",
     "player/default-voice.js": "sha256:ebdd4cb5067b937ec0ba02e1be6d8fc84c7e73e58078bcafc2ce8911d26ba82f",
     "player/diagnostic-log.js": "sha256:d1c05f2d5b78bf8d7721fcfbfc4cb1775e8752b94bae619a9b6cc385f9683187",
     "player/durable-store.js": "sha256:0b0e47397cce25751ed93823bb7e920cd36c7ea01bb56246c9422b01ab2c3fed",
@@ -46,7 +46,7 @@
     "player/seek-policy.js": "sha256:248ca07cef5c5c7c09bd5967b1e86d8a3254493033aec77bb8e3d4b8f25e350c",
     "player/segment-strip.js": "sha256:7bdb38a1de93cabc1b64f066bcc0ff53fe881f337ac5f1825e74c2615ea8eaa0",
     "player/sheet-drag-dismiss.js": "sha256:cfa5a441a01ee1dddfe309d7c81ab5408a1d03d46b48f74d01b4680d2ce89c55",
-    "player/strip-scrub-gesture.js": "sha256:ec1e9190074d98f876a190c11661e03e5e834fda4dcb512a3f351e5d1d7d10ce",
+    "player/strip-scrub-gesture.js": "sha256:b3ceed350a05b2fa06cc18981b2f03d141696c0683c3c110b7a8db83d4f4dcef",
     "player/tts-bridge.js": "sha256:3624d19408abb0cbede260d358681685698c506509837f2b593cda58de4217c2",
     "search-engine.js": "sha256:7e9e7b5b88dbda14fda86181bc3081033a5c880d1fc5b3b578b691c616c82da9",
     "styles.css": "sha256:f92110d70e30eabee583cc88f8be0c639831abd9a898e05fbc53ecf2d2c6ff96"
