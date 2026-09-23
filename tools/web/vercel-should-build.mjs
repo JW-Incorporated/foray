@@ -30,6 +30,10 @@
  * nobody needed. One failure mode is a production 404 that nobody sees until a
  * listener hits it; the other is a few cents.
  *
+ * PREVIEWS ARE THE EXCEPTION (2026-09-23): a non-production build first has
+ * to be ASKED for — see "previews are opt-in only" below — and there the rule
+ * fails CLOSED, because a skipped preview harms nobody.
+ *
  * Exit codes are Vercel's, and they are backwards from intuition:
  *   exit 1 -> BUILD.  exit 0 -> SKIP.
  *
@@ -117,6 +121,78 @@ export function decide(changedPaths) {
   return changedPaths.some(pathMatters) ? BUILD : SKIP;
 }
 
+/* ------------------------------------------------ previews are opt-in only */
+
+/* FOUNDER, 2026-09-23, on the Vercel bill: "Yeah make that change" — to skipping
+ * preview builds for every branch except `main` unless a PR asks for one.
+ *
+ * WHY THE PATH RULES ABOVE WERE NOT ENOUGH. They skip pushes that change
+ * nothing Vercel serves, and that caught docs and tests. But the work that
+ * dominates this repo now — fix fleets of eight parallel branches plus an
+ * integration branch plus repair pushes, and the CI manifest commit on top of
+ * each — edits `app.js`, `styles.css` and `player/*.js`, which ARE served. So
+ * every one of those pushes paid two npm installs for a preview that nobody
+ * opened. Nothing depends on a preview: the required checks are `backend` and
+ * `data-and-site`, and Playwright runs in CI against its own local server.
+ *
+ * THIS INVERTS THE FILE'S FAIL-OPEN RULE, DELIBERATELY, AND ONLY FOR PREVIEWS.
+ * Fail-open exists because a skipped PRODUCTION build leaves listeners on old
+ * bytes. A skipped preview costs nobody anything, so for previews "I cannot
+ * tell" means skip. Production is untouched: `main()` still returns BUILD for
+ * `VERCEL_ENV === "production"` before any of this runs.
+ *
+ * TWO WAYS TO ASK FOR ONE:
+ *   - a branch named `preview/...` — reliable, needs no network;
+ *   - a `preview` label on the branch's open PR — best-effort: it is read from
+ *     GitHub's unauthenticated API, which Vercel's shared build IPs can exhaust,
+ *     and any failure to read it skips. Adding the label does not itself start
+ *     a build; the next push (or a Redeploy in Vercel) does.
+ * Either way the path rules still apply: a preview that changes nothing served
+ * still skips. */
+
+export const PREVIEW_LABEL = "preview";
+export const PREVIEW_BRANCH_PREFIX = "preview/";
+
+/** Pure: may this preview build at all? `labels` is null when they could not be read. */
+export function previewAllowed({ branch, labels }) {
+  if (String(branch || "").startsWith(PREVIEW_BRANCH_PREFIX)) {
+    return { allow: true, reason: `branch starts with ${PREVIEW_BRANCH_PREFIX}` };
+  }
+  if (Array.isArray(labels) && labels.includes(PREVIEW_LABEL)) {
+    return { allow: true, reason: `PR carries the "${PREVIEW_LABEL}" label` };
+  }
+  if (labels === null) {
+    return { allow: false, reason: "PR labels could not be read; previews are opt-in, so skip" };
+  }
+  return { allow: false, reason: `previews are opt-in: no "${PREVIEW_LABEL}" label and branch is not ${PREVIEW_BRANCH_PREFIX}*` };
+}
+
+/** The labels on the branch's PR, [] when there is no open PR, null when unreadable. */
+async function prLabels(env) {
+  const owner = env.VERCEL_GIT_REPO_OWNER;
+  const repo = env.VERCEL_GIT_REPO_SLUG;
+  const branch = env.VERCEL_GIT_COMMIT_REF;
+  if (!owner || !repo || !branch || typeof fetch !== "function") return null;
+  const api = `https://api.github.com/repos/${owner}/${repo}`;
+  const get = async (url) => {
+    const res = await fetch(url, {
+      headers: { accept: "application/vnd.github+json", "user-agent": "foray-vercel-should-build" },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  };
+  try {
+    const pr = env.VERCEL_GIT_PULL_REQUEST_ID;
+    if (pr) return (await get(`${api}/issues/${encodeURIComponent(pr)}/labels`)).map((l) => l.name);
+    const pulls = await get(`${api}/pulls?state=open&head=${encodeURIComponent(`${owner}:${branch}`)}`);
+    return pulls.flatMap((p) => (p.labels || []).map((l) => l.name));
+  } catch (err) {
+    console.log(`[vercel-should-build] could not read PR labels (${err.message})`);
+    return null;
+  }
+}
+
 /* ------------------------------------------------------------------ the CLI */
 
 function changedFiles() {
@@ -140,11 +216,20 @@ function changedFiles() {
   }
 }
 
-function main() {
+async function main() {
   /* PRODUCTION ALWAYS BUILDS. A skipped production deploy leaves the live site
      on older bytes while `main` says otherwise, and the saving is one build a
      merge. Previews are where the volume is. */
   if (process.env.VERCEL_ENV === "production") return BUILD;
+
+  const branch = process.env.VERCEL_GIT_COMMIT_REF;
+  const labels = String(branch || "").startsWith(PREVIEW_BRANCH_PREFIX) ? [] : await prLabels(process.env);
+  const preview = previewAllowed({ branch, labels });
+  if (!preview.allow) {
+    console.log(`[vercel-should-build] skip preview — ${preview.reason}`);
+    return SKIP;
+  }
+  console.log(`[vercel-should-build] preview requested — ${preview.reason}`);
 
   const files = changedFiles();
   if (!files) return BUILD;
@@ -168,5 +253,16 @@ function main() {
    made the module unimportable. A name comparison has neither problem. */
 const invokedAs = String(process.argv[1] || "").split(String.fromCharCode(92)).join("/");
 if (invokedAs.endsWith("/vercel-should-build.mjs") || invokedAs.endsWith("vercel-should-build.mjs")) {
-  process.exit(main());
+  /* Async because the label read is a fetch. A throw anywhere in main is a
+     preview we could not reason about (production returned before any await),
+     so it skips rather than builds. */
+  /* exitCode, not process.exit(): exiting synchronously while fetch's socket
+     is still closing aborts Node on Windows (libuv UV_HANDLE_CLOSING). */
+  main().then(
+    (code) => { process.exitCode = code; },
+    (err) => {
+      console.log(`[vercel-should-build] skip preview — unexpected error: ${err && err.message}`);
+      process.exitCode = process.env.VERCEL_ENV === "production" ? BUILD : SKIP;
+    },
+  );
 }

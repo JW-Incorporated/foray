@@ -189,3 +189,61 @@ test("every exception is a function and at least one path reaches each", () => {
     assert.ok(samples.some((s) => rescue(s)), "every exception must rescue something real");
   }
 });
+
+/* ---------- previews are opt-in (founder, 2026-09-23) -------------------- */
+
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { previewAllowed, PREVIEW_LABEL, PREVIEW_BRANCH_PREFIX } from "./vercel-should-build.mjs";
+
+const SCRIPT = fileURLToPath(new URL("./vercel-should-build.mjs", import.meta.url));
+
+/* Run the real CLI with a controlled environment. Everything Vercel-ish is
+   stripped first so the developer's own shell cannot leak a VERCEL_ENV in. */
+function runCli(extraEnv) {
+  const env = { ...process.env };
+  for (const k of Object.keys(env)) if (k.startsWith("VERCEL_")) delete env[k];
+  return spawnSync(process.execPath, [SCRIPT], { env: { ...env, ...extraEnv }, encoding: "utf8" });
+}
+
+test("a preview with no label and an ordinary branch name is skipped", () => {
+  /* MUTATION: return allow:true at the end of previewAllowed — this fails. */
+  const v = previewAllowed({ branch: "audit-fix/l1-identity-nav", labels: [] });
+  assert.equal(v.allow, false);
+  assert.equal(previewAllowed({ branch: "fix/x", labels: ["bug", "needs-founder"] }).allow, false);
+});
+
+test("a preview is allowed by the label or by a preview/ branch", () => {
+  assert.equal(previewAllowed({ branch: "fix/x", labels: [PREVIEW_LABEL] }).allow, true);
+  assert.equal(previewAllowed({ branch: `${PREVIEW_BRANCH_PREFIX}search-pill`, labels: null }).allow, true);
+  /* The prefix is a prefix, not a substring. */
+  assert.equal(previewAllowed({ branch: "fix/preview/thing", labels: [] }).allow, false);
+});
+
+test("unreadable labels SKIP a preview — the one place this file fails closed", () => {
+  /* The inverse of the path rules' fail-open, on purpose: a skipped preview
+     costs nobody anything. MUTATION: treat labels === null as allow. */
+  const v = previewAllowed({ branch: "fix/x", labels: null });
+  assert.equal(v.allow, false);
+  assert.match(v.reason, /could not be read/);
+});
+
+test("CLI: production ALWAYS builds, whatever the branch or labels", () => {
+  /* MUTATION: move the preview gate above the production early-return. */
+  const r = runCli({ VERCEL_ENV: "production", VERCEL_GIT_COMMIT_REF: "main" });
+  assert.equal(r.status, BUILD, r.stdout + r.stderr);
+});
+
+test("CLI: a preview whose labels cannot be read exits SKIP without touching git", () => {
+  /* No VERCEL_GIT_REPO_OWNER/SLUG -> prLabels returns null without a network
+     call, so this is hermetic. */
+  const r = runCli({ VERCEL_ENV: "preview", VERCEL_GIT_COMMIT_REF: "audit-fix/integration" });
+  assert.equal(r.status, SKIP, r.stdout + r.stderr);
+  assert.match(r.stdout, /skip preview/);
+});
+
+test("CLI: a preview/ branch passes the gate and falls through to the path rules", () => {
+  const r = runCli({ VERCEL_ENV: "preview", VERCEL_GIT_COMMIT_REF: "preview/try-this" });
+  assert.match(r.stdout, /preview requested/);
+  assert.ok(r.status === BUILD || r.status === SKIP, `exit ${r.status}`);
+});
