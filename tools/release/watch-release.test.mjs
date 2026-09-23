@@ -32,7 +32,7 @@ import { fileURLToPath } from "node:url";
 import {
   releaseTier, bundleSet, parseGitLog, pendingWork, lastSuccess, failuresSinceSuccess,
   parseOutcome, failedGate, divergentGate, stalledGate, stuckGate, livenessGate,
-  watchVerdict, mainState, triggerDecision, triggerVerdict, planIssue, renderIssueBody, run,
+  watchVerdict, mainState, triggerDecision, triggerVerdict, selfBrokenVerdict, planIssue, renderIssueBody, run,
   GIT_LOG_FORMAT, ISSUE_MARKER, ISSUE_TITLE, GRACE_MINUTES, STALL_HOURS, STUCK_MINUTES,
   RETRY_BUDGET, TRIGGER_STALE_HOURS, WATCHDOG_STALE_HOURS,
 } from "./watch-release.mjs";
@@ -47,6 +47,8 @@ const SUMMARY_LOG = fs.readFileSync(FIX("summary-job-35672098914.txt"), "utf8");
 const JOBS_0906 = JSON.parse(fs.readFileSync(FIX("jobs-34042838342.json"), "utf8")).jobs;
 const GIT_LOG = fs.readFileSync(FIX("git-log-37554f6..a5f90c1.txt"), "utf8");
 const COMMITS = parseGitLog(GIT_LOG);
+const WATCH_WF = fs.readFileSync(path.join(ROOT, ".github/workflows/release-watch.yml"), "utf8");
+const TRIGGER_WF = fs.readFileSync(path.join(ROOT, ".github/workflows/release-trigger.yml"), "utf8");
 
 /* A small, explicit bundle for the hermetic tests. One test below reads the
  * REAL plan from prepare-webdir.mjs, which is what the workflows use. */
@@ -359,6 +361,27 @@ test("triggerVerdict carries the watchdog's liveness beside the decision", () =>
   assert.equal(v.gates[0].code, "PEER_SILENT");
 });
 
+test("a watchdog that FAILS twice running says so — the one failure its peer cannot see, because they share this module", () => {
+  const run = (id, conclusion, event = "schedule", status = "completed") =>
+    ({ id, event, status, conclusion, created_at: `2026-09-24T${String(id).padStart(2, "0")}:23:00Z` });
+  const current = run(10, null, "schedule", "in_progress");
+  assert.equal(selfBrokenVerdict([current, run(9, "failure"), run(8, "success")], 10).gates[0].code, "WATCHDOG_BROKEN");
+  assert.equal(selfBrokenVerdict([current, run(9, "success")], "10").ok, true, "one failure is a blip");
+  assert.equal(selfBrokenVerdict([current], 10).ok, true, "a first-ever run has no history to be broken against");
+  // A person's manual run failing does not make the schedule broken.
+  assert.equal(selfBrokenVerdict([current, run(9, "failure", "workflow_dispatch"), run(8, "success")], 10).ok, true);
+  // The id arrives from $GITHUB_RUN_ID as a string: it must still exclude the current run.
+  const completedCurrent = { ...current, status: "completed", conclusion: "failure" };
+  assert.equal(selfBrokenVerdict([completedCurrent, run(9, "success")], "10").ok, true);
+  assert.match(renderIssueBody(selfBrokenVerdict([current, run(9, "failure")], 10)), /nothing is checking/);
+});
+
+test("the watchdog's issue step runs after a failure too", () => {
+  const issueStep = WATCH_WF.slice(WATCH_WF.indexOf("- name: Keep the one issue in step"));
+  assert.match(issueStep, /^\s*if: always\(\)/m);
+  assert.match(issueStep, /--mode self-broken --runs own-runs\.json \\\s*\n\s*--current "\$GITHUB_RUN_ID"/);
+});
+
 /* ═════════════════════════════════ the issue ═════════════════════════════ */
 
 const RED = { mode: "watch", ok: false, gates: [{ id: "G1", ok: false, code: "RELEASE_FAILED", message: "Release run #23 ended `failure`.", facts: { run: 1 } }] };
@@ -453,8 +476,6 @@ test("CLI: watch evaluates from files, writes its verdict, and exits 0 on a RED 
 
 /* ════════════════════════ the two workflows' promises ════════════════════ */
 
-const WATCH_WF = fs.readFileSync(path.join(ROOT, ".github/workflows/release-watch.yml"), "utf8");
-const TRIGGER_WF = fs.readFileSync(path.join(ROOT, ".github/workflows/release-trigger.yml"), "utf8");
 
 test("NEITHER workflow ever re-runs a release — MUTATION: `gh run rerun` reuses the build number Apple already has", () => {
   for (const [name, wf] of [["release-watch", WATCH_WF], ["release-trigger", TRIGGER_WF]]) {
@@ -476,7 +497,10 @@ test("the watchdog is read-only apart from the alarm; only the trigger may dispa
 });
 
 test("only the watchdog may close the issue — MUTATION: --may-close on the trigger lets a liveness-only job call G1-G4 green", () => {
-  assert.match(code(WATCH_WF), /--mode issue[\s\S]*--may-close/);
+  // And only from a real verdict: the broken-watchdog branch must not close either.
+  assert.match(code(WATCH_WF), /if \[ -s verdict\.json \]; then\s*\n\s*VERDICT=verdict\.json; MAY_CLOSE=--may-close\s*\n\s*else/);
+  assert.match(code(WATCH_WF), /VERDICT=self\.json; MAY_CLOSE=[ \t]*\n/);
+  assert.match(code(WATCH_WF), /--mode issue --verdict "\$VERDICT" \\\s*\n\s*--issues issues\.json \$MAY_CLOSE/);
   assert.doesNotMatch(code(TRIGGER_WF), /--may-close/);
   assert.doesNotMatch(code(TRIGGER_WF), /gh issue close/);
 });

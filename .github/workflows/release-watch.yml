@@ -30,7 +30,10 @@
 # watchdog itself could not work (an API it could not read, an issue it could
 # not write). That split is what lets release-trigger.yml read "no recent green
 # run" as "the watchdog is down" without confusing it with "the watchdog found
-# a problem".
+# a problem". The one failure that liveness cannot see is one the two workflows
+# SHARE — they run the same module — so the issue step also runs after a failed
+# step, and raises the issue itself when this is the second failed scheduled run
+# in a row (selfBrokenVerdict()). Once is a blip; twice is broken.
 #
 # NOTHING HERE DISPATCHES OR RE-RUNS ANYTHING. Acting is release-trigger.yml's
 # job; a watchdog that can change the thing it watches is not a watchdog.
@@ -127,18 +130,34 @@ jobs:
             --peer-runs peer-runs.json \
             --verdict-out verdict.json
 
+      # `always()`: this step ALSO runs when an earlier one failed, because the
+      # peer's liveness check cannot see a failure the two workflows share (they
+      # run the same module). Then there is no verdict.json, and the question
+      # becomes "has the watchdog now failed twice running?" — see
+      # selfBrokenVerdict(). The job stays red either way; this only decides
+      # whether a person is told.
       - name: Keep the one issue in step with the verdict
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+          if [ -s verdict.json ]; then
+            VERDICT=verdict.json; MAY_CLOSE=--may-close
+          else
+            gh api "repos/$REPO/actions/workflows/release-watch.yml/runs?event=schedule&per_page=5" > own-runs.json
+            node tools/release/watch-release.mjs --mode self-broken --runs own-runs.json \
+              --current "$GITHUB_RUN_ID" --verdict-out self.json
+            # Never closes: a broken watchdog has no standing to call anything green.
+            VERDICT=self.json; MAY_CLOSE=
+          fi
           # Issues this workflow's token opened, open or closed. The sticky one
           # is found by its marker, not its title, so a person retitling it
           # cannot orphan the alarm.
           gh api "repos/$REPO/issues?state=all&creator=github-actions%5Bbot%5D&per_page=100" > issues.json
-          node tools/release/watch-release.mjs --mode issue --verdict verdict.json \
-            --issues issues.json --may-close --action-out action.json --body-out body.md
+          node tools/release/watch-release.mjs --mode issue --verdict "$VERDICT" \
+            --issues issues.json $MAY_CLOSE --action-out action.json --body-out body.md
 
           ACTION=$(jq -r '.action' action.json)
           NUM=$(jq -r '.number // empty' action.json)

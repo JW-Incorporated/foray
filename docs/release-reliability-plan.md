@@ -267,8 +267,11 @@ is not `active` (the #46 banner) is red at once; a peer with no successful
 whenever they managed to evaluate — the issue carries the verdict, the run colour
 carries only "did the watcher work" — which is what makes "no recent success"
 mean "down". The trigger may raise the issue for a dead watchdog but never close
-it. **The honest limit:** if both workflows die together, or Actions is off for
-the org (billing), nothing inside GitHub can say so.
+it. A failure the two SHARE (they run one module) is invisible to liveness, so the
+watchdog's issue step also runs after its own failure and raises the issue on the
+second failed scheduled run in a row. **The honest limit:** if both workflows stop
+firing together, or Actions is off for the org (billing), nothing inside GitHub
+can say so.
 
 **Departures from §3, both deliberate:**
 

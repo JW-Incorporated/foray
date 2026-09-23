@@ -35,6 +35,9 @@
  *   --mode issue    turns a verdict and the repo's issue list into ONE action
  *                   (create / reopen / edit / close / none) for the shell.
  *
+ *   --mode self-broken    after the watchdog's OWN run failed: is this the
+ *                   second failure in a row? (selfBrokenVerdict says why.)
+ *
  *   --mode last-success   prints the head_sha of the newest successful release,
  *                   so the workflows can `git log <it>..origin/main` without a
  *                   second copy of "which run counts as a success" in YAML.
@@ -90,6 +93,8 @@
  *        --verdict-out verdict.json
  *   node tools/release/watch-release.mjs --mode issue --verdict verdict.json \
  *        --issues issues.json [--may-close] --action-out action.json --body-out body.md
+ *   node tools/release/watch-release.mjs --mode self-broken --runs own-runs.json \
+ *        --current "$GITHUB_RUN_ID" --verdict-out self.json
  *   Common: --now <ISO> (tests), --plan <json array of bundle paths> (tests).
  *   Exit 0 when it evaluated (whatever it found), 1 when it could not read its
  *   inputs, 2 on a bad --mode, 3 when `last-success` / `latest-completed` has
@@ -507,6 +512,25 @@ export function livenessGate(id, name, workflow, runs, staleHours, now) {
   return gate(id, true, "PEER_ALIVE", `\`${name}\` is running on schedule.`, facts);
 }
 
+/** Is the watchdog ITSELF broken — this run failed, and so did the one before?
+ *
+ *  Liveness covers a watchdog that stops FIRING. It cannot cover one that fires
+ *  and fails, when the cause is shared with its peer: both workflows import the
+ *  same module and the same bundle plan, so a change that breaks one breaks both,
+ *  each sees the other red, and neither reaches its issue step. So the watchdog's
+ *  issue step also runs after a failure and asks this question of its own run
+ *  history. Twice running, not once: a single failure after four retries is most
+ *  likely GitHub's API having a bad minute, and a flaky alarm is worse than none. */
+export function selfBrokenVerdict(ownRuns, currentRunId) {
+  const previous = sortRuns(ownRuns).find((r) => r.id !== Number(currentRunId) && r.event === "schedule" && isCompleted(r));
+  const broken = Boolean(previous) && previous.conclusion !== "success";
+  return verdictOf("self", [broken
+    ? gate("W", false, "WATCHDOG_BROKEN",
+      "`release-watch` has failed on two scheduled runs in a row, so the release gates are not being checked. " +
+        "Read the newest run's log: it failed before reaching a verdict.", { previous_run: previous.id })
+    : gate("W", true, "WATCHDOG_BLIP", "One failed watchdog run; the next one decides whether it was a blip.")]);
+}
+
 /* ─────────────────────────────── the two verdicts ────────────────────────── */
 
 function verdictOf(mode, gates, extra = {}) {
@@ -611,6 +635,8 @@ const HOW_TO_CLEAR = {
     "stuck in flight). Clear that, or dispatch by hand.",
   G4: "Open the run. If it is hung, cancel it, then dispatch fresh. A queued run is waiting on the `release` " +
     "concurrency group, so the stuck one is the run ahead of it.",
+  W: "Open the newest `release-watch` run and read the step that failed. Until it is fixed nothing is checking " +
+    "the releases, and `release-trigger` cannot be relied on either: the two share this module.",
   L: "Open the workflow in the Actions tab. A banner saying the scheduled workflow is disabled means click " +
     "**Enable workflow**. If it is enabled, open its newest run and read why it failed.",
 };
@@ -727,8 +753,8 @@ function writeOutput(env, line) {
 export async function run(argv, env = process.env) {
   const mode = arg(argv, "--mode");
   const now = arg(argv, "--now", new Date().toISOString());
-  if (!["last-success", "latest-completed", "watch", "trigger", "issue"].includes(mode)) {
-    return { code: 2, text: `unknown --mode ${mode} (expected last-success|latest-completed|watch|trigger|issue)\n` };
+  if (!["last-success", "latest-completed", "watch", "trigger", "issue", "self-broken"].includes(mode)) {
+    return { code: 2, text: `unknown --mode ${mode} (expected last-success|latest-completed|watch|trigger|issue|self-broken)\n` };
   }
 
   try {
@@ -741,6 +767,13 @@ export async function run(argv, env = process.env) {
     if (mode === "latest-completed") {
       const r = sortRuns(listOf(readJson(arg(argv, "--runs")), "workflow_runs")).find(isCompleted);
       return r ? { code: 0, text: r.id + "\n" } : { code: 3, text: "" };
+    }
+
+    if (mode === "self-broken") {
+      const verdict = selfBrokenVerdict(listOf(readJson(arg(argv, "--runs")), "workflow_runs"), arg(argv, "--current"));
+      const verdictOut = arg(argv, "--verdict-out");
+      if (verdictOut) fs.writeFileSync(verdictOut, JSON.stringify(verdict, null, 2) + "\n");
+      return { code: 0, text: renderReport(verdict), verdict };
     }
 
     if (mode === "issue") {
