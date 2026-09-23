@@ -111,7 +111,7 @@ import {
 } from "./diagnostic-log.js";
 import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
 import { createForayDirectory, DIRECTORY_DB_NAME } from "./foray-directory.js";
-import { mountStrip, stripModel, stripSummary, segmentStripHtml, applyStripGrow } from "./segment-strip.js";
+import { mountStrip, stripModel, stripSummary, stripTally, segmentStripHtml, applyStripGrow } from "./segment-strip.js";
 import {
   HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
   startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent,
@@ -2442,6 +2442,8 @@ const ForayPlayer = {
       want next to a strip it renders itself. */
   stripModel,
   stripSummary,
+  /** The header's counts, from the strip's own model — see `stripTally`. */
+  stripTally,
 
   /* U-04: the string half of the strip, for callers that build markup as
      template strings interpolated into `innerHTML` — Home's Foray cards

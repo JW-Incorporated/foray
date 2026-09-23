@@ -215,7 +215,7 @@ const FLOORS = {
      bridge is an item rather than a gap, that no two touching capsules share a
      tone, and that both themes' palettes clear 3:1. Every test names the
      mutation that kills it. */
-  "player/segment-strip.test.js": 46, // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
+  "player/segment-strip.test.js": 48, // 2026-09-22 audit theme L: `stripTally`, the Foray header's counts from the strip's own model — clips are tape, and an unmeasured duration makes the runtime an estimate; 46 -> 48 // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
   "player/strip-scrub-gesture.test.js": 41,
   /* Drag the Now Playing sheet down to dismiss it (founder report,
      2026-09-13). Same pure-state-machine shape as the scrub gesture above and
@@ -648,7 +648,7 @@ const FLOORS = {
      Forays": it is the one a "simplify renderForays back to synchronous" edit
      would silently undo, because every existing harness mounts with the bridge
      already present. */
-  "test/load-states.test.js": 14, // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
+  "test/load-states.test.js": 18, // 2026-09-22 theme L: the Foray header counts the strip's clips and heard shows, says "about" over an estimated runtime, and never promises "listed below" for a clip the page cannot list; 14 -> 18 // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
 
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):

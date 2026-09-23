@@ -57,7 +57,7 @@
        narration was worth 0 s in all of them.
 */
 
-import { itemRuntimeSec } from "./foray-queue.js";
+import { itemRuntimeSec, DURATION_MEASURED } from "./foray-queue.js";
 import { segmentStarts, segmentAtElapsed, fmtClock, fmtSpan } from "./foray-resolve.js";
 
 /** How many show tones the palette holds. `styles.css` defines `--seg-c0` …
@@ -423,6 +423,41 @@ export function stripSummary(model) {
       + `${fmtClock(m.elapsedSec)} in.`;
   }
   return out;
+}
+
+/**
+ * The Foray's headline numbers, from the SAME model the strip draws and
+ * `stripSummary` speaks — so the page header and the strip underneath it cannot
+ * answer "how many" differently (audit 2026-09-22, theme L).
+ *
+ * THE DEFECT THIS REPLACED. The header counted `resolved.playable.length` as
+ * "segments" — every queue item, narrator bridges included — while the strip
+ * mounted directly beneath it counted tape only: "50 segments" over an
+ * accessible label announcing 11. And it counted `resolved.shows`, which is
+ * every AUTHORED entry's show, playable or not, while the credits block further
+ * down counts only shows that will actually be heard (`foray-sources.js`
+ * refuses the flattering number on purpose). `stripModel` is built from the
+ * playable items and counts shows over tape, so both disagreements close by
+ * reading it.
+ *
+ * `estimated` is the other half: a narration bridge with no measured duration
+ * is timed from its script length (`narrationDuration`, foray-queue.js), and on
+ * a narrated Foray that is ~40% of the runtime. `duration_source` has carried
+ * that provenance through two modules; this is its first reader at the surface,
+ * so a caller can say "about 43 min" instead of printing an estimate as a
+ * measured clock. An item with no `duration_source` is tape, and tape is
+ * measured.
+ */
+export function stripTally(items) {
+  const list = Array.isArray(items) ? items.filter((i) => i && typeof i === "object") : [];
+  const m = stripModel(list);
+  return {
+    clips: m.segmentCount,
+    bridges: m.narrationCount,
+    shows: m.shows.length,
+    totalSec: m.totalSec,
+    estimated: list.some((i) => nonEmpty(i.duration_source) && i.duration_source !== DURATION_MEASURED),
+  };
 }
 
 /** The bar that is drawing item `currentIndex` — the run's bar when narration

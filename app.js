@@ -8328,13 +8328,35 @@ function bindSourceLinks(r) {
   });
 }
 
-function forayHeadSub(r) {
-  const fmt = window.ForayPlayer ? window.ForayPlayer.fmtClock : (s => String(Math.round(s)));
-  const parts = [
-    `${r.playable.length} segment${r.playable.length === 1 ? "" : "s"}`,
-    `${r.shows.length} show${r.shows.length === 1 ? "" : "s"}`,
-    fmt(r.totalSec),
-  ];
+/* THE HEADER'S NUMBERS COME FROM THE STRIP'S MODEL (audit 2026-09-22, theme L).
+   It used to count `r.playable.length` as "segments" — narrator bridges
+   included — directly above a strip announcing a different number, and
+   `r.shows`, which counts shows whose clips will never play, above a credits
+   block that refuses to. `player.stripTally` is one definition for all three.
+
+   AN ESTIMATE IS SAID TO BE ONE. A narrated Foray's bridges are timed from
+   their script length until real audio exists, which is ~40% of the runtime
+   on the ones that have them; printing that as "43:07" presented a
+   character count as a stopwatch. When any item's duration is not measured,
+   the runtime reads "about 43 min".
+
+   An older cached module with no `stripTally` gets the runtime alone rather
+   than counts from a second definition — a missing number is not a wrong
+   one. */
+function forayRuntimeLabel(player, tally, totalSec) {
+  if (tally && tally.estimated) return `about ${player.fmtSpan(totalSec)}`;
+  return player.fmtClock(totalSec);
+}
+
+function forayHeadSub(r, player) {
+  const tally = typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
+  const parts = [];
+  if (tally) {
+    const clips = `${tally.clips} clip${tally.clips === 1 ? "" : "s"}`;
+    const from = tally.shows ? ` from ${tally.shows} show${tally.shows === 1 ? "" : "s"}` : "";
+    parts.push(`${clips}${from}${tally.bridges ? ", with narration" : ""}`);
+  }
+  parts.push(forayRuntimeLabel(player, tally, r.totalSec));
   return parts.join(" · ");
 }
 
@@ -8393,7 +8415,15 @@ async function renderForay(id) {
   const draftNote = !draft ? ""
     : unlockedForays().includes(r.id) ? "Draft — not published. You opened it by name; nobody else sees it."
     : "Draft — not published. Shown because \"Show draft Forays\" is on in Settings; nobody else sees it.";
-  const lost = r.unplayable.length;
+  /* TWO POPULATIONS, AND ONLY ONE OF THEM IS "BELOW" (audit 2026-09-22).
+     `r.unplayable` is the union of the entries that resolved but will not play
+     — which ARE rows in the running order below, marked "Can't play" — and the
+     items hydration dropped (a segment id missing from data/segments.json),
+     which never become entries and so are listed nowhere. "3 can't play —
+     listed below" over a running order listing none of them pointed at rows
+     that do not exist. Each is now counted and said separately. */
+  const shownOut = r.entries.filter(e => !e.playable).length;
+  const missing = Math.max(0, r.unplayable.length - shownOut);
   /* Read the resume point BEFORE anything is wired up: it decides the clock the
      page opens on, which rows are already ticked off, and what the main button
      says. Against the LIVE runtime AND the live segment count, so a repaired
@@ -8436,7 +8466,7 @@ async function renderForay(id) {
         <a class="back" href="#/forays">‹</a>
         <div>
           <h2>${esc(r.title)}</h2>
-          <p class="sub">${esc(forayHeadSub(r))}</p>
+          <p class="sub">${esc(forayHeadSub(r, player))}</p>
         </div>
       </div>
       ${draft ? `<p class="fy-draft">${draftNote}</p>` : ""}
@@ -8473,13 +8503,18 @@ async function renderForay(id) {
              without moving focus off the button that was just pressed. -->
         <p class="fy-error" id="fy-error" role="status" aria-live="polite" hidden></p>
       </div>
-      ${lost ? `<p class="note">${lost} segment${lost === 1 ? "" : "s"} can't play — listed below.</p>` : ""}
+      ${shownOut ? `<p class="note">${shownOut} clip${shownOut === 1 ? "" : "s"} can't play — marked below.</p>` : ""}
+      ${missing ? `<p class="note">${missing} clip${missing === 1 ? "" : "s"} from this Foray couldn't be found, so ${missing === 1 ? "it's" : "they're"} left out.</p>` : ""}
       ${r.slots.map(foraySlotHtml).join("")}
       ${foraySourcesHtml(r, player)}
       ${feedbackSheetHtml()}
     </div>`;
 
-  $("#fy-total").textContent = player.fmtClock(r.totalSec);
+  /* The clock beside the scrubber keeps its clock shape — it sits opposite a
+     ticking one — but an estimate carries a "~" so it cannot pass for a
+     measurement (same `stripTally` flag as the header above). */
+  const tally = typeof player.stripTally === "function" ? player.stripTally(r.playable) : null;
+  $("#fy-total").textContent = `${tally && tally.estimated ? "~" : ""}${player.fmtClock(r.totalSec)}`;
   mountForayStrip(r, player);
   // Optional-chained deliberately. This runs BEFORE every binder, so if the
   // markup and this line ever disagree the throw would take the whole transport

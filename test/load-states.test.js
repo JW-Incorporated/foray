@@ -513,3 +513,115 @@ test("a subject's own name that finds no show by title offers that subject's cat
   assert.doesNotMatch(html, /geology/, "a category with no shows is not offered — it would be another dead end");
   assert.doesNotMatch(html, /data-retry/, "nothing failed, so nothing to retry");
 });
+
+/* ==================================================================== */
+/* The Foray page: one model for its numbers (audit 2026-09-22, theme L) */
+/* ==================================================================== */
+
+const playerMods = (async () => ({
+  resolve: await import("../player/foray-resolve.js"),
+  strip: await import("../player/segment-strip.js"),
+}))();
+const readData = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+
+/** A bridge over the REAL resolver and the REAL strip module, so the page's
+    numbers are checked against the definitions it is supposed to share. */
+async function forayBridge() {
+  const { resolve, strip } = await playerMods;
+  return {
+    resolve(doc, { id, segmentsDoc, sourcesDoc } = {}) {
+      const f = resolve.findForay(doc, id, { unlocked: [id], showDrafts: true });
+      return f ? resolve.resolveForay(f, { segments: resolve.indexSegments(segmentsDoc), sources: resolve.indexSources(sourcesDoc) }) : null;
+    },
+    stripTally: strip.stripTally,
+    stripModel: strip.stripModel,
+    fmtClock: resolve.fmtClock,
+    fmtSpan: resolve.fmtSpan,
+    playbackRate: () => 1, rateStops: () => [1], setPlaybackRate() {},
+    watchForay: () => null, forayResume: () => null,
+  };
+}
+
+async function mountForay(id, { forays = readData("data/forays.json"), segments = readData("data/segments.json"), sources = readData("data/segment-sources.json") } = {}) {
+  const b = await forayBridge();
+  const m = mount({ hash: `#/foray/${id}`, bridge: b });
+  m.state.forays = forays;
+  m.state.segments = segments;
+  m.state.segmentSources = sources;
+  m.ctx.renderCurrentPage();
+  await settle(10);
+  return { ...m, bridge: b };
+}
+
+/* The header's <p class="sub"> text, read from the markup (this DOM parses
+   tags, not text nodes). */
+const headSub = (html) => (/<p class="sub">([^<]*)<\/p>/.exec(html) || [])[1] || "";
+
+test("a narrated Foray's header counts the strip's clips, not every queue item, and calls its runtime an estimate", async () => {
+  /* "50 segments · 1 show · 43:07" over a strip announcing 11 segments, with 41%
+     of that clock a script-length projection.
+     MUTATION: restore `${r.playable.length} segment…` in forayHeadSub. The
+     header counts the bridges and the first assertion goes red. MUTATION 2:
+     print `fmtClock(r.totalSec)` unconditionally. "about" is gone, red. */
+  const id = "how-ai-actually-gets-built-3b83e1";
+  const m = await mountForay(id);
+  const { strip } = await playerMods;
+  const r = m.state.foray;
+  assert.ok(r, "the Foray resolved");
+  const model = strip.stripModel(r.playable);
+  const sub = headSub(m.html());
+  assert.match(sub, new RegExp(`^${model.segmentCount} clips from ${model.shows.length} shows?, with narration`), `header: "${sub}"`);
+  assert.ok(!sub.includes(`${r.playable.length} `), `the queue length (${r.playable.length}) is not the clip count: "${sub}"`);
+  assert.match(sub, /· about \d+ min$/, `an estimated runtime says so: "${sub}"`);
+  assert.match(m.view.querySelector("#fy-total").textContent, /^~\d/, "the clock beside the scrubber carries the same hedge");
+});
+
+test("a Foray of measured tape keeps its clock", async () => {
+  /* The other side of the estimate rule: a runtime that IS measured is not
+     hedged. MUTATION: make forayRuntimeLabel always return "about …". Red. */
+  const m = await mountForay("capital-types-1");
+  const sub = headSub(m.html());
+  assert.match(sub, /^\d+ clips from \d+ shows · \d+:\d{2}(:\d{2})?$/, `header: "${sub}"`);
+  assert.doesNotMatch(sub, /about|narration/);
+});
+
+test("a clip missing from the segment pool is not promised as 'listed below'", async () => {
+  /* `r.unplayable` is entries that will not play (rows below, marked) PLUS items
+     hydration dropped, which are rows nowhere. "N segments can't play — listed
+     below" counted both over a list showing neither of the dropped ones.
+     MUTATION: restore `const lost = r.unplayable.length` and its one note. The
+     page says "can't play — listed below" for a clip it does not list, red. */
+  const doc = readData("data/forays.json");
+  const base = doc.forays.find((f) => f.id === "capital-types-1");
+  const broken = { ...base, id: "broken-1", items: [{ type: "segment", segment_id: "no-such-segment", slot: base.items[0].slot }, ...base.items] };
+  const m = await mountForay("broken-1", { forays: { ...doc, forays: [broken] } });
+  const html = m.html();
+  assert.doesNotMatch(html, /listed below|marked below/, `nothing below is marked, so nothing may point there: ${html.slice(0, 600)}`);
+  assert.match(html, /1 clip from this Foray couldn't be found, so it's left out\./);
+});
+
+test("the header does not count a show whose only clip will not play", async () => {
+  /* The credits block counts only shows that will be heard, on purpose
+     (player/foray-sources.js); the header counted `r.shows`, every AUTHORED
+     entry's show — "7 shows" in the header, "6 shows" in the credits.
+     Built on the real capital-types-1 plus one clip from a show whose episode
+     has no audio URL, which the queue builder refuses: that clip resolves, is
+     listed as can't-play, and its show must not be counted.
+     MUTATION: count `r.shows.length` in forayHeadSub. The ghost show is
+     counted and this goes red. */
+  const doc = readData("data/forays.json");
+  const segments = readData("data/segments.json");
+  const sources = readData("data/segment-sources.json");
+  const base = doc.forays.find((f) => f.id === "capital-types-1");
+  sources.sources.push({ id: "ghost-src", show: "A Show Nobody Will Hear", title: "Ghost", audio_url: null });
+  segments.segments.push({ id: "ghost-src#0", item_id: "ghost-src", start_sec: 0, end_sec: 30 });
+  const withGhost = { ...base, id: "ghost-1", items: [...base.items, { type: "segment", segment_id: "ghost-src#0", slot: base.items[base.items.length - 1].slot }] };
+  const m = await mountForay("ghost-1", { forays: { ...doc, forays: [withGhost] }, segments, sources });
+  const r = m.state.foray;
+  assert.ok(r.shows.includes("A Show Nobody Will Hear"), "fixture: the ghost show is an authored show");
+  assert.ok(r.entries.some((e) => !e.playable && e.show === "A Show Nobody Will Hear"), "fixture: its only clip will not play");
+  const heard = new Set(r.entries.filter((e) => e.playable && e.show).map((e) => e.show)).size;
+  const sub = headSub(m.html());
+  assert.match(sub, new RegExp(` from ${heard} shows? `), `the header counts heard shows (${heard}), not authored ones (${r.shows.length}): "${sub}"`);
+  assert.match(m.html(), /1 clip can't play — marked below\./, "and the clip that will not play is the one marked below");
+});
