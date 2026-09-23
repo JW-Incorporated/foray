@@ -207,6 +207,28 @@ test("renderShow includes an unstarred showStarBtn by default, and starring upda
   assert.ok(html.includes("✓ Followed"), "followed label must read '✓ Followed'");
 });
 
+test("REVIEW: the show page says, beside Follow, that following delivers no new episodes", () => {
+  /* Apple's Follow promises new episodes; 4a's is a bookmark. The only line
+     saying so was on #/starred-shows, which the tap never shows, so a switcher
+     would wait for episodes that never come. MUTATION: drop the
+     `show-follow-note` paragraph from renderShow's template. */
+  const m = mount();
+  m.state.catalog = { shows: [{ show_id: "s-2", title: "Show Two", artwork_url: null }] };
+  m.state.discover = { items: [] };
+  m.state.taxonomy = { nodes: [] };
+  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  m.ctx.renderShow("s-2");
+  const html = m.view();
+  const btnAt = html.indexOf('data-show-star="s-2"');
+  const noteAt = html.indexOf("show-follow-note");
+  assert.ok(btnAt > 0 && noteAt > btnAt, "the note sits right after the Follow button");
+  assert.match(html.slice(noteAt, noteAt + 200), /doesn(&#39;|')t add its new episodes anywhere/);
+  const policy = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "docs/legal/privacy-policy.md"), "utf8");
+  const row = policy.split("\n").find((l) => l.startsWith("| `cp_starred_shows`"));
+  assert.match(row, /followed from a show page/, "the policy names the control the listener actually taps");
+  assert.match(row, /never adds its new episodes anywhere/);
+});
+
 /* ==================================================================== */
 /* 3. UNKNOWN SHOW_ID IS A SAFE NO-OP                                    */
 /* ==================================================================== */

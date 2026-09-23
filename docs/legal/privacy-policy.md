@@ -98,7 +98,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; holds only the ids — the details it shows are in `cp_episode_snaps` | **No** |
 | `cp_episode_snaps` | A copy of the details of each episode in your Up Next list and your recent history — title, show name, length, publish date, artwork and audio addresses, topic ids and the first couple of sentences of its description — so those lists can still show and play an episode after the app reloads, including episodes from outside 4a's own catalogue. An episode is dropped from it once neither list names it any more | **No** |
 | `cp_shard_shows` | The last 50 shows from the wider podcast directory whose page you opened — title, publisher name and artwork address — so a link to one of them still opens after the app reloads | **No** |
-| `cp_starred_shows` | A per-device map of shows you starred from a show page — a lightweight favorite, separate from episode saves (`cp_saved`). No notifications, no auto-download, and starring a show never changes what 4a surfaces to you elsewhere | **No** |
+| `cp_starred_shows` | A per-device map of shows you followed from a show page (the Follow button; the key keeps its older "starred" name) — a lightweight favorite, separate from episode saves (`cp_saved`). No notifications, no auto-download, following a show never adds its new episodes anywhere, and never changes what 4a surfaces to you elsewhere | **No** |
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
 | `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in | **No** |
 | `cp_pos:<id>` | Your position in seconds inside an individual episode | **No** |
@@ -162,7 +162,8 @@ minute per episode — `player/position-store.js:save()`), `foray_play`,
 (choosing a narration voice — V-01), `refreshed_all`,
 `storage_fault`, `queued` and its counterpart `unqueued`
 (added to your Up Next list, or removed from it), `show_starred` and its
-counterpart `show_unstarred` (starring a show, or removing a star).
+counterpart `show_unstarred` (following a show, or unfollowing it — the event
+names keep the control's older "star" wording).
 
 **The `picked` row's two labels are narrower than they sound**, and we would
 rather say so than let the field names imply more collection than happens:

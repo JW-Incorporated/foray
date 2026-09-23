@@ -1071,6 +1071,14 @@ function toggleMarkup(on, spec) {
    for two ideas. Storage keys (`cp_saved`, `cp_starred_shows`) are unchanged. */
 const SAVE_TOGGLE = { offText: "☆", onText: "★", offLabel: "Save episode", onLabel: "Saved" };
 const FOLLOW_TOGGLE = { offText: "+ Follow", onText: "✓ Followed", offLabel: "Follow show", onLabel: "Followed" };
+/* WHAT FOLLOWING DOES NOT DO, said where the tap happens (review 2026-09-23).
+   Apple's Follow delivers new episodes; 4a's is a bookmark (no feed, no
+   notifications, nothing added anywhere — CLAUDE.md principle 2), and the audit
+   verdict warned a switcher would wait for episodes that never come. The line
+   used to live only on #/starred-shows, a page the tap never shows. Whether the
+   word stays "Follow" is a founder noun ruling still open (docs/audit/
+   qa-synthesis.md); this line is right under either word. */
+const FOLLOW_NOTE = "Following keeps a show one tap away in your Library. 4a doesn't add its new episodes anywhere.";
 const UP_NEXT_TOGGLE = { offText: "+ Up Next", onText: "✓ Up Next", offLabel: "Add to Up Next", onLabel: "In Up Next" };
 
 /* ---------- stars ---------- */
@@ -1221,7 +1229,7 @@ function renderStarredShows() {
       ${starred.length
         ? `<div class="show-results">${starred.map(starredShowRow).join("")}</div>`
         : `<p class="note">No followed shows yet — tap Follow on a show's page to keep it here.</p>`}
-      <p class="note">Following keeps a show one tap away. 4a doesn't add its new episodes anywhere.</p>
+      <p class="note">${esc(FOLLOW_NOTE)}</p>
     </div>`;
 }
 
@@ -3674,6 +3682,7 @@ function renderShow(show_id, initialQuery = "") {
     </div>
     ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
     ${showStarBtn(show.show_id)}
+    <p class="note show-follow-note">${esc(FOLLOW_NOTE)}</p>
     <!-- The publisher's own description. EMPTY at first paint and filled by
          paintShowDescription() when the episode fetch resolves (or instantly
          from the cache on a revisit) - it comes from the feed, which this page
