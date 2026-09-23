@@ -230,7 +230,7 @@ const FLOORS = {
      import and cannot be loaded under node — see its own header), floored
      because a perfect gesture module wired to nothing passes every other test
      in this repo. */
-  "player/now-playing-sheet.test.js": 16,
+  "player/now-playing-sheet.test.js": 18, // 2026-09-22 audit: emptied hook/timing paragraphs are hidden, and an ordinary episode that fails to play says so on the bar and in the sheet; 16 -> 18
   "player/seek-policy.test.js": 33,
   /* The wire between the page and on-device speech (#29). Floored with no
      slack, because what it holds down is a connection that was ABSENT for
@@ -648,7 +648,7 @@ const FLOORS = {
      Forays": it is the one a "simplify renderForays back to synchronous" edit
      would silently undo, because every existing harness mounts with the bridge
      already present. */
-  "test/load-states.test.js": 21, // 2026-09-22 theme L: rows say "Played"/"NN min left", "played" survives the history ring rotating, a subject card totals only a fully-timed list; 18 -> 21 // 2026-09-22 theme L: the Foray header counts the strip's clips and heard shows, says "about" over an estimated runtime, and never promises "listed below" for a clip the page cannot list; 14 -> 18 // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
+  "test/load-states.test.js": 22, // 2026-09-22 persona #4: a play button whose play() throws or refuses reports it to the player bar instead of swallowing the tap; 21 -> 22 // 2026-09-22 theme L: rows say "Played"/"NN min left", "played" survives the history ring rotating, a subject card totals only a fully-timed list; 18 -> 21 // 2026-09-22 theme L: the Foray header counts the strip's clips and heard shows, says "about" over an estimated runtime, and never promises "listed below" for a clip the page cannot list; 14 -> 18 // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
 
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):

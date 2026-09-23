@@ -502,7 +502,16 @@ function buildUI() {
   info.setAttribute("aria-label", "Open player");
   const title = el("span", "fp-title");
   const show = el("span", "fp-show");
-  info.append(title, show);
+  /* A failed play says so ON THE BAR (persona audit #4, 2026-09-22), in the
+     show line's place: the bar is the one surface on screen whatever page the
+     listener tapped play from, and in a car it is the only one they glance at.
+     A live region so a screen reader hears it without focus moving. Hidden
+     until `setPlayFailure` fills it. */
+  const err = el("span", "fp-err");
+  err.setAttribute("role", "status");
+  err.setAttribute("aria-live", "polite");
+  err.hidden = true;
+  info.append(title, show, err);
 
   const playBtn = el("button", "fp-play", "▶");
   playBtn.type = "button";
@@ -636,6 +645,11 @@ function buildUI() {
   row2.append(rateBtn, openLink, forayLink, stopBtn, collapse);
 
   const note = el("p", "fp-note");
+  note.hidden = true;
+  /* The same failure, in the expanded sheet, under the transport — where
+     `.fy-error` sits on the Foray page. */
+  const sErr = el("p", "fp-err-line");
+  sErr.hidden = true;
 
   /* The publisher's own description, LAST. It is the longest thing here and
      the only reason the sheet needs to scroll at all, so putting it under the
@@ -646,7 +660,7 @@ function buildUI() {
   const sDesc = el("p", "fp-s-desc");
   sDesc.hidden = true;
 
-  scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, row2, note, sDesc);
+  scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, row2, sErr, note, sDesc);
   sheet.append(grabZone, scroll);
   root.append(sheet);
   document.body.append(root);
@@ -655,8 +669,45 @@ function buildUI() {
     root, bar, art, title, show, playBtn, closeBtn, fill, sheet,
     grabZone, scroll, sArt, sDesc,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
-    rateBtn, openLink, forayLink, stopBtn, collapse, info, note,
+    rateBtn, openLink, forayLink, stopBtn, collapse, info, note, err, sErr,
   };
+}
+
+/* ---------- a play that failed says so (persona audit #4, 2026-09-22) ----------
+
+   An ordinary episode that would not load used to say nothing, anywhere: the
+   manager paused, the glyph flipped back to ▶, and the only evidence was a
+   console line. The Foray page already had the standard ("That segment
+   wouldn't load. Check the connection, then press play."), for the surface a
+   newcomer uses least. These are that standard for every episode.
+
+   Two sentences, because only two can be acted on — the same split the Foray
+   page makes. A browser holding audio back until it is sure you asked is not a
+   fault, and gets an instruction rather than an error.
+
+   A template literal on purpose: the source-text suites strip string literals
+   with a regex that reads an apostrophe inside double quotes as the start of a
+   single-quoted string (player/now-playing-sheet.test.js `codeOnly`). */
+const EP_START_FAILED = `That episode wouldn't load. Check the connection, then press play.`;
+const EP_PLAY_HELD = "Press play again to start it.";
+
+let playFailure = null;
+
+/** Show (a sentence) or clear (null) the failure line on the bar and the sheet.
+    The bar's show line steps aside while it is up, so the bar keeps its one
+    line of subtitle. */
+function setPlayFailure(copy) {
+  playFailure = copy || null;
+  if (!ui) return;
+  ui.err.textContent = playFailure || "";
+  ui.err.hidden = !playFailure;
+  ui.show.hidden = Boolean(playFailure);
+  ui.sErr.textContent = playFailure || "";
+  ui.sErr.hidden = !playFailure;
+}
+
+function playFailureCopy(signal) {
+  return /NotAllowedError/.test(String(signal ?? "")) ? EP_PLAY_HELD : EP_START_FAILED;
 }
 
 /** How far down the Now Playing sheet is currently pulled, in CSS px.
@@ -1056,6 +1107,8 @@ function render() {
      of a drift nothing announced — but it stops the surface holding the lie
      indefinitely, which is what it did before. */
   const running = transportIsRunning();
+  // Sound is coming out: whatever failed before has recovered.
+  if (playFailure && running) setPlayFailure(null);
   const glyph = running ? "❚❚" : "▶";
   ui.playBtn.textContent = glyph;
   ui.bigPlay.textContent = glyph;
@@ -1120,7 +1173,11 @@ function setNowPlaying(item, why) {
   ui.show.textContent = item.show || "";
   ui.sTitle.textContent = item.title || "";
   ui.sShow.textContent = item.show || "";
+  /* Emptied paragraphs are HIDDEN, not left blank (audit 2026-09-22): both
+     carry margins, so an empty one was a dead band in the sheet — on every
+     Foray, which never has a hook. `sDesc` below always did it this way. */
   ui.sWhy.textContent = why || item.hook || "";
+  ui.sWhy.hidden = !ui.sWhy.textContent;
   if (item.artwork_url) {
     ui.art.src = item.artwork_url;
     ui.art.hidden = false;
@@ -1163,6 +1220,9 @@ function setNowPlaying(item, why) {
   // it's exact; say something plain when it isn't.
   const { precision } = seekPrecision(item, { isLocalFile: false, source: OWN });
   ui.note.textContent = precision === EXACT ? "" : "Timings on this show are approximate.";
+  ui.note.hidden = !ui.note.textContent;
+  /* Something else is current now: a previous item's failure is not its. */
+  setPlayFailure(null);
   render();
 }
 
@@ -2088,6 +2148,12 @@ function ensureBooted() {
         foray.error = m;
         notifyForay();
       }
+      /* The ordinary-episode half (persona audit #4): a media error or a refused
+         play() on a single episode reaches the bar and the sheet. The Foray page
+         keeps its own line above; this is for everything else. */
+      if (!foray && current && /player\.error|play\.rejected/i.test(m)) {
+        setPlayFailure(playFailureCopy(m));
+      }
   }
 
   /* The lock screen / car / headphone surface (#27). `createMediaSession`
@@ -2279,6 +2345,18 @@ const ForayPlayer = {
       percent: progress.percent === null ? undefined : progress.percent,
       label: progress.label,
     };
+  },
+
+  /**
+   * A play that threw on app.js's side of the bridge (persona audit #4). The
+   * telemetry path above catches what the manager reports; this catches what it
+   * could not — an exception out of `play()` itself — so a tap is never
+   * swallowed. `err` is read for its name only, for the autoplay split.
+   */
+  reportPlayFailure(err) {
+    let name = "";
+    try { name = String(err?.name ?? ""); } catch (_) { name = ""; }
+    setPlayFailure(playFailureCopy(name));
   },
 
   /**

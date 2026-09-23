@@ -694,3 +694,31 @@ test("a subject card states a total duration only when every episode has one", (
   assert.strictEqual(kicker([item("a", 40), item("b", 40), item("c", null)]), "3 episodes",
     "an unknown length means no total, not a smaller one");
 });
+
+/* ==================================================================== */
+/* A play that fails is never a swallowed tap (persona audit #4)        */
+/* ==================================================================== */
+
+test("a play button whose play() throws or refuses reports it to the player bar", async () => {
+  /* `bindPlay` did `const ok = await play(...); if (!ok) return;` with no try:
+     a refusal said nothing, and a throw was an unhandled rejection.
+     MUTATION: delete the `reportPlayFailure?.(err)` call in the catch. The
+     report never arrives and this goes red. MUTATION 2: remove the try/catch.
+     The throw escapes the listener instead of being reported. */
+  for (const [label, play] of [
+    ["throws", async () => { throw Object.assign(new Error("boom"), { name: "TypeError" }); }],
+    ["refuses", async () => false],
+  ]) {
+    const reports = [];
+    const m = mount({ bridge: { isCurrent: () => false, play, reportPlayFailure: (e) => reports.push(e) } });
+    m.state.itemIndex = { ep1: { id: "ep1", title: "E", audio_url: "https://x.test/e.mp3" } };
+    m.view.innerHTML = `<div><button data-play="ep1">▶</button></div>`;
+    m.ctx.bindPlay(m.view);
+    const btn = m.view.querySelector("[data-play]");
+    let escaped = null;
+    try { await Promise.all((btn._on.get("click") || []).map((fn) => fn({ target: btn, preventDefault() {}, stopPropagation() {} }))); }
+    catch (e) { escaped = e; }
+    assert.strictEqual(escaped, null, `[${label}] nothing may escape the listener`);
+    assert.strictEqual(reports.length, 1, `[${label}] the failure is reported to the bar exactly once`);
+  }
+});

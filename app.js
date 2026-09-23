@@ -3929,8 +3929,29 @@ function bindPlay(scope, { origin = null } = {}) {
       }
       if (origin === "queue") setQueuePlaybackOrigin(id);
       else clearQueuePlaybackOrigin();
-      const ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });
-      if (!ok) { clearQueuePlaybackOrigin(); return; }
+      /* A PLAY THAT FAILS SAYS SO (persona audit #4, 2026-09-22). It used to be
+         `if (!ok) return;` with no try at all: a refused play said nothing, and a
+         throw out of `play()` was an unhandled rejection in an async listener —
+         a tap that did nothing and said nothing, which is founder report #225,
+         already fixed for the Foray page by guardForayStart. The line itself
+         lives on the player bar (`reportPlayFailure`), because the bar is on
+         screen whichever page this button was on. */
+      let ok = false;
+      try {
+        ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });
+      } catch (err) {
+        console.warn("[4a] play failed", err);
+        ok = false;
+        try { window.ForayPlayer.reportPlayFailure?.(err); } catch (_) { /* the bar is best-effort */ }
+        noteTapFailure("start", err);
+        clearQueuePlaybackOrigin();
+        return;
+      }
+      if (!ok) {
+        clearQueuePlaybackOrigin();
+        try { window.ForayPlayer.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
+        return;
+      }
       logEvent("play_started", { episode_id: id, topics: item.topics || [] });
       const history = pickedHistory();
       if (!history.includes(id)) lsSet("cp_history", history.concat(id).slice(-200));
