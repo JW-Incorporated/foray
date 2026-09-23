@@ -410,21 +410,23 @@ test("the sliced files' per-file budgets are pinned, all four of them", () => {
      into a 26% one. The new number keeps the same distance — about 30 new shows at
      the minified ~2.9 KB each.
 
-     `data/forays.json` 64 KB, added 2026-09-12 (F-92) when the file stopped being
-     copied whole: the seed carries every Foray except a generated draft, so this
-     budget watches PUBLISHED generated Forays entering the seed at ~20 KB of
-     narration each — 17 KB today for the four curated ones, room for about ONE
-     published generated one before the seed needs "the newest N" as its rule.
-     "About two" was an estimate here until it was measured (F-103, 2026-09-12):
-     one published generated Foray takes the seed to 41 KB (63 % of this budget)
-     and two to 67 KB (102 %), both BEFORE citations. F-103's `cites` adds ~6 KB
-     to a published Foray in this compact slice, taking those to 72 % and 120 %.
-     The NUMBER is deliberately unchanged: nothing in the seed carries `cites`
-     (a generated draft is the directory's and costs zero here), so this alarm
-     is not ringing, and raising it would answer the wrong question — the next
-     publish needs the rule, not more room. */
+     `data/forays.json` 40 KB, added at 64 KB on 2026-09-12 (F-92) when the file
+     stopped being copied whole: the seed carries every Foray except a generated
+     draft, so this budget watches PUBLISHED generated Forays entering the seed
+     — 17–25 KB each compact today, plus ~6 KB of F-103 `cites` once one carries
+     them. It was 17 KB for the four curated Forays (27% of 64 KB), and one
+     published generated Foray took it to 41–47 KB: room for about ONE before
+     the seed needs "the newest N" as its rule, and the number was deliberately
+     left alone because the next publish needs the rule, not more room.
+     LOWERED 64 -> 40 KB on 2026-09-23 (PR #741): retiring `grilling-history-1`
+     to the frozen fixture took the seed to 11.6 KB, which is 18% of 64 KB —
+     under the "would not notice a quadrupling" floor the test below pins — for
+     a reason unrelated to what the budget watches. 40 KB keeps the distance it
+     had (29% used) and the same statement: one published generated Foray takes
+     the seed to 35–43 KB (87–107%), a second is far over. 48 KB would leave
+     11.6 KB at 24%, under prepare-webdir.test.mjs's 25% floor. */
   assert.deepEqual(PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]), [
-    ["data/forays.json", 64 * 1024],
+    ["data/forays.json", 40 * 1024],
     ["data/discover.json", 720 * 1024],
     ["data/segments.json", 100 * 1024],
     ["data/segment-sources.json", 40 * 1024],
