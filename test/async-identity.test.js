@@ -202,6 +202,7 @@ test("the Foray script toggle is one delegated listener, bound once — renderFo
     dataset: { scriptFor: "s1" },
     getAttribute: () => expanded,
     setAttribute: (_k, v) => { expanded = v; },
+    removeAttribute() {}, // L4's setControlLabel drops a name equal to the text
     set textContent(v) { label = v; },
   };
   const click = () => m.ctx.onForayScriptClick({ target: { closest: () => btn }, preventDefault() {}, stopPropagation() {} });

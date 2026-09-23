@@ -608,8 +608,14 @@ test("a narrated Foray's header counts the strip's clips, not every queue item, 
   assert.ok(r, "the Foray resolved");
   const model = strip.stripModel(r.playable);
   const sub = headSub(m.html());
-  assert.match(sub, new RegExp(`^${model.segmentCount} clips from ${model.shows.length} shows?, with narration`), `header: "${sub}"`);
-  assert.ok(!sub.includes(`${r.playable.length} `), `the queue length (${r.playable.length}) is not the clip count: "${sub}"`);
+  /* INTEGRATION (2026-09-22): L4 made every piece a "clip" on the strip, the
+     mini bar and ‹‹/››, with the narrator's counted as the narrator's; the
+     header now says the strip's own sentence, so the two cannot disagree. The
+     tape count is still the strip model's, never a count of its own. */
+  const narr = r.playable.length - model.segmentCount;
+  assert.ok(narr > 0, "precondition: a narrated Foray");
+  assert.match(sub, new RegExp(`^${r.playable.length} clips: ${model.segmentCount} from ${model.shows.length} shows? and ${narr} from 4a(&#39;|')s narrator`), `header: "${sub}"`);
+  assert.ok(strip.stripSummary(model).startsWith(`${r.playable.length} clips: ${model.segmentCount} from`), "the strip says the same numbers");
   assert.match(sub, /· about \d+ min$/, `an estimated runtime says so: "${sub}"`);
   assert.match(m.view.querySelector("#fy-total").textContent, /^~\d/, "the clock beside the scrubber carries the same hedge");
 });
@@ -635,7 +641,8 @@ test("a clip missing from the segment pool is not promised as 'listed below'", a
   const m = await mountForay("broken-1", { forays: { ...doc, forays: [broken] } });
   const html = m.html();
   assert.doesNotMatch(html, /listed below|marked below/, `nothing below is marked, so nothing may point there: ${html.slice(0, 600)}`);
-  assert.match(html, /1 clip from this Foray couldn't be found, so it's left out\./);
+  /* "foray" lowercase at integration: L4's rule that the unit is a common noun. */
+  assert.match(html, /1 clip from this foray couldn't be found, so it's left out\./);
 });
 
 test("the header does not count a show whose only clip will not play", async () => {

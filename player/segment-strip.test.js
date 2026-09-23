@@ -1483,7 +1483,9 @@ test("stripTally counts what the strip counts: clips are tape, bridges are narra
   assert.equal(tally.clips + tally.bridges, r.playable.length, "every queue item is a clip or a bridge");
   assert.equal(tally.shows, model.shows.length);
   assert.equal(tally.totalSec, r.totalSec, "one runtime, whichever reader asks");
-  assert.ok(stripSummary(model).includes(`${tally.clips} segment`), "the strip's own sentence names the same number");
+  /* L4's wording since integration: "N clips: <tape> from S shows and <bridges>
+     from 4a's narrator". */
+  assert.ok(stripSummary(model).includes(`: ${tally.clips} from `), "the strip's own sentence names the same number");
 });
 
 test("stripTally says a runtime is an estimate when any item's duration was not measured", () => {

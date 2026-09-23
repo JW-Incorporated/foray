@@ -272,7 +272,10 @@ test("'Starts with' closes its sentence once, whatever the title ends with", () 
    one concrete fact on the card — must come first. MUTATION: put the blurb
    back in front of startsWithLine in miniCard's hook. */
 test("the subject card's hook leads with the episode it starts with", () => {
-  const body = APP_SRC.slice(APP_SRC.indexOf("function miniCard(slot)"), APP_SRC.indexOf("function miniCard(slot)") + 900);
+  /* Up to the function's end, not a fixed width: L5 added a comment above the
+     count at integration, which pushed the hook past a 900-character window. */
+  const at = APP_SRC.indexOf("function miniCard(slot)");
+  const body = APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
   assert.match(body, /<p class="mc-hook">\$\{startsWithLine\(item\.title\)\} \$\{esc\(subjectBlurb\(slot\)\)\}<\/p>/);
 });
 
@@ -316,7 +319,9 @@ test("the playlist builder hides the last query's note before building the next"
   const body = APP_SRC.slice(APP_SRC.indexOf("function bindPlaylistFormSubmit"), APP_SRC.indexOf("function bindPlaylistFormSubmit") + 900);
   const hide = body.indexOf("staleNote.hidden = true");
   assert.ok(hide > 0, "the stale note must be hidden");
-  assert.ok(hide < body.indexOf("setTimeout("), "and hidden BEFORE the build starts, not after");
+  /* The build is deferred by whenSearchDataReady since L5 (it waits for the
+     search documents the first route no longer awaits). */
+  assert.ok(hide < body.indexOf("whenSearchDataReady("), "and hidden BEFORE the build starts, not after");
 });
 
 /* qa row 62: the clear-search ✕ was bound to mousedown only; Enter and Space

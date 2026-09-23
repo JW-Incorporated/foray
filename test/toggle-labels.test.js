@@ -224,6 +224,9 @@ test("a playing card's button is renamed 'Pause <its title>', and back to 'Play'
   const ctx = clientCtx({
     current: { id: "e-1" },
     isPlaying: () => playing,
+    /* L2 moved the card to the transport's own answer (the same one the bar's
+       toggle decides by); integration gives the harness both. */
+    transportIsRunning: () => playing,
     document: { querySelectorAll: () => [card, other] },
   });
   vm.runInContext(clientFn("syncCardButtons"), ctx);
@@ -265,15 +268,17 @@ test("the scrub slider announces a time, not a 0-1000 fraction", () => {
 /* The Foray page                                                      */
 /* ------------------------------------------------------------------ */
 
-/* The four states of the main button, read straight out of paintForay's
-   decision so a fifth cannot be added with a two-state name.
+/* The states of the main button, read straight out of paintForay's decision
+   so another cannot be added with a two-state name. FIVE since integration:
+   L2 added "Start over" for a finished Foray.
    MUTATION: restore `playBtn.setAttribute("aria-label", running ? "Pause" : "Play")`. */
-test("the Foray main button's name has all four states its text has", () => {
+test("the Foray main button's name has every state its text has", () => {
   const body = APP_SRC.slice(APP_SRC.indexOf("const playBtn = $(\"#fy-play\");"), APP_SRC.indexOf("setControlLabel(playBtn, text, name);") + 40);
   const pairs = [...body.matchAll(/\["([^"]+)", "([^"]+)"\]/g)].map((m) => [m[1], m[2]]);
   assert.deepStrictEqual(pairs, [
     ["❚❚ Pause", "Pause"],
     ["Loading…", "Loading, please wait"],
+    ["▶ Start over", "Start over"],
     ["▶ Resume", "Resume"],
     ["▶ Play", "Play"],
   ]);
@@ -338,9 +343,11 @@ const NOT_CONTROLS = {
   "app.js": new Set([
     "pct", "el", "note", "$(\"#fy-total\")", "$(\"#fy-sheet-sub\")", "now", "ui.status", "ui.notice", "ddUi.status", "n",
     "link", // a drawer <a> with fixed text, written once
+    "num", // L1's Up Next reorder renumbers a row's position badge (.q-num), not a control
   ]),
   "player/client.js": new Set([
     "n", "ui.tNow", "ui.tLeft", "ui.title", "ui.show", "ui.sTitle", "ui.sShow", "ui.sWhy", "ui.sDesc", "ui.note",
+    "ui.err", "ui.sErr", // the bar's and the sheet's status lines (L5 + L2, painted by paintStatus)
   ]),
 };
 const HELPERS = { "app.js": ["setControlLabel", "setStatusText"], "player/client.js": ["paintControl"] };
