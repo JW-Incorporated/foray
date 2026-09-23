@@ -80,7 +80,15 @@ test("every fetchJson(data/...) call in the real app.js is derived", () => {
      is what makes the two counts comparable. */
   const callSites =
     (src.match(/fetchJson\(/g) || []).length - (src.match(/function fetchJson\(/g) || []).length;
-  assert.equal(derived.length, callSites, "some fetchJson call was not derived into the plan");
+  /* ONE FILE MAY BE FETCHED FROM MORE THAN ONE PLACE (2026-09-22 audit, L5):
+     "Try again" re-runs the same fetch (the Foray documents, the catalogue), so
+     a path can have two call sites and the derivation rightly collapses them.
+     The two independent claims are therefore: every call site names a literal
+     path (a computed one could not be derived), and the plan holds exactly the
+     distinct paths those call sites name. */
+  const literalSites = [...src.matchAll(/fetchJson\(\s*["'`]([^"'`$]+)["'`]\s*\)/g)].map((m) => m[1]);
+  assert.equal(literalSites.length, callSites, "a fetchJson call with a computed path cannot be derived into the plan");
+  assert.equal(derived.length, new Set(literalSites).size, "some fetchJson call was not derived into the plan");
   assert.ok(derived.includes("data/session.json"), "the session document must be in the bundle");
   assert.ok(derived.length >= MIN_DERIVED_DATA_FILES);
   for (const f of derived) assert.match(f, /^data\/[^/]+\.json$/);
