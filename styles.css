@@ -11,6 +11,12 @@
      A token rather than the raw hex the rule used to carry, so the ui-v2 override
      below and the v1 rule cannot drift apart. */
   --danger: #b3402f;
+  /* The danger colour as a TEXT colour. `--danger` is 2.7:1 on the dark
+     surfaces — fine for a fill or a border, too dark for a 0.75rem label
+     (WCAG 1.4.3 wants 4.5:1). This tint is ~5.7:1 on --surface-2; the light
+     block below puts the original hex back, which is ~5:1 on its light
+     surface. (Review 2026-09-23: Stop's label.) */
+  --danger-text: #ef7d68;
   --radius: 14px;
   --topbar-h: 44px;
   /* U-12: the drawer is the top-most chrome. Defined here rather than at the
@@ -32,6 +38,7 @@
     --text: #211c14;
     --text-dim: #6b6154;
     --line: #e6ddd0;
+    --danger-text: #b3402f;
     --shadow: 0 1px 2px rgba(60,45,20,0.06), 0 6px 16px rgba(60,45,20,0.08);
   }
 }
@@ -84,6 +91,8 @@ body.ui-v2 {
      data" is a token and not a literal a later primary-button rule can
      silently outrank — which is exactly what happened (audit 2026-09-22). */
   --danger: #b3402f;
+  /* As text, on --surface2 #2A2333: ~5.6:1 where --danger is 2.7:1. */
+  --danger-text: #ef7d68;
 
   /* THE FIVE v1 NAMES THAT LIVE RULES STILL READ (audit 2026-09-22, theme I).
      ui-v2 was a layer over v1, and v1's rules kept asking for `--surface-2`,
@@ -2105,7 +2114,12 @@ body.fp-expanded { overflow: hidden; }
   font-size: 0.8rem; cursor: pointer;
 }
 .fp-big { min-width: 72px; font-size: 1.1rem; }
-.fp-btn:hover { border-color: var(--accent); }
+.fp-btn:hover:not(:disabled) { border-color: var(--accent); }
+/* '››' on a Foray's last clip is `disabled` (client.js render()). The rules
+   above set colour, background and a pointer cursor, which switch off the
+   browser's own greyed-out look, so without this a disabled button looked and
+   hovered exactly like a live one. Same idiom as .fy-btn:disabled. */
+.fp-btn:disabled { opacity: 0.45; cursor: default; }
 .fp-row2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
 .fp-rate, .fp-stop, .fp-collapse {
   border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
@@ -2117,7 +2131,7 @@ body.fp-expanded { overflow: hidden; }
    middle. Stop now sits at the far end of the row from Close (client.js's
    append order) and carries the danger colour, so the two can never read as
    the same control. No confirmation: stopping is recoverable (press play). */
-.fp-stop { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
+.fp-stop { color: var(--danger-text); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
 /* NOT .fp-open: that class is also set on <body> while the mini-player is up
    (see client.js), so a bare .fp-open rule painted the whole page accent-blue
    through inheritance. Nothing showed it until a page had a heading with no
@@ -3477,7 +3491,7 @@ body.ui-v2 .fp-btn {
   color: var(--text);
   box-shadow: none;
 }
-body.ui-v2 .fp-btn:hover { border-color: var(--violet); }
+body.ui-v2 .fp-btn:hover:not(:disabled) { border-color: var(--violet); }
 body.ui-v2 .fp-rate, body.ui-v2 .fp-stop, body.ui-v2 .fp-collapse {
   border-color: var(--line);
   background: var(--surface2);
@@ -3485,7 +3499,7 @@ body.ui-v2 .fp-rate, body.ui-v2 .fp-stop, body.ui-v2 .fp-collapse {
 }
 /* After the shared rule, so Stop keeps the weight `.fp-stop`'s own comment
    explains (it is not Close). */
-body.ui-v2 .fp-stop { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
+body.ui-v2 .fp-stop { color: var(--danger-text); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
 body.ui-v2 .fp-openep { color: var(--violet); }
 body.ui-v2 .fp-note { color: var(--faint); }
 body.ui-v2 .fp-err, body.ui-v2 .fp-err-line { color: var(--amber); }

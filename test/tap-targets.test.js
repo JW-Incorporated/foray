@@ -290,8 +290,61 @@ test("docked above the tab bar, the mini player does not add the home-indicator 
 test("Stop reads as a different control from Close", () => {
   /* MUTATION: delete `body.ui-v2 .fp-stop { ... }` -> the shared v2 rule
      paints Stop the same grey as Close; red. */
-  assert.match(valueOf("body.ui-v2 .fp-stop", "color") || "", /var\(--danger\)/);
+  assert.match(valueOf("body.ui-v2 .fp-stop", "color") || "", /var\(--danger-text\)/);
   assert.notStrictEqual(valueOf("body.ui-v2 .fp-stop", "color"), valueOf("body.ui-v2 .fp-collapse", "color"));
+});
+
+/** WCAG 2 relative-luminance contrast between two #rrggbb colours. */
+function contrast(a, b) {
+  const lum = (hex) => {
+    const [r, g, bl] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+/** A token's hex on a scope: the last declaration of it in a rule on `sel`
+    whose at-rule context is exactly `atRules`. */
+function tokenOn(sel, token, atRules = []) {
+  let v = null;
+  for (const r of RULES) {
+    if (!r.selectors.includes(sel) || r.atRules.join("|") !== atRules.join("|")) continue;
+    for (const d of r.decls) if (d.prop === token) v = d.value;
+  }
+  return v;
+}
+
+test("Stop's label is readable: 4.5:1 on its own background in every theme", () => {
+  /* Review 2026-09-23: `color: var(--danger)` put #b3402f on #2A2333 — 2.66:1,
+     under even the large-text bar, on the sheet's most consequential button.
+     MUTATION: set `--danger-text` back to #b3402f in `body.ui-v2` -> red. */
+  const LIGHT = ["@media (prefers-color-scheme: light)"];
+  const cases = [
+    ["v2", tokenOn("body.ui-v2", "--danger-text"), tokenOn("body.ui-v2", "--surface2")],
+    ["v1 dark", tokenOn(":root", "--danger-text"), tokenOn(":root", "--surface-2")],
+    ["v1 light", tokenOn(":root", "--danger-text", LIGHT), tokenOn(":root", "--surface-2", LIGHT)],
+  ];
+  for (const [name, fg, bg] of cases) {
+    assert.match(String(fg), /^#[0-9a-f]{6}$/i, `${name}: --danger-text is a hex`);
+    assert.match(String(bg), /^#[0-9a-f]{6}$/i, `${name}: the surface is a hex`);
+    assert.ok(contrast(fg, bg) >= 4.5, `${name}: ${fg} on ${bg} is ${contrast(fg, bg).toFixed(2)}:1`);
+  }
+  assert.match(valueOf(".fp-stop", "color") || "", /var\(--danger-text\)/, "v1 Stop reads the text token too");
+});
+
+test("a disabled player button looks disabled and does not light up on hover", () => {
+  /* '››' is disabled on a Foray's last clip, but `.fp-btn` sets its own colours
+     and a pointer, which switch off the browser's greyed-out look, and both
+     hover rules still lit its border. MUTATION: delete `.fp-btn:disabled`, or put
+     `.fp-btn:hover` back without `:not(:disabled)` -> red. */
+  const opacity = Number(valueOf(".fp-btn:disabled", "opacity"));
+  assert.ok(opacity > 0 && opacity < 0.6, `a disabled .fp-btn is dimmed (opacity ${opacity})`);
+  assert.strictEqual(valueOf(".fp-btn:disabled", "cursor"), "default");
+  for (const sel of [".fp-btn:hover", "body.ui-v2 .fp-btn:hover"]) {
+    assert.ok(!UNCONDITIONAL.some((r) => r.selectors.includes(sel)), `${sel} must exclude :disabled`);
+  }
+  assert.ok(valueOf("body.ui-v2 .fp-btn:hover:not(:disabled)", "border-color"), "the v2 hover still exists for live buttons");
 });
 
 test("hover is not 'playing': a tapped ▶ does not light up as if audio had started", () => {
