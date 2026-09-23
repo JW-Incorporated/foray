@@ -1651,16 +1651,20 @@ function setNowPlaying(item, why) {
 function paintNotes(item) {
   const text = item?.description || "";
   ui.sDesc.hidden = !text;
-  /* Nodes in, nodes out — never a `textContent` write on this paragraph,
-     which test/toggle-labels.test.js would otherwise have to be told is not
-     a control. */
-  ui.sDescText.replaceChildren();
+  /* A `textContent` write: the paragraph is prose, not a control, and
+     test/toggle-labels.test.js lists it as one (NOT_CONTROLS). Not
+     `replaceChildren`/`createTextNode` — the real-client harnesses
+     (transport-reconcile, diagnostic-record) drive this path over a DOM stub
+     that has neither, and a paint helper must not be the reason a seam test
+     dies. Token text goes in through `append(string)`, which the DOM turns
+     into a text node itself. */
+  ui.sDescText.textContent = "";
   if (!text) return;
   const notes = typeof window !== "undefined" ? window.ForayNotes : null;
   const tokens = !foray && notes && typeof notes.tokens === "function"
     ? notes.tokens(text, episodeDurationSec())
     : null;
-  if (!Array.isArray(tokens)) { ui.sDescText.append(document.createTextNode(text)); return; }
+  if (!Array.isArray(tokens)) { ui.sDescText.textContent = text; return; }
   for (const t of tokens) {
     if (t.kind === "link" && /^https?:\/\//i.test(String(t.href || ""))) {
       const a = el("a", null, t.text);
@@ -1680,7 +1684,7 @@ function paintNotes(item) {
       });
       ui.sDescText.append(b);
     } else {
-      ui.sDescText.append(document.createTextNode(String(t.text ?? "")));
+      ui.sDescText.append(String(t.text ?? ""));
     }
   }
 }

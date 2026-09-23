@@ -145,8 +145,9 @@ test("the sheet's notes are the episode page's notes, built as nodes from the on
   assert.ok(fn, "paintNotes must exist");
   assert.match(fn[0], /window\.ForayNotes/);
   assert.match(fn[0], /notes\.tokens\(text, episodeDurationSec\(\)\)/, "the one tokeniser, with the honesty guard's duration");
-  assert.match(fn[0], /ui\.sDescText\.append\(document\.createTextNode\(text\)\); return;/, "no tokeniser, or a Foray: plain text, as before");
-  assert.match(fn[0], /ui\.sDescText\.replaceChildren\(\);/, "emptied as nodes, so the paragraph never takes a textContent write");
+  assert.match(fn[0], /ui\.sDescText\.textContent = text; return;/, "no tokeniser, or a Foray: plain text, as before");
+  assert.match(fn[0], /ui\.sDescText\.append\(String\(t\.text \?\? ""\)\);/, "prose tokens go in as strings, never as markup");
+  assert.doesNotMatch(fn[0], /replaceChildren|createTextNode/, "nothing the real-client harnesses' DOM stubs lack");
   assert.match(fn[0], /b\.dataset\.ts = String\(t\.secs\)/);
   assert.match(fn[0], /seekEpisodeTo\(t\.secs\)/, "a stamp seeks through the one seek path");
   assert.match(fn[0], /a\.rel = "noopener noreferrer"/);
