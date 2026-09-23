@@ -7,6 +7,72 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-22 session handoff — four open PRs, three founder reports still live
+
+Owned directories: none held. Every branch below is pushed and has a PR; nothing
+is half-written on disk.
+
+**OPEN PRS, in the order they should land:**
+
+- **#735 `fix/card-and-ribbon-transport`** — the ribbon's play threw a TypeError
+  (`play(item, null)` against a destructured-default signature, which only fires
+  for `undefined`), and a card button showing the pause glyph was still a play.
+  **This also fixes the Spotify report** (see below). Merge first, then cut a
+  release.
+- **#736 `docs/audit-findings-2026-09-22`** — the 259 audit findings, committed.
+  They existed ONLY in a session temp directory until now. `docs/audit/README.md`
+  is the index; theme A is the one to read first.
+- **#737 `perf/release-upload-retry`** — piece 1 of the release-reliability work.
+  `.github/` is DENIED, so it waits for a human merge by design.
+- **#734 `docs/ha-108-car-instrument`** — HUMAN-ACTIONS #108 rewritten (the car
+  question changed shape once the `sent=` instrument was fixed).
+
+**WHAT SHIPPED TODAY:** build **2026092224** (both stores). It carries the
+"Episode not found" router fix, the stale-show-rows fix, the dead car/lock-screen
+play button, and the `sent=` diagnostic fix. The founder's next record confirmed
+the last one: `sent=1` then `sent=4`, so the native bridge genuinely reaches iOS
+and the earlier `sent=0` was the instrument reading one microtask too early.
+
+**THREE FOUNDER REPORTS STILL OPEN:**
+
+1. **A resumed episode restarts from a stale position.** Root cause found, NOT
+   fixed. `PositionStore.save` has exactly one production caller
+   (`queue-manager.js:2066-2103`), reached by a 15 s interval that is armed
+   **only while the reducer state is `playing`** (`:2048-2058`). If the element is
+   resumed from outside the reducer — a car or lock-screen press landing on
+   WebKit's own media session, or delivered to a suspended WebView — the reducer
+   never enters `playing`, the timer never arms, and **nothing writes the playhead
+   for the whole ride**. `reconcileWithBackend` cannot rescue it: it returns early
+   unless state is already `playing` (`:933`). The native session events
+   (background / route change / interruption) reach the page as `foray:session`
+   and are wired to `diag.sessionEvent` ONLY (`client.js:349-352`) — nothing calls
+   `manager.interruptionBegan` or `routeChanged`. Fix set, in value order: arm the
+   interval on the element's own state; let `reconcileWithBackend` correct
+   *towards* playing; flush on the native background/route events; add a
+   timeupdate-driven episode writer with a minimum delta.
+2. **Playback stops itself while backgrounded.** 8 × `stop element
+   pausedUnexpectedly`, all at `hidden=y`, with NO `session` row explaining any of
+   them — which is exactly what M-03 was built to capture. Unexplained; not yet
+   investigated.
+3. **A diagnostics record cannot say which build made it.** No build stamp in
+   `app.js`, and `sw.js`'s `BUILD_ID` is excluded from the native bundle
+   (`prepare-webdir.mjs:274`). This cost real time twice today. Options are in
+   `docs/release-reliability-plan.md` §4.
+
+**ALSO FOUND, unrelated but live:** `nightly-refresh` and `nightly-watch` have
+both failed their last three scheduled runs, with HUMAN-ACTIONS #46 open since
+2026-09-13. So "the run goes red" is a proven non-channel in this repo — which is
+why the watchdog design in `docs/release-reliability-plan.md` opens an issue
+instead.
+
+**STILL QUEUED, approved by the founder, not started:** Forays into Library (no
+new tab); delete `grilling-history-1`; the deep scrub of Foray add/delete
+coupling; Vercel items 2 and 3; the Long Live (`swift2-web`) Vercel settings.
+Recon for the first three is in the 2026-09-22 workflow output and summarised in
+the PRs above; the Foray coupling map names every hard-coded id in
+`tools/foray/check-forays.test.mjs`.
+
+
 ### Four founder reports from 2026-09-18 — `fix/resume-and-home` (STACKED on `fix/episode-page-ux`, PR #722)
 
 - **Stacked, not on `main`.** Issue 3 below edits `episodeDescriptionSectionHtml`,
