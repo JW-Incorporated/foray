@@ -1331,6 +1331,7 @@ const FLOORS = {
      unclassified failure still retries, so nothing ever goes red. A deleted cell
      would read as coverage of a list that had quietly stopped discriminating. */
   "tools/release/upload-retry.test.mjs": 14, // 2026-09-22: new -- which store-upload failures are worth trying again
+  "tools/release/watch-release.test.mjs": 33, // 2026-09-22: new -- the release watchdog + trigger (reliability plan pieces 2 and 3), replayed against the real 00:28 partial failure
   "tools/mobile/foray-media-session.test.mjs": 80, // 2026-09-22: `sends` cannot be read in the turn of the write, against the REAL default scheduler; 79 -> 80 // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
