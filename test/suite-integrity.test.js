@@ -1893,16 +1893,16 @@ const BACKEND_FLOORS = {
   "test/AnthropicDeepenActBuilder.test.ts": 9,
   "test/AnthropicEnricher.test.ts": 10,
   "test/AnthropicExternalResearcher.test.ts": 9,
-  "test/AnthropicPromptUnderstander.test.ts": 9,
+  "test/AnthropicPromptUnderstander.test.ts": 10, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 9 -> 10
   /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
      transcript windows and the one seed rule when the research map has them,
      neither when it does not, and the seed the reply carries back. */
-  "test/AnthropicSpineBuilder.test.ts": 11,
+  "test/AnthropicSpineBuilder.test.ts": 18, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
-  "test/copyRules.test.ts": 5, // L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
+  "test/copyRules.test.ts": 6, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
   "test/createEnricher.test.ts": 1,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c). */
   "test/createPromptUnderstander.test.ts": 1,
@@ -2006,7 +2006,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 16,
+  "test/runPipeline.test.ts": 31, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration

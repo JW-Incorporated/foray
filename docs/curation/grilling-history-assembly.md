@@ -384,7 +384,12 @@ already shows publisher chapters and the two would read as the same thing.
 `beat`, `segment`, `act` and `running order` are now refused in any Foray's title,
 summary or slot title by `tools/foray/check-forays.mjs` and
 `backend/test/copyRules.test.ts` (`INTERNAL_VOCABULARY` in
-`backend/src/copy/rules.js`).
+`backend/src/copy/rules.js`) when they count or point at a Foray's parts ("eight
+beats", "22 segments", "the last act", "Act one"), not when they are plain English
+("the Beat Generation", "failed to act"). The generator is held to the same rule:
+the understander and spine prompts forbid the words, and `runPipeline.ts` rewrites
+any it writes anyway into the listener's word (`toListenerWords`) before the gate
+sees them.
 
 **Narration scripts are not written here.** #226 puts them in stage 4 and the spine
 §7 confirms it, but the brief for this pass asked for the assembly, the thin-tier

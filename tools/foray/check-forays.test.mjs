@@ -1708,12 +1708,28 @@ test("the pipeline's own words are rejected in a title, a summary and a slot tit
     else boundary(f)[where] = text;
     assert.match(errorsFor(f).join("\n"), /uses the pipeline's word/, `${where} "${text}" must be refused`);
   }
-  /* And what must stay legal: a proper noun, and the listener's own words for
-     the same things (docs/audit/persona-synthesis.md §2). */
-  for (const text of ["Why the Clean Air Act worked", "Barbecue: eight stories from a much longer history"]) {
-    const f = fx();
-    boundary(f).title = text;
-    assert.doesNotMatch(errorsFor(f).join("\n"), /uses the pipeline's word/, `"${text}" is plain English`);
+  /* And what must stay legal: a proper noun, the listener's own words for the
+     same things (docs/audit/persona-synthesis.md §2), and the verb and plain
+     uses the first cut refused at the publish gate after the spend (PR #741
+     review), in every field the loop reads, since a slot title is where a
+     spine writes "When regulators failed to act".
+     MUTATION 3: put `/\bbeats?\b/i` or `/\bacts?\b/` back in rules.js -> red. */
+  const plain = [
+    "Why the Clean Air Act worked",
+    "Barbecue: eight stories from a much longer history",
+    "The Beat Generation poets",
+    "How underdogs beat incumbents",
+    "When regulators failed to act",
+    "Who owns the market segment",
+    "Three acts of kindness",
+  ];
+  for (const text of plain) {
+    for (const where of ["title", "summary", "slot"]) {
+      const f = fx();
+      if (where === "slot") boundary(f).slots[0].title = text;
+      else boundary(f)[where] = text;
+      assert.doesNotMatch(errorsFor(f).join("\n"), /uses the pipeline's word/, `${where} "${text}" is plain English`);
+    }
   }
 });
 

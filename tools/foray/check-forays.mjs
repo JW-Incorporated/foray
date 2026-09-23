@@ -704,7 +704,10 @@ export function checkForays(files) {
        * 2026-09-22 audit): this loop let "Barbecue: eight beats of a forty-beat
        * history" through, because BANNED is about filler, not jargon. Here rather
        * than only in a test so the publish gate, which runs this checker, refuses
-       * a generated title or slot title that names an act or a segment. */
+       * a generated title or slot title that counts or points at our parts. The
+       * generator is told the rule and scrubs its own copy with the same module
+       * (runPipeline.ts forayCopy / slotsFromSpine, `toListenerWords`), so this
+       * refusal is the backstop, not the first line. */
       for (const rx of INTERNAL_VOCABULARY) if (rx.test(text)) E(`${field} uses the pipeline's word ${rx}, which a listener cannot decode: "${text}"`);
     }
 
