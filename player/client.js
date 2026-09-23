@@ -97,6 +97,7 @@ import {
 import { SINGLE_ITEM } from "./queue-strategy.js";
 import { seekPrecision, formatTimestamp, EXACT, OWN } from "./seek-policy.js";
 import { itemRuntimeSec } from "./foray-queue.js";
+import { TTS } from "./queue-state.js";
 import {
   resolveForay, indexSegments, indexSources, findForay, listableForays, allForays,
   forayElapsed, segmentAtElapsed, fmtClock, fmtSpan, progressSegments,
@@ -1145,6 +1146,11 @@ function seekEpisodeBy(offsetSec) {
 function render() {
   if (!ui || !current) return;
   syncForaySegment();
+  /* "››" ON THE LAST SEGMENT IS DISABLED, not silently dead (audit 2026-09-22).
+     `forayNext` returns early there, so the button looked live and read "Next
+     segment" to a screen reader while doing nothing at all. The listener's
+     INTENT index, like the running order's highlight. */
+  ui.fwdBtn.disabled = Boolean(foray) && foray.index >= foray.resolved.playable.length - 1;
   /* A seam beat reads as playing everywhere, or the mini bar shows "▶" while
      the Foray page shows "❚❚ Pause" for the same two seconds.
      `transportIsRunning()` rather than `isRunning()` since #689: the founder's
@@ -2856,6 +2862,7 @@ const ForayPlayer = {
     // Paint the intent before awaiting the load: a running order that only
     // highlights the row once the audio arrives reads as a dead button.
     setForayIndex(clampIndex(at ? at.index : startIndex, report.items.length));
+    const offsetAt = at ? sourceOffsetFor(report.items[foray.index], at.into) : null;
     try {
       /* WHAT WAS READ BACK, AND WHAT IT RESOLVED TO (#264). The page reads the
          row (`forayResume`) and hands the answer down as `startElapsedSec`; this
@@ -2873,10 +2880,7 @@ const ForayPlayer = {
         resolvedBy: at ? "elapsed" : "index",
       });
       await manager.play(foray.index);
-      if (at) {
-        const item = report.items[foray.index];
-        if (item) await manager.seek(item.start_sec + at.into, { precise: true });
-      }
+      if (offsetAt != null) await manager.seek(offsetAt, { precise: true });
     } finally {
       // Even if the load threw, the window has to close or this Foray would
       // never write a position again.
@@ -3044,6 +3048,9 @@ const ForayPlayer = {
 
   async forayNext() {
     if (!foray) return;
+    /* `render()` disables "››" on the last segment (audit 2026-09-22), so this
+       early return is the backstop for the lock screen's `nexttrack` rather
+       than the button's only behaviour. */
     const last = foray.resolved.playable.length - 1;
     if (manager.currentIndex >= last) return;
     foray.error = null;
@@ -3081,18 +3088,58 @@ const ForayPlayer = {
     const at = segmentAtElapsed(foray.resolved.playable, elapsedSec);
     if (!at) return;
     const item = foray.resolved.playable[at.index];
-    if (at.index !== manager.currentIndex) {
+    /* A FINISHED Foray has nothing loaded to seek in — the reducer refuses a
+       seek in `ended` — so a scrub back into the last segment reloads it, the
+       same as a scrub into any other segment does (audit 2026-09-22). */
+    const reload = at.index !== manager.currentIndex
+      || manager.state?.type === "ended" || manager.state?.type === "idle";
+    if (reload) {
       foray.error = null;
       setForayIndex(at.index);
       await manager.play(at.index);
     }
-    await manager.seek(item.start_sec + at.into, { precise: true });
+    const offset = sourceOffsetFor(item, at.into);
+    if (offset != null) await manager.seek(offset, { precise: true });
     render();
   },
 };
 
 /** Below this many seconds into a segment, "previous" means the segment before. */
 const RESTART_WINDOW_SEC = 4;
+
+/** How far inside the end of an item a Foray-clock seek may land. See
+    `sourceOffsetFor`. */
+const SEEK_INSIDE_END_SEC = 0.25;
+
+/**
+ * Where in the element's OWN clock a point `into` seconds into queue item
+ * `item` lives — the one translation from the Foray's clock to a source file's
+ * clock, used by the scrubber (`foraySeek`) and by a resume (`playForay`).
+ * Returns null when there is nothing to seek (audit 2026-09-22, two defects):
+ *
+ *  - A NARRATION ITEM HAS NO `start_sec`. `item.start_sec + into` was
+ *    `undefined + into` — NaN, refused at the bottom of the stack, so a scrub
+ *    into a bridge restarted it from its first word. A rendered bridge's file IS
+ *    the item, so its offset is `into` itself. A SPOKEN one has no file at all:
+ *    the synthesiser cannot start mid-sentence, so there is nothing to seek and
+ *    the line starts from the top, as `_loadItem` states for every bridge.
+ *  - THE CLOCK'S END-CLAMP IS NOT A SCRUB PAST THE BOUNDARY. `segmentAtElapsed`
+ *    answers a position at or past the total with the last segment's END, and
+ *    the backend reads a seek landing exactly on an out-point as a deliberate
+ *    scrub past it — and disarms the boundary, so the audio free-played on into
+ *    the rest of a stranger's episode with the countdown frozen. A seek always
+ *    lands just inside the item, so "take me to the end" ends the Foray.
+ */
+function sourceOffsetFor(item, into) {
+  if (!item || !Number.isFinite(into)) return null;
+  const len = itemRuntimeSec(item);
+  const inside = Number.isFinite(len) && len > 0
+    ? Math.min(Math.max(0, into), Math.max(0, len - SEEK_INSIDE_END_SEC))
+    : Math.max(0, into);
+  if (Number.isFinite(item.start_sec)) return item.start_sec + inside;
+  if (item.kind === TTS && !item.audio_url) return null;
+  return inside;
+}
 
 const isFiniteNum = (n) => typeof n === "number" && Number.isFinite(n);
 

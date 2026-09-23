@@ -1743,6 +1743,99 @@ test("AUDIT: play after an episode RAN OUT starts it again from the top", async 
   restore();
 });
 
+/* ---- the Foray's clock, translated into a source file's ---- */
+
+/** `synthetic()` with a rendered narration bridge in front: an item with a file
+    of its own and NO `start_sec`, which is the shape the NaN came from. */
+function withBridge() {
+  const foray = {
+    id: "f263n", kind: "deep-dive", title: "A Foray", status: "published",
+    slots: [{ id: "one", title: "Slot one" }],
+    items: [
+      { type: "narration", slot: "one", id: "n1", audio_url: "https://cdn.test/n1.mp3", duration_sec: 30, script: "Hello." },
+      { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: "sa" },
+    ],
+  };
+  const segments = indexSegments({
+    segments: [
+      { id: "sa", item_id: "ep-a", start_sec: 100, end_sec: 200, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+    ],
+  });
+  const sources = indexSources({
+    sources: [
+      { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
+    ],
+  });
+  return resolveForay(foray, { segments, sources });
+}
+
+test("AUDIT: a scrub to the very END of a Foray lands inside the last segment, so the boundary still fires", async (t) => {
+  /* `segmentAtElapsed` answers "at or past the total" with the last segment's
+     END, and a seek landing exactly on the out-point reads to the backend as a
+     deliberate scrub past it — disarmed, so the audio free-played into the rest
+     of a stranger's episode. KILLING MUTATION: drop the `len - SEEK_INSIDE_END_SEC`
+     clamp from `sourceOffsetFor`. */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = synthetic();
+  await client.playForay(resolved, { startIndex: 1 });
+  await settle();
+  await client.foraySeek(resolved.totalSec);
+  await settle();
+  assert.ok(audio.currentTime < 600, `landed at ${audio.currentTime}s, which is on or past the out-point`);
+  audio.currentTime = 600.01;
+  audio.fire("timeupdate");
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().ended, true, "the boundary fired and the Foray ended");
+  restore();
+});
+
+test("AUDIT: a scrub into a narration bridge lands where it was aimed, not at its first word", async (t) => {
+  /* A bridge has no `start_sec`; `undefined + into` was NaN and the seek was
+     refused. KILLING MUTATION: `sourceOffsetFor` returning
+     `item.start_sec + inside` unconditionally. */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = withBridge();
+  assert.equal(resolved.playable[0].start_sec, undefined, "precondition: the bridge has no bounds");
+  await client.playForay(resolved, { startIndex: 0 });
+  await settle();
+  await client.foraySeek(20);
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 20) < 0.01, `bridge seek landed at ${audio.currentTime}s`);
+  restore();
+});
+
+test("AUDIT: \"››\" is disabled on the last segment instead of silently doing nothing", async (t) => {
+  /* KILLING MUTATION: delete the `ui.fwdBtn.disabled` line in `render()`. */
+  const { client, doc, restore } = await bootClient(t);
+  const fwd = () => findWhere(doc.body, (n) => n.textContent === "››");
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+  assert.equal(fwd().disabled, false, "segment 1 of 2 has a next");
+  await client.forayNext();
+  await settle();
+  assert.equal(fwd().disabled, true, "the last segment has none, and says so");
+  restore();
+});
+
+test("AUDIT: a FINISHED Foray can be scrubbed back into its last segment", async (t) => {
+  /* KILLING MUTATION: drop the `ended` clause from `foraySeek`'s `reload`. */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = synthetic();
+  await client.playForay(resolved, { startIndex: 1 });
+  await settle();
+  audio.runOut();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().ended, true, "precondition: over");
+  await client.foraySeek(resolved.totalSec - 50);           // the middle of segment sb
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "the scrub reloaded it");
+  assert.ok(Math.abs(audio.currentTime - 550) < 1, `landed at ${audio.currentTime}s`);
+  restore();
+});
+
 test("AUDIT: play on a FINISHED Foray starts it over instead of replaying its last segment", async (t) => {
   /* The page now labels this press "Start over", and this is what makes the
      label true. KILLING MUTATION: delete the `ended` branch in `setRunning` —
