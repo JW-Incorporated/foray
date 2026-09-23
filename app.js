@@ -8647,6 +8647,17 @@ function renderLibrary() {
   bindStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
+
+  /* A COLD OPEN BEFORE THE PLAYER MODULE (review 2026-09-23). The Forays
+     section can only list once the player is up, and the forayCards() header
+     says every page that lists Forays must close that gap itself — as
+     renderForays does. Nothing else repaints Library when the module lands. */
+  if (!window.ForayPlayer && state.forays) {
+    const isCurrentRender = renderToken();
+    playerBridge().then(player => {
+      if (player && isCurrentRender() && currentHash() === "#/library") renderCurrentPage();
+    });
+  }
 }
 
 function renderPlaylists() {
@@ -13108,7 +13119,9 @@ async function bootForayDirectory(directory) {
 /** Which pages read the three documents. Anything else keeps its DOM. */
 function isForaySurface(hash) {
   const h = hash || "#/";
-  return h === "#/" || h === "#/forays" || /^#\/(foray|show)\//.test(h);
+  /* `#/library` since Library grew a Forays section (review 2026-09-23): a
+     foreground refresh that adopted a new set left its list stale. */
+  return h === "#/" || h === "#/forays" || h === "#/library" || /^#\/(foray|show)\//.test(h);
 }
 
 /* WHAT THE PAGE ON SCREEN SHOWS OF THE FORAY SET, as a string to compare
@@ -13124,6 +13137,7 @@ function foraySurfaceSignature() {
       const show = showById(r.id);
       return show ? showForaysHtml(show) : "";
     }
+    if (currentHash() === "#/library") return libraryForaysHtml();
     const id = forayRouteId();
     if (id) {
       const r = window.ForayPlayer?.resolve?.(state.forays, {

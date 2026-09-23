@@ -413,6 +413,44 @@ test("before the player has loaded, the Forays section offers the way in and cla
   assert.ok(!html.includes("No forays"), "an unknown list is not an empty one");
 });
 
+test("REVIEW: a Library opened before the player module repaints once the module lands", async () => {
+  /* Nothing re-rendered Library when the player arrived, so a cold open kept
+     the placeholder row until the listener navigated. MUTATION: drop the
+     playerBridge() re-render at the end of renderLibrary. */
+  const m = mount();
+  seedEmpty(m);
+  m.state.forays = { forays: [] };
+  m.ctx.location.hash = "#/library";
+  let landed;
+  m.ctx.playerBridge = () => new Promise((r) => { landed = r; });
+  let rerendered = 0;
+  m.ctx.renderCurrentPage = () => { rerendered++; };
+  m.ctx.renderLibrary();
+  assert.strictEqual(rerendered, 0, "precondition: nothing yet");
+  m.ctx.window.ForayPlayer = { listForays: () => [], forayResumeList: () => [] };
+  landed(m.ctx.window.ForayPlayer);
+  await new Promise((r) => setTimeout(r, 0));
+  assert.strictEqual(rerendered, 1, "the page is painted again with the Forays listed");
+});
+
+test("REVIEW: a foreground directory refresh repaints Library's Forays too", () => {
+  /* isForaySurface did not include #/library, so an adopted set (a newly
+     published Foray) left Library's list stale. MUTATION: drop `#/library`
+     from isForaySurface. */
+  const m = mount();
+  assert.strictEqual(m.ctx.isForaySurface("#/library"), true);
+  seedEmpty(m);
+  m.ctx.location.hash = "#/library";
+  m.ctx.window.ForayPlayer = {
+    listForays: (doc) => (doc?.forays || []),
+    forayResumeList: () => [],
+  };
+  m.state.forays = { forays: [{ id: "a", title: "A", status: "published" }] };
+  const before = m.ctx.foraySurfaceSignature();
+  m.state.forays = { forays: [{ id: "a", title: "A", status: "published" }, { id: "b", title: "B", status: "published" }] };
+  assert.notStrictEqual(m.ctx.foraySurfaceSignature(), before, "a new Foray changes what Library shows");
+});
+
 test("Library lists the shows the listener follows, linking to each show", () => {
   /* MUTATION: drop the `libSection("Followed shows", …)` line. */
   const m = mount({ seed: { cp_starred_shows: JSON.stringify({
