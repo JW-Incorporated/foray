@@ -1965,7 +1965,7 @@ test("every Now Playing needle is recognised, one at a time", () => {
 /* ─────────── L-02: navigator.mediaSession is ours + setNowPlaying reached ──────── */
 
 /** A bridge record in the shape probe-bridge.js writes after L-02's additions. */
-function takeoverRecord({ marker = true, atLoad = false, reached = true, attempted = true } = {}) {
+function takeoverRecord({ marker = true, atLoad = false, reached = true, attempted = true, tee = true } = {}) {
   return {
     capacitorType: "object",
     mediaSessionTakeover: {
@@ -1973,6 +1973,8 @@ function takeoverRecord({ marker = true, atLoad = false, reached = true, attempt
       forayPolyfillAtLoad: atLoad,
       windowForayMediaSession: true,
       peekState: "none",
+      /* `null` = an OLDER probe that never wrote the key. */
+      ...(tee === null ? {} : { tee }),
     },
     setNowPlayingRoundTrip: reached
       ? { attempted: true, resolved: true, ok: true, platform: "ios", reason: "", elapsedMs: 41 }
@@ -2024,6 +2026,34 @@ test("MUTATION: a marker with no answer from the Swift half must NOT read as tak
   assert.equal(mediaSessionTakeoverVerdict(rec, null).verdict, "marker-only");
   rec.setNowPlayingRoundTrip.platform = null;
   assert.equal(mediaSessionTakeoverVerdict(rec, null).verdict, "marker-only");
+});
+
+test("both halves holding with NO tee onto WebKit's MediaSession is taken-over-severed, a failing word (2026-09-23)", () => {
+  /* Founder, 2026-09-23: "My lock screen and car still displays the song/
+     artist/ album as 4a/ unknown/ unknown" — on a build whose section 3d read
+     `taken-over`. L-02's two halves (the marker, the round trip) were both true
+     and the display was still WebKit's own entry, cut off from the page. The
+     probe now reads `inspect().tee`, and a false there must not read as
+     success. MUTATION: drop the `tee === "absent"` branch — this reads
+     taken-over. */
+  const v = mediaSessionTakeoverVerdict(takeoverRecord({ tee: false }), null);
+  assert.equal(v.verdict, "taken-over-severed");
+  assert.equal(v.tee, "absent");
+  assert.match(v.headline, /did NOT tee onto WebKit's own MediaSession/);
+  assert.match(v.headline, /4a \/ unknown \/ unknown/);
+  assert.match(v.detail, /inspect\(\)\.tee .*: `absent` \(measured\)/);
+  // With the tee captured, the same record is taken-over and says the tee held.
+  const ok = mediaSessionTakeoverVerdict(takeoverRecord({ tee: true }), null);
+  assert.equal(ok.verdict, "taken-over");
+  assert.equal(ok.tee, "captured");
+  assert.match(ok.headline, /is a tee/);
+  // An OLDER probe with no tee field is not a finding either way.
+  const older = mediaSessionTakeoverVerdict(takeoverRecord({ tee: null }), null);
+  assert.equal(older.verdict, "taken-over");
+  assert.equal(older.tee, "unreadable");
+  assert.match(older.detail, /not a finding/);
+  // A severed tee never promotes a record that failed a half: the older words win.
+  assert.equal(mediaSessionTakeoverVerdict(takeoverRecord({ marker: false, tee: false }), null).verdict, "plugin-only");
 });
 
 test("the Swift half answering while navigator.mediaSession is still WebKit's is plugin-only", () => {

@@ -33,9 +33,13 @@ import {
   DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport, stageOf, errorNameOf, tapPhaseOf,
   DIAG_KEY, DIAG_CAP, STAGE_CAP, DIAG_VERSION, MEDIA_STAGES,
   dataTokenOf, dataVersionOf, dataFileTagOf, dataIdOf, DATA_PHASES, DATA_SOURCES,
-  nowPlayingFieldOf, NOWPLAYING_FIELD_MAX, SESSION_KINDS, SESSION_PRODUCERS,
-  TRANSPORT_SOURCES, TRANSPORT_ACTIONS,
+  nowPlayingFieldOf, NOWPLAYING_FIELD_MAX, NOWPLAYING_VIA, SESSION_KINDS, SESSION_PRODUCERS,
+  TRANSPORT_SOURCES, TRANSPORT_ACTIONS, REMOTE_COMMANDS, REMOTE_ORIGINS,
 } from "./diagnostic-log.js";
+/* The REAL store for the held-write tests below: whether a row written before a
+   slow hydration overwrites the durable ring is a fact about `DurableStore`'s
+   first-writer rule, and a fake that did not have that rule would prove nothing. */
+import { DurableStore, localStorageTier } from "./durable-store.js";
 
 /* ==================================================================== */
 /* fakes                                                                */
@@ -1605,6 +1609,154 @@ test("the record can answer \"why did it stop?\" — the cause sits one row abov
   assert.match(text, /transport\s+play from tap/);
 });
 
+/* ==================================================================== */
+/* founder 2026-09-23: "I started playing 4a, paused and turned off my   */
+/* screen, got in my car, then my car resumed Spotify. This is still     */
+/* wrong." What the NEXT record has to be able to say.                    */
+/* ==================================================================== */
+
+test("REPORT 2026-09-23: a remote command the native side received is a row of its own", () => {
+  /* `transport … from remote` is written by the page's HANDLER, so a command
+     that reached the plugin and found no handler, or a page too asleep to run
+     one, was invisible. MUTATION: drop the `remote` type and fold it into
+     `transport` — `handled=n` has nowhere to live and the two readings of "the
+     car's play did nothing" collapse again. */
+  const { diag, log, clock: c } = mk();
+  const e = diag.remoteCommand({
+    command: "toggle-play-pause", action: "pause", origin: "command-center", handled: true, at: c.now() - 250,
+  });
+  assert.equal(e.type, "remote");
+  assert.equal(e.command, "toggle-play-pause");
+  assert.equal(e.action, "pause");
+  assert.equal(e.origin, "command-center");
+  assert.equal(e.handled, true);
+  assert.equal(e.lagMs, 250);
+  const miss = diag.remoteCommand({ command: "play", action: "play", origin: "media-session", handled: false });
+  assert.equal(miss.handled, false);
+  assert.equal(miss.lagMs, null, "no native stamp is honestly null");
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /remote\s+toggle-play-pause -> pause from command-center  handled=y  lag 250ms/);
+  assert.match(text, /remote\s+play -> play from media-session  handled=n/);
+  assert.match(text, /remote commands 2, 1 unhandled/);
+});
+
+test("REPORT 2026-09-23: the remote row admits closed vocabularies and drops the rest", () => {
+  /* MUTATION: store `command` as sent. Both natives hand over strings, and this
+     record is pasted into issues. */
+  const { diag, log } = mk();
+  assert.equal(diag.remoteCommand({ command: "playPause", action: "play", origin: "command-center" }), null);
+  assert.equal(diag.remoteCommand({ command: "play", action: "play", origin: "carplay" }), null);
+  assert.equal(diag.remoteCommand({ command: "play", action: "PLAY; drop", origin: "notification" }).action, "");
+  assert.equal(log.read().entries.length, 1);
+  for (const c of ["play", "pause", "toggle-play-pause", "skip-backward", "skip-forward", "close"]) {
+    assert.ok(REMOTE_COMMANDS.has(c), c);
+  }
+  assert.deepEqual([...REMOTE_ORIGINS].sort(), ["command-center", "media-session", "notification", "webkit"]);
+});
+
+test("REVIEW 2026-09-23: a skip through WebKit's door is a row when named by the record's word, and the spec action is NOT that word", () => {
+  /* The founder's phone shows WebKit's client during tape, so a lock-screen skip
+     arrives as `seekforward` through the `webkit` door — and the tee named the
+     command by that spec action, which this set does not hold: `remoteCommand`
+     returned null for every skip, next and previous from that door, so the
+     record could never say whether a press arrived twice. The record's word is
+     the dashed one; the translation is the shim's (`REMOTE_COMMAND_FOR_ACTION`)
+     and `shell-invariants.test.mjs` pins its range into `REMOTE_COMMANDS`. This
+     pins both halves of the contract from the record's side: the dashed row is
+     written and rendered, and the action spelling is refused rather than
+     admitted — so a shim that stopped translating would be caught by the row's
+     absence, never papered over by a widened set.
+     MUTATION: add "seekforward" to REMOTE_COMMANDS — the second half goes red;
+     drop "skip-forward" — the first half does. */
+  const { diag, log, clock: c } = mk();
+  const row = diag.remoteCommand({ command: "skip-forward", action: "seekforward", origin: "webkit", handled: true, at: c.now() - 40 });
+  assert.ok(row, "a webkit-door skip is a row");
+  assert.equal(row.command, "skip-forward");
+  assert.equal(row.origin, "webkit");
+  assert.match(formatDiagnosticReport(log.read()), /remote\s+skip-forward -> seekforward from webkit  handled=y  lag 40ms/);
+  for (const [spec, door] of [
+    ["seekforward", "webkit"], ["seekbackward", "webkit"], ["nexttrack", "webkit"], ["previoustrack", "webkit"],
+    ["nexttrack", "media-session"], ["seekbackward", "notification"], ["seekto", "media-session"],
+  ]) {
+    assert.equal(diag.remoteCommand({ command: spec, action: spec, origin: door }), null,
+      `"${spec}" is an action, not a command; the shim must translate it before it reaches the record`);
+    assert.ok(!REMOTE_COMMANDS.has(spec), `REMOTE_COMMANDS must not be widened to admit the spec action "${spec}"`);
+  }
+  for (const dashed of ["next-track", "previous-track", "skip-backward", "skip-forward", "change-position"]) {
+    assert.ok(REMOTE_COMMANDS.has(dashed), dashed);
+  }
+  assert.equal(log.read().entries.length, 1, "exactly the one translated row landed");
+});
+
+test("REPORT 2026-09-23: a dropped duplicate is a remote row saying dup=y, counted on the header and never as unhandled", () => {
+  /* On iOS one lock-screen press can arrive through two doors — WebKit's own
+     MediaSession (the tee) and the plugin's MPRemoteCommandCenter — and the shim
+     applies it once, dropping the second copy with `deduped: true`. The row
+     must say so (a skip that moved once while two rows say it arrived is the
+     mechanism working) and the header must count it apart from `unhandled`
+     (the OTHER copy ran). MUTATION: drop `deduped` from the entry, or count a
+     deduped row as unhandled — the header reads "1 unhandled" for a press that
+     was handled. */
+  const { diag, log } = mk();
+  const a = diag.remoteCommand({ command: "skip-forward", action: "seekforward", origin: "webkit", handled: true, deduped: false });
+  const b = diag.remoteCommand({ command: "skip-forward", action: "seekforward", origin: "command-center", handled: false, deduped: true });
+  assert.equal(a.deduped, false);
+  assert.equal(b.deduped, true);
+  assert.equal(diag.remoteCommand({ command: "play", action: "play", origin: "webkit", handled: true }).deduped, false,
+    "absent reads as not a duplicate, never as one");
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /remote\s+skip-forward -> seekforward from webkit  handled=y  lag/);
+  assert.match(text, /remote\s+skip-forward -> seekforward from command-center  handled=n  dup=y  lag/);
+  assert.match(text, /remote commands 3, 1 duplicate dropped\n/);
+  assert.doesNotMatch(text, /unhandled/, "a dropped copy is not an unhandled press");
+  diag.remoteCommand({ command: "play", action: "play", origin: "command-center", handled: false, deduped: true });
+  assert.match(formatDiagnosticReport(log.read()), /remote commands 4, 2 duplicates dropped\n/);
+});
+
+test("REPORT 2026-09-23: zero remote commands is stated on the header, because it is the finding", () => {
+  /* Against a drive that resumed Spotify, `remote commands 0` says the car's
+     play never reached 4a's native side — the OS gave it to somebody else —
+     which is a different bug from a play that arrived and found nobody awake.
+     MUTATION: omit the line at zero. */
+  const { diag, log } = mk();
+  diag.transport("tap", "pause");
+  assert.match(formatDiagnosticReport(log.read()), /remote commands 0\n/);
+});
+
+test("REPORT 2026-09-23: a nowplaying row says WHICH write it was, and a pause reads via=state", () => {
+  /* The pause used to leave no row: `media-session.js` reported only when the
+     three strings changed. MUTATION: drop `via` from the entry — a pause row and
+     a metadata row become the same row, and the line loses the `via=` that
+     makes a pause findable. */
+  const { diag, log } = mk();
+  const meta = { title: "Ep 9", artist: "Origin Stories", album: "F" };
+  const a = diag.nowPlaying({ metadata: meta, playbackState: "playing" });
+  const b = diag.nowPlaying({ metadata: meta, playbackState: "paused", via: "state" });
+  const c = diag.nowPlaying({ metadata: null, playbackState: "none", via: "clear" });
+  const d = diag.nowPlaying({ metadata: meta, playbackState: "playing", via: "whatever" });
+  assert.deepEqual([a.via, b.via, c.via, d.via], ["metadata", "state", "clear", "metadata"]);
+  assert.ok(NOWPLAYING_VIA.has("state") && NOWPLAYING_VIA.has("clear"));
+  const lines = formatDiagnosticReport(log.read()).split("\n").filter((l) => /nowplaying/.test(l));
+  assert.doesNotMatch(lines[0], /via=/, "a metadata write keeps the shape every older row has");
+  assert.match(lines[1], /state=paused  via=state/);
+  assert.match(lines[2], /state=none  via=clear/);
+});
+
+test("REPORT 2026-09-23: what the plugin DID about the session is a session row too", () => {
+  /* `sessionActivated` / `sessionReleased` / `nowPlayingReasserted` are the
+     plugin's own acts, so a drive that still resumed Spotify can say whether
+     4a had let go (no rows) or was holding on and lost anyway. MUTATION:
+     remove them from SESSION_KINDS — `sessionEvent` returns null and the
+     record is back to silence. */
+  const { diag, log } = mk();
+  assert.ok(diag.sessionEvent({ kind: "sessionActivated", reason: "paused", producer: "audio" }));
+  assert.ok(diag.sessionEvent({ kind: "nowPlayingReasserted", reason: "background", producer: "audio" }));
+  assert.ok(diag.sessionEvent({ kind: "sessionReleased", reason: "closed", producer: "audio" }));
+  assert.ok(diag.sessionEvent({ kind: "interruptionBegan", reason: "began-while-held", producer: "audio" }));
+  assert.equal(log.read().entries.length, 4);
+  assert.match(formatDiagnosticReport(log.read()), /session\s+audio sessionActivated \(paused\)/);
+});
+
 test("no session events at all is stated on the header, because silence is the finding", () => {
   /* MUTATION: omit the `session events` header line when the count is zero. A
      founder reading a stop with no cause could not then tell "the plugins saw
@@ -1721,4 +1873,324 @@ test("REPORT 3: the website says so, an unknown half is `?`, and nothing unshape
   const row = log.read().entries.at(-1);
   assert.equal(row.native, null);
   assert.match(formatDiagnosticReport(log.read()), /^build web \? · native \?$/m);
+});
+
+/* ==================================================================== */
+/* 2026-09-23: the founder's empty record                                */
+/* ==================================================================== */
+
+/** A store shaped like `DurableStore` for the one thing the header asks it:
+    which tiers it has and whether it hydrated. Everything else is `fakeStore`. */
+function tieredStore({ tiers = ["local", "native", "idb"], hydrated = true } = {}) {
+  const s = fakeStore();
+  s.health = () => ({ hydrated, tiers: Object.fromEntries(tiers.map((t) => [t, {}])) });
+  return s;
+}
+
+test("REPORT 2026-09-23: `recorded 939 · entries 0 · dropped 0` is stated as MISSING rows, naming the key and the tiers", () => {
+  /* THE FOUNDER'S RECORD, VERBATIM IN ITS NUMBERS. The blob a build before this
+     one left behind after a Clear — `seq` kept, the ring empty, no mark — read
+     as an instrument that had recorded 939 rows and shown none, and nothing on
+     the header said which. The arithmetic  seq − cleared.seq == entries + dropped
+     has to hold, and when it does not the header says so and names WHERE the
+     ring was read from, because "cleared or lost" is only actionable with a key
+     and a tier list beside it.
+
+     KILLING MUTATION: delete `gapLine` from the header. The first assertion fails.
+     MUTATION 2: print the gap without `where`. The second fails. */
+  const store = tieredStore();
+  store.map.set(DIAG_KEY, JSON.stringify({
+    v: 1, cap: 200, seq: 939, dropped: 0, entries: [], updatedAt: "2026-09-23T12:00:00.000Z",
+  }));
+  const log = new DiagnosticLog({ storage: store, now: clock().now });
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /^MISSING 939 of 939 recorded rows: not in this ring, not dropped/m);
+  assert.match(text, /cp_diag \(local\+native\+idb, hydrated=y\) was cleared or lost/);
+  assert.match(text, /recorded 939/, "the counter is still printed; it is now explained");
+});
+
+test("the counters that DO add up print no warning — a wrapped ring is not a loss", () => {
+  /* The other direction, so the line cannot become noise: 205 recorded, 5
+     dropped, 200 in the ring is the ring working as designed.
+     MUTATION: compute `missing` without subtracting `dropped`. This fails. */
+  const { log } = mk({ cap: 200 });
+  for (let i = 0; i < 205; i++) log.record("outPoint", {});
+  const text = formatDiagnosticReport(log.read());
+  assert.doesNotMatch(text, /MISSING|INCONSISTENT/);
+  assert.match(text, /dropped 5 · recorded 205/);
+});
+
+test("a Clear is WRITTEN DOWN: the header says cleared at #N and how many rows since", () => {
+  /* `seq` survives a Clear on purpose (a wrapped ring must stay distinguishable
+     from a cleared one), and until now that was left for a reader to infer from
+     `entries[0].seq > 1` — which the founder's record, with no entries at all,
+     could not even offer.
+     KILLING MUTATION: stop setting `_cleared` in `clear()`. Both the `cleared at`
+     line and the `MISSING` suppression fail. */
+  const { log, diag, clock: c } = mk();
+  for (let i = 0; i < 5; i++) diag.boot();
+  c.tick(1000);
+  log.clear();
+  let text = formatDiagnosticReport(log.read());
+  assert.match(text, /^cleared at #5 \d\d:\d\d:\d\d\.\d{3} · 0 recorded since$/m);
+  assert.match(text, /Nothing recorded yet since the record was cleared at #5\./);
+  assert.doesNotMatch(text, /MISSING/, "a cleared ring is empty on purpose, not lost");
+  diag.boot();
+  text = formatDiagnosticReport(log.read());
+  assert.match(text, /cleared at #5 .* · 1 recorded since/);
+  assert.match(text, /entries 1 of 200/);
+  assert.doesNotMatch(text, /MISSING/);
+});
+
+test("the build SURVIVES a Clear: the header names it with no build row left in the ring", () => {
+  /* The founder's second line read `build unknown (no build row yet)` on a page
+     that had learned its build at boot — the row was a row, and the Clear took
+     it. The stamp now lives on the log, outside the ring.
+     KILLING MUTATION: null `_build` in `clear()`, or make the header read only
+     the newest `build` row. */
+  const { log, diag } = mk();
+  diag.build({ shell: true, web: "2b808ec9d50c5b98", native: "2026092326", version: "1.4.0" });
+  log.clear();
+  assert.equal(log.entries.length, 0, "the ring really is empty");
+  const lines = formatDiagnosticReport(log.read()).split("\n");
+  assert.equal(lines[1], "build web 2b808ec9d50c5b98 · native 2026092326 (1.4.0)");
+});
+
+test("the clear mark and the build stamp ride the blob, so a reload of the ring keeps both", () => {
+  /* A page killed after a Clear must not come back saying `build unknown` and
+     `MISSING 939` on its next boot. Both fields are persisted by the next
+     `save()` and restored by `_load`, admitted by shape like every other field.
+     `read()` also carries `key` and `store`, which `save()` must NOT persist —
+     a store's description inside the store it describes would be nonsense.
+     KILLING MUTATION 1: drop `cleared`/`build` from `_blob()`.
+     KILLING MUTATION 2: drop `clearedMarkOf`/`buildStampOf` from `_load`.
+     MUTATION 3: have `save()` write `read()` — the last assertion fails. */
+  const store = fakeStore();
+  const c = clock();
+  const first = new DiagnosticLog({ storage: store, now: c.now });
+  const diag = new PlayerDiagnostics({ log: first, now: c.now });
+  diag.build({ shell: false, web: "2b808ec9d50c5b98" });
+  diag.boot();
+  first.clear();
+  assert.equal(store.getItem(DIAG_KEY), null, "a Clear still removes the key");
+  diag.boot();                                   // the next write carries both down
+  const reloaded = new DiagnosticLog({ storage: store, now: c.now });
+  assert.deepEqual(reloaded.cleared, { seq: 2, wall: c.now() });
+  assert.deepEqual(reloaded.build, { shell: false, web: "2b808ec9d50c5b98", native: null, version: null });
+  const text = formatDiagnosticReport(reloaded.read());
+  assert.match(text, /^build web 2b808ec9d50c5b98 · website$/m);
+  assert.match(text, /cleared at #2/);
+  assert.doesNotMatch(text, /MISSING/);
+  const persisted = parse(store);
+  assert.ok(!("store" in persisted) && !("key" in persisted), "the store's description is read-side only");
+  /* And a corrupt mark reads as "never cleared" — the direction that makes the
+     gap line fire rather than hide a loss behind a forged clear. */
+  store.map.set(DIAG_KEY, JSON.stringify({ ...persisted, cleared: { seq: "3", wall: 1 }, entries: [] }));
+  const corrupt = new DiagnosticLog({ storage: store, now: c.now });
+  assert.equal(corrupt.cleared, null);
+  assert.match(formatDiagnosticReport(corrupt.read()), /MISSING 3 of 3/);
+});
+
+test("rows `_load` refused are counted as MISSING, never silently absent", () => {
+  /* The other way a ring can hold fewer rows than `seq` says: rows the loader
+     dropped because they could not be rendered. That is a finding about the
+     writer and the header must not round it down to a quiet short ring.
+     MUTATION: count `entries.length` before the loader's filter. This fails. */
+  const store = tieredStore({ tiers: ["local"], hydrated: false });
+  store.map.set(DIAG_KEY, JSON.stringify({
+    v: 1, cap: 200, seq: 3, dropped: 0,
+    entries: [
+      { seq: 1, wall: 1_700_000_000_000, type: "boot", hidden: false },
+      { seq: 2, wall: "not a clock", type: "seam" },
+      { seq: 3, wall: 1_700_000_001_000, type: "outPoint", overshootSec: 0.02 },
+    ],
+  }));
+  const log = new DiagnosticLog({ storage: store, now: clock().now });
+  assert.match(formatDiagnosticReport(log.read()), /^MISSING 1 of 3 recorded rows: .* cp_diag \(local, hydrated=n\)/m);
+});
+
+test("the boot row says when the page wrote BEFORE the store had hydrated", () => {
+  /* `client.js` now bounds its wait on hydration (a durable tier that never
+     answered used to cost the whole record). A row written after the bound is
+     the one case an older durable copy of the ring can have been superseded, so
+     the row says so — and a healthy boot's line is unchanged.
+     KILLING MUTATION: drop `hydrated` from `boot()`'s row or from `lineFor`. */
+  const { log, diag } = mk();
+  diag.boot({ hydrated: false });
+  diag.boot({ hydrated: true });
+  diag.boot();
+  const lines = formatDiagnosticReport(log.read()).split("\n").filter((l) => /\bboot\b/.test(l) && l.startsWith("#"));
+  assert.equal(lines.length, 3);
+  assert.match(lines[0], /hidden=n  storage=not-hydrated$/);
+  assert.match(lines[1], /hidden=n$/);
+  assert.match(lines[2], /hidden=n$/);
+  assert.equal(log.entries[2].hydrated, undefined, "a caller that did not say stores nothing");
+});
+
+/* ==================================================================== */
+/* REVIEW 2026-09-23: a write before a SLOW hydration must not overwrite  */
+/* the older ring. The store adopts a durable row only if nothing wrote   */
+/* the key first; the boot row used to be that first writer.              */
+/* ==================================================================== */
+
+/** A `Storage` the local tier can walk: what a swept WebView leaves behind. */
+function memoryStorage(initial = {}) {
+  const map = new Map(Object.entries(initial));
+  return {
+    map,
+    get length() { return map.size; },
+    key(i) { return [...map.keys()][i] ?? null; },
+    getItem(k) { return map.has(k) ? map.get(k) : null; },
+    setItem(k, v) { map.set(k, String(v)); },
+    removeItem(k) { map.delete(k); },
+  };
+}
+
+/** A durable tier whose `readAll` answers only when released — a cold
+    Preferences read over the bridge, six seconds in, not a hang. */
+function gatedDurable(rows = {}) {
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const store = new Map(Object.entries(rows));
+  const tier = {
+    name: "native", sync: false, durable: true,
+    async readAll(prefix) {
+      await gate;
+      const out = new Map();
+      for (const [k, v] of store) if (!prefix || k.startsWith(prefix)) out.set(k, v);
+      return out;
+    },
+    async write(k, v) { store.set(k, String(v)); },
+    async remove(k) { store.delete(k); },
+  };
+  return { tier, store, release: () => release() };
+}
+
+/** Three rows from an earlier drive, in the durable tier and nowhere else. */
+function olderRing(c) {
+  const wall = c.now() - 60 * 60 * 1000;
+  return JSON.stringify({
+    v: DIAG_VERSION, cap: DIAG_CAP, seq: 3, dropped: 0, cleared: null, build: null,
+    saveErrors: 0, loadError: null, updatedAt: new Date(wall).toISOString(),
+    entries: [
+      { seq: 1, wall, type: "boot", hidden: false },
+      { seq: 2, wall: wall + 1000, type: "transport", source: "tap", action: "play", hidden: false },
+      { seq: 3, wall: wall + 2000, type: "seam", openedBy: "boundary", stages: [], hidden: false },
+    ],
+  });
+}
+
+test("REVIEW 2026-09-23: a row written before a slow hydration is HELD, then written after the adopted ring", async () => {
+  /* The branch bounded the record's wait on hydration at five seconds and wrote
+     the boot row at the bound. `record()` -> `_load()` read the swept
+     localStorage (empty), `save()` marked `cp_diag` dirty, and when the durable
+     read landed at six seconds `DurableStore` skipped the durable ring (dirty:
+     "this session wins") and pushed the fresh one-row ring down over it. The
+     older ring was gone and the only trace was `storage=not-hydrated`. The
+     comment called the case "a durable tier that hung"; a merely slow one lost
+     the ring the same way, and a timer cannot tell the two apart. Now the write
+     is held while the store says it has not hydrated, and `flush()` re-reads
+     the ring — the adopted one — and appends the held rows after it.
+     KILLING MUTATION: drop the `_deferring()` check from `save()`. The first
+     assertion fails (the boot row reaches localStorage at once) and so does the
+     fourth (the durable ring is skipped as dirty and the write holds one row).
+     MUTATION 2: skip the re-read in `flush()` — the held row is written over an
+     in-memory ring that never saw the adopted one; the fourth assertion fails. */
+  const c = clock();
+  const local = memoryStorage();
+  const durable = gatedDurable({ [DIAG_KEY]: olderRing(c) });
+  const store = new DurableStore({ tiers: [localStorageTier(local), durable.tier], now: c.now });
+  const hydration = store.hydrate();
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  const diag = new PlayerDiagnostics({ log, now: c.now });
+
+  const boot = diag.boot({ hydrated: false });
+  assert.equal(store.getItem(DIAG_KEY), null, "nothing is written while the store has not hydrated");
+  assert.equal(log.read().entries.length, 1, "but the sheet shows the row at once");
+  assert.equal(log.read().store.hydrated, false, "and the header says why it is not on disk yet");
+  assert.match(formatDiagnosticReport(log.read()), /storage=not-hydrated/);
+
+  durable.release();
+  await hydration;
+  assert.match(store.getItem(DIAG_KEY) ?? "", /"type":"seam"/, "the durable ring was ADOPTED, not skipped as this session's");
+
+  assert.equal(log.flush(), true, "hydration landed: the held row is written");
+  const written = JSON.parse(store.getItem(DIAG_KEY));
+  assert.deepEqual(written.entries.map((e) => e.type), ["boot", "transport", "seam", "boot"], "the older ring first, the held row after it");
+  assert.equal(boot.seq, 4, "the held row continues the adopted sequence rather than restarting it");
+  assert.equal(written.seq, 4);
+  assert.equal(log.read().entries[3], boot, "the same live object, so a caller's reference still points at its row");
+  await store.flush();
+  assert.deepEqual(JSON.parse(durable.store.get(DIAG_KEY)).entries.map((e) => e.type), ["boot", "transport", "seam", "boot"],
+    "and the durable tier holds the merged ring, not the one-row one");
+  assert.equal(log.flush(), false, "nothing left to write");
+});
+
+test("REVIEW 2026-09-23: the next write after hydration carries the held rows by itself, and keeps the running build over the disk's", async () => {
+  /* Nobody has to call `flush()`: `record()` does, first. And the build stamp
+     set while the write was held is the RUNNING build; the disk's is an older
+     boot's. KILLING MUTATION: drop the `this.flush()` at the top of `record()`
+     — the transport row is written and the boot row is lost with the older
+     ring's sequence; or drop the `if (build)` restore in `flush()`. */
+  const c = clock();
+  const durable = gatedDurable({ [DIAG_KEY]: olderRing(c) });
+  const store = new DurableStore({ tiers: [localStorageTier(memoryStorage()), durable.tier], now: c.now });
+  const hydration = store.hydrate();
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  const diag = new PlayerDiagnostics({ log, now: c.now });
+  diag.boot({ hydrated: false });
+  diag.build({ web: "deadbeefcafef00d", shell: false });
+  assert.equal(store.getItem(DIAG_KEY), null);
+  durable.release();
+  await hydration;
+  diag.transport("tap", "play");
+  const written = JSON.parse(store.getItem(DIAG_KEY));
+  assert.deepEqual(written.entries.map((e) => e.type), ["boot", "transport", "seam", "boot", "build", "transport"]);
+  assert.deepEqual(written.entries.map((e) => e.seq), [1, 2, 3, 4, 5, 6]);
+  assert.equal(written.build?.web, "deadbeefcafef00d", "the running build, not null from the older ring");
+});
+
+test("REVIEW 2026-09-23: a store that never hydrates still gets the held rows once the page gives up waiting", () => {
+  /* The documented trade, kept, but at a distance a slow read cannot reach:
+     `client.js` calls `flush({ force: true })` a minute after the bound, and a
+     tier that has not answered by then has earned the name "hung". Without
+     the force the rows would stay in memory forever and a reload would lose
+     them. KILLING MUTATION: ignore `force` in `flush()`. */
+  const c = clock();
+  const durable = gatedDurable({});
+  const local = memoryStorage();
+  const store = new DurableStore({ tiers: [localStorageTier(local), durable.tier], now: c.now });
+  store.hydrate();
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  const diag = new PlayerDiagnostics({ log, now: c.now });
+  diag.boot({ hydrated: false });
+  diag.transport("tap", "play");
+  assert.equal(local.map.get(DIAG_KEY), undefined, "held");
+  assert.equal(log.flush(), false, "a plain flush still waits for hydration");
+  assert.equal(log.flush({ force: true }), true, "the give-up writes what was held");
+  assert.deepEqual(JSON.parse(local.map.get(DIAG_KEY)).entries.map((e) => e.type), ["boot", "transport"]);
+  diag.transport("tap", "pause");
+  assert.equal(JSON.parse(local.map.get(DIAG_KEY)).entries.length, 3, "and every write after the give-up lands at once");
+});
+
+test("REVIEW 2026-09-23: a Clear while writes are held drops them, and a plain Storage holds nothing", () => {
+  /* A clear is the listener's word and removes the key at once; nothing held
+     for hydration may come back on the next flush. And a store with no
+     hydration state — a page with no durable store, every fake in this file —
+     writes on `record()` as it always did (the durability test above pins the
+     other half). KILLING MUTATION: leave `_buffered` alone in `clear()`. */
+  const c = clock();
+  const durable = gatedDurable({});
+  const store = new DurableStore({ tiers: [localStorageTier(memoryStorage()), durable.tier], now: c.now });
+  store.hydrate();
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  log.record("boot", { hidden: false });
+  log.clear();
+  assert.equal(log.flush({ force: true }), false, "nothing held survives a clear");
+  assert.equal(store.getItem(DIAG_KEY), null);
+
+  const plain = mk();
+  plain.log.record("boot", { hidden: false });
+  assert.ok(plain.store.map.get(DIAG_KEY), "no hydration state: written on record(), as before");
+  assert.equal(plain.log.flush(), false);
 });

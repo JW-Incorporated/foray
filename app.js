@@ -5110,12 +5110,18 @@ function openSheet(wrap, opts = {}) {
   const panel = opts.panel
     || (typeof wrap.querySelector === "function" && wrap.querySelector('[role="dialog"]'))
     || wrap;
+  const opener = document.activeElement || null;
+  /* OPENED FROM THE DRAWER: the drawer has already closed (`onDrawerAction`,
+     capture phase), so the button that opened this sheet is inside a hidden
+     panel by the time the sheet closes. Focus goes to the ☰ instead — the
+     control the listener would press to get back to where they were. */
+  const fromDrawer = !!(opener && typeof opener.closest === "function" && opener.closest("#drawer"));
   const entry = {
     wrap, panel,
     requestClose: typeof opts.onRequestClose === "function" ? opts.onRequestClose : () => closeSheet(wrap),
     bodyClass: opts.bodyClass || "fy-sheet-open",
-    opener: document.activeElement || null,
-    returnFocus: opts.returnFocus || null,
+    opener,
+    returnFocus: opts.returnFocus || (fromDrawer ? $("#menu-btn") : null),
     inerted: [],
     lifted: [],
     keep: opts.keepReachable || [],
@@ -5147,11 +5153,23 @@ function closeSheet(wrap, { removeIfOwned = false } = {}) {
   wrap.hidden = true;
   if (removeIfOwned && typeof wrap.remove === "function") wrap.remove();
   syncSheetBodyClasses();
+  /* An opener inside a hidden subtree (a drawer button after the drawer
+     closed) cannot take focus — `focus()` on it is a silent no-op and focus
+     falls to <body>, which is the "where am I" a screen-reader user reports.
+     Skip it so `returnFocus` gets its turn. */
   const back = [entry.opener, entry.returnFocus].find(
-    (el) => el && el.isConnected !== false && typeof el.focus === "function" && el !== document.body,
+    (el) => el && el.isConnected !== false && typeof el.focus === "function" && el !== document.body
+      && !inHiddenSubtree(el),
   );
   focusQuietly(back);
   return true;
+}
+
+/** Whether `el` or any ancestor carries `hidden` — a node that cannot be
+    rendered, and therefore cannot be focused. */
+function inHiddenSubtree(el) {
+  for (let n = el; n; n = n.parentElement) if (n.hidden) return true;
+  return false;
 }
 
 /** Ask every open sheet to close through its own handler, top first. A sheet
@@ -11040,6 +11058,59 @@ function openDrawer(open) {
   if (open) renderDrawer();
 }
 
+/* ---------- THE DRAWER LEAVES WHEN IT IS USED (founder, 2026-09-23) ----------
+
+   "When I select Playback Diagnostics from the menu, the menu should
+   automatically collapse but it does not." And the consequence, reported
+   with it: "When I click outside the menu on the playback diagnostics, the
+   menu does not collapse when it should. If I click above the playback
+   diagnostics, where I can see a corner of the Home Screen, it will collapse
+   both the menu and the playback diagnostics."
+
+   WHAT WAS WRONG. The drawer closed for exactly one kind of item — a link,
+   because `route()` closes it on navigation and the old click handler
+   mirrored that for `<a>` — and for nothing else. Every button in it (Playback
+   diagnostics, Narration voice, Delete my data, the probe's RUN) opened its
+   sheet UNDER a drawer that stayed put: the sheet's `openSheet` then inerted
+   the drawer and its overlay (both are outside the sheet), so the panel that
+   paints on top of everything (z 81, over the sheet's 70) took no taps at
+   all, and which of the two overlapping scrims a tap fell through to — the
+   drawer's (inert) or the sheet's — is exactly the ambiguity the founder
+   describes: nothing from most of the screen, both from one corner. Fixing
+   the one item would leave the next button with the same bug.
+
+   THE RULE, in one place: any control chosen from the drawer that has a
+   DESTINATION — a page, a sheet — closes the drawer FIRST, in the capture
+   phase, before the control's own handler runs. So a sheet never opens under
+   the drawer, never inerts it, and its opener is already gone by the time
+   `openSheet` records what to hand focus back to (that case is handled there:
+   focus returns to the ☰). What STAYS open is declared on the control, not
+   listed here: a settings switch flips in place (Joey, 2026-08-31 — the
+   drawer must not close on a toggle; `drawerToggle` marks its buttons
+   `data-drawer-stay`), and the Developer disclosure's <summary> only
+   expands. A tap on the overlay closes the drawer and nothing else, whatever
+   is under it — the Now Playing sheet keeps the drawer reachable (F17), so
+   that is a real state; a tap on a sheet's scrim closes that sheet only.
+   test/drawer-ownership.test.js pins each of these. */
+const DRAWER_STAYS_OPEN_FOR = "[data-drawer-stay], summary";
+
+function onDrawerAction(e) {
+  const t = e && e.target;
+  const item = t && typeof t.closest === "function" ? t.closest("a, button, summary") : null;
+  if (!item) return;
+  if (typeof item.closest === "function" && item.closest(DRAWER_STAYS_OPEN_FOR)) return;
+  openDrawer(false);
+}
+
+/** The ☰, the overlay and the drawer's own leave rule. Bound once from init(). */
+function bindDrawerChrome() {
+  $("#menu-btn").addEventListener("click", () => openDrawer($("#drawer").hidden));
+  $("#drawer-overlay").addEventListener("click", () => openDrawer(false));
+  /* CAPTURE, deliberately: the drawer closes before the item acts, not after —
+     see the block comment above. */
+  $("#drawer").addEventListener("click", onDrawerAction, true);
+}
+
 /* ---------- U-02: the four-tab bar (docs/ui-transition-plan.md) ----------
 
    Built and appended in JS, exactly like the diagnostics/delete-my-data
@@ -11186,6 +11257,10 @@ function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint =
   }
   if (btn._drawerToggleBound) return; // init() runs once, but a re-bind must never stack handlers
   btn._drawerToggleBound = true;
+  /* A switch flips IN the drawer and has nowhere to go, so the drawer stays
+     (Joey, 2026-08-31). Declared on the control: `onDrawerAction` closes the
+     drawer for everything that does not say this. */
+  btn.dataset.drawerStay = "1";
   btn.addEventListener("click", () => {
     write(!read());
     renderDrawer();
@@ -13932,13 +14007,9 @@ async function init() {
     refreshEpisodeNavigation();
   });
 
-  $("#menu-btn").addEventListener("click", () => openDrawer($("#drawer").hidden));
+  bindDrawerChrome();
   $("#view").addEventListener("click", onBackClick);
   $("#view").addEventListener("click", onForayScriptClick);   // once — see its header
-  $("#drawer-overlay").addEventListener("click", () => openDrawer(false));
-  $("#drawer").addEventListener("click", (e) => {
-    if (e.target.closest("a")) openDrawer(false);
-  });
   /* The listener's settings switches, in one call — see `bindDrawerToggles`.
      They land ABOVE everything bound below, so "Delete my data" stays last where
      a scrolled thumb expects it. */
@@ -14000,6 +14071,16 @@ async function init() {
   for (const type of ["touchstart", "wheel", "keydown"]) {
     window.addEventListener(type, abandonPendingRestore, { passive: true });
   }
+  /* NO PINCH ZOOM (founder, 2026-09-23: "Remove the zoom functionality."). The
+     viewport meta (`maximum-scale=1, user-scalable=no`) is the declaration; this
+     is the guard behind it. Safari has ignored that meta since iOS 10 and a
+     WebView may follow suit in any release, but a cancelled `gesturestart` —
+     WebKit's own pinch event, fired before any scale is applied — stops the
+     zoom regardless. `passive: false` is required, or the preventDefault is a
+     no-op; it costs nothing, because a gesture event fires once per pinch, not
+     per frame like touchmove. Double-tap is `touch-action: manipulation` on
+     html/body in styles.css. test/no-horizontal-scroll.test.js pins all three. */
+  document.addEventListener("gesturestart", (e) => e.preventDefault(), { passive: false });
 }
 
 init();

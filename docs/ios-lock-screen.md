@@ -101,29 +101,49 @@ re-litigate it. What follows is what changes because the surface is
 and what the two platforms had to decide differently because WebKit — unlike Android
 WebView — already had a live opinion of its own.
 
-### 2.1 Now Playing ownership: the plugin wins, by construction (L-01's design comment)
+### 2.1 Now Playing ownership: two publishers during tape, one during narration — and the page writes to both (rewritten 2026-09-23)
 
 Android has no second writer: `navigator.mediaSession` is absent in Android WebView,
 so the polyfill is the only writer. iOS is not that simple — §0 measured WebKit
-**actively publishing** to a live `navigator.mediaSession` from the `<audio>` element,
-so L-01's design comment had to settle who wins when both write.
+**actively publishing** to a live `navigator.mediaSession` from the `<audio>` element.
 
-**The plugin wins, and no suppression of WebKit was needed.** WebKit publishes
-synchronously off the `<audio>` element's own events, on the same JS tick.
-`player/client.js`'s `syncMediaSession()` runs from that same event and calls
-`setNowPlaying`, which crosses the Capacitor bridge — an inherently async hop that
-lands on a later runloop turn than WebKit's same-tick write. So the plugin's write is
-structurally the later one on every seam. There is no public API to silence WebKit's
-own publishing, and none was needed: the last writer wins the display, and the last
-writer is always ours. During narration there is no `<audio>` element playing at all,
-so there is no second writer in that case regardless — L-03's problem, not L-01's.
+**What L-01 argued, and what the founder's phone measured.** L-01's design comment
+settled the question as "the plugin wins, by construction": WebKit publishes on the
+element's own JS tick, `setNowPlaying` lands a bridge hop later, so ours is the later
+write on every seam. That would be true of two writers to ONE entry. They are not.
+WebKit publishes a Now Playing entry **of its own**, through a MediaRemote client of its
+own, for every playing `<audio>` element — titled from `document.title` (which on this
+app is "4a"), with an empty artist and album, and with whatever action handlers the
+page registered *on WebKit's object* — and no public API silences it. The founder's
+2026-09-23 report (build 2026092326: *"My lock screen and car still displays the
+song/ artist/ album as 4a/ unknown/ unknown"*; the skip glyphs read WebKit's interval,
+not 15/30) is that entry, read off the car. The plugin's `MPNowPlayingInfoCenter` write
+was never what the lock screen showed during tape.
 
-L-02 extends the same decision to the *page's own* read of `navigator.mediaSession`:
-since WKWebView's object is live and writable (§0), `install()` **takes it over**
-rather than merely filling an absence — replacing the whole property when
-configurable, or wrapping the existing object's own methods in place when not — so
-`player/client.js`'s one-time read at init lands on the polyfill's object, not
-WebKit's, and the page's writes reach the plugin the same way they do on Android.
+L-02's takeover made it worse than it had to be. Replacing `navigator.mediaSession`
+with the polyfill put the page's writes in front of the plugin, as intended, and **cut
+WebKit's real object off from the page entirely**: WebKit's entry could never say
+anything but the document title, and a press on WebKit's client — which routes to the
+page only through a handler registered on WebKit's object — fell to
+`HTMLMediaElement`'s default, a raw element seek by WebKit's own interval, past the
+Foray clock, the seek policy and the nudge.
+
+**The model that ships (§8 has the whole report):**
+
+| Responsibility | Owner | Mechanism |
+|---|---|---|
+| What the lock screen / car **says** during tape | the page, delivered to **both** publishers | `foray-media-session.js` takes over `navigator.mediaSession` so writes reach the plugin, **and tees** every `metadata` (the original object, with the page's own artwork URLs — `https:`, `data:` or `icon-512.png`, never the `bundle://` rewrite, which only the Swift side understands), `playbackState` and action handler onto WebKit's real `MediaSession` (`captureLiveSession`). Whichever client iOS shows, the three strings are the page's. |
+| What it says during **narration** | the plugin alone | no element, so WebKit clears its own entry; `setNowPlaying` → `MPNowPlayingInfoCenter` is the only writer (unchanged since L-01) |
+| What it says while **paused and locked** | the plugin, holding the app's session | §2.2 / §8: the plugin takes the app's own `.playback` session on the playing → paused transition, re-asserts its entry after WebKit's 2 s category change, on background and on a new route, so a car's play returns to 4a |
+| **Buttons** | the page's handlers, through two doors | WebKit's client → the tee'd handler (origin `webkit`); `MPRemoteCommandCenter` → `transport` event (origin `command-center`). Both end in the shim's `deliver()`, which applies **one action of a kind per `REMOTE_DUPLICATE_WINDOW_MS` across origins** and records the dropped copy (`remote … dup=y`). |
+| The seek pair **15/30** | `player/media-session.js`, once | copied into the payload as `seekBackMs`/`seekForwardMs`; both natives read it from there (the Swift holds no literal); the page ignores any `seekOffset` a platform sends back |
+| WebKit's own **timeline** and scrub | WebKit's, deliberately | position state is not forwarded and `seekto` is not mirrored (`UNMIRRORED_ACTIONS`): WebKit's bar is the element's — the clip's — and the Foray-clock scrub lives on the plugin's client, which was built for it |
+
+**Two things this cannot promise, stated so the device check is read for them.** (a) The
+skip *glyphs* on WebKit's client are WebKit's to draw (its own registration carries its
+own interval, or none); only the plugin's client can read 15 / 30. A press on either
+client steps 15 / 30 exactly once. (b) Two entries with identical text coexist; whether
+iOS ever flickers between them is a device reading (§8.5).
 
 ### 2.2 Audio-session policy: the plugin never touches the session at all
 
@@ -143,6 +163,20 @@ it again — the F11/F13 pause loop the founder's device diagnostics caught (loo
 == the position-write cadence). #537 removed the call and `shell-invariants.test.mjs`
 pins that `setNowPlaying` contains no `setActive` so it cannot come back. *(This
 paragraph refreshed 2026-09-10; the text above it had described the pre-#537 plugin.)*
+
+*Superseded again, 2026-09-23 — see §8.* The plugin now holds the app's own
+`.playback` session **while the transport is paused**, taken on the playing → paused
+transition (for a pause the listener made — never inside an `AVAudioSession`
+interruption), *superseded* when the transport plays again (the hold is forgotten,
+nothing is deactivated: the resumed producer's own activation stands in for it) and
+released when it closes/finishes (with `notifyOthersOnDeactivation`). It still never
+touches the session from the playing path: #537's loop was activation re-asserted
+against an audible element, and a pause has no audible element.
+`shell-invariants.test.mjs` now pins that `setActive` appears only inside
+`holdSession`/`releaseSession`, that those are reachable only through the pure
+transition table `sessionMove(from:to:holding:interrupted:)` (plus the re-holds on
+interruption-ended / new-device and a remote play while paused), that the table's
+one `.hold` is `(.playing, .paused)`, and that the resume transition reaches neither.
 
 ### 2.3 `stop`: declined outright on iOS, not just on a finished Foray
 
@@ -177,9 +211,9 @@ traffic.
 
 | Control | `MPRemoteCommandCenter` command | Routes to | Note |
 |---|---|---|---|
-| play / pause | `playCommand` / `pauseCommand` / `togglePlayPauseCommand` | `transport {action: "play"\|"pause"}` | `togglePlayPause` is mapped to `"play"` — the page's own handler resolves the actual toggle |
+| play / pause | `playCommand` / `pauseCommand` / `togglePlayPauseCommand` | `transport {action: "play"\|"pause"}` | `togglePlayPause` resolves **natively from the last reported state** (`toggleAction(forState:)`, 2026-09-23): playing → `"pause"`, else `"play"`. It used to be a hard-wired `"play"`, and the page's `setRunning(true)` on a playing transport is a deliberate no-op — so a one-button car and a headphone pinch could never pause. |
 | next / previous | `nextTrackCommand` / `previousTrackCommand` | `transport {action: "nexttrack"\|"previoustrack"}` | **the next and previous SEGMENT** — identical to Android's §4.2 argument; a Foray has no other boundary |
-| seek −15 / +30 | `skipBackwardCommand` (`preferredIntervals: [15]`) / `skipForwardCommand` (`[30]`) | `transport {action: "seekbackward"\|"seekforward", offsetMs}` | sent as an **offset**, not an absolute target, so the page's own `foraySeek` runs the arithmetic |
+| seek −15 / +30 | `skipBackwardCommand` / `skipForwardCommand`, `preferredIntervals` written **from the payload's `seekBackMs`/`seekForwardMs` on every state change** (2026-09-23; was `[15]`/`[30]` once at load) | `transport {action: "seekbackward"\|"seekforward", offsetMs}` | sent as an **offset**, not an absolute target, so the page's own `foraySeek` runs the arithmetic; the offset is the payload's number, and the page ignores any `seekOffset` a platform sends — §8 |
 | scrub | `changePlaybackPositionCommand` | `transport {action: "seekto", positionMs}` | on the **Foray's** clock — the same clock `positionMs` was reported on |
 | stop | registered, permanently disabled | — | §2.3 |
 
@@ -423,3 +457,253 @@ anywhere in this repository and this change was written on Windows, so the Swift
 added by these three cards is **compiled by `ios-kit` and never executed**. The
 XCTest targets under `ios/Tests/` remain what `mobile/plugins/foray-tts/README.md`
 calls them — authored, not run.
+
+## 8. Founder report, 2026-09-23 (build 2026092326, iPhone) — the six items, the measured cause, and the one model that answers them
+
+The report, verbatim, and where each item is answered:
+
+> 1. "I started playing 4a, paused and turned off my screen, got in my car, then my car
+>    resumed Spotify. This is still wrong." — §8.2, the paused hold
+> 2. "I can zoom by double tapping. … Remove the zoom functionality." — `docs/DECISIONS.md` 2026-09-23 (every layer; `test/no-horizontal-scroll.test.js`)
+> 3./4. The drawer does not collapse when Playback Diagnostics is selected, nor on a tap outside it. — `docs/DECISIONS.md` 2026-09-23 (`onDrawerAction`; `test/drawer-ownership.test.js`)
+> 5. "In the app, I can jump back 15s and forward 30s. On the lock screen, it's 10s in
+>    both directions. Both should be 15/30" — §8.3
+> 6. "My lock screen and car still displays the song/ artist/ album as 4a/ unknown/
+>    unknown" — §8.1, the tee
+
+His Playback diagnostics record, pasted with item 1, read `now playing 0 written /
+session events 0 / Nothing recorded yet` against a build row of "unknown" — the record
+itself was not capturing the drive; that is the parallel `fix/fr-diag` change and not
+this section's.
+
+Everything in §8.1–8.4 is **read from code and from WebKit's and Apple's sources** and
+tested in Node against fakes; §8.5 is what only a phone and a car can settle. Three
+branches were written against this report with three different mechanisms for the same
+surface; this section is the one model they were merged into, and the losers are named
+in §8.6 so nobody re-derives them.
+
+### 8.1 Item 6 — "4a / unknown / unknown" is WebKit's entry, and the fix is a tee
+
+**Measured cause.** `player/media-session.js` never emits "4a" as an artist (L-06's
+parity rule, `narrationCredit()`), and the founder's earlier records showed
+`nowplaying` rows with three non-empty fields while the car said "4a". The string is
+WebKit's: for every playing `<audio>` element WebKit publishes its own Now Playing
+entry through its own MediaRemote client, titled from `document.title` ("4a") with an
+empty artist and album, and that client — not the plugin's `MPNowPlayingInfoCenter`
+write — is what the lock screen and the car showed during tape. L-02's takeover of
+`navigator.mediaSession` had severed WebKit's real object from the page, so the entry
+could never say anything else and held no action handlers. Every suite modelled one
+publisher and asserted what the page WROTE; the iOS takeover tests used a
+"present-but-inert" fake, so a takeover that cut WebKit off read as success, and the
+mutation test at the time ("leaving WebKit's original mediaSession in place is caught")
+PINNED the defect.
+
+**What changed.** `foray-media-session.js` is a **tee** on iOS: `captureLiveSession()`
+keeps WebKit's own members (through the IDL prototype's setters, so "wrap" mode cannot
+loop into its own shadow) and every `metadata`, `playbackState` and `setActionHandler`
+write is repeated onto WebKit's object as well as sent to the plugin. Metadata is
+forwarded as the ORIGINAL `MediaMetadata` — the page's artwork URLs, which WebKit
+fetches inside the WebView (CSP `img-src 'self' https: data:` already permits it) — and
+never the `bundle://` rewrite. The native path is unchanged: it is the only writer
+during narration. `inspect().tee` says whether the tee has a target; `probe-bridge.js`
+reads it and `ios-ci.mjs` section 3d now reads `taken-over-severed` for a live object
+taken over with no tee — the state that shipped.
+
+**Pinned by** `tools/mobile/foray-media-session.test.mjs`: a BEHAVING fake WebKit whose
+`lockScreen()` computes what its entry would show (document title when the page never
+reached it), driven through the real `createMediaSession`; the inverted mutation test
+("SEVERING WebKit's original mediaSession is caught"); `ios-ci.test.mjs` for the verdict;
+`shell-invariants.test.mjs` pins that the Swift header and this file no longer state
+the last-writer model.
+
+### 8.2 Item 1 — a paused 4a keeps the car (the plugin holds the app's session while paused)
+
+**The rule iOS applies.** A car's or a Bluetooth stack's *play* goes to the Now Playing
+app: the one that most recently held an active, non-mixable `.playback` session while
+producing audio, with a Now Playing entry and enabled command targets. Apple's guidance
+for *staying* that app across a pause (the `NowPlayable` sample, WWDC19 501): keep the
+session active, keep `nowPlayingInfo` with rate 0, keep the targets, clear nothing.
+
+**Where 4a broke it.** The only `.playback` session behind a tape segment is WebKit's,
+activated from WebKit's own media process; `MediaSessionManagerCocoa` moves its category
+to none two seconds after the last session stops and drops its Now Playing claim. The
+plugin never held a session in the app process (by design since #537), so a paused,
+backgrounded 4a had no session anywhere, and the car's play went to the last app that
+did. While paused the page writes nothing, so nothing re-asserted the entry.
+
+**What changed (`ForayAudioPlugin.swift`).** `sessionMove(from:to:holding:interrupted:)`
+is the whole rule, pure: `.hold` on `(.playing, .paused)` and nowhere else (never
+`(.none, .paused)` — the restored mini bar writes `paused` at launch, and a non-mixable
+session then would silence another app's music for opening ours; and never while
+`interrupted` — see the review paragraph below), `.supersede` when the transport plays
+again, `.releaseAndNotify` when it closes or finishes. `holdSession`/`releaseSession`
+are the only two places `setActive` appears; a remote play that finds the hold gone
+takes it once before the page is told. The entry and the command set are re-asserted
+3 s after a hold (past WebKit's 2 s category change), on `didEnterBackground` and on a
+`new-device` route change — the car connecting is the moment before it sends play.
+`MPNowPlayingInfoCenter.playbackState` follows the state. `togglePlayPause` resolves
+from the last reported state (a one-button car could never pause before). Every
+transport event carries `command`/`origin`/`at` and writes a `ForayAudio.remote`
+unified-log line; `interruptionBegan` reads `began-while-held`.
+
+**Review, same day — five holes in the hold, each now a line of Swift and a pin.**
+(1) *The resume deactivated the session the narration was speaking through.* The
+first cut called `setActive(false)` on paused → playing ("WebKit's element has its own
+session; ours would be a second one") — true for tape, false for narration, where
+`ForayTtsPlugin` speaks through the SAME app-process shared instance and had just
+called `setActive(true)` one bridge hop earlier. The deactivation either failed against
+the synthesizer's running I/O (`sessionReleased failed` on every narration resume) or
+landed first and resumed the narration into an inactive session: silence. Apple's
+NowPlayable guidance keeps the session active across play/pause anyway. **Now:** the
+resume *supersedes* the hold — `holdsSession = false`, no `setActive`, a
+`sessionReleased superseded` row; only close/finish deactivates. (2) *The hold fired
+for a pause the OS caused.* Another app's non-mixable audio, Siri or a call interrupts
+the element; the page reconciles to `paused`; the plugin saw the same playing → paused
+and activated a non-mixable session while the interrupter was still sounding — 4a
+re-interrupting the app that interrupted it (allowed in the foreground; refused in the
+background with `sessionActivated failed`). **Now:** `interrupted` runs from
+`interruptionBegan` to `interruptionEnded` (cleared too by a `playing` payload, a remote
+play and a media-services reset, since Apple promises no `.ended`), and the table
+answers `.none` inside it. (3) *A lost hold was never taken back.* `began-while-held`
+dropped `holdsSession` and `.ended` only emitted, so a call or a steering-wheel Siri
+press between the pause and the car left 4a without the session this section says the
+car's play needs — and `remotePlay`'s re-hold cannot help, because that press never
+arrives. **Now:** `.ended` with `shouldResume`, and a `new-device` route, re-hold
+through `shouldRehold(state:holding:interrupted:)` (paused, not holding, not
+interrupted) and re-assert the entry (`sessionActivated interruption-ended` /
+`route`). (4) *A paused scrub cancelled the 3 s re-assert.* `reassertGeneration` moved
+on every payload, so a lock-screen scrub while paused (which the shim supports) inside
+the window cancelled the pause-settled re-assert, and `(.paused, .paused)` re-armed
+nothing. **Now:** the generation moves with the STATE. (5) *The car's play queued
+behind an artwork download.* `artworkItem(for:)` ran `Data(contentsOf:)` — blocking,
+default ~60 s timeout — on `stateQueue`, the queue every remote-command handler now
+shares, and `reassertNowPlaying` re-ran it on the car connecting and on the screen
+going off; a Wi-Fi → cellular handoff as the car connected could hold the car's play
+for seconds to a minute. **Now:** artwork is cached per URI, the bundle icon and file
+URLs are read once, and a remote image is fetched off the queue with a 10 s bound and
+re-posted when it lands. `ForayAudioPluginTests.swift` tables (1)–(3);
+`shell-invariants.test.mjs` pins all five against the Swift text.
+
+**Why this cannot bring back the F11/F13 loop.** That loop was `setActive(true)` on the
+4 Hz position path against an AUDIBLE element: our activation interrupted WebKit's
+session (which is how we know the two sessions are separate — activating one interrupts
+the other; a no-op re-activation of one shared session could not have). The hold runs
+only on the pause transition, when nothing of ours is sounding and nothing else is
+interrupting; the playing path never touches the session — the resume transition now
+touches it *least of all*, since it deactivates nothing. `shell-invariants.test.mjs`
+pins `setActive` to `holdSession`/`releaseSession`, their callers to `applySessionMove`,
+the two re-holds and `remotePlay`, and the table's single `.hold`; the XCTests table
+`sessionMove` and `shouldRehold`.
+
+**Android** already keeps the Media3 session READY while paused (the foreground service
+lives while the transport is usable); now pinned, and its transport events carry
+`origin` (`media-session` / `notification`).
+
+### 8.3 Item 5 — 15 / 30 on every surface, delivered once
+
+Three things, one source of truth:
+
+1. **The page ignores `seekOffset`.** `mediaSessionActions` used to honour "a head
+   unit's own number", and WebKit's remote-command listener hands its interval back
+   as exactly that, so a press that reached the page stepped by WebKit's 10. Now
+   `seekbackward`/`seekforward` step by `SEEK_BACKWARD_SEC`/`SEEK_FORWARD_SEC` whatever
+   arrives; the offset stays in the details as data.
+2. **The natives read the pair from the payload.** `seekBackMs`/`seekForwardMs` (which
+   `NowPlaying.java` always read) are now parsed by `NowPlayingPayload.swift`;
+   `preferredIntervals` is written from them on every state change and on every
+   re-assert, and the offset a press sends back is the payload's. The Swift holds no
+   `15`/`30`/`15_000` (`shell-invariants` pins it). Commands start disabled at `load()`.
+3. **A press is applied exactly once.** After the tee a lock-screen skip may reach the
+   page through WebKit's client AND the plugin's `MPRemoteCommandCenter` target;
+   whether iOS delivers to one or both is a device fact. `deliver()` in the shim applies
+   one remote action of a kind per `REMOTE_DUPLICATE_WINDOW_MS` (500 ms) across
+   origins, never drops a same-origin repeat (a double tap is two presses), and records
+   the dropped copy as `remote … dup=y`; the report header counts `N duplicates
+   dropped` apart from `unhandled`. Pinned in `foray-media-session.test.mjs` (both
+   orders, the third copy, the window's end, the same-surface double tap, Android
+   untouched) and `diagnostic-log.test.js`.
+
+**The glyph caveat, restated.** WebKit's client draws its own skip glyphs; only the
+plugin's client can read 15 / 30. A press on either steps 15 / 30 once.
+
+### 8.4 What the next record can say
+
+- `remote commands 0` against a drive that resumed Spotify: the car's play never reached
+  4a at all — the OS gave it to somebody else. `sessionActivated (paused)` rows before
+  the car connected, with no `began-while-held`, mean the hold was standing and lost
+  anyway (§8.5's first question). `began-while-held` followed by `interruptionEnded
+  should-resume` and `sessionActivated interruption-ended` is a call or a Siri press
+  between the pause and the car, and the hold taken back; `began-while-held` followed
+  by `interruptionEnded no-resume` and nothing is a hold iOS said not to retake, which
+  a `sessionActivated route` row (the car connecting) may still recover.
+- `sessionReleased superseded` on every resume is the resume no longer deactivating
+  anything; a `sessionReleased failed` there was the old bug (the TTS plugin's session,
+  deactivated under the synthesizer) and should not appear again. `sessionActivated
+  paused` right after an `interruptionBegan` should not appear either: a pause the OS
+  caused takes no hold.
+- `remote … from webkit` rows with no `from command-center` twin (or vice versa) say
+  which client iOS delivers to; twins with one `dup=y` are the de-duplication working;
+  a skip that moved twice with no `dup=y` is the window missing it. A skip on either
+  door is `remote skip-forward -> seekforward from …` — the review found the webkit
+  door and Android naming the command by the spec action (`seekforward`), which the
+  record dropped, so before this fix every skip through those doors wrote no row.
+- `remote … handled=n` without `dup=y`: the press arrived and the page had no handler
+  (a `setActions()` race).
+- A `nowplaying … state=paused via=state` row is the pause being told to the platform;
+  its absence is the shim never sending it.
+
+### 8.5 Device checks (Wyatt, next build) — in order, ~6 minutes
+
+1. **A plain episode, no narration.** Play it, lock within a few seconds. Lock screen:
+   title = the episode's title, subtitle = the show, the show's artwork (or our icon).
+   Car: the same three fields. (Today's build reads "4a" with no subtitle; the car reads
+   "4a / Unknown / Unknown".)
+2. **A Foray clip.** Same reading; the album/subtitle line carries the Foray's title and
+   `clip N of M`. Pressing ⏭ on the lock screen must skip to the next CLIP, not do
+   nothing.
+3. **A narration line.** While locked, wait for a narration line: title "Up next: …",
+   subtitle the Foray's title, our icon. Then the seam back to tape must NOT flip the
+   display back to "4a".
+4. **Skips.** On the lock screen, press back once and forward once: the in-app
+   playhead moves exactly 15 back and 30 forward — not 10, and not 30 / 60 (a press
+   applied twice). Read the two glyphs and note what they say; they may still be
+   WebKit's numbers (§8.3, the caveat), which is a display limitation and not a
+   playhead one.
+5. **The car.** Pause in the app, lock the phone, wait two minutes, connect the car,
+   press play on the wheel: 4a resumes, not Spotify. If the phone has a one-button
+   headset, press it while playing: it must pause.
+6. **The car, after a call.** Pause in the app, lock the phone, take (or place) a short
+   phone call or press the wheel's Siri button and dismiss it, THEN connect the car
+   and press play: 4a resumes. The record should show `interruptionBegan
+   began-while-held`, `interruptionEnded should-resume`, `sessionActivated
+   interruption-ended`.
+7. **A narration resume.** Play a Foray, wait for a narration line, pause during it,
+   lock, press play on the lock screen: the narration continues audibly and the record
+   shows `sessionReleased superseded`, never `sessionReleased failed`.
+8. **Copy diagnostics** (Developer → Playback diagnostics → Copy) and paste it. The
+   lines that decide: the `remote commands …` header (count, `unhandled`, `duplicates
+   dropped`), the `remote …` rows and their origins — a lock-screen skip must be a
+   `remote skip-forward -> seekforward from webkit` (or `command-center`) row; before
+   this fix it was no row — the `session … sessionActivated` / `sessionReleased` /
+   `nowPlayingReasserted` / `began-while-held` rows, and the `nowplaying …
+   state=paused via=state` row.
+
+### 8.6 What was merged, and what was deleted
+
+Three branches answered this report, each cut from the visual pass, each touching the
+same Swift with a different mechanism. `fix/fr-ui` (zoom, drawer — taken as they are)
+also rewrote the command list as a `CommandSnapshot` republished off-then-on across a
+main-queue turn, with literal 15/30 intervals, on the theory that WebKit's registration
+replaces the process's command list and ours had to be the later writer. **Deleted:**
+WebKit's client is a separate MediaRemote client, not a later writer to ours, so no
+republish trick could make ours the displayed one, and the literal pair contradicts
+one-source-of-truth. `fix/fr-media` (the paused hold, payload intervals, the toggle, the
+`remote` row) is the native model above, kept whole. `fix/fr-lockscreen-skip` (the tee)
+is the display model above, kept whole; its mirrored handlers became `deliver` wrappers
+so the two doors could be de-duplicated. `docs/DECISIONS.md` 2026-09-23 records the
+rulings.
+
+**Not knowable from this repo, stated so nobody re-asks:** no `swift test` runs
+anywhere in this repository and this change was written on Windows, so the Swift is
+**compiled by `ios-kit` and never executed here**; `ForayAudioPluginTests.swift` runs
+in CI's `ios-kit` job. The XCTests were authored, not run.

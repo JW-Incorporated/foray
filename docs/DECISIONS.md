@@ -2,6 +2,102 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-23 (six founder reports from one drive: no zoom at all, the drawer leaves when used, the lock screen's 15/30, the paused app keeps the car, and "4a / unknown / unknown")
+
+**The report (Wyatt, 2026-09-23, iPhone, build 2026092326), verbatim — the four
+items this entry answers:**
+
+- *"I can zoom by double tapping. This is super annoying and gets me trapped in
+  certain parts of the app. Remove the zoom functionality."*
+- *"When I select Playback Diagnostics from the menu, the menu should
+  automatically collapse but it does not."*
+- *"When I click outside the menu on the playback diagnostics, the menu does
+  not collapse when it should. If I click above the playback diagnostics, where
+  I can see a corner of the Home Screen, it will collapse both the menu and the
+  playback diagnostics."*
+- *"In the app, I can jump back 15s and forward 30s. On the lock screen, it's
+  10s in both directions. Both should be 15/30"*
+
+- *"I started playing 4a, paused and turned off my screen, got in my car, then my
+  car resumed Spotify. This is still wrong."*
+- *"My lock screen and car still displays the song/ artist/ album as 4a/ unknown/
+  unknown"*
+
+**1. Zoom is removed entirely, and this REVERSES 2026-09-17.** That day's fix
+("It should also not be possible to zoom on the episode slide…") kept
+pinch-to-zoom on purpose as an accessibility affordance and dropped only
+double-tap, on the controls; `test/no-horizontal-scroll.test.js` pinned it in
+words ("the page must remain zoomable by pinch"). The founder's ruling today is
+the opposite and explicit, so the pin is inverted rather than deleted, and the
+reason it was the other way is kept in that file's header. Every layer, because
+each is ignored somewhere: the viewport meta (`maximum-scale=1, user-scalable=no`
+— the pair, since `maximum-scale=1` is also what stops iOS zooming onto a focused
+input), `touch-action: manipulation` on `html, body` (double-tap, even where the
+meta is ignored), a non-passive `gesturestart` guard in `app.js` (pinch, ditto),
+and `zoomEnabled: false` stated in `mobile/capacitor.config.json` (Android's
+native WebView zoom; Capacitor's default, now a decision rather than a default).
+The 09-17 per-control rule stays as the belt. **Cost, named:** a listener who
+relied on pinch to read small text has lost it; the answer to that is type size,
+not zoom, and Dynamic Type already scales the page.
+
+**2 + 3. The drawer closes when it is used — a rule, not a patch on one item.**
+It closed for links only (`route()` closes it on navigation; the click handler
+mirrored that for `<a>`), so every *button* in it — Playback diagnostics,
+Narration voice, Delete my data, the probe's RUN — opened its sheet under a
+drawer that stayed, and `openSheet` then inerted that drawer: a panel painted
+on top of everything (z 81 over the sheet's 70) that took no taps, over two
+overlapping scrims. That is item 3 exactly. Now `onDrawerAction` (capture
+phase, one place) closes the drawer for any control with a destination *before*
+the control acts; what stays open is declared on the control (`data-drawer-stay`
+on the settings switches — Joey's 2026-08-31 ruling that a toggle must not
+close the drawer is untouched — and the Developer `<summary>`). A sheet opened
+from the drawer returns focus to the ☰, since its opener is gone. The overlay
+closes the drawer and nothing else, whatever is under it; a sheet's scrim closes
+that sheet only; stacked sheets close top-first. `test/drawer-ownership.test.js`
+pins each, including the founder's exact sequence.
+
+**4, 5 + 6. One ownership model for the iOS lock screen, and the three drafts it
+replaced.** Three branches answered these items with three mechanisms for the same
+Swift and the same shim; `docs/ios-lock-screen.md` §2.1 and §8 hold the model, and
+this entry records the rulings that picked it.
+
+- **"4a / unknown / unknown" was never our payload.** WebKit publishes a Now Playing
+  entry of its own for every playing `<audio>` element, titled from `document.title`
+  ("4a"), through its own MediaRemote client, and that is what the lock screen shows
+  during tape. L-02's takeover of `navigator.mediaSession` had severed WebKit's real
+  object from the page. **Ruling: the takeover is a TEE.** The page's metadata (with
+  its own artwork URLs), `playbackState` and handlers go to WebKit's real object as
+  well as to the plugin; the plugin stays the only writer during narration. L-06 is
+  reopened in the plan until H6 reads back on a device.
+- **A paused 4a keeps the car by holding the app's own `.playback` session while
+  paused** — taken on the playing → paused transition only (and only for a pause the
+  listener made, never inside an `AVAudioSession` interruption), *superseded* on
+  resume (forgotten, not deactivated: the resumed producer's own activation stands
+  in — for narration that producer is `ForayTtsPlugin` on the same shared instance,
+  and a deactivation there silenced it), released with `notifyOthers` on close, and
+  taken back when an interruption ends with `shouldResume` or a new route appears —
+  and re-asserting its entry after WebKit's category change, on background and on a
+  new route. **Ruling: this does not touch the F11/F13 rule.** The playing path still
+  never calls `setActive`; the hold runs when nothing is sounding, and
+  `shell-invariants` pins both. (The same-day review that found the narration
+  deactivation, the interruption-caused hold, the un-retaken hold, the cancelled
+  re-assert and the artwork download on the command queue is `docs/ios-lock-screen.md`
+  §8.2, "Review, same day".)
+- **15/30 has one source** (`player/media-session.js`): the page ignores any
+  `seekOffset` a platform sends back, the natives read the pair from the payload, and
+  the Swift holds no literal. **Ruling: a press is applied exactly once** even though
+  two clients may deliver it — the shim's `deliver()` drops the second copy of the
+  same action from the other origin inside 500 ms and records it (`remote … dup=y`).
+- **Deleted, and why:** `fix/fr-ui`'s `CommandSnapshot`/`publishCommands` republish
+  (commands off, then on across a main-queue turn, with literal 15/30) rested on
+  WebKit being a *later writer* to our command list. It is a separate client; no
+  republish could make ours the displayed one, and the literal pair broke
+  one-source-of-truth. The zoom and drawer work from that branch ships as written.
+- **Device check (Wyatt, next build), `docs/ios-lock-screen.md` §8.5:** lock-screen
+  fields for a plain episode, a Foray clip and a narration line; skip 15 / 30 once
+  each; pause, lock, wait two minutes, connect the car, press play → 4a resumes; then
+  Copy diagnostics.
+
 ## 2026-09-23 (the visual pass the audit held back — R12, persona 10 and 58 — ships on the founder's word)
 
 - **The ruling.** The 2026-09-22 audit parked every visible look-and-feel

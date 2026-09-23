@@ -105,6 +105,43 @@ public class NowPlayingHubTest {
         assertEquals(Long.valueOf(42_000L), position.get());
     }
 
+    /**
+     * Founder, 2026-09-23 ("my car resumed Spotify"): the record's {@code remote}
+     * row needs to know which door a press came through. The three-argument
+     * dispatch names Media3's session; the service's notification buttons name
+     * themselves; a sink that only implements the old arity still gets the press.
+     * TO SEE IT FAIL: make the three-argument {@code dispatch} pass
+     * {@code ORIGIN_NOTIFICATION}, or drop the default method's delegation.
+     */
+    @Test
+    public void dispatchNamesTheDoor_andAnOldSinkStillHearsThePress() {
+        AtomicReference<String> origin = new AtomicReference<>();
+        AtomicReference<String> viaOldArity = new AtomicReference<>();
+        NowPlayingHub.setSink(new NowPlayingHub.TransportSink() {
+            @Override
+            public void onTransport(String a, long p, long o) {
+                viaOldArity.set(a);
+            }
+
+            @Override
+            public void onTransport(String a, long p, long o, String from) {
+                origin.set(from);
+                onTransport(a, p, o);
+            }
+        });
+        NowPlayingHub.dispatch("play", 0L, 0L);
+        assertEquals(NowPlayingHub.ORIGIN_SESSION, origin.get());
+        NowPlayingHub.dispatch("close", 0L, 0L, NowPlayingHub.ORIGIN_NOTIFICATION);
+        assertEquals(NowPlayingHub.ORIGIN_NOTIFICATION, origin.get());
+        assertEquals("close", viaOldArity.get());
+
+        AtomicReference<String> lambdaOnly = new AtomicReference<>();
+        NowPlayingHub.setSink((a, p, o) -> lambdaOnly.set(a));
+        NowPlayingHub.dispatch("pause", 0L, 0L, NowPlayingHub.ORIGIN_NOTIFICATION);
+        assertEquals("a sink with only the old arity is reached through the default method",
+            "pause", lambdaOnly.get());
+    }
+
     @Test
     public void clearSink_isIdentityChecked() {
         AtomicReference<String> action = new AtomicReference<>();

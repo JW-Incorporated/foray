@@ -532,11 +532,29 @@ export function mediaSessionActions(surface = {}, {
   if (previous) out.push(["previoustrack", () => previous()]);
   if (next) out.push(["nexttrack", () => next()]);
   if (seekBy) {
-    // `details.seekOffset` is the platform's own number when it has one — a
-    // head unit may ask for 10 s. Honour it; fall back to the spec's ±15/30,
-    // which are the numbers the in-page buttons use.
-    out.push(["seekbackward", (details) => seekBy(-offsetOf(details, seekBackwardSec))]);
-    out.push(["seekforward", (details) => seekBy(offsetOf(details, seekForwardSec))]);
+    /* ALWAYS the spec's ±15/30 — `details.seekOffset`, the platform's own
+       number, is deliberately not read.
+
+       FOUNDER, 2026-09-23 (build 2026092326, iPhone): "In the app, I can jump
+       back 15s and forward 30s. On the lock screen, it's 10s in both
+       directions. Both should be 15/30"
+
+       Until this line the handler honoured whatever the OS put in
+       `seekOffset` ("a head unit may ask for 10 s"), and the lock screen is
+       exactly such a head unit: WebKit's remote-command listener advertises
+       skip commands for every playing `<audio>` element with an interval of
+       ITS choosing and hands that interval back as `seekOffset`
+       (`RemoteCommandListenerCocoa.mm` → `MediaElementSession.cpp`), so the
+       lock screen stepped by WebKit's number while the in-page buttons stepped
+       by ours. The nudge is one product decision, made once, in
+       `SEEK_BACKWARD_SEC`/`SEEK_FORWARD_SEC`; a surface that wants a different
+       step gets it through `opts`, never through the event. The offset still
+       travels in the details (the shim forwards native's `offsetMs`, and the
+       diagnostics can read it) — it is data about the press, not an order. The
+       native halves READ the pair from the payload the shim sends
+       (`seekBackMs`/`seekForwardMs`) rather than holding a copy of their own. */
+    out.push(["seekbackward", () => seekBy(-seekBackwardSec)]);
+    out.push(["seekforward", () => seekBy(seekForwardSec)]);
   }
   if (seekTo) {
     out.push(["seekto", (details) => {
@@ -550,11 +568,6 @@ export function mediaSessionActions(surface = {}, {
     }]);
   }
   return out;
-}
-
-function offsetOf(details, fallback) {
-  const o = details?.seekOffset;
-  return isNum(o) && o > 0 ? o : fallback;
 }
 
 /* ---------- the bridge ---------- */
@@ -678,12 +691,25 @@ export function createMediaSession({ nav = null, MediaMetadata = null, onWrite =
              unchanged, skipped the write, and the metadata could never recover
              for as long as that item played. */
           if (writeOk) lastMetaKey = key;
-          if (report) attempt(() => report({ metadata, playbackState, writeOk, writeError }));
+          if (report) attempt(() => report({ metadata, playbackState, writeOk, writeError, via: "metadata" }));
         }
       }
       if (playbackState && playbackState !== lastState) {
         lastState = playbackState;
-        attempt(() => { ms.playbackState = playbackState; });
+        const stateOk = attempt(() => { ms.playbackState = playbackState; return true; }) === true;
+        /* THE PAUSE IS A WRITE TOO (founder, 2026-09-23: "I started playing 4a,
+           paused and turned off my screen, got in my car, then my car resumed
+           Spotify"). The row above fires only when the three strings change, so a
+           record of that drive showed the play and nothing after it — the one
+           write that decides whether the OS still shows 4a as paused, or has
+           nothing to show, left no trace. Reported under the same hook, marked
+           `via: "state"`, so the next record can say whether the platform was
+           told "paused" and when. */
+        if (report) {
+          attempt(() => report({
+            metadata, playbackState, writeOk: stateOk, writeError: stateOk ? "" : "playbackState", via: "state",
+          }));
+        }
       }
       if (positionState && typeof ms.setPositionState === "function") {
         // Tenth-of-a-second granularity: finer than any display renders, coarse
@@ -727,6 +753,10 @@ export function createMediaSession({ nav = null, MediaMetadata = null, onWrite =
       attempt(() => { ms.playbackState = NONE; });
       // No argument clears it, per spec. Older engines have no method at all.
       if (typeof ms.setPositionState === "function") attempt(() => ms.setPositionState());
+      /* Reported for the same reason the state write is: clearing is the one
+         write that TAKES the app off the lock screen, and a record that cannot
+         show it cannot tell "we let go" from "the OS let go of us". */
+      if (report) attempt(() => report({ metadata: null, playbackState: NONE, writeOk: true, writeError: "", via: "clear" }));
     },
 
     release() {

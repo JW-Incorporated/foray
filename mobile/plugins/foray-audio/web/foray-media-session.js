@@ -111,6 +111,27 @@
  * exist, or because `client.js` failed — `loaded` is never reported and the shell
  * behaves exactly as #244 built it. The fallback is the old behaviour, not a hang.
  *
+ * ── iOS: THE SAME FILE, A DIFFERENT JOB (L-02, then the 2026-09-23 tee) ──────
+ *
+ * WKWebView HAS a live `navigator.mediaSession`, and WebKit publishes to the
+ * lock screen from the `<audio>` element on its own, through a MediaRemote client
+ * of its own that no public API silences. So on iOS there are two publishers for
+ * a tape segment -- WebKit's entry and `ForayAudioPlugin`'s `MPNowPlayingInfoCenter`
+ * -- and exactly one for a narration line, where no element exists. The model
+ * this file ships (`docs/ios-lock-screen.md` §8):
+ *
+ *   - `install()` takes over `navigator.mediaSession` so the page's writes reach
+ *     the plugin, AND tees every write onto WebKit's real object
+ *     (`captureLiveSession`) so WebKit's own entry says the same three strings and
+ *     routes its presses to the page. Whichever client iOS shows, the display is
+ *     the page's and a press is the page's.
+ *   - A press may therefore arrive through two doors; `deliver()` applies it once
+ *     (`REMOTE_DUPLICATE_WINDOW_MS`) and the record says which door and whether
+ *     a copy was dropped.
+ *   - The seek pair is `player/media-session.js`'s alone: this file copies it
+ *     into the payload (`seekBackMs`/`seekForwardMs`), the natives read it from
+ *     there, and the page ignores whatever `seekOffset` a platform sends back.
+ *
  * ── WHAT HAS BEEN OBSERVED: NOTHING ──────────────────────────────────────────
  *
  * No WebView has run this file and no lock screen has rendered anything from it.
@@ -153,6 +174,42 @@ export const SESSION_EVENT = "session";
  *  find. Namespaced so nothing else on the page can collide with it. */
 export const SESSION_DOM_EVENT = "foray:session";
 
+/** How a native `TRANSPORT_EVENT` reaches the RECORD, as distinct from the page's
+ *  handler (founder, 2026-09-23: "got in my car, then my car resumed Spotify").
+ *
+ *  `dispatch()` below hands the press to the handler `client.js` installed, and the
+ *  handler writes its own `transport … from remote` row — so a press that reached the
+ *  plugin and found NO handler, or one the page was too asleep to act on, left no
+ *  row at all, and "the car's play did nothing" and "the car's play never came" read
+ *  the same. Every native transport event is therefore re-broadcast here as well,
+ *  with what the plugin saw (`command`, `origin`, `at`) and what this file did with
+ *  it (`action`, `handled`), for `player/diagnostic-log.js`'s `remoteCommand()`. Same
+ *  channel and same reasons as `SESSION_DOM_EVENT`. */
+export const REMOTE_DOM_EVENT = "foray:remote";
+
+/** The origin a press carries when it came through WEBKIT'S OWN `MediaSession`
+ *  rather than through the plugin -- the tee's door (see `captureLiveSession`).
+ *  One of `REMOTE_ORIGINS` in `player/diagnostic-log.js`; `shell-invariants`
+ *  pins that, because a door the record does not admit is a door it drops. */
+export const WEBKIT_ORIGIN = "webkit";
+
+/** ONE PRESS, DELIVERED ONCE (founder, 2026-09-23: "Both should be 15/30", and
+ *  a 15 delivered twice is 30).
+ *
+ *  On iOS a lock-screen or car press can reach the page through TWO doors at
+ *  once: WebKit's own MediaRemote client, which calls the handler the tee put on
+ *  WebKit's `MediaSession`, and `ForayAudioPlugin`'s `MPRemoteCommandCenter`
+ *  target, which arrives as a `transport` event. Whether iOS delivers to one or
+ *  both is not a thing a Simulator can show (`docs/ios-lock-screen.md` §8), so
+ *  the page does not bet on it: `deliver()` applies one remote action of a kind
+ *  per window ACROSS origins, and drops the second copy with a `remote` row
+ *  saying so (`deduped`). Same-origin repeats are never dropped -- two presses
+ *  of the same button on the same surface are two presses. The window is longer
+ *  than any plausible double delivery (the second door is one bridge hop behind
+ *  the first, tens of milliseconds) and shorter than any deliberate second
+ *  press from a different surface. */
+export const REMOTE_DUPLICATE_WINDOW_MS = 500;
+
 /** Every action we can route, which is exactly `MEDIA_ACTIONS` in
  *  `player/media-session.js`. An action outside this set THROWS from
  *  `setActionHandler`, which is what Chromium does and therefore what
@@ -163,6 +220,19 @@ export const ROUTABLE_ACTIONS = Object.freeze([
   "play", "pause", "stop", "previoustrack", "nexttrack",
   "seekbackward", "seekforward", "seekto",
 ]);
+
+/** The page's actions that are NOT mirrored onto WebKit's own session on the
+ *  iOS takeover (see `captureLiveSession`). Only `seekto`, and for one reason:
+ *  WebKit's `MediaElementSession::clientCharacteristicsChanged` rewrites the
+ *  page's position state with `element->currentTime()` on every tick, so the
+ *  timeline WebKit's client shows is the `<audio>` ELEMENT's — the segment's —
+ *  while the page's `seekto` handler is on the Foray's clock
+ *  (`player/media-session.js` §3). A scrub on WebKit's bar would land at
+ *  "1:00 of the Foray" when the listener meant "1:00 of this clip". The
+ *  mirrored set therefore drops `SeekToPlaybackPosition` from what WebKit's
+ *  client advertises (its set becomes ours ∪ {play, pause}); the Foray-clock
+ *  scrub lives on `ForayAudioPlugin`'s client, which is built for it. */
+export const UNMIRRORED_ACTIONS = Object.freeze(["seekto"]);
 
 /** The notification's own Stop button (and its swipe, from Android 14), and
  *  nothing else. NOT a spec action and deliberately not in `ROUTABLE_ACTIONS`: no
@@ -178,6 +248,42 @@ export const ROUTABLE_ACTIONS = Object.freeze([
  *  to our own service, a car's stop is a Media3 `handleStop` — so the Java names
  *  them differently and the page can tell them apart. */
 export const CLOSE_ACTION = "close";
+
+/** The page ACTION a press became -> the platform COMMAND the record's `remote`
+ *  row admits (`REMOTE_COMMANDS` in `player/diagnostic-log.js`: dashed tokens,
+ *  spelled the same by both natives).
+ *
+ *  WHY THIS TABLE EXISTS (review of the 2026-09-23 branch). The record admits a
+ *  closed vocabulary and DROPS a row whose command is outside it, and two of the
+ *  three doors named a press by its spec action instead: WebKit's tee'd handler
+ *  (`mirrorHandler`) sent `command: name` -- `nexttrack`, `seekforward` -- and
+ *  Android's `ForayAudioPlugin.java` puts the Media3 action in `command` because
+ *  on that side the action IS the platform's name. Only play/pause/stop happen to
+ *  be spelled the same in both vocabularies, so every lock-screen skip through
+ *  WebKit's door and every next/previous/skip/scrub from Android left no `remote`
+ *  row, the header's `remote commands N` undercounted, and the one reading the row
+ *  was added for ("arrived and did nothing" vs "never arrived") could not be made.
+ *  `remoteCommandFor` maps at the ONE seam every door passes through, so a native
+ *  side may keep naming the action. `shell-invariants.test.mjs` pins every value
+ *  here into `REMOTE_COMMANDS`, and every action the Java can send into the keys. */
+export const REMOTE_COMMAND_FOR_ACTION = Object.freeze({
+  play: "play",
+  pause: "pause",
+  stop: "stop",
+  previoustrack: "previous-track",
+  nexttrack: "next-track",
+  seekbackward: "skip-backward",
+  seekforward: "skip-forward",
+  seekto: "change-position",
+});
+
+/** A command word as a native side or the tee spelled it -> the record's word.
+ *  An action spelling is mapped; anything else (`toggle-play-pause`, `close`, a
+ *  dashed token the Swift already chose) passes through unchanged. */
+export function remoteCommandFor(word) {
+  const w = str(word);
+  return Object.prototype.hasOwnProperty.call(REMOTE_COMMAND_FOR_ACTION, w) ? REMOTE_COMMAND_FOR_ACTION[w] : w;
+}
 
 /** `04_VOICE_AUDIO_SPEC.md`'s ±30/15 s, and the numbers `player/media-session.js`
  *  exports as `SEEK_BACKWARD_SEC`/`SEEK_FORWARD_SEC` and puts on the in-page
@@ -515,6 +621,13 @@ export function createForayMediaSession(env) {
    *  restored AS that object, not as absent. */
   let hadOwn = false;
   let previous;
+  /** The members of the live session we took over on iOS, captured BEFORE any
+   *  wrapping so they still reach WebKit — `null` when there was nothing to
+   *  take over (Android, always). See `captureLiveSession`. */
+  let mirror = null;
+  /** The actions currently registered on WebKit's own session through `mirror`,
+   *  so `uninstall` can take exactly those back and `inspect` can show them. */
+  const mirrored = new Set();
   let subscription = null;
   /** M-03's own handle, kept separately from `subscription` above: `session`
    *  events are diagnostics and `transport` events are the lock screen's
@@ -710,15 +823,79 @@ export function createForayMediaSession(env) {
 
   /* -------------------------------------------------------------- receiving */
 
+  /** The last remote action delivered per name -- `{ origin, at }` -- so
+   *  `deliver` can tell one press arriving through two doors from two presses.
+   *  See `REMOTE_DUPLICATE_WINDOW_MS`. */
+  const lastDelivered = new Map();
+
   /**
-   * One transport press from the OS -> the handler the player installed.
+   * ONE press -> the handler the player installed, whichever door it came in by.
+   *
+   * Both doors end here, and that is the point: `dispatch` (the plugin's
+   * `transport` event -- Android's Media3 session and notification, iOS's
+   * `MPRemoteCommandCenter`) and the tee's wrapper on WebKit's own `MediaSession`
+   * (`mirrorHandler`, iOS only) both call this with the spec-shaped `details`, a
+   * `command`/`origin`/`at` for the record, and nothing else. A duplicate -- the
+   * same action from a DIFFERENT origin inside `REMOTE_DUPLICATE_WINDOW_MS` -- is
+   * dropped here and recorded as `deduped`, so the page applies one remote
+   * action of a kind per press however many clients iOS chose to deliver it to.
+   *
+   * The record row (`REMOTE_DOM_EVENT`) is written BEFORE the handler runs and
+   * whether or not one exists -- see that constant. Returns whether the handler
+   * ran, for `dispatch`'s callers and the suite.
+   */
+  function deliver({ action, details, command, origin, at }) {
+    const handler = handlers.get(action);
+    const t = now();
+    const previous = lastDelivered.get(action);
+    const duplicate = Boolean(
+      previous && previous.origin !== origin && t - previous.at >= 0 && t - previous.at < REMOTE_DUPLICATE_WINDOW_MS
+    );
+    dispatchRemote({
+      command: command,
+      action: action,
+      origin: origin,
+      at: at,
+      handled: Boolean(handler) && !duplicate,
+      deduped: duplicate,
+    });
+    if (duplicate) {
+      /* Not re-stamped: a third copy inside the same window is still the same
+         press, and a genuine second press from the OTHER surface a moment later
+         must be measured from the press that landed, not from the copy that did
+         not. */
+      return false;
+    }
+    if (!handler) {
+      /* Not an error worth shouting about: native declares commands from the same
+         action set, so this means a press raced a `setActions()` that removed one --
+         switching from a Foray to a single episode removes `nexttrack`. */
+      log("foray-media-session: no handler for " + (action || "(none)"));
+      return false;
+    }
+    lastDelivered.set(action, { origin: origin, at: t });
+    try {
+      /* Never awaited, and a rejection is swallowed rather than left to become an
+         unhandled rejection inside a bridge callback -- `media-session.js` takes the
+         identical posture where the browser calls it. */
+      const returned = handler(details);
+      if (returned && typeof returned.then === "function") returned.then(undefined, function () {});
+    } catch (e) {
+      log("foray-media-session: the " + action + " handler threw", e);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * One transport press from the PLUGIN -> `deliver`.
    *
    * The details objects are the SPEC's, not ours: `seekOffset` in seconds for
    * `seekbackward`/`seekforward`, `seekTime` in seconds for `seekto`. That is what
-   * makes `media-session.js`'s handlers — written for a browser — run unmodified,
-   * and it is why `offsetOf(details, fallback)` in that file honours a head unit's
-   * own number: on Android the number IS ours, sent back so the page applies the
-   * same ±15/30 the in-page buttons use.
+   * makes `media-session.js`'s handlers -- written for a browser -- run unmodified.
+   * The offset is forwarded as DATA about the press: that file steps by its own
+   * ±15/30 whatever number arrives (founder, 2026-09-23 -- the lock screen's 10 s
+   * was WebKit's interval, honoured), and native's `offsetMs` is ours anyway.
    *
    * `fastSeek` is deliberately never sent. Whether a seek may be approximate is
    * `player/seek-policy.js`'s decision (ADR-0007/0008) and `media-session.js` drops
@@ -730,14 +907,6 @@ export function createForayMediaSession(env) {
     /* The notification's Stop is the page's `stop` handler, told it may close. */
     const closing = sent === CLOSE_ACTION;
     const action = closing ? "stop" : sent;
-    const handler = handlers.get(action);
-    if (!handler) {
-      /* Not an error worth shouting about: native declares commands from the same
-         action set, so this means a press raced a `setActions()` that removed one —
-         switching from a Foray to a single episode removes `nexttrack`. */
-      log("foray-media-session: no handler for " + (action || "(none)"));
-      return false;
-    }
     let details;
     if (closing) {
       details = { close: true };
@@ -752,17 +921,17 @@ export function createForayMediaSession(env) {
       const ms = event?.offsetMs;
       details = isNum(ms) && ms > 0 ? { seekOffset: ms / 1000 } : {};
     }
-    try {
-      /* Never awaited, and a rejection is swallowed rather than left to become an
-         unhandled rejection inside a bridge callback — `media-session.js` takes the
-         identical posture where the browser calls it. */
-      const returned = handler(details);
-      if (returned && typeof returned.then === "function") returned.then(undefined, function () {});
-    } catch (e) {
-      log("foray-media-session: the " + action + " handler threw", e);
-      return false;
-    }
-    return true;
+    return deliver({
+      action: action,
+      details: details,
+      /* `command` defaults to the action for a native side that sends none (an older
+         plugin), and the notification's close is its own command. Either way it
+         goes through `remoteCommandFor`: Android names the command by the Media3
+         ACTION, and the record admits only the dashed platform tokens. */
+      command: remoteCommandFor(str(event?.command) || (closing ? CLOSE_ACTION : action)),
+      origin: str(event?.origin),
+      at: event?.at,
+    });
   }
 
   function subscribe() {
@@ -793,6 +962,22 @@ export function createForayMediaSession(env) {
 
   function subscribeSession() {
     return subscribeTo(SESSION_EVENT, dispatchSession);
+  }
+
+  /** One native transport event -> one `REMOTE_DOM_EVENT` on `window`, for the
+   *  record. Forwarded as data and judged nowhere here, exactly as `dispatchSession`
+   *  is: `player/diagnostic-log.js` admits the command and origin vocabularies and
+   *  drops the rest. Total, because it runs on the transport's own path and a
+   *  diagnostic must never cost a press. */
+  function dispatchRemote(detail) {
+    try {
+      if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") return;
+      const Ctor = window.CustomEvent;
+      if (typeof Ctor !== "function") return;
+      window.dispatchEvent(new Ctor(REMOTE_DOM_EVENT, { detail: detail }));
+    } catch (e) {
+      log("foray-media-session: could not re-broadcast a remote command", e);
+    }
   }
 
   /* `addListener` is on the injected bridge itself (`native-bridge.js`'s
@@ -853,6 +1038,10 @@ export function createForayMediaSession(env) {
             }))
             : [],
         };
+        /* The ORIGINAL value, not the snapshot: in the shell it is a real
+           `MediaMetadata` (client.js passes `window.MediaMetadata`), which is the
+           only thing WebKit's setter accepts. */
+        mirrorMetadata(value == null ? null : value);
         scheduleFlush();
       },
 
@@ -861,6 +1050,7 @@ export function createForayMediaSession(env) {
       },
       set playbackState(value) {
         playbackState = str(value) || "none";
+        mirrorPlaybackState(playbackState);
         scheduleFlush();
       },
 
@@ -885,11 +1075,144 @@ export function createForayMediaSession(env) {
         if (!ROUTABLE_ACTIONS.includes(name)) {
           throw new TypeError("foray-media-session: unsupported action " + name);
         }
-        if (typeof handler === "function") handlers.set(name, handler);
+        const fn = typeof handler === "function" ? handler : null;
+        if (fn) handlers.set(name, fn);
         else handlers.delete(name);
+        mirrorHandler(name, fn);
         scheduleFlush();
       },
     };
+  }
+
+  /* ------------------------------------------- the mirror onto WebKit's own */
+
+  /**
+   * Capture the live session's own members BEFORE `install()` replaces or wraps
+   * it, so the page's writes can be repeated onto WebKit's object as well as
+   * ours. Returns `null` when the object has no `setActionHandler` — then it
+   * is not a session at all and nothing is mirrored.
+   *
+   * WHY THIS IS A TEE AND NOT A TAKEOVER (founder, 2026-09-23, build 2026092326,
+   * iPhone; `docs/ios-lock-screen.md` §8). Two reports from one drive, verbatim:
+   * "My lock screen and car still displays the song/ artist/ album as 4a/
+   * unknown/ unknown" and "In the app, I can jump back 15s and forward 30s. On
+   * the lock screen, it's 10s in both directions." Neither string is ours:
+   * `player/media-session.js` never emits "4a" as an artist and nothing in this
+   * repo says 10. Both are WEBKIT'S. For every playing `<audio>` element WebKit
+   * publishes a Now Playing entry of its own, through its own MediaRemote
+   * client, titled from `document.title` -- which is "4a" -- with an empty
+   * artist and album, and registers its own command set with a skip interval
+   * of its choosing (`RemoteCommandListenerCocoa.mm`, `defaultCommands()`).
+   * That entry, not the plugin's `MPNowPlayingInfoCenter` write, is what the
+   * lock screen and the car were showing during tape. No public API silences
+   * it. L-02's takeover made it worse than it had to be: replacing
+   * `navigator.mediaSession` SEVERED WebKit's real object from the page, so
+   * WebKit's entry was left with the document title, no artist, no album and
+   * NO ACTION HANDLERS -- and a press on WebKit's client then fell to
+   * `HTMLMediaElement`'s default (`MediaElementSession` ->
+   * `MediaSession::callActionHandler` only when the page registered one on
+   * WEBKIT'S object): a raw element seek by WebKit's interval, past the Foray
+   * clock, the seek policy and the nudge.
+   *
+   * So the page's writes go to BOTH: ours (-> the plugin, which is the ONLY
+   * writer during narration, when there is no element and WebKit clears its
+   * entry) and WebKit's real object (-> WebKit's entry, which is what shows
+   * during tape). `metadata` is forwarded as the ORIGINAL object -- the page's
+   * artwork URLs (https, `data:`, or `icon-512.png` relative to the document),
+   * which WebKit fetches inside the WebView; the `bundle://` rewrite in
+   * `assetUri` is for the Swift side alone and never reaches WebKit.
+   * `playbackState` rides along. Handlers are mirrored as `deliver` wrappers
+   * (`mirrorHandler`), so whichever client the OS routes a press to, the page
+   * runs the same handler ONCE. Position state is NOT forwarded and `seekto` is
+   * not mirrored -- `UNMIRRORED_ACTIONS` says why.
+   *
+   * Every mirrored write is best-effort and never throws out of the page's
+   * write: WebKit refusing a mirror must not cost the plugin its payload.
+   */
+  function captureLiveSession(target) {
+    if (!target || typeof target !== "object") return null;
+    const setActionHandler = typeof target.setActionHandler === "function"
+      ? target.setActionHandler
+      : null;
+    if (!setActionHandler) return null;
+    /* An accessor's SETTER, from wherever on the chain it lives — for a real
+       `MediaSession` that is the IDL prototype — so the mirror still reaches
+       WebKit after "wrap" mode shadows the property with our own accessor. A
+       data property is never mirrored: in "wrap" mode our shadow sits on top
+       of it, and an assignment would come straight back into our own setter —
+       a loop, not a mirror. Only a test fake has one; WebKit's does not. */
+    const setterOf = (prop) => {
+      for (let o = target; o; o = Object.getPrototypeOf(o)) {
+        const d = Object.getOwnPropertyDescriptor(o, prop);
+        if (!d) continue;
+        return typeof d.set === "function" ? (v) => d.set.call(target, v) : null;
+      }
+      return null;
+    };
+    return {
+      setActionHandler: (name, fn) => setActionHandler.call(target, name, fn),
+      metadata: setterOf("metadata"),
+      playbackState: setterOf("playbackState"),
+    };
+  }
+
+  /** Put the page's handler for `name` on WebKit's object too -- as a WRAPPER
+   *  through `deliver`, not the page's function itself, so a press WebKit routes
+   *  here is recorded (`REMOTE_DOM_EVENT`, origin `WEBKIT_ORIGIN`) and
+   *  de-duplicated against the same press arriving from the plugin. The wrapper
+   *  looks the handler up at call time, so `handlers` stays the one place a
+   *  handler lives and a removal takes effect on both doors at once. WebKit's own
+   *  details (`seekOffset`, `seekTime`) pass through untouched, exactly as
+   *  `dispatch` passes the plugin's. The COMMAND is the record's word for the
+   *  action (`REMOTE_COMMAND_FOR_ACTION`), never the spec name: WebKit has no
+   *  platform command of its own to report, and `nexttrack` as a command was a row
+   *  the record dropped. */
+  function mirrorHandler(name, fn) {
+    if (!mirror || UNMIRRORED_ACTIONS.includes(name)) return;
+    const wrapper = fn
+      ? function (details) {
+        return deliver({
+          action: name, details: details, command: remoteCommandFor(name), origin: WEBKIT_ORIGIN, at: now(),
+        });
+      }
+      : null;
+    try {
+      mirror.setActionHandler(name, wrapper);
+      if (wrapper) mirrored.add(name);
+      else mirrored.delete(name);
+    } catch (e) {
+      log("foray-media-session: WebKit's session refused the mirrored " + name + " handler", e);
+    }
+  }
+
+  function mirrorMetadata(value) {
+    if (!mirror || !mirror.metadata) return;
+    try {
+      mirror.metadata(value);
+    } catch (e) {
+      log("foray-media-session: WebKit's session refused the mirrored metadata", e);
+    }
+  }
+
+  function mirrorPlaybackState(value) {
+    if (!mirror || !mirror.playbackState) return;
+    try {
+      mirror.playbackState(value);
+    } catch (e) {
+      log("foray-media-session: WebKit's session refused the mirrored playbackState", e);
+    }
+  }
+
+  /** Take back everything the mirror put on WebKit's object. Each member is
+   *  attempted even if one fails, as `uninstall` does for the wrapped ones. */
+  function unmirror() {
+    if (!mirror) return;
+    for (const name of [...mirrored]) mirrorHandler(name, null);
+    mirrorMetadata(null);
+    mirrorPlaybackState("none");
+    mirrored.clear();
+    mirror = null;
+    lastDelivered.clear();
   }
 
   /* ------------------------------------------------------------- lifecycle */
@@ -1000,6 +1323,10 @@ export function createForayMediaSession(env) {
 
     hadOwn = Object.prototype.hasOwnProperty.call(nav, "mediaSession");
     previous = existing;
+    /* BEFORE the takeover below touches it: "wrap" mode shadows the very
+       members the mirror needs to keep. Only ever non-null on iOS — Android
+       returned above when anything was there. */
+    mirror = existing ? captureLiveSession(existing) : null;
 
     if (!existing) {
       /* The ordinary case on both platforms: nothing there yet (Android always;
@@ -1086,6 +1413,10 @@ export function createForayMediaSession(env) {
       log("foray-media-session: could not remove the session listener", e);
     }
     sessionSubscription = null;
+    /* WebKit's object first, while `mirror` still reaches it: a mirrored
+       handler left behind would keep WebKit's client advertising buttons that
+       call into a page that has moved on. */
+    unmirror();
     /* ONLY IF OURS IS STILL THE ONE THERE. If something replaced it after we
        installed, restoring blindly would delete that — the mirror of the care
        `foray-audio-shell.js` takes over the `play` patch. In "wrap" mode "ours"
@@ -1133,6 +1464,7 @@ export function createForayMediaSession(env) {
     takeoverMode = null;
     wrappedDescriptors = null;
     handlers.clear();
+    lastDelivered.clear();
     metadata = null;
     positionState = null;
     playbackState = "none";
@@ -1157,6 +1489,16 @@ export function createForayMediaSession(env) {
     return {
       installed,
       actions: [...handlers.keys()],
+      /** Whether the tee has a target: WebKit's own `MediaSession` was captured
+       *  at install (iOS only; always `false` on Android, where there is
+       *  nothing to tee onto). `probe-bridge.js` reads it and `ios-ci.mjs`
+       *  fails section 3d on a taken-over live object with no tee -- that is
+       *  L-02's severed state, the one the founder's phone showed as "4a". */
+      tee: mirror !== null,
+      /** The actions also registered on WebKit's own session (iOS only). A
+       *  device pass reading `[]` here while a Foray plays on iOS means the
+       *  lock screen's skips are WebKit's raw element seek again. */
+      mirrored: [...mirrored],
       state: transportState({ metadata, playbackState }),
       title: str(metadata?.title),
       loaded: lastLoaded,

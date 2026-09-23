@@ -64,7 +64,26 @@ final class NowPlayingHub {
          * @param offsetMs   for {@code seekbackward}/{@code seekforward}
          */
         void onTransport(@NonNull String action, long positionMs, long offsetMs);
+
+        /**
+         * The same press, with WHICH DOOR it came through (founder, 2026-09-23:
+         * "my car resumed Spotify"). {@link #ORIGIN_SESSION} is Media3's session —
+         * a car head unit, a Bluetooth button, the lock screen's media panel —
+         * and {@link #ORIGIN_NOTIFICATION} is one of the notification's own
+         * buttons. The record's {@code remote} row reads it; nothing else does.
+         *
+         * <p>A default so every existing sink (and every lambda in
+         * {@code NowPlayingHubTest}) keeps compiling; the plugin overrides it.
+         */
+        default void onTransport(@NonNull String action, long positionMs, long offsetMs, @NonNull String origin) {
+            onTransport(action, positionMs, offsetMs);
+        }
     }
+
+    /** The two origins, spelled as `REMOTE_ORIGINS` in `player/diagnostic-log.js`
+     *  spells them. */
+    static final String ORIGIN_SESSION = "media-session";
+    static final String ORIGIN_NOTIFICATION = "notification";
 
     private NowPlayingHub() {}
 
@@ -129,13 +148,18 @@ final class NowPlayingHub {
      * minutes on — would be a pause or a skip the listener did not just ask for.
      */
     static void dispatch(@NonNull String action, long positionMs, long offsetMs) {
+        dispatch(action, positionMs, offsetMs, ORIGIN_SESSION);
+    }
+
+    /** {@link #dispatch(String, long, long)}, naming the door. */
+    static void dispatch(@NonNull String action, long positionMs, long offsetMs, @NonNull String origin) {
         final TransportSink target = sink;
         if (target == null) {
-            Log.w(TAG, "transport " + action + " arrived with no page listening");
+            Log.w(TAG, "transport " + action + " from " + origin + " arrived with no page listening");
             return;
         }
         try {
-            target.onTransport(action, positionMs, offsetMs);
+            target.onTransport(action, positionMs, offsetMs, origin);
         } catch (Exception e) {
             /* The sink calls into Capacitor, which calls into the WebView. A throw
                here arrives on the main thread inside a Media3 state change, so it would

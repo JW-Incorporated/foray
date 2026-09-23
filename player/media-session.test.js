@@ -336,10 +336,57 @@ test("onWrite fires exactly when metadata is really written, and not on an uncha
     item: { kind: "episode", title: "Another", show: "Other Show" },
     forayTitle: "F", index: 1, total: 3, durationSec: 600, positionSec: 20, playing: true,
   }));
-  assert.equal(seen.length, 2, "two distinct metadata writes, and no repeat for the unchanged view");
-  assert.equal(seen[0].metadata.title, SEG.title);
-  assert.equal(seen[0].playbackState, PLAYING);
-  assert.equal(seen[1].metadata.artist, "Other Show");
+  const metadataWrites = seen.filter((w) => w.via === "metadata");
+  assert.equal(metadataWrites.length, 2, "two distinct metadata writes, and no repeat for the unchanged view");
+  assert.equal(metadataWrites[0].metadata.title, SEG.title);
+  assert.equal(metadataWrites[0].playbackState, PLAYING);
+  assert.equal(metadataWrites[1].metadata.artist, "Other Show");
+  /* The one state write (`none` -> `playing`) is reported too, and once: the
+     second identical view repeated neither. */
+  assert.deepEqual(seen.filter((w) => w.via !== "metadata").map((w) => [w.via, w.playbackState]), [["state", PLAYING]]);
+});
+
+// FOUNDER 2026-09-23: "I started playing 4a, paused and turned off my screen,
+// got in my car, then my car resumed Spotify." TO SEE IT FAIL: delete the
+// `report(...)` beside the `ms.playbackState` write — the pause leaves no row.
+test("the PAUSE is reported as a write, marked via=state, with the strings as they were", () => {
+  const nav = fakeNav();
+  const seen = [];
+  const bridge = createMediaSession({ nav, onWrite: (w) => seen.push(w) });
+  const playing = mediaSessionView({
+    item: SEG, forayTitle: "F", index: 0, total: 3, durationSec: 600, positionSec: 12, playing: true,
+  });
+  bridge.update(playing);
+  bridge.update({ ...playing, playbackState: PAUSED });
+  bridge.update({ ...playing, playbackState: PAUSED });
+  const states = seen.filter((w) => w.via === "state");
+  assert.deepEqual(states.map((w) => w.playbackState), [PLAYING, PAUSED], "one row per state change, none for a repeat");
+  assert.equal(states[1].metadata.title, SEG.title, "the row carries the strings, so it reads like every other");
+  assert.equal(states[1].writeOk, true);
+  assert.equal(nav._log.filter((l) => l === "state:paused").length, 1, "and the platform was actually told");
+});
+
+// TO SEE IT FAIL: drop the `report(...)` from `clear()`. A record then cannot
+// tell "we let go of the lock screen" from "the OS let go of us".
+test("clearing the session is reported as a write, via=clear, state none", () => {
+  const nav = fakeNav();
+  const seen = [];
+  const bridge = createMediaSession({ nav, onWrite: (w) => seen.push(w) });
+  bridge.update(mediaSessionView({ item: SEG, durationSec: 600, positionSec: 1, playing: true }));
+  bridge.clear();
+  const last = seen[seen.length - 1];
+  assert.equal(last.via, "clear");
+  assert.equal(last.playbackState, NONE);
+  assert.equal(last.metadata, null);
+});
+
+// TO SEE IT FAIL: throw from the sink and let the state write skip the guard.
+test("a throwing onWrite on the state row still writes the state", () => {
+  const nav = fakeNav();
+  const bridge = createMediaSession({ nav, onWrite: () => { throw new Error("sink is broken"); } });
+  const view = mediaSessionView({ item: SEG, durationSec: 600, positionSec: 1, playing: true });
+  assert.doesNotThrow(() => { bridge.update(view); bridge.update({ ...view, playbackState: PAUSED }); });
+  assert.deepEqual(nav._log.filter((l) => l.startsWith("state:")), ["state:playing", "state:paused"]);
 });
 
 // TO SEE IT FAIL: call `report(...)` outside the `attempt()` guard. A
@@ -663,19 +710,27 @@ test("seekforward asks for a positive 30 seconds by default", () => {
   assert.equal(SEEK_FORWARD_SEC, 30);
 });
 
-test("the platform's own seekOffset wins when it sends one", () => {
+test("THE PLATFORM'S OWN seekOffset IS IGNORED: the lock screen steps ±15/30 like the in-page buttons", () => {
+  /* FOUNDER, 2026-09-23 (build 2026092326, iPhone): "In the app, I can jump
+     back 15s and forward 30s. On the lock screen, it's 10s in both directions.
+     Both should be 15/30". The 10 is WebKit's: its remote-command listener
+     picks the skip interval for a playing `<audio>` element and hands it back
+     as `seekOffset`, and until this pin the handler honoured it. The inverse
+     of this test ("the platform's own seekOffset wins") was green for a year
+     and is the defect. */
   const s = recordingSurface();
   const map = actionMap(s);
   map.get("seekforward")({ seekOffset: 10 });
   map.get("seekbackward")({ seekOffset: 10 });
-  assert.deepEqual(s.calls, ["seekBy:10", "seekBy:-10"]);
+  assert.deepEqual(s.calls, [`seekBy:${SEEK_FORWARD_SEC}`, `seekBy:-${SEEK_BACKWARD_SEC}`]);
+  assert.deepEqual([SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC], [15, 30], "the spec's numbers, and the founder's");
 });
 
-test("a nonsense seekOffset falls back to our default rather than seeking by zero", () => {
+test("any seekOffset at all — nonsense or a real number — lands as our step, never as zero", () => {
   const s = recordingSurface();
   const map = actionMap(s);
-  for (const bad of [0, -5, NaN, null, "10", undefined]) map.get("seekforward")({ seekOffset: bad });
-  assert.deepEqual(s.calls, new Array(6).fill(`seekBy:${SEEK_FORWARD_SEC}`));
+  for (const off of [0, -5, NaN, null, "10", undefined, 10, 45]) map.get("seekforward")({ seekOffset: off });
+  assert.deepEqual(s.calls, new Array(8).fill(`seekBy:${SEEK_FORWARD_SEC}`));
 });
 
 test("the ±15/30 defaults are overridable in one place, and default to the spec's numbers", () => {
@@ -986,13 +1041,14 @@ test("a handler installed BY THE BRIDGE actually calls the surface — all eight
 
 test("the bridge forwards the platform's details, it does not swallow them", () => {
   // A bridge that called `handler()` with no arguments would pass every test
-  // above and quietly ignore a head unit's own seek offset and scrub position.
+  // above and quietly ignore a head unit's scrub position. (Its seek OFFSET is
+  // forwarded too, and ignored on purpose one layer down — founder, 2026-09-23.)
   const nav = fakeNav();
   const s = recordingSurface();
   createMediaSession({ nav }).setActions(s);
   nav._ms.handlers.get("seekforward")({ seekOffset: 10 });
   nav._ms.handlers.get("seekto")({ seekTime: 42 });
-  assert.deepEqual(s.calls, ["seekBy:10", "seekTo:42"]);
+  assert.deepEqual(s.calls, [`seekBy:${SEEK_FORWARD_SEC}`, "seekTo:42"]);
 });
 
 test("a handler installed by the bridge reaches a REAL manager", async () => {
@@ -1486,6 +1542,16 @@ test("the finished state reaches the bridge too, so a done Foray clears the slot
 
 test("the lock screen is repainted from the same render tick the page is", () => {
   assert.match(CLIENT_CODE, /\n  syncMediaSession\(\);/);
+});
+
+test("client.js records what the NATIVE side received: foray:remote -> diag.remoteCommand", () => {
+  /* Founder 2026-09-23. The shim re-broadcasts every remote command the plugin
+     saw as `foray:remote`; a page that does not listen leaves "the car's play
+     never came" and "the car's play did nothing" reading the same. Checked on
+     the raw text for the event NAME (`codeOnly` blanks string literals) and on
+     the code for the call. MUTATION: comment the listener out. */
+  assert.ok(liveLines(CLIENT, '"foray:remote"').length >= 1, "client.js does not listen for foray:remote");
+  assert.match(CLIENT_CODE, /diag\.remoteCommand\(/);
 });
 
 test("client.js declares no second copy of the ±15/30 numbers", () => {

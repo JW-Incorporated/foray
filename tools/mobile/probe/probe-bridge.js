@@ -87,7 +87,7 @@
    * Read-only. This probe installs nothing and restores nothing -- the marker
    * is read, `peek()` is read, and that is all. */
   function snapshotMediaSessionTakeover() {
-    var t = { forayPolyfill: null, windowForayMediaSession: false, peekState: null };
+    var t = { forayPolyfill: null, windowForayMediaSession: false, peekState: null, tee: null };
     try {
       var s = navigator.mediaSession;
       if (s) t.forayPolyfill = s.forayPolyfill === true;
@@ -98,6 +98,16 @@
       if (t.windowForayMediaSession) {
         var p = fms.peek();
         t.peekState = p && typeof p.state === "string" ? p.state : null;
+      }
+      /* 2026-09-23: is the takeover a TEE? `inspect().tee` is true when the
+       * polyfill captured WebKit's own MediaSession at install and forwards the
+       * page's writes to it as well as to the plugin. A live object taken over
+       * WITHOUT a tee is L-02's severed state -- WebKit's entry left with the
+       * document title, no artist, no album and no handlers, which is what the
+       * founder's lock screen read as "4a / unknown / unknown". Read-only. */
+      if (fms && typeof fms.inspect === "function") {
+        var i = fms.inspect();
+        t.tee = i && typeof i.tee === "boolean" ? i.tee : null;
       }
     } catch (e) { t.peekError = String(e && e.message); }
     if (out.mediaSessionTakeover && out.mediaSessionTakeover.forayPolyfillAtLoad !== undefined) {

@@ -69,8 +69,36 @@ export function nativeBuildOf(info) {
   };
 }
 
+/** How long either half may take before the row is written with what is known.
+    Five seconds, the same bound `app.js` puts on storage hydration: a file read
+    from the bundle or a bridge call that has not answered in that long is not
+    going to, and a row saying `native ?` is worth more than no row. */
+export const BUILD_STAMP_WAIT_MS = 5000;
+
 /**
- * Both numbers, never throwing.
+ * `promise`, or `null` once `ms` has passed — never a rejection. The timer is
+ * cleared when the answer lands, so a resolved read does not keep a process (or
+ * a test) alive for the full bound. A non-finite `ms` means no bound at all.
+ */
+function withinMs(promise, ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return promise;
+  let timer = null;
+  const late = new Promise((resolve) => { timer = setTimeout(() => resolve(null), ms); });
+  return Promise.race([promise, late]).finally(() => { if (timer != null) clearTimeout(timer); });
+}
+
+/**
+ * Both numbers, never throwing, and NEVER HANGING (2026-09-23).
+ *
+ * The founder's record that day had no build row at all. Each half here is an
+ * asynchronous call into something this file does not control — a bundle file,
+ * the native bridge — and until now a half that never answered meant the row
+ * that would have named the OTHER half was never written either: `client.js`
+ * writes the row from this promise's resolution, and a promise that never
+ * settles writes nothing. So each half is bounded separately by `timeoutMs`,
+ * and whatever answered in time goes in the row; a half that did not is `null`,
+ * which the record prints as `?`. "This build could not say" is a finding; a
+ * missing row is not.
  *
  * @param {object} env
  * @param {boolean} env.inShell        running inside the Capacitor shell
@@ -78,19 +106,25 @@ export function nativeBuildOf(info) {
  * @param {object|null} env.capacitor  `window.Capacitor`, for `nativePromise`
  * @param {string|null} env.pinned     the deploy id the service worker pinned this
  *                                     page to, when it did (app.js's `pinnedDeployId`)
+ * @param {number} env.timeoutMs       per-half bound; `Infinity` for none
  * @returns {Promise<{ shell: boolean, web: string|null, native: string|null, version: string|null }>}
  */
-export async function readBuildStamp({ inShell = false, fetchJson = null, capacitor = null, pinned = null } = {}) {
+export async function readBuildStamp({
+  inShell = false, fetchJson = null, capacitor = null, pinned = null, timeoutMs = BUILD_STAMP_WAIT_MS,
+} = {}) {
   const out = { shell: inShell === true, web: null, native: null, version: null };
   const get = async (url) => {
     if (typeof fetchJson !== "function") return null;
-    try { return await fetchJson(url); } catch (_) { return null; }
+    try { return await withinMs(Promise.resolve().then(() => fetchJson(url)), timeoutMs); } catch (_) { return null; }
   };
   if (inShell) {
     out.web = deployIdOf((await get(BUILD_STAMP_FILE))?.deploy_id);
     try {
       if (capacitor && typeof capacitor.nativePromise === "function") {
-        const info = nativeBuildOf(await capacitor.nativePromise("App", "getInfo", {}));
+        const answer = await withinMs(
+          Promise.resolve().then(() => capacitor.nativePromise("App", "getInfo", {})), timeoutMs,
+        );
+        const info = nativeBuildOf(answer);
         out.native = info.build;
         out.version = info.version;
       }

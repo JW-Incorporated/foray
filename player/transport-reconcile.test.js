@@ -2426,6 +2426,34 @@ function lateNativeStore(rows) {
   return { capacitor, release: () => release() };
 }
 
+test("REVIEW 2026-09-23: a speed that arrives AFTER the record's five-second bound still reaches the booted player", async (t) => {
+  /* The bound `client.js` puts on the field record's wait (`HYDRATE_WAIT_MS`)
+     was applied to `storageReady`, and the rate restore below awaited the same
+     promise. So a durable tier that answered at six seconds -- a cold
+     Preferences read, not a hang -- saw the restore run at five with the default
+     speed, find it equal to the manager's, correct nothing, and never run again:
+     the listener's stored 1.5x was lost for the session, which is the exact
+     case the block was written for. It now awaits real hydration
+     (`storageHydrated`). Mocked timers, so the bound passes for free; the store
+     is released only after it. KILLING MUTATION: await `storageReady` in the
+     rate-restore block again -- the button reads 1x after the release. */
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const drain = async () => { for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r)); };
+  const late = lateNativeStore({ cp_rate: "1.5" });
+  const { client, doc, audio, restore } = await bootClient(t, { capacitor: late.capacitor });
+  await client.play(episodeItem());
+  await drain();
+  assert.equal(find(doc.body, "fp-rate").textContent, "1×", "precondition: booted before the stored speed arrived");
+  t.mock.timers.tick(5_001);
+  await drain();
+  assert.equal(find(doc.body, "fp-rate").textContent, "1×", "the bound passed; nothing arrived yet");
+  late.release();
+  await drain();
+  assert.equal(find(doc.body, "fp-rate").textContent, "1.5×", "the stored speed reached the button after the bound");
+  assert.equal(audio.playbackRate, 1.5, "and the element");
+  restore();
+});
+
 test("SWEEP: a speed that arrives with late hydration reaches a player that already booted", async (t) => {
   /* qa row 168. The manager was built from the rate as it stood at boot (the
      default), and the late repaint read `manager.rate` back and confirmed 1x for

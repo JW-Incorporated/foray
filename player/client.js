@@ -121,7 +121,7 @@ import {
 } from "./strip-scrub-gesture.js";
 import { startDrag, moveDrag, endDrag, dragOffset } from "./sheet-drag-dismiss.js";
 import { createDurableStore, preferencesTier } from "./durable-store.js";
-import { readBuildStamp } from "./build-stamp.js";
+import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
 import { createInterludePlayer, readInterludePref, writeInterludePref } from "./interlude.js";
@@ -246,7 +246,42 @@ const storage = createDurableStore({
 /* Started immediately, awaited by app.js before its first write. Rejection is
    impossible by construction (every tier failure is caught into `health()`), but
    an unhandled rejection here would take the module down, so it is attached. */
-const storageReady = storage.hydrate().catch(() => storage);
+const storageHydrated = storage.hydrate().catch(() => storage);
+
+/* THE WAIT THE FIELD RECORD PUTS ON HYDRATION IS BOUNDED (2026-09-23).
+
+   `hydrate()` awaits every durable tier's `readAll` and then drains the write
+   queue, and a WKWebView's IndexedDB is known to leave a transaction unsettled
+   after the app has been in the background (`idb-tier.js`, hazard 1). Everything
+   the record writes at boot — the `boot` row, the `build` row, the
+   `visibilitychange` and native-session listeners — used to sit behind that
+   promise with no bound, so a store that never finished reading produced a page
+   that never recorded anything: no build row, no rows, and a header that said
+   so in a way that read as a broken instrument. `app.js` has bounded its own
+   wait on the same promise at five seconds since the store shipped; this is
+   that bound, for the FIELD RECORD's writers and for nothing else -- the
+   `boot`/`build`/visibility/native-session writers below, and the two
+   `diag.dataSource` bridges. The playback-rate restore further down reads a
+   VALUE hydration provides and stays on `storageHydrated`: run at the bound it
+   would read the default, apply it, and never run again (review, 2026-09-23).
+
+   Resolves `true` when hydration landed in time and `false` when the bound was
+   hit, and the boot row carries the answer (`storage=not-hydrated`). A row
+   written after the bound does NOT overwrite the durable tier's copy of the
+   ring: `DiagnosticLog` holds every write in memory while the store says it has
+   not hydrated and `flush()`es once it has, putting the held rows after the
+   adopted ring (review, 2026-09-23 -- a durable read that was merely slow, not
+   hung, used to lose the older ring the moment the boot row landed, because the
+   store treats the first writer of a key as its owner). Only after
+   `HYDRATE_GIVE_UP_MS` is the tier called hung and the held rows written
+   anyway; a read that slow is not a read. The timer is cleared when hydration
+   lands so a healthy boot holds nothing open. */
+const HYDRATE_WAIT_MS = 5000;
+const HYDRATE_GIVE_UP_MS = 60_000;
+const storageReady = new Promise((resolve) => {
+  const timer = setTimeout(() => resolve(false), HYDRATE_WAIT_MS);
+  storageHydrated.then(() => { clearTimeout(timer); resolve(true); }, () => { clearTimeout(timer); resolve(true); });
+});
 
 /* A request, not a setting: Chromium may grant it silently, Firefox may prompt,
    Safari does not meaningfully honour it, and a refusal changes nothing about
@@ -259,7 +294,7 @@ storage.requestPersistence(typeof navigator !== "undefined" ? navigator : null).
    handed over the same way the event pipeline is. Published BEFORE any await so
    that app.js, whose `init()` parks on its first fetch, sees it. */
 window.forayStorage = storage;
-window.forayStorageReady = storageReady;
+window.forayStorageReady = storageHydrated;
 /** For a founder or a tester with a console open: the whole failure record. */
 window.forayStorageHealth = () => storage.health();
 
@@ -327,9 +362,19 @@ const diag = new PlayerDiagnostics({
    and no data; the alternative cost the whole record.
 
    `storageReady` never rejects (every tier failure is caught into `health()`), but
-   the catch is attached anyway. */
-storageReady.then(() => {
-  diag.boot();
+   the catch is attached anyway. It resolves with whether hydration landed inside
+   the bound — see `HYDRATE_WAIT_MS` — and the boot row records that. */
+storageReady.then((hydrated) => {
+  diag.boot({ hydrated: hydrated === true });
+  if (hydrated !== true) {
+    /* The bound was hit, so the rows below are being HELD by the ring (see
+       `HYDRATE_WAIT_MS`). Write them when hydration lands -- after the adopted
+       ring, never over it -- and, if it never does, when the tier has earned
+       the name "hung". The give-up timer is left to fire on a healthy late
+       hydration too: `flush({ force })` with nothing pending is a no-op. */
+    storageHydrated.then(() => diag.flush()).catch(() => {});
+    setTimeout(() => diag.flush({ force: true }), HYDRATE_GIVE_UP_MS);
+  }
   /* WHICH BUILD (founder report 3, 2026-09-22) — see `player/build-stamp.js`.
      Beside `boot()` and after hydration for the same reason `boot()` waits:
      it is a write into the durable record. Asynchronous, so it lands a moment
@@ -361,6 +406,15 @@ storageReady.then(() => {
       /* AND THE PLAYER, not only the record (2026-09-22, founder report 1).
          Until now these events reached `diag.sessionEvent` and nothing else. */
       try { onNativeSession(e?.detail ?? {}); } catch (_) { /* a session event must never break the page */ }
+    });
+    /* WHAT THE NATIVE SIDE RECEIVED (founder, 2026-09-23: "got in my car, then
+       my car resumed Spotify"). The shim re-broadcasts every remote command the
+       plugin saw — the platform's own command, the action it became, which door,
+       and whether a handler existed — as `foray:remote`. The record only, on
+       purpose: the press itself already reached the handler by the time this
+       fires, and a second route to the transport would be a second opinion. */
+    window.addEventListener("foray:remote", (e) => {
+      try { diag.remoteCommand(e?.detail ?? {}); } catch (_) { /* diagnostics must never break the page */ }
     });
   }
 }).catch(() => {});
@@ -426,6 +480,9 @@ function recordBuildStamp() {
     pinned,
     fetchJson: (u) => fetch(u, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
+    /* Bounded per half, so a bridge call that never answers still yields a row
+       with the half that did (2026-09-23) — see `readBuildStamp`. */
+    timeoutMs: BUILD_STAMP_WAIT_MS,
   })
     .then((stamp) => { try { diag.build(stamp); } catch (_) { /* the instrument must never be the outage */ } })
     .catch(() => {});
@@ -444,6 +501,16 @@ window.forayDiagnosticReport = () => formatDiagnosticReport(diagLog.read());
  * playback leaves the open seam pointing at an entry no longer in the ring — so the
  * next boundary is written outside the record and lost, and the orphan's next stage
  * calls `save()`, putting `cp_diag` back one tick after it was deliberately removed.
+ *
+ * THE BUILD SURVIVES THE CLEAR, AND SO DOES THE FACT OF THE CLEAR (2026-09-23).
+ * The founder's record that day was a cleared ring — `recorded 939`, nothing in
+ * it — whose second line said `build unknown (no build row yet)`, because the
+ * build row is a row and the clear had taken it; and nothing on it said it had
+ * been cleared. `DiagnosticLog` now keeps the running build's stamp and the
+ * clear mark outside the ring, and the header prints both, so nothing needs to
+ * be re-recorded here: the key stays absent after a Clear (the test
+ * "Clear mid-seam resets what is in flight" uses that as its probe), and the
+ * next row written carries the stamp and the mark down with it.
  */
 window.forayDiagnosticClear = () => { diagLog.clear(); diag.reset(); return true; };
 /**
@@ -1632,8 +1699,17 @@ function currentRate() {
    whole session. So when hydration lands, the stored speed is handed to a
    manager that already exists. A speed the listener chose inside the window is
    safe without a flag here: `applyRate` wrote it, and hydration never clobbers
-   a key written since the store was built, so `readRate` answers their choice. */
-storageReady.then(() => {
+   a key written since the store was built, so `readRate` answers their choice.
+
+   ON `storageHydrated`, NOT THE BOUNDED `storageReady` (review, 2026-09-23). The
+   bound exists for the field record, whose rows are only worth writing while
+   the page is alive; this block reads a VALUE that only hydration can supply.
+   Run at the five-second bound it read the default speed, found it equal to
+   the manager's, corrected nothing, and never ran again -- so a listener whose
+   localStorage had been swept and whose durable tier answered at six seconds
+   kept 1x for the session. That is the exact regression this block was written
+   to prevent. */
+storageHydrated.then(() => {
   if (manager) {
     const stored = readRate(storage);
     if (stored !== manager.rate) manager.setRate(stored);

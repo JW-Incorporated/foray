@@ -191,6 +191,86 @@ export class DiagnosticLog {
     this._dropped = 0;
     this.saveErrors = 0;
     this.loadError = null;
+    /* THE TWO THINGS A CLEAR MUST NOT ERASE (founder record, 2026-09-23).
+       `_cleared` is where and when the ring was last emptied — `seq` is kept
+       across a clear so a wrapped ring stays distinguishable from a cleared one,
+       and until this field existed the header printed that kept counter as
+       `recorded 939` beside `entries 0` and `dropped 0` with nothing to say WHY,
+       which read as a broken instrument. `_build` is the running build's stamp,
+       held OUTSIDE the ring: the build row is one entry like any other and a
+       clear took it with the rest, so the record's second line fell back to
+       "unknown (no build row yet)" on a page that knew its build perfectly well.
+       Both are persisted in the blob and restored by `_load`, and neither is
+       user data. */
+    this._cleared = null;
+    this._build = null;
+    /* WRITES BEFORE HYDRATION ARE HELD IN MEMORY (review, 2026-09-23). The
+       store behind this ring adopts the durable tier's copy of a key only if
+       nothing wrote that key first (`durable-store.js`, property 2), and
+       `client.js`'s wait on hydration is BOUNDED at five seconds. So a durable
+       read that was merely slow -- a cold Capacitor Preferences `readAll` over
+       the bridge, not a hang -- met a boot row already written, skipped the
+       durable ring as dirty, and pushed the fresh one-row ring down over it:
+       the sweep case `preferencesTier` exists for lost the older ring, and the
+       only trace was `storage=not-hydrated`. (The same held on main for any
+       row written before hydration: a play press at two seconds was the first
+       writer just the same.) So while the store says it has not hydrated, an
+       entry goes into the ring in memory -- `read()` shows it, the sheet shows
+       it -- and its `save()` is DEFERRED; `flush()` re-reads the store once
+       hydration has landed (the adopted ring, if there was one), puts the
+       buffered rows after it, and writes once. A store that reports no
+       hydration state at all (a plain `Storage`, the tests' fakes) defers
+       nothing. `_forced` is the give-up: `client.js` sets it long after the
+       bound, so a tier that truly hung still gets the rows into localStorage
+       -- the documented trade, at a distance a slow read cannot reach. */
+    this._buffered = [];
+    this._pendingSave = false;
+    this._forced = false;
+    this._loadedUnhydrated = false;
+  }
+
+  /** Whether persistence is being held for hydration -- see the constructor. */
+  _deferring() {
+    if (this._forced) return false;
+    return this._describeStore().hydrated === false;
+  }
+
+  /**
+   * Write what was held. Called by `client.js` when hydration lands (and, with
+   * `force`, when it has waited long enough to call the tier hung); also by
+   * `record()` before every write, so a write after hydration carries the
+   * buffered rows with it even if nobody called this. Returns whether a write
+   * was made.
+   *
+   * THE RE-READ IS THE FIX. Between the buffered write and now the store may
+   * have adopted the durable tier's ring -- the one the buffered write would
+   * have overwritten -- so the ring is read again from the store and the
+   * buffered rows go AFTER it, renumbered to continue its sequence (the
+   * entries are the same live objects a caller may still hold). The running
+   * build is kept over the disk's older one; the clear mark and the drop count
+   * are the disk's, which is the truth about the ring being written over.
+   */
+  flush({ force = false } = {}) {
+    if (force) this._forced = true;
+    if (!this._pendingSave || this._deferring()) return false;
+    if (this._loadedUnhydrated && this._buffered.length) {
+      const buffered = this._buffered;
+      const build = this._build;
+      this._entries = null;
+      this._buffered = [];
+      this._loadedUnhydrated = false;
+      const entries = this._load();
+      if (build) this._build = build;
+      for (const e of buffered) {
+        e.seq = ++this._seq;
+        entries.push(e);
+      }
+      while (entries.length > this.cap) { entries.shift(); this._dropped += 1; }
+    }
+    this._buffered = [];
+    this._loadedUnhydrated = false;
+    this._pendingSave = false;
+    return this.save();
   }
 
   /**
@@ -216,6 +296,10 @@ export class DiagnosticLog {
   _load() {
     if (this._entries) return this._entries;
     this._entries = [];
+    /* Read before the store had hydrated: what is read now is the localStorage
+       copy only, and `flush()` reads again once the durable one may have been
+       adopted. */
+    this._loadedUnhydrated = this._describeStore().hydrated === false;
     let raw = null;
     try { raw = this.storage ? this.storage.getItem(this.key) : null; } catch (_) { raw = null; }
     if (!raw) return this._entries;
@@ -237,6 +321,8 @@ export class DiagnosticLog {
         }
       }
       if (Number.isInteger(parsed?.dropped) && parsed.dropped >= 0) this._dropped = parsed.dropped;
+      this._cleared = clearedMarkOf(parsed?.cleared);
+      this._build = buildStampOf(parsed?.build);
       /* Continue the sequence rather than restarting it. `seq` is the only field
          that can distinguish "the ring wrapped" from "the log was cleared", and
          restarting at 1 would erase that distinction on every reload. Taken as
@@ -258,9 +344,31 @@ export class DiagnosticLog {
   get entries() { return this._load(); }
   get dropped() { this._load(); return this._dropped; }
   get seq() { this._load(); return this._seq; }
+  /** Where the ring was last emptied — `{ seq, wall }` — or null if never. */
+  get cleared() { this._load(); return this._cleared; }
+  /** The running build's stamp, or null until `setBuild` has been told it. */
+  get build() { this._load(); return this._build; }
+
+  /**
+   * Remember which build this is, outside the ring.
+   *
+   * Sanitised here by the same shape rules as the `build` ROW, so the header
+   * can print it without a second check. Returns what was kept. Persisted on
+   * the next save rather than right now: the stamp arrives asynchronously and
+   * always beside a `build` row, so a save is already on its way, and a page
+   * whose ring is empty must not gain a `cp_` key for a stamp alone — see
+   * `clear()` on why the key's absence is load-bearing after "Delete my data".
+   */
+  setBuild(stamp) {
+    this._load();
+    this._build = buildStampOf(stamp);
+    return this._build;
+  }
 
   /** Append one entry and persist immediately. Returns the live entry. */
   record(type, fields = {}) {
+    /* A write after hydration landed carries whatever was held before it. */
+    this.flush();
     const entries = this._load();
     /* THE FRAME LAST, so no caller field can overwrite it. Spread first and a stray
        `wall` or `seq` in `fields` silently replaces the two values every ordering,
@@ -268,19 +376,43 @@ export class DiagnosticLog {
        is the only reason this was not already a bug. */
     const entry = { ...fields, seq: ++this._seq, wall: this._now(), type: String(type) };
     entries.push(entry);
-    while (entries.length > this.cap) { entries.shift(); this._dropped += 1; }
+    if (this._deferring()) this._buffered.push(entry);
+    while (entries.length > this.cap) {
+      const gone = entries.shift();
+      this._dropped += 1;
+      const held = this._buffered.indexOf(gone);
+      if (held >= 0) this._buffered.splice(held, 1);
+    }
     this.save();
     return entry;
   }
 
-  /** The whole record, in the shape that is serialised. */
+  /**
+   * The whole record: what is serialised, plus WHERE it lives.
+   *
+   * `key` and `store` are the two facts a reader needs when the counters and the
+   * ring disagree — "939 recorded, 0 here" is only diagnosable if the header can
+   * say which key was read and which tiers hold it. They are read-side only:
+   * `save()` writes `_blob()`, so a store's description never persists into the
+   * store it describes.
+   */
   read() {
+    return { ...this._blob(), key: this.key, store: this._describeStore() };
+  }
+
+  /** What `save()` writes. */
+  _blob() {
     const entries = this._load();
     return {
       v: DIAG_VERSION,
       cap: this.cap,
       seq: this._seq,
       dropped: this._dropped,
+      /* Where the ring was last emptied, so a reader can reconcile `seq` with
+         `entries` + `dropped` instead of being handed a contradiction. */
+      cleared: this._cleared,
+      /* The running build, kept across `clear()` — see the constructor. */
+      build: this._build,
       saveErrors: this.saveErrors,
       loadError: this.loadError,
       /* An ISO stamp at the TOP LEVEL, and it is load-bearing rather than
@@ -305,12 +437,38 @@ export class DiagnosticLog {
    */
   save() {
     if (!this.storage) return false;
+    if (this._deferring()) {
+      /* Held, not lost: `flush()` writes it once the store has hydrated, or
+         once `client.js` gives up waiting -- see the constructor. */
+      this._pendingSave = true;
+      return false;
+    }
     try {
-      this.storage.setItem(this.key, JSON.stringify(this.read()));
+      this.storage.setItem(this.key, JSON.stringify(this._blob()));
       return true;
     } catch (_) {
       this.saveErrors += 1;
       return false;
+    }
+  }
+
+  /**
+   * Which tiers the store behind this record has, and whether it has hydrated —
+   * for the header, when the ring and the counters disagree. A plain `Storage`
+   * (tests, a page with no durable store) has no `health()`, and that is
+   * reported as such rather than guessed. Total: a throwing `health()` reads as
+   * unknown, because a diagnostics read must never be the outage.
+   */
+  _describeStore() {
+    const s = this.storage;
+    if (!s) return { tiers: [], hydrated: null };
+    if (typeof s.health !== "function") return { tiers: ["storage"], hydrated: null };
+    try {
+      const h = s.health();
+      const tiers = h && h.tiers && typeof h.tiers === "object" ? Object.keys(h.tiers) : [];
+      return { tiers, hydrated: typeof h?.hydrated === "boolean" ? h.hydrated : null };
+    } catch (_) {
+      return { tiers: [], hydrated: null };
     }
   }
 
@@ -326,13 +484,25 @@ export class DiagnosticLog {
    * entry the purge removed.
    *
    * `seq` is NOT reset, so a cleared log stays distinguishable from a wrapped
-   * one: `entries[0].seq > 1` with `dropped === 0` means "cleared".
+   * one: `entries[0].seq > 1` with `dropped === 0` means "cleared". And since
+   * 2026-09-23 the clear is WRITTEN DOWN as `cleared: { seq, wall }` rather than
+   * left for a reader to infer from that arithmetic: the founder's record that
+   * day read `recorded 939 · entries 0 · dropped 0` and nothing on it said the
+   * ring had been emptied, so it was read as an instrument that had lost its
+   * rows. The build stamp (`_build`) is kept too — a clear empties the RECORD,
+   * not the page's knowledge of which build it is running.
    */
   clear() {
     this._load();
+    this._cleared = { seq: this._seq, wall: this._now() };
     this._entries = [];
     this._dropped = 0;
     this.loadError = null;
+    /* A clear is the listener's word, and it removes the key at once: nothing
+       held for hydration outlives it, and the ring read after it is this one. */
+    this._buffered = [];
+    this._pendingSave = false;
+    this._loadedUnhydrated = false;
     if (!this.storage) return;
     try { this.storage.removeItem(this.key); } catch (_) { this.saveErrors += 1; }
   }
@@ -522,6 +692,9 @@ export const DATA_FILE_KEYS = ["forays", "segments", "sources"];
     display's own limit, and an answer that does not need the whole string. */
 export const NOWPLAYING_FIELD_MAX = 40;
 
+/** The three writes a `nowplaying` row can stand for. See `nowPlaying()`. */
+export const NOWPLAYING_VIA = new Set(["metadata", "state", "clear"]);
+
 /** One Now Playing field: trimmed, capped, and `""` for anything that is not a
     string. `null` is NOT returned for a missing field, because the empty
     string IS the finding here — an absent field and an empty one are the same
@@ -548,11 +721,46 @@ export function nowPlayingFieldOf(v) {
    the gap is readable as "this build's plugin says something this build's
    page does not understand", which is a real and findable condition. */
 
-/** The five things a native plugin may report. Mirrors the `kind` strings in
-    `ForayAudioPlugin.swift`/`ForayTtsPlugin.swift`'s `emitSession` calls. */
+/** What a native plugin may report. Mirrors the `kind` strings in
+    `ForayAudioPlugin.swift`/`ForayTtsPlugin.swift`'s `emitSession` calls.
+
+    THE LAST THREE ARE THINGS THE PLUGIN DID, not things the OS did to it
+    (founder, 2026-09-23: "paused and turned off my screen, got in my car, then
+    my car resumed Spotify"). iOS hands a car's play to the app that still holds
+    an active playback session and a Now Playing entry; `ForayAudioPlugin.swift`
+    now takes the app's own session when the transport pauses and re-asserts the
+    Now Playing entry when the app is backgrounded, and each of those is a row
+    here — so a drive that still resumed Spotify can say whether 4a had let go
+    (no row) or was holding on and lost anyway (rows, then Spotify). */
 export const SESSION_KINDS = new Set([
   "interruptionBegan", "interruptionEnded", "routeChange", "mediaServicesReset",
   "background", "foreground",
+  "sessionActivated", "sessionReleased", "nowPlayingReasserted",
+]);
+
+/** Where a remote command physically arrived (founder, 2026-09-23). One token
+    per door: iOS has two — the plugin's `MPRemoteCommandCenter` (`command-center`;
+    whatever pressed it — the lock screen, Control Center, CarPlay, a Bluetooth
+    stack and a headphone pinch are indistinguishable there) and WebKit's OWN
+    `MediaSession` (`webkit`), which the shim tees the page's handlers onto
+    because WebKit publishes a Now Playing entry of its own for every `<audio>`
+    element; Android has two, Media3's session and the notification's own
+    buttons. */
+export const REMOTE_ORIGINS = new Set(["command-center", "webkit", "media-session", "notification"]);
+
+/** Which of the platform's commands it was, BEFORE the plugin mapped it onto a
+    page action. Kept beside the action because the mapping is the finding:
+    a `toggle-play-pause` that became `play` on a playing transport is the bug
+    where a car's one button could pause nothing. Dashed tokens, so both
+    natives spell them the same way — and the SHIM translates for the doors
+    that name a press by its spec action instead (`REMOTE_COMMAND_FOR_ACTION`
+    in `foray-media-session.js`: WebKit's tee and Android's Media3 sink both
+    said `nexttrack`, which this set does not hold, so every skip through those
+    doors was a row `remoteCommand` dropped). `shell-invariants.test.mjs` pins
+    the translation's range into this set. */
+export const REMOTE_COMMANDS = new Set([
+  "play", "pause", "toggle-play-pause", "stop", "next-track", "previous-track",
+  "skip-backward", "skip-forward", "change-position", "close",
 ]);
 
 /** Which plugin spoke. Two producers, because a narration line and a tape
@@ -591,6 +799,29 @@ const deployTokenOf = (v) => {
   const s = asText(v).trim().toLowerCase();
   return /^[0-9a-f]{8,64}$/.test(s) ? s : null;
 };
+
+/** A build stamp by shape — the `build` row's four fields and nothing else — or
+    null for anything that is not an object. A function declaration rather than
+    a `const`, because `DiagnosticLog._load` above calls it and this file's
+    class comes before its helpers. */
+function buildStampOf(v) {
+  if (!v || typeof v !== "object") return null;
+  return {
+    shell: v.shell === true,
+    web: deployTokenOf(v.web),
+    native: buildTokenOf(v.native),
+    version: buildTokenOf(v.version),
+  };
+}
+
+/** The clear mark `clear()` writes, by shape: a non-negative integer `seq` and
+    a finite wall clock, or null. A corrupt mark reads as "never cleared", which
+    is the direction that makes the header's gap line FIRE rather than hide. */
+function clearedMarkOf(v) {
+  if (!v || typeof v !== "object") return null;
+  if (!Number.isInteger(v.seq) || v.seq < 0 || !Number.isFinite(v.wall)) return null;
+  return { seq: v.seq, wall: v.wall };
+}
 
 export function dataTokenOf(v) {
   const s = asText(v).trim();
@@ -664,11 +895,27 @@ export class PlayerDiagnostics {
     try { return this._hidden() === true; } catch (_) { return false; }
   }
 
+  /** Write what the ring held for hydration -- `DiagnosticLog.flush`. `client.js`
+      calls it when hydration lands and, with `force`, when it stops waiting. */
+  flush(opts = {}) {
+    try { return this.log.flush(opts); } catch (_) { return false; }
+  }
+
   /** Called once, after storage has hydrated, so the record says when the page
       loaded and in what visibility state. The clock this is measured against was
       already started in the constructor — see `_visSince`. */
-  boot() {
-    return this.log.record("boot", { hidden: this._isHidden() });
+  boot({ hydrated = null } = {}) {
+    /* `hydrated` is whether the durable store had finished hydrating when this
+       row was written (2026-09-23). `client.js` waits for hydration, but the
+       wait is now BOUNDED — a durable tier that never answers used to hold the
+       boot row, the build row and the visibility listener hostage forever, and
+       a record that stopped at the storage layer's first hang was a record with
+       nothing in it. `false` here means the page wrote before the store had been
+       fully read, which is the one case where an older durable copy of this
+       ring can have been superseded; null is a caller that did not say. */
+    const row = { hidden: this._isHidden() };
+    if (typeof hydrated === "boolean") row.hydrated = hydrated;
+    return this.log.record("boot", row);
   }
 
   /**
@@ -681,12 +928,12 @@ export class PlayerDiagnostics {
    * the finding a reader needs.
    */
   build({ web = null, native = null, version = null, shell = false } = {}) {
-    return this.log.record("build", {
-      shell: shell === true,
-      web: deployTokenOf(web),
-      native: buildTokenOf(native),
-      version: buildTokenOf(version),
-    });
+    /* Kept on the log as well as in the ring (2026-09-23): the row is history —
+       which rows came from which build — and the log's copy is the running
+       build, which a `clear()` must not take with the rows. The header reads
+       the log's copy first, so it can name the build on a record with no rows. */
+    const stamp = this.log.setBuild({ shell, web, native, version });
+    return this.log.record("build", { ...stamp });
   }
 
   /* ---------- telemetry ---------- */
@@ -1094,10 +1341,18 @@ export class PlayerDiagnostics {
    * @param {string} [fields.playbackState]
    * @param {object} [fields.native] `{ installed, sends, lastReason }`
    */
-  nowPlaying({ metadata = null, playbackState = null, native = null, writeOk = true, writeError = "" } = {}) {
+  nowPlaying({
+    metadata = null, playbackState = null, native = null, writeOk = true, writeError = "", via = "metadata",
+  } = {}) {
     const m = metadata && typeof metadata === "object" ? metadata : {};
     const artwork = Array.isArray(m.artwork) ? m.artwork : [];
     return this.log.record("nowplaying", {
+      /* WHICH WRITE (founder, 2026-09-23). `metadata` is the three strings
+         changing; `state` is `playbackState` changing with the strings as they
+         were — the pause, which until now left no row; `clear` is the player
+         closing. Anything else is stored as `metadata`, the shape every row
+         before this field had. */
+      via: NOWPLAYING_VIA.has(via) ? via : "metadata",
       title: nowPlayingFieldOf(m.title),
       artist: nowPlayingFieldOf(m.artist),
       album: nowPlayingFieldOf(m.album),
@@ -1195,6 +1450,53 @@ export class PlayerDiagnostics {
     const a = asText(action).trim();
     if (!TRANSPORT_SOURCES.has(s) || !TRANSPORT_ACTIONS.has(a)) return null;
     return this.log.record("transport", { source: s, action: a, hidden: this._isHidden() });
+  }
+
+  /**
+   * A remote command the NATIVE side received, before the page did anything
+   * with it (founder, 2026-09-23: "my car resumed Spotify. This is still
+   * wrong.").
+   *
+   * `transport(…, "remote")` above is written by the page's handler, so a
+   * command that reached the plugin and found no handler — or reached a
+   * WebView too asleep to run one — is invisible there, and "the car's play
+   * did nothing" and "the car's play never came" read the same. The shim
+   * (`foray-media-session.js`) re-broadcasts every native `transport` event
+   * as `foray:remote` with what the plugin saw: the platform's own COMMAND,
+   * the page ACTION it was mapped to, which native door it came through, and
+   * whether a handler was found. The plugin's own stamp rides beside `wall`,
+   * as it does for `sessionEvent`, so the lag says how asleep the page was.
+   *
+   * `deduped` is the shim's own verdict that this copy of a press was the
+   * SECOND door delivering the same action inside its window
+   * (`REMOTE_DUPLICATE_WINDOW_MS` in foray-media-session.js) and was dropped —
+   * so a lock-screen skip that moved the playhead once while two rows say it
+   * arrived twice is the mechanism working, and a skip that moved twice with
+   * no `dup=y` row is the window being too short. Read together with `handled`.
+   *
+   * Every field is admitted by a closed set or by shape, and an unrecognised
+   * command or origin is DROPPED, for the reason `sessionEvent` states.
+   *
+   * @param {object} event `{ command, action, origin, handled, deduped, at }`
+   */
+  remoteCommand({ command = null, action = null, origin = null, handled = null, deduped = null, at = null } = {}) {
+    const c = asText(command).trim();
+    const o = asText(origin).trim();
+    if (!REMOTE_COMMANDS.has(c) || !REMOTE_ORIGINS.has(o)) return null;
+    const nativeAt = Number.isFinite(at) && at > 0 ? at : null;
+    return this.log.record("remote", {
+      command: c,
+      /* The page action is a spec word (`ROUTABLE_ACTIONS`), lower-case letters
+         only; anything else is stored as empty rather than as a string from
+         native code. */
+      action: /^[a-z]{1,24}$/.test(asText(action)) ? asText(action) : "",
+      origin: o,
+      handled: handled === true,
+      deduped: deduped === true,
+      at: nativeAt,
+      lagMs: nativeAt == null ? null : this._now() - nativeAt,
+      hidden: this._isHidden(),
+    });
   }
 
   /* ---------- resume decisions ---------- */
@@ -1548,7 +1850,10 @@ function lineFor(e) {
       return `${head} ${parts.join(" ")}`;
     }
     case "boot":
-      return `${head} hidden=${e.hidden ? "y" : "n"}`;
+      /* `storage=not-hydrated` only when the row says so: it is the mark of a
+         page that wrote after the bounded wait, and a healthy boot prints the
+         line it always did. */
+      return `${head} hidden=${e.hidden ? "y" : "n"}` + (e.hydrated === false ? "  storage=not-hydrated" : "");
     case "build":
       return `${head} ${buildLabel(e)}`;
     /* FD-01: `data boot forays=cache@9fc92a61 segments=cache@9fc92a61 …` names the
@@ -1660,9 +1965,18 @@ function lineFor(e) {
          reached the platform at all. Printed ONLY when it failed, so a healthy
          row keeps its shape and a broken one is impossible to miss. */
       const write = e.writeOk === false ? `  write=FAILED/${f(e.writeError)}` : "";
+      /* `via=` only when it is NOT the strings changing, so every row written
+         before the field existed keeps its shape and a pause stands out. */
+      const via = e.via && e.via !== "metadata" ? `  via=${e.via}` : "";
       return `${head} "${f(e.title)}" / "${f(e.artist)}" / "${f(e.album)}"` +
-        `  art=${e.artworkCount ?? 0}  state=${f(e.state)}  ${native}${write}  hidden=${e.hidden ? "y" : "n"}`;
+        `  art=${e.artworkCount ?? 0}  state=${f(e.state)}${via}  ${native}${write}  hidden=${e.hidden ? "y" : "n"}`;
     }
+    /* Founder 2026-09-23. `->` is the plugin's mapping of the platform's
+       command onto a page action; `handled=n` is a command that arrived with
+       nothing to give it to, which is its own finding. */
+    case "remote":
+      return `${head} ${e.command ?? "?"} -> ${e.action || "—"} from ${e.origin ?? "?"}` +
+        `  handled=${e.handled ? "y" : "n"}${e.deduped ? "  dup=y" : ""}  lag ${ms(e.lagMs)}  hidden=${e.hidden ? "y" : "n"}`;
     /* M-03. `lag` is the delivery lag between the plugin's own stamp and the
        page handling the event — on a suspended WebView it is the length of
        the suspension, which is the measurement the F16 drive could not make. */
@@ -1717,6 +2031,10 @@ export function formatDiagnosticReport(record) {
   const nowPlaying = entries.filter((e) => e.type === "nowplaying");
   const blankCredit = nowPlaying.filter((e) => !e.artist).length;
   const sessions = entries.filter((e) => e.type === "session");
+  const remotes = entries.filter((e) => e.type === "remote");
+  const deduped = remotes.filter((e) => e.deduped).length;
+  /* A dropped duplicate is not an unhandled press: the OTHER copy ran. */
+  const unhandled = remotes.filter((e) => !e.handled && !e.deduped).length;
   const gaps = measured.map((e) => e.observedGapMs).sort((a, b) => a - b);
   const worst = gaps.length ? gaps[gaps.length - 1] : null;
   const mid = gaps.length
@@ -1740,13 +2058,45 @@ export function formatDiagnosticReport(record) {
      which build wrote it, and until 2026-09-22 nothing in it could say. */
   const builds = entries.filter((e) => e.type === "build");
   const lastBuild = builds.length ? builds[builds.length - 1] : null;
+  /* The log's own copy of the stamp first (it survives a Clear), the newest row
+     second (a record from a build that predates the copy), "unknown" last. */
+  const running = (r.build && typeof r.build === "object") ? r.build : lastBuild;
+
+  /* ── THE COUNTERS HAVE TO ADD UP, OR THE HEADER SAYS THEY DO NOT ──────────
+     The founder's 2026-09-23 record: `recorded 939 · entries 0 · dropped 0`,
+     and not a word about why. `seq` counts rows ever recorded and survives a
+     Clear on purpose (see `DiagnosticLog.clear`), so the arithmetic that has to
+     hold is  seq − clearedAt.seq  ==  entries + dropped.  A record that breaks
+     it has lost rows somewhere between the writer and this text — a Clear from
+     a build that did not write the mark, rows `_load` refused, a tier that
+     handed back a different blob — and every one of those is a finding about
+     the INSTRUMENT that must not be rendered as a quiet empty ring. So the gap
+     is computed here, printed with the key and the tiers it was read from, and
+     a clear is named as a clear. */
+  const seq = Number.isFinite(r.seq) ? r.seq : 0;
+  const dropped = Number.isFinite(r.dropped) ? r.dropped : 0;
+  const cleared = r.cleared && Number.isInteger(r.cleared.seq) ? r.cleared : null;
+  const since = seq - (cleared ? cleared.seq : 0);
+  const missing = since - dropped - entries.length;
+  const key = typeof r.key === "string" ? r.key : DIAG_KEY;
+  const tiers = Array.isArray(r.store?.tiers) && r.store.tiers.length ? r.store.tiers.join("+") : "no store";
+  const hydrated = r.store?.hydrated == null ? "" : `, hydrated=${r.store.hydrated ? "y" : "n"}`;
+  const where = `${key} (${tiers}${hydrated})`;
+  const gapLine = missing > 0
+    ? `MISSING ${missing} of ${since} recorded rows: not in this ring, not dropped — ${where} was cleared or lost`
+    : missing < 0
+      ? `INCONSISTENT: ${entries.length} rows exceed the ${since} recorded — ${where}`
+      : null;
+
   const head = [
     `4a playback diagnostics — v${r.v ?? "?"}`,
-    `build ${lastBuild ? buildLabel(lastBuild) : "unknown (no build row yet)"}`,
+    `build ${running ? buildLabel(running) : "unknown (no build row yet)"}`,
     `Local only. Nothing here is sent anywhere.`,
     "",
     `entries ${entries.length} of ${r.cap ?? DIAG_CAP} (oldest dropped first)`,
     `dropped ${r.dropped ?? 0} · recorded ${r.seq ?? 0} · writeErrors ${r.saveErrors ?? 0}`,
+    cleared ? `cleared at #${cleared.seq} ${clockOf(cleared.wall)} · ${since} recorded since` : null,
+    gapLine,
     `seams ${seams.length}: ${measured.length} measured, ${open.length} never started`
       + (cut.length ? `, ${cut.length} cut short` : ""),
     `gap median ${ms(mid)}, worst ${ms(worst)}`,
@@ -1760,11 +2110,31 @@ export function formatDiagnosticReport(record) {
        asks for: the stop was preceded by nothing the plugins could see. */
     `session events ${sessions.length}`
       + (sessions.length ? ` (${[...new Set(sessions.map((e) => e.kind))].join(", ")})` : ""),
+    /* Founder 2026-09-23. `0` here against a car that resumed Spotify says the
+       car's play never reached 4a's native side at all — the OS gave it to
+       somebody else — which is a different bug from a play that arrived and
+       found nobody awake (`unhandled`). */
+    `remote commands ${remotes.length}`
+      + (unhandled ? `, ${unhandled} unhandled` : "")
+      /* One press through two doors (iOS: WebKit's client and the plugin's).
+         Counted on the header because it is the reading H8 asks for: a skip
+         that moved once with `1 duplicate dropped` is the de-duplication doing
+         its job; one that moved twice with none is the window missing it. */
+      + (deduped ? `, ${deduped} duplicate${deduped === 1 ? "" : "s"} dropped` : ""),
     r.loadError ? `earlier record unreadable: ${r.loadError}` : null,
     `updated ${r.updatedAt ?? "—"}`,
     "",
   ].filter((l) => l != null);
 
-  if (!entries.length) head.push("Nothing recorded yet. Play a foray and come back.");
+  /* An empty ring after a Clear is not "nothing happened yet": the words say
+     which it is, because the founder read the first sentence as the instrument
+     having recorded nothing during a drive it had in fact recorded. */
+  if (!entries.length && cleared) {
+    head.push(`Nothing recorded yet since the record was cleared at #${cleared.seq}. Play a foray and come back.`);
+  } else if (!entries.length) {
+    /* A literal, not a template: `test/app-name.test.js` reads this sentence out
+       of the push call below to keep it in step with app.js's fallback. */
+    head.push("Nothing recorded yet. Play a foray and come back.");
+  }
   return head.concat(entries.map(lineFor)).join("\n");
 }
