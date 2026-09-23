@@ -1613,3 +1613,83 @@ test("no session events at all is stated on the header, because silence is the f
   diag.note("audio.pausedUnexpectedly — nobody asked for this pause");
   assert.match(formatDiagnosticReport(log.read()), /session events 0/);
 });
+
+/* ==================================================================== */
+/* founder report 2 (2026-09-22): "playback stops itself while           */
+/* backgrounded" — eight unexplained stops, all hidden, and nothing to   */
+/* tell them apart. What the NEXT record has to be able to say.          */
+/* ==================================================================== */
+
+test("REPORT 2: an unexplained stop carries how long the page had been hidden and the element's state", () => {
+  /* The three leading causes leave different fingerprints: a starvation that
+     ends in a suspension (low `readyState`, long `hiddenFor`), an interruption
+     or route loss taking a healthy element (`rs=4`), a media failure (`err`).
+     KILLING MUTATION: drop `hiddenForMs` or the four parsed fields from the
+     `pausedUnexpectedly` row. */
+  const c = clock();
+  const { diag, log, store } = mk({ now: c });
+  store.hidden = true;
+  diag.visibility(true);
+  c.tick(42_000);
+  diag.note("audio.pausedUnexpectedly t=1234.5 rs=2 ns=2 err=0 — nobody asked for this pause");
+  const stop = log.read().entries.find((e) => e.type === "stop");
+  assert.equal(stop.hiddenForMs, 42_000);
+  assert.equal(stop.atSec, 1234.5);
+  assert.equal(stop.readyState, 2);
+  assert.equal(stop.networkState, 2);
+  assert.equal(stop.errorCode, 0);
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /pausedUnexpectedly {2}state=\? {2}hidden=y {2}hiddenFor 42000ms at 1234\.5s rs=2 ns=2/);
+});
+
+test("REPORT 2: a stop line from an older build still records, with the new fields null — never zero", () => {
+  /* `readyState` 0 is a real value (HAVE_NOTHING); a missing field must not
+     masquerade as it. KILLING MUTATION: default the parsed fields to 0. */
+  const { diag, log } = mk();
+  diag.note("audio.pausedUnexpectedly — nobody asked for this pause");
+  const stop = log.read().entries.find((e) => e.type === "stop");
+  assert.equal(stop.readyState, null);
+  assert.equal(stop.atSec, null);
+  assert.equal(stop.hiddenForMs, null, "the page was visible");
+});
+
+test("REPORT 2: a stall with NO seam in flight is a row of its own, coalesced per run", () => {
+  /* On an ordinary episode there is never a seam, and `_stage` dropped every
+     `waiting`/`stalled` — so a starvation that ended in a suspension left no
+     trace before its stop. KILLING MUTATION: delete the no-seam branch in
+     `mediaEvent`. */
+  const { diag, log } = mk();
+  diag.mediaEvent("waiting");
+  diag.mediaEvent("waiting");
+  diag.mediaEvent("waiting");
+  diag.mediaEvent("stalled");
+  const media = log.read().entries.filter((e) => e.type === "media");
+  assert.deepEqual(media.map((e) => [e.name, e.repeated]), [["waiting", 3], ["stalled", 1]]);
+  assert.match(formatDiagnosticReport(log.read()), /media\s+waiting x3/);
+});
+
+test("REPORT 1/2: a play the page did not make is recorded as one, from `reconcile`", () => {
+  /* The manager's towards-playing reconcile says the element was resumed from
+     outside (a lock-screen or car press WebKit honoured). KILLING MUTATION:
+     delete the `externalPlay` handler in `note()`. */
+  const { diag, log } = mk();
+  diag.note("reconcile.externalPlay why=elementPlaying — the element is playing and we said interrupted");
+  const row = log.read().entries.find((e) => e.type === "transport");
+  assert.ok(row, "a transport row");
+  assert.equal(row.source, "reconcile");
+  assert.equal(row.action, "play");
+});
+
+test("REPORT 2: a native session row says how long the page had been hidden when it was handled", () => {
+  /* Paired with `lagMs`, this separates "the event fired late" from "the page
+     was asleep". KILLING MUTATION: drop `hiddenForMs` from `sessionEvent`. */
+  const c = clock();
+  const { diag, log, store } = mk({ now: c });
+  store.hidden = true;
+  diag.visibility(true);
+  c.tick(5_000);
+  diag.sessionEvent({ kind: "interruptionBegan", reason: "began", producer: "audio", at: c.now() - 1_000 });
+  const row = log.read().entries.find((e) => e.type === "session");
+  assert.equal(row.hiddenForMs, 5_000);
+  assert.equal(row.lagMs, 1_000);
+});

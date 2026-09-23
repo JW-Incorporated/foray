@@ -2134,3 +2134,24 @@ test("AUDIT: play on a FINISHED Foray starts it over instead of replaying its la
   assert.equal(audio.src, "https://cdn.test/a.mp3", "and loads its audio");
   restore();
 });
+
+/* ==================================================================== */
+/* part 7 — founder report 2 (2026-09-22): the element's side of an      */
+/*          unexplained stop                                              */
+/* ==================================================================== */
+
+test("REPORT 2: an unexplained pause says what state the element was in", async () => {
+  /* `diagnostic-log.js` parses these off the line (its own suite pins that);
+     this pins that the backend WRITES them. KILLING MUTATION: emit the old
+     bare `audio.pausedUnexpectedly — nobody asked for this pause`. */
+  const { b, el, log } = mkBackend();
+  await b.load(audioItem("a"));
+  b.play();
+  await null;
+  el.currentTime = 61.25;
+  el.readyState = 2;                 // HAVE_CURRENT_DATA: starving
+  el.networkState = 2;               // NETWORK_LOADING
+  el.routeLost();
+  const line = log.find((l) => l.startsWith("audio.pausedUnexpectedly"));
+  assert.match(line, /^audio\.pausedUnexpectedly t=61\.3 rs=2 ns=2 err=0 /);
+});

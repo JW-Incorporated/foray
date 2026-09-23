@@ -1223,6 +1223,19 @@ export class HtmlAudioBackend {
     if (el?.paused !== true) this._expectPause = true;
   }
 
+  /** `t= rs= ns= err=` for the element holding the player role, for the record.
+      Total: an element that throws on a read reports what it could. */
+  _elementFingerprint() {
+    const el = this.el;
+    const read = (fn) => { try { return fn(); } catch (_) { return null; } };
+    const t = read(() => el.currentTime);
+    const rs = read(() => el.readyState);
+    const ns = read(() => el.networkState);
+    const err = read(() => el.error?.code ?? 0);
+    const n = (v, dp = 0) => (typeof v === "number" && Number.isFinite(v) ? v.toFixed(dp) : "?");
+    return `t=${n(t, 1)} rs=${n(rs)} ns=${n(ns)} err=${n(err)}`;
+  }
+
   _notePause() {
     if (this._expectPause) { this._expectPause = false; return; }
     /* A FILE THAT RAN OUT IS NOT A STOLEN SESSION. The end-of-media steps set
@@ -1244,7 +1257,14 @@ export class HtmlAudioBackend {
        also NOT the only path — a page that was suspended never got this event at
        all — so `queue-manager.js` re-reads `paused` for itself either way and
        this is one of two triggers for the same idempotent reconcile. */
-    this._emit("audio.pausedUnexpectedly — nobody asked for this pause");
+    /* THE ELEMENT'S STATE AT THE PAUSE, as numbers (founder report 2,
+       2026-09-22: eight of these at `hidden=y` with nothing to say why). The
+       three plausible causes leave different fingerprints here: a network
+       starvation that ended in a suspension shows `rs` below HAVE_FUTURE_DATA
+       and a `ns` of LOADING; an interruption or a route loss takes a healthy
+       element (`rs=4`); a media failure carries an `err` code. Numbers only —
+       the record's rule — and `diagnostic-log.js` parses them off the line. */
+    this._emit(`audio.pausedUnexpectedly ${this._elementFingerprint()} — nobody asked for this pause`);
     if (this.onUnexplainedPause) {
       // A surface must never break the player: the stand-down below is the
       // thing this method actually owns and it has to run regardless.
