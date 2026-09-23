@@ -10179,6 +10179,17 @@ function bindStripZoomScrub(r, player) {
     if (pointerId == null || e.pointerId !== pointerId) return;
     finish();
   });
+  /* A ZOOMED SCRUB KEEPS THE FINGER (review 2026-09-23). `touch-action: pan-y`
+     is read once, at pointerdown, so the browser owns every vertical pan even
+     after the hold has entered zoom: a thumb that drifted down or diagonally
+     before moving sideways started a page scroll, the browser fired
+     pointercancel, and `finish()` dropped the zoom and the bubble with no seek.
+     Cancelling the touchmove while zoomed is the one way `pan-y` still allows
+     to keep the page still. NON-passive, or the browser ignores the cancel.
+     A still-pending gesture is left alone, so a flick still scrolls. */
+  strip.addEventListener("touchmove", (e) => {
+    if (gesture && gesture.zooming && e.cancelable !== false && typeof e.preventDefault === "function") e.preventDefault();
+  }, { passive: false });
 }
 
 /* The fill inside the bar the listener is currently inside — the one thing on

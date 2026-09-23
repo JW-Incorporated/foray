@@ -66,7 +66,11 @@ export function startGesture(x, y) {
  * would otherwise commit, and styles.css (`touch-action: pan-y`) lets the
  * browser actually scroll. The strip itself is horizontal, so a scrub is a
  * sideways drag by construction, and a hold that already entered zoom keeps
- * tracking whatever direction the finger then goes.
+ * tracking whatever direction the finger then goes — in THIS state machine.
+ * The browser is a separate question: under `pan-y` it owns vertical pans
+ * whatever this file decides, so app.js's bindStripZoomScrub cancels the
+ * `touchmove` while zoomed (review 2026-09-23); without that, a zoomed thumb
+ * drifting downward scrolled the page and the browser cancelled the scrub.
  *
  * MUTATION TO BREAK THIS: change `>` to `>=` at the tolerance boundary and
  * `moves right at the tolerance boundary stay pending` in the test file

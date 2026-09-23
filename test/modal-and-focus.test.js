@@ -572,3 +572,42 @@ test("a vertical flick that starts on the strip arms the click suppression; the 
   assert.match(APP_SRC, /\$\("#fy-strip"\)\.addEventListener\("click", async \(e\) => \{[\s\S]{0,400}?_scrollGesture\) \{[\s\S]{0,120}?return;/,
     "the strip's click handler must return early on a scroll gesture");
 });
+
+test("REVIEW: while the strip is zoomed, a touchmove is cancelled so the page cannot take the scrub", async () => {
+  /* `touch-action: pan-y` lets the browser pan vertically even mid-zoom; its
+     pointercancel then ended the scrub with no seek. MUTATION: drop the
+     non-passive touchmove listener from bindStripZoomScrub. */
+  const gest = await import(pathToFileURL(path.join(ROOT, "player", "strip-scrub-gesture.js")).href);
+  const m = mount();
+  const strip = m.doc.createElement("div");
+  strip.id = "fy-strip";
+  m.view.appendChild(strip);
+  const player = {
+    scrubGesture: {
+      HOLD_MS: gest.HOLD_MS, ZOOM_SCALE: gest.ZOOM_SCALE,
+      start: gest.startGesture, move: gest.moveGesture, holdTimeout: gest.holdTimeoutGesture,
+      end: gest.endGesture, originPercent: gest.zoomOriginPercent,
+      BUBBLE_SCALE: gest.BUBBLE_SCALE, BUBBLE_WIDTH: gest.BUBBLE_WIDTH,
+      bubblePosition: gest.bubblePosition, bubbleContentOffset: gest.bubbleContentOffset,
+    },
+  };
+  /* The zoom opens the magnifier bubble, which clones the strip: the three DOM
+     calls it makes that this harness's El does not otherwise need. */
+  const proto = Object.getPrototypeOf(strip);
+  if (!proto.replaceChildren) proto.replaceChildren = function (...ks) { for (const k of [...this.children]) k.remove(); this.append(...ks); };
+  if (!proto.cloneNode) proto.cloneNode = function () { const c = m.doc.createElement(this.tagName); c.className = this.className; return c; };
+  if (!("firstElementChild" in proto)) Object.defineProperty(proto, "firstElementChild", { get() { return this.children[0] || null; } });
+  m.ctx.bindStripZoomScrub({}, player);
+  const touchmove = () => {
+    let cancelled = false;
+    strip.fire("touchmove", { cancelable: true, preventDefault() { cancelled = true; } });
+    return cancelled;
+  };
+  strip.fire("pointerdown", { pointerId: 1, pointerType: "touch", button: 0, clientX: 100, clientY: 100 });
+  assert.strictEqual(touchmove(), false, "a pending press may still become a scroll");
+  strip.fire("pointermove", { pointerId: 1, clientX: 100 + gest.MOVE_TOLERANCE_PX + 20, clientY: 102 });
+  assert.ok(strip.classList.contains("is-zooming"), "precondition: a sideways drag entered zoom");
+  assert.strictEqual(touchmove(), true, "once zoomed, the page may not pan under the finger");
+  strip.fire("pointerup", { pointerId: 1 });
+  assert.strictEqual(touchmove(), false, "and after release nothing is held");
+});
