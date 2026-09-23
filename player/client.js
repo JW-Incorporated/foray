@@ -685,10 +685,12 @@ function buildUI() {
    page makes. A browser holding audio back until it is sure you asked is not a
    fault, and gets an instruction rather than an error.
 
-   A template literal on purpose: the source-text suites strip string literals
-   with a regex that reads an apostrophe inside double quotes as the start of a
-   single-quoted string (player/now-playing-sheet.test.js `codeOnly`). */
-const EP_START_FAILED = `That episode wouldn't load. Check the connection, then press play.`;
+   NO APOSTROPHES IN THESE LITERALS, on purpose: the source-text suites
+   (now-playing-sheet, episode-link, media-session) strip strings with regexes
+   that read an apostrophe inside any other literal as the start of a
+   single-quoted string, and one stray "wouldn't" blinds every assertion after
+   it in the file. */
+const EP_START_FAILED = "That episode could not load. Check the connection, then press play.";
 const EP_PLAY_HELD = "Press play again to start it.";
 
 let playFailure = null;
