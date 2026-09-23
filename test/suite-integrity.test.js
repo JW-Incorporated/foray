@@ -1316,6 +1316,13 @@ const FLOORS = {
      only thing standing between a lock screen that works and one that silently says
      the wrong episode. Section 7 of that doc maps each mechanism to the mutation that
      kills it, which is where to look before concluding these are vacuous. */
+  /* Release reliability (founder, 2026-09-22: "these releases are usually quite
+     rocky and fail on a somewhat regular basis"). ZERO SLACK, for the reason
+     media-session has none: the STRINGS are the whole mechanism here, and a
+     marker that stops matching what altool prints fails SILENTLY -- an
+     unclassified failure still retries, so nothing ever goes red. A deleted cell
+     would read as coverage of a list that had quietly stopped discriminating. */
+  "tools/release/upload-retry.test.mjs": 14, // 2026-09-22: new -- which store-upload failures are worth trying again
   "tools/mobile/foray-media-session.test.mjs": 80, // 2026-09-22: `sends` cannot be read in the turn of the write, against the REAL default scheduler; 79 -> 80 // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
