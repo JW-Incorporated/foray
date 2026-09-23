@@ -4024,7 +4024,13 @@ function subjectBlurb(slot) {
 
 function miniCard(slot) {
   const item = slot.item;
-  const totalMin = slot.items.reduce((s, it) => s + (it.duration_min || 0), 0);
+  /* ONE POPULATION FOR THE COUNT AND THE DURATION (audit 2026-09-22). `|| 0`
+     summed only the episodes whose length is known and printed that beside a
+     count of all of them — "3 episodes · 1h 20m" when one of the three had no
+     `duration_min` (8 such items ship in data/discover.json). A total is stated
+     only when it is a total; otherwise the line keeps the count alone. */
+  const allTimed = slot.items.length > 0 && slot.items.every(it => Number(it.duration_min) > 0);
+  const totalMin = allTimed ? slot.items.reduce((s, it) => s + Number(it.duration_min), 0) : 0;
   const stretchTag = slot.role === "stretch"
     ? `<span class="mc-stretch" title="Outside your usual topics, on purpose">Stretch</span>` : "";
   return `<a class="mini-card" data-branch="${esc(slot.branch)}"
@@ -6897,15 +6903,46 @@ function renderForays() {
    ingestion edge case — see notPlayableNote()) gets an honest inline note
    instead of a fake button or an external hop — never both, never neither
    silently. */
+/** Where the listener is in one episode, as the PLAYER reads it (audit
+    2026-09-22, persona #78: "nothing on any list tells me which episodes I
+    already played, or how far in I am"). One reading — `episodeProgress` in
+    player/episode-progress.js, the same one "Jump back in" uses — reached
+    through the bridge, because app.js cannot import it and a second copy of
+    "what counts as finished" here is how the two would come to disagree.
+    `null` when the bridge has not arrived: a row then shows no mark, which
+    claims nothing, rather than a guess. */
+function rowProgress(item) {
+  const bridge = window.ForayPlayer;
+  if (!item?.id || typeof bridge?.episodeProgress !== "function") return null;
+  const durSec = Number(item.duration_sec) > 0 ? Number(item.duration_sec)
+    : (Number(item.duration_min) > 0 ? Number(item.duration_min) * 60 : null);
+  try { return bridge.episodeProgress(item.id, durSec); } catch (_) { return null; }
+}
+
+/** Has the listener opened this episode? `cp_history` OR a stored position.
+    History alone decayed: it is a 200-entry ring, so a playlist's "N played"
+    silently fell as the listener started other episodes (audit 2026-09-22) —
+    positions are one row per episode and are never rotated out. */
+function hasOpened(id, history) {
+  if (!id) return false;
+  if (history.has(id)) return true;
+  const p = rowProgress({ id });
+  return !!p && p.state !== "unplayed";
+}
+
 function epRow(item, idx, ctx, nextIdx) {
   const inApp = playBtn(item, ctx);
   const unavailable = inApp ? "" : notPlayableNote();
   const dateStr = fmtDate(item.release_date);
+  const prog = rowProgress(item);
+  const progHtml = prog && prog.label
+    ? ` · <span class="ep-progress${prog.state === "played" ? " is-played" : ""}">${esc(prog.label)}</span>`
+    : "";
   return `<div class="ep-row">
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
       <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
-      <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}${dateStr ? ` · ${esc(dateStr)}` : ""}</div>
+      <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}${dateStr ? ` · ${esc(dateStr)}` : ""}${progHtml}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${unavailable}
   </div>`;
@@ -7016,11 +7053,14 @@ function renderPlaylistDetail(id) {
     if (r.state === "archived" && !state.itemIndex[r.item.id]) state.itemIndex[r.item.id] = r.item;
   }
   const history = new Set(pickedHistory());
-  /* The "next" marker belongs on the next part that can actually be opened. */
-  const nextIdx = rows.findIndex(r => r.state === "live" && !history.has(r.item.id));
-  /* Played is an id-in-history question, not a liveness one: a part played before
+  /* The "next" marker belongs on the next part that can actually be opened.
+     Both it and the count below read `hasOpened` — history OR a stored position
+     — so neither can regress when the 200-entry history ring rotates an
+     episode out (audit 2026-09-22). */
+  const nextIdx = rows.findIndex(r => r.state === "live" && !hasOpened(r.item.id, history));
+  /* Played is an opened-or-not question, not a liveness one: a part played before
      it aged out stays played, and so does an unnamed one whose id is in history. */
-  const played = rows.filter(r => r.item.id && history.has(r.item.id)).length;
+  const played = rows.filter(r => hasOpened(r.item.id, history)).length;
   const ctx = (p.isSubject ? "subject-" : (p.isGenerated ? "generated-" : "playlist-")) + p.id;
 
   $("#view").innerHTML = `

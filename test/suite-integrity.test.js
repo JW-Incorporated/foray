@@ -123,7 +123,7 @@ const FLOORS = {
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
      exist only to pin that separation. */
-  "player/episode-progress.test.js": 19,
+  "player/episode-progress.test.js": 23, // 2026-09-22 audit theme L: `episodeProgress`, the one reading of a stored position (played / in-progress / sampled / unplayed) that Jump back in and the episode rows share, on position-store's own thresholds; 19 -> 23
   "player/foray-progress.test.js": 59, // FD-05 (2026-09-10): a Foray gone from the directory reads `dropped`; 58 -> 59
   "player/foray-queue.test.js": 38, // F-90 (2026-09-11): the jingle item asset is the interlude asset; 37 -> 38
   /* The interlude jingle (queue-manager.js §13): the rule, the element wrapper
@@ -309,7 +309,7 @@ const FLOORS = {
      `player/client.js`, where a rename would otherwise make the card silently go
      back to restarting episodes rather than throwing. */
   "test/card-play-pause.test.js": 7, // 2026-09-22: new -- a card showing the pause glyph must pause, and the paused current item must resume rather than restart
-  "test/jump-back-in-kinds.test.js": 18, // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
+  "test/jump-back-in-kinds.test.js": 19, // 2026-09-22 audit: the card reads the RAW stored position, never the collapsed resume offset (a finished episode said "180 min left"); 18 -> 19 // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
   "test/show-episodes-cache.test.js": 10,
@@ -648,7 +648,7 @@ const FLOORS = {
      Forays": it is the one a "simplify renderForays back to synchronous" edit
      would silently undo, because every existing harness mounts with the bridge
      already present. */
-  "test/load-states.test.js": 18, // 2026-09-22 theme L: the Foray header counts the strip's clips and heard shows, says "about" over an estimated runtime, and never promises "listed below" for a clip the page cannot list; 14 -> 18 // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
+  "test/load-states.test.js": 21, // 2026-09-22 theme L: rows say "Played"/"NN min left", "played" survives the history ring rotating, a subject card totals only a fully-timed list; 18 -> 21 // 2026-09-22 theme L: the Foray header counts the strip's clips and heard shows, says "about" over an estimated runtime, and never promises "listed below" for a clip the page cannot list; 14 -> 18 // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
 
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):

@@ -308,6 +308,22 @@ test("a duration the feed never gave us comes from the position store", () => {
   const fn = block(CLIENT_SRC, "lastEpisodeCard() {", "},");
   assert.match(fn, /const stored = store\.load\(rec\.id\);/);
   assert.match(fn, /Number\(stored\?\.duration\)/, "the stored duration is the fallback");
-  assert.match(fn, /episodePercentDone\(\{ \.\.\.rec, duration_sec: durationSec \}/,
+  /* 2026-09-22: the percent now comes from `episodeProgress`, which owns the
+     finished/in-progress reading every surface shares — same duration argument. */
+  assert.match(fn, /episodeProgress\(\{ \.\.\.rec, duration_sec: durationSec \}/,
     "...and it is what the percent is computed from");
+});
+
+test("the card's bar and label read the RAW stored position, never the collapsed resume offset", () => {
+  /* Audit 2026-09-22: `resumeOffset` collapses a finished episode to 0 — right
+     for where play resumes, wrong for what the card says. Fed that 0, the card
+     showed an empty bar and "180 min left" on a three-hour episode the listener
+     had just finished, for thirty days. `position_sec` stays the offset (it is
+     where the press starts); the progress reads `stored.seconds`.
+     MUTATION: pass `offset` to episodeProgress instead of `stored?.seconds`.
+     This goes red (and player/episode-progress.test.js pins what the raw
+     reading then says: "Played"). */
+  const fn = block(CLIENT_SRC, "lastEpisodeCard() {", "restoreLastEpisode() {");
+  assert.match(fn, /episodeProgress\(\{ \.\.\.rec, duration_sec: durationSec \}, stored\?\.seconds \?\? null\)/);
+  assert.match(fn, /position_sec: offset,/, "where play resumes is still the resume offset");
 });

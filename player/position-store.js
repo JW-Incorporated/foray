@@ -20,9 +20,9 @@ const KEY = (id) => `cp_pos:${id}`;
 
 /** Positions inside this margin of the end mean "finished" — resuming 4 seconds
     before the outro is worse than starting over. */
-const NEAR_END_SEC = 30;
+export const NEAR_END_SEC = 30;
 /** Below this, there is nothing worth resuming to. */
-const MIN_RESUME_SEC = 10;
+export const MIN_RESUME_SEC = 10;
 
 export class PositionStore {
   /**

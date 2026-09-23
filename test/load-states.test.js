@@ -19,6 +19,12 @@
  * The show page's own episode region has its own suite
  * (test/show-episode-load-states.test.js); this one covers the other routes.
  *
+ * AND ITS SIBLING, theme L — "a count and its rows come from one source": the
+ * Foray header's numbers against the strip's model, episode rows' progress
+ * against the player's one reading of a position, a "played" count that the
+ * history ring cannot shrink, a duration total over the same population as the
+ * count beside it.
+ *
  * Harness: the REAL app.js in a node:vm over a small DOM whose innerHTML is
  * parsed into a NESTED tree (tags, ids, classes and data-* attributes), because
  * "Try again" is found by `scope.querySelector("[data-retry]")` inside a
@@ -624,4 +630,67 @@ test("the header does not count a show whose only clip will not play", async () 
   const sub = headSub(m.html());
   assert.match(sub, new RegExp(` from ${heard} shows? `), `the header counts heard shows (${heard}), not authored ones (${r.shows.length}): "${sub}"`);
   assert.match(m.html(), /1 clip can't play — marked below\./, "and the clip that will not play is the one marked below");
+});
+
+/* ==================================================================== */
+/* Episode progress on rows, and counts that do not decay (theme L)     */
+/* ==================================================================== */
+
+const progressMod = import("../player/episode-progress.js");
+
+/** A bridge whose `episodeProgress` is the REAL reading over a fake position
+    table — the shape player/client.js bridges. */
+async function progressBridge(positions) {
+  const { episodeProgress } = await progressMod;
+  return { episodeProgress: (id, durSec) => episodeProgress({ duration_sec: durSec }, positions[id] ?? null) };
+}
+
+test("episode rows say 'Played' or 'NN min left' from the player's reading, and nothing without it", async () => {
+  /* Persona #78: nothing on any list said which episodes were played or how far
+     in. The data (the position store) existed; the rows never read it.
+     MUTATION: drop `${progHtml}` from epRow's subtitle line. Both marks vanish
+     and this goes red. */
+  const m = mount({ bridge: await progressBridge({ a: 3590, b: 600 }) });
+  const row = (id) => m.ctx.epRow({ id, title: `Ep ${id}`, show: "Show", duration_min: 60, audio_url: "https://x.test/a.mp3" }, 0, "ctx", -1);
+  assert.match(row("a"), /<span class="ep-progress is-played">Played<\/span>/);
+  assert.match(row("b"), /<span class="ep-progress">50 min left<\/span>/);
+  assert.doesNotMatch(row("c"), /ep-progress/, "an unplayed row carries no mark");
+
+  const cold = mount(); // no player bridge yet: no guess
+  assert.doesNotMatch(cold.ctx.epRow({ id: "a", title: "A", show: "S", duration_min: 60 }, 0, "ctx", -1), /ep-progress/);
+});
+
+test("'played' counts history OR a stored position, so it cannot fall as the history ring rotates", async () => {
+  /* cp_history is a 200-entry ring; a playlist's "N played" and its "next"
+     marker read it alone, so both regressed as the listener started other
+     episodes. Positions are one row per episode and never rotate out.
+     MUTATION: make hasOpened return `history.has(id)` alone. The rotated-out
+     episode reads unplayed and this goes red. */
+  const m = mount({ bridge: await progressBridge({ rotatedOut: 1200, sampled: 3 }) });
+  const history = new Set(["recent"]);
+  assert.strictEqual(m.ctx.hasOpened("recent", history), true);
+  assert.strictEqual(m.ctx.hasOpened("rotatedOut", history), true, "listened to, then evicted from the ring: still played");
+  assert.strictEqual(m.ctx.hasOpened("sampled", history), true, "opened for a few seconds still counts as opened");
+  assert.strictEqual(m.ctx.hasOpened("never", history), false);
+  /* And the playlist page reads it for BOTH the count and the next marker, so
+     the two cannot disagree. */
+  const body = /function renderPlaylistDetail\(id\) \{[\s\S]*?\n\}/.exec(APP_SRC)[0];
+  assert.match(body, /const nextIdx = rows\.findIndex\(r => r\.state === "live" && !hasOpened\(r\.item\.id, history\)\);/);
+  assert.match(body, /const played = rows\.filter\(r => hasOpened\(r\.item\.id, history\)\)\.length;/);
+});
+
+test("a subject card states a total duration only when every episode has one", () => {
+  /* "3 episodes · 1h 20m" summed two of three when one had no duration_min —
+     a partial sum presented as the total of the count beside it.
+     MUTATION: restore `slot.items.reduce((s, it) => s + (it.duration_min || 0), 0)`.
+     The partial total is printed and this goes red. */
+  const m = mount();
+  m.state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History" }] };
+  const item = (id, duration_min) => ({ id, title: `T ${id}`, show: "S", duration_min });
+  const kicker = (items) => (/<p class="mc-kicker">([\s\S]*?)<\/p>/.exec(
+    m.ctx.miniCard({ branch: "history", role: "anchor", item: items[0], items }),
+  ) || [])[1];
+  assert.match(kicker([item("a", 40), item("b", 40)]), /^2 episodes · 1h 20m$/);
+  assert.strictEqual(kicker([item("a", 40), item("b", 40), item("c", null)]), "3 episodes",
+    "an unknown length means no total, not a smaller one");
 });

@@ -92,7 +92,7 @@ import { HtmlAudioBackend } from "./html-audio-backend.js";
 import { PositionStore } from "./position-store.js";
 import {
   makeLastEpisode, writeLastEpisode, readLastEpisode, lastEpisodeState,
-  episodePercentDone, episodeRemainingLabel,
+  episodeProgress,
 } from "./episode-progress.js";
 import { SINGLE_ITEM } from "./queue-strategy.js";
 import { seekPrecision, formatTimestamp, EXACT, OWN } from "./seek-policy.js";
@@ -2265,13 +2265,37 @@ const ForayPlayer = {
       : (Number.isFinite(Number(stored?.duration)) ? Number(stored.duration) : null);
     const offset = store.resumeOffset(rec.id, { duration: durationSec });
     if (lastEpisodeState(rec, { positionSec: offset }).state !== "resume") return null;
-    const pct = episodePercentDone({ ...rec, duration_sec: durationSec }, offset);
+    /* THE BAR AND THE LABEL READ THE RAW STORED POSITION, not `offset` (audit
+       2026-09-22). `offset` is where PLAY resumes, and `resumeOffset` collapses
+       a finished episode to 0 for that purpose — so a card built from it showed
+       an empty bar and "180 min left" on a three-hour episode the listener had
+       just finished. `episodeProgress` is the one reading of a position every
+       surface shares; `position_sec` stays `offset`, because that IS where the
+       press will start. */
+    const progress = episodeProgress({ ...rec, duration_sec: durationSec }, stored?.seconds ?? null);
     return {
       ...rec,
       position_sec: offset,
-      percent: pct === null ? undefined : Math.round(pct * 100),
-      label: episodeRemainingLabel({ ...rec, duration_sec: durationSec }, offset),
+      percent: progress.percent === null ? undefined : progress.percent,
+      label: progress.label,
     };
+  },
+
+  /**
+   * Where the listener is in one episode, for a list ROW (persona audit #78:
+   * "nothing on any list tells me which episodes I already played, or how far
+   * in I am"). The same `episodeProgress` reading "Jump back in" uses, over the
+   * same `PositionStore` rows, through the reader that needs no booted player —
+   * so a show page can mark its rows without building audio elements.
+   * `durationSec` is the row's own when it has one; the stored duration (read
+   * off the media element) otherwise.
+   */
+  episodeProgress(id, durationSec = null) {
+    const stored = positionReader().load(id);
+    const dur = Number.isFinite(Number(durationSec)) && Number(durationSec) > 0
+      ? Number(durationSec)
+      : (Number.isFinite(Number(stored?.duration)) ? Number(stored.duration) : null);
+    return episodeProgress({ duration_sec: dur }, stored?.seconds ?? null);
   },
 
   restoreLastEpisode() {
