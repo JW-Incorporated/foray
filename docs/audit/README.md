@@ -111,12 +111,12 @@ another lane and every row no lane was given, and fixed the six still live
 
 | disposition | QA | persona | total |
 |---|---:|---:|---:|
-| fixed | 166 | 57 | 223 |
+| fixed | 173 | 60 | 233 |
 | already-fixed (before the lanes, or when audited) | 1 | 3 | 4 |
 | refuted (verifier) | 16 | — | 16 |
 | deliberate (verifier) | — | 16 | 16 |
-| deferred-founder | 8 | 8 | 16 |
-| deferred-device | 1 | 0 | 1 |
+| deferred-founder | 2 | 5 | 7 |
+| deferred-device | 0 | 0 | 0 |
 | open | 1 | 0 | 1 |
 | **all rows** | **193** | **84** | **277** |
 
@@ -132,11 +132,14 @@ note says so: the notched-inset change (qa 13), the native Preferences tier
   commute framing and no test gates them. Nothing in `app.js` or `player/`
   renders them; only `backend/src/curation/sessionBuilder.ts` writes the field.
   It belongs with the backend copy-rules gate (L8's area), which did not take it.
-- **qa 78** (deferred-device) — buttons nested inside anchors on the Jump back in
-  and subject cards. The fix is a stretched-link restructure that moves card
-  geometry pinned by `test/home-layout.test.js`; it needs a layout and device pass.
-- **deferred-founder** (16): qa 28, 43, 47, 51, 54, 59, 60, 146; persona 10, 14,
-  40, 44, 56, 58, 65, 82. Each is one of the questions below.
+- **qa 78** was deferred-device (buttons nested inside anchors); visual pass 1
+  (PR #744) made the Jump back in and subject cards stretched-link cards and
+  deleted the unreachable Continue banner, so it is fixed — still worth a look on
+  a phone, as the PR body says.
+- **deferred-founder** (7): qa 28, 146; persona 14, 44, 56, 65, 82. Each is one
+  of the questions below. Questions 5, 6 and 16–18 were answered on 2026-09-23
+  (`docs/DECISIONS.md`, "the visual changes - have at them"): qa 43, 47, 51,
+  54, 59, 60 and persona 10, 40, 58 are fixed in visual pass 1 (PR #744).
 
 ### Founder questions
 
@@ -241,8 +244,9 @@ Data and release
   amended.
 - **R11**: Delete my data deletes every store the code opens, re-reads to
   confirm, and reports failures in plain words.
-- **R12**: only ≤2px accidental duplicates consolidated; typography, badges,
-  pills, artwork and a radius scale are founder questions.
+- **R12**: only ≤2px accidental duplicates consolidated in the lanes; typography,
+  badges, pills, artwork and a radius scale were founder questions, answered on
+  2026-09-23 and shipped as visual pass 1 (PR #744; `docs/DECISIONS.md`).
 - **R13**: 44px hit areas through one zero-specificity rule, so visual sizes
   do not jump; Stop gets the danger colour and moves away from Close.
 - **R14**: founder rulings and in-code rationales were read before touching
