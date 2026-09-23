@@ -191,10 +191,10 @@ struct NowPlayingView: View {
         NowPlayingView(card: SessionCard(
             slot: 1,
             archetype: .deepLearn,
-            archetypeLabel: "Deep dive",
+            archetypeLabel: "Go deep",
             episodeID: "lex-353-whyte",
             whyLine: "Your fusion-reactor tour opens with SPARC's co-founder.",
-            fitLine: "3¼ hrs — a week of drives at your 1.5×.",
+            fitLine: "194 min (≈ 129 at 1.5×).",
             alternates: []
         ))
     }

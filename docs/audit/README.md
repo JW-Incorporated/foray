@@ -111,13 +111,13 @@ another lane and every row no lane was given, and fixed the six still live
 
 | disposition | QA | persona | total |
 |---|---:|---:|---:|
-| fixed | 173 | 60 | 233 |
+| fixed | 174 | 60 | 234 |
 | already-fixed (before the lanes, or when audited) | 1 | 3 | 4 |
 | refuted (verifier) | 16 | — | 16 |
 | deliberate (verifier) | — | 16 | 16 |
 | deferred-founder | 2 | 5 | 7 |
 | deferred-device | 0 | 0 | 0 |
-| open | 1 | 0 | 1 |
+| open | 0 | 0 | 0 |
 | **all rows** | **193** | **84** | **277** |
 
 "Fixed" means fixed in code with a test that fails without the fix (each new
@@ -128,10 +128,13 @@ note says so: the notched-inset change (qa 13), the native Preferences tier
 
 ### Still open, and why
 
-- **qa 152** (open) — `data/session.json`'s `fit_line` / `archetype_label` carry
-  commute framing and no test gates them. Nothing in `app.js` or `player/`
-  renders them; only `backend/src/curation/sessionBuilder.ts` writes the field.
-  It belongs with the backend copy-rules gate (L8's area), which did not take it.
+- **qa 152** was the last open row: `data/session.json`'s `fit_line` /
+  `archetype_label` carried commute framing and no test gated them. Fixed
+  2026-09-23 (PR #743): the four fit-lines are plain duration statements (the
+  shape `sessionBuilder.ts` already emits), the label is "Go deep",
+  `COMMUTE_FRAMING` in `backend/src/copy/rules.js` names the shapes `BANNED`
+  missed, and `copyRules.test.ts` reads every string on a card, with
+  `sessionBuilder.test.ts` gating the generator's own output.
 - **qa 78** was deferred-device (buttons nested inside anchors); visual pass 1
   (PR #744) made the Jump back in and subject cards stretched-link cards and
   deleted the unreachable Continue banner, so it is fixed — still worth a look on

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BANNED, INTERNAL_VOCABULARY, toListenerWords, wordCount } from "../src/copy/rules";
+import { BANNED, COMMUTE_FRAMING, INTERNAL_VOCABULARY, toListenerWords, wordCount } from "../src/copy/rules";
 
 /**
  * Golden copy rules — the editorial standards from 03_CURATION_SPEC.md and
@@ -9,7 +9,8 @@ import { BANNED, INTERNAL_VOCABULARY, toListenerWords, wordCount } from "../src/
  * pipeline-produced) can never silently regress:
  *   - why-lines <= 18 words; hooks <= 16 words
  *   - no generic-praise filler ("fascinating", "deep dive", "delves", "explores")
- *   - no commute-length framing (dropped 2026-07-08: state observed, not declared)
+ *   - no commute-length framing (dropped 2026-07-08: state observed, not declared;
+ *     every string on a session card, via COMMUTE_FRAMING, since qa 152 2026-09-23)
  *   - no clickbait withholding
  *
  *   - no pipeline vocabulary in the copy we write about a Foray ("beat",
@@ -25,16 +26,95 @@ const session = JSON.parse(readFileSync(join(dataDir, "session.json"), "utf8"));
 const discover = JSON.parse(readFileSync(join(dataDir, "discover.json"), "utf8"));
 const forays = JSON.parse(readFileSync(join(dataDir, "forays.json"), "utf8"));
 
-describe("session card why-lines", () => {
+/**
+ * Every string on a session card, not just the why-line. The 2026-09-22 QA
+ * audit (qa 152) found four `fit_line`s carrying the commute-length framing
+ * DECISIONS 2026-07-08 dropped ("a week of drives", "fits today's drive", "a
+ * multi-commute saga", "two drives"), plus `archetype_label: "Deep dive"`, and
+ * this suite read `why_line` only, so all five shipped. The iOS card renders
+ * both fields (TodayView.swift, NowPlayingView.swift); the web does not yet.
+ *
+ * MUTATION: put "fits today's drive almost exactly." back in slot 2's fit_line,
+ * or "Deep dive" back in slot 1's archetype_label -> red, naming the field.
+ */
+describe("session card copy", () => {
+  const cardStrings = (card: Record<string, unknown>): Array<[string, string]> =>
+    Object.entries(card).filter((e): e is [string, string] => typeof e[1] === "string");
+
   for (const card of session.cards) {
     it(`slot ${card.slot} (${card.archetype}) why-line obeys copy rules`, () => {
       expect(card.why_line, "why-line missing").toBeTruthy();
       expect(wordCount(card.why_line), `too long: "${card.why_line}"`).toBeLessThanOrEqual(18);
-      for (const rx of BANNED) {
-        expect(card.why_line, `banned phrase ${rx} in: "${card.why_line}"`).not.toMatch(rx);
+    });
+
+    it(`slot ${card.slot} (${card.archetype}): no string field carries a banned phrase or commute-length framing`, () => {
+      const fields = cardStrings(card);
+      expect(fields.map(([k]) => k), "fit_line and archetype_label must be read, not just why_line").toEqual(
+        expect.arrayContaining(["archetype_label", "why_line", "fit_line"])
+      );
+      for (const [field, text] of fields) {
+        for (const rx of [...BANNED, ...COMMUTE_FRAMING]) {
+          expect(text, `${field}: ${rx} in "${text}"`).not.toMatch(rx);
+        }
       }
     });
   }
+
+  it("category labels and descriptions carry no banned phrase or commute-length framing", () => {
+    const failures: string[] = [];
+    for (const cat of session.categories as Array<{ id: string; label: string; description: string }>) {
+      for (const [field, text] of [["label", cat.label], ["description", cat.description]] as Array<[string, string]>) {
+        for (const rx of [...BANNED, ...COMMUTE_FRAMING]) {
+          if (rx.test(text)) failures.push(`${cat.id} ${field}: ${rx} in "${text}"`);
+        }
+      }
+    }
+    expect(failures, failures.join("\n")).toEqual([]);
+  });
+});
+
+/**
+ * COMMUTE_FRAMING is scoped to our own fit copy because `BANNED` also gates
+ * discover.json hooks, where "drive" is ordinary English 24 times over. The
+ * plain-English lines below are committed hooks; the framing lines are the
+ * four qa 152 found plus the shapes fitLine() used to emit (F3.2 in
+ * docs/architecture-assessment.md).
+ * MUTATION: add `/\bdrives?\b/i` to COMMUTE_FRAMING -> red on the hooks.
+ */
+describe("COMMUTE_FRAMING", () => {
+  const PLAIN_ENGLISH = [
+    "Flawed historical reasoning drives the Court's final rulings on agencies and citizenship.",
+    "Karen Kosiba drives a fleet of Doppler-on-Wheels radar trucks into storms.",
+    "Two men and a dog drive coast to coast before anyone believed cars would last.",
+    "Insomnia is often hyperarousal, not a lack of sleep drive -- here's the fix.",
+    "Founders host analyzes Bob Dylan's autobiography for lessons on artistic drive and reinvention.",
+    "Devin explains building a 3,000-plus horsepower Drag and Drive car that survives road miles.",
+    "Fortune and Tig plan a road trip and daydream about nostalgic desserts.",
+    "194 min (≈ 129 at 1.5×); pick up where you left off.",
+    "Low-effort comedy for tired drives."
+  ];
+  const FRAMING = [
+    "3¼ hrs — a week of drives at your 1.5×; pick up where you left off.",
+    "37 min ≈ 25 at your speed: fits today's drive almost exactly.",
+    "3 hrs of documentary — a multi-commute saga.",
+    "57 min ≈ two drives of easy hang.",
+    "about 3 drives at your 1.5×",
+    "fits today's drive comfortably",
+    "the morning commute, exactly",
+    "two drives' worth of history",
+    "for the drive home",
+    "several drives long",
+    "your commute"
+  ];
+
+  it("catches the framing and none of the plain-English uses of drive", () => {
+    for (const text of PLAIN_ENGLISH) {
+      for (const rx of COMMUTE_FRAMING) expect(text, `${rx} must not match "${text}"`).not.toMatch(rx);
+    }
+    for (const text of FRAMING) {
+      expect(COMMUTE_FRAMING.some((rx) => rx.test(text)), `"${text}" must be caught`).toBe(true);
+    }
+  });
 });
 
 describe("discover hooks", () => {
