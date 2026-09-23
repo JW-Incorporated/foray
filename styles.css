@@ -304,6 +304,17 @@ html, body {
   max-width: 100%;
   overflow-x: hidden;
   overflow-x: clip;
+  /* NO DOUBLE-TAP ZOOM ANYWHERE (founder, 2026-09-23: "I can zoom by double
+     tapping. This is super annoying and gets me trapped in certain parts of
+     the app. Remove the zoom functionality."). `manipulation` on the root is
+     what kills double-tap-to-zoom in WKWebView EVEN WHEN the viewport meta
+     is ignored — touch-action is resolved along the ancestor chain, so a
+     root that forbids it forbids it for every descendant that does not say
+     `auto` itself. Panning and pinch are untouched by this line; pinch is the
+     viewport meta's job (index.html) with the gesturestart guard in app.js
+     behind it. This reverses the 2026-09-17 "scoped to the controls" choice
+     below (`.fy-btn, .fy-rate, …`), which stays as the per-control belt. */
+  touch-action: manipulation;
 }
 /* ---------- THE TAP-TARGET RULE (audit 2026-09-22, theme F) ----------
 
@@ -2666,10 +2677,16 @@ body.fp-expanded { overflow: hidden; }
    you zoom instead. `manipulation` keeps panning and pinch-zoom and drops
    double-tap-to-zoom, which is the whole of the complaint.
 
-   Deliberately NOT `touch-action: none`, and deliberately not on a container:
-   pinch-to-zoom is an accessibility affordance and the page keeps it. This is
-   scoped to the controls a listener taps repeatedly. The same reasoning is why
-   the viewport meta keeps `user-scalable` alone — see index.html. */
+   Deliberately NOT `touch-action: none`: `none` would also take panning, and
+   a control that eats the scroll is a worse bug than the one it fixes.
+
+   SUPERSEDED IN SCOPE, KEPT AS THE BELT (2026-09-23). This rule was written
+   scoped to the controls because pinch-to-zoom was to stay; the founder then
+   ruled zoom out entirely ("Remove the zoom functionality." — docs/DECISIONS.md
+   2026-09-23), so `html, body` now carries the same declaration for the whole
+   page and the viewport meta forbids pinch. This rule stays so a later
+   `touch-action: auto` on some ancestor cannot quietly re-arm double-tap on the
+   one surface it was reported on. */
 .fy-btn, .fy-rate, .ep-chapter-row, .ep-ts {
   touch-action: manipulation;
 }

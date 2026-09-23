@@ -128,6 +128,13 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
 
     override public func load() {
         registerCommandHandlers()
+        // NOTHING IS PLAYING AT LOAD, so nothing is enabled — the same answer
+        // `NowPlaying.acceptsTransport()` gives for IDLE on Android. Before
+        // this, every command sat at MPRemoteCommand's default (enabled) from
+        // launch, so the first real `setNowPlaying` changed nothing the
+        // command centre could see; see `publishCommands` for why that is
+        // the whole bug behind the founder's 10-second skip glyphs.
+        applyCommandAvailability(CommandSnapshot.silent)
         registerSessionObservers()
     }
 
@@ -270,7 +277,7 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             Self.logger.notice("ForayAudio.setNowPlaying reached state=\(payload.state.rawValue, privacy: .public)")
         }
         applyNowPlayingInfo(payload)
-        applyCommandAvailability(payload)
+        publishCommands(CommandSnapshot.from(payload))
 
         // This plugin does NOT touch the audio session's active state. See
         // design comment §2: `setNowPlaying` runs on `render()`'s hot path up to
@@ -451,12 +458,13 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             self?.emitTransport(action: "previoustrack")
             return .success
         }
-        commandCenter.skipBackwardCommand.preferredIntervals = [15]
+        // The ±15/30 intervals are NOT set here any more: they are written on
+        // every publish (`applyCommandAvailability`), because a one-time write
+        // at load is exactly what WebKit's later registration overwrote.
         commandCenter.skipBackwardCommand.addTarget { [weak self] _ in
             self?.emitTransport(action: "seekbackward", offsetMs: Self.seekBackwardMs)
             return .success
         }
-        commandCenter.skipForwardCommand.preferredIntervals = [30]
         commandCenter.skipForwardCommand.addTarget { [weak self] _ in
             self?.emitTransport(action: "seekforward", offsetMs: Self.seekForwardMs)
             return .success
@@ -484,24 +492,131 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         commandCenter.stopCommand.isEnabled = false
     }
 
-    /// Enable/disable each command from the `can*`/`has*` flags -- exactly
-    /// `nowPlayingPayload()`'s contract, and exactly what `WebViewPlayer`
-    /// does with the same flags on Android. A finished Foray
-    /// (`state == .none` OR `state == .ended`) disables every transport
-    /// command, mirroring `NowPlaying.acceptsTransport()`, which declines
-    /// transport for both IDLE and ENDED.
-    private func applyCommandAvailability(_ payload: NowPlayingPayload) {
-        let transportable = payload.state != .none && payload.state != .ended
+    /// What the command centre is told, reduced to the bits that change what
+    /// the lock screen SHOWS: which commands are enabled, and which item
+    /// they belong to. Pure and `Equatable` so `publishCommands` can ask
+    /// "does this write change anything?" and `ForayAudioPluginTests` can pin
+    /// the answers without a live `MPRemoteCommandCenter`.
+    ///
+    /// `identity` is the title: a seam is a NEW `<audio>` element, and a new
+    /// element is a new WebKit registration (see `publishCommands`), so a
+    /// write whose flags are unchanged but whose item is new must still be a
+    /// change here. A position-only write never is -- those arrive at up to
+    /// 4 Hz and must not become 4 Hz of MediaRemote traffic.
+    struct CommandSnapshot: Equatable {
+        let play: Bool
+        let pause: Bool
+        let next: Bool
+        let previous: Bool
+        let seekBack: Bool
+        let seekForward: Bool
+        let seekTo: Bool
+        let identity: String
 
-        commandCenter.playCommand.isEnabled = transportable && payload.canPlay
-        commandCenter.pauseCommand.isEnabled = transportable && payload.canPause
-        commandCenter.togglePlayPauseCommand.isEnabled =
-            transportable && (payload.canPlay || payload.canPause)
-        commandCenter.nextTrackCommand.isEnabled = transportable && payload.hasNext
-        commandCenter.previousTrackCommand.isEnabled = transportable && payload.hasPrevious
-        commandCenter.skipBackwardCommand.isEnabled = transportable && payload.canSeekBack
-        commandCenter.skipForwardCommand.isEnabled = transportable && payload.canSeekForward
-        commandCenter.changePlaybackPositionCommand.isEnabled = transportable && payload.canSeekTo
+        /// Nothing enabled -- the truth at load, and the value every publish
+        /// passes through so the command centre sees a change.
+        static let silent = CommandSnapshot(
+            play: false, pause: false, next: false, previous: false,
+            seekBack: false, seekForward: false, seekTo: false, identity: ""
+        )
+
+        /// `nowPlayingPayload()`'s contract, exactly what `WebViewPlayer` does
+        /// with the same flags on Android. A finished Foray (`state == .none`
+        /// OR `state == .ended`) enables nothing, mirroring
+        /// `NowPlaying.acceptsTransport()`, which declines transport for both
+        /// IDLE and ENDED.
+        static func from(_ payload: NowPlayingPayload) -> CommandSnapshot {
+            let transportable = payload.state != .none && payload.state != .ended
+            guard transportable else { return .silent }
+            return CommandSnapshot(
+                play: payload.canPlay,
+                pause: payload.canPause,
+                next: payload.hasNext,
+                previous: payload.hasPrevious,
+                seekBack: payload.canSeekBack,
+                seekForward: payload.canSeekForward,
+                seekTo: payload.canSeekTo,
+                identity: payload.title
+            )
+        }
+    }
+
+    /// The last snapshot handed to `publishCommands`, so it can tell a write
+    /// that changes the command list from one that only moves the playhead.
+    private var publishedCommands: CommandSnapshot?
+
+    /// Whether a write must be pushed to MediaRemote as a CHANGE: the first
+    /// one always, then any whose snapshot differs. Pure; pinned by
+    /// `ForayAudioPluginTests`.
+    static func shouldRepublish(previous: CommandSnapshot?, next: CommandSnapshot) -> Bool {
+        previous != next
+    }
+
+    /// Push one write's command list to the OS -- and make sure it LANDS.
+    ///
+    /// ── WHY THIS IS NOT JUST `applyCommandAvailability(payload)` ────────────
+    /// Founder, 2026-09-23 (iPhone, build 2026092326): "In the app, I can jump
+    /// back 15s and forward 30s. On the lock screen, it's 10s in both
+    /// directions. Both should be 15/30." This plugin had set 15/30 in
+    /// `load()` since L-01, so the numbers were never wrong; they were never
+    /// SHOWN. The process's supported-command list is a single register in
+    /// MediaRemote (`MRMediaRemoteSetSupportedCommands`, whole list, last
+    /// writer wins) and it has two writers in this app: `MPRemoteCommandCenter`
+    /// here, and WebKit's own `RemoteCommandListenerCocoa`, which registers a
+    /// default command set for every audible `<audio>` element -- play, pause,
+    /// seek, and skip forward/backward at ITS interval (15 on today's WebKit
+    /// trunk; on shipped iOS the option was written under a wrong key,
+    /// WebKit commit 2d26a621 of 2025-08-28 fixed it, so the OS saw no
+    /// interval at all and drew its default glyph: the "10"). WebKit writes
+    /// when an element starts; that is AFTER `load()`, so WebKit's list
+    /// replaced ours. Then nothing put ours back: `applyCommandAvailability`
+    /// assigned the same `isEnabled` values every command already had from
+    /// launch, and a setter that changes nothing gives the command centre
+    /// nothing to publish. §2.1 of docs/ios-lock-screen.md argues the
+    /// metadata wins because our write is structurally the later one -- true,
+    /// but only for a write that HAPPENS.
+    ///
+    /// So: every write whose snapshot differs from the last is published as
+    /// a real change -- everything off, then the real flags on the NEXT main
+    /// turn (the command centre coalesces same-turn writes, and off-then-on
+    /// in one turn is "unchanged"). Commands start off at `load()` for the
+    /// same reason. The intervals are re-written with every publish. The
+    /// disabled moment is one runloop turn; the lock screen is repainted
+    /// asynchronously by the daemon and does not draw it.
+    ///
+    /// WHAT THIS CANNOT PROMISE, said plainly: whether MediaRemote delivers a
+    /// skip press to OUR handler, WebKit's, or both once our list is current
+    /// is a device question (a Simulator has no lock screen). Both firing
+    /// would seek twice; the founder's report of exactly 10 says only one
+    /// fires today. The device check is in docs/DECISIONS.md 2026-09-23.
+    private func publishCommands(_ next: CommandSnapshot) {
+        let republish = Self.shouldRepublish(previous: publishedCommands, next: next)
+        publishedCommands = next
+        if republish {
+            applyCommandAvailability(.silent)
+            DispatchQueue.main.async { [weak self] in
+                self?.applyCommandAvailability(next)
+            }
+        } else {
+            applyCommandAvailability(next)
+        }
+    }
+
+    /// Enable/disable each command from the snapshot, and re-assert the skip
+    /// intervals with it. Written on EVERY publish, never only at load --
+    /// see `publishCommands` for the founder report that made that rule.
+    private func applyCommandAvailability(_ snapshot: CommandSnapshot) {
+        commandCenter.skipBackwardCommand.preferredIntervals = [15]
+        commandCenter.skipForwardCommand.preferredIntervals = [30]
+
+        commandCenter.playCommand.isEnabled = snapshot.play
+        commandCenter.pauseCommand.isEnabled = snapshot.pause
+        commandCenter.togglePlayPauseCommand.isEnabled = snapshot.play || snapshot.pause
+        commandCenter.nextTrackCommand.isEnabled = snapshot.next
+        commandCenter.previousTrackCommand.isEnabled = snapshot.previous
+        commandCenter.skipBackwardCommand.isEnabled = snapshot.seekBack
+        commandCenter.skipForwardCommand.isEnabled = snapshot.seekForward
+        commandCenter.changePlaybackPositionCommand.isEnabled = snapshot.seekTo
         // stopCommand stays disabled always -- design comment §3.
     }
 

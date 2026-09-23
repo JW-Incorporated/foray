@@ -98,6 +98,7 @@ import {
   PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS, CLOSE_ACTION,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
+import { SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC } from "../../player/media-session.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -1962,4 +1963,77 @@ test("the session event name is one string across the Swift and the web half (M-
     client.includes(`"${domName[1]}"`),
     `player/client.js does not listen for ${domName[1]} — every native cause is dropped before the record`
   );
+});
+
+/* ---------- the lock screen's ±15/30 is PUBLISHED on every write (2026-09-23) ---------- */
+
+/** The body of one Swift function, by name: from its signature to the first
+    line that is exactly a closing brace at the method indent. Enough to say
+    "this assignment is inside THAT function", which a whole-file regex cannot. */
+function swiftFunctionBody(source, name) {
+  const start = source.search(new RegExp(String.raw`\n\s*(?:@objc\s+|private\s+|static\s+|public\s+|override\s+)*func\s+${name}\(`));
+  assert.ok(start >= 0, `ForayAudioPlugin.swift no longer declares ${name}()`);
+  const rest = source.slice(start);
+  const end = rest.search(/\n {4}\}\n/);
+  assert.ok(end > 0, `could not find the end of ${name}()`);
+  return rest.slice(0, end);
+}
+
+test("the iOS skip intervals are written on EVERY publish, not only at load (founder, 2026-09-23)", () => {
+  /* Founder, 2026-09-23: "In the app, I can jump back 15s and forward 30s. On
+     the lock screen, it's 10s in both directions. Both should be 15/30." The
+     Swift had said 15/30 since L-01 — in `load()`, once. WebKit registers its
+     own command set for every audible <audio> element AFTER that, replacing
+     the process's list; a value assigned once at launch is never seen again.
+     So the intervals live in the per-write path, and the per-write path is
+     entered from `setNowPlaying` through `publishCommands`.
+     MUTATION: move the two `preferredIntervals` lines back into
+     `registerCommandHandlers()`, or stop `setNowPlaying` calling
+     `publishCommands` -> red, naming which. */
+  const swift = fs.readFileSync(
+    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift"), "utf8",
+  );
+  const perWrite = swiftFunctionBody(swift, "applyCommandAvailability");
+  assert.match(perWrite, /skipBackwardCommand\.preferredIntervals\s*=\s*\[15\]/,
+    "applyCommandAvailability() must re-assert the 15 s backward interval on every publish");
+  assert.match(perWrite, /skipForwardCommand\.preferredIntervals\s*=\s*\[30\]/,
+    "applyCommandAvailability() must re-assert the 30 s forward interval on every publish");
+  const atLoad = swiftFunctionBody(swift, "registerCommandHandlers");
+  assert.ok(!/preferredIntervals\s*=/.test(atLoad),
+    "the intervals must not be assigned in registerCommandHandlers(): a load-time write is the one WebKit overwrites");
+
+  const setNowPlaying = swiftFunctionBody(swift, "setNowPlaying");
+  assert.match(setNowPlaying, /publishCommands\(/, "setNowPlaying must publish the command list through publishCommands()");
+  const publish = swiftFunctionBody(swift, "publishCommands");
+  assert.match(publish, /applyCommandAvailability\(\.silent\)/,
+    "a changed write must pass through the silent snapshot, or the command centre sees no change to publish");
+  assert.match(publish, /DispatchQueue\.main\.async/,
+    "…and re-enable on a LATER turn: off-then-on in one turn coalesces to 'unchanged'");
+
+  const load = swiftFunctionBody(swift, "load");
+  assert.match(load, /applyCommandAvailability\(CommandSnapshot\.silent\)/,
+    "load() must start every command disabled — nothing is playing, and the first real write must be a change");
+});
+
+test("the iOS skip offsets are the page's own numbers, both of them", () => {
+  /* The lock screen glyph (`preferredIntervals`) and the offset the press
+     sends back (`seekBackwardMs`/`seekForwardMs`) must be the same two
+     numbers `player/media-session.js` uses for the in-page buttons, or the
+     button says one thing and does another. `foray-media-session.test.mjs`
+     already pins the web constant against the player's; this closes the
+     Swift end. MUTATION: change either Swift constant -> red. */
+  const swift = fs.readFileSync(
+    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift"), "utf8",
+  );
+  const back = /seekBackwardMs:\s*Int64\s*=\s*([\d_]+)/.exec(swift);
+  const fwd = /seekForwardMs:\s*Int64\s*=\s*([\d_]+)/.exec(swift);
+  assert.ok(back && fwd, "ForayAudioPlugin.swift no longer declares seekBackwardMs/seekForwardMs");
+  assert.equal(Number(back[1].replace(/_/g, "")), SEEK_BACKWARD_SEC * 1000);
+  assert.equal(Number(fwd[1].replace(/_/g, "")), SEEK_FORWARD_SEC * 1000);
+  const perWrite = swiftFunctionBody(swift, "applyCommandAvailability");
+  const glyphBack = /skipBackwardCommand\.preferredIntervals\s*=\s*\[(\d+)\]/.exec(perWrite);
+  const glyphFwd = /skipForwardCommand\.preferredIntervals\s*=\s*\[(\d+)\]/.exec(perWrite);
+  assert.ok(glyphBack && glyphFwd);
+  assert.equal(Number(glyphBack[1]), SEEK_BACKWARD_SEC, "the backward glyph must say what the press does");
+  assert.equal(Number(glyphFwd[1]), SEEK_FORWARD_SEC, "the forward glyph must say what the press does");
 });
