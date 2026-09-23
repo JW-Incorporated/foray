@@ -1050,6 +1050,98 @@ function forayProgressSegments() {
   return foray.segments;
 }
 
+/** The countdown on the right of the bar. NO SIGN ON A ZERO (audit
+    2026-09-22): the minus is a promise that there is time left to count, and at
+    the exact end — and for the whole of a scrub past a Foray's end — this read
+    "-0:00". Both clocks floor, so anything under a second left is zero. */
+function remainingClock(leftSec) {
+  const left = Math.max(0, Number.isFinite(leftSec) ? leftSec : 0);
+  const clock = foray ? fmtClock(left) : formatTimestamp(left, EXACT);
+  return left >= 1 ? `-${clock}` : clock;
+}
+
+/* ---------- the ordinary episode's clock, in one place ----------
+
+   Audit 2026-09-22: every episode seek in this file was written at its own call
+   site — the ↺/↻ buttons, the scrubber, the lock screen's seekBy/seekTo, the
+   page's timestamp tap — and each carried its own subset of the rules. The back
+   button clamped at zero and the forward one did not; the scrubber and both
+   buttons called `manager.seek` on a restored bar whose queue is empty, which
+   the reducer refuses silently, so the thumb snapped back and the scrub was
+   lost; and on an episode that had ENDED every one of them was refused the
+   same way. So the rules live here and every surface calls these. */
+
+/** Where the ordinary episode is, as the bar should paint it: a restored or
+    finished bar's PENDING position when there is one, else the element's clock. */
+function episodePositionSec() {
+  if (restoredPending) return restoredPending.positionSec;
+  const t = backend?.currentTime;
+  return typeof t === "number" && Number.isFinite(t) ? t : 0;
+}
+
+/** How long the ordinary episode is, or null when nobody knows: the element's
+    own answer once it holds this episode, the catalogue's before that, and the
+    duration the player measured last time (`PositionStore` records it beside
+    every position) when the feed carries none. */
+function episodeDurationSec() {
+  if (!current) return null;
+  const el = backend?.duration;
+  if (manager?.playheadItemId === current.id && typeof el === "number" && Number.isFinite(el) && el > 0) return el;
+  const cat = Number(current.duration_sec);
+  if (current.duration_sec != null && Number.isFinite(cat) && cat > 0) return cat;
+  const stored = Number(positionReader().load(current.id)?.duration);
+  return Number.isFinite(stored) && stored > 0 ? stored : null;
+}
+
+/** Forward seeks stop this far short of the end. A 30-second nudge with eight
+    seconds left must not become "finished": seeking past the end makes the
+    element fire `ended`, which records the episode as done and — with Up Next —
+    starts the next one, from a button whose label promised a nudge. */
+const SEEK_END_GUARD_SEC = 1;
+
+/** A target the episode can actually hold: never below zero, never past the end. */
+function clampEpisodeTarget(seconds, dur = episodeDurationSec()) {
+  const s = Number(seconds);
+  if (!Number.isFinite(s)) return null;
+  const floor = Math.max(0, s);
+  return dur ? Math.min(floor, Math.max(0, dur - SEEK_END_GUARD_SEC)) : floor;
+}
+
+/**
+ * THE episode seek. Every surface goes through this.
+ *
+ * With audio loaded and live, it is `manager.seek`. With NOTHING to seek in —
+ * a bar restored at launch (no media behind it, on purpose) or an episode that
+ * has ended — the reducer refuses a seek, so the move is written into
+ * `restoredPending` instead: the thumb stays where the listener put it, and the
+ * next press of play starts THERE (`setRunning`'s restored branch). Before this
+ * a scrub on a restored bar was thrown away and play started from the old
+ * stored position.
+ */
+async function seekEpisodeTo(seconds) {
+  if (!current || foray || !manager) return false;
+  const target = clampEpisodeTarget(seconds);
+  if (target == null) return false;
+  /* `idle` is the restored bar (nothing has loaded) and a failed load; `ended`
+     is an episode that ran out. Both are states the reducer refuses a seek in. */
+  const nothingToSeekIn = restoredPending != null
+    || manager.state?.type === "idle"
+    || manager.state?.type === "ended";
+  if (nothingToSeekIn) {
+    restoredPending = { item: restoredPending?.item ?? current, positionSec: target };
+    render();
+    return true;
+  }
+  await manager.seek(target, { precise: true });
+  render();
+  return true;
+}
+
+/** A relative seek, from wherever the bar says the listener is. */
+function seekEpisodeBy(offsetSec) {
+  return seekEpisodeTo(episodePositionSec() + Number(offsetSec || 0));
+}
+
 function render() {
   if (!ui || !current) return;
   syncForaySegment();
@@ -1076,19 +1168,22 @@ function render() {
      `backend.currentTime` would show a day-old half-listened episode sitting at
      0:00 with an empty progress bar, which is a quieter version of the bug this
      restore exists to fix. */
-  const pos = foray
-    ? forayPosition()
-    : (restoredPending ? restoredPending.positionSec : (backend?.currentTime ?? 0));
-  const dur = foray ? foray.resolved.totalSec : (backend?.duration ?? current.duration_sec ?? null);
+  const pos = foray ? forayPosition() : episodePositionSec();
+  const dur = foray ? foray.resolved.totalSec : episodeDurationSec();
 
-  if (!scrubbing && dur) {
-    ui.scrub.value = String(Math.round((pos / dur) * 1000));
-    ui.fill.style.width = `${Math.min(100, (pos / dur) * 100)}%`;
+  /* AN UNKNOWN DURATION PAINTS AN EMPTY BAR, not the last one (audit
+     2026-09-22). The reset used to live inside a `dur &&` guard with no else,
+     so an episode from a feed with no duration — or any episode for the moment
+     before its metadata lands — inherited the PREVIOUS episode's fill and
+     thumb: 80% across for something that had not started. `tLeft` below
+     already said "--:--"; the bar now agrees with it. */
+  if (!scrubbing) {
+    const frac = dur ? Math.min(1, Math.max(0, pos / dur)) : 0;
+    ui.scrub.value = String(Math.round(frac * 1000));
+    ui.fill.style.width = `${frac * 100}%`;
   }
   ui.tNow.textContent = foray ? fmtClock(pos) : formatTimestamp(pos, EXACT);
-  ui.tLeft.textContent = dur
-    ? `-${foray ? fmtClock(Math.max(0, dur - pos)) : formatTimestamp(Math.max(0, dur - pos), EXACT)}`
-    : "--:--";
+  ui.tLeft.textContent = dur ? remainingClock(dur - pos) : "--:--";
   syncCardButtons();
   // The lock screen is repainted from the same tick the page is, so the two can
   // never show different states (corner case #11's "lock screen shows correct
@@ -1417,6 +1512,11 @@ function openRatePicker() {
  * press has to be a full start-then-seek instead. One flag, cleared by the
  * press, and `setRunning` is the choke point every press goes through — the tap,
  * the lock screen, the car, the headphone pinch — so none of them can miss it.
+ *
+ * ALSO THE PENDING START OF A BAR WITH NOTHING TO SEEK IN (audit 2026-09-22):
+ * `seekEpisodeTo` writes a scrub or a ↺/↻ here when the bar is restored or its
+ * episode has ended, so the thumb stays where the listener put it and the next
+ * press starts there. Same shape, same single reader.
  */
 let restoredPending = null;
 
@@ -1598,20 +1698,12 @@ const episodeMediaSurface = {
   play: () => setRunning(true, "remote"),
   pause: () => setRunning(false, "remote"),
   stop: () => { diag.transport("remote", "stop"); return stopAndClose(); },
-  /* REPAINTED AFTER THE SEEK, like every other control in this file (#689).
-     The Foray half of this surface got that for free — it delegates to
-     `foraySeek`, which renders — and these two did not, so a scrub from the lock
-     screen or the car moved the audio and left the page, the mini bar and the
-     OS's own clock painting the position from before it. `render()` starts no
-     audio and costs one pass over a handful of nodes. */
-  seekBy: async (offset) => {
-    await manager.seek(Math.max(0, (backend?.currentTime ?? 0) + offset), { precise: true });
-    render();
-  },
-  seekTo: async (position) => {
-    await manager.seek(position, { precise: true });
-    render();
-  },
+  /* THE SAME SEEK THE PAGE'S BUTTONS MAKE (audit 2026-09-22), so a car scrub
+     gets the clamps, the restored-bar rule and the repaint (#689) that the
+     in-page controls get — it used to carry its own copy of the first and
+     none of the second. */
+  seekBy: (offset) => seekEpisodeBy(offset),
+  seekTo: (position) => seekEpisodeTo(position),
 };
 
 /**
@@ -1877,16 +1969,8 @@ function bind() {
   // In a Foray these are previous/next SEGMENT, not ±15/30 s: a segment here is
   // often under two minutes, so a 30-second nudge mostly leaves it anyway, and
   // "leave this one" is what the button should mean.
-  ui.backBtn.addEventListener("click", async () => {
-    if (foray) return ForayPlayer.forayPrevious();
-    await manager.seek(Math.max(0, (backend.currentTime ?? 0) - SEEK_BACK), { precise: true });
-    render();
-  });
-  ui.fwdBtn.addEventListener("click", async () => {
-    if (foray) return ForayPlayer.forayNext();
-    await manager.seek((backend.currentTime ?? 0) + SEEK_FWD, { precise: true });
-    render();
-  });
+  ui.backBtn.addEventListener("click", () => (foray ? ForayPlayer.forayPrevious() : seekEpisodeBy(-SEEK_BACK)));
+  ui.fwdBtn.addEventListener("click", () => (foray ? ForayPlayer.forayNext() : seekEpisodeBy(SEEK_FWD)));
 
   ui.scrub.addEventListener("input", () => { scrubbing = true; });
   ui.scrub.addEventListener("change", async () => {
@@ -1896,9 +1980,9 @@ function bind() {
       await ForayPlayer.foraySeek(frac * foray.resolved.totalSec);
       return;
     }
-    const dur = backend?.duration ?? current?.duration_sec;
-    if (dur) await manager.seek(frac * dur, { precise: true });
-    render();
+    const dur = episodeDurationSec();
+    if (dur) await seekEpisodeTo(frac * dur);
+    else render();
   });
 
   ui.rateBtn.addEventListener("click", () => openRatePicker());
@@ -2399,12 +2483,7 @@ const ForayPlayer = {
    */
   async seekTo(position) {
     if (foray) return false;
-    if (!current) return false;
-    const secs = Number(position);
-    if (!Number.isFinite(secs)) return false;
-    await manager.seek(Math.max(0, secs), { precise: true });
-    render();
-    return true;
+    return seekEpisodeTo(position);
   },
 
   /** Subscribe to "an ordinary (non-Foray) episode just finished playing".

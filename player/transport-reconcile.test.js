@@ -787,7 +787,7 @@ class Node {
     this.listeners.get(t).add(fn);
   }
   removeEventListener(t, fn) { this.listeners.get(t)?.delete(fn); }
-  click() { for (const fn of [...(this.listeners.get("click") ?? [])]) fn({}); }
+  click() { return Promise.all([...(this.listeners.get("click") ?? [])].map((fn) => fn({}))); }
 }
 
 class MemoryStorage {
@@ -1579,6 +1579,116 @@ test("AUDIT: the Foray page is handed the answer its press is decided by", async
   audio.paused = false;
   assert.equal(client.forayStatus().playing, false, "the belief still says paused");
   assert.equal(client.forayStatus().running, true, "the snapshot carries the element's answer");
+  restore();
+});
+
+/* ---- one episode seek, whatever asked for it ---- */
+
+/** The Now Playing sheet's controls, found by class like `transport` above. */
+function findWhere(node, pred) {
+  if (pred(node)) return node;
+  for (const k of node.children) { const hit = findWhere(k, pred); if (hit) return hit; }
+  return null;
+}
+const labelled = (prefix) => (n) => String(n.getAttribute?.("aria-label") ?? "").startsWith(prefix);
+const sheet = (doc) => ({
+  back: findWhere(doc.body, labelled("Back ")),
+  fwd: findWhere(doc.body, labelled("Forward ")),
+  scrub: find(doc.body, "fp-scrub"),
+  fill: find(doc.body, "fp-fill"),
+  left: find(doc.body, "fp-left"),
+});
+
+/** A ribbon restored at launch: a stored pointer and a stored position, and no
+    audio loaded behind it — exactly what `restoreLastEpisode` paints. */
+async function aRestoredRibbon(t, seconds = 1800, opts = {}) {
+  const carried = await aSessionThatReached(t, seconds);
+  const booted = await bootClient(t, { seed: carried, ...opts });
+  const rec = booted.client.restoreLastEpisode();
+  assert.ok(rec, "precondition: the ribbon restored");
+  assert.equal(booted.audio.calls.includes("load"), false, "precondition: nothing was loaded");
+  return booted;
+}
+
+test("AUDIT: a scrub on a RESTORED ribbon is where the next press starts", async (t) => {
+  /* The restored bar holds no audio, so `manager.seek` hit an empty queue, the
+     reducer refused it silently, the thumb snapped back and play started from
+     the OLD stored position. KILLING MUTATION: drop `restoredPending != null`
+     and the `idle` state from `seekEpisodeTo`'s `nothingToSeekIn`. */
+  const { doc, audio, restore } = await aRestoredRibbon(t, 1800);
+  const { scrub } = sheet(doc);
+  scrub.value = "250";                                   // a quarter of 3600 s
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.equal(scrub.value, "250", "the thumb stays where the listener put it");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "the press started it");
+  assert.ok(Math.abs(audio.currentTime - 900) < 1, `started at ${audio.currentTime}s, not where the thumb was`);
+  restore();
+});
+
+test("AUDIT: ↺ and ↻ move a restored ribbon too, and ↻ never crosses the end", async (t) => {
+  /* KILLING MUTATION: put `manager.seek(... + SEEK_FWD)` back in the ↻ handler
+     (no restored-bar rule, no upper clamp). */
+  const { doc, client, restore } = await aRestoredRibbon(t, 3560);
+  const { fwd, back, left } = sheet(doc);
+  assert.equal(left.textContent, "-0:40", "precondition: forty seconds left");
+  await fwd.click();                                     // 3590
+  await settle();
+  await fwd.click();                                     // 3620, past the 3600 s end
+  await settle();
+  assert.equal(left.textContent, "-0:01", "clamped one second short of the end");
+  await back.click();                                    // 3599 - 15
+  await settle();
+  assert.equal(left.textContent, "-0:16");
+  assert.equal(client.isCurrent("ep-a"), true, "and nothing ended");
+  restore();
+});
+
+test("AUDIT: an episode that has ENDED can still be scrubbed back into", async (t) => {
+  /* `handleSeek` refuses in `ended`, and `manager.seek` resolves normally
+     anyway, so the scrub did nothing and the thumb snapped back to the far
+     right. KILLING MUTATION: drop `manager.state?.type === "ended"` from
+     `nothingToSeekIn`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  audio.runOut();
+  await settle();
+  const { scrub, left } = sheet(doc);
+  /* The countdown at the exact end has nothing left to count, so no minus
+     sign. KILLING MUTATION: `remainingClock` returning `-${clock}` always. */
+  assert.equal(left.textContent, "0:00", "the end is not '-0:00'");
+  scrub.value = "500";
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.equal(scrub.value, "500", "the thumb stays at the middle");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false);
+  assert.ok(Math.abs(audio.currentTime - 1800) < 1, `resumed at ${audio.currentTime}s`);
+  restore();
+});
+
+test("AUDIT: an episode with no known duration paints an EMPTY bar, not the last episode's", async (t) => {
+  /* KILLING MUTATION: put the `dur &&` guard back around the fill with no else. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem("ep-a"));
+  await settle();
+  audio.currentTime = 2880;                              // 80% of the first episode
+  audio.fire("timeupdate");
+  assert.equal(sheet(doc).fill.style.width, "80%", "precondition: the first episode's fill");
+  audio.duration = NaN;                                  // the next feed carries none
+  await client.play({ ...episodeItem("ep-b"), duration_sec: null });
+  await settle();
+  audio.currentTime = 0;
+  audio.fire("timeupdate");
+  assert.equal(sheet(doc).fill.style.width, "0%");
+  assert.equal(sheet(doc).scrub.value, "0");
+  assert.equal(sheet(doc).left.textContent, "--:--");
   restore();
 });
 
