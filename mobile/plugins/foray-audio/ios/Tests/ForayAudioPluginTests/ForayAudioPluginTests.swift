@@ -251,12 +251,15 @@ final class ForayAudioPluginTests: XCTestCase {
     }
 
     /// Design comment §2 as a table. The app's own session is taken on the
-    /// playing -> paused transition and ONLY there; released quietly when the
+    /// playing -> paused transition and ONLY there, and only for a pause the
+    /// listener made; SUPERSEDED (forgotten, never deactivated) when the
     /// transport plays again; released with notify when it closes or ends;
     /// and never released when this plugin was not the one holding it.
     /// TO SEE IT FAIL: return `.hold` for `(.none, .paused)` -- opening the app
     /// with a restored, paused bar would then silence another app's music --
-    /// or return `.hold` for `(.playing, .playing)` -- the F11/F13 loop.
+    /// or return `.hold` for `(.playing, .playing)` -- the F11/F13 loop -- or
+    /// return `.hold` for a pause inside an interruption -- 4a re-interrupting
+    /// the app that interrupted it.
     func testSessionMoveTable() {
         typealias S = NowPlayingPayload.State
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .paused, holding: false), .hold)
@@ -265,7 +268,7 @@ final class ForayAudioPluginTests: XCTestCase {
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .playing, holding: false), .none)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .playing, holding: true), .none,
                        "a position write while playing never touches the session")
-        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .playing, holding: true), .releaseQuietly)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .playing, holding: true), .supersede)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .playing, holding: false), .none)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .none, holding: true), .releaseAndNotify)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .ended, holding: true), .releaseAndNotify)
@@ -276,6 +279,60 @@ final class ForayAudioPluginTests: XCTestCase {
                 XCTAssertTrue(move == .none || move == .hold, "\(from)->\(to) released a session nobody held")
             }
         }
+    }
+
+    /// A pause the OS caused takes no hold (review, 2026-09-23). Another app's
+    /// non-mixable audio, Siri or a call interrupts the element; the page
+    /// reconciles to `paused`; the plugin sees the same playing -> paused it
+    /// sees for a listener's pause. Holding then activates a non-mixable
+    /// session while the interrupter is sounding -- in the foreground iOS
+    /// allows it and 4a cuts the other app off. `interrupted` is the one input
+    /// that tells the two pauses apart, and it is read on every transition it
+    /// could matter for. TO SEE IT FAIL: ignore `interrupted` in `sessionMove`.
+    func testAPauseInsideAnInterruptionTakesNoHold() {
+        typealias S = NowPlayingPayload.State
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .paused, holding: false, interrupted: true), .none)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .paused, holding: false, interrupted: false), .hold)
+        // A resume clears nothing here and is still a resume: the producer's own
+        // activation supersedes the hold whether or not an `.ended` ever came.
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .playing, holding: true, interrupted: true), .supersede)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .none, holding: true, interrupted: true), .releaseAndNotify)
+        for from in [S.none, S.playing, S.paused, S.ended] {
+            for to in [S.none, S.playing, S.paused, S.ended] {
+                XCTAssertNotEqual(
+                    ForayAudioPlugin.sessionMove(from: from, to: to, holding: false, interrupted: true), .hold,
+                    "\(from)->\(to) took a hold during an interruption"
+                )
+            }
+        }
+    }
+
+    /// The hold is taken BACK when an interruption ends and when a new route
+    /// appears (review, 2026-09-23): a call or a Siri press between the
+    /// founder's pause and his car landed `began-while-held`, nothing
+    /// re-activated on `.ended`, and by this plugin's own thesis 4a was no
+    /// longer the app the car's play would go to. Only a paused transport with
+    /// no hold standing and no interruption in progress re-holds: a playing
+    /// one is producing through a session of its own, a held one has nothing
+    /// to take back, and re-holding INSIDE an interruption is the
+    /// re-interruption the table above refuses. TO SEE IT FAIL: drop
+    /// `!interrupted`, or return true for `.playing`.
+    func testTheHoldIsRetakenOnlyForAPausedUnheldUninterruptedTransport() {
+        XCTAssertTrue(ForayAudioPlugin.shouldRehold(state: .paused, holding: false, interrupted: false))
+        XCTAssertFalse(ForayAudioPlugin.shouldRehold(state: .paused, holding: true, interrupted: false), "already holding")
+        XCTAssertFalse(ForayAudioPlugin.shouldRehold(state: .paused, holding: false, interrupted: true), "the interrupter still owns the audio")
+        XCTAssertFalse(ForayAudioPlugin.shouldRehold(state: .playing, holding: false, interrupted: false), "the producer has its own session")
+        XCTAssertFalse(ForayAudioPlugin.shouldRehold(state: .ended, holding: false, interrupted: false))
+        XCTAssertFalse(ForayAudioPlugin.shouldRehold(state: .none, holding: false, interrupted: false))
+    }
+
+    /// The remote artwork fetch is bounded, so a stalled network at the
+    /// moment the car connects cannot hold `stateQueue` -- and the car's play
+    /// behind it -- for the URL loading system's default minute.
+    /// TO SEE IT FAIL: set `artworkTimeoutSec` to 60 or more.
+    func testRemoteArtworkLoadIsBoundedWellUnderTheDefaultTimeout() {
+        XCTAssertLessThanOrEqual(ForayAudioPlugin.artworkTimeoutSec, 15)
+        XCTAssertGreaterThan(ForayAudioPlugin.artworkTimeoutSec, 0)
     }
 
     /// Only a PAUSED transport re-writes its entry on background / new route:

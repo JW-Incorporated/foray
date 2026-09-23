@@ -69,17 +69,44 @@ import os
 ///    so a paused, backgrounded 4a had no session to be Now Playing with, and
 ///    the car's play went to whoever had it last. `holdSession` now activates
 ///    the app's own `.playback` session on the playing -> paused transition
-///    (nothing is sounding, so nothing can be interrupted by it) and keeps it
-///    until the transport is playing again (`releaseSession`, quietly) or
-///    closed/finished (with `.notifyOthersOnDeactivation`, so the app that was
-///    interrupted may resume -- Apple's own guidance). The playing path still
-///    calls `setActive` NEVER: an earlier version re-asserted activation from
-///    `setNowPlaying` on `render()`'s 4 Hz hot path and interrupted WebKit's
-///    audible element every write -- the F11/F13 pause loop (founder device
-///    diagnostics, 2026-09-08/09). `sessionMove(from:to:holding:)` is the
-///    whole rule, pure, so the XCTests pin it and `shell-invariants.test.mjs`
-///    pins that `setActive` is reachable from nowhere but `holdSession` /
-///    `releaseSession`.
+///    -- for a pause the LISTENER made. Nothing of ours is sounding then, so
+///    nothing can be interrupted by it; a pause the OS caused is the other
+///    case (review, 2026-09-23): another app's non-mixable audio, Siri or a
+///    call interrupts our element, the page reconciles to paused, and a hold
+///    taken THEN would activate a non-mixable session while the interrupter
+///    is still sounding -- 4a re-interrupting the app that just interrupted
+///    it (in the foreground iOS allows that; in the background it refuses
+///    and the record shows `sessionActivated failed`). So `interrupted` is
+///    set from `interruptionBegan` to `interruptionEnded` and the table
+///    answers `.none` for a pause inside it. The hold is kept until the
+///    transport is playing again or closed/finished. PLAYING AGAIN IS NOT A
+///    DEACTIVATION (review, 2026-09-23): the resumed producer's own
+///    activation supersedes ours -- WebKit's element from its media process,
+///    or, for narration, `ForayTtsPlugin` on the SAME app-process shared
+///    instance (its synthesizer uses the application session and never
+///    activates it itself; `resume()` calls `setActive(true)` one bridge hop
+///    BEFORE the page's `playing` write reaches here). A `setActive(false)`
+///    on that write either failed against the synthesizer's running I/O
+///    (`sessionReleased failed` on every narration resume) or landed in the
+///    tens of milliseconds before it started and resumed the narration into
+///    an inactive session: silence. So `.supersede` only forgets the hold.
+///    Only the end of playback deactivates (`releaseSession`, with
+///    `.notifyOthersOnDeactivation`, so the app that was interrupted may
+///    resume -- Apple's own guidance). A hold the OS took away
+///    (`began-while-held`) is taken BACK when the interruption ends with
+///    `shouldResume` and the transport is still paused, and when a new route
+///    appears (the car connecting) -- the thesis of this whole comment is
+///    that the active session is what makes iOS hand the car's play to us,
+///    and a Siri press or a call between the pause and the car must not
+///    quietly give that up. The playing path still calls `setActive` NEVER:
+///    an earlier version re-asserted activation from `setNowPlaying` on
+///    `render()`'s 4 Hz hot path and interrupted WebKit's audible element
+///    every write -- the F11/F13 pause loop (founder device diagnostics,
+///    2026-09-08/09). `sessionMove(from:to:holding:interrupted:)` and
+///    `shouldRehold(state:holding:interrupted:)` are the whole rule, pure, so
+///    the XCTests pin them and `shell-invariants.test.mjs` pins that
+///    `setActive` is reachable from nowhere but `holdSession` /
+///    `releaseSession`, and that the resume transition reaches neither.
 /// 3. **`stop` on iOS: declined outright**, not merely on a finished Foray.
 ///    Android exposes it because an ongoing foreground-service notification
 ///    needs a one-press exit; iOS has no equivalent ongoing surface -- Now
@@ -163,9 +190,29 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// attempted for an activation we made.
     private var holdsSession = false
 
-    /// Bumped on every payload, so a re-assert armed for an older pause does
-    /// not fire after the transport has moved on.
+    /// Whether an `AVAudioSession` interruption is in progress: set on
+    /// `interruptionBegan`, cleared on `interruptionEnded`, on a media-services
+    /// reset, and by anything that means the listener moved on (a `playing`
+    /// payload, a remote play) -- Apple does not promise an `.ended` for every
+    /// `.began`, and a flag that could stick forever would refuse every later
+    /// hold. Read by `sessionMove` so a pause the OS caused takes no hold
+    /// (design comment §2).
+    private var interrupted = false
+
+    /// Bumped when the payload's STATE changes, so a re-assert armed for an
+    /// older pause does not fire after the transport has moved on. Not on every
+    /// payload (review, 2026-09-23): a lock-screen scrub while paused, or a
+    /// trailing position write, is a `paused` payload inside the 3 s window,
+    /// and bumping on it cancelled the pause-settled re-assert with nothing to
+    /// re-arm it -- `sessionMove(.paused, .paused)` is `.none`. A position change
+    /// while paused is not the transport moving on.
     private var reassertGeneration: UInt64 = 0
+
+    /// The artwork last built, keyed by the URI it was built from, so a
+    /// re-assert or a position write never loads it again -- see `artworkItem`.
+    private var artworkCache: (uri: String, item: MPMediaItemArtwork?)?
+    /// Remote artwork URIs with a load in flight, so one slow fetch is one fetch.
+    private var artworkLoading = Set<String>()
 
     /// L-02's log-side needle (`FORAY_AUDIO_REACHED_NEEDLE` in
     /// `tools/mobile/ios-ci.mjs`, pinned to this string by
@@ -263,12 +310,31 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                way: iOS deactivates an interrupted session. */
             let held = self.holdsSession
             if began && held { self.holdsSession = false }
+            /* From here until `.ended`, a pause the page reports is the OS's
+               doing and takes no hold -- `sessionMove`, design comment §2. */
+            self.interrupted = began
             self.emitSession(
                 kind: began ? "interruptionBegan" : "interruptionEnded",
                 reason: began
                     ? (held ? "began-while-held" : "began")
                     : (shouldResume ? "should-resume" : "no-resume")
             )
+            /* TAKE THE HOLD BACK (review, 2026-09-23). A call or a Siri press
+               between the founder's pause and his car landed `began-while-held`
+               and nothing re-activated on `.ended`, so by this file's own thesis
+               4a was no longer the app the car's play would go to -- and
+               `remotePlay`'s re-hold cannot help, because that press never
+               arrives at `MPRemoteCommandCenter` in the first place. Only with
+               `shouldResume`: without it the OS is saying the interrupter still
+               owns the audio, and a non-mixable activation now would be the
+               re-interruption §2 refuses. The transport is not touched -- this
+               is the plugin's own session and entry, inside the "reported,
+               never acted on" rule. */
+            if !began && shouldResume
+                && Self.shouldRehold(state: self.lastPayload.state, holding: self.holdsSession, interrupted: self.interrupted) {
+                self.holdSession(reason: "interruption-ended")
+                self.reassertNowPlaying(reason: "interruption-ended")
+            }
         }
     }
 
@@ -285,6 +351,13 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                is the car switching off, and `player/client.js` owns what the
                transport does about it. */
             if reason == "new-device" && Self.shouldReassert(for: self.lastPayload.state) {
+                /* A hold lost without an interruption to end -- a media-services
+                   reset, an `.ended` iOS never sent -- is taken back here, at the
+                   moment it matters. Never during an interruption: the car
+                   connecting while another app sounds is not ours to cut. */
+                if Self.shouldRehold(state: self.lastPayload.state, holding: self.holdsSession, interrupted: self.interrupted) {
+                    self.holdSession(reason: "route")
+                }
                 self.reassertNowPlaying(reason: "route")
             }
         }
@@ -293,8 +366,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc private func handleServicesReset(_ note: Notification) {
         stateQueue.async { [weak self] in
             guard let self = self else { return }
-            /* The media server restarted: every session is gone, ours included. */
+            /* The media server restarted: every session is gone, ours included,
+               and so is whatever was interrupting it. */
             self.holdsSession = false
+            self.interrupted = false
             self.emitSession(kind: "mediaServicesReset", reason: "reset")
         }
     }
@@ -382,10 +457,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     ///
     /// RESOLVED BEFORE IT IS APPLIED, and that is not a race worth closing:
     /// the answer carries no field that depends on the apply (`ok`,
-    /// `platform`, `reason`), the apply runs on `stateQueue` in the order the
-    /// payloads arrived, and a page waiting a bridge round-trip for a lock
-    /// screen write would be a page waiting on a network artwork load
-    /// (`artworkItem(for:)` fetches synchronously).
+    /// `platform`, `reason`), and the apply runs on `stateQueue` in the order
+    /// the payloads arrived. Nothing on that queue waits on the network any
+    /// more (`artworkItem(for:)` caches and loads asynchronously), and the
+    /// page has no use for an answer that arrives after the entry is written.
     @objc func setNowPlaying(_ call: CAPPluginCall) {
         let payload = NowPlayingPayload.from(call.options as? [String: Any] ?? [:])
         stateQueue.async { [weak self] in
@@ -406,32 +481,45 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private func apply(_ payload: NowPlayingPayload) {
         let previous = lastPayload
         lastPayload = payload
-        reassertGeneration &+= 1
+        if previous.state != payload.state {
+            reassertGeneration &+= 1
+        }
+        /* The listener is playing again, by whatever door: an interruption
+           whose `.ended` never came is over as far as the next pause is concerned. */
+        if payload.state == .playing { interrupted = false }
         if lastLoggedState != payload.state {
             lastLoggedState = payload.state
             Self.logger.notice("ForayAudio.setNowPlaying reached state=\(payload.state.rawValue, privacy: .public)")
         }
         applyNowPlayingInfo(payload)
         applyCommandAvailability(payload)
-        applySessionMove(Self.sessionMove(from: previous.state, to: payload.state, holding: holdsSession))
+        applySessionMove(Self.sessionMove(
+            from: previous.state, to: payload.state, holding: holdsSession, interrupted: interrupted
+        ))
     }
 
     // MARK: - the app's own audio session (design comment §2)
 
     /// What the session does on a transport transition. Pure, so the XCTests
-    /// can table it; the ONLY caller of `holdSession`/`releaseSession` below is
-    /// `applySessionMove`, and `shell-invariants.test.mjs` pins that.
+    /// can table it; the callers of `holdSession`/`releaseSession` below are
+    /// `applySessionMove` (both), the interruption and route observers and
+    /// `remotePlay` (the hold only), and `shell-invariants.test.mjs` pins that.
     enum SessionMove: Equatable {
-        /// Nothing: a position write, a seam, a state we do not act on.
+        /// Nothing: a position write, a seam, a state we do not act on, or a
+        /// pause the OS caused (an interruption is in progress).
         case none
-        /// The transport just PAUSED: take the app's `.playback` session so the
-        /// OS keeps 4a as the Now Playing app while nothing is sounding.
+        /// The transport just PAUSED, by the listener: take the app's
+        /// `.playback` session so the OS keeps 4a as the Now Playing app while
+        /// nothing is sounding.
         case hold
-        /// The transport is PLAYING again: let go quietly. WebKit's element has
-        /// its own session; ours would be a second one for the same app, and a
-        /// release with `notifyOthers` here would tell the app WE interrupted
-        /// to resume over our own audio.
-        case releaseQuietly
+        /// The transport is PLAYING again: FORGET the hold, deactivate nothing.
+        /// Whatever is playing now activated a session of its own -- WebKit's
+        /// element from its media process, or `ForayTtsPlugin` on this very
+        /// shared instance, for narration -- and a `setActive(false)` here
+        /// fought that activation (design comment §2). A release with
+        /// `notifyOthers` would be worse still: it would tell the app WE
+        /// interrupted to resume over our own audio.
+        case supersede
         /// The player closed or the Foray finished: let go and tell whoever we
         /// interrupted -- Apple's guidance for the end of playback, and the one
         /// moment "Spotify resumed" is the correct outcome.
@@ -441,24 +529,38 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// The rule. `holding` is whether this plugin's own activation is still
     /// standing (an interruption or a media-services reset takes it away
     /// without a payload); a release is only ever attempted for one we made.
+    /// `interrupted` is whether an `AVAudioSession` interruption is in
+    /// progress: a pause reported inside one is the OS's, and holding on it
+    /// would re-interrupt the interrupter.
     static func sessionMove(
-        from previous: NowPlayingPayload.State, to next: NowPlayingPayload.State, holding: Bool
+        from previous: NowPlayingPayload.State, to next: NowPlayingPayload.State,
+        holding: Bool, interrupted: Bool = false
     ) -> SessionMove {
         switch (previous, next) {
         /* PLAYING -> PAUSED ONLY. Not `anything -> paused`: the restored mini bar
            writes `paused` at launch with nothing loaded, and taking a
            non-mixable session then would silence whatever the listener was
            playing in another app for opening ours. A pause of our OWN audio is
-           the only pause that has an audio session to keep. */
+           the only pause that has an audio session to keep -- and only when the
+           listener made it: an interrupted element reports the same bare pause. */
         case (.playing, .paused):
-            return .hold
+            return interrupted ? .none : .hold
         case (_, .playing):
-            return holding ? .releaseQuietly : .none
+            return holding ? .supersede : .none
         case (_, .none), (_, .ended):
             return holding ? .releaseAndNotify : .none
         default:
             return .none
         }
+    }
+
+    /// Whether a hold the OS took away should be taken BACK now: the transport
+    /// is still paused, we are not holding, and no interruption is in
+    /// progress. Read on `interruptionEnded` (with `shouldResume`) and on a
+    /// new route; `remotePlay` has its own, looser rule, because a play press
+    /// is the listener's word that the interruption is over.
+    static func shouldRehold(state: NowPlayingPayload.State, holding: Bool, interrupted: Bool) -> Bool {
+        state == .paused && !holding && !interrupted
     }
 
     /// Whether a background or a new route should re-write the entry: only a
@@ -476,8 +578,8 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         case .hold:
             holdSession(reason: "paused")
             armReassert()
-        case .releaseQuietly:
-            releaseSession(reason: "playing", notifyOthers: false)
+        case .supersede:
+            supersedeSession()
         case .releaseAndNotify:
             releaseSession(reason: "closed", notifyOthers: true)
         }
@@ -502,8 +604,9 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         emitSession(kind: "sessionActivated", reason: ok ? reason : "failed")
     }
 
-    /// Let go of an activation WE made. `notifyOthersOnDeactivation` only at
-    /// the end of playback -- see `SessionMove`.
+    /// Let go of an activation WE made, at the END of playback only:
+    /// `notifyOthersOnDeactivation` so the interrupted app may resume -- see
+    /// `SessionMove`. Never on the resume transition; that is `supersedeSession`.
     private func releaseSession(reason: String, notifyOthers: Bool) {
         let session = AVAudioSession.sharedInstance()
         var ok = true
@@ -514,6 +617,15 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         holdsSession = false
         emitSession(kind: "sessionReleased", reason: ok ? reason : "failed")
+    }
+
+    /// The transport is playing again: the producer's own activation stands in
+    /// for ours from here (one shared instance per process -- design comment
+    /// §2), so the hold is forgotten and the session is NOT touched. The row
+    /// says `superseded` so a record can tell this from a deactivation.
+    private func supersedeSession() {
+        holdsSession = false
+        emitSession(kind: "sessionReleased", reason: "superseded")
     }
 
     // MARK: - re-asserting the entry
@@ -640,35 +752,68 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// of Android's `file:///android_asset/public/`); this is the one place
     /// that scheme is resolved, against `Bundle.main`.
     ///
-    /// Loading is SYNCHRONOUS-ISH here (best-effort, cache-friendly) rather
-    /// than a fully async fetch-then-repost: this runs on `stateQueue`, never
-    /// the main thread, and a missing or slow artwork must never block or
-    /// crash the metadata write that always matters more
-    /// (title/position/transport). A failed load simply omits the key, which
-    /// is the same "no artwork, never a guess" rule `media-session.js`'s
-    /// `artworkUrl()` already enforces upstream.
+    /// NEVER A NETWORK WAIT ON `stateQueue` (review, 2026-09-23). This used to
+    /// run `Data(contentsOf:)` -- a blocking HTTP load with the default ~60 s
+    /// timeout -- on every write, on the one serial queue every remote-command
+    /// handler now shares. `reassertNowPlaying` fires on exactly the founder's
+    /// moments (the car connecting, the screen going off), a paused tape
+    /// segment carries the publisher's https artwork, and a phone switching
+    /// Wi-Fi -> cellular as the car connects is a stalled fetch: the car's play
+    /// returned `.success` at once and `remotePlay` sat behind it for seconds
+    /// to a minute. So: the artwork is CACHED per URI (a re-assert re-writes an
+    /// unchanged payload by definition), the bundle's own icon and a file URL
+    /// are read from disk once, and a remote image is fetched asynchronously
+    /// (`URLSession`, bounded) with the entry re-posted when it lands. Until it
+    /// lands the entry goes out without artwork -- the same "no artwork, never a
+    /// guess" rule `media-session.js`'s `artworkUrl()` enforces upstream -- and
+    /// a failed load is cached as none, so a dead URL costs one attempt and not
+    /// one per write. On `stateQueue`.
     private func artworkItem(for uri: String) -> MPMediaItemArtwork? {
         guard !uri.isEmpty else { return nil }
-        let image: UIImage?
+        if let cached = artworkCache, cached.uri == uri { return cached.item }
         if let bundlePath = Self.bundlePath(for: uri) {
             // `Bundle.main`, not `URL(string:)` -- `bundle://` is not a real
             // URL scheme any loader below this line understands, so the path
             // component is resolved by hand and everything else about the
             // string is discarded.
-            image = UIImage(contentsOfFile: bundlePath)
-        } else if let url = URL(string: uri) {
-            if url.isFileURL {
-                image = UIImage(contentsOfFile: url.path)
-            } else if let data = try? Data(contentsOf: url) {
-                image = UIImage(data: data)
-            } else {
-                image = nil
-            }
-        } else {
-            image = nil
+            return rememberArtwork(uri: uri, image: UIImage(contentsOfFile: bundlePath))
         }
-        guard let image = image else { return nil }
-        return MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        guard let url = URL(string: uri) else { return rememberArtwork(uri: uri, image: nil) }
+        if url.isFileURL {
+            return rememberArtwork(uri: uri, image: UIImage(contentsOfFile: url.path))
+        }
+        loadRemoteArtwork(uri: uri, url: url)
+        return nil
+    }
+
+    /// Cache and wrap. A `nil` image is cached too -- "this URI has no artwork"
+    /// is an answer, and asking again on every write is the bug above.
+    private func rememberArtwork(uri: String, image: UIImage?) -> MPMediaItemArtwork? {
+        let item = image.map { image in MPMediaItemArtwork(boundsSize: image.size) { _ in image } }
+        artworkCache = (uri: uri, item: item)
+        return item
+    }
+
+    /// One fetch per URI, off `stateQueue`, bounded. When it lands, the cache is
+    /// filled and the entry is re-posted IF the page is still on that artwork --
+    /// a payload that moved on in the meantime keeps its own.
+    static let artworkTimeoutSec: Double = 10
+
+    private func loadRemoteArtwork(uri: String, url: URL) {
+        guard !artworkLoading.contains(uri) else { return }
+        artworkLoading.insert(uri)
+        let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: Self.artworkTimeoutSec)
+        URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
+            guard let self = self else { return }
+            self.stateQueue.async {
+                self.artworkLoading.remove(uri)
+                let image = data.flatMap { UIImage(data: $0) }
+                _ = self.rememberArtwork(uri: uri, image: image)
+                if image != nil && self.lastPayload.artworkUri == uri && self.lastPayload.state != .none {
+                    self.applyNowPlayingInfo(self.lastPayload)
+                }
+            }
+        }.resume()
     }
 
     /// `bundle://public/icon-512.png` -> an absolute path inside `Bundle.main`,
@@ -795,6 +940,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// a play to. Once per press, never on the playing path -- the F11/F13
     /// rule. On `stateQueue`.
     private func remotePlay(command: String) {
+        /* The listener's word that whatever interrupted us is over: a play
+           press is the one input that may take the hold DURING an
+           interruption, because it is the listener choosing 4a over it. */
+        interrupted = false
         if lastPayload.state == .paused && !holdsSession {
             holdSession(reason: "remote-play")
         }
