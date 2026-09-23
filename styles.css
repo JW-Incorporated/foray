@@ -984,7 +984,6 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   margin-bottom: 8px;
 }
 .interest-row-name { font-weight: 700; font-size: 0.95rem; }
-.interest-row-path { font-size: 0.72rem; color: var(--text-dim); }
 .interest-row-controls { display: flex; align-items: center; gap: 10px; }
 /* The old prototype fixed this exact regression twice (docs/ux/foray-m3-prototype.html):
    a slider with no touch-action fights the page's own vertical scroll on a

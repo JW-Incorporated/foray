@@ -883,7 +883,7 @@ const FLOORS = {
      wrong row set, a wrong slider range, or a drag that silently fails to
      persist are all silent-wrong-behavior, not a crash any other suite
      would notice. Every test names its mutation; see the suite header. */
-  "test/interests-page.test.js": 11,
+  "test/interests-page.test.js": 14, // 2026-09-22 audit (theme J + persona jargon ledger): a missing taxonomy.json writes nothing over the profile, an id the taxonomy dropped survives a save, and no raw taxonomy id or "Reset to learned" on the page; 11 -> 14
   /* The root-node interest bug this same card fixes (D6): loadInterests()
      used to seed leaf nodes only, silently dropping a root-level interest
      on the next save. Floored separately from interests-page.test.js

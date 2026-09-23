@@ -420,7 +420,25 @@ function loadInterests() {
   });
 }
 
-function saveInterests() { lsSet("cp_interests", state.interests); }
+/* Persist the profile WITHOUT ever shrinking it (2026-09-22 audit). This used
+   to write `state.interests` whole, and `loadInterests` only seeds ids the
+   loaded taxonomy names — so a `data/taxonomy.json` that 404'd or failed to
+   parse (a partial deploy, a stale service-worker generation) left
+   `state.interests` as `{}`, and the listener's first play or thumb wrote `{}`
+   over their entire profile. The same write silently deleted any stored weight
+   whose node a newer taxonomy had renamed or dropped.
+
+   Two rules now: with no taxonomy loaded there is nothing this session could
+   have learned, so nothing is written at all; and the write MERGES over what
+   is stored, so an id this session does not know survives it. Nothing in the
+   app removes an interest id on purpose — "Delete my data" clears the key
+   through the store, not through here. */
+function saveInterests() {
+  if (!taxonomyNodes().length) return false;
+  const stored = lsGet("cp_interests", {});
+  const base = stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
+  return lsSet("cp_interests", { ...base, ...state.interests });
+}
 
 /* How much of a leaf's own nudge also moves its parent root. Stated here per
    the card's ask ("state the ratio"): a play/thumb on a leaf is signal about
@@ -522,7 +540,6 @@ function interestSliderRow(node) {
   return `<div class="interest-row${isRoot ? " interest-row-root" : ""}">
     <div class="interest-row-head">
       <span class="interest-row-name">${esc(node.label)}</span>
-      <span class="interest-row-path">${esc(node.id)}</span>
     </div>
     <div class="interest-row-controls">
       <input type="range" class="interest-slider" role="slider"
@@ -533,7 +550,8 @@ function interestSliderRow(node) {
         aria-valuetext="${pct}%">
       <span class="interest-row-pct">${pct}%</span>
       <button type="button" class="interest-reset" data-interest-reset="${esc(node.id)}"
-        ${value === Math.max(0, node.weight) ? "disabled" : ""}>Reset to learned</button>
+        aria-label="${esc(node.label)}: back to 4a's pick"
+        ${value === Math.max(0, node.weight) ? "disabled" : ""}>Back to 4a's pick</button>
     </div>
   </div>`;
 }
@@ -549,7 +567,7 @@ function renderInterests() {
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
-        <div><h2>Interests</h2><p class="sub">Drag a slider to overrule what 4a has learned</p></div>
+        <div><h2>Interests</h2><p class="sub">Drag a slider to change what 4a suggests</p></div>
       </div>
       ${groups.map(g => `
         <div class="interest-group">
