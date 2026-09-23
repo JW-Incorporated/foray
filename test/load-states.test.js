@@ -768,11 +768,12 @@ test("'played' counts history OR a stored position, so it cannot fall as the his
   assert.strictEqual(m.ctx.hasOpened("rotatedOut", history), true, "listened to, then evicted from the ring: still played");
   assert.strictEqual(m.ctx.hasOpened("sampled", history), true, "opened for a few seconds still counts as opened");
   assert.strictEqual(m.ctx.hasOpened("never", history), false);
-  /* And the playlist page reads it for BOTH the count and the next marker, so
-     the two cannot disagree. */
+  /* The playlist page reads it for the next marker. The COUNT no longer does
+     (audit round 2, honesty-6): "N played" means finished, the same word the
+     rows use, so it reads the player's own verdict per row. */
   const body = /function renderPlaylistDetail\(id\) \{[\s\S]*?\n\}/.exec(APP_SRC)[0];
   assert.match(body, /const nextIdx = rows\.findIndex\(r => r\.state === "live" && !hasOpened\(r\.item\.id, history\)\);/);
-  assert.match(body, /const played = rows\.filter\(r => hasOpened\(r\.item\.id, history\)\)\.length;/);
+  assert.match(body, /const played = rows\.filter\(r => rowProgress\(r\.item\)\?\.state === "played"\)\.length;/);
 });
 
 test("a subject card states a total duration only when every episode has one", () => {

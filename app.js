@@ -699,20 +699,39 @@ function snapshot(id, src) {
    session", which made an aged-out playlist part read as live from its second
    render onward and silently restored the exact defect #276 removes. Membership
    is rebuilt from scratch on every pool build, so it cannot accumulate. */
+/* MEMOISED ON THE TWO DOCUMENTS IT READS (audit round 2, perf-10). Seventeen
+   call sites rebuild this — every Up Next reorder tap re-snapshotted the whole
+   2,000-item discover pool before repainting a five-row list. The pool is the
+   same until `state.session` or `state.discover` is replaced (init and the
+   refresh path assign whole documents; nothing pushes into `items`), and the
+   `itemIndex` writes `snapshot()` makes are idempotent for the same input, so a
+   cached answer is the same answer. `state.poolIds` is rebuilt with the pool,
+   so the #276 property (membership never accumulates) holds: a new document is
+   a new Set. The cache returns a COPY so a caller that sorts or splices the
+   array (poolFiltered's callers do) cannot corrupt the next caller's. */
+let poolCache = null;
 function fullPool() {
+  const session = state.session;
+  const discover = state.discover;
+  if (poolCache && poolCache.session === session && poolCache.discover === discover
+      && poolCache.itemCount === (discover?.items || []).length) {
+    state.poolIds = poolCache.poolIds;
+    return poolCache.pool.slice();
+  }
   const pool = [];
   const seen = new Set();
-  for (const id of Object.keys(state.session.episodes)) {
+  for (const id of Object.keys(session.episodes)) {
     pool.push(snapshot(id, episode(id)));
     seen.add(id);
   }
-  for (const item of (state.discover?.items || [])) {
+  for (const item of (discover?.items || [])) {
     if (seen.has(item.id)) continue;
     seen.add(item.id);
     pool.push(snapshot(item.id, item));
   }
   state.poolIds = seen;
-  return pool;
+  poolCache = { session, discover, itemCount: (discover?.items || []).length, pool, poolIds: seen };
+  return pool.slice();
 }
 
 /* In-app play button. An item with no audio_url gets NO button — there is no
@@ -1108,6 +1127,9 @@ function toggleStar(id) {
     boostTopics(snap.topics, 0.05);
     logEvent("saved", { episode_id: id, topics: snap.topics });
   }
+  /* The Now Playing sheet's Save reads `EPISODE_NAVIGATION.isSaved`; a star
+     pressed on a row while the sheet is open has to reach it too. */
+  refreshEpisodeNavigation();
   lsSet("cp_saved", saved);
   document.querySelectorAll(`[data-star="${CSS.escape(id)}"]`).forEach(b => {
     setToggleLabel(b, isSaved(id), SAVE_TOGGLE);
@@ -1256,7 +1278,14 @@ function recordHistory(id) {
   if (!id) return;
   rememberEpisode(id);
   const history = pickedHistory();
-  if (!history.includes(id)) lsSet("cp_history", history.concat(id).slice(-200));
+  /* LAST-PLAYED ORDER, not first-played (audit round 2, honesty-3). This
+     appended only on a first play, so a replay left the episode where it was
+     and Library → History — which presents the ring's tail as "most recent" —
+     could lead with something heard weeks ago while yesterday's re-listen sat
+     off the end. Every other reader of `cp_history` tests membership only
+     (`hasOpened`, `branchChain`, the keep set above), so the order is free to
+     mean what the page says it means. */
+  lsSet("cp_history", history.filter(x => x !== id).concat(id).slice(-200));
 }
 
 function rememberSeen(ids) {
@@ -1818,12 +1847,38 @@ function queueIds() {
   return Array.isArray(ids) ? ids.filter(id => typeof id === "string" && id) : [];
 }
 
+/** THE ONE WRITER OF `cp_queue`, and the one place the two things that watch it
+    are told. The car's skip may have appeared or gone; and the Up Next PAGE, if
+    it is on screen, is repainted — it is the one surface whose content IS this
+    list, and it used to go stale while the listener watched it (audit round 2,
+    p-impatient-6): an episode ended, continuous playback removed it here, and
+    row 1 stayed listed with a ▶ on it and "N queued" one too many until an arrow
+    was pressed, at which point the whole list jumped. */
 function saveQueueIds(ids) {
   const ok = lsSet("cp_queue", ids);
-  /* Up Next changed, so the car's skip may have appeared or gone. */
   refreshEpisodeNavigation();
+  repaintQueuePage();
   return ok;
 }
+
+/** The Up Next page is a LIVE VIEW of `cp_queue`: every write repaints it when
+    it is showing, and the writes' own callers do not (the reorder handlers used
+    to call `renderQueue()` themselves — that path is gone, so one list cannot be
+    painted twice). Scroll is kept where it was: a render replaces `#view`'s
+    content and would otherwise land the listener at the top. Best-effort on
+    `scrollY`/`scrollTo`, which the test harness does not have. */
+function repaintQueuePage() {
+  if (currentHash() !== "#/queue") return;
+  const y = typeof window.scrollY === "number" ? window.scrollY : null;
+  renderQueue();
+  if (y != null && typeof window.scrollTo === "function") window.scrollTo(0, y);
+}
+
+/** Playback moved (a chained play, a tap on an Up Next row): the row that is
+    now current is the one to mark. `renderQueue` reads `ForayPlayer.isCurrent`
+    per row, so this is the same repaint `saveQueueIds` makes, from the one
+    other event that changes what the page should show. */
+function noteQueuePlaybackMoved() { repaintQueuePage(); }
 
 function isQueued(id) { return !!id && queueIds().includes(id); }
 
@@ -1833,6 +1888,14 @@ function isQueued(id) { return !!id && queueIds().includes(id); }
    the only place that can hold that invariant. */
 function addToQueue(id) {
   if (!id) return;
+  /* ONLY WHAT 4a CAN PLAY (audit round 2, p-impatient-10). An aged-out playlist
+     part's row already says "Not available to play"; accepting it here turned
+     the button "✓ Up Next", listed the row on #/queue as "not available right
+     now" with no ▶, and continuous playback then passed over it without a word
+     — a false success from three places at once. `liveEpisode` is the one
+     definition of playable (section header above), so the refusal cannot
+     disagree with the row. */
+  if (!liveEpisode(id)) return;
   const ids = queueIds();
   if (ids.includes(id)) return;
   saveQueueIds(ids.concat(id));
@@ -1918,13 +1981,21 @@ function storableEpisode(snap) {
 function rememberEpisode(id) {
   const snap = id ? state.itemIndex[id] : null;
   if (!snap || !snap.audio_url) return;
-  const keep = new Set(queueIds().concat(pickedHistory(), id));
+  const queued = new Set(queueIds());
+  const keep = new Set([...queued].concat(pickedHistory(), id));
   const all = episodeSnaps();
   const next = {};
   for (const k of Object.keys(all)) if (keep.has(k)) next[k] = all[k];
   next[id] = storableEpisode(snap);
-  const ids = Object.keys(next);
-  for (const k of ids.slice(0, Math.max(0, ids.length - EPISODE_SNAPS_CAP))) delete next[k];
+  /* THE CAP NEVER TAKES A QUEUED EPISODE (audit round 2, p-impatient-11).
+     Deletion is by key insertion order — the oldest remembered first — and the
+     oldest remembered are the HEAD of Up Next, the rows about to play. With a
+     long Up Next and a full History the keep set passes the cap, and the front
+     of the queue turned into "not available right now" on the next add. History
+     keys are what the cap is for (the ring rotates them out anyway); a queued
+     key is pruned only by leaving Up Next. */
+  const ids = Object.keys(next).filter(k => !queued.has(k) && k !== id);
+  for (const k of ids.slice(0, Math.max(0, Object.keys(next).length - EPISODE_SNAPS_CAP))) delete next[k];
   lsSet(EPISODE_SNAPS_KEY, next);
 }
 
@@ -2067,31 +2138,36 @@ function setPlayList(ids, playedId = null) {
 
 function isPlayableId(id) { return Boolean(liveEpisode(id)?.audio_url); }
 
+/* ---------- the Up Next model (founder question 9, audit round 2) ----------
+
+   UP NEXT IS A LIST YOU MOVE DOWN, NEVER AROUND (Apple's model). Playing row k
+   — from the page's ▶, or by skipping ⏭ to it — removes rows 1..k-1: the
+   listener went past them, and they do not come back. The first version kept
+   them ("still unheard, or it would have left") and re-served them after the
+   last row: with five queued, abandoning row 1 for row 2 meant row 1 played
+   AGAIN when row 5 ended (p-impatient-7), and the queue page could not say so.
+   A row reordered ABOVE the playing one while it plays is different: nobody
+   skipped it, they put it there, so at the natural end it is what plays next.
+   `docs/DECISIONS.md` (2026-09-23, the Up Next model) records the ruling. */
+
 /**
  * What plays after `finishedId`, with no writes: `{ nextId, rest, fromList }`.
  * `rest` is Up Next with the finished episode removed (or null when it was not
  * queued) — the caller saves it. Shared by the end of an episode and by the
- * steering wheel's skip, which must agree on what "next" is.
+ * steering wheel's skip, which must agree on what "next" is; `skipped` is the
+ * one place they differ (the model above: a skip also drops the rows above).
  *
  * UP NEXT FIRST, THEN THE LIST. The list continues only when the episode that
  * ended belongs to this chain (`state.playChainId`: started by bindPlay from the
  * list, or by an advance), so an episode started from somewhere with no list
  * (a timestamp, the restored bar) does not resume a list from an earlier visit.
  */
-function planAfterEnded(finishedId) {
+function planAfterEnded(finishedId, { skipped = false } = {}) {
   const queued = queueIds();
   const at = queued.indexOf(finishedId);
   let rest = null;
-  let fromQueue;
-  if (at >= 0) {
-    rest = queued.filter(x => x !== finishedId);
-    /* The row that took its place first, then anything above it the listener
-       skipped past — every one of them is still unheard, or it would have left. */
-    fromQueue = rest.slice(at).concat(rest.slice(0, at));
-  } else {
-    fromQueue = queued;
-  }
-  const queuedNext = fromQueue.find(isPlayableId);
+  if (at >= 0) rest = skipped ? queued.slice(at + 1) : queued.filter(x => x !== finishedId);
+  const queuedNext = (rest || queued).find(isPlayableId);
   if (queuedNext) return { nextId: queuedNext, rest, fromList: false };
   const list = state.playList || [];
   const onChain = Boolean(finishedId) && finishedId === state.playChainId;
@@ -2103,8 +2179,8 @@ function planAfterEnded(finishedId) {
 
 /** What plays after `finishedId`, or null. Applies the plan's one write (the
     finished episode leaves Up Next) and moves the chain on to the pick. */
-function nextAfterEnded(finishedId) {
-  const plan = planAfterEnded(finishedId);
+function nextAfterEnded(finishedId, opts) {
+  const plan = planAfterEnded(finishedId, opts);
   if (plan.rest) saveQueueIds(plan.rest);
   if (plan.nextId) {
     state.playChainId = plan.nextId;
@@ -2113,33 +2189,66 @@ function nextAfterEnded(finishedId) {
   return plan.nextId;
 }
 
+/** A tap on row k of the Up Next page started playing: rows 1..k-1 leave (the
+    model above). Called from bindPlay once the play has been accepted, so a
+    refused play removes nothing. The played row stays until it ends — that is
+    what "the finished episode leaves Up Next" has always meant. */
+function playedFromUpNext(id) {
+  const ids = queueIds();
+  const at = ids.indexOf(id);
+  if (at > 0) saveQueueIds(ids.slice(at));
+  else noteQueuePlaybackMoved();
+}
+
+/** The `data-ctx` an Up Next row's ▶ carries, so bindPlay can tell a play
+    started from the page that OWNS the list from one started anywhere else. */
+const UP_NEXT_CTX = "upnext";
+
 /**
  * The steering wheel's next/previous for an ordinary episode (review
- * 2026-09-23). The player's surface asks `ForayPlayer.setEpisodeNavigation`'s
- * object at the moment it installs the lock-screen actions, and nothing ever
- * called it, so the car's skip stayed greyed out with a full Up Next. GETTERS,
- * so every install reads the list as it is now: `next` exists exactly when
- * `planAfterEnded` has something to play, and `previous` when the episode is a
- * row of the chosen list with a playable row before it.
+ * 2026-09-23), and the sheet's own ⏭, Up Next link and Save (audit round 2,
+ * p-impatient-7 / p-switcher-5). The player's surface asks
+ * `ForayPlayer.setEpisodeNavigation`'s object at the moment it installs the
+ * lock-screen actions and paints the sheet, and nothing ever called it, so the
+ * car's skip stayed greyed out with a full Up Next. GETTERS, so every install
+ * reads the list as it is now: `next` exists exactly when `planAfterEnded` has
+ * something to play.
+ *
+ * PREVIOUS IS ALWAYS THERE FOR AN EPISODE, and it means what it means in every
+ * podcast player and on the Foray's own previous (audit round 2, p-car-5):
+ * restart, unless we are within the restart window of the start AND the chosen
+ * list has a playable row before this one — then that row. It used to be the
+ * previous row or nothing, so forty minutes into episode 3 a driver's ◀◀ landed
+ * at the start of episode 2, and an episode started from the mini bar or Jump
+ * back in had a dead button. The window is the player's (`RESTART_WINDOW_SEC`
+ * in player/client.js, read through `previousMeansRestart`), not a second copy.
  */
 const EPISODE_NAVIGATION = {
   get next() {
     const cur = window.ForayPlayer?.currentEpisodeId?.();
-    if (!cur || !planAfterEnded(cur).nextId) return null;
+    if (!cur || !planAfterEnded(cur, { skipped: true }).nextId) return null;
     return () => playNextAfter(cur, "skip");
   },
   get previous() {
     const cur = window.ForayPlayer?.currentEpisodeId?.();
-    const list = state.playList || [];
-    const i = cur ? list.indexOf(cur) : -1;
-    const prev = i > 0 ? list.slice(0, i).reverse().find(isPlayableId) : null;
-    if (!prev) return null;
+    if (!cur) return null;
     return () => {
+      const list = state.playList || [];
+      const i = list.indexOf(cur);
+      const prev = i > 0 ? list.slice(0, i).reverse().find(isPlayableId) : null;
+      const restart = window.ForayPlayer.previousMeansRestart?.() !== false;
+      if (!prev || restart) return window.ForayPlayer.seekTo?.(0);
       state.playChainId = prev;
       state.playListCursor = prev;
       return startChained(prev, "skip");
     };
   },
+  /* The sheet's three staples (founder question 10: link and Save now, the
+     sleep timer parked). Read by player/client.js's row2 paint; the page owns
+     Up Next and the stars, the player owns the sheet. */
+  get upNextCount() { return queueIds().length; },
+  isSaved(id) { return isSaved(id); },
+  toggleSaved(id) { toggleStar(id); return isSaved(id); },
 };
 
 /** Tell the player the answer changed (a play, an Up Next edit), so the OS
@@ -2165,7 +2274,9 @@ function advanceQueueOnEnded(id) {
 /** Play whatever follows `id` — the end of an episode, or the car's skip. */
 function playNextAfter(id, ctx) {
   if (!window.ForayPlayer) return;
-  const nextId = nextAfterEnded(id);
+  /* A skip drops the rows above the current one too (the Up Next model); the
+     natural end of an episode drops only the episode. */
+  const nextId = nextAfterEnded(id, { skipped: ctx === "skip" });
   refreshEpisodeNavigation();
   if (!nextId) return;
   return startChained(nextId, ctx);
@@ -2191,6 +2302,8 @@ function startChained(nextId, ctx) {
       if (!ok) return;
       logEvent("play_started", { episode_id: nextId, topics: nextItem.topics || [], ctx });
       recordHistory(nextId);
+      /* The Up Next page, if showing, marks the row that is now current. */
+      noteQueuePlaybackMoved();
       trySyncEvents();
     }, (err) => {
       /* A THROW SAYS SO, as bindPlay's does (review 2026-09-23): this used to
@@ -4560,6 +4673,9 @@ function bindPlay(scope) {
       }
       logEvent("play_started", { episode_id: id, topics: item.topics || [] });
       recordHistory(id);
+      /* A play from the Up Next page moves down the list (the Up Next model,
+         § continuous playback): the rows above the tapped one leave. */
+      if (btn.dataset.ctx === UP_NEXT_CTX) playedFromUpNext(id);
       /* Same "playlist-<id>" convention and the same regex bindPickLogging
          already applies to a picked link's data-ctx — bindPlay is the in-app
          play button, the PRIMARY control on every live playlist row, and it
@@ -8071,7 +8187,13 @@ function notPlayableNote() {
    episode is the one action that makes it permanently recoverable. It works
    because renderPlaylistDetail seeds the snapshot into `state.itemIndex`, which
    toggleStar requires; an `unnamed` part has no snapshot to store, so it gets no
-   star. */
+   star.
+
+   NO "+ Up Next" (audit round 2, p-impatient-10). It had one from Stage 1, when
+   the row still linked out to another app; #452 removed the link-out and the
+   button stayed, offering to queue an episode the same row says cannot play.
+   `addToQueue` refuses such an id anyway; not drawing the control is what keeps
+   the row from promising it. */
 function archivedRow(item, idx, ctx) {
   const named = !!item.title;
   const unavailable = named ? notPlayableNote() : "";
@@ -8084,7 +8206,7 @@ function archivedRow(item, idx, ctx) {
         ? joinMeta(showNameLink(item.show), fmtDur(item.duration_min), esc(dateStr))
         : "Saved before 4a kept episode details"}</div>
     </div>
-    ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${unavailable}
+    ${named ? starBtn(item.id) : ""}${unavailable}
   </div>`;
 }
 
@@ -8145,9 +8267,13 @@ function renderPlaylistDetail(id) {
      — so neither can regress when the 200-entry history ring rotates an
      episode out (audit 2026-09-22). */
   const nextIdx = rows.findIndex(r => r.state === "live" && !hasOpened(r.item.id, history));
-  /* Played is an opened-or-not question, not a liveness one: a part played before
-     it aged out stays played, and so does an unnamed one whose id is in history. */
-  const played = rows.filter(r => hasOpened(r.item.id, history)).length;
+  /* "PLAYED" MEANS FINISHED, the same word the rows use (audit round 2,
+     honesty-6). This counted `hasOpened` — history OR any stored position — so a
+     playlist read "2 played" above rows that said "31 min left" and nothing at
+     all: one screen, two definitions. The count now reads the player's own
+     verdict (`rowProgress`, state "played") per row, so the header and the row
+     labels cannot disagree; `hasOpened` stays what the next-up marker asks. */
+  const played = rows.filter(r => rowProgress(r.item)?.state === "played").length;
   const ctx = (p.isSubject ? "subject-" : (p.isGenerated ? "generated-" : "playlist-")) + p.id;
 
   $("#view").innerHTML = `
@@ -8473,13 +8599,19 @@ function renderEpisode(id) {
     try { fullPool(); } catch (_) { /* catalogue not really there yet */ }
   }
   const dateStr = fmtDate(item.release_date);
+  /* The row's "Played" / "NN min left" follows the listener onto the page
+     (audit round 2, honesty-5): it used to vanish on the way in. */
+  const prog = rowProgress(item);
+  const progHtml = prog && prog.label
+    ? `<span class="ep-progress${prog.state === "played" ? " is-played" : ""}">${esc(prog.label)}</span>`
+    : "";
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
         <div>
           <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
-          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show) : "", fmtDur(item.duration_min), esc(dateStr))}</p>
+          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show) : "", fmtDur(item.duration_min), esc(dateStr), progHtml)}</p>
         </div>
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
@@ -8548,14 +8680,30 @@ function upNextRow(r, idx, total) {
   const { item, id, state } = r;
   const named = state !== "unnamed";
   const playable = state === "live";
-  const inApp = playable ? playBtn(item) : "";
+  /* `UP_NEXT_CTX` on the ▶, so bindPlay knows a play from THIS page drops the
+     rows above it (the Up Next model, § continuous playback). */
+  const inApp = playable ? playBtn(item, UP_NEXT_CTX) : "";
   const title = named ? esc(item.title) : "Episode no longer available";
+  /* The same "Played" / "NN min left" mark every other episode row carries
+     (audit round 2, honesty-5): a half-finished queued episode looked fresh. */
+  const prog = playable ? rowProgress(item) : null;
+  const progHtml = prog && prog.label
+    ? `<span class="ep-progress${prog.state === "played" ? " is-played" : ""}">${esc(prog.label)}</span>`
+    : "";
+  /* One sentence for the unnamed state, and it is about THIS page (copy-9): it
+     used to say "Removed from your history", on a page that is not History,
+     about an id that is still right there in the list. */
   const sub = state === "live"
-    ? joinMeta(esc(item.show || ""), fmtDur(item.duration_min))
+    ? joinMeta(esc(item.show || ""), fmtDur(item.duration_min), progHtml)
     : state === "archived"
       ? joinMeta(esc(item.show || ""), fmtDur(item.duration_min), "not available right now")
-      : "Removed from your history — no details saved";
-  return `<div class="ep-row up-next-row ${playable ? "" : "gone"}">
+      : "4a no longer has this episode's details";
+  /* `.is-current` names the row the bar is on — playing OR paused — which the
+     ❚❚ glyph alone signalled before (p-impatient-6). Repainted by
+     `noteQueuePlaybackMoved` when playback moves. */
+  let isCurrent = false;
+  try { isCurrent = !!window.ForayPlayer?.isCurrent?.(id); } catch (_) { /* no player yet */ }
+  return `<div class="ep-row up-next-row ${playable ? "" : "gone"}${isCurrent ? " is-current" : ""}"${isCurrent ? ' aria-current="true"' : ""}>
     <span class="q-num">${idx + 1}</span>
     <div class="info">
       <div class="t">${title}</div>
@@ -8579,8 +8727,8 @@ function upNextRow(r, idx, total) {
    now under it belonged to the episode that had just moved DOWN — three fast
    taps shuffled three different episodes one place each.
 
-   The render stays (it is the honest way to repaint a reordered list); what
-   follows it is new. Focus goes to the same episode's button in its new row
+   The render is `saveQueueIds`'s now (the page is a live view of the list, see
+   `repaintQueuePage`); what follows it is this. Focus goes to the same episode's button in its new row
    (the other arrow once it reaches an end, where its own is disabled), the
    page scrolls by exactly how far that button moved so it lands back under
    the finger, and the new position is announced. A remove focuses the ✕ of
@@ -8627,8 +8775,9 @@ function bindUpNextReorder(scope) {
       e.preventDefault(); e.stopPropagation();
       const id = btn.dataset.reorderUp;
       const top = buttonTop(btn);
+      /* The repaint is `saveQueueIds`'s (the page is a live view of the list);
+         these handlers only write, then put the listener back where they were. */
       moveQueueItem(id, -1);
-      renderQueue();
       afterQueueMove(id, -1, top);
     });
   });
@@ -8640,7 +8789,6 @@ function bindUpNextReorder(scope) {
       const id = btn.dataset.reorderDown;
       const top = buttonTop(btn);
       moveQueueItem(id, 1);
-      renderQueue();
       afterQueueMove(id, 1, top);
     });
   });
@@ -8651,7 +8799,6 @@ function bindUpNextReorder(scope) {
       e.preventDefault(); e.stopPropagation();
       const index = queueIds().indexOf(btn.dataset.dequeue);
       removeFromQueue(btn.dataset.dequeue);
-      renderQueue();
       afterQueueRemove(Math.max(0, index));
     });
   });
