@@ -529,3 +529,27 @@ test("clearing the query restores the full loaded list", async () => {
   container = m.viewEl.querySelector("[data-show-episodes]");
   assert.ok(container.innerHTML.includes("Alpha") && container.innerHTML.includes("Bravo") && container.innerHTML.includes("Charlie"), "clearing the query must restore every loaded episode");
 });
+
+test("REVIEW: a search still debouncing when the listener leaves does not rewrite the next page's address", async () => {
+  /* The 250 ms timer survived the navigation, and runSearch's first statement
+     rewrote the address: tap Home within 250 ms of typing and Home's entry
+     became `#/show/show-a/q/ai`. MUTATION: drop the `isCurrentRender()` guard
+     at the top of runSearch. */
+  const episodes = makeEpisodes(3, { titles: ["Alpha", "Bravo", "Charlie"] });
+  const m = mount({ responses: [pageResponse(episodes, { cursor: null })] });
+  seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] } });
+  const rewrites = [];
+  m.ctx.history.replaceState = (_s, _t, url) => { rewrites.push(String(url)); };
+  m.ctx.location.hash = "#/show/show-a";
+  m.ctx.renderShow("show-a");
+  await flushMicrotasks();
+
+  const input = m.viewEl.querySelector("[data-show-ep-search-input]");
+  input.type("ai");
+  vm.runInContext("renderEpoch++", m.ctx);      // the Home tab: a new page renders
+  m.ctx.location.hash = "#/";
+  await waitForSearchDebounce();
+
+  assert.deepStrictEqual(rewrites, [], "nothing may rewrite the page the listener moved to");
+  assert.strictEqual(m.ctx.location.hash, "#/");
+});

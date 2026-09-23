@@ -4015,6 +4015,12 @@ function renderShow(show_id, initialQuery = "") {
      from a superseded query clobbering a newer one's results, same pattern
      showSearchToken uses for the Shows-page search above. */
   function runSearch() {
+    /* NOT ON A PAGE THE LISTENER HAS LEFT (review 2026-09-23). The debounce
+       timer outlives a navigation, and the rewrite below would stamp this
+       show's address onto the entry of whatever page they moved to — Home on
+       screen, `#/show/<id>/q/ai` in the address, and a reload opening the
+       show. Checked first, before anything writes. */
+    if (!isCurrentRender()) return;
     const query = searchQuery;
     /* The address follows the search, in place — no history entry per
        keystroke, and ‹ still leaves the page in one step. */
