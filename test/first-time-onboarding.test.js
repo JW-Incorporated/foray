@@ -640,8 +640,10 @@ function seedHomeForRedeal(m) {
 }
 const homeHtml = (m) => m.byId.get("view").innerHTML;
 const dealtRoots = (html) => [...html.matchAll(/class="mini-card" data-branch="([^"]+)"/g)].map((mm) => mm[1]);
+/* Typographic quotes since audit round 2 (copy-8): every quoted listener
+   string goes through app.js's one `quoteQuery` helper. */
 const leadEpisode = (html, root) =>
-  (new RegExp(`data-branch="${root}"[\\s\\S]*?Starts with "([^"]+?)\\.?"`).exec(html) || [])[1];
+  (new RegExp(`data-branch="${root}"[\\s\\S]*?Starts with \\u201c([^\\u201d]+?)\\.?\\u201d`).exec(html) || [])[1];
 
 /** Renders the first Home of the session (which deals cardSlots and opens the
     sheet over it) and returns the four dealt subjects, stretch slot first. */

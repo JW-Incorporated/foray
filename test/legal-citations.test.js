@@ -321,7 +321,7 @@ test("no legal document cites code by line number", () => {
     offenders, [],
     "a line number cannot be kept true by anyone. Cite a declared symbol " +
       "instead — `app.js:toEventRow()`, `app.js:SB_ARCHETYPES`, " +
-      "`app.js:#pl-input`:\n" + offenders.join("\n")
+      "`app.js:#cr-input`:\n" + offenders.join("\n")
   );
 });
 
@@ -485,7 +485,7 @@ const LOAD_BEARING = [
   "app.js:FB_CHIPS",
   "app.js:bindFeedback()",
   "app.js:#fy-sheet-note",
-  "app.js:#pl-input",
+  "app.js:#cr-input",
   // the answers that turn on local-only storage
   "app.js:profileId()",
   "app.js:storageBackend()",
@@ -890,7 +890,7 @@ test("the two input length caps the documents quote are the shipped ones", () =>
     return m[1];
   };
   const doc = read("docs/legal/data-safety.md");
-  for (const [id, where] of [["pl-input", "In-app search history"],
+  for (const [id, where] of [["cr-input", "In-app search history"],
     ["fy-sheet-note", "Other user-generated content"]]) {
     const cap = capOf(id);
     assert.ok(
