@@ -251,17 +251,33 @@ function sessionRow({ expired = false, refresh = "rt-1" } = {}) {
  * @param {object} [opts.tier]      fakeIdb options (deaf / unreadable)
  * @param {boolean} [opts.noStore]  publish no DurableStore at all (a page whose
  *   player module never loaded), so only raw localStorage is reachable
+ * @param {object[]} [opts.events]   rows already in the event queue
+ * @param {object|false} [opts.eventLog]  replace the REAL event queue
+ *   (`player/event-log.js`, memory-backed) with a fake, or `false` for none.
+ *   `player/client.js` publishes the queue beside the store, so a harness with a
+ *   store and no queue is modelling a page that cannot exist — which is how the
+ *   queue went unpurged with this suite green (2026-09-22 audit).
  */
 async function mount({
   seed = {}, localOnly = {}, idbOnly = {}, reply = null, tier = {},
   noStore = false, player = undefined, boot = false, noLocalStorage = false,
+  events = [], eventLog = undefined,
 } = {}) {
   const { createDurableStore } = await import("../player/durable-store.js");
+  const { createEventLog } = await import("../player/event-log.js");
   const log = [];
 
   const local = fakeLocal({ ...seed, ...localOnly });
   const idb = fakeIdb({ ...seed, ...idbOnly }, { ...tier, log });
   const store = noStore ? null : createDurableStore({ localStorage: local, idbTier: idb });
+  /* Published with the store or not at all, the way client.js does it. */
+  let queue = null;
+  if (eventLog !== undefined) queue = eventLog || null;
+  else if (!noStore) queue = createEventLog({ indexedDB: null, scheduleFlush: () => {} });
+  if (queue && events.length && typeof queue.append === "function") {
+    for (const row of events) queue.append(row);
+    await queue.unsynced();                     // flushed, like a row from yesterday
+  }
 
   const fetchImpl = (url, opts = {}) => {
     const method = (opts.method || "GET").toUpperCase();
@@ -333,6 +349,7 @@ async function mount({
     fetch: fetchImpl,
     ...(noLocalStorage ? {} : { localStorage: local }),
     ...(store ? { forayStorage: store } : {}),
+    ...(queue ? { forayEventLog: queue } : {}),
     document: {
       body: dom.body,
       documentElement: dom.body,
@@ -399,7 +416,7 @@ async function mount({
   });
   const deletes = () => log.filter((e) => e.kind === "fetch" && e.method === "DELETE");
 
-  return { ctx, dom, ui, log, local, idb, store, arm, cpKeys, deletes };
+  return { ctx, dom, ui, log, local, idb, store, queue, arm, cpKeys, deletes };
 }
 
 /* ================= 1. enumeration, not a list ================= */
@@ -1234,4 +1251,142 @@ test("a localStorage that ACCEPTS a remove and keeps the row is reported, key by
   // not this realm's Array and deepStrictEqual compares prototypes.
   assert.deepStrictEqual([...result.local.remaining].sort(), ["cp_interests", "cp_seen"]);
   assert.match(ui.status.textContent, /NOT fully clear/);
+});
+
+/* ================= 10. the event queue, and every other store (2026-09-22 audit) =================
+
+   The enumeration in section 1 covers the `cp_` namespace. The outbound event
+   queue left that namespace in M3 for its own IndexedDB database, and the
+   control kept saying "This device is clear" while every event row survived
+   there — then uploaded the unsynced ones under the new anonymous account the
+   next launch mints. These pin the queue into the deletion, and pin EVERY store
+   the shipped code opens into a ledger, so a fourth one cannot arrive without
+   someone deciding whether "Delete my data" must reach it. */
+
+const QUEUED = [
+  { type: "picked", payload: { episode_id: "ep-1", topics: ["food"] } },
+  { type: "position", payload: { episode_id: "ep-1", seconds: 812, duration: 3600 } },
+];
+
+test("the event queue is emptied too — no row survives to be sent under a new account", async () => {
+  /* MUTATION THAT KILLS THIS: delete the `clearEventLog()` call from
+     `clearLocalData` — red, both rows still queued and the sheet saying clear. */
+  const { arm, ui, ctx, queue } = await mount({ seed: { cp_interests: "{}" }, events: QUEUED });
+  assert.strictEqual((await queue.unsynced()).length, 2, "premise: the queue holds rows");
+  await arm();
+  const result = await ctx.deleteMyData();
+  assert.strictEqual(result.ok, true, JSON.stringify(result.local));
+  assert.deepStrictEqual(await queue.unsynced(), [], "event rows survived Delete my data");
+  assert.match(ui.status.textContent, /This device is clear/);
+});
+
+test("a queue that will not clear makes the device NOT clear, said in plain words", async () => {
+  const stubborn = {
+    append() {}, async unsynced() { return []; }, async markSynced() {}, async pruneToRetention() {},
+    health() { return { ok: false }; },
+    async purge() { return { ok: false, remaining: 3 }; },
+  };
+  const { arm, ui, ctx, cpKeys } = await mount({ seed: { cp_interests: "{}" }, eventLog: stubborn });
+  await arm();
+  const result = await ctx.deleteMyData();
+  assert.strictEqual(result.ok, false, "a surviving queue is not a clear device");
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "the cp_ keys were still cleared");
+  assert.match(ui.status.textContent, /NOT fully clear/);
+  assert.match(ui.status.textContent, /record of what you played/);
+});
+
+test("a page with a store and no queue does not claim the queue is gone", async () => {
+  const { arm, ctx } = await mount({ seed: { cp_interests: "{}" }, eventLog: false });
+  await arm();
+  const result = await ctx.deleteMyData();
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.local.events.reason, "no-event-log");
+});
+
+test("no status line speaks storage jargon or quotes a count it cannot stand behind", async () => {
+  /* The audit's line: "This device is NOT fully clear. 0 key(s) would not
+     clear." — a count that could be zero while the sentence said something
+     failed, a lazy plural, and a word ("key") no listener uses. The same goes
+     for an error class name. The numbers stay in the result for diagnostics. */
+  const { ctx } = await mount();
+  const remote = { ok: true, attempted: true, deleted: 8 };
+  const locals = [
+    { ok: false, remaining: [] },
+    { ok: false, remaining: ["cp_a", "cp_b"] },
+    { ok: false, remaining: [], unverified: [{ tier: "idb", phase: "after", reason: "x" }] },
+    { ok: false, reason: "purge-failed", error: "InvalidStateError" },
+    { ok: false, reason: "no-durable-tier", remaining: ["cp_a"] },
+    { ok: false, remaining: [], events: { ok: false, remaining: 4 } },
+  ];
+  for (const local of locals) {
+    const msg = ctx.deletionMessage({ state: "local-incomplete", remote, local });
+    assert.match(msg, /NOT fully clear/, msg);
+    // `\b\d+\b` rather than `\d`: the app's own name is "4a".
+    assert.ok(!/\bkeys?\b|\(s\)|\btier\b|durable|Error\b|\b\d+\b/.test(msg), `developer words or a count: ${msg}`);
+    for (const sentence of msg.split(/(?<=[.!?])\s+/)) {
+      assert.ok(sentence.trim().split(/\s+/).length <= 18, `over budget: "${sentence}"`);
+    }
+  }
+});
+
+/**
+ * Every client-side store the shipped code can open, found in the source rather
+ * than typed from memory: IndexedDB databases by their `*DB_NAME` constants, and
+ * Cache Storage buckets by resolving the constant each `caches.open(...)` call
+ * names to its string in the same file. An argument that is not an upper-case
+ * constant must be built from one (sw.js's `name = CACHE_PREFIX + deployId`),
+ * which the constant scan already covers.
+ */
+function storesInSource() {
+  const found = new Set();
+  for (const rel of shippedSources()) {
+    const src = codeOnly(read(rel));
+    for (const m of src.matchAll(/\b\w*DB_NAME\s*=\s*"([^"]+)"/g)) found.add(`idb:${m[1]}`);
+    for (const m of src.matchAll(/caches\.open\(\s*([A-Z][A-Z0-9_]*)/g)) {
+      const value = new RegExp(`\\bconst\\s+${m[1]}\\s*=\\s*"([^"]+)"`).exec(src);
+      found.add(value ? `cache:${value[1]}` : `cache:<unresolved ${rel}:${m[1]}>`);
+    }
+  }
+  return found;
+}
+
+/* The ledger. `deleted` stores are cleared by the control, and the tests above
+   prove it; `kept` stores must say why they hold nothing about the listener. */
+const STORE_LEDGER = {
+  "idb:foray": { deleted: "every cp_ key — DurableStore.purge(), section 1" },
+  "idb:foray_events": { deleted: "the outbound event queue — event-log purge(), section 10" },
+  "idb:foray-directory": { kept: "the published Foray documents, identical for every listener" },
+  "cache:foray-shows-index-v1": { kept: "the public show-search index shards" },
+  "cache:foray-gen-": { kept: "the app shell and catalogue files (sw.js)" },
+  "cache:foray-pointer": { kept: "which app-shell generation is current (sw.js)" },
+  "cache:foray-pending": { kept: "an app-shell generation mid-install (sw.js)" },
+};
+
+test("every store the app opens is in the deletion ledger, deleted or kept for a stated reason", () => {
+  /* MUTATION THAT KILLS THIS: add `export const DB_NAME = "foray_playlists";` to
+     any player module — red until the ledger decides whether the control must
+     reach it. */
+  const inCode = [...storesInSource()].sort();
+  const inLedger = Object.keys(STORE_LEDGER).sort();
+  assert.deepStrictEqual(
+    inCode, inLedger,
+    "a client-side store exists that the deletion ledger does not account for " +
+      "(or the ledger names one the code no longer opens). Decide whether Delete " +
+      `my data must clear it.\n  code:   ${inCode.join(", ")}\n  ledger: ${inLedger.join(", ")}`
+  );
+  // Only two files may open IndexedDB at all; a third would name its database
+  // somewhere this scan cannot see.
+  const openers = shippedSources().filter((rel) => /\b(factory|indexedDB)\.open\(/.test(codeOnly(read(rel))));
+  assert.deepStrictEqual(openers.sort(), ["player/event-log.js", "player/idb-tier.js"]);
+  // And nothing keeps listener state where neither enumeration looks.
+  for (const rel of shippedSources()) {
+    assert.ok(!/\bsessionStorage\b|document\.cookie/.test(codeOnly(read(rel))), `${rel} stores state outside the ledger`);
+  }
+});
+
+test("the privacy policy says Delete my data clears the event queue", () => {
+  const pp = read("docs/legal/privacy-policy.md");
+  const s7 = /## 7\. How to delete your data([\s\S]*?)\n## 8\./.exec(pp)[1];
+  assert.match(s7, /foray_events/, "§7 does not say the event queue is deleted");
+  assert.ok(!/outside "Delete my data"/.test(pp), "§1 still says the queue is outside the control");
 });

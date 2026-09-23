@@ -9537,7 +9537,17 @@ function ensureInterestsDrawerLink() {
         this file: the audit behind `docs/legal/privacy-policy.md` found **20**
         keys where every earlier count said 11, two of them patterned
         (`cp_foray:<id>`, `cp_pos:<id>`), and a list typed here would rot exactly
-        the way that count did.
+        the way that count did. In the native app the Preferences tier is a third
+        tier, and `purge()` reaches it the same way.
+     1b. THE EVENT QUEUE, which is NOT a `cp_` key: M3 moved it into its own
+        IndexedDB database (`foray_events`, `player/event-log.js`), outside the
+        enumeration above. Until the 2026-09-22 audit this control said "This
+        device is clear" while every event row survived there — episode ids,
+        positions, the old profile id — and the unsynced ones were then uploaded
+        under the NEW anonymous account the next launch mints. `clearEventLog()`
+        purges it and re-reads it, and its answer is folded into `ok`.
+        `test/data-deletion.test.js` enumerates every database and cache the
+        shipped code opens, so a third store cannot appear unaccounted for.
      2. THE SERVER ROWS. Every per-user table's row-level-security policy is
         `for all` (`backend/migrations/supabase/0001_auth_and_rls.sql`), so this
         client can delete its own rows under its own `auth.uid()`. It was a
@@ -9665,17 +9675,18 @@ async function deleteRemoteData() {
 }
 
 /**
- * Clear both local tiers.
+ * Clear everything this device holds about the listener: the event queue
+ * (`clearEventLog`) and every `cp_` key in every tier (`clearStoredKeys`).
  *
- * The real work is `DurableStore.purge()`, which enumerates the tiers rather
- * than the facade and verifies afterwards. The fallback below matters and is not
+ * The real work for the keys is `DurableStore.purge()`, which enumerates the tiers rather
+ * than the facade and verifies afterwards. The fallback in `clearStoredKeys` matters and is not
  * decoration: app.js and `player/client.js` deploy independently through the
  * service worker, so a page can be running with no store published — and then
  * `localStorage` is reachable and IndexedDB is not. That case reports `ok: false`
  * with a reason, because a cleared mirror is not cleared storage.
  */
 async function clearLocalData() {
-  /* FIRST, AND HERE RATHER THAN IN `stopForDataDeletion()` (#264). `purge()` empties
+  /* FIRST, before any await, AND HERE RATHER THAN IN `stopForDataDeletion()` (#264). `purge()` empties
      both tiers of every `cp_` key including `cp_diag`, but the player module holds
      that ring IN MEMORY — so without this the next time the listener pockets their
      phone, the record is written straight back under a key they just asked to be
@@ -9686,6 +9697,39 @@ async function clearLocalData() {
     if (typeof window.forayForgetDiagnostics === "function") window.forayForgetDiagnostics();
   } catch (_) { /* a diagnostic that will not clear is not a reason to refuse a deletion */ }
 
+  /* The pre-module buffer (`logEvent` before `window.forayEventLog` exists) is
+     event rows in memory, and `flushBufferedEvents()` would hand them to the
+     queue this function is about to empty. */
+  _bufferedEvents = [];
+  const events = await clearEventLog();
+  const local = await clearStoredKeys();
+  /* One `ok` for the whole device. A clear `cp_` namespace beside a surviving
+     event queue is exactly the false "This device is clear" this replaced. */
+  return { ...local, ok: Boolean(local.ok) && Boolean(events.ok), events };
+}
+
+/**
+ * Empty the outbound event queue (`player/event-log.js`, database
+ * `foray_events`) and report whether the re-read found it empty.
+ *
+ * With no queue published there is nothing this page can open to check, and
+ * that is reported as not-done rather than assumed done: the queue and the
+ * store arrive together from `player/client.js`, so its absence means the
+ * module did not load, which `clearStoredKeys` reports too.
+ */
+async function clearEventLog() {
+  const log = window.forayEventLog;
+  if (!log || typeof log.purge !== "function") return { ok: false, remaining: null, reason: "no-event-log" };
+  try {
+    const out = await log.purge();
+    return out && typeof out === "object" ? out : { ok: false, remaining: null, reason: "no-answer" };
+  } catch (err) {
+    return { ok: false, remaining: null, reason: "purge-failed", error: errLabel(err) };
+  }
+}
+
+/** Every `cp_` key in every tier — see `DurableStore.purge()`. */
+async function clearStoredKeys() {
   const store = storageBackend();
   if (!store) return { ok: false, keys: [], remaining: [], reason: "no-storage" };
   if (typeof store.purge === "function") {
@@ -9741,6 +9785,10 @@ function errLabel(err) {
  */
 function deletionMessage(result) {
   const { state, remote, local } = result;
+  /* No storage vocabulary reaches the listener here — no "key", no "tier", no
+     error class. Those are in `result.local` for diagnostics. The audit found
+     this line reading "0 key(s) would not clear.": a count that could be zero
+     while the sentence said something failed, in a word nobody uses. */
   if (state === "unconfirmed") return "Type DELETE to confirm.";
   if (state === "busy") return "Deleting…";
   if (state === "remote-failed") {
@@ -9752,14 +9800,26 @@ function deletionMessage(result) {
       ? "No account token was on this device, so no server rows were reachable."
       : "Your rows on our server are deleted.";
   if (local && local.ok) return `Done. ${server} This device is clear.`;
-  const why = local && local.reason === "no-durable-tier"
-    ? "The durable copy is out of reach. Reload and try again."
-    : local && local.reason === "no-storage"
-      ? "This browser has taken storage away."
-      : local && local.reason === "purge-failed"
-        ? `Storage refused the delete (${local.error || "error"}).`
-        : `${(local && local.remaining ? local.remaining.length : 0)} key(s) would not clear.`;
-  return `${server} This device is NOT fully clear. ${why}`;
+  return `${server} This device is NOT fully clear. ${deviceNotClearReason(local)}`;
+}
+
+/** Why the device is not clear, in the listener's words: the first reason that
+    applies, and always something to do next where there is one. */
+function deviceNotClearReason(local) {
+  const reason = local && local.reason;
+  if (reason === "no-storage") return "This browser has taken storage away.";
+  if (reason === "no-durable-tier") return "Part of this device's storage is out of reach. Reload and try again.";
+  if (reason === "purge-failed") return "Storage refused the delete. Reload and try again.";
+  if (local && Array.isArray(local.unverified) && local.unverified.length) {
+    return "Storage could not be checked afterwards. Reload and try again.";
+  }
+  if (local && Array.isArray(local.remaining) && local.remaining.length) {
+    return "Some of what 4a saved here would not clear. Reload and try again.";
+  }
+  if (local && local.events && !local.events.ok) {
+    return "The record of what you played here would not clear. Reload and try again.";
+  }
+  return "Some of what 4a saved here would not clear. Reload and try again.";
 }
 
 /* The sheet and the drawer button are built in JavaScript rather than written
@@ -9781,7 +9841,7 @@ function ddEl(tag, cls, text) {
 /** What the control covers and what it cannot. Every line is read by a listener,
     so every line is inside the copy budget (CLAUDE.md principle 4). */
 const DD_COVERS = [
-  "This device: every 4a key, in both storage layers.",
+  "This device: everything 4a stored here, including the record of what you played.",
   "Our server: the events this device sent, and its account rows.",
   "Your anonymous account row stays. It holds no name, email or phone number.",
   "Publisher and ad hosts saw your IP as audio played. We cannot delete that.",

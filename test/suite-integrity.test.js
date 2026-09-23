@@ -107,7 +107,7 @@ const FLOORS = {
      spaces (durable + fallback ring), and the two behaviours the design
      calls out by name — quota exhaustion (not lost, surfaced via health(),
      never thrown) and the 5,000-row retention cap. */
-  "player/event-log.test.js": 20,
+  "player/event-log.test.js": 36, // 2026-09-22 audit (theme J, R11): purge() empties the buffer, the ring and IndexedDB and re-reads to prove it; a deaf store and a refused clear are failures, never throws. The suite already stood at 32 against 20, so this closes that slack too; 20 -> 36
   /* 83 -> 87 with #225: the page's two failure guards now reach the field record.
      Two of the four exist to keep the instrument from becoming the outage it was
      built to explain — one pins that the message is on screen BEFORE the record is
@@ -355,7 +355,7 @@ const FLOORS = {
      stray tap cannot satisfy. Every one of those is one edit from its opposite,
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
-  "test/data-deletion.test.js": 51,
+  "test/data-deletion.test.js": 57, // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
   "test/diagnostics-surface.test.js": 19,

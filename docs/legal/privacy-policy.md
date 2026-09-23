@@ -121,11 +121,12 @@ The app also asks the browser to mark its storage as persistent
 waiting to be sent lived at `cp_events` (with a `cp_synced_ts` bookmark) inside
 the same two-tier store as everything above. It is now its own IndexedDB
 database (`foray_events`, object store `events`, `player/event-log.js`),
-outside the `cp_` namespace and outside "Delete my data"'s enumeration —
-deliberately, because it is an OUTBOUND QUEUE, not resumable state about you: a
-row that fails to sync is retried, and once sent (or once it ages past the
-5,000-row cap) it is deleted from the device, never resurrected. **Delete my
-data** deliberately does not log an event for the deletion itself (see §7), so
+outside the `cp_` namespace. It is an OUTBOUND QUEUE, not resumable state about
+you: a row that fails to sync is retried, and once sent (or once it ages past
+the 5,000-row cap) it is deleted from the device, never resurrected. It still
+holds what you played and when, so **Delete my data empties it too** (§7) —
+since 2026-09-22; before then the control cleared the `cp_` keys and left this
+queue behind. The deletion itself is deliberately not logged (see §7), so
 there is nothing about the deletion for this queue to hold.
 
 The web app also keeps Cache Storage buckets named `foray-gen-<deploy_id>` (one
@@ -406,6 +407,10 @@ optional) — one stray tap cannot trigger it.
   key added to the app in future is covered without anyone updating a list. If
   either store refuses, or cannot be read to confirm, **the app tells you the
   device is not fully clear** rather than claiming it is.
+- **The event queue on this device** (`foray_events`, §1): every event waiting to
+  be sent, and every one already sent that the device still keeps. It is emptied
+  and re-read the same way, so no row can be sent later under the new anonymous
+  account the app creates next time.
 - **Your rows on our server.** One authenticated `DELETE` per per-user table,
   filtered to your own account id — the `events` rows in §2 (including any note
   you typed), the account's own `app_users` row, and the other per-user tables the

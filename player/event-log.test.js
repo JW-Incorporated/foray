@@ -627,6 +627,66 @@ function quotaError() {
   return e;
 }
 
+/* ---------- purge: the queue's half of "Delete my data" (2026-09-22 audit) ----------
+
+   `DurableStore.purge()` clears the `cp_` namespace in the `foray` database;
+   this queue lives in `foray_events` and was never reached, so "This device is
+   clear" left every event row behind, and unsynced rows were then uploaded
+   under the new anonymous account the next launch creates.
+
+   MUTATION THAT KILLS THESE: make `purge()` return `{ ok: true, remaining: 0 }`
+   without clearing — the first and the deaf-store test go red. */
+
+test("purge empties IndexedDB, the fallback ring and the unflushed buffer, and proves it", async () => {
+  const factory = new FakeFactory();
+  const log = createEventLog({ indexedDB: factory, scheduleFlush: () => {} });
+  log.append({ type: "picked", payload: { episode_id: "ep-1" } });
+  log.append({ type: "position", payload: { seconds: 12 } });
+  await log.unsynced();                                   // flushed into IndexedDB
+  log.append({ type: "saved", payload: {} });             // still only buffered
+  assert.ok(factory.db.stores.get(STORE_NAME).data.size >= 2, "premise: rows are in the store");
+
+  const out = await log.purge();
+  assert.deepEqual(out, { ok: true, remaining: 0 });
+  assert.equal(factory.db.stores.get(STORE_NAME).data.size, 0, "rows survived in foray_events");
+  assert.deepEqual(await log.unsynced(), [], "the buffered row would still have been sent");
+});
+
+test("purge with no IndexedDB empties the ring", async () => {
+  let flush;
+  const log = createEventLog({ indexedDB: null, scheduleFlush: (fn) => { flush = fn; } });
+  log.append({ type: "picked", payload: {} });
+  await flush();
+  assert.equal((await log.unsynced()).length, 1, "premise");
+  assert.deepEqual(await log.purge(), { ok: true, remaining: 0 });
+  assert.deepEqual(await log.unsynced(), []);
+});
+
+test("purge against a store that keeps its rows reports them instead of claiming success", async () => {
+  const factory = new FakeFactory({ clearMode: "deaf" });
+  const log = createEventLog({ indexedDB: factory, scheduleFlush: () => {} });
+  log.append({ type: "picked", payload: {} });
+  await log.unsynced();
+  const out = await log.purge();
+  assert.equal(out.ok, false, "a clear that cleared nothing is not a success");
+  assert.equal(out.remaining, 1);
+});
+
+test("purge that the store refuses is a fault and a failure, never a throw", async () => {
+  const factory = new FakeFactory({ clearMode: "fail" });
+  const log = createEventLog({ indexedDB: factory, scheduleFlush: () => {} });
+  log.append({ type: "picked", payload: {} });
+  await log.unsynced();
+  const out = await log.purge();
+  assert.equal(out.ok, false);
+  assert.equal(out.remaining, null, "an unconfirmed clear has no count to report");
+  assert.equal(log.health().ok, false, "and the refusal is on the record");
+  // The queue still works afterwards.
+  factory.clearMode = "ok";
+  log.append({ type: "saved", payload: {} });
+  assert.equal((await log.unsynced()).length, 2);
+});
+
 /* ---------- the fake IDBFactory ----------
 
    Extends idb-tier.test.js's fake with the two things a `keyPath: "id",
@@ -692,6 +752,23 @@ class FakeObjectStore {
     req._succeed([...this.store.data.values()]);
     return req;
   }
+  /* `clearMode`: "ok" empties the store; "deaf" reports success and keeps
+     every row (the silent no-op a delete control must not believe); "fail"
+     aborts the transaction the way a real storage error does. */
+  clear() {
+    const req = new FakeRequest();
+    const mode = this.tx.db.factory.clearMode;
+    if (mode === "fail") {
+      const err = new Error("UnknownError: clear failed");
+      this.tx._failWith(err);
+      req._fail(err);
+      return req;
+    }
+    if (mode !== "deaf") this.store.data.clear();
+    this.tx._expect(req);
+    req._succeed(undefined);
+    return req;
+  }
 }
 
 class FakeTransaction {
@@ -740,7 +817,8 @@ class FakeDb {
 }
 
 class FakeFactory {
-  constructor({ openError = null, blocked = false, putError = null, txThrows = false } = {}) {
+  constructor({ openError = null, blocked = false, putError = null, txThrows = false, clearMode = "ok" } = {}) {
+    this.clearMode = clearMode;
     this.openError = openError;
     this.blocked = blocked;
     this.putError = putError;
