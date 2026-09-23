@@ -118,7 +118,7 @@ const FLOORS = {
      deleted once V-01's Audition button replaced it for the human tests it
      existed to support. See HUMAN-ACTIONS #29 and docs/curation/
      tts-locked-screen-check.md (kept as the historical record). */
-  "player/foray-playback.test.js": 87,
+  "player/foray-playback.test.js": 89, // L8 (2026-09-22, #236): the suite now runs on the frozen fixture, plus "every segment of every committed Foray in data/ resolves" over the live data by loop; 87 -> 89 (the floor also had one test of slack)
   /* 2026-09-18, founder: "the podcast I was listening to should still be in the
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
@@ -366,7 +366,7 @@ const FLOORS = {
      route() and never awaited — and the FD-05 playback cases (a swap mid-session
      leaves the queue and the playhead alone; a vanished Foray reads `dropped`;
      the seam prefetch never warms an unvalidated set's audio). Zero slack. */
-  "test/foray-directory.test.js": 15, // +1 F-92 (2026-09-12): a partial seed at the live version is fetched whole once, and the switch then lists the generated draft
+  "test/foray-directory.test.js": 16, // +1 L8 (2026-09-22, #236): FD-05 reads its published Foray off the data, with a readable precondition instead of a hard-coded id // +1 F-92 (2026-09-12): a partial seed at the live version is fetched whole once, and the switch then lists the generated draft
   /* "Show draft Forays" (2026-09-11, Wyatt: "I can't see these forays in the
      app"): the founder's test-track switch AT THE PAGE — the real app.js over
      the real resolver and the real data. What only this suite can see is that
@@ -1137,6 +1137,13 @@ const FLOORS = {
      checker without joining the enumeration. Delete any of them and a shape can
      again reach `data/` before a consumer has seen it in CI. */
   "tools/foray/fixture-coverage.test.mjs": 7,
+  /* L8 (2026-09-22, #236's last step): the FROZEN fixture — verbatim copies of
+     four real Forays that the player suites exercise by id, so `data/` can
+     retire or re-curate them without a test migration. Five tests hold it to
+     what it claims: it passes the real checker (and the CLI), it contains
+     exactly what its Forays play, it still carries the shapes the suites need,
+     and TEXTURE_CADENCE_SEC is still what measure-cadence measures on it. */
+  "tools/foray/frozen-fixture.test.mjs": 5,
   /* The narration evidence gate (#247, and the founder's citation rulings of
      2026-08-19). Zero slack, and for a sharper reason than most suites here.
 

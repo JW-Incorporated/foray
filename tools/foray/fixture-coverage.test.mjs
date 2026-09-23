@@ -51,10 +51,31 @@ const DATA_ROOT = process.env.FORAY_DATA_ROOT ? path.resolve(process.env.FORAY_D
 
 /* ------------------------------------------------------------ the data */
 
-const files = loadFiles(DATA_ROOT);
-const forays = files.forays.forays;
-const segments = new Map((files.segments.segments || []).map((s) => [s.id, s]));
-const sources = new Map((files.sources.sources || []).map((s) => [s.id, s]));
+/* TWO carrier sets, since #236's last step (2026-09-22): the live data and the
+   FROZEN fixture (`tools/foray/fixtures/frozen/`), a verbatim copy of real
+   curated Forays that the player suites exercise by id. G-21c asks for "a
+   committed fixture Foray" carrying each shape so every consumer sees it in CI
+   — and the frozen Forays are exactly that: committed, real, and read by the
+   player suites. Without them, retiring a Foray from `data/` that happened to
+   be the last carrier of a shape (measured: `grilling-history-1` was the only
+   Foray with a `quote`-role segment, and `capital-types-1` is the only
+   published one) turned this suite red for a pure data edit. A frozen carrier
+   is named `frozen:<id>` in every message, so which kind is holding a shape is
+   never ambiguous. Nothing is invented: the frozen set is a subset of what was
+   committed. */
+const FROZEN_ROOT = path.join(HERE, "fixtures", "frozen");
+const sets = [
+  { tag: "", files: loadFiles(DATA_ROOT) },
+  { tag: "frozen:", files: loadFiles(FROZEN_ROOT) },
+].map(({ tag, files }) => ({
+  tag,
+  forays: files.forays.forays,
+  segments: new Map((files.segments.segments || []).map((s) => [s.id, s])),
+  sources: new Map((files.sources.sources || []).map((s) => [s.id, s])),
+}));
+/** Every committed Foray from both sets, id-tagged, each carrying the set it
+    resolves against — a frozen Foray's segment is looked up in the frozen pool. */
+const forays = sets.flatMap((set) => set.forays.map((f) => ({ ...f, id: set.tag + f.id, set })));
 
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 const ids = (rows) => [...new Set(rows.map((r) => r.foray.id))];
@@ -67,9 +88,9 @@ const narrationItems = () => items().filter((x) => x.item?.type === NARRATION);
 const playedSegments = () =>
   items()
     .filter((x) => x.item?.type === SEGMENT)
-    .map((x) => ({ ...x, seg: segments.get(x.item.segment_id) }))
+    .map((x) => ({ ...x, seg: x.foray.set.segments.get(x.item.segment_id) }))
     .filter((x) => x.seg);
-const playedSources = () => playedSegments().map((x) => ({ ...x, src: sources.get(x.seg.item_id) })).filter((x) => x.src);
+const playedSources = () => playedSegments().map((x) => ({ ...x, src: x.foray.set.sources.get(x.seg.item_id) })).filter((x) => x.src);
 
 /**
  * field -> (value) -> ids of the committed Forays carrying it. One entry per
@@ -247,7 +268,7 @@ for (const [field, values] of Object.entries(ACCEPTED_SHAPES)) {
         const found = carriers();
         assert.ok(
           found.length > 0,
-          `${shape}: check-forays.mjs accepts this shape but no committed Foray in data/ carries it, so no consumer has ` +
+          `${shape}: check-forays.mjs accepts this shape but no committed Foray in data/ or in the frozen fixture carries it, so no consumer has ` +
             `seen it in CI (G-21c fixture-before-emit, docs/curation/foray-to-spec-roadmap.md). Land a fixture Foray ` +
             `carrying it (status: draft, generated: true) in the same PR — or, if the carrier was just removed, put it back.`
         );

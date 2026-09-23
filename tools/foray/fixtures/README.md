@@ -1,4 +1,10 @@
-# The boundary fixture
+# The committed Foray fixtures
+
+Two checkout-shaped fixtures live here: `boundary/`, built to sit on the #182
+rule boundaries, and `frozen/`, verbatim copies of real Forays (the second
+half of this file).
+
+## The boundary fixture
 
 `boundary/data/*.json` is a four-file checkout that `tools/foray/check-forays.mjs`
 can be pointed at with `--root`, and that `loadFiles()` reads exactly as it reads
@@ -100,3 +106,58 @@ Then run `node --test tools/foray/check-forays.test.mjs`. Any change to a
 duration, an episode assignment or a `start_sec` moves at least one number in the
 table above, and the suite pins all of them — so a change that was meant to be
 cosmetic cannot be.
+
+---
+
+## The frozen fixture
+
+`frozen/data/*.json` is a second checkout-shaped fixture, and it is the opposite
+of the boundary fixture in one respect: **nothing in it was built.** It is a
+verbatim copy — taken on 2026-09-22 at `1c0c04d` — of four real Forays from
+`data/forays.json`, plus exactly the pool rows they play (`segments.json`), the
+episodes those rows cut from (`segment-sources.json`) and their topics
+(`taxonomy.json`):
+
+| Foray | why a suite needs it |
+|---|---|
+| `grilling-history-1` | the long, unbridged, nine-episode order `player/foray-playback.test.js`'s transport tests and `player/foray-sources.test.js` run on; the Foray `TEXTURE_CADENCE_SEC` was measured on (`tools/foray/measure-cadence.mjs` reads it here); the one real supersession, which `check-forays.test.mjs` proves its rule on. **Retired from `data/` in the same change** — it exists only here now. |
+| `grilling-history-2` | the short order with cross-episode seams the playback-speed tests need |
+| `capital-types-1` | published, and runs two episodes of one show — `player/segment-strip.test.js`'s capsule tests |
+| `what-engineers-actually-do-all-day-e08236` | a generated Foray with ~40 narration items — `segment-strip.test.js` §8's card-overflow tests |
+
+### Why it exists (issue #236's last step)
+
+Those suites used to read the LIVE copies by id. Measured before this change,
+deleting `grilling-history-1` from `data/` turned **92 tests red** in six
+suites, and deleting `capital-types-1` turned 37 red — so no Foray could be
+retired or re-curated without a governed-test migration, which is backwards for
+the product's core activity. A frozen copy is still real curation (the reason
+those suites refused hand-made fixtures stands), but it does not move when a
+curator does. **Adding, re-curating or deleting a Foray in `data/` now touches
+only data.** The one deliberate exception is the PUBLISHED set, pinned once in
+`check-forays.test.mjs` — publishing is a founder action.
+
+What the shipped data must satisfy is still asserted against `data/` itself,
+for every committed Foray at once and by loop, never by id: `check-forays`
+(the gate), `foray-playback`'s "every segment of every committed Foray
+resolves", `media-session`, `foray-row-links`, and the rest of the publish
+gate's `REAL_DATA_SUITES`.
+
+### Rules
+
+- **Never edit it editorially.** The live copies are free to move on; these
+  are not. Re-freeze only when a suite needs a shape the four do not carry, and
+  then re-freeze from `data/` rather than hand-writing rows.
+- It must pass the real checker with zero errors and contain exactly what its
+  Forays play — `tools/foray/frozen-fixture.test.mjs` pins both, plus the
+  shapes above and the cadence measurement.
+- `tools/foray/fixture-coverage.test.mjs` counts it as a carrier (as
+  `frozen:<id>`), so retiring the last live Foray of a shape does not break the
+  G-21c coverage gate; and `check-forays.test.mjs` keeps a retired Foray's
+  curation doc (`docs/curation/grilling-foray.md`) checked against its frozen
+  order.
+
+```
+node tools/foray/check-forays.mjs --root tools/foray/fixtures/frozen
+node tools/foray/measure-cadence.mjs            # reads the frozen copy
+```

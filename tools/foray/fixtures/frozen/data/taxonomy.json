@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "notes": "Frozen verbatim from data/*.json at 1c0c04d (2026-09-22) by the #236 follow-up. See tools/foray/fixtures/README.md, \"The frozen fixture\". The four Forays' topics and their ancestors, so the checker's topic rule runs.",
+  "nodes": [
+    {
+      "id": "business",
+      "parent": null,
+      "label": "Business",
+      "apple_anchor": "Business",
+      "weight": 0.5,
+      "confidence": 0.5,
+      "last_evidence_at": "2026-07-07"
+    },
+    {
+      "id": "business/startups",
+      "parent": "business",
+      "label": "Startups & deep tech",
+      "apple_anchor": "Business > Entrepreneurship",
+      "weight": 0.6,
+      "confidence": 0.6,
+      "last_evidence_at": "2026-07-07"
+    },
+    {
+      "id": "food",
+      "parent": null,
+      "label": "Food",
+      "apple_anchor": "Arts > Food",
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-07-09"
+    },
+    {
+      "id": "business/careers",
+      "parent": "business",
+      "label": "Careers",
+      "apple_anchor": "Business > Careers",
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-07-09"
+    },
+    {
+      "id": "food/grilling-bbq",
+      "parent": "food",
+      "label": "Grilling & barbecue",
+      "apple_anchor": "Arts > Food",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    }
+  ]
+}

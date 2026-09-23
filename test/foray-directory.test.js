@@ -660,7 +660,13 @@ test("FD-01: the refresh row names the trigger and the outcome, and the adopted 
 /* FD-05: playback survives a directory change                           */
 /* ==================================================================== */
 
-const PLAYING = "capital-types-1";   // published on main; listable without an unlock
+/* A published Foray on main — listable without an unlock — read off the data
+   rather than named, so which Foray is published is a data fact here and is
+   pinned only in tools/foray/check-forays.test.mjs (#236). */
+const PLAYING = BASE().forays.forays.find((f) => f.status === "published")?.id;
+test("FD-05 has a published Foray to play", () => {
+  assert.ok(PLAYING, "data/forays.json publishes no Foray, so FD-05 below has nothing listable to play");
+});
 
 test("FD-05 (1): a version swap mid-session does not move the playhead or drop the queue", async () => {
   /* The listener is 150 s into segment 1 of a Foray when a newer directory

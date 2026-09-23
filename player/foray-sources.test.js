@@ -1,7 +1,7 @@
 /* player/foray-sources.js — the publisher credit block.
 
-   Two of these tests run against the REAL committed documents rather than a
-   fixture, for the same reason player/foray-playback.test.js does: the question
+   Two of these tests run against REAL curated documents (the frozen copy in
+   tools/foray/fixtures/frozen/) rather than a hand-made fixture, for the same reason player/foray-playback.test.js does: the question
    worth answering is "does Foray #1 credit the episodes it actually plays", and
    a fixture cannot be wrong about that in a way that matters.
 
@@ -26,14 +26,21 @@ import {
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
 
+/* Foray #1 is read from the FROZEN fixture, not from data/ (#236, 2026-09-22):
+   a verbatim copy of real curated Forays that live curation is free to move on
+   from — tools/foray/fixtures/README.md, "The frozen fixture". The credits
+   assertions below are about the join, and the join needs a real running order
+   with several shows and a show that is in the catalogue; it does not need that
+   order to still be on the site. */
+const FROZEN = "tools/foray/fixtures/frozen/data";
 const FORAY_ID = "grilling-history-1";
 
 function realResolve() {
-  const foray = findForay(readJson("data/forays.json"), FORAY_ID, { unlocked: [FORAY_ID] });
-  assert.ok(foray, `${FORAY_ID} must exist in data/forays.json`);
+  const foray = findForay(readJson(`${FROZEN}/forays.json`), FORAY_ID, { unlocked: [FORAY_ID] });
+  assert.ok(foray, `${FORAY_ID} must exist in ${FROZEN}/forays.json`);
   return resolveForay(foray, {
-    segments: indexSegments(readJson("data/segments.json")),
-    sources: indexSources(readJson("data/segment-sources.json")),
+    segments: indexSegments(readJson(`${FROZEN}/segments.json`)),
+    sources: indexSources(readJson(`${FROZEN}/segment-sources.json`)),
   });
 }
 

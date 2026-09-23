@@ -525,17 +525,25 @@ test("mediaSessionView reports the FORAY's clock, not the segment's", () => {
   /* The decision in §3, pinned against real data: a segment is ~110 s and the
      Foray is ~51 min, so this assertion fails loudly if anyone swaps in the
      element's own currentTime. */
-  const r = realResolved(REAL_IDS[0]);
-  const item = r.playable[19];
+  /* The longest committed Foray and a TAPE item in the middle of it, both found
+     rather than named. This used to read `REAL_IDS[0]` and `playable[19]`, which
+     pinned whichever Foray happened to be first in the file at 20 items or more
+     — so deleting that Foray broke a lock-screen test (#236). */
+  const r = REAL_IDS.map(realResolved).reduce((a, b) => (b.playable.length > a.playable.length ? b : a));
+  const mid = Math.floor(r.playable.length / 2);
+  const index = r.playable.findIndex((it, i) => i >= mid && Number.isFinite(it.end_sec - it.start_sec));
+  assert.ok(index >= 0, `${r.id ?? r.title} has no tape item past its midpoint to stand in for "a segment"`);
+  const item = r.playable[index];
+  const positionSec = Math.floor(r.totalSec / 2);
   const view = mediaSessionView({
-    item, forayTitle: r.title, index: 19, total: r.playable.length,
-    durationSec: r.totalSec, positionSec: 1800, playing: true,
+    item, forayTitle: r.title, index, total: r.playable.length,
+    durationSec: r.totalSec, positionSec, playing: true,
   });
   assert.equal(view.positionState.duration, r.totalSec);
   assert.ok(view.positionState.duration > 600, "a Foray is tens of minutes long");
   const segmentLength = item.end_sec - item.start_sec;
   assert.notEqual(view.positionState.duration, segmentLength);
-  assert.equal(view.positionState.position, 1800);
+  assert.equal(view.positionState.position, positionSec);
 });
 
 test("mediaSessionView carries the seam-gap flag THROUGH — not just mediaPlaybackState", () => {

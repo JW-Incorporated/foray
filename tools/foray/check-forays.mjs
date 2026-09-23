@@ -656,6 +656,9 @@ export function checkForays(files) {
 
   /* ---- each Foray ------------------------------------------------------ */
   const seenForayIds = new Set();
+  /* Every Foray by id, for the supersession rule below, which has to look one
+   * Foray up from another and cannot wait for the loop to have seen it. */
+  const forayById = new Map(foraysFile.forays.filter((f) => typeof f?.id === "string").map((f) => [f.id, f]));
   for (const foray of foraysFile.forays) {
     const fid = foray?.id;
     if (typeof fid !== "string" || !fid) { err("forays: a foray has no id"); continue; }
@@ -670,6 +673,25 @@ export function checkForays(files) {
      * rejects a missing one, and checking it twice reported it twice. */
     if (typeof foray.topic !== "string" || !foray.topic) E("`topic` must be a non-empty string");
     else if (taxonomyNodes.size && !taxonomyNodes.has(foray.topic)) E(`\`topic\` "${foray.topic}" is not a data/taxonomy.json node`);
+
+    /* SUPERSESSION (#226, promoted to a rule by #236's last step, 2026-09-22).
+     * A superseded draft stays reachable by `?foray=<id>`, and a stale Foray
+     * that nothing labels stale is how the wrong one gets tested next week —
+     * the founder tested the off-plot grilling order after its replacement had
+     * shipped. This used to be one test about one Foray, pinned by id, so the
+     * label could only be checked while `grilling-history-1` existed and the
+     * test had to be edited to retire it. As a rule it holds for any Foray:
+     * the label names a successor that exists and is itself current, and it
+     * says why. Neither field is read by the player. */
+    if (foray.superseded_by !== undefined) {
+      const next = forayById.get(foray.superseded_by);
+      if (typeof foray.superseded_by !== "string" || !next) E(`\`superseded_by\` must name another committed Foray; got ${JSON.stringify(foray.superseded_by)}`);
+      else if (next === foray) E("`superseded_by` names the Foray itself");
+      else if (next.superseded_by !== undefined) E(`\`superseded_by\` names "${next.id}", which is itself superseded — point it at the current Foray`);
+      if (typeof foray.superseded_note !== "string" || !foray.superseded_note.trim()) E("a superseded Foray needs a `superseded_note` saying when and why");
+    } else if (foray.superseded_note !== undefined) {
+      E("`superseded_note` without `superseded_by` — say which Foray replaces this one, or drop the note");
+    }
 
     /* Copy rules on the fields a UI renders as our own prose. Publisher episode
      * titles in segment-sources.json are quoted fact, not our copy, and are

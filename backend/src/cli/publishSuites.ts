@@ -75,7 +75,15 @@ export const REAL_DATA_SUITES: readonly string[] = [
      (1): the publish that lands a new shape would go green locally and red in
      CI, which is the exact failure #632 made this card exist. `loadFiles(` is
      now an alternative in the regex, so this cannot rot back out. */
-  "tools/foray/fixture-coverage.test.mjs"
+  "tools/foray/fixture-coverage.test.mjs",
+  /* Added 2026-09-22 with the suite itself (#236's last step). It calls
+     `loadFiles(FROZEN_ROOT)` — the frozen fixture, not `data/` — so it is the
+     false positive the `loadFiles(` note below prices at one list entry. It is
+     listed rather than excused because it is cheap (five tests) and because
+     it checks the frozen fixture against the SAME checker a publish is run
+     through: a checker change a publish lands with cannot silently make the
+     fixture every player suite reads invalid. */
+  "tools/foray/frozen-fixture.test.mjs"
 ];
 
 /**
