@@ -134,10 +134,14 @@ test("the continue banner is an in-app link to #/episode/:id, not target=\"_blan
     id: "ep-continue", title: "Continue Me", duration_min: 60, ts: new Date().toISOString(),
   });
   const html = app.bannerHtml();
+  /* Since visual pass 1 (2026-09-23, qa row 78) the banner is a card whose
+     TITLE is the link (stretched over the card by CSS); the ✓ beside it is a
+     sibling, not a button inside the anchor. test/card-anatomy.test.js pins
+     that shape; this test keeps pinning where the link goes. */
   assert.match(
     html,
-    /<a class="banner" href="#\/episode\/ep-continue"/,
-    "banner must be an in-app link to #/episode/:id"
+    /<a class="b-title" href="#\/episode\/ep-continue"/,
+    "banner's title must be an in-app link to #/episode/:id"
   );
   assert.doesNotMatch(html, /target="_blank"/, "banner must not open a new tab any more");
 });
