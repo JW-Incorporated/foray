@@ -106,9 +106,10 @@ test("a refresh that agrees about the episodes still fills in the description", 
      never gets one.
      MUTATION: move `paintShowDescription(header)` below that return. */
   const paintIdx = SRC.indexOf("paintShowDescription(header);");
-  /* The branch opens a block since 2026-09-22 (it repaints the count label
-     before returning, audit qa 85); the order this test is about is unchanged. */
-  const returnIdx = SRC.indexOf("if (cached && sameEpisodeList(cached.episodes, episodes)) {");
+  /* INTEGRATION (2026-09-22): L1 had turned this branch into a block that
+     repainted the count; L5's `loadEpisodes()` repaints the count just above it
+     instead, so the branch is a bare return again. The order is unchanged. */
+  const returnIdx = SRC.indexOf("if (cached && sameEpisodeList(cached.episodes, episodes)) return;");
   assert.ok(paintIdx > 0 && returnIdx > paintIdx, "painted before the early return");
 });
 

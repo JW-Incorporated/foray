@@ -154,8 +154,13 @@ test("a pass started before #/shows was re-entered cannot paint onto the new pag
 /* ==================================================================== */
 
 test("a refresh that succeeds and agrees clears the stale label", async () => {
-  /* MUTATION: restore the bare `return` on the unchanged-list path (or make
-     anyStale sticky again) — the label keeps "couldn't refresh just now". */
+  /* INTEGRATION (2026-09-22): L1 and L5 both fixed the sticky label. L5's rule
+     won, and it is stricter: the first paint from a cached list claims nothing
+     about freshness at all (no refresh has been tried yet), and the refresh's
+     own answer sets the label in either direction, BEFORE the unchanged-list
+     return. MUTATIONS: seed `anyStale` from `cached.stale` again (the first
+     assertion), or move `anyStale = !!stale; paintCount();` below the return
+     (the last one). */
   const m = mount();
   const eps = [{ guid: "g1", title: "Ep", audio_url: "https://a.test/1.mp3" }];
   let answer;
@@ -163,10 +168,20 @@ test("a refresh that succeeds and agrees clears the stale label", async () => {
   m.ctx.cacheShowEpisodes = () => {};
   m.ctx.fetchShowEpisodes = () => new Promise((r) => { answer = r; });
   m.go("#/show/show-a");
-  assert.match(m.el("#view [data-show-count]").textContent, /couldn't refresh/, "the cached stale list says so first");
-  answer({ episodes: eps, nextCursor: null, stale: false });
+  assert.doesNotMatch(m.el("#view [data-show-count]").textContent, /couldn't refresh/, "no refresh has failed yet");
+  answer({ episodes: eps, nextCursor: null, stale: true });
   await tick();
-  assert.doesNotMatch(m.el("#view [data-show-count]").textContent, /couldn't refresh/);
+  assert.match(m.el("#view [data-show-count]").textContent, /couldn't refresh/, "a stale answer on the unchanged path says so");
+
+  const m2 = mount();
+  let answer2;
+  m2.ctx.cachedShowEpisodes = () => ({ episodes: eps, nextCursor: null, stale: true, show: null });
+  m2.ctx.cacheShowEpisodes = () => {};
+  m2.ctx.fetchShowEpisodes = () => new Promise((r) => { answer2 = r; });
+  m2.go("#/show/show-a");
+  answer2({ episodes: eps, nextCursor: null, stale: false });
+  await tick();
+  assert.doesNotMatch(m2.el("#view [data-show-count]").textContent, /couldn't refresh/);
 });
 
 /* ==================================================================== */
