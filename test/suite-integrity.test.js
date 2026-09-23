@@ -648,7 +648,7 @@ const FLOORS = {
      Forays": it is the one a "simplify renderForays back to synchronous" edit
      would silently undo, because every existing harness mounts with the bridge
      already present. */
-  "test/load-states.test.js": 10, // 2026-09-22: new
+  "test/load-states.test.js": 14, // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
 
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):

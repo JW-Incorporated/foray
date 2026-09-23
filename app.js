@@ -2411,6 +2411,7 @@ function renderAllShows(initialQuery = "") {
         </button>
       </div>
       <p id="sh-note" class="note" hidden></p>
+      <div id="sh-empty-offer" hidden></div>
       <p id="sh-offline-note" class="note" hidden>Showing shows available offline</p>
       <div id="sh-results" class="show-results" hidden></div>
       <div id="ep-search-results" hidden></div>
@@ -5185,7 +5186,17 @@ function clearShowSearchResults() {
   if (note) { note.textContent = ""; note.hidden = true; }
   if (eps) { eps.innerHTML = ""; eps.hidden = true; }
   if (pls) { pls.innerHTML = ""; pls.hidden = true; }
+  paintShowSearchEmptyOffer(null);
 }
+
+/* WHICH SEARCH HAS HEARD FROM EVERY PASS THAT COULD ADD A SHOW (audit
+   2026-09-22, theme G). `token` is the showSearchToken whose catalogue,
+   directory and shard passes have all settled; `failed` is whether any of them
+   failed rather than answered. Until the current token is recorded here, an
+   empty list is "still searching", never "nothing found" — the old paint said
+   `No results for "huberman".` on the keystroke, for the ~250 ms debounce plus
+   118-561 ms of round trip, and then ten results arrived under it. */
+let showSearchSettled = { token: -1, failed: false };
 
 /** Paints one set of show rows into `#sh-results`, or the honest empty state.
     Token-guarded so a slow costly pass cannot repaint over a newer query.
@@ -5211,19 +5222,70 @@ function paintShowResults(query, shows, myToken) {
   if (!shows.length) {
     results.innerHTML = "";
     results.hidden = true;
-    /* "…in 4a's catalogue" until 2026-09-14. The founder's standing
+    /* NOTHING IS "NOT FOUND" UNTIL EVERY PASS HAS ANSWERED (audit 2026-09-22).
+       The keystroke pass is local; the three passes that reach past the
+       curated 220 are still owed, so an empty local answer is a SEARCHING
+       state, and says so. `runShowSearchCostly` repaints through here once
+       the last of them settles, and only then can the list be empty for real.
+
+       SCOPED TO SHOWS. The note sits above the Episodes and Playlists
+       sections, which answer on their own schedule; an unqualified "No
+       results" printed directly above a full Episodes list denied the rows
+       beneath it. It names what it searched.
+
+       "…in 4a's catalogue" until 2026-09-14. The founder's standing
        instruction is "don't blame it on 4a", and that trailing clause was
-       doing exactly that: a listener who searched for a show and found
-       nothing does not need to be told whose catalogue fell short, and the
-       qualifier reads as an excuse for the result rather than as the result.
-       A search that found nothing says so. */
-    note.textContent = `No results for "${query}".`;
+       doing exactly that; a search that found nothing says so, and nothing
+       about whose catalogue fell short. */
+    const settled = showSearchSettled.token === myToken;
+    note.textContent = settled ? `No shows found for "${query}".` : `Searching for "${query}"…`;
     note.hidden = false;
+    paintShowSearchEmptyOffer(settled ? { query, myToken, failed: showSearchSettled.failed } : null);
     return;
   }
   note.hidden = true;
+  paintShowSearchEmptyOffer(null);
   results.innerHTML = shows.map(showResultRow).join("");
   results.hidden = false;
+}
+
+/** WHAT A SETTLED, EMPTY SHOWS SEARCH OFFERS INSTEAD OF A DEAD END (audit
+    2026-09-22, the unconditional half of the browse-pill finding). Two things,
+    both only once every pass has answered:
+
+      - A PASS THAT FAILED says so, with "Try again" wired to the same search.
+        `api/shows/search.ts` answers an Apple timeout or a rate-limit trip with
+        200 and zero directory rows BY DESIGN, and offline every network pass
+        fails — so "no shows" over a failed pass was a permanent claim about a
+        moment's network, with nothing to press.
+      - A QUERY THAT IS A SUBJECT'S OWN NAME (a browse pill lands here with its
+        label) gets that subject's narrower categories that DO hold shows, as
+        chips. The pill stays an ordinary search for its own text (founder,
+        #684); this is only what the empty answer offers next, and every chip
+        leads to a page with at least one show on it.
+
+    `null` clears it — every non-empty paint and every cleared query. */
+function paintShowSearchEmptyOffer(opts) {
+  const box = $("#sh-empty-offer");
+  if (!box) return;
+  if (!opts) { box.innerHTML = ""; box.hidden = true; return; }
+  const { query, myToken, failed } = opts;
+  const parts = [];
+  if (failed) parts.push(failedNoteHtml("Part of this search didn't load."));
+  const wanted = String(query || "").trim().toLowerCase();
+  const node = (state.taxonomy?.nodes || []).find(n => String(n.label || "").toLowerCase() === wanted);
+  if (node) {
+    const within = (state.taxonomy?.nodes || [])
+      .filter(n => (n.id === node.id || String(n.id).startsWith(`${node.id}/`)) && showsForCategory(n.id).length > 0)
+      .slice(0, 8);
+    if (within.length) {
+      parts.push(`<p class="note">Shows filed under ${esc(node.label)}:</p>
+        <div class="fy-chips">${within.map(n => taxonomyChip(n.id)).join("")}</div>`);
+    }
+  }
+  box.innerHTML = parts.join("");
+  box.hidden = parts.length === 0;
+  if (failed) bindRetry(box, () => { if (myToken === showSearchToken) renderShowSearchResults(query); });
 }
 
 /** The rows on screen for `query` under `myToken`, or `fallback` when the
@@ -5470,6 +5532,25 @@ function runShowSearchCostly(query, myToken, local) {
     if (--owed === 0) recordSearchDiagnostic(record);
   };
 
+  /* THE THREE PASSES THAT CAN ADD A SHOW — catalogue, directory, shard — and
+     the moment the last of them has answered (audit 2026-09-22, theme G). This
+     is a separate count from `owed` because the episode and playlist halves
+     cannot change whether any SHOW was found, and "no shows" must not wait on
+     them. Each pass reports exactly once, on every exit path, whether it
+     answered or failed; a pass that decided not to run answered "nothing to
+     add". When the count reaches zero this token is recorded as settled, and
+     an empty list is repainted as the real "No shows found" it now is. */
+  let showPassesOwed = 3;
+  let showPassFailed = false;
+  const showPassDone = (failed) => {
+    if (failed) showPassFailed = true;
+    if (--showPassesOwed > 0) return;
+    if (myToken !== showSearchToken) return; // superseded: the newer query owns the note
+    showSearchSettled = { token: myToken, failed: showPassFailed };
+    const rows = paintedShowRows(query, myToken, local.localShows);
+    if (!rows.length) paintShowResults(query, rows, myToken);
+  };
+
   /* THE SCAN PASS, GATED ON COST RATHER THAN ON HOW MANY ROWS THE DEVICE
      ALREADY PAINTED, and that swap is the whole of defect 1 (2026-09-13).
 
@@ -5562,6 +5643,7 @@ function runShowSearchCostly(query, myToken, local) {
       netMs: 0, netHits: cached.length,
       path: myToken !== showSearchToken ? "superseded" : "local+cache",
     });
+    showPassDone(false);
   } else {
     /* THE CATALOGUE PASS, and it no longer carries `&fallthrough=1` under any
        condition — P-02 moved that to its own request below. This one exists to
@@ -5585,6 +5667,7 @@ function runShowSearchCostly(query, myToken, local) {
         netMs, netHits: data ? breadthShows.length : null,
         path: superseded ? "superseded" : data ? "local+net" : "local-only",
       });
+      showPassDone(!data);
     }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
   }
 
@@ -5616,9 +5699,11 @@ function runShowSearchCostly(query, myToken, local) {
   const cachedDirectory = showDirectoryQueryCache.get(directoryKey);
   if (directoryKey.length < SHOW_DIRECTORY_MIN_QUERY_LENGTH) {
     settle({ dirMs: null, dirHits: null }); // "this half did not run", a real state
+    showPassDone(false);
   } else if (cachedDirectory) {
     if (myToken === showSearchToken) mergeBreadth(cachedDirectory);
     settle({ dirMs: 0, dirHits: cachedDirectory.length });
+    showPassDone(false);
   } else {
     const dirStart = nowMs();
     fetchApiJson(`api/shows/search?q=${encodeURIComponent(query)}&limit=25&fallthrough=1`).then((data) => {
@@ -5659,6 +5744,10 @@ function runShowSearchCostly(query, myToken, local) {
          that fetched nothing. `null` is the existing "this half is unknown"
          value and it is the honest one here. */
       settle({ dirMs, dirHits: answered ? rows.length : null });
+      /* A degraded or limiter-tripped answer is a pass that did NOT answer, for
+         the same reason it is not cached above: the empty list it leaves is a
+         fact about this moment's network, and the listener is told so. */
+      showPassDone(!answered);
     }); // fetchApiJson swallows network/parse errors to null — a failed directory pass adds nothing and removes nothing
   }
 
@@ -5678,8 +5767,10 @@ function runShowSearchCostly(query, myToken, local) {
   const shardKey = SearchEngine.shardKeyForQuery(query);
   if (isOfflineForShardSearch()) {
     settle({ shardMs: null, shardHits: null }); // D9: no request, a real "did not run" state
+    showPassDone(false);
   } else if (!shardKey) {
     settle({ shardMs: null, shardHits: null });
+    showPassDone(false);
   } else {
     const shardStart = nowMs();
     fetchShardRows(shardKey).then((rows) => {
@@ -5689,6 +5780,7 @@ function runShowSearchCostly(query, myToken, local) {
       for (const s of mapped) state.shardShowCache[s.show_id] = s;
       if (myToken === showSearchToken && mapped.length) mergeBreadth(mapped);
       settle({ shardMs, shardHits: mapped.length });
+      showPassDone(false); // fetchShardRows folds its own failures into [], so it cannot report one
     }); // fetchShardRows never throws/rejects (see its own header) — no .catch needed
   }
 

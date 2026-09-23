@@ -100,6 +100,7 @@ class El {
   removeAttribute(k) { delete this.attrs[k]; }
   addEventListener(t, fn) { if (!this._on.has(t)) this._on.set(t, []); this._on.get(t).push(fn); }
   removeEventListener() {}
+
   /** Fire this element's click listeners, once-listeners included. */
   click() { const fns = this._on.get("click") || []; this._on.set("click", []); for (const fn of fns) fn({ target: this, preventDefault() {}, stopPropagation() {} }); }
   focus() {} blur() {} select() {}
@@ -401,4 +402,114 @@ test("Home repaints once when the player module lands after its first paint, res
   m.ctx.ForayPlayer = { restoreLastEpisode: () => null }; // nothing to restore
   m.fire("forayplayer:ready");
   assert.strictEqual(repaints, 1, "Home repaints once the module is there");
+});
+
+/* ==================================================================== */
+/* The Shows search: nothing is "not found" until every pass has answered */
+/* ==================================================================== */
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** The Shows page with its search endpoints routed. `catalogue` answers the
+    fast pass, `directory` the fall-through, `directoryError` models the
+    endpoint's own 200-with-an-error on a limiter trip. Episodes answer empty
+    and the shard pass answers the real "not published" 404. */
+function mountSearch({ catalogue = [], directory = [], directoryError = null, catalogueDelayMs = 0, taxonomy = null, catalog = CATALOG } = {}) {
+  const calls = [];
+  const m = mount({
+    hash: "#/shows",
+    fetchImpl: (url) => {
+      calls.push(url);
+      if (url.includes("api/shows/search") && url.includes("fallthrough=1")) {
+        return okJson({ shows: directoryError ? [] : directory, fallthrough: { attempted: true, error: directoryError } });
+      }
+      if (url.includes("api/shows/search")) {
+        const answer = okJson({ shows: catalogue, degraded: false });
+        return catalogueDelayMs ? sleep(catalogueDelayMs).then(() => answer) : answer;
+      }
+      if (url.includes("api/episodes/search")) return okJson({ episodes: [] });
+      if (url.includes("api/shows/index/")) return Promise.resolve({ ok: false, status: 404, json: async () => ({ available: false }) });
+      return new Promise(() => {});
+    },
+  });
+  m.state.catalog = catalog;
+  if (taxonomy) m.state.taxonomy = taxonomy;
+  m.state.cardSlots = [];
+  m.ctx.renderCurrentPage();
+  const note = m.view.querySelector("#sh-note");
+  /* Every sentence the note ever showed, so a claim that flashed and was then
+     replaced is still caught — which is the whole defect. */
+  const said = [];
+  let text = "";
+  Object.defineProperty(note, "textContent", { get: () => text, set: (v) => { text = String(v); said.push(text); } });
+  return { ...m, calls, note, said, offer: () => m.view.querySelector("#sh-empty-offer") };
+}
+
+test("a keystroke with no local match says it is searching — never 'not found' — and the rows arrive under it", async () => {
+  /* The keystroke pass is local-only; the passes that can find "huberman" run
+     250 ms later. The note used to read `No results for "huberman".` for that
+     whole window and then sit above ten results.
+     MUTATION: in paintShowResults, drop the `settled` test and always write the
+     "No shows found" sentence. The first assertion goes red. */
+  const m = mountSearch({ catalogue: [{ show_id: "hub", title: "Huberman Lab" }], catalogueDelayMs: 50 });
+  m.ctx.onShowSearchInput("huberman");
+  assert.match(m.note.textContent, /Searching for "huberman"/, `the keystroke must not claim an answer: "${m.note.textContent}"`);
+  await sleep(450);
+  assert.match(m.view.querySelector("#sh-results").innerHTML, /Huberman Lab/, "the catalogue's row lands");
+  assert.ok(m.note.hidden, "and the note steps aside for it");
+  assert.ok(!m.said.some((s) => /not found|No results|No shows found/i.test(s)),
+    `"not found" must never have been said about a search that found something: ${JSON.stringify(m.said)}`);
+});
+
+test("a search that every pass answered with nothing says 'No shows found' — scoped to shows", async () => {
+  /* The settled half of the same convention, and the scope: the note sits above
+     the Episodes and Playlists sections, so it names what IT searched.
+     MUTATION: delete the `showPassDone(...)` call from the catalogue pass. The
+     count never reaches zero, the note stays "Searching…", red. */
+  const m = mountSearch();
+  m.ctx.renderShowSearchResults("zzqx");
+  await sleep(150);
+  assert.strictEqual(m.note.textContent, 'No shows found for "zzqx".');
+  assert.ok(!m.note.hidden);
+  assert.ok(m.offer().hidden, "every pass answered, and there is nothing else to offer");
+});
+
+test("an empty answer behind a pass that FAILED says part of the search did not load, and Try again re-runs it", async () => {
+  /* `api/shows/search.ts` answers a limiter trip with 200 and zero directory
+     rows by design; offline, every network pass fails. Either way "no shows"
+     was a permanent claim about a moment's network, with nothing to press.
+     MUTATION: pass `false` instead of `!answered` to the directory's
+     showPassDone. The failure is not reported, and this goes red. */
+  const m = mountSearch({ directoryError: "rate-limited" });
+  m.ctx.renderShowSearchResults("zzqx");
+  await sleep(150);
+  assert.match(m.note.textContent, /No shows found/);
+  assert.match(m.offer().innerHTML, /Part of this search didn't load\./);
+  const before = m.calls.filter((u) => u.includes("fallthrough=1")).length;
+  assert.ok(m.retry(m.offer()), "the failure offers Try again");
+  await sleep(150);
+  assert.ok(m.calls.filter((u) => u.includes("fallthrough=1")).length > before, "Try again asks the directory again");
+});
+
+test("a subject's own name that finds no show by title offers that subject's categories that hold shows", async () => {
+  /* A browse pill runs the ordinary search for its label (founder, #684) and a
+     label like "Science" rarely matches a show TITLE. The empty answer now
+     offers the subject's narrower categories that do hold shows — each chip a
+     page with at least one show on it — instead of a dead end.
+     MUTATION: delete the `if (node) { … }` block in paintShowSearchEmptyOffer.
+     The offer is empty and this goes red. */
+  const taxonomy = { nodes: [
+    { id: "science", parent: null, label: "Science" },
+    { id: "science/physics", parent: "science", label: "Physics" },
+    { id: "science/geology", parent: "science", label: "Geology" },
+  ] };
+  const catalog = { shows: [{ show_id: "s1", title: "Alpha Show", taxonomy_node_ids: ["science/physics"] }] };
+  const m = mountSearch({ taxonomy, catalog });
+  m.ctx.renderShowSearchResults("Science");
+  await sleep(150);
+  assert.match(m.note.textContent, /No shows found for "Science"/);
+  const html = m.offer().innerHTML;
+  assert.match(html, /href="#\/category\/science%2Fphysics"/, `the category that holds a show is offered: ${html}`);
+  assert.doesNotMatch(html, /geology/, "a category with no shows is not offered — it would be another dead end");
+  assert.doesNotMatch(html, /data-retry/, "nothing failed, so nothing to retry");
 });
