@@ -1581,8 +1581,24 @@ function currentRate() {
    localStorage evicted, IndexedDB intact — the value only arrives at the end. So
    repaint once when it lands. Read through `currentRate()`, so a listener who
    tapped inside that window keeps their choice rather than having the stored row
-   overrule it. */
-storageReady.then(() => { paintRate(); notifyForay(); }).catch(() => {});
+   overrule it.
+
+   AND THE MANAGER, NOT ONLY THE LABEL (audit 2026-09-22, qa row 168). A player
+   booted inside that window — the restored ribbon boots at launch — built its
+   manager from the stored rate as it stood THEN, which was the default. The
+   repaint above then read `manager.rate` back and confirmed the wrong 1x for the
+   whole session. So when hydration lands, the stored speed is handed to a
+   manager that already exists. A speed the listener chose inside the window is
+   safe without a flag here: `applyRate` wrote it, and hydration never clobbers
+   a key written since the store was built, so `readRate` answers their choice. */
+storageReady.then(() => {
+  if (manager) {
+    const stored = readRate(storage);
+    if (stored !== manager.rate) manager.setRate(stored);
+  }
+  paintRate();
+  notifyForay();
+}).catch(() => {});
 
 /**
  * Apply and persist a speed.
@@ -2203,8 +2219,14 @@ function syncMediaSession() {
     index: 0,
     total: 0,
     showArtworkUrl: current.artwork_url ?? null,
-    durationSec: backend?.duration ?? current.duration_sec ?? null,
-    positionSec: backend?.currentTime ?? 0,
+    /* THE BAR'S OWN READINGS (audit 2026-09-22, qa row 161). These read the
+       element directly, which on a RESTORED bar holds nothing: the lock screen
+       and the car were told 0:00 while the bar said 30:00, and a feed with no
+       duration left the OS with none although the position store measured one.
+       `episodePositionSec` / `episodeDurationSec` are what `render()` paints
+       from, so the two surfaces cannot disagree. */
+    durationSec: episodeDurationSec(),
+    positionSec: episodePositionSec(),
     /* The rate the element is really running at, for the reason spelled out
        above. A BLOCK comment, deliberately: `media-session.test.js` scans this
        file with a stripper that removes `//` comments LAST, so an apostrophe in
@@ -2773,8 +2795,17 @@ const ForayPlayer = {
 
        A refused write is not a reason to refuse the play. The listener loses
        the ribbon on next launch, which is the old behaviour, not a new
-       failure. */
-    writeLastEpisode(storage, makeLastEpisode(item));
+       failure.
+
+       ONLY A RECORD IS WRITTEN (audit 2026-09-22, qa row 169). `makeLastEpisode`
+       answers null for an item with no id, and `writeLastEpisode(null)` means
+       DELETE — so a playable item without an id (the gate above checks
+       `audio_url`, not `id`) erased the pointer to the episode the listener was
+       really in. Null here means "nothing worth pointing at", which leaves the
+       old pointer alone; clearing it is a separate decision for callers that
+       mean it. */
+    const lastRec = makeLastEpisode(item);
+    if (lastRec) writeLastEpisode(storage, lastRec);
     manager.setQueueFromPick(item);
     await manager.play(0);
     render();
@@ -3509,22 +3540,42 @@ const ForayPlayer = {
       `foraysDoc` is FD-05's half: with the live `data/forays.json` in hand, a row
       whose Foray is no longer in the directory reads `drift: "dropped"` rather
       than being offered as a place to jump back to. Without it every row reads
-      `unverified`, exactly as before. */
-  forayResumeList({ foraysDoc = null } = {}) {
+      `unverified`, exactly as before.
+
+      `resolveFor(id)` is the LIVE running order (audit 2026-09-22, qa row 163):
+      the page's resolver, handed in because only the page holds the segment
+      documents. With it a row's percent and "min left" are measured against the
+      Foray as it exists now — the same `totalSec` / `maxIndex` / `segments`
+      triple `forayResume` passes — rather than against the runtime stored when
+      the row was written, which a regenerated Foray no longer has. A resolver
+      that answers null or throws leaves that row on its stored reading. */
+  forayResumeList({ foraysDoc = null, resolveFor = null } = {}) {
     /* `allForays`, not `listableForays`: presence is about the DIRECTORY, and the
        draft rule is the caller's (app.js filters by what it may list). */
     const live = foraysDoc ? new Set(allForays(foraysDoc).map((f) => f.id)) : null;
     return forayProgress.list().map((r) => {
       const present = live ? live.has(r.foray_id) : true;
-      const point = resumePoint(r, { present });
+      let resolved = null;
+      if (present && typeof resolveFor === "function") {
+        try { resolved = resolveFor(r.foray_id) || null; } catch (_) { resolved = null; }
+      }
+      const liveTotal = resolved && isFiniteNum(resolved.totalSec) && resolved.totalSec > 0 ? resolved.totalSec : null;
+      const liveCount = resolved && Array.isArray(resolved.playable) ? resolved.playable.length : null;
+      const point = resumePoint(r, {
+        present,
+        totalSec: liveTotal,
+        maxIndex: Number.isInteger(liveCount) && liveCount > 0 ? liveCount - 1 : null,
+        segments: resolved ? progressSegments(resolved) : null,
+      });
+      const totalSec = liveTotal ?? r.total_sec;
       return {
         id: r.foray_id,
         title: r.title || "",
         updated_at: r.updated_at,
-        elapsedSec: r.elapsed_sec,
-        totalSec: r.total_sec,
-        index: r.index,
-        percent: percentDone(r.elapsed_sec, r.total_sec),
+        elapsedSec: point ? point.elapsedSec : r.elapsed_sec,
+        totalSec,
+        index: point && point.index >= 0 ? point.index : r.index,
+        percent: point ? point.percent : percentDone(r.elapsed_sec, totalSec),
         finished: Boolean(point?.finished),
         label: point && !point.finished ? remainingLabel(point.remainingSec) : "",
         drift: present ? (point?.drift ?? DRIFT_UNVERIFIED) : DRIFT_DROPPED,

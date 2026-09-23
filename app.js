@@ -10937,7 +10937,17 @@ function forayResumeRows() {
   /* `foraysDoc` is FD-05: a row whose Foray is no longer in the directory reads
      `drift: "dropped"` and is not offered — the visibility set below already
      excludes it (it is not listed), and the drift is what a test can name. */
-  return window.ForayPlayer.forayResumeList({ foraysDoc: state.forays })
+  /* `resolveFor` (audit 2026-09-22, qa row 163): the row's percent and "min
+     left" are read against the Foray as it resolves NOW, through the same
+     `forayViewOpts()` gate every other Foray this page opens goes through —
+     not against the runtime stored when the row was written. */
+  const player = window.ForayPlayer;
+  const resolveFor = typeof player.resolve === "function" && state.forays
+    ? (id) => player.resolve(state.forays, {
+        id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
+      })
+    : null;
+  return player.forayResumeList({ foraysDoc: state.forays, resolveFor })
     .filter(p => visible.has(p.id) && p.drift !== "dropped" && !p.finished && p.label)
     .slice(0, 3);
 }

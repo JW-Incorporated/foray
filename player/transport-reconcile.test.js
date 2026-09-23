@@ -2368,3 +2368,114 @@ test("PERSONA: an episode played AFTER the Foray keeps the bar", async (t) => {
   assert.equal(client.lastPlayedForay(), null);
   restore();
 });
+
+/* ==================================================================== */
+/* part 10: the audit's completeness sweep (2026-09-23) — rows another  */
+/* lane handed on, re-verified live on the integration branch           */
+/* ==================================================================== */
+
+test("SWEEP: playing an item with no id leaves the last-episode pointer alone", async (t) => {
+  /* qa row 169. `makeLastEpisode` answers null for an id-less item and
+     `writeLastEpisode(null)` DELETES the pointer. KILLING MUTATION: put back
+     `writeLastEpisode(storage, makeLastEpisode(item))` unconditionally. */
+  const { client, storage, restore } = await bootClient(t);
+  await client.play(episodeItem("ep-a"));
+  await settle();
+  assert.equal(JSON.parse(storage.getItem("cp_last_episode")).id, "ep-a", "precondition: the pointer is written");
+  await client.play({ kind: "episode", title: "No id", show: "Show", audio_url: "https://cdn.test/noid.mp3" });
+  await settle();
+  const after = storage.getItem("cp_last_episode");
+  assert.ok(after, "the pointer survived");
+  assert.equal(JSON.parse(after).id, "ep-a");
+  restore();
+});
+
+test("SWEEP: the lock screen shows a RESTORED bar's position, not the empty element's 0:00", async (t) => {
+  /* qa row 161. `syncMediaSession` read `backend.currentTime`, which on a
+     restored bar is 0 while the bar says 30:00. KILLING MUTATION: put back
+     `positionSec: backend?.currentTime ?? 0` in the episode branch. */
+  const ms = fakeMediaSession();
+  const states = [];
+  ms.setPositionState = (s) => { if (s) states.push(s); };
+  const { restore } = await aRestoredRibbon(t, 1800, { mediaSession: ms });
+  assert.ok(states.length > 0, "the restored bar wrote a position to the OS");
+  const last = states[states.length - 1];
+  assert.ok(Math.abs(last.position - 1800) < 1, `the lock screen says ${last.position}s, the bar says 1800s`);
+  assert.equal(last.duration, 3600);
+  restore();
+});
+
+/** A native Preferences tier whose answers wait for `release()` — hydration
+    that lands AFTER the player has booted, which is qa row 168's shape. */
+function lateNativeStore(rows) {
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const capacitor = {
+    nativePromise: async (plugin, method, opts = {}) => {
+      if (plugin !== "Preferences") return {};
+      await gate;
+      if (method === "keys") return { keys: Object.keys(rows) };
+      if (method === "get") return { value: rows[opts.key] ?? null };
+      return {};
+    },
+  };
+  return { capacitor, release: () => release() };
+}
+
+test("SWEEP: a speed that arrives with late hydration reaches a player that already booted", async (t) => {
+  /* qa row 168. The manager was built from the rate as it stood at boot (the
+     default), and the late repaint read `manager.rate` back and confirmed 1x for
+     the session. KILLING MUTATION: drop the `manager.setRate(stored)` block
+     from the `storageReady` handler. */
+  const late = lateNativeStore({ cp_rate: "1.5" });
+  const { client, doc, audio, restore } = await bootClient(t, { capacitor: late.capacitor });
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(find(doc.body, "fp-rate").textContent, "1×", "precondition: booted before the stored speed arrived");
+  late.release();
+  for (let i = 0; i < 6; i++) await settle();
+  assert.equal(find(doc.body, "fp-rate").textContent, "1.5×", "the stored speed is on the button");
+  assert.equal(audio.playbackRate, 1.5, "and on the element");
+  restore();
+});
+
+test("SWEEP: a speed the listener chose before hydration landed is not overruled by the store", async (t) => {
+  /* The other half of the same rule: the late store must not overrule a choice
+     made inside the window. Held by the durable store's own rule (hydration
+     never clobbers a key written since construction), which the new handler
+     leans on instead of a flag of its own — pinned here so a handler that
+     read the durable tier directly would fail. KILLING MUTATION: in the
+     handler, `manager.setRate(1.5)` in place of `readRate(storage)`. */
+  const late = lateNativeStore({ cp_rate: "1.5" });
+  const { client, doc, audio, restore } = await bootClient(t, { capacitor: late.capacitor });
+  await client.play(episodeItem());
+  await settle();
+  client.setPlaybackRate(2);
+  late.release();
+  for (let i = 0; i < 6; i++) await settle();
+  assert.equal(find(doc.body, "fp-rate").textContent, "2×");
+  assert.equal(audio.playbackRate, 2);
+  restore();
+});
+
+test("SWEEP: Jump back in's Foray rows read the LIVE runtime, as the Foray page's resume does", async (t) => {
+  /* qa row 163. `forayResumeList` measured percent and "min left" against the
+     runtime stored with the row; `forayResume` measures against the Foray as it
+     resolves now. A regenerated Foray made the two disagree. KILLING MUTATION:
+     stop passing `totalSec: liveTotal` into `resumePoint` in `forayResumeList`. */
+  const carried = await aSessionThatPlayed(t, ["foray"]);
+  const { client, restore } = await bootClient(t, { seed: carried });
+  const longer = synthetic();
+  longer.totalSec = 1250;                     // the Foray grew since the row was written
+  const stored = client.forayResumeList().find((r) => r.id === "f263");
+  assert.ok(stored, "precondition: the row is listed");
+  const row = client.forayResumeList({ resolveFor: (id) => (id === "f263" ? longer : null) }).find((r) => r.id === "f263");
+  const page = client.forayResume("f263", { resolved: longer });
+  assert.equal(row.totalSec, 1250);
+  assert.equal(row.percent, page.percent, "the rail and the Foray page agree on how far in");
+  assert.equal(row.label, page.label, "and on how long is left");
+  assert.notEqual(row.label, stored.label, "which is not what the stored runtime said");
+  const throwing = client.forayResumeList({ resolveFor: () => { throw new Error("no docs"); } }).find((r) => r.id === "f263");
+  assert.equal(throwing.label, stored.label, "a resolver that fails leaves the stored reading");
+  restore();
+});

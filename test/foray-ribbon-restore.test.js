@@ -119,3 +119,22 @@ test("an older player module with no Foray ribbon still restores the episode", (
   app.restoreNowPlayingRibbon();
   assert.deepEqual(bridge.calls, [["restoreLastEpisode"]]);
 });
+
+test("Jump back in's Foray rows are read against the Foray as it resolves NOW (audit sweep, qa row 163)", () => {
+  /* The player's half — `forayResumeList` measuring against `resolveFor`'s
+     live runtime — is pinned in player/transport-reconcile.test.js part 10.
+     This is the page's half: it hands the list a resolver, and that resolver
+     goes through the same `forayViewOpts()` gate and documents as every other
+     Foray this page opens. KILLING MUTATION: call `forayResumeList` with
+     `{ foraysDoc: state.forays }` only, as before. */
+  const bridge = fakeBridge();
+  let handed = null;
+  bridge.forayResumeList = (opts) => { handed = opts; return []; };
+  bridge.listForays = () => [];
+  const app = loadApp(bridge);
+  app.forayResumeRows();
+  assert.ok(handed, "the page asked for the rows");
+  assert.equal(typeof handed.resolveFor, "function", "with a live resolver");
+  assert.equal(handed.resolveFor("f1"), RESOLVED);
+  assert.deepEqual(bridge.calls, [["resolve", "f1"]], "which is the page's own resolve");
+});
