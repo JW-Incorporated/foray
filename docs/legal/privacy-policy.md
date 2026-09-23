@@ -104,7 +104,6 @@ The app also asks the browser to mark its storage as persistent
 | `cp_rate` | Your playback speed | **No** |
 | `cp_voice` | Your chosen narration voice — an identifier the device's own voice list reported | **No** |
 | `cp_interlude` | Whether the short jingle between a foray's segments is on or off — a local per-device preference. On unless you turn it off | **No** |
-| `cp_player` | Which external podcast app you prefer to open episodes in | **No** |
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
 | `cp_show_drafts` | Whether the settings switch that lists unpublished (draft) forays on this device is on — a local per-device preference for testing them before they are published. Off by default | **No** |
 | `cp_voice_probe` | Whether the settings switch that offers the voice-engine measurement on this device is on — a local per-device preference used to test a bundled narration voice before it ships. Off by default; when it is off the control is not shown at all | **No** |
@@ -139,7 +138,7 @@ request that is not to our own origin.
 ## 2. What leaves your device, exactly
 
 The app buffers events locally (in the event queue described above) and
-periodically sends some of them to our database (Supabase — see §3). **Nineteen of the twenty-three event types the app records never leave the device.** The
+periodically sends some of them to our database (Supabase — see §3). **Eighteen of the twenty-two event types the app records never leave the device.** The
 buffer is trimmed to the most recent 5,000 entries.
 
 **Sent** (`app.js:toEventRow()`). Every row carries your anonymous account id
@@ -156,7 +155,7 @@ and a timestamp:
 position; stored about every 15 seconds, recorded as an event at most once a
 minute per episode — `player/position-store.js:save()`), `foray_play`,
 `foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
-`unsaved`, `playlist_built`, `playlist_removed`, `player_pref`, `family_mode`,
+`unsaved`, `playlist_built`, `playlist_removed`, `family_mode`,
 `autoadvance_pref` (toggling Up Next auto-advance on or off), `voice_pref`
 (choosing a narration voice — V-01), `refreshed_all`,
 `storage_fault`, `queued` and its counterpart `unqueued`
@@ -169,8 +168,10 @@ rather say so than let the field names imply more collection than happens:
 - The **`app` label is a hardcoded constant.** It reads a `data-app` attribute
   that nothing in the app ever sets, so it is always the literal string
   `"Apple Podcasts"` (`app.js:bindPickLogging()`). It does **not** report which
-  podcast app you actually use, and your stored preference (`cp_player`) is never
-  transmitted.
+  podcast app you actually use. (4a used to keep a preferred-app setting,
+  `cp_player`, for a link-out it no longer has; the setting was removed on
+  2026-09-22. A copy on an older device is never sent, and **Delete my data**
+  clears it with everything else.)
 - The **context label** is filtered against a five-value allowlist
   (`app.js:SB_ARCHETYPES`), but the only values the app ever produces are
   `continue` — you resumed something — or a subject/playlist label that the

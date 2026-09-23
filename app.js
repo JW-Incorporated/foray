@@ -349,7 +349,7 @@ function toEventRow(e, userId) {
     case "session_shown":
       return row("session_built", { session_key: p.session_id, builder: e.builder || "unknown" });
     default:
-      return null; // unsaved / playlist_* / family_mode / player_pref / refreshed_all — local only
+      return null; // unsaved / playlist_* / family_mode / refreshed_all — local only
   }
 }
 
@@ -706,27 +706,12 @@ function fullPool() {
   return pool;
 }
 
-function appleLink(item) {
-  const cid = item.apple_collection_id;
-  return item.apple_episode_url
-    || (item.apple_track_id
-        ? `https://podcasts.apple.com/us/podcast/id${cid}?i=${item.apple_track_id}`
-        : `https://podcasts.apple.com/us/podcast/id${cid}`);
-}
-
-/* Player preference: Apple deep-links to the episode; Pocket Casts has no
-   public episode-URL scheme, so it lands on the show page (verified via
-   data/app-links.json research). */
-function playerPref() { return lsGet("cp_player", "apple"); }
-
-function playLink(item) {
-  if (playerPref() === "pocketcasts") return `https://pca.st/itunes/${item.apple_collection_id}`;
-  return appleLink(item);
-}
-
-/* In-app play button. Items with no audio_url keep the link-out to Apple
-   Podcasts instead (#21 leaves ~9 unresolvable, plus video-only items) — the
-   card itself stays a link either way, so nothing regresses for them.
+/* In-app play button. An item with no audio_url gets NO button — there is no
+   link-out to another podcast app any more (#21 leaves ~9 unresolvable, plus
+   video-only items; the card itself stays a link either way). The "Open in"
+   setting that chose that app, and the two link builders it fed, were deleted
+   together on 2026-09-22: nothing had called either builder since the link-out
+   went, so the switch persisted a value nothing read (design/QA audit).
 
    `ctx`, when given, is stamped on as `data-ctx` — the same "playlist-<id>"
    / "subject-<id>" / "generated-<id>" convention bindPickLogging already
@@ -1320,8 +1305,8 @@ function prettyTitle(query) {
    which is strictly worse than the link-out an absent one already degrades to
    (see playBtn) — so in-app playback comes from the live pool only, never from a
    playlist. `artwork_url` is 161 B that epRow never renders. `apple_episode_url`
-   is derivable: appleLink() already falls back to `id<collection>?i=<track>`
-   without it. `hook` feeds the player's why-line, which only a live part
+   is derivable from the two Apple ids that are kept (`id<collection>?i=<track>`),
+   and nothing links out to Apple any more anyway. `hook` feeds the player's why-line, which only a live part
    reaches, and `duration_sec` only the player; epRow prints `duration_min`.
 
    `topics` is kept even though nothing renders it, because without it an
@@ -9407,9 +9392,10 @@ function paintDrawerToggles() {
   }
 }
 
-/** The six, in the drawer's reading order: the listener's three from
-    index.html, the listener's fourth (the jingle) appended, then the two
-    founder switches. The diagnostic and destructive controls `init()` binds
+/** The five, in the drawer's reading order: the listener's two from
+    index.html, the listener's third (the jingle) appended, then the two
+    founder switches. ("Open in", the sixth, was deleted 2026-09-22 — it chose
+    a link-out that no longer existed.) The diagnostic and destructive controls `init()` binds
     after these are not switches and stay below them. */
 function bindDrawerToggles() {
   drawerToggle("family-toggle", "Family mode", familyMode, (on) => {
@@ -9417,14 +9403,6 @@ function bindDrawerToggles() {
     logEvent("family_mode", { on });
     buildCards();
   }, { repaint: true });
-
-  /* Not an on/off: the two states are two destinations, and "Open in: off"
-     would be nonsense. `words` is why the helper takes a pair rather than
-     hard-coding the two English words at five call sites. */
-  drawerToggle("player-toggle", "Open in", () => playerPref() === "apple", (on) => {
-    lsSet("cp_player", on ? "apple" : "pocketcasts");
-    logEvent("player_pref", { player: playerPref() });
-  }, { words: ["Pocket Casts (show page)", "Apple Podcasts"], repaint: true });
 
   drawerToggle("autoadvance-toggle", "Up Next auto-advance", autoAdvanceOn, (on) => {
     lsSet("cp_autoadvance", on);

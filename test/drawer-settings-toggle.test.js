@@ -167,15 +167,25 @@ test("#family-toggle updates family mode AND leaves the drawer open", async () =
   assert.strictEqual(m.byId.get("drawer").hidden, false, "the drawer must stay open after toggling family mode");
 });
 
-test("#player-toggle updates the player preference AND leaves the drawer open", async () => {
-  /* MUTATION: restore `route()` in the player-toggle handler instead of
-     `renderCurrentPage()`. Same drawer-closing regression as family-toggle. */
+test("\"Open in\" is gone, with the dead code it governed", async () => {
+  /* It used to be `#player-toggle`, "Open in: Apple Podcasts / Pocket Casts
+     (show page)": one of three settings a listener could see, and it changed
+     nothing. Its only consumer was `playLink`, which nothing had called since
+     the link-out to another podcast app was deleted — so it persisted a value
+     nothing read (2026-09-22 design/QA audit; founder ruling R7: delete the
+     toggle and its dead code together).
+
+     MUTATION THAT KILLS THIS: restore the `drawerToggle("player-toggle", ...)`
+     line, or any of the three builders. */
   const m = await mountBooted();
-  m.byId.get("drawer").hidden = false;
-  const before = m.ctx.playerPref();
-  m.byId.get("player-toggle")._fire("click");
-  assert.notStrictEqual(m.ctx.playerPref(), before, "player preference must flip");
-  assert.strictEqual(m.byId.get("drawer").hidden, false, "the drawer must stay open after toggling player preference");
+  assert.ok(!m.evalIn("drawerToggles.map(t => t.id)").includes("player-toggle"), "the switch is registered again");
+  const index = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  assert.ok(!/id="player-toggle"/.test(index), "index.html still carries the button");
+  const code = fs.readFileSync(path.join(ROOT, "app.js"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
+  for (const dead of ["playerPref", "playLink", "appleLink", "cp_player\"", "player_pref"]) {
+    assert.ok(!code.includes(dead), `${dead} is back in app.js`);
+  }
 });
 
 test("#autoadvance-toggle updates auto-advance AND leaves the drawer open", async () => {
@@ -250,7 +260,7 @@ test("route() still closes the drawer on a hashchange-driven call", async () => 
    expensive. Finding 7: `ui2On()` was `return true` with four live branches. */
 
 const SWITCH_IDS = [
-  "family-toggle", "player-toggle", "autoadvance-toggle",
+  "family-toggle", "autoadvance-toggle",
   "interlude-toggle", "drafts-toggle", "voice-probe-toggle",
 ];
 
@@ -346,7 +356,7 @@ test("every switch in the drawer goes through the ONE helper, in reading order",
      which deepStrictEqual (rightly) refuses to call equal. */
   const registered = [...m.evalIn("drawerToggles.map(t => t.id)")];
   assert.deepStrictEqual(registered, SWITCH_IDS,
-    "all six, and in the order they read down the drawer");
+    "all five, and in the order they read down the drawer");
 
   m.ctx.openDrawer(true);
   for (const id of SWITCH_IDS) {
@@ -354,9 +364,6 @@ test("every switch in the drawer goes through the ONE helper, in reading order",
     assert.ok(el, `${id} exists`);
     assert.match(el.textContent, /^[^:]+: .+$/, `${id} is painted by the one label pass, got "${el.textContent}"`);
   }
-  assert.ok(["Open in: Apple Podcasts", "Open in: Pocket Casts (show page)"].includes(m.findById("player-toggle").textContent),
-    "a switch whose two states are two DESTINATIONS reads as one of them, never as on/off — that is what `words` is for; "
-    + `got "${m.findById("player-toggle").textContent}"`);
 });
 
 test("binding twice never stacks a second handler or a second button", async () => {

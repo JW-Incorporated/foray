@@ -41,7 +41,7 @@ every answer below:
    `cp_` prefix; db `foray`, store `kv`). Two of the 23 are diagnostics rather
    than a listener's data — `cp_storage_health` and `cp_diag` — and neither is
    transmitted.
-2. **Exactly 4 of 23 event types are transmitted**, to one endpoint
+2. **Exactly 4 of 22 event types are transmitted**, to one endpoint
    (`https://qjdllvqdcgacvujhclny.supabase.co`), keyed to an anonymous account.
    Mapping: `app.js:toEventRow()` — the four `case` arms that return a row are
    the whole transmitted set, and every other type falls to `return null`.
@@ -95,7 +95,7 @@ ones a template gets wrong.
 | **Contacts** | **No** | No | — |
 | **App activity — App interactions** | **Yes** | No | The five transmitted events are interactions: picked, finished, saved, thumbs, session shown (`app.js:toEventRow()`). The `picked` row's `context` field is filtered against a five-value allowlist (`app.js:SB_ARCHETYPES`) but the app only ever produces `continue` or a value the filter discards, so it is `"continue"` or null in practice — it does not report which recommendation archetype you saw. |
 | **App activity — In-app search history** | **No** | No | The playlist box (`app.js:#pl-input`, `maxlength=120`) is searched entirely on-device by `search-engine.js`; `playlist_built`/`playlist_removed` are local-only (they fall to `toEventRow`'s `default: return null`). Stored in `cp_playlists`, never sent — which since #276 also holds a copy of each saved episode’s title, show, length, topic ids and Apple Podcasts ids, so an aged-out part still renders. That is catalogue metadata about episodes, not search history about you, and none of it leaves the device either. The Shows search box (`app.js:#sh-input`) works the same way for anything already in 4a's local catalogue; when a search misses the local catalogue it looks the query up against a shard/index off-device (HUMAN-ACTIONS.md #38, `privacy-policy.md` §2) — that miss-only lookup is not a search-history event and is not logged, but it is a network transmission of what you typed, so this row is worth a lawyer's eye once shard/API-backed Shows search ships. |
-| **App activity — Installed apps** | **No** | No | Nothing is enumerated. `cp_player` (your preferred external app) is local-only and never transmitted. The `picked` row carries an `app` field, but it reads a `data-app` attribute **nothing in the app ever sets**, so it is always the hardcoded literal `"Apple Podcasts"` regardless of your preference (`app.js:bindPickLogging()`) — it reports nothing about you or your device. |
+| **App activity — Installed apps** | **No** | No | Nothing is enumerated. (The retired `cp_player` preferred-app setting was local-only and never transmitted; the app stopped writing it on 2026-09-22.) The `picked` row carries an `app` field, but it reads a `data-app` attribute **nothing in the app ever sets**, so it is always the hardcoded literal `"Apple Podcasts"` regardless of your preference (`app.js:bindPickLogging()`) — it reports nothing about you or your device. |
 | **App activity — Other user-generated content** | **Yes** | No | The thumbs-down free-text note is transmitted (`app.js:toEventRow()`; typed into `app.js:#fy-sheet-note`, `maxlength=200`). |
 | **App activity — Other actions** | **Yes** | No | Thumbs direction and the fixed reason codes (`app.js:FB_CHIPS`, sent by `app.js:toEventRow()`). |
 | **Web browsing history** | **No** | No | The app cannot see your browsing. |

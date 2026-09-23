@@ -372,7 +372,7 @@ test("the fields that ROT or cost the most are deliberately not copied", () => {
   /* `audio_url` is the point: it is the most expensive field AND the only one
      whose staleness produces a play button that fails, which is worse than the
      link-out an absent one degrades to. `artwork_url` is never rendered by a row,
-     `apple_episode_url` is derivable from the two ids appleLink() already uses,
+     `apple_episode_url` is derivable from the two Apple ids that are kept,
      and `hook` only reaches an in-app play.
 
      MUTATION: copy any of them into the part. This fails, by name. */

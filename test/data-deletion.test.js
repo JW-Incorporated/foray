@@ -505,11 +505,17 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      localStorage undid the listener's change on the next launch and then pushed
      the stale copy over the good one. Bookkeeping, not user state, and written
      to the durable tiers only; the delete control clears it like any other row.
-     Same mechanism: this count failed first, then the policy check. */
+     Same mechanism: this count failed first, then the policy check.
+
+     28 -> 27 on 2026-09-22 (same audit; founder ruling R7): `cp_player` retired
+     with the "Open in" switch that wrote it. Its only reader was `playLink`,
+     which nothing had called since the link-out to another podcast app was
+     deleted. A copy on an older device is still `cp_`-prefixed, so the
+     enumeration above clears it; policy §2 says so in prose. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 28,
-    `expected 28 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 27,
+    `expected 27 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");
