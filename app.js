@@ -4558,6 +4558,8 @@ function bindPlay(scope) {
         try { window.ForayPlayer.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
         return;
       }
+      /* A ROW SUPERSEDED MID-LOAD IS NOT PLAYED (audit round 2, p-impatient-2): `play()` now answers for its own item; this is the belt for a module of that vintage, and a module with no `isCurrent` is trusted on its `ok`. */
+      if (typeof window.ForayPlayer.isCurrent === "function" && !window.ForayPlayer.isCurrent(id)) return;
       logEvent("play_started", { episode_id: id, topics: item.topics || [] });
       recordHistory(id);
       /* Same "playlist-<id>" convention and the same regex bindPickLogging

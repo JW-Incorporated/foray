@@ -2,6 +2,61 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-23 (audit round 2, player transport: resume after a call, a finished episode on the car, finished things leave Jump back in, a nudge inside a spoken line)
+
+Four rulings the round-2 lane L1 (`docs/audit/round-2/`) needed, applied as the
+orchestrator's defaults for the founder's questions and recorded here so the
+next reader finds a decision rather than a default.
+
+**1. After a phone call or Siri, 4a resumes on its own when iOS says
+`shouldResume` (founder question 2; `p-car-3`, `native-3`).** Apple Podcasts and
+Spotify come back after a call; 4a stayed silent, for two reasons the round found.
+The page's own reconcile of the interruption issued `el.pause()` to an element the
+OS had already paused, and in WebKit a script pause during an interruption records
+"paused" as the state to restore, so the OS resumed nothing
+(`html-audio-backend.js` `pause()` no longer re-pauses a paused element). And
+`interruptionEnded` was dropped on the page with a comment calling the resume "a
+product decision (docs/DECISIONS.md)" that this file never contained. **Ruling:
+resume, with three guards, because audio with no press is what the old code
+refused outright.** The event must be fresh (`INTERRUPTION_RESUME_MAX_LAG_MS`,
+30 s — a page that handles it minutes later was woken by the listener opening the
+app, and starting audio under their thumb is founder report 1 in the other
+direction); the manager resumes only an interruption the OS caused, never a pause
+the listener made before the call (`_pausedByListener` — iOS sends `shouldResume`
+for both, since the paused app holds its session since this morning); and a resume
+the listener or WebKit already made is a no-op in the reducer. A spoken narration
+line is asked of the synthesiser (`foray-tts.js` `state()`) rather than the
+element, and a line the synthesiser has gone silent on is paused through the same
+reducer path, so it resumes the same way; a line that never reports `finished` is
+given up on past 1.5x its runtime plus 10 s. **Device check (Wyatt, next build):**
+a 20 s call mid-episode and one mid-narration — 4a should come back both times;
+the record's `interruptionEnded should-resume` row should be followed by a
+`interruption.ended.resumed` note. The lag bound is a heuristic and is the number
+to tune if a resume ever lands late.
+
+**2. A finished ordinary episode stays on the lock screen and the car,
+paused (`p-car-6`).** The 2026-08 rule "a finished Foray reports none — a play
+button that cannot do anything is worse than none" had been silently extended to
+episodes, for which it was never true: play from `ended` reloads the episode from
+the top, and `none` at the end of the last episode blanked the head unit and every
+wheel button. Apple keeps the finished episode on the lock screen, paused; so does
+4a. The Foray rule is unchanged (`docs/ios-lock-screen.md` §2). The iOS plugin's
+session hold is taken on playing → paused only, so whether the car actually keeps
+4a through the end of a list is part of the device check above.
+
+**3. Finished things leave Jump back in (founder question 3; `player-8`).** A
+finished episode kept a "Played, 100%" card for thirty days while the ribbon
+restored the same episode at 0:00 with an empty bar. Neither surface offers a
+finished episode now; a finished Foray already had no row. "Played — play again"
+on the item's own rows and pages is the copy lane's half.
+
+**4. A nudge inside a spoken narration line restarts it (↺15) or skips it (30↻),
+and the live region says which (`player-11`).** The synthesiser cannot start
+mid-sentence, so a nudge that stayed inside the line being spoken did nothing at
+all, silently. A nudge that crosses out of the line seeks as before. The
+alternative — announcing "cannot be scrubbed" and doing nothing — leaves a tap
+with no effect, which is the defect.
+
 ## 2026-09-23 (six founder reports from one drive: no zoom at all, the drawer leaves when used, the lock screen's 15/30, the paused app keeps the car, and "4a / unknown / unknown")
 
 **The report (Wyatt, 2026-09-23, iPhone, build 2026092326), verbatim — the four

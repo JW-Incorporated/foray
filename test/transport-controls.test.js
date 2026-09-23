@@ -102,8 +102,11 @@ test("the one nudge: inside a Foray it seeks on the Foray clock, otherwise on th
   /* MUTATION: make `nudgeBy` call `seekEpisodeBy` unconditionally -> a Foray
      nudge seeks the source episode's clock and skips the clip boundary rule. */
   const fn = CODE.slice(CODE.indexOf("function nudgeBy("), CODE.indexOf("function render()"));
-  assert.match(fn, /if \(foray\) return ForayPlayer\.foraySeek\(Math\.max\(0, forayPosition\(\) \+ offset\)\);/);
-  assert.match(fn, /return seekEpisodeBy\(offset\);/);
+  /* Audit round 2 (player-5): the Foray step is clamped one second short of
+     the end, like the episode's, before it goes to `foraySeek`. */
+  assert.match(fn, /if \(!foray\) return seekEpisodeBy\(offset\);/);
+  assert.match(fn, /const ceiling = Math\.max\(0, foray\.resolved\.totalSec - SEEK_END_GUARD_SEC\);/);
+  assert.match(fn, /return ForayPlayer\.foraySeek\(target\);/);
   assert.match(CODE, /seekBy: \(offset\) => nudgeBy\(offset\),/, "the lock screen's seek is the same nudge");
   assert.match(CODE, /nudge\(offsetSec\) \{ return nudgeBy\(offsetSec\); \},/, "the bridge exposes it to the page");
   assert.match(CODE, /nudgeSteps\(\) \{ return \{ back: SEEK_BACK, fwd: SEEK_FWD \}; \},/, "and the step sizes");

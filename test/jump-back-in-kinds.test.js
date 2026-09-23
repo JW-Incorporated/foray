@@ -307,7 +307,11 @@ test("a duration the feed never gave us comes from the position store", () => {
      duration goes back to having no bar. */
   const fn = block(CLIENT_SRC, "lastEpisodeCard() {", "},");
   assert.match(fn, /const stored = store\.load\(rec\.id\);/);
-  assert.match(fn, /Number\(stored\?\.duration\)/, "the stored duration is the fallback");
+  /* Audit round 2 (honesty-4): the stored, MEASURED duration is now the first
+     choice, not the fallback, through the one rule every surface shares. */
+  assert.match(fn, /const durationSec = knownEpisodeDurationSec\(rec\.id, rec\.duration_sec\);/, "the duration goes through the shared rule");
+  const rule = block(CLIENT_SRC, "function measuredDurationSec(id) {", "}");
+  assert.match(rule, /Number\(positionReader\(\)\.load\(id\)\?\.duration\)/, "which reads the stored duration");
   /* 2026-09-22: the percent now comes from `episodeProgress`, which owns the
      finished/in-progress reading every surface shares — same duration argument. */
   assert.match(fn, /episodeProgress\(\{ \.\.\.rec, duration_sec: durationSec \}/,

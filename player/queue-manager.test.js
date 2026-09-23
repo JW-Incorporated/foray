@@ -119,7 +119,7 @@ function make(opts = {}) {
   const m = new PlayerQueueManager({
     backend, positionStore, telemetry: (t) => log.push(t), strategy: opts.strategy,
     scheduler, seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange,
-    onNarrationTick: opts.onNarrationTick,
+    onNarrationTick: opts.onNarrationTick, onStateSettled: opts.onStateSettled,
     rate: opts.rate, tts: opts.tts, voice: opts.voice,
     interlude: opts.interlude, interludeEnabled: opts.interludeEnabled,
   });
@@ -2762,4 +2762,64 @@ test("L-05: an ordinary segment's pause still goes to the element, never to the 
   await m.pause();
   assert.deepEqual(transportsOf(tts), [], "no plugin call for a rendered segment");
   assert.ok(backend.calls.includes("pause"), `got ${backend.calls}`);
+});
+
+/* ---------- audit round 2 (2026-09-23), lane L1: the settled-state hook, the
+   narration deadline, and whose pause an interruption may resume ---------- */
+
+test("ROUND 2 player-1: onStateSettled fires after EVERY handled event, with the settled state", async () => {
+  /* The surface used to repaint only on media events, and the natural end of an
+     episode moves the reducer to `ended` with no media event after it. KILLING
+     MUTATION: delete the `_onStateSettled` call at the end of `_handle`. */
+  const seen = [];
+  const { m, backend } = make({ onStateSettled: (s) => seen.push(s.type) });
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  assert.deepEqual(seen.slice(-1), ["playing"], `the hook read the state after the effects ran: ${seen}`);
+  seen.length = 0;
+  backend.onItemEnded("natural");
+  await tick();
+  assert.deepEqual(seen, ["ended"], "the end — which produces no media event — is reported too");
+});
+
+test("ROUND 2 native-3: a spoken line that never says finished is treated as finished past its deadline", async () => {
+  /* `AVSpeechSynthesizer` stops when the audio session is taken and reports
+     nothing, so the ticker counted the Foray clock forward over silence forever.
+     Deadline = runtime x 1.5 + 10 s: a 4 s line is given up on after 16 s.
+     KILLING MUTATION: delete the deadline block in `_tickNarration`. */
+  const tts = fakeTts();
+  const scheduler = manualScheduler();
+  const { m } = make({ tts, scheduler, onNarrationTick: () => {} });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "four seconds of narration", duration_sec: 4 },
+    fseg(),
+  ]), { resolveItem });
+  assert.equal(m.currentIndex, 0, "precondition: speaking");
+  await scheduler.advance(15_000);
+  assert.equal(m.currentIndex, 0, "inside the deadline nothing is assumed");
+  await scheduler.advance(2_000);
+  await tick();
+  assert.equal(m.currentIndex, 1, "past it the Foray moves on");
+  assert.equal(m.state.type, "playing");
+});
+
+test("ROUND 2 p-car-3: interruptionEnded(should-resume) resumes an OS interruption, never a listener's pause", async () => {
+  /* `pause()` is modelled as `interruptionBegan`, so the reducer alone cannot
+     tell the two apart, and iOS sends should-resume for both since the paused
+     app holds its session. KILLING MUTATION: `const resume = Boolean(shouldResume);`. */
+  const { m, backend } = make();
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  await m.pause();
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "interrupted", "the listener paused; a call ending does not unpause them");
+  await m.resume();
+  /* The OS took the audio: the element reports paused and not ended, which is
+     what `reconcileWithBackend` reads (this suite's fake models neither by
+     default, so the two are set here as the reconcile suite's fake sets them). */
+  backend.paused = true;
+  backend.ended = false;
+  assert.equal(await m.reconcileWithBackend("session:interruptionBegan"), true);
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "playing", "an interruption the OS caused is resumed");
 });

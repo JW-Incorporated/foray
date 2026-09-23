@@ -128,10 +128,15 @@ function showPageEpisode(m, n) {
 /** A fake player that records plays; `pointer` is its durable now-playing row. */
 function fakePlayer(pointer = null) {
   const calls = [];
+  /* What the real player answers right after a successful `play(item)`: that
+     item IS current. `bindPlay` checks it before the play (toggle vs start) and
+     after it (audit round 2, p-impatient-2: a play superseded mid-load is not
+     recorded), so a fake stuck on `false` was a fake the real thing contradicts. */
+  let current = null;
   return {
     calls,
-    async play(item) { calls.push(item); return true; },
-    isCurrent: () => false,
+    async play(item) { calls.push(item); current = item.id; return true; },
+    isCurrent: (id) => id === current,
     onEpisodeEnded() { return () => {}; },
     lastEpisodeCard: () => pointer,
     restoreLastEpisode: () => !!pointer,
