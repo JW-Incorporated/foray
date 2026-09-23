@@ -198,7 +198,7 @@ function buildClarityPrompt(prompt: string): string {
   ].join("\n");
 }
 
-function buildIntentPrompt(prompt: string): string {
+export function buildIntentPrompt(prompt: string): string {
   return [
     "A user asked for an AI-generated audio documentary (a \"Foray\") on this prompt:",
     "",
@@ -214,6 +214,9 @@ function buildIntentPrompt(prompt: string): string {
     "- title: the Foray's public title, at most 10 words, no trailing punctuation",
     "- summary: one plain sentence of at most 16 words that a listener sees under the title —",
     "  what they will come away knowing, not a list of subtopics",
+    "  Neither the title nor the summary may count or number the Foray's parts (\"eight beats\", \"22 segments\",",
+    "  \"three acts\", \"Act one\", \"this act\", \"the running order\"): those are our production words, not a",
+    "  listener's. A machine checks that after you answer.",
     "",
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
     '{"subject": string, "angle": string, "priorKnowledge": string, "disappointment": string, ' +

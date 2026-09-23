@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { AnthropicPromptUnderstander } from "../src/generation/AnthropicPromptUnderstander";
+import { AnthropicPromptUnderstander, buildIntentPrompt } from "../src/generation/AnthropicPromptUnderstander";
+import { INTERNAL_VOCABULARY } from "../src/copy/rules";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { makeFakeAnthropicClient, textBlock, toolUseBlock } from "./helpers/fakeAnthropicClient";
@@ -114,5 +115,20 @@ describe("AnthropicPromptUnderstander", () => {
     const understander = new AnthropicPromptUnderstander(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
 
     await expect(understander.extractIntent("x", ctx)).rejects.toThrow();
+  });
+
+  it("tells the model the title and summary may not use the pipeline's own words, with examples the gate refuses", () => {
+    /* PR #741 review: check-forays refuses rules.js INTERNAL_VOCABULARY in a
+       Foray's title and summary, and nothing told the understander, which
+       writes both. Every example the prompt quotes must be one the list
+       catches, so the instruction and the gate cannot drift apart.
+       MUTATION THAT KILLS THIS: delete the "Neither the title nor the summary"
+       lines from buildIntentPrompt -> red. */
+    const prompt = buildIntentPrompt("the history of barbecue");
+    const rule = prompt.slice(prompt.indexOf("Neither the title nor the summary"), prompt.indexOf("A machine checks that after you answer"));
+    expect(rule.length).toBeGreaterThan(0);
+    const examples = [...rule.matchAll(/"([^"]+)"/g)].map((m) => m[1]!);
+    expect(examples.length).toBeGreaterThanOrEqual(4);
+    for (const text of examples) expect(INTERNAL_VOCABULARY.some((rx) => rx.test(text)), `"${text}" must be caught`).toBe(true);
   });
 });

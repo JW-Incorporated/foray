@@ -18,6 +18,8 @@ import { resetTaxonomyFamilyCache, taxonomyRoot } from "../src/generation/taxono
 import type { TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
 import type { GenerationRequest } from "../src/types/generation";
+import { slugifySlotTitle } from "../src/generation/forayItems";
+import { INTERNAL_VOCABULARY } from "../src/copy/rules";
 import type { DeepenedAct, Spine } from "../src/types/spine";
 import type { WrittenAct } from "../src/generation/writeNarration";
 import type { EvidenceBeat, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
@@ -285,6 +287,23 @@ describe("slotsFromSpine", () => {
     expect(slots.map((s) => s.id)).toEqual(["origins", "origins-2"]);
     expect(new Set(slots.map((s) => s.id)).size).toBe(slots.length);
   });
+
+  it("rewrites the pipeline's own words out of a slot title, keeping the raw title's id", () => {
+    /* PR #741 review: check-forays refuses "the last act" or "Act one" in a slot
+       title (rules.js INTERNAL_VOCABULARY) at the per-act partial check and at
+       finalize — after the spend — and the spine model writes slot titles
+       freely. The listener's title is rewritten here; the id is NOT, because
+       stitchAct and partialProjection slugify the spine's own slot.title to
+       join items to slots.
+
+       MUTATION THAT KILLS THIS: push `slot.title` instead of the rewrite ->
+       red on the title; slug the rewrite instead of the raw title -> red on
+       the id. */
+    const slots = slotsFromSpine(spineWith([["The last act: who got the credit", "When regulators failed to act"]]));
+    expect(slots[0]).toEqual({ id: slugifySlotTitle("The last act: who got the credit"), title: "The last part: who got the credit" });
+    expect(slots[1]).toEqual({ id: slugifySlotTitle("When regulators failed to act"), title: "When regulators failed to act" });
+    for (const slot of slots) for (const rx of INTERNAL_VOCABULARY) expect(slot.title).not.toMatch(rx);
+  });
 });
 
 describe("runtimeSecFor", () => {
@@ -443,6 +462,33 @@ describe("runForayPipeline — the record's own copy cannot fail the copy rule (
     expect(copy.title).toBe("How Machine Learning Really Ships");
     expect(copy.summary).toBe("Why most of an ML system is plumbing, and what the plumbing has to get right.");
     expect(copy.clamped).toEqual([]);
+  });
+
+  it("rewrites the pipeline's own words out of the title and summary, and says so", () => {
+    /* PR #741 review: nothing told the understander that check-forays refuses
+       "eight beats" or "22 segments" in a title or summary, and nothing
+       repaired it, so the Foray was refused at the partial check or at
+       finalize, after the spend. MUTATION THAT KILLS THIS: drop the
+       toListenerWords call from forayCopy -> red on both lines. */
+    const copy = forayCopy({
+      subject: "barbecue",
+      title: "Barbecue: eight beats of a forty-beat history",
+      summary: "Nine segments from five shows on how fire made us."
+    });
+    expect(copy.title).toBe("Barbecue: eight stories of a forty-part history");
+    expect(copy.summary).toBe("Nine clips from five shows on how fire made us.");
+    expect(copy.rewritten).toHaveLength(2);
+    for (const rx of INTERNAL_VOCABULARY) {
+      expect(copy.title).not.toMatch(rx);
+      expect(copy.summary).not.toMatch(rx);
+    }
+  });
+
+  it("leaves plain-English uses of beat and act alone (no false positives)", () => {
+    const copy = forayCopy({ subject: "the Beat Generation poets", angle: "how underdogs beat incumbents", summary: "When regulators failed to act, poets did." });
+    expect(copy.title).toBe("the Beat Generation poets: how underdogs beat incumbents");
+    expect(copy.summary).toBe("When regulators failed to act, poets did.");
+    expect(copy.rewritten).toEqual([]);
   });
 
   it("clampWords never invents a word and leaves a short line untouched", () => {

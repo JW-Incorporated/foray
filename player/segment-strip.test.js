@@ -1,17 +1,24 @@
 /* The SegmentStrip (#128), against the REAL running orders.
  *
- * WHY REAL DATA, NOT FIXTURES
+ * WHY REAL DATA, NOT HAND-MADE FIXTURES
  * This element exists to answer one founder sentence about the live site — "it's
  * certainly not clear that it's more than one podcast... I have no clue how they
  * relate" — and a hand-made fixture is exactly the thing that cannot fail that
- * way. `data/forays.json` has two running orders with the shape the element is
- * for, and they are not interchangeable:
+ * way. Real curation has two running orders with the shape the element is for,
+ * and they are not interchangeable:
  *
  *   grilling-history-2   10 segments, 22 min, 6 episodes, every seam a new one
  *   capital-types-1      22 segments, 51 min, 8 episodes, 10 of the 21 seams
  *                        cross-episode — and three separate runs of THE SAME
  *                        SHOW from two different episodes, which is the case a
  *                        strip that groups by show gets wrong and cannot notice
+ *
+ * They are read from the FROZEN fixture (tools/foray/fixtures/frozen/, since
+ * 2026-09-22): a verbatim copy of those running orders plus the generated one
+ * section 8 measures, with exactly the pool rows and episodes they play. It is
+ * still real curation, but `data/` is free to re-curate, publish or delete any
+ * of them without touching this file — which, until then, it could not (#236:
+ * deleting either curated order turned 15-16 of these tests red).
  *
  * Counts are read off the resolved Foray rather than pinned, following
  * foray-playback.test.js (#236): a curator must be able to change a running
@@ -52,9 +59,10 @@ import {
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
 
-const FORAYS = readJson("data/forays.json");
-const SEGMENTS = readJson("data/segments.json");
-const SOURCES = readJson("data/segment-sources.json");
+const FROZEN = "tools/foray/fixtures/frozen/data";
+const FORAYS = readJson(`${FROZEN}/forays.json`);
+const SEGMENTS = readJson(`${FROZEN}/segments.json`);
+const SOURCES = readJson(`${FROZEN}/segment-sources.json`);
 
 /** The two HAND-CURATED running orders, by id. Drafts, so each is opened by
     name. `data/forays.json` has since grown four GENERATED Forays as well —
@@ -67,7 +75,7 @@ const REAL_IDS = ["grilling-history-2", "capital-types-1"];
 
 function realDoc(id) {
   const doc = findForay(FORAYS, id, { unlocked: [id] });
-  assert.ok(doc, `${id} must exist in data/forays.json`);
+  assert.ok(doc, `${id} must exist in ${FROZEN}/forays.json`);
   return doc;
 }
 
@@ -1087,9 +1095,10 @@ function escapeForAssert(s) {
 /** The generated Forays are why this section exists: `data/forays.json` no
     longer holds only the two hand-curated drafts the head of this file
     describes, and the generated ones run ~50 items of which ~40 are bridges.
-    Read off the file rather than pinned — a curator regenerating one must not
-    have to edit this test — but asserted to still have the SHAPE the defect
-    needs, or the section is measuring nothing. */
+    This one is read from the frozen fixture with the rest (see the header), so
+    it is the SHAPE the generator emits — the one the card must survive — not a
+    promise that this particular Foray is still on the site. Its counts are still
+    asserted rather than assumed, or the section is measuring nothing. */
 const GENERATED_ID = "what-engineers-actually-do-all-day-e08236";
 
 function generated() {
@@ -1429,7 +1438,7 @@ test("the card's strip clips to one line, and the player's strip does not", () =
      `.fy-strip` so both strips clip (the last one does). */
 });
 
-test("the clip is load-bearing: even merged, the worst committed Foray does not fit the card", () => {
+test("the clip is load-bearing: even merged, a generated Foray of the shipped shape does not fit the card", () => {
   /* The numbers off the committed stylesheet rather than remembered: a card is
      240px wide with 14px of padding and a 1px border each side, and at `sm` a
      bar is floored at `--seg-min` with a 1px hairline between bars and a
@@ -1474,7 +1483,10 @@ test("the clip is load-bearing: even merged, the worst committed Foray does not 
 /* (audit 2026-09-22, theme L)                                            */
 /* ==================================================================== */
 
-const NARRATED_ID = "how-ai-actually-gets-built-3b83e1";
+/* The frozen fixture's one generated, narrated Foray (#236 moved this file off
+   the live data, so the id must be one the fixture carries — the audit lane that
+   wrote these two tests was cut before that move). */
+const NARRATED_ID = "what-engineers-actually-do-all-day-e08236";
 
 test("stripTally counts what the strip counts: clips are tape, bridges are narration, shows are heard shows", () => {
   /* The header used to print `playable.length` "segments" — bridges included —

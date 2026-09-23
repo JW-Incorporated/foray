@@ -66,7 +66,7 @@ export const SPINE = Object.freeze({
   strongBeats: 6,
   totalBeats: 40,
   crossEpisodeSeams: 16,
-  source: "docs/curation/grilling-history-coverage.md (6 strong / 10 thin / 24 empty) and data/forays.json grilling-history-1 (16 cross-episode seams, measured)",
+  source: "docs/curation/grilling-history-coverage.md (6 strong / 10 thin / 24 empty) and grilling-history-1 (16 cross-episode seams, measured; retired from data/forays.json 2026-09-22, frozen in tools/foray/fixtures/frozen/)",
 });
 
 /** Per-item duration budgets. BUDGETS, not measurements — no narration exists. */

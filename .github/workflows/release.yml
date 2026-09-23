@@ -31,8 +31,13 @@
 # MARKETING_VERSION/BUILD_NUMBER pair, computed once and passed as job outputs
 # to `ios` and `android` so a slow iOS build and a fast Android build can never
 # observe two different "today"s if the run crosses midnight UTC. `run-of-day`
-# is `github.run_number` clamped into version.mjs's 1-99 slot (documented
-# there) — NOT re-derived per platform.
+# is `github.run_number` WRAPPED (modulo 99, not clamped) into version.mjs's
+# 1-99 slot — NOT re-derived per platform. Because it comes from the lifetime
+# `run_number`, "Re-run failed jobs" reuses it: the version job does not even
+# re-execute, its cached outputs are replayed, and App Store Connect refuses the
+# duplicate build number. The fix for a failed release is a FRESH dispatch,
+# never a re-run — which is all release-trigger.yml ever does
+# (docs/release-reliability-plan.md, "BUILD NUMBER COLLIDES ON A RE-RUN").
 #
 # This job does NOT push a version bump to `main` on `workflow_dispatch` with
 # a non-`none` `bump` input. `main` here is protected by the `protect-main`
@@ -254,6 +259,13 @@ jobs:
             echo "| Android / Play (internal) | ${ANDROID_STATE:-not reached} | ${ANDROID_UPLOADED:-false} |"
             echo
           } >> "$GITHUB_STEP_SUMMARY"
+
+          # ONE LINE FOR THE WATCHDOG, to the LOG, before anything below can exit.
+          # tools/release/watch-release.mjs parseOutcome() reads it through the
+          # jobs-logs API, because REST cannot see job outputs or this step
+          # summary, and "the ios job is green" does not mean "TestFlight got the
+          # build". Empty values stay empty — they mean "never reported".
+          echo "RELEASE_OUTCOME ios_state=${IOS_STATE:-} ios_uploaded=${IOS_UPLOADED:-} android_state=${ANDROID_STATE:-} android_uploaded=${ANDROID_UPLOADED:-} build=${BUILD_NUMBER}"
 
           # FAILS ONLY WHEN BOTH SIDES HAD CREDENTIALS AND DISAGREED ON THE
           # OUTCOME. A documented-absent secret on either side is a warning —

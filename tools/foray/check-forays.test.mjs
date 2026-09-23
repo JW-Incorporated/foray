@@ -63,7 +63,7 @@ import {
   LEXICON_PATH,
 } from "./check-forays.mjs";
 
-const { BANNED, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
+const { BANNED, INTERNAL_VOCABULARY, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..");
 const CLI = path.join(HERE, "check-forays.mjs");
@@ -79,6 +79,14 @@ const live = loadFiles(REPO_ROOT);
     same loader, so `--root` can point the real CLI at it unchanged. */
 const FIXTURE_ROOT = path.join(HERE, "fixtures", "boundary");
 const fixture = loadFiles(FIXTURE_ROOT);
+
+/** The FROZEN fixture (`tools/foray/fixtures/frozen/`, 2026-09-22): verbatim
+    copies of four real curated Forays that the player suites exercise by id, so
+    `data/` can retire or re-curate them freely. Here it carries the one real
+    supersession (for the rule's proof) and keeps a retired Foray's curation doc
+    checked against the order it describes. Read-only, like `live`. */
+const FROZEN_ROOT = path.join(HERE, "fixtures", "frozen");
+const frozen = loadFiles(FROZEN_ROOT);
 
 /** A throwaway copy of the FIXTURE. Every mutation below starts here. */
 const fx = () => structuredClone(fixture);
@@ -127,37 +135,67 @@ test("the CLI exits 0 on the committed data", () => {
   assert.match(out, /forays ok/);
 });
 
-test("the committed Forays are the four documented ones, and all are #134's kind", () => {
-  /* Pinned by id rather than by count so that adding a fourth is a deliberate
-     edit here, and so a RENAME cannot pass as an addition. This is the one live
-     literal that survives #236, and it is not a shape pin: it is a statement
-     about WHICH Forays exist, which is exactly the kind of change that should
-     cost an edit in a test.
+test("every committed Foray is #134's kind, and every curated one names a running-order doc that exists", () => {
+  /* THIS WAS THE LAST LIVE LITERAL #236 LEFT, and it is gone on purpose. It
+     pinned the curated ids in order — `["grilling-history-1", "grilling-
+     history-2", "capital-types-1", "geology-plates-1"]` — "so that adding a
+     fourth is a deliberate edit here". Measured 2026-09-22: that one line was
+     half of why no curated Foray could be added or retired without a test
+     migration, which is the defect #236 exists to remove. Adding or deleting a
+     Foray now touches only data.
 
-     ORDER NO LONGER MATTERS to anything below — the `foray0` handle that made
-     `forays[0]` load-bearing is gone with the proofs that used it (#236). It is
-     still asserted in order because a reordering of this file is a deliberate
-     edit too, and a `deepEqual` is the cheapest way to say so. */
-  /* Curated Forays are pinned by id; a GENERATED Foray (`generated: true`) is admitted
-     by the publish PR that lands it (requirements §6.5), so the pin lists only the curated
-     ids and requires every other Foray to carry the generated bit. */
-  assert.deepEqual(
-    live.forays.forays.filter((f) => !f.generated).map((f) => f.id),
-    ["grilling-history-1", "grilling-history-2", "capital-types-1", "geology-plates-1"]
-  );
-  for (const f of live.forays.forays.filter((f) => f.generated)) assert.equal(f.generated, true, f.id);
-  for (const f of live.forays.forays) assert.equal(f.kind, "deep-dive", f.id);
+     What the pin protected is kept, as laws about any Foray rather than facts
+     about four: every Foray is a deep-dive (#134); a GENERATED one says so
+     (requirements §6.5 — its order lives in the pipeline's report, not a doc);
+     and a CURATED one names its running-order doc in `source_doc`, which must
+     exist, because the §2 row-for-row check below is driven from that field.
+     A RENAME therefore cannot slip through unexamined: the renamed Foray still
+     has to agree with its doc, row for row. The one deliberate edit left is the
+     published set, two tests down — publishing is a founder action.
+
+     MUTATION: point a curated Foray's `source_doc` at a missing file -> red
+     here. MUTATION 2: delete its `source_doc` -> red here, naming the Foray. */
+  assert.ok(live.forays.forays.length > 0, "no Forays — this proved nothing");
+  for (const f of live.forays.forays) {
+    assert.equal(f.kind, "deep-dive", f.id);
+    if (f.generated !== undefined) assert.equal(f.generated, true, `${f.id}: \`generated\` is true or absent`);
+    if (f.generated) continue;
+    assert.equal(typeof f.source_doc, "string", `${f.id} is curated and names no running-order doc (\`source_doc\`)`);
+    assert.ok(fs.existsSync(path.join(REPO_ROOT, f.source_doc)), `${f.id}: its source_doc ${f.source_doc} is missing`);
+  }
 });
 
-test("Foray #1 is labelled superseded, so nobody re-tests the drift by accident", () => {
-  /* Both grilling Forays are drafts reachable by `?foray=<id>`, and the older
-     link still works. A stale draft that nothing labels stale is how the wrong
-     one gets tested next week (#226). Neither field is read by the player. */
-  const one = forayBy(live, "grilling-history-1");
-  assert.equal(one.superseded_by, "grilling-history-2");
-  assert.match(one.superseded_note, /Superseded 2026-08-17/);
-  assert.ok(forayBy(live, "grilling-history-2"), "the successor must exist");
-  assert.equal(forayBy(live, "grilling-history-2").superseded_by, undefined);
+test("a superseded Foray names a current successor and says why — as a rule for any Foray", () => {
+  /* This was "Foray #1 is labelled superseded", pinned to `grilling-history-1`
+     by id, which is exactly why that Foray could not be retired: deleting it
+     broke the test that labelled it stale. The rule now lives in the checker
+     (`superseded_by` / `superseded_note`, #226) and is proved here on the
+     FROZEN fixture, which carries the one real supersession this repo has had
+     (grilling-history-1 -> grilling-history-2), so it cannot become vacuous when
+     `data/` has no superseded Foray — which, after 2026-09-22, it does not.
+
+     MUTATION: delete the supersession block from check-forays.mjs -> every
+     refusal below goes green and this goes red. */
+  const supersession = (f) => errorsFor(f).filter((e) => /superseded/.test(e));
+  assert.equal(forayBy(frozen, "grilling-history-1").superseded_by, "grilling-history-2", "the frozen fixture lost its real supersession");
+  assert.deepEqual(supersession(frozen), [], "the real, well-formed supersession must pass");
+  assert.deepEqual(supersession(live), [], "the live data must pass too");
+
+  const cases = [
+    ["a successor that does not exist", (f) => { forayBy(f, "grilling-history-1").superseded_by = "grilling-history-9"; }, /must name another committed Foray/],
+    ["a successor that is itself superseded", (f) => {
+      forayBy(f, "grilling-history-2").superseded_by = "capital-types-1";
+      forayBy(f, "grilling-history-2").superseded_note = "chained";
+    }, /which is itself superseded/],
+    ["a Foray superseded by itself", (f) => { forayBy(f, "grilling-history-1").superseded_by = "grilling-history-1"; }, /names the Foray itself/],
+    ["a supersession with no note", (f) => { delete forayBy(f, "grilling-history-1").superseded_note; }, /needs a `superseded_note`/],
+    ["a note with no supersession", (f) => { forayBy(f, "capital-types-1").superseded_note = "orphaned"; }, /without `superseded_by`/],
+  ];
+  for (const [what, mutate, rx] of cases) {
+    const f = structuredClone(frozen);
+    mutate(f);
+    assert.match(supersession(f).join("\n"), rx, `${what} must be refused`);
+  }
 });
 
 test("exactly one committed Foray is published, and it is the one that was named", () => {
@@ -477,24 +515,60 @@ test("every label resolves to exactly one segment by (episode, duration)", () =>
   }
 });
 
-/* Each Foray's §2 running-order table, and where it stops. Adding a Foray means
- * adding a row here, which is the point: the doc table and `items` must not be
- * able to move independently. Foray #2 was authored with its §2 claiming this
- * test covered it while the test read only grilling-foray.md — the claim was
- * true of #1 and false of #2 for one commit.
+/* Each curated Foray's §2 running-order table. The doc table and `items` must
+ * not be able to move independently. Foray #2 was authored with its §2 claiming
+ * this test covered it while the test read only grilling-foray.md — the claim
+ * was true of #1 and false of #2 for one commit.
  *
- * #236 dropped the `rows:` count from each entry. It was a second literal for
- * the same fact the data already carries, and the two had to be edited together
- * every time a Foray changed length — grilling-history-2 going from 8 segments to
- * 10 needed both. The row count is now read off the data, which makes "the doc
- * has as many rows as the Foray has segments" an assertion rather than a pair of
- * numbers somebody kept in step by hand. */
+ * #236 dropped the `rows:` count from each entry: the row count is read off the
+ * data, which makes "the doc has as many rows as the Foray has segments" an
+ * assertion rather than a pair of numbers somebody kept in step by hand.
+ *
+ * AND THEN THE TABLE ITSELF WENT (2026-09-22). It was a hand-kept list of
+ * `{ forayId, doc, endsBefore, tldr, slotHeaders }`, one row per curated Foray,
+ * and it was the other half of why no Foray could be added or retired without a
+ * test edit. Every column was already in the data or the doc: the doc is the
+ * Foray's own `source_doc`; §2 ends at its first sub-heading; a §0 and slot
+ * header rows are checked wherever the doc carries them. So the list is built
+ * here, from:
+ *   - every CURATED Foray in `data/` (a generated one has no curator-written
+ *     doc: its order is the pipeline's report, requirements §6), and
+ *   - every curated Foray in the FROZEN fixture that is no longer in `data/` —
+ *     so a retired Foray's doc stays checked against the order it describes
+ *     instead of silently going unread (`grilling-history-1` and
+ *     grilling-foray.md, since 2026-09-22).
+ *
+ * WHAT DERIVING COST, AND HOW IT WAS PAID BACK. `tldr` and `slotHeaders` used to
+ * be declared per doc and asserted both ways, so a doc could not LOSE its §0 or
+ * its slot headers without a red test. The first derived version checked them
+ * only "wherever the doc carries them", so deleting §0 or the **SLOT n** rows
+ * from foray2-capital.md left the suite green (PR #741 review). They are
+ * declared again below, but by DOC PATH, not Foray id: a retired Foray's doc
+ * stays checked through the frozen fixture at the same path, so retiring a
+ * Foray never touches these sets. A doc NOT listed is still checked when it
+ * carries either section, so a new curated Foray needs no test edit either. */
+const DOCS_WITH_TLDR = new Set([
+  "docs/curation/foray2-capital.md",
+  "docs/curation/geology-foray-assembly.md",
+  "docs/curation/grilling-foray.md",
+]);
+const DOCS_WITH_SLOT_HEADERS = new Set([
+  "docs/curation/foray2-capital.md",
+  "docs/curation/geology-foray-assembly.md",
+  "docs/curation/grilling-foray.md",
+]);
+const liveIds = new Set(live.forays.forays.map((f) => f.id));
+const curated = (files) => files.forays.forays.filter((f) => !f.generated && typeof f.source_doc === "string");
 const RUNNING_ORDER_DOCS = [
-  { forayId: "grilling-history-1", doc: "docs/curation/grilling-foray.md", endsBefore: "### Why the order", tldr: true, slotHeaders: true },
-  { forayId: "grilling-history-2", doc: "docs/curation/grilling-history-assembly.md", endsBefore: "### 2a.", tldr: false, slotHeaders: false },
-  { forayId: "capital-types-1", doc: "docs/curation/foray2-capital.md", endsBefore: "### Why the slots run", tldr: true, slotHeaders: true },
-  { forayId: "geology-plates-1", doc: "docs/curation/geology-foray-assembly.md", endsBefore: "### Who each label is", tldr: true, slotHeaders: true },
-];
+  ...curated(live).map((f) => ({ forayId: f.id, doc: f.source_doc, files: live, where: "data/forays.json" })),
+  ...curated(frozen).filter((f) => !liveIds.has(f.id)).map((f) => ({ forayId: f.id, doc: f.source_doc, files: frozen, where: "the frozen fixture" })),
+].filter((d) => fs.existsSync(path.join(REPO_ROOT, d.doc))); // a missing doc is reported, by name, by "every committed Foray is #134's kind…"
+
+/** A doc's §2 — from its heading to the first heading after it — or null. */
+function runningOrderSection(md) {
+  const after = md.split("## 2. The running order")[1];
+  return after === undefined ? null : after.split(/^#{2,3} /m)[0];
+}
 
 /** `2:33` or `1:01:13` as seconds. The curation docs write every duration this
     way, and #236 review found three places where the clock half of a cell was
@@ -505,26 +579,38 @@ function clockToSec(text) {
   return parts.reduce((t, v, i) => t + v * [1, 60, 3600][i], 0);
 }
 
-test("every committed Foray has a running-order doc pinned above", () => {
-  /* RUNNING_ORDER_DOCS drives a loop, and `test/suite-integrity.test.js` counts
-     top-level `test(` DECLARATIONS — so deleting an entry from that array would
-     delete a real test without moving the floor. This assertion is what makes
-     that deletion loud instead, and it is also what stops Foray #3 landing with
-     its §2 table unpinned, which is the mistake Foray #2 shipped with. */
-  assert.deepEqual(
-    RUNNING_ORDER_DOCS.map((d) => d.forayId),
-    /* A GENERATED Foray (`generated: true`) has no curator-written running-order doc: its
-       order is the pipeline's candidate file and `report.json` (requirements §6). The pin
-       stays exact for every curated Foray. */
-    live.forays.forays.filter((f) => !f.generated).map((f) => f.id)
-  );
+test("the §2 check covers every curated Foray in data/, and every retired one still frozen", () => {
+  /* The loop below is built from data, so it cannot drift from it — but a
+     filter that quietly dropped a Foray (a renamed field, a doc that moved)
+     would shrink it with this file green. This is what makes that loud, and it
+     is also what stops a curated Foray landing with no running-order doc.
+
+     MUTATION: filter `curated(live)` down to published Foray(s) -> red, naming
+     the drafts. */
+  const covered = new Set(RUNNING_ORDER_DOCS.filter((d) => d.files === live).map((d) => d.forayId));
+  const expected = live.forays.forays.filter((f) => !f.generated).map((f) => f.id);
+  assert.deepEqual(expected.filter((id) => !covered.has(id)), [], "a curated Foray's §2 table is not being checked");
+  assert.ok(RUNNING_ORDER_DOCS.length > 0, "no running-order doc is checked, so the loop below proves nothing");
   for (const { doc } of RUNNING_ORDER_DOCS) {
-    assert.ok(fs.existsSync(path.join(REPO_ROOT, doc)), `${doc} is missing`);
+    assert.ok(runningOrderSection(fs.readFileSync(path.join(REPO_ROOT, doc), "utf8")), `${doc} has no "## 2. The running order"`);
   }
 });
 
-for (const { forayId, doc, endsBefore, slotHeaders } of RUNNING_ORDER_DOCS) {
-  test(`data/forays.json agrees with ${path.basename(doc)} §2, row for row`, () => {
+test("every doc declared to carry a §0 or slot headers is one the §2 loop reads", () => {
+  /* The declarations are what make "a doc lost its §0" red; a declaration for a
+     doc the loop no longer reads (a renamed or deleted doc) would make them
+     quietly vacuous. Keyed by path, so retiring a Foray does not trip this: its
+     doc stays read through the frozen fixture.
+
+     MUTATION: rename a path in DOCS_WITH_TLDR -> red, naming it. */
+  const read = new Set(RUNNING_ORDER_DOCS.map((d) => d.doc));
+  for (const doc of [...DOCS_WITH_TLDR, ...DOCS_WITH_SLOT_HEADERS]) {
+    assert.ok(read.has(doc), `${doc} is declared to carry a §0 or slot headers, but no curated Foray in data/ or the frozen fixture names it as its source_doc`);
+  }
+});
+
+for (const { forayId, doc, files, where } of RUNNING_ORDER_DOCS) {
+  test(`${where} agrees with ${path.basename(doc)} §2, row for row`, () => {
     /* #182's third consequence is that the order "silently rots": change the data
        and the doc goes stale, or the reverse, with nothing to detect the drift.
        So the doc table is parsed and compared — position, label, duration and
@@ -535,7 +621,7 @@ for (const { forayId, doc, endsBefore, slotHeaders } of RUNNING_ORDER_DOCS) {
        If this fails because the TABLE was reformatted rather than because the
        order changed, update the regex below; do not delete the test. */
     const md = fs.readFileSync(path.join(REPO_ROOT, doc), "utf8");
-    const section = md.split("## 2. The running order")[1]?.split(endsBefore)[0];
+    const section = runningOrderSection(md);
     assert.ok(section, `could not find §2 in ${doc}`);
     /* The `at` column is CAPTURED now, not skipped. It was matched as `[\d:]+` and
        thrown away, so every cumulative time in the table could be wrong and this
@@ -543,7 +629,8 @@ for (const { forayId, doc, endsBefore, slotHeaders } of RUNNING_ORDER_DOCS) {
        (#236 review). */
     const rows = [...section.matchAll(/^\|\s*(\d+)\s*\|\s*([\d:]+)\s*\|\s*([A-Z]+-\d+)\s*\|\s*([\d.]+) s\s*\|\s*(\w+)\s*\|/gm)];
 
-    const items = segmentItems(forayBy(live, forayId));
+    const foray = forayBy(files, forayId);
+    const items = segmentItems(foray);
     assert.ok(rows.length > 0, `§2's table in ${doc} no longer parses as numbered rows`);
     assert.equal(rows.length, items.length, `§2 has ${rows.length} rows and ${forayId} plays ${items.length} segments`);
 
@@ -552,7 +639,7 @@ for (const { forayId, doc, endsBefore, slotHeaders } of RUNNING_ORDER_DOCS) {
       assert.equal(Number(n), i + 1, `§2's rows are not numbered 1..${rows.length} in order`);
       assert.equal(items[i].label, label, `position ${n}: data says ${items[i].label}, doc says ${label}`);
       assert.equal(items[i].role, role, `${label}: data says ${items[i].role}, doc says ${role}`);
-      const seconds = durationOf(live, items[i].segment_id);
+      const seconds = durationOf(files, items[i].segment_id);
       assert.ok(
         Math.abs(seconds - Number(dur)) <= 0.06,
         `${label}: segment is ${seconds} s, doc says ${dur} s`
@@ -568,16 +655,18 @@ for (const { forayId, doc, endsBefore, slotHeaders } of RUNNING_ORDER_DOCS) {
     }
 
     /* The slot header rows — "**SLOT 2 — the pre-modern hearth** (12 segments,
-       21:10)". Both numbers are derivable and neither was checked. Declared per
-       doc and asserted in both directions, like §0's TL;DR. */
+       21:10)". Both numbers are derivable and neither was checked. Required in
+       a doc declared in DOCS_WITH_SLOT_HEADERS, and checked in any other doc
+       that carries them (see the note above RUNNING_ORDER_DOCS).
+
+       MUTATION: delete the **SLOT n** rows from foray2-capital.md -> red. */
     const headers = [...section.matchAll(/\*\*SLOT \d+ [^*]*\*\*\s*\((\d+) segments?, ([\d:]+)\)/g)];
-    assert.equal(headers.length > 0, slotHeaders, `${doc}: §2's slot header rows are ${headers.length ? "present but declared absent" : "declared present but missing"}`);
-    if (slotHeaders) {
-      const foray = forayBy(live, forayId);
+    if (DOCS_WITH_SLOT_HEADERS.has(doc)) assert.ok(headers.length > 0, `${doc} is declared to carry §2 slot header rows and has none`);
+    if (headers.length > 0) {
       assert.equal(headers.length, foray.slots.length, `§2 has ${headers.length} slot headers and ${forayId} declares ${foray.slots.length} slots`);
       foray.slots.forEach((slot, s) => {
         const inSlot = items.filter((i) => i.slot === slot.id);
-        const sec = inSlot.reduce((t, i) => t + durationOf(live, i.segment_id), 0);
+        const sec = inSlot.reduce((t, i) => t + durationOf(files, i.segment_id), 0);
         assert.equal(Number(headers[s][1]), inSlot.length, `§2's header for "${slot.id}" says ${headers[s][1]} segments, the data has ${inSlot.length}`);
         assert.ok(
           Math.abs(clockToSec(headers[s][2]) - sec) <= 1.5,
@@ -602,20 +691,21 @@ test("each running-order doc's §0 summary numbers are the ones the checker comp
      because §0 rounds ("3,673.0" against 3673.03) and demanding more would fail
      on a rounding nobody got wrong.
 
-     `tldr: false` is declared per doc rather than inferred, and asserted in both
-     directions below: a doc that grows a §0 must be checked, and a doc that has
-     one must not be able to lose it silently. */
+     A §0 is required in every doc DOCS_WITH_TLDR declares (by path, so
+     retiring a Foray does not move it), and checked in any other doc that
+     carries one (see the note above RUNNING_ORDER_DOCS).
+
+     MUTATION: delete "## 0. TL;DR" from foray2-capital.md -> red, naming it. */
   let checked = 0;
-  for (const { forayId, doc, tldr } of RUNNING_ORDER_DOCS) {
+  for (const { forayId, doc, files } of RUNNING_ORDER_DOCS) {
     const md = fs.readFileSync(path.join(REPO_ROOT, doc), "utf8");
     const section = md.split("## 0. TL;DR")[1]?.split(/^## /m)[0] ?? null;
-    assert.equal(
-      section !== null, tldr,
-      `${doc}: §0 TL;DR ${section ? "exists but is declared absent" : "is declared present but missing"}`
-    );
-    if (!section) continue;
+    if (!section) {
+      assert.ok(!DOCS_WITH_TLDR.has(doc), `${doc} is declared to carry a "## 0. TL;DR" and has none`);
+      continue;
+    }
 
-    const r = checkForays(live).report.forays.find((x) => x.id === forayId);
+    const r = checkForays(files).report.forays.find((x) => x.id === forayId);
     /** A doc figure and the tolerance its own decimal places justify. */
     const stated = (label, rx) => {
       const m = section.match(rx);
@@ -665,8 +755,10 @@ test("labels are unique and every prefix is declared, in every Foray", () => {
 test("GRID-3's incidental mapping in the doc agrees with label_prefixes", () => {
   // grilling-foray.md line 578 is the one committed label -> id example that
   // predates this file. It names a held-back segment, so it is checked here
-  // rather than through the running order.
-  assert.equal(forayBy(live, "grilling-history-1").label_prefixes.GRID, "bfh-griddle-bakestone");
+  // rather than through the running order — against the FROZEN copy of the
+  // Foray it describes, since grilling-history-1 was retired from data/.
+  assert.equal(forayBy(frozen, "grilling-history-1").label_prefixes.GRID, "bfh-griddle-bakestone");
+  assert.match(fs.readFileSync(path.join(REPO_ROOT, "docs/curation/grilling-foray.md"), "utf8"), /bfh-griddle-bakestone/);
 });
 
 test("L2/L3 hold for every played segment, per §4's role table", () => {
@@ -717,6 +809,7 @@ test("the Forays' own copy obeys the shared copy rules", () => {
       assert.ok(text, `${f.id}: a copy field is empty`);
       assert.ok(wordCount(text) <= MAX_WHY_LINE_WORDS, `${f.id}: ${wordCount(text)} words: "${text}"`);
       for (const rx of BANNED) assert.doesNotMatch(text, rx, `${f.id}: banned ${rx} in "${text}"`);
+      for (const rx of INTERNAL_VOCABULARY) assert.doesNotMatch(text, rx, `${f.id}: pipeline word ${rx} in "${text}"`);
       checked += 1;
     }
   }
@@ -1626,6 +1719,53 @@ test("a banned phrase in the summary is rejected", () => {
   const f = fx();
   boundary(f).summary = "A fascinating tour of fire.";
   assert.match(errorsFor(f).join("\n"), /banned phrase/);
+});
+
+test("the pipeline's own words are rejected in a title, a summary and a slot title", () => {
+  /* The 2026-09-22 audit's Tier 4: "Barbecue: eight beats of a forty-beat
+     history" passed every copy gate, because BANNED is about filler and nothing
+     knew that `beat` is the curator's unit rather than a listener's word. The
+     real title is the first case, verbatim, so this is the defect itself.
+
+     MUTATION: drop the INTERNAL_VOCABULARY loop from check-forays.mjs's copy
+     loop -> every case below goes red. MUTATION 2: add the `i` flag to the
+     lower-case `act` pattern in rules.js -> the Clean Air Act case goes red. */
+  const cases = [
+    ["title", "Barbecue: eight beats of a forty-beat history"],
+    ["summary", "Nine segments from five shows on how fire made us."],
+    ["slot", "The last act: who got the credit"],
+    ["slot", "Act one: the hearth"],
+    ["summary", "The whole running order, in under an hour."],
+  ];
+  for (const [where, text] of cases) {
+    const f = fx();
+    if (where === "slot") boundary(f).slots[0].title = text;
+    else boundary(f)[where] = text;
+    assert.match(errorsFor(f).join("\n"), /uses the pipeline's word/, `${where} "${text}" must be refused`);
+  }
+  /* And what must stay legal: a proper noun, the listener's own words for the
+     same things (docs/audit/persona-synthesis.md §2), and the verb and plain
+     uses the first cut refused at the publish gate after the spend (PR #741
+     review), in every field the loop reads, since a slot title is where a
+     spine writes "When regulators failed to act".
+     MUTATION 3: put `/\bbeats?\b/i` or `/\bacts?\b/` back in rules.js -> red. */
+  const plain = [
+    "Why the Clean Air Act worked",
+    "Barbecue: eight stories from a much longer history",
+    "The Beat Generation poets",
+    "How underdogs beat incumbents",
+    "When regulators failed to act",
+    "Who owns the market segment",
+    "Three acts of kindness",
+  ];
+  for (const text of plain) {
+    for (const where of ["title", "summary", "slot"]) {
+      const f = fx();
+      if (where === "slot") boundary(f).slots[0].title = text;
+      else boundary(f)[where] = text;
+      assert.doesNotMatch(errorsFor(f).join("\n"), /uses the pipeline's word/, `${where} "${text}" is plain English`);
+    }
+  }
 });
 
 test("an over-long slot title is rejected", () => {

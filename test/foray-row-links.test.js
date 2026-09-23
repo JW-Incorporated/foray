@@ -49,6 +49,24 @@ const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 const STYLES = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
 
+/* The Foray documents the real-data tests below walk: the live `data/` AND the
+   frozen fixture (tools/foray/fixtures/frozen/, #236, 2026-09-22) — verbatim
+   copies of real curated and generated Forays that never move. The live set is
+   what the publish gate is about; the frozen set is what keeps every "at least
+   one" below from going vacuous when a curator retires the last Foray of a
+   kind. Until then these tests carried "289 when this landed", "157" and "48"
+   as floors over live data, so deleting any Foray turned them red for a pure
+   data edit. Each set resolves against its own pool. */
+const FORAY_SETS = [
+  { where: "data", dir: "data" },
+  { where: "frozen", dir: "tools/foray/fixtures/frozen/data" },
+].map(({ where, dir }) => ({
+  where,
+  forays: readJson(`${dir}/forays.json`).forays,
+  segmentsDoc: readJson(`${dir}/segments.json`),
+  sourcesDoc: readJson(`${dir}/segment-sources.json`),
+}));
+
 process.on("unhandledRejection", () => {});
 
 function makeEl(tag) {
@@ -441,13 +459,19 @@ test("the clamp threshold falls in an empty band of the committed transcript len
   assert.ok(threshold, "NARRATION_CLAMP_CHARS is no longer a named constant in app.js");
   const n = Number(threshold[1]);
   const lengths = [];
-  for (const f of readJson("data/forays.json").forays) {
-    for (const it of f.items || []) {
-      if (it.type === "segment") continue;
-      if (typeof it.script === "string" && it.script.trim()) lengths.push(it.script.trim().length);
+  for (const set of FORAY_SETS) {
+    for (const f of set.forays) {
+      for (const it of f.items || []) {
+        if (it.type === "segment") continue;
+        if (typeof it.script === "string" && it.script.trim()) lengths.push(it.script.trim().length);
+      }
     }
   }
-  assert.ok(lengths.length >= 157, `only ${lengths.length} scripted narration items; 157 when this landed`);
+  /* Was `>= 157` ("157 when this landed") over data/ alone — a floor that a
+     curator retiring one generated Foray would trip. The frozen set carries a
+     generated Foray, so there is always something on both sides to measure;
+     the band is still asserted against every live script as well. */
+  assert.ok(lengths.length > 0, "no scripted narration item anywhere, so the band proves nothing");
   const below = Math.max(...lengths.filter((l) => l <= n));
   const above = Math.min(...lengths.filter((l) => l > n));
   assert.ok(Number.isFinite(below) && Number.isFinite(above),
@@ -524,7 +548,7 @@ test("a narration beat with no citations renders exactly as it does today — no
 /* 5. AGAINST THE COMMITTED DATA                                         */
 /* ==================================================================== */
 
-test("every tape beat of all four generated Forays links to a show page", async () => {
+test("every tape beat of every generated Foray links to a show page", async () => {
   /* THE COVERAGE CLAIM, measured rather than asserted in a comment, and the
      place the two joins are separated — because ON TODAY'S DATA THEY DO NOT
      SEPARATE THEMSELVES. Every generated Foray draws on Being an Engineer,
@@ -556,39 +580,47 @@ test("every tape beat of all four generated Forays links to a show page", async 
   const { ctx, state } = mount();
   state.catalog = readJson("data/catalog.json");
   const resolve = await import("../player/foray-resolve.js");
-  const segments = resolve.indexSegments(readJson("data/segments.json"));
-  const sources = resolve.indexSources(readJson("data/segment-sources.json"));
-
   let generated = 0, generatedLinked = 0, byIdentifier = 0, curated = 0, curatedLinked = 0;
-  for (const foray of readJson("data/forays.json").forays) {
-    for (const entry of resolve.hydrateForayItems(foray, { segments, sources }).items) {
-      if (entry.type !== "segment") continue;
-      const linked = ctx.forayRow({ ...entry, playable: true, queueIndex: 0 }).includes('href="#/show/');
-      /* THE SCALE-FREE INVARIANT, asserted on every beat of every Foray: a row
-         links exactly when the join answers, and never otherwise. This is the
-         assertion that cannot be broken by new data — only by a code
-         regression — and it is why the counts below are floors rather than
-         equalities. This suite is in `REAL_DATA_SUITES` and runs inside the
-         publish gate; a publish that adds a Foray drawing on a show outside
-         the curated 220 must NOT be refused, because plain text is the
-         designed degrade, not a defect. */
-      assert.equal(linked, ctx.forayShowId(entry) !== null,
-        `${foray.id}/${entry.ord} (${entry.source_id}): rendered link=${linked} but the join says ` +
-        `${ctx.forayShowId(entry)}`);
-      if (!foray.generated) { curated++; if (linked) curatedLinked++; continue; }
-      generated++;
-      if (linked) generatedLinked++;
-      if (entry.show_id && ctx.showById(entry.show_id)) byIdentifier++;
+  for (const set of FORAY_SETS) {
+    const segments = resolve.indexSegments(set.segmentsDoc);
+    const sources = resolve.indexSources(set.sourcesDoc);
+    for (const foray of set.forays) {
+      for (const entry of resolve.hydrateForayItems(foray, { segments, sources }).items) {
+        if (entry.type !== "segment") continue;
+        const linked = ctx.forayRow({ ...entry, playable: true, queueIndex: 0 }).includes('href="#/show/');
+        /* THE SCALE-FREE INVARIANT, asserted on every beat of every Foray: a row
+           links exactly when the join answers, and never otherwise. This is the
+           assertion that cannot be broken by new data — only by a code
+           regression — and it is why the counts below are floors rather than
+           equalities. This suite is in `REAL_DATA_SUITES` and runs inside the
+           publish gate; a publish that adds a Foray drawing on a show outside
+           the curated 220 must NOT be refused, because plain text is the
+           designed degrade, not a defect. */
+        assert.equal(linked, ctx.forayShowId(entry) !== null,
+          `${set.where}:${foray.id}/${entry.ord} (${entry.source_id}): rendered link=${linked} but the join says ` +
+          `${ctx.forayShowId(entry)}`);
+        if (!foray.generated) { curated++; if (linked) curatedLinked++; continue; }
+        generated++;
+        if (linked) generatedLinked++;
+        if (entry.show_id && ctx.showById(entry.show_id)) byIdentifier++;
+      }
     }
   }
-  assert.ok(generated >= 48, `only ${generated} generated tape beats; 48 when this landed`);
+  /* The floors were "48 when this landed" and "9 did when this landed", over
+     data/ alone, so retiring a Foray tripped them (#236). They are now "> 0"
+     over both sets: the frozen set's generated Foray and curated orders make
+     each non-vacuous for good, and the per-beat assertions above and below are
+     what actually carry the claim. */
+  assert.ok(generated > 0, "no generated tape beat anywhere, so this proved nothing");
   assert.equal(generatedLinked, generated,
     `${generated - generatedLinked} generated-Foray beats lost their show link`);
-  assert.ok(byIdentifier >= 48,
-    `only ${byIdentifier} generated beats resolved a show by IDENTIFIER; 48 did when this landed`);
-  assert.ok(curatedLinked >= 9,
-    `only ${curatedLinked} of ${curated} hand-curated beats link; 9 did when this landed`);
+  assert.ok(byIdentifier > 0,
+    `none of ${generated} generated beats resolved a show by IDENTIFIER — the join this test exists to watch`);
+  assert.ok(curatedLinked > 0,
+    `none of ${curated} hand-curated beats link — the title join has stopped answering for the curated shows`);
 });
+
+
 
 test("no committed Foray renders a curation code or an empty gutter", async () => {
   /* The end-to-end proof, over every authored item on main (289 when this
@@ -611,23 +643,30 @@ test("no committed Foray renders a curation code or an empty gutter", async () =
   const { ctx, state } = mount();
   state.catalog = readJson("data/catalog.json");
   const resolve = await import("../player/foray-resolve.js");
-  const segments = resolve.indexSegments(readJson("data/segments.json"));
-  const sources = resolve.indexSources(readJson("data/segment-sources.json"));
 
-  let rows = 0, labelled = 0;
-  for (const foray of readJson("data/forays.json").forays) {
-    for (const entry of resolve.hydrateForayItems(foray, { segments, sources }).items) {
-      rows++;
-      if (entry.label) labelled++;
-      const html = ctx.forayRow({ ...entry, playable: true, queueIndex: 0 });
-      assert.ok(!html.includes("fy-label"), `${foray.id}/${entry.ord} still renders the gutter`);
-      if (entry.label) {
-        assert.ok(!html.includes(entry.label),
-          `${foray.id}/${entry.ord} still prints its curation code ${entry.label}`);
+  let rows = 0, labelled = 0, authored = 0;
+  for (const set of FORAY_SETS) {
+    const segments = resolve.indexSegments(set.segmentsDoc);
+    const sources = resolve.indexSources(set.sourcesDoc);
+    for (const foray of set.forays) {
+      authored += (foray.items || []).length;
+      for (const entry of resolve.hydrateForayItems(foray, { segments, sources }).items) {
+        rows++;
+        if (entry.label) labelled++;
+        const html = ctx.forayRow({ ...entry, playable: true, queueIndex: 0 });
+        assert.ok(!html.includes("fy-label"), `${set.where}:${foray.id}/${entry.ord} still renders the gutter`);
+        if (entry.label) {
+          assert.ok(!html.includes(entry.label),
+            `${set.where}:${foray.id}/${entry.ord} still prints its curation code ${entry.label}`);
+        }
       }
     }
   }
-  assert.ok(rows >= 289, `only ${rows} authored items reached the renderer; 289 when this landed`);
+  /* Was `rows >= 289` ("289 when this landed") — a floor any retired Foray
+     tripped (#236). Every authored item reaching the renderer is the claim, so
+     that is what is asserted: exactly, and from the documents themselves. */
+  assert.ok(rows > 0, "no authored item reached the renderer, so this proved nothing");
+  assert.equal(rows, authored, `${authored - rows} authored item(s) never reached the renderer`);
   assert.ok(labelled > 0,
     "no committed item carries a label any more — this test can no longer prove the code is hidden");
 });

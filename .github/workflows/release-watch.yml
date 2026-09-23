@@ -1,0 +1,187 @@
+# The release watchdog — piece 2 of docs/release-reliability-plan.md.
+#
+# WHY THIS WORKFLOW EXISTS
+# On 2026-09-22 a release failed at 00:28 UTC — Apple's ingestion server
+# returned one 500 — and it was found SIXTEEN HOURS later, by the founder
+# noticing two fixes missing from the app. Three of the first 24 release runs
+# failed, all three PARTIALLY: one store got the build and the other did not,
+# and nothing in the system said so afterwards.
+#
+# A red run is not a channel here. When this was written, nightly-refresh and
+# nightly-watch had both been red for over a week and nobody had seen either.
+# So this job's red goes to ONE sticky GitHub issue, because opening or
+# reopening an issue notifies the founder and a red run does not. The issue is
+# edited as the picture changes and closes itself when every gate is green —
+# one alarm with one history, which is what docs/DECISIONS.md already asks for
+# ("one evolving issue rather than one per run").
+#
+# WHAT IT CHECKS — tools/release/watch-release.mjs, whose header and suite carry
+# the reasoning. In one line each:
+#   G1 the newest completed release failed, over an hour ago;
+#   G2 the two stores got different builds, both having had credentials;
+#   G3 a release-relevant commit has waited over 6h to reach the stores;
+#   G4 a release run has been queued or running for over an hour;
+#   L  release-trigger.yml is disabled, or has not completed a scheduled run
+#      in 6h — the two workflows watch each other, because HUMAN-ACTIONS #46
+#      was a scheduled watchdog that silently stopped firing.
+#
+# WHAT THE RUN COLOUR MEANS
+# Green = the watchdog evaluated and the issue says what it found. Red = the
+# watchdog itself could not work (an API it could not read, an issue it could
+# not write). That split is what lets release-trigger.yml read "no recent green
+# run" as "the watchdog is down" without confusing it with "the watchdog found
+# a problem". The one failure that liveness cannot see is one the two workflows
+# SHARE — they run the same module — so the issue step also runs after a failed
+# step, and raises the issue itself when this is the second failed scheduled run
+# in a row (selfBrokenVerdict()). Once is a blip; twice is broken.
+#
+# NOTHING HERE DISPATCHES OR RE-RUNS ANYTHING. Acting is release-trigger.yml's
+# job; a watchdog that can change the thing it watches is not a watchdog.
+
+name: release-watch
+
+on:
+  schedule:
+    # Hourly at :23 — off the top of the hour, where GitHub's scheduling
+    # contention lives, and away from release-trigger's :47.
+    - cron: "23 * * * *"
+  workflow_dispatch: {}
+
+# Shared with release-trigger.yml so the sticky issue has one writer at a time.
+concurrency:
+  group: release-alarm
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  # The alarm. Issues only — no pull-requests, no contents write.
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Full history: G3 walks `git log <last released commit>..origin/main`.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # No `npm ci`: watch-release.mjs has no dependencies and makes no network
+      # calls of its own. Everything it reads is fetched here into a file. A
+      # fetch that fails after its retries fails the JOB — "I could not tell" is
+      # not a verdict and must never reach the issue dressed up as one. The one
+      # exception is the summary job's log, below: it expires, and G2 has a
+      # fallback that does not need it.
+      - name: Fetch the release history, the waiting commits and the trigger's pulse
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          retry() {
+            local n=1 max=4 delay=5
+            until "$@"; do
+              if [ $n -ge $max ]; then return 1; fi
+              echo "attempt $n/$max failed, retrying in ${delay}s..." >&2
+              sleep $delay; n=$((n + 1)); delay=$((delay * 3))
+            done
+          }
+          fetch() { retry gh api "$1" > "$2"; }
+
+          # No branch filter: a tag-triggered run's head_branch is the tag.
+          fetch "repos/$REPO/actions/workflows/release.yml/runs?per_page=30" runs.json
+
+          # The newest completed run's jobs, and its summary job's log — the
+          # only place the per-store outcome is readable (see parseOutcome()).
+          #
+          # THE LOG IS THE ONE FETCH ALLOWED TO FAIL. Actions keeps logs for 90
+          # days; the run history and jobs list outlive them. After a quiet
+          # stretch (a pause, or only data commits, which never release) the
+          # newest release's log is gone for good, and a fatal fetch would turn
+          # the watchdog red every hour — and then raise WATCHDOG_BROKEN — over a
+          # log that will never come back. An empty log is a reading, not a
+          # guess: divergentGate() falls back to the store jobs' conclusions.
+          echo '{"jobs":[]}' > jobs.json
+          : > summary.log
+          if RUN=$(node tools/release/watch-release.mjs --mode latest-completed --runs runs.json); then
+            fetch "repos/$REPO/actions/runs/$RUN/jobs" jobs.json
+            SUMMARY=$(jq -r '.jobs[] | select(.name == "summary" and .conclusion != "skipped") | .id' jobs.json | head -n1)
+            if [ -n "$SUMMARY" ]; then
+              if ! fetch "repos/$REPO/actions/jobs/$SUMMARY/logs" summary.log; then
+                echo "::warning::the summary job's log (job $SUMMARY) is unreadable — expired past log retention? G2 reads job conclusions instead."
+                : > summary.log
+              fi
+            fi
+          fi
+
+          # What main holds that the stores do not. No successful release on
+          # record leaves this empty, and G3 says so in its own words.
+          : > commits.txt
+          if SHA=$(node tools/release/watch-release.mjs --mode last-success --runs runs.json); then
+            git log --first-parent --diff-merges=first-parent --no-renames --name-only \
+              --format='%x1e%H %cI %s' "$SHA..origin/main" > commits.txt
+          fi
+
+          fetch "repos/$REPO/actions/workflows/release-trigger.yml" peer-workflow.json
+          fetch "repos/$REPO/actions/workflows/release-trigger.yml/runs?event=schedule&status=success&per_page=5" peer-runs.json
+
+      - name: Judge the five gates
+        run: |
+          node tools/release/watch-release.mjs --mode watch \
+            --runs runs.json \
+            --jobs jobs.json \
+            --summary-log summary.log \
+            --commits commits.txt \
+            --peer-workflow peer-workflow.json \
+            --peer-runs peer-runs.json \
+            --verdict-out verdict.json
+
+      # `always()`: this step ALSO runs when an earlier one failed, because the
+      # peer's liveness check cannot see a failure the two workflows share (they
+      # run the same module). Then there is no verdict.json, and the question
+      # becomes "has the watchdog now failed twice running?" — see
+      # selfBrokenVerdict(). The job stays red either way; this only decides
+      # whether a person is told.
+      - name: Keep the one issue in step with the verdict
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -s verdict.json ]; then
+            VERDICT=verdict.json; MAY_CLOSE=--may-close
+          else
+            gh api "repos/$REPO/actions/workflows/release-watch.yml/runs?event=schedule&per_page=5" > own-runs.json
+            node tools/release/watch-release.mjs --mode self-broken --runs own-runs.json \
+              --current "$GITHUB_RUN_ID" --verdict-out self.json
+            # Never closes: a broken watchdog has no standing to call anything green.
+            VERDICT=self.json; MAY_CLOSE=
+          fi
+          # Issues this workflow's token opened, open or closed. The sticky one
+          # is found by its marker, not its title, so a person retitling it
+          # cannot orphan the alarm.
+          gh api "repos/$REPO/issues?state=all&creator=github-actions%5Bbot%5D&per_page=100" > issues.json
+          node tools/release/watch-release.mjs --mode issue --verdict "$VERDICT" \
+            --issues issues.json $MAY_CLOSE --action-out action.json --body-out body.md
+
+          ACTION=$(jq -r '.action' action.json)
+          NUM=$(jq -r '.number // empty' action.json)
+          case "$ACTION" in
+            create) gh issue create --repo "$REPO" --title "$(jq -r '.title' action.json)" --body-file body.md ;;
+            reopen) gh issue edit "$NUM" --repo "$REPO" --body-file body.md
+                    gh issue reopen "$NUM" --repo "$REPO" ;;
+            edit)   gh issue edit "$NUM" --repo "$REPO" --body-file body.md ;;
+            # The red body is left as it was: the issue's history should say what
+            # went wrong, and the closing comment says it recovered.
+            close)  gh issue close "$NUM" --repo "$REPO" --comment "$(jq -r '.comment' action.json)" ;;
+            none)   echo "issue unchanged" ;;
+            *)      echo "::error::unknown issue action '$ACTION'"; exit 1 ;;
+          esac

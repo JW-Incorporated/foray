@@ -1,0 +1,101 @@
+a5f90c124098086fc2358d67c0e72045c3d33f65 2026-09-23T03:06:03Z fix(transport): the ribbon's play was dead and the card's pause was a play (#735)
+
+app.js
+data/forays-directory.json
+deploy-manifest.json
+player/client.js
+player/diagnostic-log.js
+player/foray-playback.test.js
+sw.js
+test/card-play-pause.test.js
+test/suite-integrity.test.js
+41c5b4c4d180f887d5d6f181c093b4abb1661532 2026-09-22T20:04:10-07:00 perf(release): retry a store upload that failed on someone else's server (#737)
+
+.github/actions/ios-archive/action.yml
+test/suite-integrity.test.js
+tools/release/upload-retry.mjs
+tools/release/upload-retry.test.mjs
+914936a7f4ede6dcd6c3492fd2f5205bb5291c53 2026-09-23T02:58:09Z docs(release): the reliability plan, and a session handoff in STATE.md (#738)
+
+STATE.md
+docs/release-reliability-plan.md
+628612f972e56b134ca971fa7dc9f7c89b54da6f 2026-09-23T02:55:23Z docs(audit): commit the 259 audit findings before the temp directory eats them (#736)
+
+docs/audit/README.md
+docs/audit/persona-findings-detail.md
+docs/audit/persona-findings.tsv
+docs/audit/persona-synthesis.md
+docs/audit/qa-findings-detail.md
+docs/audit/qa-findings.tsv
+docs/audit/qa-synthesis.md
+7c663af416674e8bcbe13f5f4651906aed4dc4c6 2026-09-22T17:28:55Z docs(human-actions): #108 asks for the right thing now (#734)
+
+HUMAN-ACTIONS.md
+eeda7886bcfbd124c93d96d606dd6c34fc50c481 2026-09-22T17:07:23Z fix(audit): the two regressions I shipped last week, plus the test cell that would have caught one (#733)
+
+app.js
+data/forays-directory.json
+deploy-manifest.json
+player/client.js
+player/media-session.test.js
+sw.js
+test/show-episode-load-states.test.js
+test/suite-integrity.test.js
+tools/mobile/foray-media-session.test.mjs
+564e68283b82cbe2b4e8a1f21a291fd52c8f0044 2026-09-21T17:27:47-07:00 fix: the Jump back in card plays and opens; the show page stops showing stale rows (#732)
+
+api/shows/[show_id]/episodes.ts
+app.js
+data/forays-directory.json
+deploy-manifest.json
+player/client.js
+player/media-session.js
+player/media-session.test.js
+styles.css
+sw.js
+test/api-origin.test.js
+test/episode-page.test.js
+test/show-description-source.test.js
+test/show-episodes-cache.test.js
+test/show-page.test.js
+test/show-pages-3b-full-catalogue.test.js
+test/up-next-queue.test.js
+d19c8b5d4a8eb813ab6e73ca7582187b6802883e 2026-09-21T14:52:28-07:00 perf(vercel): skip preview builds that cannot change what Vercel serves (#731)
+
+test/suite-integrity.test.js
+tools/web/vercel-should-build.mjs
+tools/web/vercel-should-build.test.mjs
+vercel.json
+10a080e8ad214d16069d3dea639fbbc5378321b3 2026-09-21T20:58:13Z fix(jump back in): episodes get a progress bar, like Forays (#730)
+
+data/forays-directory.json
+deploy-manifest.json
+player/client.js
+sw.js
+test/jump-back-in-kinds.test.js
+test/suite-integrity.test.js
+c57b53851242549b9ee82a4abe3b94e373dfb8f5 2026-09-21T20:40:05Z fix(show page): show the publisher's own description, not ours (#728)
+
+HUMAN-ACTIONS.md
+app.js
+data/forays-directory.json
+deploy-manifest.json
+player/client.js
+player/diagnostic-log.js
+player/media-session.js
+player/media-session.test.js
+styles.css
+sw.js
+test/show-description-source.test.js
+test/show-episodes-cache.test.js
+test/suite-integrity.test.js
+081f0db4c6a98a69a1b91919d08d62bd0768de43 2026-09-21T15:57:58Z docs(human-actions): close #106 and #107 — both done (#727)
+
+HUMAN-ACTIONS-DONE.md
+HUMAN-ACTIONS.md
+fb8470abe4b1f0aa581dc4d069d60a517de38655 2026-09-21T08:28:27-07:00 docs: Claude merges green PRs and cuts releases without asking (#726)
+
+CLAUDE.md
+HUMAN-ACTIONS.md
+docs/DECISIONS.md
+docs/roles.md

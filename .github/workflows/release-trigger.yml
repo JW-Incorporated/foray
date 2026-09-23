@@ -1,0 +1,150 @@
+# The release trigger — piece 3 of docs/release-reliability-plan.md.
+#
+# WHY THIS WORKFLOW EXISTS
+# All 24 release runs up to 2026-09-22 were started by a person typing a
+# command. There are no `v*` tags, so release.yml's tag trigger has never fired.
+# Merged fixes therefore sat unreleased until somebody remembered — eight fixes
+# once, and sixteen hours on 2026-09-22. This workflow is the somebody.
+#
+# WHAT IT DOES
+# Every two hours it asks tools/release/watch-release.mjs one question —
+# `triggerDecision()` — and, if the answer is yes, dispatches release.yml on
+# main. It says yes when a release-relevant commit is on main and not in the
+# last successful release, and holds when: a release is already queued or
+# running; the last RETRY_BUDGET (2) runs in a row failed; or main itself is red
+# or still building. A failed release is retried the same way new work is
+# shipped — its commits are still waiting — so a transient store outage heals
+# at the next slot without anyone touching it, once.
+#
+# WHY SCHEDULED, NOT `on: push` TO MAIN
+# It batches: the four merges on 2026-09-21 between 15:57 and 00:27 become one
+# or two releases, not four. It retries without extra machinery. And an iOS run
+# bills 4-19 macOS minutes at 10x, so a release per merge would cost more than
+# the founder's current same-day cadence buys.
+#
+# ⚠️ IT DISPATCHES; IT NEVER RE-RUNS
+# release.yml derives the build number from `github.run_number`, and "Re-run
+# failed jobs" reuses the version job's cached outputs — the SAME build number,
+# which App Store Connect refuses as a duplicate (the plan's "BUILD NUMBER
+# COLLIDES ON A RE-RUN" section). A fresh dispatch gets a new run_number, so a
+# new build number, and rebuilds both stores from one commit, which is also
+# what re-converges two stores that diverged. watch-release.test.mjs pins that
+# no workflow in this pair says `rerun`.
+#
+# IT ALSO WATCHES THE WATCHDOG
+# release-watch.yml checks this workflow is alive; this one checks that one.
+# When the watchdog is disabled or silent, this job raises the SAME sticky
+# issue — and only ever raises it: it never closes it, because it does not
+# evaluate the release gates and has no standing to call them green.
+
+name: release-trigger
+
+on:
+  schedule:
+    # Every two hours at :47 (founder, 2026-09-23: "every hour or couple hours is fine"), away from release-watch's :23 and off the top
+    # of the hour.
+    - cron: "47 */2 * * *"
+  workflow_dispatch: {}
+
+# Shared with release-watch.yml so the sticky issue has one writer at a time.
+concurrency:
+  group: release-alarm
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # `gh workflow run release.yml`. A workflow_dispatch made with GITHUB_TOKEN
+  # is one of the two events GitHub lets a token-made event trigger.
+  actions: write
+  # Only the watchdog-liveness alarm; see the header.
+  issues: write
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Fetch the release history, what is waiting, main's state and the watchdog's pulse
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          retry() {
+            local n=1 max=4 delay=5
+            until "$@"; do
+              if [ $n -ge $max ]; then return 1; fi
+              echo "attempt $n/$max failed, retrying in ${delay}s..." >&2
+              sleep $delay; n=$((n + 1)); delay=$((delay * 3))
+            done
+          }
+          fetch() { retry gh api "$1" > "$2"; }
+
+          fetch "repos/$REPO/actions/workflows/release.yml/runs?per_page=30" runs.json
+
+          : > commits.txt
+          if SHA=$(node tools/release/watch-release.mjs --mode last-success --runs runs.json); then
+            git log --first-parent --diff-merges=first-parent --no-renames --name-only \
+              --format='%x1e%H %cI %s' "$SHA..origin/main" > commits.txt
+          fi
+
+          # main's own state, at the commit a dispatch would build.
+          HEAD_SHA=$(git rev-parse origin/main)
+          fetch "repos/$REPO/actions/runs?head_sha=$HEAD_SHA&per_page=50" main-runs.json
+          fetch "repos/$REPO/commits/$HEAD_SHA/status" main-status.json
+
+          fetch "repos/$REPO/actions/workflows/release-watch.yml" peer-workflow.json
+          fetch "repos/$REPO/actions/workflows/release-watch.yml/runs?event=schedule&status=success&per_page=5" peer-runs.json
+
+      - name: Decide
+        id: decide
+        run: |
+          node tools/release/watch-release.mjs --mode trigger \
+            --runs runs.json \
+            --commits commits.txt \
+            --main-runs main-runs.json \
+            --main-status main-status.json \
+            --peer-workflow peer-workflow.json \
+            --peer-runs peer-runs.json \
+            --verdict-out verdict.json
+
+      # A fresh dispatch, never a re-run — see the header.
+      - name: Dispatch a fresh release
+        if: steps.decide.outputs.dispatch == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh workflow run release.yml --repo "$REPO" --ref main -f bump=none
+          echo "Dispatched release.yml on main." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Raise the alarm if the watchdog is down
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPO/issues?state=all&creator=github-actions%5Bbot%5D&per_page=100" > issues.json
+          # No --may-close: this job never calls the release gates green.
+          node tools/release/watch-release.mjs --mode issue --verdict verdict.json \
+            --issues issues.json --action-out action.json --body-out body.md
+
+          ACTION=$(jq -r '.action' action.json)
+          NUM=$(jq -r '.number // empty' action.json)
+          case "$ACTION" in
+            create) gh issue create --repo "$REPO" --title "$(jq -r '.title' action.json)" --body-file body.md ;;
+            reopen) gh issue edit "$NUM" --repo "$REPO" --body-file body.md
+                    gh issue reopen "$NUM" --repo "$REPO" ;;
+            edit)   gh issue edit "$NUM" --repo "$REPO" --body-file body.md ;;
+            none)   echo "issue unchanged" ;;
+            *)      echo "::error::unexpected issue action '$ACTION' from a job that may not close"; exit 1 ;;
+          esac

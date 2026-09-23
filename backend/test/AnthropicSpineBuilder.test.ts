@@ -7,6 +7,7 @@ import { makeFakeAnthropicClient, textBlock, toolUseBlock } from "./helpers/fake
 import type { IntentUnderstanding } from "../src/types/generation";
 import type { ResearchShape } from "../src/types/research";
 import { SPINE_MIN_SEEDED_BEATS_PER_ACT } from "../src/types/spine";
+import { INTERNAL_VOCABULARY } from "../src/copy/rules";
 
 /**
  * Error-path + budget-guard-wiring coverage for AnthropicSpineBuilder — see
@@ -308,6 +309,21 @@ describe("AnthropicSpineBuilder — WS-L: the spine prompt sees the tape (F-63)"
       /* F-70's two lines survive inside it. */
       expect(prompt).toContain("DIFFERENT episodeIds");
       expect(prompt).toContain("the beat seeded from the earlier startSec comes first");
+    });
+
+    it("tells the model slot titles may not use the pipeline's own words, with examples the gate refuses", () => {
+      /* PR #741 review: check-forays refuses rules.js INTERNAL_VOCABULARY in a
+         slot title, and the spine prompt only banned acts/beats/segments in the
+         OVERVIEW. Every example quoted must be one the list catches.
+         MUTATION THAT KILLS THIS: delete the "Every slot title is printed"
+         paragraph from buildSpinePrompt -> red. */
+      const prompt = buildSpinePrompt(intent, shapeWithout, "medium");
+      const start = prompt.indexOf("Every slot title is printed");
+      expect(start).toBeGreaterThanOrEqual(0);
+      const rule = prompt.slice(start, prompt.indexOf("checks that after you answer", start));
+      const examples = [...rule.matchAll(/"([^"]+)"/g)].map((m) => m[1]!);
+      expect(examples.length).toBeGreaterThanOrEqual(4);
+      for (const text of examples) expect(INTERNAL_VOCABULARY.some((rx) => rx.test(text)), `"${text}" must be caught`).toBe(true);
     });
 
     it("says none of it when the research map quoted nothing", () => {

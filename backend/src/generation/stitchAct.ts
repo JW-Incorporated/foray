@@ -71,9 +71,10 @@ import type { CoverageEntry, StitchedAct, StitchedItem, StitchedJingleItem, Stit
  * guessed.").
  *
  * MEASURED, not guessed: `tools/foray/measure-cadence.mjs`, run against
- * the real 61-minute, 32-segment `grilling-history-1` Foray in
- * `data/forays.json` / `data/segments.json` (the one real long Foray
- * this repo has), found:
+ * the real 61-minute, 32-segment `grilling-history-1` Foray (then in
+ * `data/forays.json` / `data/segments.json`, the one real long Foray this
+ * repo had; retired from `data/` on 2026-09-22 and frozen verbatim in
+ * `tools/foray/fixtures/frozen/`, which the script now reads), found:
  *
  *   17 cut-gaps (the elapsed time between one cross-episode cut and the
  *   next, across the whole Foray)
@@ -89,9 +90,11 @@ import type { CoverageEntry, StitchedAct, StitchedItem, StitchedJingleItem, Stit
  * between real cuts, which the median estimates, is the more faithful
  * stand-in for that than a mean pulled long by a few outliers.
  *
- * Re-run `node tools/foray/measure-cadence.mjs` and update this constant
- * (with this same citation) if `grilling-history-1` is ever re-curated —
- * see that script's own doc comment.
+ * `node tools/foray/measure-cadence.mjs` reproduces it from the frozen copy,
+ * and `tools/foray/frozen-fixture.test.mjs` re-runs that and pins this
+ * constant to the measured median — so the citation cannot quietly go
+ * stale. To follow newer curation, measure a new long Foray (`--root`,
+ * `--foray`) and update this constant with a new citation.
  */
 export const TEXTURE_CADENCE_SEC = 155;
 

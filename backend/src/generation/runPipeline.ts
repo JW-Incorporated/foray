@@ -44,6 +44,7 @@ import {
   type TopicDecision
 } from "./topicSupply";
 import { slugifySlotTitle } from "./forayItems";
+import { toListenerWords } from "../copy/rules";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { NARRATION_CHARS_PER_SEC } from "../types/narration";
 import { disclosureTemplate, preludeTemplate } from "../types/narration";
@@ -422,20 +423,34 @@ export function clampWords(text: string, max: number = MAX_COPY_WORDS): string {
  * `title` keeps its old shape (`subject: angle`) when the understander gave
  * none, so every id minted by `forayIdFor(title, …)` for a pre-F-64 request
  * is unchanged (`runPipeline.test.ts` pins one).
+ *
+ * The same holds for the pipeline's own words (rules.js INTERNAL_VOCABULARY,
+ * PR #741 review): check-forays refuses "eight beats" or "the last act" in a
+ * title or summary, and it runs at the per-act partial check and at finalize —
+ * after the spend. So a match the understander wrote anyway is rewritten here
+ * into the listener's word by `toListenerWords` (the rule's own module, never
+ * a copy of the list) and reported in `rewritten`, exactly as a clamp is.
  */
 export function forayCopy(intent: { subject: string; angle?: string; title?: string; summary?: string }): {
   title: string;
   summary: string;
   clamped: string[];
+  rewritten: string[];
 } {
   const clamped: string[] = [];
-  const rawTitle = intent.title?.trim() || `${intent.subject}${intent.angle ? `: ${intent.angle}` : ""}`.slice(0, 120);
-  const rawSummary = intent.summary?.trim() || intent.subject;
+  const rewritten: string[] = [];
+  const listener = (field: string, text: string): string => {
+    const out = toListenerWords(text);
+    if (out.changed) rewritten.push(`${field} ("${text}" -> "${out.text}")`);
+    return out.text;
+  };
+  const rawTitle = listener("title", intent.title?.trim() || `${intent.subject}${intent.angle ? `: ${intent.angle}` : ""}`.slice(0, 120));
+  const rawSummary = listener("summary", intent.summary?.trim() || intent.subject);
   const title = clampWords(rawTitle);
   const summary = clampWords(rawSummary);
   if (wordCount(rawTitle) > MAX_COPY_WORDS) clamped.push(`title (${wordCount(rawTitle)} words)`);
   if (wordCount(rawSummary) > MAX_COPY_WORDS) clamped.push(`summary (${wordCount(rawSummary)} words)`);
-  return { title, summary, clamped };
+  return { title, summary, clamped, rewritten };
 }
 
 export function slotsFromSpine(spine: Spine): ForaySlot[] {
@@ -452,7 +467,13 @@ export function slotsFromSpine(spine: Spine): ForaySlot[] {
       let n = 2;
       while (seen.has(unique)) unique = `${id}-${n++}`;
       seen.add(unique);
-      slots.push({ id: unique, title: slot.title });
+      /* The TITLE a listener reads gets the listener's words (rules.js
+         INTERNAL_VOCABULARY, which check-forays refuses in a slot title); the
+         ID stays the raw title's slug, because stitchAct and partialProjection
+         join items to slots by slugifying the spine's own slot.title. */
+      const copy = toListenerWords(slot.title);
+      if (copy.changed) console.warn(`runPipeline: slot title "${slot.title}" used the pipeline's own words and was rewritten to "${copy.text}" — the spine ignored its slot-title instruction`);
+      slots.push({ id: unique, title: copy.text });
     }
   }
   return slots;
@@ -962,9 +983,12 @@ export async function runForayPipeline(
 
   /* THE FORAY'S COPY, from the intent alone — hoisted ahead of the topic
      decision below because a stop there has to name the Foray it refused. */
-  const { title, summary, clamped: clampedCopy } = forayCopy(intent);
+  const { title, summary, clamped: clampedCopy, rewritten: rewrittenCopy } = forayCopy(intent);
   for (const what of clampedCopy) {
     console.warn(`runPipeline: ${what} exceeded the ${MAX_COPY_WORDS}-word copy rule and was clamped — the understander ignored its length instruction (F-64)`);
+  }
+  for (const what of rewrittenCopy) {
+    console.warn(`runPipeline: ${what} used the pipeline's own words and was rewritten — the understander ignored its vocabulary instruction`);
   }
 
   /* THE FORAY'S TOPIC, DECIDED HERE — BEFORE THE RESEARCH MAP AND THE SPINE

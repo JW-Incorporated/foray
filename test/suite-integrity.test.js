@@ -118,7 +118,7 @@ const FLOORS = {
      deleted once V-01's Audition button replaced it for the human tests it
      existed to support. See HUMAN-ACTIONS #29 and docs/curation/
      tts-locked-screen-check.md (kept as the historical record). */
-  "player/foray-playback.test.js": 90, // 2026-09-22 audit (L2): the Foray page paints its main button from `running` and offers "Start over" on a finished Foray; 88 -> 90
+  "player/foray-playback.test.js": 91, // 2026-09-23 merge of the audit lanes: L2 (the Foray page paints its main button from `running`, "Start over" on a finished Foray; +2) and L8 (#236: the suite runs on the frozen fixture, plus "every segment of every committed Foray in data/ resolves"; +2) both landed; 87 -> 91
   /* 2026-09-18, founder: "the podcast I was listening to should still be in the
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
@@ -399,7 +399,7 @@ const FLOORS = {
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
      and no numeric ID repeats. */
-  "test/human-actions-integrity.test.js": 2,
+  "test/human-actions-integrity.test.js": 6, // L8 review (2026-09-23): the founder queue and STATE.md may not point at a retired Foray; 2 -> 6 (5 on disk before it)
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server
      rows really deleted, no success message over a failure, and a confirmation a
@@ -417,7 +417,7 @@ const FLOORS = {
      route() and never awaited — and the FD-05 playback cases (a swap mid-session
      leaves the queue and the playhead alone; a vanished Foray reads `dropped`;
      the seam prefetch never warms an unvalidated set's audio). Zero slack. */
-  "test/foray-directory.test.js": 15, // +1 F-92 (2026-09-12): a partial seed at the live version is fetched whole once, and the switch then lists the generated draft
+  "test/foray-directory.test.js": 16, // +1 L8 (2026-09-22, #236): FD-05 reads its published Foray off the data, with a readable precondition instead of a hard-coded id // +1 F-92 (2026-09-12): a partial seed at the live version is fetched whole once, and the switch then lists the generated draft
   /* "Show draft Forays" (2026-09-11, Wyatt: "I can't see these forays in the
      app"): the founder's test-track switch AT THE PAGE — the real app.js over
      the real resolver and the real data. What only this suite can see is that
@@ -1091,7 +1091,7 @@ const FLOORS = {
      that `deploy-manifest.json` and `sw.js` are on ALLOWED_PREFIXES. Removing
      either entry restores the state in which every nightly PR sat green and
      unmerged, and nothing else in the repo would say so. */
-  "tools/ci/path-policy.test.mjs": 88,
+  "tools/ci/path-policy.test.mjs": 90, // 2026-09-22: +1 (and the one-test slack closed) -- tools/release/ is denied; 88 -> 90
   /* The LF-checkout guard on the deploy manifest. Small, and every test is one
      branch of a function whose whole job is to refuse. The load-bearing one is
      the binary exclusion: both committed icons really do carry `\r\n` bytes, so
@@ -1216,7 +1216,7 @@ const FLOORS = {
      D3's (1) went with their rules; the pair clause gained six (reported on
      pre-Q-01 tape, gated on a Q-01 Foray, the CLI exit, the row fields, the
      IQR still reported, the helper) and M4's restatement three. */
-  "tools/foray/check-forays.test.mjs": 159, // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
+  "tools/foray/check-forays.test.mjs": 161, // L8 review (2026-09-23): §0 and slot headers declared again, by doc path, so a doc cannot lose them silently; 160 -> 161. L8 (2026-09-22): the pipeline's own words (beat, segment, act, running order) refused in Foray copy — the audit found "eight beats of a forty-beat history" as a title; 159 -> 160. // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
   /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
      of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
      accepted value (~30 today), so the floor is the count of `test(` lines this
@@ -1227,6 +1227,13 @@ const FLOORS = {
      checker without joining the enumeration. Delete any of them and a shape can
      again reach `data/` before a consumer has seen it in CI. */
   "tools/foray/fixture-coverage.test.mjs": 7,
+  /* L8 (2026-09-22, #236's last step): the FROZEN fixture — verbatim copies of
+     four real Forays that the player suites exercise by id, so `data/` can
+     retire or re-curate them without a test migration. Five tests hold it to
+     what it claims: it passes the real checker (and the CLI), it contains
+     exactly what its Forays play, it still carries the shapes the suites need,
+     and TEXTURE_CADENCE_SEC is still what measure-cadence measures on it. */
+  "tools/foray/frozen-fixture.test.mjs": 5,
   /* The narration evidence gate (#247, and the founder's citation rulings of
      2026-08-19). Zero slack, and for a sharper reason than most suites here.
 
@@ -1421,6 +1428,7 @@ const FLOORS = {
      unclassified failure still retries, so nothing ever goes red. A deleted cell
      would read as coverage of a list that had quietly stopped discriminating. */
   "tools/release/upload-retry.test.mjs": 14, // 2026-09-22: new -- which store-upload failures are worth trying again
+  "tools/release/watch-release.test.mjs": 38, // 2026-09-22: new -- the release watchdog + trigger (reliability plan pieces 2 and 3), replayed against the real 00:28 partial failure; 2026-09-23: +2, G2 replays the real 09-06 summary log ("not reached" is unknown, the job decides); +1, the Fetch step executed against an expired (404) summary log
   "tools/mobile/foray-media-session.test.mjs": 80, // 2026-09-22: `sends` cannot be read in the turn of the write, against the REAL default scheduler; 79 -> 80 // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
@@ -1976,16 +1984,16 @@ const BACKEND_FLOORS = {
   "test/AnthropicDeepenActBuilder.test.ts": 9,
   "test/AnthropicEnricher.test.ts": 10,
   "test/AnthropicExternalResearcher.test.ts": 9,
-  "test/AnthropicPromptUnderstander.test.ts": 9,
+  "test/AnthropicPromptUnderstander.test.ts": 10, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 9 -> 10
   /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
      transcript windows and the one seed rule when the research map has them,
      neither when it does not, and the seed the reply carries back. */
-  "test/AnthropicSpineBuilder.test.ts": 11,
+  "test/AnthropicSpineBuilder.test.ts": 18, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
-  "test/copyRules.test.ts": 3,
+  "test/copyRules.test.ts": 6, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
   "test/createEnricher.test.ts": 1,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c). */
   "test/createPromptUnderstander.test.ts": 1,
@@ -2089,7 +2097,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 16,
+  "test/runPipeline.test.ts": 31, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
