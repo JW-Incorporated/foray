@@ -550,10 +550,14 @@ test("the load-failure page names the app", () => {
    judgement call rather than a substitution. The privacy policy discloses the
    discrepancy, so a listener who wonders can find out.
 
-   KILLED BY: reverting to "This device: every Foray key". */
+   KILLED BY: reverting to "This device: everything Foray stored here".
+
+   2026-09-22 (design/QA audit): the line no longer says "key" — a storage word
+   no listener uses — and names what the control now also clears, the record of
+   what was played. It still names the APP, which is what this pins. */
 test("the delete-data sheet names the app", () => {
-  const m = read("app.js").match(/"This device: every (\S+) key/);
-  assert.ok(m, "DD_COVERS no longer has its 'This device: every … key' line");
+  const m = read("app.js").match(/"This device: everything (\S+) stored here/);
+  assert.ok(m, "DD_COVERS no longer has its 'This device: everything … stored here' line");
   assert.equal(m[1], APP_NAME);
 });
 

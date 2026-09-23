@@ -99,7 +99,7 @@ const FLOORS = {
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
-  "player/durable-store.test.js": 74,
+  "player/durable-store.test.js": 87, // 2026-09-22 audit (theme J, R10): the native Preferences tier the header had promised since #40 — absent on the web, survives a WebView sweep, first word in hydration, owned keys only, purge reaches it, and client.js wires it; 81 -> 87 // 2026-09-22 audit (theme J): a key localStorage refused while IndexedDB took it is not reverted next launch, nor pushed down over the good copy — three keys, the mark clearing, a refused removal, the ledger as bookkeeping, purge, a corrupt ledger; 74 -> 81
   "player/idb-tier.test.js": 23,
   /* New with M3 (kanban card t_c7199b13): the event queue moved off a
      synchronous `cp_events` localStorage rewrite into its own IndexedDB
@@ -107,7 +107,7 @@ const FLOORS = {
      spaces (durable + fallback ring), and the two behaviours the design
      calls out by name — quota exhaustion (not lost, surfaced via health(),
      never thrown) and the 5,000-row retention cap. */
-  "player/event-log.test.js": 20,
+  "player/event-log.test.js": 36, // 2026-09-22 audit (theme J, R11): purge() empties the buffer, the ring and IndexedDB and re-reads to prove it; a deaf store and a refused clear are failures, never throws. The suite already stood at 32 against 20, so this closes that slack too; 20 -> 36
   /* 83 -> 87 with #225: the page's two failure guards now reach the field record.
      Two of the four exist to keep the instrument from becoming the outage it was
      built to explain — one pins that the message is on screen BEFORE the record is
@@ -406,7 +406,7 @@ const FLOORS = {
      stray tap cannot satisfy. Every one of those is one edit from its opposite,
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
-  "test/data-deletion.test.js": 51,
+  "test/data-deletion.test.js": 58, // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
   "test/diagnostics-surface.test.js": 19,
@@ -950,7 +950,7 @@ const FLOORS = {
   /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
      three toggles' click handlers, plus the two real-navigation regression
      guards. */
-  "test/drawer-settings-toggle.test.js": 12, // client audit (2026-09-12): the sixth switch (cp_interlude, disclosed since FD-06 with no control), the one `drawerToggle` shape, and the retired ui-v2 debris; 6 -> 12
+  "test/drawer-settings-toggle.test.js": 13, // 2026-09-22 audit (R7, R8): "Open in" and its dead code are gone (replacing the test of its switch), and the founder tools sit in one collapsed Developer group above Delete my data; 12 -> 13 // client audit (2026-09-12): the sixth switch (cp_interlude, disclosed since FD-06 with no control), the one `drawerToggle` shape, and the retired ui-v2 debris; 6 -> 12
   /* "Up Next" auto-advance (docs/listening-queue-plan.md §8 addendum, kanban
      card t_b9880844). Floored for the same reason as up-next-queue.test.js
      above: the auto-advance decision path (off-by-default, queue-origin
@@ -964,7 +964,7 @@ const FLOORS = {
      wrong row set, a wrong slider range, or a drag that silently fails to
      persist are all silent-wrong-behavior, not a crash any other suite
      would notice. Every test names its mutation; see the suite header. */
-  "test/interests-page.test.js": 11,
+  "test/interests-page.test.js": 14, // 2026-09-22 audit (theme J + persona jargon ledger): a missing taxonomy.json writes nothing over the profile, an id the taxonomy dropped survives a save, and no raw taxonomy id or "Reset to learned" on the page; 11 -> 14
   /* The root-node interest bug this same card fixes (D6): loadInterests()
      used to seed leaf nodes only, silently dropping a root-level interest
      on the next save. Floored separately from interests-page.test.js

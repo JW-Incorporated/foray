@@ -12,7 +12,11 @@
  *  4. Dragging a slider updates state.interests, persists via
  *     saveInterests(), and is reflected in the next Home ranking
  *     (buildCards()/interestScore) — the card's actual acceptance test.
- *  5. "Reset to learned" restores the taxonomy-authored default weight.
+ *  5. "Back to 4a's pick" (was "Reset to learned") restores the
+ *     taxonomy-authored default weight.
+ *  8. The profile is never shrunk by a save: a missing taxonomy.json writes
+ *     nothing, and an id the loaded taxonomy does not name survives (2026-09-22
+ *     audit). And no raw taxonomy id is printed under a slider.
  *  6. No history/evidence-feed markup anywhere on the page (D6).
  *  7. CSS: the slider carries touch-action: pan-y, so it does not fight page
  *     scroll — the regression the card names the old prototype fixing twice.
@@ -332,7 +336,7 @@ test("dragging a slider changes what buildCards() ranks on the next Home render"
 /* 5. RESET TO LEARNED                                                   */
 /* ==================================================================== */
 
-test("Reset to learned control exists per row and is disabled at the default weight", async () => {
+test("the back-to-default control exists per row and is disabled at the default weight", async () => {
   /* MUTATION: always render the reset button enabled (drop the `disabled`
      conditional on value === node.weight). A row exactly at its default
      would show an active reset control with nothing to reset. */
@@ -346,7 +350,7 @@ test("Reset to learned control exists per row and is disabled at the default wei
   assert.ok(re.test(html), `the reset control for ${rootAtDefault.id} must be disabled at its default`);
 });
 
-test("clicking Reset to learned restores the taxonomy-authored default weight", async () => {
+test("clicking the back-to-default control restores the taxonomy-authored default weight", async () => {
   /* MUTATION: reset the value to 0 (or 0.5) instead of Math.max(0, node.weight).
      A node whose taxonomy weight is not 0/0.5 would come back wrong. */
   const m = await mountBooted();
@@ -398,4 +402,65 @@ test("the interest slider's CSS carries touch-action: pan-y", async () => {
      page scroll on a touch device. */
   const block = (STYLES_SRC.match(/\.interest-slider\s*\{([^}]*)\}/) || [null, ""])[1];
   assert.ok(/touch-action:\s*pan-y/.test(block), ".interest-slider must set touch-action: pan-y");
+});
+
+/* ==================================================================== */
+/* 8. THE PROFILE IS NEVER SHRUNK, AND NO DEVELOPER STRINGS (2026-09-22) */
+/* ==================================================================== */
+
+test("a missing taxonomy.json does not wipe the stored profile on the first play", () => {
+  /* The audit's case: data/taxonomy.json 404s (a partial deploy, a stale
+     service-worker generation), `loadInterests` seeds nothing, and the first
+     play or thumb wrote `{}` over the listener's whole profile.
+
+     Two rules guard it, and each is pinned on its own: with no taxonomy the
+     save writes NOTHING (this test), and a save merges rather than replaces
+     (the next one). Either alone keeps the profile; both are kept because a
+     write the session had no basis for is still a write that can race.
+     MUTATIONS THAT KILL THIS: drop the `if (!taxonomyNodes().length) return`
+     guard — red, a write happened; or write `state.interests` alone AND drop
+     the guard — red, the stored profile is `{}`. */
+  const saved = { "true-crime": 0.9, "true-crime/cold-cases": 0.7 };
+  const m = mount({ seed: { cp_interests: JSON.stringify(saved) } });
+  assert.strictEqual(m.evalIn("state.taxonomy"), null, "premise: no taxonomy loaded");
+  const writes = [];
+  const realSet = m.ctx.localStorage.setItem;
+  m.ctx.localStorage.setItem = (k, v) => { if (k === "cp_interests") writes.push(v); realSet(k, v); };
+  m.evalIn("loadInterests()");
+  m.evalIn('nudgeTopics(["true-crime"], 0.2)');         // what a play does
+  assert.deepStrictEqual(JSON.parse(m.store.get("cp_interests")), saved);
+  assert.deepStrictEqual(writes, [], "a session with no taxonomy wrote the profile anyway");
+});
+
+test("a stored interest the shipped taxonomy no longer names survives a save", () => {
+  /* The same write used to delete any weight whose node a newer taxonomy had
+     renamed or dropped — silently, on the next play.
+     MUTATION THAT KILLS THIS: write `state.interests` alone instead of merging
+     it over the stored row — red. */
+  const m = mount({ seed: { cp_interests: JSON.stringify({ "retired/node": 0.8, food: 0.9 }) } });
+  m.evalIn('state.taxonomy = { nodes: [{ id: "food", parent: null, weight: 0.5, label: "Food" }] };');
+  m.evalIn("loadInterests()");
+  m.evalIn('nudgeTopics(["food"], -0.1)');
+  const stored = JSON.parse(m.store.get("cp_interests"));
+  assert.strictEqual(stored["retired/node"], 0.8, "the unknown id was deleted by an unrelated play");
+  assert.ok(Math.abs(stored.food - 0.8) < 1e-9, "and the known one still moved");
+});
+
+test("no slider row prints a raw taxonomy id, and the page speaks listener words", async () => {
+  /* The persona audit found `engineering/energy-fusion`-style ids under every
+     slider, "Reset to learned" (it resets to 4a's default, not to anything
+     learned) and "overrule what 4a has learned". Plain words from the jargon
+     ledger (docs/audit/persona-synthesis.md section 2). */
+  const m = await mountBooted();
+  const leaf = TAXONOMY.nodes.find((n) => n.parent === A_ROOT_ID);
+  m.state.interests[leaf.id] = Math.min(1, leaf.weight + 0.3);
+  m.ctx.location.hash = "#/interests";
+  m.ctx.route();
+  const html = m.view();
+  const text = html.replace(/<[^>]*>/g, " ");
+  assert.ok(!text.includes(leaf.id), `the raw id ${leaf.id} is printed on the page`);
+  assert.ok(!/interest-row-path/.test(html));
+  assert.ok(!/Reset to learned|overrule/.test(html), "the old wording is back");
+  assert.match(html, />Back to 4a's pick</);
+  assert.match(html, /Drag a slider to change what 4a suggests/);
 });

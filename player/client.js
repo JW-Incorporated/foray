@@ -120,7 +120,7 @@ import {
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
 import { startDrag, moveDrag, endDrag, dragOffset } from "./sheet-drag-dismiss.js";
-import { createDurableStore } from "./durable-store.js";
+import { createDurableStore, preferencesTier } from "./durable-store.js";
 import { readBuildStamp } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
@@ -228,6 +228,9 @@ let artworkByShow = new Map();
 const storage = createDurableStore({
   localStorage: typeof localStorage !== "undefined" ? localStorage : null,
   idbTier: makeIdbTier({}),
+  /* Inside the native shell only: UserDefaults / SharedPreferences, the one
+     tier a WebView storage sweep cannot reach. Null on the web. */
+  nativeTier: preferencesTier(typeof window !== "undefined" ? window.Capacitor : null),
   onFault: (fault, health) => {
     // The player cannot fix a dead tier. What it must not do is hide one.
     console.warn("[storage]", fault.tier, fault.op, fault.key ?? "", fault.error);

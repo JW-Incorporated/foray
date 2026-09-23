@@ -349,7 +349,7 @@ function toEventRow(e, userId) {
     case "session_shown":
       return row("session_built", { session_key: p.session_id, builder: e.builder || "unknown" });
     default:
-      return null; // unsaved / playlist_* / family_mode / player_pref / refreshed_all — local only
+      return null; // unsaved / playlist_* / family_mode / refreshed_all — local only
   }
 }
 
@@ -420,7 +420,25 @@ function loadInterests() {
   });
 }
 
-function saveInterests() { lsSet("cp_interests", state.interests); }
+/* Persist the profile WITHOUT ever shrinking it (2026-09-22 audit). This used
+   to write `state.interests` whole, and `loadInterests` only seeds ids the
+   loaded taxonomy names — so a `data/taxonomy.json` that 404'd or failed to
+   parse (a partial deploy, a stale service-worker generation) left
+   `state.interests` as `{}`, and the listener's first play or thumb wrote `{}`
+   over their entire profile. The same write silently deleted any stored weight
+   whose node a newer taxonomy had renamed or dropped.
+
+   Two rules now: with no taxonomy loaded there is nothing this session could
+   have learned, so nothing is written at all; and the write MERGES over what
+   is stored, so an id this session does not know survives it. Nothing in the
+   app removes an interest id on purpose — "Delete my data" clears the key
+   through the store, not through here. */
+function saveInterests() {
+  if (!taxonomyNodes().length) return false;
+  const stored = lsGet("cp_interests", {});
+  const base = stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
+  return lsSet("cp_interests", { ...base, ...state.interests });
+}
 
 /* How much of a leaf's own nudge also moves its parent root. Stated here per
    the card's ask ("state the ratio"): a play/thumb on a leaf is signal about
@@ -687,27 +705,12 @@ function fullPool() {
   return pool;
 }
 
-function appleLink(item) {
-  const cid = item.apple_collection_id;
-  return item.apple_episode_url
-    || (item.apple_track_id
-        ? `https://podcasts.apple.com/us/podcast/id${cid}?i=${item.apple_track_id}`
-        : `https://podcasts.apple.com/us/podcast/id${cid}`);
-}
-
-/* Player preference: Apple deep-links to the episode; Pocket Casts has no
-   public episode-URL scheme, so it lands on the show page (verified via
-   data/app-links.json research). */
-function playerPref() { return lsGet("cp_player", "apple"); }
-
-function playLink(item) {
-  if (playerPref() === "pocketcasts") return `https://pca.st/itunes/${item.apple_collection_id}`;
-  return appleLink(item);
-}
-
-/* In-app play button. Items with no audio_url keep the link-out to Apple
-   Podcasts instead (#21 leaves ~9 unresolvable, plus video-only items) — the
-   card itself stays a link either way, so nothing regresses for them.
+/* In-app play button. An item with no audio_url gets NO button — there is no
+   link-out to another podcast app any more (#21 leaves ~9 unresolvable, plus
+   video-only items; the card itself stays a link either way). The "Open in"
+   setting that chose that app, and the two link builders it fed, were deleted
+   together on 2026-09-22: nothing had called either builder since the link-out
+   went, so the switch persisted a value nothing read (design/QA audit).
 
    `ctx`, when given, is stamped on as `data-ctx` — the same "playlist-<id>"
    / "subject-<id>" / "generated-<id>" convention bindPickLogging already
@@ -1588,8 +1591,8 @@ function prettyTitle(query) {
    which is strictly worse than the link-out an absent one already degrades to
    (see playBtn) — so in-app playback comes from the live pool only, never from a
    playlist. `artwork_url` is 161 B that epRow never renders. `apple_episode_url`
-   is derivable: appleLink() already falls back to `id<collection>?i=<track>`
-   without it. `hook` feeds the player's why-line, which only a live part
+   is derivable from the two Apple ids that are kept (`id<collection>?i=<track>`),
+   and nothing links out to Apple any more anyway. `hook` feeds the player's why-line, which only a live part
    reaches, and `duration_sec` only the player; epRow prints `duration_min`.
 
    `topics` is kept even though nothing renders it, because without it an
@@ -10824,8 +10827,10 @@ const drawerToggles = [];
  * @param {object}   [opts]
  * @param {string[]} [opts.words]    the two state words, `[off, on]`
  * @param {boolean}  [opts.repaint]  redraw the page behind the drawer too
+ * @param {Element}  [opts.into]     the container to append to — the drawer,
+ *   unless it is a founder switch, which goes in `drawerDevGroup()`
  */
-function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint = false } = {}) {
+function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint = false, into = null } = {}) {
   const drawer = $("#drawer");
   if (!drawer) return;
   if (!drawerToggles.some(t => t.id === id)) drawerToggles.push({ id, label, read, words });
@@ -10834,7 +10839,7 @@ function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint =
     btn = ddEl("button", "drawer-item as-btn", "");
     btn.type = "button";
     btn.id = id;
-    drawer.appendChild(btn);
+    (into || drawer).appendChild(btn);
   }
   if (btn._drawerToggleBound) return; // init() runs once, but a re-bind must never stack handlers
   btn._drawerToggleBound = true;
@@ -10855,24 +10860,17 @@ function paintDrawerToggles() {
   }
 }
 
-/** The six, in the drawer's reading order: the listener's three from
-    index.html, the listener's fourth (the jingle) appended, then the two
-    founder switches. The diagnostic and destructive controls `init()` binds
-    after these are not switches and stay below them. */
+/** The listener's three, in the drawer's reading order: two from index.html,
+    the jingle appended. The founder's two are `bindDeveloperToggles`', which
+    `init()` binds later so they land in the Developer group below the
+    listener's settings. ("Open in", once a sixth switch, was deleted on
+    2026-09-22 — it chose a link-out that no longer existed.) */
 function bindDrawerToggles() {
   drawerToggle("family-toggle", "Family mode", familyMode, (on) => {
     lsSet("cp_family", on);
     logEvent("family_mode", { on });
     buildCards();
   }, { repaint: true });
-
-  /* Not an on/off: the two states are two destinations, and "Open in: off"
-     would be nonsense. `words` is why the helper takes a pair rather than
-     hard-coding the two English words at five call sites. */
-  drawerToggle("player-toggle", "Open in", () => playerPref() === "apple", (on) => {
-    lsSet("cp_player", on ? "apple" : "pocketcasts");
-    logEvent("player_pref", { player: playerPref() });
-  }, { words: ["Pocket Casts (show page)", "Apple Podcasts"], repaint: true });
 
   drawerToggle("autoadvance-toggle", "Continuous playback", autoAdvanceOn, (on) => {
     lsSet("cp_autoadvance", on);
@@ -10887,16 +10885,49 @@ function bindDrawerToggles() {
      the key once at boot. A disclosed setting with no surface is a disclosure
      that is not true. */
   drawerToggle("interlude-toggle", "Jingle between clips", interludeOn, setInterludeOn);
+}
 
+/* ---------- the Developer group (2026-09-22 audit, founder ruling R8) ----------
+
+   "Show draft Forays", "Voice engine probe" and "Playback diagnostics" are the
+   founder's field-report tools, and they sat among a listener's three real
+   settings: the persona audit read them as debug switches shipped to everyone,
+   and one of them offers a button that blocks for ~90 seconds. They must stay
+   REACHABLE — the founder files reports from a car with them — so they are not
+   hidden behind an unlock. They are grouped instead: one collapsed "Developer"
+   disclosure at the bottom of Settings, directly above "Delete my data" (which
+   stays the drawer's last item, by `bindDeleteControl`'s rule).
+
+   A native <details>, so it opens from a tap, Enter or Space and announces its
+   state with no script, and it starts CLOSED on every launch. Built once;
+   every caller gets the same element — remembered on the drawer itself, the
+   way `ensureInterestsDrawerLink` remembers its link, so a lookup that cannot
+   see appended nodes can never build a second group. */
+function drawerDevGroup() {
+  const drawer = $("#drawer");
+  if (!drawer) return null;
+  if (drawer._devGroup) return drawer._devGroup;
+  const group = ddEl("details", "drawer-dev", null);
+  group.id = "drawer-dev";
+  group.appendChild(ddEl("summary", "drawer-item", "Developer"));
+  drawer.appendChild(group);
+  drawer._devGroup = group;
+  return group;
+}
+
+/** The founder's two switches, into the Developer group. */
+function bindDeveloperToggles() {
+  const into = drawerDevGroup();
+  if (!into) return;
   /* The founder's test track (see § showDraftsOn). No event is logged: this is
      his own switch, not listener behaviour worth a row. */
   drawerToggle("drafts-toggle", "Show draft Forays", showDraftsOn,
-    (on) => lsSet("cp_show_drafts", on), { repaint: true });
+    (on) => lsSet("cp_show_drafts", on), { repaint: true, into });
 
   /* K-01's measurement switch (see § voiceProbeOn). Its RUN button is not a
      switch and is added/removed by `syncVoiceProbeRun` instead. */
   drawerToggle("voice-probe-toggle", "Voice engine probe", voiceProbeOn,
-    (on) => lsSet("cp_voice_probe", on));
+    (on) => lsSet("cp_voice_probe", on), { into });
 }
 
 /** The run control, created on demand by `renderDrawer`. Returns nothing; the
@@ -10919,7 +10950,7 @@ function syncVoiceProbeRun() {
      control that appears BELOW it would be the one a scrolled thumb lands on
      instead. */
   if (toggle && toggle.parentNode) toggle.parentNode.insertBefore(run, toggle.nextSibling);
-  else drawer.appendChild(run);
+  else (drawerDevGroup() || drawer).appendChild(run);
   run.addEventListener("click", () => runVoiceProbe());
 }
 
@@ -11003,7 +11034,17 @@ function ensureInterestsDrawerLink() {
         this file: the audit behind `docs/legal/privacy-policy.md` found **20**
         keys where every earlier count said 11, two of them patterned
         (`cp_foray:<id>`, `cp_pos:<id>`), and a list typed here would rot exactly
-        the way that count did.
+        the way that count did. In the native app the Preferences tier is a third
+        tier, and `purge()` reaches it the same way.
+     1b. THE EVENT QUEUE, which is NOT a `cp_` key: M3 moved it into its own
+        IndexedDB database (`foray_events`, `player/event-log.js`), outside the
+        enumeration above. Until the 2026-09-22 audit this control said "This
+        device is clear" while every event row survived there — episode ids,
+        positions, the old profile id — and the unsynced ones were then uploaded
+        under the NEW anonymous account the next launch mints. `clearEventLog()`
+        purges it and re-reads it, and its answer is folded into `ok`.
+        `test/data-deletion.test.js` enumerates every database and cache the
+        shipped code opens, so a third store cannot appear unaccounted for.
      2. THE SERVER ROWS. Every per-user table's row-level-security policy is
         `for all` (`backend/migrations/supabase/0001_auth_and_rls.sql`), so this
         client can delete its own rows under its own `auth.uid()`. It was a
@@ -11131,17 +11172,18 @@ async function deleteRemoteData() {
 }
 
 /**
- * Clear both local tiers.
+ * Clear everything this device holds about the listener: the event queue
+ * (`clearEventLog`) and every `cp_` key in every tier (`clearStoredKeys`).
  *
- * The real work is `DurableStore.purge()`, which enumerates the tiers rather
- * than the facade and verifies afterwards. The fallback below matters and is not
+ * The real work for the keys is `DurableStore.purge()`, which enumerates the tiers rather
+ * than the facade and verifies afterwards. The fallback in `clearStoredKeys` matters and is not
  * decoration: app.js and `player/client.js` deploy independently through the
  * service worker, so a page can be running with no store published — and then
  * `localStorage` is reachable and IndexedDB is not. That case reports `ok: false`
  * with a reason, because a cleared mirror is not cleared storage.
  */
 async function clearLocalData() {
-  /* FIRST, AND HERE RATHER THAN IN `stopForDataDeletion()` (#264). `purge()` empties
+  /* FIRST, before any await, AND HERE RATHER THAN IN `stopForDataDeletion()` (#264). `purge()` empties
      both tiers of every `cp_` key including `cp_diag`, but the player module holds
      that ring IN MEMORY — so without this the next time the listener pockets their
      phone, the record is written straight back under a key they just asked to be
@@ -11152,6 +11194,39 @@ async function clearLocalData() {
     if (typeof window.forayForgetDiagnostics === "function") window.forayForgetDiagnostics();
   } catch (_) { /* a diagnostic that will not clear is not a reason to refuse a deletion */ }
 
+  /* The pre-module buffer (`logEvent` before `window.forayEventLog` exists) is
+     event rows in memory, and `flushBufferedEvents()` would hand them to the
+     queue this function is about to empty. */
+  _bufferedEvents = [];
+  const events = await clearEventLog();
+  const local = await clearStoredKeys();
+  /* One `ok` for the whole device. A clear `cp_` namespace beside a surviving
+     event queue is exactly the false "This device is clear" this replaced. */
+  return { ...local, ok: Boolean(local.ok) && Boolean(events.ok), events };
+}
+
+/**
+ * Empty the outbound event queue (`player/event-log.js`, database
+ * `foray_events`) and report whether the re-read found it empty.
+ *
+ * With no queue published there is nothing this page can open to check, and
+ * that is reported as not-done rather than assumed done: the queue and the
+ * store arrive together from `player/client.js`, so its absence means the
+ * module did not load, which `clearStoredKeys` reports too.
+ */
+async function clearEventLog() {
+  const log = window.forayEventLog;
+  if (!log || typeof log.purge !== "function") return { ok: false, remaining: null, reason: "no-event-log" };
+  try {
+    const out = await log.purge();
+    return out && typeof out === "object" ? out : { ok: false, remaining: null, reason: "no-answer" };
+  } catch (err) {
+    return { ok: false, remaining: null, reason: "purge-failed", error: errLabel(err) };
+  }
+}
+
+/** Every `cp_` key in every tier — see `DurableStore.purge()`. */
+async function clearStoredKeys() {
   const store = storageBackend();
   if (!store) return { ok: false, keys: [], remaining: [], reason: "no-storage" };
   if (typeof store.purge === "function") {
@@ -11207,6 +11282,10 @@ function errLabel(err) {
  */
 function deletionMessage(result) {
   const { state, remote, local } = result;
+  /* No storage vocabulary reaches the listener here — no "key", no "tier", no
+     error class. Those are in `result.local` for diagnostics. The audit found
+     this line reading "0 key(s) would not clear.": a count that could be zero
+     while the sentence said something failed, in a word nobody uses. */
   if (state === "unconfirmed") return "Type DELETE to confirm.";
   if (state === "busy") return "Deleting…";
   if (state === "remote-failed") {
@@ -11218,14 +11297,26 @@ function deletionMessage(result) {
       ? "No account token was on this device, so no server rows were reachable."
       : "Your rows on our server are deleted.";
   if (local && local.ok) return `Done. ${server} This device is clear.`;
-  const why = local && local.reason === "no-durable-tier"
-    ? "The durable copy is out of reach. Reload and try again."
-    : local && local.reason === "no-storage"
-      ? "This browser has taken storage away."
-      : local && local.reason === "purge-failed"
-        ? `Storage refused the delete (${local.error || "error"}).`
-        : `${(local && local.remaining ? local.remaining.length : 0)} key(s) would not clear.`;
-  return `${server} This device is NOT fully clear. ${why}`;
+  return `${server} This device is NOT fully clear. ${deviceNotClearReason(local)}`;
+}
+
+/** Why the device is not clear, in the listener's words: the first reason that
+    applies, and always something to do next where there is one. */
+function deviceNotClearReason(local) {
+  const reason = local && local.reason;
+  if (reason === "no-storage") return "This browser has taken storage away.";
+  if (reason === "no-durable-tier") return "Part of this device's storage is out of reach. Reload and try again.";
+  if (reason === "purge-failed") return "Storage refused the delete. Reload and try again.";
+  if (local && Array.isArray(local.unverified) && local.unverified.length) {
+    return "Storage could not be checked afterwards. Reload and try again.";
+  }
+  if (local && Array.isArray(local.remaining) && local.remaining.length) {
+    return "Some of what 4a saved here would not clear. Reload and try again.";
+  }
+  if (local && local.events && !local.events.ok) {
+    return "The record of what you played here would not clear. Reload and try again.";
+  }
+  return "Some of what 4a saved here would not clear. Reload and try again.";
 }
 
 /* The sheet and the drawer button are built in JavaScript rather than written
@@ -11247,7 +11338,7 @@ function ddEl(tag, cls, text) {
 /** What the control covers and what it cannot. Every line is read by a listener,
     so every line is inside the copy budget (CLAUDE.md principle 4). */
 const DD_COVERS = [
-  "This device: every 4a key, in both storage layers.",
+  "This device: everything 4a stored here, including the record of what you played.",
   "Our server: the events this device sent, and its account rows.",
   "Your anonymous account row stays. It holds no name, email or phone number.",
   "Publisher and ad hosts saw your IP as audio played. We cannot delete that.",
@@ -11449,11 +11540,11 @@ function paintDeletion(result) {
    voice" — built and bound the same way `bindDiagnosticsControl()`/
    `bindDeleteControl()` are: appended in JS above "Delete my data", because
    `index.html`'s drawer markup is outside this card's owned files (same
-   constraint `ensureInterestsDrawerLink` states). Placed BELOW "Playback
-   diagnostics", which the card's own text asks for ("next to Playback
-   diagnostics"), and above the two destructive/settings toggles at the
-   bottom for the same "a scrolled thumb lands here" reason those two apply
-   to each other.
+   constraint `ensureInterestsDrawerLink` states). The card asked for it
+   "next to Playback diagnostics"; since the 2026-09-22 audit (R8) that item
+   lives in the collapsed Developer group, and this one is a listener setting,
+   so it sits directly ABOVE that group, still next to it and still above
+   "Delete my data".
 
    DESIGN COMMENT (posted to the card before this was written): there is no
    separate `#/settings` route on `main` post-U-11 — `cp_ui_v2` is retired
@@ -11890,10 +11981,10 @@ function closeVoiceSheet() {
   voiceUi.root.hidden = true;
 }
 
-/** Appended to the drawer at startup, next to "Playback diagnostics" per the
-    card's own text, and ABOVE it in the drawer's build order (see
-    `bindDiagnosticsControl`'s own comment for the "field record must stay
-    just above Delete my data" rule this respects). Bound once. */
+/** Appended to the drawer at startup, after the listener's switches and
+    directly above the Developer group (see `init()`), so it is a listener
+    setting among listener settings and never below "Delete my data". Bound
+    once. */
 function bindVoiceControl() {
   const drawer = $("#drawer");
   if (!drawer || $("#voice-open")) return;
@@ -12080,15 +12171,15 @@ function clearDiagnostics() {
   return false;
 }
 
-/** Appended to the drawer at startup, ABOVE "Delete my data" — see the note in
-    `init()`. Bound once, like the control below it. */
+/** Appended at startup to the Developer group, which sits ABOVE "Delete my
+    data" — see the note in `init()`. Bound once, like the control below it. */
 function bindDiagnosticsControl() {
   const drawer = $("#drawer");
   if (!drawer || $("#diag-open")) return;
   const btn = ddEl("button", "drawer-item as-btn", "Playback diagnostics");
   btn.type = "button";
   btn.id = "diag-open";
-  drawer.appendChild(btn);
+  (drawerDevGroup() || drawer).appendChild(btn);
   btn.addEventListener("click", openDiagSheet);
 
   const ui = diagSheet();
@@ -13347,19 +13438,20 @@ async function init() {
   $("#drawer").addEventListener("click", (e) => {
     if (e.target.closest("a")) openDrawer(false);
   });
-  /* Every settings switch, in one call — see `bindDrawerToggles`. They land
-     ABOVE the diagnostic and destructive controls bound below, so "Delete my
-     data" stays last where a scrolled thumb expects it. */
+  /* The listener's settings switches, in one call — see `bindDrawerToggles`.
+     They land ABOVE everything bound below, so "Delete my data" stays last where
+     a scrolled thumb expects it. */
   bindDrawerToggles();
-  /* The field record's surface (#264), appended for the same reason as the
-     control below it and deliberately ABOVE it: "Delete my data" must stay the
-     drawer's last item, because it is the one control in there that cannot be
-     undone and the last item is where a scrolled thumb lands. */
-  bindDiagnosticsControl();
-  /* Narration voice (V-01), next to Playback diagnostics per the card's own
-     text — appended immediately after it, so it lands between diagnostics
-     and the destructive control at the very bottom. */
+  /* Narration voice (V-01): a listener setting, so it stays with the switches
+     above rather than inside the Developer group below (2026-09-22 audit, R8). */
   bindVoiceControl();
+  /* The Developer group (R8): the founder's two switches, then the field
+     record's surface (#264), all inside one collapsed disclosure. Deliberately
+     ABOVE the control below: "Delete my data" must stay the drawer's last item,
+     because it is the one control in there that cannot be undone and the last
+     item is where a scrolled thumb lands. */
+  bindDeveloperToggles();
+  bindDiagnosticsControl();
   /* The drawer's last item, appended rather than written into index.html — see
      the § delete my data header for why, and note it is deliberately BELOW the
      two settings toggles: it is the one control in there that cannot be undone. */

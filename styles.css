@@ -7,6 +7,10 @@
   --line: #2a3441;
   --accent: #4c9aff;
   --gold: #e8d34c;
+  /* The one destructive colour: "Delete everything" in the delete-my-data sheet.
+     A token rather than the raw hex the rule used to carry, so the ui-v2 override
+     below and the v1 rule cannot drift apart. */
+  --danger: #b3402f;
   --radius: 14px;
   --topbar-h: 44px;
   /* U-12: the drawer is the top-most chrome. Defined here rather than at the
@@ -73,8 +77,9 @@ body.ui-v2 {
      for the other's meaning even where a screen only needs "an accent". */
   --amber: #F2A33C;
   --violet: #A78BFA;
-  /* Destructive, and only destructive: the "Delete everything" confirm and
-     the drawer item that opens it. The hex is the one `.dd-go` was written
+  /* Destructive, and only destructive: the "Delete everything" confirm (the
+     drawer item that opens it is an ordinary item since L6 — the sheet carries
+     the warning). The hex is the one `.dd-go` was written
      with (#42); it moved here so the colour that means "this erases your
      data" is a token and not a literal a later primary-button rule can
      silently outrank — which is exactly what happened (audit 2026-09-22). */
@@ -485,6 +490,14 @@ html, body {
   font-family: inherit;
   cursor: pointer;
 }
+/* The Developer group (app.js § the Developer group): the founder's field-report
+   tools in one collapsed <details> at the bottom of Settings. The summary is an
+   ordinary drawer item; its chevron replaces the UA marker, which `.drawer-item`'s
+   `display: block` would hide anyway, and turns when the group is open. */
+.drawer-dev > summary { list-style: none; cursor: pointer; }
+.drawer-dev > summary::-webkit-details-marker { display: none; }
+.drawer-dev > summary::after { content: "\203A"; float: right; transition: transform 120ms; }
+.drawer-dev[open] > summary::after { transform: rotate(90deg); }
 
 /* ---------- home: one screen, and only one screen ---------- */
 #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
@@ -3052,11 +3065,13 @@ body.fy-sheet-open { overflow: hidden; }
    The sheet reuses the reason sheet's shell (.fy-sheet / .fy-scrim / .fy-panel /
    .fy-sheet-actions), so only the parts that have no counterpart there are
    styled here. The confirm button is deliberately NOT accent-blue: it is the one
-   button in the app that destroys something. */
-/* The drawer item that opens it wore v1 gold — the only coloured item in the
-   menu, and the destructive one, so it read as a highlighted feature. It says
-   what it is now: the same danger colour as the button it leads to. */
-.dd-open { color: var(--danger); }
+   button in the app that destroys something.
+
+   The drawer item that OPENS the sheet is an ordinary drawer item. It used to be
+   `color: var(--gold)` — a retired v1 hue, and the only coloured item in the
+   menu, so the destructive entry read as a highlighted feature rather than a
+   warning (2026-09-22 audit). The sheet carries the warning; the menu does not
+   need to shout it. */
 .dd-panel { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 .dd-covers {
   margin: 0 0 14px; padding: 0 0 0 16px;
@@ -3369,13 +3384,13 @@ body.ui-v2 .fy-sheet-sub { color: var(--muted); }
 body.ui-v2 .fy-sheet-cancel { border-color: var(--line); color: var(--muted); }
 body.ui-v2 .fy-sheet-go { border-color: var(--violet); background: var(--violet); color: var(--bg); }
 body.ui-v2 .fy-sheet-go:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
-/* "Delete everything" is a `.fy-sheet-go` too (it reuses the sheet shell), so
-   the violet primary rule directly above — (0,2,1) against `.dd-go`'s (0,1,0)
-   — painted the one button in the app that erases the listener's data the
-   same colour as Play (audit 2026-09-22). Out-ranked here, and `:not(:disabled)`
-   so the greyed "type DELETE first" state above still wins while it applies.
-   Light text, not `--bg`: dark text on this red is ~3:1, `--text` is ~5.5:1. */
-body.ui-v2 .fy-sheet-go.dd-go:not(:disabled) { border-color: var(--danger); background: var(--danger); color: var(--text); }
+/* "Delete everything" is a `.fy-sheet-go` too, and the violet primary above
+   (0,2,1, later in the file) beat `.dd-go`'s red (0,1,0) — so the one button in
+   the app that erases a listener's data looked exactly like Play (2026-09-22
+   audit). Scoped to both classes so it outranks the violet rule, and its
+   disabled state restated after it for the same reason. */
+body.ui-v2 .fy-sheet-go.dd-go { border-color: var(--danger); background: var(--danger); color: var(--text); }
+body.ui-v2 .fy-sheet-go.dd-go:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
 body.ui-v2 #fy-sheet-note { border-color: var(--line); background: var(--surface2); color: var(--text); }
 body.ui-v2 .rate-option { border-color: var(--line); background: var(--surface2); color: var(--text); }
 body.ui-v2 .rate-option.on { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 14%, var(--surface2)); }
