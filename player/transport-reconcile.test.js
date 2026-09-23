@@ -1895,6 +1895,51 @@ test("AUDIT: a superseded load that FAILS does not stop the load that replaced i
   assert.ok(log.some((l) => /load\.superseded a/.test(l)), "and the stale failure is recorded as such");
 });
 
+/* ---- the bar says why there is no sound ---- */
+
+const secondLine = (doc) => find(doc.body, "fp-show").textContent;
+const statusNote = (doc) => find(doc.body, "fp-note");
+
+test("AUDIT: an episode whose audio will not load says so, and play() reports it", async (t) => {
+  /* KILLING MUTATIONS: `return true` at the end of `play()` (the result
+     assertion), or delete the `!foray && current && /player\.error/` block in
+     `onTelemetry` (the line assertions). */
+  const { client, doc, audio, restore } = await bootClient(t);
+  audio.loadPlan.set("https://cdn.test/ep-a.mp3", "error");
+  const ok = await client.play(episodeItem());
+  await settle();
+  assert.equal(ok, false, "a 404 is not a start");
+  assert.match(secondLine(doc), /Didn't load/, "the mini bar says it failed");
+  assert.match(statusNote(doc).textContent, /wouldn't load/, "and the sheet's status line says why");
+  assert.equal(statusNote(doc).getAttribute("role"), "status");
+
+  // The connection comes back and the listener does what the line said.
+  audio.loadPlan.set("https://cdn.test/ep-a.mp3", "ok");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "the retry is the same press");
+  assert.equal(secondLine(doc), "Show A", "and the failure line goes with the audio");
+  restore();
+});
+
+test("AUDIT: a network stall paints Buffering, and the sound coming back clears it", async (t) => {
+  /* KILLING MUTATION: delete the `waiting` -> `setBuffering(true)` listener. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(secondLine(doc), "Show A", "precondition");
+  audio.fire("waiting");
+  assert.equal(secondLine(doc), "Buffering…");
+  assert.equal(statusNote(doc).textContent, "Buffering…");
+  audio.fire("playing");
+  assert.equal(secondLine(doc), "Show A");
+  // A fetch stall over a full buffer is not silence, so it paints nothing.
+  audio.fire("stalled");
+  assert.equal(secondLine(doc), "Show A", "`stalled` alone is not a stall the listener hears");
+  restore();
+});
+
 test("AUDIT: play on a FINISHED Foray starts it over instead of replaying its last segment", async (t) => {
   /* The page now labels this press "Start over", and this is what makes the
      label true. KILLING MUTATION: delete the `ended` branch in `setRunning` —

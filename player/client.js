@@ -637,6 +637,10 @@ function buildUI() {
   row2.append(rateBtn, openLink, forayLink, stopBtn, collapse);
 
   const note = el("p", "fp-note");
+  /* A status line, so "Buffering…" and a failed load are announced rather than
+     only painted (audit 2026-09-22). Polite: neither interrupts. */
+  note.setAttribute("role", "status");
+  note.setAttribute("aria-live", "polite");
 
   /* The publisher's own description, LAST. It is the longest thing here and
      the only reason the sheet needs to scroll at all, so putting it under the
@@ -914,6 +918,9 @@ function forayStateSnapshot() {
     forayId: foray.resolved.id,
     index: foray.index,
     loading: manager?.state?.type === "loadingItem",
+    /* Playback halted for data (audit 2026-09-22) — the Foray page's own
+       transport can say "Buffering…" from the same flag the mini bar paints. */
+    buffering,
     playing: isPlaying(),
     /* THE ANSWER THE PRESS IS DECIDED BY (audit 2026-09-22). `forayToggle`
        calls `setRunning(!transportIsRunning())`, and the Foray page painted its
@@ -1146,6 +1153,10 @@ function seekEpisodeBy(offsetSec) {
 function render() {
   if (!ui || !current) return;
   syncForaySegment();
+  /* AN ERROR CANNOT SURVIVE AUDIO — the same rule `syncForaySegment` keeps for
+     `foray.error` (#225), for the same reason. */
+  if (episodeFailed && isPlaying()) episodeFailed = false;
+  paintStatus();
   /* "››" ON THE LAST SEGMENT IS DISABLED, not silently dead (audit 2026-09-22).
      `forayNext` returns early there, so the button looked live and read "Next
      segment" to a screen reader while doing nothing at all. The listener's
@@ -1278,8 +1289,58 @@ function setNowPlaying(item, why) {
   // any timestamp we might later show from chapters is not. Say nothing when
   // it's exact; say something plain when it isn't.
   const { precision } = seekPrecision(item, { isLocalFile: false, source: OWN });
-  ui.note.textContent = precision === EXACT ? "" : "Timings on this show are approximate.";
+  timingNote = precision === EXACT ? "" : "Timings on this show are approximate.";
+  /* Something else is current now, so neither the last item's failure nor its
+     stall describes it. */
+  episodeFailed = false;
+  buffering = false;
   render();
+}
+
+/* ---------- what the bar says when there is no sound ----------
+
+   Audit 2026-09-22, two silences the transport did not explain:
+
+   - A FAILED EPISODE LOAD said nothing anywhere. `play()` returned true
+     whatever happened, the bar slid up with "▶" and "--:--", and app.js's
+     `if (!ok)` guard was dead code. The Foray page has had its own failure
+     line since #225; the surface a newcomer actually uses had none.
+   - A NETWORK STALL was painted as playing. `waiting` was subscribed only to
+     write a diagnostic row, so the button kept saying Pause over silence and
+     the car said PLAYING, and a listener at 70 mph had no way to tell a dead
+     zone from a crash.
+
+   Both are painted on the mini bar's second line — the one line always on
+   screen — and on the sheet's status line, which is announced. */
+const EPISODE_FAILED_LINE = "Didn't load — press play to try again";
+const EPISODE_FAILED_NOTE = "That episode wouldn't load. Check the connection, then press play.";
+const BUFFERING_LINE = "Buffering…";
+/** The last load of the ordinary episode on the bar failed. Cleared by audio. */
+let episodeFailed = false;
+/** The element is waiting for data while the transport is running. */
+let buffering = false;
+/** The sheet's standing note for this item (the approximate-timings line). */
+let timingNote = "";
+
+/** Only `waiting` starts it, deliberately not `stalled`: `stalled` means the
+    FETCH has stopped delivering, which a well-buffered element plays straight
+    through — painting "Buffering…" over audible sound would be a new lie in
+    place of the old one. `waiting` is playback actually halted for data. */
+function setBuffering(on) {
+  const next = Boolean(on) && transportIsRunning();
+  if (next === buffering) return;
+  buffering = next;
+  render();
+}
+
+function paintStatus() {
+  const failed = episodeFailed && !foray;
+  ui.show.textContent = failed ? EPISODE_FAILED_LINE
+    : buffering ? BUFFERING_LINE
+    : (current?.show || "");
+  ui.note.textContent = failed ? EPISODE_FAILED_NOTE
+    : buffering ? BUFFERING_LINE
+    : timingNote;
 }
 
 /* ---------- playback speed (#242) ----------
@@ -2210,6 +2271,14 @@ function ensureBooted() {
         foray.error = m;
         notifyForay();
       }
+      /* The ordinary episode's half of the same rule (audit 2026-09-22): a
+         load that failed puts the manager in `idle`, and the bar has to say so
+         rather than sit on "▶" and "--:--". A flag, never the message: the
+         telemetry line is developer text and never reaches a listener. */
+      if (!foray && current && /player\.error/i.test(m)) {
+        episodeFailed = true;
+        render();
+      }
   }
 
   /* The lock screen / car / headphone surface (#27). `createMediaSession`
@@ -2274,6 +2343,12 @@ function ensureBooted() {
      to the second element at a cross-episode seam. */
   for (const type of ["playing", "waiting", "stalled", "ended"]) {
     backend.addMediaListener(type, () => diag.mediaEvent(type));
+  }
+  /* The SECOND consumer of `waiting` (audit 2026-09-22): the listener, not only
+     the record. See `setBuffering` for why `stalled` is not one of them. */
+  backend.addMediaListener("waiting", () => setBuffering(true));
+  for (const type of ["playing", "pause", "ended", "emptied"]) {
+    backend.addMediaListener(type, () => setBuffering(false));
   }
 }
 
@@ -2344,7 +2419,12 @@ const ForayPlayer = {
     manager.setQueueFromPick(item);
     await manager.play(0);
     render();
-    return true;
+    /* THE ANSWER, NOT THE ATTEMPT (audit 2026-09-22). This returned `true`
+       whatever happened, so every caller's `if (!ok)` was dead code and a 404
+       counted as a start — including for Up Next's advance. A load that failed
+       lands the manager in `idle` (`E.error`); anything else is a start that is
+       running or on its way. */
+    return manager.state?.type !== "idle";
   },
 
   /**
