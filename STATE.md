@@ -66,7 +66,7 @@ why the watchdog design in `docs/release-reliability-plan.md` opens an issue
 instead.
 
 **STILL QUEUED, approved by the founder, not started:** Forays into Library (no
-new tab); delete `grilling-history-1`; the deep scrub of Foray add/delete
+new tab); ~~delete `grilling-history-1`~~ (retired in PR #741); the deep scrub of Foray add/delete
 coupling; Vercel items 2 and 3; the Long Live (`swift2-web`) Vercel settings.
 Recon for the first three is in the 2026-09-22 workflow output and summarised in
 the PRs above; the Foray coupling map names every hard-coded id in
@@ -3058,8 +3058,9 @@ and belongs with #133's live position, not behind a `tabindex` on a `role="img"`
   across the WHOLE Foray), click-to-jump, and the played/playing state on every
   row. `app.js` now loads `data/forays.json`, `data/segments.json` and
   `data/segment-sources.json`, and survives any of them 404ing.
-- **Open it at:** `https://jw-incorporated.github.io/foray/?foray=grilling-history-1`
-  — Foray #1 is `status: "draft"`, so it is NOT listed for an ordinary visitor
+- **Open it at:** Foray #1 (`grilling-history-1`) was retired 2026-09-23 (PR #741);
+  its successor opens at `https://jw-incorporated.github.io/foray/?foray=grilling-history-2`
+  — Foray #1 was `status: "draft"`, so it is NOT listed for an ordinary visitor
   and nothing here publishes it (that stays HUMAN-ACTIONS.md #2). `?foray=<id>`
   is the keyless way in: it unlocks that one id for that one page load, is not
   persisted, and after the first render the route is the ordinary

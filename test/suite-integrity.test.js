@@ -348,7 +348,7 @@ const FLOORS = {
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
      and no numeric ID repeats. */
-  "test/human-actions-integrity.test.js": 2,
+  "test/human-actions-integrity.test.js": 6, // L8 review (2026-09-23): the founder queue and STATE.md may not point at a retired Foray; 2 -> 6 (5 on disk before it)
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server
      rows really deleted, no success message over a failure, and a confirmation a

@@ -102,3 +102,39 @@ test("no item number is reused across the open file and the ledger", () => {
       "a number already used by either file."
   );
 });
+
+/* The founder queue and the coordination board may not send anyone to a Foray
+ * that data/ no longer carries (PR #741 review). Retiring `grilling-history-1`
+ * left open item #2's "Worked if" asking for a status on a record that no
+ * longer existed, and STATE.md's "Open it at" link opening nothing — the owner
+ * following either would get nowhere, and nothing noticed.
+ *
+ * A RETIRED Foray is one the frozen fixture (tools/foray/fixtures/frozen, which
+ * keeps real Forays verbatim after they leave data/) knows and data/forays.json
+ * does not. A line may still name one, but only to say it was retired; and
+ * every `?foray=<id>` link must open a Foray data/ still carries.
+ *
+ * MUTATION: put `?foray=grilling-history-1` back in STATE.md, or point item
+ * #2's "Worked if" at `grilling-history-1` again -> red, naming the line. */
+test("HUMAN-ACTIONS.md and STATE.md point at no retired Foray", () => {
+  const root = path.join(__dirname, "..");
+  const read = (rel) => JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));
+  const live = new Set(read("data/forays.json").forays.map((f) => f.id));
+  const frozen = read("tools/foray/fixtures/frozen/data/forays.json").forays.map((f) => f.id);
+  const retired = frozen.filter((id) => !live.has(id));
+  const problems = [];
+  for (const file of ["HUMAN-ACTIONS.md", "STATE.md"]) {
+    fs.readFileSync(path.join(root, file), "utf8").split("\n").forEach((line, i) => {
+      const where = `${file}:${i + 1}`;
+      for (const id of retired) {
+        if (new RegExp(`(^|[^a-z0-9-])${id}($|[^a-z0-9-])`).test(line) && !/retired/i.test(line)) {
+          problems.push(`${where} names ${id}, which data/forays.json no longer carries, without saying it was retired`);
+        }
+      }
+      for (const m of line.matchAll(/[?&]foray=([a-z0-9][a-z0-9-]*)/g)) {
+        if (!live.has(m[1])) problems.push(`${where} links ?foray=${m[1]}, which data/forays.json does not carry`);
+      }
+    });
+  }
+  assert.deepEqual(problems, [], problems.join("\n"));
+});
