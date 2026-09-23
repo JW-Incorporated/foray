@@ -12721,6 +12721,10 @@ function route() {
      deletion re-renders the page UNDER an open sheet on purpose. */
   if (h !== previousHash) closeAllSheets();
   renderCurrentPage();
+  /* A NAVIGATION IS SAID, NOT ONLY DRAWN (audit 2026-09-22, qa row 80). Only a
+     real change of page: the first route at boot and a re-render in place (a
+     settings toggle, a finished deletion) keep focus exactly where it is. */
+  landOnPage({ navigated: previousHash !== null && h !== previousHash });
   if (target > 0) {
     scrollPageTo(target);
     /* AN ASYNC PAGE IS ONE PARAGRAPH TALL HERE (audit 2026-09-22). A Foray page,
@@ -12732,6 +12736,52 @@ function route() {
        its real height, and nothing is remembered for this page until then. */
     if ((window.scrollY || 0) < target - 1) pendingRestore = { hash: h, y: target, at: Date.now() };
   }
+}
+
+/* ---------- where a route lands focus, and what the page is called ----------
+
+   Audit 2026-09-22, qa row 80: every navigation swapped #view's contents while
+   focus stayed on a link that no longer existed — it fell to <body>, and a
+   screen-reader user was returned to the top of a page they were never told
+   they had left. A drawer link was worse: route() hides the drawer, taking the
+   focused link with it. And the document was called "4a" on every screen.
+
+   The rule, the one most single-page apps settle on:
+     - the document title is the page's own heading, "<heading> · 4a" (Home,
+       whose sections have no page heading, is plain "4a");
+     - if the navigation LOST focus (on <body>, on an element the render
+       removed, or inside the now-hidden drawer), focus goes to the new page's
+       heading — or to #view itself when the page has none — as a programmatic
+       target (tabindex=-1), so it is read and Tab continues from there;
+     - if focus is somewhere that survived (a tab-bar link, a field the new page
+       focused itself), it is left alone and the page's name is announced in
+       the polite status region instead. Never both: focus moving already says
+       it.
+   `navigated: false` (a re-render, pageDidPaint) never announces, and moves
+   focus only when it was genuinely lost — an async page's loading paint can
+   take a focused "Loading…" heading away with it. */
+function pageHeading(view) {
+  if (!view || typeof view.querySelector !== "function") return null;
+  const box = view.querySelector(".page-head");
+  return (box && box.querySelector("h2")) || null;
+}
+
+function landOnPage({ navigated = false } = {}) {
+  const view = $("#view");
+  const head = pageHeading(view);
+  const name = head ? String(head.textContent || "").replace(/\s+/g, " ").trim() : "";
+  try { document.title = name && !isHomeRoute() ? `${name} · 4a` : "4a"; } catch (_) { /* a stub document */ }
+  const active = document.activeElement;
+  const lost = !active || active === document.body || active.isConnected === false
+    || !!(typeof active.closest === "function" && active.closest("#drawer"));
+  if (lost) {
+    const target = head || view;
+    if (!target || typeof target.focus !== "function") return;
+    if (typeof target.hasAttribute !== "function" || !target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+    try { target.focus({ preventScroll: true }); } catch (_) { /* focus is best-effort */ }
+    return;
+  }
+  if (navigated && name) announce(name);
 }
 
 /* The one normalisation of the hash every route decision reads. THREE
@@ -12852,6 +12902,9 @@ function pageDidPaint() {
   /* The page's real header is on screen now: publish ITS height (see
      publishRenderedPageHead), whether or not a restore is owed. */
   publishRenderedPageHead();
+  /* ...and its real name: an async page's "Loading…" head is gone. Focus only
+     moves if the loading paint took it with it (see landOnPage). */
+  landOnPage({ navigated: false });
   const pending = pendingRestore;
   pendingRestore = null;
   if (!pending || pending.hash !== renderedHash) return;

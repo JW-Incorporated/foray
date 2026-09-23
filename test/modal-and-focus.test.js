@@ -611,3 +611,120 @@ test("REVIEW: while the strip is zoomed, a touchmove is cancelled so the page ca
   strip.fire("pointerup", { pointerId: 1 });
   assert.strictEqual(touchmove(), false, "and after release nothing is held");
 });
+
+/* ==================================================================== */
+/* 5. WHERE A ROUTE LANDS FOCUS (audit sweep 2026-09-23, qa row 80)      */
+/* ==================================================================== */
+
+/* route() is driven for real; only the page render is replaced, by one that
+   builds what the named page's head would be — a `.page-head` with its h2, or
+   (Home) nothing but sections. */
+function routed(m) {
+  vm.runInContext("state.ready = true;", m.ctx);
+  const overlay = m.doc.createElement("div");
+  overlay.id = "drawer-overlay";
+  m.doc.body.appendChild(overlay);
+  const pages = { "#/": null, "#/library": "Library", "#/forays": "Forays" };
+  m.ctx.renderCurrentPage = () => {
+    m.view.children.forEach((c) => { c.parentElement = null; });
+    m.view.children = [];
+    const name = pages[m.ctx.location.hash];
+    if (!name) { m.view.appendChild(m.doc.createElement("section")); return; }
+    const head = m.doc.createElement("div");
+    head.className = "page-head";
+    const h2 = m.doc.createElement("h2");
+    h2.textContent = name;
+    head.appendChild(h2);
+    m.view.appendChild(head);
+  };
+  const go = (hash) => { m.ctx.location.hash = hash; m.ctx.route(); };
+  go("#/");                                     // the boot route: nothing to move
+  return go;
+}
+const heading = (m) => m.view.querySelector(".page-head").querySelector("h2");
+
+test("a drawer link's navigation lands focus on the new page's heading, and the document is named after it", () => {
+  /* The drawer hides under the focused link. MUTATION: delete the
+     `landOnPage(...)` call from route() -> focus stays on the hidden link and
+     the title stays "4a"; red. */
+  const m = mount();
+  const go = routed(m);
+  const link = m.doc.createElement("a");
+  link.setAttribute("href", "#/library");
+  m.drawer.appendChild(link);
+  link.focus();
+  go("#/library");
+  assert.strictEqual(m.doc.activeElement, heading(m), "focus is on the Library heading");
+  assert.strictEqual(heading(m).getAttribute("tabindex"), "-1", "as a programmatic target, not a tab stop");
+  assert.strictEqual(m.doc.title, "Library · 4a");
+});
+
+test("a navigation from a link the render removed lands focus too; Home is plain '4a' and lands on #view", () => {
+  /* MUTATION: drop `active.isConnected === false` from landOnPage's `lost` -> red. */
+  const m = mount();
+  const go = routed(m);
+  go("#/library");
+  const inPage = m.doc.createElement("a");
+  m.view.appendChild(inPage);
+  inPage.focus();
+  go("#/forays");
+  assert.strictEqual(m.doc.activeElement, heading(m));
+  assert.strictEqual(m.doc.title, "Forays · 4a");
+  m.view.children[0].appendChild(inPage);
+  inPage.focus();
+  go("#/");
+  assert.strictEqual(m.doc.activeElement, m.view, "Home has no page heading, so the region itself");
+  assert.strictEqual(m.doc.title, "4a");
+});
+
+test("focus that survived the navigation (a tab-bar link) stays put, and the page's name is said instead", () => {
+  /* MUTATION: make landOnPage move focus unconditionally -> the tab bar loses
+     the listener's place; red. MUTATION: delete `announce(name)` -> nothing is
+     said; red. */
+  const m = mount();
+  const go = routed(m);
+  const tab = m.doc.createElement("a");
+  m.tabBar.appendChild(tab);
+  tab.focus();
+  go("#/library");
+  m.flushFrames();
+  assert.strictEqual(m.doc.activeElement, tab);
+  assert.strictEqual(m.doc.querySelector("#a11y-status").textContent, "Library");
+});
+
+test("a re-render of the SAME page neither moves surviving focus nor says anything", () => {
+  /* A settings toggle re-renders through route(). MUTATION: pass
+     `navigated: true` unconditionally -> the page's name is announced on
+     every toggle; red. */
+  const m = mount();
+  const go = routed(m);
+  go("#/library");
+  const tab = m.doc.createElement("a");
+  m.tabBar.appendChild(tab);
+  tab.focus();
+  m.flushFrames();
+  const region = m.doc.querySelector("#a11y-status");
+  if (region) region.textContent = "";
+  m.ctx.route();
+  m.flushFrames();
+  assert.strictEqual(m.doc.activeElement, tab);
+  assert.strictEqual((m.doc.querySelector("#a11y-status") || { textContent: "" }).textContent, "");
+});
+
+test("an async page's real paint renames the document (pageDidPaint)", () => {
+  /* MUTATION: delete `landOnPage({ navigated: false })` from pageDidPaint ->
+     the title keeps the loading paint's name; red. */
+  const m = mount();
+  routed(m);
+  const head = m.doc.createElement("div");
+  head.className = "page-head";
+  const h2 = m.doc.createElement("h2");
+  h2.textContent = "A Foray";
+  head.appendChild(h2);
+  m.view.children.forEach((c) => { c.parentElement = null; });
+  m.view.children = [];
+  m.view.appendChild(head);
+  m.ctx.location.hash = "#/foray/x";
+  m.ctx.pageDidPaint();
+  assert.strictEqual(m.doc.title, "A Foray · 4a");
+});

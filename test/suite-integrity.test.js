@@ -481,7 +481,7 @@ const FLOORS = {
      thumb surviving Up Next's rebuild, and the strip's click suppression.
      Seventeen tests over a small DOM with real parent links and focus, each
      mutation-checked red. */
-  "test/modal-and-focus.test.js": 17,
+  "test/modal-and-focus.test.js": 26, // 2026-09-23 audit sweep (qa row 80): part 5 — a route lands lost focus on the page heading (or #view), names the document, leaves surviving focus and announces instead, is silent on a same-page re-render, and pageDidPaint renames an async page; 21 -> 26 (L3 took it to 21 unfloored)
   /* S-08's mechanical privacy tripwire: SHOWS_SEARCH_OFF_DEVICE flag detection
      (source and env), the pinned current-sentence check, the core AND-gate
      that fails release builds only when the flag is on AND the old sentence

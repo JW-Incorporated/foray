@@ -310,6 +310,11 @@ html, body {
    that focus came from a tap. A keyboard user still gets one (`:focus-visible`
    is the browser's own judgement of that). */
 [role="dialog"][tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+/* Same for where a route lands focus (app.js landOnPage, audit 2026-09-22 qa
+   row 80): the page heading, or #view on a page with none, is a programmatic
+   target so a screen reader reads it and Tab continues from it. */
+.page-head h2[tabindex="-1"]:focus:not(:focus-visible),
+#view[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
 
 /* Was `overflow: hidden` on `body.view-home` — the home screen is designed
    to fit one viewport with no internal scroll, but on iOS Safari a page with
