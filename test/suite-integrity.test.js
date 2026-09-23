@@ -879,7 +879,7 @@ const FLOORS = {
      Also pins that Playlists/Up Next stay LINKED summaries rather than
      embedded row lists, and that no interpolated href on the page bypasses
      the in-app hash-route/safeUrl composition every other page uses. */
-  "test/library-screen.test.js": 11,
+  "test/library-screen.test.js": 18, // 2026-09-22: Forays and Followed shows are Library sections, one name for #/shows, the ↻ refreshes in place, an Up Next reorder moves one row; 11 -> 18
   /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
      three toggles' click handlers, plus the two real-navigation regression
      guards. */

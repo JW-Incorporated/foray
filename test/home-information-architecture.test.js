@@ -302,7 +302,10 @@ test("the menu lists exactly the five named destinations, in the founder's order
     .map((m) => [m[2], m[1]]);
   assert.deepStrictEqual(items, [
     ["Home", "#/"],
-    ["Shows", "#/shows"],
+    /* "Search", not "Shows", since 2026-09-22: one name per destination, and
+       the tab bar's name wins (audit personas 36 and 76). Same page, same
+       place in the founder's order. */
+    ["Search", "#/shows"],
     ["Playlists", "#/playlists"],
     ["Forays", "#/forays"],
     ["Up Next", "#/queue"],

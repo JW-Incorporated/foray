@@ -1020,7 +1020,7 @@ function renderStarredShows() {
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
-        <a class="back" href="#/shows">‹</a>
+        <a class="back" href="#/library">‹</a>
         <div>
           <h2>Starred Shows</h2>
           <p class="sub">${starred.length} show${starred.length === 1 ? "" : "s"} you've starred</p>
@@ -2507,11 +2507,15 @@ function renderAllShows(initialQuery = "") {
 
      The leading magnifier is kept: it is what tells you the pill is a search
      field rather than a compose box. */
-  renderShowIndexPage("Shows", "", shows, `
+  /* ONE NAME PER DESTINATION (audit 2026-09-22): the tab bar calls this page
+     Search, so its heading does too — it was "Shows" here and in the drawer. The
+     field searches shows, episodes and playlists, so the placeholder says more
+     than "shows by name". */
+  renderShowIndexPage("Search", "", shows, `
       <div id="sh-compose">
         <form id="sh-form" autocomplete="off">
           <svg class="sh-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
-          <input id="sh-input" type="text" maxlength="120" placeholder="search shows by name\u2026">
+          <input id="sh-input" type="text" maxlength="120" placeholder="Search shows and episodes\u2026">
         </form>
         <button id="sh-dismiss" type="button" aria-label="Clear search" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
@@ -7423,6 +7427,37 @@ function upNextRow(r, idx, total) {
   </div>`;
 }
 
+/* A REORDER MOVES ONE ROW, NOT THE PAGE (audit 2026-09-22). Each ↑/↓ used to
+   call renderQueue(), rebuilding the whole list under the thumb: focus was
+   lost, every row was replaced, and a second tap aimed at the same arrow landed
+   on whatever the rebuild had put there. The stored order has already changed
+   (moveQueueItem); this makes the screen agree by moving the one row past its
+   neighbour and renumbering, and keeps focus on the arrow that was pressed.
+   Anything it cannot find (a row that is not where the markup puts it) falls
+   back to the full render, which is always correct, only rougher. */
+function moveQueueRowInPlace(btn, dir) {
+  const row = btn && typeof btn.closest === "function" ? btn.closest(".up-next-row") : null;
+  const list = row && row.parentNode;
+  const other = row && (dir < 0 ? row.previousElementSibling : row.nextElementSibling);
+  if (!list || !other || !other.classList || !other.classList.contains("up-next-row")) { renderQueue(); return; }
+  if (dir < 0) list.insertBefore(row, other);
+  else list.insertBefore(other, row);
+  const rows = [...list.querySelectorAll(".up-next-row")];
+  rows.forEach((r, i) => {
+    const num = r.querySelector(".q-num");
+    if (num) num.textContent = String(i + 1);
+    const up = r.querySelector("[data-reorder-up]");
+    const down = r.querySelector("[data-reorder-down]");
+    if (up) up.disabled = i === 0;
+    if (down) down.disabled = i === rows.length - 1;
+  });
+  /* If the arrow just pressed is now disabled (the row reached an end), focus
+     would fall to the body; its twin is the useful place to leave it. */
+  const twin = row.querySelector(dir < 0 ? "[data-reorder-down]" : "[data-reorder-up]");
+  const target = btn.disabled && twin ? twin : btn;
+  if (typeof target.focus === "function") target.focus();
+}
+
 function bindUpNextReorder(scope) {
   scope.querySelectorAll("[data-reorder-up]").forEach(btn => {
     if (btn._bound) return;
@@ -7430,7 +7465,7 @@ function bindUpNextReorder(scope) {
     btn.addEventListener("click", (e) => {
       e.preventDefault(); e.stopPropagation();
       moveQueueItem(btn.dataset.reorderUp, -1);
-      renderQueue();
+      moveQueueRowInPlace(btn, -1);
     });
   });
   scope.querySelectorAll("[data-reorder-down]").forEach(btn => {
@@ -7439,7 +7474,7 @@ function bindUpNextReorder(scope) {
     btn.addEventListener("click", (e) => {
       e.preventDefault(); e.stopPropagation();
       moveQueueItem(btn.dataset.reorderDown, 1);
-      renderQueue();
+      moveQueueRowInPlace(btn, 1);
     });
   });
   scope.querySelectorAll("[data-dequeue]").forEach(btn => {
@@ -7516,6 +7551,36 @@ function libSection(title, bodyHtml) {
   </div>`;
 }
 
+/* FORAYS AND FOLLOWED SHOWS ARE LIBRARY SECTIONS (founder, 2026-09-22: "Forays
+   into Library, no new tab"; audit personas 32 and 50). The tab bar lit Library
+   for #/forays and every Foray page while Library listed no Forays, and the only
+   way to the shows a listener followed was a row inside the Search page's browse
+   furniture, hidden the moment the field was focused. Both are LINKED, capped at
+   five like Playlists, and open their real page for the rest — the "browse here,
+   act there" split the header above describes. */
+const LIBRARY_SECTION_CAP = 5;
+
+function libraryForaysHtml() {
+  /* The player module lists Forays; until it has loaded, the count is unknown,
+     and an unknown count is not zero — offer the way in, claim nothing. */
+  if (!state.forays || !window.ForayPlayer) return libSummaryRow("/forays", "All forays", "");
+  const list = forayCards();
+  if (!list.length) return `<p class="note">No forays to show yet.</p>`;
+  const progress = new Map(forayResumeRows().map(p => [p.id, p.label]));
+  return list.slice(0, LIBRARY_SECTION_CAP).map(f =>
+    libSummaryRow(`/foray/${encodeURIComponent(f.id)}`, f.title || f.id,
+      progress.get(f.id) || (f.status === "published" ? "" : "draft"))).join("")
+    + (list.length > LIBRARY_SECTION_CAP ? `<a class="lib-more" href="#/forays">All ${list.length} forays ›</a>` : "");
+}
+
+function libraryFollowedHtml() {
+  const followed = Object.values(starredShowsMap())
+    .sort((a, b) => (b.starred_at || "").localeCompare(a.starred_at || ""));
+  if (!followed.length) return `<p class="note">No followed shows yet — follow a show from its page to keep it here.</p>`;
+  return `<div class="show-results">${followed.slice(0, LIBRARY_SECTION_CAP).map(starredShowRow).join("")}</div>`
+    + (followed.length > LIBRARY_SECTION_CAP ? `<a class="lib-more" href="#/starred-shows">All ${followed.length} followed shows ›</a>` : "");
+}
+
 function renderLibrary() {
   setBodyClass("view-page");
   fullPool(); // populate itemIndex/poolIds so saved/history rows can play in-app
@@ -7559,8 +7624,10 @@ function renderLibrary() {
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
-        <div><h2>Library</h2><p class="sub">saved, history, playlists &amp; Up Next</p></div>
+        <div><h2>Library</h2><p class="sub">forays, shows, saved, playlists, Up Next &amp; history</p></div>
       </div>
+      ${libSection("Forays", libraryForaysHtml())}
+      ${libSection("Followed shows", libraryFollowedHtml())}
       ${libSection("Saved", savedHtml)}
       ${libSection("Playlists", playlistsHtml)}
       ${libSection("Up Next", queueHtml)}
@@ -11167,6 +11234,30 @@ function rewriteRouteInPlace(hash) {
   if (navIndex !== null) navHashes[navIndex] = hash;
 }
 
+/* THE HEADER'S ↻ REFRESHES THE PAGE YOU ARE ON (audit 2026-09-22; founder
+   default R9). It re-dealt Home's suggestions and then NAVIGATED to Home from
+   whatever page it was pressed on — the glyph every listener reads as "reload
+   this" threw away the show list, the typed search and the scroll offset.
+   Home still gets new suggestions, because that is what refreshing Home means;
+   every other page re-renders in place (a show page re-asks for its episodes)
+   and keeps its scroll position, through the same clamped-restore path a
+   back-step uses. */
+function refreshCurrentPage() {
+  if (isHomeRoute()) {
+    buildCards();
+    logEvent("refreshed_all", {});
+    renderCurrentPage();
+    scrollPageTo(0);
+    return;
+  }
+  const y = window.scrollY || 0;
+  renderCurrentPage();
+  if (y > 0) {
+    scrollPageTo(y);
+    if ((window.scrollY || 0) < y - 1) pendingRestore = { hash: renderedHash, y };
+  }
+}
+
 /* A restore route() could not complete because the page had not painted yet.
    See route(). */
 let pendingRestore = null;
@@ -12069,12 +12160,7 @@ async function init() {
      the § delete my data header for why, and note it is deliberately BELOW the
      two settings toggles: it is the one control in there that cannot be undone. */
   bindDeleteControl();
-  $("#refresh-btn").addEventListener("click", () => {
-    buildCards();
-    logEvent("refreshed_all", {});
-    if ((location.hash || "#/") === "#/") renderHome();
-    else location.hash = "#/";
-  });
+  $("#refresh-btn").addEventListener("click", refreshCurrentPage);
   /* The router owns the viewport now (see route()), so the browser must stop
      owning it too. Left on "auto", its own restoration lands a beat AFTER
      ours and overwrites it — measured: with the restore in route() but this

@@ -205,7 +205,9 @@ test("the Shows page renders no '220 shows in 4a's catalogue' subtitle at all", 
   const m = mount();
   m.ctx.renderAllShows();
   const html = m.view();
-  assert.ok(html.includes("<h2>Shows</h2>"), "fixture assumption: this is still the Shows page");
+  /* The heading is "Search" since 2026-09-22 — one name per destination, the
+     tab bar's (audit personas 36 and 76). Still the same page. */
+  assert.ok(html.includes("<h2>Search</h2>"), "fixture assumption: this is still the Shows page");
   assert.ok(!html.includes("in 4a&#39;s catalogue") && !html.includes("in 4a's catalogue"),
     "the catalogue-count subtitle must be gone");
   assert.ok(!html.includes('<p class="sub">'),
@@ -271,7 +273,7 @@ test("the search form does NOT render inside .page-head any more", () => {
   const m = mount();
   m.ctx.renderAllShows();
   const head = elementHtml(m.view(), '<div class="page-head');
-  assert.ok(head.includes("<h2>Shows</h2>"), "fixture assumption: that really is the page header");
+  assert.ok(head.includes("<h2>Search</h2>"), "fixture assumption: that really is the page header");
   assert.ok(!head.includes("sh-form"), "the search form must not be inside the collapsing header");
   assert.ok(!head.includes("sh-input"), "nor the field itself");
   assert.ok(!head.includes("sh-compose"), "nor the bar that now holds it");
@@ -294,7 +296,7 @@ test("the page header keeps its job — the back button and the title — and on
   assert.ok(head.startsWith('<div class="page-head">'),
     `one header shape for every page, got: ${head.slice(0, 80)}`);
   assert.ok(head.includes('class="back"'), "the ‹ button stays");
-  assert.ok(head.includes("<h2>Shows</h2>"), "and the title stays");
+  assert.ok(head.includes("<h2>Search</h2>"), "and the title stays");
   assert.ok(!head.includes("page-head-main"), "the stacked inner row is gone with the modifier");
   assert.ok(!STYLES.includes(".page-head-stacked {"),
     "the dead layout rule must be gone from styles.css, not left orphaned");
