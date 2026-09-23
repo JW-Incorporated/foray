@@ -216,7 +216,17 @@ function profileId() {
    present (mirroring `storageReady()`'s one-shot handoff). */
 let _bufferedEvents = [];
 
+/* True for the length of a "Delete my data" clear (review 2026-09-23). The
+   store's purge re-arms a durable tier its breaker had switched off, and every
+   remove that tier then refuses reaches `onFault` -> `forayLogEvent` -> here:
+   `profileId()` minted a NEW cp_profile_id and the row landed in the queue the
+   deletion had just emptied. Nothing is logged while the device is being
+   emptied — the same rule that makes the deletion itself the one action the
+   app never logs. */
+let dataDeletionInProgress = false;
+
 function logEvent(type, payload) {
+  if (dataDeletionInProgress) return;
   const row = { ts: new Date().toISOString(), type, builder: state.session?.builder || "unknown", profile: profileId(), payload };
   if (window.forayEventLog && typeof window.forayEventLog.append === "function") {
     flushBufferedEvents();
@@ -11485,11 +11495,20 @@ async function clearLocalData() {
      event rows in memory, and `flushBufferedEvents()` would hand them to the
      queue this function is about to empty. */
   _bufferedEvents = [];
-  const events = await clearEventLog();
-  const local = await clearStoredKeys();
-  /* One `ok` for the whole device. A clear `cp_` namespace beside a surviving
-     event queue is exactly the false "This device is clear" this replaced. */
-  return { ...local, ok: Boolean(local.ok) && Boolean(events.ok), events };
+  /* THE KEYS FIRST, THE QUEUE LAST (review 2026-09-23), and nothing logged in
+     between (`dataDeletionInProgress`). The queue used to be emptied first, so
+     a storage fault raised by the key purge landed a fresh row — under a fresh
+     profile id — in a queue already reported empty. */
+  dataDeletionInProgress = true;
+  try {
+    const local = await clearStoredKeys();
+    const events = await clearEventLog();
+    /* One `ok` for the whole device. A clear `cp_` namespace beside a surviving
+       event queue is exactly the false "This device is clear" this replaced. */
+    return { ...local, ok: Boolean(local.ok) && Boolean(events.ok), events };
+  } finally {
+    dataDeletionInProgress = false;
+  }
 }
 
 /**

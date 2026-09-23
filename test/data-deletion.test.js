@@ -1295,6 +1295,26 @@ test("the event queue is emptied too — no row survives to be sent under a new 
   assert.match(ui.status.textContent, /This device is clear/);
 });
 
+test("REVIEW: a storage fault raised DURING the key purge leaves no row and no fresh profile id behind", async () => {
+  /* purge() re-arms a dead durable tier, whose refused removes reach onFault ->
+     forayLogEvent -> logEvent: profileId() minted a new cp_profile_id and the
+     row landed in the queue, which had ALREADY been emptied and reported ok.
+     MUTATION: empty the queue first again (swap the two awaits in
+     clearLocalData) and drop the dataDeletionInProgress guard -> red. */
+  const { arm, ctx, store, queue, cpKeys } = await mount({ seed: { cp_profile_id: '"p-1"', cp_interests: "{}" }, events: QUEUED });
+  const purge = store.purge.bind(store);
+  store.purge = async (...args) => {
+    const out = await purge(...args);
+    ctx.logEvent("storage_fault", { tier: "idb", op: "remove" });   // the fault sink, mid-deletion
+    return out;
+  };
+  await arm();
+  await ctx.deleteMyData();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepStrictEqual(await queue.unsynced(), [], "no row survives in the emptied queue");
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "and no new profile id was minted");
+});
+
 test("a queue that will not clear makes the device NOT clear, said in plain words", async () => {
   const stubborn = {
     append() {}, async unsynced() { return []; }, async markSynced() {}, async pruneToRetention() {},
