@@ -480,11 +480,18 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      POSITION it resumes to is deliberately not stored here: `cp_pos:` has owned
      that since #26 and there is exactly one definition of it. Same mechanism as
      every prior addition: this count failed first, then the policy check, until
-     privacy-policy.md §1 got the row. */
+     privacy-policy.md §1 got the row.
+
+     27 -> 29 on 2026-09-22 (audit theme A): `cp_episode_snaps`, the snapshot
+     every add-side action (Up Next, a play, a picked link) now writes so the
+     row survives a reload the way a star's always did, and `cp_shard_shows`,
+     the directory shows whose page was opened, so `#/show/pi:<n>` still
+     resolves. Same mechanism: this count failed first, then the "documented in
+     the privacy policy" test, until privacy-policy.md §1 got both rows. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 27,
-    `expected 27 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 29,
+    `expected 29 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

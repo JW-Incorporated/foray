@@ -881,7 +881,7 @@ const FLOORS = {
      of silent-wrong-behavior this repo's floors exist to catch, not a crash
      path any other suite would notice going missing. Every test names its
      mutation; see the suite header for the full list of what each pins. */
-  "test/up-next-autoadvance.test.js": 6,
+  "test/up-next-autoadvance.test.js": 11, // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
      t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
      wrong row set, a wrong slider range, or a drag that silently fails to

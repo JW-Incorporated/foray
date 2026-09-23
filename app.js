@@ -1667,31 +1667,36 @@ function rowsForIds(ids) {
 
 function queueRows() { return rowsForIds(queueIds()); }
 
-/* ---------- Up Next auto-advance (docs/listening-queue-plan.md §4 addendum,
-   kanban card t_b9880844) ----------
+/* ---------- continuous playback (founder ruling 2026-09-14, PR #695, issue #691) ----------
 
-   CLAUDE.md product principle #1 explicitly bans "autoplay chains" as a dark
-   pattern. This feature is a genuine, deliberate exception carved out of that
-   rule for exactly one purpose — continuing a list the LISTENER built and
-   ordered by hand — and it is scoped as narrowly as it can be to stay
-   distinguishable from the pattern the principle bans:
+   When an episode ends, keep playing. The ruling, verbatim: "I just want more
+   podcasts to play while I'm in the car and can't pick something out for
+   myself." CLAUDE.md principle 1 struck "no autoplay chains" the same day; see
+   docs/DECISIONS.md 2026-09-14 for why hands-free is the case that clause never
+   considered.
 
-     - DEFAULT OFF. `cp_autoadvance` is read with a `false` fallback, same as
-       `cp_family`. A fresh install and a fresh page reload never runs an
-       autoplay chain nobody asked for.
-     - OPT-IN, ONE PER-DEVICE TOGGLE, no per-episode variant. See the drawer
-       control (`autoadvance-toggle`), same pattern as `family-toggle`/
-       `player-toggle`.
-     - ONLY WHEN THE FINISHED EPISODE WAS PLAYED FROM #/queue. Starting an
-       unrelated episode elsewhere in the app must never silently hijack it
-       into "now playing the queue" — see `queuePlaybackOrigin` below. This is
-       the addendum's answer to plan §4 Q1.
-     - THE QUEUE NEVER LOOPS. Reaching the end stops cleanly and says so
-       (`bannerHtml`-style toast is out of scope for Stage 1; the queue page's
-       own count already reflects an empty list). No pulling in more content
-       to keep going — that would be the "infinite scroll" half of principle
-       #1, not just the "autoplay chains" half. */
-function autoAdvanceOn() { return lsGet("cp_autoadvance", false); }
+   THIS COMMENT USED TO SAY THE OPPOSITE, and the code followed it for eight days
+   after the ruling (audit 2026-09-22): default OFF, a drawer switch named for its
+   storage key ("Up Next auto-advance"), and a gate that only ever fired for an
+   episode started from the #/queue page — so an episode played from Home, a show
+   page or search ended in silence, which is the founder's car case exactly.
+
+   What happens now, in order:
+     - ON BY DEFAULT. `cp_autoadvance` survives as the off-switch for anyone who
+       wants silence at the end — the ruling keeps it — and is labelled for what a
+       listener recognises: "Continuous playback" (Apple's name for it).
+     - UP NEXT FIRST. An episode that finishes leaves Up Next (Apple parity), and
+       whatever is still in Up Next plays next. Without the removal, "Up Next
+       first" would replay last week's finished list after any unrelated episode.
+     - ELSE THE LIST THE LISTENER CHOSE. bindPlay records the ordered row list a
+       play button sat in (`state.playList`), and the next row of it plays — the
+       rest of the show page, the rest of Saved, the rest of a playlist.
+     - AN UNPLAYABLE ROW IS PASSED OVER, not stopped at: stopping is the silence
+       the ruling is about. liveEpisode() decides, so a show-page episode counts.
+     - The end of both is the end. "And then more of what fits" — pulling in
+       recommendations once the list runs out — is the rest of issue #691 and is
+       not built here; the exploration floor governs what it will pick. */
+function autoAdvanceOn() { return lsGet("cp_autoadvance", true); }
 
 /* ---------- cp_interlude: the jingle between a Foray's segments ----------
 
@@ -1736,46 +1741,57 @@ function setInterludeOn(on) {
   try { if (store) store.setItem("cp_interlude", on ? "on" : "off"); } catch (_) { /* refused everywhere; the session still honours the flip */ }
 }
 
-/* Set the instant a queue-originated play is dispatched (bindPlay below,
-   guarded by `origin === "queue"`), read the instant an episode ends
-   (advanceQueueOnEnded). Cleared whenever ANY play starts that is NOT from
-   the queue, so playing an unrelated episode mid-list can never be read as
-   "still playing the queue" by a slow finish event that arrives after. One
-   flat field is enough — Stage 1 has exactly one player and one Up Next
-   list, never two concurrent playback sessions to disambiguate between. */
-function setQueuePlaybackOrigin(id) { state.queuePlaybackOrigin = id || null; }
-function clearQueuePlaybackOrigin() { state.queuePlaybackOrigin = null; }
-function isPlayingFromQueue(id) { return state.queuePlaybackOrigin === id; }
+/* The ordered list a play was started from — see the section header above.
+   One flat field: there is one player and one thing playing. A play started
+   anywhere that is not a row list (the mini bar, a Foray, Jump back in's own
+   card) leaves a list that does not contain the new episode, so its end finds
+   no position in it and stops — which is the honest answer for "no list". */
+function setPlayList(ids) {
+  const list = Array.isArray(ids) ? [...new Set(ids.filter(x => typeof x === "string" && x))] : [];
+  state.playList = list.length ? list : null;
+}
+
+/** What plays after `finishedId`, or null. Pure apart from the Up Next removal,
+    which is the one write the decision implies. */
+function nextAfterEnded(finishedId) {
+  const queued = queueIds();
+  const at = queued.indexOf(finishedId);
+  let candidates;
+  if (at >= 0) {
+    const rest = queued.filter(x => x !== finishedId);
+    saveQueueIds(rest);
+    /* The row that took its place first, then anything above it the listener
+       skipped past — every one of them is still unheard, or it would have left. */
+    candidates = rest.slice(at).concat(rest.slice(0, at));
+  } else if (queued.length) {
+    candidates = queued;
+  } else {
+    const list = state.playList || [];
+    const i = list.indexOf(finishedId);
+    candidates = i >= 0 ? list.slice(i + 1) : [];
+  }
+  return candidates.find(id => liveEpisode(id)?.audio_url) || null;
+}
 
 /** Called from `ForayPlayer.onEpisodeEnded` (player/client.js) with the id of
-    the episode that just finished ordinary (non-Foray) playback.
+    the episode that just finished ordinary (non-Foray) playback. The player
+    deliberately never reports `ended` for a Foray, which has its own
+    segment-advance machinery.
 
-    Runs unconditionally — the guards below, not the caller, decide whether
+    Runs unconditionally — the rules above, not the caller, decide whether
     anything happens — because the player module intentionally knows nothing
-    about Up Next; it only reports "this finished playing" once per episode. */
+    about Up Next or lists; it only reports "this finished playing" once per
+    episode. */
 function advanceQueueOnEnded(id) {
-  const wasFromQueue = isPlayingFromQueue(id);
-  clearQueuePlaybackOrigin();
   if (!autoAdvanceOn()) return;
-  if (!wasFromQueue) return;
-  const ids = queueIds();
-  const i = ids.indexOf(id);
-  // Not (or no longer) in the list — reordered/removed mid-playback (plan §4
-  // Q4): freeze at what was queued when playback started, i.e. do nothing
-  // rather than guess at a new position.
-  if (i < 0) return;
-  const nextId = ids[i + 1];
-  // End of the queue: stop cleanly, no loop, no pulling in more content.
-  if (!nextId) return;
+  const nextId = nextAfterEnded(id);
+  if (!nextId || !window.ForayPlayer) return;
   const nextItem = liveEpisode(nextId);
-  // The next item aged out of the live pool since it was queued (archived/
-  // unnamed) — nothing playable to hand to the player. Stop rather than
-  // skip past it silently; a listener who reordered/removed things mid-list
-  // already gets the "freeze" behavior above for the same reason.
-  if (!nextItem || !nextItem.audio_url || !window.ForayPlayer) return;
-  setQueuePlaybackOrigin(nextId);
   window.ForayPlayer.play(nextItem, { why: whyFor(nextId, nextItem) }).then(ok => {
-    if (!ok) { clearQueuePlaybackOrigin(); return; }
+    /* A chained play the browser refuses (autoplay policy is per element on
+       mobile) is already recorded by the player as `source: "autoplay"`; the
+       event here says which advance it was. */
+    if (!ok) { logEvent("autoadvance_refused", { episode_id: nextId }); return; }
     logEvent("play_started", { episode_id: nextId, topics: nextItem.topics || [], ctx: "autoadvance" });
     recordHistory(nextId);
     trySyncEvents();
@@ -3867,13 +3883,13 @@ function bindPickLogging(scope) {
   });
 }
 
-/* `origin` distinguishes "this play button lives on the #/queue page" (only
-   caller: renderQueue) from every other row in the app (undefined/omitted).
-   That distinction is the whole mechanism behind plan §4 Q1's answer: only a
-   play started FROM #/queue can ever trigger auto-advance — starting an
-   unrelated episode elsewhere must never be silently read as "now playing
-   the queue" (see setQueuePlaybackOrigin's header). */
-function bindPlay(scope, { origin = null } = {}) {
+/* Every in-app play button. A tap on one also records the LIST it sat in — the
+   other play buttons in `scope` carrying the same `data-ctx` (a show page's
+   episodes, Library's Saved, one playlist), in on-screen order — so continuous
+   playback can go on to the next row of what the listener was looking at (see
+   § continuous playback). Before 2026-09-22 this took an `origin` flag and only
+   a play from #/queue could ever chain; that gate is gone with the ruling. */
+function bindPlay(scope) {
   scope.querySelectorAll("[data-play]").forEach(btn => {
     if (btn._bound) return;
     btn._bound = true;
@@ -3904,10 +3920,12 @@ function bindPlay(scope, { origin = null } = {}) {
         await window.ForayPlayer.togglePlayback();
         return;
       }
-      if (origin === "queue") setQueuePlaybackOrigin(id);
-      else clearQueuePlaybackOrigin();
+      const listCtx = btn.dataset.ctx || null;
+      setPlayList(listCtx
+        ? [...scope.querySelectorAll("[data-play]")].filter(b => b.dataset.ctx === listCtx).map(b => b.dataset.play)
+        : [id]);
       const ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });
-      if (!ok) { clearQueuePlaybackOrigin(); return; }
+      if (!ok) return;
       logEvent("play_started", { episode_id: id, topics: item.topics || [] });
       recordHistory(id);
       /* Same "playlist-<id>" convention and the same regex bindPickLogging
@@ -7219,8 +7237,8 @@ function renderEpisode(id) {
    (epRow/archivedRow/renderEpisode/renderShow) — the plan's control-density
    note (§1 Q3) rules out stacking a fourth/fifth icon onto rows that already
    sit at their mobile-width ceiling. Play uses the existing single-episode
-   playBtn/epRow-style playback, unchanged — no auto-advance chaining into the
-   next Up Next item (plan §4, explicitly deferred). */
+   playBtn/epRow-style playback; what plays after it is continuous playback's
+   decision (§ continuous playback), and Up Next comes first there. */
 function renderQueue() {
   setBodyClass("view-page");
   fullPool(); // populate itemIndex/poolIds so a live queued item can play in-app
@@ -7238,7 +7256,7 @@ function renderQueue() {
 
   bindPickLogging($("#view"));
   bindStars($("#view"));
-  bindPlay($("#view"), { origin: "queue" });
+  bindPlay($("#view"));
   bindUpNextReorder($("#view"));
 }
 
@@ -9593,7 +9611,7 @@ function bindDrawerToggles() {
     logEvent("player_pref", { player: playerPref() });
   }, { words: ["Pocket Casts (show page)", "Apple Podcasts"], repaint: true });
 
-  drawerToggle("autoadvance-toggle", "Up Next auto-advance", autoAdvanceOn, (on) => {
+  drawerToggle("autoadvance-toggle", "Continuous playback", autoAdvanceOn, (on) => {
     lsSet("cp_autoadvance", on);
     logEvent("autoadvance_pref", { on });
   });
@@ -11672,9 +11690,9 @@ async function init() {
   if (typeof requestIdleCallback === "function") requestIdleCallback(primeSearchVocab, { timeout: 2000 });
   else setTimeout(primeSearchVocab, 0);
 
-  /* Up Next auto-advance's wiring (docs/listening-queue-plan.md §4 addendum).
-     Fire-and-forget: a player that never loads (module failure, test
-     harness with no `window.addEventListener`) just means auto-advance never
+  /* Continuous playback's wiring (§ continuous playback, founder ruling
+     2026-09-14). Fire-and-forget: a player that never loads (module failure,
+     test harness with no `window.addEventListener`) just means it never
      fires, same as every other ForayPlayer-gated feature on this page — it
      must not hold up `init()`, which has already returned control above. */
   playerBridge().then(player => {

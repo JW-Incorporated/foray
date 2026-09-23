@@ -228,8 +228,6 @@ test("continuous playback reaches a show-page episode queued before a reload", (
   const b = boot(store);
   const player = fakePlayer();
   b.ctx.window.ForayPlayer = player;
-  b.ctx.lsSet("cp_autoadvance", true);
-  b.ctx.setQueuePlaybackOrigin(e1.id);
   b.ctx.advanceQueueOnEnded(e1.id);
   assert.strictEqual(player.calls.length, 1, "the next queued episode must play");
   assert.strictEqual(player.calls[0].id, e2.id);
