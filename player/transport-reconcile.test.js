@@ -1836,6 +1836,65 @@ test("AUDIT: a FINISHED Foray can be scrubbed back into its last segment", async
   restore();
 });
 
+/* ---- a load that was superseded before it landed ---- */
+
+test("AUDIT: a superseded load's listeners do not touch its successor's playhead", async () => {
+  /* The listeners are bound to the ELEMENT, so load A (at 30:00) superseded by
+     load B (at 0:00) kept listening to B's events and wrote A's offset onto B.
+     KILLING MUTATION: drop the `superseded()` check from `load()`'s `onMeta`. */
+  const { b, el } = mkBackend();
+  el.holdLoad = true;
+  const pA = b.load(audioItem("a"), { startOffset: 1800 });
+  pA.catch(() => {});
+  const pB = b.load(audioItem("b"), { startOffset: 0 });
+  el.holdLoad = false;
+  el.releaseLoad();
+  await pB;
+  assert.equal(el.currentTime, 0, "B starts where B was asked to start");
+  await assert.rejects(pA, /superseded/, "and A is not reported as a success");
+});
+
+/** A backend whose load of `heldId` waits until the test lets it go. */
+function heldBackend(heldId) {
+  const backend = new Backend();
+  const real = backend.load.bind(backend);
+  let release = null;
+  backend.load = (item, opts) => {
+    if (item.id !== heldId) return real(item, opts);
+    return new Promise((resolve, reject) => {
+      release = (ok) => (ok ? real(item, opts).then(resolve, reject) : reject(new Error("network")));
+    });
+  };
+  return { backend, release: (ok = true) => release(ok) };
+}
+
+test("AUDIT: a load that lands after a newer one never claims the playhead", async () => {
+  /* KILLING MUTATION: stamp `this._loadedId = item.id` before the
+     `_loadSeq !== seq` check in `_loadItem`. */
+  const { backend, release } = heldBackend("a");
+  const { m } = playerWith([audioItem("a"), audioItem("b")], { backend });
+  const first = m.play(0);                 // A, held in flight
+  await m.play(1);                         // the listener tapped B
+  assert.equal(m.playheadItemId, "b");
+  release(true);
+  await first;
+  assert.equal(m.playheadItemId, "b", "the element holds B, so the playhead is about B");
+  assert.equal(m.state.type, "playing");
+});
+
+test("AUDIT: a superseded load that FAILS does not stop the load that replaced it", async () => {
+  /* KILLING MUTATION: drop the `_loadSeq !== seq` guard from `_loadItem`'s
+     catch — the stale failure dispatches `error` and the reducer goes idle. */
+  const { backend, release } = heldBackend("a");
+  const { m, log } = playerWith([audioItem("a"), audioItem("b")], { backend });
+  const first = m.play(0);
+  await m.play(1);
+  release(false);
+  await first;
+  assert.equal(m.state.type, "playing", "B is still playing");
+  assert.ok(log.some((l) => /load\.superseded a/.test(l)), "and the stale failure is recorded as such");
+});
+
 test("AUDIT: play on a FINISHED Foray starts it over instead of replaying its last segment", async (t) => {
   /* The page now labels this press "Start over", and this is what makes the
      label true. KILLING MUTATION: delete the `ended` branch in `setRunning` —

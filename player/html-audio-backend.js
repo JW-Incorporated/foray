@@ -1505,6 +1505,14 @@ export class HtmlAudioBackend {
 
     this._currentItem = item;
     this._currentUrl = item.audio_url;
+    /* WHICH LOAD THESE LISTENERS BELONG TO (audit 2026-09-22). They are bound to
+       the ELEMENT, not to this source, so a load superseded before it settled —
+       a fast skip, a row tap mid-load — kept listening to its successor's
+       events: its `onMeta` wrote ITS offset onto the NEW source's playhead (the
+       next episode starting half an hour in), and its `onCanPlay` resolved on
+       the new source's `canplay`, reporting a success for audio it never got. A
+       superseded load now touches nothing and settles as superseded. */
+    const mine = this._loadSeq;
 
     return new Promise((resolve, reject) => {
       const el = this.el;
@@ -1531,18 +1539,28 @@ export class HtmlAudioBackend {
         reject(new Error(msg));
       };
 
-      const onErr = () => fail(`load failed (code ${el.error?.code ?? "?"}) for ${item.id}`);
+      const superseded = () => {
+        if (this._loadSeq === mine) return false;
+        fail(`load of ${item.id} superseded`);
+        return true;
+      };
+      const onErr = () => {
+        if (superseded()) return;
+        fail(`load failed (code ${el.error?.code ?? "?"}) for ${item.id}`);
+      };
 
       // Offset is applied here, not before: assigning currentTime at
       // readyState 0 is discarded, and doing it after playback starts would
       // let the episode's opening be briefly audible before the jump.
       const onMeta = () => {
+        if (superseded()) return;
         if (startOffset > 0 && Number.isFinite(startOffset)) {
           try { el.currentTime = startOffset; } catch (_) { /* browser refused; continue at 0 */ }
         }
       };
-      const onSeeked = () => { if (el.readyState >= READY_ENOUGH) done(); };
+      const onSeeked = () => { if (!superseded() && el.readyState >= READY_ENOUGH) done(); };
       const onCanPlay = () => {
+        if (superseded()) return;
         // If we asked for an offset, wait until we are actually near it —
         // otherwise `canplay` can fire for the buffered head while the seek
         // is still resolving.
@@ -1601,6 +1619,9 @@ export class HtmlAudioBackend {
     const el = this.el;
     const target = typeof startOffset === "number" && Number.isFinite(startOffset) && startOffset > 0
       ? startOffset : 0;
+    /* Same capture as `load()`'s, for the same reason: these listeners are on
+       the element, and a later load re-points it. */
+    const mine = this._loadSeq;
 
     return new Promise((resolve, reject) => {
       let settled = false;
@@ -1624,8 +1645,16 @@ export class HtmlAudioBackend {
         cleanup();
         reject(new Error(msg));
       };
-      const onProgress = () => { if (near()) done(); };
-      const onErr = () => fail(`in-place seek to ${Math.round(target)}s failed (code ${el.error?.code ?? "?"})`);
+      const superseded = () => {
+        if (this._loadSeq === mine) return false;
+        fail(`in-place seek to ${Math.round(target)}s superseded`);
+        return true;
+      };
+      const onProgress = () => { if (!superseded() && near()) done(); };
+      const onErr = () => {
+        if (superseded()) return;
+        fail(`in-place seek to ${Math.round(target)}s failed (code ${el.error?.code ?? "?"})`);
+      };
 
       el.addEventListener("seeked", onProgress);
       el.addEventListener("canplay", onProgress);

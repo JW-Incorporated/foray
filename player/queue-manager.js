@@ -1237,6 +1237,17 @@ export class PlayerQueueManager {
         }
       } else {
         await this.backend.load(item, { startOffset });
+        /* SUPERSEDED BEFORE IT LANDED (audit 2026-09-22): a skip or a row tap
+           claimed the player while this load was in flight. The element is
+           being re-pointed at the newer item, so stamping `_loadedId` here would
+           say it holds THIS one — and `_persistPosition` would then write the
+           newer item's clock under this item's id. Checked here, straight after
+           the await, rather than only at the seam wait below: a newer load bumps
+           `_loadSeq` synchronously when it starts, so this comparison cannot be
+           early the way the one `_transport` describes can. */
+        if (this._loadSeq !== seq) {
+          return this._emit(`load.superseded ${item.id} — a newer load owns the player`);
+        }
         this._loadedId = item.id;
         this._endSynthNarration();
       }
@@ -1258,6 +1269,13 @@ export class PlayerQueueManager {
       }
       await this._handle(E.itemLoaded());
     } catch (err) {
+      /* A load nobody is on any more failing is not the CURRENT item failing.
+         Dispatching `error` here would move the reducer to `idle` and pause the
+         newer load the listener asked for — and the seam deadline, if any, is
+         the newer load's to spend, not this one's to drop. */
+      if (this._loadSeq !== seq) {
+        return this._emit(`load.superseded ${ref.id} — failed after a newer load took over: ${err?.message ?? err}`);
+      }
       // Drop the deadline with the item it belonged to. `_awaitSeamGap` is the
       // only other place that clears it and this path never reaches it, so
       // without this a failed seam leaves a live deadline that the NEXT load —
