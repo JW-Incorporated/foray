@@ -120,7 +120,7 @@ test("archivedRow's unnamed part has neither a title link nor a play/star/extern
   const item = { id: "ep-z" };
   const html = app.archivedRow(item, 0, "ctx-1");
   assert.doesNotMatch(html, /ep-title-link/, "an unnamed part must not render a title link");
-  assert.match(html, /Part no longer in the catalogue/);
+  assert.match(html, /Episode no longer in the catalogue/);
 });
 
 /* ---------- bannerHtml: in-app link, not target="_blank" ---------- */

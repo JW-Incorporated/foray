@@ -46,7 +46,7 @@
         exactly the moments the audio changes — and the OS treats each as a new
         track, which is what makes the change legible without a glance.
 
-   `album` carries `part 12 of 32` because that is the one fact a display can add
+   `album` carries `clip 12 of 32` because that is the one fact a display can add
    for free, and it is worded exactly as the mini bar words it (`client.js`'s
    `forayNowPlaying`) so the two surfaces cannot drift.
 
@@ -420,10 +420,11 @@ export function mediaMetadata({
   };
 }
 
-/** "The history of grilling · part 12 of 32". Worded as the mini bar words it. */
+/** "The history of grilling · clip 12 of 32". Worded as the mini bar words it —
+    "clip", the listener's word for a Foray's pieces (audit 2026-09-22). */
 function albumOf(forayTitle, index, total) {
   const n = Number.isInteger(index) && index >= 0 && Number.isInteger(total) && total > 0
-    ? `part ${Math.min(index, total - 1) + 1} of ${total}`
+    ? `clip ${Math.min(index, total - 1) + 1} of ${total}`
     : "";
   if (forayTitle && n) return `${forayTitle} · ${n}`;
   if (forayTitle) return forayTitle;

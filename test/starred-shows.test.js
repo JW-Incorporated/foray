@@ -198,13 +198,13 @@ test("renderShow includes an unstarred showStarBtn by default, and starring upda
   let html = m.view();
   assert.match(html, /class="show-star "/, "must render an unstarred show-star button");
   assert.match(html, /data-show-star="s-2"/, "button must carry the show_id for the click handler");
-  assert.ok(html.includes("Star this show"), "unstarred label must read 'Star this show'");
+  assert.ok(html.includes("+ Follow"), "unfollowed label must read '+ Follow' (R3 vocabulary, 2026-09-22: shows are Followed, episodes are Saved)");
 
   m.ctx.toggleShowStar("s-2");
   m.ctx.renderShow("s-2");
   html = m.view();
   assert.match(html, /class="show-star on"/, "re-rendering the page after starring must show the 'on' state");
-  assert.ok(html.includes("★ Starred"), "starred label must read '★ Starred'");
+  assert.ok(html.includes("✓ Followed"), "followed label must read '✓ Followed'");
 });
 
 /* ==================================================================== */
@@ -236,7 +236,7 @@ test("renderStarredShows lists every starred show, most-recently-starred first",
 
   m.ctx.renderStarredShows();
   const html = m.view();
-  assert.ok(html.includes("Starred Shows"), "must render the page heading");
+  assert.ok(html.includes("Followed shows"), "must render the page heading");
   assert.ok(html.includes("2 shows"), "must render an accurate count");
   const oldIdx = html.indexOf("Older Show");
   const newIdx = html.indexOf("Newer Show");
@@ -288,7 +288,7 @@ test("renderStarredShows shows an honest empty state when nothing is starred", (
   const m = mount();
   m.ctx.renderStarredShows();
   const html = m.view();
-  assert.ok(html.includes("No starred shows yet"), "must render an honest empty state, not a blank list");
+  assert.ok(html.includes("No followed shows yet"), "must render an honest empty state, not a blank list");
   assert.ok(!html.includes('class="show-results"'), "must not render the results wrapper when there is nothing to show");
 });
 
@@ -310,7 +310,7 @@ test("route() dispatches #/starred-shows to renderStarredShows, matching #/playl
 
   m.ctx.location.hash = "#/starred-shows";
   m.ctx.route();
-  assert.ok(m.view().includes("Starred Shows"), "route() must dispatch #/starred-shows to renderStarredShows");
+  assert.ok(m.view().includes("Followed shows"), "route() must dispatch #/starred-shows to renderStarredShows");
 });
 
 /* ==================================================================== */

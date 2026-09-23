@@ -118,7 +118,7 @@ test("archivedRow renders no badge for an unnamed part (nothing to flag)", () =>
   const unnamedPart = { id: "p2" };
   const row = app.archivedRow(unnamedPart, 0, "ctx");
   assert.doesNotMatch(row, /class="explicit-badge"/);
-  assert.match(row, /Part no longer in the catalogue/);
+  assert.match(row, /Episode no longer in the catalogue/);
 });
 
 /* ---------- renderEpisode ---------- */

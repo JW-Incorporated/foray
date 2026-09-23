@@ -159,16 +159,16 @@ test("a segment puts the episode in title and the SHOW in artist", () => {
 
 test("the Foray's title lives in album, with the part counter", () => {
   const m = mediaMetadata({ item: SEG, forayTitle: "The history of grilling", index: 11, total: 32 });
-  assert.equal(m.album, "The history of grilling · part 12 of 32");
+  assert.equal(m.album, "The history of grilling · clip 12 of 32");
 });
 
 test("the part counter is 1-based, and worded exactly as the mini bar words it", () => {
-  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 0, total: 9 }).album, /part 1 of 9$/);
-  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 8, total: 9 }).album, /part 9 of 9$/);
+  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 0, total: 9 }).album, /clip 1 of 9$/);
+  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 8, total: 9 }).album, /clip 9 of 9$/);
 });
 
-test("an index past the end is clamped rather than reported as part 40 of 32", () => {
-  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 99, total: 32 }).album, /part 32 of 32$/);
+test("an index past the end is clamped rather than reported as clip 40 of 32", () => {
+  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 99, total: 32 }).album, /clip 32 of 32$/);
 });
 
 test("a zero total suppresses the counter — single-episode playback has no parts", () => {
@@ -177,7 +177,7 @@ test("a zero total suppresses the counter — single-episode playback has no par
 });
 
 test("a counter with no Foray title still reads as a sentence", () => {
-  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 2, total: 9 }).album, "Part 3 of 9");
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 2, total: 9 }).album, "Clip 3 of 9");
 });
 
 test("a missing show yields an EMPTY artist — a credit is never invented", () => {
@@ -205,7 +205,7 @@ test("whitespace-only strings count as missing, not as content", () => {
   const m = mediaMetadata({ item: { kind: "episode", title: "   ", show: "\t" }, forayTitle: "  F  ", index: 0, total: 3 });
   assert.equal(m.title, "F");
   assert.equal(m.artist, "");
-  assert.equal(m.album, "F · part 1 of 3");
+  assert.equal(m.album, "F · clip 1 of 3");
 });
 
 test("every field is a string and artwork is an array, for every input shape", () => {
@@ -310,7 +310,7 @@ test("a SEGMENT keeps Apple Podcasts parity untouched: title=episode, artist=sho
   });
   assert.equal(m.title, SEG.title);
   assert.equal(m.artist, SEG.show);
-  assert.equal(m.album, "The history of grilling · part 12 of 32");
+  assert.equal(m.album, "The history of grilling · clip 12 of 32");
 });
 
 // TO SEE IT FAIL: give single-episode playback a non-empty album (e.g. by
@@ -1060,7 +1060,7 @@ test("the PUBLISHER's name is what actually reaches the platform, not ours", () 
     assert.deepEqual(metadataWrites(nav), [{
       title: "Episode 09: Did Cooking Make Us Human?",
       artist: "Origin Stories",
-      album: "The history of grilling · part 12 of 32",
+      album: "The history of grilling · clip 12 of 32",
       artwork: APPLE,
     }], MediaMetadata ? "with a MediaMetadata constructor" : "without one");
   }

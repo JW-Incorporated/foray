@@ -251,6 +251,9 @@ const rowsOf = (ui) => findAllIn(ui.list, ".voice-row");
 const nameOf = (row) => findIn(row, ".voice-row-name").textContent;
 const subOf = (row) => findIn(row, ".voice-row-sub").textContent;
 const installedRows = (ui) => rowsOf(ui).filter((r) => !r.classes.includes("voice-row-missing"));
+/* The radio inside an installed row (audit 2026-09-22, qa row 81): the row is a
+   plain container now, holding the radio and its Preview button as SIBLINGS. */
+const choiceOf = (row) => findIn(row, ".voice-row-choice");
 const missingRows = (ui) => rowsOf(ui).filter((r) => r.classes.includes("voice-row-missing"));
 
 /* ==================================================================== */
@@ -324,8 +327,12 @@ test("installed allowlisted voices are selectable rows with Audition; the rest a
 
   assert.deepStrictEqual(installedRows(ui).map(nameOf), ["Samantha", "Daniel"]);
   for (const row of installedRows(ui)) {
-    assert.ok(findIn(row, ".voice-row-audition"), `${nameOf(row)} must offer Audition`);
-    assert.strictEqual(row.getAttribute("role"), "radio");
+    assert.ok(findIn(row, ".voice-row-audition"), `${nameOf(row)} must offer Preview`);
+    assert.strictEqual(choiceOf(row).getAttribute("role"), "radio");
+    /* MUTATION: append the Preview button to the choice instead of the row. */
+    assert.strictEqual(findIn(choiceOf(row), ".voice-row-audition"), null,
+      "Preview must be beside the radio, never inside it — a control nested in a control");
+    assert.strictEqual(row.getAttribute("role"), null, "the row itself is not a radio any more");
   }
 
   const missing = missingRows(ui);
@@ -336,7 +343,8 @@ test("installed allowlisted voices are selectable rows with Audition; the rest a
     assert.match(sub, /Settings.*Accessibility.*Spoken Content.*Voices.*English/,
       `missing row did not carry the exact Settings path: ${sub}`);
     assert.ok(!findIn(row, ".voice-row-open"), "no dead Open Settings button — @capacitor/app has no such method (see app.js's own comment)");
-    assert.ok(!findIn(row, ".voice-row-audition"), "a greyed row must not offer Audition — nothing installed to speak");
+    assert.ok(!findIn(row, ".voice-row-audition"), "a greyed row must not offer Preview — nothing installed to speak");
+    assert.strictEqual(row.getAttribute("role"), null, "no orphan listitem role outside a list");
   }
 });
 
@@ -402,7 +410,7 @@ test("MUTATION GUARD: with nothing stored, Samantha's best installed tier is the
   await ui.open.click();
   await tick();
 
-  const checked = installedRows(ui).filter((r) => r.getAttribute("aria-checked") === "true");
+  const checked = installedRows(ui).filter((r) => choiceOf(r).getAttribute("aria-checked") === "true");
   assert.strictEqual(checked.length, 1, "exactly one row is selected");
   assert.strictEqual(nameOf(checked[0]), "Samantha");
   assert.ok(checked[0].classes.includes("voice-row-selected"));
@@ -417,7 +425,7 @@ test("a stored choice is never overridden by the default", async () => {
   await ui.open.click();
   await tick();
 
-  const checked = installedRows(ui).filter((r) => r.getAttribute("aria-checked") === "true");
+  const checked = installedRows(ui).filter((r) => choiceOf(r).getAttribute("aria-checked") === "true");
   assert.deepStrictEqual(checked.map(nameOf), ["Daniel"]);
 });
 
@@ -425,7 +433,7 @@ test("an older client with no `defaultVoice` still renders, with nothing selecte
   const { ui } = mount({ selected: null });
   await ui.open.click();
   await tick();
-  assert.strictEqual(installedRows(ui).filter((r) => r.getAttribute("aria-checked") === "true").length, 0);
+  assert.strictEqual(installedRows(ui).filter((r) => choiceOf(r).getAttribute("aria-checked") === "true").length, 0);
   assert.strictEqual(rowsOf(ui).length, EXPECTED_ORDER.length);
 });
 
@@ -463,7 +471,7 @@ test("a device with voices but none on the list says so, rather than 'no voices 
   await ui.open.click();
   await tick();
   assert.strictEqual(rowsOf(ui).length, 0);
-  assert.match(findIn(ui.list, ".voice-loading").textContent, /trial voices/);
+  assert.match(findIn(ui.list, ".voice-loading").textContent, /voices 4a suggests/);
 });
 
 /* ==================================================================== */
@@ -477,8 +485,34 @@ test("selecting an installed row calls setNarrationVoice with the best tier's id
   await ui.open.click();
   await tick();
 
-  await installedRows(ui)[0].click(); // Samantha
+  await choiceOf(installedRows(ui)[0]).click(); // Samantha
   assert.deepStrictEqual(setVoiceCalls, ["com.apple.voice.enhanced.en-US.Samantha"]);
+});
+
+/* The group a screen reader and a keyboard can find (audit 2026-09-22, qa row
+   81): the list is a named radiogroup, exactly one radio is a tab stop, and an
+   arrow key selects the neighbour, as a native radio group's does.
+   MUTATION 1: drop `list.setAttribute("role", "radiogroup")`.
+   MUTATION 2: make every choice `tabIndex = 0` (all rows as tab stops again).
+   MUTATION 3: drop the ArrowDown branch of the choice's keydown handler. */
+test("the voices are one named radio group: one tab stop, arrows move the choice", async () => {
+  const { ui, setVoiceCalls } = mount();
+  await ui.open.click();
+  await tick();
+
+  assert.strictEqual(ui.list.getAttribute("role"), "radiogroup");
+  assert.strictEqual(ui.list.getAttribute("aria-labelledby"), "voice-title");
+  const choices = installedRows(ui).map(choiceOf);
+  assert.ok(choices.length >= 2, "the fixture has two installed voices");
+  assert.deepStrictEqual(choices.map((c) => c.tabIndex).filter((t) => t === 0).length, 1,
+    "exactly one radio in the group is a tab stop");
+
+  const keydown = (el, key) => { for (const fn of el._on.get("keydown") ?? []) fn({ key, preventDefault() {} }); };
+  keydown(choices[0], "ArrowDown");
+  assert.deepStrictEqual(setVoiceCalls, [choices[1].dataset.voiceId], "ArrowDown selects the next voice");
+  const preview = findIn(installedRows(ui)[0], ".voice-row-audition");
+  assert.strictEqual(preview.getAttribute("aria-label"), `Preview ${nameOf(installedRows(ui)[0])}`,
+    "each Preview names its voice");
 });
 
 /* ==================================================================== */

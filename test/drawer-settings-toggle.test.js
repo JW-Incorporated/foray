@@ -275,14 +275,14 @@ test("the jingle between segments has a switch, and it writes the spelling playe
 
   m.byId.get("drawer").hidden = false;
   m.ctx.openDrawer(true);
-  assert.strictEqual(btn.textContent, "Jingle between segments: on", "ON is the default the policy promises");
+  assert.strictEqual(btn.textContent, "Jingle between clips: on", "ON is the default the policy promises");
   assert.strictEqual(m.ctx.interludeOn(), true);
 
   btn._fire("click");
   assert.strictEqual(m.store.get("cp_interlude"), "off",
     "the exact word player/interlude.js reads — not `false`, not `0`");
   assert.strictEqual(m.ctx.interludeOn(), false, "and it round-trips");
-  assert.strictEqual(btn.textContent, "Jingle between segments: off");
+  assert.strictEqual(btn.textContent, "Jingle between clips: off");
   assert.strictEqual(m.byId.get("drawer").hidden, false, "a settings toggle must not close the drawer");
 
   btn._fire("click");
