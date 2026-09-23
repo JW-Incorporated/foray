@@ -280,7 +280,7 @@ test("a seek does not restart an episode that is already the current one", () =>
      promises a jump, not a reload.
      MUTATION: drop the `isPlaying` guard and always call `play`. */
   const fn = /function bindEpisodeSeeks\(scope, item\) \{([\s\S]*?)\n\}/.exec(SRC);
-  assert.match(fn[1], /if \(!window\.ForayPlayer\.isPlaying\(item\.id\)\) await window\.ForayPlayer\.play\(/);
+  assert.match(fn[1], /if \(!window\.ForayPlayer\.isPlaying\(item\.id\)\) \{\s*const ok = await window\.ForayPlayer\.play\(/);
   assert.match(fn[1], /await window\.ForayPlayer\.seekTo\(secs\)/, "…and the seek happens either way");
 });
 
@@ -316,4 +316,35 @@ test("chapters stay OUT of the disclosure", () => {
   const out = app.episodeChaptersHtml({ chapters: [{ start_time_seconds: 0, title: "Intro" }] });
   assert.ok(!out.includes("<details"), "the chapter list is not hidden behind a disclosure");
   assert.match(out, /^<section class="ep-chapters">/);
+});
+
+test("REVIEW: a timestamp tap whose play() throws reports it to the bar, as bindPlay does", async () => {
+  /* The catch swallowed the throw: the tap did nothing and said nothing —
+     persona #4's defect on a sibling control. MUTATION: empty the catch in
+     bindEpisodeSeeks again. */
+  let handler = null;
+  const btn = { dataset: { ts: "30" }, addEventListener: (_t, fn) => { handler = fn; } };
+  const reported = [];
+  const noted = [];
+  app.window.ForayPlayer = {
+    canPlay: () => true,
+    isPlaying: () => false,
+    play: async () => { throw Object.assign(new Error("boom"), { name: "TypeError" }); },
+    seekTo: async () => { throw new Error("must not seek after a failed start"); },
+    reportPlayFailure: (err) => { reported.push(err); },
+  };
+  app.window.forayNoteTapFailure = (phase, name) => { noted.push([phase, name]); };
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    app.bindEpisodeSeeks({ querySelectorAll: () => [btn] }, { id: "ep-1", audio_url: "https://x.test/a.mp3" });
+    await handler({ preventDefault() {}, stopPropagation() {} });
+  } finally {
+    console.warn = warn;
+    delete app.window.ForayPlayer;
+    delete app.window.forayNoteTapFailure;
+  }
+  assert.strictEqual(reported.length, 1, "the bar is told");
+  assert.strictEqual(reported[0].name, "TypeError");
+  assert.deepStrictEqual(noted, [["start", "TypeError"]], "and the diagnostic record gets its row");
 });

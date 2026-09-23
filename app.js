@@ -8291,11 +8291,25 @@ function bindEpisodeSeeks(scope, item) {
         /* Play only when this is not already the current episode — a restart
            would throw away the thing the listener is in the middle of. Then
            seek, always: that is the whole of what the control promises. */
-        if (!window.ForayPlayer.isPlaying(item.id)) await window.ForayPlayer.play(item, { why: whyFor(item.id, item) });
+        if (!window.ForayPlayer.isPlaying(item.id)) {
+          const ok = await window.ForayPlayer.play(item, { why: whyFor(item.id, item) });
+          /* A refused start says so on the bar, as bindPlay's does, and a
+             seek into audio that never started is skipped. */
+          if (ok === false) {
+            try { window.ForayPlayer.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
+            return;
+          }
+        }
         await window.ForayPlayer.seekTo(secs);
-      } catch (_) {
+      } catch (err) {
         /* A seek that cannot happen is not a reason to break the page — the
-           same rule the rest of this file's playback bindings follow. */
+           same rule the rest of this file's playback bindings follow. But a
+           PLAY that threw says so (review 2026-09-23, persona #4 on a sibling
+           control): the same report bindPlay makes, not a tap that does
+           nothing and says nothing. */
+        console.warn("[4a] timestamp play failed", err);
+        try { window.ForayPlayer?.reportPlayFailure?.(err); } catch (_) { /* the bar is best-effort */ }
+        noteTapFailure("start", err);
       }
     });
   });

@@ -453,3 +453,22 @@ test("with the switch off, nothing continues", () => {
 
   assert.strictEqual(fake.calls.length, 0);
 });
+
+test("REVIEW: a chained play that throws is reported to the bar, not left as an unhandled rejection", async () => {
+  /* advanceQueueOnEnded called `.play(...).then(...)` with no catch: a throw
+     was an unhandled rejection and a silent stop. MUTATION: drop the rejection
+     handler from startChained. */
+  const m = mount();
+  const [a, b] = m.playable;
+  seedLivePool(m, [a, b]);
+  m.ctx.addToQueue(b.id);
+  const reported = [];
+  m.ctx.window.ForayPlayer = {
+    async play() { throw Object.assign(new Error("boom"), { name: "TypeError" }); },
+    onEpisodeEnded() { return () => {}; },
+    reportPlayFailure(err) { reported.push(err); },
+  };
+  await m.ctx.advanceQueueOnEnded(a.id);
+  assert.strictEqual(reported.length, 1, "the bar is told the next episode did not start");
+  assert.strictEqual(reported[0].name, "TypeError");
+});
