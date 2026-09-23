@@ -212,7 +212,7 @@ function meta(over = {}) {
   return {
     title: "The brisket episode",
     artist: "Smoke & Fire",
-    album: "The history of grilling · part 12 of 32",
+    album: "The history of grilling · clip 12 of 32",
     artwork: [{ src: "https://is1.example/mza/600x600bb.jpg", sizes: "600x600", type: "image/jpeg" }],
     ...over,
   };
@@ -762,7 +762,7 @@ test("the payload carries the three strings the player decided on, unchanged", (
   });
   assert.equal(payload.title, "The brisket episode");
   assert.equal(payload.artist, "Smoke & Fire");
-  assert.equal(payload.album, "The history of grilling · part 12 of 32");
+  assert.equal(payload.album, "The history of grilling · clip 12 of 32");
   assert.equal(payload.durationMs, 3_661_000);
   assert.equal(payload.positionMs, 61_400, "seconds should become whole milliseconds");
   assert.equal(payload.playbackRate, 1.5);
@@ -967,7 +967,7 @@ test("player/media-session.js DRIVES THIS POLYFILL END TO END", async () => {
   assert.equal(payload.state, "playing");
   assert.equal(payload.title, "The brisket episode");
   assert.equal(payload.artist, "Smoke & Fire");
-  assert.equal(payload.album, "The history of grilling · part 12 of 32");
+  assert.equal(payload.album, "The history of grilling · clip 12 of 32");
   assert.equal(payload.artworkUri, "https://is1.example/mza/600x600bb.jpg");
   assert.equal(payload.durationMs, 3_661_000);
   assert.equal(payload.positionMs, 61_000);
