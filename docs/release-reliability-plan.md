@@ -2,7 +2,7 @@
 
 **Status, 2026-09-22 (updated same day):** all three pieces are built. Piece 1
 shipped in PR #737 (the upload retry). Pieces 2 and 3 — the watchdog and the
-trigger — are on branch `audit-fix/l7-release`, awaiting a founder merge because
+trigger — are in PR #739 (`audit-fix/l7-release`), awaiting a founder merge because
 they add `.github/workflows/` files. §6 says what was built and where it departs
 from the design below. Neither piece does anything until that merge.
 
