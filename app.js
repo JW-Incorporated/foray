@@ -7404,10 +7404,9 @@ function renderCreate() {
 
        https://jw-incorporated.github.io/foray/?foray=grilling-history-2
 
-   That is the CURRENT grilling Foray (#226). `grilling-history-1` is still in
-   the file and still opens, but it is marked `superseded_by` and is the
-   61-minute assembly that drifted off plot, so it is the wrong link to hand
-   anyone testing playback.
+   That is the CURRENT grilling Foray (#226). `grilling-history-1`, the
+   61-minute assembly that drifted off plot, was retired from the file on
+   2026-09-22 (#236), so its old link no longer opens anything.
 
    That link opens the Foray once (`enterForayFromQuery` rewrites the hash) and
    the parameter then stays in the URL as the unlock token — changing

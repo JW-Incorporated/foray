@@ -68,6 +68,8 @@ const GENERATED_DRAFTS = DRAFTS.filter((f) => f.generated === true);
 const GENERATED_NEWEST_FIRST = [...GENERATED_DRAFTS].reverse().map((f) => f.id);
 const AUTHORED_DRAFT_IDS = DRAFTS.filter((f) => f.generated !== true).map((f) => f.id);
 const titleOf = (id) => FORAYS.find((f) => f.id === id).title;
+/** The published Foray the assertions below name, read off the data (#236). */
+const PUBLISHED_ID = PUBLISHED_IDS[0];
 
 /* ---------- a DOM with a tree, whose innerHTML grows ids ---------- */
 
@@ -296,7 +298,12 @@ const ON = { cp_show_drafts: true };
 test("the data holds the founder's case: one published Foray and at least two generated drafts", () => {
   /* Not a rule — a precondition, stated so a green run below cannot be read as
      proving something the data no longer carries. */
-  assert.deepStrictEqual(PUBLISHED_IDS, ["capital-types-1"], "check-forays.test.mjs pins this; if it moved, both suites should have");
+  /* Which Forays are published is pinned ONCE, in tools/foray/check-forays.test.mjs
+     (publishing is a founder action). This suite used to pin the same id a
+     second time, so publishing, unpublishing or retiring a Foray cost two test
+     edits (#236); it now reads the set off the data and needs only that there
+     is one, which is what "the published Foray is listed first" is about. */
+  assert.ok(PUBLISHED_IDS.length >= 1, "no published Foray — the off-switch case below has nothing to list");
   assert.ok(GENERATED_DRAFTS.length >= 2, `expected the two generated drafts Wyatt could not see, found ${GENERATED_DRAFTS.length}`);
   for (const f of GENERATED_DRAFTS) assert.strictEqual(f.status, "draft", `${f.id} is not a draft — this suite did not change any status`);
 });
@@ -311,7 +318,7 @@ test("switch off (the default): the listed set is exactly the published set, and
   const h = await mount();
   assert.deepStrictEqual(h.ids(), PUBLISHED_IDS);
   const forays = h.view();
-  assert.ok(forays.includes(titleOf("capital-types-1")), "the published Foray is listed");
+  assert.ok(forays.includes(titleOf(PUBLISHED_ID)), "the published Foray is listed");
   assert.ok(!forays.includes("· draft"), "no draft kicker on #/forays");
   for (const f of DRAFTS) assert.ok(!forays.includes(f.title), `${f.id} must not be named on #/forays`);
 
@@ -372,7 +379,7 @@ test("switch on: #/forays lists every draft with the draft kicker — published 
   const html = h.view();
   const rows = html.split('class="fy-home-row"').slice(1);
   assert.strictEqual(rows.length, FORAYS.length, "one row per Foray in the file");
-  assert.ok(rows[0].includes(titleOf("capital-types-1")) && !rows[0].includes("· draft"), "the published row is first and carries no draft kicker");
+  assert.ok(rows[0].includes(titleOf(PUBLISHED_ID)) && !rows[0].includes("· draft"), "the published row is first and carries no draft kicker");
   for (const f of DRAFTS) {
     const row = rows.find((r) => r.includes(`href="#/foray/${f.id}"`));
     assert.ok(row, `${f.id} has a row`);
@@ -393,7 +400,7 @@ test("switch on: Home lists every draft as a badged card after the ordinary pick
   assert.ok(home.indexOf("Showing draft Forays") < home.indexOf("hv2-forays"), "the notice is above the Forays section");
   const cards = home.split('class="hv2-foray-card').slice(1);
   assert.strictEqual(cards.length, 1 + DRAFTS.length, "the one published pick, then every draft");
-  assert.ok(cards[0].includes('href="#/foray/capital-types-1"') && !cards[0].includes("hv2-draft-tag"), "the published card is first and unbadged");
+  assert.ok(cards[0].includes(`href="#/foray/${PUBLISHED_ID}"`) && !cards[0].includes("hv2-draft-tag"), "the published card is first and unbadged");
   for (const f of DRAFTS) {
     const card = cards.find((c) => c.includes(`href="#/foray/${f.id}"`));
     assert.ok(card, `${f.id} has a card`);
@@ -431,13 +438,13 @@ test("switch on: a generated draft opens at #/foray/<id> and plays through the s
     await btn.click();
     await h.settle();
   };
-  await play("capital-types-1");
+  await play(PUBLISHED_ID);
   assert.ok(!h.view().includes("fy-draft"), "the published Foray carries no draft note");
   for (const id of GENERATED_NEWEST_FIRST) {
     await play(id);
     assert.ok(h.view().includes('Shown because "Show draft Forays" is on'), `${id}'s draft note names the switch, not the URL`);
   }
-  assert.deepStrictEqual(h.playCalls.map((c) => c.id), ["capital-types-1", ...GENERATED_NEWEST_FIRST]);
+  assert.deepStrictEqual(h.playCalls.map((c) => c.id), [PUBLISHED_ID, ...GENERATED_NEWEST_FIRST]);
   for (const c of h.playCalls) assert.ok(c.playable > 0, `${c.id} queued ${c.playable} segments`);
 });
 

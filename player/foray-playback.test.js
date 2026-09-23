@@ -1,19 +1,32 @@
-/* Foray #1, end to end, against a fake backend and the REAL committed data
+/* Foray #1, end to end, against a fake backend and REAL curated data
    (issues #128, #133, #111).
 
    WHY THIS SUITE EXISTS
    Every layer under it is already tested in isolation: the reducer, the
    builder, the out-point watch, the join. None of that answers the question the
    founder is actually asking — "does the grilling Foray play, all of it, in
-   order, in the app?" That question is only answerable by running the shipped
-   documents through the shipped code, so this suite reads `data/*.json` off
-   disk rather than using fixtures.
+   order, in the app?" That question is only answerable by running real curated
+   documents through the shipped code, so this suite reads real running orders
+   off disk rather than hand-made fixtures.
 
-   Reading real data in a test has one real cost: an unrelated content change
-   can turn it red. That is deliberate here and the assertions are written for
-   it — they pin the CONTRACT (every authored segment resolves, the order is the
-   authored order, nothing plays past its out-point) rather than the specific
-   segments.
+   WHICH real data, since 2026-09-22 (#236's last step): the FROZEN fixture,
+   `tools/foray/fixtures/frozen/`, a verbatim copy of four committed Forays and
+   exactly the pool rows and episodes they play (its README says why and how).
+   Foray #1 (`grilling-history-1`) was retired from `data/` in the same change —
+   it had been kept, superseded, only because this suite and five others needed
+   its shape — and the transport tests below need a long, unbridged,
+   multi-episode order that no live Foray is obliged to go on being. A frozen
+   copy is still real curation, so nothing here is invented, but it no longer
+   moves when a curator does: adding, re-curating or deleting a Foray in
+   `data/` touches only data. What the SHIPPED documents must satisfy is kept
+   against `data/` itself, for every committed Foray at once, in "every segment
+   of every committed Foray resolves" below — that is the half the publish gate
+   (backend/src/cli/publishSuites.ts) needs this suite to keep.
+
+   The assertions were already written for a curator's edit — they pin the
+   CONTRACT (every authored segment resolves, the order is the authored order,
+   nothing plays past its out-point) rather than the specific segments — so the
+   fixture can be re-frozen from a different Foray without rewriting them.
 
    Issue #236 removed the last counts this file named. They were a second copy of
    a fact the document already carries, so a curator could not change the LENGTH
@@ -78,15 +91,25 @@ import { createDurableStore } from "./durable-store.js";
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
 
+/** The frozen fixture (see the header): a checkout-shaped copy of real curated
+    Forays that `data/` is free to move on from. */
+const FROZEN = "tools/foray/fixtures/frozen/data";
 const FORAY_ID = "grilling-history-1";
-const FORAYS = readJson("data/forays.json");
-const SEGMENTS = readJson("data/segments.json");
-const SOURCES = readJson("data/segment-sources.json");
+const FORAYS = readJson(`${FROZEN}/forays.json`);
+const SEGMENTS = readJson(`${FROZEN}/segments.json`);
+const SOURCES = readJson(`${FROZEN}/segment-sources.json`);
+
+/** The shipped documents — read only by the one test that is ABOUT them. */
+const LIVE = {
+  forays: readJson("data/forays.json"),
+  segments: readJson("data/segments.json"),
+  sources: readJson("data/segment-sources.json"),
+};
 
 /** The founder's way in: the id is named, so the draft resolves. */
 function realForay() {
   const foray = findForay(FORAYS, FORAY_ID, { unlocked: [FORAY_ID] });
-  assert.ok(foray, `${FORAY_ID} must exist in data/forays.json`);
+  assert.ok(foray, `${FORAY_ID} must exist in ${FROZEN}/forays.json`);
   return foray;
 }
 
@@ -248,7 +271,7 @@ function startForay(m, resolved) {
 
 /* ---------- the shipped documents resolve ---------- */
 
-test("Foray #1 is in data/forays.json, is a draft, and its items are #134's typed list", () => {
+test("Foray #1 is in the frozen fixture, is a draft, and its items are #134's typed list", () => {
   const foray = realForay();
   assert.equal(foray.status, "draft", "if this is published, the UI's draft gate is moot — say so on purpose");
   assert.ok(foray.items.length > 0, "an empty Foray is not a Foray");
@@ -270,6 +293,37 @@ test("every authored segment of Foray #1 resolves to real audio", () => {
   assert.equal(segs.length, authoredSegments().length, "an authored segment resolved to no entry at all");
   assert.ok(segs.every((e) => e.playable === true), "a segment entry that will not play is a shorter Foray");
   assert.ok(r.playable.every((i) => /^https:/.test(i.audio_url)), "every source must be https (the CSP is media-src https:)");
+});
+
+test("every segment of every committed Foray in data/ resolves to real https audio", () => {
+  /* THE SHIPPED-DATA HALF of this suite (see the header). "Every authored segment
+     of Foray #1 resolves" above is a claim about the frozen copy; this is the same
+     claim about whatever `data/forays.json` holds today, published or draft, by
+     loop rather than by id — so a curator adding or deleting a Foray changes what
+     it covers and never what it says. Segments only: a narrator bridge is
+     script-only until tools/narrate/ renders it, so it has no URL to check and is
+     the queue's concern (foray-queue.test.js), not the join's.
+
+     MUTATION: blank one pool row's `item_id` in data/segments.json — the Foray
+     playing it names the segment here. MUTATION 2: make `indexSources` return an
+     empty map — every committed Foray fails at once. */
+  const segments = indexSegments(LIVE.segments);
+  const sources = indexSources(LIVE.sources);
+  let checked = 0;
+  for (const doc of LIVE.forays.forays) {
+    const foray = findForay(LIVE.forays, doc.id, { unlocked: [doc.id] });
+    assert.ok(foray, `${doc.id} is in data/forays.json but findForay cannot open it by name`);
+    const r = resolveForay(foray, { segments, sources });
+    const authored = foray.items.filter((i) => i.type === "segment");
+    const resolved = segmentEntries(r);
+    assert.equal(resolved.length, authored.length, `${doc.id}: an authored segment resolved to no entry at all`);
+    for (const e of resolved) {
+      assert.equal(e.playable, true, `${doc.id}: ${e.segment_id} will not play — ${e.reason ?? "no reason given"}`);
+      assert.match(String(e.audio_url), /^https:/, `${doc.id}: ${e.segment_id} is not https (the CSP is media-src https:)`);
+      checked += 1;
+    }
+  }
+  assert.ok(checked > 0, "data/forays.json plays no segment at all, so this proved nothing");
 });
 
 test("the running order is the authored order, slot by slot", () => {
@@ -2271,12 +2325,12 @@ test("dropping a segment from Foray #1 degrades the row rather than seeking wron
 
    `player/queue-manager.test.js` owns the mechanism with fixtures. This owns the
    claim the founder actually made — "I set 1.5x and it stays 1.5x for the whole
-   thing" — against the real committed running order, because the mechanism and
+   thing" — against a real curated running order (its frozen copy; see the header), because the mechanism and
    the shipped data are two different things and only one of them is what a
    listener meets.
 
    `grilling-history-2` rather than Foray #1, deliberately. It is the ON-PLOT short
-   version that #226 shipped (Foray #1 is labelled superseded), it is 10 segments
+   version that #226 shipped (Foray #1 was superseded by it, then retired), it is 10 segments
    over 9 seams, and **5 of those seams cross to a different episode** — which is
    the only kind that reassigns `src` and therefore the only kind where an engine
    resets `playbackRate` to 1. A test that only played one segment, or only
@@ -2286,7 +2340,7 @@ const SHORT_ID = "grilling-history-2";
 
 function shortResolve() {
   const foray = findForay(FORAYS, SHORT_ID, { unlocked: [SHORT_ID] });
-  assert.ok(foray, `${SHORT_ID} must exist in data/forays.json`);
+  assert.ok(foray, `${SHORT_ID} must exist in ${FROZEN}/forays.json`);
   return resolveForay(foray, { segments: indexSegments(SEGMENTS), sources: indexSources(SOURCES) });
 }
 

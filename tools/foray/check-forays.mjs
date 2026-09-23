@@ -84,7 +84,7 @@ import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
 import { MODE_CHAR_BANDS, narratorStructureErrors } from "./check-narration.mjs";
 const NARRATION_MODES = new Set(Object.keys(MODE_CHAR_BANDS));
 
-const { BANNED, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
+const { BANNED, INTERNAL_VOCABULARY, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /* ------------------------------------------------------------------ rules */
@@ -656,6 +656,9 @@ export function checkForays(files) {
 
   /* ---- each Foray ------------------------------------------------------ */
   const seenForayIds = new Set();
+  /* Every Foray by id, for the supersession rule below, which has to look one
+   * Foray up from another and cannot wait for the loop to have seen it. */
+  const forayById = new Map(foraysFile.forays.filter((f) => typeof f?.id === "string").map((f) => [f.id, f]));
   for (const foray of foraysFile.forays) {
     const fid = foray?.id;
     if (typeof fid !== "string" || !fid) { err("forays: a foray has no id"); continue; }
@@ -671,6 +674,25 @@ export function checkForays(files) {
     if (typeof foray.topic !== "string" || !foray.topic) E("`topic` must be a non-empty string");
     else if (taxonomyNodes.size && !taxonomyNodes.has(foray.topic)) E(`\`topic\` "${foray.topic}" is not a data/taxonomy.json node`);
 
+    /* SUPERSESSION (#226, promoted to a rule by #236's last step, 2026-09-22).
+     * A superseded draft stays reachable by `?foray=<id>`, and a stale Foray
+     * that nothing labels stale is how the wrong one gets tested next week —
+     * the founder tested the off-plot grilling order after its replacement had
+     * shipped. This used to be one test about one Foray, pinned by id, so the
+     * label could only be checked while `grilling-history-1` existed and the
+     * test had to be edited to retire it. As a rule it holds for any Foray:
+     * the label names a successor that exists and is itself current, and it
+     * says why. Neither field is read by the player. */
+    if (foray.superseded_by !== undefined) {
+      const next = forayById.get(foray.superseded_by);
+      if (typeof foray.superseded_by !== "string" || !next) E(`\`superseded_by\` must name another committed Foray; got ${JSON.stringify(foray.superseded_by)}`);
+      else if (next === foray) E("`superseded_by` names the Foray itself");
+      else if (next.superseded_by !== undefined) E(`\`superseded_by\` names "${next.id}", which is itself superseded — point it at the current Foray`);
+      if (typeof foray.superseded_note !== "string" || !foray.superseded_note.trim()) E("a superseded Foray needs a `superseded_note` saying when and why");
+    } else if (foray.superseded_note !== undefined) {
+      E("`superseded_note` without `superseded_by` — say which Foray replaces this one, or drop the note");
+    }
+
     /* Copy rules on the fields a UI renders as our own prose. Publisher episode
      * titles in segment-sources.json are quoted fact, not our copy, and are
      * deliberately NOT gated here. */
@@ -678,6 +700,15 @@ export function checkForays(files) {
       if (typeof text !== "string" || !text) { E(`${field} must be a non-empty string`); continue; }
       if (wordCount(text) > MAX_WHY_LINE_WORDS) E(`${field} is ${wordCount(text)} words, over the ${MAX_WHY_LINE_WORDS}-word limit: "${text}"`);
       for (const rx of BANNED) if (rx.test(text)) E(`${field} contains banned phrase ${rx}: "${text}"`);
+      /* The curator's units, not a listener's words (rules.js INTERNAL_VOCABULARY,
+       * 2026-09-22 audit): this loop let "Barbecue: eight beats of a forty-beat
+       * history" through, because BANNED is about filler, not jargon. Here rather
+       * than only in a test so the publish gate, which runs this checker, refuses
+       * a generated title or slot title that counts or points at our parts. The
+       * generator is told the rule and scrubs its own copy with the same module
+       * (runPipeline.ts forayCopy / slotsFromSpine, `toListenerWords`), so this
+       * refusal is the backstop, not the first line. */
+      for (const rx of INTERNAL_VOCABULARY) if (rx.test(text)) E(`${field} uses the pipeline's word ${rx}, which a listener cannot decode: "${text}"`);
     }
 
     if (!Array.isArray(foray.items) || foray.items.length === 0) { E("`items` must be a non-empty ordered array"); continue; }

@@ -505,7 +505,7 @@ export function buildCandidateFiles(
   const live = readJson("data/forays.json") as { forays: unknown[] };
   const existingIds = readExistingForayIds(root);
   if (typeof candidateRecord.id === "string" && existingIds.has(candidateRecord.id)) {
-    throw new Error(`finalizeForay: a Foray with id "${String(candidateRecord.id)}" already exists in data/forays.json — choose a new id or supersede it explicitly (see grilling-history-1's own superseded_by/superseded_note pattern)`);
+    throw new Error(`finalizeForay: a Foray with id "${String(candidateRecord.id)}" already exists in data/forays.json — choose a new id or supersede it explicitly (mark the old one with superseded_by/superseded_note, a rule tools/foray/check-forays.mjs enforces)`);
   }
 
   const pool = readJson("data/segments.json") as { segments?: unknown[] };

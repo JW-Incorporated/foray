@@ -38,6 +38,107 @@ const BANNED = [
   /-min(ute)? drive/i
 ];
 
+/**
+ * The curation pipeline's own units, which must not reach a listener in copy
+ * WE write about a Foray (its title, summary and slot titles).
+ *
+ * WHY A SECOND LIST AND NOT FOUR MORE ENTRIES IN `BANNED`. `BANNED` also gates
+ * session why-lines and discover.json hooks, which describe publishers'
+ * episodes in ordinary English — "a market segment", "the Clean Air Act", "a
+ * drum beat" are all fair there. These four words are only jargon when they
+ * name OUR structure: a `beat` of the spine, a `segment` of the pool, an `act`
+ * of a generated Foray, the `running order` of its items. So the list is
+ * applied where our structure is being described, and nowhere else.
+ *
+ * WHY IT EXISTS (2026-09-22 design audit, persona Tier 4). `grilling-history-2`
+ * shipped titled "Barbecue: eight beats of a forty-beat history" — its own
+ * `beats_total` and `beats_represented` fields recited as a title — and every
+ * gate that reads Foray copy passed it, because the only list those gates had
+ * was about filler and clickbait. The listener-facing word for a Foray's parts
+ * is settled in docs/audit/persona-synthesis.md §2.
+ *
+ * WHICH USES ARE JARGON (review of PR #741). The first cut matched every
+ * "beat", "segment" and "act", and so refused "the Beat Generation poets",
+ * "how underdogs beat incumbents" and "when regulators failed to act" — titles
+ * a generated Foray can legitimately carry, refused at the publish gate AFTER
+ * the model spend. The words are only jargon when they COUNT or POINT AT our
+ * parts, so the patterns match exactly those shapes:
+ *   - a count of them: "eight beats", "a forty-beat history", "22 segments",
+ *     "three acts" (but not "three acts of kindness");
+ *   - a pointer to one act: "this act", "the last act", "the next act" (but
+ *     not "the last act of defiance" or "his final act as president");
+ *   - a numbered act: "Act one", "act 2" (but not "the Clean Air Act 1956");
+ *   - "running order", which has no plain-English sense in our copy.
+ * `act` itself stays lower-case in the first two shapes: "two Acts passed in
+ * 1970" and "this Act" are legislation, which a Foray must be able to name.
+ *
+ * THE GENERATOR IS TOLD, AND ITS COPY IS SCRUBBED. check-forays.mjs refuses a
+ * match; the understander and spine prompts forbid the words by name; and
+ * `toListenerWords` below rewrites a match the model wrote anyway into the
+ * listener's word (persona-synthesis §2: a clip, a part, a story), so the
+ * generator never produces copy this list refuses (runPipeline.ts `forayCopy`,
+ * `slotsFromSpine`).
+ */
+const COUNT_WORDS = [
+  "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+  "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
+  "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty", "sixty",
+  "seventy", "eighty", "ninety", "hundred"
+];
+/** "Eight" or "eight", without making the unit word after it case-blind. */
+const firstLetterEitherCase = (w) => `[${w[0].toUpperCase()}${w[0]}]${w.slice(1)}`;
+const COUNT = `(?:\\d+|${COUNT_WORDS.map(firstLetterEitherCase).join("|")})`;
+/* No "second": "her second act as a novelist" is an idiom, not our structure. */
+const POINTERS = ["this", "that", "each", "every", "next", "last", "first", "final", "opening", "closing"];
+const POINTER = `(?:${POINTERS.map(firstLetterEitherCase).join("|")})`;
+/* At most two digits: "the Clean Air Act 1956" is a statute's year, not a part. */
+const ACT_NUMBER = `(?:${COUNT_WORDS.slice(0, 10).join("|")}|\\d{1,2})`;
+/** "three acts of kindness", "the last act of defiance", "his final act as
+ * president": an act OF something or AS someone is the plain-English act. */
+const NOT_PLAIN_ACT = "(?! (?:of|as)\\b)";
+
+const INTERNAL_VOCABULARY = [
+  new RegExp(`\\b${COUNT}[ -][Bb]eats?\\b`),
+  new RegExp(`\\b${COUNT}[ -][Ss]egments?\\b`),
+  new RegExp(`\\b${COUNT}[ -]acts?\\b${NOT_PLAIN_ACT}`),
+  new RegExp(`\\b${POINTER} act\\b${NOT_PLAIN_ACT}`),
+  new RegExp(`\\b[Aa]ct ${ACT_NUMBER}\\b`),
+  /\brunning order\b/i
+];
+
+/** The listener's word for each of ours (docs/audit/persona-synthesis.md §2). */
+const LISTENER_WORD = { beat: "story", beats: "stories", segment: "clip", segments: "clips", act: "part", acts: "parts" };
+
+function keepCase(original, replacement) {
+  const first = original.charAt(0);
+  return first === first.toUpperCase() && first !== first.toLowerCase()
+    ? replacement.charAt(0).toUpperCase() + replacement.slice(1)
+    : replacement;
+}
+
+/**
+ * `text` with every INTERNAL_VOCABULARY match rewritten into the listener's
+ * word, touching nothing else: "eight beats" -> "eight stories", "a forty-beat
+ * history" -> "a forty-part history", "22 segments" -> "22 clips", "The last
+ * act" -> "The last part", "Act one" -> "Part one", "running order" ->
+ * "lineup". Total, and a fixed point: its output matches no pattern above
+ * (copyRules.test.ts pins both). `changed` says whether anything was rewritten,
+ * so a caller can report that the model ignored the instruction.
+ */
+function toListenerWords(text) {
+  const input = String(text ?? "");
+  const unit = (word) => keepCase(word, LISTENER_WORD[word.toLowerCase()]);
+  let out = input;
+  out = out.replace(new RegExp(`(\\b${COUNT})-([Bb]eat|[Ss]egment|act)s?\\b${NOT_PLAIN_ACT}`, "g"), (m, n, u) =>
+    `${n}-${keepCase(u, u.toLowerCase() === "segment" ? "clip" : "part")}`);
+  out = out.replace(new RegExp(`(\\b${COUNT}) ([Bb]eats?|[Ss]egments?)\\b`, "g"), (m, n, u) => `${n} ${unit(u)}`);
+  out = out.replace(new RegExp(`(\\b${COUNT}) (acts?)\\b${NOT_PLAIN_ACT}`, "g"), (m, n, u) => `${n} ${unit(u)}`);
+  out = out.replace(new RegExp(`(\\b${POINTER}) act\\b${NOT_PLAIN_ACT}`, "g"), (m, p) => `${p} part`);
+  out = out.replace(new RegExp(`\\b([Aa])ct (${ACT_NUMBER})\\b`, "g"), (m, a, n) => `${a === "A" ? "Part" : "part"} ${n}`);
+  out = out.replace(/\brunning order\b/gi, (m) => keepCase(m, "lineup"));
+  return { text: out, changed: out !== input };
+}
+
 function wordCount(text) {
   return text.trim().split(/\s+/).length;
 }
@@ -59,6 +160,8 @@ const MAX_BLURB_WORDS = 30;
 
 module.exports = {
   BANNED,
+  INTERNAL_VOCABULARY,
+  toListenerWords,
   wordCount,
   MAX_WHY_LINE_WORDS,
   MAX_HOOK_WORDS,

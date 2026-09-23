@@ -28,17 +28,17 @@
  *  3. THE FLOOR over real data, "Episodes for you": a visible Stretch tag and
  *     its bridge line on 20 consecutive renders of a fresh profile (real
  *     Math.random, real pool, real default weights).
- *  4. THE FLOOR over real data, "Forays for you": CANNOT be satisfied today,
- *     and this suite says so rather than faking it. data/forays.json carries
- *     ONE published Foray (its three drafts are not listable without their
- *     unlock key), so pickWithStretchFloor() sees a single subject and has no
- *     lower tier to draw a stretch pick from. Its documented fallback —
- *     "ordinary top-ranked-first ... never render a fake stretch label over an
- *     ordinary pick" — is what is asserted: exactly one Foray card, carrying
- *     its real SegmentStrip, NO Stretch tag, NO bridge line.
- *  5. The fixture fact behind 4, pinned as a tripwire: the day a second
- *     published Foray on another subject root lands, this fails loudly and
- *     test 4 must flip to asserting the real floor (mirror test 3).
+ *  4. THE FLOOR over real data, "Forays for you", on whichever side of it the
+ *     data sits. While the listable Forays span too few subject roots for a
+ *     lower tier (one published Foray, as of 2026-09-22), the documented
+ *     fallback — "ordinary top-ranked-first ... never render a fake stretch
+ *     label over an ordinary pick" — is asserted: its cards, each with its real
+ *     SegmentStrip, NO Stretch tag, NO bridge line. The day enough roots are
+ *     published, the same test asserts the Stretch tag and its bridge line
+ *     instead (mirror test 3). It used to assert only the fallback, with test 5
+ *     pinning the published id as a tripwire to flip it by hand (#236).
+ *  5. The precondition behind 1, 2 and 4: something is listable, and only
+ *     published Forays are.
  *
  * Every test names the mutation that kills it, per CLAUDE.md.
  *
@@ -299,41 +299,65 @@ test("THE FLOOR over real data: Episodes for you carries a visible Stretch tag w
 /* 4-5. THE FLOOR OVER REAL DATA — FORAYS FOR YOU: THE DOCUMENTED FALLBACK */
 /* ==================================================================== */
 
-test("THE FLOOR over real data, Forays for you: with one published Foray there is no lower tier, so the documented fallback renders — one card with its real strip, no Stretch tag, no fake bridge line", async () => {
-  /* This is the acceptance line that CANNOT be met on today's data, stated
-     rather than faked (see the header and test 5).
+test("THE FLOOR over real data, Forays for you: the section renders exactly what pickWithStretchFloor decides for the listable Forays — a Stretch tag and bridge line when there is a lower tier, and the documented fallback (no tag, no fake bridge) when there is not", async () => {
+  /* WHICH BRANCH RUNS IS A DATA FACT, read rather than pinned (#236,
+     2026-09-22). This test used to assert the fallback unconditionally ("one
+     published Foray, so no lower tier") and test 5 pinned the fact behind it —
+     `ids: ["capital-types-1"], roots: ["business"]` — as a tripwire telling
+     whoever published the next Foray to come back and flip this test by hand.
+     So publishing, unpublishing or retiring a Foray cost two test edits here.
+     Now both branches are written, and the data picks one: a stretch pick
+     exists exactly when the listable Forays span enough subject roots for
+     pickWithStretchFloor to leave one outside its top 60% (three or more
+     today), and the section must render precisely that decision.
+
      MUTATION: in pickWithStretchFloor, fall back to `branchAvg[0].b` when the
-     lower tier is empty -> the single Foray is labelled Stretch over an
-     ordinary pick and the "no Stretch label" assertion fails.
+     lower tier is empty -> on today's single-root data a Stretch tag is painted
+     over an ordinary pick and the "no Stretch label" assertion fails.
      MUTATION 2: return "" from foraysForYouHtml() when stretchIndex is -1 ->
-     the section vanishes and the card count is 0. */
+     the section vanishes and the card count is 0.
+     MUTATION 3: drop `stretch: i === stretchIndex` from foraysForYouHtml ->
+     inert on today's data (no stretch pick exists), red the day one does;
+     measured by publishing two drafts on other roots in a scratch copy. */
   const m = await mountReal();
   m.ctx.renderHome();
   const html = m.view();
   const section = html.slice(html.indexOf("hv2-forays"), html.indexOf("hv2-playlists"));
   const listable = m.ctx.forayCards();
-  assert.strictEqual(listable.length, 1, "fixture (pinned by test 5): exactly one listable Foray today");
-  assert.strictEqual((section.match(/class="hv2-foray-card/g) || []).length, 1, "the one published Foray renders as one card");
-  assert.ok(section.includes("fy-strip"), "the card carries its SegmentStrip, resolved from the real segments/sources documents");
-  assert.ok(!section.includes("hv2-stretch-tag"), "no Stretch label may be painted over an ordinary pick when there is no lower tier");
-  assert.ok(!section.includes("hv2-bridge"), "no bridge line without a stretch pick");
+  assert.ok(listable.length >= 1, "no Foray is listable for a fresh visitor — see test 5");
+  /* The EXPECTATION is computed here, independently of the code under test —
+     a first draft asked pickWithStretchFloor itself which branch to check, and
+     mutation 1 then passed, because the mutated picker agreed with itself. The
+     rule, from the floor's own definition (D1): the top 60% of subject roots
+     (at least one) are the ordinary tier, and a stretch pick exists only when a
+     root is left outside it. Which card it is follows the live interest scores
+     and is test 3's and home-v2.test.js's business, not this one's. */
+  const roots = new Set(listable.map(forayRoot)).size;
+  const expectStretch = roots - Math.max(1, Math.ceil(roots * 0.6)) > 0;
   const floor = m.ctx.pickWithStretchFloor(listable, { branchFn: forayRoot, scoreFn: () => 0.5, take: 4 });
-  assert.strictEqual(floor.stretchIndex, -1,
-    "pickWithStretchFloor reports no stretch pick (its documented fallback), which is exactly what the section rendered from");
+  assert.strictEqual(floor.stretchIndex >= 0, expectStretch,
+    `${roots} subject root(s) among the listable Forays: pickWithStretchFloor ${expectStretch ? "must" : "must not"} report a stretch pick`);
+  const cards = (section.match(/class="hv2-foray-card/g) || []).length;
+  assert.strictEqual(cards, Math.min(listable.length, 4), `the section drew ${cards} card(s) for ${listable.length} listable Foray(s)`);
+  assert.ok(section.includes("fy-strip"), "the card carries its SegmentStrip, resolved from the real segments/sources documents");
+  if (!expectStretch) {
+    assert.ok(!section.includes("hv2-stretch-tag"), "no Stretch label may be painted over an ordinary pick when there is no lower tier");
+    assert.ok(!section.includes("hv2-bridge"), "no bridge line without a stretch pick");
+  } else {
+    assert.strictEqual((section.match(/class="hv2-stretch-tag">Stretch</g) || []).length, 1, "exactly one visible Stretch tag");
+    assert.ok(section.includes('class="hv2-bridge">'), "the stretch pick carries its bridge line");
+  }
 });
 
-test("FIXTURE FACT (tripwire): data/forays.json lists exactly one Foray for a fresh visitor, on the `business` root — flip test 4 to the real floor when this changes", async () => {
-  /* Not a behaviour test. The day a second published Foray on a different
-     subject root lands, "Forays for you" gains a lower tier and the floor
-     becomes satisfiable over real data: test 4 must then assert a Stretch tag
-     + bridge line (mirror test 3) instead of the fallback.
-     MUTATION: publish a second Foray on another root -> this fails naming the
-     new count and roots. */
+test("the real data lists at least one Foray for a fresh visitor, so the Forays-for-you tests above are about something", async () => {
+  /* This was the tripwire that pinned WHICH Foray is published and on which
+     root (see test 4 for why it went). What remains is the precondition: with
+     nothing listable the section omits itself and tests 1, 2 and 4 would be
+     asserting on an empty slice. Which Foray is published is pinned once, in
+     tools/foray/check-forays.test.mjs — publishing is a founder action.
+     MUTATION: set every Foray in data/forays.json to "draft" -> red here. */
   const bridge = await realBridge();
   const listable = bridge.listForays(DOCS.forays, { unlocked: [] });
-  const roots = [...new Set(listable.map(forayRoot))];
-  const drafts = (DOCS.forays.forays || []).filter((f) => f.status !== "published").length;
-  assert.deepStrictEqual({ listable: listable.length, roots, ids: listable.map((f) => f.id) },
-    { listable: 1, roots: ["business"], ids: ["capital-types-1"] },
-    `the published-Foray fixture changed (${drafts} draft(s) besides) — upgrade test 4 from the fallback to the real Stretch floor`);
+  assert.ok(listable.length >= 1, "data/forays.json lists no Foray for a fresh visitor");
+  for (const f of listable) assert.strictEqual(f.status, "published", `${f.id} is listed to a fresh visitor without being published`);
 });

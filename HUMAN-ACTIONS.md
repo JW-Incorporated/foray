@@ -597,13 +597,19 @@ of timestamps and transcripts. **Nobody has heard it.** It is committed as
 `"status": "draft"`, which by the same rule that governs ladders means no client
 may ev
 
+**Note 2026-09-23:** the 61-minute Foray #1 this item was filed about was retired
+from `data/forays.json` in PR #741 (#236); it had been superseded since 2026-08-17
+by its 10-clip successor, `grilling-history-2`. The decision now applies to that
+Foray. If you would rather not hear it, reply `skip`.
+
 **Steps:**
-1. Read the running order: `docs/curation/grilling-foray.md` §2 (32 rows, in
-2. Listen. **There is a player now** — #111 / #128 / #133 landed, so this is no
+1. Read the running order: `docs/curation/grilling-history-assembly.md` §2.
+2. Listen. **There is a player now** — #111 / #128 / #133 landed. Open
+   `https://jw-incorporated.github.io/foray/?foray=grilling-history-2`.
 3. Decide. If it holds together, change **one word** in `data/forays.json`:
 
 **Worked if:** either `data/forays.json` says `"status": "published"` on
-`grilling-history-1`, or there is a written note saying what a listener heard
+`grilling-history-2`, or there is a written note saying what a listener heard
 that the rules did not catch.
 
 ## #1 🟡 [DECIDE] Make `path-policy` a required check on `main`
