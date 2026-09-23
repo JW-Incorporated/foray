@@ -26,7 +26,7 @@ import assert from "node:assert/strict";
 
 import {
   DurableStore, createDurableStore, localStorageTier, requestPersistence, isNewer,
-  DEFAULT_PREFIX, HEALTH_KEY, LOCAL_STALE_KEY, MAX_FAULTS, MAX_CONSECUTIVE_TIER_FAILURES,
+  DEFAULT_PREFIX, HEALTH_KEY, LOCAL_STALE_KEY, MAX_FAULTS, preferencesTier, MAX_CONSECUTIVE_TIER_FAILURES,
   PERSIST_GRANTED, PERSIST_DENIED, PERSIST_UNSUPPORTED, PERSIST_ERROR, PERSIST_UNKNOWN,
 } from "./durable-store.js";
 import { ForayProgressStore, makeProgress, readProgress, progressKey } from "./foray-progress.js";
@@ -1196,4 +1196,113 @@ test("a corrupt ledger row costs the old rule, never the hydration", async () =>
   await s.hydrate();
   assert.equal(s.getItem("cp_rate"), "1", "local wins, as it did before the ledger existed");
   assert.equal(s.health().hydrated, true);
+});
+
+/* ---------- the native tier: Capacitor Preferences (#40, 2026-09-22 audit) ----------
+
+   The header used to draw this tier while nothing built it, so inside the
+   shipping app both live tiers were script-evictable. These pin that it exists,
+   that it is absent on the web rather than broken, and that it is the tier a
+   WebView sweep cannot take. The fake bridge speaks the plugin's own method
+   names (`keys`/`get`/`set`/`remove`) through `nativePromise`, the call
+   `mobile/plugins/foray-tts/web/foray-tts.js` makes. */
+
+function fakeBridge({ native = true, plugin = true, fail = false } = {}) {
+  const prefs = new Map();
+  const calls = [];
+  return {
+    prefs,
+    calls,
+    isNativePlatform: () => native,
+    isPluginAvailable: (n) => plugin && n === "Preferences",
+    async nativePromise(name, method, opts = {}) {
+      calls.push(`${name}.${method}`);
+      if (fail) throw new Error(`"${name}" plugin is not implemented on ios`);
+      if (method === "keys") return { keys: [...prefs.keys()] };
+      if (method === "get") return { value: prefs.has(opts.key) ? prefs.get(opts.key) : null };
+      if (method === "set") { prefs.set(opts.key, opts.value); return {}; }
+      if (method === "remove") { prefs.delete(opts.key); return {}; }
+      throw new Error(`unknown method ${method}`);
+    },
+  };
+}
+
+test("NATIVE: no tier on the web, on a non-native platform, or on a build without the plugin", () => {
+  assert.equal(preferencesTier(null), null, "a browser tab has no window.Capacitor");
+  assert.equal(preferencesTier({}), null, "a bridge with no nativePromise is not a bridge");
+  assert.equal(preferencesTier(fakeBridge({ native: false })), null);
+  assert.equal(preferencesTier(fakeBridge({ plugin: false })), null);
+  const tier = preferencesTier(fakeBridge());
+  assert.equal(tier.name, "native");
+  assert.equal(tier.durable, true);
+  assert.equal(tier.sync, false);
+});
+
+test("NATIVE: a write reaches Preferences, and survives the WebView losing BOTH script tiers", async () => {
+  /* The whole reason the tier exists: iOS may clear a WKWebView's localStorage
+     AND IndexedDB. UserDefaults is not in that sweep. */
+  const bridge = fakeBridge();
+  const first = createDurableStore({
+    localStorage: new FakeLocal(), idbTier: fakeDurable(), nativeTier: preferencesTier(bridge),
+  });
+  await first.hydrate();
+  first.setItem("cp_sb_session", '{"user_id":"u-1"}');
+  await first.flush();
+  assert.equal(bridge.prefs.get("cp_sb_session"), '{"user_id":"u-1"}');
+  assert.ok(bridge.calls.includes("Preferences.set"), "the plugin was addressed by its registered name");
+
+  const swept = createDurableStore({
+    localStorage: new FakeLocal(), idbTier: fakeDurable(), nativeTier: preferencesTier(bridge),
+  });
+  await swept.hydrate();
+  assert.equal(swept.getItem("cp_sb_session"), '{"user_id":"u-1"}', "the listener became a new account");
+  assert.deepEqual(swept.health().durableTiers, ["native", "idb"]);
+});
+
+test("NATIVE: it gets the first word — an evicted mirror adopts the native row over IndexedDB's", async () => {
+  const bridge = fakeBridge();
+  bridge.prefs.set("cp_rate", "1.5");
+  const s = createDurableStore({
+    localStorage: new FakeLocal(), idbTier: fakeDurable({ rows: { cp_rate: "1" } }),
+    nativeTier: preferencesTier(bridge),
+  });
+  await s.hydrate();
+  assert.equal(s.getItem("cp_rate"), "1.5");
+});
+
+test("NATIVE: only owned keys are read, and an unreadable plugin is a fault, not a crash", async () => {
+  const bridge = fakeBridge();
+  bridge.prefs.set("someone_else", "x");
+  bridge.prefs.set("cp_seen", "[]");
+  const rows = await preferencesTier(bridge).readAll(DEFAULT_PREFIX);
+  assert.deepEqual([...rows.keys()], ["cp_seen"]);
+
+  const dead = fakeBridge({ fail: true });
+  const s = createDurableStore({ localStorage: new FakeLocal({ cp_seen: "[]" }), nativeTier: preferencesTier(dead) });
+  await s.hydrate();
+  assert.equal(s.getItem("cp_seen"), "[]", "the session still works on localStorage");
+  assert.equal(s.health().ok, false, "and the dead tier is reported");
+});
+
+test("NATIVE: purge clears the native tier too, so Delete my data reaches UserDefaults", async () => {
+  const bridge = fakeBridge();
+  bridge.prefs.set("cp_interests", "{}");
+  bridge.prefs.set("cp_pos:ep-1", '{"seconds":3}');
+  const s = createDurableStore({
+    localStorage: new FakeLocal(), idbTier: fakeDurable(), nativeTier: preferencesTier(bridge),
+  });
+  await s.hydrate();
+  const out = await s.purge();
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.deepEqual([...bridge.prefs.keys()], []);
+});
+
+test("NATIVE: the player wires the tier into the store it publishes", async () => {
+  /* The first version of this claim was a header diagram with nothing behind
+     it, so the wiring is pinned where it happens rather than trusted. */
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("./client.js", import.meta.url), "utf8");
+  const call = /const storage = createDurableStore\(\{[\s\S]*?\}\);/.exec(src);
+  assert.ok(call, "client.js no longer builds the store where this test looks");
+  assert.match(call[0], /nativeTier:\s*preferencesTier\(/, "the native tier is not wired");
 });

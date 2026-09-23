@@ -18,8 +18,18 @@
      getItem / setItem / removeItem / key / length      ← unchanged callers
        memory (authoritative for reads, always current)
          ├─ sync tiers    localStorage         (fast, evictable, may throw)
-         └─ async tiers   IndexedDB            (write-behind, larger quota)
-                          Capacitor Preferences (native, #40's "app tomorrow")
+         └─ async tiers   Capacitor Preferences (native shell only: iOS
+                                                UserDefaults / Android
+                                                SharedPreferences — NOT evictable)
+                          IndexedDB            (write-behind, larger quota)
+
+   The Preferences tier exists only inside the native shell, where the plugin
+   is registered (`mobile/package.json` has carried `@capacitor/preferences`
+   since #36 and `cap sync` links it on both platforms); on the web
+   `preferencesTier` answers null and the list is localStorage + IndexedDB.
+   Until 2026-09-22 this diagram listed the native tier while nothing built it,
+   so inside the shipping app both live tiers were script-evictable — the exact
+   defect #40 names — while this header said otherwise (design/QA audit).
 
    The facade is synchronous because every caller is: `lsGet`/`lsSet` in app.js,
    `PositionStore`, `ForayProgressStore`, and the render loop that writes a
@@ -90,9 +100,9 @@
      - `navigator.storage.persist()` protects quota-managed storage, which is
        the tier model this file is built on — see `requestPersistence`, and note
        that it is a REQUEST a browser may refuse;
-     - it is the substrate the native shell replaces with `UserDefaults` /
-       `SharedPreferences`, which genuinely are not evictable — that is #40's
-       "app tomorrow" and this tier list is the seam it drops into.
+     - inside the native shell it sits beside `UserDefaults` /
+       `SharedPreferences` (`preferencesTier` below), which genuinely are not
+       evictable — that is #40's "app tomorrow", and it is wired, not planned.
    The Safari "7 days with no visit" case has no JavaScript fix at all: the real
    remedies are an installed (Home Screen) web app and a server-side copy under
    the anonymous session. Both are recorded in the PR body, not implemented
@@ -231,6 +241,55 @@ export function localStorageTier(ls, { name = "local" } = {}) {
     get(key) { return ls.getItem(key); },
     write(key, value) { ls.setItem(key, value); },
     remove(key) { ls.removeItem(key); },
+  };
+}
+
+/** The Capacitor plugin name `cap sync` registers for `@capacitor/preferences`. */
+export const PREFERENCES_PLUGIN = "Preferences";
+
+/**
+ * The native tier: Capacitor Preferences, i.e. iOS `UserDefaults` and Android
+ * `SharedPreferences` — the one place in the shipping app that a WebView's
+ * storage sweep cannot reach (#40's "app tomorrow").
+ *
+ * Talks to the plugin through `Capacitor.nativePromise`, the same call the
+ * shell's own plugins make (`mobile/plugins/foray-tts/web/foray-tts.js`), so the
+ * web page needs no import and no bundle: the plugin is already compiled into
+ * the app by `cap sync` from `mobile/package.json`.
+ *
+ * Returns null — no tier, not a broken one — on the web (no `window.Capacitor`),
+ * on a bridge that reports a non-native platform, and on a shell build whose
+ * native side lacks the plugin. A build where the call fails anyway faults like
+ * any other durable tier: read failure means "could not look", and five write
+ * failures in a row trip the circuit breaker, so a missing plugin costs this
+ * tier and nothing else.
+ *
+ * @param {object|null} bridge  `window.Capacitor`, or a fake
+ */
+export function preferencesTier(bridge, { name = "native" } = {}) {
+  if (!bridge || typeof bridge.nativePromise !== "function") return null;
+  if (typeof bridge.isNativePlatform === "function" && !bridge.isNativePlatform()) return null;
+  if (typeof bridge.isPluginAvailable === "function" && !bridge.isPluginAvailable(PREFERENCES_PLUGIN)) return null;
+  const call = (method, options) => bridge.nativePromise(PREFERENCES_PLUGIN, method, options);
+  return {
+    name,
+    sync: false,
+    durable: true,
+    async readAll(prefix) {
+      const listed = await call("keys", {});
+      const keys = Array.isArray(listed && listed.keys) ? listed.keys : [];
+      const owned = keys.filter((k) => typeof k === "string" && (!prefix || k.startsWith(prefix)));
+      // One bridge round trip per key, in parallel: a few dozen rows, once a launch.
+      const values = await Promise.all(owned.map((key) => call("get", { key })));
+      const out = new Map();
+      owned.forEach((key, i) => {
+        const v = values[i] && values[i].value;
+        if (typeof v === "string") out.set(key, v);
+      });
+      return out;
+    },
+    async write(key, value) { await call("set", { key, value }); },
+    async remove(key) { await call("remove", { key }); },
   };
 }
 
@@ -942,12 +1001,16 @@ function errText(err) {
 export function createDurableStore({
   localStorage: ls = null,
   idbTier = null,
+  nativeTier = null,
   prefix = DEFAULT_PREFIX,
   onFault = null,
   now = null,
 } = {}) {
   return new DurableStore({
-    tiers: [localStorageTier(ls), idbTier],
+    /* The native tier goes BEFORE IndexedDB. Hydration reads the async tiers in
+       order and the first one to hold a row localStorage lost is the one
+       adopted, so the tier a WebView sweep cannot reach gets the first word. */
+    tiers: [localStorageTier(ls), nativeTier, idbTier],
     prefix,
     onFault,
     now,

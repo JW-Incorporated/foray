@@ -34,9 +34,17 @@ A **tiered store behind a synchronous Storage-shaped facade**.
   getItem / setItem / removeItem / key / length     ← callers are unchanged
     memory                    authoritative for reads, always current
       ├─ sync tier   localStorage      fast, evictable, may throw
-      └─ async tier  IndexedDB         write-behind, share-of-disk quota
-                     (Capacitor Preferences drops in here for native)
+      └─ async tiers Capacitor Preferences   native shell only — UserDefaults /
+                                             SharedPreferences, not evictable
+                     IndexedDB         write-behind, share-of-disk quota
 ```
+
+The Preferences tier (`preferencesTier()`) was drawn here from the start and
+built on 2026-09-22, after the design/QA audit found that nothing registered it:
+inside the shipping app both live tiers were script-evictable. It speaks to the
+plugin `cap sync` already links from `mobile/package.json` through
+`Capacitor.nativePromise`, and is null on the web. **Not yet observed on a
+device** — the tests drive a fake bridge that speaks the plugin's method names.
 
 **Why synchronous.** Every caller is: `lsGet`/`lsSet` in `app.js`,
 `PositionStore`, `ForayProgressStore`, and a render loop that writes a position

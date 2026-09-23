@@ -394,7 +394,7 @@ are the answers that will actually be submitted.
 | Catalogue JSON | Fetched from GitHub Pages | **Bundled in the app** (`tools/mobile/prepare-webdir.mjs`) | Slightly *fewer* third parties: GitHub no longer sees catalogue requests. |
 | App origin | `https://…github.io` | `capacitor://localhost` (iOS) / `https://localhost` (Android) | None. It is why the shell widens `img-src` to include `'self'`. |
 | Audio from publisher CDNs | Direct | **Direct — unchanged** | §A6 applies identically. |
-| Local storage tiers | localStorage + IndexedDB | **Same**, inside the WebView | None. |
+| Local storage tiers | localStorage + IndexedDB | **Same**, inside the WebView, **plus** a copy of the same `cp_` rows in the app's own preferences store (iOS `UserDefaults` / Android `SharedPreferences`, via `@capacitor/preferences`) so a WebView storage sweep cannot erase them. On-device only. | None — nothing new is transmitted. |
 
 **To re-verify before submitting:** that the shell adds no plugin which collects
 anything (each Capacitor plugin can), and that `connect-src` still names only

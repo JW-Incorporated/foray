@@ -61,7 +61,11 @@ two places on your device**: `localStorage` and an IndexedDB database (name
 `localStorage` — Safari clears script-writable storage after about seven days
 without a visit — and losing it would silently orphan your profile.
 `localStorage` is kept as a mirror, not a staging area; nothing is deleted to
-migrate it. (`player/durable-store.js`, `player/idb-tier.js`.)
+migrate it. (`player/durable-store.js`, `player/idb-tier.js`.) **In the iOS and
+Android app there is a third copy**, in the app's own preferences store (iOS
+`UserDefaults`, Android `SharedPreferences`), because the system can clear a
+web view's storage and does not clear that one. It holds the same `cp_` rows
+and never leaves the device (`player/durable-store.js:preferencesTier()`).
 
 Two honest qualifications to "two places". The diagnostic record
 `cp_storage_health` is deliberately **never** written to IndexedDB — a failing
@@ -395,9 +399,10 @@ optional) — one stray tap cannot trigger it.
 
 **What it deletes:**
 
-- **Everything on this device.** Every `cp_` key in §1, in **both** places they
-  are kept: `localStorage` and the IndexedDB database `foray`. The control
-  enumerates the two stores and then re-reads them to check they are empty, so a
+- **Everything on this device.** Every `cp_` key in §1, in **every** place they
+  are kept: `localStorage`, the IndexedDB database `foray`, and in the iOS and
+  Android app the app's preferences store. The control
+  enumerates the stores and then re-reads them to check they are empty, so a
   key added to the app in future is covered without anyone updating a list. If
   either store refuses, or cannot be read to confirm, **the app tells you the
   device is not fully clear** rather than claiming it is.
