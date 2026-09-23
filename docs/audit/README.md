@@ -18,6 +18,16 @@ agents should just flag loads of things to be fixed, afterwards you can make a
 detailed plan and execute. Dont have the agents fix anything, just audit the
 app."*
 
+## ROUND 2 (2026-09-23)
+
+The founder's follow-up — *"After all fixes are in, repeat this exercise
+again"* — ran on 2026-09-23 against origin/main 9730b5b, after every round-1
+lane had merged. It lives in [`round-2/`](round-2/README.md): 209 raw findings
+from 18 lenses, 172 unique after dedup, **163 confirmed** (5 high), 2 refuted,
+5 deliberate, 2 uncertain, grouped into 14 root causes and an 8-lane plan.
+**Status: not yet worked through.** This directory's own ledger
+(`status.tsv`) and the tables below are round 1 only.
+
 ## WHY THIS DIRECTORY EXISTS AT ALL
 
 Because the findings were nearly lost. Both fleets reported in-conversation, and
@@ -43,6 +53,7 @@ change that produces it.**
 | `persona-findings.tsv` | One row per persona finding, 84 rows, same schema |
 | `persona-findings-detail.md` | Full JSON per persona finding |
 | `status.tsv` | What became of every finding, one row each (see STATUS below) |
+| `round-2/` | The 2026-09-23 re-run: findings, dedup, synthesis, lane plan ([README](round-2/README.md)) |
 
 `findJL` / `verdictJL` point into the corresponding `-detail.md` by journal line,
 so a TSV row can always be expanded to its evidence.
