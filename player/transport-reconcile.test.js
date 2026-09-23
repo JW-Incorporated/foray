@@ -1940,6 +1940,49 @@ test("AUDIT: a network stall paints Buffering, and the sound coming back clears 
   restore();
 });
 
+/* ---- the car's buttons ---- */
+
+test("AUDIT: the head unit's STOP pauses and leaves every other control working", async (t) => {
+  /* `stopAndClose()` from a remote stop ran `release()`, which unregisters
+     every handler — the car was left with no transport at all. KILLING
+     MUTATION: put `return stopAndClose();` back in `episodeMediaSurface.stop`. */
+  const ms = fakeMediaSession();
+  const { client, doc, audio, restore } = await bootClient(t, { mediaSession: ms });
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(audio.paused, false, "precondition: playing");
+  await ms.handlers.get("stop")();
+  await settle();
+  assert.equal(audio.paused, true, "the stop stopped the sound");
+  assert.ok(ms.handlers.has("play"), "and the car's play button is still wired");
+  assert.equal(find(doc.body, "fp").hidden, false, "and the mini bar is still there");
+  await ms.handlers.get("play")();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "so the next press on the wheel resumes");
+  restore();
+});
+
+test("AUDIT: the steering wheel's next/previous appear when the page offers them, and not before", async (t) => {
+  /* KILLING MUTATION: make `setEpisodeNavigation` store the answer without
+     re-installing the actions — the OS keeps the greyed-out buttons until the
+     next play. */
+  const ms = fakeMediaSession();
+  const { client, restore } = await bootClient(t, { mediaSession: ms });
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(ms.handlers.has("nexttrack"), false, "no list, no skip button");
+  const asked = [];
+  client.setEpisodeNavigation({ next: () => asked.push("next") });
+  assert.equal(ms.handlers.has("nexttrack"), true, "a list with a next item offers the button");
+  assert.equal(ms.handlers.has("previoustrack"), false, "and only the one it can honour");
+  await ms.handlers.get("nexttrack")();
+  assert.deepEqual(asked, ["next"], "the press reaches the page's own advance");
+  client.setEpisodeNavigation(null);
+  assert.equal(ms.handlers.has("nexttrack"), false, "withdrawn when the list has nothing after");
+  restore();
+});
+
 test("AUDIT: play on a FINISHED Foray starts it over instead of replaying its last segment", async (t) => {
   /* The page now labels this press "Start over", and this is what makes the
      label true. KILLING MUTATION: delete the `ended` branch in `setRunning` —

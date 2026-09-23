@@ -1751,20 +1751,51 @@ const forayMediaSurface = {
      and until now the record could not tell that from a tap on the mini bar. */
   play: () => setRunning(true, "remote"),
   pause: () => setRunning(false, "remote"),
-  stop: () => { diag.transport("remote", "stop"); return stopAndClose(); },
+  /* A REMOTE STOP IS A PAUSE (audit 2026-09-22). It used to be
+     `stopAndClose()`, whose `media.release()` unregisters EVERY handler: one
+     press of a head unit's square — or a Bluetooth stack's hang-up gesture —
+     blanked the car display, hid the mini bar and left every hardware button
+     wired to nothing, recoverable only by unlocking the phone mid-drive. Apple
+     Podcasts has no destructive control on the lock screen, and iOS declines
+     `stop` natively anyway (ForayAudioPlugin.swift). The teardown stays behind
+     the in-page Stop button, which is the one place a person asks for it. */
+  stop: () => { diag.transport("remote", "stop"); return setRunning(false, "remote"); },
   next: () => ForayPlayer.forayNext(),
   previous: () => ForayPlayer.forayPrevious(),
   seekBy: (offset) => ForayPlayer.foraySeek(Math.max(0, forayPosition() + offset)),
   seekTo: (position) => ForayPlayer.foraySeek(position),
 };
 
-/** One episode has no next: the queue is one item (`SINGLE_ITEM`, product
-    principle 1 — no autoplay chains), so `next`/`previous` are absent and the
-    OS greys those buttons out instead of offering ones that do nothing. */
+/**
+ * The page's answer to "what comes before and after this episode", or null.
+ *
+ * The player's queue is one item (`SINGLE_ITEM`) and knows nothing about Up
+ * Next — that list is app.js's. So the NEIGHBOURS are the page's to say, through
+ * `ForayPlayer.setEpisodeNavigation({ next, previous })`. The old comment here
+ * cited product principle 1 as "no autoplay chains"; the founder reversed that
+ * on 2026-09-14 (docs/DECISIONS.md, CLAUDE.md principle 1: continuous playback
+ * is WANTED), and with a full Up Next list the steering wheel's skip was greyed
+ * out — the one gesture a driver can make without looking.
+ */
+let episodeNavigation = null;
+
+/** A neighbour action, or null when the page has not offered one — and null is
+    what makes `mediaSessionActions` leave the OS button out entirely rather than
+    install one that does nothing. */
+function episodeNeighbour(which) {
+  const fn = episodeNavigation?.[which];
+  return typeof fn === "function" ? () => fn() : null;
+}
+
+/** Previous/next are the page's (see `episodeNavigation`), read at the moment
+    `setActions` installs the surface — so they are getters, not fields. */
 const episodeMediaSurface = {
   play: () => setRunning(true, "remote"),
   pause: () => setRunning(false, "remote"),
-  stop: () => { diag.transport("remote", "stop"); return stopAndClose(); },
+  /* A remote stop is a pause — see `forayMediaSurface` above for why. */
+  stop: () => { diag.transport("remote", "stop"); return setRunning(false, "remote"); },
+  get next() { return episodeNeighbour("next"); },
+  get previous() { return episodeNeighbour("previous"); },
   /* THE SAME SEEK THE PAGE'S BUTTONS MAKE (audit 2026-09-22), so a car scrub
      gets the clamps, the restored-bar rule and the repaint (#689) that the
      in-page controls get — it used to carry its own copy of the first and
@@ -2361,8 +2392,11 @@ const ForayPlayer = {
     return Boolean(item && item.audio_url);
   },
 
-  /** Play one episode. SINGLE_ITEM strategy: the queue is this episode and
-      nothing follows it (CLAUDE.md principle 1 — no autoplay chains). */
+  /** Play one episode. SINGLE_ITEM strategy: the PLAYER's queue is this one
+      episode. What plays after it is the page's Up Next, not this queue —
+      continuous playback is wanted (CLAUDE.md principle 1, founder ruling
+      2026-09-14), and app.js drives it through `onEpisodeEnded` and
+      `setEpisodeNavigation`. */
   async play(item, opts) {
     /* READ DEFENSIVELY RATHER THAN DESTRUCTURED IN THE SIGNATURE. This was
        `(item, { why = "" } = {})`, and a default parameter only fires for
@@ -2522,6 +2556,20 @@ const ForayPlayer = {
 
   isPlaying(id) {
     return isPlaying() && current?.id === id;
+  },
+
+  /**
+   * Tell the lock screen and the car what "next" and "previous" mean for the
+   * ordinary episode on the bar — `{ next, previous }`, either may be absent,
+   * or null for neither. The page owns Up Next, so the page calls this whenever
+   * the answer changes (a play, an edit to the list); the handlers are
+   * re-installed at once when an episode is current, so the OS never shows a
+   * skip the list cannot honour or greys out one it can.
+   */
+  setEpisodeNavigation(nav) {
+    episodeNavigation = nav && typeof nav === "object" ? nav : null;
+    if (media && current && !foray) media.setActions(episodeMediaSurface);
+    return true;
   },
 
   /**
