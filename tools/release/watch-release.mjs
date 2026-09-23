@@ -26,7 +26,7 @@
  *                   or reopening an issue notifies the founder; a red run does
  *                   not — and the issue closes itself when every gate is green.
  *
- *   --mode trigger  (.github/workflows/release-trigger.yml, every 3 hours)
+ *   --mode trigger  (.github/workflows/release-trigger.yml, every 2 hours)
  *                   Dispatches a FRESH release.yml run when a release-relevant
  *                   commit is on main and not in the last successful release,
  *                   nothing is already in flight, main is not red, and the
@@ -112,22 +112,23 @@ import process from "node:process";
  *  that the founder hears about it the same evening rather than the next day. */
 export const GRACE_MINUTES = 60;
 
-/** G3. The trigger runs every 3 hours and GitHub's cron has been measured
- *  85 minutes late on this repo (nightly-watch.yml's header). A commit that lands
- *  just after a trigger slot waits up to ~4.5h for the next one and ships ~25
- *  minutes later: a healthy worst case of roughly five hours. Six is that plus a
- *  margin, and still the same working day — the plan's number, kept. */
+/** G3. The trigger runs every 2 hours (founder, 2026-09-23; it was 3) and GitHub's
+ *  cron has been measured 85 minutes late on this repo (nightly-watch.yml's header).
+ *  A commit that lands just after a trigger slot waits up to ~3.5h for the next one
+ *  and ships ~25 minutes later: a healthy worst case of roughly four hours. Six is
+ *  that plus a generous margin, and still the same working day — the plan's number,
+ *  kept, since a looser stall bar only ever pages later, never falsely. */
 export const STALL_HOURS = 6;
 
 /** G4. The slowest healthy run measured took 19 minutes; an hour is three times
  *  that. A run still going at that point is hung, or queued behind one that is. */
 export const STUCK_MINUTES = 60;
 
-/** Liveness. The watchdog runs hourly, the trigger every three hours; each
+/** Liveness. The watchdog runs hourly, the trigger every two hours; each
  *  threshold is the peer's interval plus the measured 85-minute cron drift plus
  *  a margin, so a merely late peer never pages anyone. */
 export const WATCHDOG_STALE_HOURS = 3;
-export const TRIGGER_STALE_HOURS = 6;
+export const TRIGGER_STALE_HOURS = 4; // 2h interval + 85 min measured drift + margin
 
 /** After this many consecutive failed release runs the trigger stops
  *  dispatching. One automatic retry of a failure is cheap insurance against a

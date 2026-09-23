@@ -236,7 +236,7 @@ For whoever touches `release.yml:232-283`:
 
 Files: `tools/release/watch-release.mjs` (every decision, pure and
 dependency-free), `.github/workflows/release-watch.yml` (hourly, `:23`),
-`.github/workflows/release-trigger.yml` (every 3 hours, `:47`), a
+`.github/workflows/release-trigger.yml` (every 2 hours, `:47` — founder, 2026-09-23), a
 `RELEASE_OUTCOME` line in `release.yml`'s summary step, and
 `tools/release/watch-release.test.mjs` (floored), which replays the real
 2026-09-22 night from real runs, the real summary-job log and real `git log`.
@@ -263,7 +263,7 @@ changes, closed by the watchdog with a comment when every gate is green.
 
 **Liveness.** The two workflows watch each other: a peer whose workflow `state`
 is not `active` (the #46 banner) is red at once; a peer with no successful
-*scheduled* run in 3 hours (watchdog) or 6 hours (trigger) is red. Both exit 0
+*scheduled* run in 3 hours (watchdog) or 4 hours (trigger) is red. Both exit 0
 whenever they managed to evaluate — the issue carries the verdict, the run colour
 carries only "did the watcher work" — which is what makes "no recent success"
 mean "down". The trigger may raise the issue for a dead watchdog but never close

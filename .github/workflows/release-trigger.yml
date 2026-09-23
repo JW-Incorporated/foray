@@ -7,7 +7,7 @@
 # once, and sixteen hours on 2026-09-22. This workflow is the somebody.
 #
 # WHAT IT DOES
-# Every three hours it asks tools/release/watch-release.mjs one question —
+# Every two hours it asks tools/release/watch-release.mjs one question —
 # `triggerDecision()` — and, if the answer is yes, dispatches release.yml on
 # main. It says yes when a release-relevant commit is on main and not in the
 # last successful release, and holds when: a release is already queued or
@@ -41,9 +41,9 @@ name: release-trigger
 
 on:
   schedule:
-    # Every three hours at :47, away from release-watch's :23 and off the top
+    # Every two hours at :47 (founder, 2026-09-23: "every hour or couple hours is fine"), away from release-watch's :23 and off the top
     # of the hour.
-    - cron: "47 */3 * * *"
+    - cron: "47 */2 * * *"
   workflow_dispatch: {}
 
 # Shared with release-watch.yml so the sticky issue has one writer at a time.
