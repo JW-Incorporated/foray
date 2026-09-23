@@ -1955,6 +1955,24 @@ test("AUDIT: an episode whose audio will not load says so, and play() reports it
   restore();
 });
 
+test("REVIEW: a play the browser held back keeps its 'Press play again' line after app.js reports the refusal", async (t) => {
+  /* play() now answers false for a refused start, so bindPlay's `if (!ok)`
+     runs and calls reportPlayFailure(null) — AFTER the telemetry sink had
+     painted the autoplay line. The generic "Did not load … check the
+     connection" replaced it. KILLING MUTATION: drop the
+     `if (err == null && playFailure) return;` guard in reportPlayFailure. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  audio.refusePlayWith = "NotAllowedError";
+  const ok = await client.play(episodeItem());
+  await settle();
+  assert.equal(ok, false, "precondition: a refused start is not a start");
+  assert.match(secondLine(doc), /Press play again/, "precondition: the sink said why");
+  client.reportPlayFailure(null);              // what bindPlay does with `!ok`
+  assert.match(secondLine(doc), /Press play again/, "the specific line stays");
+  assert.doesNotMatch(statusNote(doc).textContent, /could not load/, "no connection is blamed");
+  restore();
+});
+
 test("AUDIT: a network stall paints Buffering, and the sound coming back clears it", async (t) => {
   /* KILLING MUTATION: delete the `waiting` -> `setBuffering(true)` listener. */
   const { client, doc, audio, restore } = await bootClient(t);

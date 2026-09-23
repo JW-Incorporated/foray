@@ -2894,6 +2894,14 @@ const ForayPlayer = {
    * swallowed. `err` is read for its name only, for the autoplay split.
    */
   reportPlayFailure(err) {
+    /* A REFUSAL WITH NO ERROR DOES NOT OVERWRITE ONE THAT SAID WHY (review
+       2026-09-23). app.js calls this with `null` when `play()` answered false,
+       and on the iOS lost-gesture path the telemetry sink has ALREADY painted
+       the specific "Press play again" line by then — `play()` returns after
+       the rejection. The generic "could not load" replaced it and told the
+       listener to check a connection nothing was wrong with. `setNowPlaying`
+       clears the line for every new item, so what is here is this attempt. */
+    if (err == null && playFailure) return;
     let name = "";
     try { name = String(err?.name ?? ""); } catch (_) { name = ""; }
     setPlayFailure(playFailureCopy(name));
