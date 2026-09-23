@@ -215,3 +215,48 @@ test("a page with no .page-head (e.g. home) is inert — no error, nothing toggl
   const m = mount({ withPageHead: false });
   assert.doesNotThrow(() => { m.scrollTo(0); m.scrollTo(500); m.scrollTo(0); });
 });
+
+/* ==================================================================== */
+/* 7. WHAT STICKS BENEATH A SHOWING HEADER IS NOT COVERED BY IT          */
+/* ==================================================================== */
+
+/* Audit 2026-09-22: the Foray page's `.fy-transport` and `.page-head` both
+   stuck at the topbar's offset, so the header's reappear-on-scroll-up (this
+   file's whole subject) slid ON TOP of the transport — the resume line and
+   the top of the strip vanished under it the moment the listener scrolled
+   back up to use them. The header now publishes its measured height on its
+   page, and styles.css pins a showing header's later siblings beneath it. */
+
+function withPage(m) {
+  const props = new Map();
+  m.pageHead.parentElement = { style: { setProperty: (k, v) => props.set(k, v) } };
+  return props;
+}
+
+test("a header that reappears publishes its own height for the transport beneath it", () => {
+  /* MUTATION: delete `publishPageHeadHeight(head);` from setPageHeadHidden()
+     AND resetPageHeadScrollState(). Both assertions fail (nothing written). */
+  const m = mount({ headHeight: 73 });
+  const props = withPage(m);
+  m.reset();
+  assert.strictEqual(props.get("--page-head-h"), "73px", "a fresh render must publish the header's height");
+  props.clear();
+  m.scrollTo(2000);            // hide
+  m.scrollTo(1900);            // reappear, mid-list
+  assert.strictEqual(m.isHidden(), false);
+  assert.strictEqual(props.get("--page-head-h"), "73px",
+    "the reappearing header must (re)publish its height — the title can rewrap after a rotation");
+});
+
+test("styles.css pins the Foray transport beneath a SHOWING header, and at the topbar beneath a hidden one", () => {
+  /* MUTATION: delete the `.page-head:not(.page-head-hidden) ~ .fy-transport`
+     rule. This fails: the transport's only `top` is the header's own. */
+  const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
+  const rule = /\.page-head:not\(\.page-head-hidden\)\s*~\s*\.fy-transport\s*\{([^}]*)\}/.exec(css);
+  assert.ok(rule, "no rule offsets .fy-transport while the page header is showing");
+  assert.match(rule[1], /top:\s*calc\([^;]*var\(--page-head-h/,
+    "the showing-header offset must add the published --page-head-h to the topbar offset");
+  const base = /(^|\})\s*\.fy-transport\s*\{([^}]*)\}/.exec(css);
+  assert.ok(base && !/--page-head-h/.test(base[2]),
+    "the base .fy-transport rule must NOT reserve the header — a hidden header reserves nothing");
+});

@@ -36,21 +36,23 @@
    UI-v2 design tokens, fonts and brand (U-01, docs/ui-transition-plan.md).
    Everything in this block is scoped to `body.ui-v2` and NOTHING here touches
    the `:root` tokens above or their `prefers-color-scheme: light` override —
-   those two blocks are v1's and stay exactly as they are so nothing regresses
-   for a v1 (flag-off) light-mode listener. `cp_ui_v2` defaults OFF (U-02), so
-   `body.ui-v2` is only present when a listener has opted in (or a TestFlight
-   build defaulted it on).
+   those two blocks are v1's. SINCE THE U-11 CUTOVER `ui-v2` IS ON EVERY
+   RENDERED PAGE (setBodyClass in app.js always adds it; the cp_ui_v2 flag is
+   retired), so the v1 blocks now only answer for the instant before the first
+   render — and for any name this block forgets to own, which is the leak the
+   2026-09-22 audit found (see the aliases at the end of the block).
 
    DARK IS THE DESIGN for v2 (docs/ui-transition-plan.md D9/D4, issue #127):
    the mockup ships one palette, not two, and nothing in the brief asks for a
    v2 light variant. So this block is intentionally dark-only — an OS set to
-   light with `cp_ui_v2` on keeps the v2 dark palette, which is a deliberate,
+   light keeps the v2 dark palette, which is a deliberate,
    documented scope decision, not an oversight. If a v2 light palette is ever
    wanted, it is a new design decision (its own DECISIONS.md entry), not a
    reuse of the v1 light values above: the two palettes don't share a look.
 
-   NAMING NOTE: four of these names (`--bg`, `--surface`, `--text`, `--line`)
-   already exist on `:root` for v1. That is intentional, not a collision —
+   NAMING NOTE: several of these names (`--bg`, `--surface`, `--text`,
+   `--line`, and the five v1 aliases at the end) also exist on `:root` for
+   v1. That is intentional, not a collision —
    `body.ui-v2`'s higher specificity means an element inside a `body.ui-v2`
    page reads the v2 value, while anything still rendering under v1 (the flag
    off, or a stray element outside `body`) keeps reading `:root`'s v1 value.
@@ -71,6 +73,38 @@ body.ui-v2 {
      for the other's meaning even where a screen only needs "an accent". */
   --amber: #F2A33C;
   --violet: #A78BFA;
+  /* Destructive, and only destructive: the "Delete everything" confirm and
+     the drawer item that opens it. The hex is the one `.dd-go` was written
+     with (#42); it moved here so the colour that means "this erases your
+     data" is a token and not a literal a later primary-button rule can
+     silently outrank — which is exactly what happened (audit 2026-09-22). */
+  --danger: #b3402f;
+
+  /* THE FIVE v1 NAMES THAT LIVE RULES STILL READ (audit 2026-09-22, theme I).
+     ui-v2 was a layer over v1, and v1's rules kept asking for `--surface-2`,
+     `--text-dim`, `--accent`, `--gold` and `--shadow` — names this block
+     never defined. On a phone set to Dark that was invisible, because the
+     `:root` values happen to be dark too. On a phone set to Light,
+     `:root`'s light block (top of this file) answered instead: near-white
+     artwork placeholders on a near-black page, secondary text at ~3:1,
+     shadows that vanish, v1 blue in five controls and gold where amber
+     belongs. Aliasing them HERE, on the v2 scope, means no rule on a v2 page
+     can reach a v1 value whatever the OS appearance says.
+     `test/ui-tokens.test.js` now enumerates every token a live rule READS and
+     fails on any this scope does not own — the old test only checked the
+     nine that were added, which is how these five slipped through. */
+  --surface-2: var(--surface2);
+  --text-dim: var(--muted);
+  /* v1's accent was "the one colour"; v2 splits it by meaning. The rules that
+     still say `--accent` without a v2 override are editorial framing (a
+     narrator voice, the Create page's controls, links in a description,
+     the Stretch tag), which is violet's half of the #127 split. */
+  --accent: var(--violet);
+  /* Every surviving `--gold` reader is the listener's own material — their
+     starred items, their "N min left", the Continue banner — which is
+     amber's half. */
+  --gold: var(--amber);
+  --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.28);
 
   --font-display: "Fraunces", var(--serif);
   --font-body: "DM Sans", var(--sans);
@@ -722,7 +756,10 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   padding: 7px 13px;
   cursor: pointer;
 }
-.cr-pill:hover { color: var(--text); border-color: var(--accent); }
+/* `:active` beside every `:hover` in this file that a touch-first control
+   relies on for feedback: a finger never hovers, so a hover-only accent is no
+   acknowledgement at all on a phone (audit 2026-09-22). */
+.cr-pill:hover, .cr-pill:active { color: var(--text); border-color: var(--accent); }
 
 /* The Foray | Playlist toggle (D7): Playlist is the only real control here.
    Foray is rendered -- the affordance must be VISIBLE, per the card -- but
@@ -792,6 +829,11 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   flex-direction: column;
   gap: 8px;
 }
+/* The column's `gap` owns the spacing inside it. The search page nests
+   Playlists' `.pl-row`s in a `.show-results` column, and each row also kept
+   its own 8px `margin-bottom` — so that section sat at double the spacing of
+   the Episodes rows directly above it (audit 2026-09-22). */
+.show-results > .ep-row, .show-results > .pl-row { margin-bottom: 0; }
 .show-result {
   display: flex;
   align-items: center;
@@ -1003,7 +1045,10 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   display: flex; align-items: center; gap: 10px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  /* The token, not a literal 12px: `.show-result` (var(--radius), 14px) sits
+     in the same search results list, and 2px of corner drift between
+     neighbouring rows is an accident, not a design (audit 2026-09-22, R12). */
+  border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 12px;
   margin-bottom: 8px;
@@ -1161,8 +1206,18 @@ button.up-next-remove {
   font-size: 0.85rem; line-height: 1;
   cursor: pointer; padding: 0;
 }
-.play-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 .play-btn[data-playing="1"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* HOVER IS NOT "PLAYING" (audit 2026-09-22, persona finding "tapping ▶ paints
+   the button as playing before any audio exists"). The hover rule was the
+   byte-identical fill the playing state uses, and a phone leaves a sticky
+   hover on whatever was last tapped — so a tap on a dead enclosure lit the
+   button up exactly like audio had started. Hover now only exists on a device
+   that can actually hover, and it is a border, never the fill; a finger gets
+   a press (`:active`) that ends when the finger does. */
+@media (hover: hover) {
+  .play-btn:hover { border-color: var(--accent); }
+}
+.play-btn:active { transform: scale(0.94); }
 
 /* The player is fixed, so reserve room or it covers the last card.
 
@@ -1842,7 +1897,8 @@ body.fp-expanded { overflow: hidden; }
   padding: 0; border: 0; background: none; color: inherit;
   font: inherit; text-align: left; cursor: pointer;
 }
-.ep-chapter-row:hover .ep-chapter-title { color: var(--accent); }
+.ep-chapter-row:hover .ep-chapter-title,
+.ep-chapter-row:active .ep-chapter-title { color: var(--accent); }
 /* A1.8 "More from this show" — same section-label language as .fy-slot h3. */
 .ep-more { margin: 24px 0 0; }
 .ep-more h3 {
@@ -1940,6 +1996,16 @@ body.fp-expanded { overflow: hidden; }
   padding: 10px 0 12px;
   margin-bottom: 8px;
 }
+/* While the collapsing page header is SHOWING, the transport pins beneath it
+   rather than at the same offset behind it. Both used to stick at exactly the
+   topbar's offset, so the header's reappear-on-scroll-up (z 15) covered the
+   resume line and the top of the strip (z 5) exactly when the listener came
+   back up to use them (audit 2026-09-22). `--page-head-h` is the header's own
+   measured box, written by app.js's publishPageHeadHeight(); a hidden header
+   drops out of this selector, so the transport slides up to the topbar. */
+.page-head:not(.page-head-hidden) ~ .fy-transport {
+  top: calc(var(--topbar-h) + env(safe-area-inset-top) + var(--page-head-h, 0px));
+}
 /* ---------- SegmentStrip (#128) ----------
    The signature element: one Foray at a glance. Structure and every class name
    below are produced by player/segment-strip.js — read that file's header
@@ -1957,8 +2023,17 @@ body.fp-expanded { overflow: hidden; }
    ranges 4.9:1 to 8.4:1 on #0d1117. Those same values only reach 2.1:1 on the
    light theme's #faf7f2, so light gets darkened variants, each measured to at
    least 3.25:1. Changing a hex here without re-measuring both themes is how the
-   strip becomes invisible for half the users on a sunny morning. */
-:root {
+   strip becomes invisible for half the users on a sunny morning.
+
+   `body.ui-v2` IS ON THE SELECTOR because the v2 page is dark whatever the OS
+   says (the token block's header). With `:root` alone, a phone set to Light
+   took the light variants below — tuned for #faf7f2 — and painted them on
+   v2's near-black #151119: a BLACK hatch over the narration bars and muddy
+   darkened tones (audit 2026-09-22). Declaring the dark set on body.ui-v2 as
+   well makes it the nearest definition for everything on a v2 page, so the
+   light block can only ever reach a page that is actually light. One list,
+   two selectors, so the values cannot drift apart. */
+:root, body.ui-v2 {
   --seg-c0: #2A9D8F; --seg-c1: #E76F51; --seg-c2: #8E6FD8; --seg-c3: #4C8DF5;
   --seg-c4: #D9A441; --seg-c5: #5FB4C9; --seg-c6: #C46BAE; --seg-c7: #7BA05B;
   --seg-narration: #A78BFA;
@@ -2317,7 +2392,7 @@ body.fp-expanded { overflow: hidden; }
 .fy-jump.is-bare .fy-state::before { content: "▶"; font-size: 0.7rem; opacity: 0.45; }
 /* Hover follows the PLAY affordance, not the whole card — the thumbs are not a
    way to start a segment and should not look like one. */
-.fy-row:has(.fy-jump:hover) { border-color: var(--accent); }
+.fy-row:has(.fy-jump:hover), .fy-row:has(.fy-jump:active) { border-color: var(--accent); }
 .fy-jump.is-played { opacity: 0.55; }
 /* Dim the thumbs with the row they belong to. Separate from the rule above
    because that one must keep working where :has() does not. */
@@ -2598,7 +2673,7 @@ body.fy-sheet-open { overflow: hidden; }
 }
 .fy-src-show { font-family: var(--serif); font-size: 0.94rem; font-weight: 700; }
 .fy-src-out { flex: none; color: var(--text-dim); text-decoration: none; }
-.fy-src-out:hover { color: var(--accent); }
+.fy-src-out:hover, .fy-src-out:active { color: var(--accent); }
 .fy-src-meta { flex: none; font-size: 0.72rem; color: var(--text-dim); }
 .fy-src-eps { margin: 8px 0 0; padding: 0 0 0 14px; list-style: none; }
 .fy-src-eps li {
@@ -2656,7 +2731,8 @@ body.fy-sheet-open { overflow: hidden; }
   text-decoration: none;
 }
 .show-forays-row:first-of-type { border-top: none; }
-.show-forays-row:hover .show-forays-title { color: var(--accent); }
+.show-forays-row:hover .show-forays-title,
+.show-forays-row:active .show-forays-title { color: var(--accent); }
 .show-forays-title { font-family: var(--serif); font-size: 0.92rem; font-weight: 700; }
 .show-forays-draft {
   flex: none; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
@@ -2752,7 +2828,10 @@ body.fy-sheet-open { overflow: hidden; }
    .fy-sheet-actions), so only the parts that have no counterpart there are
    styled here. The confirm button is deliberately NOT accent-blue: it is the one
    button in the app that destroys something. */
-.dd-open { color: var(--gold); }
+/* The drawer item that opens it wore v1 gold — the only coloured item in the
+   menu, and the destructive one, so it read as a highlighted feature. It says
+   what it is now: the same danger colour as the button it leads to. */
+.dd-open { color: var(--danger); }
 .dd-panel { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 .dd-covers {
   margin: 0 0 14px; padding: 0 0 0 16px;
@@ -2769,7 +2848,7 @@ body.fy-sheet-open { overflow: hidden; }
   color: var(--text);
   font: inherit; font-size: 0.9rem; letter-spacing: 0.08em;
 }
-.dd-go { border-color: #b3402f; background: #b3402f; }
+.dd-go { border-color: var(--danger); background: var(--danger); }
 .dd-go:disabled { background: var(--surface-2); border-color: var(--line); color: var(--text-dim); }
 .dd-device-only {
   display: block; width: 100%;
@@ -2926,7 +3005,8 @@ body.ui-v2 .show-forays { border-top-color: var(--line); }
 body.ui-v2 .show-forays-h { color: var(--muted); font-family: var(--font-display); }
 body.ui-v2 .show-forays-note { color: var(--muted); }
 body.ui-v2 .show-forays-row { border-top-color: var(--line); color: var(--text); }
-body.ui-v2 .show-forays-row:hover .show-forays-title { color: var(--violet); }
+body.ui-v2 .show-forays-row:hover .show-forays-title,
+body.ui-v2 .show-forays-row:active .show-forays-title { color: var(--violet); }
 body.ui-v2 .show-forays-title { font-family: var(--font-display); }
 body.ui-v2 .show-forays-draft { color: var(--violet); }
 body.ui-v2 .show-result {
@@ -2983,8 +3063,10 @@ body.ui-v2 .play-btn {
 }
 /* Play is 4a's transport control, not the listener's own material --
    violet, the same role it plays on the mini/full player below. */
-body.ui-v2 .play-btn:hover,
 body.ui-v2 .play-btn[data-playing="1"] { background: var(--violet); border-color: var(--violet); color: var(--bg); }
+@media (hover: hover) {
+  body.ui-v2 .play-btn:hover { border-color: var(--violet); }
+}
 
 /* ---------- Episode page ---------- */
 body.ui-v2 .fp-s-title { font-family: var(--font-display); color: var(--text); }
@@ -3030,7 +3112,8 @@ body.ui-v2 .fy-row {
   border-color: var(--line);
   box-shadow: none;
 }
-body.ui-v2 .fy-row:has(.fy-jump:hover) { border-color: var(--violet); }
+body.ui-v2 .fy-row:has(.fy-jump:hover),
+body.ui-v2 .fy-row:has(.fy-jump:active) { border-color: var(--violet); }
 body.ui-v2 .fy-row:has(.fy-jump.is-playing) { border-color: var(--violet); background: var(--surface2); }
 body.ui-v2 .fy-jump { color: var(--text); }
 body.ui-v2 .fy-meta { color: var(--muted); }
@@ -3061,6 +3144,13 @@ body.ui-v2 .fy-sheet-sub { color: var(--muted); }
 body.ui-v2 .fy-sheet-cancel { border-color: var(--line); color: var(--muted); }
 body.ui-v2 .fy-sheet-go { border-color: var(--violet); background: var(--violet); color: var(--bg); }
 body.ui-v2 .fy-sheet-go:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
+/* "Delete everything" is a `.fy-sheet-go` too (it reuses the sheet shell), so
+   the violet primary rule directly above — (0,2,1) against `.dd-go`'s (0,1,0)
+   — painted the one button in the app that erases the listener's data the
+   same colour as Play (audit 2026-09-22). Out-ranked here, and `:not(:disabled)`
+   so the greyed "type DELETE first" state above still wins while it applies.
+   Light text, not `--bg`: dark text on this red is ~3:1, `--text` is ~5.5:1. */
+body.ui-v2 .fy-sheet-go.dd-go:not(:disabled) { border-color: var(--danger); background: var(--danger); color: var(--text); }
 body.ui-v2 #fy-sheet-note { border-color: var(--line); background: var(--surface2); color: var(--text); }
 body.ui-v2 .rate-option { border-color: var(--line); background: var(--surface2); color: var(--text); }
 body.ui-v2 .rate-option.on { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 14%, var(--surface2)); }
@@ -3101,12 +3191,18 @@ body.ui-v2 .show-ep-search input {
   background: var(--surface);
   color: var(--text);
 }
-body.ui-v2 #pl-form button {
+/* `#cr-form` rides on the same rule. The Create page's field and button were
+   written to read as `#pl-form`'s control family (see `#cr-form`'s own rules),
+   but it landed after this restyle enumerated its selectors, so its button kept
+   v1 blue with white text beside Playlists' violet (audit 2026-09-22). */
+body.ui-v2 #pl-form button,
+body.ui-v2 #cr-form button {
   border-color: var(--violet);
   background: var(--violet);
   color: var(--bg);
 }
-body.ui-v2 #pl-form button:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
+body.ui-v2 #pl-form button:disabled,
+body.ui-v2 #cr-form button:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
 body.ui-v2 button.danger { color: var(--faint); }
 
 /* ---------- mini/full player chrome (styles.css only -- player/*.js untouched) ----------
@@ -3162,9 +3258,20 @@ body.ui-v2 .lib-more:active { color: var(--text); }
    ordinary flex-column children (unlike `.cards4`'s fixed grid): Home v2 is
    allowed to scroll, per the mockup, so there is no equivalent of the
    flag-off floor/crush bug this file's BUG 4 comment documents — `.hv2-home`
-   declares no `height`/`min-height` at all, so there is no fixed budget for
-   a sibling to fight over in the first place. */
+   declares no `height`/`min-height` FLOOR, so there is no fixed budget for
+   a sibling to fight over in the first place.
+
+   `min-height: 0` IS NOT A FLOOR, IT IS THE ABSENCE OF ONE. renderHomeV2's
+   container is `class="home hv2-home"`, so it also matched the retired
+   one-screen `.home` rule above and inherited its `100svh` floor — on top of
+   the tab-bar (and mini-bar) reservation `body.ui-v2` already pads. Home
+   therefore ALWAYS scrolled by the tab bar's height into bare background
+   (~152px while something played), because its content box was a whole
+   viewport before the reservation was added (audit 2026-09-22). This resets
+   the inherited floor; `test/home-layout.test.js` pins that the element's
+   EFFECTIVE min-height is none, not only that this rule declares none. */
 body.ui-v2 .hv2-home {
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -3245,8 +3352,13 @@ body.ui-v2 .hv2-generated-badge {
   padding: 1px 7px;
   border-radius: 3px;
   font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-  color: var(--amber);
-  background: color-mix(in srgb, var(--amber) 18%, transparent);
+  /* VIOLET, not amber: "Generated for you" means 4a assembled it, which is
+     violet's half of #127's split — and the same badge in Search results
+     (`.fy-badge-generated`) was already violet. Amber told the listener this
+     was THEIR material (audit 2026-09-22). The shape still differs from the
+     Search badge; that is a taste call left to the founders. */
+  color: var(--violet);
+  background: color-mix(in srgb, var(--violet) 18%, transparent);
 }
 
 /* The test track ("Show draft Forays", app.js § showDraftsOn): a draft card
@@ -3269,8 +3381,20 @@ body.ui-v2 .hv2-test-track {
 
 /* Episodes for you reuses miniCard()'s own `.mini-card` markup and rules
    unchanged (miniCardV2() wraps it rather than forking it) — only the
-   section container and the appended `.hv2-bridge` line are new here. */
-body.ui-v2 .hv2-episodes .mini-card { min-height: 0; }
+   section container and the appended `.hv2-bridge` line are new here.
+
+   THE BRIDGE LINE IS A ROW OF ITS OWN. miniCardV2() appends it inside the
+   `.mini-card` anchor, which is a single-line flex ROW — so it became a fourth
+   item beside the star: a narrow italic column squeezed to the right of the
+   card, stealing width from a title that then clipped (audit 2026-09-22). The
+   Foray card's identical line works only because that card is a column. So the
+   row wraps, the bridge takes the full width of the second line, and
+   `.mc-info` gets a zero basis so wrapping can never push IT onto a line of its
+   own (its max-content width is the whole unclamped title). Cards without a
+   bridge are three items that always fit, so for them nothing changes. */
+body.ui-v2 .hv2-episodes .mini-card { min-height: 0; flex-wrap: wrap; row-gap: 4px; }
+body.ui-v2 .hv2-episodes .mini-card > .mc-info { flex-basis: 0; }
+body.ui-v2 .hv2-episodes .mini-card > .hv2-bridge { flex-basis: 100%; }
 
 /* The publisher's own show description (founder, 2026-09-21). Body copy, not a
    `.note`: it is the show speaking for itself and should read like prose.

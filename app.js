@@ -10888,6 +10888,28 @@ function setPageHeadHidden(hidden) {
   pageHeadHiddenNow = hidden;
   const head = currentPageHead();
   if (head) head.classList.toggle("page-head-hidden", hidden);
+  publishPageHeadHeight(head);
+}
+
+/* THE HEADER'S HEIGHT, FOR WHATEVER ELSE STICKS BENEATH IT (audit 2026-09-22,
+   "A Foray page's sticky transport pins behind the sticky page header").
+   `.page-head` and the Foray page's `.fy-transport` are siblings that both
+   stick at the topbar's offset. Scrolling down hides the header and the
+   transport pins where it was — right. Scrolling UP brings the header back
+   (the behaviour Wyatt asked for, above) ON TOP of the transport, so the
+   resume line and the top of the strip vanish under an opaque bar exactly when
+   the listener has come back to use them. styles.css pins a visible header's
+   later siblings at topbar + THIS height; a hidden header reserves nothing.
+   Written on the header's own parent (a CSSOM write, CSP-safe), so a page
+   whose content never reads it pays one property; and on every toggle rather
+   than once per render, because the title can wrap differently after a
+   rotation. `offsetHeight` ignores the hide transform, so either state
+   measures the same box. */
+function publishPageHeadHeight(head) {
+  const page = head && head.parentElement;
+  if (!page || !page.style || typeof page.style.setProperty !== "function") return;
+  const h = Math.round(Number(head.offsetHeight) || 0);
+  page.style.setProperty("--page-head-h", `${h}px`);
 }
 
 /* A deliberate downward scroll puts the keyboard away (founder, 2026-09-14:
@@ -10978,6 +11000,7 @@ function resetPageHeadScrollState() {
   lastScrollY = window.scrollY || 0;
   const head = currentPageHead();
   if (head) head.classList.remove("page-head-hidden");
+  publishPageHeadHeight(head);
 }
 
 /* ---------- init ---------- */

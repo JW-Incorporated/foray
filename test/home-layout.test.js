@@ -629,9 +629,35 @@ test("`.hv2-home` (U-03) declares no fixed height — unlike `.home`, it is mean
      naming the declared height. */
   assert.strictEqual(valueOf("body.ui-v2 .hv2-home", "height"), null,
     ".hv2-home must not declare a fixed height — Home v2 is a scrolling page, not a one-screen column");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-home", "min-height"), null,
+  const own = valueOf("body.ui-v2 .hv2-home", "min-height");
+  assert.ok(own === null || /^0(px)?$/.test(own),
     ".hv2-home must not declare a min-height floor either — nothing here needs BUG 4's fix because " +
-    "nothing here is fixed-height to begin with");
+    `nothing here is fixed-height to begin with (declared: ${own})`);
+});
+
+test("Home v2's element does not inherit the retired `.home` one-screen floor through its second class", () => {
+  /* THE BUG THE TEST ABOVE COULD NOT SEE (audit 2026-09-22, "Home always
+     scrolls by the height of the tab bar into empty background"). It asked
+     what `.hv2-home` DECLARES; the element renderHomeV2 emits is
+     `class="home hv2-home"`, so `.home`'s `min-height: 100svh - topbar` was
+     live on it anyway — and body.ui-v2's tab-bar padding went on top, so the
+     document was always one tab bar taller than the screen.
+
+     This asks the question about the ELEMENT: for every min-height `.home`
+     gives it, a rule that also matches it (`body.ui-v2 .hv2-home`, which
+     out-ranks `.home` at (0,2,1)) must take it back to nothing.
+
+     MUTATION: delete `min-height: 0;` from `body.ui-v2 .hv2-home`. This
+     fails, naming `.home`'s floor. */
+  const APP = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.ok(APP.includes('class="home hv2-home"'),
+    "fixture assumption: Home v2 still carries both classes — if `.home` is gone from the markup, delete this test");
+  const floor = valueOf(".home", "min-height");
+  assert.ok(floor && floor !== "0", "fixture assumption: `.home` still declares its one-screen floor");
+  const reset = valueOf("body.ui-v2 .hv2-home", "min-height");
+  assert.ok(reset !== null && /^0(px)?$/.test(reset),
+    `Home v2 inherits \`.home\`'s floor (${floor}) and nothing resets it, so Home scrolls by the ` +
+    "tab bar's height into empty background");
 });
 
 test("`.hv2-home` still reserves the safe-area inset at the bottom, like every other fixed-bar-aware surface", () => {
@@ -652,4 +678,26 @@ test("`.hv2-home` still reserves the safe-area inset at the bottom, like every o
     assert.match(raw, /env\(safe-area-inset-bottom\)/,
       `${label}: .hv2-home's padding must reserve env(safe-area-inset-bottom)`);
   }
+});
+
+test("a stretch card's bridge line is a row of its own under the card, not a fourth column beside the star", () => {
+  /* Audit 2026-09-22. miniCardV2() appends `<p class="hv2-bridge">` INSIDE the
+     `.mini-card` anchor, and `.mini-card` is a single-line flex row — so the
+     sentence a stretch pick is required to carry (D1's copy rule) rendered as
+     a narrow italic column to the right of the star, clipping the title. The
+     Foray card's identical line only worked because that card is a column.
+
+     MUTATION: drop `flex-wrap: wrap` from `body.ui-v2 .hv2-episodes
+     .mini-card` -> the first assertion fails. Drop the `.mc-info` zero basis
+     -> the third fails (and on a device the title jumps to a line of its own,
+     because its max-content width is the whole unclamped title). */
+  const APP = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  assert.ok(APP.includes('</p></a>`;') && APP.includes("return card.replace("),
+    "fixture assumption: the bridge is still injected inside the card's anchor — if it moved outside, this rule is moot");
+  assert.strictEqual(valueOf("body.ui-v2 .hv2-episodes .mini-card", "flex-wrap"), "wrap",
+    "the Episodes-for-you card row must wrap so the bridge can take a line of its own");
+  assert.strictEqual(valueOf("body.ui-v2 .hv2-episodes .mini-card > .hv2-bridge", "flex-basis"), "100%",
+    "the bridge line must span the card's full width");
+  assert.strictEqual(valueOf("body.ui-v2 .hv2-episodes .mini-card > .mc-info", "flex-basis"), "0",
+    "the title block needs a zero basis or wrapping pushes IT onto its own line instead");
 });

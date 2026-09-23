@@ -274,7 +274,10 @@ const FLOORS = {
   /* Collapsing page header reappears on scroll-up (kanban t_0faae03f, same
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
-  "test/collapsing-header-scroll.test.js": 6,
+  /* 6 -> 8 (2026-09-22 audit, theme I): the reappearing header publishes its
+     height, and styles.css pins the Foray transport beneath a SHOWING header
+     instead of behind it. */
+  "test/collapsing-header-scroll.test.js": 8,
   /* The onboarding sheet mounts once per VISIT, not once per persisted flag
      (found 2026-09-13 by the Playwright drawer spec: two `#first-time-sheet`
      nodes, duplicate ids, three-minute click timeouts behind them). Floored
@@ -605,7 +608,10 @@ const FLOORS = {
      across these five tests were run and all six went red. A review round then
      found four MORE wrong stylesheets the first draft passed — see that file's
      header for what each of them broke and which line now stops it. */
-  "test/home-layout.test.js": 6, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
+  /* 6 -> 8 (2026-09-22 audit): Home v2's element no longer inherits `.home`'s
+     one-screen floor through its second class (it always scrolled by the tab
+     bar's height), and a stretch card's bridge line is a row of its own. */
+  "test/home-layout.test.js": 8, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
 
   /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
      (kanban card t_567b570f): renders the curated pool synchronously so
@@ -943,8 +949,15 @@ const FLOORS = {
      the nine tokens' names+values, the "no raw hex leaks outside the block"
      mutation guard, the amber/violet consumption check, and the self-hosted
      font-src proof. Zero slack: each one guards a distinct way the token
-     system could quietly stop being a token system. */
-  "test/ui-tokens.test.js": 4,
+     system could quietly stop being a token system.
+     4 -> 8 (2026-09-22 audit, theme I): the four above enumerate what v2
+     ADDED, and passed while five v1 tokens leaked onto every v2 page on a
+     phone set to Light. The new four enumerate what live rules READ (every
+     name owned by body.ui-v2, component-scoped, JS-written or structural),
+     re-own everything a colour-scheme query can change, check the JS-written
+     claim, and resolve the cascade for "Delete everything" to the danger
+     token. */
+  "test/ui-tokens.test.js": 8,
   /* U-02 (docs/ui-transition-plan.md, kanban t_806e5d01): the cp_ui_v2 flag
      and the four-tab bar shell. Eleven tests -- off by default, all four
      tabs in order when on, removed (not hidden) when turned back off, the
