@@ -1,0 +1,76 @@
+﻿2026-09-06T15:40:17.3523717Z Current runner version: '2.337.0'
+2026-09-06T15:40:17.3561535Z ##[group]Runner Image Provisioner
+2026-09-06T15:40:17.3563152Z Hosted Compute Agent
+2026-09-06T15:40:17.3564313Z Version: 20260828.587
+2026-09-06T15:40:17.3565441Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+2026-09-06T15:40:17.3566711Z Build Date: 2026-08-28T16:44:25Z
+2026-09-06T15:40:17.3567893Z Worker ID: {2c0ef324-b250-45bf-8901-1ffed6aae67b}
+2026-09-06T15:40:17.3569070Z Azure Region: eastus
+2026-09-06T15:40:17.3570311Z ##[endgroup]
+2026-09-06T15:40:17.3572838Z ##[group]Operating System
+2026-09-06T15:40:17.3573933Z Ubuntu
+2026-09-06T15:40:17.3574814Z 24.04.4
+2026-09-06T15:40:17.3575724Z LTS
+2026-09-06T15:40:17.3576703Z ##[endgroup]
+2026-09-06T15:40:17.3577613Z ##[group]Runner Image
+2026-09-06T15:40:17.3578721Z Image: ubuntu-24.04
+2026-09-06T15:40:17.3579670Z Version: 20260831.293.1
+2026-09-06T15:40:17.3582193Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260831.293/images/ubuntu/Ubuntu2404-Readme.md
+2026-09-06T15:40:17.3584927Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260831.293
+2026-09-06T15:40:17.3586813Z ##[endgroup]
+2026-09-06T15:40:17.3588658Z ##[group]GITHUB_TOKEN Permissions
+2026-09-06T15:40:17.3592072Z Contents: read
+2026-09-06T15:40:17.3593072Z Metadata: read
+2026-09-06T15:40:17.3594563Z ##[endgroup]
+2026-09-06T15:40:17.3597700Z Secret source: Actions
+2026-09-06T15:40:17.3599798Z Prepare workflow directory
+2026-09-06T15:40:17.4083338Z Prepare all required actions
+2026-09-06T15:40:17.4239127Z Complete job name: summary
+2026-09-06T15:40:17.5467789Z ##[group]Run set -euo pipefail
+2026-09-06T15:40:17.5468658Z [36;1mset -euo pipefail[0m
+2026-09-06T15:40:17.5469558Z [36;1m{[0m
+2026-09-06T15:40:17.5470731Z [36;1m  echo "## Release ${MARKETING_VERSION} (build ${BUILD_NUMBER})"[0m
+2026-09-06T15:40:17.5472406Z [36;1m  echo[0m
+2026-09-06T15:40:17.5473651Z [36;1m  echo "| | credential state | uploaded |"[0m
+2026-09-06T15:40:17.5474842Z [36;1m  echo "|---|---|---|"[0m
+2026-09-06T15:40:17.5476527Z [36;1m  echo "| iOS / TestFlight | ${IOS_STATE:-not reached} | ${IOS_UPLOADED:-false} |"[0m
+2026-09-06T15:40:17.5478761Z [36;1m  echo "| Android / Play (internal) | ${ANDROID_STATE:-not reached} | ${ANDROID_UPLOADED:-false} |"[0m
+2026-09-06T15:40:17.5481112Z [36;1m  echo[0m
+2026-09-06T15:40:17.5482183Z [36;1m} >> "$GITHUB_STEP_SUMMARY"[0m
+2026-09-06T15:40:17.5483410Z [36;1m[0m
+2026-09-06T15:40:17.5484894Z [36;1m# FAILS ONLY WHEN BOTH SIDES HAD CREDENTIALS AND DISAGREED ON THE[0m
+2026-09-06T15:40:17.5487073Z [36;1m# OUTCOME. A documented-absent secret on either side is a warning —[0m
+2026-09-06T15:40:17.5489022Z [36;1m# docs/release-lockstep-plan.md's acceptance criterion says so[0m
+2026-09-06T15:40:17.5491196Z [36;1m# verbatim, and Track A (this whole file) has to ship correctly[0m
+2026-09-06T15:40:17.5493071Z [36;1m# before Track B's human gates (G1-G3, the Play service account)[0m
+2026-09-06T15:40:17.5494544Z [36;1m# ever clear.[0m
+2026-09-06T15:40:17.5495906Z [36;1mif [ "${IOS_STATE:-}" = "ready" ] && [ "${ANDROID_STATE:-}" = "ready" ]; then[0m
+2026-09-06T15:40:17.5497710Z [36;1m  if [ "${IOS_UPLOADED:-false}" != "${ANDROID_UPLOADED:-false}" ]; then[0m
+2026-09-06T15:40:17.5500667Z [36;1m    echo "::error::the stores disagree: iOS uploaded=${IOS_UPLOADED:-false}, Android uploaded=${ANDROID_UPLOADED:-false}, and both had credentials configured." \[0m
+2026-09-06T15:40:17.5503350Z [36;1m      | tee -a "$GITHUB_STEP_SUMMARY"[0m
+2026-09-06T15:40:17.5504524Z [36;1m    exit 1[0m
+2026-09-06T15:40:17.5505553Z [36;1m  fi[0m
+2026-09-06T15:40:17.5507173Z [36;1m  echo "Both stores had credentials and agree (uploaded=${IOS_UPLOADED:-false})." >> "$GITHUB_STEP_SUMMARY"[0m
+2026-09-06T15:40:17.5509120Z [36;1melse[0m
+2026-09-06T15:40:17.5511301Z [36;1m  echo "**Not both platforms have credentials yet — this is a documented-absent state, not a failure.**" \[0m
+2026-09-06T15:40:17.5513378Z [36;1m    >> "$GITHUB_STEP_SUMMARY"[0m
+2026-09-06T15:40:17.5515179Z [36;1m  if [ "${ANDROID_STATE:-}" != "ready" ]; then[0m
+2026-09-06T15:40:17.5517262Z [36;1m    echo "See docs/release-lockstep-plan.md G2/G3 and HUMAN-ACTIONS.md for what unblocks Android." \[0m
+2026-09-06T15:40:17.5519146Z [36;1m      >> "$GITHUB_STEP_SUMMARY"[0m
+2026-09-06T15:40:17.5520462Z [36;1m  fi[0m
+2026-09-06T15:40:17.5521409Z [36;1mfi[0m
+2026-09-06T15:40:17.5522209Z [36;1m[0m
+2026-09-06T15:40:17.5523269Z [36;1mif [ "${IOS_STATE:-}" = "partial" ] || [ "${ANDROID_STATE:-}" = "partial" ]; then[0m
+2026-09-06T15:40:17.5525422Z [36;1m  echo "::error::a half-configured signing/upload credential set was detected — see the job logs above."[0m
+2026-09-06T15:40:17.5527302Z [36;1m  exit 1[0m
+2026-09-06T15:40:17.5528270Z [36;1mfi[0m
+2026-09-06T15:40:17.6116678Z shell: /usr/bin/bash -e {0}
+2026-09-06T15:40:17.6117891Z env:
+2026-09-06T15:40:17.6118488Z   MARKETING_VERSION: 1.0.0
+2026-09-06T15:40:17.6119154Z   BUILD_NUMBER: 2026090601
+2026-09-06T15:40:17.6119800Z   IOS_STATE: ready
+2026-09-06T15:40:17.6120798Z   IOS_UPLOADED: true
+2026-09-06T15:40:17.6121469Z   ANDROID_STATE: 
+2026-09-06T15:40:17.6122030Z   ANDROID_UPLOADED: 
+2026-09-06T15:40:17.6122611Z ##[endgroup]
+2026-09-06T15:40:17.6556914Z Cleaning up orphan processes

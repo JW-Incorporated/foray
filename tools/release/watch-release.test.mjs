@@ -16,6 +16,9 @@
  *   jobs-34042838342.json         the 2026-09-06 run where android died before
  *                                 its credential gate — the summary job went
  *                                 GREEN, which is the plan's §5 blind spot.
+ *   summary-job-101513086385.txt  that run's `summary` job log, verbatim: no
+ *                                 outcome line, and a BLANK `ANDROID_STATE: `
+ *                                 in the env echo — the input G2 really gets.
  *   git-log-37554f6..a5f90c1.txt  `git log` in the exact format the workflows
  *                                 use, over the commits those runs shipped.
  * A suite written against paraphrased API output is the forgiving-fake failure
@@ -45,6 +48,7 @@ const FIX = (f) => path.join(HERE, "fixtures", f);
 const RUNS = JSON.parse(fs.readFileSync(FIX("release-runs-2026-09-23.json"), "utf8")).workflow_runs;
 const SUMMARY_LOG = fs.readFileSync(FIX("summary-job-35672098914.txt"), "utf8");
 const JOBS_0906 = JSON.parse(fs.readFileSync(FIX("jobs-34042838342.json"), "utf8")).jobs;
+const SUMMARY_LOG_0906 = fs.readFileSync(FIX("summary-job-101513086385.txt"), "utf8");
 const GIT_LOG = fs.readFileSync(FIX("git-log-37554f6..a5f90c1.txt"), "utf8");
 const COMMITS = parseGitLog(GIT_LOG);
 const WATCH_WF = fs.readFileSync(path.join(ROOT, ".github/workflows/release-watch.yml"), "utf8");
@@ -257,15 +261,60 @@ test("G1: red only after the grace, and any non-success counts — a cancelled r
   assert.equal(GRACE_MINUTES, 60);
 });
 
-test("G2 from job conclusions when there is no outcome line: 2026-09-06, android died and the summary went GREEN", () => {
-  const run0906 = { id: 34042838342, run_number: 1, status: "completed", conclusion: "failure",
-    created_at: "2026-09-06T15:36:20Z", updated_at: "2026-09-06T15:40:20Z", head_sha: "c3f2411fc88333a96bb2ac044b6ac5806af7d2da" };
+const RUN_0906 = { id: 34042838342, run_number: 1, status: "completed", conclusion: "failure",
+  created_at: "2026-09-06T15:36:20Z", updated_at: "2026-09-06T15:40:20Z", head_sha: "c3f2411fc88333a96bb2ac044b6ac5806af7d2da" };
+
+test("G2 REPLAY 2026-09-06 through the real wiring: android died before its gate, the summary went GREEN, and G2 says the stores diverged", () => {
   const summary = JOBS_0906.find((j) => j.name === "summary");
   assert.equal(summary.conclusion, "success", "the fixture is the §5 blind spot: the summary job did not flag it");
-  const g = divergentGate([run0906], JOBS_0906, null, "2026-09-06T17:00:00Z");
-  assert.equal(g.code, "STORES_DIVERGED");
-  assert.match(g.message, /^TestFlight received .* and Play did not/);
-  assert.equal(g.facts.source, "jobs");
+  /* The workflow fetches this log because the summary job was not skipped. It
+   * has no RELEASE_OUTCOME line, and the runner echoed android's blank state
+   * (`ANDROID_STATE: `) — so the outcome is NOT null. This is the path the
+   * watchdog actually takes; passing `null` by hand skipped it and passed
+   * while the real run reported "a documented gap". */
+  const outcome = parseOutcome(SUMMARY_LOG_0906);
+  assert.deepEqual(outcome, {
+    build: "2026090601",
+    ios: { state: "ready", uploaded: true },
+    android: { state: "not reached", uploaded: false },
+  });
+  const g = divergentGate([RUN_0906], JOBS_0906, outcome, "2026-09-06T17:00:00Z");
+  assert.equal(g.code, "STORES_DIVERGED", `G2 read the 09-06 run as ${g.code}: ${g.message}`);
+  assert.equal(g.ok, false);
+  assert.match(g.message, /^TestFlight received build 2026090601 and Play did not/);
+  assert.equal(g.facts.source, "outcome+jobs");
+  // …and end to end, exactly as the Judge step calls it.
+  const v = watchVerdict({ runs: [RUN_0906], jobs: JOBS_0906, summaryLog: SUMMARY_LOG_0906, commits: [], bundle: BUNDLE,
+    peerWorkflow: ALIVE_PEER, peerRuns: [peerRunAt("2026-09-06T16:47:00Z")], now: "2026-09-06T17:00:00Z" });
+  assert.equal(v.gates.find((x) => x.id === "G2").code, "STORES_DIVERGED");
+});
+
+test("G2 from job conclusions alone when there is no summary log at all (expired, or never fetched)", () => {
+  for (const log of ["", undefined]) {
+    const g = divergentGate([RUN_0906], JOBS_0906, parseOutcome(log), "2026-09-06T17:00:00Z");
+    assert.equal(g.code, "STORES_DIVERGED");
+    assert.match(g.message, /^TestFlight received build from run #1 and Play did not/);
+    assert.equal(g.facts.source, "jobs");
+  }
+});
+
+test("G2: 'not reached' is UNKNOWN, not 'not ready' — the job decides; only an explicit non-ready state is a documented gap", () => {
+  const r = { ...RUN_0906, conclusion: "success", updated_at: "2026-09-24T00:05:00Z" };
+  const jobs = (ios, android) => [{ name: "ios", conclusion: ios }, { name: "android", conclusion: android }];
+  const notReached = { build: "7", ios: { state: "ready", uploaded: true }, android: { state: "not reached", uploaded: false } };
+  const now = "2026-09-24T05:00:00Z";
+  assert.equal(divergentGate([r], jobs("success", "failure"), notReached, now).code, "STORES_DIVERGED");
+  assert.equal(divergentGate([r], jobs("success", "success"), notReached, now).code, "STORES_AGREE");
+  assert.equal(divergentGate([r], jobs("success", "skipped"), notReached, now).code, "STORE_JOBS_UNDECIDED");
+  assert.equal(divergentGate([r], [], notReached, now).code, "NO_STORE_JOBS");
+  // An explicit non-ready state on either side is still the documented gap, whatever the jobs say.
+  const absent = { ...notReached, ios: { state: "absent", uploaded: false } };
+  assert.equal(divergentGate([r], jobs("success", "failure"), absent, now).code, "NOT_BOTH_READY");
+  const partial = { ...notReached, android: { state: "partial", uploaded: false } };
+  assert.equal(divergentGate([r], jobs("success", "failure"), partial, now).code, "NOT_BOTH_READY");
+  // A reached-and-ready state still wins over its job: green-but-skipped is a non-upload.
+  const skipped = { build: "7", ios: { state: "ready", uploaded: true }, android: { state: "ready", uploaded: false } };
+  assert.equal(divergentGate([r], jobs("success", "success"), skipped, now).code, "STORES_DIVERGED");
 });
 
 test("G2: a store with documented-absent credentials is a known gap, not a divergence", () => {

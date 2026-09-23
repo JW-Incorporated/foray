@@ -392,42 +392,53 @@ const RED_JOB = new Set(["failure", "timed_out", "cancelled", "startup_failure"]
 /** G2 — the two stores did not get the same build.
  *
  *  Judged on the newest completed run only: a later run that uploaded to both
- *  stores re-converges them, and would be the newest. From the outcome line when
- *  the run has one — which is the only reading that can see "green but skipped"
- *  — and otherwise from the `ios`/`android` job conclusions. The plan's
- *  qualification stands: a divergence is only red when BOTH credential gates said
- *  `ready`. A store whose credentials are documented-absent is a known gap with
- *  its own HUMAN-ACTIONS card, not an alarm every hour. */
+ *  stores re-converges them, and would be the newest. Each platform is read from
+ *  the outcome line when that line says it got as far as its credential gate —
+ *  which is the only reading that can see "green but skipped" — and otherwise
+ *  from its own `ios`/`android` job conclusion. The plan's qualification
+ *  stands: a store whose credentials are documented-absent (an EXPLICIT
+ *  non-ready state, e.g. `absent`) is a known gap with its own HUMAN-ACTIONS
+ *  card, not an alarm every hour.
+ *
+ *  WHY PER PLATFORM, NOT PER RUN. A store job that dies BEFORE its credential
+ *  gate leaves its state blank, and the runner still echoes the blank
+ *  (`ANDROID_STATE: `) — so the outcome is non-null, and blank reads as
+ *  "not reached". That is 2026-09-06: TestFlight got the build, android failed,
+ *  the summary went green. Reading "not reached" as "not ready" filed that
+ *  divergence as a documented gap; "not reached" is UNKNOWN, and the job
+ *  conclusion is what knows. */
+const NOT_REACHED = "not reached";
+
 export function divergentGate(runs, jobs, outcome, now) {
   const latest = sortRuns(runs).find(isCompleted);
   if (!latest) return gate("G2", true, "NO_COMPLETED_RELEASE", "No release run has completed yet.");
   const facts = runFacts(latest);
-  let ios;
-  let android;
-  let source;
-  if (outcome) {
-    source = "outcome";
-    if (outcome.ios.state !== "ready" || outcome.android.state !== "ready") {
-      return gate("G2", true, "NOT_BOTH_READY",
-        `Not both stores had credentials (iOS ${outcome.ios.state}, Android ${outcome.android.state}); ` +
-          "that is a documented gap, not a divergence.", facts);
-    }
-    ios = outcome.ios.uploaded;
-    android = outcome.android.uploaded;
-  } else {
-    source = "jobs";
-    const list = Array.isArray(jobs) ? jobs : [];
-    const conclusion = (name) => (list.find((j) => j && j.name === name) || {}).conclusion;
-    const iosC = conclusion("ios");
-    const androidC = conclusion("android");
-    if (!iosC || !androidC) {
-      return gate("G2", true, "NO_STORE_JOBS", "The newest release never reached its store jobs.", facts);
-    }
-    ios = iosC === "success" ? true : RED_JOB.has(iosC) ? false : null;
-    android = androidC === "success" ? true : RED_JOB.has(androidC) ? false : null;
-    if (ios === null || android === null) {
-      return gate("G2", true, "STORE_JOBS_UNDECIDED", "A store job neither succeeded nor failed.", facts);
-    }
+  const reached = (p) => Boolean(outcome && outcome[p] && outcome[p].state && outcome[p].state !== NOT_REACHED);
+  if (outcome && ((reached("ios") && outcome.ios.state !== "ready") ||
+    (reached("android") && outcome.android.state !== "ready"))) {
+    const st = (p) => (outcome[p] && outcome[p].state) || NOT_REACHED;
+    return gate("G2", true, "NOT_BOTH_READY",
+      `Not both stores had credentials (iOS ${st("ios")}, Android ${st("android")}); ` +
+        "that is a documented gap, not a divergence.", facts);
+  }
+  const list = Array.isArray(jobs) ? jobs : [];
+  const conclusion = (name) => (list.find((j) => j && j.name === name) || {}).conclusion;
+  /* true / false / null (undecided) / undefined (no such job). */
+  const fromJob = (name) => {
+    const c = conclusion(name);
+    if (!c) return undefined;
+    return c === "success" ? true : RED_JOB.has(c) ? false : null;
+  };
+  const read = (p) => (reached(p) ? outcome[p].uploaded : fromJob(p));
+  const ios = read("ios");
+  const android = read("android");
+  const source = reached("ios") && reached("android") ? "outcome"
+    : !reached("ios") && !reached("android") ? "jobs" : "outcome+jobs";
+  if (ios === undefined || android === undefined) {
+    return gate("G2", true, "NO_STORE_JOBS", "The newest release never reached its store jobs.", facts);
+  }
+  if (ios === null || android === null) {
+    return gate("G2", true, "STORE_JOBS_UNDECIDED", "A store job neither succeeded nor failed.", facts);
   }
   if (ios === android) {
     return gate("G2", true, "STORES_AGREE", `Both stores agree (uploaded=${ios}).`, { ...facts, source });
