@@ -92,8 +92,8 @@ const FLOORS = {
   /* 50 -> 55 with S-01 (docs/search-plan.md, kanban t_46366383): a new
      `search` entry kind on PlayerDiagnostics — query length only, never the
      query text, per this suite's own §7. */
-  "player/diagnostic-log.test.js": 83, // 2026-09-22 audit (L2), founder report 3: a `build` row per boot and a `build …` header line; 81 -> 83 // 2026-09-22 audit (L2), founder report 2: an unexplained stop carries hiddenFor + the element's readyState/networkState/error; a stall with no seam is a coalesced `media` row; an external play is a `transport` row; session rows carry hiddenFor; 76 -> 81 // #685 (2026-09-13): the voiceProbe line says rendered-vs-estimated and flags an impossible RTF; a synthesis-failed refusal keeps its numbers; 74 -> 76 // client audit (2026-09-12): the search row's one vocabulary + `hidden`, and the epMs/ctaMs fields; 72 -> 74 // K-01 (2026-09-12): the voiceProbe row — named fields only, null-not-zero on a refusal, and both report lines; 68 -> 72 // L-06 + M-03 (2026-09-12): the `nowplaying`, `session` and `transport` entries; 57 -> 68 // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
-  "player/diagnostic-record.test.js": 23,
+  "player/diagnostic-log.test.js": 90, // 2026-09-23 founder record (recorded 939, entries 0, no build row): the clear mark, the build kept outside the ring, the MISSING gap line naming key+tiers, the boot row's hydration flag; 83 -> 90 // 2026-09-22 audit (L2), founder report 3: a `build` row per boot and a `build …` header line; 81 -> 83 // 2026-09-22 audit (L2), founder report 2: an unexplained stop carries hiddenFor + the element's readyState/networkState/error; a stall with no seam is a coalesced `media` row; an external play is a `transport` row; session rows carry hiddenFor; 76 -> 81 // #685 (2026-09-13): the voiceProbe line says rendered-vs-estimated and flags an impossible RTF; a synthesis-failed refusal keeps its numbers; 74 -> 76 // client audit (2026-09-12): the search row's one vocabulary + `hidden`, and the epMs/ctaMs fields; 72 -> 74 // K-01 (2026-09-12): the voiceProbe row — named fields only, null-not-zero on a refusal, and both report lines; 68 -> 72 // L-06 + M-03 (2026-09-12): the `nowplaying`, `session` and `transport` entries; 57 -> 68 // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
+  "player/diagnostic-record.test.js": 25, // 2026-09-23 founder record: the bounded wait on hydration (a hung IndexedDB no longer costs the boot and build rows) and a Clear that keeps the build on the header; 23 -> 25
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
      rather than a wrong answer on screen, which makes them the two suites in
@@ -127,7 +127,7 @@ const FLOORS = {
   /* 2026-09-22 (audit L2, founder report 3): which build wrote a diagnostics
      record — the web deploy id on both hosts and the native build number in the
      shell, each from where only it is known. New suite. */
-  "player/build-stamp.test.js": 5,
+  "player/build-stamp.test.js": 7, // 2026-09-23: each half of the stamp is bounded, so a bridge or a bundle read that never answers still yields a row; 5 -> 7
   "player/foray-progress.test.js": 59, // FD-05 (2026-09-10): a Foray gone from the directory reads `dropped`; 58 -> 59
   "player/foray-queue.test.js": 38, // F-90 (2026-09-11): the jingle item asset is the interlude asset; 37 -> 38
   /* The interlude jingle (queue-manager.js §13): the rule, the element wrapper

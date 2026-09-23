@@ -9,7 +9,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  BUILD_STAMP_FILE, DEPLOY_MANIFEST_FILE, deployIdOf, buildStampDoc, nativeBuildOf, readBuildStamp,
+  BUILD_STAMP_FILE, DEPLOY_MANIFEST_FILE, BUILD_STAMP_WAIT_MS, deployIdOf, buildStampDoc, nativeBuildOf, readBuildStamp,
 } from "./build-stamp.js";
 
 /** A fetch that answers from a table, and records what it was asked. */
@@ -75,4 +75,29 @@ test("the bundle's stamp is the manifest's id alone, and a manifest with none st
   assert.deepEqual(buildStampDoc({ deploy_id: "2b808ec9d50c5b98", files: { "app.js": "sha256:00" } }),
     { deploy_id: "2b808ec9d50c5b98" });
   assert.throws(() => buildStampDoc({ files: {} }), /no usable deploy_id/);
+});
+
+test("a bridge that never answers cannot cost the row: the web half is stamped, the native half is `?`", { timeout: 5000 }, async () => {
+  /* 2026-09-23: the founder's record had no build row at all. `client.js`
+     writes the row when this promise settles, so a `getInfo` that never came
+     back meant no row — not even the web half, which had already been read.
+     KILLING MUTATION: drop `withinMs` around the native call. This test times
+     out instead of finishing (the `timeout` above is what makes the hang a
+     failure rather than a stuck suite). */
+  const { fetchJson } = fetchFrom({ [BUILD_STAMP_FILE]: { deploy_id: "2b808ec9d50c5b98" } });
+  const hung = { nativePromise: () => new Promise(() => {}) };
+  const stamp = await readBuildStamp({ inShell: true, fetchJson, capacitor: hung, timeoutMs: 20 });
+  assert.deepEqual(stamp, { shell: true, web: "2b808ec9d50c5b98", native: null, version: null });
+});
+
+test("the bound is PER HALF: a bundle read that hangs still lets the binary answer", { timeout: 5000 }, async () => {
+  /* The other order. A stamp file the WebView never serves must not take the
+     native build number with it — that number is the one that separates two
+     store builds of the same commit.
+     KILLING MUTATION: bound only the native call. This times out. */
+  const fetchJson = () => new Promise(() => {});
+  const capacitor = { nativePromise: async () => ({ build: "2026092326", version: "1.4.0" }) };
+  const stamp = await readBuildStamp({ inShell: true, fetchJson, capacitor, timeoutMs: 20 });
+  assert.deepEqual(stamp, { shell: true, web: null, native: "2026092326", version: "1.4.0" });
+  assert.equal(BUILD_STAMP_WAIT_MS, 5000, "the shipped bound matches app.js's wait on hydration");
 });

@@ -164,7 +164,7 @@ let bootSeq = 0;
  * sharing one instance would share a booted player, one storage tier and one
  * diagnostic ring.
  */
-async function bootClient(t) {
+async function bootClient(t, { hangIdb = false, deployId = null } = {}) {
   const audio = new Element();
   const storage = new MemoryStorage();
   const doc = {
@@ -191,7 +191,7 @@ async function bootClient(t) {
     dispatchEvent: () => true,
   };
 
-  const names = ["window", "document", "localStorage", "navigator", "Event", "Audio"];
+  const names = ["window", "document", "localStorage", "navigator", "Event", "Audio", "indexedDB", "fetch"];
   const prev = new Map(names.map((n) => [n, Object.getOwnPropertyDescriptor(globalThis, n)]));
   const set = (n, value) =>
     Object.defineProperty(globalThis, n, { value, writable: true, configurable: true });
@@ -206,6 +206,18 @@ async function bootClient(t) {
   set("localStorage", storage);
   set("navigator", { storage: { persisted: async () => false } });
   set("Event", class { constructor(type) { this.type = type; } });
+  /* A durable tier that NEVER ANSWERS (2026-09-23): an `indexedDB.open` whose
+     request fires no event, which is `idb-tier.js`'s hazard 1 as a WKWebView
+     produces it after a background. `hydrate()` then never settles. */
+  if (hangIdb) set("indexedDB", { open: () => ({}) });
+  /* The web's own statement of its deploy id, when a test needs the build
+     line to carry a real value. Anything else the page fetches at boot is
+     refused the way Node refuses a relative URL — as it was before. */
+  if (deployId) {
+    set("fetch", (url) => (String(url) === "deploy-manifest.json"
+      ? Promise.resolve({ ok: true, json: async () => ({ deploy_id: deployId }) })
+      : Promise.reject(new TypeError("no network in this harness"))));
+  }
   /* The FIRST `new Audio()` is the player's element — the one every test below
      drives — exactly as before. Any later construction gets its own inert
      stand-in: `html-audio-backend.js` builds one element, and since queue-
@@ -341,7 +353,7 @@ test("the first write waits for storage to hydrate", () => {
      MUTATION 2: move only the `addEventListener` back out. The third fails. */
   const deferred = /storageReady\s*\.then\(([\s\S]*?)\}\)\s*\.catch/.exec(code);
   assert.ok(deferred, "the field record's writers must be deferred until storageReady");
-  assert.match(deferred[1], /diag\.boot\(\)/, "the boot row is deferred");
+  assert.match(deferred[1], /diag\.boot\(/, "the boot row is deferred");
   assert.match(
     deferred[1], /addEventListener\(\s*"visibilitychange"[\s\S]*?diag\.visibility/,
     "and so is the visibility listener, which also writes"
@@ -349,7 +361,7 @@ test("the first write waits for storage to hydrate", () => {
   /* EXACTLY ONE of each, so the deferred copy cannot sit beside a module-scope one
      that still runs first — which is how the incomplete first fix looked. */
   assert.strictEqual(
-    (code.match(/diag\.boot\(\)/g) || []).length, 1,
+    (code.match(/diag\.boot\(/g) || []).length, 1,
     "the boot row must be written from one place, and that place is inside the then"
   );
   assert.strictEqual(
@@ -954,4 +966,86 @@ test("the failed-tap bridge answers rather than throws — a source assertion", 
     /window\.forayNoteTapFailure = [\s\S]{0,600}?catch \(_\) \{\s*return false;/,
     "a published global must answer rather than throw"
   );
+});
+
+/* ==================================================================== */
+/* 2026-09-23: the founder's empty record, from the client's end          */
+/* ==================================================================== */
+
+/** Drain microtasks without a (possibly mocked) timer. */
+const drain = async () => { for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r)); };
+
+test("REPORT 2026-09-23: a durable tier that never answers cannot cost the boot row or the build row", { timeout: 20_000 }, async (t) => {
+  /* THE FOUNDER'S RECORD HAD NO BUILD ROW AND NO ROWS. Every writer the record
+     has at boot — `boot()`, the build stamp, the visibility and native-session
+     listeners — sat behind `storage.hydrate()` with no bound, and `hydrate()`
+     awaits every durable tier's read and then drains the write queue. An
+     IndexedDB whose transaction never settles (idb-tier.js, hazard 1) therefore
+     produced a page that recorded nothing, forever, while the report's own words
+     said "Play a foray and come back". `app.js` has bounded its wait on the same
+     promise at five seconds since the store shipped; the record now does too.
+
+     Real `client.js`, real `DurableStore`, a real `idb` tier over an `open` that
+     never fires. Mocked timers, so the five seconds cost nothing and the bound is
+     asserted at its exact value rather than approximated.
+
+     KILLING MUTATION: make `storageReady` the bare hydration promise again. The
+     boot row never lands and the second block fails (the `timeout` above turns a
+     hang into a failure). MUTATION 2: drop `hydrated` from the boot call — the
+     row loses its `storage=not-hydrated` mark and the last assertion fails. */
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { record, rows, restore } = await bootClient(t, { hangIdb: true });
+  await drain();
+  assert.equal(record(), null, "nothing is written while hydration can still land: the writers ARE deferred");
+
+  t.mock.timers.tick(4_999);
+  await drain();
+  assert.equal(record(), null, "and the bound is not shorter than app.js's");
+
+  t.mock.timers.tick(1);
+  await drain();
+  assert.ok(record(), "at the bound, the record exists");
+  assert.equal(rows("boot").length, 1, "the boot row landed without the durable tier");
+  assert.equal(rows("build").length, 1, "and so did the build row");
+  assert.equal(rows("boot")[0].hydrated, false, "and the boot row says the store had not hydrated");
+  assert.match(globalThis.window.forayDiagnosticReport(), /storage=not-hydrated/);
+  restore();
+});
+
+test("a Clear on the real page keeps the build on the header and says the record was cleared", async (t) => {
+  /* The founder's second line after a Clear: `build unknown (no build row yet)`,
+     over `recorded 939 · entries 0 · dropped 0`, with nothing to say the ring had
+     been emptied on purpose. Through the real bridges app.js calls.
+
+     KILLING MUTATION 1: null `_build` in `DiagnosticLog.clear()` — the build line
+     falls back to "unknown". KILLING MUTATION 2: stop writing `_cleared` — the
+     `cleared at` line is gone and the header prints MISSING instead. */
+  const { client, storage, record, restore } = await bootClient(t, { deployId: "2b808ec9d50c5b98" });
+  await settle();
+  await client.playForay(crossEpisodeForay(), { startIndex: 0 });
+  await settle();
+  const before = globalThis.window.forayDiagnosticReport().split("\n");
+  assert.equal(before[1], "build web 2b808ec9d50c5b98 · website", "the page learned its build at boot");
+  const recorded = record().seq;
+  assert.ok(recorded >= 3, `boot, build and the play are in the ring (seq ${recorded})`);
+
+  globalThis.window.forayDiagnosticClear();
+  assert.equal(storage.getItem(DIAG_KEY), null, "a Clear still leaves the key absent");
+  const after = globalThis.window.forayDiagnosticReport().split("\n");
+  assert.equal(after[1], "build web 2b808ec9d50c5b98 · website", "the build survived the Clear");
+  assert.match(after.join("\n"), new RegExp(`^cleared at #${recorded} .* · 0 recorded since$`, "m"));
+  assert.match(after.join("\n"), /entries 0 of 200/);
+  assert.doesNotMatch(after.join("\n"), /MISSING/, "an emptied ring is not a lost one");
+  assert.match(after.join("\n"), new RegExp(`Nothing recorded yet since the record was cleared at #${recorded}`));
+
+  /* The next thing the page records carries both facts down into storage, so a
+     page killed after this point comes back knowing them. */
+  globalThis.document.hidden = true;
+  globalThis.document.fire("visibilitychange");
+  const blob = record();
+  assert.deepEqual(blob.build, { shell: false, web: "2b808ec9d50c5b98", native: null, version: null });
+  assert.equal(blob.cleared.seq, recorded);
+  assert.ok(blob.entries.some((e) => e.type === "visibility"), "the row since the Clear is the visibility change");
+  assert.equal(blob.entries[0].seq, recorded + 1, "and it continues the counter from the clear mark");
+  restore();
 });
