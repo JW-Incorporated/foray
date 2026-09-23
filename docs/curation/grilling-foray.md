@@ -6,16 +6,20 @@
 > pies and dinner parties." The replacement is **`grilling-history-2`**, assembled
 > against the 40-beat spine in `docs/curation/grilling-history-spine.md` and
 > documented in `docs/curation/grilling-history-assembly.md`. Open it with
-> `?foray=grilling-history-2`; the `?foray=grilling-history-1` link plays this
-> version.
+> `?foray=grilling-history-2`.
 >
-> `grilling-history-1` is deliberately **kept rather than deleted**. Its exact
-> shape is the live fixture for 103 tests across `player/`, `test/` and `tools/`,
-> including #182's D1 and D5 acceptance proofs, which depend on properties only
-> this order has — D1 met exactly, a 620.5 s tightest seven-start span, and the
-> `GRID-3` reinstatement that breaks D1. Retiring it means extracting those
-> fixtures first, which is a separate reviewed change. Everything below this note
-> still describes this Foray accurately and is left unedited for that reason.
+> **Retired from `data/forays.json`, 2026-09-22 (#236).** It had been kept only
+> because its exact shape was the live fixture for ~100 tests. Those were moved
+> first — the D1/D5 acceptance proofs onto `tools/foray/fixtures/boundary/`, and
+> the player suites onto a VERBATIM frozen copy of this Foray, with exactly the
+> pool rows and episodes it plays, in `tools/foray/fixtures/frozen/` — and then
+> it was deleted. So the `?foray=grilling-history-1` link no longer opens
+> anything. The frozen copy is what `tools/foray/check-forays.test.mjs` still
+> checks this document's §2 table against, row for row, and what
+> `tools/foray/measure-cadence.mjs` reads for the `TEXTURE_CADENCE_SEC`
+> measurement. Its pool rows stay in `data/segments.json`: they are valid cuts,
+> reusable by any Foray, and the pool was never scoped to one. Everything below
+> this note still describes that frozen order accurately and is left unedited.
 
 The first complete Foray. **32 segments, 61 min 13 s of tape**, assembled in
 listening order across six arc slots, drawn from nine ad-free episodes of five
