@@ -290,6 +290,13 @@ html, body {
   white-space: nowrap;
 }
 
+/* The sheet owner (app.js, openSheet) focuses the DIALOG itself when a sheet
+   opens, so a screen reader announces its name and no text field throws up a
+   keyboard. The panel is not a control: it gets no focus ring of its own when
+   that focus came from a tap. A keyboard user still gets one (`:focus-visible`
+   is the browser's own judgement of that). */
+[role="dialog"][tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+
 /* Was `overflow: hidden` on `body.view-home` — the home screen is designed
    to fit one viewport with no internal scroll, but on iOS Safari a page with
    no scrollable overflow anywhere also has no rubber-band bounce, which reads
