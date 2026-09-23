@@ -166,6 +166,9 @@ const MEASURED_CONTROLS = [
   ".fp-grab-zone .fp-close",   // the sheet's ✕, 36x36
   ".fp-rate", ".fp-stop", ".fp-collapse", ".fp-openep", // the sheet's second row, ~30 tall
   ".voice-row-audition",       // ~29 tall, inside a row that SELECTS on a miss
+  /* Visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text
+     buttons are sized by their own declarations, like the transport. */
+  ".fp-skip", ".fp-clip", ".fy-clip",
 ];
 
 test("every control the audit measured has a 44px hit area, by size or by the rule", () => {
