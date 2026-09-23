@@ -846,7 +846,7 @@ export class PlayerQueueManager {
     this.currentIndex = index;
 
     const item = this.queue[index];
-    const seconds = this._savedPositionFor(item.id);
+    const seconds = this._savedPositionFor(item);
 
     // No seek event here: `_loadItem` carries the offset into the load, so the
     // asset is prepared at the right position and nothing is ever audible from
@@ -1174,7 +1174,14 @@ export class PlayerQueueManager {
        item, which is what `_loadedId === item.id` asks. */
     const playhead = this.backend.currentTime;
     const playheadReadable = typeof playhead === "number" && Number.isFinite(playhead);
-    const reEnteringLoadedItem = forced == null && this._loadedId === item.id && playheadReadable;
+    /* NOT FROM THE END (audit 2026-09-22). An element that ran out still holds
+       this item, with its playhead parked on the last second — so "the element's
+       clock is about this very item" was true of a FINISHED episode too, and play
+       after the end resumed "in place" at the end and ended again. A finished
+       item is a cold start, and the cold start's rule (`_savedPositionFor`, which
+       is `PositionStore.resumeOffset`) already says what that means: the top. */
+    const reEnteringLoadedItem = forced == null && this._loadedId === item.id && playheadReadable
+      && this.backend.ended !== true;
     const resumingInPlace = Boolean(
       reEnteringLoadedItem && (
         bounds
@@ -1189,7 +1196,7 @@ export class PlayerQueueManager {
       ? playhead
       : (bounds
         ? bounds.startSec
-        : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item.id))));
+        : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item))));
 
     // Move the index only now — after savePosition has already run against the
     // outgoing item. currentIndex tracks what is actually loaded, never what we
@@ -1928,11 +1935,29 @@ export class PlayerQueueManager {
     await this._handle(E.skipToNext(next ? refOf(next.item) : null));
   }
 
-  _savedPositionFor(id) {
-    if (!this.positionStore) return 0;
-    const saved = this.positionStore.load(id);
-    const s = saved && typeof saved.seconds === "number" ? saved.seconds : 0;
-    return Number.isFinite(s) && s > 0 ? s : 0;
+  /**
+   * Where a COLD start of this item begins — `PositionStore.resumeOffset`, the
+   * one owner of "where did the listener get to" (#26).
+   *
+   * Audit 2026-09-22: that method encodes the two rules that make a stored second
+   * a resume point — nothing under 10 s is worth resuming to, and anything inside
+   * the last 30 s means FINISHED — and it had no caller outside its own file. This
+   * read the raw row instead, so pressing play on an episode you had finished
+   * resumed four seconds before the outro: "press play, hear the end, silence".
+   * The DISPLAY of how far a listener got is the other question and keeps the raw
+   * row (`ForayPlayer.lastEpisodeCard`); this is only where playback starts.
+   *
+   * A store without `resumeOffset` — every fake in this repo's manager suites —
+   * gets the raw row, which is what it has always got.
+   */
+  _savedPositionFor(item) {
+    if (!this.positionStore || !item) return 0;
+    const dur = Number(item.duration_sec);
+    const duration = item.duration_sec != null && Number.isFinite(dur) && dur > 0 ? dur : null;
+    const s = typeof this.positionStore.resumeOffset === "function"
+      ? this.positionStore.resumeOffset(item.id, { duration })
+      : this.positionStore.load(item.id)?.seconds;
+    return typeof s === "number" && Number.isFinite(s) && s > 0 ? s : 0;
   }
 
   /** A missing bridge must never stall the queue — corner case #12's spirit

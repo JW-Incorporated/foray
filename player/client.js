@@ -2381,12 +2381,20 @@ const ForayPlayer = {
       : (Number.isFinite(Number(stored?.duration)) ? Number(stored.duration) : null);
     const offset = store.resumeOffset(rec.id, { duration: durationSec });
     if (lastEpisodeState(rec, { positionSec: offset }).state !== "resume") return null;
-    const pct = episodePercentDone({ ...rec, duration_sec: durationSec }, offset);
+    /* TWO QUESTIONS, TWO NUMBERS (audit 2026-09-22). `offset` is where a press
+       STARTS, and `resumeOffset` collapses a finished episode to 0 on purpose.
+       How far the listener GOT is the raw row, and the card is a claim about
+       that: fed the collapsed zero, an episode finished a minute ago showed an
+       empty bar and "60 min left". `episodeRemainingLabel`'s "finished" branch
+       was unreachable from here until it was handed the real number. */
+    const heard = Number(stored?.seconds);
+    const shown = Number.isFinite(heard) && heard > 0 ? heard : 0;
+    const pct = episodePercentDone({ ...rec, duration_sec: durationSec }, shown);
     return {
       ...rec,
       position_sec: offset,
       percent: pct === null ? undefined : Math.round(pct * 100),
-      label: episodeRemainingLabel({ ...rec, duration_sec: durationSec }, offset),
+      label: episodeRemainingLabel({ ...rec, duration_sec: durationSec }, shown),
     };
   },
 

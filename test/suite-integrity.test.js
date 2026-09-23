@@ -175,7 +175,7 @@ const FLOORS = {
      the only test here constructed with `prefetch: true`, i.e. the only one that can
      see a code path nothing in production enables. That is precisely what makes it
      easy to delete as "testing a dead feature", and precisely why it is floored. */
-  "player/transport-reconcile.test.js": 43, // 2026-09-22 audit (L2): part 5 — one episode seek for every surface (restored bar, ended episode, both clamps, empty bar on an unknown duration); 39 -> 43 // 2026-09-22 audit (L2): part 5 — the card, the lock screen and the Foray page read `transportIsRunning()`; a finished Foray starts over; 35 -> 39 // #689 (2026-09-14): part 4 — the four founder reports from one car session, as episode tests rather than Foray ones; 27 -> 34
+  "player/transport-reconcile.test.js": 46, // 2026-09-22 audit (L2): part 5 — a cold start reads `resumeOffset`, play after the end starts over, and the Jump back in card shows the raw row; 43 -> 46 // 2026-09-22 audit (L2): part 5 — one episode seek for every surface (restored bar, ended episode, both clamps, empty bar on an unknown duration); 39 -> 43 // 2026-09-22 audit (L2): part 5 — the card, the lock screen and the Foray page read `transportIsRunning()`; a finished Foray starts over; 35 -> 39 // #689 (2026-09-14): part 4 — the four founder reports from one car session, as episode tests rather than Foray ones; 27 -> 34
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that

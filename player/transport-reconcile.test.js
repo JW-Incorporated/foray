@@ -1692,6 +1692,57 @@ test("AUDIT: an episode with no known duration paints an EMPTY bar, not the last
   restore();
 });
 
+/* ---- where a press starts, and what the card says ---- */
+
+test("AUDIT: a cold start on a FINISHED episode begins at the top, not at the outro", async (t) => {
+  /* `PositionStore.resumeOffset` holds the near-end rule and had no caller
+     outside its own file; the manager read the raw row. KILLING MUTATION:
+     make `_savedPositionFor` read `this.positionStore.load(item.id)?.seconds`
+     unconditionally. */
+  const carried = await aSessionThatReached(t, 3590);
+  const { client, audio, restore } = await bootClient(t, { seed: carried });
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(audio.paused, false);
+  assert.ok(audio.currentTime < 1, `a finished episode starts over, got ${audio.currentTime}s`);
+  restore();
+});
+
+test("AUDIT: the Jump back in card says a finished episode is FINISHED", async (t) => {
+  /* The card reads how far the listener GOT, which is the raw row; where a
+     press starts is the collapsed offset. KILLING MUTATION: feed `offset` to
+     `episodePercentDone`/`episodeRemainingLabel` again — "60 min left", 0%. */
+  const carried = await aSessionThatReached(t, 3590);
+  const { client, restore } = await bootClient(t, { seed: carried });
+  const card = client.lastEpisodeCard();
+  assert.ok(card, "the pointer is still offered");
+  assert.equal(card.label, "finished");
+  assert.equal(card.percent, 100);
+  assert.equal(card.position_sec, 0, "and a press on it starts from the top");
+  const mid = await aSessionThatReached(t, 1800);
+  const again = await bootClient(t, { seed: mid });
+  assert.equal(again.client.lastEpisodeCard().label, "30 min left", "a part-heard episode is unchanged");
+  again.restore();
+  restore();
+});
+
+test("AUDIT: play after an episode RAN OUT starts it again from the top", async (t) => {
+  /* The element still holds the item with its playhead on the last second, so
+     the in-place resume took it for a pause. KILLING MUTATION: drop
+     `this.backend.ended !== true` from `reEnteringLoadedItem`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  audio.runOut();
+  await settle();
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false);
+  assert.ok(audio.currentTime < 1, `play after the end restarts, got ${audio.currentTime}s`);
+  restore();
+});
+
 test("AUDIT: play on a FINISHED Foray starts it over instead of replaying its last segment", async (t) => {
   /* The page now labels this press "Start over", and this is what makes the
      label true. KILLING MUTATION: delete the `ended` branch in `setRunning` —
