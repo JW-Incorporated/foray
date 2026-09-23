@@ -573,8 +573,12 @@ test("the delete-data sheet names the app", () => {
 test("the playlist-shortfall copy names the app, not the unit", () => {
   const row = fnBody("app.js", "archivedRow");
   const note = fnBody("app.js", "partsNote");
+  /* archivedRow's own "· not available right now" caption is GONE (audit
+     2026-09-22, qa row 142): the row's notPlayableNote() chip already says it,
+     so the row said it twice in two wordings. The note above the list still
+     says it once for the whole list, and that is pinned below. */
   for (const [where, body, phrase] of [
-    ["archivedRow", row, `not available right now`],
+    ["archivedRow", row, `notPlayableNote()`],
     ["archivedRow", row, `Saved before ${APP_NAME} kept episode details`],
     ["partsNote", note, `not available right now`],
     ["partsNote", note, `saved before ${APP_NAME} kept episode details`],
@@ -591,7 +595,7 @@ test("the playlist-shortfall copy names the app, not the unit", () => {
      play.
 
      The possessive specifically, not the bare word. `archivedRow` still titles
-     a detail-less row "Part no longer in the catalogue" — that is a statement
+     a detail-less row "Episode no longer in the catalogue" — that is a statement
      about a row we have nothing left to say about, not an explanation that
      points at us, and the founder's complaint was about the latter. Widening
      this to /catalogue/ would fail on that line and push a rewrite nobody

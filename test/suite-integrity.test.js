@@ -309,6 +309,11 @@ const FLOORS = {
      `player/client.js`, where a rename would otherwise make the card silently go
      back to restarting episodes rather than throwing. */
   "test/card-play-pause.test.js": 7, // 2026-09-22: new -- a card showing the pause glyph must pause, and the paused current item must resume rather than restart
+  /* Audit 2026-09-22, theme C: the four listener-facing formatters (fmtDur,
+     countLabel/playlistLengthLabel, joinMeta, fmtDate) and the surfaces that
+     used to do each by hand — "1h 0m", "1 parts", "Show ·  · date", "Invalid
+     Date". ZERO SLACK: every cell is the only one pinning its surface. */
+  "test/format-helpers.test.js": 11, // 2026-09-22: new
   "test/jump-back-in-kinds.test.js": 18, // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */

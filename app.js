@@ -846,9 +846,54 @@ function explicitBadge(isExplicit) {
   return isExplicit === true ? `<span class="explicit-badge" title="Explicit content" aria-label="Explicit">E</span>` : "";
 }
 
+/* THE FOUR LISTENER-FACING FORMATTERS (audit 2026-09-22, theme C). Each of these
+   existed once, correctly, at the call site that first hurt, and the other call
+   sites went on doing it by hand: an exact hour read "1h 0m", a one-episode
+   playlist read "1 parts" on three screens and "1 part" on a fourth, a row with
+   no duration read "Show ·  · date", and the Playlists page printed a raw
+   `toLocaleDateString()` that can say "Invalid Date". Every count, duration,
+   subtitle and date a listener reads goes through one of these now, and
+   test/format-helpers.test.js holds the rule, not a list of the sites. */
+
+/* "1h" for an exact hour, never "1h 0m" (49 episodes of the shipped pool are
+   whole hours, and a subject card's summed runtime lands on one often). */
 function fmtDur(min) {
   if (!min) return "";
-  return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`;
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+/* "1 episode", "2 episodes" — the one plural. `many` is for the irregular
+   ones ("match" -> "matches"). Numbers only: a caller with a string count has
+   a bug upstream this must not paper over. */
+function countLabel(n, one, many) {
+  return `${n} ${n === 1 ? one : (many || `${one}s`)}`;
+}
+
+/* A playlist's length, on every surface that shows one. The noun is "episode"
+   because that is what a listener put in it and what the detail page already
+   said; "part" is the word a Foray's sections use (docs/audit/persona-synthesis.md
+   §2), and a playlist being "12 parts" on one screen and "12 episodes" on the
+   next was the same list described two ways. */
+function playlistLengthLabel(p) {
+  return countLabel(resolveParts(p).length, "episode");
+}
+
+/* The " · " joiner for a row's second line. Empty pieces are dropped rather than
+   left between two separators — a feed with no duration was "Show ·  · Sep 12",
+   and one with no date either ended "Show · ". Pieces arrive already escaped
+   (a show name is often a link), so this only joins; it never escapes. */
+function joinMeta(...pieces) {
+  return pieces.filter(Boolean).join(" · ");
+}
+
+/* "played Sep 21, 2026", or nothing. A corrupt `last_played_at` (the store is
+   hand-editable localStorage) says nothing rather than "played Invalid Date". */
+function playedOnLabel(at) {
+  const d = fmtDate(at, { local: true });
+  return d ? `played ${d}` : "";
 }
 
 /* A1.2: episode publish date, plain-English formatting shared by epRow,
@@ -863,12 +908,19 @@ function fmtDur(min) {
    version's bug) rolls a UTC-midnight timestamp back to the previous
    calendar day for anyone west of UTC — most of the Americas — showing
    a wrong publish date for a large share of the real user base. UTC is
-   the one timezone every visitor and every CI runner agrees on. */
-function fmtDate(dateStr) {
+   the one timezone every visitor and every CI runner agrees on.
+
+   `{ local: true }` is for an INSTANT rather than a calendar date — "played
+   <date>" is when this listener pressed play, which is a local-day fact; the
+   UTC rule above would move an evening play to tomorrow for everyone east of
+   UTC. Same guard, same shape, only the timezone differs. */
+function fmtDate(dateStr, { local = false } = {}) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+  const opts = { year: "numeric", month: "short", day: "numeric" };
+  if (!local) opts.timeZone = "UTC";
+  return d.toLocaleDateString("en-US", opts);
 }
 
 function branchOf(item) {
@@ -1023,7 +1075,7 @@ function renderStarredShows() {
         <a class="back" href="#/shows">‹</a>
         <div>
           <h2>Starred Shows</h2>
-          <p class="sub">${starred.length} show${starred.length === 1 ? "" : "s"} you've starred</p>
+          <p class="sub">${countLabel(starred.length, "show")} you've starred</p>
         </div>
       </div>
       ${starred.length
@@ -1973,7 +2025,7 @@ function renderCategory(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
   const label = node?.label || nodeId;
   const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
-  renderShowIndexPage(label, `${shows.length} show${shows.length === 1 ? "" : "s"}`, shows);
+  renderShowIndexPage(label, countLabel(shows.length, "show"), shows);
 }
 
 /* A3.3 — the all-shows browsable index. A-Z over the full curated catalogue;
@@ -3273,7 +3325,7 @@ function renderShow(show_id) {
     if (searchMode === "scoped") {
       // The honest, non-hedged case: S-07 searched the show's FULL episode
       // list server-side, not just whatever this render has paged in.
-      note.textContent = `${scopedResults.length} episode${scopedResults.length === 1 ? "" : "s"} found.`;
+      note.textContent = `${countLabel(scopedResults.length, "episode")} found.`;
       return;
     }
     // "fallback": S-07 failed or degraded for this query. Partial-list
@@ -3283,7 +3335,7 @@ function renderShow(show_id) {
     // scope explicitly rather than imply this searched the whole show.
     const matchCount = filterLoadedEpisodes(loaded, searchQuery).length;
     note.textContent = fullyLoaded
-      ? `${matchCount} match${matchCount === 1 ? "" : "es"} in ${loaded.length} episode${loaded.length === 1 ? "" : "s"}.`
+      ? `${countLabel(matchCount, "match", "matches")} in ${countLabel(loaded.length, "episode")}.`
       : `${matchCount} match${matchCount === 1 ? "" : "es"} — searching loaded episodes only (${loaded.length} of the full list loaded so far).`;
   }
 
@@ -3864,7 +3916,7 @@ function miniCard(slot) {
       href="#/subject/${esc(slot.branch)}">
     ${item.artwork_url ? `<img src="${esc(safeUrl(item.artwork_url))}" alt="" loading="lazy">` : `<div class="art-ph"></div>`}
     <div class="mc-info">
-      <p class="mc-kicker">${stretchTag}${slot.items.length} episode${slot.items.length === 1 ? "" : "s"}${totalMin ? ` · ${fmtDur(totalMin)}` : ""}</p>
+      <p class="mc-kicker">${stretchTag}${joinMeta(countLabel(slot.items.length, "episode"), fmtDur(totalMin))}</p>
       <h3>${esc(subjectLabel(slot.branch))}</h3>
       <p class="mc-hook">${esc(subjectBlurb(slot))} Starts with "${esc(item.title)}."</p>
     </div>
@@ -5631,7 +5683,7 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
     <a class="pl-row" href="#/playlist/${esc(p.id)}">
       <div class="info">
         <div class="t">${esc(p.title)}${generated ? ` <span class="fy-badge fy-badge-generated">Generated for you</span>` : ""}</div>
-        <div class="s">${resolveParts(p).length} parts</div>
+        <div class="s">${playlistLengthLabel(p)}</div>
       </div>
       <span class="chev">\u203a</span>
     </a>`;
@@ -6305,7 +6357,7 @@ function jumpBackInEntries(limit = 6) {
     entries.push({
       kind: "playlist", id: p.id, at: p.last_played_at,
       title: p.title || p.name || "Playlist",
-      sub: `${resolveParts(p).length} parts`,
+      sub: playlistLengthLabel(p),
     });
   }
 
@@ -6469,7 +6521,7 @@ function playlistCardV2Html(p, { generated = false } = {}) {
   return `<a class="hv2-playlist-card" href="#/${p.isSubject ? "subject/" + esc(p.branch) : "playlist/" + esc(p.id)}">
     ${generated ? `<span class="hv2-generated-badge">Generated for you</span>` : ""}
     <span class="hv2-playlist-title">${esc(p.title)}</span>
-    <span class="hv2-playlist-sub">${count} episode${count === 1 ? "" : "s"}</span>
+    <span class="hv2-playlist-sub">${countLabel(count, "episode")}</span>
   </a>`;
 }
 
@@ -6568,7 +6620,7 @@ function renderForays() {
         <a class="back" href="#/">‹</a>
         <div>
           <h2>Forays</h2>
-          <p class="sub">${list.length} foray${list.length === 1 ? "" : "s"}</p>
+          <p class="sub">${countLabel(list.length, "Foray")}</p>
         </div>
       </div>
       ${jumpBackInHtml(resume)}
@@ -6596,7 +6648,7 @@ function epRow(item, idx, ctx, nextIdx) {
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
       <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
-      <div class="s">${showNameLink(item.show)} · ${fmtDur(item.duration_min)}${dateStr ? ` · ${esc(dateStr)}` : ""}</div>
+      <div class="s">${joinMeta(showNameLink(item.show), fmtDur(item.duration_min), esc(dateStr))}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${unavailable}
   </div>`;
@@ -6641,9 +6693,9 @@ function archivedRow(item, idx, ctx) {
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
     <div class="info">
-      <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Part no longer in the catalogue"}</div>
+      <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Episode no longer in the catalogue"}</div>
       <div class="s">${named
-        ? `${showNameLink(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}${dateStr ? ` · ${esc(dateStr)}` : ""} · not available right now`
+        ? joinMeta(showNameLink(item.show), fmtDur(item.duration_min), esc(dateStr))
         : "Saved before 4a kept episode details"}</div>
     </div>
     ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${unavailable}
@@ -6660,7 +6712,7 @@ function partsNote(rows) {
   const parts = [];
   if (archived) {
     const one = archived === 1;
-    parts.push(`${archived} part${one ? " is" : "s are"} not available right now, so ${one ? "it" : "they"} cannot play — ${one ? "it stays listed" : "they stay listed"} so you can see where it fits in the playlist.`);
+    parts.push(`${archived} episode${one ? " is" : "s are"} not available right now, so ${one ? "it" : "they"} cannot play — ${one ? "it stays listed" : "they stay listed"} so you can see where it fits in the playlist.`);
   }
   if (unnamed) {
     const one = unnamed === 1;
@@ -6669,7 +6721,7 @@ function partsNote(rows) {
        return" — and the note a reviewer reads is never the one that ships to them.
        It also no longer claims rebuilding REPLACES this playlist: buildPlaylist
        mints a new id and prepends a new playlist, leaving this one untouched. */
-    parts.push(`${unnamed} part${one ? " was" : "s were"} saved before 4a kept episode details and cannot be named yet — ${one ? "it" : "they"} will fill in if the episode${one ? " returns" : "s return"} to the catalogue, and building the same playlist again from the Playlists page gives you a fresh one from what 4a has today.`);
+    parts.push(`${unnamed} episode${one ? " was" : "s were"} saved before 4a kept episode details and cannot be named yet — ${one ? "it" : "they"} will fill in if the episode${one ? " returns" : "s return"} to the catalogue, and building the same playlist again from the Playlists page gives you a fresh one from what 4a has today.`);
   }
   return `<p class="note">${esc(parts.join(" "))}</p>`;
 }
@@ -7005,7 +7057,7 @@ function renderEpisode(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
-          <p class="fp-s-show">${item.show ? showNameLink(item.show) : ""}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""}${dateStr ? ` · ${esc(dateStr)}` : ""}</p>
+          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show) : "", fmtDur(item.duration_min), esc(dateStr))}</p>
         </div>
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
@@ -7077,9 +7129,9 @@ function upNextRow(r, idx, total) {
   const inApp = playable ? playBtn(item) : "";
   const title = named ? esc(item.title) : "Episode no longer available";
   const sub = state === "live"
-    ? `${esc(item.show)} · ${fmtDur(item.duration_min)}`
+    ? joinMeta(esc(item.show || ""), fmtDur(item.duration_min))
     : state === "archived"
-      ? `${esc(item.show || "")}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not available right now`
+      ? joinMeta(esc(item.show || ""), fmtDur(item.duration_min), "not available right now")
       : "Removed from your history — no details saved";
   return `<div class="ep-row up-next-row ${playable ? "" : "gone"}">
     <span class="q-num">${idx + 1}</span>
@@ -7220,7 +7272,7 @@ function renderLibrary() {
 
   const playlistsHtml = allPlaylists.length
     ? allPlaylists.slice(0, 5).map(p =>
-        libSummaryRow(`/playlist/${p.id}`, p.title, `${resolveParts(p).length} part${resolveParts(p).length === 1 ? "" : "s"}`)).join("")
+        libSummaryRow(`/playlist/${p.id}`, p.title, playlistLengthLabel(p))).join("")
       + (allPlaylists.length > 5 ? `<a class="lib-more" href="#/playlists">All ${allPlaylists.length} playlists ›</a>` : "")
     : `<p class="note">No playlists yet — build one from the home screen.</p>`;
 
@@ -7264,7 +7316,7 @@ function renderPlaylists() {
         <a class="pl-row" href="#/playlist/${esc(p.id)}">
           <div class="info">
             <div class="t">${esc(p.title)}</div>
-            <div class="s">${resolveParts(p).length} parts${p.last_played_at ? ` · played ${new Date(p.last_played_at).toLocaleDateString()}` : ""}</div>
+            <div class="s">${joinMeta(playlistLengthLabel(p), playedOnLabel(p.last_played_at))}</div>
           </div>
           <span class="chev">›</span>
         </a>`).join("")
@@ -7989,7 +8041,7 @@ function foraySourcesHtml(r, player) {
   if (typeof player.forayCredits !== "function") return "";
   const { credits, summary } = player.forayCredits(r, { discoverDoc: state.discover });
   if (!credits.length) return "";
-  const clips = (n) => `${esc(String(n))} clip${n === 1 ? "" : "s"}`;
+  const clips = (n) => esc(countLabel(n, "clip"));
   const rows = credits.map(c => `
     <div class="fy-src">
       <div class="fy-src-head">
