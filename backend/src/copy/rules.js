@@ -106,6 +106,40 @@ const INTERNAL_VOCABULARY = [
   /\brunning order\b/i
 ];
 
+/**
+ * Commute-length framing, in the shapes it was actually written. CLAUDE.md
+ * principle 2 ("commute length is a learned parameter, never UI copy") and
+ * copy rule 4 ban it, and `BANNED` has carried three shapes of it since
+ * 2026-07-08 — but only shapes with a possessive or a hyphenated number:
+ * "fits your drive", "your commute", "18-minute drive". The 2026-09-22 QA
+ * audit (qa 152) found four session-card `fit_line`s that none of them match:
+ * "a week of drives at your 1.5×", "fits today's drive almost exactly",
+ * "a multi-commute saga", "two drives of easy hang".
+ *
+ * WHY A THIRD LIST AND NOT MORE ENTRIES IN `BANNED`. The same reason as
+ * INTERNAL_VOCABULARY: `BANNED` also gates discover.json hooks, which describe
+ * publishers' episodes, and 24 committed hooks say "drive" or "trip" in plain
+ * English ("what drives the Court's rulings", "drives a fleet of radar trucks
+ * into storms", "a road trip"). `/\bdrives?\b/` there would refuse all of them.
+ * These patterns match only the framing: a COUNT of drives ("two drives", "a
+ * week of drives", "several drives", "multi-drive"), a POINTER at the
+ * listener's trip ("today's drive", "the morning commute", "the drive home"),
+ * a "fits ... drive" claim, "drives' worth", and any form of "commute" at all —
+ * in copy WE write about how an episode fits a listener, a commute is never
+ * plain English. Applied to every string on a session card (archetype_label,
+ * why_line, fit_line) and category, and to the session builder's own output
+ * (sessionBuilder.test.ts), nowhere else.
+ */
+const DRIVE = "(?:drives?|commutes?)";
+const COMMUTE_FRAMING = [
+  /\bcommut/i,
+  new RegExp(`\\b(?:${COUNT}|a few|several|a couple of|(?:a |an )?(?:week|month|fortnight|day)s? of|multi)[ -]${DRIVE}\\b`, "i"),
+  new RegExp(`\\b(?:today'?s|tomorrow'?s|tonight'?s|this (?:morning|evening|afternoon)'?s|(?:a |the |your )?(?:morning|evening|afternoon) )${DRIVE}\\b`, "i"),
+  new RegExp(`\\b${DRIVE} (?:home|to work|in|there and back)\\b`, "i"),
+  new RegExp(`\\b${DRIVE}['’]? worth\\b`, "i"),
+  /\bfits? (?:a |an |the |one |your |today'?s )?(?:drive|commute)\b/i
+];
+
 /** The listener's word for each of ours (docs/audit/persona-synthesis.md §2). */
 const LISTENER_WORD = { beat: "story", beats: "stories", segment: "clip", segments: "clips", act: "part", acts: "parts" };
 
@@ -161,6 +195,7 @@ const MAX_BLURB_WORDS = 30;
 module.exports = {
   BANNED,
   INTERNAL_VOCABULARY,
+  COMMUTE_FRAMING,
   toListenerWords,
   wordCount,
   MAX_WHY_LINE_WORDS,

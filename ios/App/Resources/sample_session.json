@@ -7,10 +7,10 @@
     {
       "slot": 1,
       "archetype": "deep-learn",
-      "archetype_label": "Deep dive",
+      "archetype_label": "Go deep",
       "episode_id": "lex-353-whyte",
       "why_line": "Your fusion-reactor tour opens with SPARC's co-founder: every confinement approach, then deep on tokamak magnets.",
-      "fit_line": "3¼ hrs — a week of drives at your 1.5×; pick up where you left off.",
+      "fit_line": "194 min (≈ 129 at 1.5×); pick up where you left off.",
       "alternates": ["titans-378-ma", "lex-485-kirtley", "omegatau-312-w7x", "cleantechies-216-thea", "catalyst-pacific-fusion"]
     },
     {
@@ -19,7 +19,7 @@
       "archetype_label": "Stretch",
       "episode_id": "sysk-damascus-steel",
       "why_line": "You care how fusion-grade alloys behave under stress — ancient smiths solved carbon control completely blind.",
-      "fit_line": "37 min ≈ 25 at your speed: fits today's drive almost exactly.",
+      "fit_line": "37 min (≈ 25 at 1.5×).",
       "alternates": ["materialism-textiles-space", "insidechips-semi-mfg", "mtdcnc-forging"]
     },
     {
@@ -28,7 +28,7 @@
       "archetype_label": "Story",
       "episode_id": "foc-assyrians",
       "why_line": "An empire built on iron metallurgy and siege engineering — your ancient-military itch with a materials spine.",
-      "fit_line": "3 hrs of documentary — a multi-commute saga.",
+      "fit_line": "185 min (≈ 123 at 1.5×) of documentary.",
       "alternates": ["trih-netherlands-revolt", "foc-sumerians", "foc-han-dynasty"]
     },
     {
@@ -37,7 +37,7 @@
       "archetype_label": "Comfort",
       "episode_id": "conan-mcbride-returns",
       "why_line": "Zero homework: Conan and an old friend riffing — dropped yesterday, still warm.",
-      "fit_line": "57 min ≈ two drives of easy hang.",
+      "fit_line": "57 min (≈ 38 at 1.5×) of easy hang.",
       "alternates": ["smartless-emma-thompson", "mbmbam-821", "conan-groban"]
     }
   ],

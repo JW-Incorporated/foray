@@ -8,8 +8,11 @@ import type { Archetype } from "../types/session";
  * picks winner + alternates per pool and audits cross-menu diversity.
  */
 
+/* "deep-learn" was labelled "Deep dive" until 2026-09-23 (qa 152): a phrase
+   CLAUDE.md copy rule 4 bans, in a field the iOS card renders as a header.
+   copyRules.test.ts now reads every string on a card, so the label is gated. */
 export const ARCHETYPE_LABELS: Record<Archetype, string> = {
-  "deep-learn": "Deep dive",
+  "deep-learn": "Go deep",
   stretch: "Stretch",
   narrative: "Story",
   comfort: "Comfort"

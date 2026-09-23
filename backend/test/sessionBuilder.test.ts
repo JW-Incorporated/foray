@@ -9,6 +9,7 @@ import { BudgetGuard } from "../src/cost/budgetGuard";
 import { TaxonomyFileSchema } from "../src/types/taxonomy";
 import { SessionDocSchema } from "../src/types/session";
 import { InMemoryUserInterestsProvider } from "../src/curation/userInterests";
+import { BANNED, COMMUTE_FRAMING } from "../src/copy/rules";
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
@@ -153,6 +154,51 @@ describe("buildSession — end-to-end pipeline proof (01_PROMPT.md item 8), zero
     });
 
     expect(session.commute.content_minutes).toBe(27);
+  });
+
+  /* The gate on the GENERATOR, not only on data/session.json. F3.2 in
+     docs/architecture-assessment.md: fitLine() once emitted "fits today's
+     drive almost exactly" and "about N drives at your 1.5×", and copyRules
+     only read the committed JSON, so a rebuild would have re-introduced the
+     framing the JSON fix removed. Here every string on every built card and
+     category is read against BANNED + COMMUTE_FRAMING, and fit_line is pinned
+     to the plain duration statement.
+     MUTATION: make fitLine() return `${durationMin} min: fits today's drive.`
+     -> red, naming fit_line; label deep-learn "Deep dive" -> red, naming
+     archetype_label. */
+  it("emits no banned phrase or commute-length framing in any card or category string", async () => {
+    const taxonomy = loadRealTaxonomy();
+    const candidates = loadRealCandidates();
+    const enricher = new StubEnricher();
+
+    const { session } = await buildSession({
+      userId: "test-user",
+      sessionKey: "test-session",
+      commuteMinutes: 18,
+      playbackSpeed: 1.5,
+      taxonomy,
+      candidates,
+      enricher
+    });
+
+    const failures: string[] = [];
+    let checked = 0;
+    const check = (where: string, obj: Record<string, unknown>) => {
+      for (const [field, text] of Object.entries(obj)) {
+        if (typeof text !== "string") continue;
+        checked += 1;
+        for (const rx of [...BANNED, ...COMMUTE_FRAMING]) {
+          if (rx.test(text)) failures.push(`${where} ${field}: ${rx} in "${text}"`);
+        }
+      }
+    };
+    for (const card of session.cards) {
+      check(`slot ${card.slot}`, card);
+      expect(card.fit_line, `slot ${card.slot} fit_line is not a plain duration statement`).toMatch(/^\d+ min \(≈ \d+ at 1\.5×\)\.$/);
+    }
+    for (const cat of session.categories) check(`category ${cat.id}`, cat);
+    expect(checked, "no card copy was read, so this proved nothing").toBeGreaterThan(0);
+    expect(failures, failures.join("\n")).toEqual([]);
   });
 
   it("spends exactly $0 in dry-run mode regardless of candidate pool size", async () => {
