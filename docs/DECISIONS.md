@@ -2785,3 +2785,43 @@ look like the end of the list.
 
 **Tracked in issue #691**, whose scope this ruling widens from "walk the chosen
 list" to "keep playing".
+
+## 2026-09-23 (audit round 2, lane L4: one playlist builder, on Create; the Search CTA offers only what it can build)
+
+**Founder question 4 (round-2 synthesis §3), default taken:** `#/playlists` is
+the list only — the listener's own playlists, "N built", one `Build a playlist ›`
+link to `#/create` — and the one builder lives on Create. The drawer keeps its
+five entries in the founder's 2026-09-03 order (Home, Search, Playlists, Forays,
+Up Next); only the page behind "Playlists" changed. If the founder answers the
+question the other way, restore `bindPlaylistFormSubmit` and the `#pl-form`
+block from git history (PR for this lane) rather than re-deriving them.
+
+**Why the 2026-09-03 order does not pin the second builder.** "Keep all that only
+on the Playlists page" was about taking the builder OFF HOME, and it predates the
+Create tab (U-06, 2026-09-06), which D7 calls "today's builder restyled" — a
+replacement. Two builders with two vocabularies ("build me a playlist…" / Go
+versus "e.g. the semiconductor supply chain" / Build) met the newcomer in their
+first minutes, Library's empty state pointed at one while the Search CTA pointed
+at the other, and the founder had already deleted a "Go" button on Search on
+sight (2026-09-14). `test/home-information-architecture.test.js` pins the new
+shape in both directions.
+
+**The Search page's "Create a playlist about X" CTA is gated the other way
+round.** U-05 carried the mockup's condition — offer the CTA when the query has no
+strong result — from a Foray, which can be made about anything, to a Playlist,
+which is built by the very scorer that just said "empty". So the page's one
+primary button appeared exactly when the build was certain to fail on the next
+page ("Not much on … yet"), and never when one tap would have built a real
+playlist. It now appears when `topicSearchStatus` is `ok` or `sparse` and no own
+or generated playlist already matches; on `empty` it shows nothing. It hands off
+to Create's form (the one creation path; D8 unchanged).
+
+**Also recorded from the same lane, because each changes a listener-visible rule:**
+the Search tab, tapped while lit from a pushed page, returns to the search that
+was left (`#/shows/q/<q>`), and pops to the root only when the search was cleared;
+the offline note reads "You're offline — these are show names 4a already knows.
+Episodes need a connection." (nothing is available offline; persona 71); every
+quoted query uses the typographic pair through one `quoteQuery` helper; and the
+on-device show index sorts and searches on the diacritic-folded title
+(`foldDiacritics` is the builder's sort key and the client's lookup key — the two
+must stay one function).

@@ -640,6 +640,10 @@ function episode(id) {
 function snapshot(id, src) {
   const snap = {
     id, show: src.show, title: src.title,
+    /* The show's own id, when the source knows it (a search result, a show-page
+       row); null for the curated pool, which names shows by title only. Read by
+       showNameLink so a breadth show's name links to its page (p-switcher-7). */
+    show_id: src.show_id ?? null,
     apple_collection_id: src.apple_collection_id,
     apple_track_id: src.apple_track_id ?? null,
     apple_episode_url: src.apple_episode_url ?? null,
@@ -886,6 +890,15 @@ function setBodyClass(base) {
    escaping a constant turns the apostrophe in "Couldn't" into `&#39;`). `title`
    can come from data, so it is. */
 const RETRY_LABEL = "Try again";
+
+/* THE ONE WAY A LISTENER'S OWN WORDS ARE QUOTED BACK (audit round 2, copy-8).
+   The Create CTA used typographic quotes and every other quoted query used
+   straight ones, and the two met on the empty-search screen. Apple's pair.
+   Takes the text as the caller has it — already escaped when it is going into
+   innerHTML, raw when it is going into textContent — and adds only the quotes. */
+function quoteQuery(text) {
+  return `\u201c${text}\u201d`;
+}
 
 function failedNoteHtml(note) {
   return `<div class="load-failed" role="status">
@@ -2450,10 +2463,18 @@ function showIdForShowName(showName) {
    no show record joins (see showIdForShowName). Never returns an empty
    string for a truthy showName, so callers can drop it straight into the
    existing `${esc(item.show)}` slot without an extra guard. */
-function showNameLink(showName) {
+/* `showId` FIRST, WHEN THE ROW KNOWS IT (audit round 2, p-switcher-7). The
+   title lookup only reaches the 220 curated shows, so under an episode from
+   any of the ~19,900 breadth shows the show name was plain text and "go to
+   the show from an episode" failed everywhere but the curated set. A search
+   result carries the endpoint's `show_id` — an id the endpoint has already
+   checked resolves (api/episodes/search.ts drops any hit that does not) — so
+   that is the link, and the title join stays the fallback for rows that never
+   had an id (the curated pool). */
+function showNameLink(showName, showId = null) {
   const label = esc(showName || "");
-  const showId = showIdForShowName(showName);
-  return showId ? `<a class="show-link" href="#/show/${esc(showId)}">${label}</a>` : label;
+  const id = showId || showIdForShowName(showName);
+  return id ? `<a class="show-link" href="#/show/${esc(id)}">${label}</a>` : label;
 }
 
 /* A3.2 — tapping a chip goes to "shows in this category" (renderCategory),
@@ -2826,6 +2847,14 @@ function updateShowBrowseVisibility() {
    two can never answer differently. */
 function dismissShowSearch(input) {
   if (!input) return;
+  /* THE IN-FLIGHT SEARCH GOES WITH THE QUERY (audit round 2, races-2). This
+     emptied the field and the painted results but left the debounce tick and
+     the token alone, so a ✕ inside the 250 ms window let the pending tick run
+     `runShowSearchCostly` for a query nobody could see: the cleared query's
+     rows, episodes and CTA popped in under an empty field, and
+     `noteShowQueryInRoute` wrote its address back. A keystroke that deletes the
+     text always bumped the token; the button that does the same job must too. */
+  supersedeShowSearch();
   input.value = "";
   clearShowSearchResults();
   /* And the address: dismissing on `#/shows/q/Science` left the query in the
@@ -2925,15 +2954,17 @@ function renderAllShows(initialQuery = "") {
       <div id="sh-compose">
         <form id="sh-form" role="search" autocomplete="off">
           <svg class="sh-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
-          <input id="sh-input" type="text" maxlength="120" placeholder="Search shows and episodes\u2026" aria-label="Search shows and episodes">
+          <input id="sh-input" type="text" maxlength="120" placeholder="Search shows and episodes\u2026" aria-label="Search shows and episodes" ${SEARCH_INPUT_ATTRS}>
         </form>
         <button id="sh-dismiss" type="button" aria-label="Clear search" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
         </button>
       </div>
       <p id="sh-note" class="note" role="status" aria-live="polite" hidden></p>
+      <div id="sh-partial-note" hidden></div>
       <div id="sh-empty-offer" hidden></div>
-      <p id="sh-offline-note" class="note" hidden>Showing shows available offline</p>
+      <p id="sh-offline-note" class="note" hidden>${OFFLINE_SEARCH_NOTE}</p>
+      <div id="fy-search-results" hidden></div>
       <div id="sh-results" class="show-results" hidden></div>
       <div id="ep-search-results" hidden></div>
       <div id="pl-search-results" hidden></div>
@@ -2941,8 +2972,13 @@ function renderAllShows(initialQuery = "") {
         <!-- ABOVE the browse cloud, not below it (visual pass 1, 2026-09-23):
              below, the page's one non-chip action sat exactly under the
              floating search pill at scroll 0 on a 390x844 phone. Apple keeps
-             its Library shortcuts at the top of Search for the same reason. -->
-        <a class="page-link-row" href="#/starred-shows">Followed shows \u203a</a>
+             its Library shortcuts at the top of Search for the same reason.
+             ONLY WHEN THERE IS SOMETHING BEHIND IT (audit round 2, p-first-12):
+             on a fresh install this was the page's first tappable row and it
+             led to "0 shows you follow". Apple hides an empty Library shortcut;
+             so does this. Library still lists the section, with its own empty
+             note, so the feature stays discoverable. -->
+        ${Object.keys(starredShowsMap()).length ? `<a class="page-link-row" href="#/starred-shows">Followed shows \u203a</a>` : ""}
         ${browsePillsHtml()}
         ${vouchForHtml()}
       </div>`);
@@ -2986,9 +3022,18 @@ function renderAllShows(initialQuery = "") {
      measured into the ONE `search` diagnostics record that tick writes. */
   $("#sh-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    const query = $("#sh-input").value.trim();
+    const input = $("#sh-input");
+    const query = input.value.trim();
     if (!query) return;
     renderShowSearchResults(query);
+    /* AND THE KEYBOARD COMES DOWN (audit round 2, search-3). The two comments
+       above say return "is how the keyboard is DISMISSED from inside the
+       field", and the Go button was deleted on that premise — but nothing here
+       ever let go of the field, and a `preventDefault`ed submit leaves WebKit's
+       keyboard exactly where it was. The blur lands on the "blur with a live
+       query" case of updateShowBrowseVisibility: results stay, browse furniture
+       stays hidden, the tab bar returns. */
+    if (typeof input.blur === "function") input.blur();
   });
 
   /* A fresh render starts from the resting state: nothing focused, browse
@@ -3010,6 +3055,9 @@ function renderAllShows(initialQuery = "") {
     const seed = $("#sh-input");
     if (seed) seed.value = query;
   }
+  /* This page IS the Search tab's last stop, with or without a query; the tab
+     bar reads it back when the lit tab is tapped from a pushed page. */
+  rememberSearchTabHash(query ? "#/shows/q/" + encodeURIComponent(query) : "#/shows");
   updateShowBrowseVisibility();
 
   const input = $("#sh-input");
@@ -3126,8 +3174,22 @@ function renderAllShows(initialQuery = "") {
      above and then runs the same costly pass a submit would — a pass that can
      resolve at any point and must not land on a half-wired page. It is
      `renderShowSearchResults`, the SUBMIT path, verbatim: a tile IS a submit
-     the listener did not have to type. */
-  if (query) renderShowSearchResults(query);
+     the listener did not have to type.
+
+     AND IT LOADS THE INDEX (audit round 2, search-6). S-03 tied the index to
+     the first FOCUS so a listener who never searches never pays the decode;
+     #684 then made every browse pill a `#/shows/q/<label>` arrival, which
+     never focuses the field on purpose. So a pill, a return via ‹ and a reload
+     all ran their local pass over the curated 220 only, with the 10,113-row
+     index — the thing that makes search feel instant — never fetched until the
+     field was tapped. A query arriving here IS a search, which is the case
+     S-03's lazy rule was written to serve, not to skip; `#/shows` without a
+     query still fetches nothing. `repaintShowSearchForIndex` merges the rows
+     in when the index lands. */
+  if (query) {
+    loadShowIndex();
+    renderShowSearchResults(query);
+  }
 }
 
 /* Stage 3b (docs/show-pages-plan.md §Stage 3, kanban t_567b570f): full
@@ -3735,9 +3797,10 @@ function renderShow(show_id, initialQuery = "") {
   const searchBox = `
     <div class="show-ep-search" data-show-ep-search hidden>
       <form data-show-ep-search-form role="search" autocomplete="off">
-        <input data-show-ep-search-input type="text" maxlength="120" placeholder="Search this show's episodes…" aria-label="Search this show's episodes">
+        <input data-show-ep-search-input type="text" maxlength="120" placeholder="Search this show's episodes…" aria-label="Search this show's episodes" ${SEARCH_INPUT_ATTRS}>
       </form>
       <p class="note" data-show-ep-search-note role="status" aria-live="polite" hidden></p>
+      <div data-show-ep-search-failed hidden></div>
     </div>`;
 
   /* THE EPISODE CONTAINER IS EMITTED EMPTY (issue #687, founder screenshot
@@ -3820,6 +3883,7 @@ function renderShow(show_id, initialQuery = "") {
   const countLabelEl = () => $("#view [data-show-count]");
   const searchWrap = () => $("#view [data-show-ep-search]");
   const searchNote = () => $("#view [data-show-ep-search-note]");
+  const searchFailed = () => $("#view [data-show-ep-search-failed]");
   /* IDENTITY, NOT PRESENCE: every show page has a `[data-show-episodes]`, so
      presence alone let show A's late fetch paint into show B (see renderToken). */
   const isCurrentRender = renderToken();
@@ -3839,7 +3903,7 @@ function renderShow(show_id, initialQuery = "") {
   function paintList(c) {
     const visible = searchMode === "scoped" ? scopedResults : filterLoadedEpisodes(loaded, searchQuery);
     if (searchQuery.trim() && !visible.length && searchMode !== "loading") {
-      c.innerHTML = `<p class="note">No episodes match "${esc(searchQuery.trim())}".</p>`;
+      c.innerHTML = `<p class="note">No episodes match ${quoteQuery(esc(searchQuery.trim()))}.</p>`;
       return;
     }
     const rows = visible.map((ep) => fullCatalogueRowToEpRowItem(show, ep));
@@ -3964,9 +4028,12 @@ function renderShow(show_id, initialQuery = "") {
 
   function paintSearchNote() {
     const note = searchNote();
+    const failed = searchFailed();
     if (!note) return;
-    if (!searchQuery.trim()) { note.hidden = true; return; }
+    const clearFailed = () => { if (failed) { failed.innerHTML = ""; failed.hidden = true; } };
+    if (!searchQuery.trim()) { note.hidden = true; clearFailed(); return; }
     note.hidden = false;
+    clearFailed();
     if (searchMode === "loading") {
       note.textContent = "Searching…";
       return;
@@ -3983,9 +4050,22 @@ function renderShow(show_id, initialQuery = "") {
     // results" for an episode on a page that hasn't loaded yet — label the
     // scope explicitly rather than imply this searched the whole show.
     const matchCount = filterLoadedEpisodes(loaded, searchQuery).length;
-    note.textContent = fullyLoaded
-      ? `${countLabel(matchCount, "match", "matches")} in ${countLabel(loaded.length, "episode")}.`
-      : `${matchCount} match${matchCount === 1 ? "" : "es"} — searching loaded episodes only (${loaded.length} of the full list loaded so far).`;
+    if (fullyLoaded) {
+      note.textContent = `${countLabel(matchCount, "match", "matches")} in ${countLabel(loaded.length, "episode")}.`;
+      return;
+    }
+    /* A FAILED SEARCH IS PAINTED AS ONE (audit round 2, states-10). This read
+       "(N of the full list loaded so far)" — copy from the pagination era,
+       when "Show more episodes" could grow `loaded`; that control was removed
+       on 2026-09-13 and nothing advances past page 1, so "so far" promised a
+       load that will never come. It says what was searched and why, in the
+       page's own failed-state shape, with Try again wired to the same
+       `runSearch` that failed. */
+    note.hidden = true;
+    if (!failed) return;
+    failed.innerHTML = failedNoteHtml(`${matchCount} match${matchCount === 1 ? "" : "es"} — searching the ${loaded.length} loaded episodes only; the connection didn't answer for the rest.`);
+    failed.hidden = false;
+    bindRetry(failed, runSearch);
   }
 
   /* REMOVED 2026-09-13: paintMoreButton() / loadNextPage(), the "Show more
@@ -4404,64 +4484,18 @@ function buildPlaylist(query) {
   return { status, playlist };
 }
 
-/* Loading-state guard around #pl-form's submit (H bug, kanban t_838a13c0):
-   buildPlaylist() is synchronous and, in the worst case (a fresh session's
-   first query, or any query that misses the repeated-query cache above), can
-   take 1.3-8s on the real catalogue — with nothing before this change to
-   tell the listener their tap registered. Defined once here rather than
-   inline: two form instances shared it until 2026-09-03 (renderHome and
-   renderPlaylists both mounted a `#pl-form`); only renderPlaylists does now,
-   and the handler stays separate so a second mount point can reuse it.
-
-   THE SETTIMEOUT(0) IS LOAD-BEARING, not decoration: disabling the button and
-   swapping its label only becomes visible to the user if the browser gets a
-   chance to paint before the synchronous, CPU-bound buildPlaylist() call
-   blocks the main thread. Setting `disabled`/`textContent` and calling
-   buildPlaylist() in the same tick produces a frozen-looking button for the
-   whole stall — no paint happens until the synchronous work yields — which is
-   the exact defect this guard exists to fix, just moved one line over. A
-   0ms timeout is enough because the browser only needs a task-queue turn to
-   flush the pending style/paint, not any particular delay.
-   `finally` restores the button whether buildPlaylist ran clean, threw
-   (unexpected but real user data — never let an exception leave the button
-   stuck disabled), or returned early. */
-function bindPlaylistFormSubmit(e) {
-  e.preventDefault();
-  const form = e.currentTarget;
-  const input = form.querySelector("input[type='text']");
-  const btn = form.querySelector("button");
-  const query = input.value.trim();
-  if (!query) return;
-  const originalLabel = btn.textContent;
-  btn.disabled = true;
-  setControlLabel(btn, "Building…", null);
-  /* The last query's "Not much on …" must not sit under the next one's
-     "Building…" — bindCreateFormSubmit already hid its own; this did not. */
-  const staleNote = $("#pl-note");
-  if (staleNote) staleNote.hidden = true;
-  whenSearchDataReady(() => {
-    try {
-      const result = buildPlaylist(query);
-      logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
-      if (result.status === "ok" || result.status === "sparse") {
-        location.hash = "#/" + playlistRoute(result.playlist);
-      } else {
-        const note = $("#pl-note");
-        note.textContent = result.status === "unsaved"
-          /* Says what happened and what to do, and does not blame the listener for
-             a device that is out of room. */
-          ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
-          : result.suggestions.length
-            ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-            : `Not much on "${query}" yet — try different words.`;
-        note.hidden = false;
-      }
-    } finally {
-      btn.disabled = false;
-      setControlLabel(btn, originalLabel, null);
-    }
-  });
-}
+/* REMOVED 2026-09-23 (audit round 2, p-first-6; founder question 4, default
+   taken): `bindPlaylistFormSubmit`, the `#pl-form` builder on #/playlists. Two
+   builders with two vocabularies met the newcomer in their first minutes —
+   the Create tab ("e.g. the semiconductor supply chain", Build) and the drawer's
+   Playlists page ("build me a playlist…", Go) — and Library's empty state
+   pointed at one while the Search CTA pointed at the other. The 2026-09-03
+   order that kept this form ("keep all that only on the Playlists page") was
+   about taking the builder OFF HOME and predates the Create tab (U-06,
+   2026-09-06), which D7 calls "today's builder restyled": a replacement, not a
+   sibling. One builder now, on Create (`bindCreateFormSubmit`); #/playlists is
+   the list, with one link to it. The H-bug setTimeout(0)/"Building…" guard and
+   its reasoning live on in the Create handler, which was written from this one. */
 
 /* ---------- shared wiring ---------- */
 
@@ -4637,7 +4671,7 @@ function subjectBlurb(slot) {
    the episode title, the one concrete thing the card says, was the part cut. */
 function startsWithLine(title) {
   const t = String(title || "").trim();
-  return `Starts with "${esc(t)}${/[.?!…]$/.test(t) ? "" : "."}"`;
+  return `Starts with ${quoteQuery(esc(t) + (/[.?!…]$/.test(t) ? "" : "."))}`;
 }
 
 function miniCard(slot) {
@@ -5640,6 +5674,34 @@ function vouchForHtml() {
    the same code, which is the one thing that suite exists to prevent. */
 const SHOWS_SEARCH_OFF_DEVICE = true;
 
+/* THE KEYBOARD A SEARCH FIELD ASKS FOR (audit round 2, search-3), shared by
+   the Search page's field and the show page's episode field so the two cannot
+   drift. `enterkeyhint="search"` labels the return key; the other three stop
+   iOS rewriting a host's name ("fridman" -> "Friedman") and capitalising the
+   first letter of a query that is matched case-insensitively anyway. The type
+   stays `text`, not `search`: WebKit draws its own clear button inside a
+   `search` input, beside the page's ✕. */
+const SEARCH_INPUT_ATTRS = 'enterkeyhint="search" autocorrect="off" autocapitalize="none" spellcheck="false"';
+
+/* WHAT AN OFFLINE SEARCH CAN HONESTLY SAY (audit round 2, states-9). It read
+   "Showing shows available offline", which was written from the engine's side
+   (which TIERS answered) and read from the listener's as a promise: nothing is
+   available offline — the rows are title projections of the curated 220 and
+   the on-device index, and every tap on one needs the network (there is no
+   download feature, and that is deliberate: persona 71). Shown only above a
+   non-empty list; an empty offline search says so in `#sh-note` instead. */
+const OFFLINE_SEARCH_NOTE = "You're offline — these are show names 4a already knows. Episodes need a connection.";
+
+/* WHERE THE SEARCH TAB LAST WAS (audit round 2, search-5). Round 1 put the
+   query in the address (`#/shows/q/<q>`) so ‹ restores it; the tab bar's
+   Search entry still linked the bare root, so the gesture the founder actually
+   uses — open a result, tap Search — landed on an empty browse page with the
+   query, the results and the scroll gone. Written by the one place the address
+   is written (`noteShowQueryInRoute`) and by the page's own mount, so it can
+   never disagree with the address the page last had. */
+let lastSearchTabHash = "#/shows";
+function rememberSearchTabHash(hash) { lastSearchTabHash = hash; }
+
 let showSearchToken = 0; // guards a slow in-flight fetch from clobbering a newer query's results
 
 /* WHAT IS ON THE SCREEN RIGHT NOW, and it has to be module state rather than a
@@ -5672,6 +5734,11 @@ let showSearchPainted = { token: -1, query: "", rows: [] };
    work that has already started. */
 let showSearchDebounceTimer = null;
 const SHOW_SEARCH_DEBOUNCE_MS = 250;
+/* The keystroke pass's answer the pending tick will build on, kept beside the
+   timer so a return key pressed inside the debounce can run that tick NOW with
+   the rows it was going to use — rather than bump the token and paint the local
+   pass a second time (audit round 2, search-7). Null whenever no tick is owed. */
+let showSearchPendingLocal = null;
 
 /** THE SEARCH PAGE'S QUERY LIVES IN THE ADDRESS (audit 2026-09-22). A typed
     search changed only the field, so ‹ back from a show opened the Search page
@@ -5682,7 +5749,9 @@ const SHOW_SEARCH_DEBOUNCE_MS = 250;
 function noteShowQueryInRoute(query) {
   if (!/^#\/shows($|\/)/.test(currentHash())) return;
   const q = String(query || "").trim();
-  rewriteRouteInPlace(q ? "#/shows/q/" + encodeURIComponent(q) : "#/shows");
+  const hash = q ? "#/shows/q/" + encodeURIComponent(q) : "#/shows";
+  rememberSearchTabHash(hash);
+  rewriteRouteInPlace(hash);
 }
 
 /** Invalidate every show-search pass in flight and forget what they painted:
@@ -5691,7 +5760,20 @@ function noteShowQueryInRoute(query) {
 function supersedeShowSearch() {
   showSearchToken++;
   showSearchPainted = { token: -1, query: "", rows: [] };
+  showSearchPendingLocal = null;
   if (showSearchDebounceTimer) { clearTimeout(showSearchDebounceTimer); showSearchDebounceTimer = null; }
+}
+
+/** Is `query` the search already on the page under the CURRENT token — painted,
+    with its costly passes pending, in flight or answered? Both halves of the
+    record are read, for the reason its own comment gives: a repeat of the same
+    text gets a new token only when something here decides it should. */
+function isShowSearchCurrent(query) {
+  if (showSearchPainted.token !== showSearchToken || showSearchPainted.query !== query) return false;
+  /* A search that has recorded a failure is not one to leave alone: the passes
+     that failed cached nothing, so running it again is the retry — whether the
+     listener presses Try again, return, or types the query over. */
+  return !(showSearchFailure.token === showSearchToken && (showSearchFailure.shows || showSearchFailure.episodes));
 }
 
 /* Below this many hits from the prefix pass, the debounce tick also runs the
@@ -6103,8 +6185,11 @@ function showBreadthCacheKey(query) {
     Unicode property escapes rather than `\W`, which is ASCII-only — "99%
     Invisible" and "伊藤洋一のRound Up World Now！" both have to normalise
     sensibly. */
+/* FOLDED TOO (audit round 2, search-9): a precomposed "é" is \p{L}, so
+   "Café X" and "Cafe X" never met as one show and an Apple copy of an index
+   title rendered twice. NFKD, then the combining marks go, in both copies. */
 function normaliseShowTitle(title) {
-  return String(title || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return String(title || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 /* P-02's dedup key was exact normalised EQUALITY, and the shape Apple actually
@@ -6241,6 +6326,10 @@ function clearShowSearchResults() {
   if (eps) { eps.innerHTML = ""; eps.hidden = true; }
   if (pls) { pls.innerHTML = ""; pls.hidden = true; }
   paintShowSearchEmptyOffer(null);
+  for (const id of ["#sh-partial-note", "#fy-search-results"]) {
+    const el = $(id);
+    if (el) { el.innerHTML = ""; el.hidden = true; }
+  }
   /* The offline note explains a search. With the search gone it explained
      nothing, and stayed up after the connection came back (qa row 103). */
   const offline = $("#sh-offline-note");
@@ -6254,24 +6343,63 @@ function clearShowSearchResults() {
    empty list is "still searching", never "nothing found" — the old paint said
    `No results for "huberman".` on the keystroke, for the ~250 ms debounce plus
    118-561 ms of round trip, and then ten results arrived under it. */
-let showSearchSettled = { token: -1, failed: false };
+let showSearchSettled = { token: -1 };
+
+/* WHICH HALF OF THE CURRENT SEARCH FAILED (audit round 2, states-7). Round 1's
+   settled-search rule painted "Part of this search didn't load" through the
+   EMPTY branch of `paintShowResults` only — so a dead breadth pass or a dead
+   episode endpoint failed silently whenever the local pass found anything, and
+   the episode pass never reported a failure at all; on Wi-Fi with no internet
+   the Episodes section simply never appeared under a few curated rows and the
+   listener concluded 4a had no episodes for the query. One record per token,
+   reset by the keystroke that starts a search, written by the show passes when
+   they settle and by the episode pass when it answers, painted by
+   `paintShowSearchPartialNote` regardless of how many rows are on the page. */
+let showSearchFailure = { token: -1, shows: false, episodes: false };
+
+function noteShowSearchFailure(query, myToken, half) {
+  if (myToken !== showSearchToken) return;
+  if (showSearchFailure.token !== myToken) showSearchFailure = { token: myToken, shows: false, episodes: false };
+  showSearchFailure[half] = true;
+  paintShowSearchPartialNote(query, myToken);
+}
+
+/** THE ONE PLACE THE FAILURE LINE LIVES. Above the rows, below `#sh-note`, so
+    it reads the same over a full list and over an empty one; "Try again" is the
+    same search from the top. Not painted offline: there the offline note (or
+    the empty note) already says why the network passes did not answer, and a
+    retry with no connection is a button that does nothing (search-12). */
+function paintShowSearchPartialNote(query, myToken) {
+  const box = $("#sh-partial-note");
+  if (!box) return;
+  if (myToken !== showSearchToken) return;
+  const failed = showSearchFailure.token === myToken && (showSearchFailure.shows || showSearchFailure.episodes);
+  if (!failed || isOfflineForShardSearch()) { box.innerHTML = ""; box.hidden = true; return; }
+  box.innerHTML = failedNoteHtml("Part of this search didn't load.");
+  box.hidden = false;
+  /* The plain submit path: a search with a recorded failure is not "current"
+     to `isShowSearchCurrent`, so this runs it again from the top. */
+  bindRetry(box, () => { if (myToken === showSearchToken) renderShowSearchResults(query); });
+}
 
 /** Paints one set of show rows into `#sh-results`, or the honest empty state.
     Token-guarded so a slow costly pass cannot repaint over a newer query.
 
-    S-05/D9: `#sh-offline-note` ("Showing shows available offline") is shown
-    whenever the runtime reports offline, independent of whether `shows` is
-    empty — the local/curated pass still answers instantly offline, so this
-    is not the same state as the "No results" note below it (both can be
-    visible in principle; the offline note explains WHY the shard/directory
-    tiers are absent, the results note or list is WHAT the local pass found). */
+    S-05/D9: `#sh-offline-note` is shown whenever the runtime reports offline
+    AND there are rows for it to explain — the local/curated pass still answers
+    instantly offline, and the note says what those rows are (names 4a already
+    knows, no episodes). An EMPTY offline search says "You're offline" in
+    `#sh-note` itself, as one line: it used to stack "No shows found", "Showing
+    shows available offline" and "Part of this search didn't load" over an empty
+    list, each true, together contradictory (audit round 2, search-12). */
 function paintShowResults(query, shows, myToken) {
   if (myToken !== showSearchToken) return; // a newer query already superseded this one
   const note = $("#sh-note");
   const results = $("#sh-results");
   const offlineNote = $("#sh-offline-note");
   if (!note || !results) return;
-  if (offlineNote) offlineNote.hidden = !isOfflineForShardSearch();
+  const offline = isOfflineForShardSearch();
+  if (offlineNote) offlineNote.hidden = !(offline && shows.length > 0);
   /* Recorded whether or not there is anything to draw, and BEFORE the empty
      branch returns: "nothing matched" is a painted answer like any other, and a
      later merge has to append to it rather than to whatever the last non-empty
@@ -6296,9 +6424,11 @@ function paintShowResults(query, shows, myToken) {
        doing exactly that; a search that found nothing says so, and nothing
        about whose catalogue fell short. */
     const settled = showSearchSettled.token === myToken;
-    note.textContent = settled ? `No shows found for "${query}".` : `Searching for "${query}"…`;
+    note.textContent = !settled ? `Searching for ${quoteQuery(query)}…`
+      : offline ? `You're offline — no shows found for ${quoteQuery(query)}.`
+      : `No shows found for ${quoteQuery(query)}.`;
     note.hidden = false;
-    paintShowSearchEmptyOffer(settled ? { query, myToken, failed: showSearchSettled.failed } : null);
+    paintShowSearchEmptyOffer(settled ? { query } : null);
     return;
   }
   note.hidden = true;
@@ -6308,28 +6438,24 @@ function paintShowResults(query, shows, myToken) {
 }
 
 /** WHAT A SETTLED, EMPTY SHOWS SEARCH OFFERS INSTEAD OF A DEAD END (audit
-    2026-09-22, the unconditional half of the browse-pill finding). Two things,
-    both only once every pass has answered:
+    2026-09-22, the unconditional half of the browse-pill finding): a QUERY
+    THAT IS A SUBJECT'S OWN NAME (a browse pill lands here with its label) gets
+    that subject's narrower categories that DO hold shows, as chips. The pill
+    stays an ordinary search for its own text (founder, #684); this is only
+    what the empty answer offers next, and every chip leads to a page with at
+    least one show on it.
 
-      - A PASS THAT FAILED says so, with "Try again" wired to the same search.
-        `api/shows/search.ts` answers an Apple timeout or a rate-limit trip with
-        200 and zero directory rows BY DESIGN, and offline every network pass
-        fails — so "no shows" over a failed pass was a permanent claim about a
-        moment's network, with nothing to press.
-      - A QUERY THAT IS A SUBJECT'S OWN NAME (a browse pill lands here with its
-        label) gets that subject's narrower categories that DO hold shows, as
-        chips. The pill stays an ordinary search for its own text (founder,
-        #684); this is only what the empty answer offers next, and every chip
-        leads to a page with at least one show on it.
+    The "a pass that failed says so, with Try again" half that used to live
+    here moved to `paintShowSearchPartialNote`, which paints it over a full list
+    as well as an empty one (states-7).
 
     `null` clears it — every non-empty paint and every cleared query. */
 function paintShowSearchEmptyOffer(opts) {
   const box = $("#sh-empty-offer");
   if (!box) return;
   if (!opts) { box.innerHTML = ""; box.hidden = true; return; }
-  const { query, myToken, failed } = opts;
+  const { query } = opts;
   const parts = [];
-  if (failed) parts.push(failedNoteHtml("Part of this search didn't load."));
   const wanted = String(query || "").trim().toLowerCase();
   const node = (state.taxonomy?.nodes || []).find(n => String(n.label || "").toLowerCase() === wanted);
   if (node) {
@@ -6343,7 +6469,6 @@ function paintShowSearchEmptyOffer(opts) {
   }
   box.innerHTML = parts.join("");
   box.hidden = parts.length === 0;
-  if (failed) bindRetry(box, () => { if (myToken === showSearchToken) renderShowSearchResults(query); });
 }
 
 /** The rows on screen for `query` under `myToken`, or `fallback` when the
@@ -6477,6 +6602,51 @@ function mergeShowRows(query, existing, incoming) {
   return SearchEngine.rankShows(query, additions);
 }
 
+/** THE OTHER HALF OF THE MERGE (audit round 2, search-1): a row `mergeShowRows`
+    would DROP as already painted — the same id, or the same title where either
+    side is directory-sourced (its own collision rule, restated) — may still
+    know something the painted row does not. The index carries titles only, so
+    its rows paint with no artwork and no byline; the catalogue, directory and
+    shard passes bring both for the same shows a moment later. Returns a new
+    row list with those fields filled in, in the SAME order and with the same
+    identities (id, title, href), or null when nothing was learned. Only fields
+    the painted row LACKS are taken: a curated row's own artwork is never
+    replaced by Apple's copy of it. */
+function upgradeShowRows(existing, incoming) {
+  if (!existing.length || !incoming.length) return null;
+  const byId = new Map();
+  const byDirectoryKey = new Map();
+  for (const s of incoming) {
+    if (!s || !s.show_id) continue;
+    if (!byId.has(s.show_id)) byId.set(s.show_id, s);
+    if (isDirectorySourcedShow(s)) {
+      for (const k of showDedupKeys(s.title)) if (!byDirectoryKey.has(k)) byDirectoryKey.set(k, s);
+    }
+  }
+  let learned = false;
+  const out = existing.map((row) => {
+    let richer = byId.get(row.show_id) || null;
+    if (!richer) {
+      const keys = showDedupKeys(row.title);
+      if (isDirectorySourcedShow(row)) {
+        richer = incoming.find((s) => s && s !== row && keys.some((k) => showDedupKeys(s.title).includes(k))) || null;
+      } else {
+        richer = keys.map((k) => byDirectoryKey.get(k)).find(Boolean) || null;
+      }
+    }
+    if (!richer) return row;
+    const patch = {};
+    if (!row.artwork_url && richer.artwork_url) patch.artwork_url = richer.artwork_url;
+    if (!(typeof row.artist_name === "string" && row.artist_name.trim()) && typeof richer.artist_name === "string" && richer.artist_name.trim()) {
+      patch.artist_name = richer.artist_name;
+    }
+    if (!Object.keys(patch).length) return row;
+    learned = true;
+    return { ...row, ...patch };
+  });
+  return learned ? out : null;
+}
+
 /** Puts `additions` beneath whatever is already painted for `query` under
     `myToken`, and repaints. The one call site shape every merging pass now
     uses, so none of them can accidentally reorder the list by hand.
@@ -6508,6 +6678,11 @@ function appendShowResults(query, additions, myToken) {
     keeps its own `epMs`. */
 function paintShowSearchLocal(query, myToken) {
   const localStart = nowMs();
+  /* A fresh search starts with nothing failed: the record and its line belong
+     to the token that is about to paint. */
+  showSearchFailure = { token: myToken, shows: false, episodes: false };
+  paintShowSearchPartialNote(query, myToken);
+  paintForaySearchResults(query, myToken);
   const localShows = localShowMatches(query);
   const localMs = nowMs() - localStart;
   paintShowResults(query, localShows, myToken);
@@ -6604,7 +6779,10 @@ function runShowSearchCostly(query, myToken, local) {
     if (failed) showPassFailed = true;
     if (--showPassesOwed > 0) return;
     if (myToken !== showSearchToken) return; // superseded: the newer query owns the note
-    showSearchSettled = { token: myToken, failed: showPassFailed };
+    showSearchSettled = { token: myToken };
+    /* Reported whether or not the list is empty (states-7): the line that says
+       a pass failed sits above the rows, not only in their absence. */
+    if (showPassFailed) noteShowSearchFailure(query, myToken, "shows");
     const rows = paintedShowRows(query, myToken, local.localShows);
     if (!rows.length) paintShowResults(query, rows, myToken);
   };
@@ -6689,6 +6867,16 @@ function runShowSearchCostly(query, myToken, local) {
      every row received, including the ones the dedup then drops. */
   const mergeBreadth = (breadthShows) => {
     for (const s of breadthShows) state.breadthShowCache[s.show_id] = s;
+    /* THE PAINTED ROW IS UPGRADED, NOT ONLY THE CACHE (audit round 2,
+       search-1). The comment above promised that a richer record "replaces
+       the index's title-only row", and it did — in the cache `showById` reads
+       on tap, never on the page. So the index's prefix hits, the strongest
+       matches and the top of the list, stayed blank grey squares for the life
+       of the query while weaker rows beneath them arrived with artwork. Same
+       row, same index, same href: only the art and the byline change, so
+       #684's "a painted row keeps its position" holds. */
+    const upgraded = upgradeShowRows(shown(), breadthShows);
+    if (upgraded) paintShowResults(query, upgraded, myToken);
     const additions = mergeShowRows(query, shown(), breadthShows);
     if (additions) appendShowResults(query, additions, myToken);
   };
@@ -6716,16 +6904,26 @@ function runShowSearchCostly(query, myToken, local) {
       const netMs = nowMs() - netStart;
       const superseded = myToken !== showSearchToken;
       const breadthShows = data?.shows || [];
-      if (data) {
+      /* THE SAME TEST THE DIRECTORY PASS APPLIES BELOW (audit round 2,
+         search-4 — an incomplete fix of the 2026-09-12 defect 2, which was
+         applied to the sibling request in this function and not to this one).
+         `api/shows/search.ts` answers an unreadable breadth catalogue with 200,
+         `shows: []`, `degraded: true`; that was cached here as THE answer for
+         the session and reported as a pass that answered, so a cold-start
+         failure left "No shows found" with no Try again for every retype of
+         that query. A degraded reply is not an answer: not cached, and
+         reported as the failure it is. */
+      const answered = !!data && !data.degraded;
+      if (answered) {
         if (showBreadthQueryCache.size >= SHOW_BREADTH_CACHE_MAX) showBreadthQueryCache.clear();
         showBreadthQueryCache.set(cacheKey, breadthShows);
       }
       if (!superseded && breadthShows.length) mergeBreadth(breadthShows);
       settle({
-        netMs, netHits: data ? breadthShows.length : null,
-        path: superseded ? "superseded" : data ? "local+net" : "local-only",
+        netMs, netHits: answered ? breadthShows.length : null,
+        path: superseded ? "superseded" : answered ? "local+net" : "local-only",
       });
-      showPassDone(!data);
+      showPassDone(!answered);
     }); // fetchApiJson already swallows network/parse errors and resolves null — no .catch needed
   }
 
@@ -6850,13 +7048,25 @@ function runShowSearchCostly(query, myToken, local) {
     debounce, cancelled by the next keystroke. */
 function onShowSearchInput(rawValue) {
   const query = String(rawValue || "").trim();
+  /* THE SAME QUERY IS NOT A NEW SEARCH (audit round 2, search-7). A trailing
+     space trims to the text already on the page, and this used to bump the
+     token and repaint the LOCAL rows over a list the catalogue, directory and
+     shard passes had already grown — the list collapsed for the 250 ms until
+     the tick re-merged it from the caches. #684's append-only rule made that
+     repaint the only thing left that can make the list shrink. If the pending
+     tick is still owed it stays owed; if the passes are in flight they keep
+     the token; if they answered, the answer stands. */
+  if (query && isShowSearchCurrent(query)) return;
   const myToken = ++showSearchToken; // supersedes any in-flight costly pass
   if (showSearchDebounceTimer) clearTimeout(showSearchDebounceTimer);
   showSearchDebounceTimer = null;
+  showSearchPendingLocal = null;
   if (!query) { clearShowSearchResults(); noteShowQueryInRoute(""); return; }
   const local = paintShowSearchLocal(query, myToken);
+  showSearchPendingLocal = local;
   showSearchDebounceTimer = setTimeout(() => {
     showSearchDebounceTimer = null;
+    showSearchPendingLocal = null;
     if (myToken !== showSearchToken) return; // a newer keystroke already owns the page
     noteShowQueryInRoute(query);   // the query has settled: the address can say so
     runShowSearchCostly(query, myToken, local);
@@ -6865,11 +7075,29 @@ function onShowSearchInput(rawValue) {
 
 /** Enter, the Go button, and every existing caller: the same two passes with
     the debounce SKIPPED — the exact idiom the show page's episode search
-    already ships (`onSearchInputChange`/`runSearch`, above). */
+    already ships (`onSearchInputChange`/`runSearch`, above).
+
+    FOR THE QUERY ALREADY ON THE PAGE IT SKIPS THE DEBOUNCE AND NOTHING ELSE
+    (audit round 2, search-7). Return inside the 250 ms window used to bump the
+    token: the passes the tick was about to start were discarded, both endpoint
+    requests fired again, and the list stayed local-only for a second round
+    trip. Now a pending tick runs immediately with the rows it already had, and
+    a search whose passes are in flight or answered is left alone — the return
+    key's remaining job is to put the keyboard away (the submit handler). */
 function renderShowSearchResults(query) {
   noteShowQueryInRoute(query);
+  if (isShowSearchCurrent(query)) {
+    if (!showSearchDebounceTimer) return; // in flight or answered: nothing to skip
+    clearTimeout(showSearchDebounceTimer);
+    showSearchDebounceTimer = null;
+    const local = showSearchPendingLocal;
+    showSearchPendingLocal = null;
+    runShowSearchCostly(query, showSearchToken, local);
+    return;
+  }
   const myToken = ++showSearchToken;
   if (showSearchDebounceTimer) { clearTimeout(showSearchDebounceTimer); showSearchDebounceTimer = null; }
+  showSearchPendingLocal = null;
   const local = paintShowSearchLocal(query, myToken);
   runShowSearchCostly(query, myToken, local);
 }
@@ -6892,16 +7120,14 @@ function renderShowSearchResults(query) {
    tell the two apart before tapping, same principle as U-03's Home badge.
 
    THE CTA (the card's own #135 retarget, D8): "Create a playlist about X"
-   appears when `topicSearchStatus` reports no strong result at all -- not
-   merely "no own/generated playlist matched", because a listener could
-   have zero saved playlists yet the topic scorer still finds a rich set of
-   episodes (that is exactly what Playlists/#pl-form already builds from).
-   The CTA is presentation only: tapping it hands off to the existing
-   #/playlists page's own #pl-form flow (through `location.hash` +
-   prefilling the input) rather than calling buildPlaylist() here, so this
-   card adds no second path that can create a playlist -- there remains
-   exactly one (#pl-form's bindPlaylistFormSubmit), matching D8's "the
-   Foray half is not built, Playlist creation stays today's flow" scope. */
+   appears when no own/generated playlist matched AND the topic scorer CAN
+   build one — see createPlaylistCtaHtml for why the gate is that way round.
+   The CTA is presentation only: tapping it hands off to the Create page's
+   own #cr-form flow (through `location.hash` + prefilling the input) rather
+   than calling buildPlaylist() here, so this card adds no second path that
+   can create a playlist -- there remains exactly one (bindCreateFormSubmit),
+   matching D8's "the Foray half is not built, Playlist creation stays
+   today's flow" scope. */
 /* The Playlists section while the topic scan behind the CTA is still owed —
    see "AND IT SAYS SO WHILE IT IS OWED" below. A status line, not a claim:
    it names the work, not an outcome. */
@@ -6991,42 +7217,54 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
   reportCtaMs(null); // the scan never ran: a playlist already matched
 }
 
-/* U-05 (#135, D7/D8): appears in place of a Playlists section when the topic
-   scorer finds no strong result for the typed query at all -- i.e. neither
-   an own/generated playlist match above NOR a topic-search answer rich
-   enough to act on. `topicSearchStatus` runs the exact same scorer
-   buildPlaylist() would, read-only (see its own header for why this must
-   not itself create a playlist).  Retargeted from Foray to Playlist per D8:
-   the mockup's SearchScreen CTA offers "Create a Foray about X"; Foray
-   generation stays out of the UI (D8), so this offers a Playlist instead,
-   handed to the existing #pl-form flow rather than a new creation path. */
+/* U-05 (#135, D7/D8): appears in place of a Playlists section when no
+   own/generated playlist matched the query and the topic scorer CAN build
+   one. `topicSearchStatus` runs the exact same scorer buildPlaylist() would,
+   read-only (see its own header for why this must not itself create a
+   playlist). Retargeted from Foray to Playlist per D8: the mockup's
+   SearchScreen CTA offers "Create a Foray about X"; Foray generation stays
+   out of the UI (D8), so this offers a Playlist instead, handed to Create's
+   own form rather than a new creation path.
+
+   THE GATE IS INVERTED FROM WHAT SHIPPED (audit round 2, search-2). U-05
+   carried the mockup's condition — offer the CTA when the query has no strong
+   result — over from a Foray, which can be made about anything, to a Playlist,
+   which is built by the very scorer that just said "empty". So the page's one
+   primary button was offered on "joe rogan", "npr" and "knitting", where the
+   build was certain to fail a second later on another page with "Not much on
+   … yet", and withheld on "fusion energy", where one tap would have built a
+   real playlist. Offered only when the tap yields a playlist: `ok` or `sparse`
+   (a sparse playlist is a real, disclosed one — see buildPlaylist). On
+   `empty`, nothing: the Shows and Episodes sections are the answer. */
 function createPlaylistCtaHtml(query) {
-  if (topicSearchStatus(query).status !== "empty") return "";
+  const status = topicSearchStatus(query).status;
+  if (status !== "ok" && status !== "sparse") return "";
   return `<div class="sh-create-cta">
     <button type="button" class="fy-btn fy-main" data-create-playlist="${esc(query)}">
-      Create a playlist about \u201c${esc(query)}\u201d
+      Create a playlist about ${quoteQuery(esc(query))}
     </button>
   </div>`;
 }
 
-/* Hands off to #/playlists' own, single creation path (#pl-form's
-   bindPlaylistFormSubmit) rather than calling buildPlaylist() from here --
+/* Hands off to Create's own, single creation path (#cr-form's
+   bindCreateFormSubmit) rather than calling buildPlaylist() from here --
    see createPlaylistCtaHtml's header for why a second creation path is out
-   of scope. Navigates first so #pl-form exists, then prefills and submits
+   of scope. Navigates first so #cr-form exists, then prefills and submits
    it on the next task-queue turn (route() replaces #view synchronously on
    the hashchange handler, which runs after this click handler returns —
-   same "let the browser get a paint/task turn" idiom bindPlaylistFormSubmit
-   itself already documents for its own setTimeout(0)). */
+   same "let the browser get a paint/task turn" idiom bindCreateFormSubmit
+   itself already documents for its own setTimeout(0)). It used to hand off
+   to #/playlists' form; that builder is gone (p-first-6). */
 function bindCreatePlaylistCta(scope) {
   const btn = scope.querySelector("[data-create-playlist]");
   if (!btn) return;
   btn.addEventListener("click", () => {
     const query = btn.dataset.createPlaylist || "";
-    location.hash = "#/playlists";
+    location.hash = "#/create";
     setTimeout(() => {
-      const input = $("#pl-input");
-      const form = $("#pl-form");
-      if (!input || !form) return; // route() failed to land on #/playlists — nothing to prefill
+      const input = $("#cr-input");
+      const form = $("#cr-form");
+      if (!input || !form) return; // route() failed to land on #/create — nothing to prefill
       input.value = query;
       form.dispatchEvent(new Event("submit", { cancelable: true }));
     }, 0);
@@ -7328,23 +7566,50 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
       return epRow(item, i, ctx, -1);
     }
     const id = `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
+    /* THE SAME SNAPSHOT THE SHOW PAGE WOULD HAVE MADE (audit round 2,
+       search-8 and p-switcher-7 — the 2026-09-21 car-artwork report was fixed
+       in `fullCatalogueRowToEpRowItem` only, and this is the other producer of
+       playable breadth rows). The endpoint's row is thinner than a stored
+       snapshot, but three things it does carry, or that resolve locally, were
+       dropped on the floor here: `show_id` (so the show name links to the
+       show page for the 19.9k breadth shows and not only the curated 220),
+       `published_at` (the date every other row shows) and the show's artwork
+       — Apple's `artworkUrl600` when the endpoint passes it, else the show
+       record `showById` already holds from the show passes. Without the art,
+       the lock screen and CarPlay fell back to the 4a icon for any episode
+       played from Search. */
     const item = snapshot(id, {
       show: ep.show_title || ep.show_id,
+      show_id: ep.show_id || null,
       title: ep.title,
       hook: ep.description_text || "",
       audio_url: ep.audio_url,
       duration_min: ep.duration_seconds ? Math.round(ep.duration_seconds / 60) : null,
       duration_sec: ep.duration_seconds ?? null,
+      release_date: ep.published_at || null,
+      artwork_url: ep.artwork_url || showArtworkUrl(showById(ep.show_id)) || null,
       topics: [],
     });
     return epRow(item, i, ctx, -1);
   };
   const localRows = local.map((ep, i) => rowFor(ep, i));
   const remoteRows = remote.map((ep, i) => rowFor(ep, local.length + i));
+  /* HOW MANY THE ENDPOINT HELD BACK (audit round 2, honesty-11). The section is
+     cut to ten rows on purpose (see the `limit=10` note in
+     renderEpisodeSearchResults) and stopped at a round number with nothing
+     saying whether that was all of them, while the show page's own search says
+     "38 episodes found." The endpoint now reports `total` — the matches it
+     mapped before the cut — and `capped` when Apple filled its over-fetch, in
+     which case the count is a floor and says so with a `+`. */
+  const total = Number(data?.total);
+  const heldBack = Number.isFinite(total) && total > remote.length && remote.length > 0;
+  const countNote = heldBack ? `<span class="note">Showing ${remote.length} of ${total}${data?.capped ? "+" : ""}</span>` : "";
+  const appleNote = fromApple ? `<span class="note">from Apple's index</span>` : "";
+  const notes = [countNote, appleNote].filter(Boolean).join(" ");
   container.innerHTML = `<section class="ep-more fy-episode-search">
-    <h3>Episodes${fromApple && !local.length ? ` <span class="note">from Apple's index</span>` : ""}</h3>
+    <h3>Episodes${!local.length && notes ? ` ${notes}` : ""}</h3>
     ${localRows.join("")}
-    ${fromApple && local.length ? `<div class="note fy-episode-search-more">from Apple's index</div>` : ""}
+    ${local.length && notes ? `<div class="note fy-episode-search-more">${notes}</div>` : ""}
     ${remoteRows.join("")}
   </section>`;
   container.hidden = false;
@@ -7353,6 +7618,58 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
   bindUpNext(container);
   bindPlay(container);
   return local.length + remote.length;
+}
+
+/* ---------- THE FORAYS GROUP (audit round 2, p-foray-4) ----------
+
+   Search could not find a Foray: typing "startup" or "venture debt" returned
+   shows, episodes and a playlist CTA, never "The types of capital a startup
+   can raise" — the one thing 4a made about that subject. D8 keeps Foray
+   GENERATION out of the UI; nothing ever said published Forays should be left
+   out of search results, and Search is the door an Apple Podcasts switcher
+   opens first. Local, synchronous, on the keystroke: the list `forayCards()`
+   already holds for Home, Library and #/forays (published + unlocked, the
+   test-track drafts when the switch is on), matched on title, summary and the
+   running order's slot titles, rendered in the `#/forays` list's own row shape
+   so a Foray found here looks like a Foray found there. */
+const FORAY_SEARCH_MAX = 3;
+
+/** Every query token must appear somewhere in the Foray's own words. The
+    tokens are the listener's, split on whitespace, matched as folded
+    substrings (so "cafe" finds "Café" the way the show passes do). */
+function foraySearchMatches(query) {
+  const tokens = SearchEngine.foldDiacritics(query).split(/\s+/).filter(Boolean);
+  if (!tokens.length) return [];
+  const hits = [];
+  for (const f of forayCards()) {
+    const text = SearchEngine.foldDiacritics([
+      f.title, f.summary, ...((Array.isArray(f.slots) ? f.slots : []).map((s) => s && s.title)),
+    ].filter(Boolean).join(" "));
+    if (tokens.every((t) => text.includes(t))) hits.push(f);
+  }
+  return hits.slice(0, FORAY_SEARCH_MAX);
+}
+
+function paintForaySearchResults(query, myToken) {
+  const container = $("#fy-search-results");
+  if (!container) return [];
+  if (myToken !== showSearchToken) return [];
+  const hits = foraySearchMatches(query);
+  if (!hits.length) {
+    container.innerHTML = "";
+    container.hidden = true;
+    return [];
+  }
+  container.innerHTML = `<section class="ep-more fy-foray-search">
+    <h3>Forays</h3>
+    <div class="fy-home">${hits.map(f => `
+      <a class="fy-home-row" href="#/foray/${esc(f.id)}">
+        <span class="fy-home-kicker">foray${f.status === "published" ? "" : " · draft"}</span>
+        <span class="fy-home-title">${esc(f.title)}</span>
+      </a>`).join("")}</div>
+  </section>`;
+  container.hidden = false;
+  return hits;
 }
 
 /** THE KEYSTROKE HALF, called from `paintShowSearchLocal`. Paints the local
@@ -7429,7 +7746,11 @@ function renderEpisodeSearchResults(query, myToken, report = () => {}, localEpis
   const epStart = nowMs();
   fetchApiJson(`api/episodes/search?q=${encodeURIComponent(query)}&limit=10`).then((data) => {
     const epMs = nowMs() - epStart;
-    if (data) {
+    /* Not a degraded reply either (search-4's rule, applied here as well): a
+       limiter trip or an Apple outage answers 200 with `degraded: true` and
+       no rows, and remembering that for the session would make one bad
+       moment a permanently empty Episodes section for the query. */
+    if (data && !data.degraded) {
       if (episodeSearchQueryCache.size >= EPISODE_SEARCH_CACHE_MAX) episodeSearchQueryCache.clear();
       episodeSearchQueryCache.set(cacheKey, data);
     }
@@ -7439,9 +7760,12 @@ function renderEpisodeSearchResults(query, myToken, report = () => {}, localEpis
        network or parse failure (`fetchApiJson` swallows both), and this
        repaints the local rows rather than falling through to a clear. Only the
        ENDPOINT half is unknown in that case, which is what `epHits: null`
-       already says.
-
-       `epHits` stays the ENDPOINT's hit count, not the painted total. It is a
+       already says — and, since audit round 2 (states-7), what the page says
+       too: the failure used to reach the diagnostics record and never the
+       screen. A degraded reply (`degraded: true`, the limiter or Apple down)
+       is the same failure wearing a 200. */
+    if (!data || data.degraded) noteShowSearchFailure(query, myToken, "episodes");
+    /* `epHits` stays the ENDPOINT's hit count, not the painted total. It is a
        diagnostics field about the slow half (docs/search-plan.md's `search`
        entry) and quietly folding device-resident rows into it would make every
        historical comparison wrong. */
@@ -7471,7 +7795,7 @@ function renderEpisodeSearchResults(query, myToken, report = () => {}, localEpis
      "Shows we vouch for" (vouchForHtml)   -> Shows      (#/shows)
      show search (#sh-form/#sh-results)     -> Shows      (#/shows)
      "Browse all shows" link                -> gone; Shows IS that page
-     playlist builder (#pl-form)            -> Playlists  (#/playlists)
+     playlist builder (#pl-form)            -> Playlists  (#/playlists), then Create (#/create) since 2026-09-23
      foray list + "Jump back in"            -> Forays     (#/forays)
 
    test/home-information-architecture.test.js asserts each of those in both
@@ -8034,7 +8358,7 @@ function epRow(item, idx, ctx, nextIdx) {
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
       <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
-      <div class="s">${joinMeta(showNameLink(item.show), fmtDur(item.duration_min), esc(dateStr), progHtml)}</div>
+      <div class="s">${joinMeta(showNameLink(item.show, item.show_id), fmtDur(item.duration_min), esc(dateStr), progHtml)}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${unavailable}
   </div>`;
@@ -8081,7 +8405,7 @@ function archivedRow(item, idx, ctx) {
     <div class="info">
       <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Episode no longer in the catalogue"}</div>
       <div class="s">${named
-        ? joinMeta(showNameLink(item.show), fmtDur(item.duration_min), esc(dateStr))
+        ? joinMeta(showNameLink(item.show, item.show_id), fmtDur(item.duration_min), esc(dateStr))
         : "Saved before 4a kept episode details"}</div>
     </div>
     ${named ? starBtn(item.id) : ""}${named ? upNextBtn(item.id) : ""}${unavailable}
@@ -8479,7 +8803,7 @@ function renderEpisode(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
-          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show) : "", fmtDur(item.duration_min), esc(dateStr))}</p>
+          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show, item.show_id) : "", fmtDur(item.duration_min), esc(dateStr))}</p>
         </div>
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
@@ -8823,6 +9147,10 @@ function renderLibrary() {
   }
 }
 
+/* THE LIST, AND ONE DOOR TO THE BUILDER (audit round 2, p-first-6; founder
+   question 4, default taken): the `#pl-form` builder that lived here is gone —
+   see the removal note above `bindPickLogging`. The empty state says the same
+   sentence Library's does, and both point at Create. */
 function renderPlaylists() {
   setBodyClass("view-page");
   const all = playlists();
@@ -8832,11 +9160,7 @@ function renderPlaylists() {
         <a class="back" href="#/">‹</a>
         <div><h2>Playlists</h2><p class="sub">${all.length} built</p></div>
       </div>
-      <form id="pl-form" autocomplete="off">
-        <input id="pl-input" type="text" maxlength="120" placeholder="build me a playlist…" aria-label="Build a playlist on a subject">
-        <button type="submit">Go</button>
-      </form>
-      <p id="pl-note" class="note" hidden></p>
+      <a class="page-link-row" href="#/create">Build a playlist ›</a>
       ${all.length ? all.map(p => `
         <a class="pl-row" href="#/${esc(playlistRoute(p))}">
           <div class="info">
@@ -8845,10 +9169,8 @@ function renderPlaylists() {
           </div>
           <span class="chev">›</span>
         </a>`).join("")
-      : `<p class="note">No playlists yet — type above to build your first one.</p>`}
+      : `<p class="note">No playlists yet — <a href="#/create">build one on the Create tab</a>.</p>`}
     </div>`;
-
-  $("#pl-form").addEventListener("submit", bindPlaylistFormSubmit);
 }
 
 /* ---------- Create (#/create, U-06 / docs/ui-transition-plan.md D7+D8) ----------
@@ -8909,10 +9231,23 @@ function createToggleHtml() {
    disabled so the page says so. */
 let createBuildPending = false;
 
-function setCreatePillsDisabled(disabled) {
+/* THE PENDING STATE IS PAINTED FROM THE FLAG, ONTO WHATEVER CREATE PAGE IS ON
+   SCREEN (audit round 2, races-3). The build waits on `whenSearchDataReady`,
+   which since round 1 can be a 30 s wait on a cold start; a listener who left
+   and came back found fresh, enabled pills that did nothing (the flag was
+   still set) and a Build button that said Build. Now every render of the page
+   asks the flag, and the build's end restores the button on the page that is
+   there THEN — not the detached one it started from. `"Build"` is the
+   button's one label, so no captured original is needed. */
+function paintCreatePending(pending) {
   const view = $("#view");
   if (!view) return;
-  view.querySelectorAll("[data-cr-subject]").forEach(p => { p.disabled = disabled; });
+  view.querySelectorAll("[data-cr-subject]").forEach(p => { p.disabled = pending; });
+  const form = $("#cr-form");
+  const btn = form && typeof form.querySelector === "function" ? form.querySelector("button[type='submit']") : null;
+  if (!btn) return;
+  btn.disabled = pending;
+  setControlLabel(btn, pending ? "Building…" : "Build", null);
 }
 
 function bindCreateFormSubmit(e) {
@@ -8920,37 +9255,42 @@ function bindCreateFormSubmit(e) {
   if (createBuildPending) return;
   const form = e.currentTarget;
   const input = form.querySelector("input[type='text']");
-  const btn = form.querySelector("button[type='submit']");
   const query = input.value.trim();
   if (!query) return;
   createBuildPending = true;
-  setCreatePillsDisabled(true);
-  const originalLabel = btn.textContent;
-  btn.disabled = true;
-  setControlLabel(btn, "Building…", null);
-  const note = $("#cr-note");
-  if (note) note.hidden = true;
+  paintCreatePending(true);
+  const staleNote = $("#cr-note");
+  if (staleNote) staleNote.hidden = true;
   whenSearchDataReady(() => {
     try {
       const result = buildPlaylist(query);
       logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0, source: "create" });
+      /* ONLY IF CREATE IS STILL THE PAGE ON SCREEN (audit round 2, races-3).
+         The wait above can outlast the listener's patience; a build that
+         finished while they were on Home or in a show yanked them to the new
+         playlist from wherever they were. The playlist is already saved
+         either way — Library and #/playlists list it — so a listener who
+         moved on loses nothing but the jump. The route is the test, not the
+         render token: a listener who left and CAME BACK to Create is looking
+         at "Building…" (painted from the flag above) and expects the result
+         to land. */
+      const onCreate = currentHash() === "#/create";
       if (result.status === "ok" || result.status === "sparse") {
-        location.hash = "#/" + playlistRoute(result.playlist);
-      } else {
+        if (onCreate) location.hash = "#/" + playlistRoute(result.playlist);
+      } else if (onCreate) {
+        const note = $("#cr-note"); // the live page's note, never the one captured before the wait
         if (note) {
           note.textContent = result.status === "unsaved"
             ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
             : result.suggestions.length
-              ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-              : `Not much on "${query}" yet — try different words.`;
+              ? `Not much on ${quoteQuery(query)} yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
+              : `Not much on ${quoteQuery(query)} yet — try different words.`;
           note.hidden = false;
         }
       }
     } finally {
       createBuildPending = false;
-      setCreatePillsDisabled(false);
-      btn.disabled = false;
-      setControlLabel(btn, originalLabel, null);
+      paintCreatePending(false);
     }
   });
 }
@@ -8975,6 +9315,9 @@ function renderCreate() {
     </div>`;
 
   $("#cr-form").addEventListener("submit", bindCreateFormSubmit);
+  /* A build that is still waiting on the search documents is shown as one,
+     on this render too (races-3): the page says why a tap does nothing. */
+  paintCreatePending(createBuildPending);
   /* A SUGGESTION BUILDS (audit 2026-09-22, persona 26). The pill used to fill
      the field and raise the keyboard, and building took a second tap on a Build
      button the keyboard now covered — so the tap read as a miss. Nobody who
@@ -11168,9 +11511,22 @@ function tabForHash(hash) {
 function onTabBarClick(e) {
   const a = e.target && typeof e.target.closest === "function" ? e.target.closest(".tab-btn") : null;
   if (!a) return;
-  if (currentHash(a.getAttribute("href")) !== currentHash()) return;   // ordinary navigation
-  e.preventDefault();
-  scrollPageTo(0);
+  const href = currentHash(a.getAttribute("href"));
+  const here = currentHash();
+  if (href === here) { e.preventDefault(); scrollPageTo(0); return; }
+  /* THE LIT SEARCH TAB GOES BACK TO THE SEARCH, NOT TO AN EMPTY PAGE (audit
+     round 2, search-5). The tab's href is the bare root; from a result the
+     listener opened (`#/show/<id>`, an episode) or from the results themselves
+     (`#/shows/q/<q>`) that differs, so the browser navigated to `#/shows` and
+     the query, the rows and the scroll went with it — round 1 taught ‹ to
+     keep the query and not the tab. On the results page the tap is the
+     same-tab gesture: to the top. From a pushed page it pops to the search
+     that was left, which is what Apple's active tab does; a tab that was
+     left at its root still pops to the root, by the ordinary navigation. */
+  if (href === "#/shows" && tabForHash(here) === "search") {
+    if (/^#\/shows\/q\//.test(here)) { e.preventDefault(); scrollPageTo(0); return; }
+    if (lastSearchTabHash !== "#/shows") { e.preventDefault(); location.hash = lastSearchTabHash; }
+  }
 }
 
 /** Renders (or removes) the tab bar to match the flag, and syncs which tab
