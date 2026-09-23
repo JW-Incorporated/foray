@@ -194,7 +194,7 @@ const PAGE_IDS = [
   "sh-form", "sh-input", "sh-note", "sh-results", "ep-search-results",
   "pl-form", "pl-input", "pl-note",
   "fy-sheet-note", "fy-scrim", "fy-sheet-cancel", "fy-sheet-go",
-  "fy-play", "fy-next", "fy-prev", "fy-strip",
+  "fy-play", "fy-next", "fy-prev", "fy-back", "fy-fwd", "fy-strip",
 ];
 
 function mount({ seed = {} } = {}) {

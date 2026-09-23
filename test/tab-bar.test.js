@@ -111,7 +111,7 @@ const PAGE_IDS = [
   "pl-form", "pl-input", "pl-note",
   "cr-form", "cr-input", "cr-note",
   "fy-sheet-note", "fy-scrim", "fy-sheet-cancel", "fy-sheet-go",
-  "fy-play", "fy-next", "fy-prev", "fy-strip",
+  "fy-play", "fy-next", "fy-prev", "fy-back", "fy-fwd", "fy-strip",
 ];
 
 function mount({ seed = {}, native = false } = {}) {

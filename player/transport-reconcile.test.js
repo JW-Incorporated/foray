@@ -1595,7 +1595,9 @@ function findWhere(node, pred) {
 }
 const labelled = (prefix) => (n) => String(n.getAttribute?.("aria-label") ?? "").startsWith(prefix);
 const sheet = (doc) => ({
-  back: findWhere(doc.body, labelled("Back ")),
+  /* The mini bar's ↺15 (`.fp-skip`, visual pass 1) is labelled the same way
+     and sits earlier in the tree; the sheet's own is the `.fp-btn`. */
+  back: findWhere(doc.body, (n) => n.className === "fp-btn" && labelled("Back ")(n)),
   fwd: findWhere(doc.body, labelled("Forward ")),
   scrub: find(doc.body, "fp-scrub"),
   fill: find(doc.body, "fp-fill"),
@@ -1829,10 +1831,12 @@ test("AUDIT: a scrub into a narration bridge lands where it was aimed, not at it
   restore();
 });
 
-test("AUDIT: \"››\" is disabled on the last segment instead of silently doing nothing", async (t) => {
-  /* KILLING MUTATION: delete the `ui.fwdBtn.disabled` line in `render()`. */
+test("AUDIT: \"Next clip\" is disabled on the last segment instead of silently doing nothing", async (t) => {
+  /* KILLING MUTATION: delete the `ui.clipNext.disabled` line in `render()`.
+     (Visual pass 1, persona 58: the control is the sheet's labelled clip
+     button now, not the ›› the seek pair used to turn into.) */
   const { client, doc, restore } = await bootClient(t);
-  const fwd = () => findWhere(doc.body, (n) => n.textContent === "››");
+  const fwd = () => findWhere(doc.body, (n) => n.textContent === "Next clip ›");
   await client.playForay(synthetic(), { startIndex: 0 });
   await settle();
   assert.equal(fwd().disabled, false, "segment 1 of 2 has a next");
@@ -2477,5 +2481,79 @@ test("SWEEP: Jump back in's Foray rows read the LIVE runtime, as the Foray page'
   assert.notEqual(row.label, stored.label, "which is not what the stored runtime said");
   const throwing = client.forayResumeList({ resolveFor: () => { throw new Error("no docs"); } }).find((r) => r.id === "f263");
   assert.equal(throwing.label, stored.label, "a resolver that fails leaves the stored reading");
+  restore();
+});
+
+/* ======================================================================
+   VISUAL PASS 1 (2026-09-23): the seek pair stays the seek pair (persona 58),
+   and the mini bar gains one nudge (persona 10)
+   ====================================================================== */
+
+test("VISUAL PASS: inside a Foray the sheet's ↺15 nudges within the clip — it does not restart it", async (t) => {
+  /* The ‹‹ that used to replace ↺15 called `forayPrevious`, which RESTARTS the
+     current clip unless you are under 4 s into it: tap "back" eleven minutes
+     in and lose the eleven minutes. KILLING MUTATION: put
+     `foray ? ForayPlayer.forayPrevious() : …` back in the backBtn handler. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+  const { back, fwd } = sheet(doc);
+  assert.equal(back.textContent, "↺ 15", "the glyph never becomes ‹‹");
+  assert.equal(fwd.textContent, "30 ↻", "the glyph never becomes ››");
+  audio.currentTime = 150;                                // 50 s into clip 1 (100–200)
+  audio.fire("timeupdate");
+  await settle();
+  await back.click();
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 135) < 0.01, `landed at ${audio.currentTime}s: 15 s back, not the clip's start`);
+  assert.equal(client.forayStatus().index, 0, "still the same clip");
+  await fwd.click();
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 165) < 0.01, `↻ moved 30 s forward (${audio.currentTime}s)`);
+  restore();
+});
+
+test("VISUAL PASS: the mini bar's ↺15 is the same nudge, for an episode and for a Foray", async (t) => {
+  /* KILLING MUTATION: drop `skipBtn` from `bar.append(...)`, or point its
+     handler at `forayPrevious`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+  const skip = find(doc.body, "fp-skip");
+  assert.ok(skip, "the bar carries a skip control");
+  assert.equal(skip.getAttribute("aria-label"), "Back 15 seconds");
+  audio.currentTime = 150;
+  audio.fire("timeupdate");
+  await settle();
+  await skip.click();
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 135) < 0.01, `Foray: landed at ${audio.currentTime}s`);
+  assert.equal(client.forayStatus().index, 0);
+  restore();
+});
+
+test("VISUAL PASS: previous/next clip are their own labelled row, shown only while a Foray is loaded", async (t) => {
+  /* KILLING MUTATION: delete `ui.clips.hidden = !isForay` from
+     setSkipButtonMode -> the row shows over a plain episode (first assertion),
+     or never shows (second). */
+  const { client, doc, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const clips = find(doc.body, "fp-clips");
+  assert.ok(clips, "the sheet has a clip row");
+  assert.equal(clips.hidden, true, "an episode has no clips to move between");
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+  assert.equal(clips.hidden, false, "a Foray shows it");
+  const next = findWhere(doc.body, (n) => n.textContent === "Next clip ›");
+  const prev = findWhere(doc.body, (n) => n.textContent === "‹ Previous clip");
+  assert.ok(next && prev, "both controls are labelled in words, not glyphs");
+  await next.click();
+  await settle();
+  assert.equal(client.forayStatus().index, 1, "Next clip moved to clip 2");
+  assert.equal(next.disabled, true, "and on the last clip it is disabled");
+  await prev.click();
+  await settle();
+  assert.equal(client.forayStatus().index, 0, "Previous clip, just into a clip, goes back one");
   restore();
 });

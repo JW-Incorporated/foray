@@ -284,9 +284,10 @@ test("the ✕ lives in the sheet's grab row, not on the mini bar it would now hi
      U-13 removed once already. It is also the non-gesture way out, which a
      drag can never be for a switch or screen-reader user.
      MUTATION: restore `bar.append(art, info, playBtn, closeBtn)`. The second
-     assertion fails. */
+     assertion fails. (The bar's back-15 `skipBtn` sits between the title and
+     ▶ since visual pass 1, persona 10 — test/transport-controls.test.js.) */
   assert.match(FLAT_TEXT, /grabZone\.append\(el\("div", "fy-grab"\), closeBtn\);/);
-  assert.match(FLAT_TEXT, /bar\.append\(art, info, playBtn, announce\);/);
+  assert.match(FLAT_TEXT, /bar\.append\(art, info, skipBtn, playBtn, announce\);/);
   assert.doesNotMatch(FLAT_TEXT, /bar\.append\([^)]*closeBtn/);
   /* Unchanged from U-13, and asserted here because this is the change that
      could have quietly dropped it: the control still only COLLAPSES. */

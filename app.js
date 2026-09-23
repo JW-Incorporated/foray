@@ -9783,6 +9783,7 @@ async function renderForay(id) {
       elapsed_sec: Math.round(resume.elapsedSec), index: resume.index,
     });
   }
+  const nudge = forayNudgeSteps(player);
 
   $("#view").innerHTML = `
     <div class="page foray">
@@ -9811,10 +9812,18 @@ async function renderForay(id) {
         <div class="fy-strip" id="fy-strip">${r.playable.map((_, i) =>
           `<span class="fy-seg" data-seg="${i}"><i class="fy-seg-fill"></i></span>`).join("")}</div>
         <div class="fy-times"><span id="fy-now">0:00</span><span id="fy-total"></span></div>
+        <!-- THE SEEK PAIR STAYS THE SEEK PAIR (audit 2026-09-22, persona 58).
+             The two buttons beside Play were previous/next clip, so the
+             gesture every other player has taught — missed a sentence, tap
+             back — threw the listener to the top of an eleven-minute clip.
+             ↺15 / 30↻ nudge on the Foray's own clock here, as they do in the
+             Now Playing sheet; previous/next clip have their own row below,
+             labelled in words. The numbers come from the player bridge so this
+             page and the sheet cannot disagree about a step. -->
         <div class="fy-controls">
-          <button type="button" class="fy-btn" id="fy-prev" aria-label="Previous clip">‹‹</button>
+          <button type="button" class="fy-btn" id="fy-back" aria-label="Back ${nudge.back} seconds">↺ ${nudge.back}</button>
           <button type="button" class="fy-btn fy-main" id="fy-play"${controlLabelAttr("▶ Play", "Play")}>▶ Play</button>
-          <button type="button" class="fy-btn" id="fy-next" aria-label="Next clip">››</button>
+          <button type="button" class="fy-btn" id="fy-fwd" aria-label="Forward ${nudge.fwd} seconds">${nudge.fwd} ↻</button>
           <!-- Playback speed (#242). On the transport row rather than in a settings
                screen, because this is the surface a listener is looking at when
                they decide a segment is slow — and its current value is the label,
@@ -9822,6 +9831,10 @@ async function renderForay(id) {
                accessible name both come from the player bridge, so this button and
                the mini-player's cannot word the same speed two ways. -->
           <button type="button" class="fy-btn fy-rate" id="fy-rate" aria-label="Playback speed">1×</button>
+        </div>
+        <div class="fy-clips">
+          <button type="button" class="fy-clip" id="fy-prev">‹ Previous clip</button>
+          <button type="button" class="fy-clip" id="fy-next">Next clip ›</button>
         </div>
         <!-- A start that failed says so HERE, and a screen reader hears it
              without moving focus off the button that was just pressed. -->
@@ -10411,8 +10424,21 @@ async function guardForayTap(run) {
   }
 }
 
+/** The ↺ / ↻ step sizes, from the player bridge so the Foray page, the Now
+    Playing sheet and the mini bar name one number; the fallback is the same
+    pair player/media-session.js exports, for a page paired with an older
+    cached module. */
+function forayNudgeSteps(player) {
+  try {
+    const s = player && typeof player.nudgeSteps === "function" ? player.nudgeSteps() : null;
+    if (s && Number.isFinite(s.back) && Number.isFinite(s.fwd)) return { back: s.back, fwd: s.fwd };
+  } catch (_) { /* fall through to the documented pair */ }
+  return { back: 15, fwd: 30 };
+}
+
 function bindForayTransport(r, player, resume = null) {
   const onChange = (s) => paintForay(s);
+  const nudge = forayNudgeSteps(player);
 
   /* The discover pool is the only document we have that carries per-show
      artwork, and a lock screen wants a picture (#27). Passed from here rather
@@ -10475,7 +10501,7 @@ function bindForayTransport(r, player, resume = null) {
   // Nothing playable is not a disabled-looking button that still fires: say it
   // with the control's own state, so the page and the behaviour agree.
   if (!r.playable.length) {
-    ["#fy-play", "#fy-next", "#fy-prev"].forEach(sel => { $(sel).disabled = true; });
+    ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd"].forEach(sel => { $(sel).disabled = true; });
     setControlLabel($("#fy-play"), "Nothing to play", null);
     return;
   }
@@ -10494,6 +10520,11 @@ function bindForayTransport(r, player, resume = null) {
   // next that begins at segment 2 silently drops the opening of the Foray.
   $("#fy-next").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.forayNext()) : startOrResume());
   $("#fy-prev").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.forayPrevious()) : startOrResume());
+  /* The nudges seek on the Foray's clock (`player.nudge`, the same function the
+     sheet's ↺15 / 30↻ and the mini bar's ↺15 call); before anything has
+     started they start it, like every other transport button here. */
+  $("#fy-back").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.nudge(-nudge.back)) : startOrResume());
+  $("#fy-fwd").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.nudge(nudge.fwd)) : startOrResume());
 
   $("#view").querySelectorAll("[data-fy]").forEach(btn => {
     btn.addEventListener("click", async () => {
