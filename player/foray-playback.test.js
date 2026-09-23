@@ -1191,6 +1191,10 @@ function fakeEventLog() {
       if (excess > 0) rows.splice(0, excess);
     },
     health() { return { ok: true, backend: "memory", pending: 0, ringSize: rows.length, faults: [] }; },
+    /* "Delete my data" empties the queue too since the 2026-09-22 audit, and
+       counts a page with no way to do that as not clear — so the fake has to
+       carry the module's `purge()` like the rest of its shape. */
+    async purge() { rows.splice(0, rows.length); return { ok: true, remaining: 0 }; },
   };
 }
 
