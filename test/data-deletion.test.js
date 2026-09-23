@@ -1390,3 +1390,27 @@ test("the privacy policy says Delete my data clears the event queue", () => {
   assert.match(s7, /foray_events/, "§7 does not say the event queue is deleted");
   assert.ok(!/outside "Delete my data"/.test(pp), "§1 still says the queue is outside the control");
 });
+
+test("the confirm button is red under ui-v2, and the drawer item that opens the sheet is not coloured", () => {
+  /* Two defects in one place (2026-09-22 audit): the ui-v2 violet primary rule
+     (`body.ui-v2 .fy-sheet-go`, higher specificity, later in the file) painted
+     "Delete everything" the same violet as Play, and the drawer's "Delete my
+     data" was the menu's only coloured item, in a retired v1 gold.
+
+     MUTATION THAT KILLS THIS: delete the `body.ui-v2 .fy-sheet-go.dd-go` rule —
+     red, the violet rule is the last word on the button again. */
+  const css = read("styles.css").replace(/\/\*[\s\S]*?\*\//g, " ");
+  const rule = (sel) => {
+    const at = css.lastIndexOf(`${sel} {`);
+    return at === -1 ? null : { at, body: css.slice(at, css.indexOf("}", at)) };
+  };
+  const violet = rule("body.ui-v2 .fy-sheet-go");
+  const danger = rule("body.ui-v2 .fy-sheet-go.dd-go");
+  assert.ok(violet, "premise: the ui-v2 primary rule exists");
+  assert.ok(danger, "no ui-v2 rule gives the delete button its colour back");
+  assert.ok(danger.at > violet.at, "the danger rule must come after the violet one");
+  assert.match(danger.body, /background:\s*var\(--danger\)/);
+  assert.match(css, /--danger:\s*#[0-9a-fA-F]{6}/, "the danger colour is a token");
+  assert.match(APP_SRC, /ddEl\("button", "fy-sheet-go dd-go", "Delete everything"\)/, "premise: the button carries both classes");
+  assert.ok(!/\.dd-open\s*\{[^}]*color/.test(css), "the drawer item is coloured again");
+});
