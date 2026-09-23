@@ -12612,6 +12612,7 @@ function renderCurrentPage() {
   else if (h === "#/starred-shows") renderStarredShows();
   else if (h === "#/interests") renderInterests();
   else renderHome();
+  publishRenderedPageHead();
   /* Called AFTER the page paints, not before: renderTabBar() reads
      document.body's class to decide nothing (it reads location.hash
      directly), but appending it after the page's own
@@ -12808,6 +12809,9 @@ function abandonPendingRestore() { pendingRestore = null; }
     scroll restore that the loading paint clamped. One attempt: whatever the
     page's final height allows is the answer, and memory resumes after it. */
 function pageDidPaint() {
+  /* The page's real header is on screen now: publish ITS height (see
+     publishRenderedPageHead), whether or not a restore is owed. */
+  publishRenderedPageHead();
   const pending = pendingRestore;
   pendingRestore = null;
   if (!pending || pending.hash !== renderedHash) return;
@@ -13030,6 +13034,20 @@ function setPageHeadHidden(hidden) {
    than once per render, because the title can wrap differently after a
    rotation. `offsetHeight` ignores the hide transform, so either state
    measures the same box. */
+/**
+ * Publish the height of the header of the page NOW in #view (review
+ * 2026-09-23). `resetPageHeadScrollState()` runs BEFORE a render replaces
+ * #view, so it measured the outgoing page's header (or none) and wrote to that
+ * header's soon-discarded page; `setPageHeadHidden(false)` returns early while
+ * the header is already showing. So a new Foray page had no --page-head-h
+ * until the header first HID, and a slow first scroll slid the transport under
+ * the visible header — the audited bug. Called after the synchronous render
+ * (renderCurrentPage) and after an async page's terminal paint (pageDidPaint).
+ */
+function publishRenderedPageHead() {
+  publishPageHeadHeight(currentPageHead());
+}
+
 function publishPageHeadHeight(head) {
   const page = head && head.parentElement;
   if (!page || !page.style || typeof page.style.setProperty !== "function") return;

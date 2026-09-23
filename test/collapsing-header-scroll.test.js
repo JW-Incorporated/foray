@@ -248,6 +248,33 @@ test("a header that reappears publishes its own height for the transport beneath
     "the reappearing header must (re)publish its height — the title can rewrap after a rotation");
 });
 
+test("REVIEW: the page just rendered publishes its header's height, in the order the app really runs", () => {
+  /* The reset runs BEFORE #view is replaced, so it measured the outgoing page
+     (here: none) and the new Foray page had no --page-head-h until its header
+     first hid; a slow scroll slid the transport under the showing header.
+     The old test mounted the head before reset(), an order the app never uses.
+     MUTATION: drop `publishRenderedPageHead()` from renderCurrentPage — the
+     first assertion fails; from pageDidPaint — the second does. */
+  const m = mount({ headHeight: 88 });
+  const props = withPage(m);
+  const realQuery = m.ctx.document.querySelector;
+  let mounted = false;
+  m.ctx.document.querySelector = (sel) => (String(sel) === "#view .page-head" && !mounted ? null : realQuery(sel));
+  m.evalIn("state.ready = true");
+  m.ctx.location.hash = "#/create";
+  m.ctx.renderTabBar = () => {};
+  m.ctx.renderCreate = () => { mounted = true; };   // the new page, with its header, lands in #view
+  m.evalIn("renderCurrentPage()");
+  assert.strictEqual(props.get("--page-head-h"), "88px", "the synchronous render publishes the NEW page's header");
+
+  props.clear();
+  mounted = false;
+  m.reset();                                         // an async page's first ("Loading…") render
+  mounted = true;                                    // ...and its real header, a tick later
+  m.evalIn("pageDidPaint()");
+  assert.strictEqual(props.get("--page-head-h"), "88px", "an async page's terminal paint publishes it too");
+});
+
 test("styles.css pins the Foray transport beneath a SHOWING header, and at the topbar beneath a hidden one", () => {
   /* MUTATION: delete the `.page-head:not(.page-head-hidden) ~ .fy-transport`
      rule. This fails: the transport's only `top` is the header's own. */
