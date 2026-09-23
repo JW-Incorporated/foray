@@ -532,11 +532,27 @@ export function mediaSessionActions(surface = {}, {
   if (previous) out.push(["previoustrack", () => previous()]);
   if (next) out.push(["nexttrack", () => next()]);
   if (seekBy) {
-    // `details.seekOffset` is the platform's own number when it has one — a
-    // head unit may ask for 10 s. Honour it; fall back to the spec's ±15/30,
-    // which are the numbers the in-page buttons use.
-    out.push(["seekbackward", (details) => seekBy(-offsetOf(details, seekBackwardSec))]);
-    out.push(["seekforward", (details) => seekBy(offsetOf(details, seekForwardSec))]);
+    /* ALWAYS the spec's ±15/30 — `details.seekOffset`, the platform's own
+       number, is deliberately not read.
+
+       FOUNDER, 2026-09-23 (build 2026092326, iPhone): "In the app, I can jump
+       back 15s and forward 30s. On the lock screen, it's 10s in both
+       directions. Both should be 15/30"
+
+       Until this line the handler honoured whatever the OS put in
+       `seekOffset` ("a head unit may ask for 10 s"), and the lock screen is
+       exactly such a head unit: WebKit's remote-command listener advertises
+       skip commands for every playing `<audio>` element with an interval of
+       ITS choosing and hands that interval back as `seekOffset`
+       (`RemoteCommandListenerCocoa.mm` → `MediaElementSession.cpp`), so the
+       lock screen stepped by WebKit's number while the in-page buttons stepped
+       by ours. The nudge is one product decision, made once, in
+       `SEEK_BACKWARD_SEC`/`SEEK_FORWARD_SEC`; a surface that wants a different
+       step gets it through `opts`, never through the event. The offset still
+       travels in the details (the shim forwards native's `offsetMs`, and the
+       diagnostics can read it) — it is data about the press, not an order. */
+    out.push(["seekbackward", () => seekBy(-seekBackwardSec)]);
+    out.push(["seekforward", () => seekBy(seekForwardSec)]);
   }
   if (seekTo) {
     out.push(["seekto", (details) => {
@@ -550,11 +566,6 @@ export function mediaSessionActions(surface = {}, {
     }]);
   }
   return out;
-}
-
-function offsetOf(details, fallback) {
-  const o = details?.seekOffset;
-  return isNum(o) && o > 0 ? o : fallback;
 }
 
 /* ---------- the bridge ---------- */
