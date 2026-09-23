@@ -349,9 +349,55 @@ storageReady.then(() => {
   if (typeof window !== "undefined") {
     window.addEventListener("foray:session", (e) => {
       try { diag.sessionEvent(e?.detail ?? {}); } catch (_) { /* diagnostics must never break the page */ }
+      /* AND THE PLAYER, not only the record (2026-09-22, founder report 1).
+         Until now these events reached `diag.sessionEvent` and nothing else. */
+      try { onNativeSession(e?.detail ?? {}); } catch (_) { /* a session event must never break the page */ }
     });
   }
 }).catch(() => {});
+
+/**
+ * What the native shell's session events MEAN to the player (founder report 1,
+ * 2026-09-22 — "a resumed episode restarts from a stale position").
+ *
+ * They arrived here and went only to the diagnostic record, so the one layer
+ * that can see an iOS background, a Bluetooth route vanishing or a phone call
+ * starting told the player nothing. Now:
+ *
+ *   - EVERY kind flushes both position stores first. Each of these is a moment
+ *     after which the page may not run again for a long time (a background
+ *     suspends it; a route loss ends the drive), which is the same argument the
+ *     page's own `visibilitychange` flush makes — and the WebView does not
+ *     always deliver `visibilitychange` when the app, rather than the page,
+ *     goes away.
+ *   - `routeChange` / `old-device-gone` is the car switched off or headphones
+ *     out: `manager.routeChanged`, corner case #13, which pauses. It can only
+ *     stop audio, never start it.
+ *   - `interruptionBegan`, `foreground` and `mediaServicesReset` RECONCILE
+ *     rather than command. These can be delivered LATE — a suspended page
+ *     handles them when it wakes (`lagMs` in the record measures it) — and an
+ *     interruption acted on as a command after the listener had already
+ *     resumed from the lock screen would pause audio they were hearing. The
+ *     element is the authority; the event is only the reason to ask it.
+ *   - `interruptionEnded` changes nothing. `shouldResume` would start audio
+ *     with no press, which is a product decision (docs/DECISIONS.md), not a
+ *     wiring one; the record keeps it so the decision can be made on data.
+ */
+function onNativeSession(detail) {
+  if (!manager || !detail || typeof detail !== "object") return;
+  const kind = String(detail.kind ?? "");
+  if (!["background", "foreground", "routeChange", "interruptionBegan", "interruptionEnded", "mediaServicesReset"].includes(kind)) return;
+  flushPositions();
+  if (kind === "routeChange" && detail.reason === "old-device-gone") {
+    manager.routeChanged({ oldDeviceUnavailable: true })
+      .then(() => { render(); persistForayProgress({ force: true }); })
+      .catch((err) => console.warn("[player] route change failed", err));
+    return;
+  }
+  if (kind === "interruptionBegan" || kind === "foreground" || kind === "mediaServicesReset") {
+    reconcileOnReturn(`session:${kind}`).catch((err) => console.warn("[player] reconcile failed", err));
+  }
+}
 
 /** The record, as text, for the surface app.js builds. Published beside
     `forayStorageHealth` and for the same reason: app.js is a classic script and
@@ -1940,6 +1986,90 @@ function syncMediaSession() {
   }));
 }
 
+/* ---------- the two boundaries: going away, and coming back ----------
+
+   Module-level rather than closures inside `bind()` (2026-09-22, founder
+   report 1) because the page is no longer the only thing that can say "we are
+   going away": the native shell's own background / route-change / interruption
+   events arrive as `foray:session` (see `onNativeSession`), and they need the
+   same flush and the same reconcile the page's `visibilitychange` gets. */
+
+// Corner case #17: pocketing the phone must not lose the position. This is
+// the path that actually matters on mobile — beforeunload is unreliable there.
+function flushPositions() {
+  if (!manager) return;
+  /* ONE RULE, BOTH STORES (#689). This line used to read
+     `if (current && isPlaying())`, and the comment below — written for the
+     Foray store on the very next line — is the argument against it: an EPISODE
+     paused at 23:14 and then backgrounded must still remember 23:14 for
+     exactly the reason a Foray must. Pause, pocket the phone, and the episode
+     row kept whatever was last written, which is the founder's *"it jumped
+     back to several minutes ago in the podcast, I assume the last time the app
+     was open"*.
+     The condition was doing a second job by accident — "a load landed, so the
+     element's clock is about this item" — and dropping it here would have
+     started writing fabricated positions from a failed load. That question is
+     now asked where it belongs, inside `_persistPosition`, against
+     `playheadItemId` rather than against the transport. */
+  if (current) manager._persistPosition();
+  // Same rule, the store it was first written for: a Foray paused at 23:14 and
+  // then backgrounded must still remember 23:14.
+  persistForayProgress({ force: true });
+  /* The durable write cannot be awaited here — `pagehide` has no way to hold
+     the page open, and an IndexedDB commit is asynchronous. That is survivable
+     and deliberately so: the localStorage tier is written SYNCHRONOUSLY by the
+     line above, so the position is on disk before this handler returns, and the
+     next `hydrate()` copies it down into IndexedDB. Kicking the queue costs
+     nothing and often wins the race anyway. */
+  storage.flush().catch(() => {});
+}
+
+/**
+ * Coming BACK is a boundary too, and that is the whole of #263.
+ *
+ * The founder drove with the screen off, switched the car off, and the audio
+ * route vanished — the audio stopped, correctly. When he re-opened the app the
+ * transport still said playing, so his first press went on correcting the
+ * app's belief and his second one did what he had wanted. One press must do
+ * what the listener meant.
+ *
+ * This handler only ever flushed on the way OUT, so the surface kept whatever
+ * state it last wrote for however long the page was gone. A stop that happened
+ * while the page was suspended left no event to catch, but it left the element
+ * paused — and `paused` can be read at any later moment. Becoming visible is
+ * the boundary where a stop the page could not observe becomes observable, so
+ * it is where the surface stops trusting itself and asks.
+ *
+ * `reconcileWithBackend` never starts audio and is idempotent, so this is safe
+ * to fire on every return; `render()` afterwards only because the correction
+ * happened outside the media events that normally drive it.
+ */
+async function reconcileOnReturn(why = "visible") {
+  if (!manager) return;
+  const corrected = await manager.reconcileWithBackend(why);
+  /* REPAINTED WHETHER OR NOT ANYTHING WAS CORRECTED, and that is not belt and
+     braces. Every repaint in this file is driven by a media event, and the last
+     thing that happens at the end of a Foray is `pausePlayback` against an
+     element that is ALREADY paused — which fires nothing. So the surface can be
+     holding a frame from before the state moved with no event left to come and
+     fix it. A repaint costs one pass over a handful of nodes and starts no
+     audio; a stale transport costs a press. */
+  render();
+  if (!corrected) return;
+  /* WHICH STATE IT LANDED IN (#264/#266). `reconcileWithBackend` emits
+     `reconcile.externalStop why=visible` BEFORE it runs the reducer, so the
+     record's `stop` row is written with `state: null` — stamping it at emit time
+     would record `playing`, which is about to stop being true. This is the one
+     place the landed state is readable: the correction happens inside the
+     player, and only this caller awaits it. */
+  diag.reconciled(why, manager?.state?.type ?? null);
+  /* The playhead the route died at. The reconcile's own `savePosition` covered
+     the episode row; a Foray keeps its position in its own store and on its own
+     clock, so it needs saying separately — and it can be said, because the
+     element still holds this segment's audio at the moment it stopped. */
+  persistForayProgress({ force: true });
+}
+
 /* ---------- wiring ---------- */
 
 function bind() {
@@ -2085,88 +2215,14 @@ function bind() {
 
   ui.rateBtn.addEventListener("click", () => openRatePicker());
 
-  // Corner case #17: pocketing the phone must not lose the position. This is
-  // the path that actually matters on mobile — beforeunload is unreliable there.
-  const flush = () => {
-    /* ONE RULE, BOTH STORES (#689). This line used to read
-       `if (current && isPlaying())`, and the comment below — written for the
-       Foray store on the very next line — is the argument against it: an EPISODE
-       paused at 23:14 and then backgrounded must still remember 23:14 for
-       exactly the reason a Foray must. Pause, pocket the phone, and the episode
-       row kept whatever was last written, which is the founder's *"it jumped
-       back to several minutes ago in the podcast, I assume the last time the app
-       was open"*.
-       The condition was doing a second job by accident — "a load landed, so the
-       element's clock is about this item" — and dropping it here would have
-       started writing fabricated positions from a failed load. That question is
-       now asked where it belongs, inside `_persistPosition`, against
-       `playheadItemId` rather than against the transport. */
-    if (current) manager._persistPosition();
-    // Same rule, the store it was first written for: a Foray paused at 23:14 and
-    // then backgrounded must still remember 23:14.
-    persistForayProgress({ force: true });
-    /* The durable write cannot be awaited here — `pagehide` has no way to hold
-       the page open, and an IndexedDB commit is asynchronous. That is survivable
-       and deliberately so: the localStorage tier is written SYNCHRONOUSLY by the
-       line above, so the position is on disk before this handler returns, and the
-       next `hydrate()` copies it down into IndexedDB. Kicking the queue costs
-       nothing and often wins the race anyway. */
-    storage.flush().catch(() => {});
-  };
-  /**
-   * Coming BACK is a boundary too, and that is the whole of #263.
-   *
-   * The founder drove with the screen off, switched the car off, and the audio
-   * route vanished — the audio stopped, correctly. When he re-opened the app the
-   * transport still said playing, so his first press went on correcting the
-   * app's belief and his second one did what he had wanted. One press must do
-   * what the listener meant.
-   *
-   * This handler only ever flushed on the way OUT, so the surface kept whatever
-   * state it last wrote for however long the page was gone. A stop that happened
-   * while the page was suspended left no event to catch, but it left the element
-   * paused — and `paused` can be read at any later moment. Becoming visible is
-   * the boundary where a stop the page could not observe becomes observable, so
-   * it is where the surface stops trusting itself and asks.
-   *
-   * `reconcileWithBackend` never starts audio and is idempotent, so this is safe
-   * to fire on every return; `render()` afterwards only because the correction
-   * happened outside the media events that normally drive it.
-   */
-  const reconcileOnReturn = async () => {
-    if (!manager) return;
-    const corrected = await manager.reconcileWithBackend("visible");
-    /* REPAINTED WHETHER OR NOT ANYTHING WAS CORRECTED, and that is not belt and
-       braces. Every repaint in this file is driven by a media event, and the last
-       thing that happens at the end of a Foray is `pausePlayback` against an
-       element that is ALREADY paused — which fires nothing. So the surface can be
-       holding a frame from before the state moved with no event left to come and
-       fix it. A repaint costs one pass over a handful of nodes and starts no
-       audio; a stale transport costs a press. */
-    render();
-    if (!corrected) return;
-    /* WHICH STATE IT LANDED IN (#264/#266). `reconcileWithBackend` emits
-       `reconcile.externalStop why=visible` BEFORE it runs the reducer, so the
-       record's `stop` row is written with `state: null` — stamping it at emit time
-       would record `playing`, which is about to stop being true. This is the one
-       place the landed state is readable: the correction happens inside the
-       player, and only this caller awaits it. */
-    diag.reconciled("visible", manager?.state?.type ?? null);
-    /* The playhead the route died at. The reconcile's own `savePosition` covered
-       the episode row; a Foray keeps its position in its own store and on its own
-       clock, so it needs saying separately — and it can be said, because the
-       element still holds this segment's audio at the moment it stopped. */
-    persistForayProgress({ force: true });
-  };
-
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) { flush(); return; }
+    if (document.hidden) { flushPositions(); return; }
     /* Nothing awaits an event handler, so the rejection needs somewhere to land
        other than the console's unhandled bucket — and a reconcile that failed
        must not be the reason the surface never repaints at all. */
     reconcileOnReturn().catch((err) => console.warn("[player] reconcile failed", err));
   });
-  window.addEventListener("pagehide", flush);
+  window.addEventListener("pagehide", flushPositions);
 }
 
 function ensureBooted() {

@@ -1983,6 +1983,138 @@ test("AUDIT: the steering wheel's next/previous appear when the page offers them
   restore();
 });
 
+/* ==================================================================== */
+/* part 6 — founder report 1 (2026-09-22): a resumed episode restarts     */
+/*          from a stale position                                        */
+/* ==================================================================== */
+
+/* THE ROOT CAUSE, as STATE.md's handoff recorded it: `PositionStore.save` had
+   one production caller, a 15 s interval armed only while the REDUCER said
+   `playing`. An element resumed from outside the reducer — a car or lock-screen
+   press WebKit's own media session honoured, a WebView woken by the OS — never
+   moved the reducer, so nothing wrote the playhead for the whole ride; the
+   reconcile only ever corrected towards paused; and the native session events
+   reached the diagnostic record and nothing else. Simulated here by their
+   observable consequence, as parts 3-4 do: the element plays and nobody pressed
+   anything in this page. You cannot simulate a car. */
+
+/** The native shell's `foray:session`, as `foray-media-session.js` dispatches it. */
+function nativeSession(win, detail) {
+  for (const fn of [...(win.listeners.get("foray:session") ?? [])]) fn({ detail });
+}
+
+/** Played to `at`, paused by the listener: the machine now says `interrupted`. */
+async function pausedAt(t, at = 600, opts = {}) {
+  const booted = await bootClient(t, opts);
+  await booted.client.play(episodeItem());
+  await settle();
+  booted.audio.currentTime = at;
+  booted.audio.fire("timeupdate");
+  transport(booted.doc).press();
+  await settle();
+  assert.equal(booted.audio.paused, true, "precondition: paused");
+  return booted;
+}
+
+/** The lock screen's play, honoured by WebKit without asking this page. */
+async function resumedFromOutside(audio) {
+  audio.paused = false;
+  audio.fire("play");
+  audio.fire("playing");
+  await settle();
+}
+
+test("REPORT 1: an element resumed from OUTSIDE the reducer still has its position written", async (t) => {
+  /* KILLING MUTATION: delete the manager's `timeupdate` -> `_persistIfDue`
+     hook. The reducer is corrected to `playing` by the test below's fix, but
+     the interval is 15 s of wall clock and never fires here, so without the
+     element-driven writer the row stays at 600 for the whole ride. */
+  const { audio, storage, restore } = await pausedAt(t, 600);
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 600) < 1, "precondition: the pause wrote 600");
+  await resumedFromOutside(audio);
+  audio.currentTime = 1500;
+  audio.fire("timeupdate");
+  assert.ok(
+    Math.abs(posRow(storage, "ep-a").seconds - 1500) < 1,
+    `the ride's position must be written, got ${posRow(storage, "ep-a").seconds}`
+  );
+  // And it is throttled by media seconds, not written at 4 Hz.
+  audio.currentTime = 1504;
+  audio.fire("timeupdate");
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1500) < 1, "four seconds later is inside the delta");
+  restore();
+});
+
+test("REPORT 1: the machine is corrected TOWARDS playing when the element plays", async (t) => {
+  /* KILLING MUTATION: delete the `interrupted` branch at the top of
+     `reconcileWithBackend`. The machine then says paused over sound, and the
+     NEXT external stop (the car switched off) is invisible to the reconcile,
+     which only catches a machine that says `playing`. */
+  const { client, doc, audio, restore } = await pausedAt(t, 600);
+  const before = audio.calls.length;
+  await resumedFromOutside(audio);
+  assert.equal(client.isPlaying("ep-a"), true, "the machine agrees with the element");
+  assert.deepEqual(
+    audio.calls.slice(before).filter((c) => c === "play" || c === "load"), [],
+    "and the correction started and loaded nothing itself"
+  );
+  audio.routeLostUnseen();
+  doc.hidden = false;
+  doc.fire("visibilitychange");
+  await settle();
+  assert.equal(transport(doc).label, "Play", "so the next unseen stop is caught on return");
+  restore();
+});
+
+test("REPORT 1: the native BACKGROUND event flushes the position, with no visibilitychange", async (t) => {
+  /* The WebView does not always deliver `visibilitychange` when the APP goes
+     away. KILLING MUTATION: delete `flushPositions()` from `onNativeSession`. */
+  const { win, audio, storage, restore } = await pausedAt(t, 1200);
+  audio.currentTime = 2400;                 // scrubbed while paused: the row is behind
+  audio.fire("seeked");
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1200) < 1, "precondition: the row is stale");
+  nativeSession(win, { kind: "background", reason: "did-enter", producer: "audio", at: Date.now() });
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 2400) < 1, `got ${posRow(storage, "ep-a").seconds}`);
+  restore();
+});
+
+test("REPORT 1: a route that DISAPPEARED pauses the transport and writes where it stopped", async (t) => {
+  /* Corner case #13, now reachable from the device. KILLING MUTATION: delete
+     the `old-device-gone` branch from `onNativeSession`. */
+  const { client, doc, win, audio, storage, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  audio.currentTime = 1800;
+  nativeSession(win, { kind: "routeChange", reason: "old-device-gone", producer: "audio", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(audio.paused, true, "the car went away, so the sound stops");
+  assert.equal(transport(doc).label, "Play");
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1800) < 1, "at the second it stopped");
+  restore();
+});
+
+test("REPORT 1: a LATE interruption never pauses audio the listener has since resumed", async (t) => {
+  /* A suspended page handles a native event when it wakes, so an interruption
+     can arrive after the listener pressed play on the lock screen. It is a
+     reason to ASK the element, never a command. KILLING MUTATION: replace the
+     reconcile in `onNativeSession` with `manager.interruptionBegan()`. */
+  const { client, doc, win, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  nativeSession(win, { kind: "interruptionBegan", reason: "began", producer: "audio", at: Date.now() - 60_000 });
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "the element is playing, so the stale event changes nothing");
+  // A real one: the call took the audio and the page saw no `pause`.
+  audio.routeLostUnseen();
+  nativeSession(win, { kind: "interruptionBegan", reason: "began", producer: "audio", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(transport(doc).label, "Play", "and a real one is caught by asking");
+  restore();
+});
+
 test("AUDIT: play on a FINISHED Foray starts it over instead of replaying its last segment", async (t) => {
   /* The page now labels this press "Start over", and this is what makes the
      label true. KILLING MUTATION: delete the `ended` branch in `setRunning` —

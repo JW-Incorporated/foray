@@ -170,6 +170,11 @@ import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 import { interludeEligible, describeInterlude, INTERLUDE_CEILING_SEC } from "./interlude.js";
 
 const POSITION_INTERVAL_MS = 15_000;
+/** How far the playhead must have moved since the last write before a TICK
+    writes again (2026-09-22). Media seconds, not wall: at 2x a listener covers
+    ground twice as fast and loses twice as much to a missed write. Under the
+    15 s corner case #17 allows, with room for a tick to be late. */
+const POSITION_MIN_DELTA_SEC = 10;
 
 /** How often the narration ticker fires `onNarrationTick` while a script-only
     line is speaking (L-03, generation-architecture.md §7 item 3's position
@@ -455,6 +460,37 @@ export class PlayerQueueManager {
       this.reconcileWithBackend("unexplainedPause")
         .catch((err) => this._emit(`reconcile.failed: ${err?.message ?? err}`));
     };
+
+    /* THE ELEMENT'S OWN CLOCK DRIVES THE POSITION WRITER (2026-09-22, founder
+       report 1: "a resumed episode restarts from a stale position").
+
+       The only production writer used to be the 15 s interval, armed ONLY
+       while the reducer said `playing`. An element resumed from outside the
+       reducer — a car or lock-screen press that WebKit's own media session
+       honoured, a suspended WebView woken by the OS — never moved the reducer,
+       so the interval never armed and NOTHING wrote the playhead for the whole
+       ride. Two hooks, both on the element rather than on the belief:
+
+         - `timeupdate` is the writer. It fires only while the element's clock
+           moves, so it is armed by the element's own playing state by
+           construction, and `_persistIfDue` throttles it by media seconds.
+         - `playing` is the reconcile's other direction: the element is
+           audible, so if the machine says `interrupted` it is corrected
+           TOWARDS playing (never the reverse of what the element shows).
+
+       `addMediaListener` because it survives the two-element handover at a
+       cross-episode seam; capability-checked like `prefetch`, so a backend
+       without media events (every fake in the manager suites, a future native
+       backend) keeps the interval alone, which is what shipped before. */
+    if (typeof backend.addMediaListener === "function") {
+      backend.addMediaListener("timeupdate", () => this._persistIfDue());
+      backend.addMediaListener("playing", () => {
+        this._syncTimer();
+        this.reconcileWithBackend("elementPlaying")
+          .catch((err) => this._emit(`reconcile.failed: ${err?.message ?? err}`));
+      });
+      backend.addMediaListener("pause", () => this._syncTimer());
+    }
   }
 
   /* ---------- lifecycle ---------- */
@@ -919,6 +955,14 @@ export class PlayerQueueManager {
    */
   async reconcileWithBackend(why = "visible") {
     if (this._disposed) return false;
+    /* THE OTHER DIRECTION (2026-09-22, founder report 1). This used to return
+       for anything but `playing`, so an element resumed from outside the
+       reducer stayed `interrupted` for the whole ride — and `interrupted` is
+       what the position writer, the transport's label and the next reconcile
+       all key off. It is corrected towards `playing` ONLY on the element's own
+       word, and it still never starts audio: `elementResumed` carries no
+       playback effect, because the sound is already coming out. */
+    if (this.state.type === "interrupted") return this._reconcileTowardsPlaying(why);
     /* `playing` and nothing wider. A seam beat is `loadingItem` with a paused
        element BY DESIGN — the 2.0 s silence is the product — and `interrupted`,
        `idle` and `ended` all already agree with a paused element. `playing` is
@@ -951,6 +995,22 @@ export class PlayerQueueManager {
 
     this._emit(`reconcile.externalStop why=${why} — the element is paused and we said playing`);
     await this._transport("reconcile", () => this._handle(E.interruptionBegan()));
+    return true;
+  }
+
+  /** The machine says `interrupted`; is the element audible with THIS item's
+      audio, and if so, say `playing`. Every guard is a reason the element's
+      sound is not this item's resumption: a transition still being applied,
+      a spoken line (nothing in `backend` is producing it), or an element
+      holding some other item — `interrupted` during a bridge names the item
+      AFTER the bridge, which the element does not yet hold. */
+  async _reconcileTowardsPlaying(why) {
+    if (this._applying > 0) return false;
+    if (this._loadedIsSynth || !this.elementIsAudible) return false;
+    const item = this._currentItem();
+    if (!item || this._loadedId !== item.id || this.state.item?.id !== item.id) return false;
+    this._emit(`reconcile.externalPlay why=${why} — the element is playing and we said interrupted`);
+    await this._handle(E.elementResumed());
     return true;
   }
 
@@ -2088,17 +2148,40 @@ export class PlayerQueueManager {
 
   /** The periodic half of the persistence rule. The event-driven half is the
       reducer's savePosition effect; both call the same code path. */
+  /* ARMED ON THE ELEMENT'S STATE TOO (2026-09-22, founder report 1). The belief
+     alone is what left an externally-resumed element with no writer at all; the
+     `playing`/`pause` media hooks above re-evaluate this whenever the element
+     moves, so an element playing behind an `interrupted` machine is covered. */
   _syncTimer() {
-    if (this.state.type === "playing") this._startTimer();
+    if (this.state.type === "playing" || this.elementIsAudible) this._startTimer();
     else this._stopTimer();
   }
 
   _startTimer() {
     if (this._timer) return;
-    this._timer = setInterval(() => {
-      if (this.state.type === "playing") this._persistPosition();
-    }, POSITION_INTERVAL_MS);
+    this._timer = setInterval(() => this._persistIfDue(), POSITION_INTERVAL_MS);
     if (typeof this._timer.unref === "function") this._timer.unref();
+  }
+
+  /**
+   * The periodic write, from whichever tick got here first — the interval or
+   * the element's `timeupdate`. ONE RULE FOR BOTH (2026-09-22): the item must be
+   * the one the element holds, audio must be flowing by the reducer's word OR
+   * the element's, and the playhead must have moved `POSITION_MIN_DELTA_SEC`
+   * since the last write of THIS item by anyone. Checked cheaply and in that
+   * order because `timeupdate` is 4 Hz; `_persistPosition`'s own refusal is a
+   * telemetry line, which at 4 Hz would flood the record.
+   */
+  _persistIfDue() {
+    if (this._disposed || !this.positionStore) return;
+    if (!(this.state.type === "playing" || this.elementIsAudible)) return;
+    const item = this._currentItem();
+    if (!item || boundsOf(item) || this._loadedIsSynth || this._loadedId !== item.id) return;
+    const t = this.backend.currentTime;
+    if (typeof t !== "number" || !Number.isFinite(t)) return;
+    const last = this._lastPersisted;
+    if (last && last.id === item.id && Math.abs(t - last.seconds) < POSITION_MIN_DELTA_SEC) return;
+    this._persistPosition();
   }
 
   _stopTimer() {
@@ -2143,6 +2226,9 @@ export class PlayerQueueManager {
     const seconds = this.backend.currentTime;
     if (typeof seconds !== "number" || !Number.isFinite(seconds)) return;
     this.positionStore.save(item.id, seconds, { duration: this.backend.duration ?? null });
+    /* What the periodic writer measures its delta from — any write counts, so
+       a pause's `savePosition` followed by a tick does not write twice. */
+    this._lastPersisted = { id: item.id, seconds };
   }
 
   _emit(message) {

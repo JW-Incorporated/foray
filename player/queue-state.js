@@ -178,6 +178,13 @@ export const E = Object.freeze({
       dai_suspected + whether the file is local (issue #30's seek-policy);
       the reducer only passes it through. */
   seek: (seconds, precise = false) => Object.freeze({ type: "seek", seconds, precise }),
+
+  /** JS-ONLY, like `seek` (2026-09-22, founder report 1). The element is
+      producing audio for the item we hold as `interrupted` — a lock-screen or
+      car press that WebKit's own media session honoured, or a WebView resumed
+      from outside this machine. An OBSERVATION, never a request: see
+      `handleElementResumed`. */
+  elementResumed: () => Object.freeze({ type: "elementResumed" }),
 });
 
 /* ---------- effects ---------- */
@@ -289,6 +296,7 @@ export function reduce(state, event) {
     case "skipToPrevious": return handleSkip(state, event.item, "previous");
     case "seek": return handleSeek(state, event.seconds, event.precise);
     case "stop": return handleStop(state);
+    case "elementResumed": return handleElementResumed(state);
     case "error":
       return [S.idle(), [F.pausePlayback(), F.emitTelemetry(`player.error: ${event.message}`)]];
     default:
@@ -581,6 +589,22 @@ function handleSeek(state, seconds, precise) {
       // ephemeral bridge TTS is meaningless.
       return [state, [F.seekRejected(`cannot seek in state ${describe(state)}`)]];
   }
+}
+
+/* ---------- elementResumed ----------
+
+   Not in the Swift original (2026-09-22, founder report 1). `interrupted` is
+   the only state this moves from, and to `playing` with NO audio effect: the
+   sound is already coming out — something outside the reducer started it — so
+   emitting `startPlayback` would be a second start, and `loadItem` would
+   re-point an element that is playing. What the transition buys is everything
+   downstream that keys off `playing`: the position writer, the transport's
+   label, the reconcile that catches the NEXT external stop. Every other state
+   either already says audio is flowing or must not be overruled by an element
+   event (a seam beat is `loadingItem` with the element paused on purpose). */
+function handleElementResumed(state) {
+  if (state.type !== "interrupted") return [state, []];
+  return [S.playing(state.item), [F.emitTelemetry("reconcile.elementResumed")]];
 }
 
 /* ---------- stop ---------- */
