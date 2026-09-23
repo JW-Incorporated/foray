@@ -2,6 +2,101 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-23 (audit round 2, lane L3: the platform contract for the lock screen, the car and the Android shade; the Up Next model; the sheet's staples; Dynamic Type)
+
+Round 2 of the 4a audit (`docs/audit/round-2/`, synthesis themes R2-M and R2-N)
+found that the lock screen, the car and the Android notification were "a surface
+nobody designed": each fix had been made on one surface with the others inherited.
+The founder answered the round's questions 1, 2, 3, 5, 9 and 10 by default
+(orchestrator, 2026-09-23); this entry writes the contract ONCE, before the code,
+and the code cites it. Held for the founder, not implemented: question 6 (backups
+of the native Preferences suite) and question 7 (privacy-policy wording).
+
+**1. The platform contract — per kind, which commands exist and what they mean.**
+
+| | ordinary episode | Foray (tape) | Foray (narration line) |
+|---|---|---|---|
+| play / pause / toggle | always | always | always (`ForayTtsPlugin` pause/resume) |
+| ↺15 / 30↻ (`seekbackward`/`seekforward`) | always, the page's own ±15/30 (one source, `player/media-session.js`; the natives never hold a literal) | always, on the Foray's clock | always |
+| `previoustrack` | **always installed**: restart, unless within `RESTART_WINDOW_SEC` of the start AND the chosen list has a playable row before this one — then that row (p-car-5; the Foray's own rule, `forayPrevious`) | the previous clip / restart, same window | same |
+| `nexttrack` | only when `planAfterEnded` has something: Up Next first, then the chosen list | the next clip | the next item |
+| end of the last item | nothing plays; the bar stays with ▶ and the seek pair; the entry is kept (L1's `p-car-6`) | the Foray reports `ended`: every transport command off, the entry kept, Android's Stop stays | — |
+| `stop` | a PAUSE from any remote; only the Android notification's own Stop/swipe (`close`) tears down | same | same |
+
+**Which pair the lock screen draws (founder question 1): the SKIP pair, always.**
+iOS draws one control per side and prefers ⏮/⏭ whenever the track commands are
+enabled; with anything in Up Next the 2026-09-23 steering-wheel fix enabled
+`nextTrackCommand` and the founder's 30↻ became ⏭, flipping back as Up Next
+drained (p-impatient-3). Ruling: the track pair is offered ONLY where a track
+button exists without looking — a headset, a Bluetooth stack, a car (`carAudio`,
+A2DP/HFP, USB, AirPlay): `ForayAudioPlugin.trackCommandsAllowed(portTypes:)`, read
+at load and on every route change. On the built-in speaker, where the lock screen
+is the only surface, next/previous stay off whatever Up Next holds. The page's
+`nexttrack`/`previoustrack` handlers are no longer mirrored onto WebKit's own
+session (`UNMIRRORED_ACTIONS`), so WebKit's client cannot enable them either;
+the seek pair still is. **Device check (Wyatt, next build), added to
+`docs/ios-lock-screen.md` §8.5:** with two episodes in Up Next, lock the phone —
+the right-hand button must be 30↻; with AirPods in, double-tap must skip to the
+next queued episode; in the car, the wheel's next/previous must work during tape.
+If the wheel's next is dead during tape, WebKit's later command write is winning
+and the plugin must re-assert availability on WebKit's play/pause — that is the
+one branch this ruling could not settle read-only.
+
+**One session mode, `.spokenAudio`, everywhere (native-10).** Set at
+`ForayAudioPlugin.load()` (category only, no `setActive` — the F11/F13 rule
+stands), on every paused hold, and by `ForayTtsPlugin` on every utterance as
+before. A navigation prompt pauses-and-resumes a podcast rather than talking
+over it; a clip and a narration line now get the same treatment instead of
+whichever the prompt's second landed in. Device check: whether WebKit resets the
+mode when its element starts (a Maps prompt that ducks tape but pauses narration
+says it did).
+
+**Auto-resume after a call or Siri (founder question 2): yes, when iOS says
+`shouldResume`, and only for an interruption that began while PLAYING.** A
+`.spokenAudio` session is interrupted by a navigation prompt too, and the plugin
+holds one while paused — so a prompt during a listener's pause ends with
+`shouldResume` and must NOT start the podcast. The guard is the state at
+`interruptionBegan` (the plugin's `interrupted` flag and the record's
+`began-while-held`), not the state at `.ended`; a resume the listener already
+made is a no-op (`setRunning(true)` on a playing transport). The page-side
+resume is lane L1's (`p-car-3`); this paragraph is the ruling it implements.
+
+**Android's notification carries the seek pair (native-7)** as its own actions
+(API 24–32) and as Media3 custom command buttons on the session (API 33+, where
+the system draws controls from the session and never renders rewind/fast-forward);
+the compact view shows ↺15 / play / 30↻ for a single episode and ⏮ / play / ⏭
+when there is a next. **A press on a running service is dispatched and not
+re-posted (native-8)**; a close removes the notification at once and the service
+follows the page's `stop`. **A narration-first Foray gets its service (native-2)**
+from the transport's first `playing` payload (`noteTransportPlaying`), not only
+from an element's `play()`.
+
+**2. The Up Next model (founder question 9): a list you move down, never
+around.** Playing row k — from the page's ▶ or by ⏭ — removes rows 1..k-1. The
+first version kept them and re-served an abandoned row after the last one
+(p-impatient-7). A row moved ABOVE the playing one while it plays is what plays
+next at the natural end (nobody skipped it). The page is a live view of
+`cp_queue`: every write repaints it in place, the current row is marked
+(p-impatient-6). Only what 4a can play can be queued (p-impatient-10); the
+snapshot cap never prunes a queued episode (p-impatient-11). Drag-reorder, Play
+next and Clear Up Next stay a follow-up card (question 9's second half); the
+arrows remain.
+
+**3. The sheet's staples (founder question 10): ⏭, Up Next (N) and Save now;
+the sleep timer parked.** ⏭ is the steering wheel's next, so the skipped episode
+leaves Up Next the same way. History is last-played order (honesty-3); "played"
+means finished on the playlist header as on the rows (honesty-6); the Up Next
+row and the episode page carry the row mark (honesty-5). Finished items keep
+their rows' "Played" and leave Jump back in per question 3 (L1/L8's surfaces).
+
+**4. Dynamic Type (founder question 5): build the bridge; correct the sentence.**
+`mobile/web/foray-type-scale.js` measures a `-apple-system-body` probe and sets
+the root's `font-size` (16px × body/17, clamped 1–2×) plus `--type-scale` for
+the fixed-px chrome; iOS shell only. The 2026-09-23 §1 sentence is corrected in
+place. Device check: Settings › Accessibility › Larger Text at xxxLarge — rows,
+the tab labels and the sheet must grow; the top bar must not clip its title
+(the px chrome's `calc(… * var(--type-scale))` is lane L7's).
+
 ## 2026-09-23 (six founder reports from one drive: no zoom at all, the drawer leaves when used, the lock screen's 15/30, the paused app keeps the car, and "4a / unknown / unknown")
 
 **The report (Wyatt, 2026-09-23, iPhone, build 2026092326), verbatim — the four
@@ -38,7 +133,12 @@ and `zoomEnabled: false` stated in `mobile/capacitor.config.json` (Android's
 native WebView zoom; Capacitor's default, now a decision rather than a default).
 The 09-17 per-control rule stays as the belt. **Cost, named:** a listener who
 relied on pinch to read small text has lost it; the answer to that is type size,
-not zoom, and Dynamic Type already scales the page.
+not zoom. **Corrected 2026-09-23 (audit round 2, a11y-1):** this sentence used to
+end "and Dynamic Type already scales the page", which was false — WKWebView scales
+only `-apple-system-*` text and styles.css set none, so the page ignored iOS Text
+Size and the pinch had no replacement. The bridge that makes the compensation true
+is `mobile/web/foray-type-scale.js` (the round-2 entry below); until a device
+confirms it, the cost stands as a cost.
 
 **2 + 3. The drawer closes when it is used — a rule, not a patch on one item.**
 It closed for links only (`route()` closes it on navigation; the click handler

@@ -346,6 +346,18 @@ export const SHELL_ONLY_FILES = [
     dest: "foray-tts.js",
     module: true,
   },
+  /* The iOS shell's Dynamic Type bridge (audit round 2, a11y-1): a probe in
+     `-apple-system-body` sets the root's font-size, so iOS Text Size reaches the
+     rem scale. Shell-only because on macOS Safari the keyword resolves to 13px
+     and would shrink the web; the module itself gates on the iOS platform.
+     Independent of the three above. `tools/mobile/foray-type-scale.test.mjs`
+     pins that this entry exists — it is the "a Dynamic Type path exists" test
+     the DECISIONS correction asks for. */
+  {
+    src: "mobile/web/foray-type-scale.js",
+    dest: "foray-type-scale.js",
+    module: true,
+  },
   /* K-01's measurement passage (docs/bundled-voice-plan.md). NOT a script —
      `shellScriptTags` filters this list to `.js`, so this entry is copied and
      never injected — and it is here rather than fetched from `tools/` because
