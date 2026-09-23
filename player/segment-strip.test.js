@@ -44,7 +44,7 @@ import {
 } from "./foray-resolve.js";
 import { itemRuntimeSec } from "./foray-queue.js";
 import {
-  stripModel, stripSummary, mountStrip, renderStrip, assignTones, toneSeed,
+  stripModel, stripSummary, stripTally, mountStrip, renderStrip, assignTones, toneSeed,
   sourceKeyOf, isNarration, growOf, TONE_COUNT, NARRATOR_SOURCE, SIZES,
   segmentStripHtml, applyStripGrow,
 } from "./segment-strip.js";
@@ -1456,4 +1456,40 @@ test("the clip is load-bearing: even merged, the worst committed Foray does not 
   /* MUTATION (killed): `.fy-strip--sm { --seg-min: 5px }` -> `3px`, the change
      that makes the worst Foray very nearly fit. The last assertion fails,
      naming both numbers. */
+});
+
+/* ==================================================================== */
+/* stripTally — the Foray header's numbers, from the strip's own model    */
+/* (audit 2026-09-22, theme L)                                            */
+/* ==================================================================== */
+
+const NARRATED_ID = "how-ai-actually-gets-built-3b83e1";
+
+test("stripTally counts what the strip counts: clips are tape, bridges are narration, shows are heard shows", () => {
+  /* The header used to print `playable.length` "segments" — bridges included —
+     over a strip announcing the tape count: "50 segments" above "11 segments".
+     MUTATION (killed): in stripTally, `clips: m.segmentCount` ->
+     `clips: m.itemCount`. The narrated Foray's clip count becomes its whole
+     queue and the first assertion goes red. */
+  const r = resolveDoc(realDoc(NARRATED_ID));
+  const tally = stripTally(r.playable);
+  const model = stripModel(r.playable);
+  assert.equal(tally.clips, model.segmentCount);
+  assert.ok(tally.clips < r.playable.length, "a narrated Foray has fewer clips than queue items");
+  assert.equal(tally.clips + tally.bridges, r.playable.length, "every queue item is a clip or a bridge");
+  assert.equal(tally.shows, model.shows.length);
+  assert.equal(tally.totalSec, r.totalSec, "one runtime, whichever reader asks");
+  assert.ok(stripSummary(model).includes(`${tally.clips} segment`), "the strip's own sentence names the same number");
+});
+
+test("stripTally says a runtime is an estimate when any item's duration was not measured", () => {
+  /* ~40% of a narrated Foray's runtime is `script.length / 17`. `duration_source`
+     carried that through two modules with no reader at the surface.
+     MUTATION (killed): make `estimated` always false. The first assertion goes
+     red. */
+  const narrated = stripTally(resolveDoc(realDoc(NARRATED_ID)).playable);
+  assert.equal(narrated.estimated, true, "script-timed bridges make the runtime an estimate");
+  const tapeOnly = stripTally(real("capital-types-1").playable);
+  assert.equal(tapeOnly.estimated, false, "a Foray of measured tape is a measurement");
+  assert.equal(tapeOnly.bridges, 0);
 });

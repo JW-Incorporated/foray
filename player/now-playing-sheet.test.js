@@ -305,3 +305,34 @@ test("the grab zone can receive a vertical drag at all", () => {
   /* And the ✕ inside it opts back OUT, or the tap never lands. */
   assert.match(CSS_RULES, /\.fp-grab-zone \.fp-close \{[^}]*touch-action:\s*auto/);
 });
+
+/* ==================================================================== */
+/* AUDIT 2026-09-22: empty paragraphs are hidden, and a failed play says so */
+/* ==================================================================== */
+
+test("the hook and the timing note are hidden when empty, like the description", () => {
+  /* Both carry margins, so an emptied-but-visible paragraph was a dead band in
+     the sheet — on every Foray, which never has a hook.
+     MUTATION: delete `ui.sWhy.hidden = !ui.sWhy.textContent;`. Red. MUTATION 2:
+     delete `ui.note.hidden = !ui.note.textContent;`. Red. */
+  assert.match(CODE, /ui\.sWhy\.textContent = why \|\| item\.hook \|\| "";\s*ui\.sWhy\.hidden = !ui\.sWhy\.textContent;/);
+  assert.match(CODE, /ui\.note\.hidden = !ui\.note\.textContent;/);
+  assert.match(CODE, /note\.hidden = true;/, "and the note starts hidden, before any item sets it");
+});
+
+test("an ordinary episode that fails to play says so on the bar and in the sheet", () => {
+  /* Persona audit #4: a refused or failed play said nothing anywhere; the Foray
+     page alone had a line for it. The telemetry sink now routes a media error or
+     a refused play() on a single episode to `setPlayFailure`, which fills a live
+     region on the bar and a line in the sheet.
+     MUTATION: delete the `if (!foray && current && …) setPlayFailure(…)` branch
+     in onTelemetry. Red. MUTATION 2: drop `setPlayFailure(null)` from
+     setNowPlaying — a new episode would inherit the last one's failure. Red. */
+  assert.match(CODE, /if \(!foray && current && \/player\\\.error\|play\\\.rejected\/i\.test\(m\)\) \{\s*setPlayFailure\(playFailureCopy\(m\)\);/);
+  const setNow = CODE.slice(CODE.indexOf("function setNowPlaying("), CODE.indexOf("function currentRate("));
+  assert.match(setNow, /setPlayFailure\(null\);/, "a new current item clears the previous one's failure");
+  assert.match(CODE, /if \(playFailure && running\) setPlayFailure\(null\);/, "sound coming out clears it too");
+  // CLIENT, not CODE: the attribute values are string literals, which CODE blanks.
+  assert.match(CLIENT, /err\.setAttribute\("role", "status"\);/, "the bar's line is a live region");
+  assert.match(CLIENT, /reportPlayFailure\(err\) \{/, "app.js has a bridge to report a throw from its side");
+});

@@ -362,7 +362,7 @@ test("a generated candidate that duplicates an already-shown own playlist id is 
   assert.strictEqual((html.match(/subject-history/g) || []).length, 1, "the shared id must render exactly once");
 });
 
-test("no own or generated match renders neither section content nor the CTA when the topic scorer is not empty", () => {
+test("no own or generated match renders neither section content nor the CTA when the topic scorer is not empty", async () => {
   /* Sanity for the ordering of the branches: a rich topic answer with no
      playlist match shows nothing extra here (buildPlaylist's own #pl-form
      flow already answers "what should I listen to" — this section stays
@@ -382,9 +382,14 @@ test("no own or generated match renders neither section content nor the CTA when
 
   m.ctx.renderAllShows();
   shForm.submit();
+  /* The section holds "Still looking for playlists…" until the deferred scan
+     answers (persona audit #28, 2026-09-22) — the claim here is about what it
+     settles to, so wait one macrotask for the scan, as the CTA cases do. */
+  await new Promise((r) => setTimeout(r, 0));
 
   const pl = m.byId.get("pl-search-results");
   assert.strictEqual(pl.hidden, true, "no Playlists section and no CTA when nothing to show and the topic scorer is not empty");
+  assert.strictEqual(pl.innerHTML, "", "and the pending line is gone once the scan answered");
 });
 
 /* ==================================================================== */

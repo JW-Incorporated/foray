@@ -475,25 +475,36 @@ test("both shell notices name the app", () => {
    `pi:` id has no id-map/network fallback to attempt (see that branch's own
    comment). The unit rule below applies to it exactly as it does to every
    other note. */
-/* RAISED 9 -> 10 AND WIDENED on 2026-09-22 (audit, "every not-found page is a
-   dead end"): the episode, show and Foray misses moved from the one-line shape
-   to `notFoundPage(heading, message, back)`, the page-head-and-‹ shape the
-   playlist miss already had. Their messages are unchanged, so the census now
-   reads BOTH shapes -- otherwise the fix would have moved seven notes out of
-   the set this test protects. The tenth is the playlist note coming back in
-   through the helper. */
+/* RESHAPED 9 -> 13 on 2026-09-22 (audit theme G, the three-state convention).
+   Eight of the nine one-line notes moved into `statusPageHtml({ note: "…" })`,
+   which gives every such page a head with ‹ — they were dead ends on stale links
+   — and the failures among them gained "Try again" through `failedNoteHtml("…")`.
+   The notes did not go anywhere, so this test now enumerates all three shapes
+   rather than letting the unit rule stop applying to them. The four new ones:
+   "Couldn't load this show." (a dead endpoint is not a missing show), and the
+   failed states of #/shows and #/forays, which used to paint "No shows here yet."
+   and "0 forays" over a failed fetch. "The player didn't load." lost its
+   "— reload the page": that was browser advice inside a native shell, and the
+   Retry beside it now does the reloading that matters.
+   13 -> 14 the same day: the Shows search's "Part of this search didn't load."
+   (a settled empty answer behind a failed pass), and the boot failure's
+   "Couldn't load 4a — check your connection." moved from the one-line shape into
+   failedNoteHtml with a Try again, so it is counted once, in its new shape.
+   14 -> 15 at integration (L1 + L5): L1 had given the playlist miss a helper of
+   its own (`notFoundPage`); the two helpers were one idea, so L1's callers now
+   go through `statusPageHtml` with their titles and back routes, and the
+   playlist note is counted here with the rest. */
 test("no note this app renders into #view capitalises the unit", () => {
   const src = read("app.js");
   const notes = [
-    ...src.matchAll(
-      /innerHTML = `<div class="page"><p class="note">([^<]*)<\/p><\/div>`/g
-    ),
-    ...src.matchAll(/notFoundPage\("[^"]*", "([^"]*)"/g),
+    ...src.matchAll(/innerHTML = `<div class="page"><p class="note">([^<]*)<\/p><\/div>`/g),
+    ...src.matchAll(/statusPageHtml\(\{[^}]*?note: "([^"]*)"/g),
+    ...src.matchAll(/failedNoteHtml\("([^"]*)"\)/g),
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    10,
-    `expected ten #view notes, found ${notes.length}. More is fine -- ` +
+    15,
+    `expected fifteen #view status notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );
@@ -520,10 +531,12 @@ test("no note this app renders into #view capitalises the unit", () => {
    app with one line. Nothing else in the repo reads it. The best-reading string
    in this whole rename -- the name sits mid-sentence, so nothing collides.
 
-   KILLED BY: reverting to "Couldn't load Foray — check your connection". */
+   KILLED BY: reverting to "Couldn't load Foray — check your connection".
+   2026-09-22: "and reload" went — the note now carries a Try again that re-runs
+   the boot, and "reload" was browser advice inside a native shell. */
 test("the load-failure page names the app", () => {
   const m = read("app.js").match(
-    /Couldn't load (.+?) — check your connection and reload\./
+    /Couldn't load (.+?) — check your connection\./
   );
   assert.ok(m, "app.js's init() no longer has its load-failure note");
   assert.equal(m[1], APP_NAME);

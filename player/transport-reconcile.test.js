@@ -1714,12 +1714,14 @@ test("AUDIT: a cold start on a FINISHED episode begins at the top, not at the ou
 test("AUDIT: the Jump back in card says a finished episode is FINISHED", async (t) => {
   /* The card reads how far the listener GOT, which is the raw row; where a
      press starts is the collapsed offset. KILLING MUTATION: feed `offset` to
-     `episodePercentDone`/`episodeRemainingLabel` again — "60 min left", 0%. */
+     the card's reading again — "60 min left", 0%. INTEGRATION (2026-09-22): L5
+     fixed the same defect through the shared `episodeProgress` reading, whose
+     word for a finished episode is "Played" on every surface; that one won. */
   const carried = await aSessionThatReached(t, 3590);
   const { client, restore } = await bootClient(t, { seed: carried });
   const card = client.lastEpisodeCard();
   assert.ok(card, "the pointer is still offered");
-  assert.equal(card.label, "finished");
+  assert.equal(card.label, "Played");
   assert.equal(card.percent, 100);
   assert.equal(card.position_sec, 0, "and a press on it starts from the top");
   const mid = await aSessionThatReached(t, 1800);
@@ -1900,8 +1902,16 @@ test("AUDIT: a superseded load that FAILS does not stop the load that replaced i
 
 /* ---- the bar says why there is no sound ---- */
 
-const secondLine = (doc) => find(doc.body, "fp-show").textContent;
-const statusNote = (doc) => find(doc.body, "fp-note");
+/* The bar's second line is the show line, or the status line standing in for
+   it (`fp-err`, a live region) while there is something to say. The sheet's
+   status line sits under the transport (`fp-err-line`). INTEGRATION
+   (2026-09-22): L2 and L5 fixed the failure line separately; the merged player
+   paints both lanes' states through one painter into L5's elements. */
+const secondLine = (doc) => {
+  const err = find(doc.body, "fp-err");
+  return err && !err.hidden ? err.textContent : find(doc.body, "fp-show").textContent;
+};
+const statusNote = (doc) => find(doc.body, "fp-err-line");
 
 test("AUDIT: an episode whose audio will not load says so, and play() reports it", async (t) => {
   /* KILLING MUTATIONS: `return true` at the end of `play()` (the result
@@ -1912,9 +1922,9 @@ test("AUDIT: an episode whose audio will not load says so, and play() reports it
   const ok = await client.play(episodeItem());
   await settle();
   assert.equal(ok, false, "a 404 is not a start");
-  assert.match(secondLine(doc), /Didn't load/, "the mini bar says it failed");
-  assert.match(statusNote(doc).textContent, /wouldn't load/, "and the sheet's status line says why");
-  assert.equal(statusNote(doc).getAttribute("role"), "status");
+  assert.match(secondLine(doc), /Did not load/, "the mini bar says it failed");
+  assert.match(statusNote(doc).textContent, /could not load/, "and the sheet's status line says why");
+  assert.equal(find(doc.body, "fp-err").getAttribute("role"), "status", "the bar's line is announced");
 
   // The connection comes back and the listener does what the line said.
   audio.loadPlan.set("https://cdn.test/ep-a.mp3", "ok");

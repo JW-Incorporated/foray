@@ -92,7 +92,7 @@ import { HtmlAudioBackend } from "./html-audio-backend.js";
 import { PositionStore } from "./position-store.js";
 import {
   makeLastEpisode, writeLastEpisode, readLastEpisode, lastEpisodeState,
-  episodePercentDone, episodeRemainingLabel,
+  episodeProgress,
 } from "./episode-progress.js";
 import { SINGLE_ITEM } from "./queue-strategy.js";
 import { seekPrecision, formatTimestamp, EXACT, OWN } from "./seek-policy.js";
@@ -112,7 +112,7 @@ import {
 } from "./diagnostic-log.js";
 import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
 import { createForayDirectory, DIRECTORY_DB_NAME } from "./foray-directory.js";
-import { mountStrip, stripModel, stripSummary, segmentStripHtml, applyStripGrow } from "./segment-strip.js";
+import { mountStrip, stripModel, stripSummary, stripTally, segmentStripHtml, applyStripGrow } from "./segment-strip.js";
 import {
   HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
   startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent,
@@ -578,7 +578,16 @@ function buildUI() {
   info.setAttribute("aria-label", "Open player");
   const title = el("span", "fp-title");
   const show = el("span", "fp-show");
-  info.append(title, show);
+  /* A failed play says so ON THE BAR (persona audit #4, 2026-09-22), in the
+     show line's place: the bar is the one surface on screen whatever page the
+     listener tapped play from, and in a car it is the only one they glance at.
+     A live region so a screen reader hears it without focus moving. Hidden
+     until `setPlayFailure` fills it. */
+  const err = el("span", "fp-err");
+  err.setAttribute("role", "status");
+  err.setAttribute("aria-live", "polite");
+  err.hidden = true;
+  info.append(title, show, err);
 
   const playBtn = el("button", "fp-play", "▶");
   playBtn.type = "button";
@@ -712,10 +721,11 @@ function buildUI() {
   row2.append(rateBtn, openLink, forayLink, stopBtn, collapse);
 
   const note = el("p", "fp-note");
-  /* A status line, so "Buffering…" and a failed load are announced rather than
-     only painted (audit 2026-09-22). Polite: neither interrupts. */
-  note.setAttribute("role", "status");
-  note.setAttribute("aria-live", "polite");
+  note.hidden = true;
+  /* The same failure, in the expanded sheet, under the transport — where
+     `.fy-error` sits on the Foray page. */
+  const sErr = el("p", "fp-err-line");
+  sErr.hidden = true;
 
   /* The publisher's own description, LAST. It is the longest thing here and
      the only reason the sheet needs to scroll at all, so putting it under the
@@ -726,7 +736,7 @@ function buildUI() {
   const sDesc = el("p", "fp-s-desc");
   sDesc.hidden = true;
 
-  scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, row2, note, sDesc);
+  scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, row2, sErr, note, sDesc);
   sheet.append(grabZone, scroll);
   root.append(sheet);
   document.body.append(root);
@@ -735,8 +745,42 @@ function buildUI() {
     root, bar, art, title, show, playBtn, closeBtn, fill, sheet,
     grabZone, scroll, sArt, sDesc,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
-    rateBtn, openLink, forayLink, stopBtn, collapse, info, note,
+    rateBtn, openLink, forayLink, stopBtn, collapse, info, note, err, sErr,
   };
+}
+
+/* ---------- a play that failed says so (persona audit #4, 2026-09-22) ----------
+
+   An ordinary episode that would not load used to say nothing, anywhere: the
+   manager paused, the glyph flipped back to ▶, and the only evidence was a
+   console line. The Foray page already had the standard ("That segment
+   wouldn't load. Check the connection, then press play."), for the surface a
+   newcomer uses least. These are that standard for every episode.
+
+   Two sentences, because only two can be acted on — the same split the Foray
+   page makes. A browser holding audio back until it is sure you asked is not a
+   fault, and gets an instruction rather than an error.
+
+   NO APOSTROPHES IN THESE LITERALS, on purpose: the source-text suites
+   (now-playing-sheet, episode-link, media-session) strip strings with regexes
+   that read an apostrophe inside any other literal as the start of a
+   single-quoted string, and one stray "wouldn't" blinds every assertion after
+   it in the file. */
+const EP_START_FAILED = "That episode could not load. Check the connection, then press play.";
+const EP_PLAY_HELD = "Press play again to start it.";
+
+let playFailure = null;
+
+/** Show (a sentence) or clear (null) the failure line on the bar and the sheet.
+    The bar's show line steps aside while it is up, so the bar keeps its one
+    line of subtitle. */
+function setPlayFailure(copy) {
+  playFailure = copy || null;
+  if (ui) paintStatus();
+}
+
+function playFailureCopy(signal) {
+  return /NotAllowedError/.test(String(signal ?? "")) ? EP_PLAY_HELD : EP_START_FAILED;
 }
 
 /** How far down the Now Playing sheet is currently pulled, in CSS px.
@@ -1229,9 +1273,6 @@ function seekEpisodeBy(offsetSec) {
 function render() {
   if (!ui || !current) return;
   syncForaySegment();
-  /* AN ERROR CANNOT SURVIVE AUDIO — the same rule `syncForaySegment` keeps for
-     `foray.error` (#225), for the same reason. */
-  if (episodeFailed && isPlaying()) episodeFailed = false;
   paintStatus();
   /* "››" ON THE LAST SEGMENT IS DISABLED, not silently dead (audit 2026-09-22).
      `forayNext` returns early there, so the button looked live and read "Next
@@ -1248,6 +1289,8 @@ function render() {
      of a drift nothing announced — but it stops the surface holding the lie
      indefinitely, which is what it did before. */
   const running = transportIsRunning();
+  // Sound is coming out: whatever failed before has recovered.
+  if (playFailure && running) setPlayFailure(null);
   const glyph = running ? "❚❚" : "▶";
   ui.playBtn.textContent = glyph;
   ui.bigPlay.textContent = glyph;
@@ -1323,7 +1366,11 @@ function setNowPlaying(item, why) {
   ui.show.textContent = item.show || "";
   ui.sTitle.textContent = item.title || "";
   ui.sShow.textContent = item.show || "";
+  /* Emptied paragraphs are HIDDEN, not left blank (audit 2026-09-22): both
+     carry margins, so an empty one was a dead band in the sheet — on every
+     Foray, which never has a hook. `sDesc` below always did it this way. */
   ui.sWhy.textContent = why || item.hook || "";
+  ui.sWhy.hidden = !ui.sWhy.textContent;
   if (item.artwork_url) {
     ui.art.src = item.artwork_url;
     ui.art.hidden = false;
@@ -1369,11 +1416,12 @@ function setNowPlaying(item, why) {
   // any timestamp we might later show from chapters is not. Say nothing when
   // it's exact; say something plain when it isn't.
   const { precision } = seekPrecision(item, { isLocalFile: false, source: OWN });
-  timingNote = precision === EXACT ? "" : "Timings on this show are approximate.";
+  ui.note.textContent = precision === EXACT ? "" : "Timings on this show are approximate.";
+  ui.note.hidden = !ui.note.textContent;
   /* Something else is current now, so neither the last item's failure nor its
      stall describes it. */
-  episodeFailed = false;
   buffering = false;
+  setPlayFailure(null);
   render();
 }
 
@@ -1383,24 +1431,23 @@ function setNowPlaying(item, why) {
 
    - A FAILED EPISODE LOAD said nothing anywhere. `play()` returned true
      whatever happened, the bar slid up with "▶" and "--:--", and app.js's
-     `if (!ok)` guard was dead code. The Foray page has had its own failure
-     line since #225; the surface a newcomer actually uses had none.
+     `if (!ok)` guard was dead code. The failure itself is `setPlayFailure`
+     above (one state, with the autoplay split); this paints it.
    - A NETWORK STALL was painted as playing. `waiting` was subscribed only to
      write a diagnostic row, so the button kept saying Pause over silence and
      the car said PLAYING, and a listener at 70 mph had no way to tell a dead
      zone from a crash.
 
-   Both are painted on the mini bar's second line — the one line always on
-   screen — and on the sheet's status line, which is announced. */
-const EPISODE_FAILED_LINE = "Didn't load — press play to try again";
-const EPISODE_FAILED_NOTE = "That episode wouldn't load. Check the connection, then press play.";
+   Both are painted in the mini bar's second line — the one line always on
+   screen, a live region, standing in for the show line while it is up — and
+   in the sheet's status line under the transport. INTEGRATION (2026-09-22):
+   L2 and L5 each fixed the failure half; this is L5's state and elements with
+   L2's buffering and short bar copy, painted from one place. No apostrophes in
+   these literals (see EP_START_FAILED). */
+const EPISODE_FAILED_LINE = "Did not load — press play to try again";
 const BUFFERING_LINE = "Buffering…";
-/** The last load of the ordinary episode on the bar failed. Cleared by audio. */
-let episodeFailed = false;
 /** The element is waiting for data while the transport is running. */
 let buffering = false;
-/** The sheet's standing note for this item (the approximate-timings line). */
-let timingNote = "";
 
 /** Only `waiting` starts it, deliberately not `stalled`: `stalled` means the
     FETCH has stopped delivering, which a well-buffered element plays straight
@@ -1413,14 +1460,20 @@ function setBuffering(on) {
   render();
 }
 
+/** The one painter for the bar's and the sheet's status lines. A Foray keeps
+    its own failure line on its page (`foray.error`), so only buffering shows
+    here for one. */
 function paintStatus() {
-  const failed = episodeFailed && !foray;
-  ui.show.textContent = failed ? EPISODE_FAILED_LINE
-    : buffering ? BUFFERING_LINE
-    : (current?.show || "");
-  ui.note.textContent = failed ? EPISODE_FAILED_NOTE
-    : buffering ? BUFFERING_LINE
-    : timingNote;
+  const failure = foray ? null : playFailure;
+  const barLine = failure
+    ? (failure === EP_PLAY_HELD ? EP_PLAY_HELD : EPISODE_FAILED_LINE)
+    : (buffering ? BUFFERING_LINE : "");
+  const sheetLine = failure || (buffering ? BUFFERING_LINE : "");
+  ui.err.textContent = barLine;
+  ui.err.hidden = !barLine;
+  ui.show.hidden = Boolean(barLine);
+  ui.sErr.textContent = sheetLine;
+  ui.sErr.hidden = !sheetLine;
 }
 
 /* ---------- playback speed (#242) ----------
@@ -2401,13 +2454,11 @@ function ensureBooted() {
         foray.error = m;
         notifyForay();
       }
-      /* The ordinary episode's half of the same rule (audit 2026-09-22): a
-         load that failed puts the manager in `idle`, and the bar has to say so
-         rather than sit on "▶" and "--:--". A flag, never the message: the
-         telemetry line is developer text and never reaches a listener. */
-      if (!foray && current && /player\.error/i.test(m)) {
-        episodeFailed = true;
-        render();
+      /* The ordinary-episode half (persona audit #4): a media error or a refused
+         play() on a single episode reaches the bar and the sheet. The Foray page
+         keeps its own line above; this is for everything else. */
+      if (!foray && current && /player\.error|play\.rejected/i.test(m)) {
+        setPlayFailure(playFailureCopy(m));
       }
   }
 
@@ -2602,20 +2653,19 @@ const ForayPlayer = {
       : (Number.isFinite(Number(stored?.duration)) ? Number(stored.duration) : null);
     const offset = store.resumeOffset(rec.id, { duration: durationSec });
     if (lastEpisodeState(rec, { positionSec: offset }).state !== "resume") return null;
-    /* TWO QUESTIONS, TWO NUMBERS (audit 2026-09-22). `offset` is where a press
-       STARTS, and `resumeOffset` collapses a finished episode to 0 on purpose.
-       How far the listener GOT is the raw row, and the card is a claim about
-       that: fed the collapsed zero, an episode finished a minute ago showed an
-       empty bar and "60 min left". `episodeRemainingLabel`'s "finished" branch
-       was unreachable from here until it was handed the real number. */
-    const heard = Number(stored?.seconds);
-    const shown = Number.isFinite(heard) && heard > 0 ? heard : 0;
-    const pct = episodePercentDone({ ...rec, duration_sec: durationSec }, shown);
+    /* THE BAR AND THE LABEL READ THE RAW STORED POSITION, not `offset` (audit
+       2026-09-22). `offset` is where PLAY resumes, and `resumeOffset` collapses
+       a finished episode to 0 for that purpose — so a card built from it showed
+       an empty bar and "180 min left" on a three-hour episode the listener had
+       just finished. `episodeProgress` is the one reading of a position every
+       surface shares; `position_sec` stays `offset`, because that IS where the
+       press will start. */
+    const progress = episodeProgress({ ...rec, duration_sec: durationSec }, stored?.seconds ?? null);
     return {
       ...rec,
       position_sec: offset,
-      percent: pct === null ? undefined : Math.round(pct * 100),
-      label: episodeRemainingLabel({ ...rec, duration_sec: durationSec }, shown),
+      percent: progress.percent === null ? undefined : progress.percent,
+      label: progress.label,
     };
   },
 
@@ -2677,6 +2727,35 @@ const ForayPlayer = {
     restoredPending = { item: current, positionSec, foray: { resolved, discoverDoc } };
     render();
     return current;
+  },
+
+  /**
+   * A play that threw on app.js's side of the bridge (persona audit #4). The
+   * telemetry path above catches what the manager reports; this catches what it
+   * could not — an exception out of `play()` itself — so a tap is never
+   * swallowed. `err` is read for its name only, for the autoplay split.
+   */
+  reportPlayFailure(err) {
+    let name = "";
+    try { name = String(err?.name ?? ""); } catch (_) { name = ""; }
+    setPlayFailure(playFailureCopy(name));
+  },
+
+  /**
+   * Where the listener is in one episode, for a list ROW (persona audit #78:
+   * "nothing on any list tells me which episodes I already played, or how far
+   * in I am"). The same `episodeProgress` reading "Jump back in" uses, over the
+   * same `PositionStore` rows, through the reader that needs no booted player —
+   * so a show page can mark its rows without building audio elements.
+   * `durationSec` is the row's own when it has one; the stored duration (read
+   * off the media element) otherwise.
+   */
+  episodeProgress(id, durationSec = null) {
+    const stored = positionReader().load(id);
+    const dur = Number.isFinite(Number(durationSec)) && Number(durationSec) > 0
+      ? Number(durationSec)
+      : (Number.isFinite(Number(stored?.duration)) ? Number(stored.duration) : null);
+    return episodeProgress({ duration_sec: dur }, stored?.seconds ?? null);
   },
 
   restoreLastEpisode() {
@@ -2856,6 +2935,8 @@ const ForayPlayer = {
       want next to a strip it renders itself. */
   stripModel,
   stripSummary,
+  /** The header's counts, from the strip's own model — see `stripTally`. */
+  stripTally,
 
   /* U-04: the string half of the strip, for callers that build markup as
      template strings interpolated into `innerHTML` — Home's Foray cards

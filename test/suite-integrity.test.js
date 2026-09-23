@@ -123,7 +123,7 @@ const FLOORS = {
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
      exist only to pin that separation. */
-  "player/episode-progress.test.js": 19,
+  "player/episode-progress.test.js": 23, // 2026-09-22 audit theme L: `episodeProgress`, the one reading of a stored position (played / in-progress / sampled / unplayed) that Jump back in and the episode rows share, on position-store's own thresholds; 19 -> 23
   /* 2026-09-22 (audit L2, founder report 3): which build wrote a diagnostics
      record — the web deploy id on both hosts and the native build number in the
      shell, each from where only it is known. New suite. */
@@ -219,7 +219,7 @@ const FLOORS = {
      bridge is an item rather than a gap, that no two touching capsules share a
      tone, and that both themes' palettes clear 3:1. Every test names the
      mutation that kills it. */
-  "player/segment-strip.test.js": 46, // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
+  "player/segment-strip.test.js": 48, // 2026-09-22 audit theme L: `stripTally`, the Foray header's counts from the strip's own model — clips are tape, and an unmeasured duration makes the runtime an estimate; 46 -> 48 // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
   "player/strip-scrub-gesture.test.js": 41,
   /* Drag the Now Playing sheet down to dismiss it (founder report,
      2026-09-13). Same pure-state-machine shape as the scrub gesture above and
@@ -234,7 +234,7 @@ const FLOORS = {
      import and cannot be loaded under node — see its own header), floored
      because a perfect gesture module wired to nothing passes every other test
      in this repo. */
-  "player/now-playing-sheet.test.js": 16,
+  "player/now-playing-sheet.test.js": 18, // 2026-09-22 audit: emptied hook/timing paragraphs are hidden, and an ordinary episode that fails to play says so on the bar and in the sheet; 16 -> 18
   "player/seek-policy.test.js": 33,
   /* The wire between the page and on-device speech (#29). Floored with no
      slack, because what it holds down is a connection that was ABSENT for
@@ -328,7 +328,7 @@ const FLOORS = {
      curated-pool membership. ZERO SLACK: most cells reboot app.js over the same
      storage to model a reload, which is the only place the defect lived. */
   "test/playable-episodes.test.js": 12, // 2026-09-22: new -- Up Next, History, Saved, continuous playback, Open episode and #/show/pi: all survive a reload
-  "test/jump-back-in-kinds.test.js": 18, // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
+  "test/jump-back-in-kinds.test.js": 19, // 2026-09-22 audit: the card reads the RAW stored position, never the collapsed resume offset (a finished episode said "180 min left"); 18 -> 19 // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
   "test/show-episodes-cache.test.js": 10,
@@ -658,7 +658,16 @@ const FLOORS = {
      the branch that stops a careless version of this fix from deleting
      playable content in order to display an error about content the listener
      cannot tell is missing. */
-  "test/show-episode-load-states.test.js": 10, // 2026-09-22 audit: the loading+CURATED cell, the one quadrant the case list never covered — and the one the subtitle/body contradiction lived in; 9 -> 10
+  "test/show-episode-load-states.test.js": 15, // 2026-09-22 audit theme G: the failed body's "Try again" re-runs the same fetch; "couldn't refresh" is said only once a refresh has failed and is cleared by one that succeeds; the description paints on the empty branch too; 10 -> 15 // 2026-09-22 audit: the loading+CURATED cell, the one quadrant the case list never covered — and the one the subtitle/body contradiction lived in; 9 -> 10
+  /* The three-state convention everywhere ELSE (audit 2026-09-22, theme G):
+     "No shows here yet." / "0 shows" over a failed catalogue, "Show not found."
+     for a dead endpoint, not-found pages with no ‹, and #/forays painting "0
+     forays" whenever the player module had not evaluated. The one to guard
+     hardest is "#/forays waits for the player instead of saying there are no
+     Forays": it is the one a "simplify renderForays back to synchronous" edit
+     would silently undo, because every existing harness mounts with the bridge
+     already present. */
+  "test/load-states.test.js": 29, // 2026-09-22 persona #28: while the playlist scan behind the Shows search results is owed the section says "Still looking for playlists…", and a scan that throws still ends it; 27 -> 29 // 2026-09-22 persona #43, cold boot: "Loading 4a…" before the first await, a boot failure with Try again, the first route() not waiting on the search-only documents, their arrival replacing the scorer's ctx, and a playlist build waiting for them while they are in flight; 22 -> 27 // 2026-09-22 persona #4: a play button whose play() throws or refuses reports it to the player bar instead of swallowing the tap; 21 -> 22 // 2026-09-22 theme L: rows say "Played"/"NN min left", "played" survives the history ring rotating, a subject card totals only a fully-timed list; 18 -> 21 // 2026-09-22 theme L: the Foray header counts the strip's clips and heard shows, says "about" over an estimated runtime, and never promises "listed below" for a clip the page cannot list; 14 -> 18 // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
 
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):
@@ -1568,7 +1577,7 @@ const FLOORS = {
      "android"` is set in ForayAudioPlugin.java and nowhere else. That second one
      is the closest relative in this repo of #269, where an Android fixture
      answered `running: true` and the fake was the only place the code worked. */
-  "tools/mobile/webview-probe.test.mjs": 15,
+  "tools/mobile/webview-probe.test.mjs": 16, // 2026-09-22 (audit, persona #43): app.js now paints a boot line into #view before its first await, so a view still holding it is a failed launch, not a certified one; 15 -> 16
 
   /* M1 (full-repo review 2026-08-31): the byte-ceiling guards shared by
      scan.mjs and refresh-feeds.mjs. Covers all three defenses named in the

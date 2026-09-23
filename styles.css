@@ -759,6 +759,11 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 }
 .cr-foray-note { margin: 0 0 14px; }
 .note { color: var(--text-dim); font-size: 0.85rem; margin: 0; flex: none; }
+/* The FAILED state of the three-state convention (app.js `failedNoteHtml`, audit
+   2026-09-22): the sentence, then "Try again" beneath it. The button is an
+   ordinary `.fy-btn` — its 48px height and tap behaviour come from there — so
+   this rule only stacks the two. */
+.load-failed { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin: 8px 0; }
 
 /* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
    Lives on the Shows page (#/shows). The `.search-tabs`/`.search-tab` pair
@@ -1014,6 +1019,11 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 .ep-row .info, .pl-row .info { flex: 1; min-width: 0; }
 .ep-row .t, .pl-row .t { font-family: var(--serif); font-size: 0.98rem; font-weight: 700; line-height: 1.3; }
 .ep-row .s, .pl-row .s { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
+/* Where the listener is in the episode (app.js `rowProgress`, audit 2026-09-22):
+   "NN min left" reads a step brighter than the metadata around it, because it is
+   the one thing on the line about THEM; "Played" stays at the line's own tone. */
+.ep-row .s .ep-progress { color: var(--text); }
+.ep-row .s .ep-progress.is-played { color: inherit; }
 .ep-title-link { color: inherit; text-decoration: none; }
 .ep-title-link:active { text-decoration: underline; }
 /* Publisher-set explicit-content marker (kanban card t_02c6bb0b), matching the
@@ -1543,9 +1553,12 @@ body.sh-compose #view { padding-bottom: var(--sh-compose-h); }
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
   background: none; border: 0; color: inherit; text-align: left; cursor: pointer; padding: 0;
 }
-.fp-title, .fp-show { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-title, .fp-show, .fp-err { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fp-title { font-family: var(--serif); font-size: 0.92rem; font-weight: 700; color: var(--text); }
 .fp-show { font-size: 0.72rem; color: var(--text-dim); }
+/* A failed play (player/client.js `setPlayFailure`, audit 2026-09-22): the show
+   line's slot and size, in the error tone `.fy-error` uses on the Foray page. */
+.fp-err { font-size: 0.72rem; color: var(--gold); }
 
 /* Big targets — this is still a car product (04_VOICE_AUDIO_SPEC safety).
    fp-play is the primary action and stays filled at rest, not just on
@@ -1893,6 +1906,7 @@ body.fp-expanded { overflow: hidden; }
    colour of its own. */
 .fp-openep { font-size: 0.75rem; color: var(--accent); }
 .fp-note { font-size: 0.7rem; color: var(--text-dim); margin: 10px 0 0; }
+.fp-err-line { margin: 10px 0 0; text-align: center; font-size: 0.78rem; color: var(--gold); }
 
 /* ---------- Forays (#128) ----------
    One ordered run of segments from several shows. The design intent is the
@@ -3149,6 +3163,7 @@ body.ui-v2 .fp-rate, body.ui-v2 .fp-stop, body.ui-v2 .fp-collapse {
 }
 body.ui-v2 .fp-openep { color: var(--violet); }
 body.ui-v2 .fp-note { color: var(--faint); }
+body.ui-v2 .fp-err, body.ui-v2 .fp-err-line { color: var(--amber); }
 
 /* ---------- Library summaries reached from Playlists' "Library ›" link ---------- */
 body.ui-v2 .lib-section-head { color: var(--muted); font-family: var(--font-display); }
