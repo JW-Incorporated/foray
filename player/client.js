@@ -488,6 +488,21 @@ function el(tag, cls, text) {
   return n;
 }
 
+/** A control's visible words AND its accessible name, in one write (audit
+    2026-09-22, theme D). `aria-label` REPLACES a button's text for a screen
+    reader, so a control whose text changes and whose name does not is a control
+    that lies: the card button showed ❚❚ and announced "Play …". This is the
+    module's copy of app.js's `setControlLabel` — the same rule, kept here because
+    this ES module must evaluate in its own test harness without app.js, and
+    app.js must render without this module. The name is dropped, not duplicated,
+    when it equals the text. */
+function paintControl(btn, text, label) {
+  if (!btn) return;
+  if (text != null && btn.textContent !== text) btn.textContent = text;
+  if (label && label !== text) btn.setAttribute("aria-label", label);
+  else btn.removeAttribute("aria-label");
+}
+
 function buildUI() {
   const root = el("div", "fp");
   root.id = "foray-player";
@@ -497,9 +512,12 @@ function buildUI() {
   const bar = el("div", "fp-bar");
   const art = el("img", "fp-art");
   art.alt = "";
+  /* NO static name. This button's contents ARE the episode title and show,
+     and the fixed "Open player" that used to sit here replaced them, so a
+     screen-reader user was never told what was playing from the bar.
+     `paintInfoLabel` names it from the title and says which way it goes. */
   const info = el("button", "fp-info");
   info.type = "button";
-  info.setAttribute("aria-label", "Open player");
   const title = el("span", "fp-title");
   const show = el("span", "fp-show");
   info.append(title, show);
@@ -621,7 +639,11 @@ function buildUI() {
      at something else meant the running order, the segment you were on and the
      thumbs were all gone until you found the URL again. This is that way back,
      and it is an in-app hash route, never an external link. */
-  const forayLink = el("a", "fp-openep fp-toforay", "Back to the running order");
+  /* "this foray", not "the running order": that is a broadcast-production
+     term, and it appeared nowhere else a listener had been (audit 2026-09-22).
+     Lowercase because the unit is a common noun (docs/DECISIONS.md,
+     2026-08-21; test/app-name.test.js). */
+  const forayLink = el("a", "fp-openep fp-toforay", "Back to this foray");
   forayLink.hidden = true;
   const collapse = el("button", "fp-collapse", "Close");
   collapse.type = "button";
@@ -1057,10 +1079,8 @@ function render() {
      indefinitely, which is what it did before. */
   const running = transportIsRunning();
   const glyph = running ? "❚❚" : "▶";
-  ui.playBtn.textContent = glyph;
-  ui.bigPlay.textContent = glyph;
-  ui.playBtn.setAttribute("aria-label", running ? "Pause" : "Play");
-  ui.bigPlay.setAttribute("aria-label", running ? "Pause" : "Play");
+  paintControl(ui.playBtn, glyph, running ? "Pause" : "Play");
+  paintControl(ui.bigPlay, glyph, running ? "Pause" : "Play");
 
   // In a Foray the clock is the Foray's, not the source episode's: 31 minutes
   // into somebody else's podcast is not a position this listener recognises.
@@ -1079,6 +1099,12 @@ function render() {
     ui.fill.style.width = `${Math.min(100, (pos / dur) * 100)}%`;
   }
   ui.tNow.textContent = foray ? fmtClock(pos) : formatTimestamp(pos, EXACT);
+  /* The slider's value is a 0-1000 fraction, which is what a screen reader
+     read out ("Seek, 437"). The clock beside it is the listener's unit, so the
+     slider says that instead. */
+  ui.scrub.setAttribute("aria-valuetext", dur
+    ? `${ui.tNow.textContent} of ${foray ? fmtClock(dur) : formatTimestamp(dur, EXACT)}`
+    : ui.tNow.textContent);
   ui.tLeft.textContent = dur
     ? `-${foray ? fmtClock(Math.max(0, dur - pos)) : formatTimestamp(Math.max(0, dur - pos), EXACT)}`
     : "--:--";
@@ -1095,12 +1121,25 @@ function render() {
   }
 }
 
+/** The mini bar's title button: named by what is playing, and telling a screen
+    reader which way it goes. Called wherever either half changes — a new
+    episode (setNowPlaying) and the sheet opening or closing (setExpanded). */
+function paintInfoLabel() {
+  if (!ui) return;
+  const what = [ui.title.textContent, ui.show.textContent].filter(Boolean).join(", ");
+  paintControl(ui.info, null, what ? `Now playing: ${what}` : "Now playing");
+  ui.info.setAttribute("aria-expanded", ui.sheet && !ui.sheet.hidden ? "true" : "false");
+}
+
 function syncCardButtons() {
   // Reflect play state on the originating card so the page and the bar agree.
   document.querySelectorAll("[data-play]").forEach((b) => {
     const on = current && b.dataset.play === current.id && isPlaying();
     if (on) b.dataset.playing = "1"; else delete b.dataset.playing;
-    b.textContent = on ? "❚❚" : "▶";
+    /* The row's own title, stamped by app.js's playBtn: `current` is a
+       different episode on every row but one. */
+    const title = b.dataset.title || "this episode";
+    paintControl(b, on ? "❚❚" : "▶", `${on ? "Pause" : "Play"} ${title}`);
   });
 }
 
@@ -1118,6 +1157,7 @@ function setNowPlaying(item, why) {
   document.body.classList.add("fp-open");
   ui.title.textContent = item.title || "";
   ui.show.textContent = item.show || "";
+  paintInfoLabel();
   ui.sTitle.textContent = item.title || "";
   ui.sShow.textContent = item.show || "";
   ui.sWhy.textContent = why || item.hook || "";
@@ -1223,8 +1263,7 @@ function applyRate(rate) {
     screen-reader user is told "Playback speed" and never told what it is. */
 function paintRate(rate = currentRate()) {
   if (!ui) return;
-  ui.rateBtn.textContent = rateLabel(rate);
-  ui.rateBtn.setAttribute("aria-label", rateAriaLabel(rate));
+  paintControl(ui.rateBtn, rateLabel(rate), rateAriaLabel(rate));
 }
 
 /* ---------- V-01: the listener's chosen narration voice ----------
@@ -1763,6 +1802,7 @@ function bind() {
     setSheetDragOffset(0);
     ui.sheet.hidden = !open;
     document.body.classList.toggle("fp-expanded", open);
+    paintInfoLabel();
     if (open) ui.scroll.scrollTop = 0;
   };
   ui.info.addEventListener("click", () => setExpanded(ui.sheet.hidden));
@@ -2982,13 +3022,13 @@ function clampIndex(index, length) {
   return Math.min(Math.max(0, n), Math.max(0, length - 1));
 }
 
-/** The ±15/30 s buttons become previous/next segment inside a Foray. */
+/** The ±15/30 s buttons become previous/next clip inside a Foray. "Clip" is the
+    listener's word for a Foray's pieces (docs/audit/persona-synthesis.md §2);
+    "segment" is the pipeline's, and it was what a screen reader said here. */
 function setSkipButtonMode(isForay) {
   if (!ui) return;
-  ui.backBtn.textContent = isForay ? "‹‹" : `↺ ${SEEK_BACK}`;
-  ui.fwdBtn.textContent = isForay ? "››" : `${SEEK_FWD} ↻`;
-  ui.backBtn.setAttribute("aria-label", isForay ? "Previous segment" : `Back ${SEEK_BACK} seconds`);
-  ui.fwdBtn.setAttribute("aria-label", isForay ? "Next segment" : `Forward ${SEEK_FWD} seconds`);
+  paintControl(ui.backBtn, isForay ? "‹‹" : `↺ ${SEEK_BACK}`, isForay ? "Previous clip" : `Back ${SEEK_BACK} seconds`);
+  paintControl(ui.fwdBtn, isForay ? "››" : `${SEEK_FWD} ↻`, isForay ? "Next clip" : `Forward ${SEEK_FWD} seconds`);
 }
 
 window.ForayPlayer = ForayPlayer;

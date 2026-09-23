@@ -713,10 +713,18 @@ function playLink(item) {
    `ctx`, when given, is stamped on as `data-ctx` — the same "playlist-<id>"
    / "subject-<id>" / "generated-<id>" convention bindPickLogging already
    reads off a picked link's `data-ctx` (#558 item 2). It is optional and
-   omitted by every non-playlist caller, so this changes nothing for them. */
+   omitted by every non-playlist caller, so this changes nothing for them.
+
+   `data-title` is there for the repaint, not the first paint: the player's
+   `syncCardButtons` flips this button to ❚❚ while its episode plays, and has to
+   rename it "Pause <title>" in the same write (theme D, above setControlLabel) —
+   it did not, so a playing card announced "Play …" and a voice-control user
+   saying "Play" paused it. The title a row was built with is the only one the
+   repaint can trust; the player's `current` is a different episode on every
+   other row. */
 function playBtn(item, ctx) {
   if (!item || !item.audio_url) return "";
-  return `<button class="play-btn" data-play="${esc(item.id)}"${ctx ? ` data-ctx="${esc(ctx)}"` : ""} aria-label="Play ${esc(item.title)}">▶</button>`;
+  return `<button class="play-btn" data-play="${esc(item.id)}"${ctx ? ` data-ctx="${esc(ctx)}"` : ""} data-title="${esc(item.title || "")}"${controlLabelAttr("▶", `Play ${item.title || "this episode"}`)}>▶</button>`;
 }
 
 /* Family mode (corner-case 28): hide explicit-rated episodes and the comedy
@@ -935,6 +943,62 @@ function interestScore(item) {
   return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
+/* ---------- a control's words: what it shows and what it is called ----------
+
+   THE RULE (audit 2026-09-22, theme D): a control whose visible text changes has
+   its accessible name written by the SAME call, because `aria-label` REPLACES a
+   button's text for a screen reader. Seven controls broke this the same way —
+   the name was set once at build time and the text changed underneath it: the
+   show star said "★ Starred" and announced "Star show", every play button said
+   ❚❚ and announced "Play …", the Foray's main button said "Loading…" and
+   announced "Play". Each was a correct label, written once, and never kept.
+
+   So text and name go through `setControlLabel` together, a two-state control
+   through `setToggleLabel`, and an HTML builder through `controlLabelAttr` from
+   the same spec — never a hand-written `aria-label="…"` beside a ternary.
+   test/toggle-labels.test.js holds the rule for the whole file: a control's
+   text may only change through here.
+
+   `label` is dropped (not duplicated) when it equals the text, so a plain-text
+   button keeps speaking its own words. player/client.js carries its own
+   `paintControl` for the same rule: it is an ES module that must run in its
+   test harness without this file, and this file must run without it. */
+function setControlLabel(btn, text, label) {
+  if (!btn) return;
+  if (text != null && btn.textContent !== text) btn.textContent = text;
+  if (label && label !== text) btn.setAttribute("aria-label", label);
+  else btn.removeAttribute("aria-label");
+}
+
+/** A status line's text, written only when it changes. An aria-live region
+    announces every write, and several of these are painted from a 4 Hz tick. */
+function setStatusText(node, text) {
+  if (node && node.textContent !== text) node.textContent = text;
+}
+
+function setToggleLabel(btn, on, spec) {
+  setControlLabel(btn, on ? spec.onText : spec.offText, on ? spec.onLabel : spec.offLabel);
+}
+
+/** The build-time half of setToggleLabel: the text, and the attribute that
+    names it, from one spec — so the first paint and every repaint agree. */
+function controlLabelAttr(text, label) {
+  return label && label !== text ? ` aria-label="${esc(label)}"` : "";
+}
+function toggleMarkup(on, spec) {
+  const text = on ? spec.onText : spec.offText;
+  return { text: esc(text), attr: controlLabelAttr(text, on ? spec.onLabel : spec.offLabel) };
+}
+
+/* The listener's words for the two "keep this" actions (docs/audit/persona-synthesis.md
+   §2, and the Apple vocabulary the founder asked for): an EPISODE is Saved, a
+   SHOW is Followed. They used to be "Save" (never the state), "Star show" /
+   "Unstar show", "★ Starred" and a page headed "Starred Shows" — three words
+   for two ideas. Storage keys (`cp_saved`, `cp_starred_shows`) are unchanged. */
+const SAVE_TOGGLE = { offText: "☆", onText: "★", offLabel: "Save episode", onLabel: "Saved" };
+const FOLLOW_TOGGLE = { offText: "+ Follow", onText: "✓ Followed", offLabel: "Follow show", onLabel: "Followed" };
+const UP_NEXT_TOGGLE = { offText: "+ Up Next", onText: "✓ Up Next", offLabel: "Add to Up Next", onLabel: "In Up Next" };
+
 /* ---------- stars ---------- */
 
 function savedMap() { return lsGet("cp_saved", {}); }
@@ -954,7 +1018,7 @@ function toggleStar(id) {
   }
   lsSet("cp_saved", saved);
   document.querySelectorAll(`[data-star="${CSS.escape(id)}"]`).forEach(b => {
-    b.textContent = isSaved(id) ? "★" : "☆";
+    setToggleLabel(b, isSaved(id), SAVE_TOGGLE);
     b.classList.toggle("on", isSaved(id));
   });
 }
@@ -968,7 +1032,8 @@ function toggleStar(id) {
    the raw id before the selector ever sees it. */
 function starBtn(id) {
   const on = isSaved(id);
-  return `<button class="star ${on ? "on" : ""}" data-star="${esc(id)}" aria-label="Save">${on ? "★" : "☆"}</button>`;
+  const { text, attr } = toggleMarkup(on, SAVE_TOGGLE);
+  return `<button class="star ${on ? "on" : ""}" data-star="${esc(id)}"${attr}>${text}</button>`;
 }
 
 /* "+ Up Next" row control (docs/listening-queue-plan.md Stage 1, plan §1 Q3).
@@ -980,8 +1045,8 @@ function starBtn(id) {
 function upNextBtn(id) {
   if (!id) return "";
   const on = isQueued(id);
-  return `<button class="up-next ${on ? "on" : ""}" data-upnext="${esc(id)}"
-    aria-label="${on ? "In Up Next" : "Add to Up Next"}">${on ? "✓ Up Next" : "+ Up Next"}</button>`;
+  const { text, attr } = toggleMarkup(on, UP_NEXT_TOGGLE);
+  return `<button class="up-next ${on ? "on" : ""}" data-upnext="${esc(id)}"${attr}>${text}</button>`;
 }
 
 /* ---------- starred shows (follow-lite) ----------
@@ -1015,7 +1080,7 @@ function toggleShowStar(id) {
   }
   lsSet("cp_starred_shows", starred);
   document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
-    b.textContent = isShowStarred(id) ? "★ Starred" : "☆ Star this show";
+    setToggleLabel(b, isShowStarred(id), FOLLOW_TOGGLE);
     b.classList.toggle("on", isShowStarred(id));
   });
 }
@@ -1025,7 +1090,8 @@ function toggleShowStar(id) {
    to read on its own. */
 function showStarBtn(show_id) {
   const on = isShowStarred(show_id);
-  return `<button class="show-star ${on ? "on" : ""}" data-show-star="${esc(show_id)}" aria-label="${on ? "Unstar show" : "Star show"}">${on ? "★ Starred" : "☆ Star this show"}</button>`;
+  const { text, attr } = toggleMarkup(on, FOLLOW_TOGGLE);
+  return `<button class="show-star ${on ? "on" : ""}" data-show-star="${esc(show_id)}"${attr}>${text}</button>`;
 }
 
 function bindShowStars(scope) {
@@ -1074,13 +1140,14 @@ function renderStarredShows() {
       <div class="page-head">
         <a class="back" href="#/shows">‹</a>
         <div>
-          <h2>Starred Shows</h2>
-          <p class="sub">${countLabel(starred.length, "show")} you've starred</p>
+          <h2>Followed shows</h2>
+          <p class="sub">${countLabel(starred.length, "show")} you follow</p>
         </div>
       </div>
       ${starred.length
         ? `<div class="show-results">${starred.map(starredShowRow).join("")}</div>`
-        : `<p class="note">No starred shows yet — star a show from its page to see it here.</p>`}
+        : `<p class="note">No followed shows yet — tap Follow on a show's page to keep it here.</p>`}
+      <p class="note">Following keeps a show one tap away. 4a doesn't add its new episodes anywhere.</p>
     </div>`;
 }
 
@@ -2377,7 +2444,7 @@ function renderAllShows(initialQuery = "") {
       <div id="pl-search-results" hidden></div>
       <div id="sh-browse">
         ${browsePillsHtml()}
-        <a class="page-link-row" href="#/starred-shows">Starred shows \u203a</a>
+        <a class="page-link-row" href="#/starred-shows">Followed shows \u203a</a>
         ${vouchForHtml()}
       </div>`);
   /* The page reserves room at its bottom edge for a bar that is fixed and so
@@ -3719,7 +3786,7 @@ function bindPlaylistFormSubmit(e) {
   if (!query) return;
   const originalLabel = btn.textContent;
   btn.disabled = true;
-  btn.textContent = "Building…";
+  setControlLabel(btn, "Building…", null);
   setTimeout(() => {
     try {
       const result = buildPlaylist(query);
@@ -3739,7 +3806,7 @@ function bindPlaylistFormSubmit(e) {
       }
     } finally {
       btn.disabled = false;
-      btn.textContent = originalLabel;
+      setControlLabel(btn, originalLabel, null);
     }
   }, 0);
 }
@@ -3861,9 +3928,8 @@ function bindUpNext(scope) {
       const id = btn.dataset.upnext;
       addToQueue(id);
       scope.querySelectorAll(`[data-upnext="${CSS.escape(id)}"]`).forEach(b => {
-        b.textContent = "✓ Up Next";
+        setToggleLabel(b, true, UP_NEXT_TOGGLE);
         b.classList.add("on");
-        b.setAttribute("aria-label", "In Up Next");
       });
     });
   });
@@ -6620,7 +6686,7 @@ function renderForays() {
         <a class="back" href="#/">‹</a>
         <div>
           <h2>Forays</h2>
-          <p class="sub">${countLabel(list.length, "Foray")}</p>
+          <p class="sub">${countLabel(list.length, "foray")}</p>
         </div>
       </div>
       ${jumpBackInHtml(resume)}
@@ -7385,7 +7451,7 @@ function bindCreateFormSubmit(e) {
   if (!query) return;
   const originalLabel = btn.textContent;
   btn.disabled = true;
-  btn.textContent = "Building…";
+  setControlLabel(btn, "Building…", null);
   const note = $("#cr-note");
   if (note) note.hidden = true;
   setTimeout(() => {
@@ -7406,7 +7472,7 @@ function bindCreateFormSubmit(e) {
       }
     } finally {
       btn.disabled = false;
-      btn.textContent = originalLabel;
+      setControlLabel(btn, originalLabel, null);
     }
   }, 0);
 }
@@ -7866,7 +7932,7 @@ function bindForayScripts() {
     if (!text) return;
     const open = btn.getAttribute("aria-expanded") === "true";
     btn.setAttribute("aria-expanded", open ? "false" : "true");
-    btn.textContent = open ? "Show more" : "Show less";
+    setControlLabel(btn, open ? "Show more" : "Show less", null);
     text.classList.toggle("is-clamped", open);
   });
 }
@@ -7908,7 +7974,7 @@ function forayRow(entry) {
     <div class="fy-meta">${metaHtml}</div>
     <div class="fy-play-row">
       <button type="button" class="fy-jump${entry.why ? "" : " is-bare"}" data-fy="${esc(String(entry.queueIndex))}"
-          aria-label="Play ${esc(forayBeatName(entry))}">
+          data-fy-name="${esc(forayBeatName(entry))}" aria-label="${esc(forayJumpLabel(forayBeatName(entry), ""))}">
         <div class="fy-body">
           <p class="fy-why">${esc(entry.why)}</p>
         </div>
@@ -7918,6 +7984,17 @@ function forayRow(entry) {
     </div>
     ${narrationScriptHtml(entry)}
   </div>`;
+}
+
+/** A clip row's accessible name, by where the listener is. The ▶ / ✓ that shows
+    it on screen is a CSS glyph in an aria-hidden span, so for a screen reader
+    the row's state lived nowhere: twelve identical "Play …" buttons, with no way
+    to tell the one sounding now or the nine already heard (audit 2026-09-22).
+    paintForay writes this beside the classes, from the same comparison. */
+function forayJumpLabel(name, where) {
+  if (where === "playing") return `Now playing: ${name}`;
+  if (where === "played") return `Played. Play again: ${name}`;
+  return `Play ${name}`;
 }
 
 function foraySlotHtml(slot) {
@@ -7946,8 +8023,8 @@ function feedbackSheetHtml() {
       <h3 id="fy-sheet-title">What missed for you?</h3>
       <p class="fy-sheet-sub" id="fy-sheet-sub"></p>
       <div class="fy-chips">${FB_CHIPS.map(c =>
-        `<button type="button" class="fy-chip" data-chip="${esc(c)}">${esc(c)}</button>`).join("")}</div>
-      <input id="fy-sheet-note" type="text" maxlength="200" placeholder="Tell us in your own words…">
+        `<button type="button" class="fy-chip" data-chip="${esc(c)}" aria-pressed="false">${esc(c)}</button>`).join("")}</div>
+      <input id="fy-sheet-note" type="text" maxlength="200" placeholder="Tell us in your own words…" aria-label="What missed, in your own words">
       <div class="fy-sheet-actions">
         <button type="button" class="fy-sheet-cancel" id="fy-sheet-cancel">Cancel</button>
         <button type="button" class="fy-sheet-go" id="fy-sheet-go" disabled>Pick at least one</button>
@@ -7966,7 +8043,7 @@ function openFeedbackSheet(entry) {
   $("#fy-sheet-sub").textContent =
     `About ${entry.show || "this clip"} — the more specific, the faster your picks get good.`;
   $("#fy-sheet-note").value = "";
-  sheet.querySelectorAll("[data-chip]").forEach(c => c.classList.remove("on"));
+  sheet.querySelectorAll("[data-chip]").forEach(c => setChipPressed(c, false));
   syncSheetCta();
   sheet.hidden = false;
   document.body.classList.add("fy-sheet-open");
@@ -7981,6 +8058,14 @@ function closeFeedbackSheet() {
   document.body.classList.remove("fy-sheet-open");
 }
 
+/** A reason chip's selection, for the eye AND the ear. It was a class and a
+    tint only, so a screen-reader user could not tell which reasons they had
+    picked; the onboarding chips and the thumbs already wrote aria-pressed. */
+function setChipPressed(chip, on) {
+  chip.classList.toggle("on", on);
+  chip.setAttribute("aria-pressed", on ? "true" : "false");
+}
+
 function sheetPicks() {
   return [...$("#fy-sheet").querySelectorAll("[data-chip].on")].map(c => c.dataset.chip);
 }
@@ -7989,7 +8074,7 @@ function syncSheetCta() {
   const any = sheetPicks().length > 0 || $("#fy-sheet-note").value.trim().length > 0;
   const go = $("#fy-sheet-go");
   go.disabled = !any;
-  go.textContent = any ? "Tune my picks" : "Pick at least one";
+  setControlLabel(go, any ? "Tune my picks" : "Pick at least one", null);
 }
 
 function bindFeedback(r) {
@@ -8014,7 +8099,7 @@ function bindFeedback(r) {
   const sheet = $("#fy-sheet");
   if (!sheet) return;
   sheet.querySelectorAll("[data-chip]").forEach(chip => {
-    chip.addEventListener("click", () => { chip.classList.toggle("on"); syncSheetCta(); });
+    chip.addEventListener("click", () => { setChipPressed(chip, chip.getAttribute("aria-pressed") !== "true"); syncSheetCta(); });
   });
   $("#fy-sheet-note").addEventListener("input", syncSheetCta);
   $("#fy-scrim").addEventListener("click", closeFeedbackSheet);
@@ -8190,9 +8275,9 @@ async function renderForay(id) {
           `<span class="fy-seg" data-seg="${i}"><i class="fy-seg-fill"></i></span>`).join("")}</div>
         <div class="fy-times"><span id="fy-now">0:00</span><span id="fy-total"></span></div>
         <div class="fy-controls">
-          <button type="button" class="fy-btn" id="fy-prev" aria-label="Previous segment">‹‹</button>
-          <button type="button" class="fy-btn fy-main" id="fy-play" aria-label="Play">▶ Play</button>
-          <button type="button" class="fy-btn" id="fy-next" aria-label="Next segment">››</button>
+          <button type="button" class="fy-btn" id="fy-prev" aria-label="Previous clip">‹‹</button>
+          <button type="button" class="fy-btn fy-main" id="fy-play"${controlLabelAttr("▶ Play", "Play")}>▶ Play</button>
+          <button type="button" class="fy-btn" id="fy-next" aria-label="Next clip">››</button>
           <!-- Playback speed (#242). On the transport row rather than in a settings
                screen, because this is the surface a listener is looking at when
                they decide a segment is slow — and its current value is the label,
@@ -8613,6 +8698,8 @@ const FY_START_FAILED = "That segment wouldn't load. Check the connection, then 
    going, and the honest report is that the button did not take. */
 const FY_TAP_FAILED = "That control didn't take. Try it again, or reload the page if it keeps happening.";
 
+const FY_VOICE_FALLBACK = "Your chosen voice isn't installed; using the best available.";
+
 function forayFailureCopy(signal) {
   return /NotAllowedError/.test(String(signal ?? "")) ? FY_AUTOPLAY_HINT : FY_START_FAILED;
 }
@@ -8620,13 +8707,20 @@ function forayFailureCopy(signal) {
 /** Say it on the page. `signal` is whatever evidence there is — the player's own
     error line, or a caught exception — and null clears the line. */
 function paintForayFailure(signal) {
-  const err = $("#fy-error");
-  if (!err) return;
-  err.hidden = !signal;
-  err.textContent = signal ? forayFailureCopy(signal) : "";
+  const copy = signal ? forayFailureCopy(signal) : "";
   // A browser being careful about audio is not an error, and must not be dressed
   // as one. styles.css tones `.is-hint` down to a note.
-  err.classList.toggle("is-hint", Boolean(signal) && forayFailureCopy(signal) === FY_AUTOPLAY_HINT);
+  paintForayNotice(copy, copy === FY_AUTOPLAY_HINT);
+}
+
+/** The one writer of the Foray page's notice line. It is a live region, so an
+    unchanged message is not written again — see setStatusText. */
+function paintForayNotice(text, hint) {
+  const err = $("#fy-error");
+  if (!err) return;
+  err.hidden = !text;
+  setStatusText(err, text);
+  err.classList.toggle("is-hint", Boolean(text) && Boolean(hint));
 }
 
 /* Every tap on this page's transport goes through one of these two (#225).
@@ -8732,12 +8826,7 @@ async function guardForayTap(run) {
     return await run();
   } catch (err) {
     console.warn("[foray] control failed", err);
-    const line = $("#fy-error");
-    if (line) {
-      line.hidden = false;
-      line.textContent = FY_TAP_FAILED;
-      line.classList.remove("is-hint");
-    }
+    paintForayNotice(FY_TAP_FAILED, false);
     // Last, for the reason given in `guardForayStart` above.
     noteTapFailure("control", err);
     return null;
@@ -8809,7 +8898,7 @@ function bindForayTransport(r, player, resume = null) {
   // with the control's own state, so the page and the behaviour agree.
   if (!r.playable.length) {
     ["#fy-play", "#fy-next", "#fy-prev"].forEach(sel => { $(sel).disabled = true; });
-    $("#fy-play").textContent = "Nothing to play";
+    setControlLabel($("#fy-play"), "Nothing to play", null);
     return;
   }
 
@@ -8910,8 +8999,7 @@ function paintRateButton(player, rate) {
      never what it is set to — for every listener who had not changed the speed,
      which is most of them. */
   if (btn.textContent === label && btn.getAttribute("aria-label") === aria) return;
-  btn.textContent = label;
-  btn.setAttribute("aria-label", aria);
+  setControlLabel(btn, label, aria);
 }
 
 /** The speed picker (#349): a modal listing every stop on the ladder, tap one
@@ -9051,9 +9139,16 @@ function paintForay(s) {
     // "Loading…" would be the app apologising for its own edit.
     const running = s.playing || s.gap;
     const started = live || elapsed > 0;
-    const label = running ? "❚❚ Pause" : (s.loading ? "Loading…" : (started ? "▶ Resume" : "▶ Play"));
-    playBtn.textContent = label;
-    playBtn.setAttribute("aria-label", running ? "Pause" : "Play");
+    //
+    // FOUR states, and the accessible name has all four: it used to have two,
+    // so the button read "Loading…" and announced "Play" — hiding the one moment
+    // the app is asking the listener to wait — and a voice-control user saying
+    // "Resume" matched nothing. The name is the text without its glyph.
+    const [text, name] = running ? ["❚❚ Pause", "Pause"]
+      : s.loading ? ["Loading…", "Loading, please wait"]
+      : started ? ["▶ Resume", "Resume"]
+      : ["▶ Play", "Play"];
+    setControlLabel(playBtn, text, name);
   }
   // The beat, for CSS: the strip holds still at a boundary for 2.0 s and this
   // is how a stylesheet can say so without the page inventing new copy.
@@ -9088,40 +9183,22 @@ function paintForay(s) {
 
   // The player's own words are telemetry, not copy. Say the one thing a
   // listener can act on, and keep the detail in the console.
-  paintForayFailure(s.error);
+  /* V-01's live-narration notice shares the line: shown only when there is no
+     real error claiming it — a load failure is the more urgent message, and
+     this one is informational ("still working, just not with the exact voice
+     you picked"). Checked here, ahead of the `forayPainted` gate below, because
+     it has to show up (and clear) on the FIRST tick.
 
-  /* V-01: the live-narration counterpart of Audition's own notice. Only
-     shown when there is no real error already claiming the line — a load
-     failure is the more urgent message, and this one is informational
-     ("still working, just not with the exact voice you picked"). Reuses the
-     `fy-error`/`is-hint` styling `paintForayFailure` already tones down for
-     the autoplay case, rather than inventing a second notice element on this
-     page.
-
-     SELF-CONTAINED, not dependent on `paintForayFailure`'s own hiding
-     behaviour: the `else` branch explicitly hides/clears the line when the
-     fallback flag is false, rather than relying on the call above having
-     already hidden it for its own unrelated reason. Painted only once per
-     fallback, not every tick: `paintForay` itself is already gated on
-     `state.forayPainted` below for the segment highlight, but this line has
-     to show up (and clear) on the FIRST tick either way, which can be before
-     that gate's own early return — so it is checked here, ahead of it. */
-  if (!s.error) {
-    const err = $("#fy-error");
-    if (err) {
-      if (s.voiceFallback) {
-        err.hidden = false;
-        err.textContent = "Your chosen voice isn't installed; using the best available.";
-        err.classList.add("is-hint");
-      } else if (err.classList.contains("is-hint")) {
-        // Only clear a hint THIS block painted — a real, non-hint error from
-        // `paintForayFailure` above must not be erased by this branch.
-        err.hidden = true;
-        err.textContent = "";
-        err.classList.remove("is-hint");
-      }
-    }
-  }
+     ONE WRITE PER TICK, AND ONLY A CHANGE IS A WRITE (audit 2026-09-22, qa row
+     66). `#fy-error` is an aria-live region and this runs at 4 Hz. It used to
+     be two writes a tick — `paintForayFailure(null)` cleared the line, then
+     the hint block wrote it back — so a screen reader re-announced the hint
+     four times a second for as long as the Foray played, while a comment here
+     claimed it was "painted only once per fallback". Now the line's one
+     message is decided first and `paintForayNotice` skips an unchanged one. */
+  if (s.error) paintForayFailure(s.error);
+  else if (s.voiceFallback) paintForayNotice(FY_VOICE_FALLBACK, true);
+  else paintForayFailure(null);
 
   /* The row and strip classes only change when the segment does, and this runs
      on every position tick. Guard it: 32 rows x 4 Hz of class churn for a value
@@ -9137,8 +9214,14 @@ function paintForay(s) {
 
   $("#view").querySelectorAll("[data-fy]").forEach(row => {
     const i = Number(row.dataset.fy);
-    row.classList.toggle("is-playing", i === liveIndex);
-    row.classList.toggle("is-played", mark >= 0 && i < mark);
+    const playing = i === liveIndex;
+    const played = mark >= 0 && i < mark;
+    row.classList.toggle("is-playing", playing);
+    row.classList.toggle("is-played", played);
+    if (playing) row.setAttribute("aria-current", "true"); else row.removeAttribute("aria-current");
+    if (row.dataset.fyName) {
+      setControlLabel(row, null, forayJumpLabel(row.dataset.fyName, playing ? "playing" : played ? "played" : ""));
+    }
   });
   const strip = $("#fy-strip");
   if (strip) {
@@ -9437,7 +9520,7 @@ function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint =
 function paintDrawerToggles() {
   for (const t of drawerToggles) {
     const btn = $("#" + t.id);
-    if (btn) btn.textContent = `${t.label}: ${t.words[t.read() ? 1 : 0]}`;
+    if (btn) setControlLabel(btn, `${t.label}: ${t.words[t.read() ? 1 : 0]}`, null);
   }
 }
 

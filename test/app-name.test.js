@@ -642,20 +642,19 @@ test("the diagnostics report header names the app", () => {
    reviewer broke with a file-wide `includes()`: recapitalising the label while
    leaving a comment that quoted the lowercase form kept the test green.
 
-   NOTED, NOT FIXED, because it is a copy decision and not a rename: lowercase
-   "the foray" now collides with the "into the fray/foray" idiom, where the
-   capital at least signalled "a thing in this app". Both casings are ambiguous
-   and the honest fix is naming what it actually is -- "Back to the running
-   order", the vocabulary `player/queue-manager.js` already uses. That is a
-   founder's copy call, not a rename's.
+   It read "Back to the running order" for a while, and the 2026-09-22 audit
+   (docs/audit/persona-synthesis.md §2) found that a broadcast-production term
+   no listener had met anywhere else in the app. "Back to this foray" names the
+   thing, keeps the unit lowercase, and "this" does the disambiguating the
+   capital used to try to do.
 
-   KILLED BY: reverting to "Back to the Foray". */
+   KILLED BY: reverting to "Back to the Foray" or "Back to the running order". */
 test("the mini-player's back link lowercases the unit", () => {
   const m = read("player/client.js").match(
     /el\("a", "fp-openep fp-toforay", "([^"]*)"\)/
   );
   assert.ok(m, "player/client.js no longer builds the .fp-toforay link");
-  assert.equal(m[1], "Back to the running order");
+  assert.equal(m[1], "Back to this foray");
 });
 
 /* The Forays page's kicker above each foray's title. A LABEL, not prose, so a

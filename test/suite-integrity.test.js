@@ -314,6 +314,13 @@ const FLOORS = {
      used to do each by hand — "1h 0m", "1 parts", "Show ·  · date", "Invalid
      Date". ZERO SLACK: every cell is the only one pinning its surface. */
   "test/format-helpers.test.js": 11, // 2026-09-22: new
+  /* Audit 2026-09-22, theme D: a control's text and its accessible name move
+     together — the Save/Follow toggles, the play buttons and their player-side
+     repaint, the Foray main button's four states, the running order's
+     playing/played rows, the down-vote chips, the 4 Hz notice line — plus the
+     standing rule that no control's text in app.js or player/client.js is
+     written except through the label helpers. ZERO SLACK. */
+  "test/toggle-labels.test.js": 12, // 2026-09-22: new
   "test/jump-back-in-kinds.test.js": 18, // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
