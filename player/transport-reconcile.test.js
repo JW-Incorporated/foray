@@ -1632,6 +1632,25 @@ test("AUDIT: a scrub on a RESTORED ribbon is where the next press starts", async
   restore();
 });
 
+test("REVIEW: a scrub to 0:00 on a restored ribbon starts at 0:00, not at the stored position", async (t) => {
+  /* `play()` does not begin a part-heard episode at 0 — it begins at the stored
+     resume point — and the follow-up seek was guarded by `positionSec > 0`, so
+     dragging the thumb all the way left showed 0:00 and played from 30:00.
+     KILLING MUTATION: put the guard back to `started && positionSec > 0`. */
+  const { doc, audio, restore } = await aRestoredRibbon(t, 1800);
+  const { scrub } = sheet(doc);
+  scrub.value = "0";
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.equal(scrub.value, "0", "precondition: the thumb shows the start");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "the press started it");
+  assert.ok(audio.currentTime < 1, `started at ${audio.currentTime}s, not at the start the bar showed`);
+  restore();
+});
+
 test("AUDIT: ↺ and ↻ move a restored ribbon too, and ↻ never crosses the end", async (t) => {
   /* KILLING MUTATION: put `manager.seek(... + SEEK_FWD)` back in the ↻ handler
      (no restored-bar rule, no upper clamp). */

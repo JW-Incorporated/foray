@@ -1301,8 +1301,10 @@ async function seekEpisodeTo(seconds) {
     || manager.state?.type === "idle"
     || manager.state?.type === "ended";
   if (nothingToSeekIn) {
-    /* Spread, so a restored FORAY keeps the Foray it will start (`restoreForay`). */
-    restoredPending = { ...(restoredPending ?? { item: current }), positionSec: target };
+    /* Spread, so a restored FORAY keeps the Foray it will start (`restoreForay`).
+       `moved` marks a position the LISTENER chose, so the start honours it even
+       at 0:00 — see `setRunning`'s restored branch. */
+    restoredPending = { ...(restoredPending ?? { item: current }), positionSec: target, moved: true };
     render();
     return true;
   }
@@ -1801,7 +1803,7 @@ let restoredPending = null;
 async function setRunning(want, source = "tap") {
   if (!manager) return;
   if (want && restoredPending) {
-    const { item, positionSec, foray: pendingForay } = restoredPending;
+    const { item, positionSec, moved, foray: pendingForay } = restoredPending;
     restoredPending = null;
     diag.transport(source, "play-restored");
     /* A RESTORED FORAY starts the Foray, at the position the bar shows — the
@@ -1832,8 +1834,14 @@ async function setRunning(want, source = "tap") {
     /* Seek AFTER the start, not by handing `play` an offset: `play` sets the
        queue and begins at 0, and the two-step is the same shape a Foray resume
        already uses (`foray.resumeSeekPending`). A start that failed leaves the
-       position alone rather than seeking a dead element. */
-    if (started && positionSec > 0) {
+       position alone rather than seeking a dead element.
+       A SCRUB TO 0:00 IS STILL A SCRUB (review 2026-09-23). This was
+       `positionSec > 0`, and `play` does not begin at 0 for a part-heard
+       episode — it begins at the stored resume point — so a restored bar
+       dragged back to the start showed 0:00 and played from 23:14. A position
+       the listener set (`moved`) is always sought; the stored one only when
+       it is past the start, as before. */
+    if (started && (moved || positionSec > 0)) {
       await manager.seek(positionSec, { precise: true });
       render();
     }
