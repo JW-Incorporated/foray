@@ -1036,6 +1036,18 @@ function renderStarredShows() {
 
 function pickedHistory() { return lsGet("cp_history", []); }
 
+/** THE ONE WRITER OF `cp_history`. Three call sites (a play button, a picked
+    link, a continuous-playback advance) each carried their own copy of this
+    append, and none of them kept anything but the id — so a breadth episode
+    played from a show page came back in Library as "No longer available"
+    (audit 2026-09-22, theme A). The snapshot is what lets it come back. */
+function recordHistory(id) {
+  if (!id) return;
+  rememberEpisode(id);
+  const history = pickedHistory();
+  if (!history.includes(id)) lsSet("cp_history", history.concat(id).slice(-200));
+}
+
 function rememberSeen(ids) {
   const seen = lsGet("cp_seen", []).filter(id => !ids.includes(id)).concat(ids);
   lsSet("cp_seen", seen.slice(-SEEN_WINDOW));
@@ -1521,6 +1533,8 @@ function addToQueue(id) {
   const ids = queueIds();
   if (ids.includes(id)) return;
   saveQueueIds(ids.concat(id));
+  /* After the id is in the list, so the prune inside keeps this snapshot. */
+  rememberEpisode(id);
   logEvent("queued", { episode_id: id });
 }
 
@@ -1544,24 +1558,109 @@ function moveQueueItem(id, dir) {
   saveQueueIds(ids);
 }
 
-/* Same two-source resolution resolveParts() uses for a playlist part (line
-   ~850 above): `state.poolIds` for whether the catalogue still carries this
-   episode "live" (never `state.itemIndex` alone — see the comment on
-   resolveParts for why that distinction is load-bearing, #276), then a
-   `cp_saved` snapshot for one that has aged out but was starred, then a bare
-   id for one that has neither — still a real row (archivedRow already
-   renders an id-only part honestly), not a silently dropped one. */
+/* ---------- what "playable" means (audit 2026-09-22, theme A) ----------
+
+   THE CURATED POOL IS NOT THE DEFINITION OF A REAL EPISODE. `state.poolIds` is
+   the ~220-show discover pool, and since show pages gained the full catalogue
+   most episodes a listener actually touches are not in it. Five places asked
+   `state.poolIds.has(id)` anyway, so the app called its own working episodes
+   gone: Up Next rows read "Episode no longer available", History read "No
+   longer available", a starred show-page episode rendered unplayable in Saved,
+   continuous playback stopped dead at the first one, and "Open episode" on the
+   restored bar said "Episode not found" about the audio in your ears.
+
+   The rule now: an episode is LIVE when the pool holds it (unchanged — a pool
+   row keeps its link-out behaviour even without audio) or when we hold a
+   snapshot of it that carries an `audio_url`. That is the question every one
+   of those sites was actually asking: "can 4a play this".
+
+   #276 STILL HOLDS, and this is why the test is `audio_url` rather than "is in
+   `state.itemIndex`". `itemIndex` is a cache that `renderPlaylistDetail` seeds
+   with archived playlist PARTS, and a part never carries `audio_url`
+   (PLAYLIST_PART_FIELDS) — so a seeded part still reads archived on the second
+   render, which is the defect #276 is about.
+
+   WHERE THE SNAPSHOT COMES FROM. `toggleStar` has always written one into
+   `cp_saved`. Every other add-side action (Up Next, a play, a picked link)
+   stored a bare id, so a reload lost everything but the id. They now all write
+   the same snapshot, into `cp_episode_snaps` — a separate key, because putting
+   a queued episode in `cp_saved` would mark it saved. */
+const EPISODE_SNAPS_KEY = "cp_episode_snaps";
+/* History keeps 200 ids and Up Next is unbounded in principle but a few dozen
+   in practice; anything referenced by neither is pruned on every write, so this
+   cap is a backstop, not the usual limit. */
+const EPISODE_SNAPS_CAP = 400;
+/* A breadth episode's `hook` is the publisher's whole description (see
+   fullCatalogueRowToEpRowItem), and `description`/`chapters` are unbounded too.
+   Rows, the player's why-line and the episode page's head need none of that at
+   full length, and 400 stored copies of it would be the difference between
+   ~200 KB and several MB in the durable store. */
+const EPISODE_SNAP_HOOK_MAX = 280;
+
+function episodeSnaps() {
+  const m = lsGet(EPISODE_SNAPS_KEY, {});
+  return m && typeof m === "object" && !Array.isArray(m) ? m : {};
+}
+
+function storableEpisode(snap) {
+  const hook = typeof snap.hook === "string" && snap.hook.length > EPISODE_SNAP_HOOK_MAX
+    ? snap.hook.slice(0, EPISODE_SNAP_HOOK_MAX - 1) + "…"
+    : snap.hook;
+  return { ...snap, hook, description: null, chapters: null };
+}
+
+/** Persist what we know about `id` so it can be played and described after a
+    reload. A no-op for an id with no playable snapshot in hand: writing a
+    partial one would promise a row we cannot play. */
+function rememberEpisode(id) {
+  const snap = id ? state.itemIndex[id] : null;
+  if (!snap || !snap.audio_url) return;
+  const keep = new Set(queueIds().concat(pickedHistory(), id));
+  const all = episodeSnaps();
+  const next = {};
+  for (const k of Object.keys(all)) if (keep.has(k)) next[k] = all[k];
+  next[id] = storableEpisode(snap);
+  const ids = Object.keys(next);
+  for (const k of ids.slice(0, Math.max(0, ids.length - EPISODE_SNAPS_CAP))) delete next[k];
+  lsSet(EPISODE_SNAPS_KEY, next);
+}
+
+/** Every snapshot we hold for `id` outside the session cache: a star's first,
+    because it may carry the full description, then the add-side store. */
+function storedEpisode(id) {
+  return savedMap()[id] || episodeSnaps()[id] || null;
+}
+
+/** The episode 4a can play for `id` right now, or null. See the section header
+    for the rule. A snapshot found only in storage is seeded into
+    `state.itemIndex`, because that is where `bindPlay` and the player's
+    callers look it up — and seeding a PLAYABLE snapshot cannot recreate #276. */
+function liveEpisode(id) {
+  if (!id) return null;
+  if (state.poolIds.has(id)) return state.itemIndex[id] || null;
+  const cached = state.itemIndex[id];
+  if (cached && cached.audio_url) return cached;
+  const stored = storedEpisode(id);
+  if (stored && stored.audio_url) {
+    state.itemIndex[id] = stored;
+    return stored;
+  }
+  return null;
+}
+
 /* Shared by queueRows() and the Library screen's Saved/History sections
    (`docs/ux/foray-mockup.jsx`'s LibraryScreen, kanban card t_a1e7a69c) — all
    three are "an id list plus this same three-way resolution", and having one
-   definition means a fix to the liveness rule (see the comment above
-   resolveParts, #276) cannot land in one caller and not the others. */
+   definition means a fix to the liveness rule cannot land in one caller and
+   not the others. `live` is liveEpisode's answer; `archived` is a snapshot we
+   can describe but not play; `unnamed` is a bare id with neither — still a real
+   row (a count that disagrees with its rows is #276), not a dropped one. */
 function rowsForIds(ids) {
   return ids.map(id => {
-    const live = state.poolIds.has(id) ? state.itemIndex[id] : null;
+    const live = liveEpisode(id);
     if (live) return { item: live, id, state: "live" };
-    const saved = savedMap()[id];
-    if (saved) return { item: saved, id, state: "archived" };
+    const stored = storedEpisode(id);
+    if (stored) return { item: stored, id, state: "archived" };
     return { item: { id }, id, state: "unnamed" };
   });
 }
@@ -1668,7 +1767,7 @@ function advanceQueueOnEnded(id) {
   const nextId = ids[i + 1];
   // End of the queue: stop cleanly, no loop, no pulling in more content.
   if (!nextId) return;
-  const nextItem = state.poolIds.has(nextId) ? state.itemIndex[nextId] : null;
+  const nextItem = liveEpisode(nextId);
   // The next item aged out of the live pool since it was queued (archived/
   // unnamed) — nothing playable to hand to the player. Stop rather than
   // skip past it silently; a listener who reordered/removed things mid-list
@@ -1678,8 +1777,7 @@ function advanceQueueOnEnded(id) {
   window.ForayPlayer.play(nextItem, { why: whyFor(nextId, nextItem) }).then(ok => {
     if (!ok) { clearQueuePlaybackOrigin(); return; }
     logEvent("play_started", { episode_id: nextId, topics: nextItem.topics || [], ctx: "autoadvance" });
-    const history = pickedHistory();
-    if (!history.includes(nextId)) lsSet("cp_history", history.concat(nextId).slice(-200));
+    recordHistory(nextId);
     trySyncEvents();
   });
 }
@@ -1707,12 +1805,17 @@ function advanceQueueOnEnded(id) {
    cache, called it live, dropped its label and its note, and put the next-up
    marker on a row that cannot be played. The fix worked exactly once and then
    restored the defect. `poolIds` is rebuilt from scratch by fullPool and means
-   only "the catalogue holds this right now". */
+   only "the catalogue holds this right now".
+
+   liveEpisode() keeps that property (audit 2026-09-22, theme A): outside the
+   pool it asks for an `audio_url`, which a seeded part never has, so a part
+   stays archived on every render — while an episode the listener starred or
+   queued from a show page, which we DO hold a playable snapshot of, is live. */
 function resolveParts(p) {
   const spine = playlistSpine(p);
   return spine.map(part => {
     const id = part && part.id ? part.id : null;
-    const live = id && state.poolIds.has(id) ? state.itemIndex[id] : null;
+    const live = liveEpisode(id);
     if (live) return { item: live, part, state: "live" };
     if (part && part.title) return { item: part, part, state: "archived" };
     return { item: part || {}, part, state: "unnamed" };
@@ -1756,11 +1859,50 @@ const TITLE_ALIASES = {
    entirely and would never answer a `pi:` id correctly. */
 function showById(id) {
   if (typeof id === "string" && id.startsWith("pi:")) {
-    return state.shardShowCache[id] || null;
+    return state.shardShowCache[id] || rememberedShardShow(id);
   }
   return (state.catalog?.shows || []).find(s => s.show_id === id)
     || state.breadthShowCache[id]
     || null;
+}
+
+/* A `#/show/pi:<n>` PAGE THAT SURVIVES A RELOAD (audit 2026-09-22, theme A).
+
+   The app links to `#/show/pi:<n>` from its own search results, but the only
+   thing that could resolve one was `state.shardShowCache`, filled by a search
+   THIS session — so reloading the page the app had just shown, restoring the
+   tab, or opening the link from a Followed row said "Show not found." There is
+   still no id-map to ask (see showById's header), so the answer is the one
+   theme A gives episodes: keep the record we already had. A pi: show is
+   remembered when its page renders, and a followed one is resolved from its
+   `cp_starred_shows` record, which already carries the same title and art. */
+const SHARD_SHOWS_KEY = "cp_shard_shows";
+const SHARD_SHOWS_CAP = 50;
+
+function rememberShardShow(show) {
+  if (!show || typeof show.show_id !== "string" || !show.show_id.startsWith("pi:")) return;
+  const all = lsGet(SHARD_SHOWS_KEY, {});
+  const next = all && typeof all === "object" && !Array.isArray(all) ? all : {};
+  delete next[show.show_id];            // re-insert last, so the cap evicts the oldest visit
+  next[show.show_id] = {
+    show_id: show.show_id, title: show.title || "", artwork_url: show.artwork_url || null,
+    artist_name: show.artist_name || null, editorial_note: null, taxonomy_node_ids: [],
+    tier: show.tier || "breadth", source: "shard",
+  };
+  const ids = Object.keys(next);
+  for (const k of ids.slice(0, Math.max(0, ids.length - SHARD_SHOWS_CAP))) delete next[k];
+  lsSet(SHARD_SHOWS_KEY, next);
+}
+
+function rememberedShardShow(id) {
+  const all = lsGet(SHARD_SHOWS_KEY, {});
+  const hit = (all && all[id]) || null;
+  if (hit) return hit;
+  const followed = starredShowsMap()[id];
+  return followed
+    ? { show_id: id, title: followed.title || "", artwork_url: followed.artwork_url || null,
+        editorial_note: null, taxonomy_node_ids: [], tier: "breadth", source: "shard" }
+    : null;
 }
 
 /* Every discover-pool episode belonging to a show, joined by show_id first and
@@ -2952,7 +3094,7 @@ function resolveMissingShow(show_id) {
      immediately, with no "Loading show…" flash for a fetch that would
      never have resolved this id anyway. */
   if (typeof show_id === "string" && show_id.startsWith("pi:")) {
-    if (view) view.innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`;
+    if (view) view.innerHTML = notFoundPage("Show", "Show not found. Search for it again to open it.", "#/shows");
     return;
   }
   const fromIndex = showIndex
@@ -2977,7 +3119,7 @@ function resolveMissingShow(show_id) {
     const row = data?.show || null;
     if (!row) {
       const v = $("#view");
-      if (v) v.innerHTML = `<div class="page"><p class="note">Show not found.</p></div>`;
+      if (v) v.innerHTML = notFoundPage("Show", "Show not found.", "#/shows");
       return;
     }
     state.breadthShowCache[show_id] = row;
@@ -2989,6 +3131,7 @@ function renderShow(show_id) {
   setBodyClass("view-page");
   const show = showById(show_id);
   if (!show) { resolveMissingShow(show_id); return; }
+  rememberShardShow(show);
   fullPool(); // populate itemIndex/poolIds so curated-pool episode rows can play in-app
   const curatedEps = episodesForShow(show);
   const ctx = "show-" + show.show_id;
@@ -3700,8 +3843,7 @@ function bindPickLogging(scope) {
       const id = a.dataset.ep;
       logEvent("picked", { episode_id: id, topics: (state.itemIndex[id] && state.itemIndex[id].topics) || [], app: a.dataset.app || "Apple Podcasts", context: a.dataset.ctx });
 
-      const history = pickedHistory();
-      if (!history.includes(id)) lsSet("cp_history", history.concat(id).slice(-200));
+      recordHistory(id);
 
       const m = /^playlist-(.+)$/.exec(a.dataset.ctx || "");
       if (m) touchPlaylistPlayed(m[1]);
@@ -3713,8 +3855,10 @@ function bindPickLogging(scope) {
          bannerHtml() re-runs `snapshot()` over whatever cp_lastpick holds, which
          would overwrite the pool's full entry with the partial and leave a live
          episode with a play button that does nothing. Besides which, the banner
-         offers to resume something the app cannot play. */
-      const snap = state.poolIds.has(id) ? state.itemIndex[id] : null;
+         offers to resume something the app cannot play. liveEpisode() is that
+         rule (a partial part has no audio_url), without the curated-pool
+         restriction that kept every show-page episode off the banner. */
+      const snap = liveEpisode(id);
       if (snap && a.dataset.ctx !== "continue") {
         lsSet("cp_lastpick", { ...snap, ts: new Date().toISOString() });
       }
@@ -3739,7 +3883,7 @@ function bindPlay(scope, { origin = null } = {}) {
       e.preventDefault();
       e.stopPropagation();
       const id = btn.dataset.play;
-      const item = state.itemIndex[id] || episode(id);
+      const item = liveEpisode(id) || state.itemIndex[id] || episode(id);
       if (!item || !window.ForayPlayer) return;
       /* A BUTTON SHOWING "❚❚" MUST PAUSE.
          FOUNDER, 2026-09-22: "the pause button on jump back in does not work,
@@ -3765,8 +3909,7 @@ function bindPlay(scope, { origin = null } = {}) {
       const ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });
       if (!ok) { clearQueuePlaybackOrigin(); return; }
       logEvent("play_started", { episode_id: id, topics: item.topics || [] });
-      const history = pickedHistory();
-      if (!history.includes(id)) lsSet("cp_history", history.concat(id).slice(-200));
+      recordHistory(id);
       /* Same "playlist-<id>" convention and the same regex bindPickLogging
          already applies to a picked link's data-ctx — bindPlay is the in-app
          play button, the PRIMARY control on every live playlist row, and it
@@ -5954,7 +6097,7 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
   /* A SEARCH PAINT MAY NEVER WRITE OVER A REAL STORED EPISODE (adversarial
      review 2026-09-12, defect 1 — and the rule this tier's own header already
      claimed). `snapshot()` ends `state.itemIndex[id] = snap`, and `rowsForIds`
-     reads `state.itemIndex` for anything in `state.poolIds` — so Up Next, the
+     reads `state.itemIndex` for anything liveEpisode() accepts — so Up Next, the
      Library screen and `toggleStar`'s `cp_saved` write all read back whatever
      this function last put there. Before this, one keystroke over a starred,
      in-pool episode replaced its artwork, topics and release date with nulls
@@ -6247,7 +6390,7 @@ function homeGreeting() {
  * unreachable. It came from `currentContinue()`, which reads `cp_lastpick`, and
  * that key has three gates the founder's own listening fails:
  *
- *   1. `cp_lastpick` is written ONLY when `state.poolIds.has(id)` — the discover
+ *   1. `cp_lastpick` was written ONLY when `state.poolIds.has(id)` — the discover
  *      pool. An episode opened from a show page (Lex's episode list, which is
  *      what he was listening to) is not in the pool, so nothing was ever
  *      recorded for it.
@@ -6683,13 +6826,7 @@ function renderPlaylistDetail(id) {
      Playlists list, so landing here with no ‹ at all would be a dead end
      for whoever tapped a now-stale link (e.g. from the drawer). */
   if (!p) {
-    $("#view").innerHTML = `<div class="page">
-      <div class="page-head">
-        <a class="back" href="#/playlists">‹</a>
-        <div><h2>Playlist</h2></div>
-      </div>
-      <p class="note">Playlist not found.</p>
-    </div>`;
+    $("#view").innerHTML = notFoundPage("Playlist", "Playlist not found.", "#/playlists");
     return;
   }
   fullPool(); // populate itemIndex
@@ -6698,7 +6835,8 @@ function renderPlaylistDetail(id) {
      the app can describe it: without this, starring one is a no-op (toggleStar
      needs a snapshot) and a `picked` from one reports no topics.
 
-     This is safe ONLY because liveness is `state.poolIds`, not "is in itemIndex".
+     This is safe ONLY because liveness is liveEpisode(), not "is in itemIndex":
+     a part carries no audio_url, so a seeded part cannot read as playable.
      While it was the latter, this loop was the bug: it taught the cache the id, and
      the next render of the same playlist called the part live again. The absence
      check is kept because the pool's copy is always the better one, and a second
@@ -6741,16 +6879,59 @@ function renderPlaylistDetail(id) {
   bindPlay($("#view"));
 }
 
+/* EVERY "NOT FOUND" PAGE GETS A HEAD AND A ‹ (audit 2026-09-22). This shape was
+   written once, for a removed playlist, with the reason stated beside it — a
+   stale link from anywhere lands here, and a page with no ‹ is a dead end — and
+   the episode, show and Foray misses kept the one-grey-sentence version. One
+   helper now, so the next "not found" cannot be written the old way by copying
+   the nearest one.
+
+   `message` is NOT escaped, deliberately: every caller passes a literal written
+   in this file, and running esc() over one would turn "isn't" into `&#39;`
+   (the argument renderShow's BODY_PLACEHOLDER makes). Never pass it data.
+   The ‹ goes back one real step when there is one (onBackClick); `backHref`
+   is only the cold-open fallback. */
+function notFoundPage(heading, message, backHref = "#/") {
+  return `<div class="page">
+      <div class="page-head">
+        <a class="back" href="${esc(backHref)}">‹</a>
+        <div><h2>${esc(heading)}</h2></div>
+      </div>
+      <p class="note">${message}</p>
+    </div>`;
+}
+
 /* Resolve an episode id for `#/episode/:id` — the direct fix for "Open
-   episode" leaving 4a (mini-player's `openLink`, player/client.js). Same
-   two-source pattern archivedRow already relies on: `state.itemIndex`
-   first (freshest — populated by fullPool()/renderPlaylistDetail), then a
-   `cp_saved` snapshot fallback (covers aged-out parts the pool no longer
-   carries). No new fetch, no new data file — every field this page shows
-   already lives on both sources. */
+   episode" leaving 4a (mini-player's `openLink`, player/client.js). No new
+   fetch, no new data file; four sources, freshest first:
+
+     1. `state.itemIndex` — populated by fullPool(), show pages, search.
+     2. `storedEpisode()` — a star's snapshot, or the one Up Next / a play /
+        a picked link wrote (theme A, audit 2026-09-22).
+     3. THE PLAYER'S OWN POINTER. "Open episode" on the restored now-playing bar
+        said "Episode not found" about the episode that was playing, whenever
+        the app launched on any route but Home: the pointer's snapshot only
+        reached `itemIndex` as a side effect of Home rendering its Jump back in
+        card. The pointer carries everything this page needs, so it is a
+        source in its own right rather than a thing Home happens to seed. */
 function resolveEpisode(id) {
   const pool = hydrationPool(); // populate/reuse itemIndex — never throws (#276)
-  return pool[id] || savedMap()[id] || null;
+  return pool[id] || storedEpisode(id) || playerPointerEpisode(id);
+}
+
+/** The player's durable now-playing pointer, when it is `id` — seeded into the
+    item index exactly as lastEpisodeCard() seeds it, or null. Never throws: the
+    player module may be absent (a stale service-worker cache) or predate it. */
+function playerPointerEpisode(id) {
+  try {
+    const r = window.ForayPlayer?.lastEpisodeCard?.();
+    if (!r || !r.id || (id && r.id !== id)) return null;
+    /* Never over a richer entry already in the index (a pool row, a show
+       page's full row with its description). */
+    return state.itemIndex[r.id] || snapshot(r.id, r);
+  } catch (_) {
+    return null;
+  }
 }
 
 /* A1.8: "More from this show" — display-only, no new data (the join already
@@ -6989,7 +7170,7 @@ function renderEpisode(id) {
   setBodyClass("view-page");
   const item = resolveEpisode(id);
   if (!item) {
-    $("#view").innerHTML = `<div class="page"><p class="note">Episode not found.</p></div>`;
+    $("#view").innerHTML = notFoundPage("Episode", "Episode not found.");
     return;
   }
   // populate itemIndex/poolIds so "more from this show" rows can play in-app;
@@ -8040,11 +8221,11 @@ async function renderForay(id) {
   if (forayRouteId() !== id) return;
 
   if (!player) {
-    $("#view").innerHTML = `<div class="page"><p class="note">The player didn't load — reload the page.</p></div>`;
+    $("#view").innerHTML = notFoundPage("Foray", "The player didn't load — reload the page.", "#/forays");
     return;
   }
   if (!state.forays) {
-    $("#view").innerHTML = `<div class="page"><p class="note">Couldn't load forays right now.</p></div>`;
+    $("#view").innerHTML = notFoundPage("Foray", "Couldn't load forays right now.", "#/forays");
     return;
   }
 
@@ -8060,7 +8241,7 @@ async function renderForay(id) {
   // Same answer for "no such Foray" and "not published": a client that
   // distinguishes them announces the existence of unpublished work.
   if (!r) {
-    $("#view").innerHTML = `<div class="page"><p class="note">That foray isn't available.</p></div>`;
+    $("#view").innerHTML = notFoundPage("Foray", "That foray isn't available.", "#/forays");
     return;
   }
   state.foray = r;
@@ -9167,6 +9348,10 @@ function restoreNowPlayingRibbon() {
   const go = () => {
     try {
       const restored = window.ForayPlayer?.restoreLastEpisode?.();
+      /* Seed the restored episode on EVERY route, not only via Home's render:
+         the bar's "Open episode" link points at #/episode/<id>, and on a cold
+         start anywhere else nothing else would ever put it in the index. */
+      if (restored) playerPointerEpisode(null);
       if (restored && isHomeRoute()) renderCurrentPage();
     } catch (_) { /* a ribbon that cannot be restored is not a reason to fail boot */ }
   };

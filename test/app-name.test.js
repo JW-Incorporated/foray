@@ -475,16 +475,25 @@ test("both shell notices name the app", () => {
    `pi:` id has no id-map/network fallback to attempt (see that branch's own
    comment). The unit rule below applies to it exactly as it does to every
    other note. */
+/* RAISED 9 -> 10 AND WIDENED on 2026-09-22 (audit, "every not-found page is a
+   dead end"): the episode, show and Foray misses moved from the one-line shape
+   to `notFoundPage(heading, message, back)`, the page-head-and-‹ shape the
+   playlist miss already had. Their messages are unchanged, so the census now
+   reads BOTH shapes -- otherwise the fix would have moved seven notes out of
+   the set this test protects. The tenth is the playlist note coming back in
+   through the helper. */
 test("no note this app renders into #view capitalises the unit", () => {
+  const src = read("app.js");
   const notes = [
-    ...read("app.js").matchAll(
+    ...src.matchAll(
       /innerHTML = `<div class="page"><p class="note">([^<]*)<\/p><\/div>`/g
     ),
+    ...src.matchAll(/notFoundPage\("[^"]*", "([^"]*)"/g),
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    9,
-    `expected nine one-line #view notes, found ${notes.length}. More is fine -- ` +
+    10,
+    `expected ten #view notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );
