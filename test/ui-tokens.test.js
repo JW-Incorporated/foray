@@ -391,9 +391,10 @@ function contrast(a, b) {
 }
 
 const FAINT_TEXT_EXCEPTIONS = {
-  /* An UNSTARRED star is a non-text glyph on the row's --surface; 3:1 applies. */
-  "body.ui-v2 button.star": () => contrast(TOKENS["--faint"], TOKENS["--surface"]) >= 3,
-  /* A utility with no user: the census below keeps it that way. */
+  /* A utility with no user: the census below keeps it that way. (The resting
+     ☆ was the other exception, at 3.08:1 as a non-text glyph; visual pass 1's
+     review moved it to --muted — a live control at the secondary-label weight,
+     not a hair over the floor with a 1px stroke.) */
   "body.ui-v2 .ui-v2-text-faint": () => true,
 };
 
@@ -574,4 +575,78 @@ test("the wordmark is one mark: the topbar and the greeting both draw Fraunces i
     assert.strictEqual(lastOn(sel, "font-family"), "var(--font-display)", sel);
     assert.strictEqual(lastOn(sel, "font-style"), "italic", sel);
   }
+});
+
+/* ---------- the review of visual pass 1 (2026-09-23) ---------- */
+
+test("the resting ☆ is a live control in --muted, amber when on", () => {
+  /* MUTATION: `body.ui-v2 button.star { color: var(--faint) }` -> red here,
+     and the --faint census above names it too. */
+  assert.strictEqual(lastOn("body.ui-v2 button.star", "color"), "var(--muted)");
+  assert.strictEqual(lastOn("body.ui-v2 button.star.on", "color"), "var(--amber)");
+  assert.ok(contrast(TOKENS["--muted"], TOKENS["--surface"]) >= 4.5, "readable on the row it sits in");
+});
+
+test("dark is declared, not just painted: one colour-scheme, one authored focus ring", () => {
+  /* `content="dark light"` on a dark-only palette let every UA-painted surface
+     (the focus ring on a landed heading, form-control chrome, the default link
+     colour) follow the OS scheme over a #151119 page. MUTATION: put
+     `content="dark light"` back, or delete the `:focus-visible` rule -> red. */
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  assert.match(html, /<meta name="color-scheme" content="dark">/, "index.html declares the one scheme the sheet ships");
+  assert.doesNotMatch(html, /content="dark light"|content="light dark"/);
+  assert.strictEqual(lastOn("body.ui-v2", "color-scheme"), "dark", "the v2 scope tells the UA the same");
+  assert.match(lastOn(":focus-visible", "outline") || "", /^2px solid var\(--amber\)$/, "the ring is ours, in the listener's colour");
+  assert.strictEqual(lastOn(":focus-visible", "outline-offset"), "2px");
+});
+
+test("every editorial link inside a note is authored: violet, underlined, never the UA default", () => {
+  /* Library's empty state ("build one on the Create tab") painted #9e9eff or
+     #0000ee depending on the OS. MUTATION: delete `body.ui-v2 .note a` -> red. */
+  assert.strictEqual(lastOn("body.ui-v2 .note a", "color"), "var(--violet)");
+  assert.strictEqual(lastOn("body.ui-v2 .note a", "text-decoration"), "underline");
+  /* And the rule has a user: every `<a` written inside a `.note` in app.js. */
+  const notes = [...APP_JS.matchAll(/<p class="note[^"]*">(?:(?!<\/p>)[\s\S])*<a /g)];
+  assert.ok(notes.length >= 1, "at least one note carries an inline link (Library's empty state)");
+});
+
+test("every violet primary button is a capsule, a control (md) or a circle — never the card/input radius", () => {
+  /* Go / Build were 52px primaries at `--radius-lg`, the CARD radius, beside
+     capsule Follow / Get started and the md Play. MUTATION: `#pl-form button
+     { border-radius: var(--radius-lg) }` -> red, naming it. */
+  const bad = [];
+  const seen = [];
+  for (const r of RULES) {
+    if (r.atRules.length) continue;
+    if (!r.decls.some((d) => d.prop === "background" && d.value === "var(--violet)")) continue;
+    for (const sel of r.selectors) {
+      if (!/button|\.fy-btn|\.fy-sheet-go|\.fp-play|\.fp-btn|\.play-btn/.test(sel)) continue;
+      if (/:hover|:active|:disabled|\[data-playing/.test(sel)) continue;
+      const base = sel.replace(/^body\.ui-v2 /, "");
+      const radius = lastOn(sel, "border-radius") ?? lastOn(base, "border-radius")
+        /* `.fy-btn.fy-main` inherits its corner from `.fy-btn`; `.fp-btn.fp-big` states its own. */
+        ?? lastOn(base.split(".").slice(0, 2).join("."), "border-radius");
+      seen.push(sel);
+      if (!/^var\(--radius-(pill|md|round)\)$/.test(radius || "")) bad.push(`${sel} -> ${radius}`);
+    }
+  }
+  assert.ok(seen.includes("body.ui-v2 #pl-form button") && seen.includes("body.ui-v2 #cr-form button"), "the census reaches Go and Build");
+  assert.deepStrictEqual(bad, [], "violet primaries on the wrong radius");
+  assert.strictEqual(lastOn("#pl-form button", "border-radius"), "var(--radius-pill)");
+  assert.strictEqual(lastOn("#cr-form button", "border-radius"), "var(--radius-pill)");
+});
+
+test("every row and card title is the display face: a show's name in a search row included", () => {
+  /* qa row 43's rule, extended past the two heading kinds to the names on
+     rows and cards. `.show-result-title` was the one left in the text face;
+     the first-run value-prop headings inherited it. MUTATION: `body.ui-v2
+     .show-result-title { font-family: var(--font-body) }` -> red. */
+  const titles = [
+    "body.ui-v2 .show-result-title", ".ep-row .t", ".mc-info h3", ".fy-home-title", ".ft-value-prop h4",
+    ".fy-src-show", "body.ui-v2 .hv2-jbi-title", ".b-title",
+  ].filter((s) => s !== ".b-title" || RULES.some((r) => r.selectors.includes(".b-title")));
+  for (const sel of titles) {
+    assert.strictEqual(lastOn(sel, "font-family"), "var(--font-display)", `${sel} names something: display face`);
+  }
+  assert.strictEqual(lastOn("body.ui-v2 .show-result-by", "font-family"), "var(--font-body)", "the byline stays in the text face");
 });

@@ -635,7 +635,9 @@ function buildUI() {
      ENDED playback and took the mini bar away with it, so there was no way back to
      what was playing — the founder lost an episode mid-listen to a control whose
      only visible job was "get this off my screen". It now collapses to the mini
-     bar, the same thing `fp-collapse` below does, and stopping has its own
+     bar (the sheet's only button that does; the handle's drag is the gesture —
+     the boxed "Close" that once sat in the second row went in visual pass 1),
+     and stopping has its own
      separately labelled control (`fp-stop`, also below). styles.css shows it only
      while the sheet is expanded — see the rule under `.fp-close` there — because
      on an already-collapsed bar it would be a control with nothing left to do. Nothing about the stop
@@ -757,10 +759,15 @@ function buildUI() {
      only while a Foray is loaded (`setSkipButtonMode`). */
   const clips = el("div", "fp-clips");
   clips.hidden = true;
+  /* The guillemets are decoration: the accessible name is the words alone, or
+     VoiceOver opens with "single left-pointing angle quotation mark" (visual
+     pass 1 review, 2026-09-23). */
   const clipPrev = el("button", "fp-clip fp-clip-prev", "‹ Previous clip");
   clipPrev.type = "button";
+  clipPrev.setAttribute("aria-label", "Previous clip");
   const clipNext = el("button", "fp-clip fp-clip-next", "Next clip ›");
   clipNext.type = "button";
+  clipNext.setAttribute("aria-label", "Next clip");
   clips.append(clipPrev, clipNext);
 
   const row2 = el("div", "fp-row2");
@@ -779,8 +786,9 @@ function buildUI() {
      2026-08-21; test/app-name.test.js). */
   const forayLink = el("a", "fp-openep fp-toforay", "Back to this foray");
   forayLink.hidden = true;
-  const collapse = el("button", "fp-collapse", "Close");
-  collapse.type = "button";
+  /* No "Close" button here any more (visual pass 1, 2026-09-23): the grab
+     zone's ✕ and the drag handle are the sheet's two ways out, and a third,
+     boxed one at the bottom made the row read as four control kinds. */
   /* U-13: the ONLY control that ends playback and takes the bar away. It is here,
      in the expanded sheet, rather than on the mini bar, because the mini bar has
      to survive everything else a listener does — it is the way back to what is
@@ -789,13 +797,12 @@ function buildUI() {
   const stopBtn = el("button", "fp-stop", "Stop");
   stopBtn.type = "button";
   stopBtn.setAttribute("aria-label", "Stop");
-  /* STOP FIRST, CLOSE LAST (audit 2026-09-22, persona "Stop sits next to
-     Close"). They used to be neighbours with Stop in the middle, identical grey
-     pills — and Stop ends playback and takes the bar away while Close only
-     collapses the sheet. The row is `justify-content: space-between`, so this
-     order puts them at opposite ends; styles.css gives `.fp-stop` the danger
-     colour. No confirmation (a stop is undone by pressing play). */
-  row2.append(stopBtn, rateBtn, openLink, forayLink, collapse);
+  /* STOP FIRST, ALONE AT THE DANGER END (audit 2026-09-22, persona "Stop sits
+     next to Close"; visual pass 1). It used to sit in the middle of the row
+     beside an identical grey Close. The row is `justify-content: space-between`,
+     so Stop leads and the navigation links trail; styles.css gives `.fp-stop`
+     the danger colour. No confirmation (a stop is undone by pressing play). */
+  row2.append(stopBtn, rateBtn, openLink, forayLink);
 
   const note = el("p", "fp-note");
   note.hidden = true;
@@ -822,7 +829,7 @@ function buildUI() {
     root, bar, art, title, show, playBtn, skipBtn, closeBtn, fill, sheet,
     grabZone, scroll, sArt, sDesc, clips, clipPrev, clipNext,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
-    rateBtn, openLink, forayLink, stopBtn, collapse, info, note, err, sErr, announce,
+    rateBtn, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
   };
 }
 
@@ -2433,9 +2440,8 @@ function bind() {
      title button beside it already is that control for keyboard and screen
      reader, and the art stays `alt=""` decoration to them. */
   ui.art.addEventListener("click", () => setExpanded(ui.sheet.hidden));
-  ui.collapse.addEventListener("click", () => setExpanded(false));
-  /* Same path as `fp-collapse` above, on purpose — one behaviour, two controls,
-     not two behaviours. Declared after `setExpanded` because it is a `const`. */
+  /* The ✕ is the one button that collapses the sheet (the handle's drag is the
+     gesture). Declared after `setExpanded` because it is a `const`. */
   ui.closeBtn.addEventListener("click", () => setExpanded(false));
   // Following the route with the sheet still open would leave the Foray page
   // rendered underneath a full-height overlay.

@@ -31,6 +31,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { audioFieldsFrom } from "./enclosure.mjs";
+import { decodeEntities } from "./entities.mjs";
 import { UA } from "../segments/politeness.mjs";
 import { fetchFeedCapped, capItems } from "./fetch-limits.mjs";
 import { loadChangeIndex, selectChangedCuratedShows, curationCandidates } from "./candidates.mjs";
@@ -115,7 +116,9 @@ async function main() {
 
       for (const it of items.slice(0, 10)) {
         const guid = text(typeof it.guid === "object" ? it.guid["#text"] ?? it.guid : it.guid) || text(it.enclosure?.["@_url"]);
-        const title = text(it.title);
+        /* Entities decoded HERE, where the title enters data/ ("Vibe Coding
+           &#038; Linux" rendered literally — visual pass 1 review, 2026-09-23). */
+        const title = decodeEntities(text(it.title));
         if (!guid || !title || seen.has(guid)) continue;
         let pub = null;
         try { const d = new Date(it.pubDate); pub = isNaN(d) ? null : d; } catch (_) {}

@@ -65,6 +65,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import copyRules from "../../backend/src/copy/rules.js";
 import { LABEL_SCHEMA_VERSION, mergeTranscriptLabels } from "./labels.mjs";
+import { decodeEntities } from "../refresh/entities.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const { BANNED, wordCount, MAX_DISPLAY_TITLE_WORDS, MAX_BLURB_WORDS } = copyRules;
@@ -115,6 +116,16 @@ export function validateResult(id, showTitle, raw, taxonomyNodeIds) {
   if (typeof raw.rationale !== "string" || raw.rationale.trim().length === 0) errors.push(`${id}: missing rationale`);
 
   if (errors.length) return { ok: false, errors };
+
+  /* The agent's copy arrives entity-encoded now and then ("&rsquo;", "&#13;",
+     "&#038;"); decoded HERE, where it enters data/, so the copy gate below
+     judges the text a listener would read (visual pass 1 review, 2026-09-23). */
+  raw = {
+    ...raw,
+    display_title: typeof raw.display_title === "string" ? decodeEntities(raw.display_title) : raw.display_title,
+    blurb: typeof raw.blurb === "string" ? decodeEntities(raw.blurb) : raw.blurb,
+    rationale: decodeEntities(raw.rationale),
+  };
 
   // --- Copy-rule preflight on the Foray-authored display fields (ADR-0006).
   // A copy violation does NOT reject the show's classification — the

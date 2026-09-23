@@ -360,8 +360,12 @@ const FLOORS = {
      Transport: the mini bar's second control, the seek pair that stays a seek
      pair, the labelled clip rows, one nudge. Zero slack: each is a one-line
      revert from the audit's finding. */
-  "test/card-anatomy.test.js": 8,
-  "test/transport-controls.test.js": 7,
+  "test/card-anatomy.test.js": 10, // review of the pass (2026-09-23): the banner test became "the banner is gone" (its renderer had no caller), the template walker sees nested templates, one tag tint, rows on --radius-lg, the rhythm above the first card; 8 -> 10
+  "test/transport-controls.test.js": 9, // review of the pass (2026-09-23): the sheet's Play is the bar's Play scaled, the second row is one treatment with no second Close, the clip buttons keep their aria-labels; 7 -> 9
+  /* Review of the pass (2026-09-23): "Vibe Coding &#038; Linux" shipped in
+     data/discover.json as text. Entities are decoded where they enter data/
+     (tools/refresh/entities.mjs) and this suite fails on any left behind. */
+  "test/data-entities.test.js": 2,
   /* Audit 2026-09-22, theme H + the jargon ledger: no production vocabulary
      (segment, beat, act, piece, running order) in any listener-facing literal
      of app.js or the player modules — read by a small lexer that is itself
@@ -388,7 +392,7 @@ const FLOORS = {
      exact current count: this is a small, deliberately-scoped regression
      suite (title link + PR #357 unchanged-controls checks), so any change to
      its size is worth a second look. */
-  "test/episode-row-links.test.js": 5,
+  "test/episode-row-links.test.js": 4, // review of visual pass 1 (2026-09-23): the bannerHtml test was deleted WITH bannerHtml — the function had no caller since the U-11 cutover, and a test on unreachable markup is not coverage (test/card-anatomy.test.js asserts it stays gone); 5 -> 4
   /* The Foray running order's rows (founder report 2026-09-12): every beat
      links to its show page, the curation-code gutter is gone, and a narration
      beat is credited "AI Narrator" with a collapsible transcript. Floored at
@@ -686,7 +690,7 @@ const FLOORS = {
   /* 6 -> 8 (2026-09-22 audit): Home v2's element no longer inherits `.home`'s
      one-screen floor through its second class (it always scrolled by the tab
      bar's height), and a stretch card's bridge line is a row of its own. */
-  "test/home-layout.test.js": 8, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
+  "test/home-layout.test.js": 9, // review of visual pass 1 (2026-09-23): a snapped rail card rests on the gutter (scroll-padding equals the rail padding); 8 -> 9 // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
 
   /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
      (kanban card t_567b570f): renders the curated pool synchronously so
@@ -1041,7 +1045,7 @@ const FLOORS = {
      re-own everything a colour-scheme query can change, check the JS-written
      claim, and resolve the cascade for "Delete everything" to the danger
      token. */
-  "test/ui-tokens.test.js": 17, // visual pass 1 (2026-09-23): the radius, type and elevation families are enforced like the palette; the two heading kinds; one wordmark; 11 -> 17 // 2026-09-23 audit sweep (qa row 79): --faint paints no text or live control; --muted is readable on every surface; the --faint utility has no user; 8 -> 11
+  "test/ui-tokens.test.js": 22, // review of visual pass 1 (2026-09-23): the resting star is --muted, one colour-scheme + one focus ring, note links are authored, violet primaries are never on the card radius, row/card titles are the display face; 17 -> 22 // visual pass 1 (2026-09-23): the radius, type and elevation families are enforced like the palette; the two heading kinds; one wordmark; 11 -> 17 // 2026-09-23 audit sweep (qa row 79): --faint paints no text or live control; --muted is readable on every surface; the --faint utility has no user; 8 -> 11
   /* 2026-09-23 audit sweep: docs/audit/status.tsv has one row per finding under its own title, refuted/deliberate verdicts are kept, and the README table agrees. */
   "test/audit-status.test.js": 3,
   /* U-02 (docs/ui-transition-plan.md, kanban t_806e5d01): the cp_ui_v2 flag
@@ -1558,6 +1562,9 @@ const FLOORS = {
      politeness gate, partial chains, and the single authorship of the `reason`
      sentence that `--reclassify` would otherwise respell offline. */
   "tools/refresh/dai.test.mjs": 20,
+  /* Review of visual pass 1 (2026-09-23): the one entity decoder the feed scan,
+     the show backfill and the classification merge all read. Zero slack. */
+  "tools/refresh/entities.test.mjs": 5,
   /* Android on a runner (#245). ZERO SLACK, deliberately, and for a reason the iOS
      entry above does not have. Two of these 26 tests are the ONLY thing in the repo
      that notices if the Android job stops checking that `cap sync` still wires

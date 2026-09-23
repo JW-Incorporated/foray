@@ -113,6 +113,11 @@ test("previous/next clip are a labelled row: words, 44px tall, next disabled on 
   /* MUTATION: `el("button", "fp-clip fp-clip-next", "››")` -> red. */
   assert.match(CODE, /const clipPrev = el\("button", "fp-clip fp-clip-prev", "‹ Previous clip"\);/);
   assert.match(CODE, /const clipNext = el\("button", "fp-clip fp-clip-next", "Next clip ›"\);/);
+  /* The accessible name is the words alone — a guillemet in the name is read
+     out as "single left-pointing angle quotation mark" (review, 2026-09-23).
+     MUTATION: drop either setAttribute -> red. */
+  assert.match(CODE, /clipPrev\.setAttribute\("aria-label", "Previous clip"\);/);
+  assert.match(CODE, /clipNext\.setAttribute\("aria-label", "Next clip"\);/);
   assert.match(CODE, /ui\.clipNext\.disabled = Boolean\(foray\) && foray\.index >= foray\.resolved\.playable\.length - 1;/);
   assert.doesNotMatch(CODE, /ui\.fwdBtn\.disabled/, "30↻ is never disabled — it is a seek, not a clip change");
   assert.match(CODE, /scroll\.append\(sArt, sTitle, sShow, sWhy, scrub, times, row, clips, row2,/, "the clip row sits under the seek pair");
@@ -131,7 +136,8 @@ test("the Foray page's transport is ↺15 · Play · 30↻ · speed, with a clip
   assert.deepStrictEqual(ids, ["fy-back", "fy-play", "fy-fwd", "fy-rate", "fy-prev", "fy-next"]);
   assert.match(page, /id="fy-back" aria-label="Back \$\{nudge\.back\} seconds">↺ \$\{nudge\.back\}</, "the step comes from the bridge");
   assert.match(page, /id="fy-fwd" aria-label="Forward \$\{nudge\.fwd\} seconds">\$\{nudge\.fwd\} ↻</);
-  assert.match(page, /<div class="fy-clips">\s*<button type="button" class="fy-clip" id="fy-prev">‹ Previous clip<\/button>\s*<button type="button" class="fy-clip" id="fy-next">Next clip ›<\/button>/);
+  assert.match(page, /<div class="fy-clips">\s*<button type="button" class="fy-clip" id="fy-prev" aria-label="Previous clip">‹ Previous clip<\/button>\s*<button type="button" class="fy-clip" id="fy-next" aria-label="Next clip">Next clip ›<\/button>/,
+    "labelled in words, with the guillemet kept out of the accessible name");
   assert.doesNotMatch(page, /‹‹|››/, "no glyph-only clip control on the page");
 });
 
@@ -146,4 +152,39 @@ test("the Foray page's nudges call the bridge's nudge, start the Foray before it
   assert.match(steps, /player\.nudgeSteps\(\)/, "reads the bridge");
   assert.match(steps, /return \{ back: 15, fwd: 30 \};/, "falls back to the documented pair for an older cached module");
   assert.match(APP, /const nudge = forayNudgeSteps\(player\);\n\n  \$\("#view"\)\.innerHTML = `\n    <div class="page foray">/, "renderForay reads the steps before it paints");
+});
+
+/* ---------- the sheet's shape, after the review of visual pass 1 (2026-09-23) ---------- */
+
+test("the sheet's Play is the bar's Play, scaled: one filled round object, not a grey box like the skips", () => {
+  /* Four play affordances shipped; the sheet's primary ▶ was the unfilled one,
+     a rounded square identical to ↺15 / 30↻ beside it. MUTATION: delete
+     `.fp-btn.fp-big { … border-radius: var(--radius-round) … }` -> red. */
+  assert.strictEqual(valueOf(".fp-btn.fp-big", "border-radius"), "var(--radius-round)", "round, like .fp-play");
+  assert.strictEqual(valueOf(".fp-play", "border-radius"), "var(--radius-round)");
+  assert.ok(px(valueOf(".fp-btn.fp-big", "width")) >= 56 && px(valueOf(".fp-btn.fp-big", "height")) >= 56, "and it leads the row");
+  assert.strictEqual(valueOf("body.ui-v2 .fp-btn.fp-big", "background"), "var(--violet)", "the same fill as the bar's ▶ under ui-v2");
+  assert.strictEqual(valueOf("body.ui-v2 .fp-play", "background"), "var(--violet)");
+  assert.strictEqual(valueOf("body.ui-v2 .fp-btn.fp-big", "color"), valueOf("body.ui-v2 .fp-play", "color"));
+  /* The skips stay the quiet boxed pair. */
+  assert.strictEqual(valueOf(".fp-btn", "border-radius"), "var(--radius-md)");
+  assert.strictEqual(valueOf("body.ui-v2 .fp-btn", "background"), "var(--surface2)");
+});
+
+test("the sheet's second row is one treatment: 44px boxes at the body step, a quiet text link, and no second Close", () => {
+  /* It mixed a caption-size grey box, a danger box, a bare underlined link and
+     a Close beside the grab zone's ✕. MUTATION: `.fp-rate, .fp-stop { padding:
+     8px 12px; font-size: var(--fs-xs) }` -> red; `el("button", "fp-collapse",
+     "Close")` back in client.js -> red. */
+  assert.ok(px(valueOf(".fp-rate, .fp-stop", "min-height")) >= 44, "the boxed controls are at the tap floor by their own size");
+  assert.strictEqual(valueOf(".fp-rate, .fp-stop", "font-size"), valueOf(".fy-btn", "font-size"),
+    "the speed control reads the same step here as on the Foray page");
+  assert.strictEqual(valueOf(".fp-rate", "font-variant-numeric"), "tabular-nums", "1× -> 1.25× does not jitter");
+  assert.ok(px(valueOf(".fp-openep", "min-height")) >= 44, "'Episode' is a 44px text button");
+  assert.strictEqual(valueOf(".fp-openep", "text-decoration"), "none", "…not an underlined inline link");
+  assert.doesNotMatch(CODE, /"fp-collapse"/, "no Close button is built");
+  assert.doesNotMatch(CODE, /ui\.collapse/, "…and nothing is wired to one");
+  assert.match(CODE, /row2\.append\(stopBtn, rateBtn, openLink, forayLink\);/, "Stop leads the row, alone at the danger end");
+  assert.match(CODE, /ui\.closeBtn\.addEventListener\("click", \(\) => setExpanded\(false\)\);/, "the ✕ is the way out");
+  assert.strictEqual(valueOf(".fp-collapse", "color"), null, "and its rule is gone");
 });

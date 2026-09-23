@@ -701,3 +701,27 @@ test("a stretch card's bridge line is a row of its own under the card, not a fou
   assert.strictEqual(valueOf("body.ui-v2 .hv2-episodes .mini-card > .mc-info", "flex-basis"), "0",
     "the title block needs a zero basis or wrapping pushes IT onto its own line instead");
 });
+
+test("a snapped rail card rests on the gutter, not the viewport edge: scroll-padding equals the rail's inline padding", () => {
+  /* Review of visual pass 1 (2026-09-23). The Playlists rail's first card sat
+     at x=0 with its corner clipped, 14px off its own section title, while the
+     one-card Forays rail above it sat at 14px. `.hv2-hscroll` snaps
+     (`scroll-snap-type: x proximity`) and its cards align `start`; without
+     `scroll-padding-inline` the snapport ignores the scroller's own padding,
+     so a re-snap after layout parks card 1 at scrollLeft = the padding. The
+     scroll-padding must equal that padding, or a snapped card and an unsnapped
+     one disagree by the difference. MUTATION: delete `scroll-padding-inline`
+     from `body.ui-v2 .hv2-hscroll` -> red. */
+  const sel = "body.ui-v2 .hv2-hscroll";
+  assert.strictEqual(valueOf(sel, "scroll-snap-type"), "x proximity", "fixture assumption: the rail still snaps");
+  const padding = (valueOf(sel, "padding") || "").trim().split(/\s+/);
+  const inline = padding.length === 1 ? padding[0] : padding.length === 2 ? padding[1] : padding[1];
+  const right = padding.length === 4 ? padding[1] : inline;
+  const left = padding.length === 4 ? padding[3] : inline;
+  assert.strictEqual(left, right, "the rail's two gutters are equal, so one scroll-padding value covers both");
+  assert.strictEqual(valueOf(sel, "scroll-padding-inline"), left,
+    `scroll-padding-inline must equal the rail's inline padding (${left})`);
+  for (const card of ["body.ui-v2 .hv2-jbi-card", "body.ui-v2 .hv2-foray-card", "body.ui-v2 .hv2-playlist-card"]) {
+    assert.strictEqual(valueOf(card, "scroll-snap-align"), "start", `${card} snaps its start edge`);
+  }
+});

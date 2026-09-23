@@ -4,18 +4,27 @@
  * them one selector at a time.
  *
  *   1. NO <button> INSIDE AN <a>. Three cards did it (qa row 78): Jump back in,
- *      the subject cards, the Continue banner. Each is now a positioned card
- *      whose title is the one real link, stretched over the card by its
- *      ::after, with the control a SIBLING lifted above it. The HTML the
- *      renderers emit is walked tag by tag here — a source grep for "<a" could
- *      not tell nesting from adjacency.
+ *      the subject cards, the Continue banner. The two that are rendered are
+ *      now positioned cards whose title is the one real link, stretched over
+ *      the card by its ::after, with the control a SIBLING lifted above it.
+ *      (The banner had no caller since the U-11 cutover and was deleted with
+ *      its CSS in the review of this pass — a test on unreachable markup reads
+ *      as coverage and is not.) The HTML the renderers emit is walked tag by
+ *      tag here — a source grep for "<a" could not tell nesting from adjacency.
  *   2. THE EPISODE ROW HAS TWO TIERS (persona 40): the text block owns the
  *      first line, the controls wrap under it.
  *   3. ONE PILL (qa row 54): Create's suggestions and Search's browse subjects
  *      are both `.fy-chip`; `.cr-pill` has no rule and no user.
  *   4. ONE ARTWORK TREATMENT (qa row 59): the show page, the episode page and
  *      Now Playing share one radius/border/shadow rule.
- *   5. ONE TAG SHAPE: Home's tags and Search's "Generated for you" badge agree.
+ *   5. ONE TAG SHAPE, ONE TINT: Home's tags, Search's "Generated for you"
+ *      badge and both kickers (the Forays index's "foray", "Jump back in")
+ *      share the box and an 18% mix of their own colour.
+ *   6. ROWS ARE `--radius-lg` (the review of this pass): any card on
+ *      `--surface` with row-sized padding reads the row radius, so a clip row
+ *      cannot sit at 12px beside an episode row at 16px.
+ *   7. THE RHYTHM between an intro paragraph and the first card is a section
+ *      (20px), not the row gap.
  *
  * Every test names its killing mutation.
  */
@@ -175,33 +184,93 @@ test("the Jump back in card is a card: the title is the link, play is a sibling 
   assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-card > .play-btn", "z-index"), "1");
 });
 
-test("the Continue banner is a card: the title is the link, the ✓ is a sibling above it", () => {
-  /* MUTATION: `<a class="banner" …>` back around the banner -> red. */
-  const body = APP_SRC.slice(APP_SRC.indexOf("function bannerHtml()"), APP_SRC.indexOf("function subjectBlurb("));
-  const tpl = /return `([\s\S]*?)`;/.exec(body);
-  assert.ok(tpl, "bannerHtml returns one template");
-  assert.deepStrictEqual(buttonsInsideAnchors(tpl[1]), []);
-  assert.match(tpl[1], /^<div class="banner">/);
-  assert.match(tpl[1], /<a class="b-title" href="#\/episode\/[^"]+"\s+data-ev="picked"/);
-  assert.strictEqual(valueOf(".banner", "position"), "relative");
-  assert.strictEqual(valueOf(".banner .b-title::after", "inset"), "0");
-  assert.strictEqual(valueOf(".banner > .b-done", "z-index"), "1");
+test("the Continue banner is gone: no renderer, no rule, no test on unreachable markup", () => {
+  /* The third card of qa row 78. `bannerHtml()` had no caller since the U-11
+     cutover (renderHome always renders Home v2), so the stretched-link rework
+     of it and the two tests that pinned it guarded markup no listener could
+     reach — a real regression in that template could never surface, while
+     the floor read as coverage. Deleted with `.banner` / `#banner-slot`.
+     MUTATION: restore `function bannerHtml()` (or a `.banner {` rule) -> red. */
+  assert.doesNotMatch(APP_SRC, /function bannerHtml\(|function currentContinue\(/, "the dead renderer stays deleted");
+  assert.doesNotMatch(APP_SRC, /class="banner"|id="banner-slot"/, "no markup emits the banner");
+  assert.ok(!hasRule(".banner") && !hasRule("#banner-slot:empty"), "and its rules went with it");
 });
 
-test("no renderer in app.js nests a <button> inside an <a>", () => {
-  /* The general rule behind the three fixes: every template literal in app.js
-     is walked; a template that opens an <a> and then a <button> before closing
-     it fails here by its first line. Cross-template nesting (an <a> opened in
-     one function and a button injected by another) is what the three renders
-     above catch. MUTATION: any of the three reverts. */
+/** Every template literal in `src` as one flat string: the text of the
+    template plus, in place, the text of every template nested inside its
+    `${…}` holes (`${cond ? `<img …>` : ""}`). A regex over backticks cannot do
+    this — it pairs the outer template's opening tick with the NESTED
+    template's opening tick and walks the pieces out of order, which is how the
+    first version of the test below stayed green on the pre-fix app.js. */
+function templateLiterals(src) {
+  const out = [];
+  const n = src.length;
+  let i = 0;
+  const skipComment = () => {
+    if (src.startsWith("//", i)) { while (i < n && src[i] !== "\n") i++; return true; }
+    if (src.startsWith("/*", i)) { i = src.indexOf("*/", i + 2); i = i < 0 ? n : i + 2; return true; }
+    return false;
+  };
+  const skipString = (q) => { i++; while (i < n && src[i] !== q) { if (src[i] === "\\") i++; i++; } i++; };
+  /* Reads one template starting at the opening backtick; returns its flat text. */
+  const readTemplate = () => {
+    let text = "";
+    i++; // the opening `
+    while (i < n && src[i] !== "`") {
+      if (src[i] === "\\") { text += src[i] + (src[i + 1] || ""); i += 2; continue; }
+      if (src.startsWith("${", i)) {
+        i += 2;
+        let depth = 1;
+        while (i < n && depth > 0) {
+          if (skipComment()) continue;
+          const ch = src[i];
+          if (ch === "'" || ch === '"') { skipString(ch); continue; }
+          if (ch === "`") { text += readTemplate(); continue; }
+          if (ch === "{") depth++;
+          if (ch === "}") depth--;
+          i++;
+        }
+        continue;
+      }
+      text += src[i++];
+    }
+    i++; // the closing `
+    return text;
+  };
+  while (i < n) {
+    if (skipComment()) continue;
+    const ch = src[i];
+    if (ch === "'" || ch === '"') { skipString(ch); continue; }
+    if (ch === "`") { out.push(readTemplate()); continue; }
+    i++;
+  }
+  return out;
+}
+
+test("no template literal in app.js nests a <button> inside an <a>, nested templates included", () => {
+  /* The general rule behind the qa-78 fixes, as a source scan: every template
+     literal is flattened (nested templates in `${…}` holes spliced in place)
+     and walked tag by tag. Cross-template nesting (an <a> opened in one
+     function, a button injected by another through `${starBtn(id)}`) is what
+     the two render tests above catch; this one catches a LITERAL nesting in
+     any template, rendered or not.
+     MUTATION (run, red): `<a class="hv2-jbi-card">…${play}…</a>` with the play
+     button written out as `<button class="play-btn">` inside it; or run this
+     walker over `git show 30ecc0f~1:app.js`, where the banner's
+     `<a class="banner" …><button class="b-done">` is nested behind a nested
+     `<img>` template — the backtick regex this test used to use reported 0. */
   const bad = [];
-  for (const m of APP_SRC.matchAll(/`([^`]*)`/g)) {
-    const t = m[1];
+  for (const t of templateLiterals(APP_SRC)) {
     if (!/<a\b/.test(t) || !/<button\b/.test(t)) continue;
     const hits = buttonsInsideAnchors(t);
     if (hits.length) bad.push(`${t.trim().split("\n")[0].slice(0, 80)} … ${hits[0]}`);
   }
   assert.deepStrictEqual(bad, [], "templates with a <button> inside an <a>:\n" + bad.join("\n"));
+  /* The walker itself, on the shape that defeated the regex. */
+  const sample = "const x = `<a class=\"c\">${art ? `<img src=\"${u}\">` : \"\"}<button class=\"b\">x</button></a>`; // `not a template`";
+  const flat = templateLiterals(sample);
+  assert.strictEqual(flat.length, 1, "the nested template is part of the outer one, not a second literal");
+  assert.deepStrictEqual(buttonsInsideAnchors(flat[0]), ['<button class="b">'], "and the nesting behind it is seen");
 });
 
 /* ==================================================================== */
@@ -276,13 +345,87 @@ test("the show page, the episode page and Now Playing share one square-artwork t
 /* 5. one tag shape                                                      */
 /* ==================================================================== */
 
-test("Home's tags and Search's Generated badge are one shape", () => {
-  /* MUTATION: `body.ui-v2 .fy-badge { border-radius: var(--radius-md) }` -> red. */
-  const tags = ["body.ui-v2 .hv2-stretch-tag", "body.ui-v2 .hv2-draft-tag", "body.ui-v2 .hv2-generated-badge", "body.ui-v2 .fy-badge", ".mc-stretch"];
+test("Home's tags, Search's Generated badge and both kickers are one shape on one tint", () => {
+  /* The family was three shapes: plain violet text ("foray" on the Forays
+     index, at the eyebrow's 0.08em tracking), plain amber text ("Jump back
+     in"), and boxed tags at 15/18/22% tints. One box, one tracking, one mix.
+     MUTATION: `body.ui-v2 .fy-badge { border-radius: var(--radius-md) }`,
+     or `.fy-home-kicker { letter-spacing: 0.08em }` with no background, or
+     `.fy-badge-generated` back at 22% -> red, naming the selector. */
+  const tags = [
+    "body.ui-v2 .hv2-stretch-tag", "body.ui-v2 .hv2-draft-tag", "body.ui-v2 .hv2-generated-badge",
+    "body.ui-v2 .fy-badge", ".mc-stretch", ".fy-home-kicker", "body.ui-v2 .hv2-jbi-kicker",
+  ];
   for (const sel of tags) {
     assert.strictEqual(valueOf(sel, "border-radius"), "var(--radius-xs)", `${sel} radius`);
     assert.strictEqual(valueOf(sel, "font-size"), "var(--fs-2xs)", `${sel} size`);
     assert.strictEqual(valueOf(sel, "text-transform"), "uppercase", `${sel} case`);
     assert.strictEqual(valueOf(sel, "padding"), "1px 7px", `${sel} padding`);
+    assert.strictEqual(valueOf(sel, "letter-spacing"), "0.04em", `${sel} tracking`);
   }
+  /* The tint: 18% of the tag's own colour, on every tag that paints one. The
+     shape-only `.fy-badge` is coloured by `.fy-badge-generated`. */
+  const tinted = [...tags.filter((s) => s !== "body.ui-v2 .fy-badge"), "body.ui-v2 .fy-badge-generated"];
+  for (const sel of tinted) {
+    assert.match(valueOf(sel, "background") || "",
+      /^color-mix\(in srgb, (currentColor|var\(--violet\)|var\(--amber\)) 18%, transparent\)$/, `${sel} tint`);
+  }
+  /* The kickers sit in flex columns: the box is the word's width, not the row's. */
+  for (const sel of [".fy-home-kicker", "body.ui-v2 .hv2-jbi-kicker"]) {
+    assert.strictEqual(valueOf(sel, "align-self"), "flex-start", `${sel} hugs its text`);
+  }
+  /* Amber only where it marks the listener's own material. */
+  assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-kicker", "color"), "var(--amber)");
+  assert.strictEqual(valueOf("body.ui-v2 .fy-jbi-row .fy-home-kicker", "color"), "var(--amber)");
+  assert.strictEqual(valueOf("body.ui-v2 .fy-home-kicker", "color"), "var(--violet)");
+});
+
+/* ==================================================================== */
+/* 6. rows read the row radius                                          */
+/* ==================================================================== */
+
+/** The vertical padding a shorthand declares, in px (`11px 12px` -> 11). */
+const vpad = (v) => { const m = /^(\d+(?:\.\d+)?)px/.exec(String(v || "").trim()); return m ? Number(m[1]) : null; };
+
+test("every card on --surface with row-sized padding reads --radius-lg — a clip row is not a 12px object beside 16px rows", () => {
+  /* The role check the ui-tokens radius test does not make: it only asks that
+     a corner read SOME token. `.fy-row` (a 100-130px clip card) and `.fy-src`
+     sat at `--radius-md`, the buttons-and-controls step, beside `.ep-row`,
+     `.fy-home-row` and the Home cards at `--radius-lg`.
+     MUTATION: `.fy-row { border-radius: var(--radius-md) }` -> red, naming it. */
+  const offenders = [];
+  const re = /([^{}]+)\{([^{}]*)\}/g;
+  let m;
+  while ((m = re.exec(SRC))) {
+    const decls = Object.fromEntries(m[2].split(";").map((d) => d.trim()).filter(Boolean)
+      .map((d) => { const c = d.indexOf(":"); return [d.slice(0, c).trim(), d.slice(c + 1).trim()]; }));
+    if (decls.background !== "var(--surface)" || vpad(decls.padding) == null || vpad(decls.padding) < 11) continue;
+    const sel = m[1].trim().replace(/\s+/g, " ");
+    if (/^\.fy-panel$/.test(sel)) continue; // the sheet: xl top corners by design
+    const radius = decls["border-radius"] || valueOf(sel, "border-radius");
+    if (radius !== "var(--radius-lg)") offenders.push(`${sel} (${radius})`);
+  }
+  assert.deepStrictEqual(offenders, [], "surface cards with row padding not on --radius-lg");
+  for (const sel of [".fy-row", ".fy-src", ".interest-row", ".ep-row, .pl-row", ".fy-home-row"]) {
+    assert.strictEqual(valueOf(sel, "border-radius"), "var(--radius-lg)", sel);
+  }
+});
+
+/* ==================================================================== */
+/* 7. the rhythm above the first card                                   */
+/* ==================================================================== */
+
+test("an intro paragraph sits a section (20px) above the first card, not the row gap", () => {
+  /* `.note { margin: 0 }` and `.page` has no gap, so the Forays index's intro
+     and the show page's Follow note bottomed out 0-5px above the first card —
+     tighter than the 8px between the cards themselves.
+     MUTATION: delete `.fy-about { margin: 0 0 20px }` -> red. */
+  assert.strictEqual(valueOf(".fy-about", "margin"), "0 0 20px", "the Forays intro");
+  assert.strictEqual(valueOf(".show-hero", "margin"), "0 0 20px", "the show page's art + Follow + note block");
+  assert.strictEqual(valueOf(".show-hero", "text-align"), "center", "…which is one centred block");
+  assert.strictEqual(valueOf(".show-hero .show-star", "display"), "inline-block", "Follow centres with it");
+  assert.strictEqual(valueOf(".ep-actions", "justify-content"), "center", "the episode page's actions centre under its art the same way");
+  assert.match(APP_SRC, /<div class="show-hero">\s*\$\{showArt \? `<img class="show-art"[\s\S]*?\$\{showStarBtn\(show\.show_id\)\}\s*<p class="note show-follow-note">[\s\S]*?<\/div>/,
+    "renderShow wraps art, Follow and the note in the hero");
+  assert.match(APP_SRC, /<p class="note fy-about">/, "renderForays' intro carries the class the margin hangs on");
 });

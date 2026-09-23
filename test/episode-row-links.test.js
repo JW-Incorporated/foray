@@ -123,25 +123,11 @@ test("archivedRow's unnamed part has neither a title link nor a play/star/extern
   assert.match(html, /Episode no longer in the catalogue/);
 });
 
-/* ---------- bannerHtml: in-app link, not target="_blank" ---------- */
-
-test("the continue banner is an in-app link to #/episode/:id, not target=\"_blank\"", () => {
-  // Mutation: revert bannerHtml's href back to playLink(c) with
-  // target="_blank". This assertion fails on both counts.
-  const app = loadApp();
-  app._state(`state.session = { commute: { content_minutes: 27 } };`);
-  app.lsSet("cp_lastpick", {
-    id: "ep-continue", title: "Continue Me", duration_min: 60, ts: new Date().toISOString(),
-  });
-  const html = app.bannerHtml();
-  /* Since visual pass 1 (2026-09-23, qa row 78) the banner is a card whose
-     TITLE is the link (stretched over the card by CSS); the ✓ beside it is a
-     sibling, not a button inside the anchor. test/card-anatomy.test.js pins
-     that shape; this test keeps pinning where the link goes. */
-  assert.match(
-    html,
-    /<a class="b-title" href="#\/episode\/ep-continue"/,
-    "banner's title must be an in-app link to #/episode/:id"
-  );
-  assert.doesNotMatch(html, /target="_blank"/, "banner must not open a new tab any more");
-});
+/* ---------- bannerHtml: deleted ----------
+   This file used to call `app.bannerHtml()` directly to pin its href as an
+   in-app link. That function had no caller since the U-11 cutover (Home v2's
+   "Jump back in" reads the player's position store), so the test was the only
+   thing keeping a dead template alive, and a regression in it could never
+   reach a listener. Deleted with the renderer in visual pass 1 (2026-09-23);
+   test/card-anatomy.test.js asserts it stays gone. The floor in
+   test/suite-integrity.test.js was lowered by one for that reason. */

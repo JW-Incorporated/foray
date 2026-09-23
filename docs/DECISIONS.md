@@ -2,6 +2,49 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-23 (the visual pass the audit held back — R12, persona 10 and 58 — ships on the founder's word)
+
+- **The ruling.** The 2026-09-22 audit parked every visible look-and-feel
+  change as a founder question (`docs/audit/README.md`, R12: "typography,
+  badges, pills, artwork and a radius scale are founder questions"; persona 10:
+  "a skip button on the mini bar changes its design"; persona 58: "redesigns
+  the Foray transport (mini bar, sheet and Foray page)"). Wyatt, 2026-09-23,
+  as relayed into the session that built the pass and quoted in commit
+  d55726e: *"the visual changes - have at them."* That is the approval those
+  rows waited for. It is recorded HERE because the pass shipped tests and
+  suite floors that call the changes "founder-approved" while the audit ledger
+  still read `deferred-founder` — the review of the pass caught the gap.
+  The verbatim message lives in the founder's session, not in the repo; if a
+  future reader needs more than the quote, ask Wyatt rather than re-deriving
+  the ruling from the code.
+- **What it covers, and what it does not.** Covered: qa 43/47/51/54/59/60
+  (type by role, the wordmark, one eyebrow, one pill, one artwork treatment, a
+  radius scale), persona 40 (the two-tier episode row), persona 10 (the mini
+  bar's ↺15), persona 58 (the seek pair stays the seek pair in a Foray;
+  previous/next clip are their own labelled row), and qa 78 (the stretched-link
+  cards, which the row/card restructure made cheap). NOT covered — still
+  founder questions, still `deferred-founder` in `docs/audit/status.tsv`:
+  qa 28 (spoken narration at the listener's speed), qa 146 (Foray title case),
+  persona 14 (a narrated published Foray), persona 44, 56/82 ("Episodes for
+  you" naming), persona 65.
+- **The design system the pass converges on** is written down once, in the
+  tokens on `:root` / `body.ui-v2` in `styles.css` (two faces by role, a size
+  scale, a radius scale, four elevations, one tag shape, one pill) and pinned
+  by `test/ui-tokens.test.js`, `test/card-anatomy.test.js`,
+  `test/transport-controls.test.js` and `test/tap-targets.test.js`. Apple
+  Podcasts on iOS is the stated benchmark; Forays borrow its grammar rather
+  than a separate look. Dark stays the design: the page now declares
+  `color-scheme: dark` and authors its own focus ring, so an OS set to Light
+  changes nothing the listener sees.
+- **A product call made in the same pass, stated so it is not mistaken for
+  drift:** the Now Playing sheet's boxed "Close" is gone. The grab zone's ✕
+  and the drag handle are the sheet's two ways out; a third, at the bottom of
+  a row that also held Stop, was the thing the audit's "Stop sits next to
+  Close" finding was really about. Stop keeps the danger colour and leads the
+  row alone. The v1 Continue banner (`bannerHtml`) — unreachable since the
+  U-11 cutover, kept alive only by two tests that called it directly — was
+  deleted with its CSS rather than restyled.
+
 ## 2026-09-21 (Claude merges and releases without asking; the condition for taking it back)
 
 - **The "never merge or deploy without approval" rule is withdrawn.** Wyatt,

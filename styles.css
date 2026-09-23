@@ -116,6 +116,12 @@
    The other five (`--surface2`, `--muted`, `--faint`, `--amber`, `--violet`)
    are new names so they never shadow anything from v1. */
 body.ui-v2 {
+  /* The page IS dark, so the browser's own paint — the native range thumb,
+     a <select>, scrollbars, the form-control chrome — is told so too; with
+     index.html's `color-scheme: dark` this is what keeps UA-painted surfaces
+     from following an OS set to Light onto a #151119 page (visual pass 1,
+     2026-09-23). Revisit with a real light palette. */
+  color-scheme: dark;
   --bg: #151119;
   --surface: #1F1A26;
   --surface2: #2A2333;
@@ -321,18 +327,23 @@ html, body {
    `position: absolute`, and stays so) — it only supplies `relative` to the
    controls that had no position at all, which the pseudo-element needs to
    anchor to. A control that joins this list must be one whose ::after is free;
-   test/tap-targets.test.js enumerates the list and checks that. */
+   test/tap-targets.test.js enumerates the list and checks that.
+
+   `.fy-chip` (visual pass 1, 2026-09-23): the one pill for every tap-a-subject
+   is ~35px tall by its own padding, and it is the whole surface of Search's
+   browse cloud, Create's suggestions and the reason sheet. The pills sit 8px
+   apart, so the 44px boxes meet with a pixel to spare and never stack. */
 :where(
   .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
-  .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-collapse, .fp-openep,
-  .voice-row-audition
+  .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
+  .voice-row-audition, .fy-chip
 ) {
   position: relative;
 }
 :where(
   .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
-  .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-collapse, .fp-openep,
-  .voice-row-audition
+  .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
+  .voice-row-audition, .fy-chip
 )::after {
   content: "";
   position: absolute;
@@ -365,6 +376,14 @@ html, body {
    target so a screen reader reads it and Tab continues from it. */
 .page-head h2[tabindex="-1"]:focus:not(:focus-visible),
 #view[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+/* THE ONE FOCUS RING (visual pass 1, 2026-09-23). Left to the browser, the
+   ring is `outline: auto` in the UA's per-scheme colours — white on a phone set
+   to Dark, near-black on one set to Light — over a page whose palette never
+   changes (index.html now declares `color-scheme: dark` for the same reason).
+   Authored once, in the listener's own colour, so a keyboard user sees the
+   same ring on every screen and in both OS schemes. The `:not(:focus-visible)`
+   rules above still keep a tap from painting it. */
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
 /* Was `overflow: hidden` on `body.view-home` — the home screen is designed
    to fit one viewport with no internal scroll, but on iOS Safari a page with
@@ -636,47 +655,12 @@ html, body {
    fifth thing" — test/home-information-architecture.test.js fails if anything
    but the banner and `.cards4` renders inside `.home`. */
 
-/* `renderHome()` always emits `<div id="banner-slot">`, filled or not, and
-   `bannerHtml()` returns "" whenever there is nothing to continue — which is
-   most of the time. An empty div is still a flex item of `.home`, so it still
-   claimed one of the column's 8px `gap`s and pushed everything below it down
-   by that much for no content at all. `:empty` takes it out of flex layout
-   entirely, so an empty optional block costs exactly zero. Same reason the
-   `hidden` fix at the top of this file matters: nothing invisible may occupy
-   space in a column whose space is the scarce resource. */
-#banner-slot:empty { display: none; }
-
-.banner {
-  display: flex; align-items: center; gap: 10px;
-  /* A CARD, NOT A LINK (audit 2026-09-22, qa row 78): the title inside is the
-     one real <a>, stretched over the card by its ::after; the ✓ is a sibling
-     lifted above it, never a <button> inside an <a>. */
-  position: relative;
-  background: var(--surface);
-  border: 1px solid var(--gold);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding: 8px 10px;
-  text-decoration: none;
-  color: var(--text);
-  flex: none;
-}
-.banner .b-title::after { content: ""; position: absolute; inset: 0; }
-.banner > .b-done { position: relative; z-index: 1; }
-.banner img { width: 38px; height: 38px; border-radius: var(--radius-sm); flex: none; box-shadow: var(--shadow-sm); }
-.b-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.b-label { font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gold); }
-.b-title { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; text-decoration: none; }
-.b-done {
-  flex: none;
-  width: 38px; height: 38px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--text-dim);
-  font-size: var(--fs-lg);
-  cursor: pointer;
-}
+/* The Continue banner (`.banner`, `#banner-slot`) is gone (visual pass 1,
+   2026-09-23): `bannerHtml()` lost its only caller at the U-11 cutover and
+   "Jump back in" reads the player's own position store instead (see
+   jumpBackInHtml's header in app.js). Its rules were pinned by two tests that
+   guarded markup no listener could reach, so the rules, the renderer and the
+   tests went together. */
 
 /* ---------- first-run intro popup ---------- */
 
@@ -775,7 +759,9 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--accent, #4c9aff);
-  background: color-mix(in srgb, var(--accent, #4c9aff) 15%, transparent);
+  /* ONE TINT for every tag (visual pass 1): 18% of the tag's own colour, the
+     same mix Home's draft/Stretch tags and both kickers read. */
+  background: color-mix(in srgb, currentColor 18%, transparent);
 }
 .mc-info h3 {
   margin: 2px 0;
@@ -856,7 +842,12 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 #pl-form button {
   flex: none;
   min-width: 72px;
-  border-radius: var(--radius-lg);
+  min-height: 48px;
+  /* A CAPSULE, like every other primary CTA (Get started, Follow) — it sat at
+     the card/input radius and read as a lozenge split in two with the field
+     beside it (visual pass 1, 2026-09-23). The field keeps `--radius-lg`, as
+     Search's pill-beside-field already does. */
+  border-radius: var(--radius-pill);
   border: 1px solid var(--accent);
   background: var(--accent);
   color: #fff;
@@ -899,7 +890,8 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 #cr-form button {
   flex: none;
   min-width: 72px;
-  border-radius: var(--radius-lg);
+  min-height: 48px;
+  border-radius: var(--radius-pill); /* a capsule, like #pl-form's Go */
   border: 1px solid var(--accent);
   background: var(--accent);
   color: #fff;
@@ -1062,6 +1054,12 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   font-size: var(--fs-md);
 }
 .page-link-row:active { background: var(--surface-2); }
+/* On Search the row sits ABOVE the browse cloud, under the page head — where
+   Apple keeps its Library shortcuts. Below the cloud it landed exactly under
+   the floating search pill at scroll 0 on a 390x844 phone once the pills grew
+   (visual pass 1, 2026-09-23); the pills' own 10px top margin completes the
+   14px gap to the cloud. */
+#sh-browse .page-link-row { margin: 0 0 4px; }
 
 /* ---------- "this page is a version behind" bar (#233) ----------
    Fixed rather than in flow: the topbar is fixed and #view pads itself past it,
@@ -1176,7 +1174,7 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 .interest-row {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg); /* a row on --surface reads the row radius */
   box-shadow: var(--shadow);
   padding: 12px;
   margin-bottom: 8px;
@@ -2049,7 +2047,8 @@ body.fp-expanded { overflow: hidden; }
   display: block;
   margin: 0 auto 16px;
 }
-.ep-actions { display: flex; align-items: center; gap: 12px; }
+/* Centred under the centred art, like the show page's hero (visual pass 1). */
+.ep-actions { display: flex; align-items: center; justify-content: center; gap: 12px; }
 /* A1.1: full publisher episode description — additive to .fp-s-why (4a's
    curated hook), never replacing it, so both stay visible with distinct
    section labelling. Plain paragraph text, matches the app's existing
@@ -2214,7 +2213,17 @@ body.fp-expanded { overflow: hidden; }
   box-shadow: var(--shadow);
   font-size: var(--fs-sm); cursor: pointer;
 }
-.fp-big { min-width: 72px; font-size: var(--fs-xl); }
+/* THE SHEET'S PLAY IS THE BAR'S PLAY, SCALED (visual pass 1, 2026-09-23). It
+   was a grey rounded square identical to the ↺15 / 30↻ beside it — the primary
+   action lost its emphasis on the one screen that is nothing but transport.
+   Same object as `.fp-play` (a filled round button), 64px so it leads the row;
+   the skips stay the quiet boxed pair. */
+.fp-btn.fp-big {
+  width: 64px; min-width: 64px; height: 64px;
+  border-radius: var(--radius-round);
+  background: var(--accent); border-color: var(--accent); color: #fff;
+  font-size: var(--fs-xl);
+}
 .fp-btn:hover:not(:disabled) { border-color: var(--accent); }
 /* '››' on a Foray's last clip is `disabled` (client.js render()). The rules
    above set colour, background and a pointer cursor, which switch off the
@@ -2245,10 +2254,18 @@ body.fp-expanded { overflow: hidden; }
 .fp-clip:first-child, .fy-clip:first-child { margin-left: -8px; }
 .fp-clip:last-child, .fy-clip:last-child { margin-right: -8px; }
 .fp-row2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
-.fp-rate, .fp-stop, .fp-collapse {
+/* THE SECOND ROW IS ONE CONTROL TREATMENT (visual pass 1, 2026-09-23). It
+   mixed a caption-size grey box, a danger box, a bare underlined link and a
+   second Close beside the grab zone's ✕. Now: the boxed controls share the
+   Foray page's `.fy-btn.fy-rate` metrics (44px, body step, tabular for the
+   speed), "Episode" is the quiet 44px text button the clip row uses, and
+   `.fp-collapse` is gone — the sheet's handle and ✕ are the way out. */
+.fp-rate, .fp-stop {
+  min-height: 44px; padding: 0 14px;
   border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
-  border-radius: var(--radius-md); padding: 8px 12px; font-size: var(--fs-xs); cursor: pointer;
+  border-radius: var(--radius-md); font: inherit; font-size: var(--fs-md); font-weight: 600; cursor: pointer;
 }
+.fp-rate { min-width: 52px; font-variant-numeric: tabular-nums; font-weight: 500; }
 /* STOP IS NOT CLOSE (audit 2026-09-22, persona "Stop sits next to Close").
    Stop ends playback and takes the bar away; Close only collapses the sheet.
    They were identical grey pills side by side, the destructive one in the
@@ -2260,7 +2277,12 @@ body.fp-expanded { overflow: hidden; }
    (see client.js), so a bare .fp-open rule painted the whole page accent-blue
    through inheritance. Nothing showed it until a page had a heading with no
    colour of its own. */
-.fp-openep { font-size: var(--fs-xs); color: var(--accent); }
+.fp-openep {
+  display: inline-flex; align-items: center;
+  min-height: 44px; padding: 0 8px;
+  font-size: var(--fs-sm); font-weight: 600;
+  color: var(--accent); text-decoration: none;
+}
 .fp-note { font-size: var(--fs-xs); color: var(--text-dim); margin: 10px 0 0; }
 .fp-err-line { margin: 10px 0 0; text-align: center; font-size: var(--fs-sm); color: var(--gold); }
 
@@ -2283,10 +2305,22 @@ body.fp-expanded { overflow: hidden; }
   color: var(--text);
   text-decoration: none;
 }
+/* The kicker is a TAG, not an eyebrow (visual pass 1, 2026-09-23): the one
+   badge shape Stretch / draft / Generated for you wear, on 18% of its own
+   colour, so "foray" reads as a label on the card rather than a section
+   heading floating above the title. `.fy-home-row` is a flex column, so
+   `align-self` keeps the box to the word's width. */
 .fy-home-kicker {
-  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.08em;
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: var(--radius-xs);
+  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.04em;
   text-transform: uppercase; color: var(--accent);
+  background: color-mix(in srgb, currentColor 18%, transparent);
 }
+/* The Forays index's intro sits a section apart from the first card, not a
+   hair above it: `.note` zeroes its margin and `.page` has no gap of its own. */
+.fy-about { margin: 0 0 20px; }
 .fy-home-title { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; }
 
 .fy-draft {
@@ -2696,7 +2730,9 @@ body.fp-expanded { overflow: hidden; }
   display: flex; flex-direction: column; gap: 3px; width: 100%;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  /* A clip card is a ROW (100-130px tall on --surface): the row radius, like
+     `.ep-row` one page back and `.fy-home-row` one tap earlier (visual pass 1). */
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   padding: 11px 12px;
   margin-bottom: 8px;
@@ -2907,7 +2943,9 @@ body.fy-sheet-open { overflow: hidden; }
   border-radius: var(--radius-lg);
   padding: 14px 16px;
 }
-.ft-value-prop h4 { margin: 0 0 6px; font-size: var(--fs-lg); font-weight: 700; }
+/* A card title at the title step: the display face, like every other card
+   (it inherited DM Sans under a Fraunces sheet title — visual pass 1). */
+.ft-value-prop h4 { margin: 0 0 6px; font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
 .ft-strip-wrap { margin-top: 12px; }
 .ft-typed-wrap { margin: 4px 0 14px; }
 .ft-typed-input {
@@ -2921,10 +2959,17 @@ body.fy-sheet-open { overflow: hidden; }
 }
 
 /* ---------- show page (#/show/:id, Stage 1) ---------- */
+/* ONE HERO, ONE AXIS (visual pass 1, 2026-09-23). Art centred, Follow flush
+   left and its note flush left read as three unrelated stacks under a title
+   that sits beside the back button; the art, the Follow and the note are now
+   one centred block, a section (20px) above the list. The episode page's
+   art + actions block is centred the same way (`.ep-actions`). */
+.show-hero { text-align: center; margin: 0 0 20px; }
+.show-hero .show-star { display: inline-block; margin: 0 auto 8px; }
 .show-art {
   display: block;
   width: 100%; max-width: 220px;
-  margin: 0 auto 14px;
+  margin: 0 auto 12px;
   aspect-ratio: 1 / 1;
   object-fit: cover;
 }
@@ -3049,7 +3094,7 @@ body.fy-sheet-open { overflow: hidden; }
   padding: 11px 12px;
   margin-bottom: 8px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg); /* a card on --surface: the card radius */
   background: var(--surface);
 }
 .fy-src-head {
@@ -3296,7 +3341,9 @@ body.ui-v2 #sh-input {
    visible inside the field in the founder's screenshot. Deleted with the
    button itself — see `#sh-form button` earlier in this file, and
    renderAllShows in app.js. */
-body.ui-v2 .show-result-title { font-family: var(--font-body); }
+/* A show's NAME is a row title: the display face, like `.ep-row .t` beside it
+   (it was the one row title left in the text face — visual pass 1). */
+body.ui-v2 .show-result-title { font-family: var(--font-display); }
 body.ui-v2 .show-result-by { font-family: var(--font-body); color: var(--muted); }
 
 /* The "browse subjects" pill row (mockup SearchScreen), v2-only per
@@ -3326,7 +3373,7 @@ body.ui-v2 .fy-badge {
   vertical-align: middle;
 }
 body.ui-v2 .fy-badge-generated {
-  background: color-mix(in srgb, var(--violet) 22%, transparent);
+  background: color-mix(in srgb, var(--violet) 18%, transparent); /* the one 18% tint */
   color: var(--violet);
 }
 
@@ -3373,6 +3420,11 @@ body.ui-v2 .page-head .back {
 body.ui-v2 .page-head h2 { font-family: var(--font-display); color: var(--text); }
 body.ui-v2 .page-head .sub { color: var(--muted); font-family: var(--font-body); }
 body.ui-v2 .note { color: var(--muted); font-family: var(--font-body); }
+/* An editorial link inside a note ("build one on the Create tab") is 4a's
+   voice — violet, #127's authored half — and authored at all: unstyled it was
+   the browser's default link colour, which flipped with the OS scheme
+   (visual pass 1, 2026-09-23). */
+body.ui-v2 .note a { color: var(--violet); text-decoration: underline; text-underline-offset: 2px; }
 body.ui-v2 .page-link-row {
   border-color: var(--line);
   background: var(--surface);
@@ -3444,7 +3496,11 @@ body.ui-v2 .q-num {
 body.ui-v2 .q-num.next { background: var(--amber); border-color: var(--amber); color: var(--bg); }
 /* Saving/queuing are the listener's own actions -- amber when engaged,
    otherwise a quiet muted/faint control matching the row it sits in. */
-body.ui-v2 button.star { color: var(--faint); }
+/* A resting ☆ is a LIVE control, not a disabled one: `--muted` (≈5.6:1 on the
+   row), the secondary-label weight Apple gives row actions. `--faint` was a
+   hair over 3:1 on a 1px-stroke glyph and read as disabled beside the play
+   circle (visual pass 1, 2026-09-23). */
+body.ui-v2 button.star { color: var(--muted); }
 body.ui-v2 button.star.on { color: var(--amber); }
 body.ui-v2 button.up-next {
   border-color: var(--line);
@@ -3479,6 +3535,9 @@ body.ui-v2 .fy-home-row {
 }
 /* "foray"/"foray · draft" kicker is 4a's editorial framing -- violet. */
 body.ui-v2 .fy-home-kicker { color: var(--violet); }
+/* …except on a "Jump back in" row, which marks the listener's own progress
+   -- amber, the same reading Home's `.hv2-jbi-kicker` gives it. */
+body.ui-v2 .fy-jbi-row .fy-home-kicker { color: var(--amber); }
 body.ui-v2 .fy-home-title { font-family: var(--font-display); }
 body.ui-v2 .fy-bar { background: var(--surface2); }
 /* The resume position is the listener's own progress -- amber. */
@@ -3642,7 +3701,9 @@ body.ui-v2 .fp-btn {
   box-shadow: none;
 }
 body.ui-v2 .fp-btn:hover:not(:disabled) { border-color: var(--violet); }
-body.ui-v2 .fp-rate, body.ui-v2 .fp-stop, body.ui-v2 .fp-collapse {
+/* The sheet's Play is the bar's Play: the same violet fill (`.fp-play`). */
+body.ui-v2 .fp-btn.fp-big { background: var(--violet); border-color: var(--violet); color: var(--bg); }
+body.ui-v2 .fp-rate, body.ui-v2 .fp-stop {
   border-color: var(--line);
   background: var(--surface2);
   color: var(--text);
@@ -3707,6 +3768,13 @@ body.ui-v2 .hv2-hscroll {
   display: flex; gap: 12px; overflow-x: auto;
   padding: 0 14px 4px;
   scroll-snap-type: x proximity;
+  /* The snapport ignores the scroller's own padding, so without this the
+     first card's `scroll-snap-align: start` rests at x=0 — flush to the
+     viewport, corner clipped, 14px off its own section title — the moment
+     Chrome re-snaps after layout (fonts, cards arriving). Same value as the
+     inline padding, so a snapped card lands where an unsnapped one sits
+     (visual pass 1, 2026-09-23; test/home-layout.test.js pins the pair). */
+  scroll-padding-inline: 14px;
 }
 body.ui-v2 .hv2-cards { display: flex; flex-direction: column; gap: 8px; padding: 0 14px; }
 
@@ -3721,9 +3789,15 @@ body.ui-v2 .hv2-jbi-card, body.ui-v2 .hv2-foray-card, body.ui-v2 .hv2-playlist-c
   padding: 14px;
   text-decoration: none; color: var(--text);
 }
+/* The tag shape (Stretch / draft / the Foray kicker), in amber because it
+   marks the listener's own material — one badge language (visual pass 1). */
 body.ui-v2 .hv2-jbi-kicker {
-  font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: var(--radius-xs);
+  font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
   color: var(--amber);
+  background: color-mix(in srgb, currentColor 18%, transparent);
 }
 body.ui-v2 .hv2-jbi-title, body.ui-v2 .hv2-foray-title, body.ui-v2 .hv2-playlist-title {
   font-family: var(--font-display); font-weight: 600; font-size: var(--fs-lg); color: var(--text);

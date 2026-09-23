@@ -1,6 +1,6 @@
 /* Foray web client v4 — app shell.
-   Views: home (one screen, no scroll: continue banner + 4 suggestions +
-   playlist builder), playlists list, playlist detail. Hash routing.
+   Views: home (rails: Jump back in, Forays / Playlists / Episodes for you),
+   playlists list, playlist detail, shows, Forays, Library. Hash routing.
    The semantic layer (compiled concepts + tags) powers playlist building. */
 
 /* THE GENERATION PIN, READ BEFORE ANYTHING ELSE IN THIS FILE (#233/M4).
@@ -73,7 +73,6 @@ const state = {
 
 const SEEN_WINDOW = 100;
 const BRANCH_MEMORY = 8;
-const CONTINUE_MAX_AGE_H = 72;
 
 const $ = (sel, el = document) => el.querySelector(sel);
 
@@ -693,8 +692,9 @@ function snapshot(id, src) {
 /* `state.poolIds` is the ONLY answer to "is this episode in the catalogue right
    now", and it exists because `state.itemIndex` was being used for that and is
    not it (#276 review). `itemIndex` is a snapshot CACHE: it is session-lived,
-   nothing ever clears it, and three different callers write to it — fullPool,
-   bannerHtml, and renderPlaylistDetail seeding a part the pool no longer has. So
+   nothing ever clears it, and several callers write to it — fullPool, the
+   pick handler's `liveEpisode` snapshot, the show/search pages, and
+   renderPlaylistDetail seeding a part the pool no longer has. So
    "has an entry in itemIndex" drifts to "was mentioned at some point this
    session", which made an aged-out playlist part read as live from its second
    render onward and silently restored the exact defect #276 removes. Membership
@@ -2938,8 +2938,12 @@ function renderAllShows(initialQuery = "") {
       <div id="ep-search-results" hidden></div>
       <div id="pl-search-results" hidden></div>
       <div id="sh-browse">
-        ${browsePillsHtml()}
+        <!-- ABOVE the browse cloud, not below it (visual pass 1, 2026-09-23):
+             below, the page's one non-chip action sat exactly under the
+             floating search pill at scroll 0 on a 390x844 phone. Apple keeps
+             its Library shortcuts at the top of Search for the same reason. -->
         <a class="page-link-row" href="#/starred-shows">Followed shows \u203a</a>
+        ${browsePillsHtml()}
         ${vouchForHtml()}
       </div>`);
   /* The page reserves room at its bottom edge for a bar that is fixed and so
@@ -3690,9 +3694,13 @@ function renderShow(show_id, initialQuery = "") {
         <p class="sub" data-show-count></p>
       </div>
     </div>
-    ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
-    ${showStarBtn(show.show_id)}
-    <p class="note show-follow-note">${esc(FOLLOW_NOTE)}</p>
+    <!-- ONE HERO: art, Follow and its note are one centred block (styles.css
+         .show-hero, visual pass 1). The title stays in the page head. -->
+    <div class="show-hero">
+      ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
+      ${showStarBtn(show.show_id)}
+      <p class="note show-follow-note">${esc(FOLLOW_NOTE)}</p>
+    </div>
     <!-- The publisher's own description. EMPTY at first paint and filled by
          paintShowDescription() when the episode fetch resolves (or instantly
          from the cache on a revisit) - it comes from the feed, which this page
@@ -4468,18 +4476,20 @@ function bindPickLogging(scope) {
       const m = /^playlist-(.+)$/.exec(a.dataset.ctx || "");
       if (m) touchPlaylistPlayed(m[1]);
 
-      /* Only a part the catalogue still holds may become the continue banner. An
-         archived playlist part has a snapshot in `state.itemIndex` (seeded by
+      /* Only a part the catalogue still holds is recorded as the last pick
+         (`cp_lastpick`, named in docs/legal/privacy-policy.md). An archived
+         playlist part has a snapshot in `state.itemIndex` (seeded by
          renderPlaylistDetail so this handler can report its topics), but that
-         snapshot is a PARTIAL one — no audio_url, no hook, no artwork — and
-         bannerHtml() re-runs `snapshot()` over whatever cp_lastpick holds, which
-         would overwrite the pool's full entry with the partial and leave a live
-         episode with a play button that does nothing. Besides which, the banner
-         offers to resume something the app cannot play. liveEpisode() is that
-         rule (a partial part has no audio_url), without the curated-pool
-         restriction that kept every show-page episode off the banner. */
+         snapshot is a PARTIAL one — no audio_url, no hook, no artwork — and a
+         record of something the app cannot play is worth nothing. liveEpisode()
+         is that rule (a partial part has no audio_url), without the
+         curated-pool restriction that kept every show-page episode out.
+         Nothing renders this record any more: the Continue banner that read it
+         (`bannerHtml`) lost its caller at the U-11 cutover and was deleted in
+         visual pass 1 (2026-09-23); "Jump back in" reads the player's own
+         position store instead (see jumpBackInHtml). */
       const snap = liveEpisode(id);
-      if (snap && a.dataset.ctx !== "continue") {
+      if (snap) {
         lsSet("cp_lastpick", { ...snap, ts: new Date().toISOString() });
       }
       trySyncEvents();
@@ -4601,33 +4611,12 @@ function bindUpNext(scope) {
 
 /* ---------- views ---------- */
 
-function currentContinue() {
-  const last = lsGet("cp_lastpick", null);
-  if (!last) return null;
-  const ageH = (Date.now() - new Date(last.ts).getTime()) / 3.6e6;
-  const commuteMin = state.session.commute.content_minutes || 27;
-  if (ageH > CONTINUE_MAX_AGE_H) return null;
-  if ((last.duration_min || 0) <= commuteMin + 5) return null;
-  return last;
-}
-
-function bannerHtml() {
-  const c = currentContinue();
-  if (!c) return "";
-  snapshot(c.id, c);
-  /* A CARD WITH A STRETCHED LINK, not a link with a button in it (audit
-     2026-09-22, qa row 78): the title is the one real <a> (styles.css stretches
-     its ::after over the card), and the ✓ is its sibling, lifted above it. */
-  return `<div class="banner">
-    ${c.artwork_url ? `<img src="${esc(safeUrl(c.artwork_url))}" alt="">` : ""}
-    <div class="b-info">
-      <span class="b-label">Continue</span>
-      <a class="b-title" href="#/episode/${esc(encodeURIComponent(c.id))}"
-        data-ev="picked" data-ep="${c.id}" data-ctx="continue">${esc(c.title)}</a>
-    </div>
-    <button class="b-done" id="banner-done" aria-label="Done with this">✓</button>
-  </div>`;
-}
+/* `currentContinue()` / `bannerHtml()` — the v1 Continue banner — lived here
+   until visual pass 1 (2026-09-23). They had no caller since the U-11 cutover
+   (renderHome always renders Home v2, whose "Jump back in" reads the player's
+   position store), and the only thing keeping them alive was two tests that
+   called the function directly. Dead markup guarded by tests reads as
+   coverage and is not; both went, with their CSS (`.banner`, `#banner-slot`). */
 
 /* What actually connects the episodes in a subject queue is one fact: they
    share a taxonomy branch. Say that plainly via the real shows involved,
@@ -9832,9 +9821,12 @@ async function renderForay(id) {
                the mini-player's cannot word the same speed two ways. -->
           <button type="button" class="fy-btn fy-rate" id="fy-rate" aria-label="Playback speed">1×</button>
         </div>
+        <!-- The guillemets are decoration: the accessible name is the words
+             alone, or VoiceOver opens with "single left-pointing angle
+             quotation mark" (visual pass 1 review, 2026-09-23). -->
         <div class="fy-clips">
-          <button type="button" class="fy-clip" id="fy-prev">‹ Previous clip</button>
-          <button type="button" class="fy-clip" id="fy-next">Next clip ›</button>
+          <button type="button" class="fy-clip" id="fy-prev" aria-label="Previous clip">‹ Previous clip</button>
+          <button type="button" class="fy-clip" id="fy-next" aria-label="Next clip">Next clip ›</button>
         </div>
         <!-- A start that failed says so HERE, and a screen reader hears it
              without moving focus off the button that was just pressed. -->

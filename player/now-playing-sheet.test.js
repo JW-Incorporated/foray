@@ -395,15 +395,20 @@ test("tapping the mini bar's artwork opens the player, like the title beside it"
   assert.match(FLAT_TEXT, /ui\.art\.addEventListener\("click", \(\) => setExpanded\(ui\.sheet\.hidden\)\)/);
 });
 
-test("Stop and Close sit at opposite ends of the sheet's second row", () => {
-  /* They were neighbours, Stop in the middle, identical pills. The row is
-     space-between, so first and last are as far apart as the row allows.
-     MUTATION: restore `row2.append(rateBtn, openLink, forayLink, stopBtn, collapse)`. */
+test("Stop leads the sheet's second row, alone at the danger end; the ✕ is the one Close", () => {
+  /* Stop used to sit in the middle of the row beside an identical grey Close.
+     The row is space-between, so first is as far from the rest as the row
+     allows; and there is no second Close any more (visual pass 1, 2026-09-23:
+     the grab zone's ✕ and the handle are the sheet's ways out).
+     MUTATION: restore `row2.append(rateBtn, openLink, forayLink, stopBtn)`,
+     or `el("button", "fp-collapse", "Close")` -> red. */
   const m = /row2\.append\(([^)]*)\)/.exec(CODE);
   assert.ok(m);
   const order = m[1].split(",").map((x) => x.trim());
   assert.strictEqual(order[0], "stopBtn", "Stop first");
-  assert.strictEqual(order[order.length - 1], "collapse", "Close last");
+  assert.ok(!order.includes("collapse"), "no Close button in the row");
+  assert.doesNotMatch(FLAT, /ui\.collapse/, "nothing is wired to one");
+  assert.match(FLAT_TEXT, /ui\.closeBtn\.addEventListener\("click", \(\) => setExpanded\(false\)\)/, "the ✕ collapses the sheet");
 });
 
 test("one finger drives the drag-to-dismiss; a second finger cannot restart or end it", () => {
