@@ -1,11 +1,11 @@
 {
-  "deploy_id": "f0b6a5e26e6e9019",
+  "deploy_id": "92340f686313c476",
   "files": {
-    "app.js": "sha256:10a82f4c5fafb0e5b9ca37ad130bba3b7726ba18fa7b3736dfb70eba8092028c",
+    "app.js": "sha256:7504ea642f9b4ba86c849f34002271b2fcb6d007d37b45ad6646a1661d13285b",
     "data/catalog-client.json": "sha256:734c542d08decc62fd401593cbf19c25216c366fe99ebc86fce2192dcf9d85c4",
     "data/dai-classification.json": "sha256:321fb915e4289a098cbd30ec7cc8e8503345a1c6cadb6cda2803ff656162a545",
     "data/discover.json": "sha256:4e50f24a3829ca6f9264a13ae6ea327d0acaa2a0b898ba1e13b5c97aa53ea3b7",
-    "data/forays-directory.json": "sha256:d527426105ec163d4d5e3bfeebfc44ebec65ea4f853aa5ce547275eabd1da37f",
+    "data/forays-directory.json": "sha256:0a200be98d091df0ca6f3ba334d5881f0970c1d42e6c79a2c084d0d92f8b2f7e",
     "data/forays.json": "sha256:e2fe2e76371261c335814f0387cbb70de78aba1fe82f186c009e29c2a2854c61",
     "data/item-tags.json": "sha256:d4a1eccdbf270a4982cf79c6f737e68052b80a91569bbe45aba70ce576d6c064",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
@@ -21,7 +21,7 @@
     "index.html": "sha256:e83f8aa82367520db2beb9e26f5546b466de5027310d8d4dd9e5b820a22f1c88",
     "manifest.json": "sha256:e99d17d7b18d314cf6a60286c9f28e77761f5642d44117115c219b2acfb9c118",
     "player/build-stamp.js": "sha256:0aa452a1b831afd05b661c910a50e65082a81e9587e0187ce491e41837849dfd",
-    "player/client.js": "sha256:f54ec82dc100c9758ad7bb53537de355488215366eafe9ae24a179e354c63ca5",
+    "player/client.js": "sha256:a69706fd2c979867a0a41b278c4999ee6fbee87f03f5eb4c09a987f26e057b2f",
     "player/default-voice.js": "sha256:ebdd4cb5067b937ec0ba02e1be6d8fc84c7e73e58078bcafc2ce8911d26ba82f",
     "player/diagnostic-log.js": "sha256:d1c05f2d5b78bf8d7721fcfbfc4cb1775e8752b94bae619a9b6cc385f9683187",
     "player/durable-store.js": "sha256:0b0e47397cce25751ed93823bb7e920cd36c7ea01bb56246c9422b01ab2c3fed",
@@ -49,6 +49,6 @@
     "player/strip-scrub-gesture.js": "sha256:b3ceed350a05b2fa06cc18981b2f03d141696c0683c3c110b7a8db83d4f4dcef",
     "player/tts-bridge.js": "sha256:3624d19408abb0cbede260d358681685698c506509837f2b593cda58de4217c2",
     "search-engine.js": "sha256:7e9e7b5b88dbda14fda86181bc3081033a5c880d1fc5b3b578b691c616c82da9",
-    "styles.css": "sha256:f92110d70e30eabee583cc88f8be0c639831abd9a898e05fbc53ecf2d2c6ff96"
+    "styles.css": "sha256:2d90e1b8531077fc25cf5f7c8c24c385f59c8ec6028a53b87c8097bddab16efd"
   }
 }
