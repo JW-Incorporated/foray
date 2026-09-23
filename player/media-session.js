@@ -532,16 +532,27 @@ export function mediaSessionActions(surface = {}, {
   if (previous) out.push(["previoustrack", () => previous()]);
   if (next) out.push(["nexttrack", () => next()]);
   if (seekBy) {
-    /* OURS, NEVER THE PLATFORM'S (founder, 2026-09-23: "In the app, I can jump
-       back 15s and forward 30s. On the lock screen, it's 10s in both directions.
-       Both should be 15/30"). This used to honour `details.seekOffset` — "a head
-       unit may ask for 10 s" — which is exactly how the lock screen came to move
-       the playhead by a number the in-page buttons never use: WebKit's own
-       remote-command listener hands its skip commands to the page with the OS's
-       default interval, and this handler obeyed it. The seek pair is one product
-       decision (`04_VOICE_AUDIO_SPEC.md`'s ±15/30), decided once in this file's
-       constants and nowhere else; the native halves READ it from the payload the
-       shim sends (`seekBackMs`/`seekForwardMs`) rather than holding a copy. */
+    /* ALWAYS the spec's ±15/30 — `details.seekOffset`, the platform's own
+       number, is deliberately not read.
+
+       FOUNDER, 2026-09-23 (build 2026092326, iPhone): "In the app, I can jump
+       back 15s and forward 30s. On the lock screen, it's 10s in both
+       directions. Both should be 15/30"
+
+       Until this line the handler honoured whatever the OS put in
+       `seekOffset` ("a head unit may ask for 10 s"), and the lock screen is
+       exactly such a head unit: WebKit's remote-command listener advertises
+       skip commands for every playing `<audio>` element with an interval of
+       ITS choosing and hands that interval back as `seekOffset`
+       (`RemoteCommandListenerCocoa.mm` → `MediaElementSession.cpp`), so the
+       lock screen stepped by WebKit's number while the in-page buttons stepped
+       by ours. The nudge is one product decision, made once, in
+       `SEEK_BACKWARD_SEC`/`SEEK_FORWARD_SEC`; a surface that wants a different
+       step gets it through `opts`, never through the event. The offset still
+       travels in the details (the shim forwards native's `offsetMs`, and the
+       diagnostics can read it) — it is data about the press, not an order. The
+       native halves READ the pair from the payload the shim sends
+       (`seekBackMs`/`seekForwardMs`) rather than holding a copy of their own. */
     out.push(["seekbackward", () => seekBy(-seekBackwardSec)]);
     out.push(["seekforward", () => seekBy(seekForwardSec)]);
   }

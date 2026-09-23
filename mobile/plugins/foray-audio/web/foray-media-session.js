@@ -177,6 +177,19 @@ export const ROUTABLE_ACTIONS = Object.freeze([
   "seekbackward", "seekforward", "seekto",
 ]);
 
+/** The page's actions that are NOT mirrored onto WebKit's own session on the
+ *  iOS takeover (see `captureLiveSession`). Only `seekto`, and for one reason:
+ *  WebKit's `MediaElementSession::clientCharacteristicsChanged` rewrites the
+ *  page's position state with `element->currentTime()` on every tick, so the
+ *  timeline WebKit's client shows is the `<audio>` ELEMENT's — the segment's —
+ *  while the page's `seekto` handler is on the Foray's clock
+ *  (`player/media-session.js` §3). A scrub on WebKit's bar would land at
+ *  "1:00 of the Foray" when the listener meant "1:00 of this clip". The
+ *  mirrored set therefore drops `SeekToPlaybackPosition` from what WebKit's
+ *  client advertises (its set becomes ours ∪ {play, pause}); the Foray-clock
+ *  scrub lives on `ForayAudioPlugin`'s client, which is built for it. */
+export const UNMIRRORED_ACTIONS = Object.freeze(["seekto"]);
+
 /** The notification's own Stop button (and its swipe, from Android 14), and
  *  nothing else. NOT a spec action and deliberately not in `ROUTABLE_ACTIONS`: no
  *  page registers a handler for it. `dispatch` delivers it to the page's `stop`
@@ -528,6 +541,13 @@ export function createForayMediaSession(env) {
    *  restored AS that object, not as absent. */
   let hadOwn = false;
   let previous;
+  /** The members of the live session we took over on iOS, captured BEFORE any
+   *  wrapping so they still reach WebKit — `null` when there was nothing to
+   *  take over (Android, always). See `captureLiveSession`. */
+  let mirror = null;
+  /** The actions currently registered on WebKit's own session through `mirror`,
+   *  so `uninstall` can take exactly those back and `inspect` can show them. */
+  const mirrored = new Set();
   let subscription = null;
   /** M-03's own handle, kept separately from `subscription` above: `session`
    *  events are diagnostics and `transport` events are the lock screen's
@@ -729,10 +749,9 @@ export function createForayMediaSession(env) {
    * The details objects are the SPEC's, not ours: `seekOffset` in seconds for
    * `seekbackward`/`seekforward`, `seekTime` in seconds for `seekto`. That is what
    * makes `media-session.js`'s handlers — written for a browser — run unmodified.
-   * `seekOffset` is still forwarded for the shape's sake, and since 2026-09-23 the
-   * page IGNORES it (founder: "Both should be 15/30"): the number native sends back
-   * is the page's own anyway, and a platform that sent its own would now be
-   * overruled rather than obeyed.
+   * The offset is forwarded as DATA about the press: that file steps by its own
+   * ±15/30 whatever number arrives (founder, 2026-09-23 — the lock screen's 10 s
+   * was WebKit's interval, honoured), and native's `offsetMs` is ours anyway.
    *
    * `fastSeek` is deliberately never sent. Whether a seek may be approximate is
    * `player/seek-policy.js`'s decision (ADR-0007/0008) and `media-session.js` drops
@@ -893,6 +912,10 @@ export function createForayMediaSession(env) {
             }))
             : [],
         };
+        /* The ORIGINAL value, not the snapshot: in the shell it is a real
+           `MediaMetadata` (client.js passes `window.MediaMetadata`), which is the
+           only thing WebKit's setter accepts. */
+        mirrorMetadata(value == null ? null : value);
         scheduleFlush();
       },
 
@@ -901,6 +924,7 @@ export function createForayMediaSession(env) {
       },
       set playbackState(value) {
         playbackState = str(value) || "none";
+        mirrorPlaybackState(playbackState);
         scheduleFlush();
       },
 
@@ -925,11 +949,119 @@ export function createForayMediaSession(env) {
         if (!ROUTABLE_ACTIONS.includes(name)) {
           throw new TypeError("foray-media-session: unsupported action " + name);
         }
-        if (typeof handler === "function") handlers.set(name, handler);
+        const fn = typeof handler === "function" ? handler : null;
+        if (fn) handlers.set(name, fn);
         else handlers.delete(name);
+        mirrorHandler(name, fn);
         scheduleFlush();
       },
     };
+  }
+
+  /* ------------------------------------------- the mirror onto WebKit's own */
+
+  /**
+   * Capture the live session's own members BEFORE `install()` replaces or wraps
+   * it, so the page's writes can be repeated onto WebKit's object as well as
+   * ours. Returns `null` when the object has no `setActionHandler` — then it
+   * is not a session at all and nothing is mirrored.
+   *
+   * WHY A MIRROR EXISTS. `docs/ios-lock-screen.md` §2.1 settled Now Playing
+   * ownership ("the plugin wins, by construction") — but only for the DISPLAY.
+   * The BUTTONS are a second question, and this is where the founder's phone
+   * answered it. FOUNDER, 2026-09-23 (build 2026092326, iPhone): "In the app,
+   * I can jump back 15s and forward 30s. On the lock screen, it's 10s in both
+   * directions. Both should be 15/30". Neither this file, nor
+   * `player/media-session.js`, nor `ForayAudioPlugin.swift`
+   * (`preferredIntervals` 15/30) has ever said 10. WebKit has: for every
+   * playing `<audio>` element, `RemoteCommandListenerCocoa.mm` registers a
+   * MediaRemote client of ITS OWN — `defaultCommands()`: play, pause, toggle,
+   * seek-to, skip forward, skip backward — with a skip interval of its own
+   * choosing, and no public API silences it. The lock screen shows ONE
+   * client, and 10 s means it was showing WebKit's. A press on that client
+   * goes `MediaElementSession` → `MediaSession::callActionHandler` → the
+   * page's handler IF ONE IS REGISTERED ON WEBKIT'S OBJECT, else
+   * `HTMLMediaElement`'s default: a raw seek of the element by WebKit's
+   * interval, past the page's Foray clock, seek policy and nudge. The
+   * takeover left WebKit's object with no handlers at all — every one the
+   * page installed landed on ours and went to the plugin — so the lock
+   * screen's skips never reached the page. The mirror puts the page's own
+   * handler on WebKit's object too, so whichever client the OS shows, a press
+   * lands in the same handler and steps by the same ±15/30
+   * (`player/media-session.js` ignores the OS's `seekOffset` for the same
+   * reason). `metadata` and `playbackState` ride along because they are
+   * timeline-free and one line each; position state does NOT (WebKit
+   * overwrites it from the element — `UNMIRRORED_ACTIONS` says why that also
+   * excludes `seekto`).
+   *
+   * Every mirrored write is best-effort and never throws out of the page's
+   * write: WebKit refusing a mirror must not cost the plugin its payload.
+   */
+  function captureLiveSession(target) {
+    if (!target || typeof target !== "object") return null;
+    const setActionHandler = typeof target.setActionHandler === "function"
+      ? target.setActionHandler
+      : null;
+    if (!setActionHandler) return null;
+    /* An accessor's SETTER, from wherever on the chain it lives — for a real
+       `MediaSession` that is the IDL prototype — so the mirror still reaches
+       WebKit after "wrap" mode shadows the property with our own accessor. A
+       data property is never mirrored: in "wrap" mode our shadow sits on top
+       of it, and an assignment would come straight back into our own setter —
+       a loop, not a mirror. Only a test fake has one; WebKit's does not. */
+    const setterOf = (prop) => {
+      for (let o = target; o; o = Object.getPrototypeOf(o)) {
+        const d = Object.getOwnPropertyDescriptor(o, prop);
+        if (!d) continue;
+        return typeof d.set === "function" ? (v) => d.set.call(target, v) : null;
+      }
+      return null;
+    };
+    return {
+      setActionHandler: (name, fn) => setActionHandler.call(target, name, fn),
+      metadata: setterOf("metadata"),
+      playbackState: setterOf("playbackState"),
+    };
+  }
+
+  function mirrorHandler(name, fn) {
+    if (!mirror || UNMIRRORED_ACTIONS.includes(name)) return;
+    try {
+      mirror.setActionHandler(name, fn);
+      if (fn) mirrored.add(name);
+      else mirrored.delete(name);
+    } catch (e) {
+      log("foray-media-session: WebKit's session refused the mirrored " + name + " handler", e);
+    }
+  }
+
+  function mirrorMetadata(value) {
+    if (!mirror || !mirror.metadata) return;
+    try {
+      mirror.metadata(value);
+    } catch (e) {
+      log("foray-media-session: WebKit's session refused the mirrored metadata", e);
+    }
+  }
+
+  function mirrorPlaybackState(value) {
+    if (!mirror || !mirror.playbackState) return;
+    try {
+      mirror.playbackState(value);
+    } catch (e) {
+      log("foray-media-session: WebKit's session refused the mirrored playbackState", e);
+    }
+  }
+
+  /** Take back everything the mirror put on WebKit's object. Each member is
+   *  attempted even if one fails, as `uninstall` does for the wrapped ones. */
+  function unmirror() {
+    if (!mirror) return;
+    for (const name of [...mirrored]) mirrorHandler(name, null);
+    mirrorMetadata(null);
+    mirrorPlaybackState("none");
+    mirrored.clear();
+    mirror = null;
   }
 
   /* ------------------------------------------------------------- lifecycle */
@@ -1040,6 +1172,10 @@ export function createForayMediaSession(env) {
 
     hadOwn = Object.prototype.hasOwnProperty.call(nav, "mediaSession");
     previous = existing;
+    /* BEFORE the takeover below touches it: "wrap" mode shadows the very
+       members the mirror needs to keep. Only ever non-null on iOS — Android
+       returned above when anything was there. */
+    mirror = existing ? captureLiveSession(existing) : null;
 
     if (!existing) {
       /* The ordinary case on both platforms: nothing there yet (Android always;
@@ -1126,6 +1262,10 @@ export function createForayMediaSession(env) {
       log("foray-media-session: could not remove the session listener", e);
     }
     sessionSubscription = null;
+    /* WebKit's object first, while `mirror` still reaches it: a mirrored
+       handler left behind would keep WebKit's client advertising buttons that
+       call into a page that has moved on. */
+    unmirror();
     /* ONLY IF OURS IS STILL THE ONE THERE. If something replaced it after we
        installed, restoring blindly would delete that — the mirror of the care
        `foray-audio-shell.js` takes over the `play` patch. In "wrap" mode "ours"
@@ -1197,6 +1337,10 @@ export function createForayMediaSession(env) {
     return {
       installed,
       actions: [...handlers.keys()],
+      /** The actions also registered on WebKit's own session (iOS only). A
+       *  device pass reading `[]` here while a Foray plays on iOS means the
+       *  lock screen's skips are WebKit's raw element seek again. */
+      mirrored: [...mirrored],
       state: transportState({ metadata, playbackState }),
       title: str(metadata?.title),
       loaded: lastLoaded,

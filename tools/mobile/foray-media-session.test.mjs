@@ -63,7 +63,7 @@ import {
   createForayMediaSession, mediaSessionApplies, nowPlayingPayload, identityKey,
   transportState, assetUri,
   PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, SESSION_EVENT, SESSION_DOM_EVENT, REMOTE_DOM_EVENT,
-  ROUTABLE_ACTIONS, CLOSE_ACTION,
+  ROUTABLE_ACTIONS, CLOSE_ACTION, UNMIRRORED_ACTIONS,
   SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC, POSITION_MIN_INTERVAL_MS, ASSET_BASE, IOS_ASSET_BASE,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 
@@ -359,6 +359,168 @@ test("iOS takeover (wrap path) restores the wrapped members on uninstall", () =>
   assert.equal(nav.mediaSession, fake, "the property itself was never replaced in wrap mode");
   assert.equal(nav.mediaSession.setActionHandler, originalSetActionHandler, "the original method was not restored");
   assert.equal(Object.prototype.hasOwnProperty.call(nav.mediaSession, "forayPolyfill"), false, "the marker outlived uninstall");
+});
+
+/* ------------------------------ 2b. the mirror onto WebKit's own session */
+
+/** A stand-in for WebKit's real `MediaSession`: every member on the PROTOTYPE,
+ *  as the IDL binding puts them, recording what WebKit would have been told.
+ *  `received` is the handler WebKit holds per action — the thing its
+ *  remote-command listener would call when the lock screen's button is pressed. */
+function webkitSession({ throwOnMetadata = false } = {}) {
+  const received = new Map();
+  const writes = [];
+  let metadata = null;
+  let playbackState = "none";
+  const proto = {
+    setActionHandler(action, handler) {
+      writes.push(`handler:${action}:${handler ? "set" : "null"}`);
+      if (handler) received.set(action, handler);
+      else received.delete(action);
+    },
+    setPositionState() { writes.push("position"); },
+  };
+  Object.defineProperty(proto, "metadata", {
+    configurable: true, enumerable: true,
+    get() { return metadata; },
+    set(v) {
+      if (throwOnMetadata) throw new TypeError("Type error: not a MediaMetadata");
+      metadata = v;
+      writes.push("metadata");
+    },
+  });
+  Object.defineProperty(proto, "playbackState", {
+    configurable: true, enumerable: true,
+    get() { return playbackState; },
+    set(v) { playbackState = v; writes.push(`playbackState:${v}`); },
+  });
+  return {
+    target: Object.create(proto), received, writes,
+    get metadata() { return metadata; },
+    get playbackState() { return playbackState; },
+  };
+}
+
+const MIRRORED = ROUTABLE_ACTIONS.filter((a) => !UNMIRRORED_ACTIONS.includes(a));
+
+test("iOS takeover MIRRORS the page's handlers onto WebKit's own session, so a press on WebKit's client reaches the page", () => {
+  /* FOUNDER, 2026-09-23 (build 2026092326, iPhone): "In the app, I can jump
+     back 15s and forward 30s. On the lock screen, it's 10s in both directions.
+     Both should be 15/30". Nothing of ours says 10 — WebKit's own MediaRemote
+     client for the playing `<audio>` element does, and a press on it reaches
+     the page ONLY through a handler registered on WebKit's object. The takeover
+     used to leave that object with none, so the press fell to WebKit's default:
+     a raw element seek by its own interval. */
+  const wk = webkitSession();
+  const nav = { mediaSession: wk.target };
+  const { session } = setup({ bridge: { platform: "ios" }, nav });
+  session.install();
+  const seen = withHandlers(session, nav);
+  assert.deepEqual([...wk.received.keys()], MIRRORED, "WebKit's object must hold the page's handlers");
+  assert.deepEqual(session.inspect().mirrored, MIRRORED);
+  /* THE SAME FUNCTION, not a forwarder: WebKit calls it with its own details. */
+  wk.received.get("seekbackward")({ seekOffset: 10 });
+  assert.deepEqual(seen, [{ action: "seekbackward", details: { seekOffset: 10 } }]);
+});
+
+test("seekto is NEVER mirrored — WebKit's timeline is the element's, the page's is the Foray's", () => {
+  /* `MediaElementSession::clientCharacteristicsChanged` rewrites the page's
+     position from `element->currentTime()`, so a scrub on WebKit's client is a
+     second of the CLIP; the page's `seekto` handler takes a second of the
+     FORAY. Mirroring it would send "1:00 of this clip" to "1:00 of the Foray". */
+  assert.deepEqual([...UNMIRRORED_ACTIONS], ["seekto"]);
+  const wk = webkitSession();
+  const nav = { mediaSession: wk.target };
+  const { session } = setup({ bridge: { platform: "ios" }, nav });
+  session.install();
+  withHandlers(session, nav);
+  assert.equal(wk.received.has("seekto"), false, "a Foray-clock seekto on the clip's bar");
+  assert.equal(session.inspect().actions.includes("seekto"), true, "the plugin's client still scrubs the Foray clock");
+});
+
+test("END TO END: WebKit's client skips with ITS 10 s and the page steps by the spec's 30/15", () => {
+  /* The founder's exact press, through the real `createMediaSession` the page
+     runs: WebKit's remote-command listener hands its interval back as
+     `seekOffset`, and the page's own step wins. */
+  const wk = webkitSession();
+  const nav = { mediaSession: wk.target };
+  const { session } = setup({ bridge: { platform: "ios" }, nav });
+  session.install();
+  const calls = [];
+  createMediaSession({ nav, MediaMetadata: null }).setActions({
+    play() {}, pause() {}, seekBy: (o) => calls.push(`seekBy:${o}`), seekTo: (t) => calls.push(`seekTo:${t}`),
+  });
+  wk.received.get("seekforward")({ seekOffset: 10 });
+  wk.received.get("seekbackward")({ seekOffset: 10 });
+  assert.deepEqual(calls, [`seekBy:${SEEK_FORWARD_SEC}`, `seekBy:-${SEEK_BACKWARD_SEC}`]);
+  assert.deepEqual([SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC], [15, 30]);
+});
+
+test("the wrap takeover mirrors through the PROTOTYPE's original members, and never loops back into itself", async () => {
+  /* In wrap mode our accessors shadow WebKit's on the instance; the mirror must
+     reach the prototype's setter underneath, or the write would re-enter our own
+     shadow forever. */
+  const wk = webkitSession();
+  const nav = {};
+  Object.defineProperty(nav, "mediaSession", {
+    value: wk.target, writable: true, configurable: false, enumerable: true,
+  });
+  const { session, last, turn } = setup({ bridge: { platform: "ios" }, nav });
+  assert.equal(session.install(), true);
+  assert.equal(nav.mediaSession, wk.target, "wrap mode leaves WebKit's object in place");
+  withHandlers(session, nav);
+  const m = meta();
+  nav.mediaSession.metadata = m;
+  nav.mediaSession.playbackState = "playing";
+  await turn();
+  assert.deepEqual([...wk.received.keys()], MIRRORED);
+  assert.equal(wk.metadata, m, "the SAME object the page assigned — a real MediaMetadata in the shell");
+  assert.equal(wk.playbackState, "playing");
+  assert.equal(last().title, "The brisket episode", "the plugin's write still lands");
+});
+
+test("a WebKit that refuses a mirrored write does not cost the plugin its payload", async () => {
+  const wk = webkitSession({ throwOnMetadata: true });
+  const nav = { mediaSession: wk.target };
+  const { session, last, turn, logs } = setup({ bridge: { platform: "ios" }, nav });
+  session.install();
+  nav.mediaSession.metadata = meta();
+  await turn();
+  assert.equal(last().title, "The brisket episode");
+  assert.equal(wk.metadata, null);
+  assert.ok(logs.some((l) => /refused the mirrored metadata/.test(l.m)), "the refusal is logged, not swallowed");
+});
+
+test("removing a handler removes its mirror, and uninstall takes every mirror back", () => {
+  const wk = webkitSession();
+  const nav = { mediaSession: wk.target };
+  const { session } = setup({ bridge: { platform: "ios" }, nav });
+  session.install();
+  withHandlers(session, nav);
+  nav.mediaSession.metadata = meta();
+  nav.mediaSession.setActionHandler("nexttrack", null);
+  assert.equal(wk.received.has("nexttrack"), false, "WebKit's client would keep a next button the page dropped");
+  assert.equal(session.inspect().mirrored.includes("nexttrack"), false);
+  session.uninstall();
+  assert.equal(wk.received.size, 0, "a mirrored handler outlived uninstall");
+  assert.equal(wk.metadata, null);
+  assert.equal(wk.playbackState, "none");
+  assert.equal(nav.mediaSession, wk.target, "WebKit's object is still given back");
+});
+
+test("nothing is mirrored where there is nothing to mirror onto: Android, and an object with no setActionHandler", () => {
+  const android = setup();
+  android.session.install();
+  withHandlers(android.session, android.nav);
+  assert.deepEqual(android.session.inspect().mirrored, []);
+
+  const inert = { metadata: null, playbackState: "none" };
+  const nav = { mediaSession: inert };
+  const { session } = setup({ bridge: { platform: "ios" }, nav });
+  assert.equal(session.install(), true);
+  withHandlers(session, nav);
+  assert.deepEqual(session.inspect().mirrored, []);
+  assert.equal(inert.metadata, null);
 });
 
 test("iOS artwork addresses use the bundle scheme, not Android's asset path", () => {

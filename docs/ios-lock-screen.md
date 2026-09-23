@@ -125,6 +125,47 @@ configurable, or wrapping the existing object's own methods in place when not �
 `player/client.js`'s one-time read at init lands on the polyfill's object, not
 WebKit's, and the page's writes reach the plugin the same way they do on Android.
 
+#### 2.1.1 The buttons are a second question, and the founder's phone answered it (2026-09-23)
+
+§2.1 settled the *display*. The *buttons* are registered separately, and WebKit
+registers its own: for every playing `<audio>` element, `RemoteCommandListenerCocoa.mm`
+publishes a MediaRemote client of its own with `defaultCommands()` — play, pause,
+toggle, seek-to, skip forward, skip backward — and a skip interval of WebKit's choosing.
+No public API silences it. The lock screen shows **one** client, and the founder's
+build 2026092326 was showing WebKit's:
+
+> FOUNDER, 2026-09-23: "In the app, I can jump back 15s and forward 30s. On the lock
+> screen, it's 10s in both directions. Both should be 15/30"
+
+Nothing of ours has ever said 10 — `ForayAudioPlugin.swift` sets `preferredIntervals`
+15/30 and `player/media-session.js` exports the same numbers. Two defects made the
+lock screen step by WebKit's number anyway:
+
+1. **The takeover left WebKit's object with no handlers.** L-02 replaces
+   `navigator.mediaSession` with the polyfill, so every handler the page installs lands
+   on ours and goes to the plugin. A press on *WebKit's* client goes
+   `MediaElementSession` → `MediaSession::callActionHandler` → the page's handler **if
+   one is registered on WebKit's object**, else `HTMLMediaElement`'s default: a raw
+   seek of the element by WebKit's interval, past the page's Foray clock, seek policy
+   and nudge. Fixed: `foray-media-session.js` now **mirrors** the page's handlers,
+   `metadata` and `playbackState` onto the object it took over (`captureLiveSession`),
+   so whichever client the OS shows, a press lands in the page's own handler.
+   `seekto` is deliberately not mirrored: WebKit rewrites the page's position state
+   from `element->currentTime()` (`MediaElementSession::clientCharacteristicsChanged`),
+   so its bar is the clip's timeline while the page's `seekto` is the Foray's. WebKit's
+   client therefore stops advertising `SeekToPlaybackPosition`; the Foray-clock scrub
+   stays on the plugin's client. `inspect().mirrored` lists what is registered there.
+2. **The page's handler honoured the OS's `seekOffset`** ("a head unit may ask for
+   10 s"). WebKit hands its interval back as `seekOffset`, so even a press that reached
+   the page stepped by 10. Fixed: `mediaSessionActions` steps by `SEEK_BACKWARD_SEC` /
+   `SEEK_FORWARD_SEC` whatever number arrives; the offset stays in the details as data.
+
+What a device pass should see on the next build: a lock-screen skip during a *clip*
+moves the strip by exactly 15 / 30 s once (not 10, and not 30 / 60 — a press delivered
+to both clients would step twice). The **labels** on WebKit's client remain WebKit's
+(current WebKit sets 15 s for both; the founder's phone showed 10), because the Media
+Session API has no way to set them; only the plugin's client can read 15 / 30.
+
 ### 2.2 Audio-session policy: the plugin never touches the session at all
 
 **The plugin sets no category and never changes the session's active state — not

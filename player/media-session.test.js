@@ -710,22 +710,27 @@ test("seekforward asks for a positive 30 seconds by default", () => {
   assert.equal(SEEK_FORWARD_SEC, 30);
 });
 
-test("FOUNDER 2026-09-23: the platform's seekOffset is IGNORED — the lock screen skips by our 15/30", () => {
-  /* "In the app, I can jump back 15s and forward 30s. On the lock screen, it's
-     10s in both directions. Both should be 15/30." This handler used to honour
-     `details.seekOffset` — the OS's own number, which WebKit's remote-command
-     listener hands over as its default — so the lock screen moved by a number
-     the in-page buttons never use. MUTATION: put `offsetOf(details, …)` back,
-     and the first two calls read 10. */
+test("THE PLATFORM'S OWN seekOffset IS IGNORED: the lock screen steps ±15/30 like the in-page buttons", () => {
+  /* FOUNDER, 2026-09-23 (build 2026092326, iPhone): "In the app, I can jump
+     back 15s and forward 30s. On the lock screen, it's 10s in both directions.
+     Both should be 15/30". The 10 is WebKit's: its remote-command listener
+     picks the skip interval for a playing `<audio>` element and hands it back
+     as `seekOffset`, and until this pin the handler honoured it. The inverse
+     of this test ("the platform's own seekOffset wins") was green for a year
+     and is the defect. */
   const s = recordingSurface();
   const map = actionMap(s);
   map.get("seekforward")({ seekOffset: 10 });
   map.get("seekbackward")({ seekOffset: 10 });
-  for (const bad of [0, -5, NaN, null, "10", undefined]) map.get("seekforward")({ seekOffset: bad });
-  assert.deepEqual(s.calls, [
-    `seekBy:${SEEK_FORWARD_SEC}`, `seekBy:-${SEEK_BACKWARD_SEC}`,
-    ...new Array(6).fill(`seekBy:${SEEK_FORWARD_SEC}`),
-  ]);
+  assert.deepEqual(s.calls, [`seekBy:${SEEK_FORWARD_SEC}`, `seekBy:-${SEEK_BACKWARD_SEC}`]);
+  assert.deepEqual([SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC], [15, 30], "the spec's numbers, and the founder's");
+});
+
+test("any seekOffset at all — nonsense or a real number — lands as our step, never as zero", () => {
+  const s = recordingSurface();
+  const map = actionMap(s);
+  for (const off of [0, -5, NaN, null, "10", undefined, 10, 45]) map.get("seekforward")({ seekOffset: off });
+  assert.deepEqual(s.calls, new Array(8).fill(`seekBy:${SEEK_FORWARD_SEC}`));
 });
 
 test("the ±15/30 defaults are overridable in one place, and default to the spec's numbers", () => {
@@ -1036,9 +1041,8 @@ test("a handler installed BY THE BRIDGE actually calls the surface — all eight
 
 test("the bridge forwards the platform's details, it does not swallow them", () => {
   // A bridge that called `handler()` with no arguments would pass every test
-  // above and quietly ignore a head unit's scrub position. (The seek OFFSET is
-  // no longer the head unit's to set — founder 2026-09-23, above — so the
-  // detail that proves forwarding is `seekTime`, and `stop`'s `close`.)
+  // above and quietly ignore a head unit's scrub position. (Its seek OFFSET is
+  // forwarded too, and ignored on purpose one layer down — founder, 2026-09-23.)
   const nav = fakeNav();
   const s = recordingSurface();
   createMediaSession({ nav }).setActions(s);
