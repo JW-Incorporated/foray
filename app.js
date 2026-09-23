@@ -894,7 +894,25 @@ function failedNoteHtml(note) {
   </div>`;
 }
 
-function statusPageHtml({ title = "", note, back = "#/", retry = false }) {
+/* THE ONE FAILURE A RETRY CANNOT FIX (audit round 2, states-6). When
+   `player/client.js` itself did not load — a 404 on a stale generation, a parse
+   error, a blocked script — "Try again" re-awaits a module event that will
+   never fire: five seconds of "Loading…" and the same message, for good. The
+   remedy for a broken shell is a fresh document, so that failure offers a
+   button that reloads rather than one that waits. A BUTTON, not the "reload
+   the page" advice the 2026-09-22 audit removed: the advice named a page the
+   native shell's listener cannot see; `location.reload()` reloads the shell's
+   own document just the same. */
+const RELOAD_LABEL = "Reload 4a";
+
+function reloadNoteHtml(note) {
+  return `<div class="load-failed" role="status">
+    <p class="note">${note}</p>
+    <button type="button" class="fy-btn load-retry" data-reload>${RELOAD_LABEL}</button>
+  </div>`;
+}
+
+function statusPageHtml({ title = "", note, back = "#/", retry = false, reload = false }) {
   /* `back` is always one of our own routes; the "#" is written in the literal so
      no interpolated value can ever start an href (test/app-security.test.js). */
   const route = String(back).replace(/^#/, "");
@@ -903,8 +921,18 @@ function statusPageHtml({ title = "", note, back = "#/", retry = false }) {
       <a class="back" href="#${esc(route)}">‹</a>
       <div>${title ? `<h2>${esc(title)}</h2>` : ""}</div>
     </div>
-    ${retry ? failedNoteHtml(note) : `<p class="note">${note}</p>`}
+    ${reload ? reloadNoteHtml(note) : retry ? failedNoteHtml(note) : `<p class="note">${note}</p>`}
   </div>`;
+}
+
+/** Wire the Reload button under `scope` to a fresh document. */
+function bindReload(scope) {
+  const btn = scope && typeof scope.querySelector === "function" ? scope.querySelector("[data-reload]") : null;
+  if (!btn) return;
+  btn.addEventListener("click", (e) => {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+    location.reload();
+  }, { once: true });
 }
 
 /** Wire the Retry button under `scope` to `run` — the same function that
@@ -8008,6 +8036,13 @@ function renderForays() {
     playerBridge().then((player) => {
       if ((location.hash || "") !== "#/forays") return; // the listener has moved on
       if (player) { renderForays(); return; }
+      /* A module that FAILED gets the reload, a module that is merely slow gets
+         the re-await — see playerModuleFailed(). */
+      if (playerModuleFailed()) {
+        paintStatus(reloadNoteHtml("The player didn't load."));
+        bindReload($("#view"));
+        return;
+      }
       paintStatus(failedNoteHtml("The player didn't load."));
       bindRetry($("#view"), renderForays);
     });
@@ -9196,6 +9231,20 @@ function playerBridge() {
   });
 }
 
+/* "STILL LOADING" IS NOT "FAILED TO LOAD" (audit round 2, states-6). A null
+   bridge after the wait means one of two things, and the page used to answer
+   both with a Try again that could only help with the first. Module scripts
+   are deferred and run before `DOMContentLoaded`, so once parsing has finished
+   (`readyState` is no longer "loading") every deferred module has either run
+   — and the bridge would be here — or failed to fetch, parse or evaluate. That
+   is `waitForStorage()`'s exact reading of the same event, applied to the
+   other thing the module publishes. While the document is still parsing the
+   module may simply be slow, and re-awaiting it (Try again) is right. */
+function playerModuleFailed() {
+  if (window.ForayPlayer) return false;
+  try { return document.readyState !== "loading"; } catch (_) { return false; }
+}
+
 /* ---------- per-segment feedback (the learning loop's input) ----------
 
    The mockup's thumbs, and they are deliberately asymmetric: up is one silent
@@ -9757,6 +9806,12 @@ async function renderForay(id) {
   if (forayRouteId() !== id) return;
 
   if (!player) {
+    /* Failed outright — reload; merely slow — re-await (playerModuleFailed). */
+    if (playerModuleFailed()) {
+      $("#view").innerHTML = statusPageHtml({ title: "Foray", note: "The player didn't load.", back: "#/forays", reload: true });
+      bindReload($("#view"));
+      return;
+    }
     $("#view").innerHTML = statusPageHtml({ title: "Foray", note: "The player didn't load.", back: "#/forays", retry: true });
     bindRetry($("#view"), () => renderForay(id));
     return;
@@ -13547,14 +13602,35 @@ function applyForaySet(set) {
     said "N clips from this foray couldn't be found" — a network failure painted
     as a fact about the content, with its Try again gone). A second failure
     lands on the same failed state, with a fresh Try again. */
+/* Pressed once, the button says so (audit round 2, races-7): it is bound
+   `{ once: true }`, so without this a tap on a dead-zone connection changed
+   nothing on screen and left a spent button. */
+const RETRYING_LABEL = "Trying again…";
+
 async function retryForayDocs() {
+  /* THE PAGE THAT ASKED IS THE ONLY PAGE THAT REPAINTS (audit round 2, races-7).
+     The three fetches are bounded now (fetchJson), but tens of seconds is still
+     long enough to give up on a dead Try again and go type a Search query —
+     and this used to `renderCurrentPage()` whatever was on screen when they
+     finally settled, dropping that query and the keyboard. So the render epoch
+     is captured before the await: a set that arrived whole repaints only a
+     Foray surface (through the same in-place path a directory refresh uses);
+     a set that did not repaints only the page that pressed the button, so its
+     Try again is re-armed. Anything else keeps its DOM. */
+  const stillHere = renderToken();
+  const btn = $("#view [data-retry]");
+  if (btn) { btn.disabled = true; btn.textContent = RETRYING_LABEL; }
   const [forays, segments, sources] = await Promise.all([
     fetchJson("data/forays.json"),
     fetchJson("data/segments.json"),
     fetchJson("data/segment-sources.json"),
   ]);
-  if (forays && segments && sources) applyForaySet({ forays, segments, sources });
-  renderCurrentPage();
+  if (forays && segments && sources) {
+    applyForaySet({ forays, segments, sources });
+    if (isForaySurface(location.hash)) repaintForaySurface();
+    return;
+  }
+  if (stillHere()) renderCurrentPage();
 }
 
 /** Where the seed came from, for the diagnostics row: in the shell it is the
@@ -13990,6 +14066,18 @@ async function init() {
        see that script's header for the measurement. */
     fetchJson("data/catalog-client.json"),
   ]);
+
+  /* THE THREE FORAY DOCUMENTS ARE ONE ARTIFACT AT BOOT TOO (audit round 2,
+     states-3). retryForayDocs adopts a set only when all three arrived, because
+     a Foray list with no segment pool resolves every clip as "couldn't be
+     found" — a network failure painted as a fact about the content, with the
+     Try again gone. The boot path adopted whatever came back: forays.json
+     present and segments.json missing (a one-file 404 or timeout on a first
+     visit) painted "22 clips from this foray couldn't be found, so they're left
+     out" over an empty running order, on Home's cards and on the page. Any
+     null makes all three null, so the existing "Couldn't load forays right
+     now" + Try again branch is what paints instead. */
+  if (!state.forays || !state.segments || !state.segmentSources) applyForaySet({});
 
   /* FD-03: the three Foray documents just fetched are the SEED. If the directory
      holds a cached set that validates, that set replaces them before the first

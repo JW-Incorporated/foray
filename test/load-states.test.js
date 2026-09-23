@@ -132,7 +132,7 @@ function matches(el, sel) {
 
 /* ---------- the mount ---------- */
 
-function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = null } = {}) {
+function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = null, readyState = "complete" } = {}) {
   const body = new El("body");
   const view = new El("main"); view.id = "view"; body.appendChild(view);
   for (const id of ["drawer", "drawer-overlay", "menu-btn", "refresh-btn", "drawer-playlists"]) {
@@ -140,6 +140,7 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
   }
   const winListeners = new Map();
   const fetched = [];
+  const reloads = [];
   const ctx = {
     console: { ...console, warn() {}, error() {} },
     /* Only what a test routes answers; everything else (init()'s boot fetches)
@@ -147,7 +148,7 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
     fetch: (url, opts) => { fetched.push(String(url)); return fetchImpl(String(url), opts); },
     localStorage: { get length() { return 0; }, key: () => null, getItem: () => null, setItem() {}, removeItem() {} },
     document: {
-      body, documentElement: body, readyState: "complete", hidden: false,
+      body, documentElement: body, readyState, hidden: false,
       addEventListener() {}, removeEventListener() {},
       createElement: (t) => new El(t),
       querySelector: (s) => {
@@ -161,7 +162,7 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
     navigator: { userAgent: "node", onLine: true },
     addEventListener(t, fn) { if (!winListeners.has(t)) winListeners.set(t, []); winListeners.get(t).push(fn); },
     removeEventListener() {},
-    location: { hash, search: "", pathname: "/", href: "https://x.test/", protocol: "https:" },
+    location: { hash, search: "", pathname: "/", href: "https://x.test/", protocol: "https:", reload: () => { reloads.push(1); } },
     history: { replaceState() {}, pushState() {}, back() {} },
     CSS: { escape: (s) => String(s) },
     URL, URLSearchParams, Math, Date, JSON, Promise, clearTimeout, queueMicrotask,
@@ -180,11 +181,18 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
   state.discover = { items: [] };
   state.taxonomy = { nodes: [{ id: "science", label: "Science" }] };
   return {
-    ctx, state, view, fetched,
+    ctx, state, view, fetched, reloads,
     html: () => view.innerHTML,
     /** Press the first "Try again" inside `scope` (default: #view). */
     retry: (scope = view) => {
       const btn = scope.querySelector("[data-retry]");
+      if (!btn) return false;
+      btn.click();
+      return true;
+    },
+    /** Press the "Reload 4a" control, or report that there is none. */
+    reload: (scope = view) => {
+      const btn = scope.querySelector("[data-reload]");
       if (!btn) return false;
       btn.click();
       return true;
@@ -323,13 +331,15 @@ test("#/forays waits for the player instead of saying there are no Forays, and p
   assert.doesNotMatch(m.html(), /Loading…/);
 });
 
-test("#/forays with a player that never arrives says so, with Try again", async () => {
+test("#/forays with a player that is still loading says so, with Try again", async () => {
   /* The bounded wait ends in a named failure, not in an empty list. The wait is
      shortened here by firing the ready event with no bridge behind it — the same
-     `finish()` the 5 s timeout calls.
+     `finish()` the 5 s timeout calls. The document is still parsing
+     (`readyState: "loading"`), so the module may yet arrive and re-awaiting it
+     is the right offer.
      MUTATION: make the `!player` branch call renderForays()'s empty state
      instead. "The player didn't load." never appears. */
-  const m = mount({ hash: "#/forays" });
+  const m = mount({ hash: "#/forays", readyState: "loading" });
   m.state.forays = FORAYS_DOC;
   m.ctx.renderCurrentPage();
   m.fire("forayplayer:ready"); // the module "arrived" without publishing a bridge
@@ -337,6 +347,120 @@ test("#/forays with a player that never arrives says so, with Try again", async 
   assert.match(m.html(), /The player didn.t load\./);
   assert.doesNotMatch(m.html(), /0 forays|No forays right now/);
   assert.ok(m.view.querySelector("[data-retry]"), "the failure offers Try again");
+  assert.ok(!m.view.querySelector("[data-reload]"), "…and not a reload the slow module does not need");
+});
+
+test("#/forays with a player module that FAILED offers Reload 4a, not a Try again that can never succeed (states-6)", async () => {
+  /* Audit round 2, states-6: once parsing has finished every deferred module
+     has run or failed, so a bridge still missing after the wait is a module that
+     did not load — a 404 on a stale generation, a parse error, a blocked script.
+     "Try again" re-awaited a `forayplayer:ready` that was never coming: five
+     seconds of "Loading…" and the same message, indefinitely. The remedy for a
+     broken shell is a fresh document.
+     MUTATION: make playerModuleFailed() return false. Try again comes back and
+     the reload assertion goes red. MUTATION 2: bind the button to nothing —
+     `reloads` stays empty. */
+  const m = mount({ hash: "#/forays", readyState: "complete" });
+  m.state.forays = FORAYS_DOC;
+  m.ctx.renderCurrentPage();
+  m.fire("forayplayer:ready"); // the wait ended; the module never published a bridge
+  await settle();
+  assert.match(m.html(), /The player didn.t load\./);
+  assert.match(m.html(), /Reload 4a/, `a failed module offers the reload: ${m.html()}`);
+  assert.ok(!m.view.querySelector("[data-retry]"), "no Try again for a module that will not arrive");
+  assert.ok(m.reload(), "the reload control is wired");
+  assert.strictEqual(m.reloads.length, 1, "…to location.reload()");
+});
+
+test("the three Foray documents are one artifact at boot: a missing segments.json makes the set absent, so the page says it failed and offers Try again (states-3)", async () => {
+  /* Audit round 2, states-3: init() adopted whatever came back. forays.json
+     present and segments.json 404 painted "N clips from this foray couldn't be
+     found, so they're left out" over an empty running order — a network failure
+     described as a fact about the content, with no Try again anywhere.
+     retryForayDocs already refused a half set (review 2026-09-23); the boot
+     path now applies the same rule.
+     MUTATION: delete the `applyForaySet({})` guard after the boot Promise.all.
+     `state.forays` holds the list, the page paints it, and this goes red. */
+  const m = mount({
+    hash: "#/forays", bridge: bridge(),
+    fetchImpl: diskFetch({ fail: ["data/segments.json"] }),
+  });
+  for (let i = 0; i < 400 && /data-boot-loading/.test(m.html()); i++) await settle(1);
+  assert.doesNotMatch(m.html(), /data-boot-loading/, "fixture: the boot reached route()");
+  assert.strictEqual(m.state.forays, null, "a set missing its segments is not adopted at boot");
+  assert.strictEqual(m.state.segmentSources, null, "…none of the three is");
+  assert.match(m.html(), /Couldn't load forays right now\./, `the failed page, not a list of empty Forays: ${m.html().slice(0, 300)}`);
+  assert.ok(m.view.querySelector("[data-retry]"), "and Try again is offered");
+});
+
+test("Try again on the Foray docs says it is trying, and a late answer repaints only the page that asked (races-7)", async () => {
+  /* Audit round 2, races-7: the button was bound once and painted no pending
+     state, and `renderCurrentPage()` ran whatever page was on screen when the
+     three fetches finally settled — a listener who gave up and went to Search
+     had their query and keyboard dropped tens of seconds later.
+     MUTATION 1: drop the `RETRYING_LABEL` paint — the first assertion goes red.
+     MUTATION 2: replace `if (stillHere()) renderCurrentPage()` with a bare
+     `renderCurrentPage()` — the Search page is repainted under the listener
+     and the html assertion goes red. */
+  /* All three resolvers are kept: releasing only the last one would leave the
+     Promise.all pending and pass this test against any mutation (caught by the
+     mutation run). */
+  const pending = [];
+  const release = (answer) => { for (const r of pending.splice(0)) r(answer); };
+  const m = mount({
+    hash: "#/forays", bridge: bridge(),
+    fetchImpl: (url) => (/data\/(forays|segments|segment-sources)\.json/.test(url)
+      ? new Promise((resolve) => { pending.push(resolve); })
+      : new Promise(() => {})),
+  });
+  m.state.forays = null;
+  m.state.catalog = CATALOG;
+  m.ctx.renderCurrentPage();
+  const btn = m.view.querySelector("[data-retry]");
+  assert.ok(btn, "precondition: the failure offers Try again");
+  btn.click();
+  assert.strictEqual(btn.textContent, "Trying again…", "the pressed button says what it is doing");
+  assert.strictEqual(btn.disabled, true, "…and cannot be pressed twice");
+
+  // The listener gives up and goes to Search.
+  m.ctx.location.hash = "#/shows";
+  m.ctx.renderCurrentPage();
+  assert.match(m.html(), /Alpha Show/, "fixture: the Search page is on screen");
+  /* A repaint of an idle Search page produces the SAME markup, so equality of
+     the html would not see it; count writes to #view instead. */
+  let paints = 0;
+  const desc = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(m.view), "innerHTML");
+  Object.defineProperty(m.view, "innerHTML", {
+    get() { return desc.get.call(this); },
+    set(v) { paints += 1; desc.set.call(this, v); },
+  });
+
+  // The sockets finally time out.
+  release({ ok: false, status: 503, json: async () => ({}) });
+  await settle();
+  assert.strictEqual(paints, 0, "a late failure must not repaint the page the listener moved to");
+  assert.match(m.html(), /Alpha Show/);
+});
+
+test("Try again on the Foray docs that fails again lands on the same failed page with a fresh button (races-7)", async () => {
+  /* The other half: the page that pressed the button is repainted, so its
+     once-bound Try again is re-armed rather than spent.
+     MUTATION: drop the `if (stillHere()) renderCurrentPage()` line. The button
+     stays "Trying again…" and disabled; this goes red. */
+  const m = mount({
+    hash: "#/forays", bridge: bridge(),
+    fetchImpl: (url) => (/data\/(forays|segments|segment-sources)\.json/.test(url)
+      ? Promise.resolve({ ok: false, status: 503, json: async () => ({}) })
+      : new Promise(() => {})),
+  });
+  m.state.forays = null;
+  m.ctx.renderCurrentPage();
+  assert.ok(m.retry(), "precondition: the failure offers Try again");
+  await settle();
+  const again = m.view.querySelector("[data-retry]");
+  assert.ok(again, "the failed page offers Try again again");
+  assert.strictEqual(again.disabled, false);
+  assert.doesNotMatch(m.html(), /Trying again…/, "the pending label does not outlive the attempt");
 });
 
 test("#/forays with no Forays document says it could not load them, and Try again fetches them", async () => {
@@ -405,7 +529,7 @@ test("#/forays explains what a Foray is, from the same sentence the first-run sh
 test("a Foray page whose player failed has a way back to the list and a Try again", async () => {
   /* MUTATION: restore the bare "The player didn't load — reload the page." note.
      There is no ‹ and no retry, and this goes red. */
-  const m = mount({ hash: "#/foray/f1" });
+  const m = mount({ hash: "#/foray/f1", readyState: "loading" });
   m.state.forays = FORAYS_DOC;
   m.ctx.renderCurrentPage();
   assert.ok(m.view.querySelector(".back"), "the loading page has a way back");
@@ -416,6 +540,17 @@ test("a Foray page whose player failed has a way back to the list and a Try agai
   const back = m.view.querySelector(".back");
   assert.ok(back && back.attrs.href === "#/forays", "‹ goes back to the Forays list");
   assert.ok(m.view.querySelector("[data-retry]"));
+
+  /* And the module that FAILED (parsing finished, no bridge) gets the reload
+     control on this page too, still with its way back (states-6). */
+  const f = mount({ hash: "#/foray/f1", readyState: "complete" });
+  f.state.forays = FORAYS_DOC;
+  f.ctx.renderCurrentPage();
+  f.fire("forayplayer:ready");
+  await settle();
+  assert.match(f.html(), /Reload 4a/);
+  assert.ok(f.view.querySelector(".back"), "the failed page keeps its way back");
+  assert.ok(f.reload() && f.reloads.length === 1, "Reload 4a reloads");
 });
 
 /* ==================================================================== */
