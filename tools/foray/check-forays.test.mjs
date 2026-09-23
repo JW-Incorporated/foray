@@ -538,12 +538,25 @@ test("every label resolves to exactly one segment by (episode, duration)", () =>
  *     instead of silently going unread (`grilling-history-1` and
  *     grilling-foray.md, since 2026-09-22).
  *
- * WHAT DERIVING COST, stated rather than hidden: `tldr` and `slotHeaders` used to
+ * WHAT DERIVING COST, AND HOW IT WAS PAID BACK. `tldr` and `slotHeaders` used to
  * be declared per doc and asserted both ways, so a doc could not LOSE its §0 or
- * its slot headers without a red test. Derived, deleting either is a doc edit a
- * reviewer sees rather than one a test refuses. That was judged the smaller
- * risk: the declarations were keyed by Foray id, and keeping them is exactly
- * what made retiring a Foray a governed-test migration. */
+ * its slot headers without a red test. The first derived version checked them
+ * only "wherever the doc carries them", so deleting §0 or the **SLOT n** rows
+ * from foray2-capital.md left the suite green (PR #741 review). They are
+ * declared again below, but by DOC PATH, not Foray id: a retired Foray's doc
+ * stays checked through the frozen fixture at the same path, so retiring a
+ * Foray never touches these sets. A doc NOT listed is still checked when it
+ * carries either section, so a new curated Foray needs no test edit either. */
+const DOCS_WITH_TLDR = new Set([
+  "docs/curation/foray2-capital.md",
+  "docs/curation/geology-foray-assembly.md",
+  "docs/curation/grilling-foray.md",
+]);
+const DOCS_WITH_SLOT_HEADERS = new Set([
+  "docs/curation/foray2-capital.md",
+  "docs/curation/geology-foray-assembly.md",
+  "docs/curation/grilling-foray.md",
+]);
 const liveIds = new Set(live.forays.forays.map((f) => f.id));
 const curated = (files) => files.forays.forays.filter((f) => !f.generated && typeof f.source_doc === "string");
 const RUNNING_ORDER_DOCS = [
@@ -580,6 +593,19 @@ test("the §2 check covers every curated Foray in data/, and every retired one s
   assert.ok(RUNNING_ORDER_DOCS.length > 0, "no running-order doc is checked, so the loop below proves nothing");
   for (const { doc } of RUNNING_ORDER_DOCS) {
     assert.ok(runningOrderSection(fs.readFileSync(path.join(REPO_ROOT, doc), "utf8")), `${doc} has no "## 2. The running order"`);
+  }
+});
+
+test("every doc declared to carry a §0 or slot headers is one the §2 loop reads", () => {
+  /* The declarations are what make "a doc lost its §0" red; a declaration for a
+     doc the loop no longer reads (a renamed or deleted doc) would make them
+     quietly vacuous. Keyed by path, so retiring a Foray does not trip this: its
+     doc stays read through the frozen fixture.
+
+     MUTATION: rename a path in DOCS_WITH_TLDR -> red, naming it. */
+  const read = new Set(RUNNING_ORDER_DOCS.map((d) => d.doc));
+  for (const doc of [...DOCS_WITH_TLDR, ...DOCS_WITH_SLOT_HEADERS]) {
+    assert.ok(read.has(doc), `${doc} is declared to carry a §0 or slot headers, but no curated Foray in data/ or the frozen fixture names it as its source_doc`);
   }
 });
 
@@ -629,9 +655,13 @@ for (const { forayId, doc, files, where } of RUNNING_ORDER_DOCS) {
     }
 
     /* The slot header rows — "**SLOT 2 — the pre-modern hearth** (12 segments,
-       21:10)". Both numbers are derivable and neither was checked. Checked
-       wherever the doc carries them (see the note above RUNNING_ORDER_DOCS). */
+       21:10)". Both numbers are derivable and neither was checked. Required in
+       a doc declared in DOCS_WITH_SLOT_HEADERS, and checked in any other doc
+       that carries them (see the note above RUNNING_ORDER_DOCS).
+
+       MUTATION: delete the **SLOT n** rows from foray2-capital.md -> red. */
     const headers = [...section.matchAll(/\*\*SLOT \d+ [^*]*\*\*\s*\((\d+) segments?, ([\d:]+)\)/g)];
+    if (DOCS_WITH_SLOT_HEADERS.has(doc)) assert.ok(headers.length > 0, `${doc} is declared to carry §2 slot header rows and has none`);
     if (headers.length > 0) {
       assert.equal(headers.length, foray.slots.length, `§2 has ${headers.length} slot headers and ${forayId} declares ${foray.slots.length} slots`);
       foray.slots.forEach((slot, s) => {
@@ -661,14 +691,19 @@ test("each running-order doc's §0 summary numbers are the ones the checker comp
      because §0 rounds ("3,673.0" against 3673.03) and demanding more would fail
      on a rounding nobody got wrong.
 
-     A §0 is checked wherever a doc carries one. It used to be declared per doc
-     and asserted both ways; that declaration was keyed by Foray id and went with
-     the table (see the note above RUNNING_ORDER_DOCS for what that cost). */
+     A §0 is required in every doc DOCS_WITH_TLDR declares (by path, so
+     retiring a Foray does not move it), and checked in any other doc that
+     carries one (see the note above RUNNING_ORDER_DOCS).
+
+     MUTATION: delete "## 0. TL;DR" from foray2-capital.md -> red, naming it. */
   let checked = 0;
   for (const { forayId, doc, files } of RUNNING_ORDER_DOCS) {
     const md = fs.readFileSync(path.join(REPO_ROOT, doc), "utf8");
     const section = md.split("## 0. TL;DR")[1]?.split(/^## /m)[0] ?? null;
-    if (!section) continue;
+    if (!section) {
+      assert.ok(!DOCS_WITH_TLDR.has(doc), `${doc} is declared to carry a "## 0. TL;DR" and has none`);
+      continue;
+    }
 
     const r = checkForays(files).report.forays.find((x) => x.id === forayId);
     /** A doc figure and the tolerance its own decimal places justify. */
