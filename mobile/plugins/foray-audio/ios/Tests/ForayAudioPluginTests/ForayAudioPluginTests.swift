@@ -201,6 +201,116 @@ final class ForayAudioPluginTests: XCTestCase {
         XCTAssertNil(plain["offsetMs"])
     }
 
+    // MARK: - founder 2026-09-23: the seek pair has ONE source, the payload
+
+    /// "In the app, I can jump back 15s and forward 30s. On the lock screen,
+    /// it's 10s in both directions. Both should be 15/30." The numbers come
+    /// from the page (`seekBackMs`/`seekForwardMs`, the same fields
+    /// `NowPlaying.java` reads) and this package holds no copy of them.
+    /// TO SEE IT FAIL: drop the two fields from `NowPlayingPayload.from`.
+    func testSeekPairIsParsedFromThePayloadAndClampedAtZero() {
+        let payload = NowPlayingPayload.from(["state": "playing", "seekBackMs": 15_000, "seekForwardMs": 30_000])
+        XCTAssertEqual(payload.seekBackMs, 15_000)
+        XCTAssertEqual(payload.seekForwardMs, 30_000)
+        let absent = NowPlayingPayload.from(["state": "playing"])
+        XCTAssertEqual(absent.seekBackMs, 0, "not sent reads as 0, never as a number this file made up")
+        XCTAssertEqual(NowPlayingPayload.from(["state": "playing", "seekBackMs": -5]).seekBackMs, 0)
+    }
+
+    /// The offset a press carries is the payload's; only a page that never
+    /// sent one falls back to the interval the OS says it used; and nothing
+    /// else. TO SEE IT FAIL: prefer `eventInterval` over `payloadMs`.
+    func testSkipOffsetPrefersThePayloadOverTheOSInterval() {
+        XCTAssertEqual(ForayAudioPlugin.skipOffsetMs(payloadMs: 30_000, eventInterval: 10), 30_000)
+        XCTAssertEqual(ForayAudioPlugin.skipOffsetMs(payloadMs: 0, eventInterval: 10), 10_000)
+        XCTAssertEqual(ForayAudioPlugin.skipOffsetMs(payloadMs: 0, eventInterval: 0), 0)
+        XCTAssertEqual(ForayAudioPlugin.skipOffsetMs(payloadMs: 0, eventInterval: .nan), 0)
+    }
+
+    /// `preferredIntervals` is the payload's number in seconds, and EMPTY when
+    /// the page sent none -- the OS then keeps its default rather than being
+    /// handed one this file invented. TO SEE IT FAIL: return `[15]` for 0.
+    func testPreferredIntervalsComeFromThePayloadInSeconds() {
+        XCTAssertEqual(ForayAudioPlugin.preferredIntervals(ms: 30_000), [NSNumber(value: 30.0)])
+        XCTAssertEqual(ForayAudioPlugin.preferredIntervals(ms: 15_000), [NSNumber(value: 15.0)])
+        XCTAssertEqual(ForayAudioPlugin.preferredIntervals(ms: 0), [])
+    }
+
+    // MARK: - founder 2026-09-23: "my car resumed Spotify"
+
+    /// The one-button press. `togglePlayPause` was mapped to `"play"`
+    /// unconditionally, and the page's `setRunning(true)` on a playing
+    /// transport is a deliberate no-op -- so a car with one button, or a
+    /// headphone pinch, could never pause. TO SEE IT FAIL: return "play" for
+    /// `.playing`.
+    func testToggleResolvesFromTheLastReportedState() {
+        XCTAssertEqual(ForayAudioPlugin.toggleAction(forState: .playing), "pause")
+        XCTAssertEqual(ForayAudioPlugin.toggleAction(forState: .paused), "play")
+        XCTAssertEqual(ForayAudioPlugin.toggleAction(forState: .ended), "play")
+        XCTAssertEqual(ForayAudioPlugin.toggleAction(forState: .none), "play")
+    }
+
+    /// Design comment §2 as a table. The app's own session is taken on the
+    /// playing -> paused transition and ONLY there; released quietly when the
+    /// transport plays again; released with notify when it closes or ends;
+    /// and never released when this plugin was not the one holding it.
+    /// TO SEE IT FAIL: return `.hold` for `(.none, .paused)` -- opening the app
+    /// with a restored, paused bar would then silence another app's music --
+    /// or return `.hold` for `(.playing, .playing)` -- the F11/F13 loop.
+    func testSessionMoveTable() {
+        typealias S = NowPlayingPayload.State
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .paused, holding: false), .hold)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .none, to: .paused, holding: false), .none)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .paused, holding: true), .none)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .playing, holding: false), .none)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .playing, holding: true), .none,
+                       "a position write while playing never touches the session")
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .playing, holding: true), .releaseQuietly)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .playing, holding: false), .none)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .none, holding: true), .releaseAndNotify)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .ended, holding: true), .releaseAndNotify)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .ended, holding: false), .none)
+        for from in [S.none, S.playing, S.paused, S.ended] {
+            for to in [S.none, S.playing, S.paused, S.ended] {
+                let move = ForayAudioPlugin.sessionMove(from: from, to: to, holding: false)
+                XCTAssertTrue(move == .none || move == .hold, "\(from)->\(to) released a session nobody held")
+            }
+        }
+    }
+
+    /// Only a PAUSED transport re-writes its entry on background / new route:
+    /// a playing one is written every second, an ended or empty one has
+    /// nothing to assert. TO SEE IT FAIL: return true for `.playing`.
+    func testOnlyAPausedTransportReasserts() {
+        XCTAssertTrue(ForayAudioPlugin.shouldReassert(for: .paused))
+        XCTAssertFalse(ForayAudioPlugin.shouldReassert(for: .playing))
+        XCTAssertFalse(ForayAudioPlugin.shouldReassert(for: .ended))
+        XCTAssertFalse(ForayAudioPlugin.shouldReassert(for: .none))
+    }
+
+    /// `MPNowPlayingInfoCenter.playbackState`: paused is `.paused`, and a
+    /// finished Foray is `.stopped` rather than `.paused` (`media-session.js`
+    /// §4). TO SEE IT FAIL: map `.ended` to `.paused`.
+    func testPlaybackStateMapping() {
+        XCTAssertEqual(ForayAudioPlugin.playbackState(for: .playing), .playing)
+        XCTAssertEqual(ForayAudioPlugin.playbackState(for: .paused), .paused)
+        XCTAssertEqual(ForayAudioPlugin.playbackState(for: .ended), .stopped)
+        XCTAssertEqual(ForayAudioPlugin.playbackState(for: .none), .stopped)
+    }
+
+    /// Every transport event names the platform command it came from, the one
+    /// door iOS has, and an epoch-ms stamp -- the record's `remote` row.
+    /// TO SEE IT FAIL: drop `origin`, or stamp `at` in seconds.
+    func testTransportEventCarriesCommandOriginAndStamp() {
+        let event = ForayAudioPlugin.transportEvent(action: "pause", command: "toggle-play-pause", at: 1_700_000_000_000)
+        XCTAssertEqual(event["command"] as? String, "toggle-play-pause")
+        XCTAssertEqual(event["origin"] as? String, "command-center")
+        XCTAssertEqual(event["at"] as? Int, 1_700_000_000_000)
+        let bare = ForayAudioPlugin.transportEvent(action: "nexttrack")
+        XCTAssertEqual(bare["command"] as? String, "nexttrack", "a command not named defaults to the action")
+        XCTAssertEqual(ForayAudioPlugin.seekToTransportEvent(positionTime: 1)["command"] as? String, "change-position")
+    }
+
     // MARK: - M-03: the session event (founder feedback F16, #548)
 
     /// The founder's F16 record holds one unexplained stop and no cause,

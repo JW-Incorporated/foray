@@ -297,7 +297,9 @@ public class PlaybackKeepAliveService extends Service {
            notification we are about to rebuild again when the page answers. */
         if (intent != null && ACTION_TRANSPORT.equals(intent.getAction())) {
             String action = intent.getStringExtra(EXTRA_TRANSPORT);
-            if (action != null && !action.isEmpty()) NowPlayingHub.dispatch(action, 0L, 0L);
+            if (action != null && !action.isEmpty()) {
+                NowPlayingHub.dispatch(action, 0L, 0L, NowPlayingHub.ORIGIN_NOTIFICATION);
+            }
         }
         try {
             /* SEEDED HERE, because `startForeground` posts the notification too. Without

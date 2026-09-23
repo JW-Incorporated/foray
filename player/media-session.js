@@ -532,11 +532,18 @@ export function mediaSessionActions(surface = {}, {
   if (previous) out.push(["previoustrack", () => previous()]);
   if (next) out.push(["nexttrack", () => next()]);
   if (seekBy) {
-    // `details.seekOffset` is the platform's own number when it has one — a
-    // head unit may ask for 10 s. Honour it; fall back to the spec's ±15/30,
-    // which are the numbers the in-page buttons use.
-    out.push(["seekbackward", (details) => seekBy(-offsetOf(details, seekBackwardSec))]);
-    out.push(["seekforward", (details) => seekBy(offsetOf(details, seekForwardSec))]);
+    /* OURS, NEVER THE PLATFORM'S (founder, 2026-09-23: "In the app, I can jump
+       back 15s and forward 30s. On the lock screen, it's 10s in both directions.
+       Both should be 15/30"). This used to honour `details.seekOffset` — "a head
+       unit may ask for 10 s" — which is exactly how the lock screen came to move
+       the playhead by a number the in-page buttons never use: WebKit's own
+       remote-command listener hands its skip commands to the page with the OS's
+       default interval, and this handler obeyed it. The seek pair is one product
+       decision (`04_VOICE_AUDIO_SPEC.md`'s ±15/30), decided once in this file's
+       constants and nowhere else; the native halves READ it from the payload the
+       shim sends (`seekBackMs`/`seekForwardMs`) rather than holding a copy. */
+    out.push(["seekbackward", () => seekBy(-seekBackwardSec)]);
+    out.push(["seekforward", () => seekBy(seekForwardSec)]);
   }
   if (seekTo) {
     out.push(["seekto", (details) => {
@@ -550,11 +557,6 @@ export function mediaSessionActions(surface = {}, {
     }]);
   }
   return out;
-}
-
-function offsetOf(details, fallback) {
-  const o = details?.seekOffset;
-  return isNum(o) && o > 0 ? o : fallback;
 }
 
 /* ---------- the bridge ---------- */
@@ -678,12 +680,25 @@ export function createMediaSession({ nav = null, MediaMetadata = null, onWrite =
              unchanged, skipped the write, and the metadata could never recover
              for as long as that item played. */
           if (writeOk) lastMetaKey = key;
-          if (report) attempt(() => report({ metadata, playbackState, writeOk, writeError }));
+          if (report) attempt(() => report({ metadata, playbackState, writeOk, writeError, via: "metadata" }));
         }
       }
       if (playbackState && playbackState !== lastState) {
         lastState = playbackState;
-        attempt(() => { ms.playbackState = playbackState; });
+        const stateOk = attempt(() => { ms.playbackState = playbackState; return true; }) === true;
+        /* THE PAUSE IS A WRITE TOO (founder, 2026-09-23: "I started playing 4a,
+           paused and turned off my screen, got in my car, then my car resumed
+           Spotify"). The row above fires only when the three strings change, so a
+           record of that drive showed the play and nothing after it — the one
+           write that decides whether the OS still shows 4a as paused, or has
+           nothing to show, left no trace. Reported under the same hook, marked
+           `via: "state"`, so the next record can say whether the platform was
+           told "paused" and when. */
+        if (report) {
+          attempt(() => report({
+            metadata, playbackState, writeOk: stateOk, writeError: stateOk ? "" : "playbackState", via: "state",
+          }));
+        }
       }
       if (positionState && typeof ms.setPositionState === "function") {
         // Tenth-of-a-second granularity: finer than any display renders, coarse
@@ -727,6 +742,10 @@ export function createMediaSession({ nav = null, MediaMetadata = null, onWrite =
       attempt(() => { ms.playbackState = NONE; });
       // No argument clears it, per spec. Older engines have no method at all.
       if (typeof ms.setPositionState === "function") attempt(() => ms.setPositionState());
+      /* Reported for the same reason the state write is: clearing is the one
+         write that TAKES the app off the lock screen, and a record that cannot
+         show it cannot tell "we let go" from "the OS let go of us". */
+      if (report) attempt(() => report({ metadata: null, playbackState: NONE, writeOk: true, writeError: "", via: "clear" }));
     },
 
     release() {

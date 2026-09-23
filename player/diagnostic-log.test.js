@@ -33,8 +33,8 @@ import {
   DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport, stageOf, errorNameOf, tapPhaseOf,
   DIAG_KEY, DIAG_CAP, STAGE_CAP, DIAG_VERSION, MEDIA_STAGES,
   dataTokenOf, dataVersionOf, dataFileTagOf, dataIdOf, DATA_PHASES, DATA_SOURCES,
-  nowPlayingFieldOf, NOWPLAYING_FIELD_MAX, SESSION_KINDS, SESSION_PRODUCERS,
-  TRANSPORT_SOURCES, TRANSPORT_ACTIONS,
+  nowPlayingFieldOf, NOWPLAYING_FIELD_MAX, NOWPLAYING_VIA, SESSION_KINDS, SESSION_PRODUCERS,
+  TRANSPORT_SOURCES, TRANSPORT_ACTIONS, REMOTE_COMMANDS, REMOTE_ORIGINS,
 } from "./diagnostic-log.js";
 
 /* ==================================================================== */
@@ -1603,6 +1603,95 @@ test("the record can answer \"why did it stop?\" — the cause sits one row abov
   assert.match(text, /session events 1 \(interruptionBegan\)/);
   assert.match(text, /session\s+audio interruptionBegan \(began\)/);
   assert.match(text, /transport\s+play from tap/);
+});
+
+/* ==================================================================== */
+/* founder 2026-09-23: "I started playing 4a, paused and turned off my   */
+/* screen, got in my car, then my car resumed Spotify. This is still     */
+/* wrong." What the NEXT record has to be able to say.                    */
+/* ==================================================================== */
+
+test("REPORT 2026-09-23: a remote command the native side received is a row of its own", () => {
+  /* `transport … from remote` is written by the page's HANDLER, so a command
+     that reached the plugin and found no handler, or a page too asleep to run
+     one, was invisible. MUTATION: drop the `remote` type and fold it into
+     `transport` — `handled=n` has nowhere to live and the two readings of "the
+     car's play did nothing" collapse again. */
+  const { diag, log, clock: c } = mk();
+  const e = diag.remoteCommand({
+    command: "toggle-play-pause", action: "pause", origin: "command-center", handled: true, at: c.now() - 250,
+  });
+  assert.equal(e.type, "remote");
+  assert.equal(e.command, "toggle-play-pause");
+  assert.equal(e.action, "pause");
+  assert.equal(e.origin, "command-center");
+  assert.equal(e.handled, true);
+  assert.equal(e.lagMs, 250);
+  const miss = diag.remoteCommand({ command: "play", action: "play", origin: "media-session", handled: false });
+  assert.equal(miss.handled, false);
+  assert.equal(miss.lagMs, null, "no native stamp is honestly null");
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /remote\s+toggle-play-pause -> pause from command-center  handled=y  lag 250ms/);
+  assert.match(text, /remote\s+play -> play from media-session  handled=n/);
+  assert.match(text, /remote commands 2, 1 unhandled/);
+});
+
+test("REPORT 2026-09-23: the remote row admits closed vocabularies and drops the rest", () => {
+  /* MUTATION: store `command` as sent. Both natives hand over strings, and this
+     record is pasted into issues. */
+  const { diag, log } = mk();
+  assert.equal(diag.remoteCommand({ command: "playPause", action: "play", origin: "command-center" }), null);
+  assert.equal(diag.remoteCommand({ command: "play", action: "play", origin: "carplay" }), null);
+  assert.equal(diag.remoteCommand({ command: "play", action: "PLAY; drop", origin: "notification" }).action, "");
+  assert.equal(log.read().entries.length, 1);
+  for (const c of ["play", "pause", "toggle-play-pause", "skip-backward", "skip-forward", "close"]) {
+    assert.ok(REMOTE_COMMANDS.has(c), c);
+  }
+  assert.deepEqual([...REMOTE_ORIGINS].sort(), ["command-center", "media-session", "notification"]);
+});
+
+test("REPORT 2026-09-23: zero remote commands is stated on the header, because it is the finding", () => {
+  /* Against a drive that resumed Spotify, `remote commands 0` says the car's
+     play never reached 4a's native side — the OS gave it to somebody else —
+     which is a different bug from a play that arrived and found nobody awake.
+     MUTATION: omit the line at zero. */
+  const { diag, log } = mk();
+  diag.transport("tap", "pause");
+  assert.match(formatDiagnosticReport(log.read()), /remote commands 0\n/);
+});
+
+test("REPORT 2026-09-23: a nowplaying row says WHICH write it was, and a pause reads via=state", () => {
+  /* The pause used to leave no row: `media-session.js` reported only when the
+     three strings changed. MUTATION: drop `via` from the entry — a pause row and
+     a metadata row become the same row, and the line loses the `via=` that
+     makes a pause findable. */
+  const { diag, log } = mk();
+  const meta = { title: "Ep 9", artist: "Origin Stories", album: "F" };
+  const a = diag.nowPlaying({ metadata: meta, playbackState: "playing" });
+  const b = diag.nowPlaying({ metadata: meta, playbackState: "paused", via: "state" });
+  const c = diag.nowPlaying({ metadata: null, playbackState: "none", via: "clear" });
+  const d = diag.nowPlaying({ metadata: meta, playbackState: "playing", via: "whatever" });
+  assert.deepEqual([a.via, b.via, c.via, d.via], ["metadata", "state", "clear", "metadata"]);
+  assert.ok(NOWPLAYING_VIA.has("state") && NOWPLAYING_VIA.has("clear"));
+  const lines = formatDiagnosticReport(log.read()).split("\n").filter((l) => /nowplaying/.test(l));
+  assert.doesNotMatch(lines[0], /via=/, "a metadata write keeps the shape every older row has");
+  assert.match(lines[1], /state=paused  via=state/);
+  assert.match(lines[2], /state=none  via=clear/);
+});
+
+test("REPORT 2026-09-23: what the plugin DID about the session is a session row too", () => {
+  /* `sessionActivated` / `sessionReleased` / `nowPlayingReasserted` are the
+     plugin's own acts, so a drive that still resumed Spotify can say whether
+     4a had let go (no rows) or was holding on and lost anyway. MUTATION:
+     remove them from SESSION_KINDS — `sessionEvent` returns null and the
+     record is back to silence. */
+  const { diag, log } = mk();
+  assert.ok(diag.sessionEvent({ kind: "sessionActivated", reason: "paused", producer: "audio" }));
+  assert.ok(diag.sessionEvent({ kind: "nowPlayingReasserted", reason: "background", producer: "audio" }));
+  assert.ok(diag.sessionEvent({ kind: "sessionReleased", reason: "closed", producer: "audio" }));
+  assert.ok(diag.sessionEvent({ kind: "interruptionBegan", reason: "began-while-held", producer: "audio" }));
+  assert.equal(log.read().entries.length, 4);
+  assert.match(formatDiagnosticReport(log.read()), /session\s+audio sessionActivated \(paused\)/);
 });
 
 test("no session events at all is stated on the header, because silence is the finding", () => {

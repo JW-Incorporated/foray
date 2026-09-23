@@ -62,7 +62,8 @@ import { fileURLToPath } from "node:url";
 import {
   createForayMediaSession, mediaSessionApplies, nowPlayingPayload, identityKey,
   transportState, assetUri,
-  PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, SESSION_EVENT, SESSION_DOM_EVENT, ROUTABLE_ACTIONS, CLOSE_ACTION,
+  PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, SESSION_EVENT, SESSION_DOM_EVENT, REMOTE_DOM_EVENT,
+  ROUTABLE_ACTIONS, CLOSE_ACTION,
   SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC, POSITION_MIN_INTERVAL_MS, ASSET_BASE, IOS_ASSET_BASE,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 
@@ -1468,6 +1469,67 @@ test("a broken window cannot break the session channel", () => {
   });
 });
 
+/* ---- founder 2026-09-23: "got in my car, then my car resumed Spotify" ---- */
+
+// TO SEE IT FAIL: drop `dispatchRemote` from `dispatch()`. A command that
+// reached the plugin and found no handler then leaves no row, and "the car's
+// play did nothing" and "the car's play never came" read the same again.
+test("every native transport event is re-broadcast as foray:remote, with what the plugin saw and what we did", () => {
+  withWindow((win) => {
+    const { session, nav, capacitor } = setup();
+    session.install();
+    const calls = [];
+    nav.mediaSession.setActionHandler("pause", () => calls.push("pause"));
+    const seen = [];
+    win.addEventListener(REMOTE_DOM_EVENT, (e) => seen.push(e.detail));
+    const sub = subFor(capacitor, TRANSPORT_EVENT);
+    sub.callback({ action: "pause", command: "toggle-play-pause", origin: "command-center", at: 1700000000000 });
+    sub.callback({ action: "nexttrack", command: "next-track", origin: "command-center", at: 1700000000001 });
+    assert.deepEqual(calls, ["pause"]);
+    assert.deepEqual(seen, [
+      { command: "toggle-play-pause", action: "pause", origin: "command-center", at: 1700000000000, handled: true },
+      { command: "next-track", action: "nexttrack", origin: "command-center", at: 1700000000001, handled: false },
+    ]);
+  });
+});
+
+// TO SEE IT FAIL: read `command` only from the event. An older native side that
+// sends none — and the notification's close, which is not a page action —
+// would then record an empty command, which the record drops.
+test("a native side that names no command is recorded by its action, and a close by its own name", () => {
+  withWindow((win) => {
+    const { session, nav, capacitor } = setup();
+    session.install();
+    nav.mediaSession.setActionHandler("stop", () => {});
+    const seen = [];
+    win.addEventListener(REMOTE_DOM_EVENT, (e) => seen.push(e.detail));
+    const sub = subFor(capacitor, TRANSPORT_EVENT);
+    sub.callback({ action: "play", origin: "media-session" });
+    sub.callback({ action: CLOSE_ACTION, origin: "notification" });
+    assert.equal(seen[0].command, "play");
+    assert.equal(seen[0].handled, false);
+    assert.equal(seen[1].command, CLOSE_ACTION);
+    assert.equal(seen[1].action, "stop", "the page's stop handler is what a close reaches");
+    assert.equal(seen[1].handled, true);
+    assert.equal(seen[1].at, undefined, "no stamp is passed through as none, never invented");
+  });
+});
+
+// TO SEE IT FAIL: let `dispatchRemote` throw out of `dispatch()`. The record
+// must never be able to cost a press — the handler below still has to run.
+test("a broken window cannot break a remote press", () => {
+  withWindow((win) => {
+    const { session, nav, capacitor, logs } = setup();
+    session.install();
+    const calls = [];
+    nav.mediaSession.setActionHandler("play", () => calls.push("play"));
+    win.dispatchEvent = () => { throw new Error("window is hostile"); };
+    assert.equal(subFor(capacitor, TRANSPORT_EVENT).callback({ action: "play" }), true);
+    assert.deepEqual(calls, ["play"], "the press reached the page");
+    assert.ok(logs.some((l) => /remote command/.test(l.m)), "and the failure is reported rather than swallowed");
+  });
+});
+
 // TO SEE IT FAIL: re-broadcast from inside the transport dispatcher as well.
 // A page listening for both would then record one press twice.
 test("a transport event is NOT re-broadcast as a session event", () => {
@@ -1526,7 +1588,10 @@ test("`sends` CANNOT BE READ IN THE TURN OF THE WRITE — the founder's `sent=0`
     durationSec: 1800, positionSec: 0, playbackRate: 1, playing: true,
   }));
 
-  assert.deepEqual(readInsideTheHook, [0], "the hook fired, and could not yet see its own write");
+  /* TWO reads since 2026-09-23: the metadata write and the `playbackState` write
+     each report (the pause needed a row), in the same turn, and neither can see
+     the send. */
+  assert.deepEqual(readInsideTheHook, [0, 0], "the hook fired, and could not yet see its own write");
   assert.equal(session.inspect().sends, 0, "…and it has still not moved when that turn ends");
 
   /* One microtask later it has. Ordering, not a race: the setter enqueued the

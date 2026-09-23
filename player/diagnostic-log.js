@@ -522,6 +522,9 @@ export const DATA_FILE_KEYS = ["forays", "segments", "sources"];
     display's own limit, and an answer that does not need the whole string. */
 export const NOWPLAYING_FIELD_MAX = 40;
 
+/** The three writes a `nowplaying` row can stand for. See `nowPlaying()`. */
+export const NOWPLAYING_VIA = new Set(["metadata", "state", "clear"]);
+
 /** One Now Playing field: trimmed, capped, and `""` for anything that is not a
     string. `null` is NOT returned for a missing field, because the empty
     string IS the finding here — an absent field and an empty one are the same
@@ -548,11 +551,38 @@ export function nowPlayingFieldOf(v) {
    the gap is readable as "this build's plugin says something this build's
    page does not understand", which is a real and findable condition. */
 
-/** The five things a native plugin may report. Mirrors the `kind` strings in
-    `ForayAudioPlugin.swift`/`ForayTtsPlugin.swift`'s `emitSession` calls. */
+/** What a native plugin may report. Mirrors the `kind` strings in
+    `ForayAudioPlugin.swift`/`ForayTtsPlugin.swift`'s `emitSession` calls.
+
+    THE LAST THREE ARE THINGS THE PLUGIN DID, not things the OS did to it
+    (founder, 2026-09-23: "paused and turned off my screen, got in my car, then
+    my car resumed Spotify"). iOS hands a car's play to the app that still holds
+    an active playback session and a Now Playing entry; `ForayAudioPlugin.swift`
+    now takes the app's own session when the transport pauses and re-asserts the
+    Now Playing entry when the app is backgrounded, and each of those is a row
+    here — so a drive that still resumed Spotify can say whether 4a had let go
+    (no row) or was holding on and lost anyway (rows, then Spotify). */
 export const SESSION_KINDS = new Set([
   "interruptionBegan", "interruptionEnded", "routeChange", "mediaServicesReset",
   "background", "foreground",
+  "sessionActivated", "sessionReleased", "nowPlayingReasserted",
+]);
+
+/** Where a remote command physically arrived (founder, 2026-09-23). One token
+    per native door: iOS has one (`MPRemoteCommandCenter`, whatever pressed it —
+    the lock screen, Control Center, CarPlay, a Bluetooth stack and a headphone
+    pinch are indistinguishable there); Android has two, Media3's session and
+    the notification's own buttons. */
+export const REMOTE_ORIGINS = new Set(["command-center", "media-session", "notification"]);
+
+/** Which of the platform's commands it was, BEFORE the plugin mapped it onto a
+    page action. Kept beside the action because the mapping is the finding:
+    a `toggle-play-pause` that became `play` on a playing transport is the bug
+    where a car's one button could pause nothing. Dashed tokens, so both
+    natives spell them the same way. */
+export const REMOTE_COMMANDS = new Set([
+  "play", "pause", "toggle-play-pause", "stop", "next-track", "previous-track",
+  "skip-backward", "skip-forward", "change-position", "close",
 ]);
 
 /** Which plugin spoke. Two producers, because a narration line and a tape
@@ -1094,10 +1124,18 @@ export class PlayerDiagnostics {
    * @param {string} [fields.playbackState]
    * @param {object} [fields.native] `{ installed, sends, lastReason }`
    */
-  nowPlaying({ metadata = null, playbackState = null, native = null, writeOk = true, writeError = "" } = {}) {
+  nowPlaying({
+    metadata = null, playbackState = null, native = null, writeOk = true, writeError = "", via = "metadata",
+  } = {}) {
     const m = metadata && typeof metadata === "object" ? metadata : {};
     const artwork = Array.isArray(m.artwork) ? m.artwork : [];
     return this.log.record("nowplaying", {
+      /* WHICH WRITE (founder, 2026-09-23). `metadata` is the three strings
+         changing; `state` is `playbackState` changing with the strings as they
+         were — the pause, which until now left no row; `clear` is the player
+         closing. Anything else is stored as `metadata`, the shape every row
+         before this field had. */
+      via: NOWPLAYING_VIA.has(via) ? via : "metadata",
       title: nowPlayingFieldOf(m.title),
       artist: nowPlayingFieldOf(m.artist),
       album: nowPlayingFieldOf(m.album),
@@ -1195,6 +1233,45 @@ export class PlayerDiagnostics {
     const a = asText(action).trim();
     if (!TRANSPORT_SOURCES.has(s) || !TRANSPORT_ACTIONS.has(a)) return null;
     return this.log.record("transport", { source: s, action: a, hidden: this._isHidden() });
+  }
+
+  /**
+   * A remote command the NATIVE side received, before the page did anything
+   * with it (founder, 2026-09-23: "my car resumed Spotify. This is still
+   * wrong.").
+   *
+   * `transport(…, "remote")` above is written by the page's handler, so a
+   * command that reached the plugin and found no handler — or reached a
+   * WebView too asleep to run one — is invisible there, and "the car's play
+   * did nothing" and "the car's play never came" read the same. The shim
+   * (`foray-media-session.js`) re-broadcasts every native `transport` event
+   * as `foray:remote` with what the plugin saw: the platform's own COMMAND,
+   * the page ACTION it was mapped to, which native door it came through, and
+   * whether a handler was found. The plugin's own stamp rides beside `wall`,
+   * as it does for `sessionEvent`, so the lag says how asleep the page was.
+   *
+   * Every field is admitted by a closed set or by shape, and an unrecognised
+   * command or origin is DROPPED, for the reason `sessionEvent` states.
+   *
+   * @param {object} event `{ command, action, origin, handled, at }`
+   */
+  remoteCommand({ command = null, action = null, origin = null, handled = null, at = null } = {}) {
+    const c = asText(command).trim();
+    const o = asText(origin).trim();
+    if (!REMOTE_COMMANDS.has(c) || !REMOTE_ORIGINS.has(o)) return null;
+    const nativeAt = Number.isFinite(at) && at > 0 ? at : null;
+    return this.log.record("remote", {
+      command: c,
+      /* The page action is a spec word (`ROUTABLE_ACTIONS`), lower-case letters
+         only; anything else is stored as empty rather than as a string from
+         native code. */
+      action: /^[a-z]{1,24}$/.test(asText(action)) ? asText(action) : "",
+      origin: o,
+      handled: handled === true,
+      at: nativeAt,
+      lagMs: nativeAt == null ? null : this._now() - nativeAt,
+      hidden: this._isHidden(),
+    });
   }
 
   /* ---------- resume decisions ---------- */
@@ -1660,9 +1737,18 @@ function lineFor(e) {
          reached the platform at all. Printed ONLY when it failed, so a healthy
          row keeps its shape and a broken one is impossible to miss. */
       const write = e.writeOk === false ? `  write=FAILED/${f(e.writeError)}` : "";
+      /* `via=` only when it is NOT the strings changing, so every row written
+         before the field existed keeps its shape and a pause stands out. */
+      const via = e.via && e.via !== "metadata" ? `  via=${e.via}` : "";
       return `${head} "${f(e.title)}" / "${f(e.artist)}" / "${f(e.album)}"` +
-        `  art=${e.artworkCount ?? 0}  state=${f(e.state)}  ${native}${write}  hidden=${e.hidden ? "y" : "n"}`;
+        `  art=${e.artworkCount ?? 0}  state=${f(e.state)}${via}  ${native}${write}  hidden=${e.hidden ? "y" : "n"}`;
     }
+    /* Founder 2026-09-23. `->` is the plugin's mapping of the platform's
+       command onto a page action; `handled=n` is a command that arrived with
+       nothing to give it to, which is its own finding. */
+    case "remote":
+      return `${head} ${e.command ?? "?"} -> ${e.action || "—"} from ${e.origin ?? "?"}` +
+        `  handled=${e.handled ? "y" : "n"}  lag ${ms(e.lagMs)}  hidden=${e.hidden ? "y" : "n"}`;
     /* M-03. `lag` is the delivery lag between the plugin's own stamp and the
        page handling the event — on a suspended WebView it is the length of
        the suspension, which is the measurement the F16 drive could not make. */
@@ -1717,6 +1803,8 @@ export function formatDiagnosticReport(record) {
   const nowPlaying = entries.filter((e) => e.type === "nowplaying");
   const blankCredit = nowPlaying.filter((e) => !e.artist).length;
   const sessions = entries.filter((e) => e.type === "session");
+  const remotes = entries.filter((e) => e.type === "remote");
+  const unhandled = remotes.filter((e) => !e.handled).length;
   const gaps = measured.map((e) => e.observedGapMs).sort((a, b) => a - b);
   const worst = gaps.length ? gaps[gaps.length - 1] : null;
   const mid = gaps.length
@@ -1760,6 +1848,12 @@ export function formatDiagnosticReport(record) {
        asks for: the stop was preceded by nothing the plugins could see. */
     `session events ${sessions.length}`
       + (sessions.length ? ` (${[...new Set(sessions.map((e) => e.kind))].join(", ")})` : ""),
+    /* Founder 2026-09-23. `0` here against a car that resumed Spotify says the
+       car's play never reached 4a's native side at all — the OS gave it to
+       somebody else — which is a different bug from a play that arrived and
+       found nobody awake (`unhandled`). */
+    `remote commands ${remotes.length}`
+      + (unhandled ? `, ${unhandled} unhandled` : ""),
     r.loadError ? `earlier record unreadable: ${r.loadError}` : null,
     `updated ${r.updatedAt ?? "—"}`,
     "",
