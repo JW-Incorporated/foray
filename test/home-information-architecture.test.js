@@ -378,6 +378,15 @@ test("'Starred Shows' left the menu without leaving the app — the Shows page c
     m.view().includes('href="#/starred-shows"'),
     "the Shows page must link to the starred-shows page"
   );
+  /* ABOVE the browse cloud (review of visual pass 1, 2026-09-23): below it,
+     the page's only non-chip action landed exactly under the floating search
+     pill at scroll 0 once the pills grew a row. MUTATION: move the anchor back
+     under ${browsePillsHtml()} -> red. */
+  const html = m.view();
+  const link = html.indexOf('class="page-link-row" href="#/starred-shows"');
+  const pills = html.indexOf('class="sh-browse-pills"');
+  assert.ok(link > 0, "the link renders");
+  assert.ok(pills < 0 || link < pills, "Followed shows sits above the browse pills, under the page head");
 
   m.state.ready = true;
   m.ctx.location.hash = "#/starred-shows";

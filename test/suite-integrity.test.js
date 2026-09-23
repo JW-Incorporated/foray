@@ -179,7 +179,7 @@ const FLOORS = {
      the only test here constructed with `prefetch: true`, i.e. the only one that can
      see a code path nothing in production enables. That is precisely what makes it
      easy to delete as "testing a dead feature", and precisely why it is floored. */
-  "player/transport-reconcile.test.js": 76, // 2026-09-23 audit sweep: part 10 — an id-less play keeps the pointer, the lock screen shows a restored bar's position, a late-hydrated speed reaches a booted player (and does not overrule a choice), Jump back in's Foray rows read the live runtime; 71 -> 76 (L2's later cells had taken it to 71 unfloored) // 2026-09-22 audit (L2): part 9 — a Foray played last takes the bar and one press resumes it; an episode played after keeps it; 64 -> 66 // 2026-09-22 audit (L2): part 8 — a booted shell writes both halves of the build stamp (founder report 3); 63 -> 64 // 2026-09-22 audit (L2): part 7 — the backend writes the element's state onto an unexplained pause (founder report 2); 62 -> 63 // 2026-09-22 audit (L2): part 6 — founder report 1: the element drives the position writer, the reconcile corrects towards playing, and the native background/route/interruption events flush and pause/reconcile; 57 -> 62 // 2026-09-22 audit (L2): part 5 — the head unit's stop pauses without unregistering anything; next/previous appear when the page offers them; 55 -> 57 // 2026-09-22 audit (L2): part 5 — a failed episode load says so and play() returns false; `waiting` paints Buffering; 53 -> 55 // 2026-09-22 audit (L2): part 5 — a superseded load neither moves its successor's playhead, claims `playheadItemId`, nor stops the newer load when it fails; 50 -> 53 // 2026-09-22 audit (L2): part 5 — Foray-clock seeks land inside the item (out-point stays armed, a bridge has no start_sec), "››" is disabled at the end, a finished Foray can be scrubbed; 46 -> 50 // 2026-09-22 audit (L2): part 5 — a cold start reads `resumeOffset`, play after the end starts over, and the Jump back in card shows the raw row; 43 -> 46 // 2026-09-22 audit (L2): part 5 — one episode seek for every surface (restored bar, ended episode, both clamps, empty bar on an unknown duration); 39 -> 43 // 2026-09-22 audit (L2): part 5 — the card, the lock screen and the Foray page read `transportIsRunning()`; a finished Foray starts over; 35 -> 39 // #689 (2026-09-14): part 4 — the four founder reports from one car session, as episode tests rather than Foray ones; 27 -> 34
+  "player/transport-reconcile.test.js": 79, // visual pass 1 (2026-09-23): ↺15 nudges inside a clip (sheet and mini bar), the clip row shows only for a Foray; 76 -> 79 // 2026-09-23 audit sweep: part 10 — an id-less play keeps the pointer, the lock screen shows a restored bar's position, a late-hydrated speed reaches a booted player (and does not overrule a choice), Jump back in's Foray rows read the live runtime; 71 -> 76 (L2's later cells had taken it to 71 unfloored) // 2026-09-22 audit (L2): part 9 — a Foray played last takes the bar and one press resumes it; an episode played after keeps it; 64 -> 66 // 2026-09-22 audit (L2): part 8 — a booted shell writes both halves of the build stamp (founder report 3); 63 -> 64 // 2026-09-22 audit (L2): part 7 — the backend writes the element's state onto an unexplained pause (founder report 2); 62 -> 63 // 2026-09-22 audit (L2): part 6 — founder report 1: the element drives the position writer, the reconcile corrects towards playing, and the native background/route/interruption events flush and pause/reconcile; 57 -> 62 // 2026-09-22 audit (L2): part 5 — the head unit's stop pauses without unregistering anything; next/previous appear when the page offers them; 55 -> 57 // 2026-09-22 audit (L2): part 5 — a failed episode load says so and play() returns false; `waiting` paints Buffering; 53 -> 55 // 2026-09-22 audit (L2): part 5 — a superseded load neither moves its successor's playhead, claims `playheadItemId`, nor stops the newer load when it fails; 50 -> 53 // 2026-09-22 audit (L2): part 5 — Foray-clock seeks land inside the item (out-point stays armed, a bridge has no start_sec), "››" is disabled at the end, a finished Foray can be scrubbed; 46 -> 50 // 2026-09-22 audit (L2): part 5 — a cold start reads `resumeOffset`, play after the end starts over, and the Jump back in card shows the raw row; 43 -> 46 // 2026-09-22 audit (L2): part 5 — one episode seek for every surface (restored bar, ended episode, both clamps, empty bar on an unknown duration); 39 -> 43 // 2026-09-22 audit (L2): part 5 — the card, the lock screen and the Foray page read `transportIsRunning()`; a finished Foray starts over; 35 -> 39 // #689 (2026-09-14): part 4 — the four founder reports from one car session, as episode tests rather than Foray ones; 27 -> 34
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that
@@ -353,6 +353,19 @@ const FLOORS = {
      standing rule that no control's text in app.js or player/client.js is
      written except through the label helpers. ZERO SLACK. */
   "test/toggle-labels.test.js": 12, // 2026-09-22: new
+  /* Visual pass 1 (2026-09-23, docs/audit/status.tsv qa 43/54/59/78, persona
+     10/40/58 — the founder-approved visual changes). Card anatomy: no <button>
+     inside an <a> (three cards restructured as stretched-link cards), the
+     two-tier episode row, one pill, one artwork treatment, one tag shape.
+     Transport: the mini bar's second control, the seek pair that stays a seek
+     pair, the labelled clip rows, one nudge. Zero slack: each is a one-line
+     revert from the audit's finding. */
+  "test/card-anatomy.test.js": 10, // review of the pass (2026-09-23): the banner test became "the banner is gone" (its renderer had no caller), the template walker sees nested templates, one tag tint, rows on --radius-lg, the rhythm above the first card; 8 -> 10
+  "test/transport-controls.test.js": 9, // review of the pass (2026-09-23): the sheet's Play is the bar's Play scaled, the second row is one treatment with no second Close, the clip buttons keep their aria-labels; 7 -> 9
+  /* Review of the pass (2026-09-23): "Vibe Coding &#038; Linux" shipped in
+     data/discover.json as text. Entities are decoded where they enter data/
+     (tools/refresh/entities.mjs) and this suite fails on any left behind. */
+  "test/data-entities.test.js": 2,
   /* Audit 2026-09-22, theme H + the jargon ledger: no production vocabulary
      (segment, beat, act, piece, running order) in any listener-facing literal
      of app.js or the player modules — read by a small lexer that is itself
@@ -379,7 +392,7 @@ const FLOORS = {
      exact current count: this is a small, deliberately-scoped regression
      suite (title link + PR #357 unchanged-controls checks), so any change to
      its size is worth a second look. */
-  "test/episode-row-links.test.js": 5,
+  "test/episode-row-links.test.js": 4, // review of visual pass 1 (2026-09-23): the bannerHtml test was deleted WITH bannerHtml — the function had no caller since the U-11 cutover, and a test on unreachable markup is not coverage (test/card-anatomy.test.js asserts it stays gone); 5 -> 4
   /* The Foray running order's rows (founder report 2026-09-12): every beat
      links to its show page, the curation-code gutter is gone, and a narration
      beat is credited "AI Narrator" with a collapsible transcript. Floored at
@@ -474,7 +487,7 @@ const FLOORS = {
      and pins the gesture findings (the strip's vertical flick, the scrubber's
      touch-action, the double home-indicator inset, Stop vs Close, hover vs
      playing). Sixteen tests, each mutation-checked red. */
-  "test/tap-targets.test.js": 16,
+  "test/tap-targets.test.js": 18, // visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text buttons join the measured list; 16 -> 18 (two sweep tests had landed unfloored)
   /* Theme E of the same audit: ONE owner for "a modal is open" — focus in and
      back, `inert`, Tab trap, Escape, one instance, the body lock derived from
      what is open (the back-gesture scroll-lock leak) — plus focus and the
@@ -677,7 +690,7 @@ const FLOORS = {
   /* 6 -> 8 (2026-09-22 audit): Home v2's element no longer inherits `.home`'s
      one-screen floor through its second class (it always scrolled by the tab
      bar's height), and a stretch card's bridge line is a row of its own. */
-  "test/home-layout.test.js": 8, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
+  "test/home-layout.test.js": 9, // review of visual pass 1 (2026-09-23): a snapped rail card rests on the gutter (scroll-padding equals the rail padding); 8 -> 9 // U-11 cutover (2026-09-06, kanban t_a3f01c8a): BUG 5's flag-off #banner-slot test retired with cp_ui_v2 (renderHome always renders Home v2 now, which has no #banner-slot); 7 -> 6
 
   /* Stage 3b of docs/show-pages-plan.md — full per-show RSS ingestion
      (kanban card t_567b570f): renders the curated pool synchronously so
@@ -1032,7 +1045,7 @@ const FLOORS = {
      re-own everything a colour-scheme query can change, check the JS-written
      claim, and resolve the cascade for "Delete everything" to the danger
      token. */
-  "test/ui-tokens.test.js": 11, // 2026-09-23 audit sweep (qa row 79): --faint paints no text or live control; --muted is readable on every surface; the --faint utility has no user; 8 -> 11
+  "test/ui-tokens.test.js": 22, // review of visual pass 1 (2026-09-23): the resting star is --muted, one colour-scheme + one focus ring, note links are authored, violet primaries are never on the card radius, row/card titles are the display face; 17 -> 22 // visual pass 1 (2026-09-23): the radius, type and elevation families are enforced like the palette; the two heading kinds; one wordmark; 11 -> 17 // 2026-09-23 audit sweep (qa row 79): --faint paints no text or live control; --muted is readable on every surface; the --faint utility has no user; 8 -> 11
   /* 2026-09-23 audit sweep: docs/audit/status.tsv has one row per finding under its own title, refuted/deliberate verdicts are kept, and the README table agrees. */
   "test/audit-status.test.js": 3,
   /* U-02 (docs/ui-transition-plan.md, kanban t_806e5d01): the cp_ui_v2 flag
@@ -1549,6 +1562,9 @@ const FLOORS = {
      politeness gate, partial chains, and the single authorship of the `reason`
      sentence that `--reclassify` would otherwise respell offline. */
   "tools/refresh/dai.test.mjs": 20,
+  /* Review of visual pass 1 (2026-09-23): the one entity decoder the feed scan,
+     the show backfill and the classification merge all read. Zero slack. */
+  "tools/refresh/entities.test.mjs": 5,
   /* Android on a runner (#245). ZERO SLACK, deliberately, and for a reason the iOS
      entry above does not have. Two of these 26 tests are the ONLY thing in the repo
      that notices if the Android job stops checking that `cap sync` still wires

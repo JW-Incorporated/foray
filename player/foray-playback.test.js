@@ -952,7 +952,7 @@ class StubDom {
       .map((s) => new StubEl(this, { className: "fy-src-head", attrs: { srcShow: s } }));
 
     for (const id of [
-      "view", "fy-strip", "fy-now", "fy-total", "fy-play", "fy-next", "fy-prev", "fy-error",
+      "view", "fy-strip", "fy-now", "fy-total", "fy-play", "fy-next", "fy-prev", "fy-back", "fy-fwd", "fy-error",
       "fy-resume", "fy-bar-fill", "fy-restart", "fy-sheet", "fy-scrim", "fy-sheet-sub",
       "fy-sheet-note", "fy-sheet-cancel", "fy-sheet-go", "banner-slot",
       "pl-form", "pl-input", "pl-note", "pl-remove", "banner-done",
@@ -1273,7 +1273,7 @@ test("mounting the Foray page binds the transport — the inert-page regression"
   // was skipped, the listener counts are zero. The shipped bug did the first,
   // which caused the second.
   const { dom, resolved } = await mountForayPage();
-  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-strip"]) {
+  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-back", "fy-fwd", "fy-strip"]) {
     assert.ok(dom.el(id).listeners("click") > 0, `#${id} has no click handler — the page is inert`);
   }
   assert.ok(resolved.playable.length > 0, "nothing resolved, so the row count below proves nothing");
@@ -2192,7 +2192,7 @@ test("STORAGE FAILURE MUST NOT MAKE THE PAGE INERT — the regression this suite
   // Every tier refusing every write, through the real page. A storage layer that
   // throws out of a render path is how a perfect, dead page gets shipped.
   const { dom, forayStorage, ctx } = await mountForayPage({ durable: true, failLocalWrites: true });
-  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-strip"]) {
+  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-back", "fy-fwd", "fy-strip"]) {
     assert.ok(dom.el(id).listeners("click") > 0, `#${id} lost its handler when storage failed`);
   }
   await assert.doesNotReject(() => dom.thumbs.find((t) => t.dataset.thumb === "up").click());
@@ -2249,7 +2249,7 @@ test("DELETING EVERYTHING leaves the page interactive, and resume works again af
   assert.deepEqual([...durableTier.data.keys()].filter((k) => k.startsWith("cp_")), [], "the durable tier is not clear");
 
   // THE PAGE. Same assertion as the inert-page regression test, after a clear.
-  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-strip"]) {
+  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-back", "fy-fwd", "fy-strip"]) {
     assert.ok(dom.el(id).listeners("click") > 0, `#${id} lost its handler to the deletion`);
   }
   const callsBefore = bridge.calls.length;

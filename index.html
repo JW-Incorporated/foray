@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark light">
+<!-- DARK IS THE DESIGN (styles.css, body.ui-v2): the page ships one palette,
+     so it declares one scheme. "dark light" let the browser paint its own
+     surfaces — the focus ring, form-control chrome, scrollbars, the default
+     link colour — in the LIGHT palette over a #151119 page whenever the OS
+     was set to Light (visual pass 1, 2026-09-23). -->
+<meta name="color-scheme" content="dark">
 <!-- media-src is required for in-app playback (issue #24): with default-src
      'none' and no media-src, every <audio> load is blocked outright. Scoped to
      https: because episode audio comes from ~41 different podcast CDNs that we
@@ -33,7 +38,7 @@
 <body>
 <header class="topbar">
   <button id="menu-btn" aria-label="Menu">☰</button>
-  <h1><a href="#/">4a</a> <span class="topbar-tag">a daily podcast picker</span></h1>
+  <h1><a class="wordmark" href="#/">4a</a> <span class="topbar-tag">a daily podcast picker</span></h1>
   <button id="refresh-btn" aria-label="Refresh this page">↻</button>
 </header>
 

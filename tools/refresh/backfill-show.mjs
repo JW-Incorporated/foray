@@ -59,6 +59,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { createRequire } from "node:module";
 import { audioFieldsFrom } from "./enclosure.mjs";
+import { decodeEntities } from "./entities.mjs";
 import { UA } from "../segments/politeness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -134,7 +135,7 @@ export function selectEpisodes(items, { newest = DEFAULT_NEWEST, match = [], sho
     throw new BackfillError("BAD_NEWEST", `--newest must be a positive integer, got ${newest}`);
   }
   const window = items.slice(0, newest);
-  const chosen = window.filter((it) => titleMatches(text(it.title), match));
+  const chosen = window.filter((it) => titleMatches(decodeEntities(text(it.title)), match));
   if (chosen.length === 0) {
     throw new BackfillError(
       "NO_MATCH",
@@ -185,7 +186,8 @@ export function pendingRecord(show, it) {
      and it is dead code there too; a mutation test on the copied ternary came back
      green, which is what found it. */
   const guid = text(it.guid) || text(it.enclosure?.["@_url"]);
-  const title = text(it.title);
+  /* Entities decoded where the title enters data/ (tools/refresh/entities.mjs). */
+  const title = decodeEntities(text(it.title));
   let pub = null;
   try { const d = new Date(it.pubDate); pub = isNaN(d) ? null : d; } catch (_) { /* unparseable */ }
   if (!guid || !title || !pub) {

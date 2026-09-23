@@ -391,9 +391,10 @@ function contrast(a, b) {
 }
 
 const FAINT_TEXT_EXCEPTIONS = {
-  /* An UNSTARRED star is a non-text glyph on the row's --surface; 3:1 applies. */
-  "body.ui-v2 button.star": () => contrast(TOKENS["--faint"], TOKENS["--surface"]) >= 3,
-  /* A utility with no user: the census below keeps it that way. */
+  /* A utility with no user: the census below keeps it that way. (The resting
+     ☆ was the other exception, at 3.08:1 as a non-text glyph; visual pass 1's
+     review moved it to --muted — a live control at the secondary-label weight,
+     not a hair over the floor with a 1px stroke.) */
   "body.ui-v2 .ui-v2-text-faint": () => true,
 };
 
@@ -426,4 +427,226 @@ test("the --faint text utility has no user in the shipped markup", () => {
     .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js")).map((f) => `player/${f}`)];
   const users = sources.filter((f) => fs.readFileSync(path.join(ROOT, f), "utf8").includes("ui-v2-text-faint"));
   assert.deepEqual(users, [], "a new user of .ui-v2-text-faint paints text at 3:1 — use .ui-v2-text-muted");
+});
+
+/* ======================================================================
+   VISUAL PASS 1 (2026-09-23): THE STRUCTURAL FAMILIES — radius, type, elevation
+   ======================================================================
+   The palette rule above ("no raw hex outside the token block") had a gap
+   the audit measured: 74 radii in 12 values with `--radius` the minority
+   (qa row 60), Georgia beside Fraunces on one screen (qa rows 43/47/51), and
+   seven ad-hoc shadows. Each family is now ONE scale on `:root` — structural,
+   no colour, so the ownership rule's clause (d) covers it — and these tests
+   enforce the families the way the palette test enforces colours: every live
+   declaration reads a token, and the scale is declared in order.
+
+   MUTATIONS (each run, each red):
+     - `border-radius: 12px` on any rule -> the radius test names the rule;
+     - `font-family: var(--serif)` on `.topbar h1 a` -> the type test names it;
+     - `font-size: 0.78rem` anywhere -> named;
+     - `box-shadow: 0 6px 24px rgba(0,0,0,.28)` -> named;
+     - swap `--radius-md` and `--radius-lg`'s values -> the order test fails. */
+
+const ROOT_DECLS = (() => {
+  const out = new Map();
+  for (const r of RULES) {
+    if (r.atRules.length || !r.selectors.includes(":root")) continue;
+    for (const d of r.decls) if (d.prop.startsWith("--")) out.set(d.prop, d.value);
+  }
+  return out;
+})();
+const pxOf = (v) => { const m = /^(-?\d+(?:\.\d+)?)px$/.exec(String(v || "").trim()); return m ? Number(m[1]) : null; };
+const remOf = (v) => { const m = /^(\d+(?:\.\d+)?)rem$/.exec(String(v || "").trim()); return m ? Number(m[1]) : null; };
+/** The last value `prop` gets on exactly `sel`, among unconditional rules. */
+function lastOn(sel, prop) {
+  let v = null;
+  for (const r of RULES) {
+    if (r.atRules.length || !r.selectors.includes(sel)) continue;
+    for (const d of r.decls) if (d.prop === prop) v = d.value;
+  }
+  return v;
+}
+
+test("the radius scale is declared once, in order, and every corner reads it", () => {
+  const scale = ["--radius-xs", "--radius-sm", "--radius-md", "--radius-lg", "--radius-xl"];
+  const px = scale.map((t) => pxOf(ROOT_DECLS.get(t)));
+  assert.ok(px.every((n) => n != null), `every radius step is a px value on :root: ${px.join(",")}`);
+  for (let i = 1; i < px.length; i++) assert.ok(px[i] > px[i - 1], `${scale[i]} must be larger than ${scale[i - 1]}`);
+  assert.strictEqual(ROOT_DECLS.get("--radius-pill"), "999px");
+  assert.strictEqual(ROOT_DECLS.get("--radius-round"), "50%");
+  assert.ok(!ROOT_DECLS.has("--radius"), "`--radius` is retired; use a step of the scale");
+
+  const offenders = [];
+  for (const r of RULES) {
+    for (const d of r.decls) {
+      if (!/^border(-(top|bottom)-(left|right))?-radius$/.test(d.prop)) continue;
+      const parts = d.value.split(/\s+(?![^(]*\))/);
+      const ok = parts.every((p) => p === "0" || /^var\(--radius-(xs|sm|md|lg|xl|pill|round)\)$/.test(p));
+      if (!ok) offenders.push(`${r.selectors.join(", ")} { ${d.prop}: ${d.value} }`);
+    }
+  }
+  assert.deepStrictEqual(offenders, [], "a corner is not on the radius scale:\n" + offenders.join("\n"));
+});
+
+test("two faces by rule: every font-family reads --font-display or --font-body", () => {
+  /* `--serif` and `--sans` survive only as the fallback stacks INSIDE the two
+     face tokens. The diagnostics log keeps its monospace by name: it is a
+     column-aligned record, not prose. */
+  assert.match(ROOT_DECLS.get("--font-display") || "", /^"Fraunces",\s*var\(--serif\)$/);
+  assert.match(ROOT_DECLS.get("--font-body") || "", /^"DM Sans",\s*var\(--sans\)$/);
+  const ALLOWED = new Set(["var(--font-display)", "var(--font-body)", "inherit"]);
+  const offenders = [];
+  for (const r of RULES) {
+    if (r.selectors.some((s) => /^@font-face/.test(s))) continue;
+    for (const d of r.decls) {
+      if (d.prop !== "font-family") continue;
+      if (ALLOWED.has(d.value)) continue;
+      if (r.selectors.includes(".diag-text") && /monospace/.test(d.value)) continue;
+      offenders.push(`${r.selectors.join(", ")} { font-family: ${d.value} }`);
+    }
+  }
+  assert.deepStrictEqual(offenders, [], "a rule names a face outside the two tokens:\n" + offenders.join("\n"));
+  assert.doesNotMatch(CSS.replace(/\/\*[\s\S]*?\*\//g, ""), /font-family:\s*var\(--(serif|sans)\)/,
+    "no live rule reads --serif/--sans directly");
+});
+
+test("the type scale is declared in order and every font-size reads it", () => {
+  const scale = ["--fs-2xs", "--fs-xs", "--fs-sm", "--fs-md", "--fs-lg", "--fs-xl", "--fs-2xl", "--fs-glyph"];
+  const rem = scale.map((t) => remOf(ROOT_DECLS.get(t)));
+  assert.ok(rem.every((n) => n != null), `every type step is a rem value on :root: ${rem.join(",")}`);
+  for (let i = 1; i < 7; i++) assert.ok(rem[i] > rem[i - 1], `${scale[i]} must be larger than ${scale[i - 1]}`);
+  const offenders = [];
+  for (const r of RULES) {
+    for (const d of r.decls) {
+      if (d.prop !== "font-size") continue;
+      if (/^var\(--fs-(2xs|xs|sm|md|lg|xl|2xl|glyph)\)$/.test(d.value) || d.value === "inherit") continue;
+      offenders.push(`${r.selectors.join(", ")} { font-size: ${d.value} }`);
+    }
+  }
+  assert.deepStrictEqual(offenders, [], "a size is not on the type scale:\n" + offenders.join("\n"));
+});
+
+test("elevation is four tokens, owned by v2, and every box-shadow reads one", () => {
+  const family = ["--shadow-sm", "--shadow", "--shadow-lift", "--shadow-up"];
+  const v2 = tokenBlock().text;
+  for (const t of family) {
+    assert.ok(ROOT_DECLS.has(t), `${t} is declared on :root for v1`);
+    assert.ok(new RegExp(`${t}:\\s*0 `).test(v2), `${t} is restated inside body.ui-v2 (it carries a colour)`);
+  }
+  const offenders = [];
+  for (const r of RULES) {
+    for (const d of r.decls) {
+      if (d.prop !== "box-shadow") continue;
+      if (d.value === "none" || /^var\(--shadow(-sm|-lift|-up)?\)$/.test(d.value)) continue;
+      offenders.push(`${r.selectors.join(", ")} { box-shadow: ${d.value} }`);
+    }
+  }
+  assert.deepStrictEqual(offenders, [], "a shadow is not on the elevation scale:\n" + offenders.join("\n"));
+});
+
+test("the two heading kinds: eyebrows are the text face, section titles the display face", () => {
+  /* qa row 51: half the section labels were Fraunces, half Georgia. Every
+     eyebrow now reads the same four declarations; a section title is the
+     other kind. MUTATION: give `.fy-sources h3` `font-family:
+     var(--font-display)` -> red. */
+  const eyebrows = [".ep-description h3", ".ep-more h3", ".fy-sources h3", ".show-forays-h", ".lib-section-head", ".drawer-section-label"];
+  for (const sel of eyebrows) {
+    assert.strictEqual(lastOn(sel, "font-family"), "var(--font-body)", `${sel} is an eyebrow: text face`);
+    assert.strictEqual(lastOn(sel, "font-size"), "var(--fs-xs)", `${sel} at the caption step`);
+    assert.strictEqual(lastOn(sel, "text-transform"), "uppercase", `${sel} is small caps`);
+  }
+  for (const sel of ["body.ui-v2 .hv2-title", ".fy-slot h3", ".page-head h2"]) {
+    assert.strictEqual(lastOn(sel, "font-family"), "var(--font-display)", `${sel} is a title: display face`);
+    assert.notStrictEqual(lastOn(sel, "text-transform"), "uppercase", `${sel} is sentence case`);
+  }
+  /* And no v2 override quietly puts a display face back on an eyebrow. */
+  for (const r of RULES) {
+    if (!r.selectors.some((s) => eyebrows.some((e) => s === `body.ui-v2 ${e}`))) continue;
+    assert.ok(!r.decls.some((d) => d.prop === "font-family"), `${r.selectors.join(", ")} must not restate the face`);
+  }
+});
+
+test("the wordmark is one mark: the topbar and the greeting both draw Fraunces italic", () => {
+  /* qa row 47. MUTATION: drop `class="wordmark"` from index.html's <h1><a>,
+     or `font-style: italic` from `.topbar h1 a` -> red. */
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  assert.match(html, /<h1><a class="wordmark" href="#\/">4a<\/a>/);
+  for (const sel of [".topbar h1 a", "body.ui-v2 .hv2-greeting-brand"]) {
+    assert.strictEqual(lastOn(sel, "font-family"), "var(--font-display)", sel);
+    assert.strictEqual(lastOn(sel, "font-style"), "italic", sel);
+  }
+});
+
+/* ---------- the review of visual pass 1 (2026-09-23) ---------- */
+
+test("the resting ☆ is a live control in --muted, amber when on", () => {
+  /* MUTATION: `body.ui-v2 button.star { color: var(--faint) }` -> red here,
+     and the --faint census above names it too. */
+  assert.strictEqual(lastOn("body.ui-v2 button.star", "color"), "var(--muted)");
+  assert.strictEqual(lastOn("body.ui-v2 button.star.on", "color"), "var(--amber)");
+  assert.ok(contrast(TOKENS["--muted"], TOKENS["--surface"]) >= 4.5, "readable on the row it sits in");
+});
+
+test("dark is declared, not just painted: one colour-scheme, one authored focus ring", () => {
+  /* `content="dark light"` on a dark-only palette let every UA-painted surface
+     (the focus ring on a landed heading, form-control chrome, the default link
+     colour) follow the OS scheme over a #151119 page. MUTATION: put
+     `content="dark light"` back, or delete the `:focus-visible` rule -> red. */
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  assert.match(html, /<meta name="color-scheme" content="dark">/, "index.html declares the one scheme the sheet ships");
+  assert.doesNotMatch(html, /content="dark light"|content="light dark"/);
+  assert.strictEqual(lastOn("body.ui-v2", "color-scheme"), "dark", "the v2 scope tells the UA the same");
+  assert.match(lastOn(":focus-visible", "outline") || "", /^2px solid var\(--amber\)$/, "the ring is ours, in the listener's colour");
+  assert.strictEqual(lastOn(":focus-visible", "outline-offset"), "2px");
+});
+
+test("every editorial link inside a note is authored: violet, underlined, never the UA default", () => {
+  /* Library's empty state ("build one on the Create tab") painted #9e9eff or
+     #0000ee depending on the OS. MUTATION: delete `body.ui-v2 .note a` -> red. */
+  assert.strictEqual(lastOn("body.ui-v2 .note a", "color"), "var(--violet)");
+  assert.strictEqual(lastOn("body.ui-v2 .note a", "text-decoration"), "underline");
+  /* And the rule has a user: every `<a` written inside a `.note` in app.js. */
+  const notes = [...APP_JS.matchAll(/<p class="note[^"]*">(?:(?!<\/p>)[\s\S])*<a /g)];
+  assert.ok(notes.length >= 1, "at least one note carries an inline link (Library's empty state)");
+});
+
+test("every violet primary button is a capsule, a control (md) or a circle — never the card/input radius", () => {
+  /* Go / Build were 52px primaries at `--radius-lg`, the CARD radius, beside
+     capsule Follow / Get started and the md Play. MUTATION: `#pl-form button
+     { border-radius: var(--radius-lg) }` -> red, naming it. */
+  const bad = [];
+  const seen = [];
+  for (const r of RULES) {
+    if (r.atRules.length) continue;
+    if (!r.decls.some((d) => d.prop === "background" && d.value === "var(--violet)")) continue;
+    for (const sel of r.selectors) {
+      if (!/button|\.fy-btn|\.fy-sheet-go|\.fp-play|\.fp-btn|\.play-btn/.test(sel)) continue;
+      if (/:hover|:active|:disabled|\[data-playing/.test(sel)) continue;
+      const base = sel.replace(/^body\.ui-v2 /, "");
+      const radius = lastOn(sel, "border-radius") ?? lastOn(base, "border-radius")
+        /* `.fy-btn.fy-main` inherits its corner from `.fy-btn`; `.fp-btn.fp-big` states its own. */
+        ?? lastOn(base.split(".").slice(0, 2).join("."), "border-radius");
+      seen.push(sel);
+      if (!/^var\(--radius-(pill|md|round)\)$/.test(radius || "")) bad.push(`${sel} -> ${radius}`);
+    }
+  }
+  assert.ok(seen.includes("body.ui-v2 #pl-form button") && seen.includes("body.ui-v2 #cr-form button"), "the census reaches Go and Build");
+  assert.deepStrictEqual(bad, [], "violet primaries on the wrong radius");
+  assert.strictEqual(lastOn("#pl-form button", "border-radius"), "var(--radius-pill)");
+  assert.strictEqual(lastOn("#cr-form button", "border-radius"), "var(--radius-pill)");
+});
+
+test("every row and card title is the display face: a show's name in a search row included", () => {
+  /* qa row 43's rule, extended past the two heading kinds to the names on
+     rows and cards. `.show-result-title` was the one left in the text face;
+     the first-run value-prop headings inherited it. MUTATION: `body.ui-v2
+     .show-result-title { font-family: var(--font-body) }` -> red. */
+  const titles = [
+    "body.ui-v2 .show-result-title", ".ep-row .t", ".mc-info h3", ".fy-home-title", ".ft-value-prop h4",
+    ".fy-src-show", "body.ui-v2 .hv2-jbi-title", ".b-title",
+  ].filter((s) => s !== ".b-title" || RULES.some((r) => r.selectors.includes(".b-title")));
+  for (const sel of titles) {
+    assert.strictEqual(lastOn(sel, "font-family"), "var(--font-display)", `${sel} names something: display face`);
+  }
+  assert.strictEqual(lastOn("body.ui-v2 .show-result-by", "font-family"), "var(--font-body)", "the byline stays in the text face");
 });

@@ -1,6 +1,6 @@
 /* Foray web client v4 — app shell.
-   Views: home (one screen, no scroll: continue banner + 4 suggestions +
-   playlist builder), playlists list, playlist detail. Hash routing.
+   Views: home (rails: Jump back in, Forays / Playlists / Episodes for you),
+   playlists list, playlist detail, shows, Forays, Library. Hash routing.
    The semantic layer (compiled concepts + tags) powers playlist building. */
 
 /* THE GENERATION PIN, READ BEFORE ANYTHING ELSE IN THIS FILE (#233/M4).
@@ -73,7 +73,6 @@ const state = {
 
 const SEEN_WINDOW = 100;
 const BRANCH_MEMORY = 8;
-const CONTINUE_MAX_AGE_H = 72;
 
 const $ = (sel, el = document) => el.querySelector(sel);
 
@@ -693,8 +692,9 @@ function snapshot(id, src) {
 /* `state.poolIds` is the ONLY answer to "is this episode in the catalogue right
    now", and it exists because `state.itemIndex` was being used for that and is
    not it (#276 review). `itemIndex` is a snapshot CACHE: it is session-lived,
-   nothing ever clears it, and three different callers write to it — fullPool,
-   bannerHtml, and renderPlaylistDetail seeding a part the pool no longer has. So
+   nothing ever clears it, and several callers write to it — fullPool, the
+   pick handler's `liveEpisode` snapshot, the show/search pages, and
+   renderPlaylistDetail seeding a part the pool no longer has. So
    "has an entry in itemIndex" drifts to "was mentioned at some point this
    session", which made an aged-out playlist part read as live from its second
    render onward and silently restored the exact defect #276 removes. Membership
@@ -2938,8 +2938,12 @@ function renderAllShows(initialQuery = "") {
       <div id="ep-search-results" hidden></div>
       <div id="pl-search-results" hidden></div>
       <div id="sh-browse">
-        ${browsePillsHtml()}
+        <!-- ABOVE the browse cloud, not below it (visual pass 1, 2026-09-23):
+             below, the page's one non-chip action sat exactly under the
+             floating search pill at scroll 0 on a 390x844 phone. Apple keeps
+             its Library shortcuts at the top of Search for the same reason. -->
         <a class="page-link-row" href="#/starred-shows">Followed shows \u203a</a>
+        ${browsePillsHtml()}
         ${vouchForHtml()}
       </div>`);
   /* The page reserves room at its bottom edge for a bar that is fixed and so
@@ -3690,9 +3694,13 @@ function renderShow(show_id, initialQuery = "") {
         <p class="sub" data-show-count></p>
       </div>
     </div>
-    ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
-    ${showStarBtn(show.show_id)}
-    <p class="note show-follow-note">${esc(FOLLOW_NOTE)}</p>
+    <!-- ONE HERO: art, Follow and its note are one centred block (styles.css
+         .show-hero, visual pass 1). The title stays in the page head. -->
+    <div class="show-hero">
+      ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
+      ${showStarBtn(show.show_id)}
+      <p class="note show-follow-note">${esc(FOLLOW_NOTE)}</p>
+    </div>
     <!-- The publisher's own description. EMPTY at first paint and filled by
          paintShowDescription() when the episode fetch resolves (or instantly
          from the cache on a revisit) - it comes from the feed, which this page
@@ -4468,18 +4476,20 @@ function bindPickLogging(scope) {
       const m = /^playlist-(.+)$/.exec(a.dataset.ctx || "");
       if (m) touchPlaylistPlayed(m[1]);
 
-      /* Only a part the catalogue still holds may become the continue banner. An
-         archived playlist part has a snapshot in `state.itemIndex` (seeded by
+      /* Only a part the catalogue still holds is recorded as the last pick
+         (`cp_lastpick`, named in docs/legal/privacy-policy.md). An archived
+         playlist part has a snapshot in `state.itemIndex` (seeded by
          renderPlaylistDetail so this handler can report its topics), but that
-         snapshot is a PARTIAL one — no audio_url, no hook, no artwork — and
-         bannerHtml() re-runs `snapshot()` over whatever cp_lastpick holds, which
-         would overwrite the pool's full entry with the partial and leave a live
-         episode with a play button that does nothing. Besides which, the banner
-         offers to resume something the app cannot play. liveEpisode() is that
-         rule (a partial part has no audio_url), without the curated-pool
-         restriction that kept every show-page episode off the banner. */
+         snapshot is a PARTIAL one — no audio_url, no hook, no artwork — and a
+         record of something the app cannot play is worth nothing. liveEpisode()
+         is that rule (a partial part has no audio_url), without the
+         curated-pool restriction that kept every show-page episode out.
+         Nothing renders this record any more: the Continue banner that read it
+         (`bannerHtml`) lost its caller at the U-11 cutover and was deleted in
+         visual pass 1 (2026-09-23); "Jump back in" reads the player's own
+         position store instead (see jumpBackInHtml). */
       const snap = liveEpisode(id);
-      if (snap && a.dataset.ctx !== "continue") {
+      if (snap) {
         lsSet("cp_lastpick", { ...snap, ts: new Date().toISOString() });
       }
       trySyncEvents();
@@ -4601,30 +4611,12 @@ function bindUpNext(scope) {
 
 /* ---------- views ---------- */
 
-function currentContinue() {
-  const last = lsGet("cp_lastpick", null);
-  if (!last) return null;
-  const ageH = (Date.now() - new Date(last.ts).getTime()) / 3.6e6;
-  const commuteMin = state.session.commute.content_minutes || 27;
-  if (ageH > CONTINUE_MAX_AGE_H) return null;
-  if ((last.duration_min || 0) <= commuteMin + 5) return null;
-  return last;
-}
-
-function bannerHtml() {
-  const c = currentContinue();
-  if (!c) return "";
-  snapshot(c.id, c);
-  return `<a class="banner" href="#/episode/${esc(encodeURIComponent(c.id))}"
-      data-ev="picked" data-ep="${c.id}" data-ctx="continue">
-    ${c.artwork_url ? `<img src="${esc(safeUrl(c.artwork_url))}" alt="">` : ""}
-    <div class="b-info">
-      <span class="b-label">Continue</span>
-      <span class="b-title">${esc(c.title)}</span>
-    </div>
-    <button class="b-done" id="banner-done" aria-label="Done with this">✓</button>
-  </a>`;
-}
+/* `currentContinue()` / `bannerHtml()` — the v1 Continue banner — lived here
+   until visual pass 1 (2026-09-23). They had no caller since the U-11 cutover
+   (renderHome always renders Home v2, whose "Jump back in" reads the player's
+   position store), and the only thing keeping them alive was two tests that
+   called the function directly. Dead markup guarded by tests reads as
+   coverage and is not; both went, with their CSS (`.banner`, `#banner-slot`). */
 
 /* What actually connects the episodes in a subject queue is one fact: they
    share a taxonomy branch. Say that plainly via the real shows involved,
@@ -4659,16 +4651,21 @@ function miniCard(slot) {
   const totalMin = allTimed ? slot.items.reduce((s, it) => s + Number(it.duration_min), 0) : 0;
   const stretchTag = slot.role === "stretch"
     ? `<span class="mc-stretch" title="Outside your usual subjects, on purpose">Stretch</span>` : "";
-  return `<a class="mini-card" data-branch="${esc(slot.branch)}"
-      href="#/${esc(playlistRoute({ isSubject: true, branch: slot.branch }))}">
+  /* A CARD WITH A STRETCHED LINK (audit 2026-09-22, qa row 78). The card used
+     to be the <a>, with the star <button> nested inside it — invalid HTML that a
+     screen reader read as one link named "Education … Save", and whose star
+     only avoided following the link through bindStars' preventDefault. The
+     subject title is now the one real <a>; styles.css stretches its ::after
+     over the card, and the star is a sibling lifted above it. */
+  return `<div class="mini-card" data-branch="${esc(slot.branch)}">
     ${item.artwork_url ? `<img src="${esc(safeUrl(item.artwork_url))}" alt="" loading="lazy">` : `<div class="art-ph"></div>`}
     <div class="mc-info">
       <p class="mc-kicker">${stretchTag}${joinMeta(countLabel(slot.items.length, "episode"), fmtDur(totalMin))}</p>
-      <h3>${esc(subjectLabel(slot.branch))}</h3>
+      <h3><a class="mc-link" href="#/${esc(playlistRoute({ isSubject: true, branch: slot.branch }))}">${esc(subjectLabel(slot.branch))}</a></h3>
       <p class="mc-hook">${startsWithLine(item.title)} ${esc(subjectBlurb(slot))}</p>
     </div>
     ${starBtn(item.id)}
-  </a>`;
+  </div>`;
 }
 
 /* WHAT A FORAY IS, in one sentence, written ONCE (audit 2026-09-22, persona
@@ -7726,12 +7723,18 @@ function jumpBackInCardHtml(c) {
      underneath that test is that a link's SCHEME must be fixed by the code and
      never carried in data, and a literal `#/` prefix is how this file says so. */
   const route = c.kind === "foray" ? "foray" : c.kind === "playlist" ? "playlist" : "episode";
+  /* A CARD WITH A STRETCHED LINK (audit 2026-09-22, qa row 78): the title is
+     the one real <a> (styles.css stretches its ::after over the card) and the
+     play button is its SIBLING, lifted above it — not a <button> inside an <a>,
+     which is invalid HTML that reads as "link, …, Play …" to a screen reader
+     and only behaved on a pointer because bindPlay calls preventDefault. The
+     `picked` attributes ride on the link, which is what bindPickLogging binds. */
   return `
-    <a class="hv2-jbi-card" href="#/${route}/${id}"${ev}>
+    <div class="hv2-jbi-card">
       <span class="hv2-jbi-kicker">Jump back in</span>
-      <span class="hv2-jbi-title">${esc(c.title)}</span>
+      <a class="hv2-jbi-title hv2-jbi-link" href="#/${route}/${id}"${ev}>${esc(c.title)}</a>
       ${sub}${bar}${left}${play}
-    </a>`;
+    </div>`;
 }
 
 /** One Foray card for "Forays for you", carrying its SegmentStrip (U-04) —
@@ -7843,9 +7846,9 @@ function playlistsForYouHtml() {
 function miniCardV2(slot) {
   const card = miniCard(slot);
   if (slot.role !== "stretch") return card;
-  // Insert the bridge line just before the anchor's closing tag.
-  const bridge = `<p class="hv2-bridge">${stretchBridgeLine(subjectLabel(slot.branch))}</p></a>`;
-  return card.replace(/<\/a>$/, bridge);
+  // Insert the bridge line just before the card's closing tag.
+  const bridge = `<p class="hv2-bridge">${stretchBridgeLine(subjectLabel(slot.branch))}</p></div>`;
+  return card.replace(/<\/div>$/, bridge);
 }
 
 /** "Episodes for you": buildCards()'s ranked discover-pool picks, i.e.
@@ -8948,7 +8951,7 @@ function renderCreate() {
         <button type="submit">Build</button>
       </form>
       <div class="cr-suggestions">
-        ${CREATE_SUBJECT_SUGGESTIONS.map(s => `<button type="button" class="cr-pill" data-cr-subject="${esc(s)}">${esc(s)}</button>`).join("")}
+        ${CREATE_SUBJECT_SUGGESTIONS.map(s => `<button type="button" class="fy-chip" data-cr-subject="${esc(s)}">${esc(s)}</button>`).join("")}
       </div>
       <p id="cr-note" class="note" hidden></p>
     </div>`;
@@ -9769,6 +9772,7 @@ async function renderForay(id) {
       elapsed_sec: Math.round(resume.elapsedSec), index: resume.index,
     });
   }
+  const nudge = forayNudgeSteps(player);
 
   $("#view").innerHTML = `
     <div class="page foray">
@@ -9797,10 +9801,18 @@ async function renderForay(id) {
         <div class="fy-strip" id="fy-strip">${r.playable.map((_, i) =>
           `<span class="fy-seg" data-seg="${i}"><i class="fy-seg-fill"></i></span>`).join("")}</div>
         <div class="fy-times"><span id="fy-now">0:00</span><span id="fy-total"></span></div>
+        <!-- THE SEEK PAIR STAYS THE SEEK PAIR (audit 2026-09-22, persona 58).
+             The two buttons beside Play were previous/next clip, so the
+             gesture every other player has taught — missed a sentence, tap
+             back — threw the listener to the top of an eleven-minute clip.
+             ↺15 / 30↻ nudge on the Foray's own clock here, as they do in the
+             Now Playing sheet; previous/next clip have their own row below,
+             labelled in words. The numbers come from the player bridge so this
+             page and the sheet cannot disagree about a step. -->
         <div class="fy-controls">
-          <button type="button" class="fy-btn" id="fy-prev" aria-label="Previous clip">‹‹</button>
+          <button type="button" class="fy-btn" id="fy-back" aria-label="Back ${nudge.back} seconds">↺ ${nudge.back}</button>
           <button type="button" class="fy-btn fy-main" id="fy-play"${controlLabelAttr("▶ Play", "Play")}>▶ Play</button>
-          <button type="button" class="fy-btn" id="fy-next" aria-label="Next clip">››</button>
+          <button type="button" class="fy-btn" id="fy-fwd" aria-label="Forward ${nudge.fwd} seconds">${nudge.fwd} ↻</button>
           <!-- Playback speed (#242). On the transport row rather than in a settings
                screen, because this is the surface a listener is looking at when
                they decide a segment is slow — and its current value is the label,
@@ -9808,6 +9820,13 @@ async function renderForay(id) {
                accessible name both come from the player bridge, so this button and
                the mini-player's cannot word the same speed two ways. -->
           <button type="button" class="fy-btn fy-rate" id="fy-rate" aria-label="Playback speed">1×</button>
+        </div>
+        <!-- The guillemets are decoration: the accessible name is the words
+             alone, or VoiceOver opens with "single left-pointing angle
+             quotation mark" (visual pass 1 review, 2026-09-23). -->
+        <div class="fy-clips">
+          <button type="button" class="fy-clip" id="fy-prev" aria-label="Previous clip">‹ Previous clip</button>
+          <button type="button" class="fy-clip" id="fy-next" aria-label="Next clip">Next clip ›</button>
         </div>
         <!-- A start that failed says so HERE, and a screen reader hears it
              without moving focus off the button that was just pressed. -->
@@ -10397,8 +10416,21 @@ async function guardForayTap(run) {
   }
 }
 
+/** The ↺ / ↻ step sizes, from the player bridge so the Foray page, the Now
+    Playing sheet and the mini bar name one number; the fallback is the same
+    pair player/media-session.js exports, for a page paired with an older
+    cached module. */
+function forayNudgeSteps(player) {
+  try {
+    const s = player && typeof player.nudgeSteps === "function" ? player.nudgeSteps() : null;
+    if (s && Number.isFinite(s.back) && Number.isFinite(s.fwd)) return { back: s.back, fwd: s.fwd };
+  } catch (_) { /* fall through to the documented pair */ }
+  return { back: 15, fwd: 30 };
+}
+
 function bindForayTransport(r, player, resume = null) {
   const onChange = (s) => paintForay(s);
+  const nudge = forayNudgeSteps(player);
 
   /* The discover pool is the only document we have that carries per-show
      artwork, and a lock screen wants a picture (#27). Passed from here rather
@@ -10461,7 +10493,7 @@ function bindForayTransport(r, player, resume = null) {
   // Nothing playable is not a disabled-looking button that still fires: say it
   // with the control's own state, so the page and the behaviour agree.
   if (!r.playable.length) {
-    ["#fy-play", "#fy-next", "#fy-prev"].forEach(sel => { $(sel).disabled = true; });
+    ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd"].forEach(sel => { $(sel).disabled = true; });
     setControlLabel($("#fy-play"), "Nothing to play", null);
     return;
   }
@@ -10480,6 +10512,11 @@ function bindForayTransport(r, player, resume = null) {
   // next that begins at segment 2 silently drops the opening of the Foray.
   $("#fy-next").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.forayNext()) : startOrResume());
   $("#fy-prev").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.forayPrevious()) : startOrResume());
+  /* The nudges seek on the Foray's clock (`player.nudge`, the same function the
+     sheet's ↺15 / 30↻ and the mini bar's ↺15 call); before anything has
+     started they start it, like every other transport button here. */
+  $("#fy-back").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.nudge(-nudge.back)) : startOrResume());
+  $("#fy-fwd").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.nudge(nudge.fwd)) : startOrResume());
 
   $("#view").querySelectorAll("[data-fy]").forEach(btn => {
     btn.addEventListener("click", async () => {

@@ -682,7 +682,9 @@ test("the field is a translucent pill, not an opaque bar welded to the screen ed
      failed as named. */
   const pill = cssRule("#sh-compose #sh-form");
   assert.ok(pill, "the pill must have a rule of its own inside the floating row");
-  assert.match(pill, /border-radius:\s*999px/, "rounded to a capsule, as in the reference");
+  /* The capsule is the pill step of the radius scale since visual pass 1
+     (2026-09-23); test/ui-tokens.test.js holds that `--radius-pill` is 999px. */
+  assert.match(pill, /border-radius:\s*var\(--radius-pill\)/, "rounded to a capsule, as in the reference");
   /* `[^;]*` rather than `[^)]*`: the value nests a `var(--surface)`, so a
      class excluding `)` stops inside it and never reaches `transparent`. */
   assert.match(pill, /background:\s*color-mix\(in srgb[^;]*transparent\)/,

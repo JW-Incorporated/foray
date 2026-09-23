@@ -164,8 +164,14 @@ const MEASURED_CONTROLS = [
   "button.up-next-remove",     // ✕ beside them, 32x32
   ".fy-thumb",                 // 👍 👎, 30x30
   ".fp-grab-zone .fp-close",   // the sheet's ✕, 36x36
-  ".fp-rate", ".fp-stop", ".fp-collapse", ".fp-openep", // the sheet's second row, ~30 tall
+  ".fp-rate", ".fp-stop", ".fp-openep", // the sheet's second row (`.fp-collapse` is gone: the ✕ and the handle close it)
   ".voice-row-audition",       // ~29 tall, inside a row that SELECTS on a miss
+  /* Visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text
+     buttons are sized by their own declarations, like the transport. */
+  ".fp-skip", ".fp-clip", ".fy-clip",
+  /* The one pill (review of the pass): ~35px by its own padding on Search,
+     Create and the reason sheet; expanded by the rule, not resized. */
+  ".fy-chip",
 ];
 
 test("every control the audit measured has a 44px hit area, by size or by the rule", () => {
@@ -287,11 +293,14 @@ test("docked above the tab bar, the mini player does not add the home-indicator 
   assert.match(valueOf("body.ui-v2.fp-open #foray-player", "padding-bottom") || "", /^0(px)?$/);
 });
 
-test("Stop reads as a different control from Close", () => {
+test("Stop reads as a different control from the speed box beside it", () => {
   /* MUTATION: delete `body.ui-v2 .fp-stop { ... }` -> the shared v2 rule
-     paints Stop the same grey as Close; red. */
+     paints Stop the same grey as `1×`; red. (Close left the row in visual
+     pass 1: the sheet's ✕ and handle are its two ways out, so Stop is alone at
+     the danger end and the comparison is with its remaining boxed neighbour.) */
   assert.match(valueOf("body.ui-v2 .fp-stop", "color") || "", /var\(--danger-text\)/);
-  assert.notStrictEqual(valueOf("body.ui-v2 .fp-stop", "color"), valueOf("body.ui-v2 .fp-collapse", "color"));
+  assert.notStrictEqual(valueOf("body.ui-v2 .fp-stop", "color"), valueOf("body.ui-v2 .fp-rate", "color"));
+  assert.strictEqual(valueOf(".fp-collapse", "color"), null, "no .fp-collapse rule is left");
 });
 
 /** WCAG 2 relative-luminance contrast between two #rrggbb colours. */

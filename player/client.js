@@ -619,13 +619,25 @@ function buildUI() {
   const playBtn = el("button", "fp-play", "▶");
   playBtn.type = "button";
   playBtn.setAttribute("aria-label", "Play");
+  /* THE BAR'S SECOND CONTROL (audit 2026-09-22, persona 10). The bar carried
+     one ▶ and every other transport action cost a full-screen sheet — four
+     interactions to hear a missed sentence again. Apple's mini bar is play +
+     one skip; ours is play + back 15 s, the nudge the persona asked for by
+     name and the one that matters in a car. One control, not two, so a 390px
+     bar keeps its title line. Inside a Foray it nudges on the Foray clock
+     (`nudgeBy`), never previous clip — see persona 58 in the sheet below. */
+  const skipBtn = el("button", "fp-skip", `↺ ${SEEK_BACK}`);
+  skipBtn.type = "button";
+  skipBtn.setAttribute("aria-label", `Back ${SEEK_BACK} seconds`);
 
   /* U-13 (founder feedback F18): this ✕ used to call `stopAndClose()`, and its
      label said so. Closing the Now Playing screen to go and use the app therefore
      ENDED playback and took the mini bar away with it, so there was no way back to
      what was playing — the founder lost an episode mid-listen to a control whose
      only visible job was "get this off my screen". It now collapses to the mini
-     bar, the same thing `fp-collapse` below does, and stopping has its own
+     bar (the sheet's only button that does; the handle's drag is the gesture —
+     the boxed "Close" that once sat in the second row went in visual pass 1),
+     and stopping has its own
      separately labelled control (`fp-stop`, also below). styles.css shows it only
      while the sheet is expanded — see the rule under `.fp-close` there — because
      on an already-collapsed bar it would be a control with nothing left to do. Nothing about the stop
@@ -648,7 +660,7 @@ function buildUI() {
      own comment set out to remove. It moves into the sheet's grab row below,
      which is the only place it can be both visible and hit-testable, and is
      also where the sheet's other dismiss affordances now are. */
-  bar.append(art, info, playBtn, announce);
+  bar.append(art, info, skipBtn, playBtn, announce);
   root.append(progress, bar);
 
   /* ---------- the Now Playing sheet ----------
@@ -738,6 +750,26 @@ function buildUI() {
   fwdBtn.setAttribute("aria-label", `Forward ${SEEK_FWD} seconds`);
   row.append(backBtn, bigPlay, fwdBtn);
 
+  /* PREVIOUS / NEXT CLIP ARE THEIR OWN CONTROLS (audit 2026-09-22, persona
+     58). The ↺15 / 30↻ pair used to turn into ‹‹ / ›› inside a Foray — the
+     same two buttons, a different glyph, and "previous" restarts the clip — so
+     the gesture every other player has taught threw the listener to the top of
+     an eleven-minute clip with no way to nudge back a sentence. The seek pair
+     now seeks in every mode, and clip navigation is this row, in words, shown
+     only while a Foray is loaded (`setSkipButtonMode`). */
+  const clips = el("div", "fp-clips");
+  clips.hidden = true;
+  /* The guillemets are decoration: the accessible name is the words alone, or
+     VoiceOver opens with "single left-pointing angle quotation mark" (visual
+     pass 1 review, 2026-09-23). */
+  const clipPrev = el("button", "fp-clip fp-clip-prev", "‹ Previous clip");
+  clipPrev.type = "button";
+  clipPrev.setAttribute("aria-label", "Previous clip");
+  const clipNext = el("button", "fp-clip fp-clip-next", "Next clip ›");
+  clipNext.type = "button";
+  clipNext.setAttribute("aria-label", "Next clip");
+  clips.append(clipPrev, clipNext);
+
   const row2 = el("div", "fp-row2");
   const rateBtn = el("button", "fp-rate", "1×");
   rateBtn.type = "button";
@@ -754,8 +786,9 @@ function buildUI() {
      2026-08-21; test/app-name.test.js). */
   const forayLink = el("a", "fp-openep fp-toforay", "Back to this foray");
   forayLink.hidden = true;
-  const collapse = el("button", "fp-collapse", "Close");
-  collapse.type = "button";
+  /* No "Close" button here any more (visual pass 1, 2026-09-23): the grab
+     zone's ✕ and the drag handle are the sheet's two ways out, and a third,
+     boxed one at the bottom made the row read as four control kinds. */
   /* U-13: the ONLY control that ends playback and takes the bar away. It is here,
      in the expanded sheet, rather than on the mini bar, because the mini bar has
      to survive everything else a listener does — it is the way back to what is
@@ -764,13 +797,12 @@ function buildUI() {
   const stopBtn = el("button", "fp-stop", "Stop");
   stopBtn.type = "button";
   stopBtn.setAttribute("aria-label", "Stop");
-  /* STOP FIRST, CLOSE LAST (audit 2026-09-22, persona "Stop sits next to
-     Close"). They used to be neighbours with Stop in the middle, identical grey
-     pills — and Stop ends playback and takes the bar away while Close only
-     collapses the sheet. The row is `justify-content: space-between`, so this
-     order puts them at opposite ends; styles.css gives `.fp-stop` the danger
-     colour. No confirmation (a stop is undone by pressing play). */
-  row2.append(stopBtn, rateBtn, openLink, forayLink, collapse);
+  /* STOP FIRST, ALONE AT THE DANGER END (audit 2026-09-22, persona "Stop sits
+     next to Close"; visual pass 1). It used to sit in the middle of the row
+     beside an identical grey Close. The row is `justify-content: space-between`,
+     so Stop leads and the navigation links trail; styles.css gives `.fp-stop`
+     the danger colour. No confirmation (a stop is undone by pressing play). */
+  row2.append(stopBtn, rateBtn, openLink, forayLink);
 
   const note = el("p", "fp-note");
   note.hidden = true;
@@ -788,16 +820,16 @@ function buildUI() {
   const sDesc = el("p", "fp-s-desc");
   sDesc.hidden = true;
 
-  scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, row2, sErr, note, sDesc);
+  scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, clips, row2, sErr, note, sDesc);
   sheet.append(grabZone, scroll);
   root.append(sheet);
   document.body.append(root);
 
   return {
-    root, bar, art, title, show, playBtn, closeBtn, fill, sheet,
-    grabZone, scroll, sArt, sDesc,
+    root, bar, art, title, show, playBtn, skipBtn, closeBtn, fill, sheet,
+    grabZone, scroll, sArt, sDesc, clips, clipPrev, clipNext,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
-    rateBtn, openLink, forayLink, stopBtn, collapse, info, note, err, sErr, announce,
+    rateBtn, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
   };
 }
 
@@ -1326,6 +1358,16 @@ function seekEpisodeBy(offsetSec) {
   return seekEpisodeTo(episodePositionSec() + Number(offsetSec || 0));
 }
 
+/** THE ONE NUDGE. ↺15 / 30↻ on the sheet, ↺15 on the mini bar, the Foray
+    page's own pair and the lock screen's seek all come here: inside a Foray
+    the step is taken on the Foray's clock through `foraySeek` (so it crosses
+    a clip boundary the way the scrubber does), otherwise on the episode's. */
+function nudgeBy(offsetSec) {
+  const offset = Number(offsetSec || 0);
+  if (foray) return ForayPlayer.foraySeek(Math.max(0, forayPosition() + offset));
+  return seekEpisodeBy(offset);
+}
+
 function render() {
   if (!ui || !current) return;
   syncForaySegment();
@@ -1334,7 +1376,7 @@ function render() {
      `forayNext` returns early there, so the button looked live and read "Next
      segment" to a screen reader while doing nothing at all. The listener's
      INTENT index, like the running order's highlight. */
-  ui.fwdBtn.disabled = Boolean(foray) && foray.index >= foray.resolved.playable.length - 1;
+  ui.clipNext.disabled = Boolean(foray) && foray.index >= foray.resolved.playable.length - 1;
   /* A seam beat reads as playing everywhere, or the mini bar shows "▶" while
      the Foray page shows "❚❚ Pause" for the same two seconds.
      `transportIsRunning()` rather than `isRunning()` since #689: the founder's
@@ -2048,7 +2090,7 @@ const forayMediaSurface = {
   stop: (details) => remoteStop(details),
   next: () => ForayPlayer.forayNext(),
   previous: () => ForayPlayer.forayPrevious(),
-  seekBy: (offset) => ForayPlayer.foraySeek(Math.max(0, forayPosition() + offset)),
+  seekBy: (offset) => nudgeBy(offset),
   seekTo: (position) => ForayPlayer.foraySeek(position),
 };
 
@@ -2398,9 +2440,8 @@ function bind() {
      title button beside it already is that control for keyboard and screen
      reader, and the art stays `alt=""` decoration to them. */
   ui.art.addEventListener("click", () => setExpanded(ui.sheet.hidden));
-  ui.collapse.addEventListener("click", () => setExpanded(false));
-  /* Same path as `fp-collapse` above, on purpose — one behaviour, two controls,
-     not two behaviours. Declared after `setExpanded` because it is a `const`. */
+  /* The ✕ is the one button that collapses the sheet (the handle's drag is the
+     gesture). Declared after `setExpanded` because it is a `const`. */
   ui.closeBtn.addEventListener("click", () => setExpanded(false));
   // Following the route with the sheet still open would leave the Foray page
   // rendered underneath a full-height overlay.
@@ -2484,11 +2525,16 @@ function bind() {
     setSheetDragOffset(0);
   });
 
-  // In a Foray these are previous/next SEGMENT, not ±15/30 s: a segment here is
-  // often under two minutes, so a 30-second nudge mostly leaves it anyway, and
-  // "leave this one" is what the button should mean.
-  ui.backBtn.addEventListener("click", () => (foray ? ForayPlayer.forayPrevious() : seekEpisodeBy(-SEEK_BACK)));
-  ui.fwdBtn.addEventListener("click", () => (foray ? ForayPlayer.forayNext() : seekEpisodeBy(SEEK_FWD)));
+  /* ±15/30 s in EVERY mode (persona 58): these used to become previous/next
+     clip inside a Foray, which is the one thing a listener's thumb does not
+     expect of them. A 30 s step that leaves a short clip is fine — it lands in
+     the next one, exactly as the scrubber would. Clip navigation is the
+     `.fp-clips` row. */
+  ui.backBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
+  ui.fwdBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
+  ui.skipBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
+  ui.clipPrev.addEventListener("click", () => ForayPlayer.forayPrevious());
+  ui.clipNext.addEventListener("click", () => ForayPlayer.forayNext());
 
   ui.scrub.addEventListener("input", () => { scrubbing = true; });
   ui.scrub.addEventListener("change", async () => {
@@ -3191,6 +3237,14 @@ const ForayPlayer = {
     bubbleContentOffset,
   },
 
+  /* ---------- the seek nudge (persona 58) ----------
+     The Foray page's ↺ / ↻ pair calls this; it is the same `nudgeBy` the
+     sheet, the mini bar and the lock screen use, so a step means the same
+     thing on every surface. `nudgeSteps` is where the page reads the two
+     numbers for its labels, so no surface can name a different step. */
+  nudge(offsetSec) { return nudgeBy(offsetSec); },
+  nudgeSteps() { return { back: SEEK_BACK, fwd: SEEK_FWD }; },
+
   /* ---------- playback speed (#242) ---------- */
 
   /** The chosen speed, as a number. Readable before anything has booted, so a
@@ -3771,13 +3825,16 @@ function clampIndex(index, length) {
   return Math.min(Math.max(0, n), Math.max(0, length - 1));
 }
 
-/** The ±15/30 s buttons become previous/next clip inside a Foray. "Clip" is the
-    listener's word for a Foray's pieces (docs/audit/persona-synthesis.md §2);
-    "segment" is the pipeline's, and it was what a screen reader said here. */
+/** Inside a Foray the sheet shows its previous/next-clip row; the ±15/30 s
+    pair keeps its glyphs and its names in both modes (persona 58 — they used
+    to be repainted as ‹‹ / ›› here). "Clip" is the listener's word for a
+    Foray's pieces (docs/audit/persona-synthesis.md §2); "segment" is the
+    pipeline's. */
 function setSkipButtonMode(isForay) {
   if (!ui) return;
-  paintControl(ui.backBtn, isForay ? "‹‹" : `↺ ${SEEK_BACK}`, isForay ? "Previous clip" : `Back ${SEEK_BACK} seconds`);
-  paintControl(ui.fwdBtn, isForay ? "››" : `${SEEK_FWD} ↻`, isForay ? "Next clip" : `Forward ${SEEK_FWD} seconds`);
+  ui.clips.hidden = !isForay;
+  paintControl(ui.backBtn, `↺ ${SEEK_BACK}`, `Back ${SEEK_BACK} seconds`);
+  paintControl(ui.fwdBtn, `${SEEK_FWD} ↻`, `Forward ${SEEK_FWD} seconds`);
 }
 
 window.ForayPlayer = ForayPlayer;
