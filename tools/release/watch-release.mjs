@@ -124,11 +124,21 @@ export const STALL_HOURS = 6;
  *  that. A run still going at that point is hung, or queued behind one that is. */
 export const STUCK_MINUTES = 60;
 
-/** Liveness. The watchdog runs hourly, the trigger every two hours; each
- *  threshold is the peer's interval plus the measured 85-minute cron drift plus
- *  a margin, so a merely late peer never pages anyone. */
-export const WATCHDOG_STALE_HOURS = 3;
-export const TRIGGER_STALE_HOURS = 4; // 2h interval + 85 min measured drift + margin
+/** Liveness. NOMINALLY the watchdog runs hourly and the trigger every two hours,
+ *  and the first cut set each threshold to the interval plus the 85-minute drift
+ *  nightly-watch had measured (3 h and 4 h). MEASURED ON THIS REPO'S FIRST DAY
+ *  (2026-09-23) that was wrong: GitHub skipped most slots of both new schedules.
+ *  release-watch ran at 15:05 and 19:06Z (hourly cron, ~4 h apart); release-trigger
+ *  at 15:11 and 19:49Z (2-hourly cron, 4.6 h apart), and its FIRST scheduled run
+ *  came ~5 h after the workflow landed. At 3 h / 4 h the watchdog therefore
+ *  paged on its very first run (issue #745, PEER_SILENT for a trigger that simply
+ *  had not been scheduled yet) and would have kept flapping - and this repo's
+ *  rule is that a flaky alarm is worse than none. 8 h for both covers the
+ *  measured gaps with margin and still reports a genuinely dead peer inside a
+ *  working day. If the measured gaps grow, raise these with the new numbers
+ *  written here, never by feel. */
+export const WATCHDOG_STALE_HOURS = 8;
+export const TRIGGER_STALE_HOURS = 8;
 
 /** After this many consecutive failed release runs the trigger stops
  *  dispatching. One automatic retry of a failure is cheap insurance against a
