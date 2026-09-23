@@ -692,7 +692,7 @@ test("a stretch card's bridge line is a row of its own under the card, not a fou
      -> the third fails (and on a device the title jumps to a line of its own,
      because its max-content width is the whole unclamped title). */
   const APP = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
-  assert.ok(APP.includes('</p></a>`;') && APP.includes("return card.replace("),
+  assert.ok(APP.includes('</p></div>`;') && APP.includes("return card.replace("),
     "fixture assumption: the bridge is still injected inside the card's anchor — if it moved outside, this rule is moot");
   assert.strictEqual(valueOf("body.ui-v2 .hv2-episodes .mini-card", "flex-wrap"), "wrap",
     "the Episodes-for-you card row must wrap so the bridge can take a line of its own");

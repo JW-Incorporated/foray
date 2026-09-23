@@ -157,11 +157,11 @@ function parseInto(container, html) {
     note.hidden = /hidden/.test(noteMatch[1]);
     container.appendChild(note);
   }
-  const pillRe = /<button type="button" class="cr-pill" data-cr-subject="([^"]*)">/g;
+  const pillRe = /<button type="button" class="fy-chip" data-cr-subject="([^"]*)">/g;
   let pm;
   while ((pm = pillRe.exec(html))) {
     const pill = makeEl("button");
-    pill.className = "cr-pill";
+    pill.className = "fy-chip";
     pill._attrs["data-cr-subject"] = pm[1];
     pill.dataset.crSubject = pm[1];
     container.appendChild(pill);
@@ -419,7 +419,7 @@ test("clicking a suggested subject pill fills the subject input", () => {
   m.ctx.buildPlaylist = () => ({ status: "miss", suggestions: [] });
   m.ctx.location.hash = "#/create";
   m.evalIn("route()");
-  const pill = m.viewEl.children.find((c) => c.className === "cr-pill");
+  const pill = m.viewEl.children.find((c) => c.className === "fy-chip");
   assert.ok(pill, "at least one suggestion pill must render");
   const wantSubject = pill.dataset.crSubject;
   assert.ok(wantSubject, "the pill must carry its subject in data-cr-subject");
@@ -440,7 +440,7 @@ test("tapping a suggested subject BUILDS it — no second tap, no keyboard", asy
   m.ctx.buildPlaylist = (q) => { asked.push(q); return { status: "miss", suggestions: [] }; };
   m.ctx.location.hash = "#/create";
   m.evalIn("route()");
-  const pill = m.viewEl.children.find((c) => c.className === "cr-pill");
+  const pill = m.viewEl.children.find((c) => c.className === "fy-chip");
   pill._fire("click", {});
   await new Promise((r) => setTimeout(r, 5));
   assert.deepStrictEqual(asked, [pill.dataset.crSubject], "the suggestion is built from one tap");
@@ -458,7 +458,7 @@ test("REVIEW: repeated pill taps while a build is pending build ONE playlist", a
   m.ctx.buildPlaylist = (q) => { asked.push(q); return { status: "miss", suggestions: [] }; };
   m.ctx.location.hash = "#/create";
   m.evalIn("route()");
-  const pills = m.viewEl.children.filter((c) => c.className === "cr-pill");
+  const pills = m.viewEl.children.filter((c) => c.className === "fy-chip");
   assert.ok(pills.length >= 2, "fixture: at least two suggestions");
   pills[0]._fire("click", {});
   pills[0]._fire("click", {});

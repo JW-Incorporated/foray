@@ -4615,15 +4615,18 @@ function bannerHtml() {
   const c = currentContinue();
   if (!c) return "";
   snapshot(c.id, c);
-  return `<a class="banner" href="#/episode/${esc(encodeURIComponent(c.id))}"
-      data-ev="picked" data-ep="${c.id}" data-ctx="continue">
+  /* A CARD WITH A STRETCHED LINK, not a link with a button in it (audit
+     2026-09-22, qa row 78): the title is the one real <a> (styles.css stretches
+     its ::after over the card), and the ✓ is its sibling, lifted above it. */
+  return `<div class="banner">
     ${c.artwork_url ? `<img src="${esc(safeUrl(c.artwork_url))}" alt="">` : ""}
     <div class="b-info">
       <span class="b-label">Continue</span>
-      <span class="b-title">${esc(c.title)}</span>
+      <a class="b-title" href="#/episode/${esc(encodeURIComponent(c.id))}"
+        data-ev="picked" data-ep="${c.id}" data-ctx="continue">${esc(c.title)}</a>
     </div>
     <button class="b-done" id="banner-done" aria-label="Done with this">✓</button>
-  </a>`;
+  </div>`;
 }
 
 /* What actually connects the episodes in a subject queue is one fact: they
@@ -4659,16 +4662,21 @@ function miniCard(slot) {
   const totalMin = allTimed ? slot.items.reduce((s, it) => s + Number(it.duration_min), 0) : 0;
   const stretchTag = slot.role === "stretch"
     ? `<span class="mc-stretch" title="Outside your usual subjects, on purpose">Stretch</span>` : "";
-  return `<a class="mini-card" data-branch="${esc(slot.branch)}"
-      href="#/${esc(playlistRoute({ isSubject: true, branch: slot.branch }))}">
+  /* A CARD WITH A STRETCHED LINK (audit 2026-09-22, qa row 78). The card used
+     to be the <a>, with the star <button> nested inside it — invalid HTML that a
+     screen reader read as one link named "Education … Save", and whose star
+     only avoided following the link through bindStars' preventDefault. The
+     subject title is now the one real <a>; styles.css stretches its ::after
+     over the card, and the star is a sibling lifted above it. */
+  return `<div class="mini-card" data-branch="${esc(slot.branch)}">
     ${item.artwork_url ? `<img src="${esc(safeUrl(item.artwork_url))}" alt="" loading="lazy">` : `<div class="art-ph"></div>`}
     <div class="mc-info">
       <p class="mc-kicker">${stretchTag}${joinMeta(countLabel(slot.items.length, "episode"), fmtDur(totalMin))}</p>
-      <h3>${esc(subjectLabel(slot.branch))}</h3>
+      <h3><a class="mc-link" href="#/${esc(playlistRoute({ isSubject: true, branch: slot.branch }))}">${esc(subjectLabel(slot.branch))}</a></h3>
       <p class="mc-hook">${startsWithLine(item.title)} ${esc(subjectBlurb(slot))}</p>
     </div>
     ${starBtn(item.id)}
-  </a>`;
+  </div>`;
 }
 
 /* WHAT A FORAY IS, in one sentence, written ONCE (audit 2026-09-22, persona
@@ -7726,12 +7734,18 @@ function jumpBackInCardHtml(c) {
      underneath that test is that a link's SCHEME must be fixed by the code and
      never carried in data, and a literal `#/` prefix is how this file says so. */
   const route = c.kind === "foray" ? "foray" : c.kind === "playlist" ? "playlist" : "episode";
+  /* A CARD WITH A STRETCHED LINK (audit 2026-09-22, qa row 78): the title is
+     the one real <a> (styles.css stretches its ::after over the card) and the
+     play button is its SIBLING, lifted above it — not a <button> inside an <a>,
+     which is invalid HTML that reads as "link, …, Play …" to a screen reader
+     and only behaved on a pointer because bindPlay calls preventDefault. The
+     `picked` attributes ride on the link, which is what bindPickLogging binds. */
   return `
-    <a class="hv2-jbi-card" href="#/${route}/${id}"${ev}>
+    <div class="hv2-jbi-card">
       <span class="hv2-jbi-kicker">Jump back in</span>
-      <span class="hv2-jbi-title">${esc(c.title)}</span>
+      <a class="hv2-jbi-title hv2-jbi-link" href="#/${route}/${id}"${ev}>${esc(c.title)}</a>
       ${sub}${bar}${left}${play}
-    </a>`;
+    </div>`;
 }
 
 /** One Foray card for "Forays for you", carrying its SegmentStrip (U-04) —
@@ -7843,9 +7857,9 @@ function playlistsForYouHtml() {
 function miniCardV2(slot) {
   const card = miniCard(slot);
   if (slot.role !== "stretch") return card;
-  // Insert the bridge line just before the anchor's closing tag.
-  const bridge = `<p class="hv2-bridge">${stretchBridgeLine(subjectLabel(slot.branch))}</p></a>`;
-  return card.replace(/<\/a>$/, bridge);
+  // Insert the bridge line just before the card's closing tag.
+  const bridge = `<p class="hv2-bridge">${stretchBridgeLine(subjectLabel(slot.branch))}</p></div>`;
+  return card.replace(/<\/div>$/, bridge);
 }
 
 /** "Episodes for you": buildCards()'s ranked discover-pool picks, i.e.
@@ -8948,7 +8962,7 @@ function renderCreate() {
         <button type="submit">Build</button>
       </form>
       <div class="cr-suggestions">
-        ${CREATE_SUBJECT_SUGGESTIONS.map(s => `<button type="button" class="cr-pill" data-cr-subject="${esc(s)}">${esc(s)}</button>`).join("")}
+        ${CREATE_SUBJECT_SUGGESTIONS.map(s => `<button type="button" class="fy-chip" data-cr-subject="${esc(s)}">${esc(s)}</button>`).join("")}
       </div>
       <p id="cr-note" class="note" hidden></p>
     </div>`;
