@@ -286,7 +286,7 @@ test("the ✕ lives in the sheet's grab row, not on the mini bar it would now hi
      MUTATION: restore `bar.append(art, info, playBtn, closeBtn)`. The second
      assertion fails. */
   assert.match(FLAT_TEXT, /grabZone\.append\(el\("div", "fy-grab"\), closeBtn\);/);
-  assert.match(FLAT_TEXT, /bar\.append\(art, info, playBtn\);/);
+  assert.match(FLAT_TEXT, /bar\.append\(art, info, playBtn, announce\);/);
   assert.doesNotMatch(FLAT_TEXT, /bar\.append\([^)]*closeBtn/);
   /* Unchanged from U-13, and asserted here because this is the change that
      could have quietly dropped it: the control still only COLLAPSES. */
@@ -333,7 +333,11 @@ test("an ordinary episode that fails to play says so on the bar and in the sheet
   assert.match(setNow, /setPlayFailure\(null\);/, "a new current item clears the previous one's failure");
   assert.match(CODE, /if \(playFailure && running\) setPlayFailure\(null\);/, "sound coming out clears it too");
   // CLIENT, not CODE: the attribute values are string literals, which CODE blanks.
-  assert.match(CLIENT, /err\.setAttribute\("role", "status"\);/, "the bar's line is a live region");
+  /* The live region is a SIBLING of the bar's <button> (review 2026-09-23): a
+     button's children are presentational, so a status role inside it was never
+     announced. MUTATION: put the role back on `err`. */
+  assert.match(CLIENT, /announce\.setAttribute\("role", "status"\);/, "the bar's failure is announced");
+  assert.doesNotMatch(CLIENT, /err\.setAttribute\("role"/, "and not from inside the named button");
   assert.match(CLIENT, /reportPlayFailure\(err\) \{/, "app.js has a bridge to report a throw from its side");
 });
 

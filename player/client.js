@@ -602,13 +602,19 @@ function buildUI() {
   /* A failed play says so ON THE BAR (persona audit #4, 2026-09-22), in the
      show line's place: the bar is the one surface on screen whatever page the
      listener tapped play from, and in a car it is the only one they glance at.
-     A live region so a screen reader hears it without focus moving. Hidden
-     until `setPlayFailure` fills it. */
+     Hidden until `setPlayFailure` fills it.
+     NOT THE LIVE REGION (review 2026-09-23). It sits inside `info`, a
+     <button> named by its aria-label, and a button's children are
+     presentational — WebKit leaves them out of the accessibility tree, so a
+     status role here was never announced under VoiceOver. The announcement is
+     `announce` below, a visually hidden sibling of the button, and the
+     button's own name carries the line too (`paintInfoLabel`). */
   const err = el("span", "fp-err");
-  err.setAttribute("role", "status");
-  err.setAttribute("aria-live", "polite");
   err.hidden = true;
   info.append(title, show, err);
+  const announce = el("span", "fp-announce sr-only");
+  announce.setAttribute("role", "status");
+  announce.setAttribute("aria-live", "polite");
 
   const playBtn = el("button", "fp-play", "▶");
   playBtn.type = "button";
@@ -642,7 +648,7 @@ function buildUI() {
      own comment set out to remove. It moves into the sheet's grab row below,
      which is the only place it can be both visible and hit-testable, and is
      also where the sheet's other dismiss affordances now are. */
-  bar.append(art, info, playBtn);
+  bar.append(art, info, playBtn, announce);
   root.append(progress, bar);
 
   /* ---------- the Now Playing sheet ----------
@@ -789,7 +795,7 @@ function buildUI() {
     root, bar, art, title, show, playBtn, closeBtn, fill, sheet,
     grabZone, scroll, sArt, sDesc,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
-    rateBtn, openLink, forayLink, stopBtn, collapse, info, note, err, sErr,
+    rateBtn, openLink, forayLink, stopBtn, collapse, info, note, err, sErr, announce,
   };
 }
 
@@ -1390,7 +1396,11 @@ function render() {
     episode (setNowPlaying) and the sheet opening or closing (setExpanded). */
 function paintInfoLabel() {
   if (!ui) return;
-  const what = [ui.title.textContent, ui.show.textContent].filter(Boolean).join(", ");
+  /* The line the bar SHOWS: while a failure or buffering line stands in for
+     the show line, that is what the button is named with — the hidden show
+     line was still being read out beside a failure nobody was told about. */
+  const second = ui.err && !ui.err.hidden ? ui.err.textContent : ui.show.textContent;
+  const what = [ui.title.textContent, second].filter(Boolean).join(", ");
   paintControl(ui.info, null, what ? `Now playing: ${what}` : "Now playing");
   ui.info.setAttribute("aria-expanded", ui.sheet && !ui.sheet.hidden ? "true" : "false");
 }
@@ -1540,6 +1550,9 @@ function paintStatus() {
   ui.show.hidden = Boolean(barLine);
   ui.sErr.textContent = sheetLine;
   ui.sErr.hidden = !sheetLine;
+  /* Written only when it changes, so a repaint does not re-announce it. */
+  if (ui.announce && ui.announce.textContent !== sheetLine) ui.announce.textContent = sheetLine;
+  paintInfoLabel();
 }
 
 /* ---------- playback speed (#242) ----------
