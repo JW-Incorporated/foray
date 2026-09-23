@@ -113,8 +113,8 @@ cosmetic cannot be.
 
 `frozen/data/*.json` is a second checkout-shaped fixture, and it is the opposite
 of the boundary fixture in one respect: **nothing in it was built.** It is a
-verbatim copy — taken on 2026-09-22 at `1c0c04d` — of four real Forays from
-`data/forays.json`, plus exactly the pool rows they play (`segments.json`), the
+verbatim copy — taken on 2026-09-22, just after `grilling-history-2`'s
+retitle — of four real Forays from `data/forays.json`, plus exactly the pool rows they play (`segments.json`), the
 episodes those rows cut from (`segment-sources.json`) and their topics
 (`taxonomy.json`):
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "notes": "Frozen verbatim from data/*.json at 1c0c04d (2026-09-22) by the #236 follow-up. See tools/foray/fixtures/README.md, \"The frozen fixture\". The four Forays' topics and their ancestors, so the checker's topic rule runs.",
+  "notes": "Frozen verbatim from data/*.json on 2026-09-22 (after grilling-history-2's retitle) by the #236 follow-up. See tools/foray/fixtures/README.md, \"The frozen fixture\". The four Forays' topics and their ancestors, so the checker's topic rule runs.",
   "nodes": [
     {
       "id": "business",

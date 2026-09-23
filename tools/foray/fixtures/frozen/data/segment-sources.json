@@ -1,7 +1,7 @@
 {
   "version": 1,
   "built_at": "2026-08-16T00:00:00.000Z",
-  "notes": "Frozen verbatim from data/*.json at 1c0c04d (2026-09-22) by the #236 follow-up. See tools/foray/fixtures/README.md, \"The frozen fixture\". Exactly the episodes those pool rows cut from.",
+  "notes": "Frozen verbatim from data/*.json on 2026-09-22 (after grilling-history-2's retitle) by the #236 follow-up. See tools/foray/fixtures/README.md, \"The frozen fixture\". Exactly the episodes those pool rows cut from.",
   "sources": [
     {
       "id": "origin-stories-cooking-human",

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "built_at": "2026-08-17T00:00:00.000Z",
-  "notes": "Frozen verbatim from data/*.json at 1c0c04d (2026-09-22) by the #236 follow-up. See tools/foray/fixtures/README.md, \"The frozen fixture\". Four Forays the player suites exercise by id: grilling-history-1 (retired from data/ in the same change), grilling-history-2, capital-types-1 and what-engineers-actually-do-all-day-e08236. Never edited editorially; the live copies may move on without it.",
+  "notes": "Frozen verbatim from data/*.json on 2026-09-22 (after grilling-history-2's retitle) by the #236 follow-up. See tools/foray/fixtures/README.md, \"The frozen fixture\". Four Forays the player suites exercise by id: grilling-history-1 (retired from data/ in the same change), grilling-history-2, capital-types-1 and what-engineers-actually-do-all-day-e08236. Never edited editorially; the live copies may move on without it.",
   "forays": [
     {
       "id": "grilling-history-1",
