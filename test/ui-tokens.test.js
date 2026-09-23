@@ -321,7 +321,8 @@ test("the JS-written tokens the ownership check trusts are really written by JS"
    a browser would, over the simple selectors this file uses, rather than
    trusting that some rule mentions `.dd-go`.
 
-   MUTATION: delete the `body.ui-v2 .fy-sheet-go.dd-go:not(:disabled)` rule ->
+   MUTATION: delete the `body.ui-v2 .fy-sheet-go.dd-go` rule (L6's shape, kept
+   at integration; its disabled twin follows it) ->
    the winner is the violet primary and this fails naming it. */
 
 function specificity(sel) {
