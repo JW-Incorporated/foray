@@ -684,11 +684,13 @@ function buildUI() {
      controls nobody could see. The name is the episode title below
      (`aria-labelledby`); opening and closing go through app.js's sheet owner
      (see `setExpanded`), which moves focus in, makes the page behind inert and
-     binds Escape. `aria-modal` is true although the topbar stays reachable by
-     pointer (U-12/F17: the ☰ must work at every moment) — the owner leaves the
-     topbar and the drawer out of `inert` for exactly that. */
+     binds Escape. NOT `aria-modal` (review 2026-09-23): the topbar and the
+     drawer stay reachable (U-12/F17: the ☰ must work at every moment), and
+     VoiceOver and TalkBack take `aria-modal="true"` as "nothing outside this
+     exists" — the ☰ vanished from swipe navigation. `inert` on everything else
+     (the owner's `keepReachable`) already does the modal part, and does it
+     without hiding the chrome that is meant to stay. */
   sheet.setAttribute("role", "dialog");
-  sheet.setAttribute("aria-modal", "true");
   /* `.fy-grab` is the app's existing grabber (the reason sheet, the feedback
      sheet, the delete sheet and the voice sheet all already paint one) —
      reused by class rather than restyled under a new name, so a fifth sheet

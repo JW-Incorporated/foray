@@ -351,7 +351,11 @@ test("the Now Playing sheet is a named, modal dialog", () => {
      focus move, so a screen reader kept exploring the hidden page behind it.
      MUTATION: delete `sheet.setAttribute("role", "dialog")` -> red. */
   assert.match(TEXT, /sheet\.setAttribute\("role", "dialog"\)/);
-  assert.match(TEXT, /sheet\.setAttribute\("aria-modal", "true"\)/);
+  /* NOT aria-modal (review 2026-09-23): the ☰ and the drawer stay reachable, and
+     aria-modal="true" hides them from VoiceOver/TalkBack swipe navigation.
+     `inert` on the rest is what makes it modal. MUTATION: put
+     `sheet.setAttribute("aria-modal", "true")` back -> red. */
+  assert.doesNotMatch(TEXT, /sheet\.setAttribute\("aria-modal"/);
   assert.match(TEXT, /sheet\.setAttribute\("aria-labelledby", "fp-s-title"\)/);
   assert.match(TEXT, /sTitle\.id = "fp-s-title"/, "the name must point at an element that exists");
 });

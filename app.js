@@ -5023,6 +5023,26 @@ function onSheetKeydown(e) {
   const items = sheetFocusables(top.panel);
   const active = document.activeElement;
   const inside = !!(active && typeof top.panel.contains === "function" && top.panel.contains(active));
+  /* WHAT THE SHEET KEEPS REACHABLE IS INSIDE THE TRAP (review 2026-09-23).
+     The Now Playing sheet leaves the topbar and the drawer reachable (F17: the
+     ☰ at every moment), but the trap only knew the panel: Tab wrapped from the
+     sheet's last control to its first and never reached the ☰, and with the
+     drawer opened by pointer the next Tab yanked focus out of the drawer back
+     into the covered sheet. The kept chrome now sits in the cycle, in document
+     order ahead of the sheet: … → last control → ☰ (→ the drawer's links, when
+     it is open) → first control → … */
+  const kept = keptFocusables(top);
+  const inKept = !!(active && kept.includes(active));
+  if (!items.length && !kept.length) { e.preventDefault(); focusQuietly(top.panel); return; }
+  const cycle = [...kept, ...items];
+  if (inKept || (kept.length && inside)) {
+    const at = cycle.indexOf(active);
+    if (at >= 0) {
+      e.preventDefault();
+      focusQuietly(cycle[(at + (e.shiftKey ? cycle.length - 1 : 1)) % cycle.length]);
+      return;
+    }
+  }
   if (!items.length) { e.preventDefault(); focusQuietly(top.panel); return; }
   const first = items[0];
   const last = items[items.length - 1];
@@ -5031,6 +5051,22 @@ function onSheetKeydown(e) {
   } else if (!e.shiftKey && (!inside || active === last)) {
     e.preventDefault(); focusQuietly(first);
   }
+}
+
+/** The focusable controls inside the chrome a sheet keeps reachable
+    (`keepReachable`), in the order given — the ☰ first, then an open drawer's
+    links. A closed drawer is `hidden`, so it contributes nothing. */
+function keptFocusables(entry) {
+  const out = [];
+  for (const sel of entry.keep || []) {
+    let roots = [];
+    try { roots = typeof document.querySelectorAll === "function" ? [...document.querySelectorAll(sel)] : []; } catch (_) { roots = []; }
+    for (const root of roots) {
+      if (root.hidden) continue;
+      for (const el of sheetFocusables(root)) if (!out.includes(el)) out.push(el);
+    }
+  }
+  return out;
 }
 
 /**

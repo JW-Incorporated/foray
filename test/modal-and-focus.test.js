@@ -341,6 +341,32 @@ test("Tab and Shift+Tab stay inside the dialog", () => {
   assert.strictEqual(m.doc.activeElement, s.a, "focus found outside is pulled back in");
 });
 
+test("REVIEW: with the ☰ kept reachable, Tab reaches it — and an open drawer — and comes back", () => {
+  /* The trap only knew the panel: Tab from the sheet's last control wrapped to
+     its first and never reached the ☰, and a Tab from the pointer-opened drawer
+     was yanked back into the covered sheet. MUTATION: drop the kept-chrome
+     branch from onSheetKeydown (cycle = the panel's items only). */
+  const m = mount();
+  const s = sheet(m);
+  m.ctx.openSheet(s.wrap, { keepReachable: [".topbar", "#drawer"] });
+  m.drawer.hidden = true;                          // the drawer is closed
+  s.b.focus();
+  m.doc.key("Tab");
+  assert.strictEqual(m.doc.activeElement, m.menu, "Tab from the sheet's last control reaches the ☰");
+  m.doc.key("Tab");
+  assert.strictEqual(m.doc.activeElement, s.a, "and the next Tab comes back into the sheet");
+  m.doc.key("Tab", { shiftKey: true });
+  assert.strictEqual(m.doc.activeElement, m.menu, "Shift+Tab from the first control goes back to the ☰");
+
+  const link = m.doc.createElement("a");
+  link.setAttribute("href", "#/library");
+  m.drawer.appendChild(link);
+  m.drawer.hidden = false;                         // opened by pointer
+  m.menu.focus();
+  m.doc.key("Tab");
+  assert.strictEqual(m.doc.activeElement, link, "from the ☰, Tab walks into the open drawer, not back into the sheet");
+});
+
 test("the modal lock is derived from what is open: kept across a render, dropped when the sheet's DOM is gone", () => {
   /* THE BACK-GESTURE BUG. The feedback sheet lives inside #view; a navigation
      replaced #view and `fy-sheet-open` was carried forward because it was
