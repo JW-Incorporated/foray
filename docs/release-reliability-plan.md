@@ -263,7 +263,7 @@ changes, closed by the watchdog with a comment when every gate is green.
 
 **Liveness.** The two workflows watch each other: a peer whose workflow `state`
 is not `active` (the #46 banner) is red at once; a peer with no successful
-*scheduled* run in 3 hours (watchdog) or 4 hours (trigger) is red. Both exit 0
+*scheduled* run in 8 hours (either; measured 2026-09-23: GitHub left ~4-5 h gaps in both new schedules and the first cut's 3 h / 4 h paged falsely, issue #745) is red. Both exit 0
 whenever they managed to evaluate — the issue carries the verdict, the run colour
 carries only "did the watcher work" — which is what makes "no recent success"
 mean "down". The trigger may raise the issue for a dead watchdog but never close

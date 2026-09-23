@@ -349,8 +349,15 @@ test("liveness: #46's disabled banner is red at once; silence past the threshold
   const now = "2026-09-24T12:00:00Z";
   assert.equal(livenessGate("L", "release-trigger", { state: "disabled_inactivity" }, [], 6, now).code, "PEER_DISABLED");
   assert.equal(livenessGate("L", "release-trigger", { state: "disabled_manually" }, [peerRunAt("2026-09-24T11:47:00Z")], 6, now).code, "PEER_DISABLED");
-  assert.equal(livenessGate("L", "release-trigger", ALIVE_PEER, [peerRunAt("2026-09-24T05:47:00Z")], TRIGGER_STALE_HOURS, now).code, "PEER_SILENT");
+  assert.equal(livenessGate("L", "release-trigger", ALIVE_PEER, [peerRunAt("2026-09-24T03:47:00Z")], TRIGGER_STALE_HOURS, now).code, "PEER_SILENT");
   assert.equal(livenessGate("L", "release-trigger", ALIVE_PEER, [peerRunAt("2026-09-24T08:47:00Z")], TRIGGER_STALE_HOURS, now).ok, true);
+  /* The gaps GitHub actually left on 2026-09-23 (#745): 4.6 h between trigger
+     runs, 4 h between watchdog runs, ~5 h before a new workflow's first
+     scheduled run. None of them may page. MUTATION: WATCHDOG_STALE_HOURS or
+     TRIGGER_STALE_HOURS back to 3 / 4 - these go red. */
+  assert.equal(livenessGate("L", "release-trigger", ALIVE_PEER, [peerRunAt("2026-09-24T07:22:00Z")], TRIGGER_STALE_HOURS, now).ok, true);
+  assert.equal(livenessGate("L", "release-watch", ALIVE_PEER, [peerRunAt("2026-09-24T08:00:00Z")], WATCHDOG_STALE_HOURS, now).ok, true);
+  assert.equal(livenessGate("L", "release-trigger", { state: "active", created_at: "2026-09-24T07:00:00Z" }, [], TRIGGER_STALE_HOURS, now).ok, true);
   // Merged an hour ago, never scheduled yet: measured from the workflow's creation.
   assert.equal(livenessGate("L", "release-watch", { state: "active", created_at: "2026-09-24T11:00:00Z" }, [], WATCHDOG_STALE_HOURS, now).ok, true);
   // A person clicking "Run workflow" proves the code works, not that the cron fires.
@@ -405,7 +412,7 @@ test("trigger: holds on a red or building main, but never on the release machine
 test("triggerVerdict carries the watchdog's liveness beside the decision", () => {
   const now = "2026-09-24T12:00:00Z";
   const v = triggerVerdict({ runs: [DONE], commits: WAITING, bundle: BUNDLE, ...GREEN,
-    peerWorkflow: ALIVE_PEER, peerRuns: [peerRunAt("2026-09-24T07:23:00Z")], now });
+    peerWorkflow: ALIVE_PEER, peerRuns: [peerRunAt("2026-09-24T03:23:00Z")], now });
   assert.equal(v.decision.code, "DISPATCH");
   assert.equal(v.ok, false);
   assert.equal(v.gates[0].code, "PEER_SILENT");
