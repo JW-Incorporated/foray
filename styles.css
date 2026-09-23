@@ -7,6 +7,16 @@
   --line: #2a3441;
   --accent: #4c9aff;
   --gold: #e8d34c;
+  /* The one destructive colour: "Delete everything" in the delete-my-data sheet.
+     A token rather than the raw hex the rule used to carry, so the ui-v2 override
+     below and the v1 rule cannot drift apart. */
+  --danger: #b3402f;
+  /* The danger colour as a TEXT colour. `--danger` is 2.7:1 on the dark
+     surfaces — fine for a fill or a border, too dark for a 0.75rem label
+     (WCAG 1.4.3 wants 4.5:1). This tint is ~5.7:1 on --surface-2; the light
+     block below puts the original hex back, which is ~5:1 on its light
+     surface. (Review 2026-09-23: Stop's label.) */
+  --danger-text: #ef7d68;
   --radius: 14px;
   --topbar-h: 44px;
   /* U-12: the drawer is the top-most chrome. Defined here rather than at the
@@ -28,6 +38,7 @@
     --text: #211c14;
     --text-dim: #6b6154;
     --line: #e6ddd0;
+    --danger-text: #b3402f;
     --shadow: 0 1px 2px rgba(60,45,20,0.06), 0 6px 16px rgba(60,45,20,0.08);
   }
 }
@@ -36,21 +47,23 @@
    UI-v2 design tokens, fonts and brand (U-01, docs/ui-transition-plan.md).
    Everything in this block is scoped to `body.ui-v2` and NOTHING here touches
    the `:root` tokens above or their `prefers-color-scheme: light` override —
-   those two blocks are v1's and stay exactly as they are so nothing regresses
-   for a v1 (flag-off) light-mode listener. `cp_ui_v2` defaults OFF (U-02), so
-   `body.ui-v2` is only present when a listener has opted in (or a TestFlight
-   build defaulted it on).
+   those two blocks are v1's. SINCE THE U-11 CUTOVER `ui-v2` IS ON EVERY
+   RENDERED PAGE (setBodyClass in app.js always adds it; the cp_ui_v2 flag is
+   retired), so the v1 blocks now only answer for the instant before the first
+   render — and for any name this block forgets to own, which is the leak the
+   2026-09-22 audit found (see the aliases at the end of the block).
 
    DARK IS THE DESIGN for v2 (docs/ui-transition-plan.md D9/D4, issue #127):
    the mockup ships one palette, not two, and nothing in the brief asks for a
    v2 light variant. So this block is intentionally dark-only — an OS set to
-   light with `cp_ui_v2` on keeps the v2 dark palette, which is a deliberate,
+   light keeps the v2 dark palette, which is a deliberate,
    documented scope decision, not an oversight. If a v2 light palette is ever
    wanted, it is a new design decision (its own DECISIONS.md entry), not a
    reuse of the v1 light values above: the two palettes don't share a look.
 
-   NAMING NOTE: four of these names (`--bg`, `--surface`, `--text`, `--line`)
-   already exist on `:root` for v1. That is intentional, not a collision —
+   NAMING NOTE: several of these names (`--bg`, `--surface`, `--text`,
+   `--line`, and the five v1 aliases at the end) also exist on `:root` for
+   v1. That is intentional, not a collision —
    `body.ui-v2`'s higher specificity means an element inside a `body.ui-v2`
    page reads the v2 value, while anything still rendering under v1 (the flag
    off, or a stray element outside `body`) keeps reading `:root`'s v1 value.
@@ -71,6 +84,41 @@ body.ui-v2 {
      for the other's meaning even where a screen only needs "an accent". */
   --amber: #F2A33C;
   --violet: #A78BFA;
+  /* Destructive, and only destructive: the "Delete everything" confirm (the
+     drawer item that opens it is an ordinary item since L6 — the sheet carries
+     the warning). The hex is the one `.dd-go` was written
+     with (#42); it moved here so the colour that means "this erases your
+     data" is a token and not a literal a later primary-button rule can
+     silently outrank — which is exactly what happened (audit 2026-09-22). */
+  --danger: #b3402f;
+  /* As text, on --surface2 #2A2333: ~5.6:1 where --danger is 2.7:1. */
+  --danger-text: #ef7d68;
+
+  /* THE FIVE v1 NAMES THAT LIVE RULES STILL READ (audit 2026-09-22, theme I).
+     ui-v2 was a layer over v1, and v1's rules kept asking for `--surface-2`,
+     `--text-dim`, `--accent`, `--gold` and `--shadow` — names this block
+     never defined. On a phone set to Dark that was invisible, because the
+     `:root` values happen to be dark too. On a phone set to Light,
+     `:root`'s light block (top of this file) answered instead: near-white
+     artwork placeholders on a near-black page, secondary text at ~3:1,
+     shadows that vanish, v1 blue in five controls and gold where amber
+     belongs. Aliasing them HERE, on the v2 scope, means no rule on a v2 page
+     can reach a v1 value whatever the OS appearance says.
+     `test/ui-tokens.test.js` now enumerates every token a live rule READS and
+     fails on any this scope does not own — the old test only checked the
+     nine that were added, which is how these five slipped through. */
+  --surface-2: var(--surface2);
+  --text-dim: var(--muted);
+  /* v1's accent was "the one colour"; v2 splits it by meaning. The rules that
+     still say `--accent` without a v2 override are editorial framing (a
+     narrator voice, the Create page's controls, links in a description,
+     the Stretch tag), which is violet's half of the #127 split. */
+  --accent: var(--violet);
+  /* Every surviving `--gold` reader is the listener's own material — their
+     starred items, their "N min left", the Continue banner — which is
+     amber's half. */
+  --gold: var(--amber);
+  --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.28);
 
   --font-display: "Fraunces", var(--serif);
   --font-body: "DM Sans", var(--sans);
@@ -201,6 +249,73 @@ html, body {
   overflow-x: hidden;
   overflow-x: clip;
 }
+/* ---------- THE TAP-TARGET RULE (audit 2026-09-22, theme F) ----------
+
+   Every control a thumb has to hit gets at least a 44x44 CSS-px HIT AREA —
+   Apple's HIG floor, and the size this file already chose for the player's own
+   transport ("Big targets — this is still a car product"). Before this there
+   was no rule, only sizes picked by eye: four 44px targets in 3,300 lines, and
+   two comments promising sizes the CSS did not deliver. The consequences were
+   not neutral — a missed reorder arrow removed an episode, a missed Audition
+   changed the narration voice, a missed star started audio.
+
+   HIT AREA, NOT VISUAL SIZE. The pseudo-element below is an invisible box
+   centred on the control, at least 44px in each direction, and the browser
+   hit-tests it as part of the control. So a 40px star still LOOKS 40px and
+   still sits where it did, and the row's title column does not lose width to
+   a size bump. Controls that are genuinely too small to look right at 40 get a
+   real size change at their own rule instead.
+
+   `:where()` on purpose: zero specificity, so this can never out-rank a
+   component's own `position` (the ✕ in the Now Playing grab row is
+   `position: absolute`, and stays so) — it only supplies `relative` to the
+   controls that had no position at all, which the pseudo-element needs to
+   anchor to. A control that joins this list must be one whose ::after is free;
+   test/tap-targets.test.js enumerates the list and checks that. */
+:where(
+  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
+  .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-collapse, .fp-openep,
+  .voice-row-audition
+) {
+  position: relative;
+}
+:where(
+  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
+  .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-collapse, .fp-openep,
+  .voice-row-audition
+)::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* Visually hidden, still read: the one live region app.js's announce() writes
+   ("Moved to position 2 of 5."). Not `display: none` / `hidden`, which would
+   take it out of the accessibility tree too. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The sheet owner (app.js, openSheet) focuses the DIALOG itself when a sheet
+   opens, so a screen reader announces its name and no text field throws up a
+   keyboard. The panel is not a control: it gets no focus ring of its own when
+   that focus came from a tap. A keyboard user still gets one (`:focus-visible`
+   is the browser's own judgement of that). */
+[role="dialog"][tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+/* Same for where a route lands focus (app.js landOnPage, audit 2026-09-22 qa
+   row 80): the page heading, or #view on a page with none, is a programmatic
+   target so a screen reader reads it and Tab continues from it. */
+.page-head h2[tabindex="-1"]:focus:not(:focus-visible),
+#view[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+
 /* Was `overflow: hidden` on `body.view-home` — the home screen is designed
    to fit one viewport with no internal scroll, but on iOS Safari a page with
    no scrollable overflow anywhere also has no rubber-band bounce, which reads
@@ -275,6 +390,10 @@ html, body {
   .topbar-tag { display: none; }
 }
 .topbar button {
+  /* 42px to look at — the bar's content box is 43px (44 less its hairline),
+     which test/home-layout.test.js pins — and 44px to hit, through the
+     tap-target rule: these are the two most-reached controls in the app
+     (audit 2026-09-22). */
   width: 42px; height: 42px;
   border: none; border-radius: 10px;
   background: none;
@@ -385,6 +504,14 @@ html, body {
   font-family: inherit;
   cursor: pointer;
 }
+/* The Developer group (app.js § the Developer group): the founder's field-report
+   tools in one collapsed <details> at the bottom of Settings. The summary is an
+   ordinary drawer item; its chevron replaces the UA marker, which `.drawer-item`'s
+   `display: block` would hide anyway, and turns when the group is open. */
+.drawer-dev > summary { list-style: none; cursor: pointer; }
+.drawer-dev > summary::-webkit-details-marker { display: none; }
+.drawer-dev > summary::after { content: "\203A"; float: right; transition: transform 120ms; }
+.drawer-dev[open] > summary::after { transform: rotate(90deg); }
 
 /* ---------- home: one screen, and only one screen ---------- */
 #view { padding-top: calc(var(--topbar-h) + env(safe-area-inset-top)); }
@@ -722,7 +849,10 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   padding: 7px 13px;
   cursor: pointer;
 }
-.cr-pill:hover { color: var(--text); border-color: var(--accent); }
+/* `:active` beside every `:hover` in this file that a touch-first control
+   relies on for feedback: a finger never hovers, so a hover-only accent is no
+   acknowledgement at all on a phone (audit 2026-09-22). */
+.cr-pill:hover, .cr-pill:active { color: var(--text); border-color: var(--accent); }
 
 /* The Foray | Playlist toggle (D7): Playlist is the only real control here.
    Foray is rendered -- the affordance must be VISIBLE, per the card -- but
@@ -759,6 +889,11 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 }
 .cr-foray-note { margin: 0 0 14px; }
 .note { color: var(--text-dim); font-size: 0.85rem; margin: 0; flex: none; }
+/* The FAILED state of the three-state convention (app.js `failedNoteHtml`, audit
+   2026-09-22): the sentence, then "Try again" beneath it. The button is an
+   ordinary `.fy-btn` — its 48px height and tap behaviour come from there — so
+   this rule only stacks the two. */
+.load-failed { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin: 8px 0; }
 
 /* ---------- Shows search (Stage 2, docs/show-pages-plan.md) ----------
    Lives on the Shows page (#/shows). The `.search-tabs`/`.search-tab` pair
@@ -792,6 +927,11 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   flex-direction: column;
   gap: 8px;
 }
+/* The column's `gap` owns the spacing inside it. The search page nests
+   Playlists' `.pl-row`s in a `.show-results` column, and each row also kept
+   its own 8px `margin-bottom` — so that section sat at double the spacing of
+   the Episodes rows directly above it (audit 2026-09-22). */
+.show-results > .ep-row, .show-results > .pl-row { margin-bottom: 0; }
 .show-result {
   display: flex;
   align-items: center;
@@ -940,7 +1080,7 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
    the header exactly as before this fix. */
 .page-head.page-head-hidden { transform: translateY(-130%); }
 .page-head .back {
-  width: 42px; height: 42px;
+  width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 10px;
   border: 1px solid var(--line);
@@ -980,7 +1120,6 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   margin-bottom: 8px;
 }
 .interest-row-name { font-weight: 700; font-size: 0.95rem; }
-.interest-row-path { font-size: 0.72rem; color: var(--text-dim); }
 .interest-row-controls { display: flex; align-items: center; gap: 10px; }
 /* The old prototype fixed this exact regression twice (docs/ux/foray-m3-prototype.html):
    a slider with no touch-action fights the page's own vertical scroll on a
@@ -1003,7 +1142,10 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   display: flex; align-items: center; gap: 10px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  /* The token, not a literal 12px: `.show-result` (var(--radius), 14px) sits
+     in the same search results list, and 2px of corner drift between
+     neighbouring rows is an accident, not a design (audit 2026-09-22, R12). */
+  border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 12px;
   margin-bottom: 8px;
@@ -1014,8 +1156,24 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 .ep-row .info, .pl-row .info { flex: 1; min-width: 0; }
 .ep-row .t, .pl-row .t { font-family: var(--serif); font-size: 0.98rem; font-weight: 700; line-height: 1.3; }
 .ep-row .s, .pl-row .s { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; }
+/* Where the listener is in the episode (app.js `rowProgress`, audit 2026-09-22):
+   "NN min left" reads a step brighter than the metadata around it, because it is
+   the one thing on the line about THEM; "Played" stays at the line's own tone. */
+.ep-row .s .ep-progress { color: var(--text); }
+.ep-row .s .ep-progress.is-played { color: inherit; }
 .ep-title-link { color: inherit; text-decoration: none; }
 .ep-title-link:active { text-decoration: underline; }
+/* THE WHOLE TEXT BLOCK OPENS THE EPISODE (audit 2026-09-22). A row carried two
+   bare links ~2px apart — the title (episode page) over the show name (show
+   page) — and nothing else: a tap aimed at the title often landed on the show
+   and left for a different page, and a tap in the empty space right of a short
+   title did nothing although the card looks like one big target. The title
+   link's ::after now covers the whole `.info` block (the "stretched link"
+   pattern — still one real `<a href>`, so long-press and open-in-new-tab keep
+   working), and the show link is the one explicit exception, lifted above it. */
+.ep-row .info { position: relative; }
+.ep-row .ep-title-link::after { content: ""; position: absolute; inset: 0; }
+.ep-row .info .show-link { position: relative; z-index: 1; }
 /* Publisher-set explicit-content marker (kanban card t_02c6bb0b), matching the
    small square "E" every mainstream podcast app puts next to a title —
    deliberately not a color-only signal (text label, not a dot) so it still
@@ -1112,26 +1270,46 @@ button.up-next {
 }
 button.up-next.on { color: var(--accent); border-color: var(--accent); }
 
+/* THE UP NEXT ROW HAS TWO LINES (audit 2026-09-22: three QA findings and a
+   persona, one cause). It carried six things on one line at phone width — a
+   number, the title, ▶, ☆, a stacked ↑/↓ pair at 28x22px two pixels apart,
+   and a 32px ✕ ten pixels to their right — which left the title ~124px and
+   made "move down" and "remove" one thumb-width apart. Remove is immediate
+   and has no undo, so a missed arrow deleted the episode.
+
+   Now the number and the title own the first line, full width, and the
+   controls sit on a second line: ▶ and ☆ on the left, then — pushed to the
+   right edge — ↑ and ↓ side by side, then ✕ with a clear 20px gap so the
+   destructive control is never the neighbour a near-miss lands on. Every
+   control there has at least a 44px hit area (the tap-target rule). */
+.up-next-row { flex-wrap: wrap; row-gap: 8px; }
+.up-next-row > .info { flex: 1 1 calc(100% - 36px); }
+/* Whichever control opens the second line lines up under the title, not
+   under the number (a row whose audio is gone has no ▶, so it may be ☆). */
+.up-next-row > .info + :is(.play-btn, button.star) { margin-left: 36px; }
 .up-next-reorder {
   flex: none;
-  display: flex; flex-direction: column; gap: 2px;
+  margin-left: auto;
+  display: flex; flex-direction: row; gap: 8px;
 }
 button.reorder {
   flex: none;
-  width: 28px; height: 22px;
-  border-radius: 6px;
+  width: 40px; height: 40px;
+  border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--surface-2);
   color: var(--text);
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   cursor: pointer;
   padding: 0;
 }
 button.reorder:disabled { opacity: 0.35; cursor: default; }
+button.reorder:not(:disabled):active { transform: scale(0.94); }
 
 button.up-next-remove {
   flex: none;
-  width: 32px; height: 32px;
+  width: 40px; height: 40px;
+  margin-left: 20px;
   border-radius: 50%;
   border: 1px solid var(--line);
   background: var(--surface-2);
@@ -1161,8 +1339,18 @@ button.up-next-remove {
   font-size: 0.85rem; line-height: 1;
   cursor: pointer; padding: 0;
 }
-.play-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 .play-btn[data-playing="1"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* HOVER IS NOT "PLAYING" (audit 2026-09-22, persona finding "tapping ▶ paints
+   the button as playing before any audio exists"). The hover rule was the
+   byte-identical fill the playing state uses, and a phone leaves a sticky
+   hover on whatever was last tapped — so a tap on a dead enclosure lit the
+   button up exactly like audio had started. Hover now only exists on a device
+   that can actually hover, and it is a border, never the fill; a finger gets
+   a press (`:active`) that ends when the finger does. */
+@media (hover: hover) {
+  .play-btn:hover { border-color: var(--accent); }
+}
+.play-btn:active { transform: scale(0.94); }
 
 /* The player is fixed, so reserve room or it covers the last card.
 
@@ -1250,7 +1438,9 @@ body.ui-v2 {
   flex: 1;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px;
-  color: var(--faint, var(--text-dim));
+  /* `--text-dim`, which ui-v2 aliases to `--muted` (audit 2026-09-22, qa row 79):
+     an idle tab's label is 0.66rem TEXT, and `--faint` is 3.1:1 on the bar. */
+  color: var(--text-dim);
   text-decoration: none;
   font-size: 0.66rem;
   font-weight: 600;
@@ -1280,6 +1470,14 @@ body.ui-v2 .tab-btn[aria-current="page"] { color: var(--amber); }
    account for, open or closed. */
 body.ui-v2.fp-open #foray-player {
   bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
+  /* The inset is applied ONCE, by the tab bar underneath (its own box already
+     contains it). `#foray-player`'s base rule pads itself by the inset for the
+     case where it sits on the screen's bottom edge; docked above the tab bar it
+     is not on that edge, so the same padding became a ~34px dead band of bar
+     surface above the tab bar on a home-indicator iPhone — the exact
+     "applied exactly once" trap the reservation comment above warns about
+     (audit 2026-09-22). */
+  padding-bottom: 0;
 }
 body.ui-v2.fp-open {
   padding-bottom: calc(var(--fp-bar-h) + var(--tab-bar-h) + env(safe-area-inset-bottom));
@@ -1538,14 +1736,26 @@ body.sh-compose #view { padding-bottom: var(--sh-compose-h); }
 
 .fp-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
 .fp-art { width: 40px; height: 40px; border-radius: 6px; flex: none; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+/* The artwork opens Now Playing, like the title beside it (player/client.js
+   wires the same handler) — it is the most obvious 40px target on the bar and
+   every podcast app opens the player from it (audit 2026-09-22). */
+.fp-bar .fp-art { cursor: pointer; }
+/* `align-self: stretch` + centred content: the button fills the bar's full
+   height instead of shrinking to its two lines of text, so the ~8px bands
+   above the title and below the show name — which look like the bar — open
+   the player too, rather than being dead (audit 2026-09-22). */
 .fp-info {
   flex: 1 1 auto; min-width: 0;
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  align-self: stretch; min-height: 44px;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px;
   background: none; border: 0; color: inherit; text-align: left; cursor: pointer; padding: 0;
 }
-.fp-title, .fp-show { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-title, .fp-show, .fp-err { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fp-title { font-family: var(--serif); font-size: 0.92rem; font-weight: 700; color: var(--text); }
 .fp-show { font-size: 0.72rem; color: var(--text-dim); }
+/* A failed play (player/client.js `setPlayFailure`, audit 2026-09-22): the show
+   line's slot and size, in the error tone `.fy-error` uses on the Foray page. */
+.fp-err { font-size: 0.72rem; color: var(--gold); }
 
 /* Big targets — this is still a car product (04_VOICE_AUDIO_SPEC safety).
    fp-play is the primary action and stays filled at rest, not just on
@@ -1686,6 +1896,10 @@ body.fp-expanded { overflow: hidden; }
 .fp-grab-zone .fp-close {
   position: absolute; right: 10px; top: 50%;
   transform: translateY(-50%);
+  /* 36px to look at, 44px to hit: the tap-target rule's ::after supplies the
+     hit area (this is the one visible, non-gestural way out of the sheet, the
+     fallback for anyone who cannot drag). The grab zone is 48px tall, so the
+     44px box fits inside it. */
   width: 36px; height: 36px;
   touch-action: auto;
 }
@@ -1808,7 +2022,14 @@ body.fp-expanded { overflow: hidden; }
    reader announcing "link" for something that moves playback is a lie. Styled
    to sit in running text without breaking the line box. */
 .ep-ts {
-  display: inline; padding: 0; border: 0; background: none;
+  display: inline; border: 0; background: none;
+  /* HIT AREA INTO THE LEADING (audit 2026-09-22): the stamp was ~13px of
+     underlined text with no padding, so most taps missed and some landed on a
+     publisher link in the same paragraph and left the page. Vertical padding
+     on an INLINE box grows what the finger can hit without touching the line
+     box, and the equal negative margin cancels the horizontal padding's
+     effect on the text around it — the paragraph does not reflow. */
+  padding: 10px 4px; margin: -10px -4px;
   font: inherit; color: var(--accent);
   font-variant-numeric: tabular-nums;
   text-decoration: underline; cursor: pointer;
@@ -1821,7 +2042,9 @@ body.fp-expanded { overflow: hidden; }
 .ep-chapters-list { list-style: none; margin: 0; padding: 0; }
 .ep-chapters-list li {
   display: flex; gap: 10px; align-items: baseline;
-  padding: 6px 0; border-bottom: 1px solid var(--line);
+  /* No padding here: it belongs to the button (below). On the `<li>` it made
+     the row LOOK tall while the live target inside it was ~19px. */
+  padding: 0; border-bottom: 1px solid var(--line);
   font-size: 0.85rem; color: var(--text);
 }
 .ep-chapters-list li:last-child { border-bottom: none; }
@@ -1834,15 +2057,21 @@ body.fp-expanded { overflow: hidden; }
 
 /* The whole chapter row seeks (founder: timestamps "then result in jumping to
    that timestamp in 4a"). A button filling the row rather than a link on the
-   title alone: the time and the title are one target, and a 48px row is the
-   tap size the rest of the app uses. `text-align: left` because a button
-   centres its text by default and these are list rows, not labels. */
+   title alone: the time and the title are one target, and a 44px row is the
+   tap floor the rest of the app uses (the tap-target rule near the top of
+   this file). `text-align: left` because a button centres its text by default
+   and these are list rows, not labels.
+   THE PADDING IS ON THE BUTTON. It used to be on the `<li>`, which made the
+   row look ~31px tall while only the ~19px of text in the middle was live —
+   and this comment claimed 48 over it (audit 2026-09-22). */
 .ep-chapter-row {
   display: flex; gap: 10px; align-items: baseline; width: 100%;
-  padding: 0; border: 0; background: none; color: inherit;
+  min-height: 44px; padding: 12px 0;
+  border: 0; background: none; color: inherit;
   font: inherit; text-align: left; cursor: pointer;
 }
-.ep-chapter-row:hover .ep-chapter-title { color: var(--accent); }
+.ep-chapter-row:hover .ep-chapter-title,
+.ep-chapter-row:active .ep-chapter-title { color: var(--accent); }
 /* A1.8 "More from this show" — same section-label language as .fy-slot h3. */
 .ep-more { margin: 24px 0 0; }
 .ep-more h3 {
@@ -1871,7 +2100,18 @@ body.fp-expanded { overflow: hidden; }
   font-size: 0.78rem;
 }
 
-.fp-scrub { width: 100%; accent-color: var(--accent); }
+.fp-scrub {
+  width: 100%; accent-color: var(--accent);
+  /* The sheet body is an `overflow-y: auto` scroller, and a range input with
+     no touch-action loses every drag to it: trying to move the thumb scrolls
+     the description instead. `pan-y` hands vertical pans to the scroller and
+     keeps horizontal ones for the slider — the exact fix `.interest-slider`
+     carries a comment about (audit 2026-09-22). 44px tall so the thumb's
+     track is a real target, not the UA's ~16px default. */
+  touch-action: pan-y;
+  min-height: 44px;
+  margin: 0;
+}
 .fp-times { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); }
 .fp-row { display: flex; justify-content: center; align-items: center; gap: 18px; margin: 14px 0 6px; }
 .fp-btn {
@@ -1881,18 +2121,31 @@ body.fp-expanded { overflow: hidden; }
   font-size: 0.8rem; cursor: pointer;
 }
 .fp-big { min-width: 72px; font-size: 1.1rem; }
-.fp-btn:hover { border-color: var(--accent); }
+.fp-btn:hover:not(:disabled) { border-color: var(--accent); }
+/* '››' on a Foray's last clip is `disabled` (client.js render()). The rules
+   above set colour, background and a pointer cursor, which switch off the
+   browser's own greyed-out look, so without this a disabled button looked and
+   hovered exactly like a live one. Same idiom as .fy-btn:disabled. */
+.fp-btn:disabled { opacity: 0.45; cursor: default; }
 .fp-row2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
 .fp-rate, .fp-stop, .fp-collapse {
   border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
   border-radius: 6px; padding: 8px 12px; font-size: 0.75rem; cursor: pointer;
 }
+/* STOP IS NOT CLOSE (audit 2026-09-22, persona "Stop sits next to Close").
+   Stop ends playback and takes the bar away; Close only collapses the sheet.
+   They were identical grey pills side by side, the destructive one in the
+   middle. Stop now sits at the far end of the row from Close (client.js's
+   append order) and carries the danger colour, so the two can never read as
+   the same control. No confirmation: stopping is recoverable (press play). */
+.fp-stop { color: var(--danger-text); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
 /* NOT .fp-open: that class is also set on <body> while the mini-player is up
    (see client.js), so a bare .fp-open rule painted the whole page accent-blue
    through inheritance. Nothing showed it until a page had a heading with no
    colour of its own. */
 .fp-openep { font-size: 0.75rem; color: var(--accent); }
 .fp-note { font-size: 0.7rem; color: var(--text-dim); margin: 10px 0 0; }
+.fp-err-line { margin: 10px 0 0; text-align: center; font-size: 0.78rem; color: var(--gold); }
 
 /* ---------- Forays (#128) ----------
    One ordered run of segments from several shows. The design intent is the
@@ -1940,6 +2193,16 @@ body.fp-expanded { overflow: hidden; }
   padding: 10px 0 12px;
   margin-bottom: 8px;
 }
+/* While the collapsing page header is SHOWING, the transport pins beneath it
+   rather than at the same offset behind it. Both used to stick at exactly the
+   topbar's offset, so the header's reappear-on-scroll-up (z 15) covered the
+   resume line and the top of the strip (z 5) exactly when the listener came
+   back up to use them (audit 2026-09-22). `--page-head-h` is the header's own
+   measured box, written by app.js's publishPageHeadHeight(); a hidden header
+   drops out of this selector, so the transport slides up to the topbar. */
+.page-head:not(.page-head-hidden) ~ .fy-transport {
+  top: calc(var(--topbar-h) + env(safe-area-inset-top) + var(--page-head-h, 0px));
+}
 /* ---------- SegmentStrip (#128) ----------
    The signature element: one Foray at a glance. Structure and every class name
    below are produced by player/segment-strip.js — read that file's header
@@ -1957,8 +2220,17 @@ body.fp-expanded { overflow: hidden; }
    ranges 4.9:1 to 8.4:1 on #0d1117. Those same values only reach 2.1:1 on the
    light theme's #faf7f2, so light gets darkened variants, each measured to at
    least 3.25:1. Changing a hex here without re-measuring both themes is how the
-   strip becomes invisible for half the users on a sunny morning. */
-:root {
+   strip becomes invisible for half the users on a sunny morning.
+
+   `body.ui-v2` IS ON THE SELECTOR because the v2 page is dark whatever the OS
+   says (the token block's header). With `:root` alone, a phone set to Light
+   took the light variants below — tuned for #faf7f2 — and painted them on
+   v2's near-black #151119: a BLACK hatch over the narration bars and muddy
+   darkened tones (audit 2026-09-22). Declaring the dark set on body.ui-v2 as
+   well makes it the nearest definition for everything on a v2 page, so the
+   light block can only ever reach a page that is actually light. One list,
+   two selectors, so the values cannot drift apart. */
+:root, body.ui-v2 {
   --seg-c0: #2A9D8F; --seg-c1: #E76F51; --seg-c2: #8E6FD8; --seg-c3: #4C8DF5;
   --seg-c4: #D9A441; --seg-c5: #5FB4C9; --seg-c6: #C46BAE; --seg-c7: #7BA05B;
   --seg-narration: #A78BFA;
@@ -2003,10 +2275,17 @@ body.fp-expanded { overflow: hidden; }
      `gap` + `--seam`, not `--seam` alone. Measured in Chrome at a 362px strip
      (a 390px phone less the page's padding) rather than reasoned about. */
   --seg-min: 7px;
-  /* Press-and-hold zoom-to-scrub (V1). `touch-action: none` stops the browser
-     from interpreting a held-and-dragged finger as a page scroll/pan, which
-     would otherwise fight the gesture on exactly the input it exists for. */
-  touch-action: none;
+  /* Press-and-hold zoom-to-scrub (V1). `pan-y`, not `none` (audit
+     2026-09-22): the strip is a HORIZONTAL control, so the browser only has
+     to stay out of horizontal drags for the scrub to work. `none` also
+     refused vertical pans, and the strip is sticky right under the topbar in
+     the path of every "scroll the running order" flick — so the flick
+     scrolled nothing, and the click on release seeked. With `pan-y` a
+     vertical flick scrolls the page (the browser cancels the pointer, so no
+     click), a sideways drag or a hold still scrubs, and
+     player/strip-scrub-gesture.js ends a vertical-first gesture as a scroll
+     for the input that does deliver a click (a mouse). */
+  touch-action: pan-y;
   transform: scale(1);
   transform-origin: 50% 50%;
   transition: transform 0.12s ease-out;
@@ -2082,6 +2361,20 @@ body.fp-expanded { overflow: hidden; }
 .fy-strip--sm { --strip-h: 5px; --seam: 3px; --seg-min: 5px; }
 .fy-strip--md { --strip-h: 8px; --seam: 4px; --seg-min: 6px; }
 .fy-strip--lg { --strip-h: 12px; --seam: 5px; --seg-min: 7px; }
+/* The Foray page's scrubber is 12px to LOOK at and 44px to HIT (the app's
+   tap-target floor): an invisible box 16px above and below the bars, so a
+   thumb that lands a little off the strip still lands on it (audit
+   2026-09-22, "a 12px-high strip where any stray tap jumps you minutes").
+   Only the live strip, by id — the magnifier's clone drops the id, and the
+   static card strips are not controls. The 16px each way is exactly the gap
+   `.fy-resume` leaves above and `.fy-controls` leaves below (plus 4px), so
+   this box can never sit over "Start over" or the transport buttons. */
+#fy-strip::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  top: -16px; bottom: -16px;
+}
 /* U-04: `segmentStripHtml`'s static strip — a card in a rail (Home's Foray
    cards, U-03; the show/episode restyle, U-08), not the full player's
    scrubber. No click handler is bound to it and no press-and-hold zoom
@@ -2211,7 +2504,7 @@ body.fp-expanded { overflow: hidden; }
   font-size: 0.72rem; color: var(--text-dim);
   margin-top: 6px;
 }
-.fy-controls { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; }
+.fy-controls { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 20px; }
 /* `touch-action: manipulation` — founder, 2026-09-17: "It should also not be
    possible to zoom on the episode slide, when I was trying to skip forward
    several times it zoomed in instead."
@@ -2300,7 +2593,7 @@ body.fp-expanded { overflow: hidden; }
 .fy-jump {
   display: flex; align-items: flex-start; gap: 10px;
   flex: 1; min-width: 0;
-  min-height: 30px;
+  min-height: 44px;
   text-align: left;
   background: none;
   border: 0;
@@ -2312,12 +2605,15 @@ body.fp-expanded { overflow: hidden; }
 /* A narration beat has no `why`, so without this its play button would be a
    zero-height strip with nothing to aim at. The floor plus the resting ▶ keep
    it a real target on a touch screen; the transcript beneath is NOT part of it,
-   so reading a transcript can never start playback by accident. */
-.fy-jump.is-bare { min-height: 30px; align-items: center; }
+   so reading a transcript can never start playback by accident.
+   44, not 30: this comment used to call a 30px strip "a real target", and the
+   misses it caused landed on the transcript (nothing) or sideways on the
+   thumbs (audit 2026-09-22). The floor is the app's tap-target floor. */
+.fy-jump.is-bare { min-height: 44px; align-items: center; }
 .fy-jump.is-bare .fy-state::before { content: "▶"; font-size: 0.7rem; opacity: 0.45; }
 /* Hover follows the PLAY affordance, not the whole card — the thumbs are not a
    way to start a segment and should not look like one. */
-.fy-row:has(.fy-jump:hover) { border-color: var(--accent); }
+.fy-row:has(.fy-jump:hover), .fy-row:has(.fy-jump:active) { border-color: var(--accent); }
 .fy-jump.is-played { opacity: 0.55; }
 /* Dim the thumbs with the row they belong to. Separate from the rule above
    because that one must keep working where :has() does not. */
@@ -2336,9 +2632,12 @@ body.fp-expanded { overflow: hidden; }
 .fy-meta { font-size: 0.74rem; color: var(--text-dim); }
 .fy-row:has(.fy-jump.is-played) .fy-meta { opacity: 0.55; }
 .fy-row:has(.fy-jump.is-playing) .fy-meta { color: var(--accent); }
-/* The show link. Padded vertically so it clears the 44px-ish thumb target on a
-   phone without pushing the credit line taller than the text it wraps — the
-   padding overlaps the row's own gap rather than adding to it. */
+/* The show link. Padded vertically so it is a little easier to hit than the
+   bare line of text, without pushing the credit line taller than the text it
+   wraps — the padding overlaps the row's own gap rather than adding to it.
+   (This comment used to size the layout around "the 44px-ish thumb target"
+   when the thumbs were 30px; they now have a real 44px hit area — see
+   `.fy-fb` below.) */
 .fy-credit { color: inherit; }
 a.fy-credit { padding: 2px 0; }
 .fy-why {
@@ -2402,12 +2701,15 @@ a.fy-credit { padding: 2px 0; }
 
 /* ---------- per-segment feedback ----------
    Up is one quiet tap; down opens the sheet. The controls are the same size so
-   the pair does not read as a recommendation to press the friendly one. */
-.fy-fb { flex: none; display: flex; gap: 6px; padding-top: 1px; }
+   the pair does not read as a recommendation to press the friendly one.
+   30px to look at, 44px to hit (the tap-target rule near the top of this
+   file). The pair's gap is 14px so the two 44px hit boxes meet instead of
+   overlapping: a near-miss on 👍 must not open 👎's "What missed?" sheet. */
+.fy-fb { flex: none; display: flex; gap: 14px; padding-top: 1px; }
 .fy-thumb {
   width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 15px;
+  border-radius: 50%;
   border: 1px solid transparent;
   background: var(--surface-2);
   font-size: 0.8rem;
@@ -2427,10 +2729,19 @@ body.fy-sheet-open { overflow: hidden; }
    its scrim reads as a stuck overlay. */
 .fy-sheet { position: fixed; inset: 0; z-index: 70; }
 .fy-scrim { position: absolute; inset: 0; background: rgba(8, 5, 12, 0.62); }
+/* ON THE KEYBOARD, NOT BEHIND IT (audit 2026-09-22). A sheet with a text
+   field — the feedback note, "Type DELETE to confirm" — is bottom-anchored,
+   so the soft keyboard rose over the field AND the Cancel/Send row beneath
+   it, and the page behind is scroll-locked, so there was no way to bring them
+   back. `--kb-inset` is installKeyboardChrome's measurement of exactly how far
+   a bottom-anchored fixed box must rise (0 whenever no keyboard is up); the
+   search compose bar was its only reader. Every `.fy-panel` now sits on the
+   keyboard's top edge, and gives up the same height from its max-height so
+   its top cannot leave the screen. */
 .fy-panel {
-  position: absolute; left: 0; right: 0; bottom: 0;
+  position: absolute; left: 0; right: 0; bottom: var(--kb-inset, 0px);
   max-width: 680px; margin: 0 auto;
-  max-height: 88vh; overflow-y: auto;
+  max-height: calc(88vh - var(--kb-inset, 0px)); overflow-y: auto;
   padding: 8px 18px calc(20px + env(safe-area-inset-bottom));
   background: var(--surface);
   border: 1px solid var(--line);
@@ -2541,7 +2852,12 @@ body.fy-sheet-open { overflow: hidden; }
 }
 
 /* ---------- resume ---------- */
-.fy-resume { margin-bottom: 10px; }
+/* 16px to the strip below, not 10: "Start over" (which discards the resume
+   point) and the strip (which seeks) are two very different controls, and at
+   10px a thumb meant for one regularly landed on the other. The strip's own
+   hit area grows 16px upward (see `.fy-strip--lg`), so this gap is exactly
+   what keeps the two hit boxes from overlapping (audit 2026-09-22). */
+.fy-resume { margin-bottom: 16px; }
 .fy-bar {
   display: block;
   height: 5px; width: 100%;
@@ -2558,11 +2874,18 @@ body.fy-sheet-open { overflow: hidden; }
 .fy-resume-at { color: var(--text-dim); }
 .fy-resume-left { color: var(--gold); font-weight: 700; }
 .fy-restart {
-  margin-top: 6px;
-  padding: 0;
+  /* Still deliberately quiet — it must not compete with Play — but a real
+     44px target: it was ~16px of 11.5px underlined text, sitting 10px above
+     the seek strip, for an action that throws away an hour's place (audit
+     2026-09-22). The negative left margin keeps the text aligned with the
+     resume line above while the padding widens what a thumb can hit. */
+  display: inline-flex; align-items: center;
+  min-height: 44px;
+  margin: 2px 0 0 -8px;
+  padding: 0 8px;
   border: 0; background: none;
   color: var(--text-dim);
-  font: inherit; font-size: 0.72rem;
+  font: inherit; font-size: 0.78rem;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -2598,7 +2921,7 @@ body.fy-sheet-open { overflow: hidden; }
 }
 .fy-src-show { font-family: var(--serif); font-size: 0.94rem; font-weight: 700; }
 .fy-src-out { flex: none; color: var(--text-dim); text-decoration: none; }
-.fy-src-out:hover { color: var(--accent); }
+.fy-src-out:hover, .fy-src-out:active { color: var(--accent); }
 .fy-src-meta { flex: none; font-size: 0.72rem; color: var(--text-dim); }
 .fy-src-eps { margin: 8px 0 0; padding: 0 0 0 14px; list-style: none; }
 .fy-src-eps li {
@@ -2656,7 +2979,8 @@ body.fy-sheet-open { overflow: hidden; }
   text-decoration: none;
 }
 .show-forays-row:first-of-type { border-top: none; }
-.show-forays-row:hover .show-forays-title { color: var(--accent); }
+.show-forays-row:hover .show-forays-title,
+.show-forays-row:active .show-forays-title { color: var(--accent); }
 .show-forays-title { font-family: var(--serif); font-size: 0.92rem; font-weight: 700; }
 .show-forays-draft {
   flex: none; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
@@ -2728,6 +3052,14 @@ body.fy-sheet-open { overflow: hidden; }
   background: var(--surface-2);
   cursor: pointer;
 }
+/* The radio is a child of the row now, beside Preview rather than around it
+   (app.js buildVoiceRow). It takes the row's whole left side, padding
+   included, so the tap target is the same row it always was. */
+.voice-row-choice {
+  flex: 1; min-width: 0; align-self: stretch;
+  display: flex; align-items: center;
+  margin: -10px 0 -10px -12px; padding: 10px 0 10px 12px;
+}
 .voice-row-missing { opacity: 0.55; cursor: default; }
 .voice-row-selected { border-color: var(--accent); }
 .voice-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -2736,7 +3068,10 @@ body.fy-sheet-open { overflow: hidden; }
 .voice-row-audition {
   flex: none;
   padding: 7px 12px;
-  border-radius: 14px;
+  /* The token it was a literal copy of (R12: same value, one name). Its hit
+     area is the tap-target rule's: a ~29px button inside a row whose own tap
+     SELECTS the voice, so a near-miss silently changed the narrator. */
+  border-radius: var(--radius);
   border: 1px solid var(--line);
   background: none;
   color: var(--text);
@@ -2751,8 +3086,13 @@ body.fy-sheet-open { overflow: hidden; }
    The sheet reuses the reason sheet's shell (.fy-sheet / .fy-scrim / .fy-panel /
    .fy-sheet-actions), so only the parts that have no counterpart there are
    styled here. The confirm button is deliberately NOT accent-blue: it is the one
-   button in the app that destroys something. */
-.dd-open { color: var(--gold); }
+   button in the app that destroys something.
+
+   The drawer item that OPENS the sheet is an ordinary drawer item. It used to be
+   `color: var(--gold)` — a retired v1 hue, and the only coloured item in the
+   menu, so the destructive entry read as a highlighted feature rather than a
+   warning (2026-09-22 audit). The sheet carries the warning; the menu does not
+   need to shout it. */
 .dd-panel { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 .dd-covers {
   margin: 0 0 14px; padding: 0 0 0 16px;
@@ -2769,7 +3109,7 @@ body.fy-sheet-open { overflow: hidden; }
   color: var(--text);
   font: inherit; font-size: 0.9rem; letter-spacing: 0.08em;
 }
-.dd-go { border-color: #b3402f; background: #b3402f; }
+.dd-go { border-color: var(--danger); background: var(--danger); }
 .dd-go:disabled { background: var(--surface-2); border-color: var(--line); color: var(--text-dim); }
 .dd-device-only {
   display: block; width: 100%;
@@ -2926,7 +3266,8 @@ body.ui-v2 .show-forays { border-top-color: var(--line); }
 body.ui-v2 .show-forays-h { color: var(--muted); font-family: var(--font-display); }
 body.ui-v2 .show-forays-note { color: var(--muted); }
 body.ui-v2 .show-forays-row { border-top-color: var(--line); color: var(--text); }
-body.ui-v2 .show-forays-row:hover .show-forays-title { color: var(--violet); }
+body.ui-v2 .show-forays-row:hover .show-forays-title,
+body.ui-v2 .show-forays-row:active .show-forays-title { color: var(--violet); }
 body.ui-v2 .show-forays-title { font-family: var(--font-display); }
 body.ui-v2 .show-forays-draft { color: var(--violet); }
 body.ui-v2 .show-result {
@@ -2956,9 +3297,9 @@ body.ui-v2 .ep-row .t, body.ui-v2 .pl-row .t { font-family: var(--font-display);
 body.ui-v2 .ep-row .s, body.ui-v2 .pl-row .s { color: var(--muted); }
 body.ui-v2 .pl-row .chev { color: var(--muted); }
 body.ui-v2 .ep-row.gone { border-color: var(--faint); }
-body.ui-v2 .ep-row.gone .t { color: var(--faint); }
+body.ui-v2 .ep-row.gone .t { color: var(--muted); }
 body.ui-v2 .explicit-badge { color: var(--muted); border-color: var(--muted); }
-body.ui-v2 .not-playable { color: var(--faint); }
+body.ui-v2 .not-playable { color: var(--muted); }
 body.ui-v2 .q-num {
   background: var(--surface2);
   border-color: var(--line);
@@ -2983,8 +3324,10 @@ body.ui-v2 .play-btn {
 }
 /* Play is 4a's transport control, not the listener's own material --
    violet, the same role it plays on the mini/full player below. */
-body.ui-v2 .play-btn:hover,
 body.ui-v2 .play-btn[data-playing="1"] { background: var(--violet); border-color: var(--violet); color: var(--bg); }
+@media (hover: hover) {
+  body.ui-v2 .play-btn:hover { border-color: var(--violet); }
+}
 
 /* ---------- Episode page ---------- */
 body.ui-v2 .fp-s-title { font-family: var(--font-display); color: var(--text); }
@@ -3030,7 +3373,8 @@ body.ui-v2 .fy-row {
   border-color: var(--line);
   box-shadow: none;
 }
-body.ui-v2 .fy-row:has(.fy-jump:hover) { border-color: var(--violet); }
+body.ui-v2 .fy-row:has(.fy-jump:hover),
+body.ui-v2 .fy-row:has(.fy-jump:active) { border-color: var(--violet); }
 body.ui-v2 .fy-row:has(.fy-jump.is-playing) { border-color: var(--violet); background: var(--surface2); }
 body.ui-v2 .fy-jump { color: var(--text); }
 body.ui-v2 .fy-meta { color: var(--muted); }
@@ -3061,6 +3405,13 @@ body.ui-v2 .fy-sheet-sub { color: var(--muted); }
 body.ui-v2 .fy-sheet-cancel { border-color: var(--line); color: var(--muted); }
 body.ui-v2 .fy-sheet-go { border-color: var(--violet); background: var(--violet); color: var(--bg); }
 body.ui-v2 .fy-sheet-go:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
+/* "Delete everything" is a `.fy-sheet-go` too, and the violet primary above
+   (0,2,1, later in the file) beat `.dd-go`'s red (0,1,0) — so the one button in
+   the app that erases a listener's data looked exactly like Play (2026-09-22
+   audit). Scoped to both classes so it outranks the violet rule, and its
+   disabled state restated after it for the same reason. */
+body.ui-v2 .fy-sheet-go.dd-go { border-color: var(--danger); background: var(--danger); color: var(--text); }
+body.ui-v2 .fy-sheet-go.dd-go:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
 body.ui-v2 #fy-sheet-note { border-color: var(--line); background: var(--surface2); color: var(--text); }
 body.ui-v2 .rate-option { border-color: var(--line); background: var(--surface2); color: var(--text); }
 body.ui-v2 .rate-option.on { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 14%, var(--surface2)); }
@@ -3088,10 +3439,14 @@ body.ui-v2 button.reorder {
   background: var(--surface2);
   color: var(--text);
 }
+/* `--muted`, not `--faint` (audit 2026-09-22, qa row 79): `--faint` is 2.7:1 on
+   `--surface2`, under even the 3:1 floor for a control glyph, and this is the
+   one destructive control on the row. `--faint` is for disabled states and
+   decorative rules only; test/ui-tokens.test.js holds that. */
 body.ui-v2 button.up-next-remove {
   border-color: var(--line);
   background: var(--surface2);
-  color: var(--faint);
+  color: var(--muted);
 }
 
 /* ---------- Playlists index + detail (renderPlaylists/renderPlaylistDetail) ---------- */
@@ -3101,13 +3456,19 @@ body.ui-v2 .show-ep-search input {
   background: var(--surface);
   color: var(--text);
 }
-body.ui-v2 #pl-form button {
+/* `#cr-form` rides on the same rule. The Create page's field and button were
+   written to read as `#pl-form`'s control family (see `#cr-form`'s own rules),
+   but it landed after this restyle enumerated its selectors, so its button kept
+   v1 blue with white text beside Playlists' violet (audit 2026-09-22). */
+body.ui-v2 #pl-form button,
+body.ui-v2 #cr-form button {
   border-color: var(--violet);
   background: var(--violet);
   color: var(--bg);
 }
-body.ui-v2 #pl-form button:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
-body.ui-v2 button.danger { color: var(--faint); }
+body.ui-v2 #pl-form button:disabled,
+body.ui-v2 #cr-form button:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
+body.ui-v2 button.danger { color: var(--muted); }
 
 /* ---------- mini/full player chrome (styles.css only -- player/*.js untouched) ----------
    Every selector here already exists in the v1 player CSS above; nothing in
@@ -3141,14 +3502,18 @@ body.ui-v2 .fp-btn {
   color: var(--text);
   box-shadow: none;
 }
-body.ui-v2 .fp-btn:hover { border-color: var(--violet); }
+body.ui-v2 .fp-btn:hover:not(:disabled) { border-color: var(--violet); }
 body.ui-v2 .fp-rate, body.ui-v2 .fp-stop, body.ui-v2 .fp-collapse {
   border-color: var(--line);
   background: var(--surface2);
   color: var(--text);
 }
+/* After the shared rule, so Stop keeps the weight `.fp-stop`'s own comment
+   explains (it is not Close). */
+body.ui-v2 .fp-stop { color: var(--danger-text); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
 body.ui-v2 .fp-openep { color: var(--violet); }
-body.ui-v2 .fp-note { color: var(--faint); }
+body.ui-v2 .fp-note { color: var(--muted); }
+body.ui-v2 .fp-err, body.ui-v2 .fp-err-line { color: var(--amber); }
 
 /* ---------- Library summaries reached from Playlists' "Library ›" link ---------- */
 body.ui-v2 .lib-section-head { color: var(--muted); font-family: var(--font-display); }
@@ -3162,9 +3527,20 @@ body.ui-v2 .lib-more:active { color: var(--text); }
    ordinary flex-column children (unlike `.cards4`'s fixed grid): Home v2 is
    allowed to scroll, per the mockup, so there is no equivalent of the
    flag-off floor/crush bug this file's BUG 4 comment documents — `.hv2-home`
-   declares no `height`/`min-height` at all, so there is no fixed budget for
-   a sibling to fight over in the first place. */
+   declares no `height`/`min-height` FLOOR, so there is no fixed budget for
+   a sibling to fight over in the first place.
+
+   `min-height: 0` IS NOT A FLOOR, IT IS THE ABSENCE OF ONE. renderHomeV2's
+   container is `class="home hv2-home"`, so it also matched the retired
+   one-screen `.home` rule above and inherited its `100svh` floor — on top of
+   the tab-bar (and mini-bar) reservation `body.ui-v2` already pads. Home
+   therefore ALWAYS scrolled by the tab bar's height into bare background
+   (~152px while something played), because its content box was a whole
+   viewport before the reservation was added (audit 2026-09-22). This resets
+   the inherited floor; `test/home-layout.test.js` pins that the element's
+   EFFECTIVE min-height is none, not only that this rule declares none. */
 body.ui-v2 .hv2-home {
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -3245,8 +3621,13 @@ body.ui-v2 .hv2-generated-badge {
   padding: 1px 7px;
   border-radius: 3px;
   font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-  color: var(--amber);
-  background: color-mix(in srgb, var(--amber) 18%, transparent);
+  /* VIOLET, not amber: "Generated for you" means 4a assembled it, which is
+     violet's half of #127's split — and the same badge in Search results
+     (`.fy-badge-generated`) was already violet. Amber told the listener this
+     was THEIR material (audit 2026-09-22). The shape still differs from the
+     Search badge; that is a taste call left to the founders. */
+  color: var(--violet);
+  background: color-mix(in srgb, var(--violet) 18%, transparent);
 }
 
 /* The test track ("Show draft Forays", app.js § showDraftsOn): a draft card
@@ -3269,8 +3650,20 @@ body.ui-v2 .hv2-test-track {
 
 /* Episodes for you reuses miniCard()'s own `.mini-card` markup and rules
    unchanged (miniCardV2() wraps it rather than forking it) — only the
-   section container and the appended `.hv2-bridge` line are new here. */
-body.ui-v2 .hv2-episodes .mini-card { min-height: 0; }
+   section container and the appended `.hv2-bridge` line are new here.
+
+   THE BRIDGE LINE IS A ROW OF ITS OWN. miniCardV2() appends it inside the
+   `.mini-card` anchor, which is a single-line flex ROW — so it became a fourth
+   item beside the star: a narrow italic column squeezed to the right of the
+   card, stealing width from a title that then clipped (audit 2026-09-22). The
+   Foray card's identical line works only because that card is a column. So the
+   row wraps, the bridge takes the full width of the second line, and
+   `.mc-info` gets a zero basis so wrapping can never push IT onto a line of its
+   own (its max-content width is the whole unclamped title). Cards without a
+   bridge are three items that always fit, so for them nothing changes. */
+body.ui-v2 .hv2-episodes .mini-card { min-height: 0; flex-wrap: wrap; row-gap: 4px; }
+body.ui-v2 .hv2-episodes .mini-card > .mc-info { flex-basis: 0; }
+body.ui-v2 .hv2-episodes .mini-card > .hv2-bridge { flex-basis: 100%; }
 
 /* The publisher's own show description (founder, 2026-09-21). Body copy, not a
    `.note`: it is the show speaking for itself and should read like prose.

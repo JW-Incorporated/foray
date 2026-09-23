@@ -149,3 +149,281 @@ test("fonts are self-hosted under fonts/, never fetched from a third-party origi
     );
   }
 });
+
+/* ======================================================================
+   THEME I (audit 2026-09-22): NO LIVE RULE MAY READ A TOKEN v2 DOES NOT OWN
+   ======================================================================
+
+   WHY THE TESTS ABOVE PASSED WHILE THE PALETTE WAS BROKEN. They enumerate
+   what ui-v2 ADDED — nine names, their hexes, no stray copies. None of that
+   says anything about the names v1 rules still READ. Five of those
+   (`--surface-2`, `--text-dim`, `--accent`, `--gold`, `--shadow`) were never
+   defined on `body.ui-v2`, so on a phone set to Light they resolved to
+   `:root`'s light block while the page stayed dark: near-white artwork
+   blocks, invisible shadows, v1 blue in five controls, gold where amber
+   belongs. And the segment strip's tones, declared only on `:root`, flipped
+   to variants tuned for #faf7f2 — a black hatch on a near-black page.
+
+   So this test enumerates what is READ, not what was added: every
+   `var(--name)` in a live declaration, each checked against where the name is
+   defined. A name passes when:
+     (a) a rule whose selector list includes `body.ui-v2` declares it — the
+         v2 page owns it outright; or
+     (b) it is component-scoped — declared only by ordinary rules (never on
+         `:root`, never inside a colour-scheme query), so its value comes
+         from the component it is set on; or
+     (c) JavaScript writes it, and the write is found in the source (a claim,
+         checked — not an allowlist that can outlive the writer); or
+     (d) it is a `:root` STRUCTURAL token: no colour in its value, and no
+         `prefers-color-scheme` block redefines it, so there is no second
+         value for the OS to choose.
+   Anything else is a v1 value that can reach a v2 page, and fails.
+
+   MUTATIONS (each run, each red):
+     - delete `--gold: var(--amber);` from the body.ui-v2 block -> fails
+       naming --gold (a colour on :root, overridden by nothing v2 owns);
+     - change the segment palette's selector back to plain `:root` -> fails
+       naming every --seg-* tone and --seg-hatch (redefined by the light block);
+     - rename the `--kb-inset` setProperty in app.js -> fails naming
+       --kb-inset (read by CSS, written by nobody). */
+
+/** Every rule in the sheet with its at-rule context, comments removed. A tiny
+    brace walker rather than a regex, because the colour-scheme blocks NEST a
+    `:root { }` inside `@media { }` and a flat regex cannot tell the light
+    `:root` from the dark one. */
+function parseRules(css) {
+  const src = css.replace(/\/\*[\s\S]*?\*\//g, " ");
+  const rules = [];
+  const stack = [];
+  let buf = "";
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === "{") {
+      const prelude = buf.trim();
+      buf = "";
+      if (prelude.startsWith("@")) { stack.push(prelude); continue; }
+      /* A style rule: its body runs to the next close brace (style-rule
+         bodies in this file never nest). */
+      const end = src.indexOf("}", i);
+      const body = src.slice(i + 1, end);
+      rules.push({
+        selectors: prelude.split(",").map((s) => s.trim()),
+        atRules: stack.slice(),
+        decls: body.split(";").map((d) => d.trim()).filter(Boolean).map((d) => {
+          const c = d.indexOf(":");
+          return { prop: d.slice(0, c).trim(), value: d.slice(c + 1).trim() };
+        }),
+      });
+      i = end;
+    } else if (ch === "}") {
+      stack.pop();
+      buf = "";
+    } else {
+      buf += ch;
+    }
+  }
+  return rules;
+}
+
+const RULES = parseRules(CSS);
+const APP_JS = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+const PLAYER_JS = fs.readdirSync(path.join(ROOT, "player"))
+  .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
+  .map((f) => fs.readFileSync(path.join(ROOT, "player", f), "utf8"))
+  .join("\n");
+
+const inSchemeQuery = (d) => d.atRules.some((a) => /prefers-color-scheme/.test(a));
+const isColour = (v) => /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|color-mix\(/i.test(v);
+
+function tokenOwnership() {
+  const reads = new Map(); // name -> [selector text of each reading rule]
+  const defs = new Map();  // name -> [{ selectors, atRules, value }]
+  for (const r of RULES) {
+    for (const d of r.decls) {
+      if (d.prop.startsWith("--")) {
+        if (!defs.has(d.prop)) defs.set(d.prop, []);
+        defs.get(d.prop).push({ selectors: r.selectors, atRules: r.atRules, value: d.value });
+      }
+      for (const m of d.value.matchAll(/var\(\s*(--[\w-]+)/g)) {
+        if (!reads.has(m[1])) reads.set(m[1], []);
+        reads.get(m[1]).push(r.selectors.join(", "));
+      }
+    }
+  }
+  const jsWrites = (name) =>
+    [APP_JS, PLAYER_JS].some((src) => src.includes(`setProperty("${name}"`) || src.includes(`setProperty('${name}'`));
+
+  const verdicts = new Map();
+  for (const name of reads.keys()) {
+    const ds = defs.get(name) || [];
+    const v2Owned = ds.some((d) => d.atRules.length === 0 && d.selectors.includes("body.ui-v2"));
+    const onRoot = ds.filter((d) => d.selectors.includes(":root"));
+    const componentScoped = ds.length > 0 && onRoot.length === 0 && !ds.some(inSchemeQuery);
+    const structural = onRoot.length > 0
+      && !ds.some(inSchemeQuery)
+      && onRoot.every((d) => !isColour(d.value));
+    let why = null;
+    if (v2Owned) why = "v2";
+    else if (componentScoped) why = "component";
+    else if (ds.length === 0 && jsWrites(name)) why = "js";
+    else if (structural) why = "structural";
+    verdicts.set(name, why);
+  }
+  return { reads, defs, verdicts };
+}
+
+test("no live rule reads a token that the ui-v2 page does not own", () => {
+  const { reads, verdicts } = tokenOwnership();
+  const leaks = [...verdicts].filter(([, why]) => why === null).map(([name]) =>
+    `${name} (read by e.g. \`${reads.get(name)[0]}\`)`);
+  assert.deepStrictEqual(leaks, [],
+    "these tokens are read by live rules but can resolve to a v1 value on a ui-v2 page — " +
+      "define or alias them inside `body.ui-v2`:\n" + leaks.join("\n"));
+});
+
+test("every token a colour-scheme query redefines is re-owned on the ui-v2 scope", () => {
+  /* The narrower half of the rule above, stated on its own because it is the
+     failure that actually reached a screen: anything the OS appearance can
+     change must have a body.ui-v2 answer, since the v2 page does not change
+     with the OS. (Only names something reads — a light-block name nothing
+     reads is dead weight, not a leak.)
+     MUTATION: drop `body.ui-v2` from the segment palette's selector list ->
+     every --seg-* tone is named. */
+  const { defs, reads } = tokenOwnership();
+  const unowned = [];
+  for (const [name, ds] of defs) {
+    if (!ds.some(inSchemeQuery) || !reads.has(name)) continue;
+    const v2 = ds.some((d) => d.atRules.length === 0 && d.selectors.includes("body.ui-v2"));
+    if (!v2) unowned.push(name);
+  }
+  assert.deepStrictEqual(unowned, [],
+    `the OS colour scheme can change these on a ui-v2 page: ${unowned.join(", ")}`);
+});
+
+test("the JS-written tokens the ownership check trusts are really written by JS", () => {
+  /* Keeps clause (c) above from becoming a blanket excuse: a name only passes
+     as "js" when a setProperty for it exists. Pinned positively for the four
+     known writers so deleting one surfaces here by name as well.
+     MUTATION: rename `setProperty("--kb-inset"` in app.js -> red. */
+  const { verdicts } = tokenOwnership();
+  for (const name of ["--kb-inset", "--fp-sheet-dy", "--zoom-origin", "--zoom-scale"]) {
+    assert.strictEqual(verdicts.get(name), "js", `${name} is read by CSS but nothing in app.js/player/ writes it`);
+  }
+});
+
+/* ======================================================================
+   "Delete everything" reads as destructive (audit 2026-09-22)
+   ======================================================================
+   The confirm button carries `fy-sheet-go dd-go`. Its red lived on `.dd-go`
+   (0,1,0) while `body.ui-v2 .fy-sheet-go` (0,2,1) painted every sheet's
+   primary button violet — so the one control that erases the listener's data
+   looked exactly like Play. This resolves the cascade for that element the way
+   a browser would, over the simple selectors this file uses, rather than
+   trusting that some rule mentions `.dd-go`.
+
+   MUTATION: delete the `body.ui-v2 .fy-sheet-go.dd-go` rule (L6's shape, kept
+   at integration; its disabled twin follows it) ->
+   the winner is the violet primary and this fails naming it. */
+
+function specificity(sel) {
+  const s = sel.replace(/:not\(([^)]*)\)/g, " $1"); // :not() counts as its argument
+  const ids = (s.match(/#[\w-]+/g) || []).length;
+  const cls = (s.match(/\.[\w-]+|\[[^\]]+\]|:(?!:)[\w-]+/g) || []).length;
+  const tags = (s.replace(/[#.:][\w-]+|\[[^\]]+\]/g, " ").match(/(^|[\s>+~])[a-z][\w-]*/gi) || []).length;
+  return [ids, cls, tags];
+}
+const cmpSpec = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+
+/** Does `sel` match an ENABLED <button class="...classes"> inside
+    <body class="ui-v2">? Only the shapes this question needs: an optional
+    `body.ui-v2 ` ancestor and a final compound of an optional `button`,
+    classes and an optional `:not(:disabled)`. A selector requiring
+    `:disabled` does not match an enabled button and is skipped. */
+function matchesEnabledButton(sel, classes) {
+  const m = /^(?:body\.ui-v2\s+)?((?:button)?(?:\.[\w-]+)+(?::not\(:disabled\))?)$/.exec(sel);
+  if (!m) return false;
+  const need = (m[1].match(/\.[\w-]+/g) || []).map((c) => c.slice(1));
+  return need.every((c) => classes.includes(c));
+}
+
+test("the Delete-everything button is painted by the danger token, not the violet primary", () => {
+  const classes = ["fy-sheet-go", "dd-go"];
+  let win = null;
+  RULES.forEach((r, order) => {
+    if (r.atRules.length) return;
+    for (const sel of r.selectors) {
+      if (!matchesEnabledButton(sel, classes)) continue;
+      const bg = r.decls.filter((d) => d.prop === "background" || d.prop === "background-color").pop();
+      if (!bg) continue;
+      const spec = specificity(sel);
+      if (!win || cmpSpec(spec, win.spec) > 0 || (cmpSpec(spec, win.spec) === 0 && order >= win.order)) {
+        win = { sel, spec, order, value: bg.value };
+      }
+    }
+  });
+  assert.ok(win, "no rule paints the delete button's background at all");
+  assert.match(win.value, /var\(--danger\)/,
+    `the delete confirm's background is won by \`${win.sel}\` (${win.value}) — it must read var(--danger)`);
+  assert.ok(/--danger:\s*#[0-9a-f]{3,8}/i.test(tokenBlock().text),
+    "--danger must be defined in the body.ui-v2 token block");
+});
+
+/* ---------- --faint is for disabled and decorative only (audit 2026-09-22, qa row 79) ----------
+   `--faint` #6E6579 is 3.1:1 on --surface and 2.7:1 on --surface2: under the
+   4.5:1 text minimum everywhere, and on --surface2 under even the 3:1 floor for
+   a control glyph. It was the token reached for on real copy ("Not available to
+   play", an aged-out title, the player's timing note, "remove this playlist",
+   an idle tab's label) and on Up Next's destructive ✕. The rule this pins is
+   the audit's: text and live controls take `--muted`; `--faint` paints only a
+   control that is disabled, a border, or one of the named exceptions below,
+   each with its measured reason.
+   MUTATION: put `color: var(--faint)` back on `body.ui-v2 .not-playable` (or on
+   `button.up-next-remove`) -> the first test goes red. */
+function hexLum(hex) {
+  const n = hex.replace("#", "");
+  const c = [0, 2, 4].map((i) => parseInt(n.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function contrast(a, b) {
+  const [x, y] = [hexLum(a), hexLum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+
+const FAINT_TEXT_EXCEPTIONS = {
+  /* An UNSTARRED star is a non-text glyph on the row's --surface; 3:1 applies. */
+  "body.ui-v2 button.star": () => contrast(TOKENS["--faint"], TOKENS["--surface"]) >= 3,
+  /* A utility with no user: the census below keeps it that way. */
+  "body.ui-v2 .ui-v2-text-faint": () => true,
+};
+
+test("no text or live control is painted in --faint", () => {
+  const offenders = [];
+  for (const r of RULES) {
+    const paints = r.decls.some((d) => d.prop === "color" && /var\(--faint\b/.test(d.value));
+    if (!paints) continue;
+    for (const sel of r.selectors) {
+      if (/:disabled\b/.test(sel) && !/:not\(:disabled\)/.test(sel)) continue;
+      const ok = FAINT_TEXT_EXCEPTIONS[sel];
+      if (ok && ok()) continue;
+      offenders.push(sel);
+    }
+  }
+  assert.deepEqual(offenders, [],
+    `these selectors paint text or a live control in --faint (under 4.5:1): ${offenders.join(", ")} — use --muted`);
+});
+
+test("the token the copy moved to is readable on both surfaces, and --faint is not", () => {
+  for (const bg of ["--surface", "--surface2", "--bg"]) {
+    assert.ok(contrast(TOKENS["--muted"], TOKENS[bg]) >= 4.5, `--muted on ${bg} is under 4.5:1`);
+  }
+  assert.ok(contrast(TOKENS["--faint"], TOKENS["--surface2"]) < 3,
+    "if --faint was lightened past 3:1 the exception list above can be revisited");
+});
+
+test("the --faint text utility has no user in the shipped markup", () => {
+  const sources = ["app.js", "index.html", ...fs.readdirSync(path.join(ROOT, "player"))
+    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js")).map((f) => `player/${f}`)];
+  const users = sources.filter((f) => fs.readFileSync(path.join(ROOT, f), "utf8").includes("ui-v2-text-faint"));
+  assert.deepEqual(users, [], "a new user of .ui-v2-text-faint paints text at 3:1 — use .ui-v2-text-muted");
+});

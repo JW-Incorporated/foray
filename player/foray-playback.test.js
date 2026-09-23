@@ -1245,6 +1245,10 @@ function fakeEventLog() {
       if (excess > 0) rows.splice(0, excess);
     },
     health() { return { ok: true, backend: "memory", pending: 0, ringSize: rows.length, faults: [] }; },
+    /* "Delete my data" empties the queue too since the 2026-09-22 audit, and
+       counts a page with no way to do that as not clear — so the fake has to
+       carry the module's `purge()` like the rest of its shape. */
+    async purge() { rows.splice(0, rows.length); return { ok: true, remaining: 0 }; },
   };
 }
 
@@ -1462,6 +1466,38 @@ test("during a seam beat the page says Pause, not Loading — the silence is del
   onChange({ ...base, playing: false, loading: true, gap: false });
   assert.equal(dom.el("fy-play").textContent, "Loading…");
   assert.equal(dom.el("fy-strip").classList.contains("is-seam"), false);
+});
+
+test("AUDIT 2026-09-22: the main button is painted from `running`, the answer its press is decided by", async () => {
+  /* The #689 drift on the Foray page: the element is audible while the machine
+     says paused. `forayToggle` presses from `transportIsRunning()`, so a label
+     painted from `playing || gap` said "▶ Resume" over sound and its press
+     paused. KILLING MUTATION: paint from `s.playing || s.gap` again. */
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  const base = { forayId: FORAY_ID, index: 4, ended: false, elapsedSec: 600, totalSec: resolved.totalSec, error: null };
+  onChange({ ...base, playing: false, loading: false, gap: false, running: true });
+  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Pause");
+  // And an older player module, which sends no `running`, still paints from the belief.
+  onChange({ ...base, playing: true, loading: false, gap: false });
+  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+});
+
+test("AUDIT 2026-09-22: a FINISHED Foray offers to start over, not to resume", async () => {
+  /* There is nothing to resume at the end, and the lock screen has already
+     dropped its transport. KILLING MUTATION: delete the `s.ended` branch. */
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  onChange({
+    forayId: FORAY_ID, index: resolved.playable.length - 1, playing: false, running: false,
+    loading: false, gap: false, ended: true, elapsedSec: resolved.totalSec,
+    totalSec: resolved.totalSec, error: null,
+  });
+  assert.equal(dom.el("fy-play").textContent, "▶ Start over");
+  assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Start over");
 });
 
 /* ================================================ a start that fails (#225) ===
@@ -1894,15 +1930,20 @@ test("play() does not destructure its options in the signature — a null caller
     /async play\(item,\s*\{/,
     "destructuring in the signature means a null second argument throws"
   );
+  /* Rewritten 2026-09-22 (audit): a bare string is no longer taken as the why
+     line. The one string caller passed "timestamp", a caller's tag, and the
+     sheet printed it to the listener. Only `opts.why` is listener copy. */
   assert.match(
     client,
-    /const why = typeof opts === "string" \? opts : \(opts\?\.why \?\? ""\)/,
+    /const why = typeof opts\?\.why === "string" \? opts\.why : "";/,
     "read the reason defensively: null, undefined, a string and an object all reach this function"
   );
-  /* And nothing may go back to handing it a bare `null`. `app.js` passes a
-     string ("timestamp"), which USED to destructure to `why = ""` and silently
-     lose the reason; that is now honoured rather than dropped. */
+  /* And nothing may go back to handing it a bare `null`. */
   assert.doesNotMatch(client, /ForayPlayer\.play\([a-zA-Z.]+,\s*null\)/, "no caller may pass null again");
+  /* Nor a bare string: a tag is not copy. KILLING MUTATION: put
+     `play(item, "timestamp")` back in app.js's timestamp handler. */
+  const app = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  assert.doesNotMatch(app, /ForayPlayer\.play\([a-zA-Z.]+,\s*["'`]/, "no caller may pass a string as the why line");
 });
 
 test("client.js only ever reports an error that describes the attempt in front of it", async () => {

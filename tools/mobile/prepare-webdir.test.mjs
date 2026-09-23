@@ -80,7 +80,15 @@ test("every fetchJson(data/...) call in the real app.js is derived", () => {
      is what makes the two counts comparable. */
   const callSites =
     (src.match(/fetchJson\(/g) || []).length - (src.match(/function fetchJson\(/g) || []).length;
-  assert.equal(derived.length, callSites, "some fetchJson call was not derived into the plan");
+  /* ONE FILE MAY BE FETCHED FROM MORE THAN ONE PLACE (2026-09-22 audit, L5):
+     "Try again" re-runs the same fetch (the Foray documents, the catalogue), so
+     a path can have two call sites and the derivation rightly collapses them.
+     The two independent claims are therefore: every call site names a literal
+     path (a computed one could not be derived), and the plan holds exactly the
+     distinct paths those call sites name. */
+  const literalSites = [...src.matchAll(/fetchJson\(\s*["'`]([^"'`$]+)["'`]\s*\)/g)].map((m) => m[1]);
+  assert.equal(literalSites.length, callSites, "a fetchJson call with a computed path cannot be derived into the plan");
+  assert.equal(derived.length, new Set(literalSites).size, "some fetchJson call was not derived into the plan");
   assert.ok(derived.includes("data/session.json"), "the session document must be in the bundle");
   assert.ok(derived.length >= MIN_DERIVED_DATA_FILES);
   for (const f of derived) assert.match(f, /^data\/[^/]+\.json$/);
@@ -187,6 +195,24 @@ test("prepare copies the plan and reports its size", () => {
   assert.equal(fs.existsSync(path.join(fake, "www", "player", "client.test.js")), false);
   assert.equal(fs.existsSync(path.join(fake, "www", "data", "huge-pipeline-input.json")), false);
   assert.equal(r.total, r.files.reduce((n, f) => n + f.bytes, 0));
+});
+
+test("the bundle carries build-stamp.json with the committed deploy_id (founder report 3, 2026-09-22)", () => {
+  /* `sw.js` is the web's only statement of which deploy it is, and it is
+     excluded from this bundle, so a diagnostics record copied out of the shell
+     could not say which web code wrote it. KILLING MUTATION: delete the stamp
+     block in `prepare()` — no file, and `player/build-stamp.js` reads null. */
+  const fake = makeFakeRepo();
+  fs.writeFileSync(path.join(fake, "deploy-manifest.json"),
+    JSON.stringify({ deploy_id: "2B808EC9D50C5B98", files: { "app.js": "sha256:00" } }));
+  prepare({ root: fake, out: "www" });
+  const stamp = JSON.parse(fs.readFileSync(path.join(fake, "www", "build-stamp.json"), "utf8"));
+  assert.deepEqual(stamp, { deploy_id: "2b808ec9d50c5b98" }, "the id alone, never the per-file hashes");
+  assert.equal(fs.existsSync(path.join(fake, "www", "deploy-manifest.json")), false,
+    "the manifest itself stays out: its hashes describe the unminified files");
+  // A manifest with no usable id stops the build rather than stamping nothing.
+  fs.writeFileSync(path.join(fake, "deploy-manifest.json"), JSON.stringify({ files: {} }));
+  assert.throws(() => prepare({ root: fake, out: "www" }), /no usable deploy_id/);
 });
 
 test("prepare rebuilds from scratch, so a removed file does not linger", () => {

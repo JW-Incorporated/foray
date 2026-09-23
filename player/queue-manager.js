@@ -170,6 +170,11 @@ import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 import { interludeEligible, describeInterlude, INTERLUDE_CEILING_SEC } from "./interlude.js";
 
 const POSITION_INTERVAL_MS = 15_000;
+/** How far the playhead must have moved since the last write before a TICK
+    writes again (2026-09-22). Media seconds, not wall: at 2x a listener covers
+    ground twice as fast and loses twice as much to a missed write. Under the
+    15 s corner case #17 allows, with room for a tick to be late. */
+const POSITION_MIN_DELTA_SEC = 10;
 
 /** How often the narration ticker fires `onNarrationTick` while a script-only
     line is speaking (L-03, generation-architecture.md §7 item 3's position
@@ -455,6 +460,37 @@ export class PlayerQueueManager {
       this.reconcileWithBackend("unexplainedPause")
         .catch((err) => this._emit(`reconcile.failed: ${err?.message ?? err}`));
     };
+
+    /* THE ELEMENT'S OWN CLOCK DRIVES THE POSITION WRITER (2026-09-22, founder
+       report 1: "a resumed episode restarts from a stale position").
+
+       The only production writer used to be the 15 s interval, armed ONLY
+       while the reducer said `playing`. An element resumed from outside the
+       reducer — a car or lock-screen press that WebKit's own media session
+       honoured, a suspended WebView woken by the OS — never moved the reducer,
+       so the interval never armed and NOTHING wrote the playhead for the whole
+       ride. Two hooks, both on the element rather than on the belief:
+
+         - `timeupdate` is the writer. It fires only while the element's clock
+           moves, so it is armed by the element's own playing state by
+           construction, and `_persistIfDue` throttles it by media seconds.
+         - `playing` is the reconcile's other direction: the element is
+           audible, so if the machine says `interrupted` it is corrected
+           TOWARDS playing (never the reverse of what the element shows).
+
+       `addMediaListener` because it survives the two-element handover at a
+       cross-episode seam; capability-checked like `prefetch`, so a backend
+       without media events (every fake in the manager suites, a future native
+       backend) keeps the interval alone, which is what shipped before. */
+    if (typeof backend.addMediaListener === "function") {
+      backend.addMediaListener("timeupdate", () => this._persistIfDue());
+      backend.addMediaListener("playing", () => {
+        this._syncTimer();
+        this.reconcileWithBackend("elementPlaying")
+          .catch((err) => this._emit(`reconcile.failed: ${err?.message ?? err}`));
+      });
+      backend.addMediaListener("pause", () => this._syncTimer());
+    }
   }
 
   /* ---------- lifecycle ---------- */
@@ -846,7 +882,7 @@ export class PlayerQueueManager {
     this.currentIndex = index;
 
     const item = this.queue[index];
-    const seconds = this._savedPositionFor(item.id);
+    const seconds = this._savedPositionFor(item);
 
     // No seek event here: `_loadItem` carries the offset into the load, so the
     // asset is prepared at the right position and nothing is ever audible from
@@ -919,6 +955,14 @@ export class PlayerQueueManager {
    */
   async reconcileWithBackend(why = "visible") {
     if (this._disposed) return false;
+    /* THE OTHER DIRECTION (2026-09-22, founder report 1). This used to return
+       for anything but `playing`, so an element resumed from outside the
+       reducer stayed `interrupted` for the whole ride — and `interrupted` is
+       what the position writer, the transport's label and the next reconcile
+       all key off. It is corrected towards `playing` ONLY on the element's own
+       word, and it still never starts audio: `elementResumed` carries no
+       playback effect, because the sound is already coming out. */
+    if (this.state.type === "interrupted") return this._reconcileTowardsPlaying(why);
     /* `playing` and nothing wider. A seam beat is `loadingItem` with a paused
        element BY DESIGN — the 2.0 s silence is the product — and `interrupted`,
        `idle` and `ended` all already agree with a paused element. `playing` is
@@ -951,6 +995,22 @@ export class PlayerQueueManager {
 
     this._emit(`reconcile.externalStop why=${why} — the element is paused and we said playing`);
     await this._transport("reconcile", () => this._handle(E.interruptionBegan()));
+    return true;
+  }
+
+  /** The machine says `interrupted`; is the element audible with THIS item's
+      audio, and if so, say `playing`. Every guard is a reason the element's
+      sound is not this item's resumption: a transition still being applied,
+      a spoken line (nothing in `backend` is producing it), or an element
+      holding some other item — `interrupted` during a bridge names the item
+      AFTER the bridge, which the element does not yet hold. */
+  async _reconcileTowardsPlaying(why) {
+    if (this._applying > 0) return false;
+    if (this._loadedIsSynth || !this.elementIsAudible) return false;
+    const item = this._currentItem();
+    if (!item || this._loadedId !== item.id || this.state.item?.id !== item.id) return false;
+    this._emit(`reconcile.externalPlay why=${why} — the element is playing and we said interrupted`);
+    await this._handle(E.elementResumed());
     return true;
   }
 
@@ -1174,7 +1234,14 @@ export class PlayerQueueManager {
        item, which is what `_loadedId === item.id` asks. */
     const playhead = this.backend.currentTime;
     const playheadReadable = typeof playhead === "number" && Number.isFinite(playhead);
-    const reEnteringLoadedItem = forced == null && this._loadedId === item.id && playheadReadable;
+    /* NOT FROM THE END (audit 2026-09-22). An element that ran out still holds
+       this item, with its playhead parked on the last second — so "the element's
+       clock is about this very item" was true of a FINISHED episode too, and play
+       after the end resumed "in place" at the end and ended again. A finished
+       item is a cold start, and the cold start's rule (`_savedPositionFor`, which
+       is `PositionStore.resumeOffset`) already says what that means: the top. */
+    const reEnteringLoadedItem = forced == null && this._loadedId === item.id && playheadReadable
+      && this.backend.ended !== true;
     const resumingInPlace = Boolean(
       reEnteringLoadedItem && (
         bounds
@@ -1189,7 +1256,7 @@ export class PlayerQueueManager {
       ? playhead
       : (bounds
         ? bounds.startSec
-        : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item.id))));
+        : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item))));
 
     // Move the index only now — after savePosition has already run against the
     // outgoing item. currentIndex tracks what is actually loaded, never what we
@@ -1230,6 +1297,17 @@ export class PlayerQueueManager {
         }
       } else {
         await this.backend.load(item, { startOffset });
+        /* SUPERSEDED BEFORE IT LANDED (audit 2026-09-22): a skip or a row tap
+           claimed the player while this load was in flight. The element is
+           being re-pointed at the newer item, so stamping `_loadedId` here would
+           say it holds THIS one — and `_persistPosition` would then write the
+           newer item's clock under this item's id. Checked here, straight after
+           the await, rather than only at the seam wait below: a newer load bumps
+           `_loadSeq` synchronously when it starts, so this comparison cannot be
+           early the way the one `_transport` describes can. */
+        if (this._loadSeq !== seq) {
+          return this._emit(`load.superseded ${item.id} — a newer load owns the player`);
+        }
         this._loadedId = item.id;
         this._endSynthNarration();
       }
@@ -1251,6 +1329,13 @@ export class PlayerQueueManager {
       }
       await this._handle(E.itemLoaded());
     } catch (err) {
+      /* A load nobody is on any more failing is not the CURRENT item failing.
+         Dispatching `error` here would move the reducer to `idle` and pause the
+         newer load the listener asked for — and the seam deadline, if any, is
+         the newer load's to spend, not this one's to drop. */
+      if (this._loadSeq !== seq) {
+        return this._emit(`load.superseded ${ref.id} — failed after a newer load took over: ${err?.message ?? err}`);
+      }
       // Drop the deadline with the item it belonged to. `_awaitSeamGap` is the
       // only other place that clears it and this path never reaches it, so
       // without this a failed seam leaves a live deadline that the NEXT load —
@@ -1928,11 +2013,29 @@ export class PlayerQueueManager {
     await this._handle(E.skipToNext(next ? refOf(next.item) : null));
   }
 
-  _savedPositionFor(id) {
-    if (!this.positionStore) return 0;
-    const saved = this.positionStore.load(id);
-    const s = saved && typeof saved.seconds === "number" ? saved.seconds : 0;
-    return Number.isFinite(s) && s > 0 ? s : 0;
+  /**
+   * Where a COLD start of this item begins — `PositionStore.resumeOffset`, the
+   * one owner of "where did the listener get to" (#26).
+   *
+   * Audit 2026-09-22: that method encodes the two rules that make a stored second
+   * a resume point — nothing under 10 s is worth resuming to, and anything inside
+   * the last 30 s means FINISHED — and it had no caller outside its own file. This
+   * read the raw row instead, so pressing play on an episode you had finished
+   * resumed four seconds before the outro: "press play, hear the end, silence".
+   * The DISPLAY of how far a listener got is the other question and keeps the raw
+   * row (`ForayPlayer.lastEpisodeCard`); this is only where playback starts.
+   *
+   * A store without `resumeOffset` — every fake in this repo's manager suites —
+   * gets the raw row, which is what it has always got.
+   */
+  _savedPositionFor(item) {
+    if (!this.positionStore || !item) return 0;
+    const dur = Number(item.duration_sec);
+    const duration = item.duration_sec != null && Number.isFinite(dur) && dur > 0 ? dur : null;
+    const s = typeof this.positionStore.resumeOffset === "function"
+      ? this.positionStore.resumeOffset(item.id, { duration })
+      : this.positionStore.load(item.id)?.seconds;
+    return typeof s === "number" && Number.isFinite(s) && s > 0 ? s : 0;
   }
 
   /** A missing bridge must never stall the queue — corner case #12's spirit
@@ -2045,17 +2148,40 @@ export class PlayerQueueManager {
 
   /** The periodic half of the persistence rule. The event-driven half is the
       reducer's savePosition effect; both call the same code path. */
+  /* ARMED ON THE ELEMENT'S STATE TOO (2026-09-22, founder report 1). The belief
+     alone is what left an externally-resumed element with no writer at all; the
+     `playing`/`pause` media hooks above re-evaluate this whenever the element
+     moves, so an element playing behind an `interrupted` machine is covered. */
   _syncTimer() {
-    if (this.state.type === "playing") this._startTimer();
+    if (this.state.type === "playing" || this.elementIsAudible) this._startTimer();
     else this._stopTimer();
   }
 
   _startTimer() {
     if (this._timer) return;
-    this._timer = setInterval(() => {
-      if (this.state.type === "playing") this._persistPosition();
-    }, POSITION_INTERVAL_MS);
+    this._timer = setInterval(() => this._persistIfDue(), POSITION_INTERVAL_MS);
     if (typeof this._timer.unref === "function") this._timer.unref();
+  }
+
+  /**
+   * The periodic write, from whichever tick got here first — the interval or
+   * the element's `timeupdate`. ONE RULE FOR BOTH (2026-09-22): the item must be
+   * the one the element holds, audio must be flowing by the reducer's word OR
+   * the element's, and the playhead must have moved `POSITION_MIN_DELTA_SEC`
+   * since the last write of THIS item by anyone. Checked cheaply and in that
+   * order because `timeupdate` is 4 Hz; `_persistPosition`'s own refusal is a
+   * telemetry line, which at 4 Hz would flood the record.
+   */
+  _persistIfDue() {
+    if (this._disposed || !this.positionStore) return;
+    if (!(this.state.type === "playing" || this.elementIsAudible)) return;
+    const item = this._currentItem();
+    if (!item || boundsOf(item) || this._loadedIsSynth || this._loadedId !== item.id) return;
+    const t = this.backend.currentTime;
+    if (typeof t !== "number" || !Number.isFinite(t)) return;
+    const last = this._lastPersisted;
+    if (last && last.id === item.id && Math.abs(t - last.seconds) < POSITION_MIN_DELTA_SEC) return;
+    this._persistPosition();
   }
 
   _stopTimer() {
@@ -2100,6 +2226,9 @@ export class PlayerQueueManager {
     const seconds = this.backend.currentTime;
     if (typeof seconds !== "number" || !Number.isFinite(seconds)) return;
     this.positionStore.save(item.id, seconds, { duration: this.backend.duration ?? null });
+    /* What the periodic writer measures its delta from — any write counts, so
+       a pause's `savePosition` followed by a tick does not write twice. */
+    this._lastPersisted = { id: item.id, seconds };
   }
 
   _emit(message) {

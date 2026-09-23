@@ -117,7 +117,15 @@ public class PlaybackKeepAliveService extends Service {
 
     /** The one {@code Intent} action this service answers besides a bare start. Its
      *  {@link #EXTRA_TRANSPORT} names an action from {@code ROUTABLE_ACTIONS} in
-     *  {@code foray-media-session.js}. */
+     *  {@code foray-media-session.js}, or its {@code CLOSE_ACTION}.
+     *
+     *  <p><b>"close" IS THE NOTIFICATION'S STOP, and it is NOT {@code "stop"}.</b> A
+     *  {@code "stop"} is a pause since the 2026-09-22 audit, because a car head unit's
+     *  square reaches the page as one through {@link WebViewPlayer#handleStop} and must
+     *  not tear the player down mid-drive. This button is different: on API 24-33 the
+     *  notification cannot be swiped away, so it is the listener's ONE exit, and it has
+     *  to reach {@code stopAndClose()}. The page's stop handler receives it with
+     *  {@code close: true}. */
     static final String ACTION_TRANSPORT = "ai.jwlabs.foura.audio.TRANSPORT";
     static final String EXTRA_TRANSPORT = "action";
 
@@ -439,11 +447,11 @@ public class PlaybackKeepAliveService extends Service {
                rather than promising a swipe. */
             .setOngoing(np.state == NowPlaying.PLAYING)
             .setShowWhen(false)
-            /* Swiping the notification away IS a stop, routed through the page exactly
-               as the button is — WHERE SWIPING IS POSSIBLE AT ALL, which per the comment
-               above is Android 14 and later. Set unconditionally because it is inert
+            /* Swiping the notification away IS a close (see ACTION_TRANSPORT), routed
+               through the page exactly as the button is — WHERE SWIPING IS POSSIBLE AT
+               ALL, which per the comment above is Android 14 and later. Set unconditionally because it is inert
                rather than wrong below that. */
-            .setDeleteIntent(transportIntent("stop", 5))
+            .setDeleteIntent(transportIntent("close", 5))
             /* Without this the system may hold the notification back for ~10 s.
                A user who backgrounds the app should be able to see immediately why
                it is still running. */
@@ -501,11 +509,13 @@ public class PlaybackKeepAliveService extends Service {
            notification. The web half now also reports a finished Foray as not-loaded, so
            the service stops on its own — two independent fixes, because this one is the
            one a listener can act on. */
+        /* It sends "close" (see ACTION_TRANSPORT), not "stop": a stop is a pause,
+           and a paused listener pressing the one exit must get the notification gone. */
         if (np.isLoaded() && np.canStop) {
             notification.addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
                 getString(R.string.foray_action_stop),
-                transportIntent("stop", 4)
+                transportIntent("close", 4)
             );
             index++;
         }

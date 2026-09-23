@@ -215,6 +215,7 @@ import {
   allForays, hydrateForayItems, indexSegments, indexSources, isGeneratedDraft,
 } from "../../player/foray-resolve.js";
 import { SEGMENT } from "../../player/foray-queue.js";
+import { BUILD_STAMP_FILE, buildStampDoc } from "../../player/build-stamp.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -1831,6 +1832,23 @@ export function prepare({
     const src = path.join(root, f.src);
     if (isMinified(f.dest)) minify(src, f.dest);
     else copy(src, f.dest);
+  }
+
+  /* THE BUILD STAMP (founder report 3, 2026-09-22). `sw.js` — the web's only
+     statement of which deploy it is — is excluded from this bundle above, so a
+     diagnostics record copied out of the shell could not say which web code
+     wrote it. The committed manifest's `deploy_id` is that statement, and it is
+     carried in as the one field `player/build-stamp.js` reads. NOT the manifest
+     itself: its per-file hashes describe the web's commented files, and the
+     bundle's are minified, so shipping it would put a document in the shell that
+     disagrees with every file beside it. `buildStampDoc` throws on a manifest
+     with no usable id: a bundle that silently stamps nothing is the defect.
+     Optional on the manifest's EXISTENCE only, like `SEED_POINTER`, so a fixture
+     root without one still builds. */
+  const manifestAbs = path.join(root, "deploy-manifest.json");
+  if (fs.existsSync(manifestAbs)) {
+    const stamp = buildStampDoc(JSON.parse(fs.readFileSync(manifestAbs, "utf8")));
+    put(BUILD_STAMP_FILE, manifestAbs, (dest) => fs.writeFileSync(dest, JSON.stringify(stamp)));
   }
 
   /* THE INJECTION, and then the re-read. Done before anything is measured so the

@@ -51,7 +51,7 @@ import {
 } from "./foray-resolve.js";
 import { itemRuntimeSec } from "./foray-queue.js";
 import {
-  stripModel, stripSummary, mountStrip, renderStrip, assignTones, toneSeed,
+  stripModel, stripSummary, stripTally, mountStrip, renderStrip, assignTones, toneSeed,
   sourceKeyOf, isNarration, growOf, TONE_COUNT, NARRATOR_SOURCE, SIZES,
   segmentStripHtml, applyStripGrow,
 } from "./segment-strip.js";
@@ -562,9 +562,12 @@ test("the strip is a labelled graphic, and the label says what the picture says"
   assert.equal(el.getAttribute("tabindex"), null);
   const label = el.getAttribute("aria-label");
   assert.equal(label, stripSummary(model));
-  assert.match(label, /^Running order: \d+ segments from \d+ shows, \d+ min in all\.$/);
-  assert.ok(label.includes(`${model.segmentCount} segments`));
+  /* Plain English, one count (audit 2026-09-22): no "running order", no
+     "segments", and the total is the item count the position is "of". */
+  assert.match(label, /^\d+ clips from \d+ shows, \d+ min in all\.$/);
+  assert.ok(label.includes(`${model.itemCount} clips`));
   assert.ok(label.includes(`${model.shows.length} shows`));
+  assert.ok(!/running order|segment|piece|bridge/i.test(label), label);
   /* MUTATION (killed): in mountStrip,
      `el.setAttribute("aria-label", stripSummary(model))` -> `…, "Segment strip")`.
      A screen reader hears the element's name and nothing about the Foray.
@@ -576,12 +579,13 @@ test("the label carries the position and the bridges when there are any", () => 
   const starts = segmentStarts(r.playable);
   const model = stripModel(r.playable, { elapsed: starts[4] + 10 });
   const label = stripSummary(model);
-  assert.ok(label.includes("2 narrator bridges"), label);
-  assert.ok(label.includes(`piece ${model.currentIndex + 1} of ${model.segments.length}`), label);
+  assert.ok(label.includes("2 from 4a's narrator"), label);
+  assert.ok(label.startsWith(`${model.itemCount} clips: `), `the total is the same count the position is "of": ${label}`);
+  assert.ok(label.includes(`clip ${model.currentIndex + 1} of ${model.segments.length}`), label);
   assert.ok(label.includes(model.segments[model.currentIndex].show), label);
 
   const quiet = stripSummary(stripModel(real("grilling-history-2").playable));
-  assert.ok(!quiet.includes("bridge"), "a Foray with no narration must not mention it");
+  assert.ok(!quiet.includes("narrator"), "a Foray with no narration must not mention it");
   assert.ok(!quiet.includes("Now on"), "a Foray nobody is playing has no position to report");
   /* MUTATION (killed): in stripSummary, delete the
      `if (m.narrationCount > 0) parts.push(...)` block. The two bridges the
@@ -656,7 +660,7 @@ test("an empty or broken running order renders nothing rather than throwing", ()
     assert.equal(el.children.length, 0);
     assert.equal(model.totalSec, 0);
     assert.equal(model.runs.length, 0);
-    assert.equal(stripSummary(model), "Running order: nothing to play.");
+    assert.equal(stripSummary(model), "Nothing to play yet.");
   }
   /* MUTATION (killed): in stripModel, `const list = Array.isArray(items) ? items.filter(...)`
      -> `const list = items ?? [];`. `null ?? []` is `[]`, so the null case
@@ -707,10 +711,17 @@ const CSS_DARK = withoutLightBlocks(CSS);
     scope must never be part of what `cssVar` sees. Brace-counted for the same
     reason `withoutLightBlocks` is above it. */
 function withoutUiV2Blocks(css) {
-  const marker = "body.ui-v2 {";
+  /* A rule whose WHOLE selector is `body.ui-v2`, at the start of a line — not
+     any text containing it. Since 2026-09-22 the dark segment palette is
+     declared on `:root, body.ui-v2 { ... }` (so a v2 page on a phone set to
+     Light keeps the dark tones), and that rule applies to a v1 page too,
+     through `:root`. A substring match cut it in half and dropped the dark
+     palette from the v1 view this suite measures. */
+  const marker = /^body\.ui-v2 \{/m;
   let out = css;
   for (;;) {
-    const start = out.indexOf(marker);
+    const found = marker.exec(out);
+    const start = found ? found.index : -1;
     if (start < 0) return out;
     let i = out.indexOf("{", start);
     assert.ok(i > 0, "a body.ui-v2 block with no body");
@@ -1290,7 +1301,7 @@ test("the accessible label still names the show the listener is actually inside,
   const at = starts[to] + lengths[to] / 2;
   const label = stripSummary(stripModel(r.playable, { mergeNarration: true, elapsed: at }));
   assert.ok(from < to);
-  assert.match(label, new RegExp(`Now on piece ${to + 1} of ${r.playable.length}, from the narrator,`));
+  assert.match(label, new RegExp(`Now on clip ${to + 1} of ${r.playable.length}, from 4a's narrator,`));
 
   // And the whole sentence is unchanged by merging — it describes the Foray.
   for (const elapsed of [0, at, starts[starts.length - 1] + 1]) {
@@ -1465,4 +1476,45 @@ test("the clip is load-bearing: even merged, a generated Foray of the shipped sh
   /* MUTATION (killed): `.fy-strip--sm { --seg-min: 5px }` -> `3px`, the change
      that makes the worst Foray very nearly fit. The last assertion fails,
      naming both numbers. */
+});
+
+/* ==================================================================== */
+/* stripTally — the Foray header's numbers, from the strip's own model    */
+/* (audit 2026-09-22, theme L)                                            */
+/* ==================================================================== */
+
+/* The frozen fixture's one generated, narrated Foray (#236 moved this file off
+   the live data, so the id must be one the fixture carries — the audit lane that
+   wrote these two tests was cut before that move). */
+const NARRATED_ID = "what-engineers-actually-do-all-day-e08236";
+
+test("stripTally counts what the strip counts: clips are tape, bridges are narration, shows are heard shows", () => {
+  /* The header used to print `playable.length` "segments" — bridges included —
+     over a strip announcing the tape count: "50 segments" above "11 segments".
+     MUTATION (killed): in stripTally, `clips: m.segmentCount` ->
+     `clips: m.itemCount`. The narrated Foray's clip count becomes its whole
+     queue and the first assertion goes red. */
+  const r = resolveDoc(realDoc(NARRATED_ID));
+  const tally = stripTally(r.playable);
+  const model = stripModel(r.playable);
+  assert.equal(tally.clips, model.segmentCount);
+  assert.ok(tally.clips < r.playable.length, "a narrated Foray has fewer clips than queue items");
+  assert.equal(tally.clips + tally.bridges, r.playable.length, "every queue item is a clip or a bridge");
+  assert.equal(tally.shows, model.shows.length);
+  assert.equal(tally.totalSec, r.totalSec, "one runtime, whichever reader asks");
+  /* L4's wording since integration: "N clips: <tape> from S shows and <bridges>
+     from 4a's narrator". */
+  assert.ok(stripSummary(model).includes(`: ${tally.clips} from `), "the strip's own sentence names the same number");
+});
+
+test("stripTally says a runtime is an estimate when any item's duration was not measured", () => {
+  /* ~40% of a narrated Foray's runtime is `script.length / 17`. `duration_source`
+     carried that through two modules with no reader at the surface.
+     MUTATION (killed): make `estimated` always false. The first assertion goes
+     red. */
+  const narrated = stripTally(resolveDoc(realDoc(NARRATED_ID)).playable);
+  assert.equal(narrated.estimated, true, "script-timed bridges make the runtime an estimate");
+  const tapeOnly = stripTally(real("capital-types-1").playable);
+  assert.equal(tapeOnly.estimated, false, "a Foray of measured tape is a measurement");
+  assert.equal(tapeOnly.bridges, 0);
 });

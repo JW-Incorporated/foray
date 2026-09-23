@@ -67,7 +67,8 @@ class El {
     this.classList = {
       add: (c) => this._c.add(c),
       remove: (c) => this._c.delete(c),
-      contains: (c) => this._c.has(c),
+      // A class set through `className` (ddEl's way) counts too, as in a browser.
+      contains: (c) => this._c.has(c) || String(this.className).split(/\s+/).includes(c),
       toggle: (c, on) => {
         const want = on ?? !this._c.has(c);
         if (want) this._c.add(c); else this._c.delete(c);
@@ -91,7 +92,23 @@ class El {
     for (const fn of [...(this._on.get("click") ?? [])]) out.push(fn({ stopPropagation() {}, preventDefault() {} }));
     return Promise.all(out);
   }
-  closest() { return null; }
+  /* Focus and ancestry, added 2026-09-22 for the "a rebuild must not throw
+     focus out of the sheet" tests at the end of this file: `focus()` moves
+     the mounted document's activeElement, and `contains`/`closest` walk the
+     real parent links (`[data-voice-id]` is the one attribute selector the
+     page asks about). */
+  focus() { if (CURRENT_DOC) CURRENT_DOC.activeElement = this; }
+  contains(o) { for (let n = o; n; n = n.parent) if (n === this) return true; return false; }
+  closest(sel) {
+    const data = /^\[data-([\w-]+)\]$/.exec(String(sel).trim());
+    for (let n = this; n; n = n.parent) {
+      if (data) {
+        const key = data[1].replace(/-([a-z])/g, (_m, c) => c.toUpperCase());
+        if (key in n.dataset) return n;
+      } else if (matches(n, sel)) return n;
+    }
+    return null;
+  }
   querySelector(sel) { return findIn(this, sel); }
   querySelectorAll(sel) { return findAllIn(this, sel); }
   get classes() { return [...new Set(String(this.className).split(/\s+/).filter(Boolean)), ...this._c]; }
@@ -100,6 +117,10 @@ class El {
   set innerHTML(v) { if (v === "") this.children = []; }
   get innerHTML() { return ""; }
 }
+
+/** The document the most recent mount() built, so `El.focus()` can move its
+    activeElement. One mount per test, so a module-level pointer is enough. */
+let CURRENT_DOC = null;
 
 function matches(el, sel) {
   const s = String(sel).trim();
@@ -216,6 +237,7 @@ function mount({
   };
   ctx.window = ctx;
   ctx.globalThis = ctx;
+  CURRENT_DOC = ctx.document;
   vm.createContext(ctx);
   process.on("unhandledRejection", () => {});
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
@@ -251,6 +273,9 @@ const rowsOf = (ui) => findAllIn(ui.list, ".voice-row");
 const nameOf = (row) => findIn(row, ".voice-row-name").textContent;
 const subOf = (row) => findIn(row, ".voice-row-sub").textContent;
 const installedRows = (ui) => rowsOf(ui).filter((r) => !r.classes.includes("voice-row-missing"));
+/* The radio inside an installed row (audit 2026-09-22, qa row 81): the row is a
+   plain container now, holding the radio and its Preview button as SIBLINGS. */
+const choiceOf = (row) => findIn(row, ".voice-row-choice");
 const missingRows = (ui) => rowsOf(ui).filter((r) => r.classes.includes("voice-row-missing"));
 
 /* ==================================================================== */
@@ -324,8 +349,12 @@ test("installed allowlisted voices are selectable rows with Audition; the rest a
 
   assert.deepStrictEqual(installedRows(ui).map(nameOf), ["Samantha", "Daniel"]);
   for (const row of installedRows(ui)) {
-    assert.ok(findIn(row, ".voice-row-audition"), `${nameOf(row)} must offer Audition`);
-    assert.strictEqual(row.getAttribute("role"), "radio");
+    assert.ok(findIn(row, ".voice-row-audition"), `${nameOf(row)} must offer Preview`);
+    assert.strictEqual(choiceOf(row).getAttribute("role"), "radio");
+    /* MUTATION: append the Preview button to the choice instead of the row. */
+    assert.strictEqual(findIn(choiceOf(row), ".voice-row-audition"), null,
+      "Preview must be beside the radio, never inside it — a control nested in a control");
+    assert.strictEqual(row.getAttribute("role"), null, "the row itself is not a radio any more");
   }
 
   const missing = missingRows(ui);
@@ -336,7 +365,8 @@ test("installed allowlisted voices are selectable rows with Audition; the rest a
     assert.match(sub, /Settings.*Accessibility.*Spoken Content.*Voices.*English/,
       `missing row did not carry the exact Settings path: ${sub}`);
     assert.ok(!findIn(row, ".voice-row-open"), "no dead Open Settings button — @capacitor/app has no such method (see app.js's own comment)");
-    assert.ok(!findIn(row, ".voice-row-audition"), "a greyed row must not offer Audition — nothing installed to speak");
+    assert.ok(!findIn(row, ".voice-row-audition"), "a greyed row must not offer Preview — nothing installed to speak");
+    assert.strictEqual(row.getAttribute("role"), null, "no orphan listitem role outside a list");
   }
 });
 
@@ -402,7 +432,7 @@ test("MUTATION GUARD: with nothing stored, Samantha's best installed tier is the
   await ui.open.click();
   await tick();
 
-  const checked = installedRows(ui).filter((r) => r.getAttribute("aria-checked") === "true");
+  const checked = installedRows(ui).filter((r) => choiceOf(r).getAttribute("aria-checked") === "true");
   assert.strictEqual(checked.length, 1, "exactly one row is selected");
   assert.strictEqual(nameOf(checked[0]), "Samantha");
   assert.ok(checked[0].classes.includes("voice-row-selected"));
@@ -417,7 +447,7 @@ test("a stored choice is never overridden by the default", async () => {
   await ui.open.click();
   await tick();
 
-  const checked = installedRows(ui).filter((r) => r.getAttribute("aria-checked") === "true");
+  const checked = installedRows(ui).filter((r) => choiceOf(r).getAttribute("aria-checked") === "true");
   assert.deepStrictEqual(checked.map(nameOf), ["Daniel"]);
 });
 
@@ -425,7 +455,7 @@ test("an older client with no `defaultVoice` still renders, with nothing selecte
   const { ui } = mount({ selected: null });
   await ui.open.click();
   await tick();
-  assert.strictEqual(installedRows(ui).filter((r) => r.getAttribute("aria-checked") === "true").length, 0);
+  assert.strictEqual(installedRows(ui).filter((r) => choiceOf(r).getAttribute("aria-checked") === "true").length, 0);
   assert.strictEqual(rowsOf(ui).length, EXPECTED_ORDER.length);
 });
 
@@ -454,6 +484,22 @@ test("Web Speech (path: web-speech) shows installed allowlisted voices only, no 
   assert.strictEqual(nameOf(rows[0]), "Samantha");
   assert.ok(!rows[0].classes.includes("voice-row-missing"));
   assert.match(subOf(rows[0]), /voice/, "unknown quality reads as a bare noun");
+  /* REVIEW 2026-09-23: no dimmed rows, so no sentence about dimmed voices or a
+     phone's Settings. MUTATION: put the sentence back in the fixed subtitle, or
+     leave .voice-missing-note always visible. */
+  const note = findIn(ui.sheet, ".voice-missing-note");
+  assert.ok(!note || note.hidden, "the dimmed-voices note is not shown on the Web Speech path");
+  assert.doesNotMatch(ui.sub.textContent, /Dimmed|phone's Settings/, "and the fixed subtitle does not say it");
+});
+
+test("REVIEW: on the native path with a voice to download, the dimmed-voices note is shown", async () => {
+  const { ui } = mount();
+  await ui.open.click();
+  await tick();
+  assert.ok(rowsOf(ui).some((r) => r.classes.includes("voice-row-missing")), "fixture: a dimmed row is shown");
+  const note = findIn(ui.sheet, ".voice-missing-note");
+  assert.ok(note && !note.hidden, "the note explains the dimmed rows");
+  assert.match(note.textContent, /Dimmed voices are free to download/);
 });
 
 test("a device with voices but none on the list says so, rather than 'no voices reported'", async () => {
@@ -463,7 +509,7 @@ test("a device with voices but none on the list says so, rather than 'no voices 
   await ui.open.click();
   await tick();
   assert.strictEqual(rowsOf(ui).length, 0);
-  assert.match(findIn(ui.list, ".voice-loading").textContent, /trial voices/);
+  assert.match(findIn(ui.list, ".voice-loading").textContent, /voices 4a suggests/);
 });
 
 /* ==================================================================== */
@@ -477,8 +523,38 @@ test("selecting an installed row calls setNarrationVoice with the best tier's id
   await ui.open.click();
   await tick();
 
-  await installedRows(ui)[0].click(); // Samantha
+  await choiceOf(installedRows(ui)[0]).click(); // Samantha
   assert.deepStrictEqual(setVoiceCalls, ["com.apple.voice.enhanced.en-US.Samantha"]);
+});
+
+/* The group a screen reader and a keyboard can find (audit 2026-09-22, qa row
+   81): the list is a named radiogroup, exactly one radio is a tab stop, and an
+   arrow key selects the neighbour, as a native radio group's does.
+   MUTATION 1: drop `list.setAttribute("role", "radiogroup")`.
+   MUTATION 2: make every choice `tabIndex = 0` (all rows as tab stops again).
+   MUTATION 3: drop the ArrowDown branch of the choice's keydown handler. */
+test("the voices are one named radio group: one tab stop, arrows move the choice", async () => {
+  const { ui, setVoiceCalls } = mount();
+  await ui.open.click();
+  await tick();
+
+  assert.strictEqual(ui.list.getAttribute("role"), "radiogroup");
+  assert.strictEqual(ui.list.getAttribute("aria-labelledby"), "voice-title");
+  const choices = installedRows(ui).map(choiceOf);
+  assert.ok(choices.length >= 2, "the fixture has two installed voices");
+  assert.deepStrictEqual(choices.map((c) => c.tabIndex).filter((t) => t === 0).length, 1,
+    "exactly one radio in the group is a tab stop");
+
+  const keydown = (el, key) => { for (const fn of el._on.get("keydown") ?? []) fn({ key, preventDefault() {} }); };
+  keydown(choices[0], "ArrowDown");
+  assert.deepStrictEqual(setVoiceCalls, [choices[1].dataset.voiceId], "ArrowDown selects the next voice");
+  /* REVIEW 2026-09-23: and announces it by name, as a click does. MUTATION:
+     call `selectVoiceRow(next)` with one argument in moveVoiceChoice. */
+  assert.strictEqual(ui.notice.hidden, false, "the choice is announced");
+  assert.strictEqual(ui.notice.textContent, `${nameOf(installedRows(ui)[1])} selected.`);
+  const preview = findIn(installedRows(ui)[0], ".voice-row-audition");
+  assert.strictEqual(preview.getAttribute("aria-label"), `Preview ${nameOf(installedRows(ui)[0])}`,
+    "each Preview names its voice");
 });
 
 /* ==================================================================== */
@@ -546,4 +622,48 @@ test("Close and the scrim both dismiss the sheet", async () => {
   await tick();
   await ui.scrim.click();
   assert.strictEqual(ui.sheet.hidden, true);
+});
+
+/* ==================================================================== */
+/* 9. a rebuild must not throw focus out of the sheet (audit 2026-09-22) */
+/* ==================================================================== */
+
+/* Every select and every Audition repaints the list, which destroyed the row
+   or button that had just been activated: focus fell to <body>, behind the
+   scrim, and a keyboard or screen-reader user had to find their way back into
+   the dialog from the top of the document after every action. */
+
+test("after selecting a voice, focus is on that voice's (new) row, and the choice is announced", async () => {
+  /* MUTATION: delete the `if (focusVoice) { ... }` block at the end of
+     paintVoiceList -> focus is left on a row that is no longer in the
+     document; red. MUTATION: `paintVoiceNotice("")` in selectVoiceRow -> red. */
+  const { ctx, ui } = mount();
+  await ui.open.click();
+  await tick();
+  /* The radio, not the row, since L4 (integration): the row is a plain
+     container holding the radio and Preview as siblings. */
+  const before = choiceOf(installedRows(ui)[0]);
+  before.focus();
+  await before.click();
+  const after = choiceOf(installedRows(ui)[0]);
+  assert.notStrictEqual(after, before, "fixture assumption: the list really was rebuilt");
+  assert.strictEqual(ctx.document.activeElement, after, "focus follows the voice into its rebuilt radio");
+  assert.strictEqual(ui.notice.hidden, false);
+  assert.match(ui.notice.textContent, /^Samantha selected\.$/);
+});
+
+test("after Audition, focus is back on that voice's Audition button", async () => {
+  /* The button is rebuilt twice (disabled while it plays, then enabled);
+     while it is disabled focus waits on the row, then returns to the button.
+     MUTATION: drop `focusAudition` (always focus the row) -> red. */
+  const { ctx, ui } = mount();
+  await ui.open.click();
+  await tick();
+  const btn = findIn(installedRows(ui)[0], ".voice-row-audition");
+  btn.focus();
+  await btn.click();
+  const rebuilt = findIn(installedRows(ui)[0], ".voice-row-audition");
+  assert.notStrictEqual(rebuilt, btn, "fixture assumption: the button was rebuilt");
+  assert.strictEqual(ctx.document.activeElement, rebuilt,
+    "once it plays out, focus is back on the (rebuilt) Audition button — never on <body>");
 });

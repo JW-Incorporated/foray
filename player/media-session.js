@@ -46,7 +46,7 @@
         exactly the moments the audio changes — and the OS treats each as a new
         track, which is what makes the change legible without a glance.
 
-   `album` carries `part 12 of 32` because that is the one fact a display can add
+   `album` carries `clip 12 of 32` because that is the one fact a display can add
    for free, and it is worded exactly as the mini bar words it (`client.js`'s
    `forayNowPlaying`) so the two surfaces cannot drift.
 
@@ -420,10 +420,11 @@ export function mediaMetadata({
   };
 }
 
-/** "The history of grilling · part 12 of 32". Worded as the mini bar words it. */
+/** "The history of grilling · clip 12 of 32". Worded as the mini bar words it —
+    "clip", the listener's word for a Foray's pieces (audit 2026-09-22). */
 function albumOf(forayTitle, index, total) {
   const n = Number.isInteger(index) && index >= 0 && Number.isInteger(total) && total > 0
-    ? `part ${Math.min(index, total - 1) + 1} of ${total}`
+    ? `clip ${Math.min(index, total - 1) + 1} of ${total}`
     : "";
   if (forayTitle && n) return `${forayTitle} · ${n}`;
   if (forayTitle) return forayTitle;
@@ -498,9 +499,10 @@ export function mediaSessionView(view = {}) {
  *
  * An action whose surface method is ABSENT is not returned, and therefore never
  * registered, so the OS greys the button out. That is the honest rendering of
- * single-episode playback: the queue is one item (`SINGLE_ITEM`, product
- * principle 1 — no autoplay chains), so `nexttrack` has nowhere to go and a
- * button that silently does nothing is worse than a dim one.
+ * an episode with nothing after it: a button that silently does nothing is
+ * worse than a dim one. (Whether an episode HAS a next is the page's Up Next,
+ * which `client.js` asks through `setEpisodeNavigation` — continuous playback is
+ * wanted since the founder's 2026-09-14 ruling on product principle 1.)
  *
  * @param {object} surface  any subset of
  *   `{ play, pause, stop, next, previous, seekBy(offsetSec), seekTo(positionSec) }`
@@ -522,7 +524,11 @@ export function mediaSessionActions(surface = {}, {
   const out = [];
   if (play) out.push(["play", () => play()]);
   if (pause) out.push(["pause", () => pause()]);
-  if (stop) out.push(["stop", () => stop()]);
+  /* The details reach `stop` — and only the one field that means anything there:
+     the Android shell's notification Stop arrives as `{ close: true }`
+     (`CLOSE_ACTION` in foray-media-session.js), the one stop that may tear the
+     player down. Every other stop — a browser's, a car's — carries no `close`. */
+  if (stop) out.push(["stop", (details) => stop(details?.close === true ? { close: true } : undefined)]);
   if (previous) out.push(["previoustrack", () => previous()]);
   if (next) out.push(["nexttrack", () => next()]);
   if (seekBy) {

@@ -29,6 +29,8 @@
  * surface to see it, a rule for when a row dies — and nothing today asks for it.
  */
 
+import { NEAR_END_SEC, MIN_RESUME_SEC } from "./position-store.js";
+
 /** The single pointer row. `cp_` prefix: renaming wipes user state (CLAUDE.md).
     Deliberately NOT `cp_pos:*`-shaped — that namespace is one row per episode
     and is owned by `position-store.js`. */
@@ -142,4 +144,41 @@ export function episodeRemainingLabel(record, positionSec) {
   const dur = Number(record.duration_sec ?? record.duration_min * 60);
   const mins = Math.round(Math.max(0, dur - Number(positionSec)) / 60);
   return mins <= 0 ? "finished" : `${mins} min left`;
+}
+
+/**
+ * WHERE THE LISTENER IS IN ONE EPISODE — the one answer every surface that
+ * shows progress reads (audit 2026-09-22, theme L / persona #78).
+ *
+ * `positionSec` is the RAW stored position (`PositionStore.load(id).seconds`),
+ * NOT `resumeOffset`. The two answer different questions and the difference was
+ * a live bug: `resumeOffset` collapses "finished" to 0 because resuming four
+ * seconds before the outro is worse than starting over — correct for where
+ * PLAY should begin, wrong for what a CARD should say. "Jump back in" fed the
+ * collapsed 0 into its bar and label and told a listener who had just finished
+ * a three-hour episode it had "180 min left", for thirty days.
+ *
+ * The thresholds are position-store's own (`NEAR_END_SEC`, `MIN_RESUME_SEC`),
+ * imported rather than restated, so "finished" means the same thing here as it
+ * does to the resume.
+ *
+ *   unplayed    — nothing stored.
+ *   sampled     — stored, but under MIN_RESUME_SEC: opened, not listened to. No
+ *                 bar, no label; it is still counted as "played" by a caller
+ *                 counting what was opened.
+ *   in-progress — part-way; percent and "NN min left" when the duration is
+ *                 known, neither when it is not (no confident wrong number).
+ *   played      — within NEAR_END_SEC of a known end.
+ */
+export function episodeProgress(record, positionSec) {
+  const pos = Number(positionSec);
+  if (positionSec == null || !Number.isFinite(pos) || pos <= 0) return { state: "unplayed", percent: null, label: null };
+  const pct = episodePercentDone(record, pos);
+  if (pct !== null) {
+    const dur = Number(record.duration_sec ?? record.duration_min * 60);
+    if (pos > dur - NEAR_END_SEC) return { state: "played", percent: 100, label: "Played" };
+  }
+  if (pos < MIN_RESUME_SEC) return { state: "sampled", percent: null, label: null };
+  if (pct === null) return { state: "in-progress", percent: null, label: null };
+  return { state: "in-progress", percent: Math.round(pct * 100), label: episodeRemainingLabel(record, pos) };
 }

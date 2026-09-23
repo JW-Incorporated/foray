@@ -316,7 +316,9 @@ test("F14: a generated playlist is an interest leaf filled from the pool, never 
   const html = m.view();
   const section = html.slice(html.indexOf("hv2-playlists"), html.indexOf("hv2-episodes"));
   assert.ok(section.includes("Startups"), "the interest leaf playlist renders under Playlists for you");
-  assert.ok(section.includes('href="#/playlist/gen-business/startups"'), "a generated card links to its own detail page");
+  /* Encoded since 2026-09-22 (audit: one spelling of a playlist route —
+     playlistRoute()); the router decodes it back to `gen-business/startups`. */
+  assert.ok(section.includes('href="#/playlist/gen-business%2Fstartups"'), "a generated card links to its own detail page");
   assert.ok(!section.includes("#/subject/"), "no card slot is presented as a generated playlist");
   assert.ok(!/hv2-playlist-title">Engineering</.test(section) && !/hv2-playlist-title">Comedy</.test(section), "the card slots' subjects do not appear as generated playlists");
 });

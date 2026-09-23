@@ -187,8 +187,12 @@ async function mount({ seed = {}, appSrc = APP_SRC, probe = null, noPlayer = fal
   h.status = () => findIn(body, "#diag-status");
   h.sheet = () => findIn(body, "#diag-sheet");
   /** The drawer's controls in order, which is what "the probe never lands
-      below Delete my data" is asserted against. */
-  h.drawerIds = () => h.drawer().children.map((c) => c.id).filter(Boolean);
+      below Delete my data" is asserted against. The Developer group (2026-09-22
+      audit, R8) is read through, in place: its controls are the drawer's
+      controls, one level down. */
+  h.drawerIds = () => h.drawer().children
+    .flatMap((c) => (c.id === "drawer-dev" ? c.children : [c]))
+    .map((c) => c.id).filter(Boolean);
   h.settle = async (n = 30) => { for (let i = 0; i < n; i++) await tick(); };
   return h;
 }
@@ -340,7 +344,7 @@ test("with no player module loaded the run says so instead of throwing", async (
   h.openDrawer();
   await h.run().click();
   await h.settle();
-  assert.match(h.status().textContent, /player module has not loaded/);
+  assert.match(h.status().textContent, /player hasn.t loaded/);
 });
 
 test("a rejecting player is caught and reported, never left as an unhandled rejection", async () => {

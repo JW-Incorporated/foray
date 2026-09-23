@@ -341,7 +341,7 @@ test("REPRODUCED: the list's part count and the detail view's rows agree after a
 
   m.ctx.renderPlaylists();
   const list = m.view();
-  const listed = Number(/(\d+) parts/.exec(list)[1]);
+  const listed = Number(/(\d+) episodes?\b/.exec(list)[1]);
   m.ctx.renderPlaylistDetail(saved.id);
   const detail = m.view();
   assert.strictEqual(listed, total, "the list must count the saved parts");
@@ -372,7 +372,7 @@ test("the fields that ROT or cost the most are deliberately not copied", () => {
   /* `audio_url` is the point: it is the most expensive field AND the only one
      whose staleness produces a play button that fails, which is worse than the
      link-out an absent one degrades to. `artwork_url` is never rendered by a row,
-     `apple_episode_url` is derivable from the two ids appleLink() already uses,
+     `apple_episode_url` is derivable from the two Apple ids that are kept,
      and `hook` only reaches an in-app play.
 
      MUTATION: copy any of them into the part. This fails, by name. */
@@ -489,7 +489,7 @@ test("items is authoritative: a mirror that disagrees is repaired, not believed"
   assert.deepStrictEqual([...swapped.playlistsRaw()[0].item_ids], parts.map((x) => x.id),
     "a same-length mirror in the wrong order must still be repaired");
   m.ctx.renderPlaylists();
-  assert.ok(m.view().includes("2 parts"), `the list must count items: ${/\d+ parts/.exec(m.view())}`);
+  assert.ok(m.view().includes("2 episodes"), `the list must count items: ${/\d+ episodes?\b/.exec(m.view())}`);
   m.ctx.renderPlaylistDetail("q1");
   assert.strictEqual(rowCount(m.view()), 2);
 });
@@ -667,7 +667,7 @@ test("a part with no snapshot behind it still holds its place, and links nowhere
   const html = withArchivedPart(m, { extraStub: true });
   assert.strictEqual(rowCount(html), 3, "the unnameable part is still a part");
   assert.ok(html.includes("3 episodes"), "and the count must include it");
-  assert.ok(html.includes("Part no longer in the catalogue"));
+  assert.ok(html.includes("Episode no longer in the catalogue"));
   assert.ok(!html.includes("idundefined"), "a part with no apple id must get no link at all");
   assert.ok(!html.includes(`data-star="long-gone--episode"`),
     "and no star either — there is no snapshot for toggleStar to store");
@@ -700,9 +700,9 @@ test("the page says what happened, once, and says nothing when nothing is missin
   const notes = (withGaps.match(/class="note"/g) || []).length;
   assert.strictEqual(notes, 1, "one note, not one per missing part");
   const noteText = /<p class="note">([\s\S]*?)<\/p>/.exec(withGaps)[1];
-  assert.match(noteText, /^1 part is not available right now/,
+  assert.match(noteText, /^1 episode is not available right now/,
     `the note must open by naming the shortfall: ${noteText}`);
-  assert.match(noteText, /1 part was saved before 4a kept episode details/,
+  assert.match(noteText, /1 episode was saved before 4a kept episode details/,
     `and name the unnameable one too: ${noteText}`);
   /* "the Playlists page", not "the home screen": the builder left Home on
      2026-09-03 (test/home-information-architecture.test.js), and a note that
@@ -745,12 +745,12 @@ test("the new copy follows the repo's rules: no exclamation, no blame, an actual
     assert.ok(!note.includes("!"), `no exclamation marks: ${note}`);
     assert.ok(!/\byou (saved|built|did|chose)\b/i.test(note), `no blaming the listener: ${note}`);
   }
-  assert.match(many, /2 parts are not/, `plural must agree: ${many}`);
-  assert.match(single, /1 part is not/, `singular must agree: ${single}`);
+  assert.match(many, /2 episodes are not/, `plural must agree: ${many}`);
+  assert.match(single, /1 episode is not/, `singular must agree: ${single}`);
   /* Verb agreement, both branches, because this is the one that shipped wrong. */
-  assert.match(single, /1 part was saved before/, `singular verb: ${single}`);
+  assert.match(single, /1 episode was saved before/, `singular verb: ${single}`);
   assert.match(single, /if the episode returns to the catalogue/, `singular verb: ${single}`);
-  assert.match(many, /2 parts were saved before/, `plural verb: ${many}`);
+  assert.match(many, /2 episodes were saved before/, `plural verb: ${many}`);
   assert.match(many, /if the episodes return to the catalogue/, `plural verb: ${many}`);
   assert.ok(!/episode return\b/.test(single), `"the episode return" is not English: ${single}`);
   assert.match(many, /cannot play/, "an archived part must say plainly that it cannot play");
@@ -1003,7 +1003,7 @@ test("MIGRATION IS SAFE WITH NO CATALOGUE — a stale service worker must not em
   assert.deepStrictEqual(p.items.map((x) => x.id), LEGACY.item_ids);
   assert.deepStrictEqual(m.playlistsRaw()[0].item_ids, LEGACY.item_ids);
   m.ctx.renderPlaylists();
-  assert.ok(m.view().includes("4 parts"), "the count must survive a page with no catalogue");
+  assert.ok(m.view().includes("4 episodes"), "the count must survive a page with no catalogue");
 });
 
 test("HEALING: a stub upgrades itself the day the pool carries that episode again", () => {
@@ -1071,7 +1071,7 @@ test("A CORRUPT STORE COSTS ONE ROW, NOT THE WHOLE APP", () => {
   assert.strictEqual(rowCount(m.view()), 2);
   assert.ok(m.view().includes("2 episodes"));
   m.ctx.renderPlaylists();
-  assert.ok(m.view().includes("2 parts") && m.view().includes("1 parts"));
+  assert.ok(m.view().includes("2 episodes") && m.view().includes("1 episode<"), "one count per playlist, and the one-item playlist is singular (it read \"1 parts\" until 2026-09-22)");
 
   /* And the no-id row must be STABLE: read it repeatedly and the store is written
      once, not once per read. */
@@ -1199,7 +1199,9 @@ test("today's subject queue renders through the same one path as a saved playlis
   const html = m.view();
   assert.strictEqual(rowCount(html), 2);
   assert.strictEqual(goneCount(html), 0, "a live queue has nothing archived in it");
-  assert.ok(html.includes("today's queue"));
+  /* "picked for you", not "today's queue": buildCards() re-deals on every load,
+     so nothing about the queue is daily (audit 2026-09-22, qa row 149). */
+  assert.ok(html.includes("picked for you"));
   assert.ok(!html.includes("remove this playlist"), "a subject queue is not removable");
 });
 

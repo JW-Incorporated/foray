@@ -94,7 +94,13 @@ export const REAL_DATA_SUITES: readonly string[] = [
      suite cannot go red on a publish; it is in the gate because G-21c's rule
      is "every real-data suite runs", not "every suite a publish could break",
      and it is cheap (a handful of tests, no fixture repo). */
-  "test/human-actions-integrity.test.js"
+  "test/human-actions-integrity.test.js",
+  /* Added 2026-09-23 with the suite itself (audit lane L5, theme G). It mounts
+     every committed Foray through the page's loading/failed/empty painters
+     (`readData("data/forays.json")` and the two pool files), so a publish that
+     adds a Foray whose shape a painter mishandles must be refused here, not
+     found on a phone. */
+  "test/load-states.test.js"
 ];
 
 /**

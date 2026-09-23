@@ -516,7 +516,8 @@ session forever. `data/` is regenerated nightly and the web site picks that up
 immediately; the app would not. This is exactly **#40**'s remaining half ("data
 freshness"), whose web half landed in #204 — and it is the difference between a
 demo and a daily product. `@capacitor/preferences` is installed for #40's native
-storage tier, but nothing registers it yet.
+storage tier, and since 2026-09-22 the durable store uses it inside the shell
+(`player/durable-store.js:preferencesTier()`, wired in `player/client.js`).
 
 ### 3.3 The segment pool is sliced too, and it is *exactly* the referenced set (#327)
 

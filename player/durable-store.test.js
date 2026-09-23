@@ -26,7 +26,7 @@ import assert from "node:assert/strict";
 
 import {
   DurableStore, createDurableStore, localStorageTier, requestPersistence, isNewer,
-  DEFAULT_PREFIX, HEALTH_KEY, MAX_FAULTS, MAX_CONSECUTIVE_TIER_FAILURES,
+  DEFAULT_PREFIX, HEALTH_KEY, LOCAL_STALE_KEY, MAX_FAULTS, preferencesTier, MAX_CONSECUTIVE_TIER_FAILURES,
   PERSIST_GRANTED, PERSIST_DENIED, PERSIST_UNSUPPORTED, PERSIST_ERROR, PERSIST_UNKNOWN,
 } from "./durable-store.js";
 import { ForayProgressStore, makeProgress, readProgress, progressKey } from "./foray-progress.js";
@@ -42,6 +42,10 @@ class FakeLocal {
     this.map = new Map(Object.entries(initial));
     this.failWrites = false;
     this.blocked = false;
+    /* Per-key refusals, for the case a global switch cannot model: a bucket
+       that is full for ONE big write while a durable tier still takes it. */
+    this.refuse = null;
+    this.refuseRemove = null;
   }
   get length() {
     if (this.blocked) throw securityError();
@@ -55,9 +59,13 @@ class FakeLocal {
   setItem(k, v) {
     if (this.blocked) throw securityError();
     if (this.failWrites) throw quotaError();
+    if (this.refuse && this.refuse(k)) throw quotaError();
     this.map.set(k, String(v));
   }
-  removeItem(k) { this.map.delete(k); }
+  removeItem(k) {
+    if (this.refuseRemove && this.refuseRemove(k)) throw securityError();
+    this.map.delete(k);
+  }
 }
 
 function quotaError() {
@@ -1044,4 +1052,257 @@ test("PURGE restores health recording afterwards, even when it threw", async () 
   await s.purge();
   s._recordHealth();
   assert.ok(local.map.has(HEALTH_KEY), "health recording never came back on");
+});
+
+/* ---------- a mirror that refused a write (2026-09-22 audit, property 4) ----------
+
+   The revert: localStorage refuses ONE write (a full bucket), IndexedDB takes
+   it, `setItem` returns normally because something did. Next launch, hydration
+   compared the stale mirror with the good durable row, found no timestamp on
+   either — `cp_queue`, `cp_saved`, `cp_interests`, `cp_sb_session` and a dozen
+   more carry none — let local win, and pushed it DOWN over the good copy. The
+   listener's change was undone and then lost for good.
+
+   MUTATION THAT KILLS THESE: drop `staleHere.has(k) ||` from `_doHydrate`'s
+   conflict line — the three per-key tests go red, the durable row overwritten. */
+
+/** "The same browser tomorrow": a new store over the same two backings. */
+function relaunch(local, idb) {
+  return new DurableStore({ tiers: [localStorageTier(local), idb] });
+}
+
+for (const key of ["cp_queue", "cp_sb_session", "cp_interests"]) {
+  test(`a write localStorage refused is still there next launch, and the durable copy survives — ${key}`, async () => {
+    const before = JSON.stringify({ v: "before" });
+    const after = JSON.stringify({ v: "after" });
+    const local = new FakeLocal({ [key]: before });
+    const idb = fakeDurable({ rows: { [key]: before } });
+    const first = relaunch(local, idb);
+    await first.hydrate();
+
+    local.refuse = (k) => k === key;
+    assert.doesNotThrow(() => first.setItem(key, after), "premise: a durable tier took it, so nothing throws");
+    await first.flush();
+    assert.equal(local.map.get(key), before, "premise: the mirror kept the OLD value");
+    assert.equal(idb.store.get(key), after, "premise: the durable tier holds the new one");
+
+    const second = relaunch(local, idb);
+    await second.hydrate();
+    await second.flush();
+    assert.equal(second.getItem(key), after, "the change was reverted on relaunch");
+    assert.equal(idb.store.get(key), after, "and the stale mirror was pushed down over the good copy");
+  });
+}
+
+test("the stale mark clears once localStorage takes the key again, and the ledger row goes with it", async () => {
+  const local = new FakeLocal({ cp_saved: '["a"]' });
+  const idb = fakeDurable({ rows: { cp_saved: '["a"]' } });
+  const first = relaunch(local, idb);
+  await first.hydrate();
+  local.refuse = (k) => k === "cp_saved";
+  first.setItem("cp_saved", '["a","b"]');
+  await first.flush();
+  assert.deepEqual(JSON.parse(idb.store.get(LOCAL_STALE_KEY)), ["cp_saved"], "the refusal is written down");
+
+  local.refuse = null;                      // the bucket has room again
+  const second = relaunch(local, idb);
+  await second.hydrate();
+  await second.flush();
+  assert.equal(local.map.get("cp_saved"), '["a","b"]', "adopting the durable row repaired the mirror");
+  assert.equal(idb.store.has(LOCAL_STALE_KEY), false, "a repaired mirror leaves no ledger behind");
+
+  // Third launch: an ordinary local-wins conflict is ordinary again.
+  const third = relaunch(local, idb);
+  await third.hydrate();
+  assert.equal(third.getItem("cp_saved"), '["a","b"]');
+});
+
+test("a later write localStorage ACCEPTS clears the mark in the same session", async () => {
+  const local = new FakeLocal();
+  const idb = fakeDurable();
+  const s = relaunch(local, idb);
+  await s.hydrate();
+  local.refuse = (k) => k === "cp_rate";
+  s.setItem("cp_rate", "1.5");
+  local.refuse = null;
+  s.setItem("cp_rate", "2");
+  await s.flush();
+  assert.equal(idb.store.has(LOCAL_STALE_KEY), false);
+  const next = relaunch(local, idb);
+  await next.hydrate();
+  assert.equal(next.getItem("cp_rate"), "2");
+});
+
+test("a removal localStorage refused does not come back from the mirror next launch", async () => {
+  const local = new FakeLocal({ cp_lastpick: '{"id":"x"}' });
+  const idb = fakeDurable({ rows: { cp_lastpick: '{"id":"x"}' } });
+  const first = relaunch(local, idb);
+  await first.hydrate();
+  local.refuseRemove = (k) => k === "cp_lastpick";
+  first.removeItem("cp_lastpick");
+  await first.flush();
+  assert.ok(local.map.has("cp_lastpick"), "premise: the mirror kept the row");
+  assert.equal(idb.store.has("cp_lastpick"), false, "premise: the durable tier removed it");
+
+  local.refuseRemove = null;
+  const second = relaunch(local, idb);
+  await second.hydrate();
+  await second.flush();
+  assert.equal(second.getItem("cp_lastpick"), null, "the removed row was resurrected from the mirror");
+  assert.equal(idb.store.has("cp_lastpick"), false, "and migrated back down");
+  assert.equal(local.map.has("cp_lastpick"), false, "the ghost is cleared from the mirror too");
+});
+
+test("the ledger is bookkeeping: never readable, never counted, and a healthy mirror never writes it", async () => {
+  const local = new FakeLocal();
+  const idb = fakeDurable();
+  const s = relaunch(local, idb);
+  await s.hydrate();
+  s.setItem("cp_seen", "[]");
+  await s.flush();
+  assert.equal(idb.store.has(LOCAL_STALE_KEY), false, "a mirror that took every write needs no ledger");
+
+  local.refuse = (k) => k === "cp_history";
+  s.setItem("cp_history", '["a"]');
+  await s.flush();
+  assert.ok(idb.store.has(LOCAL_STALE_KEY), "premise: the ledger exists now");
+  assert.equal(s.getItem(LOCAL_STALE_KEY), null, "the app can read the ledger");
+  assert.equal(s.length, 2, "the ledger inflated the namespace");
+  assert.equal(local.map.has(LOCAL_STALE_KEY), false, "the ledger was written to the tier it describes");
+});
+
+test("PURGE removes the ledger with everything else and does not write it back", async () => {
+  const local = new FakeLocal({ cp_queue: '["a"]' });
+  const idb = fakeDurable({ rows: { cp_queue: '["a"]' } });
+  const s = relaunch(local, idb);
+  await s.hydrate();
+  local.refuse = (k) => k === "cp_queue";
+  s.setItem("cp_queue", '["a","b"]');
+  await s.flush();
+  assert.ok(idb.store.has(LOCAL_STALE_KEY), "premise");
+
+  local.refuse = null;
+  const out = await s.purge();
+  await s.flush();
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.deepEqual([...idb.store.keys()], [], "the purge left a row in the durable tier");
+  assert.deepEqual([...local.map.keys()], []);
+});
+
+test("a corrupt ledger row costs the old rule, never the hydration", async () => {
+  const local = new FakeLocal({ cp_rate: "1" });
+  const idb = fakeDurable({ rows: { cp_rate: "2", [LOCAL_STALE_KEY]: "{not json" } });
+  const s = relaunch(local, idb);
+  await s.hydrate();
+  assert.equal(s.getItem("cp_rate"), "1", "local wins, as it did before the ledger existed");
+  assert.equal(s.health().hydrated, true);
+});
+
+/* ---------- the native tier: Capacitor Preferences (#40, 2026-09-22 audit) ----------
+
+   The header used to draw this tier while nothing built it, so inside the
+   shipping app both live tiers were script-evictable. These pin that it exists,
+   that it is absent on the web rather than broken, and that it is the tier a
+   WebView sweep cannot take. The fake bridge speaks the plugin's own method
+   names (`keys`/`get`/`set`/`remove`) through `nativePromise`, the call
+   `mobile/plugins/foray-tts/web/foray-tts.js` makes. */
+
+function fakeBridge({ native = true, plugin = true, fail = false } = {}) {
+  const prefs = new Map();
+  const calls = [];
+  return {
+    prefs,
+    calls,
+    isNativePlatform: () => native,
+    isPluginAvailable: (n) => plugin && n === "Preferences",
+    async nativePromise(name, method, opts = {}) {
+      calls.push(`${name}.${method}`);
+      if (fail) throw new Error(`"${name}" plugin is not implemented on ios`);
+      if (method === "keys") return { keys: [...prefs.keys()] };
+      if (method === "get") return { value: prefs.has(opts.key) ? prefs.get(opts.key) : null };
+      if (method === "set") { prefs.set(opts.key, opts.value); return {}; }
+      if (method === "remove") { prefs.delete(opts.key); return {}; }
+      throw new Error(`unknown method ${method}`);
+    },
+  };
+}
+
+test("NATIVE: no tier on the web, on a non-native platform, or on a build without the plugin", () => {
+  assert.equal(preferencesTier(null), null, "a browser tab has no window.Capacitor");
+  assert.equal(preferencesTier({}), null, "a bridge with no nativePromise is not a bridge");
+  assert.equal(preferencesTier(fakeBridge({ native: false })), null);
+  assert.equal(preferencesTier(fakeBridge({ plugin: false })), null);
+  const tier = preferencesTier(fakeBridge());
+  assert.equal(tier.name, "native");
+  assert.equal(tier.durable, true);
+  assert.equal(tier.sync, false);
+});
+
+test("NATIVE: a write reaches Preferences, and survives the WebView losing BOTH script tiers", async () => {
+  /* The whole reason the tier exists: iOS may clear a WKWebView's localStorage
+     AND IndexedDB. UserDefaults is not in that sweep. */
+  const bridge = fakeBridge();
+  const first = createDurableStore({
+    localStorage: new FakeLocal(), idbTier: fakeDurable(), nativeTier: preferencesTier(bridge),
+  });
+  await first.hydrate();
+  first.setItem("cp_sb_session", '{"user_id":"u-1"}');
+  await first.flush();
+  assert.equal(bridge.prefs.get("cp_sb_session"), '{"user_id":"u-1"}');
+  assert.ok(bridge.calls.includes("Preferences.set"), "the plugin was addressed by its registered name");
+
+  const swept = createDurableStore({
+    localStorage: new FakeLocal(), idbTier: fakeDurable(), nativeTier: preferencesTier(bridge),
+  });
+  await swept.hydrate();
+  assert.equal(swept.getItem("cp_sb_session"), '{"user_id":"u-1"}', "the listener became a new account");
+  assert.deepEqual(swept.health().durableTiers, ["native", "idb"]);
+});
+
+test("NATIVE: it gets the first word — an evicted mirror adopts the native row over IndexedDB's", async () => {
+  const bridge = fakeBridge();
+  bridge.prefs.set("cp_rate", "1.5");
+  const s = createDurableStore({
+    localStorage: new FakeLocal(), idbTier: fakeDurable({ rows: { cp_rate: "1" } }),
+    nativeTier: preferencesTier(bridge),
+  });
+  await s.hydrate();
+  assert.equal(s.getItem("cp_rate"), "1.5");
+});
+
+test("NATIVE: only owned keys are read, and an unreadable plugin is a fault, not a crash", async () => {
+  const bridge = fakeBridge();
+  bridge.prefs.set("someone_else", "x");
+  bridge.prefs.set("cp_seen", "[]");
+  const rows = await preferencesTier(bridge).readAll(DEFAULT_PREFIX);
+  assert.deepEqual([...rows.keys()], ["cp_seen"]);
+
+  const dead = fakeBridge({ fail: true });
+  const s = createDurableStore({ localStorage: new FakeLocal({ cp_seen: "[]" }), nativeTier: preferencesTier(dead) });
+  await s.hydrate();
+  assert.equal(s.getItem("cp_seen"), "[]", "the session still works on localStorage");
+  assert.equal(s.health().ok, false, "and the dead tier is reported");
+});
+
+test("NATIVE: purge clears the native tier too, so Delete my data reaches UserDefaults", async () => {
+  const bridge = fakeBridge();
+  bridge.prefs.set("cp_interests", "{}");
+  bridge.prefs.set("cp_pos:ep-1", '{"seconds":3}');
+  const s = createDurableStore({
+    localStorage: new FakeLocal(), idbTier: fakeDurable(), nativeTier: preferencesTier(bridge),
+  });
+  await s.hydrate();
+  const out = await s.purge();
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.deepEqual([...bridge.prefs.keys()], []);
+});
+
+test("NATIVE: the player wires the tier into the store it publishes", async () => {
+  /* The first version of this claim was a header diagram with nothing behind
+     it, so the wiring is pinned where it happens rather than trusted. */
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("./client.js", import.meta.url), "utf8");
+  const call = /const storage = createDurableStore\(\{[\s\S]*?\}\);/.exec(src);
+  assert.ok(call, "client.js no longer builds the store where this test looks");
+  assert.match(call[0], /nativeTier:\s*preferencesTier\(/, "the native tier is not wired");
 });

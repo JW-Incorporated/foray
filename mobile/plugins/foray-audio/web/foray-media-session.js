@@ -99,10 +99,13 @@
  *     those is what Android 12+ refuses.
  *   - **The cost is a notification that can outlive interest.** A listener who
  *     pauses mid-Foray and walks away keeps an ongoing notification until they
- *     stop the player. That is why `stop` is exposed as a transport control and
- *     given a visible button: it is the one-press exit, and it routes to
- *     `stopAndClose`, which clears the metadata, which stops the service. Without
- *     a stop control this trade would not be available.
+ *     stop the player. That is why the notification carries a visible Stop
+ *     button: it is the one-press exit. It sends `CLOSE_ACTION`, not `stop`, and
+ *     that routes to `stopAndClose`, which clears the metadata, which stops the
+ *     service. Without that button this trade would not be available. (A `stop`
+ *     from a Media3 controller — a car, a Bluetooth stack — is a PAUSE since the
+ *     2026-09-22 audit; only the notification's own button closes. See
+ *     `CLOSE_ACTION`.)
  *
  * If this file never installs — because `navigator.mediaSession` turned out to
  * exist, or because `client.js` failed — `loaded` is never reported and the shell
@@ -160,6 +163,21 @@ export const ROUTABLE_ACTIONS = Object.freeze([
   "play", "pause", "stop", "previoustrack", "nexttrack",
   "seekbackward", "seekforward", "seekto",
 ]);
+
+/** The notification's own Stop button (and its swipe, from Android 14), and
+ *  nothing else. NOT a spec action and deliberately not in `ROUTABLE_ACTIONS`: no
+ *  page registers a handler for it. `dispatch` delivers it to the page's `stop`
+ *  handler with `{ close: true }` in the details.
+ *
+ *  WHY A SEPARATE NAME. A remote `stop` is a pause (audit 2026-09-22): a head unit's
+ *  square or a Bluetooth hang-up gesture used to tear the whole player down
+ *  mid-drive. But on Android 24-33 a foreground-service notification cannot be
+ *  swiped away, so the notification's Stop button is the listener's ONE exit, and
+ *  a pause there left a paused listener with a notification nothing could close.
+ *  The two presses arrive through different doors — the button is a PendingIntent
+ *  to our own service, a car's stop is a Media3 `handleStop` — so the Java names
+ *  them differently and the page can tell them apart. */
+export const CLOSE_ACTION = "close";
 
 /** `04_VOICE_AUDIO_SPEC.md`'s ±30/15 s, and the numbers `player/media-session.js`
  *  exports as `SEEK_BACKWARD_SEC`/`SEEK_FORWARD_SEC` and puts on the in-page
@@ -708,7 +726,10 @@ export function createForayMediaSession(env) {
    */
   function dispatch(event) {
     if (!installed) return false;
-    const action = str(event?.action);
+    const sent = str(event?.action);
+    /* The notification's Stop is the page's `stop` handler, told it may close. */
+    const closing = sent === CLOSE_ACTION;
+    const action = closing ? "stop" : sent;
     const handler = handlers.get(action);
     if (!handler) {
       /* Not an error worth shouting about: native declares commands from the same
@@ -718,7 +739,9 @@ export function createForayMediaSession(env) {
       return false;
     }
     let details;
-    if (action === "seekto") {
+    if (closing) {
+      details = { close: true };
+    } else if (action === "seekto") {
       const ms = event?.positionMs;
       /* A scrub with no time is not a seek to zero, which is the same refusal
          `media-session.js`'s `seekto` handler makes on `seekTime`. Refused HERE too,

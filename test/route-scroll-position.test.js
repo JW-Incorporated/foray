@@ -69,6 +69,34 @@ function makeEl(tag) {
   };
 }
 
+/* A browser history — the same fake test/back-navigation.test.js uses, and for
+   the same reason (2026-09-22): the router reads the kind of step from the
+   entry's own `history.state`, so "going back" has to be a real traversal to an
+   entry the router stamped, not "set the hash to the one two steps ago", which
+   is also what a forward tap onto that page looks like. */
+function fakeHistory(ctx) {
+  const entries = [{ hash: ctx.location.hash, state: null }];
+  let at = 0;
+  return {
+    history: {
+      scrollRestoration: "auto",
+      get state() { return entries[at].state; },
+      replaceState(state, _t, url) {
+        entries[at].state = state;
+        if (url !== undefined && url !== null) {
+          const i = String(url).indexOf("#");
+          entries[at].hash = i >= 0 ? String(url).slice(i) : "";
+          ctx.location.hash = entries[at].hash;
+        }
+      },
+      pushState() { throw new Error("the router never pushes; links do"); },
+      back() { if (at > 0) { at--; ctx.location.hash = entries[at].hash; } },
+    },
+    link(hash) { entries.length = at + 1; entries.push({ hash, state: null }); at++; ctx.location.hash = hash; },
+    arrive(hash) { entries[at].hash = hash; ctx.location.hash = hash; },
+  };
+}
+
 function mount({ startHash = "#/" } = {}) {
   const view = makeEl("div");
   view.id = "view";
@@ -97,7 +125,6 @@ function mount({ startHash = "#/" } = {}) {
     navigator: { userAgent: "node" },
     addEventListener() {}, removeEventListener() {},
     location: { hash: startHash, search: "", pathname: "/", href: "https://x.test/" },
-    history: { scrollRestoration: "auto", back() {}, replaceState() {}, pushState() {} },
     CSS: { escape: (s) => String(s) },
     URL, URLSearchParams, Math, Date, JSON, Promise, clearTimeout,
     setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
@@ -105,7 +132,13 @@ function mount({ startHash = "#/" } = {}) {
     encodeURIComponent, decodeURIComponent,
     scrollY: 0,
   };
-  ctx.scrollTo = (x, y) => { calls.push(["scrollTo", y]); ctx.scrollY = y; };
+  /* `maxScroll` is the document's scrollable height: a real `scrollTo` clamps to
+     it, and an async page that has only painted "Loading…" is one screen tall.
+     Unbounded by default, which is every page these tests do not shorten. */
+  ctx.maxScroll = Infinity;
+  ctx.scrollTo = (x, y) => { const to = Math.min(y, ctx.maxScroll); calls.push(["scrollTo", to]); ctx.scrollY = to; };
+  const nav = fakeHistory(ctx);
+  ctx.history = nav.history;
   ctx.window = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -118,17 +151,31 @@ function mount({ startHash = "#/" } = {}) {
   ctx.renderCurrentPage = () => { calls.push(["render", ctx.location.hash]); };
   ctx.openDrawer = () => {};
   evalIn("state.ready = true;");
+  const leave = (scrolledTo) => {
+    if (scrolledTo !== null) {
+      ctx.scrollY = scrolledTo;
+      evalIn("rememberScrollPosition()");   // the throttled scroll tick
+    }
+    calls.length = 0;
+  };
+  let routed = false;
   return {
     ctx, evalIn, calls,
-    /* One navigation: the listener is at `from` on the current page, the hash
-       becomes `hash`, and the router runs exactly as `hashchange` would. */
+    /* One FORWARD navigation (a link or a tab): the listener is at
+       `scrolledTo` on the current page, a new entry is pushed, and the router
+       runs exactly as `hashchange` would. The first call is the arrival. */
     go(hash, { scrolledTo = null } = {}) {
-      if (scrolledTo !== null) {
-        ctx.scrollY = scrolledTo;
-        evalIn("rememberScrollPosition()");   // the throttled scroll tick
-      }
-      ctx.location.hash = hash;
-      calls.length = 0;
+      leave(scrolledTo);
+      if (routed) nav.link(hash); else nav.arrive(hash);
+      routed = true;
+      evalIn("route()");
+      return ctx.scrollY;
+    },
+    /* One BACK step: the back button, or a device back gesture — the browser
+       returns to the previous entry, then the hashchange lands. */
+    back({ scrolledTo = null } = {}) {
+      leave(scrolledTo);
+      nav.history.back();
       evalIn("route()");
       return ctx.scrollY;
     },
@@ -186,7 +233,7 @@ test("a back-step restores the position the list was left at, not the top", () =
   const m = mount({ startHash: "#/" });
   m.go("#/shows");
   m.go("#/show/business-wars", { scrolledTo: 4000 });   // leaves #/shows at 4000
-  const back = m.go("#/shows", { scrolledTo: 120 });    // ‹ from the show page
+  const back = m.back({ scrolledTo: 120 });             // ‹ from the show page
   assert.strictEqual(back, 4000, "the list must reopen where the listener left it");
 });
 
@@ -198,7 +245,7 @@ test("the restore lands AFTER the render, or it is clamped by the outgoing page"
   const m = mount({ startHash: "#/" });
   m.go("#/shows");
   m.go("#/show/x", { scrolledTo: 4000 });
-  m.go("#/shows", { scrolledTo: 100 });
+  m.back({ scrolledTo: 100 });
   const renderAt = m.calls.findIndex((c) => c[0] === "render");
   const restoreAt = m.calls.findIndex((c, i) => c[0] === "scrollTo" && c[1] === 4000);
   assert.ok(restoreAt >= 0, "the remembered position must actually be written");
@@ -211,7 +258,7 @@ test("a back-step to a page that was never scrolled lands at the top", () => {
   const m = mount({ startHash: "#/" });
   m.go("#/shows");                                  // never scrolled
   m.go("#/show/x", { scrolledTo: 0 });
-  assert.strictEqual(m.go("#/shows"), 0);
+  assert.strictEqual(m.back(), 0);
 });
 
 test("the memory is per page — scrolling one page does not move another page's restore point", () => {
@@ -225,7 +272,7 @@ test("the memory is per page — scrolling one page does not move another page's
   m.go("#/show/x", { scrolledTo: 4000 });
   m.ctx.scrollY = 300;
   m.evalIn("rememberScrollPosition()");             // scrolling the SHOW page
-  assert.strictEqual(m.go("#/shows"), 4000, "the list's own position must survive");
+  assert.strictEqual(m.back(), 4000, "the list's own position must survive");
 });
 
 test("nothing is remembered before the first page has been routed", () => {
@@ -242,24 +289,99 @@ test("nothing is remembered before the first page has been routed", () => {
 /* 3. THE STEP CLASSIFIER THE WHOLE THING RESTS ON                       */
 /* ==================================================================== */
 
-test("noteNavigation reports forward, back and same — and still keeps navStack's own contract", () => {
-  /* `noteNavigation`'s return value is new; its bookkeeping is not, and
-     `canGoBackInApp()` (the ‹ button's cold-open fallback) reads the same
-     stack. MUTATION: return "forward" unconditionally. The back assertions
-     fail here AND the restore test above fails, which is the point of
-     checking both — one function, two consumers. */
+test("noteNavigation reads the step from the history entry: forward, back, same", () => {
+  /* The classifier both consumers rest on: route()'s restore and the ‹
+     button's `canGoBackInApp()`. MUTATION: return "forward" unconditionally.
+     The back assertions fail here AND the restore tests above fail, which is
+     the point of checking both — one function, two consumers. */
   const m = mount({ startHash: "#/" });
-  m.evalIn("navStack.length = 0");
-  assert.strictEqual(m.evalIn('noteNavigation("#/")'), "forward");
-  assert.strictEqual(m.evalIn('noteNavigation("#/")'), "same");
-  assert.strictEqual(m.evalIn('noteNavigation("#/shows")'), "forward");
+  m.go("#/");
+  assert.strictEqual(m.evalIn('noteNavigation("#/")'), "same", "a re-render of the entry on screen");
+  m.go("#/shows");
   assert.strictEqual(m.evalIn("canGoBackInApp()"), true);
+  m.ctx.history.back();
   assert.strictEqual(m.evalIn('noteNavigation("#/")'), "back");
   assert.strictEqual(m.evalIn("canGoBackInApp()"), false);
-  /* JSON rather than deepStrictEqual: the array comes from the vm realm, so
-     its prototype is not this realm's Array.prototype and a strict structural
-     compare fails on that alone. */
-  assert.strictEqual(m.evalIn("JSON.stringify(navStack)"), '["#/"]');
+});
+
+test("a forward tap onto the page two steps back starts at the TOP", () => {
+  /* Audit 2026-09-22, qa 130: scroll deep into #/shows, open a show, tap the
+     Search tab. The stack-shape rule read that as a back-step and dropped the
+     listener mid-list. MUTATION: restore the stack-shape inference in
+     noteNavigation (a new entry whose hash equals the one two back is "back"). */
+  const m = mount({ startHash: "#/" });
+  m.go("#/shows");
+  m.go("#/show/x", { scrolledTo: 4000 });
+  assert.strictEqual(m.go("#/shows", { scrolledTo: 300 }), 0, "a tab tap is a forward navigation");
+});
+
+/* ==================================================================== */
+/* 3b. AN ASYNC PAGE'S RESTORE LANDS WHEN THE PAGE HAS PAINTED            */
+/* ==================================================================== */
+
+test("a back-step to an async page is restored at its terminal paint, not clamped to the loading paint", () => {
+  /* Audit 2026-09-22, qa 115. A Foray page and an uncached show page paint
+     "Loading…" first; route()'s restore was clamped to that one-screen page
+     and lost. MUTATION: drop the `pendingRestore = …` line from route() — the
+     pageDidPaint() below has nothing to re-apply and the listener stays at the
+     clamped offset. */
+  const m = mount({ startHash: "#/" });
+  m.go("#/foray/f1");
+  m.go("#/episode/e1", { scrolledTo: 3000 });   // left the Foray page at 3000
+  m.ctx.maxScroll = 200;                          // the Foray page is "Loading…" again
+  assert.strictEqual(m.back(), 200, "the loading paint clamps the first attempt");
+  m.ctx.maxScroll = Infinity;                     // the real page is up
+  m.evalIn("pageDidPaint()");
+  assert.strictEqual(m.ctx.scrollY, 3000, "the restore lands once the page has its height");
+});
+
+test("the clamped position is not filed as the page's memory while the restore is owed", () => {
+  /* The second half of qa 115: the throttled scroll tick after the clamp
+     recorded the clamped offset, so even the SECOND ‹ was broken. MUTATION:
+     drop `|| pendingRestore` from rememberScrollPosition's guard. */
+  const m = mount({ startHash: "#/" });
+  m.go("#/foray/f1");
+  m.go("#/episode/e1", { scrolledTo: 3000 });
+  m.ctx.maxScroll = 200;
+  m.back();
+  m.evalIn("rememberScrollPosition()");           // a scroll tick lands before the paint
+  assert.strictEqual(m.evalIn('navScrollY.get("#/foray/f1")'), 3000);
+});
+
+test("REVIEW: a restore no terminal paint ever settles expires, and memory resumes", () => {
+  /* The Search page (async directory results), "Show not found" and a failed
+     Foray never call pageDidPaint(), so the owed restore froze the page's memory
+     for the whole visit and the next ‹ went back to the stale offset.
+     MUTATION: put `|| pendingRestore` back in rememberScrollPosition's guard. */
+  const m = mount({ startHash: "#/" });
+  m.go("#/shows/q/radio");
+  m.go("#/show/s1", { scrolledTo: 3000 });
+  m.ctx.maxScroll = 200;                          // the local pass is short
+  m.back();
+  const RealDate = m.ctx.Date;
+  const now = RealDate.now();
+  m.ctx.Date = { now: () => now + 60_000 };       // a minute on, no terminal paint
+  try {
+    m.ctx.maxScroll = Infinity;
+    m.ctx.scrollY = 800;                          // the listener scrolled the page
+    m.evalIn("rememberScrollPosition()");
+    assert.strictEqual(m.evalIn('navScrollY.get("#/shows/q/radio")'), 800, "the new position is remembered");
+  } finally {
+    m.ctx.Date = RealDate;
+  }
+});
+
+test("REVIEW: the listener's own touch ends an owed restore at once", () => {
+  /* MUTATION: make abandonPendingRestore a no-op. */
+  const m = mount({ startHash: "#/" });
+  m.go("#/shows/q/radio");
+  m.go("#/show/s1", { scrolledTo: 3000 });
+  m.ctx.maxScroll = 200;
+  m.back();
+  m.evalIn("abandonPendingRestore()");            // touchstart / wheel / keydown
+  m.ctx.scrollY = 150;
+  m.evalIn("rememberScrollPosition()");
+  assert.strictEqual(m.evalIn('navScrollY.get("#/shows/q/radio")'), 150);
 });
 
 /* ==================================================================== */
@@ -274,7 +396,7 @@ test("a restored page does not open with its header collapsed by a stale scroll 
   const m = mount({ startHash: "#/" });
   m.go("#/shows");
   m.go("#/show/x", { scrolledTo: 4000 });
-  m.go("#/shows", { scrolledTo: 100 });
+  m.back({ scrolledTo: 100 });
   /* A one-pixel nudge from the restored position: with a clean baseline this
      is jitter under the dead zone and nothing happens; with a stale baseline
      of 0 it is a 4001px scroll and the header collapses. */

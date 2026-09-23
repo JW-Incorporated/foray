@@ -350,11 +350,12 @@ final class WebViewPlayer extends SimpleBasePlayer {
     @NonNull
     @Override
     protected ListenableFuture<?> handleStop() {
-        /* Routed to the page's `stop`, which is `stopAndClose()` — it closes the
-           player, which clears the media session's metadata, which is what tells the
-           web half the Foray is no longer loaded and lets it stop this service at
-           once. That chain is why `stop` is exposed at all: it is the listener's
-           one-press exit from an ongoing notification. */
+        /* Routed to the page's `stop`, which is a PAUSE since the 2026-09-22 audit:
+           this is the door a car head unit's square and a Bluetooth stack's stop come
+           through, and one press of either used to close the whole player mid-drive.
+           The listener's one-press exit from the notification is the notification's
+           own Stop button, which sends "close" (`PlaybackKeepAliveService`'s
+           ACTION_TRANSPORT) straight to the page and never passes through here. */
         return send("stop", 0L, 0L);
     }
 

@@ -410,6 +410,26 @@ test("the position timer runs only while playing", async () => {
   m.dispose();
 });
 
+test("the position timer also runs while the ELEMENT plays behind a paused machine (founder report 1, 2026-09-22)", async () => {
+  /* The belief alone armed it, so an element resumed by the lock screen or the
+     car — which never moves the reducer — had no periodic writer for the whole
+     ride. KILLING MUTATION: `_syncTimer` back to `this.state.type === "playing"`
+     alone. (`paused` is absent on this fake by default, which reads as "not
+     audible" — so every other test here keeps its old meaning.) */
+  const { m, backend } = make();
+  m.setQueueFromPick(ep("a"));
+  await m.play(0);
+  await m.pause();
+  assert.equal(m._timer, null, "precondition: paused, no timer");
+  backend.paused = false;
+  m._syncTimer();
+  assert.ok(m._timer, "audible element, so the writer is armed");
+  backend.paused = true;
+  m._syncTimer();
+  assert.equal(m._timer, null, "and disarmed when the element stops");
+  m.dispose();
+});
+
 /* ---------- regressions found while building #33 ---------- */
 
 test("skipToPrevious restarts at zero, not at the playhead just saved", async () => {

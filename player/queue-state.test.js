@@ -365,6 +365,28 @@ test("testPlayFromEndedStartsFreshLoad", () => {
    the reducer only carries `precise` through to the backend.
    ========================================================================== */
 
+test("elementResumed: interrupted -> playing, with NO audio effect (founder report 1, 2026-09-22)", () => {
+  /* The element is already audible — something outside the reducer started it —
+     so a `startPlayback` would be a second start and a `loadItem` would re-point
+     a playing element. KILLING MUTATION: emit `F.startPlayback()` from
+     `handleElementResumed`. */
+  const item = itemRef("a");
+  const [next, effects] = reduce(S.interrupted(item, true), E.elementResumed());
+  assert.equal(next.type, "playing");
+  assert.equal(next.item.id, "a");
+  assert.deepEqual(effects.map((f) => f.type), ["emitTelemetry"]);
+});
+
+test("elementResumed changes nothing outside interrupted — a seam beat's paused element is on purpose", () => {
+  /* KILLING MUTATION: drop the `state.type !== "interrupted"` guard. */
+  const item = itemRef("a");
+  for (const state of [S.idle(), S.ended(), S.loadingItem(item), S.playing(item), S.transitioning(item, itemRef("b"))]) {
+    const [next, effects] = reduce(state, E.elementResumed());
+    assert.equal(next, state, `unchanged from ${state.type}`);
+    assert.deepEqual(effects, []);
+  }
+});
+
 test("seek while playing saves the old position then seeks, state unchanged", () => {
   const playing = S.playing(episodeA);
   const [state, effects] = reduce(playing, E.seek(1830, true));

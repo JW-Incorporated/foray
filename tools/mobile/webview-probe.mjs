@@ -79,6 +79,7 @@ export const PROBE_EXPRESSION = `(async () => {
     readyState: document.readyState,
     viewPresent: !!view,
     viewChildren: view ? view.childElementCount : -1,
+    viewBooting: !!(view && view.querySelector('[data-boot-loading]')),
     viewText: view ? (view.innerText || '').replace(/\\s+/g, ' ').trim().slice(0, 300) : '',
     hasCapacitor: !!window.Capacitor,
     plugins: (window.Capacitor && window.Capacitor.Plugins) ? Object.keys(window.Capacitor.Plugins).sort() : [],
@@ -176,6 +177,13 @@ export function verdict(observed, opts = {}) {
        webDir missing `app.js`, or a throw during boot all leave the markup
        perfectly intact and this count at 0. */
     failures.push("<main id=\"view\"> is empty — index.html parsed but app.js never rendered into it");
+  } else if (observed.viewBooting) {
+    /* app.js paints a "Loading 4a…" line (`data-boot-loading`) into `#view`
+       BEFORE its first await (audit 2026-09-22), so a child count alone now
+       proves only that the script started. A view still holding that line
+       booted nothing: the data never arrived or a throw stopped init(). Counted
+       as the failure it is, rather than certified as a launch. */
+    failures.push("<main id=\"view\"> still shows the boot line — app.js ran but never rendered a page");
   }
 
   if (!observed.hasCapacitor) {

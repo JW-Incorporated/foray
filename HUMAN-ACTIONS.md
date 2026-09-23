@@ -14,7 +14,7 @@
 **Steps:**
 1. Install TestFlight build **2026092224** or higher — both fixes only exist there.
 2. Play a podcast in the car. Press **play/pause on the steering wheel or head unit** at least once, and note whether it responds.
-3. Leave it playing a minute or two, then in 4a: menu → **Playback diagnostics** → **Copy**, and paste it here.
+3. Leave it playing a minute or two, then in 4a: menu → **Developer** → **Playback diagnostics** → **Copy**, and paste it here.
 4. Say whether it was CarPlay, Android Auto, or plain Bluetooth — and whether the head-unit buttons worked.
 
 **Worked if:** a pasted record whose `nowplaying` rows show a `sent=` that CLIMBS as playback continues. A `sent=` still pinned at 0 in that build is now a real finding rather than an artefact, and points at the shim.
@@ -70,7 +70,7 @@ That is one of the four go/no-go conditions.
 
 **Steps:**
 1. Install the first TestFlight (or Play internal) build numbered **higher than 2026091316**. Nothing at or below that number can produce a trustworthy measurement — 2026091316 is the build that reported the two zeroes — so check the build number before you start.
-2. Open Settings, scroll to Playback diagnostics, turn on **"Voice engine probe"**, and tap **"Run the voice engine probe"**.
+2. Open the menu, tap **Developer** at the bottom of Settings, turn on **"Voice engine probe"**, and tap **"Run the voice engine probe"**.
 3. **Lock the phone immediately — within a second or two, and in any case BEFORE the passage finishes.** It runs about 78 seconds. This is not tidiness: whether synthesis survives the lock screen is one of the four go/no-go clauses, the app can only report the weaker fact that it was not frontmost when the last line ended, and locking in time is what turns that into the real answer. Locking late reads as a FAILURE, not as a missing number — so if you mistime it, say so and run it again rather than sending the record.
 4. When the passage stops, unlock, tap **Copy** in the sheet that is already open, and paste the whole record here.
 5. Do the same on Joey's Pixel 10 Pro, and on the oldest phone either of you can find — say which record is which phone and which OS version.
@@ -334,9 +334,9 @@ Five changes have shipped into the seam and transport area (#227, #235, #239,
 #260, #266) with no
 
 **Steps:**
-1. Before the drive, open the app's menu (☰) → **Playback diagnostics** → **Clear
+1. Before the drive, open the app's menu (☰) → **Developer** → **Playback diagnostics** → **Clear
 2. Drive. Play a Foray with the screen off, as usual. Nothing else to do.
-3. Afterwards, same menu → **Playback diagnostics** → **Copy**, and paste it into
+3. Afterwards, same menu → **Developer** → **Playback diagnostics** → **Copy**, and paste it into
 
 **Worked if:** one pasted record from a real drive. **The single most valuable
 line in it is a seam that says `NEVER STARTED`** — that is #224, with the stage it

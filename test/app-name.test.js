@@ -475,16 +475,36 @@ test("both shell notices name the app", () => {
    `pi:` id has no id-map/network fallback to attempt (see that branch's own
    comment). The unit rule below applies to it exactly as it does to every
    other note. */
+/* RESHAPED 9 -> 13 on 2026-09-22 (audit theme G, the three-state convention).
+   Eight of the nine one-line notes moved into `statusPageHtml({ note: "…" })`,
+   which gives every such page a head with ‹ — they were dead ends on stale links
+   — and the failures among them gained "Try again" through `failedNoteHtml("…")`.
+   The notes did not go anywhere, so this test now enumerates all three shapes
+   rather than letting the unit rule stop applying to them. The four new ones:
+   "Couldn't load this show." (a dead endpoint is not a missing show), and the
+   failed states of #/shows and #/forays, which used to paint "No shows here yet."
+   and "0 forays" over a failed fetch. "The player didn't load." lost its
+   "— reload the page": that was browser advice inside a native shell, and the
+   Retry beside it now does the reloading that matters.
+   13 -> 14 the same day: the Shows search's "Part of this search didn't load."
+   (a settled empty answer behind a failed pass), and the boot failure's
+   "Couldn't load 4a — check your connection." moved from the one-line shape into
+   failedNoteHtml with a Try again, so it is counted once, in its new shape.
+   14 -> 15 at integration (L1 + L5): L1 had given the playlist miss a helper of
+   its own (`notFoundPage`); the two helpers were one idea, so L1's callers now
+   go through `statusPageHtml` with their titles and back routes, and the
+   playlist note is counted here with the rest. */
 test("no note this app renders into #view capitalises the unit", () => {
+  const src = read("app.js");
   const notes = [
-    ...read("app.js").matchAll(
-      /innerHTML = `<div class="page"><p class="note">([^<]*)<\/p><\/div>`/g
-    ),
+    ...src.matchAll(/innerHTML = `<div class="page"><p class="note">([^<]*)<\/p><\/div>`/g),
+    ...src.matchAll(/statusPageHtml\(\{[^}]*?note: "([^"]*)"/g),
+    ...src.matchAll(/failedNoteHtml\("([^"]*)"\)/g),
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    9,
-    `expected nine one-line #view notes, found ${notes.length}. More is fine -- ` +
+    15,
+    `expected fifteen #view status notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );
@@ -511,10 +531,12 @@ test("no note this app renders into #view capitalises the unit", () => {
    app with one line. Nothing else in the repo reads it. The best-reading string
    in this whole rename -- the name sits mid-sentence, so nothing collides.
 
-   KILLED BY: reverting to "Couldn't load Foray — check your connection". */
+   KILLED BY: reverting to "Couldn't load Foray — check your connection".
+   2026-09-22: "and reload" went — the note now carries a Try again that re-runs
+   the boot, and "reload" was browser advice inside a native shell. */
 test("the load-failure page names the app", () => {
   const m = read("app.js").match(
-    /Couldn't load (.+?) — check your connection and reload\./
+    /Couldn't load (.+?) — check your connection\./
   );
   assert.ok(m, "app.js's init() no longer has its load-failure note");
   assert.equal(m[1], APP_NAME);
@@ -528,10 +550,14 @@ test("the load-failure page names the app", () => {
    judgement call rather than a substitution. The privacy policy discloses the
    discrepancy, so a listener who wonders can find out.
 
-   KILLED BY: reverting to "This device: every Foray key". */
+   KILLED BY: reverting to "This device: everything Foray stored here".
+
+   2026-09-22 (design/QA audit): the line no longer says "key" — a storage word
+   no listener uses — and names what the control now also clears, the record of
+   what was played. It still names the APP, which is what this pins. */
 test("the delete-data sheet names the app", () => {
-  const m = read("app.js").match(/"This device: every (\S+) key/);
-  assert.ok(m, "DD_COVERS no longer has its 'This device: every … key' line");
+  const m = read("app.js").match(/"This device: everything (\S+) stored here/);
+  assert.ok(m, "DD_COVERS no longer has its 'This device: everything … stored here' line");
   assert.equal(m[1], APP_NAME);
 });
 
@@ -573,8 +599,12 @@ test("the delete-data sheet names the app", () => {
 test("the playlist-shortfall copy names the app, not the unit", () => {
   const row = fnBody("app.js", "archivedRow");
   const note = fnBody("app.js", "partsNote");
+  /* archivedRow's own "· not available right now" caption is GONE (audit
+     2026-09-22, qa row 142): the row's notPlayableNote() chip already says it,
+     so the row said it twice in two wordings. The note above the list still
+     says it once for the whole list, and that is pinned below. */
   for (const [where, body, phrase] of [
-    ["archivedRow", row, `not available right now`],
+    ["archivedRow", row, `notPlayableNote()`],
     ["archivedRow", row, `Saved before ${APP_NAME} kept episode details`],
     ["partsNote", note, `not available right now`],
     ["partsNote", note, `saved before ${APP_NAME} kept episode details`],
@@ -591,7 +621,7 @@ test("the playlist-shortfall copy names the app, not the unit", () => {
      play.
 
      The possessive specifically, not the bare word. `archivedRow` still titles
-     a detail-less row "Part no longer in the catalogue" — that is a statement
+     a detail-less row "Episode no longer in the catalogue" — that is a statement
      about a row we have nothing left to say about, not an explanation that
      points at us, and the founder's complaint was about the latter. Widening
      this to /catalogue/ would fail on that line and push a rewrite nobody
@@ -638,20 +668,19 @@ test("the diagnostics report header names the app", () => {
    reviewer broke with a file-wide `includes()`: recapitalising the label while
    leaving a comment that quoted the lowercase form kept the test green.
 
-   NOTED, NOT FIXED, because it is a copy decision and not a rename: lowercase
-   "the foray" now collides with the "into the fray/foray" idiom, where the
-   capital at least signalled "a thing in this app". Both casings are ambiguous
-   and the honest fix is naming what it actually is -- "Back to the running
-   order", the vocabulary `player/queue-manager.js` already uses. That is a
-   founder's copy call, not a rename's.
+   It read "Back to the running order" for a while, and the 2026-09-22 audit
+   (docs/audit/persona-synthesis.md §2) found that a broadcast-production term
+   no listener had met anywhere else in the app. "Back to this foray" names the
+   thing, keeps the unit lowercase, and "this" does the disambiguating the
+   capital used to try to do.
 
-   KILLED BY: reverting to "Back to the Foray". */
+   KILLED BY: reverting to "Back to the Foray" or "Back to the running order". */
 test("the mini-player's back link lowercases the unit", () => {
   const m = read("player/client.js").match(
     /el\("a", "fp-openep fp-toforay", "([^"]*)"\)/
   );
   assert.ok(m, "player/client.js no longer builds the .fp-toforay link");
-  assert.equal(m[1], "Back to the running order");
+  assert.equal(m[1], "Back to this foray");
 });
 
 /* The Forays page's kicker above each foray's title. A LABEL, not prose, so a

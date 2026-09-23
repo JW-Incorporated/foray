@@ -1,19 +1,24 @@
-/* "Up Next" auto-advance (docs/listening-queue-plan.md §8 addendum,
- * kanban card t_b9880844).
+/* Continuous playback — founder ruling 2026-09-14 (docs/DECISIONS.md, PR #695,
+ * issue #691), implemented by the 2026-09-22 audit fix.
+ *
+ * "I just want more podcasts to play while I'm in the car and can't pick
+ * something out for myself." This suite used to pin the OPPOSITE — default off,
+ * and only an episode started from #/queue could ever chain — and it kept
+ * passing for eight days after the ruling, because it tested the old decision
+ * faithfully. It now pins the ruling.
  *
  * WHAT THIS PROVES, in order:
- *  1. `cp_autoadvance` is OFF by default (autoAdvanceOn() with no stored
- *     value reads false).
- *  2. Toggling it on and finishing an episode played FROM the queue starts
- *     the next queued item.
- *  3. Finishing an episode NOT played from the queue never triggers
- *     auto-advance, even with the toggle on.
- *  4. Finishing the last item in the queue stops cleanly — no loop back to
- *     the first item, nothing else is played.
- *  5. Auto-advance being off means a queue-originated finish never advances,
- *     even though the origin tracking itself still ran.
- *  6. A queue-originated episode removed from cp_queue before it finishes
- *     freezes — advance is a no-op rather than guessing a position.
+ *  1. `cp_autoadvance` is ON by default, and its switch is called "Continuous
+ *     playback".
+ *  2. A finished Up Next episode plays the next queued one, and leaves Up Next.
+ *  3. Up Next comes FIRST: a finish from anywhere else plays Up Next's head
+ *     (including the episode removed from Up Next while it played).
+ *  4. With Up Next empty, the next row of the list the play started from plays —
+ *     driven through the REAL bindPlay, which is where the list is recorded.
+ *  5. The list is the rows of THAT list (same data-ctx), not the whole screen.
+ *  6. An unplayable row is passed over, not stopped at.
+ *  7. The end of the list is the end: nothing loops.
+ *  8. The switch still turns it off.
  *
  * Every test names the mutation that kills it, per CLAUDE.md "a green test is
  * not evidence until you have broken it".
@@ -66,13 +71,26 @@ const PAGE_IDS = [
     player/*.test.js). `play()` records calls instead of touching audio. */
 function makeFakePlayer() {
   const calls = [];
+  const navCalls = [];
+  let currentId = null;
   return {
     calls,
+    navCalls,
     async play(item, opts) {
       calls.push({ item, opts });
+      currentId = item.id;
       return true;
     },
     onEpisodeEnded() { return () => {}; },
+    /* The two halves of the steering wheel's skip (review 2026-09-23). */
+    setEpisodeNavigation(nav) { navCalls.push(nav); return true; },
+    currentEpisodeId() { return currentId; },
+    /** What the OS would be offered right now: the getters, read as the real
+        surface reads them at install time. */
+    offered() {
+      const nav = navCalls[navCalls.length - 1];
+      return { next: nav ? nav.next : null, previous: nav ? nav.previous : null };
+    },
   };
 }
 
@@ -142,156 +160,315 @@ function seedLivePool(m, items) {
   if (!m.state.session) m.state.session = { session_id: "s-1", cards: [] };
 }
 
+/** Drive the REAL bindPlay over a row list and click row `index`. Every button
+    carries `data-ctx`, as epRow's play buttons do. */
+async function clickRow(m, buttons, index) {
+  const handlers = [];
+  const btns = buttons.map(({ id, ctx }, i) => ({
+    dataset: { play: id, ctx },
+    addEventListener: (_t, fn) => { handlers[i] = fn; },
+  }));
+  m.ctx.bindPlay({ querySelectorAll: (sel) => (sel === "[data-play]" ? btns : []) });
+  await handlers[index]({ preventDefault() {}, stopPropagation() {} });
+}
+
 /* ==================================================================== */
-/* 1. OFF BY DEFAULT                                                     */
+/* 1. ON BY DEFAULT, AND NAMED FOR WHAT IT DOES                           */
 /* ==================================================================== */
 
-test("auto-advance is OFF by default", () => {
-  /* MUTATION: change autoAdvanceOn()'s lsGet fallback from false to true.
-     This assertion fails immediately, with no toggle ever touched. */
+test("continuous playback is ON by default", () => {
+  /* MUTATION: change autoAdvanceOn()'s lsGet fallback from true back to false. */
   const m = mount();
-  assert.strictEqual(m.ctx.autoAdvanceOn(), false, "auto-advance must default to off");
+  assert.strictEqual(m.ctx.autoAdvanceOn(), true, "the founder's car case must work out of the box");
+});
+
+test("the switch is labelled 'Continuous playback', not its storage key", () => {
+  /* MUTATION: restore the "Up Next auto-advance" label in bindDrawerToggles. */
+  const m = mount();
+  m.ctx.bindDrawerToggles();
+  m.ctx.paintDrawerToggles();
+  assert.strictEqual(m.evalIn('$("#autoadvance-toggle").textContent'), "Continuous playback: on");
 });
 
 /* ==================================================================== */
-/* 2. ON + QUEUE-ORIGINATED FINISH ADVANCES TO THE NEXT ITEM              */
+/* 2. UP NEXT PLAYS THROUGH, AND A FINISHED EPISODE LEAVES IT             */
 /* ==================================================================== */
 
-test("toggling on and finishing a queue-played episode starts the next queued item", () => {
-  /* MUTATION: drop the `if (!wasFromQueue) return;` guard in
-     advanceQueueOnEnded, or the `if (!autoAdvanceOn()) return;` guard. Either
-     way play() gets called when it should not have been gated on one of
-     these, but more precisely: flip `ids[i + 1]` to `ids[i - 1]` and the
-     WRONG item (a or none) would be played instead of c. */
+test("a finished Up Next episode plays the next queued one, and leaves Up Next", () => {
+  /* MUTATION: flip `rest.slice(at)` to `rest.slice(at + 1)` — c is skipped.
+     MUTATION 2: drop `saveQueueIds(rest)` — b is still queued afterwards. */
   const m = mount();
-  assert.ok(m.playable.length >= 3, "fixture assumption: need at least three playable episodes");
   const [a, b, c] = m.playable;
   seedLivePool(m, [a, b, c]);
-
-  m.ctx.lsSet("cp_autoadvance", true);
   m.ctx.addToQueue(a.id);
   m.ctx.addToQueue(b.id);
   m.ctx.addToQueue(c.id);
-
   const fake = makeFakePlayer();
   m.ctx.window.ForayPlayer = fake;
 
-  // Simulate: the listener pressed play on b's #/queue row.
-  m.ctx.setQueuePlaybackOrigin(b.id);
   m.ctx.advanceQueueOnEnded(b.id);
 
-  assert.strictEqual(fake.calls.length, 1, "exactly one auto-advance play must fire");
-  assert.strictEqual(fake.calls[0].item.id, c.id, "the item AFTER the finished one must play next");
+  assert.strictEqual(fake.calls.length, 1, "exactly one advance must fire");
+  assert.strictEqual(fake.calls[0].item.id, c.id, "the item AFTER the finished one plays next");
+  assert.deepStrictEqual([...m.queueRaw()], [a.id, c.id], "the finished episode leaves Up Next");
 });
 
 /* ==================================================================== */
-/* 3. A NON-QUEUE FINISH NEVER ADVANCES, EVEN WITH THE TOGGLE ON          */
+/* 3. UP NEXT FIRST, WHEREVER THE FINISHED EPISODE CAME FROM              */
 /* ==================================================================== */
 
-test("finishing an unrelated (non-queue) episode never triggers auto-advance", () => {
-  /* MUTATION: remove the `wasFromQueue` check entirely (advance on every
-     finish while the toggle is on). This test seeds a queue but never marks
-     the finished episode as queue-originated, so the mutant would
-     incorrectly advance to the queue's first item. */
+test("an episode played from anywhere else continues into Up Next", () => {
+  /* The gate the ruling removed: `if (!wasFromQueue) return;`. MUTATION: drop
+     the `else if (queued.length)` branch of nextAfterEnded — nothing plays. */
   const m = mount();
-  assert.ok(m.playable.length >= 2, "fixture assumption: need at least two playable episodes");
   const [a, b] = m.playable;
   seedLivePool(m, [a, b]);
-
-  m.ctx.lsSet("cp_autoadvance", true);
   m.ctx.addToQueue(a.id);
   m.ctx.addToQueue(b.id);
-
   const fake = makeFakePlayer();
   m.ctx.window.ForayPlayer = fake;
 
-  // Some OTHER episode, not from #/queue, finishes (e.g. played from home).
-  m.ctx.clearQueuePlaybackOrigin();
   m.ctx.advanceQueueOnEnded("some-unrelated-episode-id");
 
-  assert.strictEqual(fake.calls.length, 0, "a non-queue finish must never advance the queue");
+  assert.strictEqual(fake.calls.length, 1);
+  assert.strictEqual(fake.calls[0].item.id, a.id, "Up Next's head plays next");
 });
 
-/* ==================================================================== */
-/* 4. END OF QUEUE STOPS CLEANLY, NO LOOP                                */
-/* ==================================================================== */
-
-test("finishing the last queued item stops cleanly — no loop, nothing plays", () => {
-  /* MUTATION: change `if (!nextId) return;` to wrap around
-     (`ids[(i + 1) % ids.length]`). The mutant would replay `a`, and this
-     assertion (zero calls) fails. */
+test("an Up Next episode removed while it played continues into what is left of Up Next", () => {
+  /* Was "freezes rather than guesses" under the old design. Now the finished
+     episode is simply not in Up Next, so Up Next's head is next — the same rule
+     as any other finish. MUTATION: return null when the finished id is not
+     queued. */
   const m = mount();
-  assert.ok(m.playable.length >= 2, "fixture assumption: need at least two playable episodes");
-  const [a, b] = m.playable;
-  seedLivePool(m, [a, b]);
-
-  m.ctx.lsSet("cp_autoadvance", true);
-  m.ctx.addToQueue(a.id);
-  m.ctx.addToQueue(b.id);
-
-  const fake = makeFakePlayer();
-  m.ctx.window.ForayPlayer = fake;
-
-  m.ctx.setQueuePlaybackOrigin(b.id);
-  m.ctx.advanceQueueOnEnded(b.id);
-
-  assert.strictEqual(fake.calls.length, 0, "the end of the queue must not loop or pull in more content");
-});
-
-/* ==================================================================== */
-/* 5. THE TOGGLE ITSELF GATES ADVANCE, EVEN FOR A QUEUE-ORIGINATED FINISH */
-/* ==================================================================== */
-
-test("auto-advance stays off: a queue-played finish does not advance while the toggle is off", () => {
-  /* MUTATION: drop the `if (!autoAdvanceOn()) return;` guard. With the
-     toggle at its default (off) and a legitimate queue-originated finish,
-     the mutant would still advance — this assertion (zero calls) catches it
-     even though test 2 already exercises the "on" path, because a guard
-     removed entirely still passes test 2 (it never turns anything off). */
-  const m = mount();
-  assert.ok(m.playable.length >= 2, "fixture assumption: need at least two playable episodes");
-  const [a, b] = m.playable;
-  seedLivePool(m, [a, b]);
-
-  // cp_autoadvance intentionally left at its default (off).
-  m.ctx.addToQueue(a.id);
-  m.ctx.addToQueue(b.id);
-
-  const fake = makeFakePlayer();
-  m.ctx.window.ForayPlayer = fake;
-
-  m.ctx.setQueuePlaybackOrigin(a.id);
-  m.ctx.advanceQueueOnEnded(a.id);
-
-  assert.strictEqual(fake.calls.length, 0, "auto-advance must not fire while the toggle is off");
-});
-
-/* ==================================================================== */
-/* 6. REMOVED-MID-PLAYBACK FREEZES RATHER THAN GUESSING                  */
-/* ==================================================================== */
-
-test("an episode removed from the queue before it finishes freezes — no guess at what's next", () => {
-  /* MUTATION: fall back to `ids[0]` (or any other guess) when the finished
-     item's id is no longer found in cp_queue, instead of returning. This
-     assertion (zero calls) would then fail because SOMETHING played. */
-  const m = mount();
-  assert.ok(m.playable.length >= 3, "fixture assumption: need at least three playable episodes");
   const [a, b, c] = m.playable;
   seedLivePool(m, [a, b, c]);
-
-  m.ctx.lsSet("cp_autoadvance", true);
   m.ctx.addToQueue(a.id);
   m.ctx.addToQueue(b.id);
   m.ctx.addToQueue(c.id);
-
   const fake = makeFakePlayer();
   m.ctx.window.ForayPlayer = fake;
 
-  // b started playing from the queue, then got removed from cp_queue before
-  // it finished (e.g. the listener dequeued it mid-listen from another tab).
-  m.ctx.setQueuePlaybackOrigin(b.id);
   m.ctx.removeFromQueue(b.id);
   m.ctx.advanceQueueOnEnded(b.id);
 
-  assert.strictEqual(fake.calls.length, 0, "an episode no longer in the queue must not guess a next item");
+  assert.strictEqual(fake.calls.length, 1);
+  assert.strictEqual(fake.calls[0].item.id, a.id);
+});
+
+/* ==================================================================== */
+/* 4 & 5. THE LIST THE LISTENER CHOSE                                    */
+/* ==================================================================== */
+
+test("with Up Next empty, the next row of the list the play started from plays", async () => {
+  /* Driven through the real bindPlay, because that is where the list is
+     recorded. MUTATION: drop the setPlayList call from bindPlay — nothing
+     plays after the first row. */
+  const m = mount();
+  const [a, b, c] = m.playable;
+  seedLivePool(m, [a, b, c]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  const rows = [a, b, c].map((it) => ({ id: it.id, ctx: "show-x" }));
+
+  await clickRow(m, rows, 0);
+  assert.strictEqual(fake.calls.length, 1, "the tap itself plays a");
+  m.ctx.advanceQueueOnEnded(a.id);
+
+  assert.strictEqual(fake.calls.length, 2, "the list continues");
+  assert.strictEqual(fake.calls[1].item.id, b.id);
+});
+
+test("the list is the rows sharing the tapped row's data-ctx, not the whole screen", async () => {
+  /* Library shows Saved and History on one page. MUTATION: drop the
+     `b.dataset.ctx === listCtx` filter — the History row (x) plays after a. */
+  const m = mount();
+  const [a, x, b] = m.playable;
+  seedLivePool(m, [a, x, b]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  const rows = [
+    { id: a.id, ctx: "library-saved" },
+    { id: x.id, ctx: "library-history" },
+    { id: b.id, ctx: "library-saved" },
+  ];
+
+  await clickRow(m, rows, 0);
+  m.ctx.advanceQueueOnEnded(a.id);
+
+  assert.strictEqual(fake.calls[1].item.id, b.id, "the next SAVED row, not the History one between");
+});
+
+test("REVIEW: Up Next first, THEN the rest of the chosen list — queue [X], tap ep1, and ep2 follows X", async () => {
+  /* The two branches used to be exclusive: with anything queued the list was
+     never reached, and once X had played, X was not in the list, so nothing
+     played. MUTATION: restore `else if (queued.length) candidates = queued` —
+     the second advance plays nothing. MUTATION 2: anchor the list on the
+     finished id only (drop `state.playListCursor`) — same silence. */
+  const m = mount();
+  const [x, ep1, ep2, ep3] = m.playable;
+  seedLivePool(m, [x, ep1, ep2, ep3]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  m.ctx.addToQueue(x.id);
+  const rows = [ep1, ep2, ep3].map((it) => ({ id: it.id, ctx: "show-x" }));
+
+  await clickRow(m, rows, 0);
+  m.ctx.advanceQueueOnEnded(ep1.id);
+  assert.strictEqual(fake.calls[1]?.item.id, x.id, "Up Next comes first");
+  m.ctx.advanceQueueOnEnded(x.id);
+  await new Promise((r) => setImmediate(r));
+  assert.strictEqual(fake.calls[2]?.item.id, ep2.id, "then the list resumes after the last row that played");
+  m.ctx.advanceQueueOnEnded(ep2.id);
+  await new Promise((r) => setImmediate(r));
+  assert.strictEqual(fake.calls[3]?.item.id, ep3.id);
+});
+
+test("REVIEW: an Up Next with nothing playable falls through to the list", async () => {
+  /* MUTATION: return `fromQueue.find(...) || null` without looking at the list. */
+  const m = mount();
+  const [ep1, ep2] = m.playable;
+  const silent = { ...m.playable[2], id: "queued-no-audio", audio_url: null };
+  seedLivePool(m, [ep1, ep2, silent]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  m.ctx.addToQueue(silent.id);
+  await clickRow(m, [ep1, ep2].map((it) => ({ id: it.id, ctx: "show-x" })), 0);
+  m.ctx.advanceQueueOnEnded(ep1.id);
+  assert.strictEqual(fake.calls[1]?.item.id, ep2.id);
+});
+
+test("REVIEW: an episode started off the chain does not resume a list from an earlier visit", async () => {
+  /* The cursor must not outlive the chain. MUTATION: drop the `onChain` test in
+     planAfterEnded — the unrelated episode's end plays ep2. */
+  const m = mount();
+  const [ep1, ep2] = m.playable;
+  seedLivePool(m, [ep1, ep2]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await clickRow(m, [ep1, ep2].map((it) => ({ id: it.id, ctx: "show-x" })), 0);
+  m.ctx.advanceQueueOnEnded("started-from-a-timestamp");
+  assert.strictEqual(fake.calls.length, 1, "only the tap itself played");
+});
+
+test("REVIEW: the page gives the player its next/previous, so the steering wheel's skip is live", async () => {
+  /* `setEpisodeNavigation` had no caller in app.js: the car's skip stayed
+     greyed out with a full Up Next. MUTATION: delete the
+     `refreshEpisodeNavigation()` call from setPlayList (and saveQueueIds) —
+     the player is never told, and `offered()` is empty. */
+  const m = mount();
+  const [a, b, c] = m.playable;
+  seedLivePool(m, [a, b, c]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await clickRow(m, [a, b].map((it) => ({ id: it.id, ctx: "show-x" })), 0);
+  assert.ok(fake.navCalls.length > 0, "the page must hand the player its navigation");
+  let offered = fake.offered();
+  assert.strictEqual(typeof offered.next, "function", "a list with a row after this one offers the skip");
+  assert.strictEqual(offered.previous, null, "the first row has nothing before it");
+
+  await offered.next();
+  assert.strictEqual(fake.calls[1]?.item.id, b.id, "the skip plays what the end of the episode would");
+  offered = fake.offered();
+  assert.strictEqual(offered.next, null, "the last row of the list offers no skip");
+  assert.strictEqual(typeof offered.previous, "function", "but it can go back");
+
+  const before = fake.navCalls.length;
+  m.ctx.addToQueue(c.id);
+  assert.ok(fake.navCalls.length > before, "an Up Next edit re-asks, so the skip appears at once");
+  assert.strictEqual(typeof fake.offered().next, "function", "Up Next now has something after this");
+});
+
+/* ==================================================================== */
+/* 6. AN UNPLAYABLE ROW IS PASSED OVER                                    */
+/* ==================================================================== */
+
+test("an unplayable next row is passed over rather than stopped at", async () => {
+  /* Stopping is the silence the ruling is about. MUTATION: take
+     `candidates[0]` without the liveEpisode audio test — the silent row is
+     handed to play() and b never plays. */
+  const m = mount();
+  const [a, b] = m.playable;
+  const silent = { ...m.playable[2], id: "no-audio-row", audio_url: null };
+  seedLivePool(m, [a, silent, b]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  const rows = [a, silent, b].map((it) => ({ id: it.id, ctx: "show-x" }));
+
+  await clickRow(m, rows, 0);
+  m.ctx.advanceQueueOnEnded(a.id);
+
+  assert.strictEqual(fake.calls[1]?.item.id, b.id);
+});
+
+/* ==================================================================== */
+/* 7. THE END IS THE END                                                  */
+/* ==================================================================== */
+
+test("finishing the last queued item stops cleanly — no loop, nothing plays", () => {
+  /* MUTATION: fall back to the queue's first item when nothing follows. */
+  const m = mount();
+  const [a] = m.playable;
+  seedLivePool(m, [a]);
+  m.ctx.addToQueue(a.id);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+
+  m.ctx.advanceQueueOnEnded(a.id);
+
+  assert.strictEqual(fake.calls.length, 0, "the end of Up Next must not loop");
+});
+
+test("finishing the last row of a list stops cleanly", async () => {
+  /* MUTATION: wrap the list (`list.slice(i + 1).concat(list.slice(0, i))`). */
+  const m = mount();
+  const [a, b] = m.playable;
+  seedLivePool(m, [a, b]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  const rows = [a, b].map((it) => ({ id: it.id, ctx: "show-x" }));
+
+  await clickRow(m, rows, 1);
+  m.ctx.advanceQueueOnEnded(b.id);
+
+  assert.strictEqual(fake.calls.length, 1, "only the tap itself played");
+});
+
+/* ==================================================================== */
+/* 8. THE SWITCH STILL TURNS IT OFF                                       */
+/* ==================================================================== */
+
+test("with the switch off, nothing continues", () => {
+  /* The ruling keeps `cp_autoadvance` as an off-switch. MUTATION: drop the
+     `if (!autoAdvanceOn()) return;` guard. */
+  const m = mount();
+  const [a, b] = m.playable;
+  seedLivePool(m, [a, b]);
+  m.ctx.lsSet("cp_autoadvance", false);
+  m.ctx.addToQueue(a.id);
+  m.ctx.addToQueue(b.id);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+
+  m.ctx.advanceQueueOnEnded(a.id);
+
+  assert.strictEqual(fake.calls.length, 0);
+});
+
+test("REVIEW: a chained play that throws is reported to the bar, not left as an unhandled rejection", async () => {
+  /* advanceQueueOnEnded called `.play(...).then(...)` with no catch: a throw
+     was an unhandled rejection and a silent stop. MUTATION: drop the rejection
+     handler from startChained. */
+  const m = mount();
+  const [a, b] = m.playable;
+  seedLivePool(m, [a, b]);
+  m.ctx.addToQueue(b.id);
+  const reported = [];
+  m.ctx.window.ForayPlayer = {
+    async play() { throw Object.assign(new Error("boom"), { name: "TypeError" }); },
+    onEpisodeEnded() { return () => {}; },
+    reportPlayFailure(err) { reported.push(err); },
+  };
+  await m.ctx.advanceQueueOnEnded(a.id);
+  assert.strictEqual(reported.length, 1, "the bar is told the next episode did not start");
+  assert.strictEqual(reported[0].name, "TypeError");
 });

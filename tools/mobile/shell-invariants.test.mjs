@@ -95,7 +95,7 @@ import { artworkUrlsByShow, collectionIdsByShow } from "../../player/foray-sourc
 import { hydrateForayItems, indexSegments, indexSources } from "../../player/foray-resolve.js";
 import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
 import {
-  PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS,
+  PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS, CLOSE_ACTION,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
 
@@ -1296,7 +1296,7 @@ test("EVERY TRANSPORT ACTION THE NATIVE SIDE CAN SEND IS ONE THE PAGE CAN ROUTE"
   assert.ok(sent.size >= 7, "expected at least seven transport actions in the Java, found " + [...sent].join(", "));
   for (const action of sent) {
     assert.ok(
-      ROUTABLE_ACTIONS.includes(action),
+      ROUTABLE_ACTIONS.includes(action) || action === CLOSE_ACTION,
       "the Java sends the transport action " + action + ", which foray-media-session.js cannot route"
     );
   }
@@ -1305,6 +1305,29 @@ test("EVERY TRANSPORT ACTION THE NATIVE SIDE CAN SEND IS ONE THE PAGE CAN ROUTE"
   for (const action of ["play", "pause", "nexttrack", "previoustrack", "seekto"]) {
     assert.ok(sent.has(action), "nothing in the Java can send " + action);
   }
+});
+
+test("THE NOTIFICATION'S STOP SENDS CLOSE; ONLY MEDIA3'S handleStop SENDS stop", () => {
+  /* Review 2026-09-23. A `stop` is a pause since the 2026-09-22 audit, because a car
+     head unit's square comes through `WebViewPlayer.handleStop` and must not close the
+     player mid-drive. The notification's Stop button and its swipe are the listener's
+     exit (the only one on API 24-33, where the notification cannot be swiped away),
+     so they send CLOSE_ACTION, which the page routes to `stopAndClose()`.
+     KILLING MUTATION: put `transportIntent("stop", 4)` back — a paused listener's
+     Stop then changes nothing and the notification stays up. */
+  const dir = path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio");
+  const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
+  const player = stripJavaComments(fs.readFileSync(path.join(dir, "WebViewPlayer.java"), "utf8"));
+  const stopButton = /getString\(R\.string\.foray_action_stop\),\s*transportIntent\("([A-Za-z]+)",\s*\d+\)/.exec(service);
+  assert.ok(stopButton, "the notification has no Stop button");
+  assert.equal(stopButton[1], CLOSE_ACTION, "the notification's Stop must send the close action, not a pause");
+  const swipe = /setDeleteIntent\(transportIntent\("([A-Za-z]+)",\s*\d+\)\)/.exec(service);
+  assert.ok(swipe, "the notification has no delete intent");
+  assert.equal(swipe[1], CLOSE_ACTION, "a swipe is the same exit as the button");
+  assert.doesNotMatch(service, /transportIntent\("stop"/, "nothing on the notification may send a bare stop");
+  const handleStop = /handleStop\(\)\s*\{([\s\S]*?)\n    \}/.exec(player);
+  assert.ok(handleStop, "WebViewPlayer must override handleStop");
+  assert.match(handleStop[1], /send\("stop"/, "a Media3 controller's stop stays a stop, which the page pauses on");
 });
 
 test("EACH NOTIFICATION BUTTON GETS ITS OWN PendingIntent REQUEST CODE", () => {

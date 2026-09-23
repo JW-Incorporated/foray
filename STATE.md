@@ -7,6 +7,61 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-23 — `audit-fix/integration`: the 2026-09-22 design and QA audit, lanes L1–L6, in ONE PR
+
+Owned: nothing held. One branch, cut from `main` 2fbdbb9, with the six fix lanes
+merged `--no-ff` in the order L2, L1, L5, L4, L3, L6. Each lane branch
+(`audit-fix/l<n>-*`) is pushed and has no PR of its own: **this PR supersedes
+them.** `index.html` changed (L6 removed the "Open in" switch), so the PR needs
+a human merge. Lanes L7 (release) and L8 (Foray data) are NOT in this PR.
+
+**What each lane carries** (findings from `docs/audit/`):
+
+- **L2 player** (14 commits): the transport reads the element's answer, one
+  episode seek, `resumeOffset` for a press, one Foray-clock translation,
+  load-sequence guards, the Buffering line, the car's STOP pauses. Founder
+  reports **(1)** (position written whoever resumed the element) and **(3)**
+  (every diagnostics record carries a build stamp) are fixed; report **(2)** is
+  instrumented only (ranked diagnosis in commit ca1a6b8, the likely fix is
+  native). The ribbon offers a part-played Foray. 18 fixed, 3 already fixed,
+  qa 28 deferred to the founder.
+- **L1 identity + navigation** (theme A, B, K): "playable" is a snapshot with
+  audio, not pool membership (`cp_episode_snaps`, `cp_shard_shows`); continuous
+  playback on by default; the router decodes safely and keeps a real history
+  index; async work checks a render token; searches live in the address;
+  Library holds Forays and Followed shows; Create pills build in one tap.
+- **L5 states + boot** (theme G, L): loading / failed / empty are three states
+  everywhere, with "Try again" wired to the fetch that failed; a failed play
+  says so on the bar and in the sheet; one reading of a stored position
+  (`episodeProgress`) for cards and rows; the Foray header counts from the
+  strip's model; 466 KB of search data moved after the first route.
+- **L4 copy + labels** (theme C, D, H): one formatter each for durations,
+  counts, row subtitles and dates; a control's text and accessible name are
+  written together; production words ("segment", "running order", "beat")
+  out of listener copy — a Foray's pieces are "clips".
+- **L3 styles + sheets** (theme E, F, I): v2 owns its tokens; 44px hit areas by
+  rule; one sheet owner (focus in and back, `inert`, Escape, body lock); the
+  Now Playing sheet is a modal dialog; Stop and Close at opposite ends.
+- **L6 persistence + settings** (theme J, 14 findings): the Capacitor
+  Preferences tier, a refused localStorage write no longer reverts,
+  `cp_storage_stale`; Delete my data also empties the event queue; "Open in"
+  and `cp_player` retired (ruling R7); the founder's switches in a collapsed
+  Developer group (R8).
+
+**Where two lanes fixed the same thing, one fix was kept** (details in each
+merge commit): the play-failure line (L5's state, with L2's Buffering, one
+painter); the last-episode card (L5's `episodeProgress`); not-found pages (L5's
+`statusPageHtml`, L1's `notFoundPage` folded in); the Up Next reorder (L3's
+`afterQueueMove`; L1's in-place move removed); the stale-refresh label (L5); the
+delete-button colour (L6); the Foray header now uses the strip's clip count.
+
+**Deferred / needs a person:** a device pass (iOS background audio for reports
+1 and 2, the Up Next two-line row, strip vertical flick, mini-player inset on a
+notched phone, sheets over the soft keyboard); `tools/mobile` suites and the
+Playwright specs run only in CI; qa 28 and auto-resume after an interruption
+ends are founder decisions; the Create toggle's disabled Foray half (D8) and
+"Episodes for you" were deliberately left alone.
+
 ### 2026-09-22 session handoff — four open PRs, three founder reports still live
 
 Owned directories: none held. Every branch below is pushed and has a PR; nothing
@@ -35,8 +90,9 @@ and the earlier `sent=0` was the instrument reading one microtask too early.
 
 **THREE FOUNDER REPORTS STILL OPEN:**
 
-1. **A resumed episode restarts from a stale position.** Root cause found, NOT
-   fixed. `PositionStore.save` has exactly one production caller
+1. **A resumed episode restarts from a stale position.** **Addressed by
+   `audit-fix/integration` (L2, 2026-09-23).** Root cause found, NOT
+   fixed (as of this handoff). `PositionStore.save` has exactly one production caller
    (`queue-manager.js:2066-2103`), reached by a 15 s interval that is armed
    **only while the reducer state is `playing`** (`:2048-2058`). If the element is
    resumed from outside the reducer — a car or lock-screen press landing on
@@ -50,11 +106,13 @@ and the earlier `sent=0` was the instrument reading one microtask too early.
    interval on the element's own state; let `reconcileWithBackend` correct
    *towards* playing; flush on the native background/route events; add a
    timeupdate-driven episode writer with a minimum delta.
-2. **Playback stops itself while backgrounded.** 8 × `stop element
+2. **Playback stops itself while backgrounded.** (Instrumented, not fixed, by
+   `audit-fix/integration`: the next record can tell the causes apart.) 8 × `stop element
    pausedUnexpectedly`, all at `hidden=y`, with NO `session` row explaining any of
    them — which is exactly what M-03 was built to capture. Unexplained; not yet
    investigated.
-3. **A diagnostics record cannot say which build made it.** No build stamp in
+3. **A diagnostics record cannot say which build made it.** **Addressed by
+   `audit-fix/integration` (L2, 2026-09-23).** No build stamp in
    `app.js`, and `sw.js`'s `BUILD_ID` is excluded from the native bundle
    (`prepare-webdir.mjs:274`). This cost real time twice today. Options are in
    `docs/release-reliability-plan.md` §4.

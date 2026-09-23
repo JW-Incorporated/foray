@@ -251,17 +251,33 @@ function sessionRow({ expired = false, refresh = "rt-1" } = {}) {
  * @param {object} [opts.tier]      fakeIdb options (deaf / unreadable)
  * @param {boolean} [opts.noStore]  publish no DurableStore at all (a page whose
  *   player module never loaded), so only raw localStorage is reachable
+ * @param {object[]} [opts.events]   rows already in the event queue
+ * @param {object|false} [opts.eventLog]  replace the REAL event queue
+ *   (`player/event-log.js`, memory-backed) with a fake, or `false` for none.
+ *   `player/client.js` publishes the queue beside the store, so a harness with a
+ *   store and no queue is modelling a page that cannot exist — which is how the
+ *   queue went unpurged with this suite green (2026-09-22 audit).
  */
 async function mount({
   seed = {}, localOnly = {}, idbOnly = {}, reply = null, tier = {},
   noStore = false, player = undefined, boot = false, noLocalStorage = false,
+  events = [], eventLog = undefined,
 } = {}) {
   const { createDurableStore } = await import("../player/durable-store.js");
+  const { createEventLog } = await import("../player/event-log.js");
   const log = [];
 
   const local = fakeLocal({ ...seed, ...localOnly });
   const idb = fakeIdb({ ...seed, ...idbOnly }, { ...tier, log });
   const store = noStore ? null : createDurableStore({ localStorage: local, idbTier: idb });
+  /* Published with the store or not at all, the way client.js does it. */
+  let queue = null;
+  if (eventLog !== undefined) queue = eventLog || null;
+  else if (!noStore) queue = createEventLog({ indexedDB: null, scheduleFlush: () => {} });
+  if (queue && events.length && typeof queue.append === "function") {
+    for (const row of events) queue.append(row);
+    await queue.unsynced();                     // flushed, like a row from yesterday
+  }
 
   const fetchImpl = (url, opts = {}) => {
     const method = (opts.method || "GET").toUpperCase();
@@ -333,6 +349,7 @@ async function mount({
     fetch: fetchImpl,
     ...(noLocalStorage ? {} : { localStorage: local }),
     ...(store ? { forayStorage: store } : {}),
+    ...(queue ? { forayEventLog: queue } : {}),
     document: {
       body: dom.body,
       documentElement: dom.body,
@@ -399,7 +416,7 @@ async function mount({
   });
   const deletes = () => log.filter((e) => e.kind === "fetch" && e.method === "DELETE");
 
-  return { ctx, dom, ui, log, local, idb, store, arm, cpKeys, deletes };
+  return { ctx, dom, ui, log, local, idb, store, queue, arm, cpKeys, deletes };
 }
 
 /* ================= 1. enumeration, not a list ================= */
@@ -480,11 +497,34 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      POSITION it resumes to is deliberately not stored here: `cp_pos:` has owned
      that since #26 and there is exactly one definition of it. Same mechanism as
      every prior addition: this count failed first, then the policy check, until
-     privacy-policy.md §1 got the row. */
+     privacy-policy.md §1 got the row.
+
+     27 -> 29 on 2026-09-22 (audit theme A): `cp_episode_snaps`, the snapshot
+     every add-side action (Up Next, a play, a picked link) now writes so the
+     row survives a reload the way a star's always did, and `cp_shard_shows`,
+     the directory shows whose page was opened, so `#/show/pi:<n>` still
+     resolves. Same mechanism: this count failed first, then the "documented in
+     the privacy policy" test, until privacy-policy.md §1 got both rows.
+
+     And, from another lane the same day (L6, merged after L1, so on this branch
+     it reads 29 -> 30 -> 29):
+     27 -> 28 on 2026-09-22 (design/QA audit, theme J): `cp_storage_stale`, the
+     durable store's list of keys localStorage REFUSED to update while IndexedDB
+     took them (player/durable-store.js, header property 4). Without it a full
+     localStorage undid the listener's change on the next launch and then pushed
+     the stale copy over the good one. Bookkeeping, not user state, and written
+     to the durable tiers only; the delete control clears it like any other row.
+     Same mechanism: this count failed first, then the policy check.
+
+     28 -> 27 on 2026-09-22 (same audit; founder ruling R7): `cp_player` retired
+     with the "Open in" switch that wrote it. Its only reader was `playLink`,
+     which nothing had called since the link-out to another podcast app was
+     deleted. A copy on an older device is still `cp_`-prefixed, so the
+     enumeration above clears it; policy §2 says so in prose. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 27,
-    `expected 27 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 29,
+    `expected 29 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");
@@ -1226,4 +1266,234 @@ test("a localStorage that ACCEPTS a remove and keeps the row is reported, key by
   // not this realm's Array and deepStrictEqual compares prototypes.
   assert.deepStrictEqual([...result.local.remaining].sort(), ["cp_interests", "cp_seen"]);
   assert.match(ui.status.textContent, /NOT fully clear/);
+});
+
+/* ================= 10. the event queue, and every other store (2026-09-22 audit) =================
+
+   The enumeration in section 1 covers the `cp_` namespace. The outbound event
+   queue left that namespace in M3 for its own IndexedDB database, and the
+   control kept saying "This device is clear" while every event row survived
+   there — then uploaded the unsynced ones under the new anonymous account the
+   next launch mints. These pin the queue into the deletion, and pin EVERY store
+   the shipped code opens into a ledger, so a fourth one cannot arrive without
+   someone deciding whether "Delete my data" must reach it. */
+
+const QUEUED = [
+  { type: "picked", payload: { episode_id: "ep-1", topics: ["food"] } },
+  { type: "position", payload: { episode_id: "ep-1", seconds: 812, duration: 3600 } },
+];
+
+test("the event queue is emptied too — no row survives to be sent under a new account", async () => {
+  /* MUTATION THAT KILLS THIS: delete the `clearEventLog()` call from
+     `clearLocalData` — red, both rows still queued and the sheet saying clear. */
+  const { arm, ui, ctx, queue } = await mount({ seed: { cp_interests: "{}" }, events: QUEUED });
+  assert.strictEqual((await queue.unsynced()).length, 2, "premise: the queue holds rows");
+  await arm();
+  const result = await ctx.deleteMyData();
+  assert.strictEqual(result.ok, true, JSON.stringify(result.local));
+  assert.deepStrictEqual(await queue.unsynced(), [], "event rows survived Delete my data");
+  assert.match(ui.status.textContent, /This device is clear/);
+});
+
+test("REVIEW: a storage fault raised DURING the key purge leaves no row and no fresh profile id behind", async () => {
+  /* purge() re-arms a dead durable tier, whose refused removes reach onFault ->
+     forayLogEvent -> logEvent: profileId() minted a new cp_profile_id and the
+     row landed in the queue, which had ALREADY been emptied and reported ok.
+     MUTATION: empty the queue first again (swap the two awaits in
+     clearLocalData) and drop the dataDeletionInProgress guard -> red. */
+  const { arm, ctx, store, queue, cpKeys } = await mount({ seed: { cp_profile_id: '"p-1"', cp_interests: "{}" }, events: QUEUED });
+  const purge = store.purge.bind(store);
+  store.purge = async (...args) => {
+    const out = await purge(...args);
+    ctx.logEvent("storage_fault", { tier: "idb", op: "remove" });   // the fault sink, mid-deletion
+    return out;
+  };
+  await arm();
+  await ctx.deleteMyData();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepStrictEqual(await queue.unsynced(), [], "no row survives in the emptied queue");
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "and no new profile id was minted");
+});
+
+test("a queue that will not clear makes the device NOT clear, said in plain words", async () => {
+  const stubborn = {
+    append() {}, async unsynced() { return []; }, async markSynced() {}, async pruneToRetention() {},
+    health() { return { ok: false }; },
+    async purge() { return { ok: false, remaining: 3 }; },
+  };
+  const { arm, ui, ctx, cpKeys } = await mount({ seed: { cp_interests: "{}" }, eventLog: stubborn });
+  await arm();
+  const result = await ctx.deleteMyData();
+  assert.strictEqual(result.ok, false, "a surviving queue is not a clear device");
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "the cp_ keys were still cleared");
+  assert.match(ui.status.textContent, /NOT fully clear/);
+  assert.match(ui.status.textContent, /record of what you played/);
+});
+
+test("a page with a store and no queue does not claim the queue is gone", async () => {
+  const { arm, ctx } = await mount({ seed: { cp_interests: "{}" }, eventLog: false });
+  await arm();
+  const result = await ctx.deleteMyData();
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.local.events.reason, "no-event-log");
+});
+
+test("no status line speaks storage jargon or quotes a count it cannot stand behind", async () => {
+  /* The audit's line: "This device is NOT fully clear. 0 key(s) would not
+     clear." — a count that could be zero while the sentence said something
+     failed, a lazy plural, and a word ("key") no listener uses. The same goes
+     for an error class name. The numbers stay in the result for diagnostics. */
+  const { ctx } = await mount();
+  const remote = { ok: true, attempted: true, deleted: 8 };
+  const locals = [
+    { ok: false, remaining: [] },
+    { ok: false, remaining: ["cp_a", "cp_b"] },
+    { ok: false, remaining: [], unverified: [{ tier: "idb", phase: "after", reason: "x" }] },
+    { ok: false, reason: "purge-failed", error: "InvalidStateError" },
+    { ok: false, reason: "no-durable-tier", remaining: ["cp_a"] },
+    { ok: false, remaining: [], events: { ok: false, remaining: 4 } },
+  ];
+  for (const local of locals) {
+    const msg = ctx.deletionMessage({ state: "local-incomplete", remote, local });
+    assert.match(msg, /NOT fully clear/, msg);
+    // `\b\d+\b` rather than `\d`: the app's own name is "4a".
+    assert.ok(!/\bkeys?\b|\(s\)|\btier\b|durable|Error\b|\b\d+\b/.test(msg), `developer words or a count: ${msg}`);
+    for (const sentence of msg.split(/(?<=[.!?])\s+/)) {
+      assert.ok(sentence.trim().split(/\s+/).length <= 18, `over budget: "${sentence}"`);
+    }
+  }
+});
+
+/**
+ * Every client-side store the shipped code can open, found in the source rather
+ * than typed from memory: IndexedDB databases by their `*DB_NAME` constants, and
+ * Cache Storage buckets by resolving the constant each `caches.open(...)` call
+ * names to its string in the same file. An argument that is not an upper-case
+ * constant must be built from one (sw.js's `name = CACHE_PREFIX + deployId`),
+ * which the constant scan already covers.
+ */
+function storesInSource() {
+  const found = new Set();
+  for (const rel of shippedSources()) {
+    const src = codeOnly(read(rel));
+    for (const m of src.matchAll(/\b\w*DB_NAME\s*=\s*"([^"]+)"/g)) found.add(`idb:${m[1]}`);
+    for (const m of src.matchAll(/caches\.open\(\s*([A-Z][A-Z0-9_]*)/g)) {
+      const value = new RegExp(`\\bconst\\s+${m[1]}\\s*=\\s*"([^"]+)"`).exec(src);
+      found.add(value ? `cache:${value[1]}` : `cache:<unresolved ${rel}:${m[1]}>`);
+    }
+  }
+  return found;
+}
+
+/* The ledger. `deleted` stores are cleared by the control, and the tests above
+   prove it; `kept` stores must say why they hold nothing about the listener. */
+const STORE_LEDGER = {
+  "idb:foray": { deleted: "every cp_ key — DurableStore.purge(), section 1" },
+  "idb:foray_events": { deleted: "the outbound event queue — event-log purge(), section 10" },
+  "idb:foray-directory": { kept: "the published Foray documents, identical for every listener" },
+  "cache:foray-shows-index-v1": { kept: "the public show-search index shards" },
+  "cache:foray-gen-": { kept: "the app shell and catalogue files (sw.js)" },
+  "cache:foray-pointer": { kept: "which app-shell generation is current (sw.js)" },
+  "cache:foray-pending": { kept: "an app-shell generation mid-install (sw.js)" },
+};
+
+test("every store the app opens is in the deletion ledger, deleted or kept for a stated reason", () => {
+  /* MUTATION THAT KILLS THIS: add `export const DB_NAME = "foray_playlists";` to
+     any player module — red until the ledger decides whether the control must
+     reach it. */
+  const inCode = [...storesInSource()].sort();
+  const inLedger = Object.keys(STORE_LEDGER).sort();
+  assert.deepStrictEqual(
+    inCode, inLedger,
+    "a client-side store exists that the deletion ledger does not account for " +
+      "(or the ledger names one the code no longer opens). Decide whether Delete " +
+      `my data must clear it.\n  code:   ${inCode.join(", ")}\n  ledger: ${inLedger.join(", ")}`
+  );
+  // Only two files may open IndexedDB at all; a third would name its database
+  // somewhere this scan cannot see.
+  const openers = shippedSources().filter((rel) => /\b(factory|indexedDB)\.open\(/.test(codeOnly(read(rel))));
+  assert.deepStrictEqual(openers.sort(), ["player/event-log.js", "player/idb-tier.js"]);
+  // And nothing keeps listener state where neither enumeration looks.
+  for (const rel of shippedSources()) {
+    const src = codeOnly(read(rel));
+    assert.ok(!/document\.cookie/.test(src), `${rel} stores state outside the ledger`);
+    if (/\bsessionStorage\b/.test(src)) assert.ok(SESSION_LEDGER[rel], `${rel} stores state outside the ledger`);
+  }
+  /* The one tab-scoped write, and only that one: L1's `?foray=` entry mark. */
+  const sessionWrites = [...codeOnly(read("app.js")).matchAll(/sessionStorage\.setItem\(\s*([^,]+),/g)].map((m) => m[1].trim());
+  assert.deepStrictEqual(sessionWrites, ["mark"], "app.js writes sessionStorage only for the ?foray= entry mark");
+});
+
+/* sessionStorage, which dies with the tab, holds nothing Delete my data must
+   reach — but every use is named here, as the stores above are. Added at
+   integration (2026-09-22): L1 remembers "this tab already entered the Foray
+   its ?foray= link names" there, so a reload on Home stays on Home; the key is
+   the Foray id the URL itself carries, and it is gone when the tab is. */
+const SESSION_LEDGER = {
+  "app.js": "enterForayFromQuery's once-per-tab mark (foray_entered:<id>): the id already in the URL, gone with the tab",
+};
+
+test("the privacy policy says Delete my data clears the event queue", () => {
+  const pp = read("docs/legal/privacy-policy.md");
+  const s7 = /## 7\. How to delete your data([\s\S]*?)\n## 8\./.exec(pp)[1];
+  assert.match(s7, /foray_events/, "§7 does not say the event queue is deleted");
+  assert.ok(!/outside "Delete my data"/.test(pp), "§1 still says the queue is outside the control");
+});
+
+test("the confirm button is red under ui-v2, and the drawer item that opens the sheet is not coloured", () => {
+  /* Two defects in one place (2026-09-22 audit): the ui-v2 violet primary rule
+     (`body.ui-v2 .fy-sheet-go`, higher specificity, later in the file) painted
+     "Delete everything" the same violet as Play, and the drawer's "Delete my
+     data" was the menu's only coloured item, in a retired v1 gold.
+
+     MUTATION THAT KILLS THIS: delete the `body.ui-v2 .fy-sheet-go.dd-go` rule —
+     red, the violet rule is the last word on the button again. */
+  const css = read("styles.css").replace(/\/\*[\s\S]*?\*\//g, " ");
+  const rule = (sel) => {
+    const at = css.lastIndexOf(`${sel} {`);
+    return at === -1 ? null : { at, body: css.slice(at, css.indexOf("}", at)) };
+  };
+  const violet = rule("body.ui-v2 .fy-sheet-go");
+  const danger = rule("body.ui-v2 .fy-sheet-go.dd-go");
+  assert.ok(violet, "premise: the ui-v2 primary rule exists");
+  assert.ok(danger, "no ui-v2 rule gives the delete button its colour back");
+  assert.ok(danger.at > violet.at, "the danger rule must come after the violet one");
+  assert.match(danger.body, /background:\s*var\(--danger\)/);
+  assert.match(css, /--danger:\s*#[0-9a-fA-F]{6}/, "the danger colour is a token");
+  assert.match(APP_SRC, /ddEl\("button", "fy-sheet-go dd-go", "Delete everything"\)/, "premise: the button carries both classes");
+  assert.ok(!/\.dd-open\s*\{[^}]*color/.test(css), "the drawer item is coloured again");
+});
+
+test("REVIEW: the policy says where cp_storage_stale really lives — the app's preferences store included", async () => {
+  /* The row said "kept in IndexedDB only", but _persistStale writes through
+     _enqueue to EVERY live async tier, and in the iOS/Android shell that list
+     is [native, idb]. Measured here rather than assumed: a localStorage that
+     refuses a write, a native tier and an IndexedDB tier that record what
+     they are given. MUTATION: put "kept in IndexedDB only" back in the row. */
+  const { createDurableStore, LOCAL_STALE_KEY } = await import("../player/durable-store.js");
+  const tier = (name) => {
+    const rows = new Map();
+    return { name, sync: false, durable: true, rows,
+      async readAll() { return new Map(rows); },
+      async write(k, v) { rows.set(k, v); },
+      async remove(k) { rows.delete(k); } };
+  };
+  const native = tier("native");
+  const idb = tier("idb");
+  const refusing = {
+    get length() { return 0; }, key: () => null, getItem: () => null,
+    setItem() { throw Object.assign(new Error("full"), { name: "QuotaExceededError" }); },
+    removeItem() {},
+  };
+  const store = createDurableStore({ localStorage: refusing, idbTier: idb, nativeTier: native });
+  await store.hydrate();
+  store.setItem("cp_interests", "{}");
+  await store.flush();
+  assert.ok(native.rows.has(LOCAL_STALE_KEY), "the app's preferences store holds the stale ledger");
+  assert.ok(idb.rows.has(LOCAL_STALE_KEY), "and IndexedDB does");
+
+  const row = read("docs/legal/privacy-policy.md").split("\n").find((l) => l.startsWith("| `cp_storage_stale`"));
+  assert.ok(row, "the policy has the row");
+  assert.doesNotMatch(row, /IndexedDB only/, "the row may not say IndexedDB only");
+  assert.match(row, /preferences store/, "it names the app's preferences store");
 });

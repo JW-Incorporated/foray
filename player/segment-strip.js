@@ -57,7 +57,7 @@
        narration was worth 0 s in all of them.
 */
 
-import { itemRuntimeSec } from "./foray-queue.js";
+import { itemRuntimeSec, DURATION_MEASURED } from "./foray-queue.js";
 import { segmentStarts, segmentAtElapsed, fmtClock, fmtSpan } from "./foray-resolve.js";
 
 /** How many show tones the palette holds. `styles.css` defines `--seg-c0` …
@@ -389,9 +389,20 @@ export function stripModel(items, { elapsed = null, mergeNarration = false } = {
 export function stripSummary(model) {
   const m = model ?? {};
   const segs = m.segmentCount ?? 0;
-  if (!segs && !(m.narrationCount ?? 0)) return "Running order: nothing to play.";
+  const narr = m.narrationCount ?? 0;
+  if (!segs && !narr) return "Nothing to play yet.";
 
-  /* SHOWS, not source episodes, and the difference is the point of the
+  /* PLAIN ENGLISH, AND ONE COUNT (audit 2026-09-22, persona row 64). This
+     sentence used to read "Running order: 11 segments from 5 shows and 40
+     narrator bridges, 1 hr 12 min in all. Now on piece 10 of 56" — four words
+     of production jargon, and two counts ("11", "56") a listener would take to
+     be the same thing. It is the one surface where a blind or driving listener
+     cannot see the picture that would explain those words. So every piece is a
+     "clip" (the listener's word, docs/audit/persona-synthesis.md §2), the total
+     is the same ITEM count the position is "of", and the narrator is named as
+     4a's rather than as a "bridge".
+
+     SHOWS, not source episodes, and the difference is the point of the
      sentence. The strip draws one capsule per EPISODE — capital-types-1 has 11
      of them — but the fact the founder said was missing from the live site is
      "it's more than one podcast", and that is a count of shows. The capsules
@@ -400,11 +411,12 @@ export function stripSummary(model) {
   const named = Array.isArray(m.shows) ? m.shows.length : 0;
   const shows = named > 0 ? named : (m.sourceCount ?? 0);
   const unit = named > 0 ? "show" : "episode";
-  const parts = [`${segs} segment${segs === 1 ? "" : "s"} from ${shows} ${unit}${shows === 1 ? "" : "s"}`];
-  if (m.narrationCount > 0) {
-    parts.push(`${m.narrationCount} narrator bridge${m.narrationCount === 1 ? "" : "s"}`);
-  }
-  let out = `Running order: ${parts.join(" and ")}, ${fmtSpan(m.totalSec)} in all.`;
+  const total = m.itemCount ?? (segs + narr);
+  const clips = (n) => `${n} clip${n === 1 ? "" : "s"}`;
+  const fromShows = `from ${shows} ${unit}${shows === 1 ? "" : "s"}`;
+  let out = narr > 0
+    ? `${clips(total)}: ${segs} ${fromShows} and ${narr} from 4a's narrator, ${fmtSpan(m.totalSec)} in all.`
+    : `${clips(total)} ${fromShows}, ${fmtSpan(m.totalSec)} in all.`;
 
   if (m.positioned && m.currentIndex != null) {
     /* NOT `segments[currentIndex]`. `currentIndex` is an ITEM index and a
@@ -412,17 +424,52 @@ export function stripSummary(model) {
        at position 4 of the array — the old lookup read a bar belonging to a
        different show, or none at all, the moment `mergeNarration` was on. The
        bar is the one whose item range contains the index; the SENTENCE still
-       counts items ("piece 10 of 56"), because that is what the listener is
+       counts items ("clip 10 of 56"), because that is what the listener is
        actually inside. */
     const cur = currentBar(m);
     const from = cur?.kind === "narration"
-      ? "the narrator"
+      ? "4a's narrator"
       : (nonEmpty(cur?.show) ? cur.show : "an unnamed show");
     const pieces = m.itemCount ?? m.segments?.length ?? 0;
-    out += ` Now on piece ${m.currentIndex + 1} of ${pieces}, from ${from}, `
+    out += ` Now on clip ${m.currentIndex + 1} of ${pieces}, from ${from}, `
       + `${fmtClock(m.elapsedSec)} in.`;
   }
   return out;
+}
+
+/**
+ * The Foray's headline numbers, from the SAME model the strip draws and
+ * `stripSummary` speaks — so the page header and the strip underneath it cannot
+ * answer "how many" differently (audit 2026-09-22, theme L).
+ *
+ * THE DEFECT THIS REPLACED. The header counted `resolved.playable.length` as
+ * "segments" — every queue item, narrator bridges included — while the strip
+ * mounted directly beneath it counted tape only: "50 segments" over an
+ * accessible label announcing 11. And it counted `resolved.shows`, which is
+ * every AUTHORED entry's show, playable or not, while the credits block further
+ * down counts only shows that will actually be heard (`foray-sources.js`
+ * refuses the flattering number on purpose). `stripModel` is built from the
+ * playable items and counts shows over tape, so both disagreements close by
+ * reading it.
+ *
+ * `estimated` is the other half: a narration bridge with no measured duration
+ * is timed from its script length (`narrationDuration`, foray-queue.js), and on
+ * a narrated Foray that is ~40% of the runtime. `duration_source` has carried
+ * that provenance through two modules; this is its first reader at the surface,
+ * so a caller can say "about 43 min" instead of printing an estimate as a
+ * measured clock. An item with no `duration_source` is tape, and tape is
+ * measured.
+ */
+export function stripTally(items) {
+  const list = Array.isArray(items) ? items.filter((i) => i && typeof i === "object") : [];
+  const m = stripModel(list);
+  return {
+    clips: m.segmentCount,
+    bridges: m.narrationCount,
+    shows: m.shows.length,
+    totalSec: m.totalSec,
+    estimated: list.some((i) => nonEmpty(i.duration_source) && i.duration_source !== DURATION_MEASURED),
+  };
 }
 
 /** The bar that is drawing item `currentIndex` — the run's bar when narration

@@ -159,16 +159,16 @@ test("a segment puts the episode in title and the SHOW in artist", () => {
 
 test("the Foray's title lives in album, with the part counter", () => {
   const m = mediaMetadata({ item: SEG, forayTitle: "The history of grilling", index: 11, total: 32 });
-  assert.equal(m.album, "The history of grilling · part 12 of 32");
+  assert.equal(m.album, "The history of grilling · clip 12 of 32");
 });
 
 test("the part counter is 1-based, and worded exactly as the mini bar words it", () => {
-  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 0, total: 9 }).album, /part 1 of 9$/);
-  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 8, total: 9 }).album, /part 9 of 9$/);
+  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 0, total: 9 }).album, /clip 1 of 9$/);
+  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 8, total: 9 }).album, /clip 9 of 9$/);
 });
 
-test("an index past the end is clamped rather than reported as part 40 of 32", () => {
-  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 99, total: 32 }).album, /part 32 of 32$/);
+test("an index past the end is clamped rather than reported as clip 40 of 32", () => {
+  assert.match(mediaMetadata({ item: SEG, forayTitle: "F", index: 99, total: 32 }).album, /clip 32 of 32$/);
 });
 
 test("a zero total suppresses the counter — single-episode playback has no parts", () => {
@@ -177,7 +177,7 @@ test("a zero total suppresses the counter — single-episode playback has no par
 });
 
 test("a counter with no Foray title still reads as a sentence", () => {
-  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 2, total: 9 }).album, "Part 3 of 9");
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 2, total: 9 }).album, "Clip 3 of 9");
 });
 
 test("a missing show yields an EMPTY artist — a credit is never invented", () => {
@@ -205,7 +205,7 @@ test("whitespace-only strings count as missing, not as content", () => {
   const m = mediaMetadata({ item: { kind: "episode", title: "   ", show: "\t" }, forayTitle: "  F  ", index: 0, total: 3 });
   assert.equal(m.title, "F");
   assert.equal(m.artist, "");
-  assert.equal(m.album, "F · part 1 of 3");
+  assert.equal(m.album, "F · clip 1 of 3");
 });
 
 test("every field is a string and artwork is an array, for every input shape", () => {
@@ -310,7 +310,7 @@ test("a SEGMENT keeps Apple Podcasts parity untouched: title=episode, artist=sho
   });
   assert.equal(m.title, SEG.title);
   assert.equal(m.artist, SEG.show);
-  assert.equal(m.album, "The history of grilling · part 12 of 32");
+  assert.equal(m.album, "The history of grilling · clip 12 of 32");
 });
 
 // TO SEE IT FAIL: give single-episode playback a non-empty album (e.g. by
@@ -615,9 +615,10 @@ test("an absent surface method installs no handler — the OS greys the button o
   assert.equal(map.has("play"), true);
 });
 
-test("single-episode playback offers no next: the queue is one item by design", () => {
-  // SINGLE_ITEM, product principle 1 — no autoplay chains. A next button that
-  // does nothing is worse than a dim one.
+test("a surface with no next offers no next button", () => {
+  // A next button that does nothing is worse than a dim one. (Whether an
+  // episode has a next is the page's to say — see the `episodeMediaSurface`
+  // getter test below; principle 1 now WANTS continuous playback.)
   const map = actionMap({ play() {}, pause() {}, stop() {}, seekBy() {}, seekTo() {} });
   assert.deepEqual([...map.keys()], ["play", "pause", "stop", "seekbackward", "seekforward", "seekto"]);
 });
@@ -1067,7 +1068,7 @@ test("the PUBLISHER's name is what actually reaches the platform, not ours", () 
     assert.deepEqual(metadataWrites(nav), [{
       title: "Episode 09: Did Cooking Make Us Human?",
       artist: "Origin Stories",
-      album: "The history of grilling · part 12 of 32",
+      album: "The history of grilling · clip 12 of 32",
       artwork: APPLE,
     }], MediaMetadata ? "with a MediaMetadata constructor" : "without one");
   }
@@ -1330,8 +1331,10 @@ test("a lock-screen press is recorded as `remote` and an in-page tap as `tap`", 
   for (const [name, surface] of [["foray", foraySurface], ["episode", episodeSurface]]) {
     assert.match(surface, /play:\s*\(\)\s*=>\s*setRunning\(true,\s*"remote"\)/, name);
     assert.match(surface, /pause:\s*\(\)\s*=>\s*setRunning\(false,\s*"remote"\)/, name);
-    assert.match(surface, /diag\.transport\("remote",\s*"stop"\)/, name);
+    assert.match(surface, /stop:\s*\(details\)\s*=>\s*remoteStop\(details\)/, name);
   }
+  const remoteStop = /function remoteStop\(details\) \{[\s\S]*?\n\}/.exec(CLIENT)[0];
+  assert.match(remoteStop, /^\s*diag\.transport\("remote",\s*"stop"\);/m, "the stop is recorded before it branches");
   // The default is the page's own tap, so the in-page button needs no argument.
   assert.match(CLIENT, /async function setRunning\(want, source = "tap"\)/);
   /* RECORDED BEFORE THE EARLY RETURN. A remote command that arrives while the
@@ -1345,11 +1348,55 @@ test("a lock-screen press is recorded as `remote` and an in-page tap as `tap`", 
   assert.ok(diagAt < returnAt, "the source is recorded BEFORE the no-op early return, or F5 leaves no row");
 });
 
-test("single-episode playback installs a surface with no next or previous", () => {
+test("an episode's next/previous are the PAGE's, and absent until the page offers them", () => {
+  /* Rewritten 2026-09-22 (audit, R2). This test used to pin that the episode
+     surface had NO next/previous at all, on the strength of product principle 1
+     as "no autoplay chains" — which the founder reversed on 2026-09-14. What
+     survives is the half that was always right: the OS must not be offered a
+     button the list cannot honour. So they are getters over the page's answer,
+     and `mediaSessionActions` leaves an action out when its getter says null. */
   const surface = /const episodeMediaSurface = \{[\s\S]*?\n\};/.exec(CLIENT_CODE);
   assert.ok(surface, "player/client.js must define episodeMediaSurface");
-  assert.doesNotMatch(surface[0], /\bnext:/);
-  assert.doesNotMatch(surface[0], /\bprevious:/);
+  assert.doesNotMatch(surface[0], /\bnext:/, "not a fixed handler");
+  assert.match(surface[0], /get next\(\) \{ return episodeNeighbour\(""\); \}/);
+  assert.match(surface[0], /get previous\(\) \{ return episodeNeighbour\(""\); \}/);
+  const actions = mediaSessionActions({
+    play() {}, pause() {},
+    get next() { return null; },
+    get previous() { return () => {}; },
+  }).map(([a]) => a);
+  assert.ok(!actions.includes("nexttrack"), "a null neighbour is no OS button");
+  assert.ok(actions.includes("previoustrack"));
+});
+
+test("a REMOTE stop pauses and keeps the session; only the in-page Stop and the notification's close tear it down", () => {
+  /* Audit 2026-09-22: a head unit's stop used to call `stopAndClose()`, whose
+     `release()` unregisters every handler, leaving the car with no transport.
+     Review 2026-09-23: but the Android notification's Stop is the listener's only
+     exit on API 24-33, so it arrives as `{ close: true }` and DOES close. */
+  for (const name of ["forayMediaSurface", "episodeMediaSurface"]) {
+    const surface = new RegExp(`const ${name} = \\{[\\s\\S]*?\\n\\};`).exec(CLIENT_CODE)[0];
+    assert.doesNotMatch(surface, /stopAndClose/, `${name}: a remote stop must not tear down on its own`);
+    assert.match(surface, /stop:\s*\(details\)\s*=>\s*remoteStop\(details\)/, name);
+  }
+  const remote = /function remoteStop\(details\) \{[\s\S]*?\n\}/.exec(CLIENT_CODE);
+  assert.ok(remote, "player/client.js must define remoteStop");
+  assert.match(remote[0], /if \(details\?\.close === true\) return stopAndClose\(\);/);
+  assert.match(remote[0], /return setRunning\(false, ""\);/);
+  assert.match(CLIENT_CODE, /ui\.stopBtn\.addEventListener\("", \(\) => stopAndClose\(\)\)/);
+});
+
+test("the stop action carries `close` through to the surface, and nothing else does", () => {
+  /* KILLING MUTATION: put `["stop", () => stop()]` back in mediaSessionActions —
+     the notification's close then reaches the page as a plain pause, and a paused
+     listener on Android 24-33 has no way to take the notification down. */
+  const seen = [];
+  const actions = new Map(mediaSessionActions({ stop: (d) => seen.push(d) }));
+  actions.get("stop")({ close: true });
+  actions.get("stop")(undefined);
+  actions.get("stop")({ action: "stop" });
+  actions.get("stop")({ close: "yes" });
+  assert.deepEqual(seen, [{ close: true }, undefined, undefined, undefined]);
 });
 
 test("the Foray surface is installed INSIDE playForay, not merely defined somewhere", () => {

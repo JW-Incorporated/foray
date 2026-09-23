@@ -75,6 +75,41 @@ test("tolerance is measured as Euclidean distance, not per-axis", () => {
   assert.equal(after.zooming, true);
 });
 
+/* ---------- moveGesture: a vertical flick is a scroll (audit 2026-09-22) ----------
+   The sticky strip sits in the path of "scroll the running order"; a flick
+   that started on it used to enter zoom and then SEEK on release. */
+
+test("a vertical flick past tolerance ends as a scroll, never a zoom", () => {
+  // MUTATION: delete the `Math.abs(dy) > Math.abs(dx)` branch -> zooms instead.
+  const g = startGesture(100, 100);
+  const after = moveGesture(g, 102, 100 + MOVE_TOLERANCE_PX + 5);
+  assert.equal(after.scrolled, true, "a mostly-vertical move is the listener scrolling");
+  assert.equal(after.zooming, false);
+  assert.equal(after.active, false, "the gesture is over — nothing may commit a seek from it");
+});
+
+test("a horizontal drag past tolerance still enters zoom (the scrub is sideways)", () => {
+  const g = startGesture(100, 100);
+  const after = moveGesture(g, 100 + MOVE_TOLERANCE_PX + 5, 103);
+  assert.equal(after.zooming, true);
+  assert.notEqual(after.scrolled, true);
+});
+
+test("once a hold has entered zoom, a vertical move keeps scrubbing rather than turning into a scroll", () => {
+  // The finger is already on the magnified strip; drifting up or down while
+  // aiming is part of the scrub, not a change of mind.
+  const zoomed = holdTimeoutGesture(startGesture(0, 0));
+  const after = moveGesture(zoomed, 1, 80);
+  assert.equal(after.zooming, true);
+  assert.notEqual(after.scrolled, true);
+});
+
+test("a later move after a scroll ended the gesture cannot resurrect it into zoom", () => {
+  const scrolled = moveGesture(startGesture(0, 0), 0, 50);
+  assert.equal(moveGesture(scrolled, 200, 50).zooming, false);
+  assert.equal(holdTimeoutGesture(scrolled).zooming, false, "a late hold timer is inert too");
+});
+
 test("once zooming, further moves are inert (state unchanged)", () => {
   const g = { ...startGesture(0, 0), zooming: true };
   const after = moveGesture(g, 9999, 9999);

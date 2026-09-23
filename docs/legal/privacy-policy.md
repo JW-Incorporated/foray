@@ -61,7 +61,11 @@ two places on your device**: `localStorage` and an IndexedDB database (name
 `localStorage` — Safari clears script-writable storage after about seven days
 without a visit — and losing it would silently orphan your profile.
 `localStorage` is kept as a mirror, not a staging area; nothing is deleted to
-migrate it. (`player/durable-store.js`, `player/idb-tier.js`.)
+migrate it. (`player/durable-store.js`, `player/idb-tier.js`.) **In the iOS and
+Android app there is a third copy**, in the app's own preferences store (iOS
+`UserDefaults`, Android `SharedPreferences`), because the system can clear a
+web view's storage and does not clear that one. It holds the same `cp_` rows
+and never leaves the device (`player/durable-store.js:preferencesTier()`).
 
 Two honest qualifications to "two places". The diagnostic record
 `cp_storage_health` is deliberately **never** written to IndexedDB — a failing
@@ -76,7 +80,7 @@ transmitted. `cp_storage_health` records storage failures. `cp_diag` records how
 the audio player behaved — see its row below — and exists because two playback
 faults were reported from a car with no measurements attached, so there was
 nothing to diagnose them with. It is capped, the oldest entries are dropped
-first, and the drawer's **Playback diagnostics** is where you read it, copy it or
+first, and the menu's **Developer** → **Playback diagnostics** is where you read it, copy it or
 clear it (`player/diagnostic-log.js`).
 
 The app also asks the browser to mark its storage as persistent
@@ -91,8 +95,10 @@ The app also asks the browser to mark its storage as persistent
 | `cp_lastpick` | A snapshot of the last episode you picked | **No** (but marking it Done sends `finished` — §2) |
 | `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
-| `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; does not copy episode details, only the id | **No** |
-| `cp_starred_shows` | A per-device map of shows you starred from a show page — a lightweight favorite, separate from episode saves (`cp_saved`). No notifications, no auto-download, and starring a show never changes what 4a surfaces to you elsewhere | **No** |
+| `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; holds only the ids — the details it shows are in `cp_episode_snaps` | **No** |
+| `cp_episode_snaps` | A copy of the details of each episode in your Up Next list and your recent history — title, show name, length, publish date, artwork and audio addresses, topic ids and the first couple of sentences of its description — so those lists can still show and play an episode after the app reloads, including episodes from outside 4a's own catalogue. An episode is dropped from it once neither list names it any more | **No** |
+| `cp_shard_shows` | The last 50 shows from the wider podcast directory whose page you opened — title, publisher name and artwork address — so a link to one of them still opens after the app reloads | **No** |
+| `cp_starred_shows` | A per-device map of shows you followed from a show page (the Follow button; the key keeps its older "starred" name) — a lightweight favorite, separate from episode saves (`cp_saved`). No notifications, no auto-download, following a show never adds its new episodes anywhere, and never changes what 4a surfaces to you elsewhere | **No** |
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
 | `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in | **No** |
 | `cp_pos:<id>` | Your position in seconds inside an individual episode | **No** |
@@ -100,27 +106,28 @@ The app also asks the browser to mark its storage as persistent
 | `cp_rate` | Your playback speed | **No** |
 | `cp_voice` | Your chosen narration voice — an identifier the device's own voice list reported | **No** |
 | `cp_interlude` | Whether the short jingle between a foray's segments is on or off — a local per-device preference. On unless you turn it off | **No** |
-| `cp_player` | Which external podcast app you prefer to open episodes in | **No** |
 | `cp_family` | Family mode on/off — a local content filter that hides explicit-rated episodes | **No** |
 | `cp_show_drafts` | Whether the settings switch that lists unpublished (draft) forays on this device is on — a local per-device preference for testing them before they are published. Off by default | **No** |
 | `cp_voice_probe` | Whether the settings switch that offers the voice-engine measurement on this device is on — a local per-device preference used to test a bundled narration voice before it ships. Off by default; when it is off the control is not shown at all | **No** |
-| `cp_autoadvance` | Up Next auto-advance on/off — a local per-device preference for whether finishing an episode played from your Up Next list starts the next queued item. Off by default | **No** (but see `autoadvance_pref` in §2) |
+| `cp_autoadvance` | Continuous playback on/off — a local per-device preference for whether finishing an episode starts the next one: your Up Next list first, then the rest of the list you started from. On by default | **No** (but see `autoadvance_pref` in §2) |
 | `cp_intro_dismissed` | Whether you dismissed the intro card | **No** |
 | `cp_foray_feedback` | Your per-segment thumbs: direction, reason codes, any note you typed, timestamp | **Yes, via `thumbs`** — see §2 |
 | `cp_profile_id` | A random local id (e.g. `p-a1b2c3d4...`) generated on this device | **No** — it is stamped on local events but is **not** included in anything sent |
 | `cp_sb_session` | The access and refresh token for your anonymous account, and its user id | It **is** your credential for our database — see §3 |
 | `cp_storage_health` | A diagnostic record of storage failures, for troubleshooting | **No** |
-| `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the drawer's **Playback diagnostics** shows it and lets you copy or clear it |
+| `cp_storage_stale` | The names (never the values) of any of the keys above that this device's `localStorage` refused to update while a durable copy accepted the change, so the next launch reads the newer durable copy instead of the stale one. Usually absent; kept only in the durable copies — IndexedDB, and in the iOS and Android app its preferences store too — never in `localStorage` | **No** |
+| `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the menu's **Developer** → **Playback diagnostics** shows it and lets you copy or clear it |
 
 **The event queue is not a `cp_` key.** Until 2026-09, the buffer of events
 waiting to be sent lived at `cp_events` (with a `cp_synced_ts` bookmark) inside
 the same two-tier store as everything above. It is now its own IndexedDB
 database (`foray_events`, object store `events`, `player/event-log.js`),
-outside the `cp_` namespace and outside "Delete my data"'s enumeration —
-deliberately, because it is an OUTBOUND QUEUE, not resumable state about you: a
-row that fails to sync is retried, and once sent (or once it ages past the
-5,000-row cap) it is deleted from the device, never resurrected. **Delete my
-data** deliberately does not log an event for the deletion itself (see §7), so
+outside the `cp_` namespace. It is an OUTBOUND QUEUE, not resumable state about
+you: a row that fails to sync is retried, and once sent (or once it ages past
+the 5,000-row cap) it is deleted from the device, never resurrected. It still
+holds what you played and when, so **Delete my data empties it too** (§7) —
+since 2026-09-22; before then the control cleared the `cp_` keys and left this
+queue behind. The deletion itself is deliberately not logged (see §7), so
 there is nothing about the deletion for this queue to hold.
 
 The web app also keeps Cache Storage buckets named `foray-gen-<deploy_id>` (one
@@ -133,7 +140,7 @@ request that is not to our own origin.
 ## 2. What leaves your device, exactly
 
 The app buffers events locally (in the event queue described above) and
-periodically sends some of them to our database (Supabase — see §3). **Nineteen of the twenty-three event types the app records never leave the device.** The
+periodically sends some of them to our database (Supabase — see §3). **Eighteen of the twenty-two event types the app records never leave the device.** The
 buffer is trimmed to the most recent 5,000 entries.
 
 **Sent** (`app.js:toEventRow()`). Every row carries your anonymous account id
@@ -150,12 +157,13 @@ and a timestamp:
 position; stored about every 15 seconds, recorded as an event at most once a
 minute per episode — `player/position-store.js:save()`), `foray_play`,
 `foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
-`unsaved`, `playlist_built`, `playlist_removed`, `player_pref`, `family_mode`,
-`autoadvance_pref` (toggling Up Next auto-advance on or off), `voice_pref`
+`unsaved`, `playlist_built`, `playlist_removed`, `family_mode`,
+`autoadvance_pref` (toggling continuous playback on or off), `voice_pref`
 (choosing a narration voice — V-01), `refreshed_all`,
 `storage_fault`, `queued` and its counterpart `unqueued`
 (added to your Up Next list, or removed from it), `show_starred` and its
-counterpart `show_unstarred` (starring a show, or removing a star).
+counterpart `show_unstarred` (following a show, or unfollowing it — the event
+names keep the control's older "star" wording).
 
 **The `picked` row's two labels are narrower than they sound**, and we would
 rather say so than let the field names imply more collection than happens:
@@ -163,8 +171,10 @@ rather say so than let the field names imply more collection than happens:
 - The **`app` label is a hardcoded constant.** It reads a `data-app` attribute
   that nothing in the app ever sets, so it is always the literal string
   `"Apple Podcasts"` (`app.js:bindPickLogging()`). It does **not** report which
-  podcast app you actually use, and your stored preference (`cp_player`) is never
-  transmitted.
+  podcast app you actually use. (4a used to keep a preferred-app setting,
+  `cp_player`, for a link-out it no longer has; the setting was removed on
+  2026-09-22. A copy on an older device is never sent, and **Delete my data**
+  clears it with everything else.)
 - The **context label** is filtered against a five-value allowlist
   (`app.js:SB_ARCHETYPES`), but the only values the app ever produces are
   `continue` — you resumed something — or a subject/playlist label that the
@@ -394,12 +404,17 @@ optional) — one stray tap cannot trigger it.
 
 **What it deletes:**
 
-- **Everything on this device.** Every `cp_` key in §1, in **both** places they
-  are kept: `localStorage` and the IndexedDB database `foray`. The control
-  enumerates the two stores and then re-reads them to check they are empty, so a
+- **Everything on this device.** Every `cp_` key in §1, in **every** place they
+  are kept: `localStorage`, the IndexedDB database `foray`, and in the iOS and
+  Android app the app's preferences store. The control
+  enumerates the stores and then re-reads them to check they are empty, so a
   key added to the app in future is covered without anyone updating a list. If
   either store refuses, or cannot be read to confirm, **the app tells you the
   device is not fully clear** rather than claiming it is.
+- **The event queue on this device** (`foray_events`, §1): every event waiting to
+  be sent, and every one already sent that the device still keeps. It is emptied
+  and re-read the same way, so no row can be sent later under the new anonymous
+  account the app creates next time.
 - **Your rows on our server.** One authenticated `DELETE` per per-user table,
   filtered to your own account id — the `events` rows in §2 (including any note
   you typed), the account's own `app_users` row, and the other per-user tables the

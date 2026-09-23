@@ -20,8 +20,9 @@ import {
   KEY, MAX_AGE_H,
   episodeSnapshot, makeLastEpisode,
   writeLastEpisode, readLastEpisode, lastEpisodeState,
-  episodePercentDone, episodeRemainingLabel,
+  episodePercentDone, episodeRemainingLabel, episodeProgress,
 } from "./episode-progress.js";
+import { PositionStore, NEAR_END_SEC, MIN_RESUME_SEC } from "./position-store.js";
 
 /** A Storage-shaped fake that can also be made to fail, because a refused write
     is a path this module has an opinion about. */
@@ -200,4 +201,45 @@ test("a position at or past the end reads as finished, not as negative time", ()
   const rec = makeLastEpisode(EPISODE);
   assert.equal(episodeRemainingLabel(rec, 7200), "finished");
   assert.equal(episodeRemainingLabel(rec, 999999), "finished");
+});
+
+/* ---------- episodeProgress: ONE reading of a position (audit 2026-09-22) --- */
+
+test("a finished episode reads 'Played' with a full bar — never its whole runtime left", () => {
+  /* The Jump-back-in card fed `resumeOffset` (which collapses "finished" to 0)
+     into its bar and label, and told the listener a three-hour episode they had
+     just finished had "180 min left". The raw stored position is what a card
+     must read, and near the end it is "Played".
+     MUTATION: delete the `played` branch. The label becomes "0 min left"-shaped
+     ("finished") at 100% and this goes red. */
+  const rec = { duration_sec: 3 * 3600 };
+  const near = 3 * 3600 - 5;
+  assert.deepEqual(episodeProgress(rec, near), { state: "played", percent: 100, label: "Played" });
+  /* The contrast that is the bug: the resume offset for the same stored row is
+     0, and the card must not be built from it. */
+  const store = new PositionStore({ storage: { getItem: () => JSON.stringify({ seconds: near, duration: 3 * 3600 }), setItem() {}, removeItem() {} } });
+  assert.equal(store.resumeOffset("x"), 0, "fixture: play would start over");
+  assert.equal(episodeProgress(rec, store.load("x").seconds).state, "played");
+});
+
+test("episodeProgress uses position-store's own thresholds, so 'finished' means one thing", () => {
+  /* MUTATION: restate a private 60-second near-end here. The first assertion
+     goes red where the resume and the card would now disagree. */
+  const rec = { duration_sec: 3600 };
+  assert.equal(episodeProgress(rec, 3600 - NEAR_END_SEC + 1).state, "played");
+  assert.equal(episodeProgress(rec, 3600 - NEAR_END_SEC - 1).state, "in-progress");
+  assert.equal(episodeProgress(rec, MIN_RESUME_SEC - 1).state, "sampled", "opened, not listened to");
+  assert.equal(episodeProgress(rec, MIN_RESUME_SEC - 1).label, null, "a sample earns no label");
+});
+
+test("in progress: percent and 'NN min left' from the same position; unknown duration gives neither", () => {
+  assert.deepEqual(episodeProgress({ duration_sec: 3600 }, 900), { state: "in-progress", percent: 25, label: "45 min left" });
+  assert.deepEqual(episodeProgress({ duration_min: 60 }, 900), { state: "in-progress", percent: 25, label: "45 min left" });
+  assert.deepEqual(episodeProgress({}, 900), { state: "in-progress", percent: null, label: null });
+});
+
+test("nothing stored is unplayed", () => {
+  for (const p of [null, undefined, 0, -3, NaN]) {
+    assert.deepEqual(episodeProgress({ duration_sec: 3600 }, p), { state: "unplayed", percent: null, label: null }, String(p));
+  }
 });

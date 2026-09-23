@@ -334,7 +334,7 @@ test("own playlists rank before generated candidates, and a generated one is bad
 
   const html = m.byId.get("pl-search-results").innerHTML;
   const ownIdx = html.indexOf("My History Mix");
-  const genIdx = html.indexOf("gen-history/rome");
+  const genIdx = html.indexOf("gen-history%2Frome");   // playlistRoute() encodes (2026-09-22)
   assert.ok(ownIdx !== -1 && genIdx !== -1, "both an own and a generated result must be present");
   assert.ok(ownIdx < genIdx, "the own playlist must rank before the generated candidate");
   assert.ok(html.includes("Generated for you"), "the generated candidate must carry the badge");
@@ -362,7 +362,7 @@ test("a generated candidate that duplicates an already-shown own playlist id is 
   assert.strictEqual((html.match(/subject-history/g) || []).length, 1, "the shared id must render exactly once");
 });
 
-test("no own or generated match renders neither section content nor the CTA when the topic scorer is not empty", () => {
+test("no own or generated match renders neither section content nor the CTA when the topic scorer is not empty", async () => {
   /* Sanity for the ordering of the branches: a rich topic answer with no
      playlist match shows nothing extra here (buildPlaylist's own #pl-form
      flow already answers "what should I listen to" — this section stays
@@ -382,9 +382,14 @@ test("no own or generated match renders neither section content nor the CTA when
 
   m.ctx.renderAllShows();
   shForm.submit();
+  /* The section holds "Still looking for playlists…" until the deferred scan
+     answers (persona audit #28, 2026-09-22) — the claim here is about what it
+     settles to, so wait one macrotask for the scan, as the CTA cases do. */
+  await new Promise((r) => setTimeout(r, 0));
 
   const pl = m.byId.get("pl-search-results");
   assert.strictEqual(pl.hidden, true, "no Playlists section and no CTA when nothing to show and the topic scorer is not empty");
+  assert.strictEqual(pl.innerHTML, "", "and the pending line is gone once the scan answered");
 });
 
 /* ==================================================================== */

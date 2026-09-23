@@ -413,6 +413,10 @@ test("clicking a suggested subject pill fills the subject input", () => {
      querySelectorAll("[data-cr-subject]") wiring in renderCreate()). The
      pills would render but do nothing. */
   const m = mount();
+  /* Since 2026-09-22 the tap also BUILDS (the test below), so the build it
+     starts needs a catalogue to run against and must not outlive the test. */
+  seedPool(m);
+  m.ctx.buildPlaylist = () => ({ status: "miss", suggestions: [] });
   m.ctx.location.hash = "#/create";
   m.evalIn("route()");
   const pill = m.viewEl.children.find((c) => c.className === "cr-pill");
@@ -422,4 +426,46 @@ test("clicking a suggested subject pill fills the subject input", () => {
   pill._fire("click", {});
   const input = m.viewEl.querySelector("#cr-form").querySelector("input");
   assert.strictEqual(input.value, wantSubject, "clicking a pill must fill the subject input with its own subject text");
+});
+
+test("tapping a suggested subject BUILDS it — no second tap, no keyboard", async () => {
+  /* Audit 2026-09-22 (persona 26): the pill filled the field and raised the
+     keyboard, and building took a second tap on a Build button the keyboard
+     then covered, so the tap read as a miss. Same rule as the founder's #684
+     ruling on the Search tiles. MUTATION: restore the fill-and-focus-only
+     handler in renderCreate — buildPlaylist is never asked. */
+  const m = mount();
+  seedPool(m);
+  const asked = [];
+  m.ctx.buildPlaylist = (q) => { asked.push(q); return { status: "miss", suggestions: [] }; };
+  m.ctx.location.hash = "#/create";
+  m.evalIn("route()");
+  const pill = m.viewEl.children.find((c) => c.className === "cr-pill");
+  pill._fire("click", {});
+  await new Promise((r) => setTimeout(r, 5));
+  assert.deepStrictEqual(asked, [pill.dataset.crSubject], "the suggestion is built from one tap");
+});
+
+test("REVIEW: repeated pill taps while a build is pending build ONE playlist", async () => {
+  /* The pills call the submit handler directly, past the disabled Build
+     button, so a second tap during the cold-boot wait queued a second build:
+     two saved playlists and two navigations. MUTATION: drop the
+     `if (createBuildPending) return;` in bindCreateFormSubmit (and the pill's
+     own check) -> asked has three entries. */
+  const m = mount();
+  seedPool(m);
+  const asked = [];
+  m.ctx.buildPlaylist = (q) => { asked.push(q); return { status: "miss", suggestions: [] }; };
+  m.ctx.location.hash = "#/create";
+  m.evalIn("route()");
+  const pills = m.viewEl.children.filter((c) => c.className === "cr-pill");
+  assert.ok(pills.length >= 2, "fixture: at least two suggestions");
+  pills[0]._fire("click", {});
+  pills[0]._fire("click", {});
+  pills[1]._fire("click", {});
+  await new Promise((r) => setTimeout(r, 5));
+  assert.deepStrictEqual(asked, [pills[0].dataset.crSubject], "one build for one pending request");
+  pills[1]._fire("click", {});
+  await new Promise((r) => setTimeout(r, 5));
+  assert.strictEqual(asked.length, 2, "and the next tap works once the first build has finished");
 });

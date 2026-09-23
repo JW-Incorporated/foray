@@ -34,7 +34,7 @@
 <header class="topbar">
   <button id="menu-btn" aria-label="Menu">☰</button>
   <h1><a href="#/">4a</a> <span class="topbar-tag">a daily podcast picker</span></h1>
-  <button id="refresh-btn" aria-label="New suggestions">↻</button>
+  <button id="refresh-btn" aria-label="Refresh this page">↻</button>
 </header>
 
 <div id="drawer-overlay" hidden></div>
@@ -44,17 +44,17 @@
        under them has one of the four pages below as its home. Keep this list
        to five: test/home-information-architecture.test.js pins it, because
        the clutter this replaced accumulated one "just one more row" at a time.
-       "Starred Shows" is NOT dropped — it moved onto the Shows page, which is
-       where a show-shaped thing belongs. -->
+       "Starred Shows" is NOT dropped — it is a Library section (2026-09-22).
+       ONE NAME PER DESTINATION (2026-09-22): #/shows is "Search" here because
+       that is the tab bar's name for it; the tab bar's names win. -->
   <a class="drawer-section" href="#/">Home</a>
-  <a class="drawer-section" href="#/shows">Shows</a>
+  <a class="drawer-section" href="#/shows">Search</a>
   <a class="drawer-section" href="#/playlists">Playlists</a>
   <a class="drawer-section" href="#/forays">Forays</a>
   <a class="drawer-section" href="#/queue">Up Next</a>
   <div id="drawer-playlists"></div>
   <div class="drawer-section-label">Settings</div>
   <button class="drawer-item as-btn" id="family-toggle"></button>
-  <button class="drawer-item as-btn" id="player-toggle"></button>
   <button class="drawer-item as-btn" id="autoadvance-toggle"></button>
 </nav>
 

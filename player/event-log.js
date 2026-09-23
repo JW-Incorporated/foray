@@ -477,6 +477,48 @@ export function createEventLog({
       if (!alreadyPruned) await pruneNow(cap);
     },
 
+    /**
+     * Delete every row — buffered, in the fallback ring, and in IndexedDB — and
+     * then re-read the store to prove it. The event-queue half of "Delete my
+     * data" (#42).
+     *
+     * WHY IT EXISTS (2026-09-22 audit): `DurableStore.purge()` enumerates the
+     * `cp_` namespace in the `foray` database, and this queue moved OUT of it
+     * into its own `foray_events` database in M3. So the control reported
+     * "This device is clear" while every event row — episode ids, positions
+     * with durations, the old `cp_profile_id` — survived, and any unsynced row
+     * was then uploaded under the NEW anonymous account the next launch mints:
+     * the pre-deletion history re-attached to a fresh identity.
+     *
+     * `clear()` rather than `deleteDatabase`: this module holds an open
+     * connection, and a delete request against an open database is BLOCKED
+     * until every connection closes, which here is never. Same answer shape
+     * as `DurableStore.purge()` — `ok` only when the re-read found nothing,
+     * because "I asked" is not "it is gone". Runs on the op chain, so it
+     * cannot interleave with a flush or a prune. Never throws.
+     *
+     * @returns {Promise<{ok: boolean, remaining: number|null, reason?: string}>}
+     */
+    async purge() {
+      return enqueue(async () => {
+        pendingRows.splice(0, pendingRows.length);
+        ring.splice(0, ring.length);
+        if (!hasIdb) return { ok: true, remaining: 0 };
+        try {
+          await withStore(open, STORE_NAME, "readwrite", (s) => s.clear());
+        } catch (err) {
+          fault("purge", err);
+          idbCountEstimate = null;
+          return { ok: false, remaining: null, reason: errText(err) };
+        }
+        const status = { ok: true };
+        const left = (await readIdbAll(status)).filter(Boolean).length;
+        idbCountEstimate = status.ok ? left : null;
+        if (!status.ok) return { ok: false, remaining: null, reason: "could not re-read the store" };
+        return { ok: left === 0, remaining: left };
+      });
+    },
+
     /** The failure record — same convention as `durable-store.js`'s
         `health()`: always readable, assembled from memory, never throws. */
     health,

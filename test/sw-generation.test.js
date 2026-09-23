@@ -1230,7 +1230,13 @@ test("the worker's stale-shell message puts a reload control on the page", async
   assert.ok(bar, "a notice is added");
   assert.equal(bar.className, "shell-notice");
   assert.match(bar.innerHTML, /last saved copy/);
-  assert.match(bar.innerHTML, /Reload to get the current version\./);
+  /* The stale-shell remedy is "once you're back online", NOT "to get the current
+     version": in the dead zone that produced this notice a reload reproduces it
+     (audit 2026-09-22, qa row 138). MUTATION: give both reasons one trailing
+     sentence again. */
+  assert.match(bar.innerHTML, /Reload once you(&#39;|')re back online\./);
+  assert.doesNotMatch(bar.innerHTML, /Reload to get the current version/);
+  assert.doesNotMatch(bar.innerHTML, /this page/, "inside the native shell there is no page, only 4a");
   /* A sibling BEFORE #view, because route() rewrites #view on every hash change
      and would otherwise wipe the notice on the first navigation. */
   assert.equal(bar.parentNode, page.body);

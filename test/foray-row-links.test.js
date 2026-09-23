@@ -264,7 +264,11 @@ test("an unplayable row links its show too", () => {
   assert.ok(html.includes('class="fy-row is-out"'), "still the unplayable row");
   assert.ok(html.includes('href="#/show/being-an-engineer"'),
     `an unplayable beat must link its show, got: ${html}`);
-  assert.ok(html.includes("Can't play: no audio url"), "and must still say why it cannot play");
+  /* It says so in the listener's words; the raw reason is kept on the row for
+     a field report and never shown (audit 2026-09-22, persona row 62). */
+  assert.ok(html.includes("This clip isn't available right now."), "and must still say it cannot play");
+  assert.ok(html.includes('data-reason="no audio url"'), "with the raw reason kept off-screen");
+  assert.ok(!html.includes("Can't play: no audio url"), "and never the raw reason as copy");
 });
 
 test("the show link is a SIBLING of the play button, never inside it", () => {

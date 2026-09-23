@@ -96,9 +96,13 @@ test("openLink's hidden state toggles on the episode id existing, not on apple_e
   // apple_episode_url existing (it no longer depends on that field)."
   // Mutation: revert the guard to `if (item.apple_episode_url) {`.
   const guard = /if \(item\.id\) \{\s*\/\/[^\n]*\n\s*\/\/[^\n]*\n\s*ui\.openLink\.href/;
+  /* 2026-09-22 (audit L2): `&& !item.forayId` joined the guard — a RESTORED
+     Foray (`restoreForay`) is current with a synthetic `foray:<id>` and has no
+     episode page, so it links to its Foray page instead. The gate is still the
+     episode id, never `apple_episode_url`. */
   assert.match(
     CODE.replace(/\s+/g, " "),
-    /if \(item\.id\) \{[^}]*ui\.openLink\.href[^}]*ui\.openLink\.hidden = false;[^}]*\} else \{[^}]*ui\.openLink\.hidden = true;/,
+    /if \(item\.id( && !item\.forayId)?\) \{[^}]*ui\.openLink\.href[^}]*ui\.openLink\.hidden = false;[^}]*\} else \{[^}]*ui\.openLink\.hidden = true;/,
     "the openLink visibility branch must gate on item.id, not item.apple_episode_url"
   );
   assert.doesNotMatch(

@@ -787,7 +787,7 @@ class Node {
     this.listeners.get(t).add(fn);
   }
   removeEventListener(t, fn) { this.listeners.get(t)?.delete(fn); }
-  click() { for (const fn of [...(this.listeners.get("click") ?? [])]) fn({}); }
+  click() { return Promise.all([...(this.listeners.get("click") ?? [])].map((fn) => fn({}))); }
 }
 
 class MemoryStorage {
@@ -814,7 +814,7 @@ class MemoryStorage {
    scope. A test that booted first and seeded second would be asserting against
    an empty store and would pass for the wrong reason. */
 let bootSeq = 0;
-async function bootClient(t, { seed = [] } = {}) {
+async function bootClient(t, { seed = [], mediaSession = null, capacitor = null } = {}) {
   const audio = new Element();
   const storage = new MemoryStorage();
   for (const [k, v] of seed) storage.setItem(k, v);
@@ -840,6 +840,9 @@ async function bootClient(t, { seed = [] } = {}) {
     },
     removeEventListener() {},
     dispatchEvent: () => true,
+    /* The Capacitor shell, when a test is about the shell (2026-09-22: the
+       build stamp asks the binary for its build number). Absent by default. */
+    ...(capacitor ? { Capacitor: capacitor } : {}),
   };
 
   /* `defineProperty`, not assignment: `globalThis.navigator` is an accessor with
@@ -858,7 +861,13 @@ async function bootClient(t, { seed = [] } = {}) {
   set("window", win);
   set("document", doc);
   set("localStorage", storage);
-  set("navigator", { storage: { persisted: async () => false } });
+  /* `mediaSession` (2026-09-22) is the lock screen and the car, as the page sees
+     them: a `navigator.mediaSession` the test can read back. Absent by default,
+     so every test above keeps the inert bridge it was written against. */
+  set("navigator", {
+    storage: { persisted: async () => false },
+    ...(mediaSession ? { mediaSession } : {}),
+  });
   set("Event", class { constructor(type) { this.type = type; } });
   /* `HtmlAudioBackend` constructs `new Audio()`, not `document.createElement`.
      One element per boot, handed back so the test can be the car. */
@@ -1492,4 +1501,981 @@ test("pause() is a postcondition, not a state transition: an audible element is 
   await m.pause();
   assert.equal(backend.paused, true, "the second pause has to reach the element");
   assert.equal(m.state.type, "interrupted");
+});
+
+/* ==================================================================== */
+/* part 5 — the 2026-09-22 audit: one authority for every surface        */
+/* ==================================================================== */
+
+/* WHAT THIS PART IS FOR. The audit's diagnosis of the whole player: "a correct
+   fix was written once, at the call site that hurt, and never promoted to the
+   rule". #689 made `transportIsRunning()` the authority for the mini bar's
+   button and its press; the card beside it, the lock screen and the Foray page
+   kept reading the belief. Each test below drives the #689 drift — the element
+   audible while the machine says paused — and asks one more surface what it
+   says. */
+
+/** A `navigator.mediaSession` that remembers what the page told it. */
+function fakeMediaSession() {
+  return {
+    handlers: new Map(),
+    metadata: null,
+    playbackState: "none",
+    setActionHandler(action, fn) {
+      if (fn) this.handlers.set(action, fn); else this.handlers.delete(action);
+    },
+    setPositionState() {},
+  };
+}
+
+/** Play an episode, pause it, then make the element audible behind the
+    machine's back — the #689 drift, by its observable consequence. */
+async function driftedEpisode(t, opts = {}) {
+  const booted = await bootClient(t, opts);
+  await booted.client.play(episodeItem());
+  await settle();
+  transport(booted.doc).press();               // the machine now says paused
+  await settle();
+  booted.audio.paused = false;                 // ...and sound is coming out
+  booted.audio.fire("timeupdate");             // the next ordinary repaint
+  return booted;
+}
+
+test("AUDIT: the card's glyph comes from the same answer as the bar's", async (t) => {
+  /* KILLING MUTATION: `transportIsRunning()` back to `isPlaying()` in
+     `syncCardButtons`. The card then reads "▶" beside a bar reading "❚❚". */
+  const booted = await bootClient(t);
+  const card = new Node("button");
+  card.dataset.play = "ep-a";
+  booted.doc.querySelectorAll = (sel) => (sel === "[data-play]" ? [card] : []);
+  await booted.client.play(episodeItem());
+  await settle();
+  transport(booted.doc).press();
+  await settle();
+  assert.equal(card.textContent, "▶", "precondition: paused, and the card says so");
+  booted.audio.paused = false;
+  booted.audio.fire("timeupdate");
+  assert.equal(transport(booted.doc).glyph, "❚❚", "precondition: the bar reads the element");
+  assert.equal(card.textContent, "❚❚", "the card must not disagree with the bar");
+  booted.restore();
+});
+
+test("AUDIT: the lock screen says PLAYING while sound is coming out", async (t) => {
+  /* KILLING MUTATION: `playing: transportIsRunning()` back to
+     `playing: isPlaying()` in the episode branch of `syncMediaSession`. */
+  const ms = fakeMediaSession();
+  const booted = await driftedEpisode(t, { mediaSession: ms });
+  assert.equal(ms.playbackState, "playing");
+  booted.restore();
+});
+
+test("AUDIT: the Foray page is handed the answer its press is decided by", async (t) => {
+  /* KILLING MUTATION: delete `running: transportIsRunning()` from
+     `forayStateSnapshot`. app.js then falls back to `playing || gap`, which is
+     false here, and paints "▶ Resume" over sound. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+  transport(doc).press();
+  await settle();
+  assert.equal(client.forayStatus().running, false, "precondition: paused");
+  audio.paused = false;
+  assert.equal(client.forayStatus().playing, false, "the belief still says paused");
+  assert.equal(client.forayStatus().running, true, "the snapshot carries the element's answer");
+  restore();
+});
+
+/* ---- one episode seek, whatever asked for it ---- */
+
+/** The Now Playing sheet's controls, found by class like `transport` above. */
+function findWhere(node, pred) {
+  if (pred(node)) return node;
+  for (const k of node.children) { const hit = findWhere(k, pred); if (hit) return hit; }
+  return null;
+}
+const labelled = (prefix) => (n) => String(n.getAttribute?.("aria-label") ?? "").startsWith(prefix);
+const sheet = (doc) => ({
+  back: findWhere(doc.body, labelled("Back ")),
+  fwd: findWhere(doc.body, labelled("Forward ")),
+  scrub: find(doc.body, "fp-scrub"),
+  fill: find(doc.body, "fp-fill"),
+  left: find(doc.body, "fp-left"),
+});
+
+/** A ribbon restored at launch: a stored pointer and a stored position, and no
+    audio loaded behind it — exactly what `restoreLastEpisode` paints. */
+async function aRestoredRibbon(t, seconds = 1800, opts = {}) {
+  const carried = await aSessionThatReached(t, seconds);
+  const booted = await bootClient(t, { seed: carried, ...opts });
+  const rec = booted.client.restoreLastEpisode();
+  assert.ok(rec, "precondition: the ribbon restored");
+  assert.equal(booted.audio.calls.includes("load"), false, "precondition: nothing was loaded");
+  return booted;
+}
+
+test("AUDIT: a scrub on a RESTORED ribbon is where the next press starts", async (t) => {
+  /* The restored bar holds no audio, so `manager.seek` hit an empty queue, the
+     reducer refused it silently, the thumb snapped back and play started from
+     the OLD stored position. KILLING MUTATION: drop `restoredPending != null`
+     and the `idle` state from `seekEpisodeTo`'s `nothingToSeekIn`. */
+  const { doc, audio, restore } = await aRestoredRibbon(t, 1800);
+  const { scrub } = sheet(doc);
+  scrub.value = "250";                                   // a quarter of 3600 s
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.equal(scrub.value, "250", "the thumb stays where the listener put it");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "the press started it");
+  assert.ok(Math.abs(audio.currentTime - 900) < 1, `started at ${audio.currentTime}s, not where the thumb was`);
+  restore();
+});
+
+test("REVIEW: a scrub to 0:00 on a restored ribbon starts at 0:00, not at the stored position", async (t) => {
+  /* `play()` does not begin a part-heard episode at 0 — it begins at the stored
+     resume point — and the follow-up seek was guarded by `positionSec > 0`, so
+     dragging the thumb all the way left showed 0:00 and played from 30:00.
+     KILLING MUTATION: put the guard back to `started && positionSec > 0`. */
+  const { doc, audio, restore } = await aRestoredRibbon(t, 1800);
+  const { scrub } = sheet(doc);
+  scrub.value = "0";
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.equal(scrub.value, "0", "precondition: the thumb shows the start");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "the press started it");
+  assert.ok(audio.currentTime < 1, `started at ${audio.currentTime}s, not at the start the bar showed`);
+  restore();
+});
+
+test("AUDIT: ↺ and ↻ move a restored ribbon too, and ↻ never crosses the end", async (t) => {
+  /* KILLING MUTATION: put `manager.seek(... + SEEK_FWD)` back in the ↻ handler
+     (no restored-bar rule, no upper clamp). */
+  const { doc, client, restore } = await aRestoredRibbon(t, 3560);
+  const { fwd, back, left } = sheet(doc);
+  assert.equal(left.textContent, "-0:40", "precondition: forty seconds left");
+  await fwd.click();                                     // 3590
+  await settle();
+  await fwd.click();                                     // 3620, past the 3600 s end
+  await settle();
+  assert.equal(left.textContent, "-0:01", "clamped one second short of the end");
+  await back.click();                                    // 3599 - 15
+  await settle();
+  assert.equal(left.textContent, "-0:16");
+  assert.equal(client.isCurrent("ep-a"), true, "and nothing ended");
+  restore();
+});
+
+test("AUDIT: an episode that has ENDED can still be scrubbed back into", async (t) => {
+  /* `handleSeek` refuses in `ended`, and `manager.seek` resolves normally
+     anyway, so the scrub did nothing and the thumb snapped back to the far
+     right. KILLING MUTATION: drop `manager.state?.type === "ended"` from
+     `nothingToSeekIn`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  audio.runOut();
+  await settle();
+  const { scrub, left } = sheet(doc);
+  /* The countdown at the exact end has nothing left to count, so no minus
+     sign. KILLING MUTATION: `remainingClock` returning `-${clock}` always. */
+  assert.equal(left.textContent, "0:00", "the end is not '-0:00'");
+  scrub.value = "500";
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.equal(scrub.value, "500", "the thumb stays at the middle");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false);
+  assert.ok(Math.abs(audio.currentTime - 1800) < 1, `resumed at ${audio.currentTime}s`);
+  restore();
+});
+
+test("AUDIT: an episode with no known duration paints an EMPTY bar, not the last episode's", async (t) => {
+  /* KILLING MUTATION: put the `dur &&` guard back around the fill with no else. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem("ep-a"));
+  await settle();
+  audio.currentTime = 2880;                              // 80% of the first episode
+  audio.fire("timeupdate");
+  assert.equal(sheet(doc).fill.style.width, "80%", "precondition: the first episode's fill");
+  audio.duration = NaN;                                  // the next feed carries none
+  await client.play({ ...episodeItem("ep-b"), duration_sec: null });
+  await settle();
+  audio.currentTime = 0;
+  audio.fire("timeupdate");
+  assert.equal(sheet(doc).fill.style.width, "0%");
+  assert.equal(sheet(doc).scrub.value, "0");
+  assert.equal(sheet(doc).left.textContent, "--:--");
+  restore();
+});
+
+/* ---- where a press starts, and what the card says ---- */
+
+test("AUDIT: a cold start on a FINISHED episode begins at the top, not at the outro", async (t) => {
+  /* `PositionStore.resumeOffset` holds the near-end rule and had no caller
+     outside its own file; the manager read the raw row. KILLING MUTATION:
+     make `_savedPositionFor` read `this.positionStore.load(item.id)?.seconds`
+     unconditionally. */
+  const carried = await aSessionThatReached(t, 3590);
+  const { client, audio, restore } = await bootClient(t, { seed: carried });
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(audio.paused, false);
+  assert.ok(audio.currentTime < 1, `a finished episode starts over, got ${audio.currentTime}s`);
+  restore();
+});
+
+test("AUDIT: the Jump back in card says a finished episode is FINISHED", async (t) => {
+  /* The card reads how far the listener GOT, which is the raw row; where a
+     press starts is the collapsed offset. KILLING MUTATION: feed `offset` to
+     the card's reading again — "60 min left", 0%. INTEGRATION (2026-09-22): L5
+     fixed the same defect through the shared `episodeProgress` reading, whose
+     word for a finished episode is "Played" on every surface; that one won. */
+  const carried = await aSessionThatReached(t, 3590);
+  const { client, restore } = await bootClient(t, { seed: carried });
+  const card = client.lastEpisodeCard();
+  assert.ok(card, "the pointer is still offered");
+  assert.equal(card.label, "Played");
+  assert.equal(card.percent, 100);
+  assert.equal(card.position_sec, 0, "and a press on it starts from the top");
+  const mid = await aSessionThatReached(t, 1800);
+  const again = await bootClient(t, { seed: mid });
+  assert.equal(again.client.lastEpisodeCard().label, "30 min left", "a part-heard episode is unchanged");
+  again.restore();
+  restore();
+});
+
+test("AUDIT: play after an episode RAN OUT starts it again from the top", async (t) => {
+  /* The element still holds the item with its playhead on the last second, so
+     the in-place resume took it for a pause. KILLING MUTATION: drop
+     `this.backend.ended !== true` from `reEnteringLoadedItem`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  audio.runOut();
+  await settle();
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false);
+  assert.ok(audio.currentTime < 1, `play after the end restarts, got ${audio.currentTime}s`);
+  restore();
+});
+
+/* ---- the Foray's clock, translated into a source file's ---- */
+
+/** `synthetic()` with a rendered narration bridge in front: an item with a file
+    of its own and NO `start_sec`, which is the shape the NaN came from. */
+function withBridge() {
+  const foray = {
+    id: "f263n", kind: "deep-dive", title: "A Foray", status: "published",
+    slots: [{ id: "one", title: "Slot one" }],
+    items: [
+      { type: "narration", slot: "one", id: "n1", audio_url: "https://cdn.test/n1.mp3", duration_sec: 30, script: "Hello." },
+      { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: "sa" },
+    ],
+  };
+  const segments = indexSegments({
+    segments: [
+      { id: "sa", item_id: "ep-a", start_sec: 100, end_sec: 200, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+    ],
+  });
+  const sources = indexSources({
+    sources: [
+      { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
+    ],
+  });
+  return resolveForay(foray, { segments, sources });
+}
+
+test("AUDIT: a scrub to the very END of a Foray lands inside the last segment, so the boundary still fires", async (t) => {
+  /* `segmentAtElapsed` answers "at or past the total" with the last segment's
+     END, and a seek landing exactly on the out-point reads to the backend as a
+     deliberate scrub past it — disarmed, so the audio free-played into the rest
+     of a stranger's episode. KILLING MUTATION: drop the `len - SEEK_INSIDE_END_SEC`
+     clamp from `sourceOffsetFor`. */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = synthetic();
+  await client.playForay(resolved, { startIndex: 1 });
+  await settle();
+  await client.foraySeek(resolved.totalSec);
+  await settle();
+  assert.ok(audio.currentTime < 600, `landed at ${audio.currentTime}s, which is on or past the out-point`);
+  audio.currentTime = 600.01;
+  audio.fire("timeupdate");
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().ended, true, "the boundary fired and the Foray ended");
+  restore();
+});
+
+test("AUDIT: a scrub into a narration bridge lands where it was aimed, not at its first word", async (t) => {
+  /* A bridge has no `start_sec`; `undefined + into` was NaN and the seek was
+     refused. KILLING MUTATION: `sourceOffsetFor` returning
+     `item.start_sec + inside` unconditionally. */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = withBridge();
+  assert.equal(resolved.playable[0].start_sec, undefined, "precondition: the bridge has no bounds");
+  await client.playForay(resolved, { startIndex: 0 });
+  await settle();
+  await client.foraySeek(20);
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 20) < 0.01, `bridge seek landed at ${audio.currentTime}s`);
+  restore();
+});
+
+test("AUDIT: \"››\" is disabled on the last segment instead of silently doing nothing", async (t) => {
+  /* KILLING MUTATION: delete the `ui.fwdBtn.disabled` line in `render()`. */
+  const { client, doc, restore } = await bootClient(t);
+  const fwd = () => findWhere(doc.body, (n) => n.textContent === "››");
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+  assert.equal(fwd().disabled, false, "segment 1 of 2 has a next");
+  await client.forayNext();
+  await settle();
+  assert.equal(fwd().disabled, true, "the last segment has none, and says so");
+  restore();
+});
+
+test("AUDIT: a FINISHED Foray can be scrubbed back into its last segment", async (t) => {
+  /* KILLING MUTATION: drop the `ended` clause from `foraySeek`'s `reload`. */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = synthetic();
+  await client.playForay(resolved, { startIndex: 1 });
+  await settle();
+  audio.runOut();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().ended, true, "precondition: over");
+  await client.foraySeek(resolved.totalSec - 50);           // the middle of segment sb
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "the scrub reloaded it");
+  assert.ok(Math.abs(audio.currentTime - 550) < 1, `landed at ${audio.currentTime}s`);
+  restore();
+});
+
+/* ---- a load that was superseded before it landed ---- */
+
+test("AUDIT: a superseded load's listeners do not touch its successor's playhead", async () => {
+  /* The listeners are bound to the ELEMENT, so load A (at 30:00) superseded by
+     load B (at 0:00) kept listening to B's events and wrote A's offset onto B.
+     KILLING MUTATION: drop the `superseded()` check from `load()`'s `onMeta`. */
+  const { b, el } = mkBackend();
+  el.holdLoad = true;
+  const pA = b.load(audioItem("a"), { startOffset: 1800 });
+  pA.catch(() => {});
+  const pB = b.load(audioItem("b"), { startOffset: 0 });
+  el.holdLoad = false;
+  el.releaseLoad();
+  await pB;
+  assert.equal(el.currentTime, 0, "B starts where B was asked to start");
+  await assert.rejects(pA, /superseded/, "and A is not reported as a success");
+});
+
+/** A backend whose load of `heldId` waits until the test lets it go. */
+function heldBackend(heldId) {
+  const backend = new Backend();
+  const real = backend.load.bind(backend);
+  let release = null;
+  backend.load = (item, opts) => {
+    if (item.id !== heldId) return real(item, opts);
+    return new Promise((resolve, reject) => {
+      release = (ok) => (ok ? real(item, opts).then(resolve, reject) : reject(new Error("network")));
+    });
+  };
+  return { backend, release: (ok = true) => release(ok) };
+}
+
+test("AUDIT: a load that lands after a newer one never claims the playhead", async () => {
+  /* KILLING MUTATION: stamp `this._loadedId = item.id` before the
+     `_loadSeq !== seq` check in `_loadItem`. */
+  const { backend, release } = heldBackend("a");
+  const { m } = playerWith([audioItem("a"), audioItem("b")], { backend });
+  const first = m.play(0);                 // A, held in flight
+  await m.play(1);                         // the listener tapped B
+  assert.equal(m.playheadItemId, "b");
+  release(true);
+  await first;
+  assert.equal(m.playheadItemId, "b", "the element holds B, so the playhead is about B");
+  assert.equal(m.state.type, "playing");
+});
+
+test("AUDIT: a superseded load that FAILS does not stop the load that replaced it", async () => {
+  /* KILLING MUTATION: drop the `_loadSeq !== seq` guard from `_loadItem`'s
+     catch — the stale failure dispatches `error` and the reducer goes idle. */
+  const { backend, release } = heldBackend("a");
+  const { m, log } = playerWith([audioItem("a"), audioItem("b")], { backend });
+  const first = m.play(0);
+  await m.play(1);
+  release(false);
+  await first;
+  assert.equal(m.state.type, "playing", "B is still playing");
+  assert.ok(log.some((l) => /load\.superseded a/.test(l)), "and the stale failure is recorded as such");
+});
+
+/* ---- the bar says why there is no sound ---- */
+
+/* The bar's second line is the show line, or the status line standing in for
+   it (`fp-err`, a live region) while there is something to say. The sheet's
+   status line sits under the transport (`fp-err-line`). INTEGRATION
+   (2026-09-22): L2 and L5 fixed the failure line separately; the merged player
+   paints both lanes' states through one painter into L5's elements. */
+const secondLine = (doc) => {
+  const err = find(doc.body, "fp-err");
+  return err && !err.hidden ? err.textContent : find(doc.body, "fp-show").textContent;
+};
+const statusNote = (doc) => find(doc.body, "fp-err-line");
+
+test("AUDIT: an episode whose audio will not load says so, and play() reports it", async (t) => {
+  /* KILLING MUTATIONS: `return true` at the end of `play()` (the result
+     assertion), or delete the `!foray && current && /player\.error/` block in
+     `onTelemetry` (the line assertions). */
+  const { client, doc, audio, restore } = await bootClient(t);
+  audio.loadPlan.set("https://cdn.test/ep-a.mp3", "error");
+  const ok = await client.play(episodeItem());
+  await settle();
+  assert.equal(ok, false, "a 404 is not a start");
+  assert.match(secondLine(doc), /Did not load/, "the mini bar says it failed");
+  assert.match(statusNote(doc).textContent, /could not load/, "and the sheet's status line says why");
+  /* REVIEW 2026-09-23: the live region is NOT inside the bar's <button> (whose
+     children are presentational, so VoiceOver never announced it) but its
+     sibling, and the button's own name carries the failure. KILLING MUTATION:
+     move `announce` back inside `info`, or drop the paintInfoLabel() call from
+     paintStatus. */
+  const hasClass = (c) => (n) => String(n.className || "").split(/\s+/).includes(c);
+  const live = findWhere(doc.body, hasClass("fp-announce"));
+  assert.equal(live.getAttribute("role"), "status", "the failure is announced");
+  assert.match(live.textContent, /could not load/, "with the full sentence");
+  const info = find(doc.body, "fp-info");
+  assert.equal(findWhere(info, hasClass("fp-announce")), null, "and the live region is not inside the named button");
+  assert.equal(find(info, "fp-err").getAttribute("role"), null, "the visible line inside the button claims no role");
+  assert.match(info.getAttribute("aria-label"), /Did not load/, "the button's name says what the bar shows");
+  assert.doesNotMatch(info.getAttribute("aria-label"), /Show A/, "not the show line hidden behind it");
+
+  // The connection comes back and the listener does what the line said.
+  audio.loadPlan.set("https://cdn.test/ep-a.mp3", "ok");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "the retry is the same press");
+  assert.equal(secondLine(doc), "Show A", "and the failure line goes with the audio");
+  restore();
+});
+
+test("REVIEW: a play the browser held back keeps its 'Press play again' line after app.js reports the refusal", async (t) => {
+  /* play() now answers false for a refused start, so bindPlay's `if (!ok)`
+     runs and calls reportPlayFailure(null) — AFTER the telemetry sink had
+     painted the autoplay line. The generic "Did not load … check the
+     connection" replaced it. KILLING MUTATION: drop the
+     `if (err == null && playFailure) return;` guard in reportPlayFailure. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  audio.refusePlayWith = "NotAllowedError";
+  const ok = await client.play(episodeItem());
+  await settle();
+  assert.equal(ok, false, "precondition: a refused start is not a start");
+  assert.match(secondLine(doc), /Press play again/, "precondition: the sink said why");
+  client.reportPlayFailure(null);              // what bindPlay does with `!ok`
+  assert.match(secondLine(doc), /Press play again/, "the specific line stays");
+  assert.doesNotMatch(statusNote(doc).textContent, /could not load/, "no connection is blamed");
+  restore();
+});
+
+test("AUDIT: a network stall paints Buffering, and the sound coming back clears it", async (t) => {
+  /* KILLING MUTATION: delete the `waiting` -> `setBuffering(true)` listener. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(secondLine(doc), "Show A", "precondition");
+  audio.fire("waiting");
+  assert.equal(secondLine(doc), "Buffering…");
+  assert.equal(statusNote(doc).textContent, "Buffering…");
+  audio.fire("playing");
+  assert.equal(secondLine(doc), "Show A");
+  // A fetch stall over a full buffer is not silence, so it paints nothing.
+  audio.fire("stalled");
+  assert.equal(secondLine(doc), "Show A", "`stalled` alone is not a stall the listener hears");
+  restore();
+});
+
+/* ---- the car's buttons ---- */
+
+test("AUDIT: the head unit's STOP pauses and leaves every other control working", async (t) => {
+  /* `stopAndClose()` from a remote stop ran `release()`, which unregisters
+     every handler — the car was left with no transport at all. KILLING
+     MUTATION: put `return stopAndClose();` back in `episodeMediaSurface.stop`. */
+  const ms = fakeMediaSession();
+  const { client, doc, audio, restore } = await bootClient(t, { mediaSession: ms });
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(audio.paused, false, "precondition: playing");
+  await ms.handlers.get("stop")();
+  await settle();
+  assert.equal(audio.paused, true, "the stop stopped the sound");
+  assert.ok(ms.handlers.has("play"), "and the car's play button is still wired");
+  assert.equal(find(doc.body, "fp").hidden, false, "and the mini bar is still there");
+  await ms.handlers.get("play")();
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "so the next press on the wheel resumes");
+  restore();
+});
+
+test("REVIEW: the Android notification's own Stop (`close`) still closes a PAUSED player", async (t) => {
+  /* On Android 24-33 a foreground-service notification cannot be swiped away, so
+     its Stop button is the listener's only exit. It arrives as the `stop` handler
+     with `{ close: true }` (foray-media-session.js `CLOSE_ACTION`). When the audit
+     made every remote stop a pause, a listener who had already paused pressed Stop
+     and nothing changed — the notification stayed until they unlocked the phone.
+     KILLING MUTATION: drop the `details?.close` branch from `remoteStop`. */
+  const ms = fakeMediaSession();
+  const { client, doc, audio, restore } = await bootClient(t, { mediaSession: ms });
+  await client.play(episodeItem());
+  await settle();
+  await ms.handlers.get("pause")();
+  await settle();
+  assert.equal(audio.paused, true, "precondition: the listener paused first");
+  assert.equal(find(doc.body, "fp").hidden, false, "precondition: the bar is up");
+  await ms.handlers.get("stop")({ close: true });
+  await settle();
+  assert.equal(find(doc.body, "fp").hidden, true, "the notification's Stop closed the player");
+  assert.equal(ms.handlers.has("play"), false, "and released the session, which is what stops the service");
+  restore();
+});
+
+test("AUDIT: the steering wheel's next/previous appear when the page offers them, and not before", async (t) => {
+  /* KILLING MUTATION: make `setEpisodeNavigation` store the answer without
+     re-installing the actions — the OS keeps the greyed-out buttons until the
+     next play. */
+  const ms = fakeMediaSession();
+  const { client, restore } = await bootClient(t, { mediaSession: ms });
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(ms.handlers.has("nexttrack"), false, "no list, no skip button");
+  const asked = [];
+  client.setEpisodeNavigation({ next: () => asked.push("next") });
+  assert.equal(ms.handlers.has("nexttrack"), true, "a list with a next item offers the button");
+  assert.equal(ms.handlers.has("previoustrack"), false, "and only the one it can honour");
+  await ms.handlers.get("nexttrack")();
+  assert.deepEqual(asked, ["next"], "the press reaches the page's own advance");
+  client.setEpisodeNavigation(null);
+  assert.equal(ms.handlers.has("nexttrack"), false, "withdrawn when the list has nothing after");
+  restore();
+});
+
+test("REVIEW: the page's neighbours are asked about the episode that is NOW current", async (t) => {
+  /* app.js answers "next after what?" from `currentEpisodeId()`, and play()
+     installs the actions BEFORE `setNowPlaying` moves `current` — so the only
+     ask was about the PREVIOUS episode, and a skip wired from it would replay
+     or skip the wrong row. KILLING MUTATION: drop `reaskEpisodeNeighbours()`
+     from play(). */
+  const ms = fakeMediaSession();
+  const { client, restore } = await bootClient(t, { mediaSession: ms });
+  await client.play(episodeItem("ep-a"));
+  await settle();
+  const askedAbout = [];
+  client.setEpisodeNavigation({
+    get next() { askedAbout.push(client.currentEpisodeId()); return () => {}; },
+  });
+  await client.play(episodeItem("ep-b"));
+  await settle();
+  assert.equal(askedAbout[askedAbout.length - 1], "ep-b", "the last ask is about the episode on the bar");
+  restore();
+});
+
+/* ==================================================================== */
+/* part 6 — founder report 1 (2026-09-22): a resumed episode restarts     */
+/*          from a stale position                                        */
+/* ==================================================================== */
+
+/* THE ROOT CAUSE, as STATE.md's handoff recorded it: `PositionStore.save` had
+   one production caller, a 15 s interval armed only while the REDUCER said
+   `playing`. An element resumed from outside the reducer — a car or lock-screen
+   press WebKit's own media session honoured, a WebView woken by the OS — never
+   moved the reducer, so nothing wrote the playhead for the whole ride; the
+   reconcile only ever corrected towards paused; and the native session events
+   reached the diagnostic record and nothing else. Simulated here by their
+   observable consequence, as parts 3-4 do: the element plays and nobody pressed
+   anything in this page. You cannot simulate a car. */
+
+/** The native shell's `foray:session`, as `foray-media-session.js` dispatches it. */
+function nativeSession(win, detail) {
+  for (const fn of [...(win.listeners.get("foray:session") ?? [])]) fn({ detail });
+}
+
+/** Played to `at`, paused by the listener: the machine now says `interrupted`. */
+async function pausedAt(t, at = 600, opts = {}) {
+  const booted = await bootClient(t, opts);
+  await booted.client.play(episodeItem());
+  await settle();
+  booted.audio.currentTime = at;
+  booted.audio.fire("timeupdate");
+  transport(booted.doc).press();
+  await settle();
+  assert.equal(booted.audio.paused, true, "precondition: paused");
+  return booted;
+}
+
+/** The lock screen's play, honoured by WebKit without asking this page. */
+async function resumedFromOutside(audio) {
+  audio.paused = false;
+  audio.fire("play");
+  audio.fire("playing");
+  await settle();
+}
+
+test("REPORT 1: an element resumed from OUTSIDE the reducer still has its position written", async (t) => {
+  /* KILLING MUTATION: delete the manager's `timeupdate` -> `_persistIfDue`
+     hook. The reducer is corrected to `playing` by the test below's fix, but
+     the interval is 15 s of wall clock and never fires here, so without the
+     element-driven writer the row stays at 600 for the whole ride. */
+  const { audio, storage, restore } = await pausedAt(t, 600);
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 600) < 1, "precondition: the pause wrote 600");
+  await resumedFromOutside(audio);
+  audio.currentTime = 1500;
+  audio.fire("timeupdate");
+  assert.ok(
+    Math.abs(posRow(storage, "ep-a").seconds - 1500) < 1,
+    `the ride's position must be written, got ${posRow(storage, "ep-a").seconds}`
+  );
+  // And it is throttled by media seconds, not written at 4 Hz.
+  audio.currentTime = 1504;
+  audio.fire("timeupdate");
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1500) < 1, "four seconds later is inside the delta");
+  restore();
+});
+
+test("REPORT 1: the machine is corrected TOWARDS playing when the element plays", async (t) => {
+  /* KILLING MUTATION: delete the `interrupted` branch at the top of
+     `reconcileWithBackend`. The machine then says paused over sound, and the
+     NEXT external stop (the car switched off) is invisible to the reconcile,
+     which only catches a machine that says `playing`. */
+  const { client, doc, audio, restore } = await pausedAt(t, 600);
+  const before = audio.calls.length;
+  await resumedFromOutside(audio);
+  assert.equal(client.isPlaying("ep-a"), true, "the machine agrees with the element");
+  assert.deepEqual(
+    audio.calls.slice(before).filter((c) => c === "play" || c === "load"), [],
+    "and the correction started and loaded nothing itself"
+  );
+  audio.routeLostUnseen();
+  doc.hidden = false;
+  doc.fire("visibilitychange");
+  await settle();
+  assert.equal(transport(doc).label, "Play", "so the next unseen stop is caught on return");
+  restore();
+});
+
+test("REPORT 1: the native BACKGROUND event flushes the position, with no visibilitychange", async (t) => {
+  /* The WebView does not always deliver `visibilitychange` when the APP goes
+     away. KILLING MUTATION: delete `flushPositions()` from `onNativeSession`. */
+  const { win, audio, storage, restore } = await pausedAt(t, 1200);
+  audio.currentTime = 2400;                 // scrubbed while paused: the row is behind
+  audio.fire("seeked");
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1200) < 1, "precondition: the row is stale");
+  nativeSession(win, { kind: "background", reason: "did-enter", producer: "audio", at: Date.now() });
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 2400) < 1, `got ${posRow(storage, "ep-a").seconds}`);
+  restore();
+});
+
+test("REPORT 1: a route that DISAPPEARED pauses the transport and writes where it stopped", async (t) => {
+  /* Corner case #13, now reachable from the device. KILLING MUTATION: delete
+     the `old-device-gone` branch from `onNativeSession`. */
+  const { client, doc, win, audio, storage, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  audio.currentTime = 1800;
+  nativeSession(win, { kind: "routeChange", reason: "old-device-gone", producer: "audio", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(audio.paused, true, "the car went away, so the sound stops");
+  assert.equal(transport(doc).label, "Play");
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1800) < 1, "at the second it stopped");
+  restore();
+});
+
+test("REPORT 1: a LATE interruption never pauses audio the listener has since resumed", async (t) => {
+  /* A suspended page handles a native event when it wakes, so an interruption
+     can arrive after the listener pressed play on the lock screen. It is a
+     reason to ASK the element, never a command. KILLING MUTATION: replace the
+     reconcile in `onNativeSession` with `manager.interruptionBegan()`. */
+  const { client, doc, win, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  nativeSession(win, { kind: "interruptionBegan", reason: "began", producer: "audio", at: Date.now() - 60_000 });
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "the element is playing, so the stale event changes nothing");
+  // A real one: the call took the audio and the page saw no `pause`.
+  audio.routeLostUnseen();
+  nativeSession(win, { kind: "interruptionBegan", reason: "began", producer: "audio", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(transport(doc).label, "Play", "and a real one is caught by asking");
+  restore();
+});
+
+test("AUDIT: play on a FINISHED Foray starts it over instead of replaying its last segment", async (t) => {
+  /* The page now labels this press "Start over", and this is what makes the
+     label true. KILLING MUTATION: delete the `ended` branch in `setRunning` —
+     the press then re-loads segment 2 at its in-point and the index stays 1. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.playForay(synthetic(), { startIndex: 1 });
+  await settle();
+  await settle();
+  audio.runOut();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().ended, true, "precondition: the Foray is over");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 0, "the press goes back to the first segment");
+  assert.equal(audio.src, "https://cdn.test/a.mp3", "and loads its audio");
+  restore();
+});
+
+/* ==================================================================== */
+/* part 7 — founder report 2 (2026-09-22): the element's side of an      */
+/*          unexplained stop                                              */
+/* ==================================================================== */
+
+test("REPORT 2: an unexplained pause says what state the element was in", async () => {
+  /* `diagnostic-log.js` parses these off the line (its own suite pins that);
+     this pins that the backend WRITES them. KILLING MUTATION: emit the old
+     bare `audio.pausedUnexpectedly — nobody asked for this pause`. */
+  const { b, el, log } = mkBackend();
+  await b.load(audioItem("a"));
+  b.play();
+  await null;
+  el.currentTime = 61.25;
+  el.readyState = 2;                 // HAVE_CURRENT_DATA: starving
+  el.networkState = 2;               // NETWORK_LOADING
+  el.routeLost();
+  const line = log.find((l) => l.startsWith("audio.pausedUnexpectedly"));
+  assert.match(line, /^audio\.pausedUnexpectedly t=61\.3 rs=2 ns=2 err=0 /);
+});
+
+/* ==================================================================== */
+/* part 8 — founder report 3 (2026-09-22): the record says which build   */
+/* ==================================================================== */
+
+test("REPORT 3: a booted shell writes BOTH halves of the build into the record it will copy out", async (t) => {
+  /* Through the real client.js: the bundled stamp for the web half, the
+     binary's own `getInfo` for the native half. KILLING MUTATION: delete the
+     `recordBuildStamp()` call beside `diag.boot()`. */
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => (String(url) === "build-stamp.json"
+    ? { ok: true, json: async () => ({ deploy_id: "2b808ec9d50c5b98" }) }
+    : { ok: false, status: 404, json: async () => ({}) });
+  t.after(() => { globalThis.fetch = realFetch; });
+  const capacitor = { nativePromise: async () => ({ build: "2026092224", version: "1.4.0" }) };
+  const { restore } = await bootClient(t, { capacitor });
+  await settle();
+  await settle();
+  const report = globalThis.window.forayDiagnosticReport();
+  assert.match(report, /^build web 2b808ec9d50c5b98 · native 2026092224 \(1\.4\.0\)$/m);
+  restore();
+});
+
+/* ==================================================================== */
+/* part 9 — the bar offers whatever was played LAST (persona audit       */
+/*          2026-09-22, the car tier: "a part-played Foray cannot be     */
+/*          resumed from the mini bar")                                   */
+/* ==================================================================== */
+
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** An episode, then a Foray played to 50 s into its first segment (or the
+    other way round) — the rows the next launch finds on disk. */
+async function aSessionThatPlayed(t, order) {
+  const first = await bootClient(t);
+  for (const what of order) {
+    if (what === "episode") {
+      await first.client.play(episodeItem());
+      await settle();
+    } else {
+      await first.client.playForay(synthetic(), { startIndex: 0 });
+      await settle();
+      first.audio.currentTime = 150;          // segment sa is [100, 200]
+      first.audio.fire("timeupdate");
+      await settle();
+    }
+    await pause(5);                           // distinct `updated_at` stamps
+  }
+  transport(first.doc).press();
+  await settle();
+  const rows = [...first.storage.map];
+  first.restore();
+  return rows;
+}
+
+test("PERSONA: a Foray played after an episode takes the bar, and one press resumes it where it was", async (t) => {
+  /* KILLING MUTATIONS: make `lastPlayedForay` return null (the bar offers the
+     older episode), or delete the `pendingForay` branch in `setRunning` (the
+     press finds no audio to play). */
+  const carried = await aSessionThatPlayed(t, ["episode", "foray"]);
+  const { client, doc, audio, restore } = await bootClient(t, { seed: carried });
+  assert.equal(client.lastPlayedForay(), "f263", "the Foray is the most recent thing played");
+  const resolved = synthetic();
+  const at = client.forayResume("f263", { resolved });
+  assert.ok(client.restoreForay(resolved, { startElapsedSec: at.elapsedSec }), "the bar is painted");
+  assert.equal(find(doc.body, "fp-title").textContent, "A Foray");
+  assert.equal(audio.calls.includes("load"), false, "and nothing is loaded until the press");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.src, "https://cdn.test/a.mp3");
+  assert.equal(audio.paused, false);
+  assert.ok(Math.abs(audio.currentTime - 150) < 1, `resumed at ${audio.currentTime}s`);
+  assert.equal(client.forayStatus()?.forayId, "f263", "as the Foray, not as an episode");
+  restore();
+});
+
+test("REVIEW: a Foray page opened over the restored bar hears the bar's press", async (t) => {
+  /* The page rendered while nothing was live, so `watchForay` attached nothing;
+     the bar's press then started the Foray with no `onChange`, the page kept
+     saying "Resume", and its button restarted the Foray instead of pausing.
+     KILLING MUTATION: `onChange ?? forayWatcher` back to `onChange` in
+     playForay (or drop the `forayWatcher =` line in watchForay). */
+  const carried = await aSessionThatPlayed(t, ["episode", "foray"]);
+  const { client, doc, restore } = await bootClient(t, { seed: carried });
+  const resolved = synthetic();
+  const at = client.forayResume("f263", { resolved });
+  assert.ok(client.restoreForay(resolved, { startElapsedSec: at.elapsedSec }), "precondition: the bar is painted");
+  const painted = [];
+  client.watchForay((s) => painted.push(s));   // the Foray page renders now
+  assert.equal(painted.length, 0, "precondition: nothing is live to report");
+  transport(doc).press();                      // ▶ on the mini bar
+  await settle();
+  await settle();
+  assert.ok(painted.length > 0, "the page is told the Foray started");
+  const last = painted[painted.length - 1];
+  assert.equal(last.forayId, "f263");
+  assert.equal(last.playing, true, "so it can paint Pause, and its button pauses rather than restarts");
+  restore();
+});
+
+test("PERSONA: an episode played AFTER the Foray keeps the bar", async (t) => {
+  /* KILLING MUTATION: drop the `forayAt > episodeAt` comparison. */
+  const carried = await aSessionThatPlayed(t, ["foray", "episode"]);
+  const { client, restore } = await bootClient(t, { seed: carried });
+  assert.equal(client.lastPlayedForay(), null);
+  restore();
+});
+
+/* ==================================================================== */
+/* part 10: the audit's completeness sweep (2026-09-23) — rows another  */
+/* lane handed on, re-verified live on the integration branch           */
+/* ==================================================================== */
+
+test("SWEEP: playing an item with no id leaves the last-episode pointer alone", async (t) => {
+  /* qa row 169. `makeLastEpisode` answers null for an id-less item and
+     `writeLastEpisode(null)` DELETES the pointer. KILLING MUTATION: put back
+     `writeLastEpisode(storage, makeLastEpisode(item))` unconditionally. */
+  const { client, storage, restore } = await bootClient(t);
+  await client.play(episodeItem("ep-a"));
+  await settle();
+  assert.equal(JSON.parse(storage.getItem("cp_last_episode")).id, "ep-a", "precondition: the pointer is written");
+  await client.play({ kind: "episode", title: "No id", show: "Show", audio_url: "https://cdn.test/noid.mp3" });
+  await settle();
+  const after = storage.getItem("cp_last_episode");
+  assert.ok(after, "the pointer survived");
+  assert.equal(JSON.parse(after).id, "ep-a");
+  restore();
+});
+
+test("SWEEP: the lock screen shows a RESTORED bar's position, not the empty element's 0:00", async (t) => {
+  /* qa row 161. `syncMediaSession` read `backend.currentTime`, which on a
+     restored bar is 0 while the bar says 30:00. KILLING MUTATION: put back
+     `positionSec: backend?.currentTime ?? 0` in the episode branch. */
+  const ms = fakeMediaSession();
+  const states = [];
+  ms.setPositionState = (s) => { if (s) states.push(s); };
+  const { restore } = await aRestoredRibbon(t, 1800, { mediaSession: ms });
+  assert.ok(states.length > 0, "the restored bar wrote a position to the OS");
+  const last = states[states.length - 1];
+  assert.ok(Math.abs(last.position - 1800) < 1, `the lock screen says ${last.position}s, the bar says 1800s`);
+  assert.equal(last.duration, 3600);
+  restore();
+});
+
+/** A native Preferences tier whose answers wait for `release()` — hydration
+    that lands AFTER the player has booted, which is qa row 168's shape. */
+function lateNativeStore(rows) {
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const capacitor = {
+    nativePromise: async (plugin, method, opts = {}) => {
+      if (plugin !== "Preferences") return {};
+      await gate;
+      if (method === "keys") return { keys: Object.keys(rows) };
+      if (method === "get") return { value: rows[opts.key] ?? null };
+      return {};
+    },
+  };
+  return { capacitor, release: () => release() };
+}
+
+test("SWEEP: a speed that arrives with late hydration reaches a player that already booted", async (t) => {
+  /* qa row 168. The manager was built from the rate as it stood at boot (the
+     default), and the late repaint read `manager.rate` back and confirmed 1x for
+     the session. KILLING MUTATION: drop the `manager.setRate(stored)` block
+     from the `storageReady` handler. */
+  const late = lateNativeStore({ cp_rate: "1.5" });
+  const { client, doc, audio, restore } = await bootClient(t, { capacitor: late.capacitor });
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(find(doc.body, "fp-rate").textContent, "1×", "precondition: booted before the stored speed arrived");
+  late.release();
+  for (let i = 0; i < 6; i++) await settle();
+  assert.equal(find(doc.body, "fp-rate").textContent, "1.5×", "the stored speed is on the button");
+  assert.equal(audio.playbackRate, 1.5, "and on the element");
+  restore();
+});
+
+test("SWEEP: a speed the listener chose before hydration landed is not overruled by the store", async (t) => {
+  /* The other half of the same rule: the late store must not overrule a choice
+     made inside the window. Held by the durable store's own rule (hydration
+     never clobbers a key written since construction), which the new handler
+     leans on instead of a flag of its own — pinned here so a handler that
+     read the durable tier directly would fail. KILLING MUTATION: in the
+     handler, `manager.setRate(1.5)` in place of `readRate(storage)`. */
+  const late = lateNativeStore({ cp_rate: "1.5" });
+  const { client, doc, audio, restore } = await bootClient(t, { capacitor: late.capacitor });
+  await client.play(episodeItem());
+  await settle();
+  client.setPlaybackRate(2);
+  late.release();
+  for (let i = 0; i < 6; i++) await settle();
+  assert.equal(find(doc.body, "fp-rate").textContent, "2×");
+  assert.equal(audio.playbackRate, 2);
+  restore();
+});
+
+test("SWEEP: Jump back in's Foray rows read the LIVE runtime, as the Foray page's resume does", async (t) => {
+  /* qa row 163. `forayResumeList` measured percent and "min left" against the
+     runtime stored with the row; `forayResume` measures against the Foray as it
+     resolves now. A regenerated Foray made the two disagree. KILLING MUTATION:
+     stop passing `totalSec: liveTotal` into `resumePoint` in `forayResumeList`. */
+  const carried = await aSessionThatPlayed(t, ["foray"]);
+  const { client, restore } = await bootClient(t, { seed: carried });
+  const longer = synthetic();
+  longer.totalSec = 1250;                     // the Foray grew since the row was written
+  const stored = client.forayResumeList().find((r) => r.id === "f263");
+  assert.ok(stored, "precondition: the row is listed");
+  const row = client.forayResumeList({ resolveFor: (id) => (id === "f263" ? longer : null) }).find((r) => r.id === "f263");
+  const page = client.forayResume("f263", { resolved: longer });
+  assert.equal(row.totalSec, 1250);
+  assert.equal(row.percent, page.percent, "the rail and the Foray page agree on how far in");
+  assert.equal(row.label, page.label, "and on how long is left");
+  assert.notEqual(row.label, stored.label, "which is not what the stored runtime said");
+  const throwing = client.forayResumeList({ resolveFor: () => { throw new Error("no docs"); } }).find((r) => r.id === "f263");
+  assert.equal(throwing.label, stored.label, "a resolver that fails leaves the stored reading");
+  restore();
 });

@@ -802,8 +802,15 @@ test("Clear mid-seam resets what is in flight, so the next seam still lands", as
      flight calls `log.save()` through the orphan, which writes `cp_diag` with
      `entries: []` — putting a `cp_` row back one tick after `clear()` deliberately
      removed it, the exact outcome `clear()`'s own comment claims to prevent. With the
-     reset there is no open seam, so the stage is a no-op and the key stays gone. */
-  audio.fire("stalled");
+     reset there is no open seam, so the stage is a no-op and the key stays gone.
+
+     THE PROBE IS `playing`, NOT `stalled` (2026-09-22). This used `stalled`, which
+     was a pure seam stage then. Founder report 2 made a `waiting`/`stalled` with NO
+     seam in flight a row of its own (a starvation on an ordinary episode was
+     invisible), so `stalled` here would now write a legitimate new row and prove
+     nothing about the orphan. `playing` is still stage-only: it closes the seam in
+     flight if there is one, and with the reset there is none. */
+  audio.fire("playing");
   await settle();
   assert.equal(
     storage.getItem(DIAG_KEY), null,

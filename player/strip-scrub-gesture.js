@@ -56,15 +56,36 @@ export function startGesture(x, y) {
  * stationary press does. Once zooming (by either path) further moves are a
  * no-op here; the caller tracks live x/y itself for the preview position.
  *
+ * A VERTICAL FLICK IS A SCROLL, NOT A SCRUB (audit 2026-09-22). The strip is
+ * sticky under the topbar, squarely in the path of an ordinary "scroll the
+ * running order" flick. Every move past tolerance used to enter zoom, and the
+ * `click` that follows a release then seeked to wherever the thumb happened
+ * to be — the listener tried to scroll a list and the Foray jumped. So a
+ * still-PENDING gesture whose movement is mostly vertical (|dy| > |dx|) ends
+ * here as `scrolled: true` and inert; the caller suppresses the click it
+ * would otherwise commit, and styles.css (`touch-action: pan-y`) lets the
+ * browser actually scroll. The strip itself is horizontal, so a scrub is a
+ * sideways drag by construction, and a hold that already entered zoom keeps
+ * tracking whatever direction the finger then goes — in THIS state machine.
+ * The browser is a separate question: under `pan-y` it owns vertical pans
+ * whatever this file decides, so app.js's bindStripZoomScrub cancels the
+ * `touchmove` while zoomed (review 2026-09-23); without that, a zoomed thumb
+ * drifting downward scrolled the page and the browser cancelled the scrub.
+ *
  * MUTATION TO BREAK THIS: change `>` to `>=` at the tolerance boundary and
  * `moves right at the tolerance boundary stay pending` in the test file
  * fails, because a move of EXACTLY the tolerance would then enter zoom.
+ * Delete the `Math.abs(dy) > Math.abs(dx)` branch and `a vertical flick past
+ * tolerance ends as a scroll` fails (it zooms instead).
  */
 export function moveGesture(state, x, y) {
   if (!state || !state.active || state.zooming) return state;
   const dx = x - state.downX;
   const dy = y - state.downY;
-  if (Math.hypot(dx, dy) > MOVE_TOLERANCE_PX) return { ...state, zooming: true };
+  if (Math.hypot(dx, dy) > MOVE_TOLERANCE_PX) {
+    if (Math.abs(dy) > Math.abs(dx)) return { ...state, active: false, zooming: false, scrolled: true };
+    return { ...state, zooming: true };
+  }
   return state;
 }
 

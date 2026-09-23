@@ -222,6 +222,15 @@ that is a product call only he can make — this addendum does not make it for
 him, and the implementation below is built so flipping the default is a
 one-line change to `autoAdvanceOn()`'s fallback, not a redesign.
 
+> **SUPERSEDED 2026-09-22 (Q1–Q4 below).** The founder ruled on 2026-09-14
+> (`docs/DECISIONS.md`, PR #695, issue #691) that continuous playback is wanted,
+> and the 2026-09-22 audit fix implements it: on by default, labelled
+> "Continuous playback"; a finished episode leaves Up Next and Up Next plays
+> first; otherwise the next row of the list the play was started from; an
+> unplayable row is passed over rather than stopped at. The reasoning below is
+> kept as the history of the narrower design, not as current behaviour — the
+> authoritative description is the "continuous playback" comment in `app.js`.
+
 **Q1 — scope: only episodes played FROM `#/queue`, never any episode once
 something is queued.** Starting an unrelated episode elsewhere in the app
 must never be silently read as "now playing the queue" — that would be a
