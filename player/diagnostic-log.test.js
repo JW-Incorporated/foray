@@ -1693,3 +1693,32 @@ test("REPORT 2: a native session row says how long the page had been hidden when
   assert.equal(row.hiddenForMs, 5_000);
   assert.equal(row.lagMs, 1_000);
 });
+
+/* ==================================================================== */
+/* founder report 3 (2026-09-22): which build wrote this record?         */
+/* ==================================================================== */
+
+test("REPORT 3: the report's second line names the build, from the newest `build` row", () => {
+  /* A ring spans app updates, so it is the NEWEST row that describes the
+     running build. KILLING MUTATION: delete the `build …` header line. */
+  const { diag, log } = mk();
+  diag.build({ shell: true, web: "1111111111111111", native: "2026092101", version: "1.3.0" });
+  diag.boot();
+  diag.build({ shell: true, web: "2B808EC9D50C5B98", native: "2026092224", version: "1.4.0" });
+  const lines = formatDiagnosticReport(log.read()).split("\n");
+  assert.equal(lines[1], "build web 2b808ec9d50c5b98 · native 2026092224 (1.4.0)");
+  assert.match(lines.join("\n"), /build\s+web 1111111111111111 · native 2026092101 \(1\.3\.0\)/,
+    "and each boot's row stays in the record");
+});
+
+test("REPORT 3: the website says so, an unknown half is `?`, and nothing unshaped gets in", () => {
+  /* KILLING MUTATION: store `native` without `buildTokenOf`. */
+  const { diag, log } = mk();
+  assert.match(formatDiagnosticReport(log.read()), /^build unknown/m, "a record from before any build row says so");
+  diag.build({ shell: false, web: "2b808ec9d50c5b98" });
+  assert.match(formatDiagnosticReport(log.read()), /^build web 2b808ec9d50c5b98 · website$/m);
+  diag.build({ shell: true, web: null, native: "Wyatt's iPhone" });
+  const row = log.read().entries.at(-1);
+  assert.equal(row.native, null);
+  assert.match(formatDiagnosticReport(log.read()), /^build web \? · native \?$/m);
+});

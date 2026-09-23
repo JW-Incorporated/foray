@@ -579,6 +579,19 @@ export const TRANSPORT_ACTIONS = new Set(["play", "pause", "stop", "play-restore
 /** A status, a trigger, a validation code: a lower-case dashed token, never a
     sentence. `sha256-forays`, `segment-missing`, `foreground` all pass; a reason
     with a space or a slash in it does not. */
+/* ---------- which build wrote this (founder report 3, 2026-09-22) ----------
+
+   `player/build-stamp.js` reads the two numbers; this is where they are admitted
+   (by shape, the same as every other field here) and printed. */
+const buildTokenOf = (v) => {
+  const s = typeof v === "number" && Number.isFinite(v) ? String(v) : asText(v).trim();
+  return /^[0-9][0-9.]{0,31}$/.test(s) ? s : null;
+};
+const deployTokenOf = (v) => {
+  const s = asText(v).trim().toLowerCase();
+  return /^[0-9a-f]{8,64}$/.test(s) ? s : null;
+};
+
 export function dataTokenOf(v) {
   const s = asText(v).trim();
   return /^[a-z][a-z0-9-]{0,47}$/.test(s) ? s : null;
@@ -656,6 +669,24 @@ export class PlayerDiagnostics {
       already started in the constructor — see `_visSince`. */
   boot() {
     return this.log.record("boot", { hidden: this._isHidden() });
+  }
+
+  /**
+   * Which build this boot is (founder report 3, 2026-09-22): the web deploy id
+   * and, in the shell, the native build number and version. One row per boot,
+   * written when the answer arrives (it is asynchronous — a file read and a
+   * native call), so a ring that spans an app update says which rows came from
+   * which build. An unknown half is null, never a guess; the row is written
+   * even when both are unknown, because "this build could not say" is itself
+   * the finding a reader needs.
+   */
+  build({ web = null, native = null, version = null, shell = false } = {}) {
+    return this.log.record("build", {
+      shell: shell === true,
+      web: deployTokenOf(web),
+      native: buildTokenOf(native),
+      version: buildTokenOf(version),
+    });
   }
 
   /* ---------- telemetry ---------- */
@@ -1518,6 +1549,8 @@ function lineFor(e) {
     }
     case "boot":
       return `${head} hidden=${e.hidden ? "y" : "n"}`;
+    case "build":
+      return `${head} ${buildLabel(e)}`;
     /* FD-01: `data boot forays=cache@9fc92a61 segments=cache@9fc92a61 …` names the
        source of each document on the one surface a founder pastes out. A refresh
        reads `data refresh(foreground) adopted v=… n=6`, or `… invalid why=segment-missing
@@ -1649,6 +1682,15 @@ function lineFor(e) {
   }
 }
 
+/** `web 2b808ec9d50c5b98 · native 2026092224 (1.4.0)`, with `?` for a half the
+    boot could not learn. On the website there is no native half at all, which
+    is said as `website` so it is not mistaken for a failed read. */
+function buildLabel(e) {
+  const web = `web ${e.web ?? "?"}`;
+  if (!e.shell) return `${web} · website`;
+  return `${web} · native ${e.native ?? "?"}${e.version ? ` (${e.version})` : ""}`;
+}
+
 /**
  * The whole record as copyable text.
  *
@@ -1693,8 +1735,14 @@ export function formatDiagnosticReport(record) {
      runs on stages that add no entry — "saves" would invite a reader to divide it
      by the elapsed wall clock and call the answer a write cadence, which it is
      not. */
+  /* THE BUILD, FIRST (founder report 3). The most recent `build` row — the
+     running build — because the first question about any pasted record is
+     which build wrote it, and until 2026-09-22 nothing in it could say. */
+  const builds = entries.filter((e) => e.type === "build");
+  const lastBuild = builds.length ? builds[builds.length - 1] : null;
   const head = [
     `4a playback diagnostics — v${r.v ?? "?"}`,
+    `build ${lastBuild ? buildLabel(lastBuild) : "unknown (no build row yet)"}`,
     `Local only. Nothing here is sent anywhere.`,
     "",
     `entries ${entries.length} of ${r.cap ?? DIAG_CAP} (oldest dropped first)`,

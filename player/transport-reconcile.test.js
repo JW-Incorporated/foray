@@ -814,7 +814,7 @@ class MemoryStorage {
    scope. A test that booted first and seeded second would be asserting against
    an empty store and would pass for the wrong reason. */
 let bootSeq = 0;
-async function bootClient(t, { seed = [], mediaSession = null } = {}) {
+async function bootClient(t, { seed = [], mediaSession = null, capacitor = null } = {}) {
   const audio = new Element();
   const storage = new MemoryStorage();
   for (const [k, v] of seed) storage.setItem(k, v);
@@ -840,6 +840,9 @@ async function bootClient(t, { seed = [], mediaSession = null } = {}) {
     },
     removeEventListener() {},
     dispatchEvent: () => true,
+    /* The Capacitor shell, when a test is about the shell (2026-09-22: the
+       build stamp asks the binary for its build number). Absent by default. */
+    ...(capacitor ? { Capacitor: capacitor } : {}),
   };
 
   /* `defineProperty`, not assignment: `globalThis.navigator` is an accessor with
@@ -2154,4 +2157,26 @@ test("REPORT 2: an unexplained pause says what state the element was in", async 
   el.routeLost();
   const line = log.find((l) => l.startsWith("audio.pausedUnexpectedly"));
   assert.match(line, /^audio\.pausedUnexpectedly t=61\.3 rs=2 ns=2 err=0 /);
+});
+
+/* ==================================================================== */
+/* part 8 — founder report 3 (2026-09-22): the record says which build   */
+/* ==================================================================== */
+
+test("REPORT 3: a booted shell writes BOTH halves of the build into the record it will copy out", async (t) => {
+  /* Through the real client.js: the bundled stamp for the web half, the
+     binary's own `getInfo` for the native half. KILLING MUTATION: delete the
+     `recordBuildStamp()` call beside `diag.boot()`. */
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => (String(url) === "build-stamp.json"
+    ? { ok: true, json: async () => ({ deploy_id: "2b808ec9d50c5b98" }) }
+    : { ok: false, status: 404, json: async () => ({}) });
+  t.after(() => { globalThis.fetch = realFetch; });
+  const capacitor = { nativePromise: async () => ({ build: "2026092224", version: "1.4.0" }) };
+  const { restore } = await bootClient(t, { capacitor });
+  await settle();
+  await settle();
+  const report = globalThis.window.forayDiagnosticReport();
+  assert.match(report, /^build web 2b808ec9d50c5b98 · native 2026092224 \(1\.4\.0\)$/m);
+  restore();
 });

@@ -121,6 +121,7 @@ import {
 } from "./strip-scrub-gesture.js";
 import { startDrag, moveDrag, endDrag, dragOffset } from "./sheet-drag-dismiss.js";
 import { createDurableStore } from "./durable-store.js";
+import { readBuildStamp } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
 import { createInterludePlayer, readInterludePref, writeInterludePref } from "./interlude.js";
@@ -326,6 +327,11 @@ const diag = new PlayerDiagnostics({
    the catch is attached anyway. */
 storageReady.then(() => {
   diag.boot();
+  /* WHICH BUILD (founder report 3, 2026-09-22) — see `player/build-stamp.js`.
+     Beside `boot()` and after hydration for the same reason `boot()` waits:
+     it is a write into the durable record. Asynchronous, so it lands a moment
+     after the boot row; never rejects. */
+  recordBuildStamp();
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => diag.visibility(document.hidden === true));
   }
@@ -397,6 +403,29 @@ function onNativeSession(detail) {
   if (kind === "interruptionBegan" || kind === "foreground" || kind === "mediaServicesReset") {
     reconcileOnReturn(`session:${kind}`).catch((err) => console.warn("[player] reconcile failed", err));
   }
+}
+
+/** Ask for both halves of the build stamp and write the row. The pinned id is
+    app.js's (a page the service worker served from a retained generation is
+    running THAT generation's code, not the manifest's newest). */
+function recordBuildStamp() {
+  const pinnedMeta = () => {
+    try {
+      const m = typeof document !== "undefined" && typeof document.querySelector === "function"
+        ? document.querySelector('meta[name="foray-pin-deploy-id"]') : null;
+      return m && typeof m.getAttribute === "function" ? m.getAttribute("content") : null;
+    } catch (_) { return null; }
+  };
+  const pinned = (typeof self !== "undefined" && self.__forayPinnedDeployId) || pinnedMeta();
+  readBuildStamp({
+    inShell: typeof window !== "undefined" && !!window.Capacitor,
+    capacitor: typeof window !== "undefined" ? window.Capacitor ?? null : null,
+    pinned,
+    fetchJson: (u) => fetch(u, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
+  })
+    .then((stamp) => { try { diag.build(stamp); } catch (_) { /* the instrument must never be the outage */ } })
+    .catch(() => {});
 }
 
 /** The record, as text, for the surface app.js builds. Published beside
