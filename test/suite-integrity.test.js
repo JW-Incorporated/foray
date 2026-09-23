@@ -2711,6 +2711,30 @@ test("no file is named in a way discovery cannot see", () => {
   );
 });
 
+/* A POINTER TO A SUITE POINTS AT ONE THAT EXISTS (review 2026-09-23).
+ * Suites cite each other in comments — "test/x.test.js pins the other half" —
+ * and a reader who follows a pointer to a file that is not there concludes the
+ * behaviour is unpinned. test/keyboard-chrome-and-scroll.test.js pointed at a
+ * test/sheet-owner.test.js that never existed (the cells are in
+ * modal-and-focus). Scans the root and player suites for repo-relative suite
+ * paths; a path preceded by another segment (`api/test/…`) is someone else's.
+ * MUTATION: put `test/sheet-owner.test.js` back in that comment -> red. */
+test("every suite a root or player suite names in its text exists", () => {
+  const SUITE_REF = /(?<![\w/.-])((?:test|player|tools\/[\w-]+(?:\/[\w-]+)*)\/[\w.-]+\.test\.(?:js|mjs|cjs|ts))/g;
+  const dangling = [];
+  /* SELF is skipped: its floor list names backend suites by their package-relative
+     path (`test/x.test.ts` under backend/). Elsewhere a `.ts` suite is backend's too. */
+  for (const rel of [...findSuites("test"), ...findSuites("player")].filter((f) => f !== SELF)) {
+    const text = fs.readFileSync(path.join(ROOT, rel), "utf8");
+    for (const m of text.matchAll(SUITE_REF)) {
+      const exists = fs.existsSync(path.join(ROOT, m[1])) || fs.existsSync(path.join(ROOT, "backend", m[1]));
+      if (!exists) dangling.push(`${rel} -> ${m[1]}`);
+    }
+  }
+  assert.deepStrictEqual([...new Set(dangling)].sort(), [],
+    "these suites cite a suite that does not exist:\n" + [...new Set(dangling)].join("\n"));
+});
+
 /* CLOSING THE LOOP (issue #140)
  *
  * Everything above proves a suite exists and is big enough. None of it proves

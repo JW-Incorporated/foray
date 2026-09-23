@@ -268,8 +268,9 @@ test("setBodyClass preserves every runtime class instead of clobbering it", () =
      keyboard-open inset with the keyboard-SHUT dock. RUN: failed as named. */
   /* `fy-sheet-open` is not in this list any more (audit 2026-09-22): it is
      derived from the sheets the owner holds, not carried because it was there
-     — test/sheet-owner.test.js pins both halves of that (kept while a sheet is
-     open, dropped once its element is gone). */
+     — test/modal-and-focus.test.js ("the modal lock is derived from what is
+     open: kept across a render, dropped when the sheet's DOM is gone") pins
+     both halves of that. */
   const m = mount();
   for (const c of ["kb-open", "fp-open", "fp-expanded"]) {
     m.body.classList.add(c);

@@ -1214,7 +1214,7 @@ function seedForaysFixture(m) {
   /* renderShow's foraysUsingShow() reads window.ForayPlayer.foraysUsingShow
      rather than walking state.segments/state.segmentSources itself (app.js is
      not allowed to enumerate the segment pool directly — see
-     tools/mobile/prepare-webdir.test.js's "nothing in the app browses the
+     tools/mobile/prepare-webdir.test.mjs's "nothing in the app browses the
      segment pool" premise, #327). This stub is a faithful, minimal
      re-implementation of player/foray-resolve.js's foraysReferencingShow, so
      these tests exercise the same contract app.js actually calls through
