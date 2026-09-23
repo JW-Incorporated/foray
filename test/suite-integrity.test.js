@@ -988,7 +988,7 @@ const FLOORS = {
      minutes." The Vercel Ignored Build Step. Most of this suite is the FAILING
      OPEN — a rule that wrongly skips leaves production on older bytes, and the
      saving is a few cents, so every uncertain case must build. */
-  "tools/web/vercel-should-build.test.mjs": 17,
+  "tools/web/vercel-should-build.test.mjs": 23, // 2026-09-23: previews are opt-in (label or preview/ branch); 17 -> 23
   /* 82 -> 84: the app icon's deny entry, and the reason it is a DENY rather than
      an entry in that file's `ACKNOWLEDGED_UNDENIED_GATES` beside its own
      neighbour. Pinned as a named test because the gate-script scan there is
