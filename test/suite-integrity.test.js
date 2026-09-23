@@ -984,7 +984,7 @@ const FLOORS = {
      disabled-Foray control is a product promise (D8 — the pipeline exists,
      its key/segment pool don't) and each test is one line from silently
      no longer holding it. Every test names the mutation that kills it. */
-  "test/create-page.test.js": 8,
+  "test/create-page.test.js": 9, // 2026-09-22: a suggestion pill builds from one tap (persona 26); 8 -> 9
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   /* The icons are generated from tools/brand/4a-logo.png, and this suite is the

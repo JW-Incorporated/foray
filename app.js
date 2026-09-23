@@ -7773,8 +7773,20 @@ function renderCreate() {
     </div>`;
 
   $("#cr-form").addEventListener("submit", bindCreateFormSubmit);
+  /* A SUGGESTION BUILDS (audit 2026-09-22, persona 26). The pill used to fill
+     the field and raise the keyboard, and building took a second tap on a Build
+     button the keyboard now covered — so the tap read as a miss. Nobody who
+     taps a canned suggestion wants to type: the field is filled (so the
+     listener can see what was asked for) and the same submit path runs, with
+     no focus. The founder's ruling on the Search tiles (#684: a tile runs the
+     search for its own label) is the same rule. */
   $("#view").querySelectorAll("[data-cr-subject]").forEach(btn => {
-    btn.addEventListener("click", () => { $("#cr-input").value = btn.dataset.crSubject; $("#cr-input").focus(); });
+    btn.addEventListener("click", () => {
+      const form = $("#cr-form");
+      const input = $("#cr-input");
+      if (input) input.value = btn.dataset.crSubject;
+      if (form) bindCreateFormSubmit({ preventDefault() {}, currentTarget: form });
+    });
   });
 }
 
