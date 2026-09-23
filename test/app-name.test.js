@@ -485,7 +485,11 @@ test("both shell notices name the app", () => {
    failed states of #/shows and #/forays, which used to paint "No shows here yet."
    and "0 forays" over a failed fetch. "The player didn't load." lost its
    "— reload the page": that was browser advice inside a native shell, and the
-   Retry beside it now does the reloading that matters. */
+   Retry beside it now does the reloading that matters.
+   13 -> 14 the same day: the Shows search's "Part of this search didn't load."
+   (a settled empty answer behind a failed pass), and the boot failure's
+   "Couldn't load 4a — check your connection." moved from the one-line shape into
+   failedNoteHtml with a Try again, so it is counted once, in its new shape. */
 test("no note this app renders into #view capitalises the unit", () => {
   const src = read("app.js");
   const notes = [
@@ -495,8 +499,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    13,
-    `expected thirteen #view status notes, found ${notes.length}. More is fine -- ` +
+    14,
+    `expected fourteen #view status notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );
@@ -523,10 +527,12 @@ test("no note this app renders into #view capitalises the unit", () => {
    app with one line. Nothing else in the repo reads it. The best-reading string
    in this whole rename -- the name sits mid-sentence, so nothing collides.
 
-   KILLED BY: reverting to "Couldn't load Foray — check your connection". */
+   KILLED BY: reverting to "Couldn't load Foray — check your connection".
+   2026-09-22: "and reload" went — the note now carries a Try again that re-runs
+   the boot, and "reload" was browser advice inside a native shell. */
 test("the load-failure page names the app", () => {
   const m = read("app.js").match(
-    /Couldn't load (.+?) — check your connection and reload\./
+    /Couldn't load (.+?) — check your connection\./
   );
   assert.ok(m, "app.js's init() no longer has its load-failure note");
   assert.equal(m[1], APP_NAME);

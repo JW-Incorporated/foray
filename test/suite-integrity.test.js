@@ -648,7 +648,7 @@ const FLOORS = {
      Forays": it is the one a "simplify renderForays back to synchronous" edit
      would silently undo, because every existing harness mounts with the bridge
      already present. */
-  "test/load-states.test.js": 22, // 2026-09-22 persona #4: a play button whose play() throws or refuses reports it to the player bar instead of swallowing the tap; 21 -> 22 // 2026-09-22 theme L: rows say "Played"/"NN min left", "played" survives the history ring rotating, a subject card totals only a fully-timed list; 18 -> 21 // 2026-09-22 theme L: the Foray header counts the strip's clips and heard shows, says "about" over an estimated runtime, and never promises "listed below" for a clip the page cannot list; 14 -> 18 // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
+  "test/load-states.test.js": 27, // 2026-09-22 persona #43, cold boot: "Loading 4a…" before the first await, a boot failure with Try again, the first route() not waiting on the search-only documents, their arrival replacing the scorer's ctx, and a playlist build waiting for them while they are in flight; 22 -> 27 // 2026-09-22 persona #4: a play button whose play() throws or refuses reports it to the player bar instead of swallowing the tap; 21 -> 22 // 2026-09-22 theme L: rows say "Played"/"NN min left", "played" survives the history ring rotating, a subject card totals only a fully-timed list; 18 -> 21 // 2026-09-22 theme L: the Foray header counts the strip's clips and heard shows, says "about" over an estimated runtime, and never promises "listed below" for a clip the page cannot list; 14 -> 18 // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
 
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):
@@ -1558,7 +1558,7 @@ const FLOORS = {
      "android"` is set in ForayAudioPlugin.java and nowhere else. That second one
      is the closest relative in this repo of #269, where an Android fixture
      answered `running: true` and the fake was the only place the code worked. */
-  "tools/mobile/webview-probe.test.mjs": 15,
+  "tools/mobile/webview-probe.test.mjs": 16, // 2026-09-22 (audit, persona #43): app.js now paints a boot line into #view before its first await, so a view still holding it is a failed launch, not a certified one; 15 -> 16
 
   /* M1 (full-repo review 2026-08-31): the byte-ceiling guards shared by
      scan.mjs and refresh-feeds.mjs. Covers all three defenses named in the

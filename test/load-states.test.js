@@ -722,3 +722,113 @@ test("a play button whose play() throws or refuses reports it to the player bar"
     assert.strictEqual(reports.length, 1, `[${label}] the failure is reported to the bar exactly once`);
   }
 });
+
+/* ==================================================================== */
+/* Cold boot (persona #43): a first paint before the first await, and    */
+/* the search-only documents after the first route()                     */
+/* ==================================================================== */
+
+/** Serve data/*.json from disk, except the paths in `hang` (never answer) and
+    `fail` (404). */
+function diskFetch({ hang = [], fail = [] } = {}) {
+  return (url) => {
+    const rel = url.split("?")[0].replace(/^\.?\//, "");
+    if (hang.some((h) => rel.endsWith(h))) return new Promise(() => {});
+    if (fail.some((f) => rel.endsWith(f))) return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
+    const file = path.join(ROOT, rel);
+    if (!rel.startsWith("data/") || !fs.existsSync(file)) return new Promise(() => {});
+    return okJson(JSON.parse(fs.readFileSync(file, "utf8")));
+  };
+}
+
+test("the boot paints 'Loading 4a…' before its first await, not a blank page", () => {
+  /* The body used to stay blank behind the header until ~3.5 MB of JSON had
+     landed. MUTATION: delete the `view.innerHTML = BOOT_LOADING_HTML` line at the
+     top of init(). The view is empty and this goes red. */
+  const m = mount(); // every fetch hangs: init() is parked on its first await
+  assert.match(m.html(), /data-boot-loading/);
+  assert.match(m.html(), /Loading 4a…/);
+});
+
+test("a boot whose session never loads says so, and Try again runs the boot again", async () => {
+  /* The failure note had no way forward but a reload the native shell does not
+     offer. MUTATION: drop the bindRetry(... init()) call. Nothing to press. */
+  let sessionAsks = 0;
+  const serve = diskFetch();
+  const m = mount({
+    fetchImpl: (url) => {
+      if (url.includes("data/session.json")) {
+        sessionAsks += 1;
+        return sessionAsks === 1 ? Promise.resolve({ ok: false, status: 503, json: async () => ({}) }) : new Promise(() => {});
+      }
+      return serve(url);
+    },
+  });
+  await settle();
+  assert.match(m.html(), /Couldn't load 4a — check your connection\./);
+  assert.ok(m.retry(), "the failed boot offers Try again");
+  assert.match(m.html(), /Loading 4a…/, "and says it is loading again while it retries");
+  await settle();
+  assert.strictEqual(sessionAsks, 2, "Try again is the same boot, asking for the session again");
+});
+
+test("the first route() does not wait for the search-only documents", async () => {
+  /* semantic-index.json + item-tags.json (465.7 KB, 97 KB gzipped) are read only
+     by the topic scorer, which Home's first paint never runs.
+     MUTATION: put either fetch back into init()'s awaited Promise.all. With
+     them hanging here, the boot never reaches route() and this goes red. */
+  const m = mount({ fetchImpl: diskFetch({ hang: ["data/semantic-index.json", "data/item-tags.json"] }) });
+  /* mount() pre-sets `state.ready` for the other tests, so readiness is read off
+     the page: the boot line is replaced only by init()'s own route(). */
+  for (let i = 0; i < 400 && /data-boot-loading/.test(m.html()); i++) await settle(1);
+  assert.doesNotMatch(m.html(), /data-boot-loading/, "the first page replaced the loading line with the search documents still in flight");
+  assert.strictEqual(m.state.itemTags, null, "fixture: the tags really were still in flight");
+  assert.ok(m.fetched.some((u) => u.includes("data/item-tags.json")), "they were still asked for, after the paint");
+});
+
+test("the search documents landing replace the scorer's context and clear its cache", async () => {
+  /* search-engine.js memoizes term frequencies on the ctx and must never have
+     itemTags swapped under a used one; results cached against a tagless ctx
+     must not outlive it. MUTATION: drop `state._searchCtx = null` from
+     loadSearchData. A stale ctx survives and this goes red. */
+  const m = mount({ fetchImpl: diskFetch() });
+  m.state.semantic = null;
+  m.state.itemTags = null;
+  const stale = m.ctx.searchCtx();
+  assert.strictEqual(stale.itemTags, null, "fixture: a ctx built before the documents");
+  await m.ctx.loadSearchData();
+  assert.ok(m.state.itemTags && m.state.semantic, "both documents are in");
+  const fresh = m.ctx.searchCtx();
+  assert.notStrictEqual(fresh, stale, "a new ctx");
+  assert.strictEqual(fresh.itemTags, m.state.itemTags);
+  assert.strictEqual(vm.runInContext("searchCache.size", m.ctx), 0);
+});
+
+test("a playlist build waits for search documents that are still in flight, then scores with them", async () => {
+  /* The deferral is only safe if the three topic-scoring paths wait for the
+     documents init() started; a build in the window would otherwise score a
+     tagless pool and cache that answer.
+     MUTATION: make whenSearchDataReady always `setTimeout(fn, 0)`. The build runs
+     while the tags are still null and this goes red. */
+  let open;
+  const gate = new Promise((r) => { open = r; });
+  const m = mount({
+    fetchImpl: (url) => {
+      if (url.includes("data/semantic-index.json") || url.includes("data/item-tags.json")) {
+        const rel = url.split("?")[0].replace(/^\.?\//, "");
+        return gate.then(() => okJson(readData(rel)));
+      }
+      return new Promise(() => {});
+    },
+  });
+  m.state.semantic = null;
+  m.state.itemTags = null;
+  m.ctx.loadSearchData(); // what init() does after its first route()
+  let sawTags = null;
+  m.ctx.whenSearchDataReady(() => { sawTags = m.state.itemTags; });
+  await settle();
+  assert.strictEqual(sawTags, null, "nothing ran while the documents were in flight");
+  open();
+  await settle();
+  assert.ok(sawTags && sawTags.tags, "the build ran once they landed, and saw them");
+});

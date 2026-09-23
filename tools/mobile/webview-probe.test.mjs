@@ -113,6 +113,23 @@ test("index.html parsed but app.js never ran is a FAILURE", () => {
   assert.match(w.failures.join(" "), /not in the document/);
 });
 
+test("a view still holding the boot line is a FAILURE, not a launch", () => {
+  /* 2026-09-22 (audit, persona #43): app.js now paints "Loading 4a…" into #view
+     before its first await, so the child count proves the script STARTED and
+     nothing more. A boot that hung on its data, or threw after that paint, would
+     otherwise be certified.
+     MUTATION: delete the `viewBooting` branch in verdict -> fails. MUTATION 2:
+     stop collecting `viewBooting` in PROBE_EXPRESSION -> the expression test
+     below fails. */
+  const v = verdict({ ...HEALTHY, viewChildren: 1, viewBooting: true, viewText: "Loading 4a…" }, opts);
+  assert.equal(v.ok, false);
+  assert.match(v.failures.join(" "), /still shows the boot line/);
+  assert.equal(verdict({ ...HEALTHY, viewBooting: false }, opts).ok, true, "a rendered page is still a launch");
+  /* And the marker the probe looks for is the one app.js actually paints. */
+  const app = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  assert.match(app, /const BOOT_LOADING_HTML = `<div class="page" data-boot-loading>/);
+});
+
 test("a missing window.Capacitor is a FAILURE", () => {
   /* MUTATION: delete the `hasCapacitor` check -> fails.
      `docs/mobile-shell.md`'s top open risk is whether our strict CSP blocks
@@ -211,7 +228,7 @@ test("the injected expression still asks for everything the verdict judges", () 
      ASSERTED AGAINST THE EXPRESSION, NOT THE FILE: the module's header discusses
      every one of these fields by name, so a whole-file search would be satisfied
      by the prose that explains them. */
-  for (const field of ["url", "title", "viewPresent", "viewChildren", "hasCapacitor", "bridge"]) {
+  for (const field of ["url", "title", "viewPresent", "viewChildren", "viewBooting", "hasCapacitor", "bridge"]) {
     assert.ok(PROBE_EXPRESSION.includes(`${field}:`), `the probe no longer collects ${field}`);
   }
   assert.ok(

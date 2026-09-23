@@ -866,9 +866,12 @@ function failedNoteHtml(note) {
 }
 
 function statusPageHtml({ title = "", note, back = "#/", retry = false }) {
+  /* `back` is always one of our own routes; the "#" is written in the literal so
+     no interpolated value can ever start an href (test/app-security.test.js). */
+  const route = String(back).replace(/^#/, "");
   return `<div class="page">
     <div class="page-head">
-      <a class="back" href="${esc(back)}">‹</a>
+      <a class="back" href="#${esc(route)}">‹</a>
       <div>${title ? `<h2>${esc(title)}</h2>` : ""}</div>
     </div>
     ${retry ? failedNoteHtml(note) : `<p class="note">${note}</p>`}
@@ -1301,6 +1304,65 @@ function searchCtx() {
     state._searchCtx = { semantic: state.semantic, itemTags: state.itemTags, discover: state.discover };
   }
   return state._searchCtx;
+}
+
+/* THE TWO SEARCH-ONLY DOCUMENTS LOAD AFTER THE FIRST PAINT (audit 2026-09-22,
+   persona #43 — cold boot). `data/semantic-index.json` (58.5 KB) and
+   `data/item-tags.json` (407.2 KB) — 465.7 KB of the 3.52 MB init() used to
+   await before painting anything, 97 KB of 791 KB gzipped — are read only by
+   the topic scorer (`scoredResultsFor`, via `searchCtx()` and `state.itemTags`),
+   which Home's first paint never runs. So init() starts them after `route()`,
+   and the three paths that DO score a topic wait for them here first:
+   the two playlist builders and Search's create-a-playlist check.
+
+   A ctx built before they land must not survive them: search-engine.js
+   memoizes term frequencies ON the ctx and must never have `itemTags` swapped
+   under a used one, so the ctx is dropped whole and rebuilt, and the
+   repeated-query cache (which stores results scored against the old ctx) is
+   cleared with it.
+
+   Memoized, and reset when either came back null, so a failure is retried by
+   the next search rather than remembered for the session. A harness or page
+   that already holds both documents never fetches. */
+let searchDataLoading = null;
+/* True once init() has asked for them. Until then nothing is owed — a page
+   rendered outside a full boot scores with whatever is in `state`, exactly as
+   before — so a caller waits only on a load that has actually been started. */
+let searchDataWanted = false;
+
+function loadSearchData() {
+  searchDataWanted = true;
+  if (state.semantic && state.itemTags) return Promise.resolve();
+  if (!searchDataLoading) {
+    searchDataLoading = Promise.all([
+      fetchJson("data/semantic-index.json"),
+      fetchJson("data/item-tags.json"),
+    ]).then(([semantic, itemTags]) => {
+      state.semantic = semantic;
+      state.itemTags = itemTags;
+      state._searchCtx = null;
+      searchCache.clear();
+      if (!semantic || !itemTags) searchDataLoading = null;
+    });
+  }
+  return searchDataLoading;
+}
+
+/** Run `fn` on a later task once the search documents are in (or have failed —
+    a scorer with no tags is today's degraded answer, not a hang). The later
+    task is the one the builders always used, so the button's "Building…" gets
+    a frame to paint before the synchronous scan. */
+function whenSearchDataReady(fn) {
+  /* Nothing owed: the same one-task defer the builders always had, scheduled
+     NOW rather than from a resolved promise — a microtask hop would move the
+     build behind any timer queued in the meantime. */
+  if (!searchDataWanted || (state.semantic && state.itemTags)) { setTimeout(fn, 0); return; }
+  loadSearchData().then(() => setTimeout(fn, 0));
+}
+
+/** The load init() started (re-asked if it failed), or nothing to wait for. */
+function searchDataSettled() {
+  return searchDataWanted ? loadSearchData() : Promise.resolve();
 }
 
 /* ---------- playlists ---------- */
@@ -3835,7 +3897,7 @@ function bindPlaylistFormSubmit(e) {
   const originalLabel = btn.textContent;
   btn.disabled = true;
   btn.textContent = "Building…";
-  setTimeout(() => {
+  whenSearchDataReady(() => {
     try {
       const result = buildPlaylist(query);
       logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
@@ -3856,7 +3918,7 @@ function bindPlaylistFormSubmit(e) {
       btn.disabled = false;
       btn.textContent = originalLabel;
     }
-  }, 0);
+  });
 }
 
 /* ---------- shared wiring ---------- */
@@ -5907,7 +5969,7 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
        a newer query's freshly-painted own/generated section. */
     container.innerHTML = "";
     container.hidden = true;
-    whenIdle(() => {
+    whenIdle(() => searchDataSettled().then(() => {
       if (myToken !== showSearchToken) { reportCtaMs(null); return; } // a newer query already superseded this one
       const ctaStart = nowMs();
       const cta = createPlaylistCtaHtml(query);
@@ -5916,7 +5978,7 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
       container.innerHTML = cta;
       container.hidden = false;
       bindCreatePlaylistCta(container);
-    });
+    }));
     return;
   }
 
@@ -7709,7 +7771,7 @@ function bindCreateFormSubmit(e) {
   btn.textContent = "Building…";
   const note = $("#cr-note");
   if (note) note.hidden = true;
-  setTimeout(() => {
+  whenSearchDataReady(() => {
     try {
       const result = buildPlaylist(query);
       logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0, source: "create" });
@@ -7729,7 +7791,7 @@ function bindCreateFormSubmit(e) {
       btn.disabled = false;
       btn.textContent = originalLabel;
     }
-  }, 0);
+  });
 }
 
 function renderCreate() {
@@ -11810,16 +11872,39 @@ function installKeyboardChrome(win) {
   };
 }
 
+/** What `#view` holds between app.js starting and the first `route()`. */
+const BOOT_LOADING_HTML = `<div class="page" data-boot-loading><p class="note">Loading 4a…</p></div>`;
+
 async function init() {
   /* Storage hydration runs CONCURRENTLY with the first fetch, not before it: it
      is one IndexedDB read, so it costs nothing on the critical path, and it must
      finish before the first write — `loadInterests()` below is a read followed by
      a write, and doing that against a not-yet-hydrated store is how a restored
      profile gets replaced by taxonomy defaults. */
+  /* THE FIRST PAINT HAPPENS BEFORE THE FIRST AWAIT (audit 2026-09-22, persona
+     #43). The body used to be blank behind the header for as long as ~3.5 MB of
+     JSON took on a cell connection — indistinguishable from broken, on the one
+     screen every listener sees every session. `route()` replaces this.
+
+     Painted HERE rather than shipped in index.html, deliberately:
+     tools/mobile/webview-probe.mjs certifies a device launch partly by `#view`
+     having children, as proof app.js ran under the shell's CSP. Static markup
+     would satisfy that with app.js dead; this line can only exist if app.js
+     executed, and the probe separately refuses a view still holding it
+     (`data-boot-loading`), so a boot that hangs is not certified either. */
+  const view = $("#view");
+  if (view && !view.firstElementChild) view.innerHTML = BOOT_LOADING_HTML;
   const [, session] = await Promise.all([storageReady(), fetchJson("data/session.json")]);
   state.session = session;
   if (!state.session) {
-    $("#view").innerHTML = `<div class="page"><p class="note">Couldn't load 4a — check your connection and reload.</p></div>`;
+    /* A failure offers "Try again", wired to the same boot (theme G). Safe to
+       re-run: nothing above this line binds a listener or starts the directory,
+       so a second init() starts from exactly where the first one stopped. */
+    $("#view").innerHTML = `<div class="page">${failedNoteHtml("Couldn't load 4a — check your connection.")}</div>`;
+    bindRetry($("#view"), () => {
+      $("#view").innerHTML = BOOT_LOADING_HTML;
+      init();
+    });
     return;
   }
   /* The Foray directory's cache read starts HERE, alongside the bundle fetches
@@ -11835,15 +11920,18 @@ async function init() {
      partial deploy costs the feature that needs the file rather than the
      site. The three Foray documents are the newest and the most likely to be
      missing from a cached service worker — see renderForay(). */
+  /* `data/semantic-index.json` and `data/item-tags.json` are NOT here any more
+     (audit 2026-09-22): 465.7 KB (97 KB gzipped) that only the topic scorer
+     reads, and Home's first paint never scores a topic. They start after
+     `route()` below, through `loadSearchData()`, which the scorer's three
+     callers wait on. */
   [
-    state.validated, state.taxonomy, state.discover, state.semantic, state.itemTags,
+    state.validated, state.taxonomy, state.discover,
     state.forays, state.segments, state.segmentSources, state.catalog,
   ] = await Promise.all([
     fetchJson("data/validated-links.json"),
     fetchJson("data/taxonomy.json"),
     fetchJson("data/discover.json"),
-    fetchJson("data/semantic-index.json"),
-    fetchJson("data/item-tags.json"),
     fetchJson("data/forays.json"),
     fetchJson("data/segments.json"),
     fetchJson("data/segment-sources.json"),
@@ -11914,8 +12002,12 @@ async function init() {
       SearchEngine.primeVocabulary(searchCtx());
     }
   };
-  if (typeof requestIdleCallback === "function") requestIdleCallback(primeSearchVocab, { timeout: 2000 });
-  else setTimeout(primeSearchVocab, 0);
+  /* The search documents first — priming a ctx that has no vocabulary in it
+     would warm nothing and then be thrown away when they land. */
+  loadSearchData().then(() => {
+    if (typeof requestIdleCallback === "function") requestIdleCallback(primeSearchVocab, { timeout: 2000 });
+    else setTimeout(primeSearchVocab, 0);
+  });
 
   /* Up Next auto-advance's wiring (docs/listening-queue-plan.md §4 addendum).
      Fire-and-forget: a player that never loads (module failure, test
