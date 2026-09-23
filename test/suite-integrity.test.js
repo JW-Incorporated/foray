@@ -1001,7 +1001,7 @@ const FLOORS = {
      that `deploy-manifest.json` and `sw.js` are on ALLOWED_PREFIXES. Removing
      either entry restores the state in which every nightly PR sat green and
      unmerged, and nothing else in the repo would say so. */
-  "tools/ci/path-policy.test.mjs": 88,
+  "tools/ci/path-policy.test.mjs": 90, // 2026-09-22: +1 (and the one-test slack closed) -- tools/release/ is denied; 88 -> 90
   /* The LF-checkout guard on the deploy manifest. Small, and every test is one
      branch of a function whose whole job is to refuse. The load-bearing one is
      the binary exclusion: both committed icons really do carry `\r\n` bytes, so
@@ -1331,6 +1331,7 @@ const FLOORS = {
      unclassified failure still retries, so nothing ever goes red. A deleted cell
      would read as coverage of a list that had quietly stopped discriminating. */
   "tools/release/upload-retry.test.mjs": 14, // 2026-09-22: new -- which store-upload failures are worth trying again
+  "tools/release/watch-release.test.mjs": 38, // 2026-09-22: new -- the release watchdog + trigger (reliability plan pieces 2 and 3), replayed against the real 00:28 partial failure; 2026-09-23: +2, G2 replays the real 09-06 summary log ("not reached" is unknown, the job decides); +1, the Fetch step executed against an expired (404) summary log
   "tools/mobile/foray-media-session.test.mjs": 80, // 2026-09-22: `sends` cannot be read in the turn of the write, against the REAL default scheduler; 79 -> 80 // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their

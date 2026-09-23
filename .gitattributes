@@ -16,6 +16,9 @@
 tools/segments/fixtures/** -text
 tools/transcribe/fixtures/** -text
 backend/fixtures/** -text
+# The release watchdog's fixtures are a real GitHub job log and real `git log`
+# output (2026-09-22); the parsers are asserted against their exact bytes.
+tools/release/fixtures/** -text
 
 # STATE.md is the cross-session coordination board, and it is a conflict magnet:
 # every agent appends a workstream entry to the same "Active workstreams"

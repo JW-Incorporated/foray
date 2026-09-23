@@ -19,20 +19,18 @@
 
 **Worked if:** a pasted record whose `nowplaying` rows show a `sent=` that CLIMBS as playback continues. A `sent=` still pinned at 0 in that build is now a real finding rather than an artefact, and points at the shim.
 
-## #46 🔴 [BLOCKING] nightly-refresh.yml and nightly-watch.yml haven't fired since 2026-09-12 11:12 UTC
+## #46 🔴 [BLOCKING] Nightly content has been stalled since 2026-09-14 — its Cloud routine is switched off (~5 min)
 <!-- ha filed=2026-09-13 kind=default -->
 
-**Why:** No scheduled run of either workflow has happened since (verified 2026-09-13
-~12:00 UTC), so no fresh digest has published since 2026-09-10 and the absence
-watchdog can't re-check either. PR #678 is a one-off manual catch-up; without a fix
-tonight's run won't fire on its own either.
+**Why:** The original problem here — the two workflows not firing — is gone: both have run on schedule every day since 2026-09-13. They are red **on purpose**. The Cloud routine that turns each night's digest into a PR, `foray-nightly-enrich`, has been **disabled since its last run on 2026-09-13** (around the 2026-09-13 pause). So the 2026-09-14 digest (40 episodes) was never consumed, and every `nightly-refresh` run since has stopped at its overwrite guard (`OVERWRITE_WOULD_LOSE`) rather than throw those episodes away; `nightly-watch` then reports that run as failed. Nothing in the code is wrong and no secret is missing — this needs your decision, because turning the routine back on spends your Claude usage. Verified 2026-09-22 from the run logs of all eight failed runs and the routine's own state.
 
 **Steps:**
-1. Open https://github.com/JW-Incorporated/foray/actions/workflows/nightly-refresh.yml — a banner reading "This scheduled workflow is disabled" means click the button beside it to re-enable.
-2. If it shows enabled, check https://github.com/organizations/JW-Incorporated/settings/billing for exhausted included Actions minutes on the Team plan.
-3. If neither explains it, check whether any PR merged since 2026-09-12 12:02 UTC touched the `on: schedule` block in `.github/workflows/nightly-refresh.yml` or `nightly-watch.yml`.
+1. Decide whether nightly content should resume. If yes, tell Claude "re-enable foray-nightly-enrich" (routine `trig_019yeYEFW8mZLHDXGQL3vD5x`), or switch it back on yourself in your claude.ai scheduled routines.
+2. Clear the stranded 2026-09-14 digest, one of two ways:
+   - **Accept losing those 40 episodes (quick):** Actions → `nightly-refresh` → Run workflow, tick **overwrite_unmerged_digest**. The next scan starts fresh.
+   - **Keep them:** tell Claude "recover the 2026-09-14 nightly digest". It re-cuts the scan back to the 14th and opens `nightly/2026-09-14-recovery`, which is the branch name the guard looks for.
 
-**Worked if:** the Actions tab shows a run of nightly-refresh.yml that started after this item was filed.
+**Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
 
 ## #45 🟡 [DECIDE] Run the voice-engine probe on your phone — the one measurement no machine here can take (K-01)
 <!-- ha filed=2026-09-12 kind=default -->
