@@ -9179,12 +9179,39 @@ function forayListHtml() {
 function restoreNowPlayingRibbon() {
   const go = () => {
     try {
-      const restored = window.ForayPlayer?.restoreLastEpisode?.();
+      /* WHATEVER WAS PLAYED LAST (persona audit 2026-09-22, the car tier): a
+         part-played Foray that is newer than the last episode takes the bar;
+         otherwise the episode pointer does, as before. */
+      const restored = restoreLastForayRibbon(window.ForayPlayer)
+        || window.ForayPlayer?.restoreLastEpisode?.();
       if (restored && isHomeRoute()) renderCurrentPage();
     } catch (_) { /* a ribbon that cannot be restored is not a reason to fail boot */ }
   };
   if (window.ForayPlayer) go();
   else window.addEventListener("forayplayer:ready", go, { once: true });
+}
+
+/** The part-played Foray for the bar, when it is the most recent thing played —
+    or null, and the caller falls back to the episode pointer.
+
+    Resolved HERE because only the page holds the three Foray documents, and
+    through `forayViewOpts()` like every other Foray this page opens: a draft
+    the listener may not see resolves to null and is never advertised on the
+    bar. The resume point is read with the resolved running order in hand, so a
+    Foray whose segments moved resumes to the same audio (#40). Every step is
+    capability-checked: an older player module simply has no Foray ribbon. */
+function restoreLastForayRibbon(player) {
+  if (!player || typeof player.lastPlayedForay !== "function" || typeof player.restoreForay !== "function") return null;
+  if (!state.forays) return null;
+  const id = player.lastPlayedForay();
+  if (!id) return null;
+  const r = player.resolve(state.forays, {
+    id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
+  });
+  if (!r) return null;
+  const at = player.forayResume(id, { resolved: r });
+  if (!at) return null;
+  return player.restoreForay(r, { startElapsedSec: at.elapsedSec, discoverDoc: state.discover || null });
 }
 
 /** True when the current route is the home screen — the only page whose content

@@ -1211,7 +1211,8 @@ async function seekEpisodeTo(seconds) {
     || manager.state?.type === "idle"
     || manager.state?.type === "ended";
   if (nothingToSeekIn) {
-    restoredPending = { item: restoredPending?.item ?? current, positionSec: target };
+    /* Spread, so a restored FORAY keeps the Foray it will start (`restoreForay`). */
+    restoredPending = { ...(restoredPending ?? { item: current }), positionSec: target };
     render();
     return true;
   }
@@ -1342,7 +1343,11 @@ function setNowPlaying(item, why) {
      the rule this whole file is built on (see the header). */
   ui.sDesc.textContent = item.description || "";
   ui.sDesc.hidden = !item.description;
-  if (item.id) {
+  /* A RESTORED FORAY (`restoreForay`) is a bar with a Foray behind it and no
+     `foray` loaded yet: it links to its Foray page, never to an episode page
+     that does not exist. */
+  const forayId = foray ? foray.resolved.id : (item.forayId ?? null);
+  if (item.id && !item.forayId) {
     // Our own route, built from our own id — mirrors ui.forayLink below:
     // an in-app hash change, never target="_blank".
     ui.openLink.href = `#/episode/${encodeURIComponent(item.id)}`;
@@ -1350,10 +1355,10 @@ function setNowPlaying(item, why) {
   } else {
     ui.openLink.hidden = true;
   }
-  if (foray) {
+  if (forayId) {
     // Our own route, built from our own id — the only interpolation here is
     // encodeURIComponent's output, so no scheme can be smuggled in.
-    ui.forayLink.href = `#/foray/${encodeURIComponent(foray.resolved.id)}`;
+    ui.forayLink.href = `#/foray/${encodeURIComponent(forayId)}`;
     ui.forayLink.hidden = false;
   } else {
     ui.forayLink.hidden = true;
@@ -1665,9 +1670,18 @@ let restoredPending = null;
 async function setRunning(want, source = "tap") {
   if (!manager) return;
   if (want && restoredPending) {
-    const { item, positionSec } = restoredPending;
+    const { item, positionSec, foray: pendingForay } = restoredPending;
     restoredPending = null;
     diag.transport(source, "play-restored");
+    /* A RESTORED FORAY starts the Foray, at the position the bar shows — the
+       same `startElapsedSec` path the Foray page's own resume uses, so the two
+       cannot land in different places. */
+    if (pendingForay) {
+      await ForayPlayer.playForay(pendingForay.resolved, {
+        startElapsedSec: positionSec, discoverDoc: pendingForay.discoverDoc ?? null,
+      });
+      return;
+    }
     /* `play(item)`, NOT `play(item, null)`.
        FOUNDER, 2026-09-22, on build 2026092224: "the play button works on the
        Jump back in card but it does not work from the now playing bar down at
@@ -2601,6 +2615,66 @@ const ForayPlayer = {
       percent: pct === null ? undefined : Math.round(pct * 100),
       label: episodeRemainingLabel({ ...rec, duration_sec: durationSec }, shown),
     };
+  },
+
+  /**
+   * The Foray the listener was most recently IN, when that is more recent than
+   * the last ordinary episode — or null (persona audit 2026-09-22, the car tier:
+   * "a part-played Foray cannot be resumed from the mini bar").
+   *
+   * The durable pointer `restoreLastEpisode` reads is written only by `play()`,
+   * so after a relaunch mid-Foray the bar offered an unrelated episode from days
+   * earlier, and the Foray — the app's signature object, and an hour long — was
+   * four taps across three screens away. The Foray's own resume row already
+   * says where the listener got to and when; this compares the two `updated_at`
+   * stamps and names the Foray when it wins. The page resolves it (only the page
+   * holds the three documents) and hands it to `restoreForay`.
+   *
+   * Finished Forays have no row (reaching the end clears it), so a finished
+   * Foray never wins over the episode played after it.
+   */
+  lastPlayedForay() {
+    const rows = forayProgress.list();
+    const row = rows.find((r) => r && r.foray_id && !resumePoint(r, {})?.finished);
+    if (!row) return null;
+    const episodeAt = Date.parse(readLastEpisode(storage)?.updated_at || "");
+    const forayAt = Date.parse(row.updated_at || "");
+    if (!Number.isFinite(forayAt)) return null;
+    /* STRICTLY newer. Leaving a Foray for an episode flushes the Foray's row in
+       the same instant `play()` writes the episode pointer, so a tie means the
+       episode was the later choice. */
+    return !Number.isFinite(episodeAt) || forayAt > episodeAt ? row.foray_id : null;
+  },
+
+  /**
+   * Paint the mini bar with a part-played Foray, loading nothing — the Foray
+   * twin of `restoreLastEpisode`. The first press (bar, lock screen or car)
+   * starts it at `startElapsedSec` through `playForay`, via `restoredPending`;
+   * a scrub or ↺/↻ before that moves where it will start, the same rule the
+   * restored episode bar keeps. Returns the painted row, or null.
+   */
+  restoreForay(resolved, { startElapsedSec = 0, discoverDoc = null } = {}) {
+    if (current) return null; // something is already playing; never stomp it
+    if (!resolved || !resolved.playable?.length) return null;
+    ensureBooted();
+    const at = segmentAtElapsed(resolved.playable, startElapsedSec);
+    const total = resolved.playable.length;
+    /* The same handlers as a restored episode: `play` goes through
+       `setRunning`, whose restored branch starts the Foray. Installed before the
+       metadata, as `restoreLastEpisode` does, so the car never shows a play
+       button with nothing behind it (F5). */
+    media.setActions(episodeMediaSurface);
+    setNowPlaying({
+      id: `foray:${resolved.id}`,
+      forayId: resolved.id,
+      title: resolved.title || "",
+      show: at ? `Foray · part ${at.index + 1} of ${total}` : "Foray",
+      duration_sec: resolved.totalSec,
+    }, null);
+    const positionSec = Number.isFinite(startElapsedSec) && startElapsedSec > 0 ? startElapsedSec : 0;
+    restoredPending = { item: current, positionSec, foray: { resolved, discoverDoc } };
+    render();
+    return current;
   },
 
   restoreLastEpisode() {

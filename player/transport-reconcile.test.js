@@ -2180,3 +2180,65 @@ test("REPORT 3: a booted shell writes BOTH halves of the build into the record i
   assert.match(report, /^build web 2b808ec9d50c5b98 · native 2026092224 \(1\.4\.0\)$/m);
   restore();
 });
+
+/* ==================================================================== */
+/* part 9 — the bar offers whatever was played LAST (persona audit       */
+/*          2026-09-22, the car tier: "a part-played Foray cannot be     */
+/*          resumed from the mini bar")                                   */
+/* ==================================================================== */
+
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** An episode, then a Foray played to 50 s into its first segment (or the
+    other way round) — the rows the next launch finds on disk. */
+async function aSessionThatPlayed(t, order) {
+  const first = await bootClient(t);
+  for (const what of order) {
+    if (what === "episode") {
+      await first.client.play(episodeItem());
+      await settle();
+    } else {
+      await first.client.playForay(synthetic(), { startIndex: 0 });
+      await settle();
+      first.audio.currentTime = 150;          // segment sa is [100, 200]
+      first.audio.fire("timeupdate");
+      await settle();
+    }
+    await pause(5);                           // distinct `updated_at` stamps
+  }
+  transport(first.doc).press();
+  await settle();
+  const rows = [...first.storage.map];
+  first.restore();
+  return rows;
+}
+
+test("PERSONA: a Foray played after an episode takes the bar, and one press resumes it where it was", async (t) => {
+  /* KILLING MUTATIONS: make `lastPlayedForay` return null (the bar offers the
+     older episode), or delete the `pendingForay` branch in `setRunning` (the
+     press finds no audio to play). */
+  const carried = await aSessionThatPlayed(t, ["episode", "foray"]);
+  const { client, doc, audio, restore } = await bootClient(t, { seed: carried });
+  assert.equal(client.lastPlayedForay(), "f263", "the Foray is the most recent thing played");
+  const resolved = synthetic();
+  const at = client.forayResume("f263", { resolved });
+  assert.ok(client.restoreForay(resolved, { startElapsedSec: at.elapsedSec }), "the bar is painted");
+  assert.equal(find(doc.body, "fp-title").textContent, "A Foray");
+  assert.equal(audio.calls.includes("load"), false, "and nothing is loaded until the press");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(audio.src, "https://cdn.test/a.mp3");
+  assert.equal(audio.paused, false);
+  assert.ok(Math.abs(audio.currentTime - 150) < 1, `resumed at ${audio.currentTime}s`);
+  assert.equal(client.forayStatus()?.forayId, "f263", "as the Foray, not as an episode");
+  restore();
+});
+
+test("PERSONA: an episode played AFTER the Foray keeps the bar", async (t) => {
+  /* KILLING MUTATION: drop the `forayAt > episodeAt` comparison. */
+  const carried = await aSessionThatPlayed(t, ["foray", "episode"]);
+  const { client, restore } = await bootClient(t, { seed: carried });
+  assert.equal(client.lastPlayedForay(), null);
+  restore();
+});
