@@ -311,8 +311,73 @@ runs:
           -archivePath "$RUNNER_TEMP/Foray.xcarchive" \
           -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
           -exportPath "$RUNNER_TEMP/export" | tail -20
-        xcrun altool --upload-app -f "$RUNNER_TEMP/export/App.ipa" -t ios \
-          --apiKey "$APP_STORE_CONNECT_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+        # RETRY THE UPLOAD, AND ONLY THE UPLOAD.
+        #
+        # FOUNDER, 2026-09-22: "these releases are usually quite rocky and fail
+        # on a somewhat regular basis." Three of the first twenty-four release
+        # runs failed and ALL THREE were partial — one store got the build and
+        # the other did not. The one with a readable cause is run 35672098914:
+        # the archive was built, signed, exported and version-verified, and then
+        # Apple's ingestion server answered
+        #
+        #   CREATE BUILD (ASSET_UPLOAD): received status code 500 (500)
+        #
+        # once. A single 500 from someone else's server threw away a completed
+        # archive, failed the release, and left Play on a build TestFlight never
+        # received — which nobody noticed for sixteen hours.
+        #
+        # The archive already exists by this line, so another attempt costs
+        # seconds rather than a rebuild. That is the whole reason the retry
+        # belongs HERE and not around the job.
+        #
+        # WHY THE DECISION IS A MODULE. "Retry three times" is the wrong rule: a
+        # binary Apple REFUSES — duplicate build number, bad entitlement, invalid
+        # signature — is refused three more times, and the real reason ends up as
+        # the fourth copy of itself in the log. `tools/release/upload-retry.mjs`
+        # holds that discrimination and is tested against the verbatim output
+        # above; the loop stays here so a reader of the run log can see it.
+        #
+        # THE PARSE IS `sed`, NOT `eval`. Evaluating a child process's stdout as
+        # shell is not something this repo should start doing inside the one step
+        # a signing key passes through, and the three values are numbers and one
+        # lower-case word.
+        #
+        # FAILS CLOSED, DELIBERATELY. If the classifier cannot run at all, RETRY
+        # is empty, the `!= 1` test fires, and the step behaves exactly as it did
+        # before this block existed. A broken retry must not be able to invent a
+        # successful upload, and `while [ "$attempt" -le 5 ]` is a hard ceiling in
+        # case the module ever stops saying no.
+        UPLOAD_LOG="$ART/altool-upload.log"
+        attempt=1
+        uploaded=no
+        while [ "$attempt" -le 5 ]; do
+          echo "--- xcrun altool --upload-app: attempt $attempt"
+          set +e
+          xcrun altool --upload-app -f "$RUNNER_TEMP/export/App.ipa" -t ios \
+            --apiKey "$APP_STORE_CONNECT_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+            2>&1 | tee "$UPLOAD_LOG"
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            uploaded=yes
+            break
+          fi
+          VERDICT=$(node tools/release/upload-retry.mjs classify "$UPLOAD_LOG" "$attempt" || true)
+          RETRY=$(printf '%s' "$VERDICT" | sed -n 's/.*RETRY=\([01]\).*/\1/p')
+          REASON=$(printf '%s' "$VERDICT" | sed -n 's/.*REASON=\([a-z]*\).*/\1/p')
+          WAIT=$(printf '%s' "$VERDICT" | sed -n 's/.*SLEEP=\([0-9]*\).*/\1/p')
+          if [ "$RETRY" != "1" ]; then
+            echo "::error::TestFlight upload failed on attempt $attempt and will not be retried (${REASON:-unclassified}). See altool-upload.log in this job's artifacts."
+            exit 1
+          fi
+          echo "::warning::TestFlight upload failed on attempt $attempt (${REASON:-unclassified}); retrying in ${WAIT:-60}s."
+          sleep "${WAIT:-60}"
+          attempt=$((attempt + 1))
+        done
+        if [ "$uploaded" != "yes" ]; then
+          echo "::error::TestFlight upload did not succeed within the attempt budget."
+          exit 1
+        fi
         echo "uploaded=true" >> "$GITHUB_OUTPUT"
 
     - name: Record 'not uploaded' when signing was not ready
