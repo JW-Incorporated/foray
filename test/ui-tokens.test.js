@@ -367,3 +367,63 @@ test("the Delete-everything button is painted by the danger token, not the viole
   assert.ok(/--danger:\s*#[0-9a-f]{3,8}/i.test(tokenBlock().text),
     "--danger must be defined in the body.ui-v2 token block");
 });
+
+/* ---------- --faint is for disabled and decorative only (audit 2026-09-22, qa row 79) ----------
+   `--faint` #6E6579 is 3.1:1 on --surface and 2.7:1 on --surface2: under the
+   4.5:1 text minimum everywhere, and on --surface2 under even the 3:1 floor for
+   a control glyph. It was the token reached for on real copy ("Not available to
+   play", an aged-out title, the player's timing note, "remove this playlist",
+   an idle tab's label) and on Up Next's destructive ✕. The rule this pins is
+   the audit's: text and live controls take `--muted`; `--faint` paints only a
+   control that is disabled, a border, or one of the named exceptions below,
+   each with its measured reason.
+   MUTATION: put `color: var(--faint)` back on `body.ui-v2 .not-playable` (or on
+   `button.up-next-remove`) -> the first test goes red. */
+function hexLum(hex) {
+  const n = hex.replace("#", "");
+  const c = [0, 2, 4].map((i) => parseInt(n.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function contrast(a, b) {
+  const [x, y] = [hexLum(a), hexLum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+
+const FAINT_TEXT_EXCEPTIONS = {
+  /* An UNSTARRED star is a non-text glyph on the row's --surface; 3:1 applies. */
+  "body.ui-v2 button.star": () => contrast(TOKENS["--faint"], TOKENS["--surface"]) >= 3,
+  /* A utility with no user: the census below keeps it that way. */
+  "body.ui-v2 .ui-v2-text-faint": () => true,
+};
+
+test("no text or live control is painted in --faint", () => {
+  const offenders = [];
+  for (const r of RULES) {
+    const paints = r.decls.some((d) => d.prop === "color" && /var\(--faint\b/.test(d.value));
+    if (!paints) continue;
+    for (const sel of r.selectors) {
+      if (/:disabled\b/.test(sel) && !/:not\(:disabled\)/.test(sel)) continue;
+      const ok = FAINT_TEXT_EXCEPTIONS[sel];
+      if (ok && ok()) continue;
+      offenders.push(sel);
+    }
+  }
+  assert.deepEqual(offenders, [],
+    `these selectors paint text or a live control in --faint (under 4.5:1): ${offenders.join(", ")} — use --muted`);
+});
+
+test("the token the copy moved to is readable on both surfaces, and --faint is not", () => {
+  for (const bg of ["--surface", "--surface2", "--bg"]) {
+    assert.ok(contrast(TOKENS["--muted"], TOKENS[bg]) >= 4.5, `--muted on ${bg} is under 4.5:1`);
+  }
+  assert.ok(contrast(TOKENS["--faint"], TOKENS["--surface2"]) < 3,
+    "if --faint was lightened past 3:1 the exception list above can be revisited");
+});
+
+test("the --faint text utility has no user in the shipped markup", () => {
+  const sources = ["app.js", "index.html", ...fs.readdirSync(path.join(ROOT, "player"))
+    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js")).map((f) => `player/${f}`)];
+  const users = sources.filter((f) => fs.readFileSync(path.join(ROOT, f), "utf8").includes("ui-v2-text-faint"));
+  assert.deepEqual(users, [], "a new user of .ui-v2-text-faint paints text at 3:1 — use .ui-v2-text-muted");
+});

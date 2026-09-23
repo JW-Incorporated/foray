@@ -1032,7 +1032,7 @@ const FLOORS = {
      re-own everything a colour-scheme query can change, check the JS-written
      claim, and resolve the cascade for "Delete everything" to the danger
      token. */
-  "test/ui-tokens.test.js": 8,
+  "test/ui-tokens.test.js": 11, // 2026-09-23 audit sweep (qa row 79): --faint paints no text or live control; --muted is readable on every surface; the --faint utility has no user; 8 -> 11
   /* U-02 (docs/ui-transition-plan.md, kanban t_806e5d01): the cp_ui_v2 flag
      and the four-tab bar shell. Eleven tests -- off by default, all four
      tabs in order when on, removed (not hidden) when turned back off, the
