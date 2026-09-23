@@ -358,6 +358,27 @@ test("#/forays with no Forays document says it could not load them, and Try agai
   assert.match(m.html(), /First Foray/, `Try again re-fetches the documents and repaints: ${m.html()}`);
 });
 
+test("REVIEW: a Try again whose segments fail does not adopt a half set; the failure and Try again stay", async () => {
+  /* retryForayDocs adopted the set whenever forays.json came back, so a failed
+     segments.json left a Foray list with no segment pool: every clip "couldn't
+     be found" and the Try again was gone. MUTATION: put the guard back to
+     `if (forays)`. */
+  const m = mount({
+    hash: "#/forays", bridge: bridge(),
+    fetchImpl: (url) => (url.includes("data/forays.json") ? okJson(FORAYS_DOC)
+      : url.includes("data/segments.json") ? Promise.resolve({ ok: false, status: 503, json: async () => ({}) })
+      : url.includes("data/segment-sources.json") ? okJson({ sources: [] })
+      : new Promise(() => {})),
+  });
+  m.state.forays = null;
+  m.ctx.renderCurrentPage();
+  assert.ok(m.retry(), "precondition: the failure offers Try again");
+  await settle();
+  assert.strictEqual(m.state.forays, null, "a set missing its segments is not adopted");
+  assert.match(m.html(), /Couldn't load forays right now\./, "the page still says the load failed");
+  assert.ok(m.view.querySelector("[data-retry]"), "and offers Try again again");
+});
+
 test("#/forays explains what a Foray is, from the same sentence the first-run sheet uses", () => {
   /* The first-run sheet was the only place the product said what a Foray is, and
      "Skip for now" hid it forever. The page's subtitle now carries it — and it

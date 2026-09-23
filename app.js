@@ -13111,16 +13111,19 @@ function applyForaySet(set) {
 
 /** "Try again" behind a Foray page that could not load its documents (audit
     2026-09-22, theme G): the same three fetches `init()` made, swapped in as one
-    set through the one swap, then the page repainted. Adopted only when the
-    Foray list itself came back — a second failure must land on the same failed
-    state, not on a list half-replaced by nulls. */
+    set through the one swap, then the page repainted. Adopted only when ALL
+    THREE came back (review 2026-09-23: it checked only the list, so a retry
+    whose segments.json failed adopted a set with no segment pool, and the page
+    said "N clips from this foray couldn't be found" — a network failure painted
+    as a fact about the content, with its Try again gone). A second failure
+    lands on the same failed state, with a fresh Try again. */
 async function retryForayDocs() {
   const [forays, segments, sources] = await Promise.all([
     fetchJson("data/forays.json"),
     fetchJson("data/segments.json"),
     fetchJson("data/segment-sources.json"),
   ]);
-  if (forays) applyForaySet({ forays, segments, sources });
+  if (forays && segments && sources) applyForaySet({ forays, segments, sources });
   renderCurrentPage();
 }
 
