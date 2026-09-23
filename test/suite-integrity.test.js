@@ -118,7 +118,7 @@ const FLOORS = {
      deleted once V-01's Audition button replaced it for the human tests it
      existed to support. See HUMAN-ACTIONS #29 and docs/curation/
      tts-locked-screen-check.md (kept as the historical record). */
-  "player/foray-playback.test.js": 87,
+  "player/foray-playback.test.js": 90, // 2026-09-22 audit (L2): the Foray page paints its main button from `running` and offers "Start over" on a finished Foray; 88 -> 90
   /* 2026-09-18, founder: "the podcast I was listening to should still be in the
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
@@ -175,7 +175,7 @@ const FLOORS = {
      the only test here constructed with `prefetch: true`, i.e. the only one that can
      see a code path nothing in production enables. That is precisely what makes it
      easy to delete as "testing a dead feature", and precisely why it is floored. */
-  "player/transport-reconcile.test.js": 35, // #689 (2026-09-14): part 4 — the four founder reports from one car session, as episode tests rather than Foray ones; 27 -> 34
+  "player/transport-reconcile.test.js": 39, // 2026-09-22 audit (L2): part 5 — the card, the lock screen and the Foray page read `transportIsRunning()`; a finished Foray starts over; 35 -> 39 // #689 (2026-09-14): part 4 — the four founder reports from one car session, as episode tests rather than Foray ones; 27 -> 34
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that

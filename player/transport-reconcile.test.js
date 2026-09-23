@@ -814,7 +814,7 @@ class MemoryStorage {
    scope. A test that booted first and seeded second would be asserting against
    an empty store and would pass for the wrong reason. */
 let bootSeq = 0;
-async function bootClient(t, { seed = [] } = {}) {
+async function bootClient(t, { seed = [], mediaSession = null } = {}) {
   const audio = new Element();
   const storage = new MemoryStorage();
   for (const [k, v] of seed) storage.setItem(k, v);
@@ -858,7 +858,13 @@ async function bootClient(t, { seed = [] } = {}) {
   set("window", win);
   set("document", doc);
   set("localStorage", storage);
-  set("navigator", { storage: { persisted: async () => false } });
+  /* `mediaSession` (2026-09-22) is the lock screen and the car, as the page sees
+     them: a `navigator.mediaSession` the test can read back. Absent by default,
+     so every test above keeps the inert bridge it was written against. */
+  set("navigator", {
+    storage: { persisted: async () => false },
+    ...(mediaSession ? { mediaSession } : {}),
+  });
   set("Event", class { constructor(type) { this.type = type; } });
   /* `HtmlAudioBackend` constructs `new Audio()`, not `document.createElement`.
      One element per boot, handed back so the test can be the car. */
@@ -1492,4 +1498,106 @@ test("pause() is a postcondition, not a state transition: an audible element is 
   await m.pause();
   assert.equal(backend.paused, true, "the second pause has to reach the element");
   assert.equal(m.state.type, "interrupted");
+});
+
+/* ==================================================================== */
+/* part 5 — the 2026-09-22 audit: one authority for every surface        */
+/* ==================================================================== */
+
+/* WHAT THIS PART IS FOR. The audit's diagnosis of the whole player: "a correct
+   fix was written once, at the call site that hurt, and never promoted to the
+   rule". #689 made `transportIsRunning()` the authority for the mini bar's
+   button and its press; the card beside it, the lock screen and the Foray page
+   kept reading the belief. Each test below drives the #689 drift — the element
+   audible while the machine says paused — and asks one more surface what it
+   says. */
+
+/** A `navigator.mediaSession` that remembers what the page told it. */
+function fakeMediaSession() {
+  return {
+    handlers: new Map(),
+    metadata: null,
+    playbackState: "none",
+    setActionHandler(action, fn) {
+      if (fn) this.handlers.set(action, fn); else this.handlers.delete(action);
+    },
+    setPositionState() {},
+  };
+}
+
+/** Play an episode, pause it, then make the element audible behind the
+    machine's back — the #689 drift, by its observable consequence. */
+async function driftedEpisode(t, opts = {}) {
+  const booted = await bootClient(t, opts);
+  await booted.client.play(episodeItem());
+  await settle();
+  transport(booted.doc).press();               // the machine now says paused
+  await settle();
+  booted.audio.paused = false;                 // ...and sound is coming out
+  booted.audio.fire("timeupdate");             // the next ordinary repaint
+  return booted;
+}
+
+test("AUDIT: the card's glyph comes from the same answer as the bar's", async (t) => {
+  /* KILLING MUTATION: `transportIsRunning()` back to `isPlaying()` in
+     `syncCardButtons`. The card then reads "▶" beside a bar reading "❚❚". */
+  const booted = await bootClient(t);
+  const card = new Node("button");
+  card.dataset.play = "ep-a";
+  booted.doc.querySelectorAll = (sel) => (sel === "[data-play]" ? [card] : []);
+  await booted.client.play(episodeItem());
+  await settle();
+  transport(booted.doc).press();
+  await settle();
+  assert.equal(card.textContent, "▶", "precondition: paused, and the card says so");
+  booted.audio.paused = false;
+  booted.audio.fire("timeupdate");
+  assert.equal(transport(booted.doc).glyph, "❚❚", "precondition: the bar reads the element");
+  assert.equal(card.textContent, "❚❚", "the card must not disagree with the bar");
+  booted.restore();
+});
+
+test("AUDIT: the lock screen says PLAYING while sound is coming out", async (t) => {
+  /* KILLING MUTATION: `playing: transportIsRunning()` back to
+     `playing: isPlaying()` in the episode branch of `syncMediaSession`. */
+  const ms = fakeMediaSession();
+  const booted = await driftedEpisode(t, { mediaSession: ms });
+  assert.equal(ms.playbackState, "playing");
+  booted.restore();
+});
+
+test("AUDIT: the Foray page is handed the answer its press is decided by", async (t) => {
+  /* KILLING MUTATION: delete `running: transportIsRunning()` from
+     `forayStateSnapshot`. app.js then falls back to `playing || gap`, which is
+     false here, and paints "▶ Resume" over sound. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+  transport(doc).press();
+  await settle();
+  assert.equal(client.forayStatus().running, false, "precondition: paused");
+  audio.paused = false;
+  assert.equal(client.forayStatus().playing, false, "the belief still says paused");
+  assert.equal(client.forayStatus().running, true, "the snapshot carries the element's answer");
+  restore();
+});
+
+test("AUDIT: play on a FINISHED Foray starts it over instead of replaying its last segment", async (t) => {
+  /* The page now labels this press "Start over", and this is what makes the
+     label true. KILLING MUTATION: delete the `ended` branch in `setRunning` —
+     the press then re-loads segment 2 at its in-point and the index stays 1. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.playForay(synthetic(), { startIndex: 1 });
+  await settle();
+  await settle();
+  audio.runOut();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().ended, true, "precondition: the Foray is over");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 0, "the press goes back to the first segment");
+  assert.equal(audio.src, "https://cdn.test/a.mp3", "and loads its audio");
+  restore();
 });

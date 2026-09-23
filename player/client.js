@@ -914,6 +914,13 @@ function forayStateSnapshot() {
     index: foray.index,
     loading: manager?.state?.type === "loadingItem",
     playing: isPlaying(),
+    /* THE ANSWER THE PRESS IS DECIDED BY (audit 2026-09-22). `forayToggle`
+       calls `setRunning(!transportIsRunning())`, and the Foray page painted its
+       main button from `playing || gap` — the belief without the element. In
+       the #689 drift the button said "▶ Resume" over sound and its press
+       paused. A page in another file cannot call `transportIsRunning()`, so it
+       is handed the value; `playing` and `gap` stay for what they describe. */
+    running: transportIsRunning(),
     /* The 2.0 s seam beat between two unbridged segments (player/seam-gap.js).
        Structurally this is `loadingItem` too, but calling it "Loading…" on the
        page would be the app apologising for a silence it chose on purpose —
@@ -1096,9 +1103,17 @@ function render() {
 }
 
 function syncCardButtons() {
-  // Reflect play state on the originating card so the page and the bar agree.
+  /* Reflect play state on the originating card so the page and the bar agree.
+     `transportIsRunning()`, the same authority `render()` paints the bar from
+     two calls up (audit 2026-09-22). This read `isPlaying()` under a comment
+     promising "a seam beat reads as playing everywhere", so during the 2.0 s
+     beat — and in the #689 drift, sound out of a machine that says paused — the
+     card showed "▶" beside a bar showing "❚❚". Since #735 the card's press
+     delegates to the bar's toggle, so its glyph has to come from the same
+     answer that toggle decides by. */
+  const running = transportIsRunning();
   document.querySelectorAll("[data-play]").forEach((b) => {
-    const on = current && b.dataset.play === current.id && isPlaying();
+    const on = current && b.dataset.play === current.id && running;
     if (on) b.dataset.playing = "1"; else delete b.dataset.playing;
     b.textContent = on ? "❚❚" : "▶";
   });
@@ -1464,6 +1479,16 @@ async function setRunning(want, source = "tap") {
      Safari's gesture window, so this is belt and braces; it is cheap, and #225
      is the bug where the belt broke. */
   if (isPlaying()) await manager.reconcileWithBackend(`transport:${source}`);
+  /* A FINISHED FORAY STARTS OVER (audit 2026-09-22). `manager.resume()` from
+     `ended` re-loads the LAST segment at its in-point, so "play" on a Foray
+     that had finished replayed its final ninety seconds and ended again — while
+     the Foray page's button offered to "Resume" something with nothing left to
+     resume. The page now says "Start over", and this is what makes that true
+     for every surface that presses play. */
+  if (want && foray && manager.state?.type === "ended") {
+    await ForayPlayer.forayJump(0);
+    return;
+  }
   /* `transportIsRunning()`, NOT `isRunning()`. The belief alone is what made a
      press a no-op when it was wrong — "the button said play, sound was coming
      out, and pressing it did nothing but repaint". */
@@ -1533,7 +1558,7 @@ async function stopAndClose({ persist = true } = {}) {
   if (wasForay?.onChange) {
     wasForay.onChange({
       forayId: wasForay.resolved.id, index: -1, loading: false, playing: false,
-      ended: false, elapsedSec: 0, totalSec: wasForay.resolved.totalSec, error: null,
+      running: false, ended: false, elapsedSec: 0, totalSec: wasForay.resolved.totalSec, error: null,
     });
   }
   syncCardButtons();
@@ -1688,7 +1713,13 @@ function syncMediaSession() {
          extrapolation is dimensionally right: position and duration are content
          seconds and the rate is content-per-wall. */
       playbackRate: backend?.rate ?? 1,
-      playing: isPlaying(),
+      /* `transportIsRunning()`, not `isPlaying()` (audit 2026-09-22). The OS
+         surface is a transport like any other and must be painted from the
+         answer the press is decided by: in the #689 drift the element is audible
+         while the machine says paused, and the lock screen and the car said
+         PAUSED over sound. `playbackState` is also what tells the OS whether to
+         keep the session foregrounded, so the lie was not only cosmetic. */
+      playing: transportIsRunning(),
       // The 2.0 s authored beat reads as playing, exactly as `isRunning()` has
       // it for the in-page buttons. `media-session.js` §4 is the argument.
       inSeamGap: manager?.inSeamGap === true,
@@ -1713,7 +1744,8 @@ function syncMediaSession() {
        four of that suite's wiring assertions red. Block comments go first and are
        safe. */
     playbackRate: backend?.rate ?? 1,
-    playing: isPlaying(),
+    /* The same authority as the Foray branch above, for the same reason. */
+    playing: transportIsRunning(),
     ended: manager?.state?.type === "ended",
   }));
 }

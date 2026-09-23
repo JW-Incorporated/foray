@@ -8997,11 +8997,24 @@ function paintForay(s) {
     // it is between two segments on purpose, and the button has to mean "stop"
     // for the two seconds the silence lasts. Labelling those two seconds
     // "Loading…" would be the app apologising for its own edit.
-    const running = s.playing || s.gap;
+    //
+    // `s.running` FIRST (audit 2026-09-22): it is the player's
+    // `transportIsRunning()`, the same answer `forayToggle` decides the press
+    // by. `playing || gap` is the belief alone, and in the #689 drift it said
+    // "▶ Resume" over sound while the press paused. The fallback is for a
+    // player module of an older vintage, which sends no `running`.
+    //
+    // A FINISHED Foray is a fifth state, not a paused one: there is nothing to
+    // resume, the lock screen has already dropped its transport, and the press
+    // starts it from the top (`setRunning`'s ended branch in player/client.js).
+    const running = typeof s.running === "boolean" ? s.running : (s.playing || s.gap);
     const started = live || elapsed > 0;
-    const label = running ? "❚❚ Pause" : (s.loading ? "Loading…" : (started ? "▶ Resume" : "▶ Play"));
+    const label = running ? "❚❚ Pause"
+      : s.loading ? "Loading…"
+      : s.ended ? "▶ Start over"
+      : started ? "▶ Resume" : "▶ Play";
     playBtn.textContent = label;
-    playBtn.setAttribute("aria-label", running ? "Pause" : "Play");
+    playBtn.setAttribute("aria-label", running ? "Pause" : (s.ended ? "Start over" : "Play"));
   }
   // The beat, for CSS: the strip holds still at a boundary for 2.0 s and this
   // is how a stylesheet can say so without the page inventing new copy.

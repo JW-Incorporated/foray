@@ -1410,6 +1410,38 @@ test("during a seam beat the page says Pause, not Loading — the silence is del
   assert.equal(dom.el("fy-strip").classList.contains("is-seam"), false);
 });
 
+test("AUDIT 2026-09-22: the main button is painted from `running`, the answer its press is decided by", async () => {
+  /* The #689 drift on the Foray page: the element is audible while the machine
+     says paused. `forayToggle` presses from `transportIsRunning()`, so a label
+     painted from `playing || gap` said "▶ Resume" over sound and its press
+     paused. KILLING MUTATION: paint from `s.playing || s.gap` again. */
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  const base = { forayId: FORAY_ID, index: 4, ended: false, elapsedSec: 600, totalSec: resolved.totalSec, error: null };
+  onChange({ ...base, playing: false, loading: false, gap: false, running: true });
+  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Pause");
+  // And an older player module, which sends no `running`, still paints from the belief.
+  onChange({ ...base, playing: true, loading: false, gap: false });
+  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+});
+
+test("AUDIT 2026-09-22: a FINISHED Foray offers to start over, not to resume", async () => {
+  /* There is nothing to resume at the end, and the lock screen has already
+     dropped its transport. KILLING MUTATION: delete the `s.ended` branch. */
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  onChange({
+    forayId: FORAY_ID, index: resolved.playable.length - 1, playing: false, running: false,
+    loading: false, gap: false, ended: true, elapsedSec: resolved.totalSec,
+    totalSec: resolved.totalSec, error: null,
+  });
+  assert.equal(dom.el("fy-play").textContent, "▶ Start over");
+  assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Start over");
+});
+
 /* ================================================ a start that fails (#225) ===
 
    The founder, on a phone, on the live site: "starting it was difficult, not
