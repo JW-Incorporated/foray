@@ -9434,16 +9434,18 @@ function bindDrawerToggles() {
 
    A native <details>, so it opens from a tap, Enter or Space and announces its
    state with no script, and it starts CLOSED on every launch. Built once;
-   every caller gets the same element. */
+   every caller gets the same element — remembered on the drawer itself, the
+   way `ensureInterestsDrawerLink` remembers its link, so a lookup that cannot
+   see appended nodes can never build a second group. */
 function drawerDevGroup() {
   const drawer = $("#drawer");
   if (!drawer) return null;
-  const existing = $("#drawer-dev");
-  if (existing) return existing;
+  if (drawer._devGroup) return drawer._devGroup;
   const group = ddEl("details", "drawer-dev", null);
   group.id = "drawer-dev";
-  group.append(ddEl("summary", "drawer-item", "Developer"));
+  group.appendChild(ddEl("summary", "drawer-item", "Developer"));
   drawer.appendChild(group);
+  drawer._devGroup = group;
   return group;
 }
 
