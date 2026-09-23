@@ -334,7 +334,7 @@ test("own playlists rank before generated candidates, and a generated one is bad
 
   const html = m.byId.get("pl-search-results").innerHTML;
   const ownIdx = html.indexOf("My History Mix");
-  const genIdx = html.indexOf("gen-history/rome");
+  const genIdx = html.indexOf("gen-history%2Frome");   // playlistRoute() encodes (2026-09-22)
   assert.ok(ownIdx !== -1 && genIdx !== -1, "both an own and a generated result must be present");
   assert.ok(ownIdx < genIdx, "the own playlist must rank before the generated candidate");
   assert.ok(html.includes("Generated for you"), "the generated candidate must carry the badge");

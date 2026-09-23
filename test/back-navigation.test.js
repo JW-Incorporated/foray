@@ -5,7 +5,7 @@
  * `<a class="back" href="#/">`. Routing is hash-only (`hashchange` ->
  * route()), so the browser's own history already has the previous page in
  * it; app.js calls `history.back()` from a delegated click handler whenever
- * the in-app history it keeps (`navStack`) says there is a real step behind
+ * the in-app history it keeps says there is a real step behind
  * the current page, and otherwise lets the `#/` href stand. That second
  * path is the cold-open case: a deep link opened fresh has no in-app step
  * behind it, and `history.back()` there would leave the app or do nothing.
@@ -13,8 +13,8 @@
  * WHAT THIS PROVES
  *  1. cold open: no in-app step -> the href stands, history.back() untouched
  *  2. one step in: history.back() once, and the link's default is cancelled
- *  3. coming back where you were POPS the step, so the stack does not grow
- *     forever and a later ‹ from the first page still lands on Home
+ *  3. going back steps through the REAL history, and a forward tap onto the
+ *     page two steps back is forward (2026-09-22: it was read as a back-step)
  *  4. a click anywhere else in #view is left alone
  *  5. multiple different entry points (home, search results, another
  *     show's similar-shows row, a deep link) all produce the SAME behavior:
@@ -28,7 +28,7 @@
  *
  * Harness: the same node:vm DOM stub the other app.js suites use, duplicated
  * rather than imported (repo convention — see test/show-page.test.js). The
- * only thing it adds is a counting `history.back`. route() is driven with
+ * only thing it adds is a fake browser history (see fakeHistory). route() is driven with
  * `renderCurrentPage` and `openDrawer` stubbed out, because what is under
  * test is the step-keeping, not the page each step paints.
  *
@@ -67,10 +67,47 @@ const PAGE_IDS = [
   "player-toggle", "autoadvance-toggle", "menu-btn", "refresh-btn", "banner-slot",
 ];
 
-function mount() {
+/* A BROWSER HISTORY, faithfully enough for the router (2026-09-22). The router
+   now reads WHICH KIND of step it is from the entry's own `history.state`, not
+   from the shape of a stack of hashes — so the fake has to be a history: a list
+   of entries, each with its own hash and state, a cursor, and the two ways a
+   page moves through it. A link pushes (discarding the forward branch, as a
+   browser does); `back()` moves the cursor and hands that entry's state back.
+   The old fake counted `back()` calls and moved nothing, which is exactly the
+   forgiving-fixture shape CLAUDE.md warns about: it could not express "a
+   forward tap onto the page two steps back", the case the stack got wrong. */
+function fakeHistory(ctx, calls, startState = null) {
+  const entries = [{ hash: ctx.location.hash, state: startState }];
+  let at = 0;
+  const history = {
+    scrollRestoration: "auto",
+    get state() { return entries[at].state; },
+    get length() { return entries.length; },
+    replaceState(state, _title, url) {
+      entries[at].state = state;
+      if (url !== undefined && url !== null) {
+        const i = String(url).indexOf("#");
+        entries[at].hash = i >= 0 ? String(url).slice(i) : "";
+        ctx.location.hash = entries[at].hash;
+      }
+    },
+    pushState() { throw new Error("the router never pushes; links do"); },
+    back() { calls.back++; if (at > 0) { at--; ctx.location.hash = entries[at].hash; } },
+  };
+  return {
+    history,
+    link(hash) { entries.length = at + 1; entries.push({ hash, state: null }); at++; ctx.location.hash = hash; },
+    /* The page's first address: the entry the app was opened on. */
+    arrive(hash) { entries[at].hash = hash; ctx.location.hash = hash; },
+    hashes: () => entries.map((e) => e.hash),
+  };
+}
+
+function mount({ startState = null } = {}) {
   const byId = new Map(PAGE_IDS.map((id) => { const el = makeEl("div"); el.id = id; return [id, el]; }));
   const body = makeEl("body");
   const calls = { back: 0 };
+  let nav = null;
   const ctx = {
     console: { ...console, warn() {}, error() {} },
     fetch: () => new Promise(() => {}),   // init() never completes; route() is driven by hand
@@ -84,13 +121,14 @@ function mount() {
     navigator: { userAgent: "node" },
     addEventListener() {}, removeEventListener() {},
     location: { hash: "#/", search: "", pathname: "/", href: "https://x.test/" },
-    history: { back() { calls.back++; }, replaceState() {}, pushState() {} },
     CSS: { escape: (s) => String(s) },
     URL, URLSearchParams, Math, Date, JSON, Promise, clearTimeout,
     setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
     requestAnimationFrame: (fn) => { const t = setTimeout(fn, 0); if (t && t.unref) t.unref(); return t; },
     encodeURIComponent, decodeURIComponent,
   };
+  nav = fakeHistory(ctx, calls, startState);
+  ctx.history = nav.history;
   ctx.window = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -101,9 +139,19 @@ function mount() {
      the context's global, so the two page-painting calls route() makes can
      be replaced from outside. `state.ready` gates route() entirely. */
   evalIn("state.ready = true; renderCurrentPage = () => {}; openDrawer = () => {};");
+  let routed = false;
   return {
-    ctx, calls, evalIn,
-    go(hash) { ctx.location.hash = hash; evalIn("route()"); },
+    ctx, calls, evalIn, nav,
+    /* A link (or the first arrival): a new entry, then the hashchange. */
+    go(hash) {
+      if (routed) nav.link(hash); else nav.arrive(hash);
+      routed = true;
+      evalIn("route()");
+    },
+    /* The browser's back: the cursor moves, then the hashchange lands. */
+    back() { nav.history.back(); evalIn("route()"); },
+    /* A hashchange landing for a step already taken (e.g. by ‹'s history.back()). */
+    land() { evalIn("route()"); },
     canGoBack: () => evalIn("canGoBackInApp()"),
     /* A click event as the delegated handler sees it. `onBack` says whether
        the click landed on an `a.back`; the fake's `closest` answers exactly
@@ -156,19 +204,44 @@ test("one step into the app: ‹ calls history.back() exactly once and cancels t
 /* 3. RETURNING WHERE YOU WERE POPS THE STACK                            */
 /* ==================================================================== */
 
-test("landing back on the previous hash pops the stack instead of growing it forever", () => {
-  /* MUTATION: change `noteNavigation` to always push, never pop. The final
-     assertion fails: after "returning" to #/, the stack still thinks #/
-     has a step behind it (it does not — #/ is the first page again). */
+test("going back steps back through the real history, down to the first page", () => {
+  /* MUTATION: treat a returned-to entry as a new one (drop the
+     `stamped < navIndex` branch of noteNavigation). The final assertion
+     fails: back on the first page, the app still thinks there is a step. */
   const m = mount();
   m.go("#/");
   m.go("#/shows");
   m.go("#/show/abc");
-  // simulate history.back() actually landing on #/shows (hashchange -> route())
-  m.go("#/shows");
+  m.back();
+  assert.strictEqual(m.ctx.location.hash, "#/shows");
   assert.strictEqual(m.canGoBack(), true, "one step (to #/) still remains");
-  m.go("#/"); // and popping that one too returns to the true start
+  m.back();
   assert.strictEqual(m.canGoBack(), false, "back at the first page ever rendered, no step behind it");
+});
+
+test("a FORWARD tap onto the page two steps back is a forward step, not a back-step", () => {
+  /* Audit 2026-09-22 (qa 130): Search tab -> a show -> the Search tab again.
+     The stack-shape rule ("landing on the hash two back is back") called that
+     a back-step, restored an old scroll offset, and shortened the stack by
+     one, so ‹ on that screen stopped meaning one step back. The history entry
+     is new, so it is forward. MUTATION: restore the stack-shape inference. */
+  const m = mount();
+  m.go("#/shows");
+  m.go("#/show/abc");
+  m.go("#/shows");      // the tab, not ‹
+  assert.strictEqual(m.evalIn("navIndex"), 2, "three entries deep, not back to the first");
+  m.click();            // ‹ from here goes to the SHOW, the real step behind
+  m.land();
+  assert.strictEqual(m.ctx.location.hash, "#/show/abc");
+});
+
+test("after a reload the entry keeps its place, so ‹ still steps back inside the app", () => {
+  /* `history.state` survives a reload; the old stack did not, so a reload
+     made ‹ fall back to Home from anywhere. MUTATION: start navIndex at 0
+     regardless of the entry's stamp. */
+  const m = mount({ startState: { fyIdx: 3 } });
+  m.go("#/show/abc");
+  assert.strictEqual(m.canGoBack(), true);
 });
 
 /* ==================================================================== */
@@ -232,10 +305,10 @@ test("tapping ‹ twice fast (before the async history.back() step lands) only g
   m.go("#/");
   m.go("#/shows");
   m.click();
-  m.click(); // the hashchange from the first tap has not "landed" (go() not called again)
+  m.click(); // the hashchange from the first tap has not "landed" (route() not run again)
   assert.strictEqual(m.calls.back, 1, "the second tap must be a no-op until the first step lands");
   // Once the step actually lands (route() runs again), backPending resets
-  m.go("#/");
+  m.land();
   m.go("#/shows");
   m.click();
   assert.strictEqual(m.calls.back, 2, "a fresh navigation clears the pending flag for the next tap");
@@ -255,7 +328,7 @@ test("leaveRemovedPlaylist goes back one step when the list is right behind this
   m.go("#/playlist/xyz");
   m.evalIn("leaveRemovedPlaylist()");
   assert.strictEqual(m.calls.back, 1, "must reuse history.back() when the list is the step behind");
-  assert.strictEqual(m.ctx.location.hash, "#/playlist/xyz", "leaveRemovedPlaylist itself never touches location.hash on this path");
+  assert.strictEqual(m.ctx.location.hash, "#/playlists", "the browser's own step lands on the list");
 });
 
 test("leaveRemovedPlaylist navigates directly to the list when there is no such step behind it", () => {
@@ -270,6 +343,15 @@ test("leaveRemovedPlaylist navigates directly to the list when there is no such 
   m.evalIn("leaveRemovedPlaylist()");
   assert.strictEqual(m.calls.back, 0);
   assert.strictEqual(m.ctx.location.hash, "#/playlists");
+  /* AND THE REMOVED PLAYLIST IS NOT ONE ‹ AWAY (audit 2026-09-22, qa 117). A
+     pushed `location.hash = "#/playlists"` left its entry directly behind the
+     list, so the very next ‹ opened "Playlist not found" for the thing just
+     deleted. MUTATION: restore `location.hash = "#/playlists"` in the else
+     branch — the entry list keeps #/playlist/xyz and the ‹ below lands on it. */
+  assert.ok(!m.nav.hashes().includes("#/playlist/xyz"), `the removed playlist's entry must be gone: ${m.nav.hashes()}`);
+  m.click();
+  m.land();
+  assert.strictEqual(m.ctx.location.hash, "#/show/abc", "‹ from the list goes to where the listener came from");
 });
 
 test("a removed/missing playlist still renders a page head with a working ‹ back link", () => {

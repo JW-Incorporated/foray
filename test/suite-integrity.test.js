@@ -270,7 +270,7 @@ const FLOORS = {
      needing a special case, and a deep link into a tab-owned route is a
      cold open like any other -- two more journeys added to the list this
      suite already existed to protect. */
-  "test/back-navigation.test.js": 11,
+  "test/back-navigation.test.js": 13, // 2026-09-22: the step comes from the real history entry (a forward tap onto the page two back; a reload keeps ‹) and a removed playlist is not one ‹ away; 11 -> 13
   /* Collapsing page header reappears on scroll-up (kanban t_0faae03f, same
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
@@ -288,7 +288,13 @@ const FLOORS = {
      reproduces the reported bug, and losing the back-step restore quietly
      ruins every deep browse instead — the failure mode that has no bug report
      because it feels like the app forgetting rather than like a defect. */
-  "test/route-scroll-position.test.js": 11,
+  "test/route-scroll-position.test.js": 14, // 2026-09-22: a tab tap onto the page two back starts at the top, and an async page's clamped restore lands at its terminal paint without filing the clamp; 11 -> 14
+  /* 2026-09-22, audit: the router's own rules — safe decoding on every param
+     route, one playlist-route spelling, a first route that throws cannot skip
+     init()'s wiring, a bare URL is #/, ?foray= enters once per tab, the current
+     tab scrolls to top, a show page reports its terminal paint. Two cells boot
+     the REAL init(). */
+  "test/router.test.js": 8,
   /* Where `api/*` actually lives, and the CSP entry that lets the client reach
      it. Floored because this is the suite standing between the app and a
      REGRESSION THAT LOOKS LIKE NOTHING: every caller degrades a failed api

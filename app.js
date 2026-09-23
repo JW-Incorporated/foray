@@ -1840,6 +1840,19 @@ function resolveParts(p) {
 
 function playlistById(id) { return playlists().find(p => p.id === id); }
 
+/* ONE SPELLING OF A PLAYLIST'S ROUTE (audit 2026-09-22). Jump back in's card
+   percent-encoded the id and every other producer did not, while the router
+   decoded neither `#/playlist/` nor `#/subject/` — so the first id carrying a
+   `/` (a generated playlist's is `gen-history/technology`) would have been
+   "Playlist not found" from the one card that encoded it. Every producer now
+   calls this, and the router decodes. Returns the route AFTER `#/`, so the `#`
+   stays a literal at the call site (the safeUrl guard's convention). */
+function playlistRoute(p) {
+  return p && p.isSubject
+    ? "subject/" + encodeURIComponent(p.branch)
+    : "playlist/" + encodeURIComponent(p && p.id);
+}
+
 /* ---------- shows (#/show/:id, Stage 1 of docs/show-pages-plan.md) ----------
 
    `show_id` is the join key catalog.json carries and app.js has never read
@@ -3418,6 +3431,9 @@ function renderShow(show_id) {
     loadState = outcome;
     paintBody();
     paintCount();
+    /* A terminal paint is when the page has its real height: re-apply a
+       back-step scroll restore that the "loading" paint clamped. */
+    if (outcome !== "loading") pageDidPaint();
   }
 
   function paintSearchNote() {
@@ -3832,7 +3848,7 @@ function bindPlaylistFormSubmit(e) {
       const result = buildPlaylist(query);
       logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0 });
       if (result.status === "ok" || result.status === "sparse") {
-        location.hash = "#/playlist/" + result.playlist.id;
+        location.hash = "#/" + playlistRoute(result.playlist);
       } else {
         const note = $("#pl-note");
         note.textContent = result.status === "unsaved"
@@ -4022,7 +4038,7 @@ function miniCard(slot) {
   const stretchTag = slot.role === "stretch"
     ? `<span class="mc-stretch" title="Outside your usual topics, on purpose">Stretch</span>` : "";
   return `<a class="mini-card" data-branch="${esc(slot.branch)}"
-      href="#/subject/${esc(slot.branch)}">
+      href="#/${esc(playlistRoute({ isSubject: true, branch: slot.branch }))}">
     ${item.artwork_url ? `<img src="${esc(safeUrl(item.artwork_url))}" alt="" loading="lazy">` : `<div class="art-ph"></div>`}
     <div class="mc-info">
       <p class="mc-kicker">${stretchTag}${slot.items.length} episode${slot.items.length === 1 ? "" : "s"}${totalMin ? ` · ${fmtDur(totalMin)}` : ""}</p>
@@ -5789,7 +5805,7 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
   }
 
   const row = (p, generated) => `
-    <a class="pl-row" href="#/playlist/${esc(p.id)}">
+    <a class="pl-row" href="#/${esc(playlistRoute(p))}">
       <div class="info">
         <div class="t">${esc(p.title)}${generated ? ` <span class="fy-badge fy-badge-generated">Generated for you</span>` : ""}</div>
         <div class="s">${resolveParts(p).length} parts</div>
@@ -6627,7 +6643,7 @@ function testTrackNoticeHtml() {
     never mistakes a generated grouping for one they built. */
 function playlistCardV2Html(p, { generated = false } = {}) {
   const count = (p.items || []).length;
-  return `<a class="hv2-playlist-card" href="#/${p.isSubject ? "subject/" + esc(p.branch) : "playlist/" + esc(p.id)}">
+  return `<a class="hv2-playlist-card" href="#/${esc(playlistRoute(p))}">
     ${generated ? `<span class="hv2-generated-badge">Generated for you</span>` : ""}
     <span class="hv2-playlist-title">${esc(p.title)}</span>
     <span class="hv2-playlist-sub">${count} episode${count === 1 ? "" : "s"}</span>
@@ -6910,9 +6926,11 @@ function renderPlaylistDetail(id) {
    The ‹ goes back one real step when there is one (onBackClick); `backHref`
    is only the cold-open fallback. */
 function notFoundPage(heading, message, backHref = "#/") {
+  /* The `#` stays a literal in the template (see libSummaryRow's header on the
+     safeUrl guard): only the route after it is interpolated. */
   return `<div class="page">
       <div class="page-head">
-        <a class="back" href="${esc(backHref)}">‹</a>
+        <a class="back" href="#${esc(String(backHref).replace(/^#/, ""))}">‹</a>
         <div><h2>${esc(heading)}</h2></div>
       </div>
       <p class="note">${message}</p>
@@ -7419,7 +7437,7 @@ function renderLibrary() {
 
   const playlistsHtml = allPlaylists.length
     ? allPlaylists.slice(0, 5).map(p =>
-        libSummaryRow(`/playlist/${p.id}`, p.title, `${resolveParts(p).length} part${resolveParts(p).length === 1 ? "" : "s"}`)).join("")
+        libSummaryRow(`/${playlistRoute(p)}`, p.title, `${resolveParts(p).length} part${resolveParts(p).length === 1 ? "" : "s"}`)).join("")
       + (allPlaylists.length > 5 ? `<a class="lib-more" href="#/playlists">All ${allPlaylists.length} playlists ›</a>` : "")
     : `<p class="note">No playlists yet — build one from the home screen.</p>`;
 
@@ -7460,7 +7478,7 @@ function renderPlaylists() {
       </form>
       <p id="pl-note" class="note" hidden></p>
       ${all.length ? all.map(p => `
-        <a class="pl-row" href="#/playlist/${esc(p.id)}">
+        <a class="pl-row" href="#/${esc(playlistRoute(p))}">
           <div class="info">
             <div class="t">${esc(p.title)}</div>
             <div class="s">${resolveParts(p).length} parts${p.last_played_at ? ` · played ${new Date(p.last_played_at).toLocaleDateString()}` : ""}</div>
@@ -7540,7 +7558,7 @@ function bindCreateFormSubmit(e) {
       const result = buildPlaylist(query);
       logEvent("playlist_built", { query, status: result.status, found: result.playlist ? result.playlist.items.length : 0, source: "create" });
       if (result.status === "ok" || result.status === "sparse") {
-        location.hash = "#/playlist/" + result.playlist.id;
+        location.hash = "#/" + playlistRoute(result.playlist);
       } else {
         if (note) {
           note.textContent = result.status === "unsaved"
@@ -8369,6 +8387,7 @@ async function renderForay(id) {
   bindForayScripts();
   bindSourceLinks(r);
   bindForayTransport(r, player, resume);
+  pageDidPaint();   // the real page is up: a clamped back-step restore can land now
 }
 
 /* The strip is the signature element (#128) and it is BUILT IN THE PLAYER
@@ -9380,8 +9399,7 @@ function restoreNowPlayingRibbon() {
 /** True when the current route is the home screen — the only page whose content
     changes as a result of the restore. */
 function isHomeRoute() {
-  const h = location.hash || "#/";
-  return h === "#/" || h === "#";
+  return currentHash() === "#/";
 }
 
 function forayResumeRows() {
@@ -9428,7 +9446,7 @@ function renderDrawer() {
     .sort((a, b) => (b.last_played_at || b.created || "").localeCompare(a.last_played_at || a.created || ""))
     .slice(0, 5);
   $("#drawer-playlists").innerHTML = recent.map(p =>
-    `<a class="drawer-item" href="#/playlist/${esc(p.id)}">${esc(p.title)}</a>`).join("")
+    `<a class="drawer-item" href="#/${esc(playlistRoute(p))}">${esc(p.title)}</a>`).join("")
     || `<p class="drawer-empty">none yet</p>`;
   /* Every switch's label, from the one registry `drawerToggle` fills. This was
      five ad-hoc lines — three unguarded, two guarded, each spelling its own
@@ -9483,22 +9501,30 @@ const TAB_ROUTES = [
       '<path d="M4 19V5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M15 3v5h5"/></svg>' },
 ];
 
-/** Which tab a hash belongs to, for highlighting `aria-current`. Every one
-    of today's 13 routes maps to exactly one tab — Home, everything shows/
-    episode/category-shaped to Search, playlist/subject-queue-shaped to
-    Create, and library/queue/forays-shaped to Library — so switching tabs
-    is a real, memorable destination rather than a guess. Returns null for
-    a hash this mapping does not recognise (there is none today, but a
-    future route landing here with no owner should highlight nothing rather
-    than guess wrong). */
+/** Which tab a hash belongs to, for highlighting `aria-current`. EVERY ROUTE
+    LIGHTS A TAB (audit 2026-09-22): Home; everything shows/episode/category-
+    shaped to Search, including a browse pill's `#/shows/q/<label>` (the old
+    `shows$` missed it, so tapping a pill ON the Search page un-lit Search);
+    playlist/subject-queue-shaped to Create; and everything the listener keeps —
+    Library's own sections (Up Next, Forays, Followed shows) and their Interests
+    — to Library. Anything else is rendered as Home by the router, so it is
+    Home here too: the two fallbacks used to disagree by construction, and an
+    unrecognised hash showed the Home screen under a bar that said nowhere. */
 function tabForHash(hash) {
-  const h = hash || "#/";
-  if (h === "#/") return "home";
-  if (/^#\/(shows$|show\/|category\/|starred-shows$)/.test(h)) return "search";
+  const h = currentHash(hash);
+  if (/^#\/(shows($|\/)|show\/|category\/)/.test(h)) return "search";
   if (/^#\/(playlists$|playlist\/|subject\/|create$)/.test(h)) return "create";
-  if (/^#\/(library$|queue$|forays$|foray\/)/.test(h)) return "library";
+  if (/^#\/(library$|queue$|forays$|foray\/|starred-shows$|interests$)/.test(h)) return "library";
   if (/^#\/episode\//.test(h)) return "search"; // reached from a show/search result
-  return null;
+  return "home";
+}
+
+function onTabBarClick(e) {
+  const a = e.target && typeof e.target.closest === "function" ? e.target.closest(".tab-btn") : null;
+  if (!a) return;
+  if (currentHash(a.getAttribute("href")) !== currentHash()) return;   // ordinary navigation
+  e.preventDefault();
+  scrollPageTo(0);
 }
 
 /** Renders (or removes) the tab bar to match the flag, and syncs which tab
@@ -9519,6 +9545,11 @@ function renderTabBar() {
       a.innerHTML = `${t.icon}<span>${esc(t.label)}</span>`;
       bar.append(a);
     }
+    /* TAPPING THE TAB YOU ARE ON TAKES YOU TO THE TOP (audit 2026-09-22) — the
+       standard gesture in every iOS app. Assigning the hash that is already
+       current fires no hashchange, so route() never ran and the tap did
+       nothing at all. Delegated once, on the bar that lives for the page. */
+    bar.addEventListener("click", onTabBarClick);
     document.body.append(bar);
   }
   const active = tabForHash(location.hash);
@@ -10790,7 +10821,7 @@ function bindDeleteControl() {
     the way IN and the unlock token, not a route (see enterForayFromQuery). */
 function forayRouteId() {
   const m = /^#\/foray\/(.+)$/.exec(location.hash || "#/");
-  return m ? decodeURIComponent(m[1]) : null;
+  return m ? (safeDecode(m[1]) || null) : null;
 }
 
 /* `?foray=<id>` on the site root opens that Foray once, by rewriting the hash
@@ -10806,9 +10837,21 @@ function forayRouteId() {
 function enterForayFromQuery() {
   const id = forayParam();
   const h = location.hash || "";
-  if (!id || (h && h !== "#/")) return;
+  if (!id || (h && h !== "#/" && h !== "#")) return;
+  /* ONCE PER TAB, not once per load (audit 2026-09-22). The param stays in the
+     URL on purpose — it is the draft unlock — so the guard above let a reload
+     while on Home re-enter the Foray, and Home was reachable only by leaving it
+     again. The ENTRY is now remembered for the tab's session; the UNLOCK is
+     still the URL alone, and is still not persisted anywhere a shared machine
+     would keep it. `sessionStorage`, not a `cp_` key: this is not listener
+     state and must not outlive the tab. */
+  const mark = "foray_entered:" + id;
   try {
-    history.replaceState(null, "", `${location.pathname}${location.search}#/foray/${encodeURIComponent(id)}`);
+    if (window.sessionStorage && window.sessionStorage.getItem(mark)) return;
+    if (window.sessionStorage) window.sessionStorage.setItem(mark, "1");
+  } catch (_) { /* no session store: fall through and enter, as before */ }
+  try {
+    history.replaceState(history.state ?? null, "", `${location.pathname}${location.search}#/foray/${encodeURIComponent(id)}`);
   } catch (_) { /* a hash we cannot write is a home screen, not a broken page */ }
 }
 
@@ -10827,12 +10870,20 @@ function renderCurrentPage() {
   fbTarget = null;
   state.forayResume = null;
   resetPageHeadScrollState();
-  const h = location.hash || "#/";
+  const h = currentHash();
   const forayId = forayRouteId();
   let m;
+  /* EVERY PARAM ROUTE DECODES, AND DECODES SAFELY (audit 2026-09-22). The rule
+     below was written for `#/episode/` and `#/shows/q/`, with a comment saying
+     why, while `#/show/`, `#/category/` and `forayRouteId` kept a bare
+     `decodeURIComponent` — a lone `%` in a truncated link threw out of the
+     router, and on a cold load out of init() before the hashchange listener was
+     bound, so the whole app was dead until a reload. `#/playlist/` and
+     `#/subject/` decoded nothing at all while Jump back in's card encoded the
+     id: a `gen-history/technology` playlist would have been "not found". */
   if (forayId) renderForay(forayId);
-  else if ((m = /^#\/playlist\/(.+)$/.exec(h))) renderPlaylistDetail(m[1]);
-  else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + m[1]);
+  else if ((m = /^#\/playlist\/(.+)$/.exec(h))) renderPlaylistDetail(safeDecode(m[1]));
+  else if ((m = /^#\/subject\/(.+)$/.exec(h))) renderPlaylistDetail("subject-" + safeDecode(m[1]));
   /* DECODED, like `#/show/` and `#/category/` below — and unlike this line until
      2026-09-21, which is a bug that hid in plain sight for as long as episode ids
      were slugs.
@@ -10851,8 +10902,8 @@ function renderCurrentPage() {
      URIError, and a malformed hash must not take the router down (its own
      header makes the same argument). */
   else if ((m = /^#\/episode\/(.+)$/.exec(h))) renderEpisode(safeDecode(m[1]));
-  else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(decodeURIComponent(m[1]));
-  else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(decodeURIComponent(m[1]));
+  else if ((m = /^#\/show\/(.+)$/.exec(h))) renderShow(safeDecode(m[1]));
+  else if ((m = /^#\/category\/(.+)$/.exec(h))) renderCategory(safeDecode(m[1]));
   /* Before the bare `#/shows`, because `h === "#/shows"` is an exact match
      and would otherwise never see this one — and the browse tiles link here
      (see `browseTile`). A malformed percent-escape decodes to nothing rather
@@ -10899,10 +10950,10 @@ function renderCurrentPage() {
 
    THE EXCEPTION IS REAL AND IS PRESERVED. Going BACK to a list you were
    scrolled into must return you to where you were — a blanket `scrollTo(0, 0)`
-   here would make the four-tap-deep browse that `navStack` exists to support
-   useless. `noteNavigation` already knows which kind of step this is (it pops
-   for a back-step and pushes for a forward one), so it now says so, and a
-   back-step lands on the remembered position instead of the top.
+   here would make the four-tap-deep browse that ‹ exists to support
+   useless. `noteNavigation` knows which kind of step this is — from the
+   browser's own history entry, see § in-app history — and a back-step lands
+   on the remembered position instead of the top.
 
    WHY THE RESTORE IS OURS AND NOT THE BROWSER'S. The browser's own
    restoration is real but it is a RACE, and adding a scroll reset to the
@@ -10917,18 +10968,72 @@ function renderCurrentPage() {
    can be tested; it also covers a page the browser never recorded at all. */
 function route() {
   if (!state.ready) return;
-  const h = location.hash || "#/";
+  const h = currentHash();
   const step = noteNavigation(h);
   /* Read BEFORE the render: renderCurrentPage() replaces #view's innerHTML,
      and a shorter page clamps window.scrollY on the spot. */
   const target = step === "back" ? (navScrollY.get(h) || 0) : 0;
   renderedHash = h;
+  pendingRestore = null;
   /* To the top first, THEN render: the new page is laid out with the viewport
      already where it is going rather than painted and yanked. */
   scrollPageTo(0);
   openDrawer(false);
   renderCurrentPage();
-  if (target > 0) scrollPageTo(target);
+  if (target > 0) {
+    scrollPageTo(target);
+    /* AN ASYNC PAGE IS ONE PARAGRAPH TALL HERE (audit 2026-09-22). A Foray page,
+       an uncached show page and a show resolved over the network all paint
+       "Loading…" first and their real content a tick later, so this scroll was
+       clamped to ~0 — and the next scroll tick then filed 0 as the page's
+       remembered position, so the second ‹ was broken too. When the restore did
+       not land, it is kept, re-applied by `pageDidPaint()` once the page has
+       its real height, and nothing is remembered for this page until then. */
+    if ((window.scrollY || 0) < target - 1) pendingRestore = { hash: h, y: target };
+  }
+}
+
+/* The one normalisation of the hash every route decision reads. THREE
+   SPELLINGS OF HOME ("", "#", "#/") rendered the same page and were three
+   different things to everything else: tabForHash lit no tab for two of them,
+   and on a bare URL the Home tab's `#/` was a real hash change, so the first
+   Home tap of every session pushed an entry and the next back press did
+   nothing (audit 2026-09-22). init() also rewrites a bare arrival to `#/` in
+   place, so the address the history holds agrees with this. */
+function currentHash(hash = location.hash) {
+  return !hash || hash === "#" ? "#/" : hash;
+}
+
+/* Replace the current entry's hash WITHOUT a hashchange and without dropping
+   the entry's history state (the step index below lives there). Every
+   in-place hash rewrite in this file goes through here — a bare
+   `history.replaceState(null, …)` would erase the index and turn the next
+   back-step into a "forward". Returns whether the write took. */
+function replaceHash(hash) {
+  try {
+    history.replaceState(history.state ?? null, "", `${location.pathname}${location.search}${hash}`);
+    /* A harness (or an embedder) that does not reflect replaceState into
+       location.hash would leave the router reading the old one. */
+    if (location.hash !== hash) location.hash = hash;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/* A restore route() could not complete because the page had not painted yet.
+   See route(). */
+let pendingRestore = null;
+
+/** Called by an async page once its REAL content is on screen (the terminal
+    paint: loaded, empty or failed — never "loading"). Re-applies a back-step's
+    scroll restore that the loading paint clamped. One attempt: whatever the
+    page's final height allows is the answer, and memory resumes after it. */
+function pageDidPaint() {
+  const pending = pendingRestore;
+  pendingRestore = null;
+  if (!pending || pending.hash !== renderedHash) return;
+  scrollPageTo(pending.y);
 }
 
 /* ---------- where a list was left, so ‹ can put you back ----------
@@ -10943,12 +11048,15 @@ function route() {
    Keyed by hash, so it also survives a route being reached twice by different
    paths, and unbounded only in the sense that the app has a fixed, small set
    of routes plus one entry per show/episode/playlist actually visited in a
-   session — the same cardinality `navStack` already lives with. */
+   session — the same cardinality `navHashes` already lives with. */
 const navScrollY = new Map();
 let renderedHash = null;
 
 function rememberScrollPosition() {
-  if (renderedHash === null) return;
+  /* Not while a restore is still owed: the clamped position on screen is the
+     failure, not a place the listener chose, and filing it would make the next
+     ‹ fail too. */
+  if (renderedHash === null || pendingRestore) return;
   navScrollY.set(renderedHash, window.scrollY || 0);
 }
 
@@ -10985,63 +11093,99 @@ function scrollPageTo(y) {
    there would leave the app entirely or do nothing. Home is the right
    landing for that case.
 
-   "Is there a step to go back to" is tracked here rather than asked of the
-   browser: `history.length` counts entries from before the app loaded, and
-   there is no reliable "canGoBack" available across every WebKit this ships
-   to. So route() notes every hash it renders in `navStack`. Landing back on
-   the hash that was two steps ago pops the stack (a real back-step);
-   anything else pushes (a forward-step). More than one entry on the stack
-   means `history.back()` lands inside the app; exactly one means the
-   current page is the first the app rendered this session (or after a
-   reload — reloading always resets the stack), so ‹ falls back to the
-   href and goes Home, which is the correct behavior for a cold open. */
-const navStack = [];
+   WHICH KIND OF STEP THIS IS COMES FROM THE HISTORY ENTRY ITSELF (audit
+   2026-09-22). It used to be inferred from the SHAPE of a stack of hashes:
+   "landing on the hash two steps back is a back-step". That is also exactly
+   what a forward tap onto the page two steps back looks like — Search tab ->
+   a show -> the Search tab again — so a tab tap restored an old scroll offset
+   instead of starting at the top, and silently shortened the stack by one.
+   The stack shape cannot tell those apart; the browser can. So route() stamps
+   every entry it renders with its position, `{ fyIdx: n }`, in the entry's own
+   `history.state`, which the browser hands back when that entry is returned
+   to — by ‹, a device back gesture, or the forward button alike:
 
-/** Records the step and REPORTS WHICH KIND IT WAS: "back" for a step the
-    stack recognises as the page behind this one, "same" for a re-render of the
-    hash already on top of the stack, "forward" for everything else.
+     no stamp        a NEW entry (a link, a tab, a typed hash): one step on.
+     stamp < ours    the browser went BACK to an entry we rendered before.
+     stamp > ours    the browser went FORWARD to one.
+     stamp == ours   the same entry: a re-render, or an in-place hash rewrite.
 
-    The return value is new; the bookkeeping is not one line different. It
-    exists because route() needs to know the same thing this function already
-    had to work out in order to decide whether to scroll the new page to the
-    top — a back-step must keep the browser's own restored position (see
-    route()'s comment), and re-deriving that from the stack at the call site
-    would be a second, drifting copy of the rule below. */
+   `history.state` survives a reload, so after one the stamp is still there and
+   ‹ still goes back one real step; a genuinely cold open has no stamp, starts
+   at 0, and keeps the href fallback. */
+let navIndex = null;          // the stamp of the entry on screen; null before the first route
+const navHashes = [];         // what each stamped entry showed this page-life, by stamp
+
+function historyIndex() {
+  try {
+    const st = history.state;
+    return st && Number.isInteger(st.fyIdx) ? st.fyIdx : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function stampHistory(idx) {
+  try {
+    const st = history.state && typeof history.state === "object" ? history.state : {};
+    history.replaceState({ ...st, fyIdx: idx }, "");
+  } catch (_) { /* an entry we cannot stamp reads as new next time: forward, the safe default */ }
+}
+
+/** Records the step and REPORTS WHICH KIND IT WAS: "back", "forward", or
+    "same" (the entry on screen, re-rendered). An in-place rewrite of the entry
+    on screen to a different hash is "forward": it is a new page. */
 function noteNavigation(hash) {
   backPending = false;
   const h = hash || "#/";
-  if (navStack.length >= 2 && navStack[navStack.length - 2] === h) { navStack.pop(); return "back"; }
-  if (navStack[navStack.length - 1] === h) return "same";
-  navStack.push(h);
-  return "forward";
+  const stamped = historyIndex();
+  let step;
+  if (navIndex === null) {
+    navIndex = stamped ?? 0;
+    step = "forward";
+  } else if (stamped === null) {
+    navIndex += 1;
+    navHashes.length = navIndex;   // a new entry discards the forward branch, as the browser does
+    step = "forward";
+  } else if (stamped < navIndex) {
+    navIndex = stamped;
+    step = "back";
+  } else if (stamped > navIndex) {
+    navIndex = stamped;
+    step = "forward";
+  } else {
+    step = navHashes[navIndex] === h ? "same" : "forward";
+  }
+  navHashes[navIndex] = h;
+  if (stamped !== navIndex) stampHistory(navIndex);
+  return step;
 }
 
-function canGoBackInApp() { return navStack.length > 1; }
+function canGoBackInApp() { return (navIndex ?? 0) > 0; }
 
-/* `history.back()` is asynchronous — the `hashchange` that actually pops the
-   stack lands a beat later. A second tap on ‹ inside that beat would still
-   see the pre-pop stack and call `history.back()` twice, overshooting by one
-   page. `backPending` makes it one step per tap no matter how fast the taps
-   land; `noteNavigation` (called from every route()) clears it once the step
-   has actually happened. */
+/* `history.back()` is asynchronous — the `hashchange` that actually lands the
+   step comes a beat later. A second tap on ‹ inside that beat would call
+   `history.back()` twice, overshooting by one page. `backPending` makes it one
+   step per tap no matter how fast the taps land; `noteNavigation` (called
+   from every route()) clears it once the step has actually happened. */
 let backPending = false;
 
-/* After removing a playlist: back to the list. When the list is the step
-   immediately behind this page (the ordinary way in — Playlists ->
-   this playlist), that is `history.back()`, which leaves the now-removed
-   playlist's entry BEHIND the list rather than pushing a fresh one in
-   front of it — otherwise the very next ‹ tap from the list would land
-   back on a playlist that no longer exists. From anywhere else (e.g. a
-   drawer link straight into a specific playlist, with no list entry behind
-   it), there is no such step to reuse, so this navigates to the list
-   directly instead. */
+/* After removing a playlist: back to the list, and never with the removed
+   playlist's entry left where ‹ can reach it (audit 2026-09-22 — this handled
+   one referrer, so from Home, Library or the drawer the NEXT ‹ landed on
+   "Playlist not found" for the thing just deleted).
+
+   When the list is the entry immediately behind this page (Playlists -> this
+   playlist), that is `history.back()`. From anywhere else the removed
+   playlist's own entry is REWRITTEN to the list in place, so it is not left
+   buried one step behind it. */
 function leaveRemovedPlaylist() {
-  if (navStack.length >= 2 && navStack[navStack.length - 2] === "#/playlists") {
+  if (canGoBackInApp() && navHashes[navIndex - 1] === "#/playlists") {
     backPending = true;
     history.back();
-  } else {
-    location.hash = "#/playlists";
+    return;
   }
+  if (replaceHash("#/playlists")) route();
+  else location.hash = "#/playlists";
 }
 
 /* Delegated from #view (bound once in init(), see below) rather than bound
@@ -11637,7 +11781,21 @@ async function init() {
   buildCards();
   state.ready = true;
   enterForayFromQuery();
-  route();
+  /* A bare arrival is Home, and the address says so from the first paint —
+     see currentHash(). In place: no hashchange, no history entry. */
+  if (location.hash === "" || location.hash === "#") replaceHash("#/");
+  /* THE FIRST ROUTE MAY NOT TAKE THE APP DOWN WITH IT (audit 2026-09-22). Every
+     listener this function wires — hashchange, the menu, the drawer, the
+     keyboard chrome — is bound BELOW this line, so a throw out of the first
+     render (a malformed percent-escape did exactly that) left a page that no
+     tap and no typed hash could recover until a reload. The page that threw
+     is replaced by Home; the wiring always runs. */
+  try {
+    route();
+  } catch (err) {
+    console.error("first route failed", err);
+    try { renderHome(); renderTabBar(); } catch (_) { /* nothing left to try; the wiring below still runs */ }
+  }
   /* THE RIBBON COMES BACK (founder, 2026-09-18: "When I come back to 4a after a
      day, the podcast I was listening to should still be in the now playing
      ribbon at the bottom.")
