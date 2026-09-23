@@ -2,7 +2,7 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
-## 2026-09-23 (four founder rulings from one drive: no zoom at all, the drawer leaves when used, the lock screen's 15/30)
+## 2026-09-23 (six founder reports from one drive: no zoom at all, the drawer leaves when used, the lock screen's 15/30, the paused app keeps the car, and "4a / unknown / unknown")
 
 **The report (Wyatt, 2026-09-23, iPhone, build 2026092326), verbatim — the four
 items this entry answers:**
@@ -18,8 +18,10 @@ items this entry answers:**
 - *"In the app, I can jump back 15s and forward 30s. On the lock screen, it's
   10s in both directions. Both should be 15/30"*
 
-(Item 1 of the same report — Spotify resuming in the car — is the media lane's
-and is not ruled on here.)
+- *"I started playing 4a, paused and turned off my screen, got in my car, then my
+  car resumed Spotify. This is still wrong."*
+- *"My lock screen and car still displays the song/ artist/ album as 4a/ unknown/
+  unknown"*
 
 **1. Zoom is removed entirely, and this REVERSES 2026-09-17.** That day's fix
 ("It should also not be possible to zoom on the episode slide…") kept
@@ -54,18 +56,39 @@ closes the drawer and nothing else, whatever is under it; a sheet's scrim closes
 that sheet only; stacked sheets close top-first. `test/drawer-ownership.test.js`
 pins each, including the founder's exact sequence.
 
-**4. The lock screen says 15/30, and why it said 10.** The Swift plugin had set
-15/30 since L-01 — once, at load. WebKit registers its own command set for every
-audible `<audio>` element after that, replacing the process's list (its skip
-option was under a wrong key on shipped iOS until WebKit `2d26a621`, so the OS
-drew its default glyph), and nothing re-published ours because the per-write
-path assigned values nothing had changed. Commands now start disabled and every
-write that changes the list is published as a change, intervals included
-(`publishCommands` / `CommandSnapshot`, `docs/ios-lock-screen.md` §8).
-**Device check H8 (Wyatt):** on the next build, lock the phone mid-Foray, read
-the glyphs (15 / 30), press each once and confirm the in-app playhead moved by
-exactly that — a double move (30 / 60) means MediaRemote delivers to both
-WebKit's listener and ours, which no Simulator can show.
+**4, 5 + 6. One ownership model for the iOS lock screen, and the three drafts it
+replaced.** Three branches answered these items with three mechanisms for the same
+Swift and the same shim; `docs/ios-lock-screen.md` §2.1 and §8 hold the model, and
+this entry records the rulings that picked it.
+
+- **"4a / unknown / unknown" was never our payload.** WebKit publishes a Now Playing
+  entry of its own for every playing `<audio>` element, titled from `document.title`
+  ("4a"), through its own MediaRemote client, and that is what the lock screen shows
+  during tape. L-02's takeover of `navigator.mediaSession` had severed WebKit's real
+  object from the page. **Ruling: the takeover is a TEE.** The page's metadata (with
+  its own artwork URLs), `playbackState` and handlers go to WebKit's real object as
+  well as to the plugin; the plugin stays the only writer during narration. L-06 is
+  reopened in the plan until H6 reads back on a device.
+- **A paused 4a keeps the car by holding the app's own `.playback` session while
+  paused** — taken on the playing → paused transition only, released quietly on
+  resume and with `notifyOthers` on close — and re-asserting its entry after WebKit's
+  category change, on background and on a new route. **Ruling: this does not touch
+  the F11/F13 rule.** The playing path still never calls `setActive`; the hold runs
+  when nothing is sounding, and `shell-invariants` pins both.
+- **15/30 has one source** (`player/media-session.js`): the page ignores any
+  `seekOffset` a platform sends back, the natives read the pair from the payload, and
+  the Swift holds no literal. **Ruling: a press is applied exactly once** even though
+  two clients may deliver it — the shim's `deliver()` drops the second copy of the
+  same action from the other origin inside 500 ms and records it (`remote … dup=y`).
+- **Deleted, and why:** `fix/fr-ui`'s `CommandSnapshot`/`publishCommands` republish
+  (commands off, then on across a main-queue turn, with literal 15/30) rested on
+  WebKit being a *later writer* to our command list. It is a separate client; no
+  republish could make ours the displayed one, and the literal pair broke
+  one-source-of-truth. The zoom and drawer work from that branch ships as written.
+- **Device check (Wyatt, next build), `docs/ios-lock-screen.md` §8.5:** lock-screen
+  fields for a plain episode, a Foray clip and a narration line; skip 15 / 30 once
+  each; pause, lock, wait two minutes, connect the car, press play → 4a resumes; then
+  Copy diagnostics.
 
 ## 2026-09-23 (the visual pass the audit held back — R12, persona 10 and 58 — ships on the founder's word)
 
