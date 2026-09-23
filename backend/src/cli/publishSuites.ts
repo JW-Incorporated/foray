@@ -83,7 +83,18 @@ export const REAL_DATA_SUITES: readonly string[] = [
      it checks the frozen fixture against the SAME checker a publish is run
      through: a checker change a publish lands with cannot silently make the
      fixture every player suite reads invalid. */
-  "tools/foray/frozen-fixture.test.mjs"
+  "tools/foray/frozen-fixture.test.mjs",
+  /* Added 2026-09-23 with PR #741 (the frozen fixture; grilling-history-1
+     retired). Its last test reads the REAL `data/forays.json` for the set of
+     live Foray ids — that set is what makes a fixture-only id "retired" — and
+     then checks that HUMAN-ACTIONS.md and STATE.md send nobody to a Foray
+     `data/` no longer carries. A genuine reader, so it is listed rather than
+     rewritten to avoid the read: the live id set has no other honest source.
+     A publish ADDS a Foray, which can only shrink the retired set, so this
+     suite cannot go red on a publish; it is in the gate because G-21c's rule
+     is "every real-data suite runs", not "every suite a publish could break",
+     and it is cheap (a handful of tests, no fixture repo). */
+  "test/human-actions-integrity.test.js"
 ];
 
 /**
