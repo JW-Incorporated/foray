@@ -1411,7 +1411,22 @@ async function setRunning(want, source = "tap") {
     const { item, positionSec } = restoredPending;
     restoredPending = null;
     diag.transport(source, "play-restored");
-    const started = await ForayPlayer.play(item, null);
+    /* `play(item)`, NOT `play(item, null)`.
+       FOUNDER, 2026-09-22, on build 2026092224: "the play button works on the
+       Jump back in card but it does not work from the now playing bar down at
+       the bottom."
+       `play`'s signature is `(item, { why = "" } = {})`, and a DEFAULT PARAMETER
+       ONLY APPLIES TO `undefined`. `null` is destructured, so the call threw
+       `Cannot read properties of has-no-'why'` before `ensureBooted`,
+       `setQueueFromPick` or `manager.play(0)` ran — the restored ribbon's very
+       first press crashed in the one branch that can load the audio.
+       And it crashed UNRECOVERABLY, because `restoredPending` is cleared two
+       lines above: every later press fell through to the ordinary path and
+       called `manager.resume()` on a queue that is still empty, which answers
+       `resume.ignored.noCurrentItem` and repaints. Hence four `play from tap`
+       rows in the founder's record and no audio. The fallback below is what
+       makes that second half impossible regardless of this line. */
+    const started = await ForayPlayer.play(item);
     /* Seek AFTER the start, not by handing `play` an offset: `play` sets the
        queue and begins at 0, and the two-step is the same shape a Foray resume
        already uses (`foray.resumeSeekPending`). A start that failed leaves the
@@ -1453,8 +1468,35 @@ async function setRunning(want, source = "tap") {
      press a no-op when it was wrong — "the button said play, sound was coming
      out, and pressing it did nothing but repaint". */
   if (want === transportIsRunning()) { render(); return; }
-  if (want) await manager.resume();
-  else await manager.pause();
+  if (want) {
+    /* NOTHING LOADED, BUT SOMETHING SHOWING: load it rather than resume it.
+       `manager.resume()` answers `resume.ignored.noCurrentItem` on an empty
+       queue and repaints, which is a button that does nothing — and the ribbon
+       can genuinely be in that state, because the launch restore paints an
+       episode with no media behind it on purpose. The restored branch above is
+       what normally loads it; this is what happens when that branch has already
+       been spent (2026-09-22: it was spent by a press that then threw, and every
+       later press landed here and did nothing).
+       Written against the QUEUE rather than against a flag, so it does not care
+       WHY the queue is empty — which is the difference between fixing one bug
+       and closing the shape of it. */
+    if (current && manager.queue.length === 0) {
+      const started = await ForayPlayer.play(current);
+      /* Seek after the start, exactly as the restored branch does and for the
+         same reason: `play` sets the queue and begins at 0. `resumeOffset` is
+         the one owner of "where did the listener get to" (#26), so this cannot
+         disagree with the ribbon that is already on screen. */
+      if (started) {
+        const at = positionReader().resumeOffset(current.id, {
+          duration: current.duration_sec ?? null,
+        });
+        if (at > 0) await manager.seek(at, { precise: true });
+      }
+      render();
+      return;
+    }
+    await manager.resume();
+  } else await manager.pause();
   render();
   persistForayProgress({ force: true });
 }
@@ -2124,7 +2166,19 @@ const ForayPlayer = {
 
   /** Play one episode. SINGLE_ITEM strategy: the queue is this episode and
       nothing follows it (CLAUDE.md principle 1 — no autoplay chains). */
-  async play(item, { why = "" } = {}) {
+  async play(item, opts) {
+    /* READ DEFENSIVELY RATHER THAN DESTRUCTURED IN THE SIGNATURE. This was
+       `(item, { why = "" } = {})`, and a default parameter only fires for
+       `undefined` — so `play(item, null)` THREW, taking out the only code path
+       that loads audio for a restored episode (see `setRunning`'s restored
+       branch, 2026-09-22). A string caller is the other shape already in the
+       tree: app.js's timestamp seek passes `"timestamp"`, which destructured to
+       `why = ""` and silently lost the reason.
+       Both now behave: `opts?.why` is undefined for null and for a string, and
+       a string is taken as the reason it was plainly meant to be. This function
+       is the single entry point to playback for every surface in the app, so it
+       is worth more than a signature's worth of care. */
+    const why = typeof opts === "string" ? opts : (opts?.why ?? "");
     if (!this.canPlay(item)) return false;
     ensureBooted();
     // BEFORE the first await, always. See `notePlayGesture` (#225).
@@ -2258,6 +2312,37 @@ const ForayPlayer = {
 
   isPlaying(id) {
     return isPlaying() && current?.id === id;
+  },
+
+  /**
+   * Is this episode the one the bar is showing — playing OR paused?
+   *
+   * `isPlaying(id)` cannot answer that, and the difference is a founder bug.
+   * FOUNDER, 2026-09-22: "the pause button on jump back in does not work."
+   * `syncCardButtons` repaints every `[data-play]` matching `current.id` as
+   * "❚❚", so a card button BECOMES a pause button — while `bindPlay`'s handler
+   * called `play()` unconditionally and restarted the episode instead. The
+   * mirror case is as bad and was next: pause from the bar, press the card's
+   * "▶", and `play()` rebuilds the queue and starts from zero rather than
+   * resuming where the listener was.
+   *
+   * Both are the same missing question — "is this already the current item" —
+   * which is why this is one predicate and not two.
+   */
+  isCurrent(id) {
+    return Boolean(id) && current?.id === id;
+  },
+
+  /**
+   * Toggle whatever the bar is showing, from a surface that is not the bar.
+   *
+   * The same call the ribbon's own button makes, exposed so a card does not
+   * have to reimplement it — and deliberately NOT parameterised by id: a card
+   * that is the current item toggles the player, and a card that is not should
+   * be calling `play()`. `isCurrent` is how a caller tells those apart.
+   */
+  async togglePlayback() {
+    await setRunning(!transportIsRunning());
   },
 
   /**

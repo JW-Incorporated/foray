@@ -555,7 +555,16 @@ export const SESSION_PRODUCERS = new Set(["audio", "tts", "page"]);
     a stop with no cause; half of "no cause" is that nothing ever recorded
     which surface asked for the state the player was in when it stopped. */
 export const TRANSPORT_SOURCES = new Set(["tap", "remote", "reconcile", "session", "restore"]);
-export const TRANSPORT_ACTIONS = new Set(["play", "pause", "stop"]);
+/* `play-restored` joined these on 2026-09-22, and its absence is why a bug cost
+   two field records. `setRunning`'s restored branch logged
+   `diag.transport(source, "play-restored")` for the first press on a ribbon
+   restored at launch — the one press that loads the audio — and `transport()`
+   returns null for an action not in this set, so the row was DROPPED. The press
+   then threw (`play(item, null)`), and the founder's record showed four
+   `play from tap` rows and no first press at all. The vocabulary being closed is
+   right; a caller emitting a word that is not in it and being silently ignored
+   is not, and `test/diagnostics-surface.test.js` now pins the two together. */
+export const TRANSPORT_ACTIONS = new Set(["play", "pause", "stop", "play-restored"]);
 
 /** A status, a trigger, a validation code: a lower-case dashed token, never a
     sentence. `sha256-forays`, `segment-missing`, `foreground` all pass; a reason
