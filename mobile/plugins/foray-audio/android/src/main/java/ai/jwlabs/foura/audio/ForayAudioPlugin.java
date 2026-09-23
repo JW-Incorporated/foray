@@ -127,7 +127,13 @@ public class ForayAudioPlugin extends Plugin {
                    else: which door, which command, and when — the same three the
                    iOS plugin's `transportEvent` carries. On Android the platform's
                    command IS the page action (Media3's `handleXxx` already named
-                   it), except the notification's close, which the shim names. */
+                   it), except the notification's close, which the shim names.
+                   The record's vocabulary is the DASHED one (`next-track`,
+                   `skip-forward`, `change-position` …), and the translation is
+                   the shim's (`remoteCommandFor` in foray-media-session.js), at
+                   the one seam every door passes through — so this side keeps
+                   the action's spelling and `shell-invariants.test.mjs` pins
+                   that every action this plugin can send has a translation. */
                 event.put("origin", origin);
                 event.put("command", action);
                 event.put("at", System.currentTimeMillis());

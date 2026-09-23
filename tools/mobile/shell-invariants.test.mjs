@@ -96,7 +96,7 @@ import { hydrateForayItems, indexSegments, indexSources } from "../../player/for
 import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
 import {
   PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS, CLOSE_ACTION,
-  WEBKIT_ORIGIN,
+  WEBKIT_ORIGIN, REMOTE_COMMAND_FOR_ACTION, remoteCommandFor,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
 import { REMOTE_ORIGINS, REMOTE_COMMANDS } from "../../player/diagnostic-log.js";
@@ -1846,12 +1846,14 @@ test("the iOS ForayAudioPlugin touches AVAudioSession.setActive from its two ses
      to the app holding an active playback session, and the app process never
      held one — so the plugin now takes the app's own session ON THE PAUSE
      transition (nothing is sounding, so nothing can be interrupted) and lets
-     go when the transport plays again or closes. Both rules live here:
+     go when the transport closes. Both rules live here:
        - `setActive(` appears ONLY inside `holdSession` and `releaseSession`;
-       - the only caller of those two is `applySessionMove`, plus `remotePlay`
-         for the hold, so `setNowPlaying`'s payload path reaches them through
-         `sessionMove(from:to:holding:)` alone — the pure transition table the
-         XCTests pin (`.hold` for playing -> paused and for nothing else).
+       - the callers of those two are `applySessionMove` (both), and for the
+         hold alone the interruption and route observers (taking a lost hold
+         back) and `remotePlay`, so `setNowPlaying`'s payload path reaches them
+         through `sessionMove(from:to:holding:interrupted:)` alone — the pure
+         transition table the XCTests pin (`.hold` for playing -> paused and
+         for nothing else).
      MUTATION: call `setActive(true)` from `apply` or `applyNowPlayingInfo` ->
      the first assertion names the file; call `holdSession` from `apply` -> the
      caller assertion goes red. */
@@ -1869,17 +1871,109 @@ test("the iOS ForayAudioPlugin touches AVAudioSession.setActive from its two ses
   assert.match(release, /notifyOthersOnDeactivation/, "the end of playback tells the interrupted app it may resume");
   // Who may call them.
   assert.deepEqual(
-    swiftCallersOf(code, "holdSession"), ["applySessionMove", "remotePlay"],
-    "holdSession may be reached only from the transition table and a remote play while paused"
+    swiftCallersOf(code, "holdSession"), ["applySessionMove", "handleInterruption", "handleRouteChange", "remotePlay"],
+    "holdSession may be reached only from the transition table, the two re-holds and a remote play while paused"
   );
   assert.deepEqual(swiftCallersOf(code, "releaseSession"), ["applySessionMove"]);
   const apply = swiftFuncBody(code, "apply");
-  assert.match(apply, /applySessionMove\(Self\.sessionMove\(from:\s*previous\.state,\s*to:\s*payload\.state/,
-    "the payload path decides the session through the pure transition table");
-  // The table itself: playing -> paused is the ONE hold.
+  assert.match(apply, /applySessionMove\(Self\.sessionMove\(\s*from:\s*previous\.state,\s*to:\s*payload\.state,\s*holding:\s*holdsSession,\s*interrupted:\s*interrupted/,
+    "the payload path decides the session through the pure transition table, with the interruption flag");
+  // The table itself: playing -> paused is the ONE hold, and not inside an interruption.
   const table = swiftFuncBody(code, "sessionMove");
-  assert.match(table, /case \(\.playing, \.paused\):\s*return \.hold/);
-  assert.equal((table.match(/return \.hold/g) ?? []).length, 1, "exactly one transition may take the session");
+  assert.match(table, /case \(\.playing, \.paused\):\s*return interrupted \? \.none : \.hold/);
+  assert.equal((table.match(/\.hold\b/g) ?? []).length, 1, "exactly one transition may take the session");
+});
+
+test("the iOS resume transition deactivates NOTHING; a pause the OS caused takes no hold; a hold the OS took is taken back (review 2026-09-23)", () => {
+  /* Three findings against the paused-hold model, each a line of Swift:
+     1. `releaseQuietly` called `setActive(false)` on the paused -> playing
+        write. For tape that is a second session in another process and the
+        call is inert; for NARRATION it is the SAME shared instance
+        `ForayTtsPlugin.resume()` had just activated one bridge hop earlier —
+        the deactivation either failed against the synthesizer's running I/O
+        (`sessionReleased failed` on every narration resume) or landed first
+        and resumed the narration into an inactive session: silence. The
+        resume now SUPERSEDES the hold: `holdsSession = false`, no `setActive`,
+        a row saying `superseded`.
+     2. `(.playing, .paused)` held for every pause, including one an
+        `AVAudioSession` interruption caused, so a non-mixable session was
+        activated while the interrupter was sounding — 4a re-interrupting the
+        app that interrupted it. `interrupted` runs from `interruptionBegan`
+        to `interruptionEnded` (and is cleared by a `playing` payload, a
+        remote play, a media-services reset — Apple promises no `.ended`), and
+        the table answers `.none` inside it.
+     3. `began-while-held` dropped the hold and `.ended` only emitted, so a
+        call between the founder's pause and his car left 4a without the
+        session the whole model says the car's play needs. `.ended` with
+        `shouldResume` and a `new-device` route both take it back through
+        `shouldRehold`, never during an interruption.
+     MUTATION: put `releaseSession(reason: "playing", notifyOthers: false)`
+     back under the resume case; drop `interrupted` from `sessionMove`; drop
+     the `holdSession(reason: "interruption-ended")` call. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  assert.doesNotMatch(code, /releaseQuietly/, "the resume transition is no longer a release of any kind");
+  const moves = swiftFuncBody(code, "applySessionMove");
+  assert.match(moves, /case \.supersede:\s*supersedeSession\(\)/, "the resume transition forgets the hold");
+  assert.equal((moves.match(/releaseSession\(/g) ?? []).length, 1, "exactly one transition deactivates: the end of playback");
+  assert.match(moves, /case \.releaseAndNotify:\s*releaseSession\(reason: "closed", notifyOthers: true\)/);
+  const supersede = swiftFuncBody(code, "supersedeSession");
+  assert.ok(supersede, "supersedeSession is gone");
+  assert.doesNotMatch(supersede, /setActive|releaseSession\(/, "superseding must not touch the session");
+  assert.match(supersede, /holdsSession = false/);
+  assert.match(supersede, /emitSession\(kind: "sessionReleased", reason: "superseded"\)/, "the record can tell a supersede from a deactivation");
+  const table = swiftFuncBody(code, "sessionMove");
+  assert.match(table, /case \(_, \.playing\):\s*return holding \? \.supersede : \.none/);
+  // The interruption flag: set on began, cleared on ended, cleared by the listener moving on.
+  const interruption = swiftFuncBody(code, "handleInterruption");
+  assert.match(interruption, /self\.interrupted = began/, "the flag follows the interruption");
+  assert.match(
+    interruption,
+    /if !began && shouldResume\s*&& Self\.shouldRehold\(state: self\.lastPayload\.state, holding: self\.holdsSession, interrupted: self\.interrupted\) \{\s*self\.holdSession\(reason: "interruption-ended"\)\s*self\.reassertNowPlaying\(reason: "interruption-ended"\)/,
+    "the hold is taken back when the interruption ends with shouldResume"
+  );
+  assert.match(swiftFuncBody(code, "handleRouteChange"), /Self\.shouldRehold\([\s\S]*?self\.holdSession\(reason: "route"\)[\s\S]*?reassertNowPlaying\(reason: "route"\)/,
+    "and when the car connects, before the entry is re-asserted");
+  assert.match(swiftFuncBody(code, "remotePlay"), /interrupted = false[\s\S]*?holdSession\(reason: "remote-play"\)/, "a play press is the listener's word the interruption is over");
+  assert.match(swiftFuncBody(code, "apply"), /if payload\.state == \.playing \{ interrupted = false \}/);
+  assert.match(swiftFuncBody(code, "handleServicesReset"), /self\.interrupted = false/);
+  assert.match(swiftFuncBody(code, "shouldRehold"), /state == \.paused && !holding && !interrupted/);
+});
+
+test("the iOS re-assert survives a paused position write, and nothing on stateQueue waits on the network (review 2026-09-23)", () => {
+  /* Two more, from the same review.
+     `reassertGeneration` was bumped on EVERY payload, so a lock-screen scrub
+     while paused (the shim supports exactly that) or a trailing position write
+     inside the 3 s window cancelled the pause-settled re-assert, and
+     `(.paused, .paused)` is `.none` so nothing re-armed it — WebKit's delayed
+     category change then wrote last. The generation now moves with the STATE.
+     And `artworkItem(for:)` ran `Data(contentsOf:)` — a blocking load with the
+     default ~60 s timeout — on `stateQueue`, the queue every remote-command
+     handler shares; `reassertNowPlaying` re-ran it on the car connecting and
+     on the screen going off, so the car's play could queue behind a stalled
+     fetch during a Wi-Fi -> cellular handoff. The artwork is cached per URI
+     and a remote image is loaded off the queue, bounded, and re-posted.
+     MUTATION: bump the generation outside the state-change guard; put
+     `Data(contentsOf:` back; drop the cache read from `artworkItem`. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const apply = swiftFuncBody(code, "apply");
+  assert.match(apply, /if previous\.state != payload\.state \{\s*reassertGeneration &\+= 1\s*\}/,
+    "the re-assert generation moves with the state, not with every position write");
+  assert.equal((code.match(/reassertGeneration &\+= 1/g) ?? []).length, 1);
+  assert.doesNotMatch(code, /Data\(contentsOf:/, "a synchronous network load on stateQueue");
+  const artwork = swiftFuncBody(code, "artworkItem");
+  assert.match(artwork, /if let cached = artworkCache, cached\.uri == uri \{ return cached\.item \}/, "the artwork is cached per URI");
+  assert.match(artwork, /loadRemoteArtwork\(uri: uri, url: url\)\s*return nil/, "a remote image never blocks the write it decorates");
+  const load = swiftFuncBody(code, "loadRemoteArtwork");
+  assert.match(load, /timeoutInterval: Self\.artworkTimeoutSec/, "the fetch is bounded");
+  assert.match(load, /URLSession\.shared\.dataTask/);
+  assert.match(load, /self\.stateQueue\.async \{[\s\S]*?rememberArtwork\(uri: uri, image: image\)[\s\S]*?self\.lastPayload\.artworkUri == uri[\s\S]*?applyNowPlayingInfo\(self\.lastPayload\)/,
+    "when it lands, the cache is filled on stateQueue and the entry re-posted if still current");
+  const timeout = /static let artworkTimeoutSec: Double = (\d+)/.exec(code);
+  assert.ok(timeout, "artworkTimeoutSec must be a whole-second literal");
+  assert.ok(Number(timeout[1]) > 0 && Number(timeout[1]) <= 15, `artwork timeout ${timeout[1]}s is not a short one`);
+  // The command handlers still do their work on stateQueue — the queue this test keeps clear.
+  const register = swiftFuncBody(code, "registerCommandHandlers");
+  assert.match(register, /playCommand\.addTarget \{ \[weak self\] _ in\s*self\?\.stateQueue\.async \{ self\?\.remotePlay\(command: "play"\) \}/);
 });
 
 test("the iOS ForayAudioPlugin keeps a paused transport ON the lock screen: rate 0, playbackState, and a re-assert on background (2026-09-23)", () => {
@@ -1998,6 +2092,44 @@ test("every transport event names its door and its command, on both natives, in 
      routes to `deliver` under `WEBKIT_ORIGIN`. A rename there is a press the
      record silently drops. MUTATION: spell WEBKIT_ORIGIN "web-kit". */
   assert.ok(REMOTE_ORIGINS.has(WEBKIT_ORIGIN), `the shim's origin "${WEBKIT_ORIGIN}" is not in REMOTE_ORIGINS`);
+
+  /* THE COMMAND, NOT ONLY THE DOOR (review of this branch). The loop above pins
+     the Swift's literals and nothing else, and the other two doors spelled the
+     command by the page ACTION: `mirrorHandler` sent `command: name` and the Java
+     puts the Media3 action in `command` (pinned two lines up — that side keeps
+     its spelling). `nexttrack`/`seekforward`/`seekto` are not in REMOTE_COMMANDS,
+     so every skip through WebKit's door and every next/skip/scrub from Android
+     was a row the record dropped, with every test green. The shim's
+     `remoteCommandFor` is the one translation, so: every word it can produce is
+     in the record's set, every action the Java can send (read from the Java) is
+     a word it translates, and both doors go through it.
+     MUTATION: add `"seekto"` to the table's keys with value `"seekto"`; or send
+     `"skipnext"` from WebViewPlayer.java; or bypass `remoteCommandFor` in
+     `dispatch` or `mirrorHandler`. */
+  for (const [action, command] of Object.entries(REMOTE_COMMAND_FOR_ACTION)) {
+    assert.ok(ROUTABLE_ACTIONS.includes(action), `the table maps "${action}", which is not a routable action`);
+    assert.ok(REMOTE_COMMANDS.has(command), `the shim reports "${action}" as "${command}", which the record would drop`);
+  }
+  for (const action of ROUTABLE_ACTIONS) {
+    assert.ok(REMOTE_COMMANDS.has(remoteCommandFor(action)), `a "${action}" press has no command the record admits`);
+  }
+  const webViewPlayer = stripJavaComments(fs.readFileSync(path.join(dir, "WebViewPlayer.java"), "utf8"));
+  const javaActions = new Set([
+    ...[...webViewPlayer.matchAll(/\bsend\("([a-z]+)"/g)].map((m) => m[1]),
+    ...[...service.matchAll(/transportIntent\("([a-z]+)"/g)].map((m) => m[1]),
+  ]);
+  assert.ok(javaActions.size >= 5, `expected the Java to name its transport actions; found ${[...javaActions].join(", ")}`);
+  for (const action of javaActions) {
+    assert.ok(
+      REMOTE_COMMANDS.has(remoteCommandFor(action)),
+      `the Java sends action "${action}" as its command, and the shim has no translation the record admits`
+    );
+  }
+  const shim = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8"));
+  assert.match(shim, /command: remoteCommandFor\(str\(event\?\.command\) \|\| \(closing \? CLOSE_ACTION : action\)\)/,
+    "the plugin's door must translate the command it reports");
+  assert.match(shim, /command: remoteCommandFor\(name\), origin: WEBKIT_ORIGIN/,
+    "WebKit's door must translate the command it reports");
 });
 
 test("the iOS design comment states the two-publisher model and no longer claims same-tick ordering (2026-09-23)", () => {

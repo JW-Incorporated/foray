@@ -64,8 +64,11 @@ import {
   transportState, assetUri,
   PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, SESSION_EVENT, SESSION_DOM_EVENT, REMOTE_DOM_EVENT,
   ROUTABLE_ACTIONS, CLOSE_ACTION, UNMIRRORED_ACTIONS, WEBKIT_ORIGIN, REMOTE_DUPLICATE_WINDOW_MS,
+  REMOTE_COMMAND_FOR_ACTION, remoteCommandFor,
   SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC, POSITION_MIN_INTERVAL_MS, ASSET_BASE, IOS_ASSET_BASE,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
+/* The record's own set, so the contract is judged by the reader and not by a copy. */
+import { REMOTE_COMMANDS } from "../../player/diagnostic-log.js";
 
 /* The real thing, imported rather than re-described: §7 drives the module the page
    actually uses, so a change to either side of the contract fails here. */
@@ -597,9 +600,11 @@ test("a deliberate second press on the SAME surface is never dropped, and a diff
 test("a press through WebKit's door is a `foray:remote` row of its own, named as the webkit door", () => {
   /* The record admits `REMOTE_ORIGINS` only, so the door's name is pinned
      against that set in shell-invariants; here, that the row is written at all
-     and carries the action as its command. MUTATION: pass `origin: ""` from
-     `mirrorHandler`'s wrapper -> the record would drop every WebKit-delivered
-     press. */
+     and carries the RECORD's word for the action as its command. MUTATION: pass
+     `origin: ""` from `mirrorHandler`'s wrapper -> the record would drop every
+     WebKit-delivered press; pass `command: name` -> `nexttrack` is not in
+     `REMOTE_COMMANDS` and the row is dropped just the same (the review finding
+     on this branch: only play/pause/stop survived the webkit door). */
   withWindow((win) => {
     const wk = webkitSession();
     const nav = { mediaSession: wk.target };
@@ -611,11 +616,88 @@ test("a press through WebKit's door is a `foray:remote` row of its own, named as
     wk.received.get("nexttrack")();
     assert.equal(rows.length, 1);
     assert.equal(rows[0].origin, WEBKIT_ORIGIN);
-    assert.equal(rows[0].command, "nexttrack");
+    assert.equal(rows[0].command, "next-track");
+    assert.ok(REMOTE_COMMANDS.has(rows[0].command), "the record admits the command the tee reports");
     assert.equal(rows[0].action, "nexttrack");
     assert.equal(rows[0].handled, true);
     assert.equal(typeof rows[0].at, "number", "stamped, so the record's lag is a number");
   });
+});
+
+test("every action a press can become through WebKit's door is recorded under a command the record admits", () => {
+  /* Verified on the branch by running the record: `remoteCommand({command:
+     "seekforward", origin: "webkit"})` returned null, as did nexttrack,
+     previoustrack and seekbackward — every lock-screen skip on the client the
+     founder's phone shows during tape wrote no row, so §8.4's "twins with one
+     dup=y" reading could never be made. Driven through the real tee, one action
+     at a time, and judged by the record's own set. MUTATION: return `w` from
+     `remoteCommandFor` unchanged. */
+  withWindow((win) => {
+    const wk = webkitSession();
+    const nav = { mediaSession: wk.target };
+    const { session, advance } = setup({ bridge: { platform: "ios" }, nav });
+    session.install();
+    const rows = [];
+    win.addEventListener(REMOTE_DOM_EVENT, (e) => rows.push(e.detail));
+    const mirrored = ROUTABLE_ACTIONS.filter((a) => !UNMIRRORED_ACTIONS.includes(a));
+    for (const action of mirrored) {
+      nav.mediaSession.setActionHandler(action, () => {});
+      wk.received.get(action)({ seekOffset: 10, seekTime: 1 });
+      advance(REMOTE_DUPLICATE_WINDOW_MS + 1);
+    }
+    assert.deepEqual(rows.map((r) => r.action), mirrored);
+    for (const r of rows) {
+      assert.ok(REMOTE_COMMANDS.has(r.command), `${r.action} via webkit reported command "${r.command}", which the record drops`);
+      assert.equal(r.command, REMOTE_COMMAND_FOR_ACTION[r.action]);
+    }
+    assert.equal(rows.find((r) => r.action === "seekforward").command, "skip-forward");
+  });
+});
+
+test("Android's next/previous/skip/scrub, named by their Media3 action, are recorded under the dashed command", () => {
+  /* `ForayAudioPlugin.java` puts the ACTION in `command` (`nexttrack`,
+     `seekbackward`, `seekto` …) for both of its doors; the record admits
+     `next-track`, `skip-backward`, `change-position`. Only play/pause/stop are
+     spelled alike, so a car's skip on Android left no `remote` row and the
+     header's `remote commands N` undercounted. The translation is `dispatch`'s,
+     so the Java keeps its spelling. MUTATION: drop `remoteCommandFor` from
+     `dispatch`. */
+  withWindow((win) => {
+    const { session, capacitor, nav } = setup({ bridge: { platform: "android" } });
+    session.install();
+    nav.mediaSession.setActionHandler("nexttrack", () => {});
+    const rows = [];
+    win.addEventListener(REMOTE_DOM_EVENT, (e) => rows.push(e.detail));
+    const sub = subFor(capacitor, TRANSPORT_EVENT);
+    sub.callback({ action: "nexttrack", command: "nexttrack", origin: "media-session", at: 1 });
+    sub.callback({ action: "nexttrack", command: "nexttrack", origin: "notification", at: 2 });
+    sub.callback({ action: "seekbackward", offsetMs: 15000, command: "seekbackward", origin: "media-session", at: 3 });
+    sub.callback({ action: "seekto", positionMs: 4000, command: "seekto", origin: "media-session", at: 4 });
+    sub.callback({ action: "previoustrack", command: "previoustrack", origin: "media-session", at: 5 });
+    sub.callback({ action: "seekforward", offsetMs: 30000, command: "seekforward", origin: "media-session", at: 6 });
+    /* And a native side that names no command at all (an older plugin) still
+       lands in the record's vocabulary; the Swift's own dashed word passes through. */
+    sub.callback({ action: "seekforward", offsetMs: 30000, origin: "media-session", at: 7 });
+    sub.callback({ action: "seekforward", offsetMs: 30000, command: "skip-forward", origin: "command-center", at: 8 });
+    assert.deepEqual(
+      rows.map((r) => r.command),
+      ["next-track", "next-track", "skip-backward", "change-position", "previous-track", "skip-forward", "skip-forward", "skip-forward"]
+    );
+    for (const r of rows) assert.ok(REMOTE_COMMANDS.has(r.command), `${r.command} is not in REMOTE_COMMANDS`);
+    assert.deepEqual(rows.slice(0, 2).map((r) => r.origin), ["media-session", "notification"]);
+  });
+});
+
+test("remoteCommandFor maps every routable action into the record's set and leaves the rest alone", () => {
+  for (const action of ROUTABLE_ACTIONS) {
+    assert.ok(REMOTE_COMMANDS.has(remoteCommandFor(action)), `${action} -> ${remoteCommandFor(action)}`);
+  }
+  assert.equal(remoteCommandFor("toggle-play-pause"), "toggle-play-pause");
+  assert.equal(remoteCommandFor(CLOSE_ACTION), CLOSE_ACTION);
+  assert.equal(remoteCommandFor(""), "");
+  assert.equal(remoteCommandFor(null), "", "a missing word is empty, never the string 'null'");
+  assert.deepEqual(Object.keys(REMOTE_COMMAND_FOR_ACTION).sort(), [...ROUTABLE_ACTIONS].sort(),
+    "the table covers exactly the actions a press can become");
 });
 
 test("seekto is NEVER mirrored — WebKit's timeline is the element's, the page's is the Foray's", () => {

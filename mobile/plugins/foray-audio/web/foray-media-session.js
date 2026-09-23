@@ -249,6 +249,42 @@ export const UNMIRRORED_ACTIONS = Object.freeze(["seekto"]);
  *  them differently and the page can tell them apart. */
 export const CLOSE_ACTION = "close";
 
+/** The page ACTION a press became -> the platform COMMAND the record's `remote`
+ *  row admits (`REMOTE_COMMANDS` in `player/diagnostic-log.js`: dashed tokens,
+ *  spelled the same by both natives).
+ *
+ *  WHY THIS TABLE EXISTS (review of the 2026-09-23 branch). The record admits a
+ *  closed vocabulary and DROPS a row whose command is outside it, and two of the
+ *  three doors named a press by its spec action instead: WebKit's tee'd handler
+ *  (`mirrorHandler`) sent `command: name` -- `nexttrack`, `seekforward` -- and
+ *  Android's `ForayAudioPlugin.java` puts the Media3 action in `command` because
+ *  on that side the action IS the platform's name. Only play/pause/stop happen to
+ *  be spelled the same in both vocabularies, so every lock-screen skip through
+ *  WebKit's door and every next/previous/skip/scrub from Android left no `remote`
+ *  row, the header's `remote commands N` undercounted, and the one reading the row
+ *  was added for ("arrived and did nothing" vs "never arrived") could not be made.
+ *  `remoteCommandFor` maps at the ONE seam every door passes through, so a native
+ *  side may keep naming the action. `shell-invariants.test.mjs` pins every value
+ *  here into `REMOTE_COMMANDS`, and every action the Java can send into the keys. */
+export const REMOTE_COMMAND_FOR_ACTION = Object.freeze({
+  play: "play",
+  pause: "pause",
+  stop: "stop",
+  previoustrack: "previous-track",
+  nexttrack: "next-track",
+  seekbackward: "skip-backward",
+  seekforward: "skip-forward",
+  seekto: "change-position",
+});
+
+/** A command word as a native side or the tee spelled it -> the record's word.
+ *  An action spelling is mapped; anything else (`toggle-play-pause`, `close`, a
+ *  dashed token the Swift already chose) passes through unchanged. */
+export function remoteCommandFor(word) {
+  const w = str(word);
+  return Object.prototype.hasOwnProperty.call(REMOTE_COMMAND_FOR_ACTION, w) ? REMOTE_COMMAND_FOR_ACTION[w] : w;
+}
+
 /** `04_VOICE_AUDIO_SPEC.md`'s ±30/15 s, and the numbers `player/media-session.js`
  *  exports as `SEEK_BACKWARD_SEC`/`SEEK_FORWARD_SEC` and puts on the in-page
  *  buttons. Duplicated here rather than imported: this file is copied into the
@@ -889,8 +925,10 @@ export function createForayMediaSession(env) {
       action: action,
       details: details,
       /* `command` defaults to the action for a native side that sends none (an older
-         plugin), and the notification's close is its own command. */
-      command: str(event?.command) || (closing ? CLOSE_ACTION : action),
+         plugin), and the notification's close is its own command. Either way it
+         goes through `remoteCommandFor`: Android names the command by the Media3
+         ACTION, and the record admits only the dashed platform tokens. */
+      command: remoteCommandFor(str(event?.command) || (closing ? CLOSE_ACTION : action)),
       origin: str(event?.origin),
       at: event?.at,
     });
@@ -1125,13 +1163,16 @@ export function createForayMediaSession(env) {
    *  looks the handler up at call time, so `handlers` stays the one place a
    *  handler lives and a removal takes effect on both doors at once. WebKit's own
    *  details (`seekOffset`, `seekTime`) pass through untouched, exactly as
-   *  `dispatch` passes the plugin's. */
+   *  `dispatch` passes the plugin's. The COMMAND is the record's word for the
+   *  action (`REMOTE_COMMAND_FOR_ACTION`), never the spec name: WebKit has no
+   *  platform command of its own to report, and `nexttrack` as a command was a row
+   *  the record dropped. */
   function mirrorHandler(name, fn) {
     if (!mirror || UNMIRRORED_ACTIONS.includes(name)) return;
     const wrapper = fn
       ? function (details) {
         return deliver({
-          action: name, details: details, command: name, origin: WEBKIT_ORIGIN, at: now(),
+          action: name, details: details, command: remoteCommandFor(name), origin: WEBKIT_ORIGIN, at: now(),
         });
       }
       : null;
