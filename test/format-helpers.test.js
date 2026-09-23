@@ -216,6 +216,13 @@ test("an aged-out playlist row states its unavailability once", () => {
 /* fmtDate                                                             */
 /* ------------------------------------------------------------------ */
 
+/* The local calendar day of an instant, the way `fmtDate(…, { local: true })`
+   must write it — computed HERE, in the machine's own zone, rather than written
+   as a literal. The fixtures' instants fall on Sep 21 in the Americas and Sep 22
+   from about UTC+6 east, so a literal (or a `Sep 2[01]` regex) failed on any
+   machine set to Asia/Pacific time (review 2026-09-23). */
+const localDay = (iso) => new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+
 /* MUTATION: drop the NaN guard — "Invalid Date" comes back. */
 test("fmtDate never says 'Invalid Date', in either timezone mode", () => {
   const { ctx } = mount();
@@ -225,7 +232,8 @@ test("fmtDate never says 'Invalid Date', in either timezone mode", () => {
     assert.strictEqual(ctx.fmtDate(null, opts), "");
   }
   assert.strictEqual(ctx.fmtDate("2026-09-21"), "Sep 21, 2026");
-  assert.match(ctx.fmtDate("2026-09-21T12:00:00.000Z", { local: true }), /^Sep 2[01], 2026$/);
+  assert.strictEqual(ctx.fmtDate("2026-09-21T12:00:00.000Z", { local: true }), localDay("2026-09-21T12:00:00.000Z"));
+  assert.match(localDay("2026-09-21T12:00:00.000Z"), /^Sep 2\d, 2026$/, "fixture: the expected form is the short month");
 });
 
 /* The Playlists page was the one raw toLocaleDateString() in the app: "played
@@ -236,7 +244,7 @@ test("the Playlists page formats 'played' through fmtDate and says nothing for a
   const m = mount();
   onePartPlaylist(m);
   m.ctx.renderPlaylists();
-  assert.match(m.view(), /played (Sep 2[01], 2026)/, m.view());
+  assert.ok(m.view().includes(`played ${localDay("2026-09-21T18:00:00.000Z")}`), m.view());
 
   const raw = JSON.parse(m.ctx.localStorage.getItem("cp_playlists"));
   raw[0].last_played_at = "garbage";
