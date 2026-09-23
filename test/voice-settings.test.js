@@ -532,6 +532,10 @@ test("the voices are one named radio group: one tab stop, arrows move the choice
   const keydown = (el, key) => { for (const fn of el._on.get("keydown") ?? []) fn({ key, preventDefault() {} }); };
   keydown(choices[0], "ArrowDown");
   assert.deepStrictEqual(setVoiceCalls, [choices[1].dataset.voiceId], "ArrowDown selects the next voice");
+  /* REVIEW 2026-09-23: and announces it by name, as a click does. MUTATION:
+     call `selectVoiceRow(next)` with one argument in moveVoiceChoice. */
+  assert.strictEqual(ui.notice.hidden, false, "the choice is announced");
+  assert.strictEqual(ui.notice.textContent, `${nameOf(installedRows(ui)[1])} selected.`);
   const preview = findIn(installedRows(ui)[0], ".voice-row-audition");
   assert.strictEqual(preview.getAttribute("aria-label"), `Preview ${nameOf(installedRows(ui)[0])}`,
     "each Preview names its voice");

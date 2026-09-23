@@ -11949,6 +11949,9 @@ function buildVoiceRow({ installed, name, sub, id, selected, tabStop }) {
     choice.setAttribute("role", "radio");
     choice.setAttribute("aria-checked", selected ? "true" : "false");
     choice.dataset.voiceId = id;
+    /* The display name, for the arrow keys: `moveVoiceChoice` selects a
+       NEIGHBOUR and must announce it by name like a click does. */
+    choice.dataset.voiceName = name;
     choice.tabIndex = tabStop ? 0 : -1;
     choice.append(text);
     choice.addEventListener("click", () => selectVoiceRow(id, name));
@@ -12121,8 +12124,12 @@ function moveVoiceChoice(id, step) {
   const at = ids.indexOf(id);
   if (at < 0 || ids.length < 2) return;
   const next = ids[(at + step + ids.length) % ids.length];
-  selectVoiceRow(next);
   const target = [...ui.list.querySelectorAll(".voice-row-choice")].find((c) => c.dataset.voiceId === next);
+  /* WITH ITS NAME (review 2026-09-23, an integration seam): selectVoiceRow
+     grew a `name` so a choice is announced ("Samantha selected."), and this
+     one-argument call wrote "" instead — the arrow keys, the path added for
+     keyboard and screen-reader users, were the one path that wiped the notice. */
+  selectVoiceRow(next, target?.dataset.voiceName || "");
   if (target && typeof target.focus === "function") target.focus();
 }
 
