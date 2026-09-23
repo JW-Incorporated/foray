@@ -374,6 +374,18 @@ history". Both are deliberately unflattering. A listener who is told this is a
 history of barbecue has been misled; a listener who is told it is six beats of one
 has been told the truth and can judge the six.
 
+**Retitled 2026-09-22 (design audit, persona Tier 4).** The title had become
+"Barbecue: eight beats of a forty-beat history" when GC-1/GC-2 landed, and a
+first-time listener cannot decode "beat" — it is this document's unit, not theirs.
+It is now **"Barbecue: eight stories from a much longer history"**: the same
+disclosure (eight, and most of the history missing), in words a listener already
+has. "Chapters" was the audit's suggestion and was not used, because the player
+already shows publisher chapters and the two would read as the same thing.
+`beat`, `segment`, `act` and `running order` are now refused in any Foray's title,
+summary or slot title by `tools/foray/check-forays.mjs` and
+`backend/test/copyRules.test.ts` (`INTERNAL_VOCABULARY` in
+`backend/src/copy/rules.js`).
+
 **Narration scripts are not written here.** #226 puts them in stage 4 and the spine
 §7 confirms it, but the brief for this pass asked for the assembly, the thin-tier
 decisions, the marked holes and the work order. Stage 2's closing warning is the

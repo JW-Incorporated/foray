@@ -38,6 +38,39 @@ const BANNED = [
   /-min(ute)? drive/i
 ];
 
+/**
+ * The curation pipeline's own units, which must not reach a listener in copy
+ * WE write about a Foray (its title, summary and slot titles).
+ *
+ * WHY A SECOND LIST AND NOT FOUR MORE ENTRIES IN `BANNED`. `BANNED` also gates
+ * session why-lines and discover.json hooks, which describe publishers'
+ * episodes in ordinary English — "a market segment", "the Clean Air Act", "a
+ * drum beat" are all fair there. These four words are only jargon when they
+ * name OUR structure: a `beat` of the spine, a `segment` of the pool, an `act`
+ * of a generated Foray, the `running order` of its items. So the list is
+ * applied where our structure is being described, and nowhere else.
+ *
+ * WHY IT EXISTS (2026-09-22 design audit, persona Tier 4). `grilling-history-2`
+ * shipped titled "Barbecue: eight beats of a forty-beat history" — its own
+ * `beats_total` and `beats_represented` fields recited as a title — and every
+ * gate that reads Foray copy passed it, because the only list those gates had
+ * was about filler and clickbait. The listener-facing word for a Foray's parts
+ * is settled in docs/audit/persona-synthesis.md §2.
+ *
+ * `act` is matched in lower case only, deliberately: a lower-case "act" in
+ * sentence-case copy is the structural word ("this act", "the last act"),
+ * while "Act" capitalised is almost always a proper noun (the Clean Air Act)
+ * that a Foray about legislation must be able to name. "Act one" is caught by
+ * its own pattern because it opens a sentence.
+ */
+const INTERNAL_VOCABULARY = [
+  /\bbeats?\b/i,
+  /\bsegments?\b/i,
+  /\bacts?\b/,
+  /\bAct (?:one|two|three|four|five|six|[0-9]+)\b/,
+  /\brunning order\b/i
+];
+
 function wordCount(text) {
   return text.trim().split(/\s+/).length;
 }
@@ -59,6 +92,7 @@ const MAX_BLURB_WORDS = 30;
 
 module.exports = {
   BANNED,
+  INTERNAL_VOCABULARY,
   wordCount,
   MAX_WHY_LINE_WORDS,
   MAX_HOOK_WORDS,

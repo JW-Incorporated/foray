@@ -84,7 +84,7 @@ import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
 import { MODE_CHAR_BANDS, narratorStructureErrors } from "./check-narration.mjs";
 const NARRATION_MODES = new Set(Object.keys(MODE_CHAR_BANDS));
 
-const { BANNED, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
+const { BANNED, INTERNAL_VOCABULARY, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /* ------------------------------------------------------------------ rules */
@@ -678,6 +678,12 @@ export function checkForays(files) {
       if (typeof text !== "string" || !text) { E(`${field} must be a non-empty string`); continue; }
       if (wordCount(text) > MAX_WHY_LINE_WORDS) E(`${field} is ${wordCount(text)} words, over the ${MAX_WHY_LINE_WORDS}-word limit: "${text}"`);
       for (const rx of BANNED) if (rx.test(text)) E(`${field} contains banned phrase ${rx}: "${text}"`);
+      /* The curator's units, not a listener's words (rules.js INTERNAL_VOCABULARY,
+       * 2026-09-22 audit): this loop let "Barbecue: eight beats of a forty-beat
+       * history" through, because BANNED is about filler, not jargon. Here rather
+       * than only in a test so the publish gate, which runs this checker, refuses
+       * a generated title or slot title that names an act or a segment. */
+      for (const rx of INTERNAL_VOCABULARY) if (rx.test(text)) E(`${field} uses the pipeline's word ${rx}, which a listener cannot decode: "${text}"`);
     }
 
     if (!Array.isArray(foray.items) || foray.items.length === 0) { E("`items` must be a non-empty ordered array"); continue; }

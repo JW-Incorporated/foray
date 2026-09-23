@@ -63,7 +63,7 @@ import {
   LEXICON_PATH,
 } from "./check-forays.mjs";
 
-const { BANNED, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
+const { BANNED, INTERNAL_VOCABULARY, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..");
 const CLI = path.join(HERE, "check-forays.mjs");
@@ -717,6 +717,7 @@ test("the Forays' own copy obeys the shared copy rules", () => {
       assert.ok(text, `${f.id}: a copy field is empty`);
       assert.ok(wordCount(text) <= MAX_WHY_LINE_WORDS, `${f.id}: ${wordCount(text)} words: "${text}"`);
       for (const rx of BANNED) assert.doesNotMatch(text, rx, `${f.id}: banned ${rx} in "${text}"`);
+      for (const rx of INTERNAL_VOCABULARY) assert.doesNotMatch(text, rx, `${f.id}: pipeline word ${rx} in "${text}"`);
       checked += 1;
     }
   }
@@ -1626,6 +1627,37 @@ test("a banned phrase in the summary is rejected", () => {
   const f = fx();
   boundary(f).summary = "A fascinating tour of fire.";
   assert.match(errorsFor(f).join("\n"), /banned phrase/);
+});
+
+test("the pipeline's own words are rejected in a title, a summary and a slot title", () => {
+  /* The 2026-09-22 audit's Tier 4: "Barbecue: eight beats of a forty-beat
+     history" passed every copy gate, because BANNED is about filler and nothing
+     knew that `beat` is the curator's unit rather than a listener's word. The
+     real title is the first case, verbatim, so this is the defect itself.
+
+     MUTATION: drop the INTERNAL_VOCABULARY loop from check-forays.mjs's copy
+     loop -> every case below goes red. MUTATION 2: add the `i` flag to the
+     lower-case `act` pattern in rules.js -> the Clean Air Act case goes red. */
+  const cases = [
+    ["title", "Barbecue: eight beats of a forty-beat history"],
+    ["summary", "Nine segments from five shows on how fire made us."],
+    ["slot", "The last act: who got the credit"],
+    ["slot", "Act one: the hearth"],
+    ["summary", "The whole running order, in under an hour."],
+  ];
+  for (const [where, text] of cases) {
+    const f = fx();
+    if (where === "slot") boundary(f).slots[0].title = text;
+    else boundary(f)[where] = text;
+    assert.match(errorsFor(f).join("\n"), /uses the pipeline's word/, `${where} "${text}" must be refused`);
+  }
+  /* And what must stay legal: a proper noun, and the listener's own words for
+     the same things (docs/audit/persona-synthesis.md §2). */
+  for (const text of ["Why the Clean Air Act worked", "Barbecue: eight stories from a much longer history"]) {
+    const f = fx();
+    boundary(f).title = text;
+    assert.doesNotMatch(errorsFor(f).join("\n"), /uses the pipeline's word/, `"${text}" is plain English`);
+  }
 });
 
 test("an over-long slot title is rejected", () => {
