@@ -445,3 +445,27 @@ test("tapping a suggested subject BUILDS it — no second tap, no keyboard", asy
   await new Promise((r) => setTimeout(r, 5));
   assert.deepStrictEqual(asked, [pill.dataset.crSubject], "the suggestion is built from one tap");
 });
+
+test("REVIEW: repeated pill taps while a build is pending build ONE playlist", async () => {
+  /* The pills call the submit handler directly, past the disabled Build
+     button, so a second tap during the cold-boot wait queued a second build:
+     two saved playlists and two navigations. MUTATION: drop the
+     `if (createBuildPending) return;` in bindCreateFormSubmit (and the pill's
+     own check) -> asked has three entries. */
+  const m = mount();
+  seedPool(m);
+  const asked = [];
+  m.ctx.buildPlaylist = (q) => { asked.push(q); return { status: "miss", suggestions: [] }; };
+  m.ctx.location.hash = "#/create";
+  m.evalIn("route()");
+  const pills = m.viewEl.children.filter((c) => c.className === "cr-pill");
+  assert.ok(pills.length >= 2, "fixture: at least two suggestions");
+  pills[0]._fire("click", {});
+  pills[0]._fire("click", {});
+  pills[1]._fire("click", {});
+  await new Promise((r) => setTimeout(r, 5));
+  assert.deepStrictEqual(asked, [pills[0].dataset.crSubject], "one build for one pending request");
+  pills[1]._fire("click", {});
+  await new Promise((r) => setTimeout(r, 5));
+  assert.strictEqual(asked.length, 2, "and the next tap works once the first build has finished");
+});

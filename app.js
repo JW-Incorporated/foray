@@ -8727,13 +8727,30 @@ function createToggleHtml() {
     signature would need extra parameters for no real reuse -- U-02's own
     history (two `#pl-form` mounts sharing one handler) is the caution here:
     that ended with only one of the two mounts still using it. */
+/* ONE BUILD AT A TIME (review 2026-09-23). The suggestion pills call the
+   submit handler directly, so the disabled Build button never had a say: on a
+   cold boot the build waits for the search data, a tap looked like nothing,
+   and a second tap (on the same pill or another) queued a second playlist and
+   a second navigation. The flag covers every entry point; the pills are also
+   disabled so the page says so. */
+let createBuildPending = false;
+
+function setCreatePillsDisabled(disabled) {
+  const view = $("#view");
+  if (!view) return;
+  view.querySelectorAll("[data-cr-subject]").forEach(p => { p.disabled = disabled; });
+}
+
 function bindCreateFormSubmit(e) {
   e.preventDefault();
+  if (createBuildPending) return;
   const form = e.currentTarget;
   const input = form.querySelector("input[type='text']");
   const btn = form.querySelector("button[type='submit']");
   const query = input.value.trim();
   if (!query) return;
+  createBuildPending = true;
+  setCreatePillsDisabled(true);
   const originalLabel = btn.textContent;
   btn.disabled = true;
   setControlLabel(btn, "Building…", null);
@@ -8756,6 +8773,8 @@ function bindCreateFormSubmit(e) {
         }
       }
     } finally {
+      createBuildPending = false;
+      setCreatePillsDisabled(false);
       btn.disabled = false;
       setControlLabel(btn, originalLabel, null);
     }
@@ -8791,6 +8810,7 @@ function renderCreate() {
      search for its own label) is the same rule. */
   $("#view").querySelectorAll("[data-cr-subject]").forEach(btn => {
     btn.addEventListener("click", () => {
+      if (createBuildPending) return;   /* a build is already on its way */
       const form = $("#cr-form");
       const input = $("#cr-input");
       if (input) input.value = btn.dataset.crSubject;
