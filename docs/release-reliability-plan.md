@@ -1,7 +1,10 @@
 # Release reliability — the plan
 
-**Status, 2026-09-22:** piece 1 of 3 shipped (PR #737, the upload retry). Pieces
-2 and 3 are designed here and not built.
+**Status, 2026-09-22 (updated same day):** all three pieces are built. Piece 1
+shipped in PR #737 (the upload retry). Pieces 2 and 3 — the watchdog and the
+trigger — are on branch `audit-fix/l7-release`, awaiting a founder merge because
+they add `.github/workflows/` files. §6 says what was built and where it departs
+from the design below. Neither piece does anything until that merge.
 
 > **FOUNDER, 2026-09-22:** "It seems these releases are usually quite rocky and
 > fail on a somewhat regular basis. Is there a better structure we can set up
@@ -63,6 +66,13 @@ of the whole investigation, because it kills the obvious design:
   runs.
 - `HUMAN-ACTIONS.md` #46, which is *about* those workflows not firing, has been
   open since 2026-09-13.
+
+(Diagnosed later the same day, and it sharpens the point: both workflows fire
+every day and are red ON PURPOSE. Every nightly-refresh run from 2026-09-15 to
+2026-09-22 stopped at its `OVERWRITE_WOULD_LOSE` guard, because the Cloud routine
+that turns a digest into a PR, `foray-nightly-enrich`, has been disabled since
+2026-09-13 — so the 2026-09-14 digest was never consumed. The guards did their
+job for eight days, correctly, and nobody saw. HUMAN-ACTIONS #46 now says so.)
 
 Red runs are demonstrably not reaching a human here. `nightly-watch.yml:50-57`
 already anticipated this in its own header: *"It does not open an issue, comment,
@@ -221,3 +231,59 @@ For whoever touches `release.yml:232-283`:
 - Play secret present + keystore absent yields `play_state=ready` but
   `uploaded=false`, which trips the "stores disagree" failure with no message
   naming the keystore as the cause.
+
+## 6. AS BUILT (2026-09-22)
+
+Files: `tools/release/watch-release.mjs` (every decision, pure and
+dependency-free), `.github/workflows/release-watch.yml` (hourly, `:23`),
+`.github/workflows/release-trigger.yml` (every 3 hours, `:47`), a
+`RELEASE_OUTCOME` line in `release.yml`'s summary step, and
+`tools/release/watch-release.test.mjs` (floored), which replays the real
+2026-09-22 night from real runs, the real summary-job log and real `git log`.
+`tools/release/` is now on `DENIED_PREFIXES` — `upload-retry.mjs` runs beside the
+App Store Connect key, and the trigger spends macOS minutes.
+
+The gates are as designed in §3: G1 failed (60-minute grace), G2 divergent (both
+credential gates `ready`), G3 stalled (6 hours), G4 stuck (60 minutes). The
+numbers and their reasons are at the top of `watch-release.mjs`.
+
+**The trigger** dispatches `gh workflow run release.yml --ref main -f bump=none`
+when a release-relevant commit is waiting, and holds when a release is queued or
+running, when nothing relevant is waiting (a data-only night says so), when the
+last **2** releases in a row failed, or when main's own push-triggered runs are
+red or still building. A failed release is retried the same way new work ships —
+its commits are still waiting — so one transient store outage heals at the next
+slot, and a second failure in a row stops spending 10×-billed macOS minutes until
+a person looks. **It only ever dispatches; nothing in either workflow re-runs**,
+and the suite pins that.
+
+**The alarm** is one issue, found by an HTML marker in its body (so a person can
+retitle it), created or reopened when any gate goes red, edited when the picture
+changes, closed by the watchdog with a comment when every gate is green.
+
+**Liveness.** The two workflows watch each other: a peer whose workflow `state`
+is not `active` (the #46 banner) is red at once; a peer with no successful
+*scheduled* run in 3 hours (watchdog) or 6 hours (trigger) is red. Both exit 0
+whenever they managed to evaluate — the issue carries the verdict, the run colour
+carries only "did the watcher work" — which is what makes "no recent success"
+mean "down". The trigger may raise the issue for a dead watchdog but never close
+it. **The honest limit:** if both workflows die together, or Actions is off for
+the org (billing), nothing inside GitHub can say so.
+
+**Departures from §3, both deliberate:**
+
+- `git log` over the full-history checkout, not `GET /compare`. The compare API
+  caps at 250 commits / 300 files and returns only the AGGREGATE file list, so it
+  cannot say which commit touched what — and G3's clock is the oldest *relevant*
+  commit. git has neither limit.
+- G2 reads one `RELEASE_OUTCOME` line from the summary job's log rather than
+  grepping each platform job's log. Runs from before that line existed are read
+  from the runner's own echo of the summary step's `env:` block, then from job
+  conclusions — which is what catches §5's first blind spot (run 34042838342:
+  android died before its gate, the summary job went green, G2 names it).
+
+**Still open, not built here:** the build number is still derived from the
+lifetime `run_number` (§3's warning stands; the trigger simply never re-runs);
+§4's build stamp in diagnostics; and §5's second and third blind spots in the
+summary step itself — G1 already reds on every one of those runs, so they cost a
+worse message, not a missed alarm.
