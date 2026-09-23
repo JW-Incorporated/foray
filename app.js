@@ -2553,6 +2553,12 @@ function renderAllShows(initialQuery = "") {
      field is focused OR holds a query") hides the browse furniture for the
      ordinary reason rather than through a second rule. */
   showSearchFieldFocused = false;
+  /* A NEW MOUNT SUPERSEDES EVERY PASS THE OLD ONE STARTED (audit 2026-09-22).
+     The token was only ever bumped by a keystroke, so type "radio", tap Home
+     and tap Search again inside the directory pass's ~0.5 s and the old pass
+     still held the current token — its "radio" results painted above the
+     browse list, under an empty field, for a query nobody could see. */
+  supersedeShowSearch();
   if (query) {
     const seed = $("#sh-input");
     if (seed) seed.value = query;
@@ -3114,6 +3120,14 @@ async function searchShowEpisodesScoped(show_id, query) {
    the `renderShow` call below takes the resolving branch and cannot come back
    here. If the seed somehow did not take, the guard is that we only re-render
    when `showById` now answers. */
+/** Whether the hash on screen is `#/show/<show_id>`, compared DECODED — the
+    hash carries the encoded id, and comparing it with the raw one never
+    matched an id that needed encoding. */
+function onShowRoute(show_id) {
+  const m = /^#\/show\/(.+)$/.exec(currentHash());
+  return !!m && safeDecode(m[1]) === show_id;
+}
+
 function resolveMissingShow(show_id) {
   const view = $("#view");
   /* S-05: a `pi:` id has no fallback lookup at all — see showById's own
@@ -3139,12 +3153,15 @@ function resolveMissingShow(show_id) {
   }
 
   if (view) view.innerHTML = `<div class="page"><p class="note">Loading show…</p></div>`;
-  const wanted = `#/show/${show_id}`;
+  const isCurrentRender = renderToken();
   fetchApiJson(`api/shows/search?id=${encodeURIComponent(show_id)}`).then((data) => {
     /* Navigated away while the row was in flight — repainting #view now would
-       clobber whatever page the listener is actually on. Same "still mounted"
-       rule renderShow's own episode fetch follows. */
-    if (location.hash !== wanted) return;
+       clobber whatever page the listener is actually on. The same render-token
+       rule renderShow's own episode fetch follows, plus the route itself for a
+       caller that renders a show outside the router. (The route check compared
+       the raw hash with the DECODED id, so an id that needed encoding never
+       matched and the page stayed on "Loading show…"; onShowRoute decodes.) */
+    if (!isCurrentRender() || !onShowRoute(show_id)) return;
     const row = data?.show || null;
     if (!row) {
       const v = $("#view");
@@ -3250,7 +3267,7 @@ function renderShow(show_id) {
      instead of beside it. */
   $("#view").innerHTML = `<div class="page">${head}${searchBox}<div data-show-episodes></div>
   ${similarShowsSection(show)}
-  ${showForaysHtml(show)}
+  <div data-show-forays>${showForaysHtml(show)}</div>
   </div>`;
   bindPickLogging($("#view"));
   bindStars($("#view"));
@@ -3269,7 +3286,7 @@ function renderShow(show_id) {
      paintSearchNote need answered, and still answered by the API rather
      than assumed. */
   let fullyLoaded = false;
-  let anyStale = false;     // sticky once any page reports stale/degraded
+  let anyStale = false;     // whether the list on screen came from a stale/degraded answer; the latest answer decides
   let lastLoadError = null;
   /* WHAT STATE THE EPISODE CONTAINER IS ACTUALLY IN (issue #687). Four
      values, one of which used to be invisible to the code entirely:
@@ -3307,7 +3324,10 @@ function renderShow(show_id) {
   const countLabelEl = () => $("#view [data-show-count]");
   const searchWrap = () => $("#view [data-show-ep-search]");
   const searchNote = () => $("#view [data-show-ep-search-note]");
-  const stillMounted = () => !!container();
+  /* IDENTITY, NOT PRESENCE: every show page has a `[data-show-episodes]`, so
+     presence alone let show A's late fetch paint into show B (see renderToken). */
+  const isCurrentRender = renderToken();
+  const stillMounted = () => isCurrentRender() && !!container();
 
   function bindRows(c) {
     bindPickLogging(c);
@@ -3612,9 +3632,17 @@ function renderShow(show_id) {
        with what is already on screen, and repainting then would throw away the
        listener's scroll position and any "load more" pages they had already
        pulled in — turning a silent background refresh into a visible jump. */
-    if (cached && sameEpisodeList(cached.episodes, episodes)) return;
+    if (cached && sameEpisodeList(cached.episodes, episodes)) {
+      /* The list agrees, so nothing moves — but the LABEL may be stale: a cached
+         list saved during an outage set `anyStale`, and returning here without
+         repainting the count left "couldn't refresh just now" on screen after
+         a refresh that had just succeeded (audit 2026-09-22). */
+      anyStale = !!stale;
+      paintCount();
+      return;
+    }
 
-    if (stale) anyStale = true;
+    anyStale = !!stale;
     loaded = episodes;
     fullyLoaded = nc === null;
     paintEpisodeOutcome("loaded");
@@ -4646,6 +4674,15 @@ let showSearchPainted = { token: -1, query: "", rows: [] };
    work that has already started. */
 let showSearchDebounceTimer = null;
 const SHOW_SEARCH_DEBOUNCE_MS = 250;
+
+/** Invalidate every show-search pass in flight and forget what they painted:
+    the work that has not started (the debounce tick) and the work that has
+    (the token). Called when the page that owned them is replaced. */
+function supersedeShowSearch() {
+  showSearchToken++;
+  showSearchPainted = { token: -1, query: "", rows: [] };
+  if (showSearchDebounceTimer) { clearTimeout(showSearchDebounceTimer); showSearchDebounceTimer = null; }
+}
 
 /* Below this many hits from the prefix pass, the debounce tick also runs the
    LINEAR scan over the index (12.9-19.9 ms measured over 19,904 rows, 4.1 ms
@@ -8011,29 +8048,34 @@ function citesHtml(entry) {
   </div>`;
 }
 
-/* Expand a transcript in place. Bound once per render, on the list rather than
-   per button, so a Foray with forty narration beats costs one listener.
+/* Expand a transcript in place. Delegated rather than per button, so a Foray
+   with forty narration beats costs one listener.
 
    NOTHING REPAINTS THIS LIST, so nothing has to restore the open state:
    `paintForay` and `paintFeedback` — the only two things that touch the running
    order after it is built — toggle classes on elements they find, and never
    rewrite `innerHTML`. The list is built once by `renderForay`, which only runs
    on a route change, and a route change is supposed to forget. */
-function bindForayScripts() {
+/* BOUND ONCE, FROM init() (audit 2026-09-22). This used to be called from
+   every renderForay, adding one more click listener to the persistent `#view`
+   each time — `#view` outlives every render, only its innerHTML is replaced.
+   With two listeners the second read the aria-expanded the first had just
+   written and toggled it straight back, so "Show more" worked on odd visits to
+   a Foray page and was dead on even ones. `stopPropagation` does not stop a
+   sibling listener on the same node; binding once is the fix, and the
+   delegation is why once is enough — the same argument onBackClick makes. */
+function onForayScriptClick(e) {
+  const btn = e.target && typeof e.target.closest === "function" ? e.target.closest("[data-script-for]") : null;
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
   const view = $("#view");
-  if (!view) return;
-  view.addEventListener("click", (e) => {
-    const btn = e.target.closest?.("[data-script-for]");
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const text = view.querySelector(`#${CSS.escape(btn.dataset.scriptFor)}`);
-    if (!text) return;
-    const open = btn.getAttribute("aria-expanded") === "true";
-    btn.setAttribute("aria-expanded", open ? "false" : "true");
-    btn.textContent = open ? "Show more" : "Show less";
-    text.classList.toggle("is-clamped", open);
-  });
+  const text = view ? view.querySelector(`#${CSS.escape(btn.dataset.scriptFor)}`) : null;
+  if (!text) return;
+  const open = btn.getAttribute("aria-expanded") === "true";
+  btn.setAttribute("aria-expanded", open ? "false" : "true");
+  btn.textContent = open ? "Show more" : "Show less";
+  text.classList.toggle("is-clamped", open);
 }
 
 function forayRow(entry) {
@@ -8384,7 +8426,6 @@ async function renderForay(id) {
   // the disagreement itself: the hook is pinned in player/foray-playback.test.js.
   if (resume) { const fill = $("#fy-bar-fill"); if (fill) fill.style.width = `${resume.percent}%`; }
   bindFeedback(r);
-  bindForayScripts();
   bindSourceLinks(r);
   bindForayTransport(r, player, resume);
   pageDidPaint();   // the real page is up: a clamped back-step restore can land now
@@ -10870,6 +10911,7 @@ function renderCurrentPage() {
   fbTarget = null;
   state.forayResume = null;
   resetPageHeadScrollState();
+  renderEpoch++;
   const h = currentHash();
   const forayId = forayRouteId();
   let m;
@@ -11002,6 +11044,22 @@ function route() {
    place, so the address the history holds agrees with this. */
 function currentHash(hash = location.hash) {
   return !hash || hash === "#" ? "#/" : hash;
+}
+
+/* WHICH RENDER IS ON SCREEN (audit 2026-09-22, theme B). Async work used to ask
+   "is something still on screen?" — `!!$("#view [data-show-episodes]")` — which
+   every show page answers yes to, so show A's episodes, description and count
+   painted onto show B's page when B was opened while A's fetch was in flight.
+   The question is "is the render that asked still the current one?", and the
+   answer is a number: renderCurrentPage() increments it, and every async
+   continuation compares the value it captured. */
+let renderEpoch = 0;
+
+/** Capture the current render; the returned function answers whether it is
+    still the one on screen. */
+function renderToken() {
+  const mine = renderEpoch;
+  return () => mine === renderEpoch;
 }
 
 /* Replace the current entry's hash WITHOUT a hashchange and without dropping
@@ -11459,6 +11517,45 @@ function isForaySurface(hash) {
   return h === "#/" || h === "#/forays" || /^#\/(foray|show)\//.test(h);
 }
 
+/* WHAT THE PAGE ON SCREEN SHOWS OF THE FORAY SET, as a string to compare
+   (audit 2026-09-22). A foreground refresh that adopted a newer set used to
+   re-render the whole show or Foray page under the listener — dropping a typed
+   episode search and the keyboard, collapsing every expanded script, and
+   moving the scroll offset onto different content — whether or not anything
+   this page shows had changed. Most adoptions change nothing here. */
+function foraySurfaceSignature() {
+  try {
+    const m = /^#\/show\/(.+)$/.exec(currentHash());
+    if (m) {
+      const show = showById(safeDecode(m[1]));
+      return show ? showForaysHtml(show) : "";
+    }
+    const id = forayRouteId();
+    if (id) {
+      const r = window.ForayPlayer?.resolve?.(state.forays, {
+        id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
+      });
+      return JSON.stringify(r ?? null);
+    }
+    return JSON.stringify(forayCards());
+  } catch (_) {
+    return null;   // cannot tell: treated as unchanged, which keeps the listener's page
+  }
+}
+
+/** Repaint only what the new set changed: on a show page that is its "Used in
+    the following forays" footer, in place; anywhere else the page itself. */
+function repaintForaySurface() {
+  const m = /^#\/show\/(.+)$/.exec(currentHash());
+  if (m) {
+    const slot = $("#view [data-show-forays]");
+    const show = showById(safeDecode(m[1]));
+    if (slot && show) slot.innerHTML = showForaysHtml(show);
+    return;
+  }
+  renderCurrentPage();
+}
+
 let _directoryRefreshing = null;
 
 /**
@@ -11477,8 +11574,9 @@ function refreshForayDirectory(trigger) {
       out = null;
     }
     if (out && out.status === "adopted" && out.set) {
+      const before = foraySurfaceSignature();
       applyForaySet(out.set);
-      if (isForaySurface(location.hash)) renderCurrentPage();
+      if (isForaySurface(location.hash) && foraySurfaceSignature() !== before) repaintForaySurface();
     }
     return out;
   })().finally(() => { _directoryRefreshing = null; });
@@ -11861,6 +11959,7 @@ async function init() {
 
   $("#menu-btn").addEventListener("click", () => openDrawer($("#drawer").hidden));
   $("#view").addEventListener("click", onBackClick);
+  $("#view").addEventListener("click", onForayScriptClick);   // once — see its header
   $("#drawer-overlay").addEventListener("click", () => openDrawer(false));
   $("#drawer").addEventListener("click", (e) => {
     if (e.target.closest("a")) openDrawer(false);
@@ -12019,7 +12118,7 @@ function showShellNotice(reason) {
      bar for a reason nobody wrote. The reason comes from our own worker today —
      this is so a later one cannot make that a bug by adding a message type. */
   const said = Object.prototype.hasOwnProperty.call(SHELL_NOTICE, reason) ? SHELL_NOTICE[reason] : "";
-  if (!said) return;
+  if (!said || shellNoticeDismissed) return;
   const view = $("#view");
   if (!view || !view.parentNode) return;
   let bar = $("#shell-notice");
@@ -12041,15 +12140,25 @@ function showShellNotice(reason) {
      and a Foray page's transport is sticky at the same offset, so while the bar
      is up it covers the scrubber and the play control. In the `stale-shell` case
      — a dead zone — pressing Reload just reproduces it, so without this the
-     listener would lose the transport for the rest of the session. Removing the
-     element is enough: the worker only speaks again on a new page load. */
+     listener would lose the transport for the rest of the session.
+
+     REMOVING THE ELEMENT WAS NOT ENOUGH (audit 2026-09-22). The comment here
+     said the worker only speaks again on a new page load; it speaks once per
+     CODE FILE it serves from the fallback (sw.js, `handleShell`), and a page
+     loads ~20 of them — so the bar came back seconds after ×, again and again,
+     covering the transport each time. The dismissal is now a fact about this
+     page load, checked at the top. */
   const dismiss = $("#shell-notice-dismiss");
   if (dismiss) {
     dismiss.addEventListener("click", () => {
+      shellNoticeDismissed = true;
       if (bar.parentNode) bar.parentNode.removeChild(bar);
     });
   }
 }
+
+/* Set by the bar's ×, for the life of this page load. See showShellNotice. */
+let shellNoticeDismissed = false;
 
 if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
   navigator.serviceWorker.register("sw.js").catch(() => { /* progressive */ });

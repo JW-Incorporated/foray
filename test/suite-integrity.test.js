@@ -295,6 +295,10 @@ const FLOORS = {
      tab scrolls to top, a show page reports its terminal paint. Two cells boot
      the REAL init(). */
   "test/router.test.js": 8,
+  /* 2026-09-22, audit theme B: async work knows which page asked for it. The
+     harness answers a region selector with the SAME element across pages, as a
+     browser does — the forgiving fake would have hidden the show-A-into-B bug. */
+  "test/async-identity.test.js": 7,
   /* Where `api/*` actually lives, and the CSP entry that lets the client reach
      it. Floored because this is the suite standing between the app and a
      REGRESSION THAT LOOKS LIKE NOTHING: every caller degrades a failed api
