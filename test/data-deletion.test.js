@@ -480,11 +480,19 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      POSITION it resumes to is deliberately not stored here: `cp_pos:` has owned
      that since #26 and there is exactly one definition of it. Same mechanism as
      every prior addition: this count failed first, then the policy check, until
-     privacy-policy.md §1 got the row. */
+     privacy-policy.md §1 got the row.
+
+     27 -> 28 on 2026-09-22 (design/QA audit, theme J): `cp_storage_stale`, the
+     durable store's list of keys localStorage REFUSED to update while IndexedDB
+     took them (player/durable-store.js, header property 4). Without it a full
+     localStorage undid the listener's change on the next launch and then pushed
+     the stale copy over the good one. Bookkeeping, not user state, and written
+     to the durable tiers only; the delete control clears it like any other row.
+     Same mechanism: this count failed first, then the policy check. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 27,
-    `expected 27 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 28,
+    `expected 28 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

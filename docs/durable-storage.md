@@ -90,6 +90,18 @@ destructure or a computed member, so the rule is inverted instead.
    treated as a tier that is empty: "I could not look" is not "I saw nothing", and
    confusing them pushed a stale localStorage mirror over durable rows that were
    newer. Such a tier now receives only the keys this session wrote.
+
+   **A mirror that refused a write is not believed next launch** (2026-09-22
+   audit). `setItem` only throws when *nothing* took the value, so a full
+   `localStorage` beside a working IndexedDB returns normally and keeps the OLD
+   value. Almost no `cp_` row carries a timestamp (`cp_queue`, `cp_saved`,
+   `cp_interests`, `cp_sb_session` and a dozen more do not), so "local wins"
+   used to adopt that stale mirror on the next launch and push it down over the
+   good IndexedDB copy — the change undone, then lost. The store now writes the
+   refused key's name to `cp_storage_stale` in the durable tiers, and hydration
+   takes the durable row for it; the mark clears once `localStorage` accepts the
+   key again. Pinned by the "localStorage refused" tests in
+   `player/durable-store.test.js`.
 3. **A failed write is detectable.** `setItem` throws when no tier accepted
    responsibility, so `writeProgress`'s `return false` still means what it says.
    Every failure lands in `health()` with tier, op, key and message; `onFault`

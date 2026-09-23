@@ -99,7 +99,7 @@ const FLOORS = {
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
-  "player/durable-store.test.js": 74,
+  "player/durable-store.test.js": 81, // 2026-09-22 audit (theme J): a key localStorage refused while IndexedDB took it is not reverted next launch, nor pushed down over the good copy — three keys, the mark clearing, a refused removal, the ledger as bookkeeping, purge, a corrupt ledger; 74 -> 81
   "player/idb-tier.test.js": 23,
   /* New with M3 (kanban card t_c7199b13): the event queue moved off a
      synchronous `cp_events` localStorage rewrite into its own IndexedDB

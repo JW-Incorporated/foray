@@ -62,6 +62,21 @@
       `health()` is always readable even when every tier is dead, because it
       lives in memory.
 
+   4. A MIRROR THAT REFUSED A WRITE IS NOT BELIEVED NEXT LAUNCH. `setItem` only
+      throws when NOTHING took the value, so a full or blocked localStorage with
+      a live durable tier returns normally: the session reads the new value from
+      memory, the durable tier holds it — and localStorage still holds the OLD
+      one. Almost no `cp_` row carries a timestamp for `isNewer` to compare
+      (`cp_queue`, `cp_saved`, `cp_interests`, `cp_sb_session` and a dozen more
+      do not), so hydration's "local wins" rule used to adopt that stale mirror
+      AND push it down over the good durable copy: the change was undone on the
+      next launch and then lost for good, and losing `cp_sb_session` that way
+      makes the listener a new anonymous account. So a key the sync tier refused
+      is written down in `LOCAL_STALE_KEY` (in the durable tiers, first, because
+      the sync tier is the one that just said no) and hydration takes the durable
+      row for it instead. The mark clears the moment the sync tier accepts the
+      key again. 2026-09-22 audit; the "localStorage refused" tests pin it.
+
    ── What this does NOT fix, stated rather than assumed ─────────────────────
    IndexedDB is not immune to eviction. Safari's ~7-day sweep covers ALL
    script-writable storage for the origin, IndexedDB included, and Chromium
@@ -96,6 +111,14 @@ export const DEFAULT_PREFIX = "cp_";
 /** Where the health record is mirrored, so a fault survives a reload even
     though nothing reads it to decide anything. Prefixed like everything else. */
 export const HEALTH_KEY = "cp_storage_health";
+
+/** Which keys the sync tier (localStorage) REFUSED to update while a durable
+    tier took them — header, property 4. A JSON array of key names. Written to
+    the durable tiers only, never to memory or the sync tier: it describes the
+    sync tier's staleness, so the sync tier is the last place it could live, and
+    keeping it out of memory keeps it out of `length`/`key(i)` and out of what
+    the app can read. Prefixed like everything else, so `purge()` finds it. */
+export const LOCAL_STALE_KEY = "cp_storage_stale";
 
 /** Faults are kept for inspection, not forever — a permanently broken tier
     would otherwise grow this without bound. Doubles as the budget for `onFault`
@@ -261,8 +284,14 @@ export class DurableStore {
     this._hydrating = null;
     this._inFault = false;
     this._inHealth = false;
-    /** True for the duration of `purge()`. Suppresses the health MIRROR only. */
+    /** True for the duration of `purge()`. Suppresses the health MIRROR and the
+        stale-mirror ledger, both of which would otherwise write a row into
+        storage a listener has just asked to be emptied. */
     this._purging = false;
+    /** Keys whose localStorage copy is older than the durable one, because the
+        sync tier refused a write the durable tier accepted (property 4).
+        Persisted as `LOCAL_STALE_KEY`. */
+    this._stale = new Set();
 
     this._loadSync();
   }
@@ -313,6 +342,10 @@ export class DurableStore {
     this._mem.set(k, v);
     this._dirty.add(k);
     const accepted = this._writeSync(k, v);
+    /* The ledger is queued BEFORE the value (property 4). If only the ledger
+       lands, the next launch adopts the durable row, which is never older than
+       the refused mirror; if only the value landed, the mirror would win again. */
+    this._markLocal(k, accepted);
     const queued = this._enqueue((t) => t.write(k, v), k, "write");
     if (!accepted && !queued) {
       // A browser that has taken storage away entirely leaves no tier to fault,
@@ -335,9 +368,13 @@ export class DurableStore {
     if (!this.owns(k)) { this._passRemove(k); return; }
     this._mem.delete(k);
     this._dirty.add(k);
+    let removed = this._sync.length > 0;
     for (const t of this._sync) {
-      try { t.remove(k); } catch (err) { this._fault(t.name, "remove", err, k); }
+      try { t.remove(k); } catch (err) { removed = false; this._fault(t.name, "remove", err, k); }
     }
+    // A removal the mirror refused leaves the mirror holding a row the durable
+    // tier no longer has — the same staleness as a refused write.
+    this._markLocal(k, removed);
     this._enqueue((t) => t.remove(k), k, "remove");
   }
 
@@ -420,6 +457,9 @@ export class DurableStore {
        explicit instruction — and a tier nobody asks is a tier whose rows survive
        a deletion. If it is really dead the verification pass below says so. */
     this._disabled.clear();
+    /* Nothing is stale in storage that is about to be empty, and the ledger row
+       itself is one of the keys `_readTiers` finds and removes below. */
+    this._stale.clear();
     const targets = new Set([...this._mem.keys()].filter((k) => this.owns(k)));
     for (const k of await this._readTiers(unverified, "before")) targets.add(k);
 
@@ -651,16 +691,26 @@ export class DurableStore {
         continue;
       }
       if (!rows) continue;
+      /* Property 4: the keys an earlier session's localStorage refused. Read
+         before the rows, because it decides who wins them. Scoped to THIS tier:
+         the ledger and the values it describes ride the same queue into the
+         same tier, so "the ledger names a key this tier does not hold" can only
+         mean the durable tier removed it and the mirror refused to. */
+      const staleHere = parseStale(rows.get(LOCAL_STALE_KEY));
+      for (const k of staleHere) this._stale.add(k);
       for (const [k, v] of rows) {
         if (typeof k !== "string" || typeof v !== "string") continue;
         if (!this.owns(k)) continue;
         seen.add(k);
         if (k === HEALTH_KEY) continue;          // diagnostics, never authoritative
+        if (k === LOCAL_STALE_KEY) continue;     // bookkeeping, read above
         if (this._dirty.has(k)) continue;        // property 2: this session wins
         const mine = this._mem.has(k) ? this._mem.get(k) : null;
         if (mine === null) { this._adopt(k, v); continue; }   // localStorage lost it
-        if (mine === v) continue;
-        if (isNewer(v, mine)) { this._adopt(k, v); continue; }
+        if (mine === v) { this._stale.delete(k); continue; }  // the mirror caught up
+        /* The mirror refused this key's last write, so `mine` is known to be the
+           OLDER copy — whatever `isNewer` could or could not tell from it. */
+        if (staleHere.has(k) || isNewer(v, mine)) { this._adopt(k, v); continue; }
         /* Local won the conflict, so the durable tier is holding a STALE row.
            Dropping it from `seen` is what makes `_migrateUp` push the winner
            down — without this line the tier keeps the old value forever and the
@@ -668,6 +718,18 @@ export class DurableStore {
            past. Caught by "a local row that is newer is kept, not overwritten". */
         seen.delete(k);
       }
+      /* A key on the ledger that this tier no longer holds was REMOVED durably
+         while the mirror refused the removal: the mirror's row is the ghost. */
+      for (const k of staleHere) {
+        if (rows.has(k) || this._dirty.has(k)) continue;
+        this._mem.delete(k);
+        let removed = this._sync.length > 0;
+        for (const t of this._sync) {
+          try { t.remove(k); } catch (err) { removed = false; this._fault(t.name, "remove", err, k); }
+        }
+        if (removed) this._stale.delete(k);
+      }
+      if (staleHere.size) this._persistStale();
     }
     await this._migrateUp();
     this._hydrated = true;
@@ -684,7 +746,39 @@ export class DurableStore {
    */
   _adopt(key, value) {
     this._mem.set(key, value);
-    this._writeSync(key, value);
+    // A mirror that takes the durable value is no longer stale; one that still
+    // refuses stays on the ledger for the next launch to try again.
+    if (this._writeSync(key, value)) this._stale.delete(key);
+  }
+
+  /**
+   * Keep the stale-mirror ledger true after a sync-tier write or removal
+   * (property 4). `ok` is whether the sync tier took it.
+   *
+   * No sync tier means no mirror to be stale, and no live durable tier means no
+   * better copy to prefer, so neither records anything.
+   */
+  _markLocal(key, ok) {
+    if (!this._sync.length) return;
+    if (ok) {
+      if (this._stale.delete(key)) this._persistStale();
+      return;
+    }
+    if (!this._liveAsync().length || this._stale.has(key)) return;
+    this._stale.add(key);
+    this._persistStale();
+  }
+
+  /** Queue the ledger to the durable tiers: the whole set, or a removal once it
+      is empty. Never during a purge — see `_purging`. */
+  _persistStale() {
+    if (this._purging) return;
+    if (!this._stale.size) {
+      this._enqueue((t) => t.remove(LOCAL_STALE_KEY), LOCAL_STALE_KEY, "remove");
+      return;
+    }
+    const blob = JSON.stringify([...this._stale].sort());
+    this._enqueue((t) => t.write(LOCAL_STALE_KEY, blob), LOCAL_STALE_KEY, "write");
   }
 
   /**
@@ -815,6 +909,18 @@ function stampOf(raw) {
     if (Number.isFinite(t)) return t;
   }
   return null;
+}
+
+/** The ledger row, as a Set. A missing or corrupt row is an empty ledger: the
+    worst that costs is the pre-fix "local wins", never a thrown hydration. */
+function parseStale(raw) {
+  if (typeof raw !== "string") return new Set();
+  try {
+    const list = JSON.parse(raw);
+    return new Set(Array.isArray(list) ? list.filter((k) => typeof k === "string") : []);
+  } catch (_) {
+    return new Set();
+  }
 }
 
 function errText(err) {
