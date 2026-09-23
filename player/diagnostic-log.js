@@ -569,11 +569,14 @@ export const SESSION_KINDS = new Set([
 ]);
 
 /** Where a remote command physically arrived (founder, 2026-09-23). One token
-    per native door: iOS has one (`MPRemoteCommandCenter`, whatever pressed it —
-    the lock screen, Control Center, CarPlay, a Bluetooth stack and a headphone
-    pinch are indistinguishable there); Android has two, Media3's session and
-    the notification's own buttons. */
-export const REMOTE_ORIGINS = new Set(["command-center", "media-session", "notification"]);
+    per door: iOS has two — the plugin's `MPRemoteCommandCenter` (`command-center`;
+    whatever pressed it — the lock screen, Control Center, CarPlay, a Bluetooth
+    stack and a headphone pinch are indistinguishable there) and WebKit's OWN
+    `MediaSession` (`webkit`), which the shim tees the page's handlers onto
+    because WebKit publishes a Now Playing entry of its own for every `<audio>`
+    element; Android has two, Media3's session and the notification's own
+    buttons. */
+export const REMOTE_ORIGINS = new Set(["command-center", "webkit", "media-session", "notification"]);
 
 /** Which of the platform's commands it was, BEFORE the plugin mapped it onto a
     page action. Kept beside the action because the mapping is the finding:
@@ -1250,12 +1253,19 @@ export class PlayerDiagnostics {
    * whether a handler was found. The plugin's own stamp rides beside `wall`,
    * as it does for `sessionEvent`, so the lag says how asleep the page was.
    *
+   * `deduped` is the shim's own verdict that this copy of a press was the
+   * SECOND door delivering the same action inside its window
+   * (`REMOTE_DUPLICATE_WINDOW_MS` in foray-media-session.js) and was dropped —
+   * so a lock-screen skip that moved the playhead once while two rows say it
+   * arrived twice is the mechanism working, and a skip that moved twice with
+   * no `dup=y` row is the window being too short. Read together with `handled`.
+   *
    * Every field is admitted by a closed set or by shape, and an unrecognised
    * command or origin is DROPPED, for the reason `sessionEvent` states.
    *
-   * @param {object} event `{ command, action, origin, handled, at }`
+   * @param {object} event `{ command, action, origin, handled, deduped, at }`
    */
-  remoteCommand({ command = null, action = null, origin = null, handled = null, at = null } = {}) {
+  remoteCommand({ command = null, action = null, origin = null, handled = null, deduped = null, at = null } = {}) {
     const c = asText(command).trim();
     const o = asText(origin).trim();
     if (!REMOTE_COMMANDS.has(c) || !REMOTE_ORIGINS.has(o)) return null;
@@ -1268,6 +1278,7 @@ export class PlayerDiagnostics {
       action: /^[a-z]{1,24}$/.test(asText(action)) ? asText(action) : "",
       origin: o,
       handled: handled === true,
+      deduped: deduped === true,
       at: nativeAt,
       lagMs: nativeAt == null ? null : this._now() - nativeAt,
       hidden: this._isHidden(),
@@ -1748,7 +1759,7 @@ function lineFor(e) {
        nothing to give it to, which is its own finding. */
     case "remote":
       return `${head} ${e.command ?? "?"} -> ${e.action || "—"} from ${e.origin ?? "?"}` +
-        `  handled=${e.handled ? "y" : "n"}  lag ${ms(e.lagMs)}  hidden=${e.hidden ? "y" : "n"}`;
+        `  handled=${e.handled ? "y" : "n"}${e.deduped ? "  dup=y" : ""}  lag ${ms(e.lagMs)}  hidden=${e.hidden ? "y" : "n"}`;
     /* M-03. `lag` is the delivery lag between the plugin's own stamp and the
        page handling the event — on a suspended WebView it is the length of
        the suspension, which is the measurement the F16 drive could not make. */
@@ -1804,7 +1815,9 @@ export function formatDiagnosticReport(record) {
   const blankCredit = nowPlaying.filter((e) => !e.artist).length;
   const sessions = entries.filter((e) => e.type === "session");
   const remotes = entries.filter((e) => e.type === "remote");
-  const unhandled = remotes.filter((e) => !e.handled).length;
+  const deduped = remotes.filter((e) => e.deduped).length;
+  /* A dropped duplicate is not an unhandled press: the OTHER copy ran. */
+  const unhandled = remotes.filter((e) => !e.handled && !e.deduped).length;
   const gaps = measured.map((e) => e.observedGapMs).sort((a, b) => a - b);
   const worst = gaps.length ? gaps[gaps.length - 1] : null;
   const mid = gaps.length
@@ -1853,7 +1866,12 @@ export function formatDiagnosticReport(record) {
        somebody else — which is a different bug from a play that arrived and
        found nobody awake (`unhandled`). */
     `remote commands ${remotes.length}`
-      + (unhandled ? `, ${unhandled} unhandled` : ""),
+      + (unhandled ? `, ${unhandled} unhandled` : "")
+      /* One press through two doors (iOS: WebKit's client and the plugin's).
+         Counted on the header because it is the reading H8 asks for: a skip
+         that moved once with `1 duplicate dropped` is the de-duplication doing
+         its job; one that moved twice with none is the window missing it. */
+      + (deduped ? `, ${deduped} duplicate${deduped === 1 ? "" : "s"} dropped` : ""),
     r.loadError ? `earlier record unreadable: ${r.loadError}` : null,
     `updated ${r.updatedAt ?? "—"}`,
     "",

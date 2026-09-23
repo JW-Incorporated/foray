@@ -63,7 +63,7 @@ import {
   createForayMediaSession, mediaSessionApplies, nowPlayingPayload, identityKey,
   transportState, assetUri,
   PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, SESSION_EVENT, SESSION_DOM_EVENT, REMOTE_DOM_EVENT,
-  ROUTABLE_ACTIONS, CLOSE_ACTION, UNMIRRORED_ACTIONS,
+  ROUTABLE_ACTIONS, CLOSE_ACTION, UNMIRRORED_ACTIONS, WEBKIT_ORIGIN, REMOTE_DUPLICATE_WINDOW_MS,
   SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC, POSITION_MIN_INTERVAL_MS, ASSET_BASE, IOS_ASSET_BASE,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 
@@ -321,17 +321,31 @@ test("iOS WRAPS an existing mediaSession's methods when the property is not conf
   });
 });
 
-test("MUTATION: leaving WebKit's original mediaSession in place is caught", () => {
-  /* If install() forgot the takeover branch entirely and simply refused
-     whenever something was already there (the Android rule, applied
-     unconditionally), this is the test that goes red: client.js would keep
-     reading WebKit's inert object and no setNowPlaying call would ever reach
-     native. */
-  const fake = { metadata: null, playbackState: "none", setActionHandler() {}, setPositionState() {} };
-  const nav = { mediaSession: fake };
+test("MUTATION: SEVERING WebKit's original mediaSession is caught — the takeover must be a tee", () => {
+  /* INVERTED on 2026-09-23. This test used to be "leaving WebKit's original
+     mediaSession in place is caught" and PINNED the defect the founder's phone
+     showed as "4a / unknown / unknown": it asserted only that ours replaced the
+     property, against a fake with no publishing behaviour, so a takeover that
+     cut WebKit's real object off from the page read as a success. WebKit
+     publishes its OWN Now Playing entry for the `<audio>` element — from
+     `document.title`, with no artist, no album and whatever handlers the page
+     registered ON ITS OBJECT — and that entry is what the lock screen showed
+     during tape. So: ours must still be the one client.js finds (the plugin
+     needs the writes too), AND WebKit's object must keep receiving them.
+     MUTATION: drop `mirror = existing ? captureLiveSession(existing) : null`
+     from install() -> WebKit's object reads null/none and holds no handler. */
+  const wk = webkitSession();
+  const nav = { mediaSession: wk.target };
   const { session } = setup({ bridge: { platform: "ios" }, nav });
   session.install();
   assert.equal(nav.mediaSession.forayPolyfill, true, "ours must be the one client.js finds");
+  nav.mediaSession.metadata = meta();
+  nav.mediaSession.playbackState = "playing";
+  nav.mediaSession.setActionHandler("play", () => {});
+  assert.equal(wk.metadata?.title, "The brisket episode", "WebKit's own object was severed from the page's metadata");
+  assert.equal(wk.playbackState, "playing", "WebKit's own object was severed from the page's playbackState");
+  assert.equal(wk.received.has("play"), true, "WebKit's own object holds no handler — its client falls to the element default");
+  assert.equal(session.inspect().tee, true);
 });
 
 test("iOS takeover (replace path) restores WebKit's original object on uninstall", () => {
@@ -398,7 +412,37 @@ function webkitSession({ throwOnMetadata = false } = {}) {
     target: Object.create(proto), received, writes,
     get metadata() { return metadata; },
     get playbackState() { return playbackState; },
+    /** What WebKit's OWN Now Playing entry would say for a playing `<audio>`
+     *  element, as `MediaElementSession::nowPlayingInfo` builds it: the page's
+     *  `MediaMetadata` when the page set one on WEBKIT'S object, else the
+     *  document's title with an empty artist and album -- which on this app is
+     *  "4a / (empty) / (empty)", the founder's "4a / unknown / unknown". The
+     *  handlers are the ones its remote-command listener would call. This is
+     *  the reading the older fake could not give, and it is why that fake let
+     *  the severed takeover read as a success. */
+    lockScreen(documentTitle = "4a") {
+      return {
+        title: metadata?.title || documentTitle,
+        artist: metadata?.artist || "",
+        album: metadata?.album || "",
+        artwork: Array.isArray(metadata?.artwork) ? metadata.artwork.map((a) => a.src) : [],
+        handlers: new Set(received.keys()),
+      };
+    },
   };
+}
+
+/** A stand-in for `window.MediaMetadata`, which `client.js` passes to
+ *  `createMediaSession` in the shell: copies the four fields, as the real
+ *  constructor does, so a test can tell "the ORIGINAL object reached WebKit"
+ *  from "a snapshot did". */
+class FakeMediaMetadata {
+  constructor(init = {}) {
+    this.title = String(init.title ?? "");
+    this.artist = String(init.artist ?? "");
+    this.album = String(init.album ?? "");
+    this.artwork = Array.isArray(init.artwork) ? init.artwork.map((a) => ({ ...a })) : [];
+  }
 }
 
 const MIRRORED = ROUTABLE_ACTIONS.filter((a) => !UNMIRRORED_ACTIONS.includes(a));
@@ -418,9 +462,160 @@ test("iOS takeover MIRRORS the page's handlers onto WebKit's own session, so a p
   const seen = withHandlers(session, nav);
   assert.deepEqual([...wk.received.keys()], MIRRORED, "WebKit's object must hold the page's handlers");
   assert.deepEqual(session.inspect().mirrored, MIRRORED);
-  /* THE SAME FUNCTION, not a forwarder: WebKit calls it with its own details. */
+  /* A `deliver` wrapper, and WebKit's own details pass through it untouched --
+     the page's handler sees exactly what WebKit's remote-command listener
+     said. (Since 2026-09-23's de-duplication this is a wrapper rather than the
+     page's function itself; see `mirrorHandler`.) */
   wk.received.get("seekbackward")({ seekOffset: 10 });
   assert.deepEqual(seen, [{ action: "seekbackward", details: { seekOffset: 10 } }]);
+});
+
+test("iOS: WebKit's OWN Now Playing entry says what the page said — title, show, Foray, artwork, buttons (founder, 2026-09-23)", () => {
+  /* FOUNDER, 2026-09-23 (build 2026092326, iPhone): "My lock screen and car
+     still displays the song/ artist/ album as 4a/ unknown/ unknown". Through the
+     REAL `createMediaSession` the page runs, against a fake WebKit that
+     computes what its entry would SHOW. On the L-02 takeover this read
+     `{ title: "4a", artist: "", album: "" }` with no handlers -- WebKit's
+     document-title entry, which is the founder's reading. MUTATION: drop
+     `mirrorMetadata(...)` from the metadata setter -> title reads "4a". */
+  const wk = webkitSession();
+  const nav = { mediaSession: wk.target };
+  const { session, last, turn } = setup({ bridge: { platform: "ios" }, nav });
+  session.install();
+  assert.deepEqual(
+    { ...wk.lockScreen(), handlers: [...wk.lockScreen().handlers] },
+    { title: "4a", artist: "", album: "", artwork: [], handlers: [] },
+    "before the page writes, WebKit's entry is the document title -- the defect's reading"
+  );
+  const bridge = createMediaSession({ nav, MediaMetadata: FakeMediaMetadata });
+  bridge.setActions({ play() {}, pause() {}, next() {}, previous() {}, seekBy() {}, seekTo() {} });
+  bridge.update(mediaSessionView({
+    item: { kind: "episode", title: "The brisket episode", show: "A show" },
+    forayTitle: "Weekend grilling", index: 0, total: 3, durationSec: 600, positionSec: 12, playing: true,
+  }));
+  const shown = wk.lockScreen();
+  assert.equal(shown.title, "The brisket episode");
+  assert.equal(shown.artist, "A show");
+  assert.match(shown.album, /Weekend grilling/);
+  assert.ok(shown.handlers.has("nexttrack"), "WebKit's client routes next to the page's handler");
+  assert.ok(shown.handlers.has("seekforward") && shown.handlers.has("seekbackward"));
+  /* THE ORIGINAL ARTWORK URL, not the `bundle://` rewrite: WebKit fetches it
+     inside the WebView and only the Swift side understands `bundle://`. */
+  assert.deepEqual(shown.artwork, ["icon-512.png"]);
+  assert.equal(wk.playbackState, "playing");
+  return turn().then(() => {
+    /* And the native path is unchanged: the plugin got the same strings with
+       the bundle-scheme artwork, because it is the ONLY writer during narration. */
+    const native = last();
+    assert.equal(native.title, "The brisket episode");
+    assert.equal(native.artist, "A show");
+    assert.equal(native.artworkUri, IOS_ASSET_BASE + "icon-512.png");
+  });
+});
+
+test("ONE PRESS THROUGH TWO DOORS IS APPLIED ONCE: WebKit's client and the plugin delivering the same skip (founder, 2026-09-23)", () => {
+  /* The tee puts the page's handler on WebKit's object; the plugin's
+     `MPRemoteCommandCenter` target is registered too. Whether iOS delivers a
+     lock-screen skip to one or both is a device fact no Simulator shows, so the
+     page applies one action of a kind per `REMOTE_DUPLICATE_WINDOW_MS` across
+     origins and records the copy it dropped. MUTATION: make `duplicate` always
+     false in `deliver()` -> the second copy runs and `calls` reads 2. */
+  withWindow((win) => {
+    const wk = webkitSession();
+    const nav = { mediaSession: wk.target };
+    const { session, capacitor, advance } = setup({ bridge: { platform: "ios" }, nav });
+    session.install();
+    const calls = [];
+    nav.mediaSession.setActionHandler("seekforward", (d) => calls.push(d));
+    const rows = [];
+    win.addEventListener(REMOTE_DOM_EVENT, (e) => rows.push(e.detail));
+    const native = subFor(capacitor, TRANSPORT_EVENT);
+
+    /* WebKit first, the plugin one hop later. */
+    wk.received.get("seekforward")({ seekOffset: 15 });
+    advance(40);
+    assert.equal(native.callback({ action: "seekforward", offsetMs: 30000, command: "skip-forward", origin: "command-center" }), false);
+    assert.equal(calls.length, 1, "one press, two doors, one seek");
+    assert.deepEqual(rows.map((r) => [r.origin, r.handled, r.deduped]), [
+      [WEBKIT_ORIGIN, true, false], ["command-center", false, true],
+    ]);
+
+    /* The plugin first, WebKit second: symmetrical. */
+    advance(REMOTE_DUPLICATE_WINDOW_MS + 1);
+    assert.equal(native.callback({ action: "seekforward", offsetMs: 30000, command: "skip-forward", origin: "command-center" }), true);
+    advance(40);
+    wk.received.get("seekforward")({ seekOffset: 15 });
+    assert.equal(calls.length, 2);
+    assert.deepEqual(rows.slice(2).map((r) => [r.origin, r.handled, r.deduped]), [
+      ["command-center", true, false], [WEBKIT_ORIGIN, false, true],
+    ]);
+
+    /* A THIRD copy inside the window is still the same press; a copy after
+       the window is a new press. */
+    advance(40);
+    wk.received.get("seekforward")({ seekOffset: 15 });
+    assert.equal(calls.length, 2, "the window is measured from the copy that landed");
+    advance(REMOTE_DUPLICATE_WINDOW_MS);
+    wk.received.get("seekforward")({ seekOffset: 15 });
+    assert.equal(calls.length, 3, "after the window, a press is a press");
+  });
+});
+
+test("a deliberate second press on the SAME surface is never dropped, and a different action is never a duplicate", () => {
+  /* Two skips in a row on the lock screen are two skips; a skip forward
+     followed at once by a skip back is two actions. Only the same action from
+     the OTHER door inside the window is a copy. MUTATION: drop
+     `previous.origin !== origin` from the duplicate test -> the double tap
+     below reads 1. */
+  withWindow(() => {
+    const wk = webkitSession();
+    const nav = { mediaSession: wk.target };
+    const { session, capacitor, advance } = setup({ bridge: { platform: "ios" }, nav });
+    session.install();
+    const calls = [];
+    nav.mediaSession.setActionHandler("seekforward", () => calls.push("fwd"));
+    nav.mediaSession.setActionHandler("seekbackward", () => calls.push("back"));
+    wk.received.get("seekforward")({ seekOffset: 15 });
+    advance(120);
+    wk.received.get("seekforward")({ seekOffset: 15 });
+    assert.deepEqual(calls, ["fwd", "fwd"], "a double tap on one surface is two presses");
+    advance(20);
+    subFor(capacitor, TRANSPORT_EVENT).callback({ action: "seekbackward", offsetMs: 15000, command: "skip-backward", origin: "command-center" });
+    assert.deepEqual(calls, ["fwd", "fwd", "back"], "a different action is never a copy of the last one");
+    /* Android has one door and never a duplicate: the rule costs it nothing. */
+    const android = setup();
+    android.session.install();
+    const seen = [];
+    android.nav.mediaSession.setActionHandler("play", () => seen.push("play"));
+    const sub = subFor(android.capacitor, TRANSPORT_EVENT);
+    sub.callback({ action: "play", origin: "media-session" });
+    sub.callback({ action: "play", origin: "media-session" });
+    assert.deepEqual(seen, ["play", "play"]);
+  });
+});
+
+test("a press through WebKit's door is a `foray:remote` row of its own, named as the webkit door", () => {
+  /* The record admits `REMOTE_ORIGINS` only, so the door's name is pinned
+     against that set in shell-invariants; here, that the row is written at all
+     and carries the action as its command. MUTATION: pass `origin: ""` from
+     `mirrorHandler`'s wrapper -> the record would drop every WebKit-delivered
+     press. */
+  withWindow((win) => {
+    const wk = webkitSession();
+    const nav = { mediaSession: wk.target };
+    const { session } = setup({ bridge: { platform: "ios" }, nav });
+    session.install();
+    nav.mediaSession.setActionHandler("nexttrack", () => {});
+    const rows = [];
+    win.addEventListener(REMOTE_DOM_EVENT, (e) => rows.push(e.detail));
+    wk.received.get("nexttrack")();
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].origin, WEBKIT_ORIGIN);
+    assert.equal(rows[0].command, "nexttrack");
+    assert.equal(rows[0].action, "nexttrack");
+    assert.equal(rows[0].handled, true);
+    assert.equal(typeof rows[0].at, "number", "stamped, so the record's lag is a number");
+  });
 });
 
 test("seekto is NEVER mirrored — WebKit's timeline is the element's, the page's is the Foray's", () => {
@@ -514,12 +709,15 @@ test("nothing is mirrored where there is nothing to mirror onto: Android, and an
   withHandlers(android.session, android.nav);
   assert.deepEqual(android.session.inspect().mirrored, []);
 
+  assert.equal(android.session.inspect().tee, false, "Android has nothing to tee onto");
+
   const inert = { metadata: null, playbackState: "none" };
   const nav = { mediaSession: inert };
   const { session } = setup({ bridge: { platform: "ios" }, nav });
   assert.equal(session.install(), true);
   withHandlers(session, nav);
   assert.deepEqual(session.inspect().mirrored, []);
+  assert.equal(session.inspect().tee, false);
   assert.equal(inert.metadata, null);
 });
 
@@ -1649,8 +1847,8 @@ test("every native transport event is re-broadcast as foray:remote, with what th
     sub.callback({ action: "nexttrack", command: "next-track", origin: "command-center", at: 1700000000001 });
     assert.deepEqual(calls, ["pause"]);
     assert.deepEqual(seen, [
-      { command: "toggle-play-pause", action: "pause", origin: "command-center", at: 1700000000000, handled: true },
-      { command: "next-track", action: "nexttrack", origin: "command-center", at: 1700000000001, handled: false },
+      { command: "toggle-play-pause", action: "pause", origin: "command-center", at: 1700000000000, handled: true, deduped: false },
+      { command: "next-track", action: "nexttrack", origin: "command-center", at: 1700000000001, handled: false, deduped: false },
     ]);
   });
 });

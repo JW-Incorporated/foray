@@ -2332,14 +2332,34 @@ export function mediaSessionTakeoverVerdict(probe, logText) {
      path turned into a soft answer by some future bridge — the Swift result
      object is the only thing that writes that string. */
   const reached = roundTrip !== null && roundTrip.resolved && roundTrip.platform === "ios";
+  /* 2026-09-23. `tee` is the probe's read of `window.ForayMediaSession.inspect().tee`:
+     whether the takeover kept WebKit's own MediaSession wired to the page's
+     writes. `true`/`false` are measured; `undefined`/`null` is an older probe or
+     an unreadable shim, which is not a finding. */
+  const tee = t.tee === true ? "captured" : t.tee === false ? "absent" : "unreadable";
 
   let verdict;
   let headline;
-  if (marker && reached) {
+  if (marker && reached && tee === "absent") {
+    /* Both of L-02's halves hold and the display is still wrong: the page's
+       writes reach the plugin and NOT WebKit's entry, which is the one the lock
+       screen shows during tape (founder, 2026-09-23: "4a / unknown / unknown").
+       A failing word, deliberately, because the two halves alone read as
+       success on exactly the build that shipped the defect. */
+    verdict = "taken-over-severed";
+    headline =
+      "navigator.mediaSession is ours and the Swift half answered, but the takeover did NOT tee onto WebKit's own " +
+      "MediaSession (inspect().tee read false) — WebKit's Now Playing entry, the one the lock screen shows for a " +
+      "playing <audio> element, is cut off from the page's metadata and handlers. This is the founder's " +
+      "\"4a / unknown / unknown\" state (measured).";
+  } else if (marker && reached) {
     verdict = "taken-over";
     headline =
       "navigator.mediaSession is OURS (forayPolyfill marker read true at the 3 s recheck) AND one " +
-      "setNowPlaying call reached ForayAudioPlugin.swift (it answered platform \"ios\") — MEASURED, not inferred.";
+      "setNowPlaying call reached ForayAudioPlugin.swift (it answered platform \"ios\") — MEASURED, not inferred." +
+      (tee === "captured"
+        ? " The takeover is a tee: WebKit's own MediaSession still receives the page's writes (measured)."
+        : " Whether it tees onto WebKit's own MediaSession was not readable on this run (older probe).");
   } else if (marker) {
     verdict = "marker-only";
     headline =
@@ -2376,6 +2396,10 @@ export function mediaSessionTakeoverVerdict(probe, logText) {
       t.windowForayMediaSession ? `present, state \`${t.peekState ?? "?"}\`` : "absent"
     } (measured)`
   );
+  facts.push(
+    `window.ForayMediaSession.inspect().tee (WebKit's own MediaSession kept wired to the page's writes): \`${tee}\`` +
+      (tee === "unreadable" ? " (older probe or unreadable shim — not a finding)" : " (measured)")
+  );
   if (!roundTrip || !roundTrip.attempted) {
     facts.push(
       `probe's own setNowPlaying call: not attempted${roundTrip && roundTrip.error ? ` (${roundTrip.error})` : ""} (measured)`
@@ -2405,6 +2429,7 @@ export function mediaSessionTakeoverVerdict(probe, logText) {
   return {
     verdict,
     forayPolyfill: t.forayPolyfill === true ? true : t.forayPolyfill === false ? false : null,
+    tee,
     roundTrip,
     log,
     session,

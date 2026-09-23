@@ -27,18 +27,33 @@ import os
 /// on the Android side are this file's mirror -- `ForayAudioPluginTests.swift`
 /// is written to test the same properties against the same payload shape.
 ///
-/// ── L-01's DESIGN COMMENT (kanban card t_44e5da2a), SETTLED BEFORE THIS FILE ──
+/// ── THE DESIGN COMMENT (L-01, kanban card t_44e5da2a; §1 REWRITTEN 2026-09-23) ──
 ///
 /// 1. **Who owns Now Playing when an `<audio>` element is playing -- the
-///    plugin or WebKit?** The plugin, by construction: WebKit publishes
-///    synchronously off the `<audio>` element's own events, on the same JS
-///    tick; `player/client.js`'s `syncMediaSession()` runs from that SAME
-///    event and calls `setNowPlaying`, which crosses the Capacitor bridge --
-///    an inherently async hop that lands on a later runloop turn than
-///    WebKit's same-tick write. So our write is structurally the later one on
-///    every seam, with no need to suppress WebKit (there is no public API to
-///    do that anyway). During narration there is no `<audio>` element, so
-///    there is no second writer at all.
+///    plugin or WebKit?** BOTH, and the page writes to both. L-01 argued
+///    that this plugin's write is "structurally the later one" because the
+///    bridge hop lands after WebKit's same-tick publish, so the display would
+///    always be ours. The founder's phone measured otherwise (2026-09-23,
+///    build 2026092326: *"My lock screen and car still displays the song/
+///    artist/ album as 4a/ unknown/ unknown"*, and the skip glyphs read
+///    WebKit's interval, not ours). WebKit does not write the SAME entry
+///    later or earlier -- it publishes a Now Playing entry OF ITS OWN, from
+///    its own MediaRemote client, for every playing `<audio>` element,
+///    titled from `document.title` ("4a") with no artist and no album, and
+///    the lock screen showed that entry during tape. No public API silences
+///    it, and L-02's takeover of `navigator.mediaSession` had cut WebKit's
+///    real object off from the page, so that entry could never say anything
+///    else. The shipped model is a TEE in `foray-media-session.js`: the page's
+///    metadata (with the page's own artwork URLs), `playbackState` and action
+///    handlers are written to WebKit's real `MediaSession` as well as sent
+///    here, so whichever client iOS shows, the three strings are the page's
+///    and a press reaches the page's handler. This plugin's `nowPlayingInfo`
+///    stays the ONLY entry during narration (no element, so WebKit clears its
+///    own) and while the transport is PAUSED and held (§2), which is when a
+///    car reads it. Because a press can then arrive through both clients,
+///    the page applies one remote action of a kind per short window across
+///    origins (`REMOTE_DUPLICATE_WINDOW_MS`) -- nothing here de-duplicates,
+///    and nothing here may, because only the page sees both doors.
 /// 2. **Audio-session policy: this plugin holds the app's session ONLY WHILE
 ///    THE TRANSPORT IS PAUSED, and never touches it from the playing path.**
 ///    Founder, 2026-09-23: *"I started playing 4a, paused and turned off my

@@ -1647,7 +1647,32 @@ test("REPORT 2026-09-23: the remote row admits closed vocabularies and drops the
   for (const c of ["play", "pause", "toggle-play-pause", "skip-backward", "skip-forward", "close"]) {
     assert.ok(REMOTE_COMMANDS.has(c), c);
   }
-  assert.deepEqual([...REMOTE_ORIGINS].sort(), ["command-center", "media-session", "notification"]);
+  assert.deepEqual([...REMOTE_ORIGINS].sort(), ["command-center", "media-session", "notification", "webkit"]);
+});
+
+test("REPORT 2026-09-23: a dropped duplicate is a remote row saying dup=y, counted on the header and never as unhandled", () => {
+  /* On iOS one lock-screen press can arrive through two doors — WebKit's own
+     MediaSession (the tee) and the plugin's MPRemoteCommandCenter — and the shim
+     applies it once, dropping the second copy with `deduped: true`. The row
+     must say so (a skip that moved once while two rows say it arrived is the
+     mechanism working) and the header must count it apart from `unhandled`
+     (the OTHER copy ran). MUTATION: drop `deduped` from the entry, or count a
+     deduped row as unhandled — the header reads "1 unhandled" for a press that
+     was handled. */
+  const { diag, log } = mk();
+  const a = diag.remoteCommand({ command: "skip-forward", action: "seekforward", origin: "webkit", handled: true, deduped: false });
+  const b = diag.remoteCommand({ command: "skip-forward", action: "seekforward", origin: "command-center", handled: false, deduped: true });
+  assert.equal(a.deduped, false);
+  assert.equal(b.deduped, true);
+  assert.equal(diag.remoteCommand({ command: "play", action: "play", origin: "webkit", handled: true }).deduped, false,
+    "absent reads as not a duplicate, never as one");
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /remote\s+skip-forward -> seekforward from webkit  handled=y  lag/);
+  assert.match(text, /remote\s+skip-forward -> seekforward from command-center  handled=n  dup=y  lag/);
+  assert.match(text, /remote commands 3, 1 duplicate dropped\n/);
+  assert.doesNotMatch(text, /unhandled/, "a dropped copy is not an unhandled press");
+  diag.remoteCommand({ command: "play", action: "play", origin: "command-center", handled: false, deduped: true });
+  assert.match(formatDiagnosticReport(log.read()), /remote commands 4, 2 duplicates dropped\n/);
 });
 
 test("REPORT 2026-09-23: zero remote commands is stated on the header, because it is the finding", () => {

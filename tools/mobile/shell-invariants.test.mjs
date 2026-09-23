@@ -96,6 +96,7 @@ import { hydrateForayItems, indexSegments, indexSources } from "../../player/for
 import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
 import {
   PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS, CLOSE_ACTION,
+  WEBKIT_ORIGIN,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
 import { REMOTE_ORIGINS, REMOTE_COMMANDS } from "../../player/diagnostic-log.js";
@@ -1923,6 +1924,11 @@ test("the seek pair has ONE source — the payload — on both natives, and the 
   assert.match(availability, /skipBackwardCommand\.preferredIntervals = Self\.preferredIntervals\(ms: payload\.seekBackMs\)/);
   assert.match(availability, /skipForwardCommand\.preferredIntervals = Self\.preferredIntervals\(ms: payload\.seekForwardMs\)/);
   assert.doesNotMatch(swiftFuncBody(swift, "load"), /preferredIntervals/, "not once at load — per state change");
+  /* And nothing is ENABLED at load: `.empty` is the payload the page has not
+     sent yet, so the first real `setNowPlaying` is a change the command centre
+     sees, and no lock screen offers a play button for a player with nothing
+     loaded (Android's IDLE). MUTATION: delete the call from `load()`. */
+  assert.match(swiftFuncBody(swift, "load"), /applyCommandAvailability\(\.empty\)/, "load() must start every command disabled");
   const payload = stripSwiftComments(fs.readFileSync(
     path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/NowPlayingPayload.swift"), "utf8"
   ));
@@ -1988,6 +1994,32 @@ test("every transport event names its door and its command, on both natives, in 
   assert.match(plugin, /event\.put\("origin", origin\)/);
   assert.match(plugin, /event\.put\("command", action\)/);
   assert.match(plugin, /event\.put\("at", System\.currentTimeMillis\(\)\)/);
+  /* The third door is the shim's own: WebKit's MediaSession, which the tee
+     routes to `deliver` under `WEBKIT_ORIGIN`. A rename there is a press the
+     record silently drops. MUTATION: spell WEBKIT_ORIGIN "web-kit". */
+  assert.ok(REMOTE_ORIGINS.has(WEBKIT_ORIGIN), `the shim's origin "${WEBKIT_ORIGIN}" is not in REMOTE_ORIGINS`);
+});
+
+test("the iOS design comment states the two-publisher model and no longer claims same-tick ordering (2026-09-23)", () => {
+  /* Founder, 2026-09-23: "My lock screen and car still displays the song/
+     artist/ album as 4a/ unknown/ unknown". The header of
+     ForayAudioPlugin.swift used to argue that the plugin's write is
+     "structurally the later one" and therefore wins the display. It does not:
+     WebKit publishes a Now Playing entry of its own, through a MediaRemote
+     client of its own, and that entry was the one shown. The shipped model is
+     the TEE in foray-media-session.js (both entries carry the page's strings)
+     plus the native path for narration and the paused hold. A design comment
+     that argues the old model would send the next reader back down the wrong
+     road, so the prose is pinned in both directions. MUTATION: put the
+     "structurally the later one" sentence back. */
+  const swift = fs.readFileSync(AUDIO_SWIFT, "utf8");
+  assert.doesNotMatch(swift, /our write is structurally the later one/, "the Swift header still argues the last-writer model");
+  assert.match(swift, /tee/i, "the Swift header must name the tee it depends on");
+  assert.match(swift, /document\.title|"4a"/, "…and the measured cause: WebKit's own entry, titled from the document");
+  const doc = fs.readFileSync(path.join(ROOT, "docs", "ios-lock-screen.md"), "utf8");
+  assert.doesNotMatch(doc, /^### 2\.1 .*plugin wins, by construction/m, "docs/ios-lock-screen.md still states the superseded ownership rule as current");
+  assert.doesNotMatch(doc, /The plugin wins, and no suppression of WebKit was needed/);
+  assert.match(doc, /tee/i);
 });
 
 test("Android's session stays READY while paused, so a head unit's play reaches 4a (2026-09-23)", () => {
