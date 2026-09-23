@@ -6975,7 +6975,7 @@ function bindEpisodeSeeks(scope, item) {
         /* Play only when this is not already the current episode — a restart
            would throw away the thing the listener is in the middle of. Then
            seek, always: that is the whole of what the control promises. */
-        if (!window.ForayPlayer.isPlaying(item.id)) await window.ForayPlayer.play(item, "timestamp");
+        if (!window.ForayPlayer.isPlaying(item.id)) await window.ForayPlayer.play(item, { why: whyFor(item.id, item) });
         await window.ForayPlayer.seekTo(secs);
       } catch (_) {
         /* A seek that cannot happen is not a reason to break the page — the

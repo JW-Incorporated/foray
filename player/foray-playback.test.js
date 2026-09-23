@@ -1872,15 +1872,20 @@ test("play() does not destructure its options in the signature — a null caller
     /async play\(item,\s*\{/,
     "destructuring in the signature means a null second argument throws"
   );
+  /* Rewritten 2026-09-22 (audit): a bare string is no longer taken as the why
+     line. The one string caller passed "timestamp", a caller's tag, and the
+     sheet printed it to the listener. Only `opts.why` is listener copy. */
   assert.match(
     client,
-    /const why = typeof opts === "string" \? opts : \(opts\?\.why \?\? ""\)/,
+    /const why = typeof opts\?\.why === "string" \? opts\.why : "";/,
     "read the reason defensively: null, undefined, a string and an object all reach this function"
   );
-  /* And nothing may go back to handing it a bare `null`. `app.js` passes a
-     string ("timestamp"), which USED to destructure to `why = ""` and silently
-     lose the reason; that is now honoured rather than dropped. */
+  /* And nothing may go back to handing it a bare `null`. */
   assert.doesNotMatch(client, /ForayPlayer\.play\([a-zA-Z.]+,\s*null\)/, "no caller may pass null again");
+  /* Nor a bare string: a tag is not copy. KILLING MUTATION: put
+     `play(item, "timestamp")` back in app.js's timestamp handler. */
+  const app = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+  assert.doesNotMatch(app, /ForayPlayer\.play\([a-zA-Z.]+,\s*["'`]/, "no caller may pass a string as the why line");
 });
 
 test("client.js only ever reports an error that describes the attempt in front of it", async () => {

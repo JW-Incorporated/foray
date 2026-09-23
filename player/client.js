@@ -2501,14 +2501,16 @@ const ForayPlayer = {
        `(item, { why = "" } = {})`, and a default parameter only fires for
        `undefined` — so `play(item, null)` THREW, taking out the only code path
        that loads audio for a restored episode (see `setRunning`'s restored
-       branch, 2026-09-22). A string caller is the other shape already in the
-       tree: app.js's timestamp seek passes `"timestamp"`, which destructured to
-       `why = ""` and silently lost the reason.
-       Both now behave: `opts?.why` is undefined for null and for a string, and
-       a string is taken as the reason it was plainly meant to be. This function
-       is the single entry point to playback for every surface in the app, so it
-       is worth more than a signature's worth of care. */
-    const why = typeof opts === "string" ? opts : (opts?.why ?? "");
+       branch, 2026-09-22). A string caller was the other shape in the tree:
+       app.js's timestamp seek passed `"timestamp"`.
+       This function is the single entry point to playback for every surface in
+       the app, so it is worth more than a signature's worth of care.
+       A STRING IS NOT A WHY LINE (audit 2026-09-22). #735 took a bare string as
+       the reason, and the one string caller passed "timestamp" — a caller's tag,
+       which the sheet then printed to the listener as the line under the title.
+       The why line is listener copy and only `opts.why` supplies it; anything
+       else is no reason at all, and the sheet falls back to the item's hook. */
+    const why = typeof opts?.why === "string" ? opts.why : "";
     if (!this.canPlay(item)) return false;
     ensureBooted();
     // BEFORE the first await, always. See `notePlayGesture` (#225).
