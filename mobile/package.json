@@ -16,9 +16,11 @@
   },
   "//foray-audio": "NOT a third-party dependency. `file:plugins/foray-audio` is this repo's OWN hand-written Android code (a mediaPlayback foreground service), declared here because that is the only way Capacitor's CLI discovers a plugin: `@capacitor/cli`'s getDependencies() reads this object, resolvePlugin() looks for a `capacitor` key in the resolved package.json, and `cap sync` then writes the include/implementation lines into the GENERATED mobile/android/ on every run. That is what makes the native code survive a platform regeneration with nothing for a human to run. It adds no code from anyone else — npm links a directory that is already in this repo. See docs/android-native-code.md.",
   "//foray-tts": "Also NOT a third-party dependency, same mechanism as foray-audio above. `file:plugins/foray-tts` is this repo's own on-device TTS plugin (docs/research/on-device-tts.md): AVSpeechSynthesizer on iOS, android.speech.tts.TextToSpeech on Android, declared here so `cap sync` discovers both its iOS Package.swift and its Android Gradle module the same way it discovers foray-audio's.",
+  "//foray-vault": "Also NOT a third-party dependency, same mechanism as foray-audio and foray-tts. `file:plugins/foray-vault` is this repo's own device-only store for the anonymous-account token (round-2 audit persist-6; founder ruling 2026-09-24, 'Option A'): an iOS Keychain item with kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly and an Android file in getNoBackupFilesDir(), so the token is never in a phone backup. player/durable-store.js's vaultTier() is its web half.",
   "dependencies": {
     "foray-audio": "file:plugins/foray-audio",
     "foray-tts": "file:plugins/foray-tts",
+    "foray-vault": "file:plugins/foray-vault",
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "^8.0.0",
     "@capacitor/core": "^8.0.0",

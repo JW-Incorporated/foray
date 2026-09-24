@@ -99,7 +99,7 @@ const FLOORS = {
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
-  "player/durable-store.test.js": 87, // 2026-09-22 audit (theme J, R10): the native Preferences tier the header had promised since #40 — absent on the web, survives a WebView sweep, first word in hydration, owned keys only, purge reaches it, and client.js wires it; 81 -> 87 // 2026-09-22 audit (theme J): a key localStorage refused while IndexedDB took it is not reverted next launch, nor pushed down over the good copy — three keys, the mark clearing, a refused removal, the ledger as bookkeeping, purge, a corrupt ledger; 74 -> 81
+  "player/durable-store.test.js": 107, // persist-6, founder ruling 2026-09-24 "Option A": the device-only vault — the token goes to the vault and to no backed-up tier, other rows never enter it, the account is read back from it, an earlier build's copy is moved in and only then out (a refused or unread vault moves nothing, an unread tier keeps what it may hold), the vault wins, removal and purge reach it, canKeep, the breaker, the old ledger entry, health(), client.js wiring; 87 -> 107 // 2026-09-22 audit (theme J, R10): the native Preferences tier the header had promised since #40 — absent on the web, survives a WebView sweep, first word in hydration, owned keys only, purge reaches it, and client.js wires it; 81 -> 87 // 2026-09-22 audit (theme J): a key localStorage refused while IndexedDB took it is not reverted next launch, nor pushed down over the good copy — three keys, the mark clearing, a refused removal, the ledger as bookkeeping, purge, a corrupt ledger; 74 -> 81
   "player/idb-tier.test.js": 23,
   /* New with M3 (kanban card t_c7199b13): the event queue moved off a
      synchronous `cp_events` localStorage rewrite into its own IndexedDB
@@ -461,7 +461,7 @@ const FLOORS = {
      stray tap cannot satisfy. Every one of those is one edit from its opposite,
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
-  "test/data-deletion.test.js": 68, // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
+  "test/data-deletion.test.js": 73, // persist-6: Delete my data finds the token in the vault and empties it, a sync signs up into the vault only, and never refreshes or signs up against a vault it could not read; 68 -> 73 // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
   "test/diagnostics-surface.test.js": 19,
@@ -1489,6 +1489,12 @@ const FLOORS = {
      neither Python nor misaki, which is the point: it re-checks on every CI run
      a file that CI could not have produced. */
   "tools/mobile/kokoro-vocab.test.mjs": 7,
+  /* persist-6 (founder ruling 2026-09-24, "Option A"): the source facts the
+     token's "on this phone only, out of its backups" promise rests on — the
+     this-device-only Keychain class, never synchronizable, the reinstall wipe,
+     the no-backup directory, the plugin name and four calls, the declaration
+     in mobile/package.json. No toolchain runs here, so these pins ARE the gate. */
+  "tools/mobile/foray-vault.test.mjs": 14,
   "tools/mobile/foray-tts.test.mjs": 66, // fix/narration-1x (2026-09-24): rate 1 is each platform's normal rate — passed through, Web Speech 1, Android setSpeechRate(1.0f), iOS AVSpeechUtteranceDefaultSpeechRate; 62 -> 66 // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is

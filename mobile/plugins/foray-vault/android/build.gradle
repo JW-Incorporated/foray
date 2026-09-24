@@ -1,0 +1,52 @@
+/* The `foray-vault` Capacitor plugin's Android library module (round-2 audit
+ * persist-6; founder ruling 2026-09-24, "Option A": the auth token stays on the
+ * device and out of the phone's backups).
+ *
+ * Same shape as `foray-tts/android/build.gradle` and `foray-audio`'s, for the
+ * same reason: `cap sync` reads `../package.json`'s `capacitor.android.src` and
+ * writes `include ':foray-vault'` / `implementation project(':foray-vault')`
+ * into the GENERATED project on every run, so nothing is patched into
+ * `mobile/android/` by hand. See docs/android-native-code.md.
+ *
+ * ONE DEPENDENCY, and it is not new to the build: `project(':capacitor-android')`
+ * for the Plugin/PluginCall base classes. The store itself is a JSON file in
+ * `Context.getNoBackupFilesDir()` written through `android.util.AtomicFile`, and
+ * `org.json` — both part of the platform. No androidx.security: its
+ * EncryptedSharedPreferences is deprecated, and what the ruling asks for is "out
+ * of backups", which the no-backup directory is by the platform's own contract.
+ */
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace = "ai.jwlabs.foura.vault"
+    compileSdk = project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+    defaultConfig {
+        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
+        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    lintOptions {
+        abortOnError = false
+    }
+    compileOptions {
+        /* Matches foray-audio and foray-tts: capacitor-android compiles at 21 and
+           Capacitor 8 requires JDK 21 (docs/android-shell-build.md §1.2). */
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+}
