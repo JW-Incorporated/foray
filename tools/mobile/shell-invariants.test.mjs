@@ -3209,6 +3209,74 @@ test("NE-15: AVDeck's Simulator tests play NE-25a's CBR MP3 and PCM WAV, the one
   assert.match(tests, /CBR MP3, precise/);
 });
 
+/* ─────────── NE-15h: the ForayEngine host and its seams ───────────
+ *
+ * docs/native-engine-plan.md §4.1-§4.2 and card NE-15h. The host's behaviour
+ * is executed over recording fakes by ForayAudioPluginTests/Engine/
+ * ForayEngineHostTests.swift (ios-kit). What is pinned here is the shape
+ * those tests stand on and a refactor could quietly undo: the host and the
+ * seam declarations touch no platform API (only the real conformers do), all
+ * six seams the plan names live in Seams.swift with a recording fake each, the
+ * week-1 deck stub is gone, the activation answer is fed back inside the same
+ * case that asked for it, and teardown releases every kind of registration. */
+
+const SEAMS_SWIFT = path.join(ENGINE_DIR, "Seams.swift");
+const HOST_SWIFT = path.join(ENGINE_DIR, "ForayEngine.swift");
+const TIMING_SWIFT = path.join(ENGINE_DIR, "MainQueueTiming.swift");
+const FAKES_SWIFT = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/Engine/RecordingSeams.swift");
+
+test("NE-15h: the host and its seams touch no platform API, every seam has a recording fake, and activation is answered inside the turn that asked", () => {
+  /* MUTATION: add `import AVFoundation` (or a UIApplication / AVAudioSession /
+     MPRemoteCommandCenter / DispatchSource use) to ForayEngine.swift or
+     Seams.swift; restore DeckStub.swift; declare DeckDriving anywhere else;
+     delete a fake; answer .sessionActivate without runTurn(.sessionResult;
+     drop a line of teardown(); make MainQueueTiming's source queue a global
+     one. Each fails. */
+  const PLATFORM = /\b(AVAudioSession|AVPlayer|AVSpeechSynthesizer|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|DispatchSource|NotificationCenter|UserDefaults)\b/;
+  for (const file of [SEAMS_SWIFT, HOST_SWIFT]) {
+    const where = path.relative(ROOT, file);
+    assert.deepEqual(swiftImports(file).sort(), ["ForayEngineCore", "Foundation"], `${where} imports only Foundation and the core`);
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    assert.doesNotMatch(code, PLATFORM, `${where} reaches a platform API; that belongs in the seam's real conformer`);
+  }
+
+  assert.ok(!fs.existsSync(path.join(ENGINE_DIR, "DeckStub.swift")), "NE-15's deck stub must stay deleted: the deck speaks the core's vocabulary");
+  const seams = stripSwiftComments(fs.readFileSync(SEAMS_SWIFT, "utf8"));
+  const fakes = stripSwiftComments(fs.readFileSync(FAKES_SWIFT, "utf8"));
+  for (const seam of ["SessionControlling", "BackgroundTasking", "RemoteCommandRegistering", "NowPlayingWriting", "DeckDriving", "Speaking", "EngineTiming", "EngineOutput"]) {
+    assert.match(seams, new RegExp(String.raw`protocol ${seam}: AnyObject \{`), `Seams.swift must declare ${seam}`);
+    assert.match(fakes, new RegExp(String.raw`final class \w+: ${seam} \{`), `${seam} has no recording fake`);
+  }
+  const declarations = [...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")), ...swiftFilesUnder(path.join(CORE_DIR, "Sources"))]
+    .filter((file) => /protocol DeckDriving\b/.test(stripSwiftComments(fs.readFileSync(file, "utf8"))))
+    .map((file) => path.basename(file));
+  assert.deepEqual(declarations, ["Seams.swift"], "DeckDriving is declared once, in Seams.swift");
+  assert.match(stripSwiftComments(fs.readFileSync(AVDECK_SWIFT, "utf8")), /^import ForayEngineCore$/m, "AVDeck speaks the core's DeckCommand / DeckEvent");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(host, /@MainActor\s+final class ForayEngine \{/, "the host is main-confined");
+  const interpret = swiftFuncBody(host, "interpret");
+  const activate = /case let \.sessionActivate\(requestId\):([\s\S]*?)case /.exec(interpret ?? "");
+  assert.ok(activate, "interpret has no .sessionActivate case");
+  assert.match(activate[1], /seams\.session\.activate\(\)[\s\S]*return runTurn\(\.sessionResult\(/,
+    "the activation is answered synchronously, as a nested turn, before the next command");
+
+  const teardown = swiftFuncBody(host, "teardown");
+  for (const [what, re] of [
+    ["observers and remote targets", /observations\.forEach \{ \$0\.cancel\(\) \}/],
+    ["timers", /timers\.values\.forEach \{ \$0\.cancel\(\) \}/],
+    ["the grace task", /seams\.background\.endTask\(/],
+    ["the deck's KVO", /seams\.deck\.invalidate\(\)/],
+  ]) {
+    assert.match(teardown ?? "", re, `teardown() no longer releases ${what}`);
+  }
+  assert.doesNotMatch(teardown ?? "", /deactivate|nowPlaying/, "teardown keeps the session and Now Playing (plan §4.6)");
+  assert.match(swiftFuncBody(host, "runTurn") ?? "", /session == \.relinquished \{ teardown\(\) \}/, "a relinquish tears the host down by itself");
+
+  const timing = stripSwiftComments(fs.readFileSync(TIMING_SWIFT, "utf8"));
+  assert.match(timing, /DispatchSource\.makeTimerSource\(queue: \.main\)/, "the engine's timers are DispatchSourceTimers on main");
+});
+
 test("NE-25b: the two-deck spike measures AVDeck's own gate: two real decks, no preroll( of its own, a live status reading, the exempt click tracks", () => {
   /* NE-25b measures what NE-32's DeckPair rests on: a standby deck seeked and
      prerolled while the other is audible, its time to ready, and how often a

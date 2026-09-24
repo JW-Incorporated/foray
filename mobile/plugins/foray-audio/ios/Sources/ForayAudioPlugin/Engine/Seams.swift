@@ -1,0 +1,205 @@
+import Foundation
+import ForayEngineCore
+
+// ── THE ENGINE'S SEAMS (card NE-15h; docs/native-engine-plan.md §4.1-§4.2) ──
+//
+// `ForayEngine` (the host) never touches AVFoundation, AVAudioSession,
+// MediaPlayer, UIKit or a DispatchSource. Everything it does to the world goes
+// through one of the protocols below, and everything the world tells it comes
+// back through a handler it registered on one of them. Each has a recording
+// fake in the plugin's test target (`ForayAudioPluginTests/Engine/`), so the
+// host runs headless on the Simulator with no audio, no session and no app.
+//
+// WHY THIS IS THE CARD THAT MAKES NE-16, NE-17 AND NE-18 TESTABLE. A package
+// test has no host app: `UIApplication.shared` does not exist, the audio
+// session cannot be interrupted on demand, and `MPRemoteCommandCenter` cannot
+// be asked which targets it holds. Behind these seams, "a failed activation
+// plays nothing", "a car's play activates and plays in one turn" and "a
+// relinquish leaves no observer alive" are assertions on fakes, not hopes.
+//
+// THE RULE THE SHELL INVARIANTS PIN: only the real conformers (AVDeck here;
+// AudioSessionOwner NE-16, BackgroundGrace NE-16g, RemoteSurface and
+// NowPlayingPublisher NE-18, the speech narrator NE-33) import AVFoundation,
+// MediaPlayer or UIKit. This file and `ForayEngine.swift` import Foundation
+// and the core only.
+//
+// ONE THREAD. The engine is main-confined (plan §4.2). A conformer calls every
+// handler it was given ON MAIN; the host asserts that (`MainActor
+// .assumeIsolated`) rather than hopping, because a hop would reorder an input
+// against the turn in progress. A conformer whose platform delivers off main
+// hops first: RemoteSurface's `DispatchQueue.main.sync` (plan §4.2), AVDeck's
+// `DispatchQueue.main.async` around every KVO and completion.
+
+/// Something the host registered and must cancel at teardown: a session
+/// observer, a remote-command target, a lifecycle observer, a timer. The host
+/// keeps every one it is handed, and `ForayEngine.teardown()` cancels them
+/// all; a fake counts the ones still live.
+protocol EngineObservation: AnyObject {
+    func cancel()
+}
+
+// MARK: - The audio session (AudioSessionOwner, NE-16)
+
+/// What `activate()` answered. The host turns it into the core's
+/// `.sessionResult` in the SAME turn (plan §4.2), before any other command.
+struct SessionActivation: Equatable {
+    var ok: Bool
+    /// The failure token (`cannot-interrupt-others`, `cannot-start-playing`,
+    /// anything else reads as `other` in the core).
+    var error: String?
+    /// How long `setActive(true)` took: every `session` row carries it, and a
+    /// device p95 over 100 ms is what would add the reserved CommandGate.
+    var activateMs: Double?
+
+    init(ok: Bool, error: String? = nil, activateMs: Double? = nil) {
+        self.ok = ok
+        self.error = error
+        self.activateMs = activateMs
+    }
+}
+
+/// The one owner of `AVAudioSession` (plan §4.4). SYNCHRONOUS on purpose:
+/// activation is a request and a response inside one turn, so the core never
+/// emits an audible command before the answer, and a failure leaves nothing
+/// to cancel.
+protocol SessionControlling: AnyObject {
+    func activate() -> SessionActivation
+    func deactivate(notifyOthers: Bool)
+    func reapplyCategory()
+    func rebuild()
+    /// Interruptions, route changes and media-services resets, on main.
+    func observe(_ handler: @escaping (SessionEvent) -> Void) -> EngineObservation
+}
+
+// MARK: - Background time and the app's lifecycle (BackgroundGrace, NE-16g)
+
+/// A live background task. The real conformer maps it to
+/// `UIBackgroundTaskIdentifier`; nil from `beginTask` is `.invalid`.
+typealias BackgroundTaskID = Int
+
+protocol BackgroundTasking: AnyObject {
+    /// Begin a task that keeps the app alive while the engine intends to play
+    /// but nothing is audible yet. `expiration` runs ON MAIN when the system
+    /// takes the time back, and the host ends the task inside it, before it
+    /// returns (UIKit's rule). Nil: the system refused (`.invalid`).
+    func beginTask(named name: String, expiration: @escaping () -> Void) -> BackgroundTaskID?
+    func endTask(_ id: BackgroundTaskID)
+    /// `UIApplication.backgroundTimeRemaining` in seconds, nil while in the
+    /// foreground (UIKit reports `greatestFiniteMagnitude` there).
+    var backgroundTimeRemainingSec: Double? { get }
+    /// `didEnterBackground` / `willEnterForeground` as `.background` /
+    /// `.foreground`, on main.
+    func observeLifecycle(_ handler: @escaping (LifecycleEvent) -> Void) -> EngineObservation
+}
+
+// MARK: - Remote commands (RemoteSurface, NE-18)
+
+/// What a remote-command handler returns to the system. RemoteSurface maps it
+/// onto `MPRemoteCommandHandlerStatus`.
+enum RemoteVerdict: Equatable, Sendable {
+    case success
+    /// Nothing to act on (plan §4.5: a cold play with no restore record).
+    case noActionableNowPlayingItem
+    case commandFailed
+
+    /// The core's refusals for one press. None is success; `not-loaded` is
+    /// "nothing to play"; any other refusal failed the command.
+    init(failures: [String]) {
+        if failures.isEmpty {
+            self = .success
+        } else if failures.contains(EngineContract.Refusal.notLoaded.rawValue) {
+            self = .noActionableNowPlayingItem
+        } else {
+            self = .commandFailed
+        }
+    }
+}
+
+/// `MPRemoteCommandCenter`, one target per command. In native mode the engine
+/// is the only registrant (plan §4.5).
+protocol RemoteCommandRegistering: AnyObject {
+    /// The handler is called ON MAIN with the press as the conformer read it
+    /// (route port, whether it arrived off main, the skip interval or scrub
+    /// target), and returns the core's verdict synchronously.
+    func addTarget(_ command: MediaMapping.RemoteCommand,
+                   handler: @escaping (RemotePress) -> RemoteVerdict) -> EngineObservation
+    func setEnabled(_ enabled: Bool, for command: MediaMapping.RemoteCommand)
+}
+
+// MARK: - Now Playing (NowPlayingPublisher, NE-18)
+
+/// `MPNowPlayingInfoCenter`, fed from `MediaMapping`'s output. Nothing is
+/// cleared on a pause, an unresumed interruption or a relinquish (plan §4.5):
+/// `clear()` is for a finished Foray, a close or a data deletion only.
+protocol NowPlayingWriting: AnyObject {
+    func write(_ metadata: MediaMapping.Metadata, position: MediaMapping.PositionState?)
+    func clear()
+}
+
+// MARK: - A deck (AVDeck, NE-15; DeckPair, NE-32)
+
+/// One player the core drives with `DeckCommand`s and hears from as
+/// `DeckEvent`s (the core's vocabulary, `DeckVocabulary.swift`). NE-15 built
+/// AVDeck against a stub of these types; NE-15h swapped it onto the core's
+/// and moved the protocol here.
+protocol DeckDriving: AnyObject {
+    /// Every observation, ON MAIN. The host sets it at start and clears it at
+    /// teardown.
+    var onEvent: ((DeckEvent) -> Void)? { get set }
+    /// What the deck says RIGHT NOW (playhead, duration, audible, ended),
+    /// read by the host before every input: the core's `EngineNow.deck`.
+    var reading: DeckReading { get }
+    func send(_ command: DeckCommand)
+    /// Stop observing for good: every KVO token, notification observer and
+    /// pending callback is dropped, and no event is delivered after this.
+    func invalidate()
+}
+
+// MARK: - Speech (the audition in M1; the narrator, NE-33)
+
+protocol Speaking: AnyObject {
+    /// Audible: the core emits it only after an activation (OQ-5).
+    func speak(text: String, voiceId: String?)
+    func stopSpeaking()
+}
+
+// MARK: - Clocks and timers (MainQueueTiming)
+
+/// Both clocks the core reads (wall for rows the page reads, monotonic for
+/// every duration) and the timers it arms. The real conformer is
+/// `MainQueueTiming`: `DispatchSourceTimer`s on the main queue.
+protocol EngineTiming: AnyObject {
+    var wallMs: Double { get }
+    var monoMs: Double { get }
+    /// `fire` runs on main after `afterMs`, then every `afterMs` if
+    /// `repeating`, until the returned observation is cancelled.
+    func schedule(afterMs: Double, repeating: Bool, fire: @escaping () -> Void) -> EngineObservation
+}
+
+// MARK: - Rows, events and diagnostics (EngineStore NE-19, the bridge NE-20)
+
+/// Where the core's persistence and reporting commands land. NE-19's
+/// EngineStore writes the shared rows, the private restore record and the
+/// diagnostics ring; NE-20's bridge carries the events to the page.
+protocol EngineOutput: AnyObject {
+    func writePosition(_ write: PositionWrite)
+    func writeRow(_ row: StoredRow)
+    /// Nil removes the record (data deletion).
+    func writeRestore(_ record: RestoreRecord?)
+    func appendEvent(_ event: PendingEvent)
+    func emit(_ event: EngineEvent)
+    func diag(_ entry: DiagEntry)
+}
+
+/// Every seam the host drives, in one value, so a test builds the whole world
+/// out of fakes and the boot path (NE-17, NE-24) out of the real conformers.
+struct EngineSeams {
+    var session: SessionControlling
+    var background: BackgroundTasking
+    var remote: RemoteCommandRegistering
+    var nowPlaying: NowPlayingWriting
+    var deck: DeckDriving
+    var speaker: Speaking
+    var timing: EngineTiming
+    var output: EngineOutput
+}

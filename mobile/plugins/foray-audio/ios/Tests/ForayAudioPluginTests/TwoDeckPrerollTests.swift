@@ -1,5 +1,6 @@
 import XCTest
 import AVFoundation
+import ForayEngineCore
 @testable import ForayAudioPlugin
 
 /// NE-25b (docs/native-engine-plan.md §4.3 and card NE-25b): the two-deck
@@ -220,7 +221,7 @@ final class TwoDeckPrerollTests: XCTestCase {
         let b = try XCTUnwrap(decks["B"])
         let token = nextToken()
         let since = log.count
-        b.send(.load(token: token, url: try fixture(file), startSec: Self.standbyStartSec, preciseTiming: true))
+        b.send(.loadURL(token: token, url: try fixture(file), startSec: Self.standbyStartSec, preciseTiming: true))
         guard let ready = waitReady("B", token, since: since) else { return nil }
         let label = "\(file) \(condition.rawValue) #\(rep)"
 
@@ -333,7 +334,7 @@ final class TwoDeckPrerollTests: XCTestCase {
         let url = try XCTUnwrap(URL(string: "foray-held://deck.test/\(file)"))
         let token = nextToken()
         let since = log.count
-        b.send(.load(token: token, url: url, startSec: Self.standbyStartSec, preciseTiming: true))
+        b.send(.loadURL(token: token, url: url, startSec: Self.standbyStartSec, preciseTiming: true))
 
         var samples = 0
         var itemReadyDuringHold = false
@@ -432,7 +433,7 @@ final class TwoDeckPrerollTests: XCTestCase {
         let token = nextToken()
         let since = log.count
         let label = "\(file) forced seek +\(delayMs) ms #\(rep)"
-        b.send(.load(token: token, url: try fixture(file), startSec: Self.standbyStartSec, preciseTiming: true))
+        b.send(.loadURL(token: token, url: try fixture(file), startSec: Self.standbyStartSec, preciseTiming: true))
 
         // Poll the primitive log at ~0.5 ms until the preroll is issued (or
         // the load ends without one). The deck writes the primitive on the
@@ -613,7 +614,7 @@ final class TwoDeckPrerollTests: XCTestCase {
         let token = nextToken()
         audibleToken = token
         var since = log.count
-        a.send(.load(token: token, url: try fixture(Self.audibleFixture), startSec: Self.audibleStartSec, preciseTiming: true))
+        a.send(.loadURL(token: token, url: try fixture(Self.audibleFixture), startSec: Self.audibleStartSec, preciseTiming: true))
         guard waitReady("A", token, since: since, file: file, line: line) != nil else { return false }
         since = log.count
         a.send(.play)

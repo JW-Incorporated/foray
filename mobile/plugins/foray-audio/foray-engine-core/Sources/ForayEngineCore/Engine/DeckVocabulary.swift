@@ -4,11 +4,13 @@ import Foundation
 //
 // What the core asks ONE deck to do, and what a deck reports back. NE-15
 // built AVDeck in week 1 against a stub of these types inside the plugin
-// (`ForayAudioPlugin/Engine/DeckStub.swift`), saying that the real vocabulary
-// is this card's; the cases below keep the stub's names and payloads so that
-// NE-15h's swap is a deletion, plus the two things the core needs that the
-// stub did not: the item id on a load (the core, not the deck, knows which
-// queue item a URL is), and the out-point a bounded item carries.
+// (`ForayAudioPlugin/Engine/DeckStub.swift`, deleted by NE-15h), saying that
+// the real vocabulary is this card's; the cases below keep the stub's names
+// and payloads so that NE-15h's swap was a deletion, plus the two things the
+// core needs that the stub did not: the item id on a load (the core, not the
+// deck, knows which queue item a URL is), and the out-point a bounded item
+// carries. The seam a deck sits behind, `DeckDriving`, is the plugin's
+// (`ForayAudioPlugin/Engine/Seams.swift`), because only the plugin has decks.
 //
 // The deck DOES NOT DECIDE. Every event is an observation ("observe, don't
 // believe", plan §4.3); what it means is `EngineCore`'s ruling.
