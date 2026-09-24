@@ -341,12 +341,14 @@ final class AVDeckTests: XCTestCase {
 
     /// A pause the deck did not command (the system's, stood in for by
     /// pausing the real player behind the deck's back) becomes ONE reconcile
-    /// input; the play that follows it produces none (the false report run
-    /// 35962750658 recorded, see `checkUncommandedPause`), so a SECOND
-    /// external pause is still reported; and a commanded pause never is.
-    /// TO SEE IT FAIL: make `checkUncommandedPause` return at once; or report
-    /// at once instead of after `pauseSettleSec` (the re-play phase goes red);
-    /// or drop the `intendsToPlay = false` in `pause()`.
+    /// input; the play that follows it produces none, so a SECOND external
+    /// pause is still reported; and a commanded pause never is.
+    /// The false report after a re-play (run 35962750658) is a platform race
+    /// this test cannot force: with the settle removed it went red in one run
+    /// and stayed green in another (35965798877). The deterministic guard for
+    /// the settle is `testAPlayInsideTheSettleWindowVoidsTheStop`.
+    /// TO SEE IT FAIL: make `checkUncommandedPause` return at once, or drop
+    /// the `intendsToPlay = false` in `pause()`.
     func testAnExternalPauseBecomesAReconcileInput() throws {
         let uncommanded: (DeckEvent) -> Bool = { if case .pausedUncommanded = $0 { return true }; return false }
         guard loadAndWaitReady(try fixture("click-cbr-64k", "mp3"), token: 3, startSec: 2) != nil else { return }
@@ -384,11 +386,61 @@ final class AVDeckTests: XCTestCase {
         XCTAssertFalse(events.contains(where: uncommanded), "a commanded pause was reported as uncommanded: \(events)")
     }
 
+    /// A system stop followed by a play inside `pauseSettleSec` is never
+    /// reported: the play voids the suspicion. This is the deterministic half
+    /// of the settle (the false report after a re-play is a race; see above).
+    /// TO SEE IT FAIL: report at once in `checkUncommandedPause` (call
+    /// `work.perform()` instead of scheduling it), or drop the `playSeq` bump
+    /// and the cancel in `play()`.
+    func testAPlayInsideTheSettleWindowVoidsTheStop() throws {
+        guard loadAndWaitReady(try fixture("click-cbr-64k", "mp3"), token: 6, startSec: 3) != nil else { return }
+        deck.send(.play)
+        spin(0.3)
+        events.removeAll()
+        deck.player.pause()
+        spin(0.1) // the KVO hop lands; the settle (0.25 s) has not elapsed
+        deck.send(.play)
+        spin(1.0)
+        XCTAssertFalse(
+            events.contains { if case .pausedUncommanded = $0 { return true }; return false },
+            "a stop superseded by a play inside the settle window was reported: \(events)"
+        )
+        XCTAssertEqual(deck.player.rate, 1)
+    }
+
+    /// The uncommanded-pause rule, branch by branch, as a pure function
+    /// (which order the end's signals arrive in varies by run, so the
+    /// Simulator test below cannot pin these).
+    /// TO SEE IT FAIL: drop any guard in `isUncommandedPause`, or the
+    /// end-slack check.
+    func testTheUncommandedPauseRule() {
+        func rule(
+            intends: Bool = true, ended: Bool = false, ready: Bool = true,
+            rate: Float = 0, paused: Bool = true, at: Double = 5, duration: Double? = 20
+        ) -> Bool {
+            AVDeck.isUncommandedPause(
+                intendsToPlay: intends, reachedEnd: ended, ready: ready,
+                rate: rate, timeControlPaused: paused, atSec: at, durationSec: duration
+            )
+        }
+        XCTAssertTrue(rule(), "a stop mid-item while intending to play is uncommanded")
+        XCTAssertTrue(rule(duration: nil), "an unbounded item has no end to excuse the stop")
+        XCTAssertFalse(rule(intends: false), "a commanded pause")
+        XCTAssertFalse(rule(ended: true), "the item already ended")
+        XCTAssertFalse(rule(ready: false), "a load in progress")
+        XCTAssertFalse(rule(rate: 1), "still playing")
+        XCTAssertFalse(rule(paused: false), "waiting (buffering) is not a stop")
+        XCTAssertFalse(rule(at: 19.6), "inside the end slack: the end, not a stop")
+        XCTAssertTrue(rule(at: 19.4), "just outside the end slack")
+    }
+
     /// Reaching the end is `.ended`, not an uncommanded pause, even though
     /// `actionAtItemEnd = .pause` drops the rate to 0 there.
-    /// TO SEE IT FAIL: remove the end-slack check AND the `reachedEnd` guard
-    /// in `looksUncommandedPaused` (before the settle existed, the end-slack
-    /// check alone was the defence; mutation run 35963951987 killed it).
+    /// TO SEE IT FAIL: remove the end-slack check alone (killed in mutation
+    /// run 35963951987, before the rule required `.paused`). With both the
+    /// slack and the `reachedEnd` guard removed it stayed green in run
+    /// 35965798877, because there `.paused` arrived after `didPlayToEndTime`;
+    /// `testTheUncommandedPauseRule` pins those branches deterministically.
     func testTheEndIsEndedNotAnUncommandedPause() throws {
         guard loadAndWaitReady(try fixture("click-11k", "wav"), token: 4, startSec: 19.2) != nil else { return }
         deck.send(.play)

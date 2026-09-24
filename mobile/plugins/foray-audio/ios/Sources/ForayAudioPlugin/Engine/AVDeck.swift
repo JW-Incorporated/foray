@@ -633,14 +633,36 @@ final class AVDeck: DeckDriving {
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.pauseSettleSec, execute: work)
     }
 
-    /// The player is stopped, the deck meant it to play, and it is not the
-    /// end (with `actionAtItemEnd = .pause` the rate drops to 0 there too;
-    /// `didPlayToEndTime` reports that).
     private func looksUncommandedPaused() -> Bool {
-        guard intendsToPlay, !reachedEnd, stage == .ready, let item,
-              player.rate == 0, player.timeControlStatus == .paused else { return false }
+        guard let item else { return false }
         let duration = item.duration
-        if duration.isNumeric, player.currentTime().seconds >= duration.seconds - Self.endSlackSec {
+        return Self.isUncommandedPause(
+            intendsToPlay: intendsToPlay,
+            reachedEnd: reachedEnd,
+            ready: stage == .ready,
+            rate: player.rate,
+            timeControlPaused: player.timeControlStatus == .paused,
+            atSec: player.currentTime().seconds,
+            durationSec: duration.isNumeric ? duration.seconds : nil
+        )
+    }
+
+    /// The rule, as a pure function so an XCTest can pin every branch
+    /// without racing AVFoundation (the order in which the end's rate drop,
+    /// `.paused` and `didPlayToEndTime` arrive differs run to run: mutation
+    /// runs 35963951987 and 35965798877 saw both orders). It moves to the
+    /// core's DeckPolicy with NE-14s. A stop counts only when the deck meant
+    /// to play, the load is ready, the player is really stopped (rate 0 AND
+    /// `.paused`; `.waiting` is buffering), and it is not the end: with
+    /// `actionAtItemEnd = .pause` the rate drops to 0 there too, and
+    /// `didPlayToEndTime` reports that.
+    static func isUncommandedPause(
+        intendsToPlay: Bool, reachedEnd: Bool, ready: Bool,
+        rate: Float, timeControlPaused: Bool,
+        atSec: Double, durationSec: Double?
+    ) -> Bool {
+        guard intendsToPlay, !reachedEnd, ready, rate == 0, timeControlPaused else { return false }
+        if let durationSec, atSec >= durationSec - endSlackSec {
             return false
         }
         return true
