@@ -173,6 +173,23 @@ export const DURATION_ESTIMATED = "estimated";
 export const DURATION_FALLBACK = "fallback";
 
 /**
+ * Is a running order's clock partly an estimate? True when any item's duration
+ * came from anything but a measurement (a script-length projection, or the
+ * fallback). An item with no `duration_source` is tape, and tape is measured.
+ *
+ * THE ONE ANSWER (audit round 2, states-11). It used to live only inside
+ * `segment-strip.js`'s `stripTally`, so the Foray page header said "about
+ * 41 min" while Jump back in, the Now Playing sheet and the resume line printed
+ * the same estimated total as a plain "32 min left" / "-32:00". `resolveForay`
+ * now carries it as `estimated`, and every surface reads that.
+ */
+export function runtimeIsEstimated(items) {
+  if (!Array.isArray(items)) return false;
+  return items.some((i) => i && typeof i === "object"
+    && nonEmpty(i.duration_source) && i.duration_source !== DURATION_MEASURED);
+}
+
+/**
  * How long a narration item runs, and on what authority.
  *
  * @param {object} item  an authored or hydrated narration item

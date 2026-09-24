@@ -564,8 +564,34 @@ test("a beat with nothing loaded is still nothing loaded", () => {
 });
 
 test("a FINISHED Foray reports none, not paused — a dead play button is worse than no button", () => {
-  assert.equal(mediaPlaybackState({ hasItem: true, playing: true, ended: true }), NONE);
-  assert.equal(mediaPlaybackState({ hasItem: true, inSeamGap: true, ended: true }), NONE);
+  assert.equal(mediaPlaybackState({ hasItem: true, playing: true, ended: true, foray: true }), NONE);
+  assert.equal(mediaPlaybackState({ hasItem: true, inSeamGap: true, ended: true, foray: true }), NONE);
+});
+
+test("a FINISHED ordinary episode reports PAUSED, not none — its play button starts it over (p-car-6)", () => {
+  /* Audit round 2. `none` at the end of the last episode took the whole
+     transport off the lock screen and the car: the head unit went blank and
+     every wheel button was dead, and the listener had to unlock the phone to
+     hear anything from 4a again. Play from `ended` reloads the episode from the
+     top (`handlePlay`), so the button does something; Apple keeps the finished
+     episode on the lock screen, paused. The Foray rule above is unchanged.
+     KILLING MUTATION: `if (ended) return NONE;`. */
+  assert.equal(mediaPlaybackState({ hasItem: true, playing: false, ended: true }), PAUSED);
+  assert.equal(mediaPlaybackState({ hasItem: true, playing: true, ended: true, foray: false }), PAUSED);
+  assert.equal(mediaSessionView({ item: SEG, playing: false, ended: true, foray: false }).playbackState, PAUSED);
+  assert.equal(mediaSessionView({ item: SEG, playing: false, ended: true, foray: true }).playbackState, NONE);
+});
+
+test("a stall reports rate 0, so the OS clock stops counting over silence (p-car-8)", () => {
+  /* The bar said "Buffering…" while the lock screen and the car counted on at
+     full rate and snapped back when the audio returned. KILLING MUTATION: drop
+     `buffering ? 0 :` from `mediaPositionState`. The transport STATE stays
+     playing — the listener did not pause. */
+  assert.equal(mediaPositionState({ durationSec: 100, positionSec: 10, playbackRate: 1.5, buffering: true }).playbackRate, 0);
+  assert.equal(mediaPositionState({ durationSec: 100, positionSec: 10, playbackRate: 1.5, buffering: false }).playbackRate, 1.5);
+  const view = mediaSessionView({ item: SEG, playing: true, durationSec: 100, positionSec: 10, buffering: true });
+  assert.equal(view.positionState.playbackRate, 0);
+  assert.equal(view.playbackState, PLAYING);
 });
 
 test("mediaSessionView reports the FORAY's clock, not the segment's", () => {
@@ -603,8 +629,8 @@ test("mediaSessionView carries the seam-gap flag THROUGH — not just mediaPlayb
 });
 
 test("mediaSessionView carries the ended flag through, so a finished Foray still clears the slot", () => {
-  assert.equal(mediaSessionView({ item: SEG, playing: true, ended: true }).playbackState, NONE);
-  assert.equal(mediaSessionView({ item: SEG, playing: true, ended: false }).playbackState, PLAYING);
+  assert.equal(mediaSessionView({ item: SEG, playing: true, ended: true, foray: true }).playbackState, NONE);
+  assert.equal(mediaSessionView({ item: SEG, playing: true, ended: false, foray: true }).playbackState, PLAYING);
 });
 
 test("mediaSessionView carries the item through to both the metadata and hasItem", () => {
@@ -1291,9 +1317,11 @@ test("player/client.js drives the lock screen through this module and nothing el
 function codeOnly(src) {
   return src
     .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/`(?:\\[\s\S]|[^`\\])*`/g, '""')
-    .replace(/'(?:\\.|[^'\\])*'/g, '""')
-    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    /* One pass over the three quote kinds, whichever opens first: three passes
+       read an apostrophe INSIDE a double-quoted literal ("couldn't") as opening
+       a single-quoted string and blinded every assertion after it (audit round
+       2, copy-6). */
+    .replace(/`(?:\\[\s\S]|[^`\\])*`|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g, '""')
     .replace(/(^|[\s(,;{}=])\/\/[^\n]*/gm, "$1");
 }
 
@@ -1479,12 +1507,37 @@ test("the FORAY's clock is what client.js reports — the whole thing, not the s
      shows "31 minutes into somebody else's episode", and because `seekto` still
      routes to `foraySeek`, a head-unit scrub lands somewhere unrelated to where
      the listener dragged. */
-  const block = /if \(foray\) \{[\s\S]*?media\.update\(mediaSessionView\(\{[\s\S]*?\}\)\);/.exec(CLIENT_CODE);
-  assert.ok(block, "syncMediaSession must have a foray branch");
-  assert.match(block[0], /durationSec: foray\.resolved\.totalSec/);
-  assert.match(block[0], /positionSec: forayPosition\(\)/);
-  assert.match(block[0], /item: items\[index\]/);
-  assert.match(block[0], /total: items\.length/);
+  /* `mediaViewFields` (audit round 2, player-10): the Foray branch is the
+     `if (live)` block, `live` being the loaded Foray or the RESTORED one, and
+     the position is the Foray clock for the former, the bar's pending position
+     for the latter — both on the Foray's timeline. */
+  const block = forayViewBlock();
+  assert.ok(block, "mediaViewFields must have a foray branch");
+  assert.match(block, /durationSec: live\.totalSec/);
+  assert.match(block, /const position = foray \? forayPosition\(\) : episodePositionSec\(\);/);
+  assert.match(block, /positionSec: position/);
+  assert.match(block, /item: items\[index\]/);
+  assert.match(block, /total: items\.length/);
+  assert.match(block, /foray: true/, "and it says it is a Foray, so a finished one reports none (p-car-6)");
+});
+
+/** The Foray branch of `mediaViewFields`, as code. */
+function forayViewBlock() {
+  const fn = /function mediaViewFields\(\)[\s\S]*?\n\}/.exec(CLIENT_CODE);
+  if (!fn) return null;
+  const m = /if \(live\) \{[\s\S]*?return \{[\s\S]*?\};/.exec(fn[0]);
+  return m ? m[0] : null;
+}
+
+test("a RESTORED Foray is described to the OS as a Foray, and its clip follows the thumb (player-10)", () => {
+  /* KILLING MUTATION: build `live` from `foray` alone (`const live = foray ?
+     foray.resolved : null`) — the restored bar then takes the single-episode
+     branch, and the lock screen reads title = the Foray, artist = "clip 3 of
+     32", album blank, until the first press. */
+  const fn = /function mediaViewFields\(\)[\s\S]*?\n\}/.exec(CLIENT_CODE);
+  assert.ok(fn);
+  assert.match(fn[0], /restoredPending\?\.foray\?\.resolved/, "the restored Foray is read");
+  assert.match(fn[0], /segmentAtElapsed\(items, position\)/, "and the clip is the one under the pending position");
 });
 
 test("the seam-beat state reaches the bridge from the manager, not from a guess", () => {
@@ -1508,13 +1561,23 @@ test("the rate client.js reports is the ELEMENT's, not the speed the listener ch
 
      Both branches, because a Foray and a single episode report separately and
      fixing one would leave the other lying. */
-  const block = /if \(foray\) \{[\s\S]*?media\.update\(mediaSessionView\(\{[\s\S]*?\}\)\);/.exec(CLIENT_CODE);
-  assert.ok(block, "syncMediaSession must have a foray branch");
-  assert.match(block[0], /playbackRate: backend\?\.rate/, "the Foray branch must report the element's rate");
-  const after = CLIENT_CODE.slice(block.index + block[0].length);
+  const fn = /function mediaViewFields\(\)[\s\S]*?\n\}/.exec(CLIENT_CODE);
+  assert.ok(fn, "player/client.js must define mediaViewFields");
+  const block = forayViewBlock();
+  assert.ok(block, "mediaViewFields must have a foray branch");
+  assert.match(block, /playbackRate: backend\?\.rate/, "the Foray branch must report the element's rate");
+  const after = fn[0].slice(fn[0].indexOf(block) + block.length);
   assert.match(after, /playbackRate: backend\?\.rate/, "and so must the single-episode branch");
   // The chosen rate must not reach the OS from either branch.
   assert.doesNotMatch(CLIENT_CODE, /playbackRate:\s*manager/);
+});
+
+test("a stall reaches the OS view from both branches (p-car-8)", () => {
+  /* KILLING MUTATION: drop `buffering,` from either object in `mediaViewFields`
+     — the bar says "Buffering…" and the car counts on at full rate. */
+  const fn = /function mediaViewFields\(\)[\s\S]*?\n\}/.exec(CLIENT_CODE);
+  assert.ok(fn);
+  assert.equal((fn[0].match(/\n\s+buffering,\n/g) ?? []).length, 2, "both the Foray branch and the single-episode branch hand the flag over");
 });
 
 test("the backend really does read the element for `rate` — the other half of #242's honesty", () => {
@@ -1529,12 +1592,12 @@ test("the backend really does read the element for `rate` — the other half of 
 });
 
 test("the finished state reaches the bridge too, so a done Foray clears the slot", () => {
-  // Scoped to syncMediaSession: `forayStateSnapshot` reads the same state for the
+  // Scoped to mediaViewFields: `forayStateSnapshot` reads the same state for the
   // page, and counting the file over would pass on that one alone.
-  const fn = /function syncMediaSession\(\)[\s\S]*?\n\}/.exec(CLIENT_CODE);
-  assert.ok(fn, "player/client.js must define syncMediaSession");
+  const fn = /function mediaViewFields\(\)[\s\S]*?\n\}/.exec(CLIENT_CODE);
+  assert.ok(fn, "player/client.js must define mediaViewFields");
   // `codeOnly` blanks string literals, so the state name reads as `""` here.
-  const writes = fn[0].match(/ended: manager\?\.state\?\.type === ""/g) ?? [];
+  const writes = fn[0].match(/manager\?\.state\?\.type === ""/g) ?? [];
   assert.equal(writes.length, 2, "both the Foray branch and the single-episode branch report it");
   // ...and the state really is spelled "ended" in the source.
   assert.ok(liveLines(CLIENT, 'manager?.state?.type === "ended"').length >= 2);
@@ -1572,7 +1635,8 @@ test("EVERY playForay call site in app.js passes the artwork document", () => {
      has exactly one funnel per option shape — `start` for an index, `startAt`
      for an elapsed — and every control routes through one of them. */
   const calls = liveLines(APP, "playForay(");
-  assert.equal(calls.length, 2, `the known call sites are two; found ${calls.length} — check the new one`);
+  /* Three since 2026-09-24: Home's play button (startHomeForay, the founder's "play button at the Home Screen level") is a third, and passes it too. */
+  assert.equal(calls.length, 3, `the known call sites are three; found ${calls.length} — check the new one`);
   const missing = calls.filter((c) => !/forayOpts|discoverDoc/.test(c));
   assert.deepEqual(missing, [], "a Foray started without discoverDoc loses the publisher's artwork");
 });

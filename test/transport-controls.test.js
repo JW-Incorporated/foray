@@ -59,15 +59,62 @@ function valueOf(sel, prop) {
 }
 const px = (v) => { const m = /^(\d+(?:\.\d+)?)px$/.exec(String(v || "")); return m ? Number(m[1]) : null; };
 
+/* ---------- one transport button on every surface (audit round 2, visual-5) ---------- */
+
+test("the seek pair and the speed box are one object on the Foray page and in Now Playing", () => {
+  /* ↺15 / 30↻ were 60x48 bold 0.9rem LIFTED on the page and 56x48 regular
+     0.82rem FLAT in the sheet; speed was 48px on one and 44px on the other
+     under a comment claiming they matched. One rule sizes all of them now,
+     and neither surface restates what it sets.
+     MUTATIONS, each red: `.fp-btn { font-size: var(--fs-sm) }` (the sheet's old
+     step); `.fy-btn { box-shadow: var(--shadow) }` (the page's old lift);
+     `.fp-rate { min-height: 44px }` (the old speed height). */
+  const FAMILY = ".fy-btn, .fp-btn, .fp-rate, .fp-stop";
+  assert.strictEqual(px(valueOf(FAMILY, "min-height")), 48, "48px: a car product (the note on .fp-play)");
+  assert.strictEqual(valueOf(FAMILY, "font-size"), "var(--fs-md)");
+  assert.strictEqual(valueOf(FAMILY, "font-weight"), "600");
+  assert.strictEqual(valueOf(FAMILY, "border-radius"), "var(--radius-md)");
+  assert.strictEqual(valueOf(".fy-btn, .fp-btn", "min-width"), "56px", "the seek pair is one width on both surfaces");
+  /* Nobody restates a family declaration on one surface only — that is how
+     the two drifted. Checked on every rule that names exactly one member. */
+  const SHARED = ["min-height", "height", "font-size", "font-weight", "box-shadow", "min-width"];
+  const restated = [];
+  const re = /([^{}]+)\{([^{}]*)\}/g;
+  let m;
+  while ((m = re.exec(SRC))) {
+    const sels = splitSelectors(m[1]);
+    if ([FAMILY, ".fy-btn, .fp-btn", ".fy-btn.fy-rate, .fp-rate"].includes(sels.join(", "))) continue;
+    for (const sel of sels) {
+      if (!/^(body\.ui-v2 )?\.(fy-btn|fp-btn|fp-rate|fp-stop)$/.test(sel)) continue;
+      for (const d of m[2].split(";")) {
+        const prop = d.slice(0, d.indexOf(":")).trim();
+        if (SHARED.includes(prop) && !/:disabled|:hover/.test(sel)) restated.push(`${sel} { ${d.trim()} }`);
+      }
+    }
+  }
+  assert.deepStrictEqual(restated, [], "a surface restating the family's metrics");
+  /* The speed box: one rule, both surfaces, 48 tall by the family. */
+  assert.strictEqual(valueOf(".fy-btn.fy-rate, .fp-rate", "font-variant-numeric"), "tabular-nums");
+  assert.strictEqual(valueOf(".fy-btn.fy-rate, .fp-rate", "min-width"), "52px");
+  assert.strictEqual(valueOf("body.ui-v2 .fy-btn.fy-rate, body.ui-v2 .fp-rate", "color"), "var(--muted)", "one colour for speed on both");
+  /* The comment that claimed 44 is gone. */
+  assert.doesNotMatch(CSS, /metrics \(44px, body step/, "no comment may promise a height neither surface has");
+  /* And both renderers really do use these classes for the same controls. */
+  assert.match(CLIENT, /el\("button", "fp-btn", `↺ \$\{SEEK_BACK\}`\)/);
+  assert.match(APP, /class="fy-btn"[^>]*>↺/, "the page's ↺ is a .fy-btn");
+});
+
 /* ---------- the mini bar ---------- */
 
 test("the mini bar carries ▶ and a back-15 nudge, in that order, and nothing else", () => {
-  /* MUTATION: `bar.append(art, info, playBtn, announce)` (the one-control bar)
+  /* MUTATION: `bar.append(art, info, playBtn)` (the one-control bar)
      -> red. MUTATION 2: add `fwdBtn` to the bar -> the third assertion names
-     the crowding. */
+     the crowding. (The live region is no longer on the bar — audit round 2,
+     a11y-2: it is a sibling of the bar and the sheet, so expanding Now
+     Playing cannot make it inert; player/now-playing-sheet.test.js pins it.) */
   assert.match(CODE, /const skipBtn = el\("button", "fp-skip", `↺ \$\{SEEK_BACK\}`\);/);
   assert.match(CODE, /skipBtn\.setAttribute\("aria-label", `Back \$\{SEEK_BACK\} seconds`\);/);
-  assert.match(CODE, /bar\.append\(art, info, skipBtn, playBtn, announce\);/, "art · title · ↺15 · ▶");
+  assert.match(CODE, /bar\.append\(art, info, skipBtn, playBtn\);/, "art · title · ↺15 · ▶");
   const appended = /bar\.append\(([^)]*)\)/.exec(CODE)[1].split(",").map((s) => s.trim());
   assert.deepStrictEqual(appended.filter((n) => /Btn$/.test(n)), ["skipBtn", "playBtn"], "two controls on the bar, not three");
   assert.match(CODE, /ui\.skipBtn\.addEventListener\("click", \(\) => nudgeBy\(-SEEK_BACK\)\);/);
@@ -102,8 +149,11 @@ test("the one nudge: inside a Foray it seeks on the Foray clock, otherwise on th
   /* MUTATION: make `nudgeBy` call `seekEpisodeBy` unconditionally -> a Foray
      nudge seeks the source episode's clock and skips the clip boundary rule. */
   const fn = CODE.slice(CODE.indexOf("function nudgeBy("), CODE.indexOf("function render()"));
-  assert.match(fn, /if \(foray\) return ForayPlayer\.foraySeek\(Math\.max\(0, forayPosition\(\) \+ offset\)\);/);
-  assert.match(fn, /return seekEpisodeBy\(offset\);/);
+  /* Audit round 2 (player-5): the Foray step is clamped one second short of
+     the end, like the episode's, before it goes to `foraySeek`. */
+  assert.match(fn, /if \(!foray\) return seekEpisodeBy\(offset\);/);
+  assert.match(fn, /const ceiling = Math\.max\(0, foray\.resolved\.totalSec - SEEK_END_GUARD_SEC\);/);
+  assert.match(fn, /return ForayPlayer\.foraySeek\(target\);/);
   assert.match(CODE, /seekBy: \(offset\) => nudgeBy\(offset\),/, "the lock screen's seek is the same nudge");
   assert.match(CODE, /nudge\(offsetSec\) \{ return nudgeBy\(offsetSec\); \},/, "the bridge exposes it to the page");
   assert.match(CODE, /nudgeSteps\(\) \{ return \{ back: SEEK_BACK, fwd: SEEK_FWD \}; \},/, "and the step sizes");
@@ -171,20 +221,54 @@ test("the sheet's Play is the bar's Play, scaled: one filled round object, not a
   assert.strictEqual(valueOf("body.ui-v2 .fp-btn", "background"), "var(--surface2)");
 });
 
-test("the sheet's second row is one treatment: 44px boxes at the body step, a quiet text link, and no second Close", () => {
+test("the sheet's second row is one treatment: 48px transport boxes, a quiet text link, and no second Close", () => {
   /* It mixed a caption-size grey box, a danger box, a bare underlined link and
      a Close beside the grab zone's ✕. MUTATION: `.fp-rate, .fp-stop { padding:
-     8px 12px; font-size: var(--fs-xs) }` -> red; `el("button", "fp-collapse",
-     "Close")` back in client.js -> red. */
-  assert.ok(px(valueOf(".fp-rate, .fp-stop", "min-height")) >= 44, "the boxed controls are at the tap floor by their own size");
-  assert.strictEqual(valueOf(".fp-rate, .fp-stop", "font-size"), valueOf(".fy-btn", "font-size"),
-    "the speed control reads the same step here as on the Foray page");
+     8px 12px; font-size: var(--fs-xs) }` -> red (the shared rule's size is
+     out-ranked); `el("button", "fp-collapse", "Close")` back in client.js -> red. */
+  const FAMILY = ".fy-btn, .fp-btn, .fp-rate, .fp-stop";
+  assert.ok(px(valueOf(FAMILY, "min-height")) >= 44, "the boxed controls are at the tap floor by their own size");
+  /* No member of the row restates the family's height or type step on its own:
+     "one object on the Foray page and in Now Playing" checks every rule that
+     names one member. */
   assert.strictEqual(valueOf(".fp-rate", "font-variant-numeric"), "tabular-nums", "1× -> 1.25× does not jitter");
   assert.ok(px(valueOf(".fp-openep", "min-height")) >= 44, "'Episode' is a 44px text button");
   assert.strictEqual(valueOf(".fp-openep", "text-decoration"), "none", "…not an underlined inline link");
   assert.doesNotMatch(CODE, /"fp-collapse"/, "no Close button is built");
   assert.doesNotMatch(CODE, /ui\.collapse/, "…and nothing is wired to one");
-  assert.match(CODE, /row2\.append\(stopBtn, rateBtn, openLink, forayLink\);/, "Stop leads the row, alone at the danger end");
+  /* Stop first; the round-2 staples (⏭, Save, Up Next) sit between the speed
+     and the two navigation links, ⏭ and Save in the transport family's plain
+     `.fp-btn` box so they are at the same tap floor. */
+  assert.match(CODE, /row2\.append\(stopBtn, rateBtn, nextBtn, saveBtn, queueLink, openLink, forayLink\);/, "Stop leads the row, alone at the danger end");
   assert.match(CODE, /ui\.closeBtn\.addEventListener\("click", \(\) => setExpanded\(false\)\);/, "the ✕ is the way out");
   assert.strictEqual(valueOf(".fp-collapse", "color"), null, "and its rule is gone");
+});
+
+test("ROUND 2 review: the sheet's six-control second row wraps, and ⏭/Save are actions, not the muted speed readout", () => {
+  /* Stop, 1×, ⏭, Save, "Up Next (N)" and "Episode" need ~380px against a
+     375px phone's 343px content box, and the row did not wrap; ⏭ and Save
+     borrowed `.fp-rate`, whose colour and weight are the speed readout's.
+     MUTATIONS: drop `flex-wrap: wrap` from .fp-row2; build ⏭ or Save with
+     "fp-rate" again; delete the pressed-state rule. */
+  assert.strictEqual(valueOf(".fp-row2", "flex-wrap"), "wrap", "the row wraps at phone width");
+  assert.doesNotMatch(CODE, /el\("button", "fp-rate fp-(next|save)"/, "⏭ and Save do not wear the speed readout's box");
+  assert.match(CODE, /el\("button", "fp-btn fp-next", "⏭"\)/);
+  assert.match(CODE, /el\("button", "fp-btn fp-save", "Save"\)/);
+  for (const sel of [".fp-next, .fp-save", ".fp-upnext"]) assert.ok(SRC.includes(`${sel} {`), `${sel} has its own rule`);
+  assert.ok(valueOf('.fp-save[aria-pressed="true"]', "color"), "Save shows its pressed state");
+  assert.ok(valueOf('body.ui-v2 .fp-save[aria-pressed="true"]', "color"), "…in the v2 theme too");
+});
+
+test("both speed buttons say they open a menu — the Foray page's as well as the sheet's", () => {
+  /* Audit round 2, player-9, completed in the sweep: the sheet's rate button
+     gained `aria-haspopup="dialog"` and the Foray page's `#fy-rate`, which opens
+     the same `openRateMenu` dialog, did not — VoiceOver read one "pop-up button"
+     and one plain button for the one control. MUTATION: drop the attribute
+     from the `#fy-rate` markup -> red. */
+  const tag = /<button[^>]*\bid="fy-rate"[^>]*>/.exec(APP);
+  assert.ok(tag, "fixture assumption: the Foray page draws #fy-rate");
+  assert.match(tag[0], /\baria-haspopup="dialog"/, "the Foray page's speed button does not say it opens a menu");
+  assert.match(CODE, /rateBtn\.setAttribute\("aria-haspopup", "dialog"\);/, "the sheet's, for comparison");
+  const menu = APP.slice(APP.indexOf("function openRateMenu("), APP.indexOf("function openRateMenu(") + 800);
+  assert.match(menu, /panel\.setAttribute\("role", "dialog"\);/, "fixture assumption: what it opens is a dialog");
 });

@@ -183,9 +183,10 @@ const STALE = [
   // [what, pattern, why it is wrong]
   ["pull to refresh", /pull to refresh/i, "there is no pull-to-refresh gesture anywhere in 4a"],
   ["home-screen builder", /build one from the home screen/i, "the playlist builder left Home on 2026-09-03"],
-  /* "This browser has taken storage away." (deletionMessage) is left to the
-     delete-my-data lane, which is rewriting that function's result copy. */
-  ["browser copy", /your browser|reload the page|on this page, so the probe/i, "the same bytes run in a native shell with no visible browser"],
+  /* Widened in round 2 (copy-1): the delete result's "This browser has taken
+     storage away" and "Reload and try again" were exempted here while each lane
+     thought the other had rewritten them. No exemption now. */
+  ["browser copy", /your browser|this browser|reload the page|reload and try again|on this page, so the probe/i, "the same bytes run in a native shell with no visible browser"],
   ["four topic queues", /four topic queues/i, "Home has not been four topic cards since the U-11 cutover"],
   ["daily claim", /today's queue/i, "buildCards() re-deals on every load; nothing is daily"],
   ["raw resolver reason", /Can't play:/, "foray-resolve's reasons name our data files"],
@@ -268,10 +269,12 @@ function mountApp() {
 /* qa row 136: 210 of the pool's titles end in ? ! or ., and the card appended a
    full stop regardless ("…Save The World?."). MUTATION: always append ".". */
 test("'Starts with' closes its sentence once, whatever the title ends with", () => {
+  /* Typographic quotes since audit round 2 (copy-8): one `quoteQuery` helper
+     for every quoted listener string. */
   const { ctx } = mountApp();
-  assert.strictEqual(ctx.startsWithLine("Can Fusion Save The World?"), 'Starts with "Can Fusion Save The World?"');
-  assert.strictEqual(ctx.startsWithLine("Gearboxes, alive!"), 'Starts with "Gearboxes, alive!"');
-  assert.strictEqual(ctx.startsWithLine("The Fed"), 'Starts with "The Fed."');
+  assert.strictEqual(ctx.startsWithLine("Can Fusion Save The World?"), "Starts with “Can Fusion Save The World?”");
+  assert.strictEqual(ctx.startsWithLine("Gearboxes, alive!"), "Starts with “Gearboxes, alive!”");
+  assert.strictEqual(ctx.startsWithLine("The Fed"), "Starts with “The Fed.”");
 });
 
 /* qa row 148: on a short screen the hook clamps to one line, so the title — the
@@ -282,7 +285,8 @@ test("the subject card's hook leads with the episode it starts with", () => {
      count at integration, which pushed the hook past a 900-character window. */
   const at = APP_SRC.indexOf("function miniCard(slot)");
   const body = APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
-  assert.match(body, /<p class="mc-hook">\$\{startsWithLine\(item\.title\)\} \$\{esc\(subjectBlurb\(slot\)\)\}<\/p>/);
+  /* The Stretch reason may follow, as visible text (audit round 2, a11y-11). */
+  assert.match(body, /<p class="mc-hook">\$\{startsWithLine\(item\.title\)\} \$\{esc\(subjectBlurb\(slot\)\)\}/);
 });
 
 /* qa row 193: the greeting was computed once per render. MUTATION: drop the
@@ -320,9 +324,11 @@ test("each shell notice carries its own remedy", () => {
 });
 
 /* qa row 112: the playlist builder left the last query's failure note up while
-   building the next. MUTATION: drop the staleNote hide in bindPlaylistFormSubmit. */
+   building the next. The one builder is Create's since audit round 2
+   (p-first-6; #/playlists' form is gone). MUTATION: drop the staleNote hide in
+   bindCreateFormSubmit. */
 test("the playlist builder hides the last query's note before building the next", () => {
-  const body = APP_SRC.slice(APP_SRC.indexOf("function bindPlaylistFormSubmit"), APP_SRC.indexOf("function bindPlaylistFormSubmit") + 900);
+  const body = APP_SRC.slice(APP_SRC.indexOf("function bindCreateFormSubmit"), APP_SRC.indexOf("function bindCreateFormSubmit") + 900);
   const hide = body.indexOf("staleNote.hidden = true");
   assert.ok(hide > 0, "the stale note must be hidden");
   /* The build is deferred by whenSearchDataReady since L5 (it waits for the
@@ -343,7 +349,9 @@ test("the clear-search control answers the keyboard", () => {
    any of the inputs, or the live-region attributes from either note. */
 test("every text field has a name that survives typing, and search notes are live regions", () => {
   const inputs = [...APP_SRC.matchAll(/<input [^>]*type="text"[^>]*>/g)].map((m) => m[0]);
-  assert.ok(inputs.length >= 5, `expected the app's text inputs, found ${inputs.length}`);
+  /* Four since audit round 2 (p-first-6): the #/playlists builder's field
+     left with the builder; Create's is the one playlist field. */
+  assert.ok(inputs.length >= 4, `expected the app's text inputs, found ${inputs.length}`);
   for (const i of inputs) assert.match(i, /aria-label="[^"]+"/, `a text field named only by its placeholder: ${i}`);
   assert.match(APP_SRC, /typedInput\.setAttribute\("aria-label", /);
   assert.match(APP_SRC, /<p id="sh-note" class="note" role="status" aria-live="polite" hidden><\/p>/);
@@ -384,16 +392,139 @@ test("REVIEW: the returning-listener popup claims a stretch pick only where Home
     return APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
   };
   const hasStretch = {
-    forays: /pickWithStretchFloor/.test(body("foraysForYouHtml")),
+    forays: /pickWithStretchFloor/.test(body("foraysForYouPicks")),
     playlists: /pickWithStretchFloor|stretch/.test(body("playlistsForYouHtml")),
-    episodes: /miniCardV2/.test(body("episodesForYouHtml")) && /role !== "stretch"/.test(body("miniCardV2")),
+    episodes: /miniCardV2/.test(body("suggestedHtml")) && /role !== "stretch"/.test(body("miniCardV2")),
   };
   assert.deepStrictEqual(hasStretch, { forays: true, playlists: false, episodes: true }, "fixture: where the stretch picks live");
   const popup = literals(APP_SRC).map((l) => l.text).find((t) => /outside your usual subjects/.test(t));
   assert.ok(popup, "the popup sentence exists");
   const claim = popup.split(/(?<=\.)\s+/).find((sentence) => /outside your usual subjects/.test(sentence));
+  /* Audit round 2 (p-first-11): the Forays row has a stretch pick only when the
+     listed Forays span more than one subject, so the popup names forays only
+     when `foraysForYouPicks()` found one; that branch is exercised in
+     test/foray-surfaces.test.js. Here: the Forays half of the claim is
+     CONDITIONED on the same pick Home renders, never stated outright. */
+  assert.ok(APP_SRC.includes('The episodes ${foraysForYouPicks()?.stretchIndex >= 0 ? "and the forays each " : ""}include one pick'),
+    "the Forays half of the stretch claim asks Home's own pick");
   for (const [section, has] of Object.entries(hasStretch)) {
+    if (section === "forays") continue;
     const named = new RegExp(`\\b${section}\\b`, "i").test(claim);
     assert.strictEqual(named, has, `the stretch claim ${has ? "must" : "must not"} name ${section}: "${claim}"`);
   }
+});
+
+/* ------------------------------------------------------------------ */
+/* Round 2 copy rules (docs/DECISIONS.md 2026-09-23), over every       */
+/* listener string in the app and the player                           */
+/* ------------------------------------------------------------------ */
+
+/** Every prose literal a listener can read in `file`, with its line; HTML
+    comments inside a template are markup, and console / error / diagnostics
+    lines are code. */
+function listenerProse(file) {
+  const src = read(file);
+  const lines = src.split("\n");
+  return literals(src)
+    .map((l) => ({ ...l, text: l.text.replace(/<!--[\s\S]*?-->/g, "") }))
+    .filter((l) => isProse(l.text) && !/console\.|diag\.\w+\(|new Error\(/.test(lines[l.line - 1] || ""));
+}
+const hitsIn = (re) => LISTENER_FILES.flatMap((file) =>
+  listenerProse(file).filter((l) => re.test(l.text)).map((l) => `${file}:${l.line}: "${l.text.trim().slice(0, 90)}"`));
+
+/* copy-11. MUTATION: put back any of "we learn either way", "Shows we vouch
+   for", "here's what we've got", "Tell us in your own words…", "Our server:",
+   "We cannot delete that" or "if we ask for it". */
+test("the app speaks as 4a, never as 'we', 'us' or 'our'", () => {
+  assert.deepStrictEqual(hitsIn(/\b(we|we'll|we've|we're|we'd|us|our|ours)\b/i), []);
+  /* The scanner can see: the rewritten strings are listener prose it finds. */
+  const all = listenerProse("app.js").map((l) => l.text).join("\n");
+  assert.ok(all.includes("Shows 4a vouches for"), "the editorial row's heading");
+  assert.ok(all.includes("This is how 4a tunes your suggestions."), "the first-run sheet");
+});
+
+/* copy-7. MUTATION: restore "Not into this topic". */
+test("a listener reads 'subject', never 'topic'", () => {
+  assert.deepStrictEqual(hitsIn(/\btopics?\b/i), []);
+});
+
+/* copy-1 (incomplete fix of qa 141): the delete result said "This browser has
+   taken storage away" and "Reload and try again" five times, inside a shell
+   with neither. MUTATION: put back either. */
+test("no listener string names a browser or a reload the shell does not have", () => {
+  assert.deepStrictEqual(hitsIn(/this browser|your browser|reload and try again|reload the page/i), []);
+});
+
+/* copy-6: one failure worded three ways ("wouldn't load" / "could not load" /
+   "Did not load"). MUTATION: change any one of the three back. */
+test("a load that failed is one sentence pair, on the Foray page, the sheet and the bar", () => {
+  const client = read("player/client.js");
+  const clip = /const FY_START_FAILED = "([^"]+)";/.exec(APP_SRC)[1];
+  const ep = /const EP_START_FAILED = "([^"]+)";/.exec(client)[1];
+  const bar = /const EPISODE_FAILED_LINE = "([^"]+)";/.exec(client)[1];
+  const tail = (s) => s.replace(/^That \w+ /, "");
+  assert.strictEqual(tail(clip), tail(ep), `${clip} / ${ep}`);
+  assert.match(ep, /^That episode couldn't load\. Check the connection, then press play\.$/);
+  assert.match(bar, /^Couldn't load — /, bar);
+});
+
+/* a11y-11: `aria-label` on a bare <span> is ignored by most screen readers, and
+   a `title=` tooltip is unreachable on a phone. MUTATION: drop `role="img"`
+   from explicitBadge, or put a `title=` back on the Stretch tag or the
+   not-playable chip. */
+test("the explicit badge is a named image, and no explanation lives only in a tooltip", () => {
+  const { ctx, state } = mountApp();
+  const badge = ctx.explicitBadge(true);
+  assert.match(badge, /role="img"/);
+  assert.match(badge, /aria-label="Explicit"/);
+  assert.doesNotMatch(badge, /title=/);
+  assert.doesNotMatch(ctx.notPlayableNote(), /title=/);
+  state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History" }] };
+  const item = { id: "a", title: "A title", show: "S", duration_min: 30 };
+  const card = ctx.miniCard({ branch: "history", role: "stretch", item, items: [item] });
+  assert.doesNotMatch(card, /title="/, card);
+  assert.match(card, /<p class="mc-hook">[^<]*Outside your usual subjects, on purpose\.<\/p>/, "the reason is visible text");
+  const plain = ctx.miniCard({ branch: "history", role: "top", item, items: [item] });
+  assert.doesNotMatch(plain, /on purpose/, "only a stretch card says it");
+  /* The not-playable chip's explanation moved to the episode page, as text.
+     MUTATION: drop the NOT_PLAYABLE_WHY note from renderEpisode. */
+  state.discover = { items: [{ id: "silent", title: "No audio here", show: "S", duration_min: 30, topics: [] }] };
+  ctx.fullPool();
+  ctx.renderEpisode("silent");
+  const page = ctx.document.querySelector("#view").innerHTML;
+  assert.match(page, /Not available to play/);
+  assert.match(page, /<p class="note">4a could not get an audio file for this episode, so it cannot play here\.<\/p>/, page.slice(0, 400));
+});
+
+/* ROUND 2 review (p-foray-6): the client stopped lowering the subject for a
+   microphone complaint, but the event it syncs still reached the server's
+   learning job, which lowered it durably for every down-vote. The two halves
+   read ONE set. MUTATION: add or drop a reason in either copy -> red. */
+test("the server's learning job and the device agree on which down-vote reasons are about the subject", () => {
+  const backend = fs.readFileSync(path.join(__dirname, "..", "backend", "src", "curation", "interestLearning.ts"), "utf8");
+  const server = /export const TOPIC_DOWNVOTE_REASONS[^=]*=\s*\[([^\]]*)\]/.exec(backend);
+  assert.ok(server, "interestLearning.ts declares TOPIC_DOWNVOTE_REASONS");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const client = /const TOPIC_REASONS = new Set\(\[([^\]]*)\]\)/.exec(app);
+  assert.ok(client, "app.js declares TOPIC_REASONS");
+  const list = (src) => [...src.matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();
+  assert.deepStrictEqual(list(server[1]), list(client[1]));
+  assert.match(backend, /TOPIC_DOWNVOTE_REASONS\.includes\(/, "and the learning job reads it");
+});
+
+/* p-foray-6: a down-vote for the microphone lowered the whole subject exactly
+   like "Not my subject". MUTATION: nudge on every down-vote again. */
+test("a down-vote moves the subject's weight only when its reason is about the subject", () => {
+  const { ctx, state } = mountApp();
+  state.taxonomy = { nodes: [{ id: "business", parent: null, label: "Business" }, { id: "business/startups", parent: "business", label: "Startups" }] };
+  state.interests = { business: 0.5, "business/startups": 0.5 };
+  const entry = (n) => ({ segment_id: `seg-${n}`, topic: "business/startups", item_id: "ep" });
+  ctx.setFeedback(entry(1), "down", { reasons: ["Bad audio quality", "Didn't like the voice", "Heard this already", "Just not this show"] });
+  assert.deepStrictEqual({ ...state.interests }, { business: 0.5, "business/startups": 0.5 }, "not a word about the subject");
+  assert.ok(ctx.forayFeedback()["seg-1"], "the vote itself is still recorded");
+  ctx.setFeedback(entry(2), "down", { reasons: ["Not my subject"] });
+  assert.ok(state.interests["business/startups"] < 0.5, "a subject-shaped reason moves it");
+  const before = state.interests["business/startups"];
+  ctx.setFeedback(entry(3), "up");
+  assert.ok(state.interests["business/startups"] > before, "a thumbs-up still does");
 });

@@ -45,7 +45,14 @@ import path from "node:path";
    guess, for the same reason generate-manifest.mjs's SHELL is explicit: a new
    binary shell file must be classified deliberately, and a text file wrongly
    listed here would silently disable the guard for it. */
-export const BINARY_LISTED = new Set(["icon-180.png", "icon-512.png"]);
+export const BINARY_LISTED = new Set([
+  "icon-180.png", "icon-512.png",
+  /* The brand faces joined the manifest in audit round 2 (perf-5), and two of
+     the three contain `
+` byte pairs: without these the guard refused every
+     manifest run, on Linux CI as much as on Windows. */
+  "fonts/dm-sans-variable.woff2", "fonts/fraunces-italic-variable.woff2", "fonts/fraunces-variable.woff2",
+]);
 
 /**
  * Which of `files` (repo-relative, resolved against `root`) hold CRLF bytes.
