@@ -57,7 +57,8 @@ public enum EngineMode {
     /// `decideEngineMode`'s input.
     public struct Inputs: Equatable, Sendable {
         public let buildDefault: BuildDefault?
-        public let override: Override
+        /// The Developer setting (UserDefaults `ForayEngine.modeOverride`).
+        public let modeOverride: Override
         /// The PREVIOUS launch's sentinel is still set: its native boot never
         /// reached a healthy marker.
         public let sentinelWasSet: Bool
@@ -70,10 +71,10 @@ public enum EngineMode {
         /// Whether this binary has an engine at all.
         public let built: Bool
 
-        public init(buildDefault: BuildDefault?, override: Override, sentinelWasSet: Bool, strikes: Int,
+        public init(buildDefault: BuildDefault?, modeOverride: Override, sentinelWasSet: Bool, strikes: Int,
                     stickyLegacyBuild: String?, currentBuild: String, built: Bool) {
             self.buildDefault = buildDefault
-            self.override = override
+            self.modeOverride = modeOverride
             self.sentinelWasSet = sentinelWasSet
             self.strikes = strikes
             self.stickyLegacyBuild = stickyLegacyBuild
@@ -122,9 +123,9 @@ public enum EngineMode {
             return out(.legacy, .crashLoop, strikes, i.currentBuild)
         }
 
-        switch i.override {
-        case .native: return out(.native, .override, strikes, nil)
-        case .web: return out(.legacy, .override, strikes, nil)
+        switch i.modeOverride {
+        case .native: return out(.native, .`override`, strikes, nil)
+        case .web: return out(.legacy, .`override`, strikes, nil)
         case .auto: break
         }
         switch i.buildDefault {
@@ -140,15 +141,15 @@ public enum EngineMode {
     /// (§4.6): `ForayEngine.modeOverride`, `.strikes`, `.sentinel`,
     /// `.stickyLegacyBuild`.
     public struct Stored: Equatable, Sendable {
-        public var override: Override
+        public var modeOverride: Override
         public var strikes: Int
         public var sentinel: Bool
         public var stickyLegacyBuild: String?
 
         /// A stored state as read: a negative count is 0 and an empty pin is
         /// none, as the JS reads them.
-        public init(override: Override = .auto, strikes: Int = 0, sentinel: Bool = false, stickyLegacyBuild: String? = nil) {
-            self.override = override
+        public init(modeOverride: Override = .auto, strikes: Int = 0, sentinel: Bool = false, stickyLegacyBuild: String? = nil) {
+            self.modeOverride = modeOverride
             self.strikes = max(0, strikes)
             self.sentinel = sentinel
             self.stickyLegacyBuild = stickyLegacyBuild.flatMap { $0.isEmpty ? nil : $0 }
@@ -217,7 +218,7 @@ public enum EngineMode {
         for event in events {
             switch event {
             case let .launch(buildDefault, currentBuild, built):
-                let d = decide(Inputs(buildDefault: buildDefault, override: s.override, sentinelWasSet: s.sentinel,
+                let d = decide(Inputs(buildDefault: buildDefault, modeOverride: s.modeOverride, sentinelWasSet: s.sentinel,
                                       strikes: s.strikes, stickyLegacyBuild: s.stickyLegacyBuild,
                                       currentBuild: currentBuild, built: built))
                 s.strikes = d.strikes
@@ -236,7 +237,7 @@ public enum EngineMode {
                     s.strikes = p.launchStrikes + 1
                 }
             case let .setOverride(mode):
-                s.override = mode
+                s.modeOverride = mode
                 s.strikes = 0
                 s.stickyLegacyBuild = nil
             }

@@ -180,7 +180,7 @@ public enum EngineModeFamily {
                 let i = ArgReading.arg(args, 0)
                 let decision = EngineMode.decide(EngineMode.Inputs(
                     buildDefault: i["buildDefault"].stringValue.flatMap(EngineMode.BuildDefault.init(rawValue:)),
-                    override: EngineMode.Override.stored(i["override"].stringValue),
+                    modeOverride: EngineMode.Override.stored(i["override"].stringValue),
                     sentinelWasSet: i["sentinelWasSet"] == .bool(true),
                     strikes: try EngineModeFamily.strikes(i["strikes"]),
                     stickyLegacyBuild: i["stickyLegacyBuild"].stringValue,
@@ -197,7 +197,7 @@ public enum EngineModeFamily {
             "engineModeTrace": { args in
                 let stored = ArgReading.arg(args, 0)
                 let initial = EngineMode.Stored(
-                    override: EngineMode.Override.stored(stored["override"].stringValue),
+                    modeOverride: EngineMode.Override.stored(stored["override"].stringValue),
                     strikes: try EngineModeFamily.strikes(stored["strikes"]),
                     sentinel: stored["sentinel"] == .bool(true),
                     stickyLegacyBuild: stored["stickyLegacyBuild"].stringValue)
@@ -226,7 +226,7 @@ public enum EngineModeFamily {
                         "kind": .string(step.kind.rawValue),
                         "mode": step.mode.map { JSValue.string($0.rawValue) } ?? .null,
                         "reason": step.reason.map { JSValue.string($0.rawValue) } ?? .null,
-                        "override": .string(step.stored.override.rawValue),
+                        "override": .string(step.stored.modeOverride.rawValue),
                         "strikes": .number(Double(step.stored.strikes)),
                         "sentinel": .bool(step.stored.sentinel),
                         "stickyLegacyBuild": step.stored.stickyLegacyBuild.map { JSValue.string($0) } ?? .null
