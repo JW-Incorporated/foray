@@ -48,7 +48,7 @@ public enum EngineHandshake {
 /// It holds only while the page never calls Preferences' `configure` with a
 /// group of its own; `shell-invariants.test.mjs` pins that too.
 public enum SharedRowStore {
-    public static let preferencesKeyPrefix = "CapacitorStorage."
+    public static let preferencesKeyPrefix = "CapStorage."
 
     /// The raw `UserDefaults` key the page's `Preferences.set({key})` lands in.
     public static func userDefaultsKey(for rowKey: String) -> String {
