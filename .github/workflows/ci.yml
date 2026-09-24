@@ -147,7 +147,9 @@ jobs:
           # measurement (ClickTrack/InOutPointMeasurementTests.swift) appends
           # its tables to this job's summary, labelled with the run and the
           # head SHA. A Simulator test process can write a host path, and the
-          # TEST_RUNNER_ prefix is how a variable reaches it.
+          # TEST_RUNNER_ prefix is how a variable reaches it. NE-15's AVDeckTests
+          # append the deck's measurements (landing error, time to ready) through
+          # the same FORAY_MEASURE_SUMMARY: one hand-off, not two.
           FORAY_PREFERENCES_PIN=1 TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN=1 \
           TEST_RUNNER_FORAY_MEASURE_SUMMARY="$GITHUB_STEP_SUMMARY" \
           TEST_RUNNER_FORAY_MEASURE_RUN="${{ github.run_id }} @ ${{ github.event.pull_request.head.sha || github.sha }}" \

@@ -101,6 +101,7 @@ import {
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
 import { REMOTE_ORIGINS, REMOTE_COMMANDS } from "../../player/diagnostic-log.js";
+import { CLICK_TRACK_DIR, exemptClickTrackPaths } from "../audio/click-tracks.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -2744,6 +2745,158 @@ test("NE-02: every one of the original reducer tests survives in the core's copy
     /final class PlayerQueueStateTests: XCTestCase/,
     "the copied tests must stay an XCTestCase, or `swift test` runs none of them"
   );
+});
+
+/* ─────────── NE-15: AVDeck, the readiness-gated deck adapter ───────────
+ *
+ * docs/native-engine-plan.md §4.3 and card NE-15. AVDeck wraps one AVPlayer
+ * behind the DeckDriving seam. Its behaviour is executed by the Simulator
+ * XCTests in `ForayAudioPluginTests/AVDeckTests.swift` (ios-kit); what is
+ * pinned here is what a later edit could quietly undo without any of those
+ * tests noticing, above all the one call that CRASHES rather than fails:
+ * `preroll` on a player that is not `.readyToPlay` raises an Objective-C
+ * exception Swift cannot catch. */
+
+const ENGINE_DIR = path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Engine");
+const AVDECK_SWIFT = path.join(ENGINE_DIR, "AVDeck.swift");
+
+test("NE-15: preroll( is called from exactly one place, AVDeck.prerollWhenReady, which re-checks both statuses and the rate first", () => {
+  /* Every Swift source the app or the core compiles, not just AVDeck: a
+     second deck (NE-32's DeckPair) or a probe that prerolls on its own is the
+     likeliest way the gate gets bypassed.
+     MUTATION: add `player.preroll(atRate: 1) { _ in }` to `play()` or to any
+     other file; drop the `item.status == .readyToPlay` or `player.rate == 0`
+     guard; call `prerollWhenReady()` from `advanceIfReady` (skipping the
+     zero-tolerance seek). Each fails. */
+  const sources = [
+    ...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")),
+    ...swiftFilesUnder(path.join(MOBILE, "plugins/foray-tts/ios/Sources")),
+    ...swiftFilesUnder(path.join(CORE_DIR, "Sources")),
+  ];
+  const callers = [];
+  for (const file of sources) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    for (const m of code.matchAll(/\bpreroll\s*\(/g)) callers.push(path.relative(ROOT, file).split(path.sep).join("/"));
+  }
+  assert.deepEqual(
+    callers,
+    ["mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/AVDeck.swift"],
+    "expected exactly one preroll( call, in AVDeck.swift"
+  );
+
+  const code = stripSwiftComments(fs.readFileSync(AVDECK_SWIFT, "utf8"));
+  const body = swiftFuncBody(code, "prerollWhenReady");
+  assert.ok(body, "AVDeck.swift has no func prerollWhenReady");
+  const call = body.search(/\bpreroll\s*\(/);
+  assert.ok(call > 0, "the one preroll( call is not inside prerollWhenReady");
+  const before = body.slice(0, call);
+  assert.match(before, /player\.status\s*==\s*\.readyToPlay/, "prerollWhenReady must re-check player.status right before preroll");
+  assert.match(before, /item\.status\s*==\s*\.readyToPlay/, "prerollWhenReady must re-check item.status right before preroll");
+  assert.match(before, /player\.rate\s*==\s*0/, "prerollWhenReady must preroll only while the player's rate is 0");
+
+  /* The gate's order: prerollWhenReady runs only after a FINISHED seek, and
+     that seek is issued only by advanceIfReady once the duration and both
+     statuses are in. */
+  assert.deepEqual(swiftCallersOf(code, "prerollWhenReady"), ["gateSeekCompleted"]);
+  const completed = swiftFuncBody(code, "gateSeekCompleted");
+  const finishedGuard = completed.search(/guard finished else/);
+  assert.ok(finishedGuard > 0 && finishedGuard < completed.search(/prerollWhenReady\(/), "prerollWhenReady must follow the finished check");
+  assert.deepEqual(swiftCallersOf(code, "gateSeek"), ["advanceIfReady", "gateSeekCompleted", "notReady", "prerollCompleted"]);
+  const advance = swiftFuncBody(code, "advanceIfReady");
+  assert.match(advance, /durationKnown/);
+  assert.match(advance, /player\.status\s*==\s*\.readyToPlay/);
+  assert.match(advance, /item\.status\s*==\s*\.readyToPlay/);
+});
+
+test("NE-15: AVDeck's settings, zero-tolerance seeks, the 20 s MEASURE deadline, the iOS 16 rate branch, and the implicit-activation fault", () => {
+  /* The plan's deck settings are decisions (§4.3), and each one is a single
+     line a refactor could drop:
+       - `.pause` at the item's end, so the CORE picks what plays next;
+       - stall-waiting on; `.timeDomain` for speech at 1.25-2x;
+       - every seek zero-tolerance (the start offset IS the resume point);
+       - the deadline is the provisional 20 s and says MEASURE (OQ-4: NE-38
+         replaces it from field rows, so it must stay findable);
+       - `defaultRate` only behind `#available(iOS 16`, since the floor is 15;
+       - audio starts in ONE function, called only from play(), which checks
+         the session owner first (§4.4: AVPlayer.play() activates an inactive
+         session implicitly).
+     MUTATION: drop any setting; give one seek a tolerance; change 20 or drop
+     the MEASURE marker; move `defaultRate` out of the availability branch;
+     call `player.play()` from `setRate`; drop the sessionIsActive check. Each
+     fails. */
+  const raw = fs.readFileSync(AVDECK_SWIFT, "utf8");
+  const code = stripSwiftComments(raw);
+  assert.match(code, /player\.actionAtItemEnd\s*=\s*\.pause/);
+  assert.match(code, /player\.automaticallyWaitsToMinimizeStalling\s*=\s*true/);
+  assert.match(code, /audioTimePitchAlgorithm\s*=\s*\.timeDomain/);
+
+  const seeks = [...code.matchAll(/player\.seek\(([^{]*)\{/g)];
+  assert.ok(seeks.length >= 3, `expected the gate, fallback and transport seeks, found ${seeks.length}`);
+  for (const [, args] of seeks) {
+    assert.match(args, /toleranceBefore:\s*\.zero,\s*toleranceAfter:\s*\.zero/, `a seek without zero tolerance: player.seek(${args}`);
+  }
+
+  assert.match(raw, /static let defaultLoadDeadlineSec: Double = 20 \/\/ MEASURE:/, "the load deadline must stay the provisional 20 s, marked MEASURE");
+
+  const rateBranches = [...code.matchAll(/if #available\(iOS 16\.0, \*\) \{([\s\S]*?)\}/g)].map((m) => m[1]);
+  const outside = rateBranches.reduce((rest, branch) => rest.replace(branch, ""), code);
+  assert.doesNotMatch(outside, /defaultRate/, "defaultRate is iOS 16+; the plugin's floor is iOS 15");
+  assert.ok(rateBranches.some((b) => /defaultRate\s*=\s*rate\b/.test(b)), "play must re-apply the held rate through defaultRate on iOS 16+");
+
+  assert.deepEqual(swiftCallersOf(code, "player\\.play"), ["applyRateAndPlay"], "audio must start from applyRateAndPlay only");
+  assert.deepEqual(swiftCallersOf(code, "applyRateAndPlay"), ["play"]);
+  const play = swiftFuncBody(code, "play");
+  const check = play.search(/config\.sessionIsActive\(\)/);
+  assert.ok(check > 0, "play() no longer checks the session owner before starting audio");
+  assert.ok(check < play.search(/applyRateAndPlay\(/), "the session check must come before the audible call");
+  assert.match(play, /"fault implicit-activation/);
+  assert.match(play, /config\.writeRow\(/);
+  assert.match(play, /config\.debugFault\(/);
+  assert.match(code, /debugFault:[^=]*=\s*\{\s*assertionFailure\(\$0\)\s*\}/, "the production fault must assert in DEBUG");
+});
+
+test("NE-15: AVDeck's Simulator tests play NE-25a's CBR MP3 and PCM WAV, the one exempt click-track set, and report through the one summary hand-off", () => {
+  /* NE-15 first carried two 20 s tracks of its own. NE-25a landed a set of
+     the same shape first, and the repo's two audio guards exempt exactly ONE
+     descriptor-named, hash-checked set under 1 MB (tools/audio/click-tracks.mjs),
+     so the deck plays NE-25a's files. What click-tracks.test.mjs does not know
+     is which of them AVDeck's tests rely on, and why: "CBR" is the property
+     the landing check is about (an MP3 whose frames change bitrate seeks by a
+     different mechanism, NE-25a's VBR rows), and PCM is the exact control. The
+     frame walk and the test-target-only resources are click-tracks.test.mjs's.
+     The summary hand-off is pinned here too, or the card's measurement would
+     vanish from the job summary with every test green.
+     MUTATION: point a test at click-vbr-notoc.mp3; commit a second set beside
+     ClickTracks/; bundle "Fixtures" whole again; read GITHUB_STEP_SUMMARY in
+     DeckMeasurements; drop TEST_RUNNER_FORAY_MEASURE_SUMMARY from ci.yml. Each
+     fails. */
+  const testsPath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/AVDeckTests.swift");
+  const tests = stripSwiftComments(fs.readFileSync(testsPath, "utf8"));
+  const used = [...new Set([...tests.matchAll(/fixture\("([^"]+)",\s*"([^"]+)"\)/g)].map((x) => `${x[1]}.${x[2]}`))].sort();
+  assert.deepEqual(used, ["click-cbr.mp3", "click.wav"], "AVDeckTests' fixtures");
+  assert.match(swiftFuncBody(tests, "fixture"), /subdirectory:\s*"ClickTracks"/);
+  assert.match(tests, /forResource:\s*"click",\s*withExtension:\s*"wav",\s*subdirectory:\s*"ClickTracks"/, "the warm-up loads the same WAV");
+
+  const descriptor = JSON.parse(fs.readFileSync(path.join(ROOT, CLICK_TRACK_DIR, "click-tracks.json"), "utf8"));
+  const byFile = new Map(descriptor.fixtures.map((x) => [x.file, x]));
+  assert.equal(byFile.get("click-cbr.mp3")?.kind, "mp3-cbr");
+  assert.equal(byFile.get("click-cbr.mp3")?.header, "none", "the CBR fixture carries no Xing/Info header frame");
+  assert.match(byFile.get("click.wav")?.kind ?? "", /^wav-pcm/);
+  const exempt = exemptClickTrackPaths(ROOT);
+  for (const file of used) assert.ok(exempt.has(`${CLICK_TRACK_DIR}/${file}`), `${file} is not in the hash-checked exempt set`);
+  const fixturesRoot = path.dirname(path.join(ROOT, CLICK_TRACK_DIR));
+  assert.deepEqual(fs.readdirSync(fixturesRoot), [path.basename(CLICK_TRACK_DIR)], "one click-track set, not two");
+
+  const manifest = stripSwiftComments(fs.readFileSync(AUDIO_MANIFEST, "utf8"));
+  const testTarget = /\.testTarget\(\s*name:\s*"ForayAudioPluginTests"[\s\S]*?\)\s*\]\s*\)/.exec(manifest);
+  assert.ok(testTarget, "the ForayAudioPluginTests target is missing");
+  assert.match(testTarget[0], /resources:\s*\[\s*\.copy\("Fixtures\/ClickTracks"\)\s*\]/);
+
+  const ci = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
+  assert.match(ci, /TEST_RUNNER_FORAY_MEASURE_SUMMARY="\$GITHUB_STEP_SUMMARY"/, "ios-kit no longer hands the job summary to the Simulator tests");
+  assert.doesNotMatch(ci, /TEST_RUNNER_GITHUB_STEP_SUMMARY/, "one hand-off, not two");
+  assert.match(tests, /environment\["FORAY_MEASURE_SUMMARY"\]/, "DeckMeasurements writes through the hand-off ci.yml passes");
+  assert.match(tests, /CBR MP3, precise/);
 });
 
 /* ───────────── audit round 2 (2026-09-23): the platform contract, pinned ───────────── */
