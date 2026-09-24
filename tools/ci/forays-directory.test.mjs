@@ -1,33 +1,35 @@
-/* The Foray directory pointer — tools/ci/forays-directory.mjs, and its wiring
- * into generate-manifest.mjs's `--write` / `--check` (FD-02).
+/* The deploy stamp — tools/ci/forays-directory.mjs (the Foray directory
+ * pointer, FD-02) and tools/ci/generate-manifest.mjs (the manifest, sw.js's
+ * BUILD_ID, and the rule that none of it is committed, issue #701).
  *
  * WHAT THIS SUITE IS FOR. `data/forays-directory.json` is what the native
  * shell (FD-03) trusts to decide whether the three Foray data files it holds
  * are current, and what it verifies the fetched files against. A pointer that
  * names the wrong version or the wrong hashes is either a phone that never
- * updates or a phone that refuses a good set forever. So the check has to be
- * red for every way the pointer can fall behind the files, and `--write` has
- * to be idempotent, or the manifest-autofix bot would push a commit to every
- * PR just to move `built_at`.
+ * updates or a phone that refuses a good set forever. So a built tree's stamp
+ * has to be red for every way the pointer can disagree with the files, and
+ * `built_at` has to move forward with `main` — a revert included.
+ *
+ * WHAT CHANGED WITH #701. The stamp used to be committed, regenerated on every
+ * PR by manifest-autofix.yml, and so every merge conflicted with every open PR.
+ * It is written into a BUILT tree now (`dist/`, the Pages checkout), `built_at`
+ * is the committer date of the newest commit to touch a stamp input (PR #795
+ * review: never HEAD's, which Vercel may not have built), and `--check` only asserts that nothing
+ * generated is committed. The old idempotence tests (so the bot would not push
+ * a built_at-only commit) and the merge-base "floor" tests (so a revert's
+ * restored old stamp was restamped) are gone with the committed file; the revert
+ * case is pinned again below, end to end, against the new clock.
  *
  * TWO LAYERS, BOTH REAL. The pure functions are exercised on scratch trees
  * with real bytes on a real filesystem. The CLI tests copy the REAL
  * `generate-manifest.mjs` (and the two modules it imports) into a scratch
  * tree whose listed files are tiny LF fixtures, then run it as a subprocess
- * exactly the way CI's `data-and-site` job and manifest-autofix.yml do. That
- * is what lets a `--check` be driven to red on a Windows autocrlf checkout,
- * where the real tree is refused by the CRLF guard before any hash is read.
- * The listed-file names come from the committed `deploy-manifest.json`, not a
- * copy of the tool's private lists, so this suite cannot drift from them.
+ * exactly the way the Pages workflow and CI's `data-and-site` job do. The
+ * listed-file names come from the generator's own `listedFiles()`, so this
+ * suite cannot drift from them.
  *
  * EVERY TEST NAMES THE ONE-LINE MUTATION THAT KILLS IT, per CLAUDE.md § "A
- * green test is not evidence until you have broken it". Seven were applied
- * in a scratch copy on 2026-09-10 and each killed exactly the test(s) that
- * name it: the --check pointer block removed (stale pointer), the missing-
- * pointer error swallowed, the idempotence short-circuit removed, the
- * deployIdFrom filter removed, the sha256 compare disabled, the pointer's
- * manifest entry dropped, and the pointer dropped from the CRLF guard's list.
- * The rest are named and were not run.
+ * green test is not evidence until you have broken it".
  *
  * The floor for this suite lives in test/suite-integrity.test.js.
  */
@@ -47,7 +49,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   POINTER_PATH,
@@ -55,16 +57,13 @@ import {
   deployIdFrom,
   buildPointer,
   pointerText,
-  samePointerContent,
-  writePointer,
   pointerProblems,
-  builtAtIsOlder,
-  builtAtFloorFrom,
-  pointerBuiltAtOnRef,
+  buildTimestamp,
 } from "./forays-directory.mjs";
+import { listedFiles, sourceStamp, stampInputs, stampTimestamp, STAMP_MODULE_FILES } from "./generate-manifest.mjs";
+import { pathMatters, STAMP_MODULES } from "../web/vercel-should-build.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const REPO = path.resolve(HERE, "..", "..");
 
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 
@@ -94,6 +93,11 @@ function withTree(make, fn) {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+/** What a build writes for the pointer — the same two calls `stampBuild` makes. */
+function writeP(dir, id, when) {
+  put(dir, POINTER_PATH, pointerText(buildPointer(dir, id, when)));
 }
 
 const ID = "0123456789abcdef";
@@ -138,9 +142,9 @@ test("pointerText is the exact bytes written, LF-terminated", () => {
   /* The manifest hashes these bytes; the writer and the text helper must agree.
      KILLED BY: `+ "\n"` -> `""` in pointerText. */
   withTree(dataTree, (dir) => {
-    writePointer(dir, ID, WHEN);
+    writeP(dir, ID, WHEN);
     const onDisk = readFileSync(path.join(dir, POINTER_PATH), "utf8");
-    assert.equal(onDisk, pointerText(buildPointer(dir, ID, WHEN)));
+    assert.equal(onDisk, JSON.stringify(buildPointer(dir, ID, WHEN), null, 2) + "\n");
     assert.ok(onDisk.endsWith("}\n"));
     assert.ok(!onDisk.includes("\r"));
   });
@@ -167,60 +171,13 @@ test("every OTHER file's hash does feed the deploy id, and listing order does no
   assert.match(deployIdFrom(a), /^[0-9a-f]{16}$/);
 });
 
-// ------------------------------------------------------------ idempotence --
-
-test("writing the same pointer twice changes nothing — built_at is kept", () => {
-  /* Otherwise every `--write` on an unchanged tree moves built_at, the
-     manifest entry, and manifest-autofix pushes a commit to every PR.
-     KILLED BY: `if (existing && samePointerContent(existing, fresh))` ->
-     `if (false)` in writePointer. */
-  withTree(dataTree, (dir) => {
-    const first = writePointer(dir, ID, WHEN);
-    const bytesAfterFirst = readFileSync(path.join(dir, POINTER_PATH));
-    const second = writePointer(dir, ID, new Date("2027-01-01T00:00:00.000Z"));
-    assert.equal(first.changed, true);
-    assert.equal(second.changed, false);
-    assert.equal(second.pointer.built_at, "2026-09-10T12:00:00.000Z");
-    assert.ok(readFileSync(path.join(dir, POINTER_PATH)).equals(bytesAfterFirst));
-  });
-});
-
-test("a changed file rewrites the pointer with a new built_at", () => {
-  /* The other half of idempotence: unchanged means UNCHANGED, not "never
-     rewrite". KILLED BY: `strip = (p) => ""` in samePointerContent — every
-     pointer then compares equal and a stale one is never replaced. */
-  withTree(dataTree, (dir) => {
-    writePointer(dir, ID, WHEN);
-    put(dir, DIRECTORY_FILES.forays, FORAYS.replace("f1", "f2"));
-    const later = new Date("2026-09-11T00:00:00.000Z");
-    const r = writePointer(dir, "fedcba9876543210", later);
-    assert.equal(r.changed, true);
-    assert.equal(r.pointer.version, "fedcba9876543210");
-    assert.equal(r.pointer.built_at, later.toISOString());
-    assert.equal(r.pointer.sha256.forays, sha(FORAYS.replace("f1", "f2")));
-  });
-});
-
-test("samePointerContent ignores built_at and nothing else", () => {
-  /* KILLED BY: `built_at: undefined` removed from `strip` (timestamps then
-     differ), or `strip = (p) => JSON.stringify(p.version)` (hashes then do not). */
-  withTree(dataTree, (dir) => {
-    const a = buildPointer(dir, ID, WHEN);
-    const b = buildPointer(dir, ID, new Date("2030-01-01T00:00:00.000Z"));
-    assert.equal(samePointerContent(a, b), true);
-    assert.equal(samePointerContent(a, { ...b, sha256: { ...b.sha256, forays: "0".repeat(64) } }), false);
-    assert.equal(samePointerContent(a, { ...b, version: "x" }), false);
-    assert.equal(samePointerContent(a, null), false);
-  });
-});
-
 // --------------------------------------------------------------- problems --
 
 test("a freshly written pointer has no problems", () => {
   /* The baseline every red test below is measured against.
      KILLED BY: `problems.push("always")` at the top of pointerProblems. */
   withTree(dataTree, (dir) => {
-    writePointer(dir, ID, WHEN);
+    writeP(dir, ID, WHEN);
     assert.deepEqual(pointerProblems(dir, ID), []);
   });
 });
@@ -229,8 +186,7 @@ test("a missing pointer is a problem that names the file", () => {
   /* KILLED BY: `return { pointer: null, error: null }` for the missing case in
      readPointer — pointerProblems then reports "not a JSON object" at best. */
   withTree(dataTree, (dir) => {
-    const problems = pointerProblems(dir, ID);
-    assert.deepEqual(problems, ["data/forays-directory.json is missing"]);
+    assert.deepEqual(pointerProblems(dir, ID), ["data/forays-directory.json is missing"]);
   });
 });
 
@@ -248,7 +204,7 @@ test("a pointer whose version is not the tree's deploy id is stale", () => {
   /* The one FD-03 compares. KILLED BY: `pointer.version !== deployId` ->
      `false`. */
   withTree(dataTree, (dir) => {
-    writePointer(dir, ID, WHEN);
+    writeP(dir, ID, WHEN);
     const problems = pointerProblems(dir, "fedcba9876543210");
     assert.equal(problems.length, 1);
     assert.match(problems[0], /version is "0123456789abcdef" but the tree computes to deploy_id fedcba9876543210/);
@@ -259,7 +215,7 @@ test("a file that changed size after the pointer was written is caught by bytes 
   /* KILLED BY: removing the `bytes.${key}` push — the sha256 line still fires,
      so this asserts BOTH are reported. */
   withTree(dataTree, (dir) => {
-    writePointer(dir, ID, WHEN);
+    writeP(dir, ID, WHEN);
     put(dir, DIRECTORY_FILES.segments, SEGMENTS + '{"appended":true}\n');
     const problems = pointerProblems(dir, ID);
     assert.equal(problems.length, 2, problems.join("\n"));
@@ -270,10 +226,9 @@ test("a file that changed size after the pointer was written is caught by bytes 
 
 test("a same-size edit is caught by sha256 alone — bytes is a hint, not the check", () => {
   /* A Foray id retyped, a URL with one character changed: same length, wrong
-     content. If only the size were compared this would pass.
-     KILLED BY: `if (got !== want)` -> `if (false)` in pointerProblems. */
+     content. KILLED BY: `if (got !== want)` -> `if (false)` in pointerProblems. */
   withTree(dataTree, (dir) => {
-    writePointer(dir, ID, WHEN);
+    writeP(dir, ID, WHEN);
     put(dir, DIRECTORY_FILES.sources, SOURCES.replace("a.mp3", "b.mp3"));
     const problems = pointerProblems(dir, ID);
     assert.equal(problems.length, 1, problems.join("\n"));
@@ -305,18 +260,116 @@ test("a directory file missing on disk is reported once per file, not as a crash
   /* KILLED BY: removing the `${rel} is missing on disk` push + `continue` —
      statSync then throws out of the checker. */
   withTree(dataTree, (dir) => {
-    writePointer(dir, ID, WHEN);
+    writeP(dir, ID, WHEN);
     rmSync(path.join(dir, DIRECTORY_FILES.forays));
     assert.deepEqual(pointerProblems(dir, ID), ["data/forays.json is missing on disk"]);
   });
 });
 
+// ------------------------------------------------ built_at: the phone's order --
+
+/* `core.autocrlf=false` is not incidental: the developer machines this runs on
+   set it globally to `true`, and a checkout that rewrote these fixtures' LFs to
+   CRLF would change their sha256s. */
+function git(dir, args, env = {}) {
+  const r = spawnSync("git", ["-c", "user.email=t@t.invalid", "-c", "user.name=t", "-c", "core.autocrlf=false", ...args], {
+    cwd: dir,
+    encoding: "utf8",
+    env: { ...process.env, ...env },
+  });
+  assert.equal(r.status, 0, `git ${args.join(" ")} failed: ${r.stderr || r.stdout}`);
+  return r.stdout;
+}
+
+/** A commit whose committer date is `iso` — how a merge to main lands. */
+function commitAt(dir, message, iso, authorIso = iso) {
+  git(dir, ["add", "-A"]);
+  git(dir, ["commit", "-q", "--allow-empty", "-m", message], { GIT_COMMITTER_DATE: iso, GIT_AUTHOR_DATE: authorIso });
+}
+
+const NO_EPOCH = { env: {} };
+
+test("built_at is the built commit's committer date, normalised to UTC", () => {
+  /* Two builds of one commit (the Vercel build and the Pages workflow of the same
+     merge, or a redeploy) must serve the SAME pointer, and the stamp means "when
+     this version reached main". KILLED BY: `%cI` -> `%aI` in buildTimestamp (a
+     squash merge keeps the PR's older AUTHOR date), or returning the clock first. */
+  withTree(dataTree, (dir) => {
+    git(dir, ["init", "-q", "-b", "main"]);
+    /* A squash merge: authored days earlier on the PR branch, committed at merge. */
+    commitAt(dir, "v1", "2026-09-10T05:00:00-07:00", "2026-09-01T00:00:00Z");
+    const t = buildTimestamp(dir, NO_EPOCH);
+    assert.deepEqual(t, { builtAt: "2026-09-10T12:00:00.000Z", source: "git" });
+    assert.deepEqual(buildTimestamp(dir, NO_EPOCH), t, "stable across builds of one commit");
+  });
+});
+
+test("SOURCE_DATE_EPOCH wins when it is an integer, and is ignored when it is not", () => {
+  /* The reproducible-builds convention: a rebuild or a test can pin the stamp
+     without git. KILLED BY: dropping the SOURCE_DATE_EPOCH branch, or dropping
+     its `/^\d+$/` guard (a garbage value then becomes "Invalid Date" and throws). */
+  withTree(dataTree, (dir) => {
+    assert.deepEqual(buildTimestamp(dir, { env: { SOURCE_DATE_EPOCH: "1757505600" } }), {
+      builtAt: "2025-09-10T12:00:00.000Z",
+      source: "SOURCE_DATE_EPOCH",
+    });
+    const fallback = buildTimestamp(dir, { env: { SOURCE_DATE_EPOCH: "yesterday" }, now: () => WHEN });
+    assert.notEqual(fallback.source, "SOURCE_DATE_EPOCH");
+  });
+});
+
+test("no git at all falls back to the clock rather than throwing", () => {
+  /* A build that cannot read git must still ship. KILLED BY: removing the
+     try/catch in gitOut. */
+  withTree(dataTree, (dir) => {
+    assert.deepEqual(buildTimestamp(dir, { env: {}, now: () => WHEN }), {
+      builtAt: WHEN.toISOString(),
+      source: "clock",
+    });
+  });
+});
+
+test("END TO END (audit finding C, re-pinned for #701): a git revert gets a NEWER built_at, so a phone adopts the rollback", async () => {
+  /* The defect the old merge-base floor patched: a revert restored the COMMITTED
+     pointer's old `built_at`, and every phone holding the reverted version refused
+     it forever (`player/foray-directory.js`, STATUS.OLDER). With nothing committed,
+     the stamp is the revert commit's own date — newer by construction.
+     KILLED BY: deriving built_at from anything a revert restores (a committed
+     value, or the date of the last commit to touch data/), or by `buildTimestamp`
+     reading the AUTHOR date — `git revert` keeps neither old. */
+  const { isOlderThan } = await import("../../player/foray-directory.js");
+
+  withTree(dataTree, (dir) => {
+    git(dir, ["init", "-q", "-b", "main"]);
+    commitAt(dir, "v1", "2026-09-10T12:00:00Z");
+    const v1 = buildPointer(dir, ID, new Date(buildTimestamp(dir, NO_EPOCH).builtAt));
+
+    put(dir, DIRECTORY_FILES.forays, FORAYS.replace("f1", "f2"));
+    commitAt(dir, "v2 — Generated Foray", "2026-09-11T12:00:00Z");
+    const v2 = buildPointer(dir, "fedcba9876543210", new Date(buildTimestamp(dir, NO_EPOCH).builtAt));
+    assert.equal(isOlderThan(v2.built_at, v1.built_at), false);
+
+    // The rollback: a revert COMMIT, landing later.
+    git(dir, ["revert", "--no-edit", "HEAD"], { GIT_COMMITTER_DATE: "2026-09-12T12:00:00Z" });
+    assert.equal(readFileSync(path.join(dir, DIRECTORY_FILES.forays), "utf8"), FORAYS, "the revert restores v1's data");
+    const rolledBack = buildPointer(dir, ID, new Date(buildTimestamp(dir, NO_EPOCH).builtAt));
+    assert.equal(rolledBack.built_at, "2026-09-12T12:00:00.000Z");
+    assert.deepEqual(rolledBack.sha256, v1.sha256, "the rollback ships v1's content");
+    assert.equal(
+      isOlderThan(rolledBack.built_at, v2.built_at),
+      false,
+      "and a phone holding v2 reads it as NEWER, so it adopts the rollback"
+    );
+  });
+});
+
 // ------------------------------------------------------------ the real CLI --
 
-/* The real tool, run against a scratch tree that has every file the committed
-   manifest lists (so the tool's private SHELL / RUNTIME_DATA / player lists
-   are satisfied whatever they are today) with tiny LF bodies. */
+/* The real tool, run against a scratch tree that has every file the generator
+   lists (so its private SHELL / RUNTIME_DATA / player lists are satisfied
+   whatever they are today) with tiny LF bodies. */
 const CLI_MODULES = ["generate-manifest.mjs", "crlf-guard.mjs", "forays-directory.mjs"];
+const EPOCH = "1757505600"; // 2025-09-10T12:00:00Z — pins built_at for the CLI runs
 
 function cliTree() {
   const dir = mkdtempSync(path.join(tmpdir(), "forays-directory-cli-"));
@@ -324,23 +377,22 @@ function cliTree() {
     mkdirSync(path.join(dir, "tools", "ci"), { recursive: true });
     copyFileSync(path.join(HERE, m), path.join(dir, "tools", "ci", m));
   }
-  const listed = Object.keys(JSON.parse(readFileSync(path.join(REPO, "deploy-manifest.json"), "utf8")).files);
-  for (const rel of listed) {
-    if (rel === POINTER_PATH) continue;
+  for (const rel of listedFiles().map((f) => f.split(path.sep).join("/"))) {
     if (rel === DIRECTORY_FILES.forays) put(dir, rel, FORAYS);
     else if (rel === DIRECTORY_FILES.segments) put(dir, rel, SEGMENTS);
     else if (rel === DIRECTORY_FILES.sources) put(dir, rel, SOURCES);
-    else if (rel.endsWith(".png")) put(dir, rel, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]));
+    else if (rel.endsWith(".png") || rel.endsWith(".woff2")) put(dir, rel, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]));
     else put(dir, rel, `/* ${rel} */\n`);
   }
-  put(dir, "sw.js", 'const CACHE_PREFIX = "foray-gen-";\nconst BUILD_ID = "unset";\n');
+  put(dir, "sw.js", 'const CACHE_PREFIX = "foray-gen-";\nconst BUILD_ID = "unstamped";\n');
   return dir;
 }
 
-function run(dir, flag) {
-  const r = spawnSync(process.execPath, [path.join(dir, "tools", "ci", "generate-manifest.mjs"), flag], {
+function run(dir, args, env = {}) {
+  const r = spawnSync(process.execPath, [path.join(dir, "tools", "ci", "generate-manifest.mjs"), ...args], {
     encoding: "utf8",
     cwd: dir,
+    env: { ...process.env, SOURCE_DATE_EPOCH: EPOCH, CI: "true", ...env },
   });
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 }
@@ -349,21 +401,22 @@ function readJson(dir, rel) {
   return JSON.parse(readFileSync(path.join(dir, rel), "utf8"));
 }
 
-test("CLI: --write writes the pointer, lists it in the manifest, and stamps one id into all three", () => {
-  /* The whole card in one run: pointer.version == manifest.deploy_id ==
+test("CLI: --stamp writes the pointer, lists it in the manifest, and stamps one id into all three", () => {
+  /* The whole stamp in one run: pointer.version == manifest.deploy_id ==
      sw.js BUILD_ID, the manifest carries the pointer's real sha256, and the
      id does not depend on the pointer.
-     KILLED BY: dropping the `[POINTER_PATH]: ...` entry in withPointerEntry
-     (generate-manifest.mjs), or `writePointer(...)` there. */
+     KILLED BY: dropping the `[POINTER_PATH]: ...` entry in withPointerEntry,
+     or the `stampBuildId(...)` call in stampBuild. */
   withTree(cliTree, (dir) => {
-    const w = run(dir, "--write");
+    const w = run(dir, ["--stamp", "."]);
     assert.equal(w.status, 0, w.stderr);
-    assert.match(w.stdout, /forays-directory\.json written — version [0-9a-f]{16}/);
+    assert.match(w.stdout, /stamped \. — deploy_id [0-9a-f]{16}/);
 
     const pointer = readJson(dir, POINTER_PATH);
     const manifest = readJson(dir, "deploy-manifest.json");
     const sw = readFileSync(path.join(dir, "sw.js"), "utf8");
     assert.equal(pointer.version, manifest.deploy_id);
+    assert.equal(pointer.built_at, "2025-09-10T12:00:00.000Z");
     assert.match(sw, new RegExp(`const BUILD_ID = "${manifest.deploy_id}";`));
     assert.equal(manifest.files[POINTER_PATH], "sha256:" + sha(readFileSync(path.join(dir, POINTER_PATH))));
     assert.equal(manifest.deploy_id, deployIdFrom(manifest.files));
@@ -372,96 +425,101 @@ test("CLI: --write writes the pointer, lists it in the manifest, and stamps one 
   });
 });
 
-test("CLI: --check is green right after --write, and --write again is byte-identical", () => {
-  /* KILLED BY: `now = new Date()` -> a fresh pointer written unconditionally
-     (removing the samePointerContent short-circuit) — the second --write then
-     moves built_at and the manifest entry with it. */
+test("CLI: --verify is green right after --stamp, and stamping one commit twice is byte-identical", () => {
+  /* Two builds of one commit must serve the same bytes, or the Vercel and Pages
+     copies of one merge disagree. KILLED BY: `builtAt` taken from the clock in
+     place of buildTimestamp — the second stamp then moves built_at, the pointer's
+     bytes and its manifest entry. */
   withTree(cliTree, (dir) => {
-    assert.equal(run(dir, "--write").status, 0);
-    const c = run(dir, "--check");
+    assert.equal(run(dir, ["--stamp", "."]).status, 0);
+    const c = run(dir, ["--verify", "."]);
     assert.equal(c.status, 0, c.stderr);
-    assert.match(c.stdout, /deploy-manifest\.json is up to date/);
+    assert.match(c.stdout, /verifies/);
     const before = [readFileSync(path.join(dir, POINTER_PATH)), readFileSync(path.join(dir, "deploy-manifest.json"))];
-    const w2 = run(dir, "--write");
-    assert.equal(w2.status, 0, w2.stderr);
-    assert.match(w2.stdout, /forays-directory\.json unchanged/);
+    assert.equal(run(dir, ["--stamp", "."]).status, 0);
     assert.ok(readFileSync(path.join(dir, POINTER_PATH)).equals(before[0]));
     assert.ok(readFileSync(path.join(dir, "deploy-manifest.json")).equals(before[1]));
   });
 });
 
-test("CLI: a stale pointer (data file changed after --write) turns --check red, naming the pointer", () => {
-  /* The card's named mutation. The manifest is stale too, but the pointer is
-     reported FIRST and by name, so the reader is not sent to the wrong file.
-     KILLED BY: removing the `pointerProblems` block from --check in
-     generate-manifest.mjs — the run still fails, but on the manifest diff,
-     and the pointer-specific message this asserts is gone. */
+test("CLI: a data file changed after stamping turns --verify red, naming the pointer", () => {
+  /* A build step that touched a data file after the stamp is the torn deploy the
+     phone and sw.js would both refuse in production. KILLED BY: removing the
+     `pointerProblems` line from stampedProblems — the run still fails on the
+     manifest, but the pointer-specific lines this asserts are gone. */
   withTree(cliTree, (dir) => {
-    assert.equal(run(dir, "--write").status, 0);
+    assert.equal(run(dir, ["--stamp", "."]).status, 0);
     put(dir, DIRECTORY_FILES.forays, FORAYS.replace("f1", "f9"));
-    const c = run(dir, "--check");
+    const c = run(dir, ["--verify", "."]);
     assert.equal(c.status, 1);
-    assert.match(c.stderr, /FATAL: data\/forays-directory\.json is stale or malformed/);
-    assert.match(c.stderr, /version is "[0-9a-f]{16}" but the tree computes to deploy_id [0-9a-f]{16}/);
+    assert.match(c.stderr, /data\/forays-directory\.json: version is "[0-9a-f]{16}" but the tree computes to deploy_id [0-9a-f]{16}/);
     assert.match(c.stderr, /sha256\.forays /);
-    assert.match(c.stderr, /generate-manifest\.mjs --write/);
   });
 });
 
-test("CLI: a pointer whose version was hand-edited turns --check red even though every file matches", () => {
+test("CLI: a pointer whose version was hand-edited turns --verify red even though every file matches", () => {
   /* KILLED BY: `pointer.version !== deployId` -> `false` in pointerProblems
-     (the manifest diff would still catch the changed pointer bytes, but on the
+     (the manifest entry would still catch the changed pointer bytes, but on the
      wrong message — this asserts the version line). */
   withTree(cliTree, (dir) => {
-    assert.equal(run(dir, "--write").status, 0);
+    assert.equal(run(dir, ["--stamp", "."]).status, 0);
     const p = readJson(dir, POINTER_PATH);
     put(dir, POINTER_PATH, pointerText({ ...p, version: "0000000000000000" }));
-    const c = run(dir, "--check");
+    const c = run(dir, ["--verify", "."]);
     assert.equal(c.status, 1);
     assert.match(c.stderr, /version is "0000000000000000"/);
   });
 });
 
-test("CLI: a missing pointer turns --check red", () => {
-  /* The card's other named mutation. KILLED BY: `if (error) return [error];`
-     -> `if (error) return [];` in pointerProblems — the manifest diff then
-     reports the pointer as a "removed" file, which is a different, less
-     useful message. */
+test("CLI: a stamped tree with its pointer deleted turns --verify red", () => {
+  /* The phones read the pointer from the live origin; a deploy without one is a
+     phone that never updates. KILLED BY: `if (error) return [error];` ->
+     `return [];` in pointerProblems. */
   withTree(cliTree, (dir) => {
-    assert.equal(run(dir, "--write").status, 0);
+    assert.equal(run(dir, ["--stamp", "."]).status, 0);
     rmSync(path.join(dir, POINTER_PATH));
-    const c = run(dir, "--check");
+    const c = run(dir, ["--verify", "."]);
     assert.equal(c.status, 1);
     assert.match(c.stderr, /data\/forays-directory\.json is missing/);
   });
 });
 
 test("CLI: a pointer whose bytes moved but whose content is still right is caught by the manifest entry", () => {
-  /* A rewritten built_at is content-correct for FD-03 but the manifest entry
-     is what sw.js verifies the served bytes against; a pointer the manifest
-     cannot vouch for is a torn generation. KILLED BY: dropping
-     `[POINTER_PATH]` from withPointerEntry in generate-manifest.mjs — the
-     pointer then has no manifest entry to be caught by. */
+  /* sw.js verifies the served pointer's bytes against its manifest entry; a
+     pointer the manifest cannot vouch for is a torn generation. KILLED BY: the
+     per-entry comparison loop in stampedProblems. */
   withTree(cliTree, (dir) => {
-    assert.equal(run(dir, "--write").status, 0);
+    assert.equal(run(dir, ["--stamp", "."]).status, 0);
     const p = readJson(dir, POINTER_PATH);
     put(dir, POINTER_PATH, pointerText({ ...p, built_at: "2030-01-01T00:00:00.000Z" }));
-    const c = run(dir, "--check");
+    const c = run(dir, ["--verify", "."]);
     assert.equal(c.status, 1);
-    assert.match(c.stderr, /deploy-manifest\.json is stale/);
-    assert.ok(!/forays-directory\.json is stale or malformed/.test(c.stderr), "the pointer itself is content-correct");
+    assert.match(c.stderr, /entry data\/forays-directory\.json does not match the bytes on disk/);
+    assert.ok(!/version is/.test(c.stderr), "the pointer itself is content-correct");
   });
 });
 
-test("CLI: a data change followed by --write moves version, built_at and BUILD_ID together", () => {
-  /* Publishing a Foray IS this transition. KILLED BY: `stampBuildId(computed
-     .deploy_id)` removed from --write — the pointer and manifest move, sw.js
-     does not, and --check's own BUILD_ID guard is what would then fire. */
+test("CLI: sw.js left unstamped (or stamped with another id) turns --verify red", () => {
+  /* Without the stamp an app.js-only deploy leaves sw.js byte-identical and no
+     returning browser ever reinstalls. KILLED BY: dropping the BUILD_ID branch
+     from stampedProblems. */
   withTree(cliTree, (dir) => {
-    assert.equal(run(dir, "--write").status, 0);
+    assert.equal(run(dir, ["--stamp", "."]).status, 0);
+    put(dir, "sw.js", 'const CACHE_PREFIX = "foray-gen-";\nconst BUILD_ID = "unstamped";\n');
+    const c = run(dir, ["--verify", "."]);
+    assert.equal(c.status, 1);
+    assert.match(c.stderr, /sw\.js's BUILD_ID is "unstamped" but the tree computes to [0-9a-f]{16}/);
+  });
+});
+
+test("CLI: a data change followed by a new stamp moves version and BUILD_ID together", () => {
+  /* Publishing a Foray IS this transition. KILLED BY: stamping sw.js with the
+     manifest's OLD id, or writing the pointer before computing the id. */
+  withTree(cliTree, (dir) => {
+    assert.equal(run(dir, ["--stamp", "."]).status, 0);
     const before = readJson(dir, POINTER_PATH);
     put(dir, DIRECTORY_FILES.segments, SEGMENTS.replace('"end":30', '"end":31'));
-    const w = run(dir, "--write");
+    const w = run(dir, ["--stamp", "."], { SOURCE_DATE_EPOCH: "1757592000" });
     assert.equal(w.status, 0, w.stderr);
     const after = readJson(dir, POINTER_PATH);
     const manifest = readJson(dir, "deploy-manifest.json");
@@ -470,214 +528,217 @@ test("CLI: a data change followed by --write moves version, built_at and BUILD_I
     assert.match(readFileSync(path.join(dir, "sw.js"), "utf8"), new RegExp(`BUILD_ID = "${after.version}"`));
     assert.notEqual(after.sha256.segments, before.sha256.segments);
     assert.equal(after.sha256.forays, before.sha256.forays);
-    assert.ok(Date.parse(after.built_at) > Date.parse(before.built_at) || after.built_at !== before.built_at);
-    assert.equal(run(dir, "--check").status, 0);
+    assert.ok(Date.parse(after.built_at) > Date.parse(before.built_at));
+    assert.equal(run(dir, ["--verify", "."]).status, 0);
   });
 });
 
-test("CLI: the guard still refuses a CRLF tree before touching the pointer", () => {
-  /* The pointer is on the guard's list: a CRLF checkout must not get as far as
-     writing it. KILLED BY: `[...listedFiles(), POINTER_PATH]` ->
-     `listedFiles()` in assertLfCheckout — with only the pointer CRLF the tool
-     then runs, and hashes bytes we do not ship. */
+test("CLI: --stamp refuses a CRLF tree before writing anything", () => {
+  /* A stamp computed over CRLF bytes names a deploy no Linux build serves.
+     KILLED BY: removing the `crlfIn(dir)` check from stampBuild. */
   withTree(cliTree, (dir) => {
-    assert.equal(run(dir, "--write").status, 0);
-    const lf = readFileSync(path.join(dir, POINTER_PATH), "utf8");
-    put(dir, POINTER_PATH, lf.replace(/\n/g, "\r\n"));
-    const c = run(dir, "--check");
+    put(dir, "app.js", "/* app.js */\r\nconst x = 1;\r\n");
+    const c = run(dir, ["--stamp", "."]);
     assert.equal(c.status, 1);
     assert.match(c.stderr, /CRLF line endings/);
-    assert.match(c.stderr, /forays-directory\.json/);
-    assert.ok(existsSync(path.join(dir, POINTER_PATH)));
+    assert.match(c.stderr, /app\.js/);
+    assert.equal(existsSync(path.join(dir, POINTER_PATH)), false);
+    assert.equal(existsSync(path.join(dir, "deploy-manifest.json")), false);
   });
 });
 
-// ------------------------------------------------- the rollback clause (C) --
-
-/* AUDIT FINDING C (2026-09-12): a rollback could not reach a phone.
- *
- * `player/foray-directory.js` orders pointers by `built_at` and refuses one
- * that is BEHIND the set it holds — permanently, since the refusal is
- * re-decided from the same two timestamps on every refresh. Its header claimed
- * "a real rollback is a revert commit and carries a newer `built_at`". It did
- * not: `manifest-autofix.yml` commits `data/forays-directory.json` onto the
- * data PR's own head (see commit e2934d0), so the pointer is reverted along
- * with the three data files, `samePointerContent` strips `built_at` before
- * comparing, and `writePointer` left the restored OLD stamp byte-for-byte
- * alone. Every phone holding the reverted version refused the rollback for
- * good, and a fresh install — whose seed is `partial: true` (F-92) and so never
- * `current` — showed the seed and nothing else.
- *
- * The fix is `opts.builtAtFloor`: the `built_at` of the pointer on the BASE
- * branch, which a revert cannot walk backwards because it lives in history
- * rather than in the reverted file. (A monotonic counter would NOT have worked
- * — it would be a field in the same reverted file. See `writePointer`.) */
-
-/* `core.autocrlf=false` is not incidental: the developer machines this runs on
-   set it globally to `true`, and a checkout that rewrote these fixtures' LFs to
-   CRLF would change their sha256s and make every pointer comparison here a
-   false negative. The real gate refuses a CRLF checkout outright
-   (`tools/ci/crlf-guard.mjs`); this scratch repo just never makes one. */
-function git(dir, args) {
-  const r = spawnSync("git", ["-c", "user.email=t@t.invalid", "-c", "user.name=t", "-c", "core.autocrlf=false", ...args], {
-    cwd: dir,
-    encoding: "utf8",
+test("CLI: --stamp refuses the checkout it lives in unless CI says the tree is throwaway", () => {
+  /* Stamping your own working tree rewrites the tracked sw.js — the exact commit
+     --check refuses. KILLED BY: dropping the `realOrSelf(dir) === realOrSelf(ROOT)`
+     guard. */
+  withTree(cliTree, (dir) => {
+    const c = run(dir, ["--stamp", "."], { CI: "" });
+    assert.equal(c.status, 1);
+    assert.match(c.stderr, /would rewrite this checkout's tracked sw\.js/);
+    assert.match(readFileSync(path.join(dir, "sw.js"), "utf8"), /BUILD_ID = "unstamped"/);
   });
-  assert.equal(r.status, 0, `git ${args.join(" ")} failed: ${r.stderr || r.stdout}`);
-  return r.stdout;
+});
+
+test("CLI: --write is gone, and says where the stamp is made now", () => {
+  /* An agent following an old doc must be told, not silently handed a
+     working-tree stamp to commit. KILLED BY: deleting the `--write` branch —
+     the usage line exits 2 without naming prepare-dist. */
+  withTree(cliTree, (dir) => {
+    const c = run(dir, ["--write"]);
+    assert.equal(c.status, 2);
+    assert.match(c.stderr, /no longer exists \(issue #701\)/);
+    assert.match(c.stderr, /prepare-dist\.mjs/);
+  });
+});
+
+// ------------------------------------------ --check: nothing is committed --
+
+/** The CLI tree as a git repo with the real .gitignore rules for the stamp. */
+function gitCliTree() {
+  const dir = cliTree();
+  put(dir, ".gitignore", "/deploy-manifest.json\n/data/forays-directory.json\n");
+  git(dir, ["init", "-q", "-b", "main"]);
+  git(dir, ["add", "-A"]);
+  return dir;
 }
 
-const T1 = new Date("2026-09-10T12:00:00.000Z");
-const T2 = new Date("2026-09-11T12:00:00.000Z");
-const T3 = new Date("2026-09-12T12:00:00.000Z");
-const ID2 = "fedcba9876543210";
-
-test("END TO END: a git revert restores the OLD built_at, and the base-branch floor restamps it so a phone adopts the rollback", async () => {
-  /* The whole defect and the whole fix, in one test, against a real git
-     revert and the real player-side ordering function.
-     KILLED BY: dropping `!behindFloor` from writePointer's idempotence
-     condition (the revert then keeps T1 and `isOlderThan` says the phone
-     refuses it), or by `builtAtIsOlder` returning false always. */
-  const { isOlderThan } = await import("../../player/foray-directory.js");
-
-  withTree(dataTree, (dir) => {
-    git(dir, ["init", "-q", "-b", "main"]);
-
-    // v1 — the catalogue before the publish.
-    writePointer(dir, ID, T1);
-    git(dir, ["add", "-A"]);
-    git(dir, ["commit", "-q", "-m", "v1"]);
-
-    // v2 — the publish: the three data files AND the pointer in one commit,
-    // exactly as manifest-autofix.yml lands them on a data PR.
-    put(dir, DIRECTORY_FILES.forays, FORAYS.replace("f1", "f2"));
-    writePointer(dir, ID2, T2);
-    git(dir, ["add", "-A"]);
-    git(dir, ["commit", "-q", "-m", "v2 — Generated Foray"]);
-
-    // The rollback: a revert COMMIT on a branch cut from main's tip.
-    git(dir, ["switch", "-q", "-c", "revert-it"]);
-    git(dir, ["revert", "--no-edit", "HEAD"]);
-    const reverted = JSON.parse(readFileSync(path.join(dir, POINTER_PATH), "utf8"));
-    assert.equal(reverted.version, ID, "the revert restores the old deploy id");
-    assert.equal(reverted.built_at, T1.toISOString(), "and, with it, the OLD built_at — this is the defect");
-
-    // What shipped before the fix: --write sees identical content and keeps T1.
-    const unfixed = writePointer(dir, ID, T3);
-    assert.equal(unfixed.changed, false);
-    assert.equal(unfixed.pointer.built_at, T1.toISOString());
-    assert.equal(
-      isOlderThan(T1.toISOString(), T2.toISOString()),
-      true,
-      "a phone holding v2 reads that pointer as OLDER and refuses the rollback forever"
-    );
-
-    // With the floor read from the base branch, which still carries v2's stamp.
-    const floor = builtAtFloorFrom(dir, ["main"]);
-    assert.equal(floor, T2.toISOString(), "the floor comes from history, which a revert cannot walk backwards");
-    const fixed = writePointer(dir, ID, T3, { builtAtFloor: floor });
-    assert.equal(fixed.changed, true);
-    assert.equal(fixed.restamped, true);
-    assert.equal(fixed.pointer.built_at, T3.toISOString());
-    assert.equal(fixed.pointer.version, ID, "the rollback still ships the OLD content under the OLD deploy id");
-    assert.equal(
-      isOlderThan(T3.toISOString(), T2.toISOString()),
-      false,
-      "and now a phone holding v2 adopts it"
-    );
+test("CLI: --check is green on a clean source tree: nothing generated tracked, sw.js unstamped", () => {
+  /* The baseline. KILLED BY: `problems.push` of anything unconditional in
+     sourceProblems. */
+  withTree(gitCliTree, (dir) => {
+    const c = run(dir, ["--check"]);
+    assert.equal(c.status, 0, c.stderr);
+    assert.match(c.stdout, /no generated deploy artefact is committed/);
   });
 });
 
-test("the floor changes nothing on an ordinary run: same content, same stamp, no diff for the autofix bot", () => {
-  /* The cost of the rollback clause has to be zero on every PR that is not a
-     rollback, or manifest-autofix pushes a commit to all of them.
-     KILLED BY: `behindFloor = true` unconditionally, or dropping the
-     `Number.isFinite` guards in builtAtIsOlder (an unparseable/absent floor
-     would then compare as newer and rewrite every time). */
-  withTree(dataTree, (dir) => {
-    const first = writePointer(dir, ID, T1);
-    const bytes = readFileSync(path.join(dir, POINTER_PATH));
-    assert.equal(first.changed, true);
+test("CLI: --check is red when a generated file is committed again — the #701 conflict magnet", () => {
+  /* The regression this whole change exists to prevent. `git add -f` is how it
+     would come back past the .gitignore. KILLED BY: dropping the `ls-files` loop
+     from sourceProblems. */
+  withTree(gitCliTree, (dir) => {
+    assert.equal(run(dir, ["--stamp", "."]).status, 0);
+    put(dir, "sw.js", 'const CACHE_PREFIX = "foray-gen-";\nconst BUILD_ID = "unstamped";\n');
+    git(dir, ["add", "-f", "deploy-manifest.json"]);
+    const c = run(dir, ["--check"]);
+    assert.equal(c.status, 1);
+    assert.match(c.stderr, /deploy-manifest\.json is committed/);
+    assert.match(c.stderr, /git rm --cached deploy-manifest\.json/);
+  });
+});
 
-    for (const floor of [undefined, null, T1.toISOString(), "not a date", ""]) {
-      const again = writePointer(dir, ID, T3, { builtAtFloor: floor });
-      assert.equal(again.changed, false, `floor ${JSON.stringify(floor)} must not rewrite an unchanged pointer`);
-      assert.equal(again.restamped, false);
-      assert.ok(readFileSync(path.join(dir, POINTER_PATH)).equals(bytes));
+test("CLI: --check is red on a committed sw.js that carries a stamp", () => {
+  /* A stamped BUILD_ID line is the other half of the conflict. KILLED BY:
+     dropping the UNSTAMPED_BUILD_ID comparison from sourceProblems. */
+  withTree(gitCliTree, (dir) => {
+    put(dir, "sw.js", 'const CACHE_PREFIX = "foray-gen-";\nconst BUILD_ID = "8319327039d3563f";\n');
+    const c = run(dir, ["--check"]);
+    assert.equal(c.status, 1);
+    assert.match(c.stderr, /sw\.js carries BUILD_ID "8319327039d3563f"/);
+  });
+});
+
+test("CLI: --check is red when .gitignore stops covering a generated file", () => {
+  /* Without the ignore, the first `git add -A` after a local build commits it.
+     KILLED BY: dropping the `check-ignore` loop from sourceProblems. */
+  withTree(gitCliTree, (dir) => {
+    put(dir, ".gitignore", "/deploy-manifest.json\n");
+    const c = run(dir, ["--check"]);
+    assert.equal(c.status, 1);
+    assert.match(c.stderr, /data\/forays-directory\.json is not in \.gitignore/);
+  });
+});
+
+// ------------------- built_at across stampers: the seed never outranks the live pointer --
+
+/* PR #795 review, finding 1. Vercel's ignoreCommand skips a commit that touches
+   nothing it serves, and release-trigger ships exactly those commits (a
+   `mobile/` change). A HEAD-dated seed was therefore LATER than the pointer
+   Vercel was serving for the same content, and the phone refused the live
+   pointer as OLDER than its own partial seed. */
+
+/** A clone the way a build host takes one: its own LF checkout of `src`. */
+function cloneOf(src, extra = []) {
+  const dir = mkdtempSync(path.join(tmpdir(), "forays-directory-clone-"));
+  rmSync(dir, { recursive: true, force: true });
+  git(tmpdir(), ["clone", "-q", "--config", "core.autocrlf=false", ...extra, pathToFileURL(src).href, dir]);
+  return dir;
+}
+
+test("END TO END (#795 finding 1): a mobile-only HEAD after the last served commit — the seed's built_at equals the live pointer's, so a fresh install is not OLDER", async () => {
+  /* KILLED BY: `stampTimestamp` passing no `paths` (HEAD's date — the regression),
+     or dropping the `:(exclude,glob)player/*.test.js` input (the player TEST
+     commit below would then move the seed past the live pointer). */
+  const { isOlderThan } = await import("../../player/foray-directory.js");
+  withTree(gitCliTree, (dir) => {
+    commitAt(dir, "served: v1", "2026-09-20T12:00:00Z");
+
+    /* Vercel builds that commit: the real CLI on its own clone, no epoch pin. */
+    const vercel = cloneOf(dir);
+    let live;
+    try {
+      const w = run(vercel, ["--stamp", "."], { SOURCE_DATE_EPOCH: "" });
+      assert.equal(w.status, 0, w.stderr);
+      live = readJson(vercel, POINTER_PATH);
+    } finally {
+      rmSync(vercel, { recursive: true, force: true });
+    }
+    assert.equal(live.built_at, "2026-09-20T12:00:00.000Z");
+
+    /* Three commits Vercel skips (pathMatters is false for each), then the release. */
+    put(dir, "mobile/VERSION", "1.2.3\n");
+    commitAt(dir, "mobile: bump", "2026-09-21T12:00:00Z");
+    put(dir, "player/foray-directory.test.js", "// a test, never served\n");
+    commitAt(dir, "test only", "2026-09-22T12:00:00Z");
+    put(dir, "docs/note.md", "notes\n");
+    commitAt(dir, "docs only", "2026-09-23T12:00:00Z");
+    for (const p of ["mobile/VERSION", "player/foray-directory.test.js", "docs/note.md"]) {
+      assert.equal(pathMatters(p), false, `${p} must be a commit Vercel skips, or this test proves nothing`);
+    }
+
+    const seed = sourceStamp(dir, NO_EPOCH);
+    assert.equal(seed.pointerReason, null);
+    assert.equal(seed.pointer.version, live.version, "same content, same deploy id");
+    assert.equal(seed.pointer.built_at, live.built_at, "and the same built_at Vercel is serving");
+    assert.equal(isOlderThan(live.built_at, seed.pointer.built_at), false, "so the live pointer is not OLDER than the seed");
+
+    /* Not vacuous: HEAD's own date is exactly the regression. */
+    const headDated = buildTimestamp(dir, NO_EPOCH).builtAt;
+    assert.equal(headDated, "2026-09-23T12:00:00.000Z");
+    assert.equal(isOlderThan(live.built_at, headDated), true, "a HEAD-dated seed would outrank the live pointer");
+
+    /* And the stamp still moves when served content does. */
+    put(dir, DIRECTORY_FILES.forays, FORAYS.replace("f1", "f2"));
+    commitAt(dir, "served: v2", "2026-09-24T12:00:00Z");
+    assert.equal(sourceStamp(dir, NO_EPOCH).pointer.built_at, "2026-09-24T12:00:00.000Z");
+  });
+});
+
+test("a shallow clone that cannot reach the newest input commit ships no seed pointer, and dates a live stamp LATE, never early", () => {
+  /* In a shallow clone the boundary commit looks as if it added every file, so
+     the path-limited answer is the boundary's date: later than the truth. Safe
+     for a live pointer, the defect itself for a seed. KILLED BY: dropping the
+     `git-shallow` branch in sourceStamp, or `isShallowBoundary` returning false. */
+  withTree(gitCliTree, (dir) => {
+    commitAt(dir, "served: v1", "2026-09-20T12:00:00Z");
+    put(dir, "mobile/VERSION", "1.2.3\n");
+    commitAt(dir, "mobile: bump", "2026-09-21T12:00:00Z");
+
+    const shallow = cloneOf(dir, ["--depth", "1"]);
+    try {
+      const t = stampTimestamp(shallow, NO_EPOCH);
+      assert.deepEqual(t, { builtAt: "2026-09-21T12:00:00.000Z", source: "git-shallow" });
+      const s = sourceStamp(shallow, NO_EPOCH);
+      assert.match(s.deployId, /^[0-9a-f]{16}$/, "the build stamp keeps its deploy id");
+      assert.equal(s.pointer, null, "but the seed carries no pointer that could outrank the live one");
+      assert.match(s.pointerReason, /shallow clone.*fetch-depth: 0/);
+    } finally {
+      rmSync(shallow, { recursive: true, force: true });
+    }
+
+    /* A full clone of the same commit answers exactly. */
+    const full = cloneOf(dir);
+    try {
+      assert.deepEqual(stampTimestamp(full, NO_EPOCH), { builtAt: "2026-09-20T12:00:00.000Z", source: "git" });
+    } finally {
+      rmSync(full, { recursive: true, force: true });
     }
   });
 });
 
-test("--check reports a pointer this branch moved backwards, naming what a phone does with it", () => {
-  /* `--write` is the safety net, but a founder merging by hand runs `--check`,
-     and a red check that says nothing about built_at sends them to the hashes.
-     KILLED BY: dropping the builtAtIsOlder push from pointerProblems. */
-  withTree(dataTree, (dir) => {
-    writePointer(dir, ID, T1);
-    assert.deepEqual(pointerProblems(dir, ID), [], "no floor, no complaint — unchanged behaviour");
-    assert.deepEqual(pointerProblems(dir, ID, { builtAtFloor: T1.toISOString() }), []);
-
-    const problems = pointerProblems(dir, ID, { builtAtFloor: T2.toISOString() });
-    assert.equal(problems.length, 1);
-    assert.match(problems[0], /BEHIND the .* this branch started from/);
-    assert.match(problems[0], /refuses it forever/);
-  });
-});
-
-test("the floor is best-effort: no git, no ref and no pointer on the ref all read as null", () => {
-  /* Every failure has to degrade to the behaviour that shipped before the
-     floor existed, or a `--write` outside a checkout throws instead of writing.
-     KILLED BY: removing the try/catch in pointerBuiltAtOnRef, or returning
-     something other than null from it. */
-  withTree(dataTree, (dir) => {
-    assert.equal(pointerBuiltAtOnRef(dir, "origin/main"), null, "not a git repo at all");
-    assert.equal(builtAtFloorFrom(dir), null);
-
-    git(dir, ["init", "-q", "-b", "main"]);
-    assert.equal(pointerBuiltAtOnRef(dir, "origin/main"), null, "a repo with no such ref");
-
-    writePointer(dir, ID, T1);
-    git(dir, ["add", "-A"]);
-    git(dir, ["commit", "-q", "-m", "v1"]);
-    assert.equal(builtAtFloorFrom(dir, ["origin/main", "main"]), T1.toISOString(), "falls through to the base that exists");
-    assert.equal(builtAtFloorFrom(dir, ["no-such-ref"]), null);
-  });
-});
-
-test("a branch cut before the last publish is NOT a rollback: the floor is its merge base, so nothing is restamped", () => {
-  /* The cost of the rollback clause has to stay at zero for every PR that is
-     merely BEHIND main. Measuring against main's TIP instead of the merge base
-     would read every stale branch as a rollback and put an autofix commit on it.
-     KILLED BY: `builtAtFloorFrom` reading the base branch's tip
-     (`pointerBuiltAtOnRef(root, base)`) instead of the merge base. */
-  withTree(dataTree, (dir) => {
-    git(dir, ["init", "-q", "-b", "main"]);
-    writePointer(dir, ID, T1);
-    git(dir, ["add", "-A"]);
-    git(dir, ["commit", "-q", "-m", "v1"]);
-
-    // A feature branch cut here, touching nothing in data/.
-    git(dir, ["switch", "-q", "-c", "feature"]);
-    git(dir, ["commit", "-q", "--allow-empty", "-m", "some unrelated work"]);
-
-    // Meanwhile main publishes: new data, new pointer, a newer built_at.
-    git(dir, ["switch", "-q", "main"]);
-    put(dir, DIRECTORY_FILES.forays, FORAYS.replace("f1", "f2"));
-    writePointer(dir, ID2, T2);
-    git(dir, ["add", "-A"]);
-    git(dir, ["commit", "-q", "-m", "v2"]);
-    git(dir, ["switch", "-q", "feature"]);
-
-    /* main's TIP says T2 — the branch's own pointer is "behind" it and is not
-       going backwards at all. The merge base says T1: the stamp this branch
-       started from, which is the only thing it could have moved. */
-    assert.equal(pointerBuiltAtOnRef(dir, "main"), T2.toISOString());
-    assert.equal(builtAtFloorFrom(dir, ["main"]), T1.toISOString());
-
-    const floor = builtAtFloorFrom(dir, ["main"]);
-    const r = writePointer(dir, ID, T3, { builtAtFloor: floor });
-    assert.equal(r.changed, false, "a stale branch must not get an autofix commit");
-    assert.equal(r.pointer.built_at, T1.toISOString());
-    assert.deepEqual(pointerProblems(dir, ID, { builtAtFloor: floor }), []);
-  });
+test("REAL REPO: every stamp input is a path Vercel builds on, and the stamp modules are one list", () => {
+  /* The seed and the live pointer agree only if the newest commit touching an
+     input is a commit Vercel built. KILLED BY: adding an input under an ignored
+     prefix (a test file, tools/ outside the stamp modules), or the two
+     STAMP_MODULES lists drifting apart. */
+  assert.deepEqual(STAMP_MODULE_FILES, STAMP_MODULES);
+  const inputs = stampInputs();
+  assert.ok(inputs.length > 20, `only ${inputs.length} stamp inputs`);
+  for (const p of inputs) {
+    if (p.startsWith(":(exclude")) continue;
+    const sample = p.replace(":(glob)", "").replace("*", "new-module");
+    assert.equal(pathMatters(sample), true, `stamp input ${p} (${sample}) is a path Vercel skips`);
+  }
+  assert.ok(inputs.includes(":(exclude,glob)player/*.test.js"), "player tests are excluded from the inputs");
+  assert.equal(pathMatters("player/new-module.test.js"), false);
 });

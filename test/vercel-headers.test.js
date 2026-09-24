@@ -37,9 +37,11 @@
  *      bare-path rule would override the immutable header and the `?v=` copy
  *      would silently stop being long-lived.
  *
- * The four paths are read out of `data/forays-directory.json` rather than typed
- * here, so the suite pins the paths the shell actually fetches — a renamed file
- * in the pointer is checked against the rules the day it lands.
+ * The four paths are read out of `tools/ci/forays-directory.mjs` (`POINTER_PATH`
+ * and `DIRECTORY_FILES`, the exact map every deploy build writes into the
+ * pointer) rather than typed here, so the suite pins the paths the shell actually
+ * fetches — a renamed file is checked against the rules the day it lands. (It
+ * read the committed pointer until issue #701 made the pointer a build output.)
  *
  * MUTATIONS, each run and red:
  *   - drop `Access-Control-Allow-Origin` from the `/data/(.*)` rule → test 1
@@ -61,6 +63,9 @@ const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
 const read = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+const { pathToFileURL } = require("node:url");
+/* The pointer's paths, from the module that writes it into every deploy. */
+const directoryModule = import(pathToFileURL(path.join(ROOT, "tools", "ci", "forays-directory.mjs")).href);
 
 const CORS_KEY = "access-control-allow-origin";
 const CACHE_KEY = "cache-control";
@@ -81,11 +86,11 @@ function hasQuery(rule, key) {
   return (rule.has || []).some((c) => c.type === "query" && c.key === key);
 }
 
-function directoryPaths() {
-  const pointer = read("data/forays-directory.json");
-  const files = Object.values(pointer.files || {});
-  assert.equal(files.length, 3, "data/forays-directory.json should name exactly three files");
-  return ["data/forays-directory.json", ...files];
+async function directoryPaths() {
+  const { POINTER_PATH, DIRECTORY_FILES } = await directoryModule;
+  const files = Object.values(DIRECTORY_FILES);
+  assert.equal(files.length, 3, `${POINTER_PATH} should name exactly three files`);
+  return [POINTER_PATH, ...files];
 }
 
 function headerRules() {
@@ -94,10 +99,10 @@ function headerRules() {
   return rules;
 }
 
-test("every rule that serves the Foray directory sends Access-Control-Allow-Origin: * — the header that makes the phone path live", () => {
+test("every rule that serves the Foray directory sends Access-Control-Allow-Origin: * — the header that makes the phone path live", async () => {
   const rules = headerRules();
   const missing = [];
-  for (const rel of directoryPaths()) {
+  for (const rel of await directoryPaths()) {
     const pathname = `/${rel}`;
     const matching = rules.filter((r) => sourceMatches(r.source, pathname));
     assert.ok(matching.length > 0, `no vercel.json header rule matches ${pathname}`);
@@ -131,9 +136,10 @@ test("Access-Control-* headers are scoped to /data/ — no other rule carries on
   );
 });
 
-test("#606's Cache-Control split is intact: bare data paths revalidate, only ?v= copies are immutable", () => {
+test("#606's Cache-Control split is intact: bare data paths revalidate, only ?v= copies are immutable", async () => {
   const rules = headerRules();
-  for (const rel of directoryPaths()) {
+  const [, ...directoryFiles] = await directoryPaths();
+  for (const rel of await directoryPaths()) {
     const pathname = `/${rel}`;
     for (const r of rules.filter((x) => sourceMatches(x.source, pathname))) {
       const cc = headerValue(r, CACHE_KEY);
@@ -156,8 +162,7 @@ test("#606's Cache-Control split is intact: bare data paths revalidate, only ?v=
   );
   assert.deepEqual(pointerImmutable.map((r) => r.source), [], "the pointer must never be served immutable");
   // And the three files DO have an immutable copy reachable with ?v=.
-  const pointer = read("data/forays-directory.json");
-  for (const rel of Object.values(pointer.files)) {
+  for (const rel of directoryFiles) {
     const versioned = rules.find(
       (r) => sourceMatches(r.source, `/${rel}`) && hasQuery(r, "v") && /immutable/.test(headerValue(r, CACHE_KEY) || "")
     );
