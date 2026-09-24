@@ -5,8 +5,9 @@
    throwing. Data, because three callers want different things from a mismatch:
    run.test.js fails with it, `record.mjs --check` prints every one of them for a
    whole family, and `--mutate` only needs to know there was at least one. The
-   Swift `ForayEngineParity` comparator implements these same rules; the
-   `compare` cases in run.test.js are the table it is ported from.
+   Swift `ForayEngineParity` comparator (Comparator.swift, NE-05) implements
+   these same rules, and the `compare` fixture family (`compareVerdict` below)
+   runs one table through both, so the two cannot drift apart unnoticed.
 
    THE RULES, each one a decision:
    - Exact by default. A parity fixture that tolerates drift is not a parity
@@ -19,6 +20,8 @@
      (plan §6.2: "Native-only n.* tokens are stripped, except in the prepare
      family"). JS never emits them; the Swift engine emits them for its standby
      deck, and every other family must stay blind to that. */
+
+import { encode } from "./codec.js";
 
 export const NATIVE_TOKEN_PREFIX = "n.";
 
@@ -93,6 +96,31 @@ export function compare(expected, actual, opts = {}) {
     }
     if (e !== a) diffs.push({ path: at, expected: e, actual: a, why: "not equal" });
   }
+}
+
+/**
+ * The comparator as a fixture-callable function: the `compare` META-family
+ * (fixtures/compare/compare.json, card NE-05). Every other family's verdict
+ * goes through a comparator, so the JS one here and the Swift port in
+ * `ForayEngineParity/Comparator.swift` must agree case for case, or a green in
+ * one runtime means nothing in the other. The table is recorded from THIS
+ * function and replayed against the Swift port.
+ *
+ * The runners expand a case's args before calling (a `$num` tag arrives as a
+ * live NaN), and `compare` only ever sees ENCODED values, so the inputs are
+ * re-encoded first; the Swift runner does the same two steps with its codec,
+ * which makes this family pin the two codecs' round trip too.
+ *
+ * Only `path` and `why` are returned. They are the verdict; the echoed
+ * expected/actual values are display, and an array echo after `n.*`
+ * stripping is exactly the kind of detail two runtimes may legitimately print
+ * differently without disagreeing.
+ *
+ * @returns {{equal: boolean, diffs: {path: string, why: string}[]}}
+ */
+export function compareVerdict(expected, actual, opts) {
+  const diffs = compare(encode(expected), encode(actual), opts ?? {});
+  return { equal: diffs.length === 0, diffs: diffs.map(({ path, why }) => ({ path, why })) };
 }
 
 /** One line per difference, for a test failure or the recorder's report. */

@@ -11,11 +11,13 @@ import ForayEngineCore
 /// Simulator) is a library that each of them wraps in a few lines.
 /// `shell-invariants.test.mjs` fails on an XCTest import here.
 ///
-/// NE-01 IS A STUB. The case shape is §6.2's pure-call form
-/// (`{id, covers[], call, args, expect}`) so NE-05 extends this rather than
-/// replacing it, but the only callables are the two NE-01 put in the core,
-/// and the only cases are `smokeCases` below. NE-05 adds the fixture reader,
-/// the manifest and `swift-pending.json` bookkeeping, and `parity-report.json`.
+/// THIS IS NE-01's SMOKE RUNNER, KEPT. Its cases are inline and pin the two
+/// answers NE-01 put in the core; they need no fixture directory, so they
+/// still run when the fixture tree cannot be found (and a wrapper then fails
+/// for THAT reason, not for a smoke case). The real runner is `ParitySuite`
+/// (NE-05): it reads `player/parity/fixtures` in place, runs each family
+/// through its `FamilyRunner`, keeps the `swift-pending.json` books and writes
+/// `parity-report.json`.
 public enum ParityRunner {
     /// A call the runner does not know is a FAILURE, never a skip: a renamed
     /// callable would otherwise turn every case that names it green.
@@ -101,38 +103,4 @@ public struct ParityReport: Equatable {
     public let results: [ParityResult]
     public var executed: Int { results.count }
     public var failures: [ParityResult] { results.filter { $0.outcome == .fail } }
-}
-
-/// Any JSON value, compared structurally. Numbers are `Double`, which is what
-/// both `JSON.parse` on the page and `JSONSerialization` here produce.
-public enum JSONValue: Decodable, Equatable, CustomStringConvertible {
-    case null
-    case bool(Bool)
-    case number(Double)
-    case string(String)
-    case array([JSONValue])
-    case object([String: JSONValue])
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if container.decodeNil() { self = .null; return }
-        if let value = try? container.decode(Bool.self) { self = .bool(value); return }
-        if let value = try? container.decode(Double.self) { self = .number(value); return }
-        if let value = try? container.decode(String.self) { self = .string(value); return }
-        if let value = try? container.decode([JSONValue].self) { self = .array(value); return }
-        self = .object(try container.decode([String: JSONValue].self))
-    }
-
-    public var description: String {
-        switch self {
-        case .null: return "null"
-        case let .bool(value): return String(value)
-        case let .number(value): return String(value)
-        case let .string(value): return "\"\(value)\""
-        case let .array(values): return "[" + values.map(\.description).joined(separator: ",") + "]"
-        case let .object(fields):
-            return "{" + fields.keys.sorted().map { "\"\($0)\":\(fields[$0]!.description)" }
-                .joined(separator: ",") + "}"
-        }
-    }
 }
