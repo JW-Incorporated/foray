@@ -3073,6 +3073,16 @@ body.fy-sheet-open { overflow: hidden; }
 /* Above #foray-player (60): the sheet is modal, and a mini bar poking through
    its scrim reads as a stuck overlay. */
 .fy-sheet { position: fixed; inset: 0; z-index: 70; }
+/* A SHEET THAT KEEPS THE PLAYER REACHABLE (the onboarding pair, app.js
+   ONBOARDING_KEEPS_REACHABLE; audit round 2 review of p-first-5) lifts it
+   over the scrim, and lifts its own panel off the docked bar, so a tap on the
+   mini bar's ❚❚ reaches the bar instead of the scrim (which only parked the
+   sheet while the audio played on). */
+body.fy-sheet-keeps-player #foray-player { z-index: 71; }
+body.fy-sheet-keeps-player.fp-open .fy-sheet .fy-panel {
+  bottom: max(var(--kb-inset, 0px), calc(var(--fp-bar-h) + env(safe-area-inset-bottom)));
+  max-height: calc(88vh - var(--fp-bar-h) - env(safe-area-inset-bottom));
+}
 .fy-scrim { position: absolute; inset: 0; background: rgba(8, 5, 12, 0.62); }
 /* ON THE KEYBOARD, NOT BEHIND IT (audit 2026-09-22). A sheet with a text
    field — the feedback note, "Type DELETE to confirm" — is bottom-anchored,

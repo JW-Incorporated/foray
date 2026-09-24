@@ -619,6 +619,21 @@ test("ROUND 2 nav-8: a drawer link to the page already on screen closes the shee
   assert.deepStrictEqual(scrolled, [0], "and the page is at its top");
 });
 
+test("ROUND 2 review (nav-8): a same-page drawer link with NO sheet open does not leave focus inside the hidden drawer", () => {
+  /* onDrawerAction closes the drawer without returning focus, and the same
+     hash runs no route(), so nothing landed it. MUTATION: drop the
+     `landOnPage` call from sameHashTap -> focus stays on the hidden link; red. */
+  const m = mount();
+  m.ctx.scrollTo = () => {};
+  m.menu.click();
+  const home = m.$(".drawer-section");   // href="#/", and the page is "#/"
+  assert.strictEqual(m.doc.activeElement, home, "precondition: focus is on the drawer link");
+  home.dispatch("click");
+  assert.strictEqual(m.drawer.hidden, true);
+  const active = m.doc.activeElement;
+  assert.ok(active && !m.drawer.contains(active), "focus has left the hidden drawer");
+});
+
 test("ROUND 2 nav-8: a drawer link to a DIFFERENT page is ordinary navigation, and the wordmark follows the same-hash rule", () => {
   /* MUTATION: drop the `currentHash(href) !== currentHash()` guard in
      sameHashTap -> every drawer link would close the sheets and scroll before

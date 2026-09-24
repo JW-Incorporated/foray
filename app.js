@@ -5234,32 +5234,35 @@ function isGenuineFirstTimeUser() {
   return (
     pickedHistory().length === 0 &&
     Object.keys(savedMap()).length === 0 &&
-    playlists().length === 0 &&
-    !hasForayTrace()
+    playlists().length === 0
   );
 }
 
-/* A FORAY PLAY IS PRIOR USE (audit round 2, p-first-5). Foray playback goes
-   through `player.playForay` and never `recordHistory`, so a newcomer whose
-   whole use of 4a was a shared Foray link — the product's one viral path —
-   was still "first-time" the moment they tapped Home, and met the Welcome
-   sheet over their own playing Foray. The Foray's resume row is the trace:
-   player/foray-progress.js writes one under `KEY_PREFIX` the moment a Foray
-   starts, and test/first-time-onboarding.test.js pins that the two spellings
-   agree. Read through the same shim every other `cp_` read takes
-   (`storageBackend`, #40 — the durable store keeps the Storage shape, `length`
-   and `key()` included); a store with no `key()` (a harness) has no trace. */
-const FORAY_PROGRESS_PREFIX = "cp_foray:";
-function hasForayTrace() {
+/* A PLAYING FORAY DEFERS ONBOARDING; IT DOES NOT RECLASSIFY THE LISTENER
+   (audit round 2, p-first-5, and its review). A newcomer whose whole use of 4a
+   was a shared Foray link met the Welcome sheet over their own playing Foray.
+   The first fix counted the Foray's resume row as prior use — which sent the
+   same newcomer to the RETURNING-user popup instead (still a modal over the
+   Foray), and its "Got it" then wrote `cp_intro_dismissed`, so the Welcome and
+   Preferences steps — the interest picks that re-deal Home — never showed on
+   any later visit: the product's one viral path always skipped the survey.
+   The listener is still first-time; the sheets simply wait while a Foray is
+   sounding (or loading, or in its seam beat), and the next Home after it
+   stops offers them. Read through the bridge; an absent or older module has
+   no Foray to wait for. */
+function forayHoldsOnboarding() {
   try {
-    const store = storageBackend();
-    const n = store && typeof store.length === "number" ? store.length : 0;
-    for (let i = 0; i < n; i++) {
-      const k = typeof store.key === "function" ? store.key(i) : null;
-      if (typeof k === "string" && k.startsWith(FORAY_PROGRESS_PREFIX)) return true;
-    }
-  } catch (_) { /* no storage to read: no trace */ }
-  return false;
+    const s = window.ForayPlayer && typeof window.ForayPlayer.forayStatus === "function"
+      ? window.ForayPlayer.forayStatus() : null;
+    return Boolean(s && !s.ended && (s.running || s.playing || s.loading || s.gap));
+  } catch (_) { return false; }
+}
+
+/** Home's onboarding: the first-run sheet for a genuine newcomer, else the
+    returning-user popup — neither while a Foray is playing. */
+function offerHomeOnboarding() {
+  if (onboardingHeld || forayHoldsOnboarding()) return;
+  if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
 }
 
 /* ---------- U-09: Preferences chips — subtree write path ----------
@@ -5462,7 +5465,8 @@ const PREFS_CHIP_IDS = [
    module is deferred), so it is always there by the time either can open. */
 const SHEET_FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const sheetStack = [];
-const sheetManagedClasses = new Set(["fy-sheet-open"]);
+const SHEET_KEEPS_PLAYER_CLASS = "fy-sheet-keeps-player";
+const sheetManagedClasses = new Set(["fy-sheet-open", SHEET_KEEPS_PLAYER_CLASS]);
 let sheetKeysBound = false;
 
 function sheetIsLive(entry) {
@@ -5582,7 +5586,13 @@ function pruneDeadSheets() {
     render keeps a lock that is still true and drops one that is not. */
 function sheetBodyClasses() {
   pruneDeadSheets();
-  return [...new Set(sheetStack.map((s) => s.bodyClass))];
+  const out = new Set(sheetStack.map((s) => s.bodyClass));
+  /* A sheet that keeps the PLAYER reachable lifts it over its scrim (audit
+     round 2 review of p-first-5) — only while the TOP sheet is such a one, so
+     a modal opened over it covers the bar again. */
+  const top = sheetStack[sheetStack.length - 1];
+  if (top && (top.keep || []).includes("#foray-player")) out.add(SHEET_KEEPS_PLAYER_CLASS);
+  return [...out];
 }
 
 function syncSheetBodyClasses() {
@@ -6043,7 +6053,11 @@ function showFirstTimeExplainerOnce() {
   const scrim = ddEl("div", "fy-scrim");
   const panel = ddEl("div", "fy-panel");
   panel.setAttribute("role", "dialog");
-  panel.setAttribute("aria-modal", "true");
+  /* NOT aria-modal (audit round 2 review of p-first-5): `aria-modal="true"`
+     keeps VoiceOver's cursor inside the dialog, so the player this sheet keeps
+     reachable (ONBOARDING_KEEPS_REACHABLE) was reachable only by Tab. The
+     modality is `inert` on everything else, which `openSheet` applies. */
+  panel.setAttribute("aria-modal", "false");
 
   const grab = ddEl("div", "fy-grab");
   grab.setAttribute("aria-hidden", "true");
@@ -6062,10 +6076,13 @@ function showFirstTimeExplainerOnce() {
     firstRunParked = true;
     closeSheet(wrap, { removeIfOwned: true });
   };
-  /* The player stays reachable (audit round 2, p-first-5): a newcomer who
-     arrived by a shared Foray link, pressed play and then tapped Home meets
-     this sheet over audio that keeps playing, and the mini bar's ▶ and ↺15
-     must not go inert with the page. */
+  /* The player stays reachable (audit round 2, p-first-5): Home defers this
+     sheet while a Foray is sounding (`offerHomeOnboarding`), but a paused or
+     restored bar can still sit under it, and the mini bar's ▶ and ↺15 must not
+     go inert with the page. Reachable means ABOVE the scrim as well as out of
+     `inert`: `body.fy-sheet-keeps-player` lifts #foray-player over the z-70
+     sheet and lifts the panel off the bar (styles.css), or a tap on the bar
+     landed on the scrim and only parked the sheet. */
   openSheet(wrap, { panel, onRequestClose: park, keepReachable: ONBOARDING_KEEPS_REACHABLE });
   scrim.addEventListener("click", park);
 
@@ -6282,7 +6299,8 @@ function showIntroPopupOnce() {
   const scrim = ddEl("div", "fy-scrim");
   const panel = ddEl("div", "fy-panel");
   panel.setAttribute("role", "dialog");
-  panel.setAttribute("aria-modal", "true");
+  // Not aria-modal, for the first-run sheet's reason: the player stays reachable.
+  panel.setAttribute("aria-modal", "false");
 
   const grab = ddEl("div", "fy-grab");
   grab.setAttribute("aria-hidden", "true");
@@ -9096,7 +9114,7 @@ function renderHomeV2() {
       ${episodesForYouHtml()}
     </div>`;
 
-  if (!onboardingHeld && !showFirstTimeExplainerOnce()) showIntroPopupOnce();
+  offerHomeOnboarding();
 
   sizeProgressBars($("#view"));
   if (window.ForayPlayer && typeof window.ForayPlayer.applyStripGrow === "function") {
@@ -12769,6 +12787,11 @@ function sameHashTap(a, e) {
   if (e && typeof e.preventDefault === "function") e.preventDefault();
   closeAllSheets();
   scrollPageTo(0);
+  /* FOCUS IS NOT LEFT IN THE DRAWER (audit round 2 review). No hashchange
+     means no route() and so no landing; from a drawer link with no sheet to
+     rescue it, focus stayed on a link inside the now-hidden #drawer. landOnPage
+     treats focus there as lost and puts it on the page's heading. */
+  landOnPage({ navigated: false });
   return true;
 }
 

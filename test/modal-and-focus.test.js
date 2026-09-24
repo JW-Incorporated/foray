@@ -861,6 +861,28 @@ test("ROUND 2 p-first-5: the first-run sheet leaves the player reachable, so a s
   assert.ok(!inert(m.view) && !inert(player));
 });
 
+test("ROUND 2 review (p-first-5): an onboarding sheet lifts the player OVER its scrim and does not trap VoiceOver with aria-modal", () => {
+  /* Out of `inert` was not reachable: the z-70 scrim covered the z-60 bar, so
+     a tap on ❚❚ parked the sheet and the audio played on, and aria-modal kept
+     VoiceOver inside the dialog. MUTATIONS: drop SHEET_KEEPS_PLAYER_CLASS from
+     sheetBodyClasses; set aria-modal back to "true"; delete the styles.css
+     lift rule. */
+  const m = mount();
+  const player = m.doc.createElement("div");
+  player.id = "foray-player";
+  m.doc.body.appendChild(player);
+  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
+  assert.ok(m.doc.body.classList.contains("fy-sheet-keeps-player"), "the body says the player is lifted");
+  const panel = m.doc.body.querySelector("#first-time-sheet").querySelector(".fy-panel");
+  assert.notStrictEqual(panel.getAttribute("aria-modal"), "true", "VoiceOver can leave the dialog for the player");
+  m.doc.key("Escape");
+  assert.ok(!m.doc.body.classList.contains("fy-sheet-keeps-player"), "and it drops when the sheet goes");
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+  const lift = /body\.fy-sheet-keeps-player #foray-player\s*\{[^}]*z-index:\s*(\d+)/.exec(css);
+  const sheetZ = /\.fy-sheet \{[^}]*z-index:\s*(\d+)/.exec(css);
+  assert.ok(lift && sheetZ && Number(lift[1]) > Number(sheetZ[1]), "the lifted player stacks above the sheet");
+});
+
 test("ROUND 2 a11y-6: with the player hidden BEFORE the owner lets go, Stop leaves focus on the page, not on a hidden button", () => {
   /* The owner's half of client.js's `stopAndClose` order (its source order is
      pinned in player/now-playing-sheet.test.js): a return target inside a

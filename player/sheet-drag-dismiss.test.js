@@ -231,6 +231,21 @@ test("an eligible pull claims the touch from the first downward pixel, before th
   assert.equal(claimsTouch(s), true, "and keeps claiming it once engaged");
 });
 
+test("ROUND 2 review: 1 px of downward jitter on a swipe UP does not claim the touch (which would kill the scroll)", () => {
+  /* Cancelling the first touchmove disables panning for the whole sequence,
+     so claiming on 1 px swallowed an upward read-the-notes swipe. MUTATION:
+     restore `state.dy > 0` -> the 201 sample is claimed; red. */
+  let s = startDrag(200, 0, { atTop: true });
+  s = moveDrag(s, 201, 8);
+  assert.equal(claimsTouch(s), false, "1 px of jitter is not a pull");
+  s = moveDrag(s, 150, 16);
+  assert.equal(claimsTouch(s), false, "and the swipe up is the scroller's");
+  let back = startDrag(200, 0, { atTop: true });
+  back = moveDrag(back, 205, 8);
+  back = moveDrag(back, 204, 16);
+  assert.equal(claimsTouch(back), false, "a sample turning upward before the lock is not claimed");
+});
+
 test("a finger moving UP, or a drag that started mid-scroll, never claims the touch — the scroller scrolls", () => {
   /* MUTATION: drop the `state.allowed` guard -> the mid-scroll pull below is
      claimed and a flick back up a long description would cancel the scroll. */

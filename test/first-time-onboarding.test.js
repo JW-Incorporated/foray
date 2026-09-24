@@ -770,18 +770,30 @@ test("subjects the pre-pick deal happened to show are not penalised as 'recently
 
 /* ---------- ROUND 2 (p-first-5): a Foray play is prior use ---------- */
 
-test("a Foray's resume row counts as prior use, under the key player/foray-progress.js writes", async () => {
-  /* Foray playback never touches cp_history, so a newcomer whose whole use of
-     4a was a shared Foray link met the Welcome sheet over their own playing
-     Foray. MUTATION 1: drop `!hasForayTrace()` from isGenuineFirstTimeUser ->
-     red. MUTATION 2: misspell FORAY_PROGRESS_PREFIX -> the agreement assertion
-     is red. */
+test("ROUND 2 review (p-first-5): a playing Foray DEFERS onboarding; it does not make the newcomer a returning user", async () => {
+  /* The first fix counted the Foray's resume row as prior use, which sent a
+     shared-link newcomer to the returning-user popup (still a modal over the
+     Foray) and its "Got it" then suppressed Welcome/Preferences for good.
+     MUTATION 1: put a cp_foray: check back into isGenuineFirstTimeUser -> the
+     first assertion is red. MUTATION 2: drop `forayHoldsOnboarding()` from
+     offerHomeOnboarding -> a sheet opens over the playing Foray; red. */
   const { pathToFileURL } = require("node:url");
   const { KEY_PREFIX } = await import(pathToFileURL(path.join(__dirname, "..", "player", "foray-progress.js")).href);
-  const seeded = mount({ seed: { [`${KEY_PREFIX}some-foray`]: JSON.stringify({ foray_id: "some-foray" }) } });
-  assert.strictEqual(seeded.ctx.isGenuineFirstTimeUser(), false, "a Foray row is a trace of use");
-  assert.strictEqual(seeded.evalIn("FORAY_PROGRESS_PREFIX"), KEY_PREFIX, "app.js and the progress store spell the key the same way");
-  assert.strictEqual(mount().ctx.isGenuineFirstTimeUser(), true, "no rows: still first-time");
+  let status = { forayId: "some-foray", running: true, playing: true, loading: false, gap: false, ended: false };
+  const m = mount({
+    seed: { [`${KEY_PREFIX}some-foray`]: JSON.stringify({ foray_id: "some-foray" }) },
+    forayPlayer: { forayStatus: () => status },
+  });
+  bootWithTaxonomy(m);
+  assert.strictEqual(m.ctx.isGenuineFirstTimeUser(), true, "a Foray row is not a reason to skip the survey");
+  m.ctx.offerHomeOnboarding();
+  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 0, "nothing over the playing Foray");
+  assert.strictEqual(m.body.querySelectorAll("#intro-sheet").length, 0, "not the returning-user popup either");
+  assert.strictEqual(m.store.get("cp_intro_dismissed"), undefined, "and nothing is written that would skip it later");
+  status = { ...status, running: false, playing: false };
+  m.ctx.offerHomeOnboarding();
+  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 1, "the next Home after it stops offers Welcome");
+  assert.strictEqual(m.body.querySelectorAll("#intro-sheet").length, 0);
 });
 
 /* ==================================================================== */
