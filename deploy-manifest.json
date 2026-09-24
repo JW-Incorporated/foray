@@ -1,11 +1,11 @@
 {
-  "deploy_id": "416205795a99c71a",
+  "deploy_id": "424c6f884df43db1",
   "files": {
-    "app.js": "sha256:38623600c74fc4a04ce5fffa62638671ccadbe4a9fe1d7d09614abc2b4414a3f",
+    "app.js": "sha256:1a04c903ce41c22f0a42f1a36387f2b0062b2d69d459424e64878e8fb7c53026",
     "data/catalog-client.json": "sha256:734c542d08decc62fd401593cbf19c25216c366fe99ebc86fce2192dcf9d85c4",
     "data/dai-classification.json": "sha256:ee2f78c91287a18228640265d603537a0554d01cc035b64d3856c6da884310f3",
     "data/discover.json": "sha256:8ad28a4be7b77626317efe0770965183579c1d61d46c8da0410c1a96e0499813",
-    "data/forays-directory.json": "sha256:540b9ed483c49abd1f1286050c8ac232a3b8d93df3d4403cfbd7930b1ef4d357",
+    "data/forays-directory.json": "sha256:cfb0578c9b530b812047244b65be91996c41655f343eb9914e65c8e6c59f5f74",
     "data/forays.json": "sha256:f80649f9c5c76c6610218f63c90edf3feb869f3b4741b99fb8f0449ac8eaefda",
     "data/item-tags.json": "sha256:d4a1eccdbf270a4982cf79c6f737e68052b80a91569bbe45aba70ce576d6c064",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
@@ -24,7 +24,7 @@
     "index.html": "sha256:d1f5759c2a0c9aa5105f963f9f4359f03319ffc308208d2ac57aff83a54b5bea",
     "manifest.json": "sha256:e99d17d7b18d314cf6a60286c9f28e77761f5642d44117115c219b2acfb9c118",
     "player/build-stamp.js": "sha256:5f73ab48174bf07be8fafb125b8ff7513ab6fa60d18f384da9737aa81bf54947",
-    "player/client.js": "sha256:552633deafe05133dfc04d6504cab4e51b35485af47e2ccff24e51194397d813",
+    "player/client.js": "sha256:5f36f9fb6a5c9f2c39c1f96682ba577bca83bde5467f0836615d9de3673292c8",
     "player/default-voice.js": "sha256:ebdd4cb5067b937ec0ba02e1be6d8fc84c7e73e58078bcafc2ce8911d26ba82f",
     "player/diagnostic-log.js": "sha256:2329094a0c6f3e9942acd35bfa1fbbb97d31ca10077f7ca73ef71f246711493d",
     "player/durable-store.js": "sha256:0b0e47397cce25751ed93823bb7e920cd36c7ea01bb56246c9422b01ab2c3fed",
@@ -39,19 +39,19 @@
     "player/idb-tier.js": "sha256:1bfe6d3a37ab405010d6977acc749efafade727369c138ff56d6172f4918dbcb",
     "player/interlude.js": "sha256:1b42c0223f3c6476660724d91a648a0c0b3ef3388a0b081a87726f09d7076ad0",
     "player/kokoro-probe.js": "sha256:69dfd8770de5e9271f55a3898f8eedbc2eed1eab3d5f03a9c46341bec5805872",
-    "player/media-session.js": "sha256:09f4e367bb320c44fa9d4d4a7c30d325a65b0615fc9cf7b7d87ffb6e21df6e2e",
+    "player/media-session.js": "sha256:5291ad434e862bc38bdeb067c361ee1075bd2180d6a9f58b523ffc51df3d5113",
     "player/playback-rate.js": "sha256:71cd45d626998f61cf3fd229a4b33d0a2059b2f09bbd444e713b7321dc75d808",
     "player/position-store.js": "sha256:78a9fe36f6e7891c2ab59deabdd27a39808a10818bcc895c4f440cc12ade8363",
-    "player/queue-manager.js": "sha256:fc68e976cb1c8be3305c496fd0033af7d1436ea30b67790c63c07f9d68ca6ea7",
+    "player/queue-manager.js": "sha256:2c1e0eedcaff0282782e7bfcde55649ba9dfe674308ccf4f494e597f0af51b9b",
     "player/queue-state.js": "sha256:27fc756517ec8b25c44c6edfeaf586d442a16f9ee62716b706878fe3d0f34c73",
     "player/queue-strategy.js": "sha256:6f6c65f71315bef2e8c85d0f196f15f87d7e24d9c39c002cc98eef5b4999ff3c",
     "player/seam-gap.js": "sha256:d0246bea2b7bc0c1a3b54c9db7614d3675529328483bad63d8622674b04f8e23",
     "player/seek-policy.js": "sha256:248ca07cef5c5c7c09bd5967b1e86d8a3254493033aec77bb8e3d4b8f25e350c",
     "player/segment-strip.js": "sha256:3a894ae16a63fbbecf35be19149b06f496309007666320b1209bd48143dff32b",
-    "player/sheet-drag-dismiss.js": "sha256:6524c909eb1d0b1582188911bc3efeff7f948bc6007ac14b57c1bb440af199d7",
+    "player/sheet-drag-dismiss.js": "sha256:5b16f836feff55da9c1ba00a2c576ab31d55d8afdf9f439fb0394fba1ccab15e",
     "player/strip-scrub-gesture.js": "sha256:f4e2708538ca39d0f3b809ffadbf4e0848f4665c14bfae8153ffc7e2ac46ab6a",
     "player/tts-bridge.js": "sha256:3624d19408abb0cbede260d358681685698c506509837f2b593cda58de4217c2",
     "search-engine.js": "sha256:38967c60bb564cb1dc432e9f33df981d0a2ae3513092ea819fea9d851b96d8b5",
-    "styles.css": "sha256:4dd4ee40a883ec52dde5c48e6acf9e8e97225b1589b1603a77ed487e6c233ce4"
+    "styles.css": "sha256:4992793e2ace66f843c14b09b09b96a4da9f8dae42b07b20db3866329340d06b"
   }
 }
