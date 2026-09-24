@@ -3620,6 +3620,96 @@ test("NE-25b: the two-deck spike measures AVDeck's own gate: two real decks, no 
   for (const file of files) assert.ok(exempt.has(`${CLICK_TRACK_DIR}/${file}`), `${file} is not in the hash-checked exempt set`);
 });
 
+test("NE-25c: one synthesizer configuration, a platform-free probe reached only through probeSession, and a smoke on the production pieces", () => {
+  /* DV-9 (plan §10) is answered on the founder's phone by the Developer
+     session probe, and NE-33 picks SpeechNarrator's path from that one row.
+     The row means something only if:
+       - the probe is a sequence of ORDINARY engine inputs (an audition, a
+         play, a pause), so its speech and its play pass the same
+         audible-start invariant and the same "activate if needed" a
+         listener's would, and it touches no platform API (so the fakes run
+         exactly what the phone runs);
+       - the host hands `probeSession` to it before the core, builds it
+         nowhere else, and drops it at teardown with the synthesizer's
+         callback;
+       - the synthesizer it speaks through is the ONE configuration the
+         engine ships (`usesApplicationAudioSession = true`, Apple's 1x rate),
+         guarded against implicit activation like AVDeck's play;
+       - the Simulator smoke runs those same pieces and says it is a smoke.
+     MUTATION: call `seams.speaker.speak` or `seams.deck.send` from
+     SessionProbe; import AVFoundation there; construct a SessionProbe outside
+     ForayEngine.handle; drop `probe?.cancel()` or `seams.speaker.onFinish =
+     nil` from teardown(); build an AVSpeechSynthesizer anywhere in foray-audio
+     but makeSynthesizer(); drop `usesApplicationAudioSession = true` or the
+     default rate; move the sessionIsActive check below `synthesizer.speak(`;
+     pause on every finish; drop the smoke's NE-25c tag. Each fails. */
+  const PLATFORM = /\b(AVAudioSession|AVPlayer|AVSpeechSynthesizer|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|DispatchSource|NotificationCenter|UserDefaults)\b/;
+  const probePath = path.join(ENGINE_DIR, "SessionProbe.swift");
+  const speakerPath = path.join(ENGINE_DIR, "PreviewSpeaker.swift");
+  const smokePath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/SpeechSessionSmokeTests.swift");
+  const probeTestsPath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/Engine/SessionProbeTests.swift");
+
+  assert.deepEqual(swiftImports(probePath).sort(), ["ForayEngineCore", "Foundation"], "SessionProbe.swift imports only Foundation and the core");
+  const probe = stripSwiftComments(fs.readFileSync(probePath, "utf8"));
+  assert.doesNotMatch(probe, PLATFORM, "the probe reaches a platform API; it must drive the engine, not the world");
+  assert.doesNotMatch(probe, /seams\.(speaker\.speak|deck|session)\b/, "the probe speaks, plays and activates only through the core");
+  assert.match(probe, /@MainActor\s+final class SessionProbe \{/);
+  assert.match(probe, /static let armDelayMs: Double = 10_000/, "the card's 10 s to lock the phone");
+  assert.match(swiftFuncBody(probe, "speak"), /engine\.handle\(\.command\(\.audition\(text: Self\.line, voiceId: nil\), source: \.audition\)\)/,
+    "the line goes through the core's audition path (OQ-5)");
+  assert.match(swiftFuncBody(probe, "speechEnded"), /engine\.handle\(\.command\(\.play, source: \.tap\)\)/,
+    "the play after didFinish goes through the core, in the same call");
+  assert.match(swiftFuncBody(probe, "finish"), /if probeStartedPlay, engine\.state\.isRunning \{\s*engine\.handle\(\.command\(\.pause, source: \.tap\)\)/,
+    "the probe pauses only a play it started");
+  assert.match(swiftFuncBody(probe, "finish"), /row\("speech-then-play"/, "the DV-9 row plan §10 names");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "handle"), /if case \.command\(\.probeSession, _\) = input \{[\s\S]*?SessionProbe\(engine: self\)[\s\S]*?return probe\.arm\(\)/,
+    "probeSession is the host's: it arms the probe before the core sees it");
+  const builders = [...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")), ...swiftFilesUnder(path.join(CORE_DIR, "Sources"))]
+    .flatMap((file) => [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/\bSessionProbe\(/g)].map(() => path.basename(file)));
+  assert.deepEqual(builders, ["ForayEngine.swift"], "the probe is built in one place, the host's probeSession branch");
+  const teardown = swiftFuncBody(host, "teardown");
+  assert.match(teardown, /seams\.speaker\.onFinish = nil/, "teardown drops the synthesizer's callback");
+  assert.match(teardown, /probe\?\.cancel\(\)/, "teardown drops a probe in flight");
+  assert.match(swiftFuncBody(host, "start"), /seams\.speaker\.onFinish = \{[\s\S]*?probe\?\.speechEnded\(end\)/, "didFinish reaches the probe");
+
+  const speaker = stripSwiftComments(fs.readFileSync(speakerPath, "utf8"));
+  assert.match(speaker, /final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate \{/);
+  assert.match(swiftFuncBody(speaker, "makeSynthesizer"), /usesApplicationAudioSession = true/, "the engine's synthesizer speaks through the app's session, said out loud");
+  assert.match(swiftFuncBody(speaker, "utterance"), /\.rate = AVSpeechUtteranceDefaultSpeechRate/, "narration is 1x, Apple's default rate (OQ-3)");
+  const speak = swiftFuncBody(speaker, "speak");
+  const guardAt = speak.search(/if !config\.sessionIsActive\(\) \{[\s\S]*?config\.diag\([\s\S]*?FaultKind\.implicitActivation[\s\S]*?config\.debugFault\(/);
+  assert.ok(guardAt >= 0 && guardAt < speak.indexOf("synthesizer.speak("), "the implicit-activation guard runs before the synthesizer speaks");
+  const synthesizers = [...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")), ...swiftFilesUnder(path.join(CORE_DIR, "Sources"))]
+    .flatMap((file) => [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/\bAVSpeechSynthesizer\(\)/g)].map(() => path.basename(file)));
+  assert.deepEqual(synthesizers, ["PreviewSpeaker.swift"], "one synthesizer configuration in the engine");
+  assert.match(speaker, /init\(config: Config\) \{[^}]*synthesizer = PreviewSpeaker\.makeSynthesizer\(\)/, "the speaker speaks through that configuration");
+
+  const smoke = stripSwiftComments(fs.readFileSync(smokePath, "utf8"));
+  for (const piece of [/AudioSessionOwner\(config:/, /PreviewSpeaker\(config:/, /\bAVDeck\(config:/]) {
+    assert.match(smoke, piece, "the smoke runs the production pieces");
+  }
+  assert.match(smoke, /static let tag = "NE-25c"/);
+  assert.match(smoke, /title: "NE-25c: [^"]*\(Simulator smoke, not evidence\)"/, "the smoke says what it is in the job summary");
+  assert.match(smoke, /tag: Self\.tag\s*\)/);
+  assert.match(smoke, /MeasurementReport\.json\(trial, tag: Self\.tag\)/);
+  assert.ok(swiftTestNames(smokePath).includes("testADeckStartedInTheSameTurnAsDidFinishPlaysWithinOneSecond"));
+  for (const name of [
+    "testWhileHeldTheProbeSpeaksThenPlaysThenPausesAndRecordsIt",
+    "testAPlayAfterTheLineActivatesWhenTheSessionWasLostAndRecordsTheCost",
+    "testARelinquishCancelsARunInFlight",
+  ]) {
+    assert.ok(swiftTestNames(probeTestsPath).includes(name), `NE-25c's ${name} is gone`);
+  }
+  const doc = fs.readFileSync(path.join(ROOT, "docs/ios-native-engine-measurements.md"), "utf8");
+  const section = doc.slice(doc.indexOf("## 11. NE-25c"));
+  assert.ok(doc.includes("## 11. NE-25c"), "the measurements doc has NE-25c's section");
+  assert.match(section, /\*\*Simulator smoke\. Not evidence\.\*\*/, "the smoke is labelled a smoke");
+  assert.match(section, /\*\*run \d{8,}\*\*/, "the smoke's numbers name the CI run they came from");
+  assert.match(section, /probe kind=speech-then-play/, "the doc tells NE-33 how to read the DV-9 row");
+});
+
 /* ───────────── audit round 2 (2026-09-23): the platform contract, pinned ───────────── */
 
 test("the iOS track pair follows the ROUTE, and the page's track handlers are not mirrored onto WebKit (round 2, p-impatient-3)", () => {
