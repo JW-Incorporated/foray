@@ -127,6 +127,38 @@
         "media-episode/media-actions-vocabulary"
       ]
     },
+    "number-format": {
+      "files": {
+        "player/parity/fixtures/number-format/number-format.json": "d8a4518002e1bd4d87001b9aea26a7b59328cccdf85d5d32f157ee2c1676c4d3"
+      },
+      "ids": [
+        "number-format/zero",
+        "number-format/negative-zero",
+        "number-format/one",
+        "number-format/negative-integer",
+        "number-format/integral-double-3600",
+        "number-format/integral-double-2-pow-53",
+        "number-format/point-one",
+        "number-format/point-one-plus-point-two",
+        "number-format/one-third-of-100",
+        "number-format/times-100-noise",
+        "number-format/typical-position",
+        "number-format/eighths-exact",
+        "number-format/plain-1e20",
+        "number-format/plain-just-below-1e21",
+        "number-format/exponent-from-1e21",
+        "number-format/exponent-1.5e300",
+        "number-format/max-value",
+        "number-format/plain-down-to-1e-6",
+        "number-format/plain-2.5e-5",
+        "number-format/exponent-below-1e-6",
+        "number-format/negative-exponent-small",
+        "number-format/min-value",
+        "number-format/nan-is-null",
+        "number-format/infinity-is-null",
+        "number-format/negative-infinity-is-null"
+      ]
+    },
     "queue-state": {
       "files": {
         "player/parity/fixtures/queue-state/queue-state.json": "4df9d1b0e362130491fad057544179b395cf733e891cfb0a5d641126edc8da51"
@@ -287,6 +319,60 @@
         "rate/next-nan",
         "rate/next-string-fast",
         "rate/next-0"
+      ]
+    },
+    "rows": {
+      "files": {
+        "player/parity/fixtures/rows/cp-foray.json": "8650397288bcb4fceb6f5536e74bab418a7eea53f661a5bb35eaaecf71a18b7e",
+        "player/parity/fixtures/rows/cp-last-episode.json": "6e887ec9382990d4e13e57a03a3d5df9d034f326693ba7795669eb6e391013fa",
+        "player/parity/fixtures/rows/cp-pos.json": "e5340129e65c004790ad3c22d79175cf54c3b96e9ab357ed29deedda8ce31340",
+        "player/parity/fixtures/rows/owned-prefixes.json": "24c2c31468dadd4e86b89e48a95423aee467344ee711d4988a5ed9a977cd1590"
+      },
+      "ids": [
+        "rows/cp-foray-typical",
+        "rows/cp-foray-minimal-defaults",
+        "rows/cp-foray-blank-title-is-empty",
+        "rows/cp-foray-non-string-title-is-empty",
+        "rows/cp-foray-negative-index-is-minus-one",
+        "rows/cp-foray-fractional-index-is-minus-one",
+        "rows/cp-foray-index-zero-kept",
+        "rows/cp-foray-blank-segment-id-is-null",
+        "rows/cp-foray-negative-into-is-zero",
+        "rows/cp-foray-nan-into-is-zero",
+        "rows/cp-foray-negative-elapsed-clamps-to-zero",
+        "rows/cp-foray-float-noise-kept",
+        "rows/cp-foray-escaped-title-and-ids",
+        "rows/cp-foray-refuses-zero-total",
+        "rows/cp-foray-refuses-nan-elapsed",
+        "rows/cp-foray-refuses-blank-id",
+        "rows/cp-last-episode-snapshot-order-and-extras-dropped",
+        "rows/cp-last-episode-minimal",
+        "rows/cp-last-episode-null-and-absent-fields-dropped",
+        "rows/cp-last-episode-falsy-values-kept",
+        "rows/cp-last-episode-numeric-id",
+        "rows/cp-last-episode-escaped-text",
+        "rows/cp-last-episode-float-durations",
+        "rows/cp-last-episode-no-id-writes-nothing",
+        "rows/cp-last-episode-empty-id-writes-nothing",
+        "rows/cp-last-episode-null-item-writes-nothing",
+        "rows/cp-pos-typical",
+        "rows/cp-pos-whole-seconds-print-as-integers",
+        "rows/cp-pos-float-noise-kept",
+        "rows/cp-pos-no-meta-duration-null",
+        "rows/cp-pos-meta-absent-duration-null",
+        "rows/cp-pos-nan-duration-null",
+        "rows/cp-pos-infinite-duration-null",
+        "rows/cp-pos-string-duration-null",
+        "rows/cp-pos-zero-seconds-written",
+        "rows/cp-pos-negative-zero-prints-zero",
+        "rows/cp-pos-epoch-timestamp",
+        "rows/cp-pos-id-with-colon-and-unicode",
+        "rows/cp-pos-refuses-nan-seconds",
+        "rows/cp-pos-refuses-infinite-seconds",
+        "rows/cp-pos-refuses-negative-seconds",
+        "rows/cp-pos-refuses-string-seconds",
+        "rows/cp-pos-refuses-empty-id",
+        "rows/owned-prefixes"
       ]
     },
     "seam-gap": {

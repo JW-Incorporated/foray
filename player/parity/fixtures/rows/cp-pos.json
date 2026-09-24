@@ -1,0 +1,212 @@
+{
+  "family": "rows",
+  "module": "player/parity/rows.js",
+  "note": "cp_pos:<id>, written by PositionStore.save (player/position-store.js makePositionRecord). Each expect is the exact key and string that reached setItem; [] is a refused write. Recorded, never authored (NE-10j): the Swift EngineStore (NE-10s, NE-19) must write these bytes.",
+  "cases": [
+    {
+      "id": "rows/cp-pos-typical",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", 1234.5, { "duration": 3600 }, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:ep-1",
+            "value": "{\"seconds\":1234.5,\"duration\":3600,\"updated_at\":\"2026-09-21T14:13:20.123Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-whole-seconds-print-as-integers",
+      "covers": [],
+      "note": "600 and 3600 are doubles; JSON prints them with no .0, and a .000 timestamp keeps its zeros",
+      "call": "cpPosRow",
+      "args": ["ep-1", 600, { "duration": 3600 }, 1790000000000],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:ep-1",
+            "value": "{\"seconds\":600,\"duration\":3600,\"updated_at\":\"2026-09-21T14:13:20.000Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-float-noise-kept",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", 0.30000000000000004, { "duration": 1799.9999999999998 }, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:ep-1",
+            "value": "{\"seconds\":0.30000000000000004,\"duration\":1799.9999999999998,\"updated_at\":\"2026-09-21T14:13:20.123Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-no-meta-duration-null",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", 42, {}, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:ep-1",
+            "value": "{\"seconds\":42,\"duration\":null,\"updated_at\":\"2026-09-21T14:13:20.123Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-meta-absent-duration-null",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", 42, { "$undefined": true }, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:ep-1",
+            "value": "{\"seconds\":42,\"duration\":null,\"updated_at\":\"2026-09-21T14:13:20.123Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-nan-duration-null",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", 42, { "duration": { "$num": "NaN" } }, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:ep-1",
+            "value": "{\"seconds\":42,\"duration\":null,\"updated_at\":\"2026-09-21T14:13:20.123Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-infinite-duration-null",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", 42, { "duration": { "$num": "Infinity" } }, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:ep-1",
+            "value": "{\"seconds\":42,\"duration\":null,\"updated_at\":\"2026-09-21T14:13:20.123Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-string-duration-null",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", 42, { "duration": "3600" }, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:ep-1",
+            "value": "{\"seconds\":42,\"duration\":null,\"updated_at\":\"2026-09-21T14:13:20.123Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-zero-seconds-written",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", 0, { "duration": 3600 }, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:ep-1",
+            "value": "{\"seconds\":0,\"duration\":3600,\"updated_at\":\"2026-09-21T14:13:20.123Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-negative-zero-prints-zero",
+      "covers": [],
+      "note": "-0 passes the seconds < 0 check, and JSON prints it as 0",
+      "call": "cpPosRow",
+      "args": ["ep-1", { "$num": "-0" }, { "duration": 3600 }, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:ep-1",
+            "value": "{\"seconds\":0,\"duration\":3600,\"updated_at\":\"2026-09-21T14:13:20.123Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-epoch-timestamp",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", 1, {}, 0],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:ep-1",
+            "value": "{\"seconds\":1,\"duration\":null,\"updated_at\":\"1970-01-01T00:00:00.000Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-id-with-colon-and-unicode",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["urn:ep:é/1", 12.25, { "duration": 60 }, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_pos:urn:ep:é/1",
+            "value": "{\"seconds\":12.25,\"duration\":60,\"updated_at\":\"2026-09-21T14:13:20.123Z\",\"source\":\"local\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-pos-refuses-nan-seconds",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", { "$num": "NaN" }, { "duration": 3600 }, 1790000000123],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "rows/cp-pos-refuses-infinite-seconds",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", { "$num": "Infinity" }, { "duration": 3600 }, 1790000000123],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "rows/cp-pos-refuses-negative-seconds",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", -1, { "duration": 3600 }, 1790000000123],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "rows/cp-pos-refuses-string-seconds",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["ep-1", "12", { "duration": 3600 }, 1790000000123],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "rows/cp-pos-refuses-empty-id",
+      "covers": [],
+      "call": "cpPosRow",
+      "args": ["", 12, { "duration": 3600 }, 1790000000123],
+      "expect": { "return": [] }
+    }
+  ]
+}

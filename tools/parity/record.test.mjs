@@ -29,13 +29,15 @@ import { loadFixtures } from "../../player/parity/runner.js";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /** Repo-relative module paths plus everything they import relatively,
-    transitively. NE-12j's media-episode family reaches player/media-session.js,
-    which imports foray-queue.js, which imports seek-policy.js (and its
-    adapter, player/parity/media-actions.js, imports media-session.js):
-    copying only each fixture's `module` left a scratch tree whose whole-tree
-    record could not run a single media-episode case. Static
-    `import ... from "./x.js"` / `export ... from` is the only shape the player
-    modules use. */
+    transitively. NE-10j's rows adapter (player/parity/rows.js) reaches three
+    player modules, one of which imports a fourth, and NE-12j's media-episode
+    family reaches player/media-session.js, which imports foray-queue.js,
+    which imports seek-policy.js (and its adapter,
+    player/parity/media-actions.js, imports media-session.js): copying only
+    each fixture's `module` left a scratch tree whose whole-tree record could
+    not run a single rows or media-episode case. Static
+    `import ... from "./x.js"` / `export ... from` is the only shape the
+    player modules use. */
 function withImports(rels) {
   const out = new Set();
   const todo = [...rels];
