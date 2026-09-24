@@ -1499,15 +1499,18 @@ function starBtn(id) {
    control shows a plain "in Up Next" state rather than disappearing, mirroring
    starBtn's on/off toggle so the row keeps giving feedback without navigating
    away — the plan's explicit "browse and add without losing your place" ask. */
-function upNextBtn(id) {
+function upNextBtn(id, item = null) {
   if (!id) return "";
   const on = isQueued(id);
   /* NO BUTTON FOR WHAT addToQueue REFUSES (audit round 2 review of
      p-impatient-10). The refusal moved into addToQueue, but epRow and the
      episode page still drew "+ Up Next" beside "Not available to play", and a
      tap turned it "✓ Up Next" while nothing was added. `liveEpisode` is the
-     same definition addToQueue checks, so the button and the refusal agree. */
-  if (!on && !liveEpisode(id)) return "";
+     same definition addToQueue checks, so the button and the refusal agree;
+     a row builder that holds the item passes it, and a row whose own item
+     carries audio keeps its button (bindUpNext paints from the queue either
+     way, so a refusal is never shown as a success). */
+  if (!on && !(item && item.audio_url) && !liveEpisode(id)) return "";
   const { text, attr } = toggleMarkup(on, UP_NEXT_TOGGLE);
   return `<button class="up-next ${on ? "on" : ""}" data-upnext="${esc(id)}"${attr}>${text}</button>`;
 }
@@ -9462,7 +9465,7 @@ function epRow(item, idx, ctx, nextIdx) {
       <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
       <div class="s">${joinMeta(showNameLink(item.show, item.show_id), fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</div>
     </div>
-    ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${unavailable}
+    ${inApp}${starBtn(item.id)}${upNextBtn(item.id, item)}${unavailable}
   </div>`;
 }
 
@@ -10040,7 +10043,7 @@ function renderEpisode(id) {
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="" decoding="async" width="600" height="600">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
-      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}</div>
       ${item.audio_url ? "" : `<p class="note">${esc(NOT_PLAYABLE_WHY)}</p>`}
       ${episodeDescriptionSectionHtml(item)}
       ${episodeChaptersHtml(item)}
