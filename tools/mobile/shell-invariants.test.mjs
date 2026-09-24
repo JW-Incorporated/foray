@@ -2589,6 +2589,13 @@ test("NE-05: the parity library imports no XCTest, reads the fixtures in place, 
   assert.match(code, /reportKey\s*=\s*"PARITY_REPORT"/);
   assert.ok(code.includes('"parity family=\\(family) cases=\\(cases)'),"the family log line the plan names (parity family=<f> cases=<n>)");
   assert.match(code, /#filePath/, "the runner must be able to find player/parity without any environment");
+  /* NE-13: the schema promises "the Swift runner skips these files by this
+     flag". Without it, every id of a jsOnly family (continuation) is
+     "unaccounted" on macOS while JS stays green, and record.mjs refuses the
+     swift-pending entries that would quiet it. MUTATION: drop the
+     `document["jsOnly"]` read from Fixtures.swift; this fails here. */
+  assert.match(code, /document\["jsOnly"\]/, "FixtureFile must read the schema's jsOnly flag");
+  assert.match(code, /case jsOnly = "js-only"/, "the books need a js-only outcome: never run, never owed");
 });
 
 test("NE-05: both wrappers run the seam-gap and compare families and the whole manifest, and the registry holds both runners", () => {
