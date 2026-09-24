@@ -167,6 +167,11 @@ function defaultGit(args) {
 
 const cell = (v) => String(v).replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 
+/** "none yet" says a port card owes the family. A JS-only family (plan §5.5
+ *  C-2: `continuation` is precomputed by the page and never ported) is owed by
+ *  nobody, and calling it "none yet" would read as a missing port. */
+const runnerCell = (f) => (f.jsOnly ? "JS only (never ported)" : f.hasRunner ? "yes" : "none yet");
+
 /** The markdown engine-parity appends to $GITHUB_STEP_SUMMARY.
  *
  *  `report` is parity-report.json as ForayEngineParity's `SuiteReport` writes
@@ -202,7 +207,7 @@ export function summaryMarkdown(report, { maxFailures = 25 } = {}) {
   );
   for (const f of families) {
     out.push(
-      `| ${cell(f.family)} | ${f.cases} | ${f.executed} | ${f.passed} | ${f.owed} | ${f.failed} | ${f.hasRunner ? "yes" : "none yet"} | ${f.floor ?? ""} |`
+      `| ${cell(f.family)} | ${f.cases} | ${f.executed} | ${f.passed} | ${f.owed} | ${f.failed} | ${runnerCell(f)} | ${f.floor ?? ""} |`
     );
   }
   out.push(

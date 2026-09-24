@@ -242,6 +242,21 @@ test("summary: one row per family, a total, and the books stated", () => {
   assert.doesNotMatch(md, /RED/);
 });
 
+test("summary: a JS-only family is labelled as such, not as a port nobody has written", () => {
+  /* MUTATION: drop the jsOnly branch of runnerCell -> `continuation` (48
+     cases the page precomputes, plan §5.5 C-2) reads "none yet" beside the
+     families that really are owed, and someone opens a port card for it. */
+  const md = summaryMarkdown({
+    ...REPORT,
+    families: [
+      ...REPORT.families,
+      { family: "continuation", hasRunner: false, jsOnly: true, cases: 48, executed: 0, passed: 0, owed: 0, failed: 0 },
+    ],
+  });
+  assert.match(md, /\| continuation \| 48 \| 0 \| 0 \| 0 \| 0 \| JS only \(never ported\) \|/);
+  assert.match(md, /\| queue-state \|.*\| none yet \|/);
+});
+
 test("summary: failures and problems turn the headline red and are listed", () => {
   /* MUTATION: compute the headline from families' `failed` only -> a
      whole-tree problem (a floor not reached, a stray fixture id) reads as a

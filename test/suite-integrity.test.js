@@ -1201,7 +1201,7 @@ const FLOORS = {
      changed", the parity family table, ios-gate's success-only verdict, and
      release refusal on a red engine-parity or ios-kit. Every test names its
      mutation; each was run. Zero slack: these become required checks. */
-  "tools/ci/engine-ci.test.mjs": 34,
+  "tools/ci/engine-ci.test.mjs": 35,
   /* The deck-drift rule (machinery audit finding 6). Decks whose PRs edit the
      deck in the same commit had a 0% false-claim rate; the drift is all in the
      ones where the marker floats free of the merge, and it runs both ways — one
