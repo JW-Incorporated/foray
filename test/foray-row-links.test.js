@@ -408,6 +408,19 @@ test("the narrator has ONE name on the row, in the accessible name, and in the p
   assert.ok(!/4a's narrator/.test(strip), "the strip speaks the constant, not a literal of its own");
 });
 
+test("a clip row names the EPISODE it came from, beside the show; a narration row names none (p-foray-5)", () => {
+  /* The episode lived only in the credits block at the foot of the page, so a
+     caption leaning on it had nothing on the row. MUTATION (killed): drop
+     `episode` from forayRow's meta line — red. */
+  const { ctx } = mount();
+  const html = ctx.forayRow(beat());
+  const meta = /<div class="fy-meta">([\s\S]*?)<\/div>/.exec(html)[1];
+  assert.match(meta, /Being an Engineer<\/a> · <span class="fy-ep">S7E17<\/span> · 240s$/, `the meta line: ${meta}`);
+  assert.ok(!insideButton(html).includes("S7E17"), "on the meta line, not inside the play button");
+  const nar = ctx.forayRow(narration("Short bridge.", { episode_title: "never shown" }));
+  assert.ok(!nar.includes("fy-ep"), "a narration beat has no episode");
+});
+
 test("a long transcript renders clamped with an expander wired to it by id; a short one renders whole", () => {
   /* "for long transcripts, by default have them collapsed to a standard-sized
      card with some 'show more' functionality, which then expands in place."

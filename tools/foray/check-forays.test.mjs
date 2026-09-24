@@ -57,6 +57,7 @@ import {
   M4_LONG_CLIP_SEC,
   M4_SHARE_MAX,
   phonemeProblems,
+  captionProblems,
   scriptMentions,
   lexiconEntries,
   TTS_ENGINES,
@@ -196,6 +197,41 @@ test("a superseded Foray names a current successor and says why — as a rule fo
     mutate(f);
     assert.match(supersession(f).join("\n"), rx, `${what} must be refused`);
   }
+});
+
+test("captionProblems: a bare leading name must be introduced by the show or episode title; a gendered pronoun needs a name (p-foray-5)", () => {
+  /* MUTATION (killed): drop the anchor test (flag every leading name) — the
+     "with Tyler Tringas" row flips. MUTATION (killed): drop the pronoun rule —
+     the "shares stay his" row flips. */
+  const tbf = { show: "The Bootstrapped Founder", episodeTitle: "309: Funded!" };
+  const rows = [
+    ["Kahl names the power imbalance that makes venture money wrong", tbf, 1, "a bare surname nobody introduced"],
+    ["Roizen's three tests for any seed cheque", tbf, 1, "a bare possessive"],
+    ["Tringas explains why a fund wrote its own instrument", { show: "The Bootstrapped Founder", episodeTitle: "328: Negotiating Bootstrapper Funding with Tyler Tringas" }, 0, "the episode title introduces him"],
+    ["The terms: shares stay his until he sells", tbf, 1, "whose shares?"],
+    ["The host names the power imbalance that makes venture money wrong", tbf, 0, "listener voice"],
+    ["Survivorship bias hides the number: 50 to 75 percent of seed companies fail", tbf, 0, "a capitalised word that is not a name"],
+    ["Stewart says her simulations produced a synestia", { show: "X", episodeTitle: "Sarah Stewart on moons" }, 0, "an introduced name anchors the pronoun"],
+    ["", tbf, 0, "nothing to caption"],
+  ];
+  for (const [why, src, n, what] of rows) assert.equal(captionProblems(why, src).length, n, `${what}: "${why}"`);
+});
+
+test("the published Foray's captions: the frozen copy carries the two curator's notes, the live data none (p-foray-5)", () => {
+  /* The FROZEN capital-types-1 is the Foray as the audit found it, so it is the
+     standing proof the gate catches what it was built for; `data/` carries the
+     rewritten lines. MUTATION (killed): drop the published-status call to
+     captionProblems from checkForays — the frozen list is empty, red. */
+  const notes = (f) => errorsFor(f).filter((e) => /p-foray-5/.test(e));
+  const frozenNotes = notes(frozen);
+  assert.equal(frozenNotes.length, 2, frozenNotes.join("\n"));
+  assert.match(frozenNotes.join("\n"), /bare name "Kahl"/);
+  assert.match(frozenNotes.join("\n"), /"his" has no one in the line/);
+  assert.deepEqual(notes(live), [], "the committed captions are listener copy");
+  /* Drafts are not gated: the same line on a draft is a curation note until it is promoted. */
+  const f = structuredClone(frozen);
+  forayBy(f, "capital-types-1").status = "draft";
+  assert.deepEqual(notes(f), []);
 });
 
 test("exactly one committed Foray is published, and it is the one that was named", () => {

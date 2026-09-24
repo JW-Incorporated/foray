@@ -9502,7 +9502,13 @@ function forayRow(entry) {
      that comes back empty (a beat with no show at all) does not leave a
      dangling separator. */
   const credit = forayCreditHtml(entry);
-  const metaHtml = [credit, dur ? esc(dur) : ""].filter(Boolean).join(" · ");
+  /* WHICH EPISODE (audit round 2, p-foray-5). The row said the show and the
+     length, and the episode a clip came from lived only in the credits block
+     at the foot of the page, so a caption about "his" shares or "Kahl" had
+     nothing on the row to hang on. A narration beat has no episode. */
+  const episode = !isForayNarration(entry) && entry.episode_title
+    ? `<span class="fy-ep">${esc(entry.episode_title)}</span>` : "";
+  const metaHtml = [credit, episode, dur ? esc(dur) : ""].filter(Boolean).join(" · ");
   /* The credit line is hoisted OUT of the play button, because a link inside a
      button is invalid HTML whose click never survives the parent's handler —
      the same rule that put the thumbs outside it. It reads in the same place it
