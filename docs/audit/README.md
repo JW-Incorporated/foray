@@ -122,11 +122,11 @@ another lane and every row no lane was given, and fixed the six still live
 
 | disposition | QA | persona | total |
 |---|---:|---:|---:|
-| fixed | 174 | 62 | 236 |
+| fixed | 175 | 62 | 237 |
 | already-fixed (before the lanes, or when audited) | 1 | 3 | 4 |
 | refuted (verifier) | 16 | — | 16 |
 | deliberate (verifier) | — | 16 | 16 |
-| deferred-founder | 2 | 3 | 5 |
+| deferred-founder | 1 | 3 | 4 |
 | deferred-device | 0 | 0 | 0 |
 | open | 0 | 0 | 0 |
 | **all rows** | **193** | **84** | **277** |
@@ -150,8 +150,9 @@ note says so: the notched-inset change (qa 13), the native Preferences tier
   (PR #744) made the Jump back in and subject cards stretched-link cards and
   deleted the unreachable Continue banner, so it is fixed — still worth a look on
   a phone, as the PR body says.
-- **deferred-founder** (7): qa 28, 146; persona 14, 44, 56, 65, 82. Each is one
-  of the questions below. Questions 5, 6 and 16–18 were answered on 2026-09-23
+- **deferred-founder** (6): qa 146; persona 14, 44, 56, 65, 82. Each is one
+  of the questions below. qa 28 was answered on 2026-09-24 ("1x for now") and
+  is fixed on `fix/narration-1x`. Questions 5, 6 and 16–18 were answered on 2026-09-23
   (`docs/DECISIONS.md`, "the visual changes - have at them"): qa 43, 47, 51,
   54, 59, 60 and persona 10, 40, 58 are fixed in visual pass 1 (PR #744).
 
@@ -161,7 +162,9 @@ Playback
 1. Spoken (synthesized) narration plays at the listener's speed; `resetRateForTTS`
    says that is deliberate, while pre-rendered narration and corner case #18 say
    1.0x. Which? Either way the `rate.deferred … plays at 1.0x` log line is wrong
-   for spoken lines (qa 28).
+   for spoken lines (qa 28). **Answered 2026-09-24:** "1x for now, but maybe we
+   change later. I recall 1x felt like 0.6x or so, it was very slow." Fixed on
+   `fix/narration-1x`: spoken lines and the voice Preview are 1x.
 2. When a call, Siri or a navigation prompt ends and iOS says audio may resume,
    should 4a resume by itself like Apple Podcasts? Doing it safely first needs
    #699 §1 (telling a chosen pause from an interruption).

@@ -196,14 +196,44 @@ const NARRATION_TICK_MS = 250;
     A suspension is asked about as an interruption instead. */
 const NARRATION_SUSPEND_GAP_MS = 5_000;
 
+/** The speed every SYNTHESIZED narration line is spoken at, whatever speed the
+    listener has chosen for the podcasts around it. Founder ruling, 2026-09-24
+    (round-1 qa 28, OQ-3 of docs/native-engine-plan.md): *"1x for now, but maybe
+    we change later. I recall 1x felt like 0.6x or so, it was very slow."*
+
+    Until that ruling a script-only line rode the listener's `this._rate` into
+    `speak()` — on purpose, on the theory that a synthesized bridge did not carry
+    a rendered file's "our pace, not yours" argument — so at 2x the narrator was
+    rushed while a RENDERED bridge in the same Foray was forced back to 1.0x by
+    `resetRateForTTS`, and `setRate`'s own "narration plays at 1.0x" telemetry
+    was untrue for the newest narration path. Now both kinds of narration speak
+    at one speed, corner case #18's rule holds for both, and the Foray clock
+    (wall clock for a spoken line, clamped to the item's 1x length by
+    foray-resolve.js) no longer jumps at the seam after a line spoken at 2x.
+
+    What 1 MEANS on each platform is the plugin's job, not this file's: 1 is
+    `TextToSpeech.setSpeechRate(1.0)` on Android and `utterance.rate = 1` on Web
+    Speech (both "normal" by their own specs), and
+    `AVSpeechUtteranceDefaultSpeechRate` on iOS via
+    `ForayTtsPlugin.utteranceRate(playbackMultiplier:)`. None of the three lands
+    below its platform's normal rate, so the "felt like 0.6x" in the ruling is
+    Apple's own default pace as heard, not a mapping here — traced in
+    `mobile/plugins/foray-tts/README.md` and pinned by
+    `tools/mobile/foray-tts.test.mjs`.
+
+    Also the speed the voice picker's Preview speaks at (`client.js`
+    `auditionVoice`): a preview should sound like the narration it previews. */
+export const NARRATION_RATE = 1;
+
 /** How long a spoken line may run past its estimate before the ticker stops
     trusting the synthesiser (audit round 2, native-3). `AVSpeechSynthesizer`
     stops when the audio session is taken by a call or Siri and reports no
     `didCancel` for it, so a Foray interrupted mid-sentence said "Playing" over
     silence forever: the only advance was the `finished` event that would never
     come, and the ticker re-armed itself with no deadline. The deadline is the
-    item's runtime at the listener's rate (a 0.5x line takes twice as long), times
-    this factor, plus the margin — generous, because advancing early cuts a slow
+    item's runtime at the speed it is spoken at (`NARRATION_RATE`, 1x since the
+    founder's 2026-09-24 ruling — never the listener's rate), times this factor,
+    plus the margin — generous, because advancing early cuts a slow
     voice off mid-word, and the cost of waiting is only that the stall lasts a
     little longer. */
 const NARRATION_DEADLINE_FACTOR = 1.5;
@@ -1336,9 +1366,8 @@ export class PlayerQueueManager {
         // for `backend.setRate` to mean anything about — and forcing 1.0x here
         // would be a no-op on the wrong object, not a safe default. A
         // synthesizer's rate is a property of the UTTERANCE, so it is already
-        // set — to the listener's own `this._rate`, not 1.0x, because a
-        // synthesized bridge does not carry the same "our pace, not yours"
-        // argument a rendered narration file does — at the `speak()` call
+        // set — to `NARRATION_RATE` (1x, founder 2026-09-24), the same speed
+        // this effect forces on a rendered bridge — at the `speak()` call
         // inside `_loadItem`/`_speakNarration`, before this effect ever runs.
         if (this._loadedIsSynth) return;
         return this.backend.setRate(1.0);
@@ -1581,14 +1610,15 @@ export class PlayerQueueManager {
       can treat the two paths identically apart from the branch that picks
       between them.
 
-      THE RATE IS READ HERE, AT CALL TIME, not cached at construction and not
-      the hardcoded 1.0x `resetRateForTTS` forces on a rendered bridge. §7
-      item 2 is explicit that this is the mechanism that has to change: "rate
-      is a property of the utterance, not the media element" for a
-      synthesizer, so the listener's current speed (`this._rate`, the same
-      value `cp_rate` seeded — see playback-rate.js) is passed straight into
-      the plugin's own `speak()` call instead of being applied to a media
-      element that, for this item, does not exist.
+      THE RATE RIDES ON THE UTTERANCE, and it is `NARRATION_RATE` — 1x — not
+      the listener's `this._rate`. §7 item 2 is explicit that "rate is a
+      property of the utterance, not the media element" for a synthesizer, so
+      the speed goes into the plugin's own `speak()` call rather than onto a
+      media element that, for this item, does not exist. WHICH speed was a
+      founder question (round-1 qa 28) until 2026-09-24: *"1x for now, but
+      maybe we change later."* This line used to pass `this._rate`, so at 2x a
+      spoken bridge was rushed while a rendered one was forced to 1.0x; see
+      `NARRATION_RATE` for the whole ruling.
 
       A refusal (`{ ok: false }`) or a thrown rejection is NOT this method's
       failure to swallow — `foray-tts.js`'s own `speak()` already never
@@ -1608,9 +1638,9 @@ export class PlayerQueueManager {
       (`_playTransitionBridge`) and both call sites need the same start/finish
       bookkeeping around one `speak()` call rather than a second copy of it.
 
-      VOICE (V-01): `this._voice`, read here at call time for the same reason
-      `this._rate` is — a choice made from the page while nothing is speaking
-      must reach the very next utterance, not just the one after a rebuild.
+      VOICE (V-01): `this._voice`, read here at call time — a choice made from
+      the page while nothing is speaking must reach the very next utterance,
+      not just the one after a rebuild.
       `null` is passed through unchanged; `foray-tts.js`'s own `speak()`
       contract treats an absent `voice` as "pick the best installed tier",
       which is exactly the fallback V-01's design wants. A requested-but-not-
@@ -1619,7 +1649,7 @@ export class PlayerQueueManager {
       unchanged, so a page can show the one-line notice V-01 specifies. */
   async _speakNarration(item) {
     if (!this._tts) throw new Error(`no on-device TTS plugin wired for ${item.id}`);
-    const result = await this._tts.speak(item.script, { rate: this._rate, voice: this._voice });
+    const result = await this._tts.speak(item.script, { rate: NARRATION_RATE, voice: this._voice });
     if (result && result.ok === false) {
       /* A failed speak is not a voice-fallback report — clear the stale flag
          from whatever spoke last, rather than leaving `lastVoiceFallback`
@@ -1892,7 +1922,7 @@ export class PlayerQueueManager {
        as finished — the same advance a `finished` event makes, once, through the
        same guards — so a Foray interrupted mid-sentence moves on instead of
        saying Playing over nothing until somebody presses pause and play. */
-    const deadline = narrationDeadlineSec(this._currentItem(), this._rate);
+    const deadline = narrationDeadlineSec(this._currentItem(), NARRATION_RATE);
     const elapsed = this.narrationElapsedSec;
     if (deadline > 0 && typeof elapsed === "number" && elapsed > deadline) {
       this._emit(`tts.deadline item=${this._currentItem()?.id ?? "?"} elapsed=${Math.round(elapsed)}s limit=${Math.round(deadline)}s — treated as finished`);
@@ -2495,8 +2525,11 @@ export class PlayerQueueManager {
     `finished` that is not coming (native-3). Zero — no deadline — when the item
     carries no runtime at all, because a limit derived from nothing would cut
     every unmeasured line off at the margin. The runtime is stretched by the
-    listener's rate only when the rate is slower than 1x: a faster rate ends
-    sooner, and the factor already covers an estimate that ran long. */
+    rate the line is SPOKEN at only when that is slower than 1x: a faster rate
+    ends sooner, and the factor already covers an estimate that ran long. The
+    one caller passes `NARRATION_RATE`, never the listener's rate — a line is
+    not spoken at the listener's rate, so a 0.75x listener must not have their
+    stall wait a third longer than the line can take. */
 function narrationDeadlineSec(item, rate) {
   const runtime = isNum(item?.duration_sec) && item.duration_sec > 0 ? item.duration_sec : 0;
   if (runtime <= 0) return 0;
