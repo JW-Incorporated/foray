@@ -522,16 +522,24 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      deleted. A copy on an older device is still `cp_`-prefixed, so the
      enumeration above clears it; policy §2 says so in prose.
 
-     29 -> 30 on 2026-09-24 (NE-13, docs/native-engine-plan.md §5.5):
+     29 -> 30 on 2026-09-23 (audit round 2, nav-10; founder question 11):
+     `cp_last_route`, the page the native shell reopens on a cold relaunch
+     (app.js § relaunchRoute). Written and read only inside the iOS/Android
+     shell, never on the web, never sent. Same mechanism: this count failed
+     first, then the policy check, until privacy-policy.md §1 got the row.
+
+     30 -> 31 on 2026-09-24 (NE-13, docs/native-engine-plan.md §5.5):
      `cp_engine_applied`, the page-owned watermark that makes applying an
      advance or a position the native iOS engine recorded while the page slept
      happen once (app.js § applyEngineAdvance). Sequence numbers, no ids.
      Same mechanism: this count failed first, then the policy check, until
-     privacy-policy.md §1 got the row. */
+     privacy-policy.md §1 got the row. (Both rows landed off 29 on parallel
+     branches — main's audit round 2 and engine/m1's NE-13 — so the merge that
+     joined them reads 29 -> 30 -> 31.) */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 30,
-    `expected 30 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 31,
+    `expected 31 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");
@@ -653,7 +661,7 @@ test("with no durable store published, the control says so instead of claiming s
   assert.strictEqual(result.ok, false);
   assert.strictEqual(result.local.reason, "no-durable-tier");
   assert.deepStrictEqual([...local.map.keys()].filter((k) => k.startsWith("cp_")), []);
-  assert.match(ui.status.textContent, /reload and try again/i);
+  assert.match(ui.status.textContent, /close 4a fully and try again/i);
 });
 
 /* ================= 3. the server rows ================= */
@@ -771,7 +779,7 @@ test("deleting never signs up a new anonymous account", async () => {
     "creating an account in order to delete one would leave a fresh row behind"
   );
   assert.strictEqual(result.remote.attempted, false, "no token on the device means no rows to reach");
-  assert.match(ui.status.textContent, /no account token/i);
+  assert.match(ui.status.textContent, /never signed in/i);
   assert.strictEqual(result.ok, true);
 });
 
@@ -1064,7 +1072,7 @@ test("a browser with no storage at all is told so, not told it is clear", async 
   assert.strictEqual(result.ok, false, "there is no storage to have cleared");
   assert.strictEqual(result.local.reason, "no-storage");
   assert.match(ui.status.textContent, /NOT fully clear/);
-  assert.match(ui.status.textContent, /taken storage away/);
+  assert.match(ui.status.textContent, /nowhere to store anything/);
 });
 
 test("a localStorage that throws on READ is handled, not left to throw mid-delete", async () => {
@@ -1398,7 +1406,7 @@ const STORE_LEDGER = {
   "idb:foray": { deleted: "every cp_ key — DurableStore.purge(), section 1" },
   "idb:foray_events": { deleted: "the outbound event queue — event-log purge(), section 10" },
   "idb:foray-directory": { kept: "the published Foray documents, identical for every listener" },
-  "cache:foray-shows-index-v1": { kept: "the public show-search index shards" },
+  "cache:foray-shows-index-v1": { deleted: "which search prefixes were fetched: clearShardCache(), section 11" },
   "cache:foray-gen-": { kept: "the app shell and catalogue files (sw.js)" },
   "cache:foray-pointer": { kept: "which app-shell generation is current (sw.js)" },
   "cache:foray-pending": { kept: "an app-shell generation mid-install (sw.js)" },
@@ -1503,4 +1511,278 @@ test("REVIEW: the policy says where cp_storage_stale really lives — the app's 
   assert.ok(row, "the policy has the row");
   assert.doesNotMatch(row, /IndexedDB only/, "the row may not say IndexedDB only");
   assert.match(row, /preferences store/, "it names the app's preferences store");
+});
+
+/* ================= 11. round 2: the deletion as a transaction ================= */
+
+test("persist-1: a refreshed token is saved the moment it arrives, so a retry after a failed table uses it", async () => {
+  /* Supabase spends the refresh token it answers. The refreshed session used to be
+     returned and thrown away, so after one failing table the device held a spent
+     token: every retry 401'd, and the next sync signed up a NEW account.
+     MUTATION THAT KILLS THIS: drop the `lsSet("cp_sb_session", fresh)` line. */
+  let run = 0;
+  const { arm, ctx, store, log } = await mount({
+    seed: { cp_sb_session: sessionRow({ expired: true }), cp_interests: "{}" },
+    reply: (url, method) => {
+      if (url.includes("/auth/v1/token")) {
+        return run === 1
+          ? { status: 200, json: { access_token: "at-2", refresh_token: "rt-2", user: { id: "uid-abc" } } }
+          : { status: 400 };   // rt-1 is spent after its one answer
+      }
+      if (method === "DELETE" && url.includes("/rest/v1/sessions") && run === 1) return { status: 500 };
+      return { status: 204 };
+    },
+  });
+  await arm();
+  run = 1;
+  const first = await ctx.deleteMyData();
+  assert.strictEqual(first.state, "remote-failed", "premise: one table refused");
+  await store.flush();
+  const saved = JSON.parse(store.getItem("cp_sb_session"));
+  assert.strictEqual(saved.refresh_token, "rt-2", "the device still holds the spent refresh token");
+  assert.strictEqual(saved.access_token, "at-2");
+
+  run = 2;
+  const before = log.length;
+  const second = await ctx.deleteMyData();
+  assert.strictEqual(second.ok, true, JSON.stringify(second.remote));
+  const dels = log.slice(before).filter((e) => e.kind === "fetch" && e.method === "DELETE");
+  assert.ok(dels.length > 0);
+  assert.ok(dels.every((d) => d.headers.Authorization === "Bearer at-2"), "the retry did not use the refreshed token");
+  assert.ok(!log.some((e) => e.kind === "fetch" && /\/auth\/v1\/signup/.test(e.url)));
+});
+
+test("persist-1: a store that refuses the write still hands the retry the refreshed token", async () => {
+  /* MUTATION THAT KILLS THIS: stop consulting `rotatedSession` in
+     existingAnonSession — the retry refreshes the spent rt-1, gets a 400, and
+     sends the expired at-1. */
+  let run = 0;
+  const { arm, ctx, local, log } = await mount({
+    noStore: true,
+    seed: { cp_sb_session: sessionRow({ expired: true }), cp_interests: "{}" },
+    reply: (url, method) => {
+      if (url.includes("/auth/v1/token")) {
+        return run === 1
+          ? { status: 200, json: { access_token: "at-2", refresh_token: "rt-2", user: { id: "uid-abc" } } }
+          : { status: 400 };
+      }
+      if (method === "DELETE" && url.includes("/rest/v1/sessions") && run === 1) return { status: 500 };
+      return { status: 204 };
+    },
+  });
+  const setItem = local.setItem;
+  local.setItem = (k, v) => {
+    if (k === "cp_sb_session") throw Object.assign(new Error("full"), { name: "QuotaExceededError" });
+    return setItem(k, v);
+  };
+  await arm();
+  run = 1;
+  assert.strictEqual((await ctx.deleteMyData()).state, "remote-failed");
+  assert.match(local.getItem("cp_sb_session"), /rt-1/, "premise: the write was refused");
+  run = 2;
+  const before = log.length;
+  await ctx.deleteMyData();
+  const dels = log.slice(before).filter((e) => e.kind === "fetch" && e.method === "DELETE");
+  assert.ok(dels.length > 0 && dels.every((d) => d.headers.Authorization === "Bearer at-2"));
+});
+
+test("persist-8: a sync in flight when Delete is tapped cannot put the old token back or send rows after the purge", async () => {
+  /* The refresh a sync started before the tap answers AFTER the device is clear.
+     It used to write cp_sb_session straight back and POST its batch.
+     MUTATION THAT KILLS THIS: drop the `epoch !== deletionEpoch` clause from
+     `syncOutlived` (the run is over, so `ddBusy` alone reads false). */
+  const { arm, ctx, store, log, cpKeys } = await mount({
+    seed: { cp_sb_session: sessionRow({ expired: true }), cp_interests: "{}" },
+    events: QUEUED,
+    reply: (url) => (url.includes("/auth/v1/token")
+      ? { status: 200, json: { access_token: "at-9", refresh_token: "rt-9", user: { id: "uid-abc" } } }
+      : { status: 204 }),
+  });
+  vm.runInContext("SYNC_SETTLE_MS = 20;", ctx);
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const real = ctx.fetch;
+  let held = false;
+  ctx.fetch = (url, opts) => {
+    if (!held && String(url).includes("/auth/v1/token")) { held = true; return gate.then(() => real(url, opts)); }
+    return real(url, opts);
+  };
+  const sync = ctx.trySyncEvents();
+  for (let i = 0; i < 5 && !held; i++) await new Promise((r) => setTimeout(r, 0));
+  assert.ok(held, "premise: the sync's refresh is on the wire");
+
+  await arm();
+  /* deleteMyData() now waits out SYNC_SETTLE_MS (20 ms) for the held sync, and
+     that timer is app.js's own — which this suite's sandbox unrefs. Nothing
+     else holds the event loop open here: on Windows the stdio pipes happen to,
+     but on Linux CI node found the loop empty mid-await and cancelled this test
+     and every one after it ("Promise resolution is still pending but the event
+     loop has already resolved", 2026-09-24). A ref'd keep-alive for the wait. */
+  const keepAlive = setInterval(() => {}, 1000);
+  let out;
+  try { out = await ctx.deleteMyData(); } finally { clearInterval(keepAlive); }
+  assert.strictEqual(out.ok, true, JSON.stringify(out.local));
+  assert.ok(log.some((e) => e.kind === "fetch" && e.method === "DELETE" && e.url.includes("/rest/v1/events")));
+
+  release();
+  await sync;
+  await store.flush();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "the old account's token came back after the purge");
+  const posts = log.filter((e) => e.kind === "fetch" && e.method === "POST" && e.url.includes("/rest/v1/events"));
+  assert.deepStrictEqual(posts, [], "a batch was sent after the events DELETE");
+});
+
+test("persist-8: a sync already running is waited for before the server step", async () => {
+  /* MUTATION THAT KILLS THIS: delete the `syncsInFlight` wait in deleteMyData —
+     the DELETEs go out while the batch is still unsent. */
+  const { arm, ctx, log } = await mount({
+    seed: { cp_sb_session: sessionRow(), cp_interests: "{}" },
+    events: QUEUED,
+  });
+  const real = ctx.fetch;
+  ctx.fetch = (url, opts) => (opts && opts.method === "POST" && String(url).includes("/rest/v1/events")
+    ? new Promise((r) => setTimeout(r, 30)).then(() => real(url, opts))
+    : real(url, opts));
+  const sync = ctx.trySyncEvents();
+  await new Promise((r) => setTimeout(r, 0));
+  await arm();
+  await ctx.deleteMyData();
+  await sync;
+  const post = log.findIndex((e) => e.method === "POST" && e.url.includes("/rest/v1/events"));
+  const del = log.findIndex((e) => e.method === "DELETE" && e.url.includes("/rest/v1/events"));
+  assert.ok(post >= 0 && del >= 0, "premise: both requests were made");
+  assert.ok(post < del, "the events DELETE went out before a batch already in flight landed");
+});
+
+test("ROUND 2 review (persist-8): a sync whose POST landed while a deletion that then FAILED remotely was running marks its rows synced — no duplicate batch", async () => {
+  /* syncOutlived was true for the whole deletion (ddBusy, the moved epoch), so
+     a POST that succeeded skipped markSynced; the deletion then failed remotely
+     and left the device untouched on purpose, and the next sync re-POSTed the
+     same rows. MUTATION: put `if (syncOutlived(epoch)) return;` back before
+     markSynced -> the rows are still unsynced; red. */
+  const { arm, ctx, log, queue } = await mount({
+    seed: { cp_sb_session: sessionRow(), cp_interests: "{}" },
+    events: QUEUED,
+    reply: (url, method) => (method === "DELETE" ? { status: 500 } : { status: 204 }),
+  });
+  const real = ctx.fetch;
+  ctx.fetch = (url, opts) => (opts && opts.method === "POST" && String(url).includes("/rest/v1/events")
+    ? new Promise((r) => setTimeout(r, 30)).then(() => real(url, opts))
+    : real(url, opts));
+  const sync = ctx.trySyncEvents();
+  await new Promise((r) => setTimeout(r, 0));
+  await arm();
+  const out = await ctx.deleteMyData();
+  await sync;
+  assert.strictEqual(out.state, "remote-failed", "premise: the server step failed and the device was left as it was");
+  assert.ok(log.some((e) => e.method === "POST" && e.url.includes("/rest/v1/events")), "premise: the batch was delivered");
+  assert.deepStrictEqual(await queue.unsynced(), [], "the delivered rows are marked synced, so they are not sent twice");
+});
+
+test("persist-2: a finished deletion on Home writes no cp_playlists and opens no onboarding over the result", async () => {
+  /* Booted for real (state.ready, a real renderHome), because the parked harness
+     returns from route() at its first line and could not see either effect.
+     MUTATION 1: put `touched = true` back for an absent cp_playlists — the key
+     reappears. MUTATION 2: drop `!onboardingHeld &&` in renderHomeV2 — the
+     first-time sheet opens over the delete sheet. */
+  const { dom, ui, ctx, store, cpKeys } = await mount({
+    boot: true,
+    seed: { cp_intro_dismissed: "true", cp_interests: "{}" },
+  });
+  assert.ok(ui.openBtn, "premise: the page booted");
+  assert.strictEqual(findIn(dom.body, "#first-time-sheet"), null, "premise: no onboarding at boot");
+  await ui.openBtn.click();
+  await ui.input.enter("DELETE");
+  const out = await ctx.deleteMyData();
+  assert.strictEqual(out.ok, true, JSON.stringify(out.local));
+  await store.flush();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "the re-render wrote a key back");
+  assert.strictEqual(findIn(dom.body, "#first-time-sheet"), null, "onboarding opened over the deletion result");
+  assert.match(ui.status.textContent, /This device is clear/);
+});
+
+test("ROUND 2 review (nav-10 x persist-2): in the NATIVE shell, the repaint after a deletion does not write cp_last_route back", async () => {
+  /* route() records the relaunch route inside the shell, and deleteMyData calls
+     route() to repaint under the sheet right after "This device is clear".
+     The suites mounted with a web protocol, where isNativeShell() is false.
+     MUTATION: drop the `ddBusy || dataDeletionInProgress` return from
+     rememberRouteForRelaunch -> cp_last_route comes back; red. */
+  const { ui, ctx, store, cpKeys } = await mount({
+    boot: true,
+    seed: { cp_intro_dismissed: "true", cp_interests: "{}" },
+  });
+  assert.ok(ui.openBtn, "premise: the page booted");
+  ctx.location.protocol = "capacitor:";
+  assert.strictEqual(ctx.isNativeShell(), true, "premise: the shell");
+  await ui.openBtn.click();
+  await ui.input.enter("DELETE");
+  const out = await ctx.deleteMyData();
+  assert.strictEqual(out.ok, true, JSON.stringify(out.local));
+  await store.flush();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "a key came back after the device was reported clear");
+});
+
+test("persist-4: Delete my data drops the Shows-search shard cache, whose entries trace what was searched", async () => {
+  /* MUTATION THAT KILLS THIS: remove `clearShardCache()` from clearLocalData. */
+  const { arm, ctx } = await mount({ seed: { cp_interests: "{}" } });
+  const deleted = [];
+  ctx.caches = { delete: async (name) => { deleted.push(name); return true; } };
+  await arm();
+  const out = await ctx.deleteMyData();
+  assert.strictEqual(out.ok, true);
+  assert.deepStrictEqual(deleted, ["foray-shows-index-v1"]);
+
+  // A cache that will not delete is a device that is not clear.
+  const again = await mount({ seed: { cp_interests: "{}" } });
+  again.ctx.caches = { delete: async () => { throw Object.assign(new Error("x"), { name: "SecurityError" }); } };
+  await again.arm();
+  const bad = await again.ctx.deleteMyData();
+  assert.strictEqual(bad.ok, false);
+  assert.match(again.ui.status.textContent, /NOT fully clear/);
+});
+
+test("persist-5: the deletion forgets the diagnostics record rather than marking it cleared", () => {
+  /* The founder's Clear writes "cleared at #N hh:mm:ss"; after a deletion that is
+     a record of the deletion. player/diagnostic-log.test.js pins forget() itself;
+     this pins that the deletion's bridge calls it.
+     MUTATION THAT KILLS THIS: point forayForgetDiagnostics back at clear(). */
+  const src = codeOnly(read("player/client.js"));
+  const line = /window\.forayForgetDiagnostics\s*=\s*\(\)\s*=>\s*\{([^}]*)\}/.exec(src);
+  assert.ok(line, "the deletion's diagnostics bridge is missing");
+  assert.match(line[1], /diagLog\.forget\(\)/);
+  assert.doesNotMatch(line[1], /diagLog\.clear\(\)/);
+});
+
+test("persist-7: 'Clear this device only' says, before the tap and after it, that the server copy can no longer be deleted", async () => {
+  /* The clear erases the only token that reaches the server rows, so "try again"
+     stops being possible. MUTATION: never un-hide the cost line in paintDeletion. */
+  const { ui, ctx, dom } = await mount({
+    seed: { cp_sb_session: sessionRow(), cp_interests: "{}" },
+    reply: () => new Error("offline"),
+  });
+  const cost = findIn(dom.body, ".dd-device-only-cost");
+  assert.ok(cost, "the cost line was never built");
+  await ui.openBtn.click();
+  assert.strictEqual(cost.hidden, true, "not before a failure has offered the button");
+  await ui.input.enter("DELETE");
+  await ctx.deleteMyData();
+  assert.strictEqual(ui.deviceOnly.hidden, false);
+  assert.strictEqual(cost.hidden, false, "the cost is not stated beside the button");
+  assert.match(cost.textContent, /can no longer be deleted/);
+  assert.ok(cost.textContent.trim().split(/\s+/).length <= 18);
+  /* Round-2 review: a screen reader reaches the cost BEFORE the button, and
+     the button is described by it. MUTATIONS: append the cost after the button
+     again; drop the aria-describedby. */
+  assert.ok(cost.id, "the cost line has an id to be referenced by");
+  assert.strictEqual(ui.deviceOnly.getAttribute("aria-describedby"), cost.id, "the button is described by its cost");
+  const parent = ui.deviceOnly.parentElement || ui.deviceOnly.parent;
+  const kids = parent ? parent.children : [];
+  assert.ok(kids.indexOf(cost) >= 0 && kids.indexOf(cost) < kids.indexOf(ui.deviceOnly), "and the cost comes first in reading order");
+  await ctx.deleteMyData({ deviceOnly: true });
+  assert.strictEqual(cost.hidden, false, "and it stays up after the clear it describes");
+  await ui.openBtn.click();
+  assert.strictEqual(cost.hidden, true, "reopening starts clean");
 });

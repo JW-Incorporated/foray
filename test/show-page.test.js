@@ -550,8 +550,11 @@ test("a curated-tier show with genuinely zero discover-pool episodes does not cl
   const html = m.view();
   assert.match(html, /Loading episodes/, "the in-flight state is 'loading' for a curated show too");
   assert.ok(!/No episodes yet/.test(html), "the empty state belongs to a finished fetch, not a pending one");
-  assert.strictEqual(m.countLabel(), "Loading episodes…",
-    "and the subtitle agrees, because one function writes both");
+  /* Round 2 (states-8): one sentence per outcome. The body carries the status,
+     so the subtitle stays empty rather than saying it a second time — and in
+     particular never says "0 episodes" or "No episodes" while loading. */
+  assert.strictEqual(m.countLabel(), "",
+    "the subtitle does not restate the body's status, and claims no count");
 });
 
 test("no user-facing string on the show page explains 4a's catalogue to the listener", () => {
@@ -1041,7 +1044,7 @@ test("showsWeVouchFor's base order is show_id-sorted before shuffling, independe
   assert.deepStrictEqual(forward, backward, "catalog array order must not change the sampled result");
 });
 
-test("vouchForHtml renders the 'Shows we vouch for' heading and a real link for every sampled show", async () => {
+test("vouchForHtml renders the 'Shows 4a vouches for' heading and a real link for every sampled show", async () => {
   /* End-to-end through vouchForHtml itself, against real committed data, not
      just showsWeVouchFor() in isolation — proves the section is actually
      wired and each link is a real, navigable show-result row (reusing
@@ -1060,7 +1063,7 @@ test("vouchForHtml renders the 'Shows we vouch for' heading and a real link for 
   assert.ok(shows.length > 0, "fixture assumption: the real 220-show catalogue must have editorially-noted shows");
   m.ctx.renderAllShows();
   const html = m.view();
-  assert.ok(html.includes("Shows we vouch for"), "must render the 'Shows we vouch for' heading");
+  assert.ok(html.includes("Shows 4a vouches for"), "must render the 'Shows 4a vouches for' heading");
   for (const s of shows) {
     assert.ok(html.includes(`href="#/show/${encodeURIComponent(s.show_id)}"`), `must link to ${s.show_id}`);
   }
@@ -1076,7 +1079,7 @@ test("vouchForHtml renders nothing when the catalogue has zero editorially-noted
   const m = mount();
   m.state.catalog = { shows: [{ show_id: "no-note-show" }] };
   const html = m.ctx.vouchForHtml();
-  assert.ok(!html.includes("Shows we vouch for"), "must not render an empty 'Shows we vouch for' section");
+  assert.ok(!html.includes("Shows 4a vouches for"), "must not render an empty 'Shows 4a vouches for' section");
 });
 
 test("vouchForHtml's row is separate from the topic cards and forays, per the B1 separation rule", () => {
@@ -1099,7 +1102,7 @@ test("vouchForHtml's row is separate from the topic cards and forays, per the B1
   };
   const html = m.ctx.vouchForHtml();
   assert.ok(html.includes('<section class="ep-more fy-vouch">'), "must render its own distinctly-classed section");
-  assert.ok(html.includes("<h3>Shows we vouch for</h3>"), "must render its own distinct heading");
+  assert.ok(html.includes("<h3>Shows 4a vouches for</h3>"), "must render its own distinct heading");
   assert.ok(html.includes('class="show-result"'), "must reuse the show-result row markup, not ep-row or fy-home-row");
   assert.ok(!html.includes('class="ep-row'), "must not render as episode rows");
   assert.ok(!html.includes('class="fy-home-row'), "must not render as foray rows");

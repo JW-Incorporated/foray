@@ -540,10 +540,13 @@ test("the transmitted-row mapper has no case for anything diagnostic", () => {
      case names the record.
      MUTATION: add `case "diagnostics":` to `toEventRow`. This fails. */
   const src = APP_SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
-  const mapper = src.slice(src.indexOf("function toEventRow"), src.indexOf("async function trySyncEvents"));
+  /* `function trySyncEvents` without `async`: since round 2 (persist-8) it is a
+     plain function that tracks the run, and `syncEventsOnce` below it is the
+     body — both inside the `sync` slice. */
+  const mapper = src.slice(src.indexOf("function toEventRow"), src.indexOf("function trySyncEvents"));
   assert.ok(mapper.length > 200, "the mapper has to be found, or this test is about nothing");
   assert.ok(!/cp_diag|diagnostic/i.test(mapper), "toEventRow must know nothing about the record");
-  const sync = src.slice(src.indexOf("async function trySyncEvents"), src.indexOf("function leafNodes"));
+  const sync = src.slice(src.indexOf("function trySyncEvents"), src.indexOf("function leafNodes"));
   assert.ok(sync.length > 200, "trySyncEvents has to be found");
   assert.ok(!/cp_diag|diagnostic/i.test(sync), "trySyncEvents must not read the record");
 });

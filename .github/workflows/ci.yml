@@ -190,7 +190,16 @@ jobs:
           # (xcodebuild strips the prefix) and turns a pin that compiled out
           # into a failure rather than a skip.
           npm ci --prefix ../.. --no-audit --no-fund --ignore-scripts
+          # NE-25a (docs/native-engine-plan.md): the in-point / out-point
+          # measurement (ClickTrack/InOutPointMeasurementTests.swift) appends
+          # its tables to this job's summary, labelled with the run and the
+          # head SHA. A Simulator test process can write a host path, and the
+          # TEST_RUNNER_ prefix is how a variable reaches it. NE-15's AVDeckTests
+          # append the deck's measurements (landing error, time to ready) through
+          # the same FORAY_MEASURE_SUMMARY: one hand-off, not two.
           FORAY_PREFERENCES_PIN=1 TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN=1 \
+          TEST_RUNNER_FORAY_MEASURE_SUMMARY="$GITHUB_STEP_SUMMARY" \
+          TEST_RUNNER_FORAY_MEASURE_RUN="${{ github.run_id }} @ ${{ github.event.pull_request.head.sha || github.sha }}" \
           xcodebuild test \
             -scheme ForayAudio \
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \
@@ -320,7 +329,7 @@ jobs:
     # THE IMAGE IS NOT CACHED, and that is a stated deviation from the plan's
     # "image cached": GitHub has no cache for a job `container:` — it is pulled
     # before the first step runs, so no actions/cache step can reach it. The
-    # pull is measured in docs/ios-native-engine-measurements.md §7.
+    # pull is measured in docs/ios-native-engine-measurements.md §9.
     needs: engine-paths
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest

@@ -197,9 +197,15 @@ export function rateLabel(v) {
  *
  * Sentence case, no exclamation, em-dash as in the surrounding copy
  * (CLAUDE.md § Conventions / repo copy rules).
+ *
+ * "OPENS THE SPEED MENU", not "tap for the next speed" (audit round 2,
+ * player-9). The name was written for #242's cycle button; #349 replaced the
+ * tap with a picker on both surfaces and left the string, so a screen-reader
+ * user was told the control cycles when it opens a dialog and changes nothing
+ * until a stop is chosen. Both buttons also carry `aria-haspopup="dialog"`.
  */
 export function rateAriaLabel(v) {
-  return `Playback speed ${rateLabel(v)} — tap for the next speed`;
+  return `Playback speed ${rateLabel(v)} — opens the speed menu`;
 }
 
 /* ---------- storage ---------- */

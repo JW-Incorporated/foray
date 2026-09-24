@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 
 import {
   HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
-  startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent,
+  startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent, unzoomedStripX,
   BUBBLE_SCALE, BUBBLE_WIDTH, BUBBLE_HEIGHT, BUBBLE_GAP_PX,
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
@@ -364,4 +364,34 @@ test("bubbleContentOffset returns null for a non-positive scale or bubble width"
   // (Infinity/NaN or backwards) offset instead of the honest null.
   assert.equal(bubbleContentOffset(150, STRIP_RECT, 0, BUBBLE_SCALE), null);
   assert.equal(bubbleContentOffset(150, STRIP_RECT, BUBBLE_WIDTH, 0), null);
+});
+
+/* ---------- unzoomedStripX: where the finger is on the un-zoomed strip (touch-1) ---------- */
+
+test("unzoomedStripX is the identity when the origin was anchored under the finger", () => {
+  // The caller re-anchors `--zoom-origin` at the finger on every move, so the
+  // point under the finger is the transform's fixed point: nothing to undo.
+  // MUTATION: use `x0 + (x - x0) * scale` -- this still passes (x == x0), which
+  // is why the next test exists.
+  const pct = zoomOriginPercent(250, RECT);
+  assert.equal(unzoomedStripX(250, RECT, pct, ZOOM_SCALE), 250);
+});
+
+test("a finger away from the origin maps through the scale", () => {
+  // Origin at the strip's midpoint (200), finger 50px right of it in ZOOMED
+  // space: on the un-zoomed strip that is 50 / scale to the right of 200.
+  // MUTATION: return `x` unconditionally -- 250 instead of 220; red.
+  assert.equal(unzoomedStripX(250, RECT, 50, ZOOM_SCALE), 200 + 50 / ZOOM_SCALE);
+  assert.equal(unzoomedStripX(150, RECT, 50, 2), 175);
+});
+
+test("unzoomedStripX returns null when it cannot answer honestly", () => {
+  // MUTATION: drop the `scale > 0` guard -- a division by zero would hand
+  // the caller Infinity, which `stripElapsedAtX` would clamp to the strip's
+  // END and seek there.
+  assert.equal(unzoomedStripX(250, RECT, 50, 0), null);
+  assert.equal(unzoomedStripX(250, RECT, NaN, ZOOM_SCALE), null);
+  assert.equal(unzoomedStripX(NaN, RECT, 50, ZOOM_SCALE), null);
+  assert.equal(unzoomedStripX(250, { left: 100, width: 0 }, 50, ZOOM_SCALE), null);
+  assert.equal(unzoomedStripX(250, null, 50, ZOOM_SCALE), null);
 });

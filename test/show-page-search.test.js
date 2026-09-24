@@ -166,6 +166,24 @@ function makeViewEl() {
       if (!el._searchInputRef) el._searchInputRef = makeSearchInputEl();
       return el._searchInputRef;
     }
+    if (s.includes("[data-show-ep-search-failed]")) {
+      /* The failed-state wrap (audit round 2, states-10): its innerHTML is
+         failedNoteHtml(...) — a sentence and a [data-retry] button — so the
+         setter mints a real button for bindRetry to find, the way the old
+         Show-more wrap did. */
+      if (!el._hasSearchBox) return null;
+      if (!el._searchFailedRef) {
+        const wrap = makeEl("div");
+        wrap.hidden = true;
+        Object.defineProperty(wrap, "innerHTML", {
+          get() { return this._innerHtml || ""; },
+          set(html) { this._innerHtml = html; wrap._btnRef = html.includes("data-retry") ? makeButtonEl() : null; },
+        });
+        wrap.querySelector = (innerSel) => (String(innerSel).includes("[data-retry]") ? wrap._btnRef : null);
+        el._searchFailedRef = wrap;
+      }
+      return el._searchFailedRef;
+    }
     if (s.includes("[data-show-ep-search-note]")) {
       if (!el._hasSearchBox) return null;
       if (!el._searchNoteRef) {
@@ -408,9 +426,43 @@ test('while S-07 is unreachable and the list is not fully loaded, the search not
   input.type("needle");
   await waitForSearchDebounce();
 
+  /* Painted as a FAILED state since audit round 2 (states-10): the plain note
+     steps aside and the failed wrap carries the sentence and a Try again. The
+     old sentence said "(100 of the full list loaded so far)" — "so far"
+     promised a load that "Show more episodes" used to do and nothing does now. */
   const note = m.viewEl.querySelector("[data-show-ep-search-note]");
-  assert.match(note.textContent, /loaded episodes/i, `note must state it is scoped to loaded episodes while pages remain unfetched, got: "${note.textContent}"`);
-  assert.match(note.textContent, /1 of the full list loaded so far|100 of the full list/i, `note must state how much of the full list is loaded, got: "${note.textContent}"`);
+  assert.strictEqual(note.hidden, true, "the plain note yields to the failed state");
+  const failed = m.viewEl.querySelector("[data-show-ep-search-failed]");
+  assert.strictEqual(failed.hidden, false, "the failed wrap is shown");
+  assert.match(failed.innerHTML, /loaded episodes/i, `must state it is scoped to loaded episodes while pages remain unfetched, got: "${failed.innerHTML}"`);
+  assert.match(failed.innerHTML, /searching the 100 loaded episodes only/i, `must say how much was actually searched, got: "${failed.innerHTML}"`);
+  assert.doesNotMatch(failed.innerHTML, /so far/, "and must not promise more will load");
+  assert.match(failed.innerHTML, /didn't answer/i, "and say why the rest was not searched");
+  assert.match(failed.innerHTML, /data-retry/, "with Try again");
+});
+
+test("Try again under a failed in-show search runs the same search again, not a reload (states-10)", async () => {
+  /* MUTATION: drop the `bindRetry(failed, runSearch)` line in paintSearchNote.
+     The button renders and does nothing: no second api/episodes/search call. */
+  const episodes = makeEpisodes(100, { titles: Array.from({ length: 100 }, (_, i) => `Filler ${i}`) });
+  const m = mount({ responses: [pageResponse(episodes, { cursor: "cursor-1" })] });
+  seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [] } });
+
+  m.ctx.renderShow("show-a");
+  await flushMicrotasks();
+
+  const input = m.viewEl.querySelector("[data-show-ep-search-input]");
+  input.type("filler 7");
+  await waitForSearchDebounce();
+  const before = m.searchCalls.length;
+  assert.ok(before >= 1, "precondition: the scoped search was asked and failed");
+
+  const failed = m.viewEl.querySelector("[data-show-ep-search-failed]");
+  const btn = failed.querySelector("[data-retry]");
+  assert.ok(btn, "the failed state carries a Try again button");
+  btn.click();
+  await flushMicrotasks();
+  assert.strictEqual(m.searchCalls.length, before + 1, "Try again asks the scoped endpoint again for the same query");
 });
 
 test("once the full list is fully loaded, the fallback search note drops the partial-scope hedge", async () => {
@@ -505,9 +557,10 @@ test('with S-07 unreachable, a query matching a not-yet-loaded page ("page 12") 
   const container = m.viewEl.querySelector("[data-show-episodes]");
   assert.ok(!container.innerHTML.includes("Deep Cut On Page Two"), "must not fabricate a match it never fetched");
 
-  const note = m.viewEl.querySelector("[data-show-ep-search-note]");
-  assert.match(note.textContent, /loaded episodes only/i, `the note must disclose the narrowed scope rather than imply a whole-show search, got: "${note.textContent}"`);
-  assert.match(note.textContent, /100 of the full list/i, `and say how much was actually searched, got: "${note.textContent}"`);
+  const failed = m.viewEl.querySelector("[data-show-ep-search-failed]");
+  assert.strictEqual(failed.hidden, false, "the narrowed search is painted as the failed state it is (states-10)");
+  assert.match(failed.innerHTML, /loaded episodes only/i, `must disclose the narrowed scope rather than imply a whole-show search, got: "${failed.innerHTML}"`);
+  assert.match(failed.innerHTML, /the 100 loaded episodes/i, `and say how much was actually searched, got: "${failed.innerHTML}"`);
 });
 
 test("clearing the query restores the full loaded list", async () => {

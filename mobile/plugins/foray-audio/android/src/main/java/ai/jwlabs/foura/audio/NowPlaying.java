@@ -66,6 +66,15 @@ final class NowPlaying {
     final long durationMs;
     final long positionMs;
     final float playbackRate;
+    /** PLAYING, but the audio is waiting for the network (audit round 2, p-car-8).
+     *  The page's `media-session.js` reports a stall as rate 0 with the state still
+     *  playing — Apple's rule: the clock stops, the transport still says play is
+     *  on. Media3 cannot take a zero speed, so the speed stays the listener's (via
+     *  {@link #rateOf}) and this flag is what {@code WebViewPlayer} turns into
+     *  {@code STATE_BUFFERING}, the state in which Media3 does not extrapolate the
+     *  playhead. Only ever true in {@link #PLAYING}: a paused player is not
+     *  waiting for anything. */
+    final boolean stalled;
 
     /* Which transport controls the PAGE installed handlers for. Media3 turns these
        into `Player` commands, and a command we do not declare is a button the OS
@@ -83,13 +92,13 @@ final class NowPlaying {
     final long seekForwardMs;
 
     private NowPlaying() {
-        this(IDLE, "", "", "", "", 0L, 0L, 1f,
+        this(IDLE, "", "", "", "", 0L, 0L, 1f, false,
             false, false, false, false, false, false, false, false, 0L, 0L);
     }
 
     private NowPlaying(
         int state, String title, String artist, String album, String artworkUri,
-        long durationMs, long positionMs, float playbackRate,
+        long durationMs, long positionMs, float playbackRate, boolean stalled,
         boolean canPlay, boolean canPause, boolean canStop,
         boolean hasNext, boolean hasPrevious,
         boolean canSeekBack, boolean canSeekForward, boolean canSeekTo,
@@ -103,6 +112,7 @@ final class NowPlaying {
         this.durationMs = durationMs;
         this.positionMs = positionMs;
         this.playbackRate = playbackRate;
+        this.stalled = stalled;
         this.canPlay = canPlay;
         this.canPause = canPause;
         this.canStop = canStop;
@@ -173,6 +183,7 @@ final class NowPlaying {
             clampMs(longOf(data, "durationMs")),
             clampMs(longOf(data, "positionMs")),
             rateOf(data),
+            state == PLAYING && bool(data, "stalled"),
             bool(data, "canPlay"),
             bool(data, "canPause"),
             bool(data, "canStop"),

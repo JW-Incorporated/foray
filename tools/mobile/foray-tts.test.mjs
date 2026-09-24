@@ -9,6 +9,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 import {
   PLUGIN_NAME,
@@ -182,6 +183,63 @@ test("speak: passes through lang/rate/pitch/volume when given", async () => {
   assert.equal(calls[0].payload.rate, 0.9);
   assert.equal(calls[0].payload.pitch, 1.0);
   assert.equal(calls[0].payload.volume, 0.8);
+});
+
+/* ------------------------------------------------ 1x is each platform's normal */
+
+/* Founder, 2026-09-24: "1x for now, but maybe we change later. I recall 1x felt
+   like 0.6x or so, it was very slow." Narration now always asks for rate 1
+   (`NARRATION_RATE`, player/queue-manager.js), so what 1 BECOMES on each
+   platform is the whole of the narrator's speed. Traced 2026-09-24 and pinned
+   here, one platform per test:
+     - the page hands the plugin the multiplier UNCHANGED (native and Web Speech);
+     - Web Speech: `utterance.rate = 1`, the spec's default ("normal") rate;
+     - Android: `setSpeechRate(1.0f)`, which AOSP documents as "the normal
+       speech rate", passed straight through;
+     - iOS: `utteranceRate(playbackMultiplier: 1)` = `AVSpeechUtteranceDefault-
+       SpeechRate` (0.5 on a 0-1 scale), Apple's own "default" — pinned by
+       value in the plugin's XCTest `testDefaultPlaybackSpeedIsOrdinarySpeech`
+       (run by ci.yml's ios-kit job); the source check below only guards the
+       two lines that make 1 land on it.
+   None of the four maps 1x BELOW the platform's normal rate. The "0.6x" the
+   founder heard is iOS's own default pace for the voice, not a mapping here. */
+const PLUGIN_DIR = new URL("../../mobile/plugins/foray-tts/", import.meta.url);
+const readPlugin = (rel) => fs.readFileSync(new URL(rel, PLUGIN_DIR), "utf8");
+
+test("1x: the page hands the native plugin rate 1 unchanged — the platform maps it", async () => {
+  const { calls, bridge } = fakeBridge();
+  await speak("a narration line", { bridge, rate: 1 });
+  assert.strictEqual(calls[0].payload.rate, 1);
+});
+
+test("1x: Web Speech speaks rate 1 as utterance.rate = 1, the spec's normal rate", async () => {
+  const spoken = [];
+  class FakeUtterance { constructor(text) { this.text = text; } }
+  await speak("a narration line", {
+    bridge: undefined,
+    speechSynth: { speak: (u) => spoken.push(u) },
+    UtteranceCtor: FakeUtterance,
+    rate: 1,
+  });
+  assert.strictEqual(spoken[0].rate, 1);
+});
+
+test("1x: Android passes the multiplier straight to setSpeechRate (1.0 = AOSP's normal rate)", () => {
+  /* MUTATION: scale it (`rate.floatValue() * 0.6f`, or a mapping like iOS's) and
+     this goes red. The Swift file's doc comment says the same: "do not 'fix' it
+     to match this file". */
+  const java = readPlugin("android/src/main/java/ai/jwlabs/foura/tts/ForayTtsPlugin.java");
+  const sets = java.match(/setSpeechRate\([^;]*\);/g) ?? [];
+  assert.deepStrictEqual(sets, ["setSpeechRate(rate.floatValue());"]);
+});
+
+test("1x: iOS maps rate 1 onto AVSpeechUtteranceDefaultSpeechRate (log 1 = 0 from the default)", () => {
+  /* MUTATION: start the curve anywhere but `defaultRate`, or assign the
+     multiplier to `utterance.rate` directly (1.0 is then the MAXIMUM rate). */
+  const swift = readPlugin("ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift");
+  assert.match(swift, /utterance\.rate = Self\.utteranceRate\(playbackMultiplier: rate\)/);
+  assert.match(swift, /let defaultRate = Double\(AVSpeechUtteranceDefaultSpeechRate\)/);
+  assert.match(swift, /let scaled = defaultRate\s*\n\s*\+ anchorSpan \* log\(multiplier\) \/ log\(calibrationPerceivedMultiple\)/);
 });
 
 test("speak: falls back to Web Speech when no native bridge is present", async () => {

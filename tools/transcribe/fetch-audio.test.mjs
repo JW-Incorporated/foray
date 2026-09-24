@@ -34,6 +34,8 @@ import {
    under test follows for `UA`. A literal "en" here would be a copy of a header
    value whose whole point is that one definition serves every fetcher. */
 import { ACCEPT_LANGUAGE } from "../segments/politeness.mjs";
+import { CLICK_TRACK_CAP_BYTES, CLICK_TRACK_DIR, exemptClickTrackPaths } from "../audio/click-tracks.mjs";
+import { createHash } from "node:crypto";
 
 const item = (over = {}) => ({ id: "show--ep", audio_url: "https://cdn.example.com/a.mp3", topics: ["science/physics"], ...over });
 
@@ -646,9 +648,13 @@ test("NOTHING under the download dir is git-tracked", { skip: !isRepo && "not a 
      exemption is bounded by the size cap in the next test, so the insurance
      this assertion exists for (an episode file landing in history) still
      holds: a 170 MB mp3 under player/assets fails there instead. */
+  /* The only other exemption is narrower still: NE-25a's click tracks, each
+     named by its descriptor and matching its recorded hash, under 1 MB for the
+     set (tools/audio/click-tracks.mjs; pinned by the click-track test below). */
+  const clickTracks = exemptClickTrackPaths(ROOT);
   const anyAudio = git(["ls-files", "--", "*.mp3", "*.m4a", "*.wav", "*.flac", "*.opus"])
     .split("\n")
-    .filter((p) => p && !p.startsWith("player/assets/"))
+    .filter((p) => p && !p.startsWith("player/assets/") && !clickTracks.has(p))
     .join("\n");
   assert.equal(anyAudio, "", `audio committed to the repo outside player/assets/:\n${anyAudio}`);
 });
@@ -665,6 +671,42 @@ test("player/assets holds only small, owned sound marks — never an episode", {
     const size = (await stat(join(ROOT, rel))).size;
     assert.ok(size <= CAP_BYTES, `${rel} is ${size} bytes — over the ${CAP_BYTES}-byte cap for a shipped sound mark`);
   }
+});
+
+test("the click-track exemption covers only descriptor-named, hash-matching files, under 1 MB", async () => {
+  /* The bound on the second exemption, so it cannot become a door: a file
+     dropped into the fixtures directory that the descriptor does not name, or
+     a named one whose bytes changed, stays an offender, and a set at or over
+     the cap exempts nothing at all (it throws, and the guard goes red).
+     MUTATION: make exemptClickTrackPaths return every file in the directory,
+     skip the hash comparison, or raise CLICK_TRACK_CAP_BYTES. */
+  assert.equal(CLICK_TRACK_CAP_BYTES, 1_000_000);
+  const sha = (buf) => createHash("sha256").update(buf).digest("hex");
+  const root = await mkdtemp(join(tmpdir(), "click-exempt-"));
+  try {
+    const dir = join(root, CLICK_TRACK_DIR);
+    await mkdir(dir, { recursive: true });
+    const named = Buffer.from("a named fixture");
+    await writeFile(join(dir, "named.mp3"), named);
+    await writeFile(join(dir, "changed.mp3"), Buffer.from("not the bytes the descriptor hashed"));
+    await writeFile(join(dir, "stray.mp3"), Buffer.from("an episode somebody dropped here"));
+    const fixtures = [
+      { file: "named.mp3", sha256: sha(named) },
+      { file: "changed.mp3", sha256: sha(Buffer.from("the original bytes")) },
+    ];
+    await writeFile(join(dir, "click-tracks.json"), JSON.stringify({ fixtures }));
+    assert.deepEqual([...exemptClickTrackPaths(root)], [`${CLICK_TRACK_DIR}/named.mp3`]);
+
+    const big = Buffer.alloc(CLICK_TRACK_CAP_BYTES);
+    await writeFile(join(dir, "named.mp3"), big);
+    fixtures[0].sha256 = sha(big);
+    await writeFile(join(dir, "click-tracks.json"), JSON.stringify({ fixtures }));
+    assert.throws(() => exemptClickTrackPaths(root), /exemption covers under/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+  /* On the real repo it exempts exactly the four committed fixtures. */
+  assert.equal(exemptClickTrackPaths(ROOT).size, 4);
 });
 
 test("a real file inside the download dir stays invisible to git", { skip: !isRepo && "not a git checkout" }, async () => {

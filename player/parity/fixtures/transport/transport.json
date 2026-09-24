@@ -1,7 +1,7 @@
 {
   "family": "transport",
   "module": "player/transport-policy.js",
-  "note": "The client layer's transport rules (player/transport-policy.js, NE-08), lifted out of client.js closures with no behaviour change. player/transport-policy.test.js reads these cases, so one file is both the JS assertion and the Swift case (TransportPolicy.swift, NE-09). Quirks of the old inline code are recorded as they are, not tidied.",
+  "note": "The client layer's transport rules (player/transport-policy.js, NE-08), lifted out of client.js closures with no behaviour change. player/transport-policy.test.js reads these cases, so one file is both the JS assertion and the Swift case (TransportPolicy.swift, NE-09). Quirks of the old inline code are recorded as they are, not tidied. Audit round 2 (main, merged into engine/m1) changed previousAction (player-4: the Foray clock) and skipTarget (player-5: a Foray nudge's end guard), and added nudgeAction (player-11) and episodePreviousRestarts (p-car-5); those cases are re-recorded and owed to NE-09.",
   "cases": [
     {
       "id": "transport/restart-window-4s",
@@ -412,7 +412,7 @@
         "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
       ],
       "call": "previousAction",
-      "args": [{ "index": 2, "item": { "$seg": ["b", 100, 210] }, "currentTime": 102 }],
+      "args": [{ "index": 2, "positionSec": 302, "segmentStartSec": 300 }],
       "expect": { "return": "item-before" }
     },
     {
@@ -421,7 +421,7 @@
         "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
       ],
       "call": "previousAction",
-      "args": [{ "index": 2, "item": { "$seg": ["b", 100, 210] }, "currentTime": 103.9 }],
+      "args": [{ "index": 2, "positionSec": 303.9, "segmentStartSec": 300 }],
       "expect": { "return": "item-before" }
     },
     {
@@ -430,7 +430,7 @@
         "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
       ],
       "call": "previousAction",
-      "args": [{ "index": 2, "item": { "$seg": ["b", 100, 210] }, "currentTime": 104 }],
+      "args": [{ "index": 2, "positionSec": 304, "segmentStartSec": 300 }],
       "expect": { "return": "skip-to-previous" }
     },
     {
@@ -439,7 +439,7 @@
         "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
       ],
       "call": "previousAction",
-      "args": [{ "index": 2, "item": { "$seg": ["b", 100, 210] }, "currentTime": 150 }],
+      "args": [{ "index": 2, "positionSec": 350, "segmentStartSec": 300 }],
       "expect": { "return": "skip-to-previous" }
     },
     {
@@ -448,61 +448,45 @@
         "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
       ],
       "call": "previousAction",
-      "args": [{ "index": 0, "item": { "$seg": ["a", 100, 210] }, "currentTime": 101 }],
+      "args": [{ "index": 0, "positionSec": 1, "segmentStartSec": 0 }],
       "expect": { "return": "skip-to-previous" }
     },
     {
-      "id": "transport/previous-no-clock",
+      "id": "transport/previous-narration-just-started-goes-back-past-it",
       "covers": [
-        "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
+        "transport-policy::previous is measured on the Foray clock, so it goes back past a narration line too; a jump in flight restarts"
       ],
+      "note": "Audit round 2, player-4: measured on the element's clock this was NaN (a narration line has no start_sec) and always restarted the line.",
       "call": "previousAction",
-      "args": [{ "index": 1, "item": { "$seg": ["b", 100, 210] }, "currentTime": null }],
+      "args": [{ "index": 1, "positionSec": 181, "segmentStartSec": 180 }],
       "expect": { "return": "item-before" }
     },
     {
-      "id": "transport/previous-no-item",
+      "id": "transport/previous-narration-at-its-start",
       "covers": [
-        "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
+        "transport-policy::previous is measured on the Foray clock, so it goes back past a narration line too; a jump in flight restarts"
       ],
       "call": "previousAction",
-      "args": [{ "index": 1, "item": null, "currentTime": 150 }],
+      "args": [{ "index": 1, "positionSec": 180, "segmentStartSec": 180 }],
       "expect": { "return": "item-before" }
     },
     {
-      "id": "transport/previous-narration",
+      "id": "transport/previous-narration-well-in-restarts-it",
       "covers": [
-        "transport-policy::a narration item has no start, so previous on one is always the manager's"
+        "transport-policy::previous is measured on the Foray clock, so it goes back past a narration line too; a jump in flight restarts"
       ],
-      "note": "No start_sec, so `into` is NaN and NaN < 4 is false. Recorded as it is: NE-08 changes no behaviour.",
       "call": "previousAction",
-      "args": [
-        {
-          "index": 1,
-          "item": { "$tts": ["n1", { "duration_sec": 12 }] },
-          "currentTime": 1
-        }
-      ],
+      "args": [{ "index": 1, "positionSec": 190, "segmentStartSec": 180 }],
       "expect": { "return": "skip-to-previous" }
     },
     {
-      "id": "transport/previous-narration-rendered",
+      "id": "transport/previous-jump-in-flight-restarts",
       "covers": [
-        "transport-policy::a narration item has no start, so previous on one is always the manager's"
+        "transport-policy::previous is measured on the Foray clock, so it goes back past a narration line too; a jump in flight restarts"
       ],
+      "note": "No playhead (a jump still in flight) reads as deep inside: the restart is the safe answer.",
       "call": "previousAction",
-      "args": [
-        {
-          "index": 1,
-          "item": {
-            "$tts": [
-              "n1",
-              { "audio_url": "https://example.invalid/n1.mp3", "duration_sec": 12 }
-            ]
-          },
-          "currentTime": 0
-        }
-      ],
+      "args": [{ "index": 1, "positionSec": null, "segmentStartSec": 180 }],
       "expect": { "return": "skip-to-previous" }
     },
     {
@@ -527,11 +511,49 @@
       "expect": { "return": 0 }
     },
     {
-      "id": "transport/skip-foray-past-total-is-not-clamped-here",
-      "covers": ["transport-policy::a Foray nudge moves on the Foray clock and never below zero"],
+      "id": "transport/skip-foray-past-total-stops-short",
+      "covers": [
+        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored"
+      ],
       "call": "skipTarget",
       "args": [{ "foray": true, "positionSec": 1000, "offsetSec": 30, "durationSec": 900 }],
+      "expect": { "return": 899 }
+    },
+    {
+      "id": "transport/skip-foray-near-end-stops-short",
+      "covers": [
+        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored"
+      ],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 880, "offsetSec": 30, "durationSec": 900 }],
+      "expect": { "return": 899 }
+    },
+    {
+      "id": "transport/skip-foray-back-near-end-is-untouched",
+      "covers": [
+        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored"
+      ],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 895, "offsetSec": -15, "durationSec": 900 }],
+      "expect": { "return": 880 }
+    },
+    {
+      "id": "transport/skip-foray-no-total-is-only-floored",
+      "covers": [
+        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored"
+      ],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 1000, "offsetSec": 30, "durationSec": null }],
       "expect": { "return": 1030 }
+    },
+    {
+      "id": "transport/skip-foray-total-shorter-than-guard",
+      "covers": [
+        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored"
+      ],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 0, "offsetSec": 30, "durationSec": 0.5 }],
+      "expect": { "return": 0 }
     },
     {
       "id": "transport/skip-foray-string-offset",
@@ -623,6 +645,138 @@
         }
       ],
       "expect": { "return": 100 }
+    },
+    {
+      "id": "transport/nudge-in-a-clip-seeks",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": 30,
+          "landsInCurrentItem": true,
+          "narrationPlayhead": false,
+          "onLastItem": false
+        }
+      ],
+      "expect": { "return": "seek" }
+    },
+    {
+      "id": "transport/nudge-out-of-a-line-seeks",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": 30,
+          "landsInCurrentItem": false,
+          "narrationPlayhead": true,
+          "onLastItem": false
+        }
+      ],
+      "expect": { "return": "seek" }
+    },
+    {
+      "id": "transport/nudge-back-in-a-line-restarts-it",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": -15,
+          "landsInCurrentItem": true,
+          "narrationPlayhead": true,
+          "onLastItem": false
+        }
+      ],
+      "expect": { "return": "restart-line" }
+    },
+    {
+      "id": "transport/nudge-back-in-the-last-line-restarts-it",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": -15,
+          "landsInCurrentItem": true,
+          "narrationPlayhead": true,
+          "onLastItem": true
+        }
+      ],
+      "expect": { "return": "restart-line" }
+    },
+    {
+      "id": "transport/nudge-forward-in-a-line-skips-it",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": 30,
+          "landsInCurrentItem": true,
+          "narrationPlayhead": true,
+          "onLastItem": false
+        }
+      ],
+      "expect": { "return": "skip-line" }
+    },
+    {
+      "id": "transport/nudge-forward-in-the-last-line-does-nothing",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": 30,
+          "landsInCurrentItem": true,
+          "narrationPlayhead": true,
+          "onLastItem": true
+        }
+      ],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "transport/episode-previous-at-start",
+      "covers": [
+        "transport-policy::an episode's previous restarts from 4 s in; before that the page may go to the row before"
+      ],
+      "call": "episodePreviousRestarts",
+      "args": [{ "positionSec": 0 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "transport/episode-previous-inside-window",
+      "covers": [
+        "transport-policy::an episode's previous restarts from 4 s in; before that the page may go to the row before"
+      ],
+      "call": "episodePreviousRestarts",
+      "args": [{ "positionSec": 3.9 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "transport/episode-previous-at-window-edge",
+      "covers": [
+        "transport-policy::an episode's previous restarts from 4 s in; before that the page may go to the row before"
+      ],
+      "call": "episodePreviousRestarts",
+      "args": [{ "positionSec": 4 }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "transport/episode-previous-well-in",
+      "covers": [
+        "transport-policy::an episode's previous restarts from 4 s in; before that the page may go to the row before"
+      ],
+      "call": "episodePreviousRestarts",
+      "args": [{ "positionSec": 1800 }],
+      "expect": { "return": true }
     },
     {
       "id": "transport/clamp-nan",

@@ -227,6 +227,23 @@ test("Library's History section renders listened episodes, newest first", async 
   assert.ok(posB < posA, "the most recently listened episode (b, added second) must render first");
 });
 
+test("History leads with the LAST-played episode: a replay moves it to the front (audit round 2, honesty-3)", async () => {
+  /* `recordHistory` appended only on a first play, so a replay left the
+     episode where it was and the "most recent" list could lead with something
+     heard weeks ago. MUTATION: restore `if (!history.includes(id))` around
+     the write -> a stays behind b. */
+  const m = await mountBooted();
+  const [a, b] = readJson("data/discover.json").items.filter((it) => it.audio_url);
+  m.ctx.fullPool();
+  m.ctx.recordHistory(a.id);
+  m.ctx.recordHistory(b.id);
+  m.ctx.recordHistory(a.id);
+  assert.deepStrictEqual([...m.ctx.pickedHistory()], [b.id, a.id], "one entry per episode, in last-played order");
+  m.ctx.renderLibrary();
+  const html = m.view();
+  assert.ok(html.indexOf(m.ctx.esc(a.title)) < html.indexOf(m.ctx.esc(b.title)), "the replayed episode leads History");
+});
+
 test("Library's History section renders an honest empty state with no listening history", () => {
   /* MUTATION: drop the `historyRows.length ? ... : <empty state>` ternary.
      Same shape as the Saved empty-state mutation above. */
@@ -277,8 +294,12 @@ test("Library's Up Next section renders a single summary row linking to #/queue"
      same "linked, not embedded" rule as Playlists). The href assertion
      fails because there would be no `#/queue` anchor. */
   const m = await mountBooted();
-  m.ctx.addToQueue("ep-a");
-  m.ctx.addToQueue("ep-b");
+  /* Real playable ids: `addToQueue` refuses an episode 4a cannot play (audit
+     round 2, p-impatient-10). */
+  const [a, b] = readJson("data/discover.json").items.filter((it) => it.audio_url);
+  m.ctx.fullPool();
+  m.ctx.addToQueue(a.id);
+  m.ctx.addToQueue(b.id);
   m.ctx.renderLibrary();
   const html = m.view();
   assert.ok(html.includes('href="#/queue"'), "Up Next must summary-link to #/queue");

@@ -96,6 +96,15 @@ now wired:
   none** — AOSP's javadoc on `setSpeechRate` documents a true multiplier
   ("1.0 is the normal speech rate … 2.0 is twice the normal speech rate"), so
   passing the value straight through is correct there.
+- **Since 2026-09-24 the player only ever asks for 1.** Founder ruling: *"1x for
+  now, but maybe we change later. I recall 1x felt like 0.6x or so, it was very
+  slow."* Narration and the voice picker's Preview both pass `NARRATION_RATE`
+  (`player/queue-manager.js`), never the listener's speed. Traced the same day:
+  1 is each platform's own normal rate — `utterance.rate = 1` on Web Speech,
+  `setSpeechRate(1.0f)` on Android, `AVSpeechUtteranceDefaultSpeechRate` on iOS
+  — so the "0.6x" is Apple's default pace as heard, not a mapping that lands
+  below it. `tools/mobile/foray-tts.test.mjs` pins all three; the XCTest pins
+  the iOS value.
 
 - **Then a voice correction fell out of the device test itself.** See the next
   section — this is the reason the on-device narration sounded worse than the
