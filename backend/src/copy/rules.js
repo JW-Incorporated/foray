@@ -229,26 +229,42 @@ const MAX_BLURB_WORDS = 30;
  * dash starts a clause and may take a capital either way.
  *
  * WHAT IT MISSES, stated so nobody trusts it further: a Title Case title made
- * only of nouns in one unbroken run ("Why Tesla Beat Toyota" passes), and a
- * lower-case common noun that should have been a proper one.
+ * only of nouns in one unbroken run ("Why Tesla Beat Toyota" passes), a Title
+ * Case list ("Salt, Fat, Acid, Heat" passes — a title with a comma is read as
+ * a list of names, "Marx, Engels, Lenin and Mao", and the scattered-capitals
+ * test is not applied to it), and a lower-case common noun that should have
+ * been a proper one.
  *
  * The generator is asked for sentence case by name (AnthropicPromptUnderstander
  * `buildIntentPrompt`) and, in code, only strips a closing period and raises a
  * lower-case first letter (runPipeline.ts `forayCopy`) — it never lowercases a
  * word, because it cannot tell "Venus" from "Actually". tools/foray/check-forays.mjs
- * refuses every problem this returns, on curated and generated titles alike.
+ * refuses every problem this returns on a curated title; on a generated one it
+ * refuses the period and the first letter and WARNS on Title Case, because a
+ * false positive there would otherwise cost the whole run's spend.
  */
+/* Closed-class words only. Left out, because each opens a common name (review
+   of PR #785): "who" (Doctor Who, The Who), "under" (Under Armour), "ever"
+   (the Ever Given), "our" (Our World in Data), "against" (Rage Against the
+   Machine), "much" (Much Ado), "into" (Into the Wild), "before" (Before
+   Sunrise) — with "will", "may", "can", "more", "down" and "beyond" before
+   them. */
 const TITLE_CASE_TELLS = new Set([
-  "about", "above", "across", "actually", "after", "against", "almost", "also", "always", "among", "and", "are",
-  "around", "as", "at", "be", "became", "become", "becomes", "been", "before", "behind", "being", "below", "beneath",
-  "between", "both", "but", "by", "could", "did", "do", "does", "doing", "done", "during", "each", "even", "ever",
+  "about", "above", "across", "actually", "after", "almost", "also", "always", "among", "and", "are",
+  "around", "as", "at", "be", "became", "become", "becomes", "been", "behind", "being", "below", "beneath",
+  "between", "both", "but", "by", "could", "did", "do", "does", "doing", "done", "during", "each", "even",
   "every", "for", "from", "gets", "getting", "got", "had", "happen", "happened", "happens", "has", "have", "how", "if",
-  "in", "into", "is", "its", "just", "made", "makes", "many", "might", "most", "much", "must", "never", "nor", "not",
-  "of", "off", "on", "once", "only", "onto", "or", "our", "over", "really", "should", "so", "some", "still", "such",
-  "than", "that", "their", "them", "then", "there", "these", "they", "those", "through", "to", "too", "under", "until",
-  "upon", "very", "was", "we", "were", "what", "when", "where", "which", "while", "who", "whom", "whose", "why", "with",
+  "in", "is", "its", "just", "made", "makes", "many", "might", "most", "must", "never", "nor", "not",
+  "of", "off", "on", "once", "only", "onto", "or", "over", "really", "should", "so", "some", "still", "such",
+  "than", "that", "their", "them", "then", "there", "these", "they", "those", "through", "to", "too", "until",
+  "upon", "very", "was", "we", "were", "what", "when", "where", "which", "while", "whom", "whose", "why", "with",
   "within", "without", "would", "you", "your"
 ]);
+
+/** The "is in Title Case" problem's opening words, so a caller can tell the
+ * heuristic problem from the two certain ones (a period, a lower-case first
+ * letter). */
+const TITLE_CASE_PROBLEM = "is in Title Case";
 
 /** A word that is written with capitals whatever the case style: "AI",
  * "NASA's", "iPhone", "YouTube", "3D". */
@@ -302,7 +318,7 @@ function titleStyleProblems(title) {
   const isCap = (w) => /^[A-Z]/.test(w.word) && !isAcronymLike(w.word);
   const tells = open.filter((w) => !w.clauseStart && isCap(w) && TITLE_CASE_TELLS.has(w.word.replace(/['’]s$/, "").toLowerCase()));
   let titleCase = tells.map((w) => w.word);
-  if (titleCase.length === 0) {
+  if (titleCase.length === 0 && !/,/.test(text)) {
     const caps = open.filter((w) => !w.clauseStart && isCap(w));
     const longLower = open.filter((w) => /^[a-z]/.test(w.word) && !isAcronymLike(w.word) && w.word.length >= 4);
     const capital = (w) => w !== undefined && !w.quoted && (isCap(w) || isAcronymLike(w.word));
@@ -316,7 +332,7 @@ function titleStyleProblems(title) {
   }
   if (titleCase.length > 0) {
     problems.push(
-      `is in Title Case (${titleCase.join(", ")}) — a Foray title is sentence case: capitalise the first word, proper nouns and ` +
+      `${TITLE_CASE_PROBLEM} (${titleCase.join(", ")}) — a Foray title is sentence case: capitalise the first word, proper nouns and ` +
         "acronyms only (\"How AI actually gets built\"). Put a work's own title in quotation marks to keep its capitals"
     );
   }
@@ -339,12 +355,50 @@ function houseStyleTitle(title) {
   return out.replace(/^([^A-Za-z]*)([a-z])([a-z'’-]*)(?=[^A-Za-z]|$)/, (_m, lead, letter, rest) => `${lead}${letter.toUpperCase()}${rest}`);
 }
 
+/**
+ * The words `restyled` lower-cased that may be NAMES, so a case-only restyle
+ * of `original` must not be taken (review of PR #785: asked to fix "Why
+ * Doctor Who Still Works", a model can answer "Why Doctor who still works",
+ * which keeps the letters and passes the checker). A word lower-cased from a
+ * mid-title capital is a possible name unless it is one of the closed-class
+ * TITLE_CASE_TELLS, and it IS treated as one when either
+ *   - `context` (the listener's own prompt) capitalises it mid-sentence — the
+ *     listener wrote "the Ever Given", so "Ever" is a name; or
+ *   - a neighbour in the restyle keeps its capital — names come in runs
+ *     ("Doctor Who"), so splitting one is demoting half of it.
+ * An acronym neighbour ("AI systems") does not count as a run. Empty when the
+ * restyle demoted nothing that could be a name.
+ *
+ * @param {string} original
+ * @param {string} restyled
+ * @param {string} [context]
+ * @returns {string[]}
+ */
+function demotedNames(original, restyled, context = "") {
+  const before = titleWords(original);
+  const after = titleWords(restyled);
+  const isCap = (w) => w !== undefined && !w.clauseStart && /^[A-Z]/.test(w.word) && !isAcronymLike(w.word);
+  const key = (w) => w.word.replace(/['’]s$/, "").toLowerCase();
+  if (before.length !== after.length) return before.filter(isCap).map((w) => w.word);
+  const named = new Set(titleWords(context).filter(isCap).map(key));
+  const out = [];
+  for (let i = 0; i < before.length; i++) {
+    const was = before[i];
+    const now = after[i];
+    if (!isCap(was) || !/^[a-z]/.test(now.word) || TITLE_CASE_TELLS.has(key(was))) continue;
+    if (named.has(key(was)) || isCap(after[i - 1]) || isCap(after[i + 1])) out.push(was.word);
+  }
+  return out;
+}
+
 module.exports = {
   BANNED,
   INTERNAL_VOCABULARY,
   COMMUTE_FRAMING,
   toListenerWords,
   titleStyleProblems,
+  demotedNames,
+  TITLE_CASE_PROBLEM,
   houseStyleTitle,
   wordCount,
   MAX_WHY_LINE_WORDS,

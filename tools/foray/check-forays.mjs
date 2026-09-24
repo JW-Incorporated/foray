@@ -84,7 +84,7 @@ import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
 import { MODE_CHAR_BANDS, narratorStructureErrors } from "./check-narration.mjs";
 const NARRATION_MODES = new Set(Object.keys(MODE_CHAR_BANDS));
 
-const { BANNED, INTERNAL_VOCABULARY, titleStyleProblems, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
+const { BANNED, INTERNAL_VOCABULARY, titleStyleProblems, TITLE_CASE_PROBLEM, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /* ------------------------------------------------------------------ rules */
@@ -760,8 +760,21 @@ export function checkForays(files) {
      * sentence and the ruling left it alone). The generator asks for sentence
      * case and fixes what code safely can (a closing period, a lower-case
      * first letter — runPipeline.ts `forayCopy`), so on that side this is the
-     * backstop. */
-    if (typeof foray.title === "string") for (const problem of titleStyleProblems(foray.title)) E(`title "${foray.title}" ${problem}`);
+     * backstop.
+     *
+     * EXCEPT TITLE CASE ON A GENERATED FORAY, which WARNS (review of PR #785).
+     * The period and the first letter are certain and code fixes both before
+     * any spend; Title Case is a heuristic that cannot know names ("Why Doctor
+     * Who still works", "Marx, Engels, Lenin and Mao"), and this gate runs
+     * after the research, spine, deepen and narration spend — a false positive
+     * here threw all of it away, or pushed the re-ask to lower-case the name.
+     * The understander already asks, and re-asks once, before any spend. */
+    if (typeof foray.title === "string") {
+      for (const problem of titleStyleProblems(foray.title)) {
+        if (isGeneratedForay(foray) && problem.startsWith(TITLE_CASE_PROBLEM)) W(`title "${foray.title}" ${problem}`);
+        else E(`title "${foray.title}" ${problem}`);
+      }
+    }
 
     if (!Array.isArray(foray.items) || foray.items.length === 0) { E("`items` must be a non-empty ordered array"); continue; }
 
@@ -923,9 +936,18 @@ export function checkForays(files) {
         /* Q-08: the narrator never mentions the Foray's own structure. Read off
          * the SCRIPT, on a generated Foray only — an admin-authored bridge has
          * an author who can be asked what "the next part" meant, and
-         * `check-narration.mjs` warns on that side for exactly that reason. */
+         * `check-narration.mjs` warns on that side for exactly that reason.
+         *
+         * The prelude's DISCLOSURE sentence is not checked: it is a fixed
+         * template whose `<subject>` is the listener's own topic, spoken
+         * verbatim because DISCLOSURE_RX requires it, so nothing in the
+         * pipeline can rewrite it — "This is a Foray about Chapter Eleven
+         * bankruptcy" would otherwise refuse every generation on that subject,
+         * after the spend (review of PR #785). The overview after it is the
+         * model's and is checked like every other line. */
         if (isGeneratedForay(foray) && hasScript && !FORAYS_PREDATING_THE_NARRATOR_RULES.has(fid)) {
-          for (const problem of narratorStructureErrors(item.script, where)) E(problem);
+          const spoken = i === 0 ? item.script.trim().replace(DISCLOSURE_RX, "") : item.script;
+          for (const problem of narratorStructureErrors(spoken, where)) E(problem);
         }
         /* K-02: an item that CLAIMS to be phonemized must be. Inert on every
          * item in `data/forays.json` today (none carries a `tts` block), which

@@ -7,7 +7,7 @@ import { parseWithRetry } from "./parseWithRetry";
 import type { ClarityResult, IntentUnderstanding } from "../types/generation";
 import type { PromptUnderstander, PromptUnderstandContext } from "./PromptUnderstander";
 import { recordUsage } from "./usageTracking";
-import { houseStyleTitle, titleStyleProblems } from "../copy/rules";
+import { demotedNames, houseStyleTitle, titleStyleProblems } from "../copy/rules";
 
 /**
  * Real §4.1 clarity/intent understanding via the Anthropic API, mirroring
@@ -173,7 +173,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
     };
 
     const intent = await parseWithRetry(IntentSchema, textBlock.text, "Anthropic intent output", reask);
-    return this.sentenceCaseTitle(intent, promptText, ctx);
+    return this.sentenceCaseTitle(intent, promptText, prompt, ctx);
   }
 
   /**
@@ -184,14 +184,15 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
    * (`houseStyleTitle`), but it cannot lowercase "Actually" without also
    * lowercasing "Venus", so a title still in Title Case after those two fixes
    * goes back to the model ONCE, with the checker's own words for what is
-   * wrong, and the answer is kept only if it keeps the style and changes
-   * nothing but the case. One Haiku call,
-   * gated like every other; a second miss keeps the first title, which
-   * `forayCopy` reports and check-forays refuses. Asked HERE, before a single
-   * expensive stage runs, because the gate that would otherwise catch it runs
-   * after the spend.
+   * wrong, and the answer is kept only if it keeps the style, changes
+   * nothing but the case, and lower-cases nothing that may be a name
+   * (rules.js `demotedNames`). One Haiku call, gated like every other; a
+   * second miss, or a failed call, keeps the first title, which `forayCopy`
+   * reports and check-forays warns on (Title Case is a heuristic, so on a
+   * generated Foray it is not worth the run's spend). Asked HERE, before a
+   * single expensive stage runs, because the gate runs after the spend.
    */
-  private async sentenceCaseTitle<T extends { title?: string }>(intent: T, promptText: string, ctx: PromptUnderstandContext): Promise<T> {
+  private async sentenceCaseTitle<T extends { title?: string }>(intent: T, promptText: string, listenerPrompt: string, ctx: PromptUnderstandContext): Promise<T> {
     const title = intent.title?.trim();
     if (!title) return intent;
     const problems = titleStyleProblems(houseStyleTitle(title));
@@ -199,25 +200,35 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
     const line =
       `The title "${title}" ${problems.join("; ")}. Reply with ONLY a JSON object {"title": string}: the same title in sentence case — ` +
       "the first word, proper nouns and acronyms capitalised, every other word lower case, no closing period.";
-    await this.budgetGuard.checkAndRecord({
-      userId: ctx.userId,
-      operation: "prompt_intent",
-      provider: this.providerName,
-      model: MODEL,
-      estimatedUsd: roughTokenEstimate(promptText + line) * USD_PER_INPUT_TOKEN + 60 * USD_PER_OUTPUT_TOKEN,
-      sessionId: ctx.sessionId
-    });
-    const response = await this.client.messages.create({
-      model: MODEL,
-      max_tokens: 120,
-      messages: [
-        { role: "user", content: promptText },
-        { role: "assistant", content: JSON.stringify(intent) },
-        { role: "user", content: line }
-      ]
-    });
-    recordUsage(response.usage);
-    const text = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
+    /* A style-only call must never cost the run: the intent is already
+       parsed and usable, so a budget refusal, a 429/529 or a network error
+       here keeps the original title, exactly as a second miss does (review of
+       PR #785). */
+    let text: string;
+    try {
+      await this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "prompt_intent",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd: roughTokenEstimate(promptText + line) * USD_PER_INPUT_TOKEN + 60 * USD_PER_OUTPUT_TOKEN,
+        sessionId: ctx.sessionId
+      });
+      const response = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: 120,
+        messages: [
+          { role: "user", content: promptText },
+          { role: "assistant", content: JSON.stringify(intent) },
+          { role: "user", content: line }
+        ]
+      });
+      recordUsage(response.usage);
+      text = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
+    } catch (error) {
+      console.warn(`AnthropicPromptUnderstander: the title re-ask for "${title}" failed (${error instanceof Error ? error.message : String(error)}); keeping it`);
+      return intent;
+    }
     let restyled: string | undefined;
     try {
       const parsed = z.object({ title: z.string() }).safeParse(JSON.parse(text.replace(/^[^{]*/, "").replace(/[^}]*$/, "")));
@@ -230,6 +241,13 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
     const letters = (t: string): string => houseStyleTitle(t).toLowerCase().replace(/[^a-z0-9]/g, "");
     if (!restyled || letters(restyled) !== letters(title) || titleStyleProblems(houseStyleTitle(restyled)).length > 0) {
       console.warn(`AnthropicPromptUnderstander: the title "${title}" is still not sentence case after one re-ask; keeping it`);
+      return intent;
+    }
+    /* ...and the case change may not demote a name to get past the checker
+       ("Why Doctor who still works" keeps the letters and passes it). */
+    const demoted = demotedNames(title, restyled, listenerPrompt);
+    if (demoted.length > 0) {
+      console.warn(`AnthropicPromptUnderstander: the re-ask lower-cased what may be a name (${demoted.join(", ")}) in "${restyled}"; keeping "${title}"`);
       return intent;
     }
     return { ...intent, title: restyled };

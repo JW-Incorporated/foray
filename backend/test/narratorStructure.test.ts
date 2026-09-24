@@ -98,7 +98,7 @@ describe("narratorStructure — the check reaches every shape the pipeline's wor
        never said aloud either. MUTATION THAT KILLS THIS: delete the
        `...INTERNAL_VOCABULARY.map(...)` entries from RULES -> "a forty-beat
        history", "the running order" and "every act" go uncaught. */
-    for (const line of ["It is a forty-beat history.", "You cannot see the running order.", "Every act asks the same question.", "One beat, then the drop."]) {
+    for (const line of ["It runs to eight beats.", "You cannot see the running order.", "Every act asks the same question.", "One beat, then the drop."]) {
       expect(narratorStructureLeaks(line), line).not.toHaveLength(0);
     }
     /* ...and the anchors still hold, so a Foray about a drummer, a statute
@@ -115,6 +115,23 @@ describe("narratorStructure — the check reaches every shape the pipeline's wor
       "Where does the story go from here? Keep listening."
     ]) {
       expect(narratorStructureLeaks(line), line).toEqual([]);
+    }
+  });
+
+  it("does not refuse a hyphenated count, which in speech is an adjective (review of PR #785)", () => {
+    /* In a title "a forty-beat history" recites our own fields; in speech
+       "the three-act structure" is how screenwriting is described, and a
+       prelude whose subject carries one could never be fixed. MUTATION THAT
+       KILLS THIS: drop the `[ -]` -> " " narrowing on INTERNAL_VOCABULARY in
+       RULES -> every line goes red. */
+    for (const line of [
+      "Screenwriters swear by the three-act structure.",
+      "Chekhov wrote a one-act comedy.",
+      "The drummer played a four-beat pattern.",
+      "This is a Foray about the three-act structure."
+    ]) {
+      expect(narratorStructureLeaks(line), line).toEqual([]);
+      expect(toNarrationWords(line)).toEqual({ text: line, changed: false });
     }
   });
 
@@ -145,8 +162,8 @@ describe("toNarrationWords — the rewrite where no retry is left", () => {
         "You've stopped looking for the reckless engineer — what came before showed you the flaw."
       ],
       ["Every failure this documentary has traced so far.", "Every failure this story has traced so far."],
-      ["It is a forty-beat history.", "It is a history."],
-      ["It was an eight-act opera.", "It was an opera."]
+      ["Back in act one, the ladder held.", "Back in the story, the ladder held."],
+      ["That's this act.", "That's this story."]
     ];
     for (const [input, expected] of table) {
       const out = toNarrationWords(input);
@@ -155,15 +172,61 @@ describe("toNarrationWords — the rewrite where no retry is left", () => {
     }
   });
 
+  it("never rewrites a span that can be ordinary English: it is left for the gate to refuse, not shipped garbled (review of PR #785)", () => {
+    /* The detector wrongly flags a verb ("that act on"), a statute or a
+       bankruptcy chapter, and the music bill's "opening act". A rewrite of
+       those used to ship "The loads that story on the span", "Lehman filed
+       for what follows", "hired as an the opening" — and passed the gate,
+       because the garbled line no longer matched anything. Each line here is
+       still REFUSED (the gate's job) and comes out of the rewrite untouched.
+       MUTATION THAT KILLS THIS: make `rewritable` return true -> every line
+       goes red. Drop the capital check -> "That Act", "Chapter Eleven",
+       "Section Four" go red; drop CLAUSE_ENDS_AFTER from the "that/these"
+       case -> the verbs go red; drop BILL_POINTER -> "The closing act was
+       Queen" goes red. */
+    for (const line of [
+      "The loads that act on the span grew every winter.",
+      "These act as a brake on inflation.",
+      "It was the team that beat Brazil.",
+      "This beat every forecast.",
+      "Congress passed the Clean Air Act. That Act gave the agency teeth.",
+      "Lehman filed for Chapter Eleven that night.",
+      "Lehman filed for chapter eleven that night.",
+      "The court struck down Section Four in two thousand thirteen.",
+      "They act one way in public.",
+      "Hendrix was hired as an opening act for the Monkees.",
+      "The closing act was Queen.",
+      "Every act on the bill played.",
+      "Each act had ten minutes.",
+      "Hamlet has five acts.",
+      "They finally got our act together.",
+      "Keep the engine in good running order.",
+      "At this hour the city sleeps."
+    ]) {
+      expect(narratorStructureLeaks(line), line).not.toHaveLength(0);
+      expect(toNarrationWords(line), line).toEqual({ text: line, changed: false });
+    }
+  });
+
   it("is a fixed point on every line of the frozen generated Foray and on every refused example, and leaves plain English alone", () => {
-    /* MUTATION THAT KILLS THIS: make a replacement carry a structural noun
-       (e.g. "this act" -> "this part") -> the leak check on the output goes
-       red. */
-    for (const line of [...frozenGeneratedScripts(), ...NARRATOR_STRUCTURE_EXAMPLES.refused]) {
+    /* Every structural line the committed generated Forays carry is a shape
+       that can only mean the Foray, so each comes out clean. Of the refused
+       examples only the bare count ("four acts", as in "Hamlet has five
+       acts") is left for the gate. MUTATION THAT KILLS THIS: make a
+       replacement carry a structural noun (e.g. "this act" -> "this part")
+       -> the leak check on the output goes red. */
+    for (const line of frozenGeneratedScripts()) {
       const out = toNarrationWords(line);
       expect(narratorStructureLeaks(out.text), out.text).toEqual([]);
       expect(toNarrationWords(out.text)).toEqual({ text: out.text, changed: false });
     }
+    const leftForTheGate: string[] = [];
+    for (const line of NARRATOR_STRUCTURE_EXAMPLES.refused) {
+      const out = toNarrationWords(line);
+      if (narratorStructureLeaks(out.text).length > 0) leftForTheGate.push(out.text);
+      expect(toNarrationWords(out.text)).toEqual({ text: out.text, changed: false });
+    }
+    expect(leftForTheGate).toEqual(["four acts"]);
     for (const line of NARRATOR_STRUCTURE_EXAMPLES.fine) expect(toNarrationWords(line)).toEqual({ text: line, changed: false });
   });
 });
@@ -263,6 +326,16 @@ describe("the rule is ENFORCED where no retry is left", () => {
        toForayItem. */
     const item = toForayItem({ kind: "narration", narrationKind: "seam", mode: "Frame", id: "act-2-introduction", slotTitle: "2 slot", script: "Two acts back, the ladder cracked." });
     expect(item).toMatchObject({ type: "narration", script: "Earlier, the ladder cracked." });
+  });
+
+  it("a narration item whose flagged words can be plain English leaves forayItems.ts as written, for check-forays to refuse (review of PR #785)", () => {
+    /* It left as "The loads that story on the span grew every winter." and
+       passed the gate. MUTATION THAT KILLS THIS: make `rewritable` in
+       narratorStructure.js return true. */
+    const script = "The loads that act on the span grew every winter.";
+    const item = toForayItem({ kind: "narration", narrationKind: "seam", mode: "Frame", id: "act-2-introduction", slotTitle: "2 slot", script });
+    expect(item).toMatchObject({ type: "narration", script });
+    expect(narratorStructureLeaks(script)).not.toHaveLength(0);
   });
 
   it("the prelude's overview is rewritten too — it is the one narration item that does not pass through forayItems.ts", () => {

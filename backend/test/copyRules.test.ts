@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BANNED, COMMUTE_FRAMING, INTERNAL_VOCABULARY, houseStyleTitle, titleStyleProblems, toListenerWords, wordCount } from "../src/copy/rules";
+import { BANNED, COMMUTE_FRAMING, INTERNAL_VOCABULARY, demotedNames, houseStyleTitle, titleStyleProblems, toListenerWords, wordCount } from "../src/copy/rules";
 
 /**
  * Golden copy rules — the editorial standards from 03_CURATION_SPEC.md and
@@ -285,6 +285,41 @@ describe("Foray title house style", () => {
       "World War II from the air"
     ];
     for (const title of fine) expect(titleStyleProblems(title), title).toEqual([]);
+  });
+
+  it("does not refuse a title for a name that starts with a closed-class word, or a list of names (review of PR #785)", () => {
+    /* Each of these was refused, and on a generated Foray that meant the run's
+       whole spend, or a re-ask that lower-cased the name. MUTATION THAT KILLS
+       THIS: put "who", "ever", "under", "our", "against", "much", "into" or
+       "before" back in TITLE_CASE_TELLS -> that title goes red; drop the
+       comma condition on the scattered-capitals fallback -> the two lists go
+       red. */
+    const fine = [
+      "Why Doctor Who still works",
+      "How The Who got loud",
+      "How the Ever Given blocked Suez",
+      "How Under Armour lost its edge",
+      "What Our World in Data counts",
+      "Rage Against the Machine and the nineties",
+      "Why Much Ado still lands",
+      "Why Into the Wild still divides readers",
+      "Why Before Sunrise still works",
+      "Marx, Engels, Lenin and Mao",
+      "Watergate: Nixon, Deep Throat and the Post"
+    ];
+    for (const title of fine) expect(titleStyleProblems(title), title).toEqual([]);
+  });
+
+  it("demotedNames: a case-only restyle may lower-case Title Case words, never half a name or a name the listener wrote (review of PR #785)", () => {
+    /* MUTATION THAT KILLS THIS: return [] from demotedNames -> the first two
+       go red; drop the neighbour check -> the first goes red; drop the
+       context check -> the second goes red. */
+    expect(demotedNames("Why Doctor Who Still Works", "Why Doctor who still works")).toEqual(["Who"]);
+    expect(demotedNames("How the Ever Given Blocked Suez", "How the ever given blocked Suez", "how did the Ever Given block the canal")).toEqual(
+      expect.arrayContaining(["Ever", "Given"])
+    );
+    expect(demotedNames("How AI Actually Gets Built", "How AI actually gets built", "how AI gets built")).toEqual([]);
+    expect(demotedNames("Beyond the Algorithm: Engineering Production AI Systems", "Beyond the algorithm: engineering production AI systems")).toEqual([]);
   });
 
   it("houseStyleTitle does only what is safe on any title: drops a closing period, raises a lower-case first letter, lowercases nothing", () => {

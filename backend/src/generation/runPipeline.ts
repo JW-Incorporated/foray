@@ -1022,7 +1022,7 @@ export async function runForayPipeline(
     console.warn(`runPipeline: ${what} was put in the title house style (no closing period, a capital first letter)`);
   }
   for (const what of unstyledCopy) {
-    console.warn(`runPipeline: ${what} — the understander ignored its sentence-case instruction, and check-forays will refuse the title`);
+    console.warn(`runPipeline: ${what} — the understander ignored its sentence-case instruction, and check-forays will warn on the title`);
   }
 
   /* THE FORAY'S TOPIC, DECIDED HERE — BEFORE THE RESEARCH MAP AND THE SPINE

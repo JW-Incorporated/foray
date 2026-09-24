@@ -172,6 +172,45 @@ describe("AnthropicPromptUnderstander", () => {
     expect(kept.title).toBe("How AI Actually Gets Built");
   });
 
+  it("a failed title re-ask (budget, 429/529, network) keeps the parsed intent instead of failing intent extraction (review of PR #785)", async () => {
+    /* MUTATION THAT KILLS THIS: take the budget check and the API call back
+       out of the try/catch in sentenceCaseTitle -> extractIntent rejects. */
+    const { client, create } = makeFakeAnthropicClient([]);
+    create
+      .mockResolvedValueOnce({ content: [textBlock(intentJson("How AI Actually Gets Built"))] })
+      .mockRejectedValueOnce(new Error("529 overloaded_error"));
+    const intent = await new AnthropicPromptUnderstander(new BudgetGuard(new InMemoryCostEventSink(), 100), client).extractIntent("how AI gets built", ctx);
+    expect(intent.title).toBe("How AI Actually Gets Built");
+    expect(intent.subject).toBe("AI systems");
+
+    const refusing = makeFakeAnthropicClient([textBlock(intentJson("How AI Actually Gets Built"))]);
+    const guard = new BudgetGuard(new InMemoryCostEventSink(), 100);
+    const real = guard.checkAndRecord.bind(guard);
+    let calls = 0;
+    vi.spyOn(guard, "checkAndRecord").mockImplementation(async (event) => {
+      calls += 1;
+      if (calls > 1) throw new Error("budget exceeded");
+      return real(event);
+    });
+    const kept = await new AnthropicPromptUnderstander(guard, refusing.client).extractIntent("how AI gets built", ctx);
+    expect(kept.title).toBe("How AI Actually Gets Built");
+    expect(refusing.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not take a restyle that lower-cases half a name to get past the checker (review of PR #785)", async () => {
+    /* "Why Doctor who still works" keeps the letters and passes
+       titleStyleProblems. MUTATION THAT KILLS THIS: drop the demotedNames
+       guard from sentenceCaseTitle -> the corrupted title is taken. */
+    const { client, create } = makeFakeAnthropicClient([]);
+    create
+      .mockResolvedValueOnce({ content: [textBlock(intentJson("Why Doctor Who Still Works"))] })
+      .mockResolvedValueOnce({ content: [textBlock('{"title": "Why Doctor who still works"}')] });
+    const intent = await new AnthropicPromptUnderstander(new BudgetGuard(new InMemoryCostEventSink(), 100), client).extractIntent("why does Doctor Who still work", ctx);
+    expect(titleStyleProblems("Why Doctor who still works")).toEqual([]);
+    expect(intent.title).toBe("Why Doctor Who Still Works");
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
   it("does not re-ask for a title that keeps the style, or one only a closing period away from it", async () => {
     /* The period is code's job (houseStyleTitle), not a second model call.
        MUTATION THAT KILLS THIS: check `titleStyleProblems(title)` instead of

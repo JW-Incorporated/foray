@@ -147,10 +147,18 @@ const RULES = [
      making more in the future" — so a word the title may not use can never
      be said aloud either, and a shape added to that list reaches the
      narrator with no second edit. It runs under the same anchors as the rules
-     above: "the Clean Air Act" and "the play's three acts" stay fine. */
+     above: "the Clean Air Act" and "the play's three acts" stay fine.
+
+     EXCEPT THE HYPHENATED COUNT (review of PR #785). In a title "a forty-beat
+     history" recites our own fields; in speech "the three-act structure", "a
+     one-act comedy" and "a four-beat pattern" are ordinary adjectives, and a
+     Foray about screenwriting cannot avoid them — nor can its prelude, whose
+     subject is spoken verbatim. So the list's `[ -]` joins are narrowed to a
+     space here: "three acts" and "eight beats" are still counts, "three-act"
+     is not. */
   ...INTERNAL_VOCABULARY.map((rx) => ({
     id: "pipeline-word",
-    rx: new RegExp(rx.source, rx.flags.includes("g") ? rx.flags : `${rx.flags}g`),
+    rx: new RegExp(rx.source.replace(/\[ -\]/g, " "), rx.flags.includes("g") ? rx.flags : `${rx.flags}g`),
     why: "uses the pipeline's own word for a piece of this Foray"
   }))
 ];
@@ -262,11 +270,102 @@ const BEFORE = /\b(?:last|previous|preceding|past)\b/i;
 const OPENING = /\b(?:first|opening)\b/i;
 const CLOSING = /\b(?:final|closing)\b/i;
 const LATER_ORDINAL = /^the\s+(?:second|third|fourth|fifth|sixth|seventh)\b/i;
-const COUNT_FIRST = new RegExp(`^(?:${NUMBER_WORD}|an?)\\b`, "i");
 const COUNT_LAST = new RegExp(`\\b(?:${NUMBER_WORD})\\s+(?:${STRUCTURE_PLURAL})$`, "i");
-const HYPHEN_COMPOUND = /^\S+-(?:beat|segment|act|slot|part)s?$/i;
 const NUMBERED = /^(?:act|beat|segment|slot|chapter|section|part)\s+(\S+)/i;
 const DETERMINER = /^(this|that|these|those|our|each|every)\b/i;
+
+/* ------------------------------------------------ what the rewrite may touch */
+
+/* The detector above is deliberately wide and says where it is wrong; a
+   wrong REFUSAL costs a retry, but a wrong REWRITE ships garbled speech with
+   nothing downstream to catch it, because the rewritten line no longer
+   matches anything (review of PR #785: "the loads that act on the span"
+   became "the loads that story on the span", "filed for Chapter Eleven"
+   became "filed for what follows", "an opening act" became "an the
+   opening"). So the rewrite touches only the shapes that cannot be ordinary
+   English, and leaves every other span exactly as written, for the gate
+   (writeAct's retry, check-forays at publish) to refuse. */
+
+/** The pieces a numbered reference may be rewritten for. Not `chapter` or
+ * `section`: "Chapter Eleven", "section four" are bankruptcy and statute. */
+const NUMBERED_PIECE = /^(?:act|beat|segment|slot|part)$/i;
+/** A number a piece of THIS Foray could carry: a word, or one or two digits. */
+const PIECE_NUMBER = /^(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d{1,2})$/i;
+/** "in act two", "back in part one", "the end of act three": a preposition
+ * before the numbered piece makes it a noun. After anything else it can be a
+ * verb — "they act one way in public", "to beat one rival". */
+const PREPOSITION_BEFORE = /\b(?:in|into|from|since|after|before|during|through|throughout|until|by|at|of)\s+$/i;
+/** The span is followed by the end of a clause, so the word in it cannot be
+ * a verb taking an object or an "as" ("that act on the span", "these act as
+ * a brake", "the team that beat Brazil"). */
+const CLAUSE_ENDS_AFTER = /^\s*(?:[.,;:!?)\]"'”’—–]|-{2}|$)/;
+/** The programme nouns a rewrite may call "this story". Not "show", "piece",
+ * "hour", "recording", "program": "this show ran ten seasons", "at this
+ * hour", "this program crashed" are about something else. */
+const PROGRAMME_REWRITABLE = /^(?:foray|forays|documentary|episode)$/i;
+/** "The closing act was Queen", "the opening act for the Monkees": the music
+ * bill's sense, which "the end" and "the opening" would change. */
+const BILL_POINTER = /^(?:opening|closing)$/i;
+
+/**
+ * Whether `span` may be rewritten: true only for a shape that cannot be
+ * ordinary English in its place. `before` and `after` are the text either
+ * side of it.
+ *
+ * @param {{phrase: string, rule: string}} span
+ * @param {string} before
+ * @param {string} after
+ * @returns {boolean}
+ */
+function rewritable({ phrase, rule }, before, after) {
+  const words = phrase.trim().split(/\s+/);
+  /* A capital mid-sentence is a name: "That Act", "Section Four", "Act One
+     of the Securities". Only the first word may carry one, at a sentence
+     start — and "Foray", which is how the product is written. */
+  const sentenceStart = atSentenceStart(before);
+  for (let i = 0; i < words.length; i++) {
+    if (!/^[A-Z]/.test(words[i])) continue;
+    if (i === 0 && sentenceStart) continue;
+    if (rule === "names-the-programme" && /^foray/i.test(words[i])) continue;
+    return false;
+  }
+  const lower = words.map((w) => w.toLowerCase());
+  if (rule === "relative-piece" || rule === "pointer-count") return true;
+  if (rule === "names-the-programme") return PROGRAMME_REWRITABLE.test(lower[lower.length - 1]);
+  /* "Hamlet has five acts", "three parts hydrogen", "two beats to spare". */
+  if (rule === "counted-pieces") return false;
+  if (rule === "numbered-piece" || (rule === "pipeline-word" && lower[0] === "act" && words.length === 2)) {
+    return NUMBERED_PIECE.test(lower[0]) && PIECE_NUMBER.test(lower[1]) && (sentenceStart || PREPOSITION_BEFORE.test(before));
+  }
+  if (rule === "pipeline-word") {
+    /* "running order" after a determiner is ours; "in good running order"
+       is a machine's. Every other pipeline-word span — a count ("eight
+       beats"), a bare pointer ("every act on the bill", "an opening act") —
+       has a plain-English reading, and no article of its own to replace. */
+    return /running order$/i.test(phrase) && /\b(?:the|this|our|that)\s+$/i.test(before);
+  }
+  if (rule === "self-determiner") {
+    const [determiner, ...rest] = lower;
+    const noun = rest[rest.length - 1];
+    const hasOrdinal = rest.length >= 2;
+    if (determiner === "the") return !(BILL_POINTER.test(rest[0]) && /^acts?$/.test(noun));
+    /* "our act" is "get our act together"; "our next act" is ours. */
+    if (determiner === "our") return hasOrdinal;
+    /* An ordinal in between makes it a noun: "that final act". */
+    if (hasOrdinal) return true;
+    const plural = /s$/.test(noun);
+    /* "this act", "this part": a verb after "this" would take an -s. But
+       "This beat the forecast" is a past tense, and "this acts as a brake"
+       is a verb. */
+    if (determiner === "this") return (!plural && noun !== "beat") || CLAUSE_ENDS_AFTER.test(after);
+    /* "these acts" is a noun; "these act as a brake" is not. */
+    if ((determiner === "these" || determiner === "those") && plural) return true;
+    /* "that act", "these act", "that beat": a relative clause or a plural
+       subject, unless the clause ends right after it. */
+    return CLAUSE_ENDS_AFTER.test(after);
+  }
+  return false;
+}
 
 /**
  * What a span becomes when it is said the way a narrator would say it: not
@@ -284,7 +383,6 @@ function narrationReplacement({ phrase, rule }) {
   if (/\b(?:later|ahead|from now)$/i.test(p)) return "later";
   if (/\b(?:back|ago|earlier)$/i.test(p)) return "earlier";
   if (rule === "names-the-programme") return "this story";
-  if (HYPHEN_COMPOUND.test(p)) return "";
   const numbered = NUMBERED.exec(p);
   if (numbered) return ONE.test(numbered[1]) ? "the story" : "what follows";
   const counted = rule === "pointer-count" || COUNT_LAST.test(p);
@@ -293,7 +391,6 @@ function narrationReplacement({ phrase, rule }) {
   if (OPENING.test(p)) return "the opening";
   if (CLOSING.test(p)) return "the end";
   if (LATER_ORDINAL.test(p)) return "what follows";
-  if (COUNT_FIRST.test(p)) return /s$/i.test(p) ? "a few stories" : "a story";
   const determiner = DETERMINER.exec(p);
   if (determiner) return `${determiner[1].toLowerCase()} ${/s$/i.test(p) ? "stories" : "story"}`;
   return "the story";
@@ -307,16 +404,19 @@ function atSentenceStart(before) {
 }
 
 /**
- * `text` with every structural self-reference rewritten out of it, touching
- * nothing else: "Two acts back, the ladder cracked" -> "Earlier, the ladder
- * cracked"; "The next act follows the money" -> "What comes next follows the
- * money"; "By the end of this act" -> "By the end of this story"; "Act one
- * opens with" -> "The story opens with". The narration twin of rules.js
- * `toListenerWords`, and like it total and a fixed point — its output has no
- * `narratorStructureLeaks` (narratorStructure.test.ts pins both, on every
- * structural line the committed generated Forays carry). `changed` says
- * whether anything was rewritten, so a caller can report that the model
- * ignored the instruction.
+ * `text` with every structural self-reference that `rewritable` allows
+ * rewritten out of it, touching nothing else: "Two acts back, the ladder
+ * cracked" -> "Earlier, the ladder cracked"; "The next act follows the money"
+ * -> "What comes next follows the money"; "By the end of this act" -> "By the
+ * end of this story"; "Act one opens with" -> "The story opens with". The
+ * narration twin of rules.js `toListenerWords`, and like it a fixed point.
+ * Unlike it, NOT total: a span that can be ordinary English ("the loads that
+ * act on the span", "Chapter Eleven", "Hamlet has five acts") is left exactly
+ * as written, so the gate refuses it rather than a listener hearing it
+ * garbled. Every structural line the committed generated Forays carry is
+ * rewritable and comes out with no `narratorStructureLeaks`
+ * (narratorStructure.test.ts pins both). `changed` says whether anything was
+ * rewritten, so a caller can report that the model ignored the instruction.
  *
  * It is the LAST resort, not the first: every stage that writes narration is
  * told the rule and refuses a violation so the model rewrites it with
@@ -338,20 +438,13 @@ function toNarrationWords(text) {
     let built = "";
     let pos = 0;
     for (const span of spans) {
+      const end = span.index + span.phrase.length;
+      if (!rewritable(span, out.slice(0, span.index), out.slice(end))) continue;
       built += out.slice(pos, span.index);
-      const after = out.slice(span.index + span.phrase.length);
       let replacement = narrationReplacement(span);
-      if (replacement === "") {
-        /* A dropped compound ("a forty-beat history" -> "a history"): the
-           article before it has to agree with the word after it. */
-        const next = /^\s*([A-Za-z])/.exec(after);
-        built = built.replace(/\b([Aa])n?\s+$/, (_m, a) => `${a}${next && /[aeiou]/i.test(next[1]) ? "n" : ""} `);
-        if (/\s$/.test(built) && /^\s/.test(after)) built = built.slice(0, -1);
-      } else if (atSentenceStart(built)) {
-        replacement = replacement.charAt(0).toUpperCase() + replacement.slice(1);
-      }
+      if (atSentenceStart(built)) replacement = replacement.charAt(0).toUpperCase() + replacement.slice(1);
       built += replacement;
-      pos = span.index + span.phrase.length;
+      pos = end;
     }
     out = built + out.slice(pos);
   }
@@ -379,11 +472,10 @@ const NARRATOR_STRUCTURE_EXAMPLES = {
     "four acts",
     "two acts back",
     "one act back",
-    "a forty-beat history",
     "the running order",
     "this documentary"
   ],
-  fine: ["the first act of Macbeth", "the second act of the crisis", "his first act as chairman", "ninety beats per minute"]
+  fine: ["the first act of Macbeth", "the second act of the crisis", "his first act as chairman", "ninety beats per minute", "the three-act structure"]
 };
 
 const quoteAll = (list) => list.map((s) => `"${s}"`).join(", ");
@@ -402,7 +494,8 @@ const NARRATOR_STRUCTURE_RULE =
   `${quoteAll(NARRATOR_STRUCTURE_EXAMPLES.refused)} — and do not swap in "part", "section" or "chapter" to do the same ` +
   'job. Say WHAT happened or WHEN — "when the ladder cracked", "earlier", "back at the drawing board" — not where the ' +
   `listener is. The same words are FINE when they belong to something else: ${quoteAll(NARRATOR_STRUCTURE_EXAMPLES.fine)}. ` +
-  "A machine checks this after you answer, sends the text back, and rewrites whatever is still there at the end.";
+  "A machine checks this after you answer and sends the text back; at the end it rewrites what can only mean this " +
+  "Foray and refuses the rest.";
 
 module.exports = {
   narratorStructureLeaks,
