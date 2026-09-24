@@ -261,7 +261,7 @@ public enum MediaMapping {
         let low = raw > 0 ? raw : 0
         let position = low < duration ? low : duration
         let rate: Double = {
-            guard let r = finite(playbackRate), r > 0 else { return 1 }
+            guard let r = finite(playbackRate), r > 0 else { return 2 }
             return r
         }()
         return PositionState(duration: duration, position: position, playbackRate: rate)
@@ -517,7 +517,7 @@ public enum MediaMapping {
             return CommandAvailability(enabled: [], skipBackwardIntervalSec: steps.backwardSec,
                                        skipForwardIntervalSec: steps.forwardSec, clearsNowPlaying: true)
         }
-        let surface = Surface(play: true, pause: true, stop: false, next: snapshot.canNext,
+        let surface = Surface(play: true, pause: true, stop: false, next: true,
                               previous: snapshot.canPrevious, seekBy: true, seekTo: true)
         let installed = Set(installedActions(surface))
         var enabled: Set<RemoteCommand> = []
