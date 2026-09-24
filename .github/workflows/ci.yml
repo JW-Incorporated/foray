@@ -143,7 +143,7 @@ jobs:
           # (xcodebuild strips the prefix) and turns a pin that compiled out
           # into a failure rather than a skip.
           npm ci --prefix ../.. --no-audit --no-fund --ignore-scripts
-          FORAY_PREFERENCES_PIN=1 TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN=1 \
+          TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN=1 \
           xcodebuild test \
             -scheme ForayAudio \
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \
