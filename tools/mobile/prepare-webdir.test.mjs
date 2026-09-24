@@ -2648,10 +2648,25 @@ test("#701: the seed's pointer and build stamp are the web's stamp for THIS tree
     return;
   }
   assert.equal(stamp.deployId, computeManifest(ROOT).deploy_id);
+  if (stamp.pointer === null) {
+    /* A shallow checkout whose depth does not reach the newest stamp-input
+       commit: its built_at could only come out LATER than the live pointer's,
+       which is the #795 finding-1 defect, so the seed ships no pointer at all.
+       The build stamp is unaffected. The branch is pinned: it must say why, and
+       the bundle must really carry no pointer. */
+    assert.match(stamp.pointerReason, /shallow clone|no git history/);
+    withRealBundle((r, absOut) => {
+      assert.equal(r.deployId, stamp.deployId);
+      assert.equal(r.seedPointerReason, stamp.pointerReason);
+      assert.equal(fs.existsSync(path.join(absOut, SEED_POINTER)), false);
+    });
+    return;
+  }
   assert.equal(stamp.pointer.version, stamp.deployId);
   assert.ok(Number.isFinite(Date.parse(stamp.pointer.built_at)));
   withRealBundle((r, absOut) => {
     assert.equal(r.deployId, stamp.deployId);
+    assert.equal(r.seedPointerReason, null);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(absOut, "build-stamp.json"), "utf8")), { deploy_id: stamp.deployId });
     const bundled = JSON.parse(fs.readFileSync(path.join(absOut, SEED_POINTER), "utf8"));
     assert.equal(bundled.version, stamp.deployId);

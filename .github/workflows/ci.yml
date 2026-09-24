@@ -186,6 +186,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        # Full history (blobless: commits and trees only). The deploy stamp's
+        # built_at is dated by the newest commit that touched a stamp input
+        # (tools/ci/generate-manifest.mjs, stampTimestamp), so the suites and the
+        # prepare-dist build below exercise the same path the release and Pages
+        # checkouts do, not the shallow-clone fallback (PR #795 review).
+        with:
+          fetch-depth: 0
+          filter: blob:none
       - uses: actions/setup-node@v4
         with:
           node-version: 22
