@@ -93,9 +93,15 @@ let package = Package(
                 .product(name: "ForayEngineCore", package: "foray-engine-core")
             ],
             path: "ios/Sources/ForayAudioPlugin"),
+        /* NE-25a's click tracks (tools/audio/make-click-tracks.py) are
+           resources of the TEST target only, copied as one directory so the
+           descriptor and the audio it describes travel together. Nothing here
+           reaches the plugin target, so the app never carries them
+           (tools/audio/click-tracks.test.mjs pins that). */
         .testTarget(
             name: "ForayAudioPluginTests",
             dependencies: pluginTestDependencies,
-            path: "ios/Tests/ForayAudioPluginTests")
+            path: "ios/Tests/ForayAudioPluginTests",
+            resources: [.copy("Fixtures/ClickTracks")])
     ]
 )

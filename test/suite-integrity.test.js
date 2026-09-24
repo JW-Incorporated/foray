@@ -1164,6 +1164,12 @@ const FLOORS = {
      overwritten, every new or changed case handed to swift-pending.json with
      its port card, and --mutate's kill/survive/pending verdicts with a no-op
      control. Zero slack. */
+  /* NE-25a's click tracks, read without a decoder: the bytes are the ones the
+     descriptor names, the WAV is sample-exact, "CBR" and "no TOC" mean what
+     the measurements doc says they mean, the Xing TOC points at frames, the
+     audio never reaches the app target, and the never-early tolerance is not
+     widened in silence. Zero slack. */
+  "tools/audio/click-tracks.test.mjs": 7,
   "tools/parity/record.test.mjs": 16, // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
   /* THE TYPE GATE, and the reason it is floored at all. Until 2026-09-12 no CI
      job in this repo had ever run `tsc` or `eslint`: `backend/package.json`
