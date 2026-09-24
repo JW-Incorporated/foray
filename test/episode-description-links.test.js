@@ -398,6 +398,48 @@ test("REVIEW: a timestamp tap whose play() throws reports it to the bar, as bind
   assert.deepStrictEqual(noted, [["start", "TypeError"]], "and the diagnostic record gets its row");
 });
 
+test("ROUND 2 review: a timestamp tap STARTS at the stamp (no play-then-seek), and a superseded start is not reported", async () => {
+  /* The control was the last two-step (play, then seekTo) races-1 replaced
+     with `startOffset` everywhere else, and a start a later tap superseded
+     painted "couldn't load" over the episode that was loading. MUTATIONS:
+     drop `startOffset: secs`; or drop the `isCurrent` return before the report. */
+  let handler = null;
+  const btn = { dataset: { ts: "754" }, addEventListener: (_t, fn) => { handler = fn; } };
+  const plays = [];
+  const seeks = [];
+  const reported = [];
+  let answer = true;
+  let currentId = null;
+  vm.runInContext("state.session = state.session || { cards: [] }", app);
+  app.window.ForayPlayer = {
+    canPlay: () => true,
+    isPlaying: () => false,
+    isCurrent: (id) => id === currentId,
+    play: async (item, opts) => { plays.push(opts); return answer; },
+    seekTo: async (s) => { seeks.push(s); },
+    reportPlayFailure: (err) => { reported.push(err); },
+  };
+  try {
+    app.bindEpisodeSeeks({ querySelectorAll: () => [btn] }, { id: "ep-1", audio_url: "https://x.test/a.mp3" });
+    currentId = "ep-1";
+    await handler({ preventDefault() {}, stopPropagation() {} });
+    assert.strictEqual(plays.length, 1);
+    assert.strictEqual(plays[0].startOffset, 754, "the load begins at the stamp");
+    assert.deepStrictEqual(seeks, [], "and no second step follows it");
+
+    answer = false;
+    currentId = "ep-2"; // a later tap took the player
+    await handler({ preventDefault() {}, stopPropagation() {} });
+    assert.deepStrictEqual(reported, [], "superseded is not a failure");
+
+    currentId = "ep-1"; // still ours, and refused: that IS a failure
+    await handler({ preventDefault() {}, stopPropagation() {} });
+    assert.strictEqual(reported.length, 1);
+  } finally {
+    delete app.window.ForayPlayer;
+  }
+});
+
 /* ---------- ROUND 2 (p-switcher-2): one tokeniser, two renderers ---------- */
 
 test("episodeDescriptionTokens is the pass the HTML is rendered from, and is published for the Now Playing sheet", () => {

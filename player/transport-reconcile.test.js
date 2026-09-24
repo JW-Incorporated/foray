@@ -2702,7 +2702,7 @@ function disjointForay() {
     the line a file of its own (no `start_sec`, like every bridge); false makes
     it script-only, spoken through `fakeSpeech`. `lineFirst` puts the line at
     index 0 with one segment after it. */
-function forayWithLine({ rendered = true, lineSec = 30, lineFirst = false } = {}) {
+function forayWithLine({ rendered = true, lineSec = 30, lineFirst = false, lineLast = false } = {}) {
   const line = rendered
     ? { type: "narration", slot: "one", id: "n1", audio_url: "https://cdn.test/n1.mp3", duration_sec: lineSec, script: "Hello there." }
     : { type: "narration", slot: "one", id: "n1", duration_sec: lineSec, script: "Hello there." };
@@ -2711,7 +2711,7 @@ function forayWithLine({ rendered = true, lineSec = 30, lineFirst = false } = {}
   const foray = {
     id: "f-line", kind: "deep-dive", title: "A Foray", status: "published",
     slots: [{ id: "one", title: "Slot one" }],
-    items: lineFirst ? [line, segA] : [segA, line, segB],
+    items: lineFirst ? [line, segA] : lineLast ? [segA, line] : [segA, line, segB],
   };
   const segments = indexSegments({
     segments: [
@@ -2971,6 +2971,48 @@ test("ROUND 2 a11y-7: a slider that has FOCUS is not rewritten every tick", asyn
   restore();
 });
 
+test("ROUND 2 review: a step on a FOCUSED (frozen) slider moves from where the audio is, not from where the value froze", async (t) => {
+  /* a11y-7 froze the value while the slider has focus; a keyboard or
+     VoiceOver user parked on Seek at 0:00 who listened to 10:00 and pressed
+     Right Arrow jumped BACK to about 0:36. KILLING MUTATION: drop
+     `rebaseHeldScrubStep()` from `paintScrubPreview`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const { scrub } = clocks(doc);
+  doc.activeElement = scrub;
+  audio.currentTime = 600; // 10:00 of 1:00:00 -> 167 of 1000
+  audio.fire("timeupdate");
+  assert.equal(scrub.value, "0", "precondition: the focused slider is frozen");
+  scrub.value = "10"; // the native step: +10 from the frozen value
+  for (const fn of scrub.listeners.get("input") ?? []) fn();
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.ok(audio.currentTime > 600, `a forward step moves forward from 10:00, got ${audio.currentTime}s`);
+  assert.ok(Math.abs(audio.currentTime - 637.2) < 2, `about 177/1000 of an hour, got ${audio.currentTime}s`);
+  restore();
+});
+
+test("ROUND 2 review: a slider focused by a POINTER keeps following the audio", async (t) => {
+  /* After a mouse scrub the range input keeps focus; freezing it then left the
+     UA thumb where it was dropped while the fill moved on. KILLING MUTATION:
+     `scrubIsHeld` without `!scrubByPointer`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const { scrub } = clocks(doc);
+  for (const fn of scrub.listeners.get("pointerdown") ?? []) fn();
+  doc.activeElement = scrub;
+  audio.currentTime = 600;
+  audio.fire("timeupdate");
+  assert.equal(scrub.value, "167", "the thumb follows the audio for a pointer user");
+  for (const fn of scrub.listeners.get("keydown") ?? []) fn();
+  audio.currentTime = 1200;
+  audio.fire("timeupdate");
+  assert.equal(scrub.value, "167", "once the keyboard takes it, it is held again (a11y-7)");
+  restore();
+});
+
 test("ROUND 2 honesty-13: elapsed and remaining add up, and the countdown keeps its sign until it shows nothing", async (t) => {
   /* The episode clock rounds while the comment said both floor: 12.5 s into 60
      read "0:13" and "-0:48", and the last half-second read an unsigned "0:01".
@@ -3140,6 +3182,28 @@ test("ROUND 2 player-11: a nudge inside a SPOKEN line restarts it (back) or skip
   await settle();
   assert.equal(client.forayStatus().index, 1, "30↻ inside the line skips it");
   assert.equal(announce.textContent, "Narration skipped");
+  restore();
+});
+
+test("ROUND 2 review: 30↻ inside the Foray's LAST spoken line does not claim to have skipped it", async (t) => {
+  /* `forayNext` returns early on the last item, so the live region said
+     "Narration skipped" while the line kept playing. KILLING MUTATION: drop
+     the `currentIndex >= playable.length - 1` return in `nudgeBy`. */
+  const speech = fakeSpeech();
+  const { client, doc, restore } = await bootClient(t, { speech });
+  t.after(() => client.stopForDataDeletion().catch(() => {}));
+  await client.playForay(forayWithLine({ rendered: false, lineSec: 60, lineLast: true }), { startIndex: 1 });
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1, "precondition: the closing line is being spoken");
+  const announce = find(doc.body, "fp-announce sr-only");
+  const before = announce.textContent;
+  await sheet(doc).fwd.click();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1, "nothing to skip to");
+  assert.notEqual(announce.textContent, "Narration skipped", "and it does not say it skipped");
+  assert.equal(announce.textContent, before);
   restore();
 });
 

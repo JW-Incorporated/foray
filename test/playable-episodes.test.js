@@ -194,6 +194,45 @@ test("an episode played from a show page is a playable History row after a reloa
   assert.strictEqual(row.item.title, "Episode 3");
 });
 
+test("ROUND 2 review: a play SUPERSEDED mid-load reports no failure; a refused play that is still current does", async () => {
+  /* `play()` answers false for row A once row B's tap replaced it, and bindPlay
+     painted "That episode couldn't load" over B while B loaded. MUTATION:
+     drop the `isCurrent` return inside `if (!ok)`. */
+  const m = boot(new Map());
+  const a = showPageEpisode(m, 21);
+  const reports = [];
+  let current = null;
+  m.ctx.window.ForayPlayer = {
+    // A's load resolves after B was tapped: B is current, A's answer is false.
+    async play() { current = "some-later-row"; return false; },
+    isCurrent: (id) => id === current,
+    reportPlayFailure: (e) => reports.push(e),
+    onEpisodeEnded() { return () => {}; },
+  };
+  await clickPlay(m, a.id);
+  assert.deepStrictEqual(reports, [], "superseded is silent");
+  assert.strictEqual(m.store.get("cp_history"), undefined, "and not recorded as played");
+
+  m.ctx.window.ForayPlayer.play = async (item) => { current = item.id; return false; };
+  current = null;
+  await clickPlay(m, a.id);
+  assert.strictEqual(reports.length, 1, "a refused play of the current item still says so");
+});
+
+test("ROUND 2 review: a ▶ on Up Next does not snapshot the queue as a second play list", async () => {
+  /* With `data-ctx="upnext"` the rows on screen became `state.playList`, so a
+     row the listener then removed with ✕ still played next (planAfterEnded
+     falls back to the list). MUTATION: drop `listCtx !== UP_NEXT_CTX`. */
+  const m = boot(new Map());
+  const eps = [31, 32, 33].map((n) => showPageEpisode(m, n));
+  m.ctx.window.ForayPlayer = fakePlayer();
+  const handlers = new Map();
+  const btns = eps.map((e) => ({ dataset: { play: e.id, ctx: "upnext" }, addEventListener: (_t, fn) => { handlers.set(e.id, fn); } }));
+  m.ctx.bindPlay({ querySelectorAll: (sel) => (sel === "[data-play]" ? btns : []) });
+  await handlers.get(eps[0].id)({ preventDefault() {}, stopPropagation() {} });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(m.state.playList)), [eps[0].id], "the list is the one episode; Up Next is the continuation");
+});
+
 test("a starred show-page episode is PLAYABLE in Library → Saved after a reload, not greyed", () => {
   /* qa 97. The snapshot toggleStar writes has always carried audio_url; the old
      rule sent every non-pool id to `archived` anyway. MUTATION: drop the

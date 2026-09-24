@@ -5033,7 +5033,13 @@ function bindPlay(scope) {
         return;
       }
       const listCtx = btn.dataset.ctx || null;
-      setPlayList(listCtx
+      /* UP NEXT IS ITS OWN CONTINUATION (audit round 2 review). Its ▶ carries
+         `data-ctx="upnext"` only as the mark that triggers `playedFromUpNext`;
+         snapshotting the rows as a play list froze a second, stale copy of the
+         queue, so a row the listener then removed with ✕ — or one a play from
+         row 3 dropped — still played next, or came back on ⏮. `planAfterEnded`
+         reads the live queue first; the list is only this one episode. */
+      setPlayList(listCtx && listCtx !== UP_NEXT_CTX
         ? [...scope.querySelectorAll("[data-play]")].filter(b => b.dataset.ctx === listCtx).map(b => b.dataset.play)
         : [id], id);
       /* A PLAY THAT FAILS SAYS SO (persona audit #4, 2026-09-22). It used to be
@@ -5053,6 +5059,11 @@ function bindPlay(scope) {
         return;
       }
       if (!ok) {
+        /* SUPERSEDED IS NOT FAILED (audit round 2 review). `play()` answers
+           false for a row a later tap replaced mid-load; reporting that painted
+           "That episode couldn't load" over the episode that IS loading. Only
+           a play that is still the player's own item failed. */
+        if (typeof window.ForayPlayer.isCurrent === "function" && !window.ForayPlayer.isCurrent(id)) return;
         try { window.ForayPlayer.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
         return;
       }
@@ -9734,13 +9745,19 @@ function bindEpisodeSeeks(scope, item) {
            would throw away the thing the listener is in the middle of. Then
            seek, always: that is the whole of what the control promises. */
         if (!window.ForayPlayer.isPlaying(item.id)) {
-          const ok = await window.ForayPlayer.play(item, { why: whyFor(item.id, item) });
-          /* A refused start says so on the bar, as bindPlay's does, and a
-             seek into audio that never started is skipped. */
+          const ok = await window.ForayPlayer.play(item, { why: whyFor(item.id, item), startOffset: secs });
+          /* THE START CARRIES THE STAMP (audit round 2 review; races-1's rule
+             everywhere else): the load begins AT the timestamp, rather than
+             starting at the resume point and seeking after — two steps a
+             second tap or a slow load could race. A refused start says so on
+             the bar, as bindPlay's does — unless a later tap superseded it,
+             which is not a failure. */
           if (ok === false) {
+            if (typeof window.ForayPlayer.isCurrent === "function" && !window.ForayPlayer.isCurrent(item.id)) return;
             try { window.ForayPlayer.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
             return;
           }
+          return;
         }
         await window.ForayPlayer.seekTo(secs);
       } catch (err) {

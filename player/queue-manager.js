@@ -187,6 +187,15 @@ const POSITION_MIN_DELTA_SEC = 10;
     choppier than an ordinary segment. */
 const NARRATION_TICK_MS = 250;
 
+/** A narration tick that lands this much later than it was due means the page
+    was SUSPENDED, not busy (audit round 2 review). `nowMs` is wall clock and
+    keeps running through a call that froze the WebView, so without this the
+    first tick after waking read an elapsed time that included the whole call,
+    tripped the deadline and advanced into the next clip with no press — past
+    the 30 s lag bound and `_pausedByListener` that guard every other resume.
+    A suspension is asked about as an interruption instead. */
+const NARRATION_SUSPEND_GAP_MS = 5_000;
+
 /** How long a spoken line may run past its estimate before the ticker stops
     trusting the synthesiser (audit round 2, native-3). `AVSpeechSynthesizer`
     stops when the audio session is taken by a call or Siri and reports no
@@ -359,6 +368,14 @@ export class PlayerQueueManager {
         bounds beat it); an explicit offset inside the item's bounds is the
         listener's own destination and beats everything. */
     this._startOffsetNext = null;
+    /** Which transport action armed the offset above (audit round 2 review).
+        `_transport`'s finally clears a leaked offset, but transport actions are
+        not serialised: a play still awaiting `backend.play()` can settle while
+        a skip-back sits between arming `_forceNextOffset = 0` and its own
+        `loadItem`, and a blind clear there turned the restart into a resume.
+        The finally clears only what its OWN action armed. */
+    this._offsetArmedBy = null;
+    this._transportInFlight = null;
     /** Whether the last pause was the LISTENER's (a press, a stop) rather than
         the OS's (a call, Siri, another app taking the session). Audit round 2
         (p-car-3): `interruptionEnded` with `shouldResume` resumes only an
@@ -367,6 +384,15 @@ export class PlayerQueueManager {
         paused before the call from one whose audio the call took — and a
         `shouldResume` after the former would start audio nobody asked for. */
     this._pausedByListener = false;
+    /** Whether the last pause was a ROUTE going away (headphones pulled, the
+        car switched off) — or an external stop whose cause nobody reported,
+        which is how the #263 route loss reaches a suspended page (audit round
+        2 review). Corner case #13 says a lost route never comes back on its
+        own; since 2026-09-23 the paused app keeps its session, so iOS can send
+        `shouldResume` at the end of a LATER call or Siri, and without this the
+        phone speaker in a parked car would start talking. Only a press, or a
+        known car route reappearing, clears it. */
+    this._pausedByRoute = false;
     // Two distinct notions of "where we are", conflated in the Swift:
     //   currentIndex  what is actually LOADED — savePosition writes against it
     //   _targetIndex  where a skip is HEADING, before the load resolves
@@ -678,8 +704,19 @@ export class PlayerQueueManager {
    */
   async _transport(why, run) {
     this._cutSeamGap(why);
+    /* Arming happens synchronously at the top of `run()`, before its first
+       await, so the token read by `_armOffset` is this action's own. */
+    const token = { why };
     try {
-      return await run();
+      const outer = this._transportInFlight;
+      this._transportInFlight = token;
+      let pending;
+      try {
+        pending = run();
+      } finally {
+        this._transportInFlight = outer;
+      }
+      return await pending;
     } finally {
       this._releaseSeamGap();
       /* AN OFFSET ARMED FOR A LOAD THAT NEVER HAPPENED MUST NOT LEAK into the
@@ -688,10 +725,20 @@ export class PlayerQueueManager {
          or playing) emits no `loadItem`, and the armed offset would then start
          whatever the NEXT load was — a skip's segment at a stranger's second.
          By the time `run()` has returned, every load this action was going to
-         issue has begun, so anything still armed is a leak. */
-      this._forceNextOffset = null;
-      this._startOffsetNext = null;
+         issue has begun, so anything still armed is a leak — IF this action
+         armed it. Another action's arming is that action's to spend. */
+      if (this._offsetArmedBy === token) {
+        this._forceNextOffset = null;
+        this._startOffsetNext = null;
+        this._offsetArmedBy = null;
+      }
     }
+  }
+
+  /** Arm the next load's offset on behalf of the transport action running now. */
+  _armOffset(field, value) {
+    this[field] = value;
+    this._offsetArmedBy = value == null ? this._offsetArmedBy : this._transportInFlight;
   }
 
   /**
@@ -707,8 +754,9 @@ export class PlayerQueueManager {
     return this._transport("play", () => {
       this.currentIndex = index;
       this._pausedByListener = false;
+      this._pausedByRoute = false;
       const at = Number(opts?.startOffset);
-      this._startOffsetNext = Number.isFinite(at) && at >= 0 ? at : null;
+      this._armOffset("_startOffsetNext", Number.isFinite(at) && at >= 0 ? at : null);
       return this._handle(E.play(refOf(item)));
     });
   }
@@ -718,6 +766,7 @@ export class PlayerQueueManager {
     if (!item) return this._emit("resume.ignored.noCurrentItem");
     return this._transport("resume", () => {
       this._pausedByListener = false;
+      this._pausedByRoute = false;
       return this._handle(E.play(refOf(item)));
     });
   }
@@ -776,7 +825,7 @@ export class PlayerQueueManager {
       // "Restart" must mean zero. Without this the reducer's savePosition fires
       // first, stores the current playhead, and the reload then resumes to the
       // exact spot the user just asked to leave.
-      this._forceNextOffset = 0;
+      this._armOffset("_forceNextOffset", 0);
       return this._handle(E.skipToPrevious(null));
     });
   }
@@ -933,8 +982,12 @@ export class PlayerQueueManager {
    * is what makes a late event safe to deliver.
    */
   async interruptionEnded(shouldResume) {
-    const resume = Boolean(shouldResume) && !this._pausedByListener;
-    if (shouldResume && !resume) this._emit("interruption.ended.listenerPaused — not resumed");
+    const resume = Boolean(shouldResume) && !this._pausedByListener && !this._pausedByRoute;
+    if (shouldResume && !resume) {
+      this._emit(this._pausedByRoute
+        ? "interruption.ended.routeLost — not resumed (corner case #13)"
+        : "interruption.ended.listenerPaused — not resumed");
+    }
     await this._handle(E.interruptionEnded(resume));
   }
 
@@ -949,6 +1002,8 @@ export class PlayerQueueManager {
     // BECOMING available cannot interrupt a beat — that path only acts on an
     // `interrupted` state — so it needs no cut and takes the plain call.
     if (oldDeviceUnavailable) {
+      /* Non-resumable: a later call's should-resume must not undo it. */
+      this._pausedByRoute = true;
       await this._transport("routeLost", () => this._handle(E.routeChanged(true)));
     } else {
       await this._handle(E.routeChanged(false));
@@ -958,6 +1013,7 @@ export class PlayerQueueManager {
       const item = this._currentItem();
       if (item && this.state.type === "interrupted" && this.state.wasPlaying) {
         this._emit(`route.autoResume.knownCar=${routeName}`);
+        this._pausedByRoute = false;
         await this._handle(E.play(refOf(item)));
       }
     }
@@ -1100,6 +1156,14 @@ export class PlayerQueueManager {
     this._emit(`reconcile.externalStop why=${why} — the element is paused and we said playing`);
     // The OS took the audio; the listener did not press anything. See `interruptionEnded`.
     this._pausedByListener = false;
+    /* WHO took it decides whether a should-resume may bring it back. Only a
+       reconcile the OS delivered as an interruption (`{ interruption: true }`)
+       or the element's own pause event is a call/Siri; a foreground or
+       visible reconcile finding the element stopped is the #263 case — the
+       route vanished while the page was suspended — and corner case #13 says
+       that never resumes by itself. A route loss the plugin DID report has
+       already set the flag in `routeChanged`, whatever order the two arrive. */
+    if (!interruption && why !== "unexplainedPause") this._pausedByRoute = true;
     await this._transport("reconcile", () => this._handle(E.interruptionBegan()));
     return true;
   }
@@ -1790,6 +1854,7 @@ export class PlayerQueueManager {
   _startNarrationTicker() {
     this._stopNarrationTicker();
     if (!this._onNarrationTick) return;
+    this._narrationTickDueAtMs = this._scheduler.nowMs() + NARRATION_TICK_MS;
     this._narrationTicker = this._scheduler.schedule(NARRATION_TICK_MS, () => this._tickNarration());
   }
 
@@ -1801,8 +1866,25 @@ export class PlayerQueueManager {
   _tickNarration() {
     this._narrationTicker = null;
     if (this._disposed || !this._loadedIsSynth) return;
+    const late = typeof this._narrationTickDueAtMs === "number"
+      ? this._scheduler.nowMs() - this._narrationTickDueAtMs : 0;
     if (this._onNarrationTick) {
       try { this._onNarrationTick(); } catch (_) { /* a surface must never break the player */ }
+    }
+    /* SUSPENDED, NOT FINISHED (audit round 2 review). The time the page slept
+       is never counted towards the deadline — it moves the start stamp the way
+       a pause does, so the deadline measures only time the page was awake to
+       hear a `finished` — and the synthesiser is asked, exactly as a fresh
+       `interruptionBegan` asks it: still speaking is left alone, anything else
+       is an interruption (`interrupted`, resumable only by a press or a fresh
+       should-resume), never an advance. */
+    if (late > NARRATION_SUSPEND_GAP_MS) {
+      this._emit(`tts.tick.suspended late=${Math.round(late / 1000)}s — asked as an interruption, not a deadline`);
+      if (this._narrationStartedAtMs != null) this._narrationStartedAtMs += late;
+      this._startNarrationTicker();
+      this._reconcileNarrationInterrupted("narration.suspended")
+        .catch((err) => this._emit(`tts.suspended.reconcileFailed: ${err?.message ?? err}`));
+      return;
     }
     /* THE DEADLINE (audit round 2, native-3). A synthesiser whose session was
        taken never says `finished`, and until now this ticker counted the Foray
@@ -1814,8 +1896,11 @@ export class PlayerQueueManager {
     const elapsed = this.narrationElapsedSec;
     if (deadline > 0 && typeof elapsed === "number" && elapsed > deadline) {
       this._emit(`tts.deadline item=${this._currentItem()?.id ?? "?"} elapsed=${Math.round(elapsed)}s limit=${Math.round(deadline)}s — treated as finished`);
-      this._onTtsFinished();
-      return;
+      /* `_onTtsFinished` declines while a transition is being applied; the
+         ticker must outlive that refusal or the line stalls for good — the
+         defect this deadline exists to fix. Retried on the next tick. */
+      if (this._onTtsFinished()) return;
+      if (!this._loadedIsSynth || this._advancedSpeakSeq === this._speakSeq) return;
     }
     this._startNarrationTicker();
   }
@@ -1856,16 +1941,17 @@ export class PlayerQueueManager {
    *      either's `_handle` call resolves cannot both pass the check.
    */
   _onTtsFinished() {
-    if (this._disposed) return;
-    if (!this._loadedIsSynth) return;
-    if (this._applying > 0) return;
+    if (this._disposed) return false;
+    if (!this._loadedIsSynth) return false;
+    if (this._applying > 0) return false;
     const seq = this._speakSeq;
-    if (this._advancedSpeakSeq === seq) return;
+    if (this._advancedSpeakSeq === seq) return false;
     this._advancedSpeakSeq = seq;
     this._stopNarrationTicker();
     this._emit(`tts.finished item=${this._currentItem()?.id ?? "?"}`);
     this._handleBackendItemEnded(END_NATURAL)
       .catch((err) => this._emit(`tts.finished.advanceFailed: ${err?.message ?? err}`));
+    return true;
   }
 
   /* ---------- the seam beat ---------- */

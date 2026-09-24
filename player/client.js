@@ -1069,6 +1069,19 @@ function setSheetDragOffset(px) {
 
 let current = null;
 let scrubbing = false;
+/* A FOCUSED SLIDER IS FROZEN, BUT ITS NEXT STEP IS TAKEN FROM THE AUDIO (audit
+   round 2 review of a11y-7). `paintPage` stops writing the value while the
+   slider is a keyboard or screen-reader user's, so VoiceOver does not narrate a
+   running clock; the native step (an arrow key, a VoiceOver swipe) then moves
+   from that frozen value, and a listener parked on Seek for five minutes
+   jumped five minutes BACK on a Right Arrow. `scrubShownValue` is the value the
+   slider holds as far as paint knows, `scrubLiveValue` where the audio is: a
+   discrete step is re-based onto the live value before it seeks. A slider
+   focused by a POINTER is not frozen at all — a mouse user's thumb follows the
+   audio after a click, as the fill beside it does. */
+let scrubShownValue = null;
+let scrubLiveValue = null;
+let scrubByPointer = false;
 /** `{ id, sec }` — the position the load in flight was asked to start at, so
     the bar can show it before the element holds the item (`episodePositionSec`).
     Set by `play()`, meaningful only while `manager.playheadItemId` is not yet
@@ -1634,6 +1647,13 @@ function nudgeBy(offsetSec) {
       announce(NARRATION_RESTARTED_LINE);
       return manager.skipToPrevious().then(() => render());
     }
+    /* THE LAST LINE HAS NOTHING AFTER IT TO SKIP TO (audit round 2 review).
+       `forayNext` returns early on the last playable item, so announcing
+       "Narration skipped" there told a screen-reader user the line was gone
+       while it kept playing — the tap that says one thing and does another
+       this branch exists to remove. Forward from the closing line does
+       nothing, and says nothing. */
+    if (manager.currentIndex >= playable.length - 1) return undefined;
     announce(NARRATION_SKIPPED_LINE);
     return ForayPlayer.forayNext();
   }
@@ -1771,8 +1791,13 @@ function paintPage(running) {
   if (!scrubbing) {
     const frac = dur ? Math.min(1, Math.max(0, pos / dur)) : 0;
     ui.fill.style.width = `${frac * 100}%`;
-    const held = typeof document !== "undefined" && document.activeElement === ui.scrub;
-    if (!held) ui.scrub.value = String(Math.round(frac * 1000));
+    const live = Math.round(frac * 1000);
+    scrubLiveValue = live;
+    const held = scrubIsHeld();
+    if (!held) {
+      ui.scrub.value = String(live);
+      scrubShownValue = live;
+    }
     paintClocks(pos, dur, !held);
   }
   syncCardButtons(loading);
@@ -1805,12 +1830,31 @@ function paintClocks(pos, dur, valuetext = true) {
   if (ui.scrub.getAttribute("aria-valuetext") !== text) ui.scrub.setAttribute("aria-valuetext", text);
 }
 
+/** Is the slider a keyboard or screen-reader user's right now — focused, and
+    not by the pointer that is dragging it? See `scrubShownValue`. */
+function scrubIsHeld() {
+  return typeof document !== "undefined" && document.activeElement === ui.scrub && !scrubByPointer;
+}
+
+/** A discrete step on a frozen slider (the first `input` of a key press or a
+    VoiceOver swipe — never mid-drag, where the thumb's value is absolute) moves
+    from where the AUDIO is, not from where the value froze. */
+function rebaseHeldScrubStep() {
+  if (scrubbing || !scrubIsHeld()) return;
+  if (scrubShownValue == null || scrubLiveValue == null) return;
+  const step = Number(ui.scrub.value) - scrubShownValue;
+  if (!Number.isFinite(step)) return;
+  const next = Math.min(1000, Math.max(0, scrubLiveValue + step));
+  ui.scrub.value = String(next);
+}
+
 /** Mid-drag: the clocks follow the THUMB, not the audio (audit round 2,
     player-6). The seek itself happens on `change`; this is only the readout the
     listener aims with — Apple Podcasts shows the target time as you drag, and
     ours kept counting the audio that was still playing until release. */
 function paintScrubPreview() {
   if (!ui || !current) return;
+  rebaseHeldScrubStep();
   scrubbing = true;
   const dur = foray ? foray.resolved.totalSec : episodeDurationSec();
   const at = (Number(ui.scrub.value) / 1000) * (dur || 0);
@@ -3189,9 +3233,16 @@ function bind() {
   ui.clipNext.addEventListener("click", () => ForayPlayer.forayNext());
 
   /* The clocks follow the thumb while it moves (audit round 2, player-6). */
+  ui.scrub.addEventListener("pointerdown", () => { scrubByPointer = true; });
+  ui.scrub.addEventListener("keydown", () => { scrubByPointer = false; });
+  ui.scrub.addEventListener("blur", () => { scrubByPointer = false; });
   ui.scrub.addEventListener("input", () => paintScrubPreview());
   ui.scrub.addEventListener("change", async () => {
+    /* A change with no `input` before it (some assistive paths) is still a
+       step from the frozen value. */
+    if (!scrubbing) rebaseHeldScrubStep();
     const frac = Number(ui.scrub.value) / 1000;
+    scrubShownValue = Number(ui.scrub.value);
     scrubbing = false;
     if (foray) {
       await ForayPlayer.foraySeek(frac * foray.resolved.totalSec);
