@@ -28,6 +28,9 @@ public enum TransportPolicy {
     public static let seekInsideEndSec: Double = EngineConstants.Transport.seekInsideEndSec
     /// `SEEK_END_GUARD_SEC`: an episode seek stops this far short of the end.
     public static let seekEndGuardSec: Double = EngineConstants.Transport.seekEndGuardSec
+    /// `INTERRUPTION_REWIND_SEC` (NE-14j, authored): how far back an OS
+    /// interruption's should-resume picks the audio up.
+    public static let interruptionRewindSec: Double = EngineConstants.Transport.interruptionRewindSec
 
     /// `TOGGLE`: what a play/pause press does.
     public enum Toggle: String, CaseIterable {
@@ -273,5 +276,24 @@ public enum TransportPolicy {
     /// Bluetooth stack's stop can never blank the display mid-drive.
     public static func remoteStopAction(close: Bool?) -> RemoteStop {
         close == true ? .close : .pause
+    }
+
+    // MARK: interruption resume
+
+    /// `interruptionResumeOffset({playheadSec, startSec})` (NE-14j, plan
+    /// §4.4): where an OS interruption's should-resume picks the audio up on
+    /// the item the deck still holds: `interruptionRewindSec` back, never
+    /// before the item's own start (a slice's in-point, else 0:00), so the
+    /// listener hears the half-sentence the call cut off and never a
+    /// stranger's episode before the slice (#65 §4). Nil when the playhead is
+    /// not a finite number (an element mid-load); the caller keeps its own.
+    /// `nil` stands for every value `typeof n === "number"` rejects.
+    public static func interruptionResumeOffset(playheadSec: Double?, startSec: Double?) -> Double? {
+        guard let playheadSec, playheadSec.isFinite else { return nil }
+        let floor: Double = {
+            guard let startSec, startSec.isFinite else { return 0 }
+            return startSec
+        }()
+        return JSMath.max(floor, playheadSec - interruptionRewindSec)
     }
 }

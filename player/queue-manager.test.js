@@ -240,6 +240,27 @@ test("a fast double-skip loads only the final target", async () => {
     "must not stack concurrent loads into overlapping playback");
 });
 
+/* NE-14s: the weaker test above only asks that c was LOADED. With both skips
+   in flight at once the destination has to be c too, started exactly once. It
+   was b: each effect was awaited, so the first skip parked after its save, the
+   second skip's load(c) went out first, and the first skip's load(b) then
+   superseded it (NE-14j's finding). The native engine takes each skip as one
+   turn, and the manager-episode fixture that pins this is its contract. */
+test("a concurrent double-skip lands on the final target and starts it once", async () => {
+  const { m, backend } = make({ strategy: PICKED_FIRST });
+  m.setQueueFromPick(ep("a"), { others: [ep("b"), ep("c")] });
+  await m.play(0);
+  backend.calls.length = 0;
+
+  await Promise.all([m.skipToNext(), m.skipToNext()]);
+
+  assert.equal(m.currentIndex, 2, "the second skip is the destination");
+  assert.equal(m.playheadItemId, "c");
+  assert.deepStrictEqual(backend.calls.filter((c) => c === "play"), ["play"], "exactly one start");
+  assert.equal(backend.calls.at(-1), "play");
+  assert.equal(backend.calls.filter((c) => c.startsWith("load:")).at(-1), "load:c@0");
+});
+
 /* ---------- bridge TTS (corner case #12) ---------- */
 
 test("an episode followed by a bridge enters transitioning and plays the bridge", async () => {

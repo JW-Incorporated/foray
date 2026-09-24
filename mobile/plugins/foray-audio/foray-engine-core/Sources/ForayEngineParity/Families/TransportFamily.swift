@@ -19,7 +19,8 @@ public enum TransportFamily {
         reads: [
             "RESTART_WINDOW_SEC": .number(TransportPolicy.restartWindowSec),
             "SEEK_INSIDE_END_SEC": .number(TransportPolicy.seekInsideEndSec),
-            "SEEK_END_GUARD_SEC": .number(TransportPolicy.seekEndGuardSec)
+            "SEEK_END_GUARD_SEC": .number(TransportPolicy.seekEndGuardSec),
+            "INTERRUPTION_REWIND_SEC": .number(TransportPolicy.interruptionRewindSec)
         ],
         calls: [
             "endedPlayAction": TransportFamily.endedPlayAction,
@@ -32,7 +33,8 @@ public enum TransportFamily {
             "seekAction": TransportFamily.seekAction,
             "sourceOffsetFor": TransportFamily.sourceOffsetFor,
             "scrubTarget": TransportFamily.scrubTarget,
-            "remoteStopAction": TransportFamily.remoteStopAction
+            "remoteStopAction": TransportFamily.remoteStopAction,
+            "interruptionResumeOffset": TransportFamily.interruptionResumeOffset
         ])
 
     /// The one object parameter, or nil for "throws a TypeError".
@@ -166,6 +168,16 @@ public enum TransportFamily {
             "reload": .bool(scrub.reload),
             "offset": ArgReading.numberOrNull(scrub.offset)
         ]))
+    }
+
+    /// `interruptionResumeOffset({ playheadSec, startSec = null })` (NE-14j):
+    /// both read with `typeof n === "number"` plus `Number.isFinite`, so any
+    /// non-number is "no number" and the port's nil.
+    static func interruptionResumeOffset(_ args: [JSValue]) throws -> CallOutcome {
+        guard let s = param(args) else { return .threw("TypeError") }
+        let offset = TransportPolicy.interruptionResumeOffset(playheadSec: s["playheadSec"].numberValue,
+                                                              startSec: s["startSec"].numberValue)
+        return .returned(ArgReading.numberOrNull(offset))
     }
 
     /// `remoteStopAction(details)`: `details?.close === true`.

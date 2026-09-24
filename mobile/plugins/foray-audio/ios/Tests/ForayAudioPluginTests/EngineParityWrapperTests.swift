@@ -60,6 +60,13 @@ final class EngineParityWrapperTests: XCTestCase {
     func testSnapshotFamily() { assertParityFamily("snapshot", requireRunner: true) }
     func testHandshakeFamily() { assertParityFamily("handshake", requireRunner: true) }
 
+    /// Recorded by NE-14j, ported by NE-14s: the deck's decisions
+    /// (`DeckPolicy`) and the episode paths of the manager, driven through
+    /// `EngineCore` by the scenario driver (which also checks the
+    /// audible-start invariant on every turn). Each must RUN here.
+    func testDeckEpisodeFamily() { assertParityFamily("deck-episode", requireRunner: true) }
+    func testManagerEpisodeFamily() { assertParityFamily("manager-episode", requireRunner: true) }
+
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.
     func testEveryManifestFamilyIsExecutedOrPending() throws {

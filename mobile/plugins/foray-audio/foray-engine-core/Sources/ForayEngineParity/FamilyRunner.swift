@@ -108,6 +108,7 @@ public enum ParityFamilies {
         [CompareFamily.runner, SeamGapFamily.runner, QueueStateFamily.runner, RateFamily.runner, ResumeRulesFamily.runner, TransportFamily.runner,
          RowsFamily.runner, NumberFormatFamily.runner, DiagTokensFamily.runner, MediaEpisodeFamily.runner,
          SessionFamily.runner, SessionInvariantFamily.runner, EngineModeFamily.runner,
-         ContractFamily.runner, SnapshotFamily.runner, HandshakeFamily.runner]
+         ContractFamily.runner, SnapshotFamily.runner, HandshakeFamily.runner,
+         DeckEpisodeFamily.runner, ManagerEpisodeFamily.runner]
     }
 }

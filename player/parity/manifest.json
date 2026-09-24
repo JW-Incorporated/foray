@@ -331,7 +331,7 @@
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
-        "player/parity/fixtures/manager-episode/scenarios.json": "cb9d7c9ba06ae8a87f6d6762828643481a886dcb18be72386a839d754add4198"
+        "player/parity/fixtures/manager-episode/scenarios.json": "75498f235f0be0b2f7ce8e1bcbeb7365c300c1446b400705b52daaccf457b250"
       },
       "ids": [
         "manager-episode/last-episode-row-full-snapshot",

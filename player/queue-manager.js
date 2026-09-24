@@ -1127,7 +1127,21 @@ export class PlayerQueueManager {
        the rest of the session. */
     this._applying++;
     try {
-      for (const effect of effects) await this._perform(effect);
+      /* ONLY AN EFFECT THAT IS ACTUALLY ASYNCHRONOUS IS AWAITED (NE-14s). A
+         save, a pause, a rate or an out-point is done when `_perform` returns,
+         and awaiting its `undefined` still yielded a microtask, so two
+         transport actions in flight at once interleaved BETWEEN one action's
+         effects: a fast double skip's second skip issued load(c) while the
+         first was parked after its save, and the first skip's load(b) then
+         superseded it, landing on b (NE-14j's finding, recorded in
+         manager-episode). Run back to back, one action's effects up to its
+         first real wait (a load) are one step, as the native engine's
+         `handle()` turn is, so the second skip replaces the first's in-flight
+         load and the destination is the final target. */
+      for (const effect of effects) {
+        const pending = this._perform(effect);
+        if (pending && typeof pending.then === "function") await pending;
+      }
     } finally {
       this._applying--;
     }
@@ -1339,8 +1353,11 @@ export class PlayerQueueManager {
 
   /** Every effect gets an explicit case. An unhandled one throws rather than
       silently doing nothing — a missed effect is a stuck player, and that is
-      far harder to diagnose later than a loud failure now. */
-  async _perform(effect) {
+      far harder to diagnose later than a loud failure now.
+      NOT `async` (NE-14s): it returns the effect's own promise when there is
+      one and nothing otherwise, so `_handle` waits only for real work. A
+      refusal still throws, now synchronously, into `_handle`'s loop. */
+  _perform(effect) {
     switch (effect.type) {
       case "loadItem":
         return this._loadItem(effect.item);
