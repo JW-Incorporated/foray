@@ -3677,7 +3677,7 @@ test("NE-25c: one synthesizer configuration, a platform-free probe reached only 
   assert.match(swiftFuncBody(speaker, "makeSynthesizer"), /usesApplicationAudioSession = true/, "the engine's synthesizer speaks through the app's session, said out loud");
   assert.match(swiftFuncBody(speaker, "utterance"), /\.rate = AVSpeechUtteranceDefaultSpeechRate/, "narration is 1x, Apple's default rate (OQ-3)");
   const speak = swiftFuncBody(speaker, "speak");
-  const guardAt = speak.search(/if !config\.sessionIsActive\(\) \{[\s\S]*?"fault implicit-activation speaker"[\s\S]*?config\.debugFault\(/);
+  const guardAt = speak.search(/if !config\.sessionIsActive\(\) \{[\s\S]*?config\.diag\([\s\S]*?FaultKind\.implicitActivation[\s\S]*?config\.debugFault\(/);
   assert.ok(guardAt >= 0 && guardAt < speak.indexOf("synthesizer.speak("), "the implicit-activation guard runs before the synthesizer speaks");
   const synthesizers = [...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")), ...swiftFilesUnder(path.join(CORE_DIR, "Sources"))]
     .flatMap((file) => [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/\bAVSpeechSynthesizer\(\)/g)].map(() => path.basename(file)));

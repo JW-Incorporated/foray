@@ -764,14 +764,18 @@ observable proxy. The Simulator had 68 voices installed.
   play, inside the card's 1 s bound. No interruption notification arrived during the line, the play or
   the 0.5 s after. Neither the deck nor the speaker found the owner's session
   inactive: there was no `fault implicit-activation` row.
-- **The line's own time varies by 5x on the rig** (2.3 s and 11.0 s for the
-  same two words). The second run's Simulator was slower throughout (its
-  activation took 40.8 ms against 1.6 ms). The likely cost is loading the voice
-  for the first utterance. The probe waits up to 30 s for `didFinish`, and the
-  phone's row carries `speechMs`.
+- **The line's own time varied by 5x on the rig**: 2.3 s and 11.0 s for the
+  same two words, each the first line spoken in its process. The second run's
+  Simulator was slower throughout (its activation took 40.8 ms against
+  1.6 ms). In a third run (mutation run 36064544632) the first line never
+  finished inside 45 s. So the smoke now speaks a warm-up line first, through
+  the same owner and configuration (`SpeechWarmUp`, up to 120 s, its time in
+  the job summary), and measures a warm line. It skips, and says so, only
+  when even the warm-up never finishes. On the phone, the probe waits up to
+  30 s for `didFinish`, and its row carries `speechMs`.
 - **The synthesizer's delegate ran on main.** So the play really was in the
-  same main turn as `didFinish`. `PreviewSpeaker` hops to main (and writes
-  `speaker <end> thread=bg`) if a device ever delivers it elsewhere.
+  same main turn as `didFinish`. If a device ever delivers it elsewhere,
+  `PreviewSpeaker` hops to main and writes a `speaker thread=bg` row.
 - **The deck did not sound during the line.** This is asserted: the deck's
   rate stayed 0 until the play.
 - What the smoke cannot show: whether iOS **deactivates or yields** the

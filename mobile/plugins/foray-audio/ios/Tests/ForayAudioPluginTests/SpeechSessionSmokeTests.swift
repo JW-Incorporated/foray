@@ -40,6 +40,16 @@ final class SpeechSessionSmokeTests: XCTestCase {
     override class func setUp() {
         super.setUp()
         DeckMeasurements.warmUpOnce()
+        SpeechWarmUp.once()
+    }
+
+    /// Every speech test needs a synthesizer that has spoken once in this
+    /// process (see `SpeechWarmUp`). One that never did is this runner's
+    /// limit, recorded in the job summary, not a finding about the engine.
+    private func requireSpeech() throws {
+        try XCTSkipIf(AVSpeechSynthesisVoice.speechVoices().isEmpty, "this Simulator has no speech voice installed")
+        try XCTSkipIf(SpeechWarmUp.coldMs == nil,
+                      "the Simulator's synthesizer never finished a warm-up line in \(SpeechWarmUp.timeoutSec) s")
     }
 
     private func fixture(_ name: String, _ ext: String) throws -> URL {
@@ -94,8 +104,8 @@ final class SpeechSessionSmokeTests: XCTestCase {
     /// line ends (a second audible producer while the synthesizer speaks is
     /// what `speechMs` and the ordering assertion catch).
     func testADeckStartedInTheSameTurnAsDidFinishPlaysWithinOneSecond() throws {
+        try requireSpeech()
         let voices = AVSpeechSynthesisVoice.speechVoices().count
-        try XCTSkipIf(voices == 0, "this Simulator has no speech voice installed: nothing to smoke-test")
 
         var sessionRows: [DiagEntry] = []
         let owner = AudioSessionOwner(config: AudioSessionOwner.Config(diag: { sessionRows.append($0) }))
@@ -132,10 +142,10 @@ final class SpeechSessionSmokeTests: XCTestCase {
         XCTAssertTrue(ready, "the deck never became ready: \(events.map { $0.event })")
         guard ready else { return }
 
-        var speakerRows: [String] = []
+        var speakerRows: [DiagEntry] = []
         let speaker = PreviewSpeaker(config: PreviewSpeaker.Config(
             sessionIsActive: { owner.phase == .active },
-            writeRow: { speakerRows.append($0) },
+            diag: { speakerRows.append($0) },
             debugFault: { faults.append($0) }
         ))
         XCTAssertTrue(speaker.synthesizer.usesApplicationAudioSession, "the smoke must run the configuration SpeechNarrator ships")
@@ -181,7 +191,7 @@ final class SpeechSessionSmokeTests: XCTestCase {
         var playToPlayingMs: Double?
         if let sent = playSentAt, let playing = playingAt { playToPlayingMs = playing.timeIntervalSince(sent) * 1000 }
         spin(until: 0.5) { false } // a late interruption would land here
-        let delegateOnMain = !speakerRows.contains { $0.contains("thread=bg") }
+        let delegateOnMain = !speakerRows.contains { $0[field: "thread"] == .string("bg") }
 
         let trial = Trial(
             activationOk: activation.ok, activateMs: activation.activateMs, voices: voices,
@@ -206,7 +216,8 @@ final class SpeechSessionSmokeTests: XCTestCase {
             notes: [
                 "AudioSessionOwner (.playback/.spokenAudio) activated; PreviewSpeaker (usesApplicationAudioSession = true, 1x); the production AVDeck on click-cbr.mp3, loaded and paused before the line.",
                 "SIMULATOR SMOKE, NOT EVIDENCE: no lock, no background, no car. DV-9 is answered by the Developer session probe on the phone (NE-27 desk pre-flight).",
-                "Voices installed: \(voices). Implicit-activation faults: \(faults.isEmpty ? "none" : faults.joined(separator: "; "))."
+                "Voices installed: \(voices). Implicit-activation faults: \(faults.isEmpty ? "none" : faults.joined(separator: "; ")).",
+                "The line is WARM: this process's first line (SpeechWarmUp) finished after \(SpeechWarmUp.coldMs.map { msValue($0) } ?? "-") ms."
             ],
             tag: Self.tag
         )
@@ -226,7 +237,7 @@ final class SpeechSessionSmokeTests: XCTestCase {
     /// `PreviewSpeaker.deliver`, or make the new line current AFTER stopping
     /// the old one.
     func testAReplacedLineEndsSilentlyAndTheNewOneReportsOnce() throws {
-        try XCTSkipIf(AVSpeechSynthesisVoice.speechVoices().isEmpty, "no speech voice installed")
+        try requireSpeech()
         var sessionRows: [DiagEntry] = []
         let owner = AudioSessionOwner(config: AudioSessionOwner.Config(diag: { sessionRows.append($0) }))
         XCTAssertTrue(owner.activate().ok, "\(sessionRows)")
@@ -234,12 +245,18 @@ final class SpeechSessionSmokeTests: XCTestCase {
 
         var faults: [String] = []
         let speaker = PreviewSpeaker(config: PreviewSpeaker.Config(
-            sessionIsActive: { owner.phase == .active }, writeRow: { _ in }, debugFault: { faults.append($0) }))
+            sessionIsActive: { owner.phase == .active }, diag: { _ in }, debugFault: { faults.append($0) }))
         var ends: [SpeechEnd] = []
         speaker.onFinish = { ends.append($0) }
 
         speaker.speak(text: "This first line is long enough to still be speaking when it is replaced.", voiceId: nil)
-        spin(until: 5) { speaker.synthesizer.isSpeaking }
+        // Replaced MID-SPEECH. In mutation run 36064544632 this test passed
+        // with the identity check gone; the likely reason is that the first
+        // line was still queued behind a loading voice, and a line cancelled
+        // before it starts gets no delegate call. So it must have started.
+        XCTAssertTrue(spin(until: 15) { speaker.linesStarted == 1 }, "the first line never started")
+        spin(until: 0.5) { false }
+        XCTAssertTrue(speaker.synthesizer.isSpeaking, "the first line ended before it could be replaced")
         speaker.speak(text: Self.line, voiceId: nil)
         XCTAssertTrue(spin(until: Self.speechTimeoutSec) { !ends.isEmpty }, "the replacing line never ended")
         spin(until: 1) { false }
@@ -252,14 +269,16 @@ final class SpeechSessionSmokeTests: XCTestCase {
     /// DEBUG stop, and still speaks (silence would hide the core's bug).
     /// TO SEE IT FAIL: drop the `sessionIsActive()` check in `speak`.
     func testSpeakingWithoutAnActiveSessionIsAFault() {
-        var rows: [String] = []
+        var rows: [DiagEntry] = []
         var faults: [String] = []
         let speaker = PreviewSpeaker(config: PreviewSpeaker.Config(
-            sessionIsActive: { false }, writeRow: { rows.append($0) }, debugFault: { faults.append($0) }))
+            sessionIsActive: { false }, diag: { rows.append($0) }, debugFault: { faults.append($0) }))
         speaker.speak(text: Self.line, voiceId: nil)
         speaker.stopSpeaking()
         XCTAssertEqual(faults, ["fault implicit-activation speaker"])
-        XCTAssertEqual(rows, ["fault implicit-activation speaker"])
+        XCTAssertEqual(rows.map { $0.kind }, ["fault"])
+        XCTAssertEqual(rows.first?[field: "kind"], .string("implicit-activation"))
+        XCTAssertEqual(rows.first?[field: "at"], .string("speaker"))
     }
 
     /// The configuration SpeechNarrator ships (OQ-3: 1x is Apple's default
@@ -271,5 +290,45 @@ final class SpeechSessionSmokeTests: XCTestCase {
         let utterance = PreviewSpeaker.utterance(text: "x", voiceId: "com.example.no-such-voice")
         XCTAssertEqual(utterance.rate, AVSpeechUtteranceDefaultSpeechRate)
         XCTAssertNil(utterance.voice, "an unknown identifier leaves the system's voice")
+    }
+}
+
+/// The Simulator's first line in a process loads a voice, and on the CI
+/// runners that has taken 2.3 s (run 36062420799), 11.0 s (run 36064494379)
+/// and more than 45 s (run 36064544632). The smoke is about the moment AFTER
+/// a line, so it speaks one line first, through the same owner and the same
+/// synthesizer configuration, waits for it, and records the cold time as a
+/// measurement. On the phone the probe's own `speechMs` carries it.
+enum SpeechWarmUp {
+    static let timeoutSec: TimeInterval = 120
+    /// The warm-up line's time to `didFinish`, or nil when it never ended.
+    private(set) static var coldMs: Double?
+    private static var done = false
+
+    static func once() {
+        guard !done else { return }
+        done = true
+        guard !AVSpeechSynthesisVoice.speechVoices().isEmpty else { return }
+        let owner = AudioSessionOwner(config: AudioSessionOwner.Config(diag: { _ in }))
+        _ = owner.activate()
+        defer { owner.deactivate(notifyOthers: false) }
+        let speaker = PreviewSpeaker(config: PreviewSpeaker.Config(
+            sessionIsActive: { owner.phase == .active }, diag: { _ in }, debugFault: { _ in }))
+        var ended = false
+        speaker.onFinish = { _ in ended = true }
+        let started = Date()
+        speaker.speak(text: "Warm up.", voiceId: nil)
+        let until = started.addingTimeInterval(timeoutSec)
+        while !ended && Date() < until {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+        }
+        if ended { coldMs = Date().timeIntervalSince(started) * 1000 }
+        MeasurementReport.table(
+            title: "NE-25c: the synthesizer's cold first line (Simulator)",
+            columns: ["first line to didFinish, ms", "waited up to, s"],
+            rows: [[coldMs.map { msValue($0) } ?? "never", "\(Int(timeoutSec))"]],
+            notes: ["A warm-up, not a finding: the smoke that follows measures a warm line."],
+            tag: SpeechSessionSmokeTests.tag
+        )
     }
 }

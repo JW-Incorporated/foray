@@ -1,7 +1,6 @@
 import Foundation
 import AVFoundation
 import ForayEngineCore
-import os
 
 /// The engine's own synthesizer in M1 (docs/native-engine-plan.md §4.1
 /// "SpeechNarrator (M1: PreviewSpeaker seed)"): the real `Speaking`.
@@ -30,7 +29,11 @@ import os
 /// would implicitly activate an inactive one, so `speak` checks the owner's
 /// phase first, like AVDeck's `play` (plan §4.3): not active means the core's
 /// audible-start invariant was broken, which writes a `fault
-/// implicit-activation speaker` row and stops a DEBUG build.
+/// kind=implicit-activation at=speaker` row and stops a DEBUG build.
+///
+/// It opens no logger of its own (NE-19: one engine logger, behind the ring's
+/// gate): its rows go to `Config.diag`, which the boot path points at
+/// `EngineOutput.diag`.
 ///
 /// `onFinish` is delivered ON MAIN, once per `speak`, and only for the line in
 /// flight: a line replaced by a newer one ends silently, so a probe or a
@@ -41,28 +44,19 @@ final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate {
         /// `AudioSessionOwner.phase == .active`, read through a closure for
         /// the reason AVDeck's is: one owner of the session (plan §4.4).
         var sessionIsActive: () -> Bool
-        /// Where a diagnostics row goes (NE-19's ring once the boot path wires
-        /// it). Default: os.Logger.
-        var writeRow: (String) -> Void
+        /// Where the speaker's rows go: `EngineOutput.diag`, so they reach
+        /// the ring through DiagGate like every other engine row.
+        var diag: (DiagEntry) -> Void
         /// DEBUG's hard stop for a broken invariant, injectable for the tests.
         var debugFault: (String) -> Void
 
         init(sessionIsActive: @escaping () -> Bool,
-             writeRow: @escaping (String) -> Void = PreviewSpeaker.logRow,
+             diag: @escaping (DiagEntry) -> Void,
              debugFault: @escaping (String) -> Void = { assertionFailure($0) }) {
             self.sessionIsActive = sessionIsActive
-            self.writeRow = writeRow
+            self.diag = diag
             self.debugFault = debugFault
         }
-    }
-
-    private static let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "ai.jwlabs.foura",
-        category: "ForayEngine.PreviewSpeaker"
-    )
-
-    static func logRow(_ row: String) {
-        logger.notice("\(row, privacy: .public)")
     }
 
     /// The engine's synthesizer, configured once, here.
@@ -90,6 +84,10 @@ final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate {
     private let config: Config
     /// The line in flight; the delegate reports only this one.
     private var current: AVSpeechUtterance?
+    /// Lines the synthesizer has actually begun to speak (`didStart`), on
+    /// main. Only the Simulator tests read it: "replace a line mid-speech"
+    /// means nothing until the first line is audibly under way.
+    private(set) var linesStarted = 0
 
     init(config: Config) {
         self.config = config
@@ -104,9 +102,11 @@ final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate {
         if !config.sessionIsActive() {
             // Release still speaks: silence would hide the core's bug, and the
             // row is what finds it.
-            let row = "fault implicit-activation speaker"
-            config.writeRow(row)
-            config.debugFault(row)
+            config.diag(DiagEntry(kind: "fault", fields: [
+                JSONMember("kind", .string(Vocabulary.FaultKind.implicitActivation.rawValue)),
+                JSONMember("at", .string("speaker"))
+            ]))
+            config.debugFault("fault implicit-activation speaker")
         }
         let utterance = Self.utterance(text: text, voiceId: voiceId)
         // The new line becomes current BEFORE the old one is stopped, so the
@@ -124,6 +124,14 @@ final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate {
 
     // MARK: - AVSpeechSynthesizerDelegate
 
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
+        if Thread.isMainThread {
+            linesStarted += 1
+        } else {
+            DispatchQueue.main.async { [weak self] in self?.linesStarted += 1 }
+        }
+    }
+
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         deliver(.finished, for: utterance)
     }
@@ -135,7 +143,8 @@ final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate {
     /// Apple does not document the delegate's thread. On main the end is
     /// handed on in the SAME turn (the probe's play must follow `didFinish`
     /// with nothing in between, which is DV-9's question); off main it hops,
-    /// and the row says it did, because then the turn is not the same.
+    /// and a `speaker thread=bg` row says it did, because then the turn is
+    /// not the same.
     private func deliver(_ end: SpeechEnd, for utterance: AVSpeechUtterance) {
         let hand: () -> Void = { [weak self] in
             guard let self, utterance === self.current else { return }
@@ -145,7 +154,9 @@ final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate {
         if Thread.isMainThread {
             hand()
         } else {
-            config.writeRow("speaker \(end.rawValue) thread=bg")
+            config.diag(DiagEntry(kind: "speaker", fields: [
+                JSONMember("kind", .string(end.rawValue)), JSONMember("thread", .string("bg"))
+            ]))
             DispatchQueue.main.async(execute: hand)
         }
     }
