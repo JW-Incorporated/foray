@@ -9,7 +9,8 @@ one and is never quoted as a measurement.
 
 Cards append their own section. NE-01 (the packaging spike) wrote §1-§6;
 NE-25a (the click-track spike) wrote §7, NE-15 (AVDeck) §8, NE-06
-(engine-parity CI) §9 and NE-25b (two-deck preroll) §10.
+(engine-parity CI) §9, NE-25b (two-deck preroll) §10 and NE-25c (the speech
+smoke and the session probe) §11.
 
 ## 1. What NE-01 changed, in one paragraph
 
@@ -720,3 +721,111 @@ mutant changed `AVDeck.swift` alone.
 each run). The retry and the runtime status gate were pinned only statically
 (`shell-invariants`) until this card. NE-25b's tests are the first to
 execute them.
+
+## 11. NE-25c: speech, then a deck (Simulator smoke, 2026-09-24), and the DV-9 probe
+
+**Simulator smoke. Not evidence.** DV-9 asks whether the session an
+`AVSpeechSynthesizer` on the application session (`usesApplicationAudioSession
+= true`) leaves behind after `didFinish` still lets a deck play **on a locked
+phone, in the background**. A Simulator has no lock, no background, no car and
+no other app, and its session is the Mac's audio. This section records only
+that the obvious failure is absent on the rig. **DV-9 is answered by the
+Developer session probe on the phone, in the NE-27 desk pre-flight**, and
+NE-33 chooses SpeechNarrator's path from that row, not from this one.
+
+### 11.1 The smoke
+
+**CI-executed:** ios-kit, `xcodebuild test -scheme ForayAudio`, iPhone 17 Pro
+Simulator, iOS 26.4.1, **run 36062420799** (head `4baa88d6`) and **run
+36064494379** (head `5d6d203a`, the same smoke code). The rig is
+`SpeechSessionSmokeTests.testADeckStartedInTheSameTurnAsDidFinishPlaysWithinOneSecond`
+(PR #805). It uses the production pieces:
+
+- `AudioSessionOwner` (`.playback` / `.spokenAudio`), activated;
+- `PreviewSpeaker`, the engine's one synthesizer configuration
+  (`usesApplicationAudioSession = true`, Apple's 1x rate);
+- the production `AVDeck` on `click-cbr.mp3`, loaded and paused at 5 s before
+  the line.
+
+The test speaks "Session probe." and sends the deck's `play` from inside the
+`didFinish` callback. It then waits for the deck's own `.playing`.
+
+| run | activateMs | line start to `didFinish`, ms | `didFinish` on main | play to `.playing`, ms | interruptions | before the line | at `didFinish` | at `.playing` |
+|---|---|---|---|---|---|---|---|---|
+| 36062420799 | 1.6 | 2,302.3 | yes (same turn) | **17.2** | **0** | other=n hint=n | other=n hint=n | other=n hint=n |
+| 36064494379 | 40.8 | 10,993.1 | yes (same turn) | **27.5** | **0** | other=n hint=n | other=n hint=n | other=n hint=n |
+
+`other` is `isOtherAudioPlaying` and `hint` is
+`secondaryAudioShouldBeSilencedHint`. iOS has no public "is my session active"
+getter, so these readings and the deck's `timeControlStatus` are the
+observable proxy. The Simulator had 68 voices installed.
+
+- **Green in both runs.** `.playing` came 17.2 ms and 27.5 ms after the
+  play, inside the card's 1 s bound. No interruption notification arrived during the line, the play or
+  the 0.5 s after. Neither the deck nor the speaker found the owner's session
+  inactive: there was no `fault implicit-activation` row.
+- **The line's own time varies by 5x on the rig** (2.3 s and 11.0 s for the
+  same two words). The second run's Simulator was slower throughout (its
+  activation took 40.8 ms against 1.6 ms). The likely cost is loading the voice
+  for the first utterance. The probe waits up to 30 s for `didFinish`, and the
+  phone's row carries `speechMs`.
+- **The synthesizer's delegate ran on main.** So the play really was in the
+  same main turn as `didFinish`. `PreviewSpeaker` hops to main (and writes
+  `speaker <end> thread=bg`) if a device ever delivers it elsewhere.
+- **The deck did not sound during the line.** This is asserted: the deck's
+  rate stayed 0 until the play.
+- What the smoke cannot show: whether iOS **deactivates or yields** the
+  session around a synthesizer in the background, with the screen locked,
+  with another app's audio waiting. That is the probe's job.
+
+### 11.2 The probe (for the NE-27 desk pre-flight)
+
+`Engine/SessionProbe.swift`, driven by `engineSend probeSession` (the page's
+Developer row lands with NE-20/NE-22). The run:
+
+1. The founder pauses an episode and taps the probe. The probe checks that an
+   episode is loaded and paused, then writes `probe kind=armed held= session=
+   hold=`.
+2. The founder locks the phone within 10 s.
+3. The probe speaks "Session probe." through the core's audition path. The
+   core activates first only if its session is not active, for example under
+   "Pause hold: none".
+4. In the same main call as `didFinish`, the probe sends an ordinary `play`.
+   The core activates only if it must, and opens BackgroundGrace because the
+   phone is locked.
+5. On the deck's own `.playing` (or a refusal, or 5 s), the probe writes the
+   DV-9 row, then pauses the play it started.
+
+The row: `probe kind=speech-then-play result=ok|failed token= activated=
+activateMs= timeToPlayingMs= speechMs= grace= held= session=`.
+
+| The row says | Reading for NE-33 |
+|---|---|
+| `result=ok activated=false held=true` | The play started, locked, with no activation by the engine. SpeechNarrator path A: `AVSpeechSynthesizer` on the application session. Whether iOS re-activated the session implicitly underneath cannot be observed (no public getter), but a deck that reaches `.playing` in the background is the practical answer DV-9 needs. |
+| `result=ok activated=true` | The core had to activate again after the line. The session was taken (usually a `session kind=interruption` row sits between the two) but came back. Inconclusive for path A: re-run held, and read the interruption rows. |
+| `result=failed token=session-failed:<t>` | The play after the line could not get the session back. Path B: `write(_:toBufferCallback:)` into the engine's own output. |
+| `result=failed token=no-playing` | The play was accepted, but the deck never confirmed `.playing` within 5 s: the session looked active but did not render. Path B. |
+| `token=speech-cancelled` or `speech-timeout` | The line itself did not finish (an interruption took it, or the synthesizer stalled). Inconclusive: re-run. |
+| `held=false` | "Pause hold" was not `forever` when armed, so the run did not ask DV-9's question. Re-run with the default hold. |
+
+`backgroundTimeRemaining` is not measured here: package tests have no host
+app. The locked run's `grace` rows (NE-16g) carry it from the device.
+
+### 11.3 Mutation checks
+
+**Node (local, all killed):** the NE-25c `shell-invariants` pin failed on 11
+of 11 mutations:
+
+- `import AVFoundation` in SessionProbe;
+- the probe sending the deck a play directly;
+- the probe pausing on every finish;
+- teardown not cancelling the probe;
+- teardown not clearing `Speaking.onFinish`;
+- dropping `usesApplicationAudioSession = true`;
+- the implicit-activation guard switched off;
+- a second `AVSpeechSynthesizer()` in foray-audio (in AVDeck);
+- the smoke's tag changed;
+- a second `SessionProbe(` builder;
+- a narration rate other than Apple's default.
+
+**Swift:** MUTATION_RESULTS_PENDING

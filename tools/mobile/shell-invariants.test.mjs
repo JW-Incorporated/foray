@@ -3561,6 +3561,12 @@ test("NE-25c: one synthesizer configuration, a platform-free probe reached only 
   ]) {
     assert.ok(swiftTestNames(probeTestsPath).includes(name), `NE-25c's ${name} is gone`);
   }
+  const doc = fs.readFileSync(path.join(ROOT, "docs/ios-native-engine-measurements.md"), "utf8");
+  const section = doc.slice(doc.indexOf("## 11. NE-25c"));
+  assert.ok(doc.includes("## 11. NE-25c"), "the measurements doc has NE-25c's section");
+  assert.match(section, /\*\*Simulator smoke\. Not evidence\.\*\*/, "the smoke is labelled a smoke");
+  assert.match(section, /\*\*run \d{8,}\*\*/, "the smoke's numbers name the CI run they came from");
+  assert.match(section, /probe kind=speech-then-play/, "the doc tells NE-33 how to read the DV-9 row");
 });
 
 /* ───────────── audit round 2 (2026-09-23): the platform contract, pinned ───────────── */
