@@ -12,7 +12,8 @@
    ── The design, in one paragraph ──────────────────────────────────────────
    The directory IS the live site's three files, versioned by the deploy id they
    shipped with. A small pointer (`data/forays-directory.json`, written beside
-   `deploy-manifest.json` by `tools/ci/generate-manifest.mjs` — FD-02) names the
+   `deploy-manifest.json` by every deploy build — `tools/ci/generate-manifest.mjs`,
+   FD-02; never committed since issue #701) names the
    version, when it was built, the three file paths, their byte sizes and their
    sha256s. This module:
 
@@ -48,15 +49,13 @@
    2026-09-12). `older` is not a retry: it is re-decided from the same two
    timestamps on every refresh, forever, and a fresh install is worse still — its
    seed is `partial: true` (F-92) and so never `current`, so a pointer it reads as
-   older leaves it showing the seed and nothing else. A `git revert` does NOT move
-   `built_at` forward on its own: the pointer rides in the same squashed commit as
-   the three data files (`manifest-autofix.yml` commits `data/forays-directory.json`
-   onto the data PR's head), so reverting restores its old bytes and its old stamp.
-   What makes a rollback reach a phone is `tools/ci/forays-directory.mjs`'s
-   `writePointer` rollback clause: a pointer whose `built_at` is behind the stamp
-   at its branch's MERGE BASE with main is restamped even when its content is
-   byte-identical, and `pointerProblems` reports it so `--check` is red until it
-   is. Read that function's header before changing anything about ordering here.
+   older leaves it showing the seed and nothing else. While the pointer was a
+   COMMITTED file, a `git revert` restored its old bytes and old stamp, and a
+   rollback never reached a phone. Since issue #701 the pointer is a deploy build
+   output and `built_at` is the built commit's committer date
+   (`tools/ci/forays-directory.mjs`, `buildTimestamp`): a revert is a new commit,
+   so its pointer is newer by construction. Read that function's header before
+   changing anything about ordering here.
 
    The bundled pointer is read for `version`/`built_at`/`partial` ONLY. The bundle
    carries slices of all three files (`prepare-webdir.mjs` §"the Foray segment

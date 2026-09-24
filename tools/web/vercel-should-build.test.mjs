@@ -18,7 +18,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { decide, pathMatters, IGNORED_PREFIXES, IGNORED_PATTERNS, EXCEPTIONS } from "./vercel-should-build.mjs";
+import { decide, pathMatters, IGNORED_PREFIXES, IGNORED_PATTERNS, EXCEPTIONS, STAMP_MODULES } from "./vercel-should-build.mjs";
 
 const BUILD = 1;
 const SKIP = 0;
@@ -32,7 +32,7 @@ test("every file prepare-dist.mjs actually deploys forces a build", () => {
      deny-list. MUTATION: add "app.js" to IGNORED_PREFIXES. */
   for (const p of [
     "index.html", "app.js", "search-engine.js", "styles.css", "sw.js",
-    "manifest.json", "deploy-manifest.json", "icon-180.png", "icon-512.png",
+    "manifest.json", "icon-180.png", "icon-512.png",
     "data/session.json", "data/forays.json", "data/catalog-client.json",
     "vercel.json",
   ]) {
@@ -112,13 +112,22 @@ test("a docs-and-tests-only commit skips", () => {
   assert.equal(decide(["docs/roles.md", "test/app-security.test.js", "STATE.md"]), SKIP);
 });
 
-test("the CI manifest commit is the common case and it does NOT skip", () => {
-  /* `chore: auto-regenerate deploy-manifest.json` lands on nearly every PR and
-     touches deploy-manifest.json, sw.js and data/forays-directory.json — all
-     three of which ARE deployed. It doubles the builds per PR and it is
-     supposed to: those bytes are what the service worker promotes on. Pinned
-     so nobody "optimises" it away and ships a stale BUILD_ID. */
-  assert.equal(decide(["deploy-manifest.json", "sw.js", "data/forays-directory.json"]), BUILD);
+test("the deploy stamp's modules build — they write bytes Vercel serves (issue #701)", () => {
+  /* deploy-manifest.json, data/forays-directory.json and sw.js's BUILD_ID are
+     written into dist/ by prepare-dist.mjs through these three modules; they
+     are not committed any more, so a change to how they are computed reaches
+     production ONLY through a build. The rest of tools/ci/ stays skippable.
+     MUTATION: drop the STAMP_MODULES rescue from EXCEPTIONS — a change to the
+     stamper stops deploying until something else happens to build. */
+  assert.deepEqual(STAMP_MODULES, [
+    "tools/ci/generate-manifest.mjs",
+    "tools/ci/forays-directory.mjs",
+    "tools/ci/crlf-guard.mjs",
+  ]);
+  for (const p of STAMP_MODULES) assert.equal(pathMatters(p), true, `${p} feeds the deploy stamp and must build`);
+  assert.equal(pathMatters("tools/ci/forays-directory.test.mjs"), false, "its test does not");
+  assert.equal(pathMatters("tools/ci/path-policy.mjs"), false, "and CI policy still does not");
+  assert.equal(decide(["tools/ci/generate-manifest.mjs"]), BUILD);
 });
 
 /* ---------- failing open ------------------------------------------------ */
@@ -181,6 +190,7 @@ test("every exception is a function and at least one path reaches each", () => {
   const samples = [
     "docs/ux/foray-m3-prototype.html",
     "tools/web/prepare-dist.mjs",
+    "tools/ci/generate-manifest.mjs",
     "player/client.js",
   ];
   assert.equal(EXCEPTIONS.length, samples.length, "one sample per exception");
