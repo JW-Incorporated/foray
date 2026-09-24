@@ -1,5 +1,53 @@
 {
   "//": "Covered-suite tests with no Swift meaning. Each has one closed reason (webview-only, dom-only, text-pin, js-module-shape) and a sentence of why. An entry claims the engine need never reimplement this rule; a reviewer should be able to check that claim from the sentence alone.",
+  "playback-rate": {
+    "the label is written the way podcast apps write it": {
+      "reason": "dom-only",
+      "why": "The rate button's text is page DOM in both engine modes (plan §3 A-1: the page owns the UI); the engine carries the rate as a number, never this label."
+    },
+    "no label ever reads 1.5000000000000002×, or 'undefined×'": {
+      "reason": "dom-only",
+      "why": "The rate button's text is page DOM in both engine modes (plan §3 A-1: the page owns the UI); the engine carries the rate as a number, never this label. The snap a junk value labels as is normalizeRate's, which the rate family pins."
+    },
+    "the accessible name says the value, because aria-label REPLACES the button text": {
+      "reason": "dom-only",
+      "why": "Pins the rate button's aria-label sentence; an attribute of page DOM, drawn by the page in both engine modes."
+    },
+    "the key is exactly cp_rate — renaming it wipes user state": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "a stored speed round-trips": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "nothing stored is normal speed, not zero": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "a junk or stale stored row is snapped on the way OUT, not trusted": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "an off-ladder value is snapped on the way IN too, so no junk is ever stored": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "a store that throws is reported, never thrown out of — a refused write is not a refused speed": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    }
+  },
+  "queue-state": {
+    "reduce never mutates the state it is given": {
+      "reason": "js-module-shape",
+      "why": "Pins that the JS reducer leaves its argument object untouched. The Swift PlayerQueueState is an enum value type passed by value, so a reducer that mutates its input cannot be written; every transition's output is pinned by the queue-state family instead."
+    },
+    "an unknown event is ignored with telemetry rather than throwing": {
+      "reason": "js-module-shape",
+      "why": "Pins reduce()'s default branch for an event object whose type is outside the closed set. Swift's Event is a closed enum switched exhaustively, so an unknown event is unrepresentable; the engine's own unknown-input path is the contract family's unknown-cmd (NE-11j)."
+    }
+  },
   "seam-gap": {
     "every refusal explains itself differently": {
       "reason": "text-pin",
