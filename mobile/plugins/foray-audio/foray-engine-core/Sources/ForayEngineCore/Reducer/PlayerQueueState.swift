@@ -1,6 +1,6 @@
 // COPIED (card NE-02, docs/native-engine-plan.md §4.1) from
 //   ios/ForayKit/Sources/ForayKit/PlayerQueueState.swift @ adde5e12
-// verbatim below this header. The ios/ copy is FROZEN REFERENCE: nothing
+// and then extended (NE-07s, below). The ios/ copy is FROZEN REFERENCE: nothing
 // ships from ios/ (it is the dead SwiftUI scaffold), and this file is the one
 // the native engine builds on. Edit this copy, never that one.
 //
@@ -12,15 +12,20 @@
 // ForayKit: it declares .iOS(.v17), above the iOS 15 floor this package
 // builds for. Freezing or deleting the scaffold is optional card NE-44.
 //
-// WHAT CHANGES HERE NEXT. NE-07s extends this copy to parity with
-// player/queue-state.js (bounds, sameRef, seek, elementResumed, pendingSeek,
-// out-point), driven by the queue-state fixture family. JS is the reference:
-// a rule change lands in JS first, is re-recorded, then ported here. The two
-// files drifting apart after this commit is intended, not a bug.
+// WHAT NE-07s CHANGED. This copy is now at parity with player/queue-state.js,
+// which is the REFERENCE: bounds on QueueItemRef and identity that includes
+// them (sameRef), `.seek` with `pendingSeek` on `.loadingItem`, the out-point
+// (`.setOutPoint` on itemLoaded), `.elementResumed`, the queue-exhausted skip
+// that pauses what is audible, and telemetry strings that are BYTE-IDENTICAL
+// to the JS ones (`describe`, below). The contract is the queue-state fixture
+// family (player/parity/fixtures/queue-state), run by ForayEngineParity's
+// QueueStateFamily; a rule change lands in JS first, is re-recorded, and only
+// then is ported here. Drifting from the ios/ original is intended.
 //
 // The 34 copied tests are Tests/ForayEngineCoreTests/PlayerQueueStateTests.swift;
 // tools/mobile/shell-invariants.test.mjs pins that every one of the original's
-// test methods survives there.
+// test methods survives there. One of them changed its expectation with the
+// JS (testSkipToNextWithNoTargetEndsQueue, #111): see its comment.
 
 import Foundation
 
@@ -83,15 +88,54 @@ public enum PlayerItemKind: Equatable, Hashable, Sendable {
 }
 
 /// A minimal, opaque reference to a queue item. The state machine doesn't
-/// need to know anything about an item beyond its identity and kind; the
-/// manager resolves `id` to an actual local file URL / AVPlayerItem.
+/// need to know anything about an item beyond its identity, its kind and (for
+/// a Foray segment) its bounds; the manager resolves `id` to an actual local
+/// file URL / AVPlayerItem.
+///
+/// `bounds` is queue-state.js's `itemRef(id, kind, bounds)`: the slice of the
+/// SOURCE audio the item occupies, nil for an ordinary unbounded item. It is an
+/// `ItemBounds`, whose only public constructor is `ItemBounds.make` (the port
+/// of `itemBounds`, the ONE definition of "bounded"), so a ref cannot carry a
+/// backwards, empty or non-finite slice: JS normalises in `itemRef`, and here
+/// the type does it. The caller supplies bounds, as it supplies the item
+/// (design note 1).
 public struct QueueItemRef: Equatable, Hashable, Sendable {
     public let id: String
     public let kind: PlayerItemKind
+    public let bounds: ItemBounds?
 
-    public init(id: String, kind: PlayerItemKind) {
+    public init(id: String, kind: PlayerItemKind, bounds: ItemBounds? = nil) {
         self.id = id
         self.kind = kind
+        self.bounds = bounds
+    }
+
+    /// queue-state.js `sameRef`: identity INCLUDES the bounds, and that is
+    /// load-bearing rather than tidy. Two segments of the same episode are two
+    /// queue items over one source, and every "is this the thing I am already
+    /// doing?" guard in the reducer (play's idempotence, the skip debounce,
+    /// the in-flight-load replacement) would otherwise drop the second as a
+    /// repeat of the first. Consecutive same-episode segments are the normal
+    /// case in a Foray. Spelled out field by field rather than as `==` so the
+    /// guards read like the JS they port, and so a field added later that is
+    /// NOT identity cannot slip into them unnoticed.
+    public static func sameRef(_ a: QueueItemRef?, _ b: QueueItemRef?) -> Bool {
+        guard let a, let b else { return a == nil && b == nil }
+        return a.id == b.id && a.kind == b.kind && a.bounds == b.bounds
+    }
+}
+
+/// A seek that arrived while its item was still loading: applied on
+/// `itemLoaded`, after the rate is set and before anything is audible
+/// (queue-state.js §seek). `precise` is the caller's decision (seek-policy);
+/// the reducer only carries it.
+public struct PendingSeek: Equatable, Hashable, Sendable {
+    public let seconds: Double
+    public let precise: Bool
+
+    public init(seconds: Double, precise: Bool) {
+        self.seconds = seconds
+        self.precise = precise
     }
 }
 
@@ -105,7 +149,10 @@ public enum PlayerQueueState: Equatable, Sendable {
     /// Asset for `target` is being prepared. `previous` is carried through
     /// only for telemetry/UX continuity (e.g. "was this a skip or the very
     /// first item of the session?"); the reducer does not require it.
-    case loadingItem(target: QueueItemRef, previous: QueueItemRef?)
+    /// `pendingSeek` is a seek queued while loading, applied on `itemLoaded`
+    /// (NE-07s). It defaults to nil so the original two-field spelling still
+    /// builds, which is what keeps the 34 copied tests' constructions as-is.
+    case loadingItem(target: QueueItemRef, previous: QueueItemRef?, pendingSeek: PendingSeek? = nil)
 
     /// `item` is actively playing.
     case playing(item: QueueItemRef)
@@ -167,6 +214,17 @@ public enum PlayerEvent: Equatable, Sendable {
 
     case stop
     case error(String)
+
+    /// Seek to an absolute position in the current source (queue-state.js
+    /// `E.seek`). `precise` is decided by the caller from `dai_suspected` and
+    /// whether the file is local (seek-policy); the reducer passes it through.
+    case seek(seconds: Double, precise: Bool)
+
+    /// The player is producing audio for the item held as `.interrupted`:
+    /// something outside the reducer resumed it (a lock-screen or car press
+    /// the platform honoured itself). An OBSERVATION, never a request (Q-9,
+    /// "observe, don't believe"): see `handleElementResumed`.
+    case elementResumed
 }
 
 // MARK: - Effects
@@ -194,6 +252,17 @@ public enum PlayerEffect: Equatable, Sendable {
     /// Restore the per-show playback rate after leaving a TTS item.
     case restoreRate
     case emitTelemetry(String)
+    /// Seek the current source to `seconds`, with the caller's precision.
+    case seekTo(seconds: Double, precise: Bool)
+    /// A seek that cannot apply in the current state; the text is telemetry.
+    case seekRejected(String)
+    /// Arm the backend's out-point watch at `seconds` on the current source's
+    /// timeline. Emitted only for a bounded item and only on `itemLoaded`:
+    /// after the in-point has landed, before anything is audible. There is no
+    /// `clear` counterpart: a load drops any armed boundary, so a stale
+    /// out-point cannot outlive its item, and an unbounded item's
+    /// `itemLoaded` stays effect-for-effect what it was before out-points.
+    case setOutPoint(Double)
 }
 
 // MARK: - Reducer entry point
@@ -259,6 +328,12 @@ public enum PlayerQueueStateMachine {
 
         case .error(let message):
             return (.idle, [.pausePlayback, .emitTelemetry("player.error: \(message)")])
+
+        case .seek(let seconds, let precise):
+            return handleSeek(state: state, seconds: seconds, precise: precise)
+
+        case .elementResumed:
+            return handleElementResumed(state: state)
         }
     }
 
@@ -279,8 +354,8 @@ public enum PlayerQueueStateMachine {
             // correct if it didn't.
             return (.loadingItem(target: target, previous: item), [.loadItem(target)])
 
-        case .loadingItem(let currentTarget, let previous):
-            if currentTarget == target {
+        case .loadingItem(let currentTarget, let previous, _):
+            if QueueItemRef.sameRef(currentTarget, target) {
                 // Redundant play() for the thing already loading; no-op.
                 return (state, [])
             }
@@ -290,7 +365,7 @@ public enum PlayerQueueStateMachine {
             ])
 
         case .playing(let currentItem):
-            if currentItem == target {
+            if QueueItemRef.sameRef(currentItem, target) {
                 // Already playing this exact item; idempotent no-op.
                 return (state, [])
             }
@@ -318,9 +393,22 @@ public enum PlayerQueueStateMachine {
         state: PlayerQueueState
     ) -> (PlayerQueueState, [PlayerEffect]) {
         switch state {
-        case .loadingItem(let target, _):
-            let rateEffect: PlayerEffect = target.kind == .tts ? .resetRateForTTS : .restoreRate
-            return (.playing(item: target), [rateEffect, .startPlayback])
+        case .loadingItem(let target, _, let pendingSeek):
+            var effects: [PlayerEffect] = [target.kind == .tts ? .resetRateForTTS : .restoreRate]
+            // A seek queued while loading lands here: after the rate is set,
+            // before anything becomes audible. Never mid-playback.
+            if let pendingSeek {
+                effects.append(.seekTo(seconds: pendingSeek.seconds, precise: pendingSeek.precise))
+            }
+            // Arm the out-point here and nowhere else: the in-point is already
+            // applied (it rode on the load, or on the pendingSeek above), so
+            // the backend decides from a settled playhead whether the boundary
+            // is still ahead. Arming before the seek would arm against 0:00.
+            if let bounds = target.bounds {
+                effects.append(.setOutPoint(bounds.endSec))
+            }
+            effects.append(.startPlayback)
+            return (.playing(item: target), effects)
 
         case .transitioning:
             // Bridge asset finished loading; start it audible. State value
@@ -331,7 +419,7 @@ public enum PlayerQueueStateMachine {
             // Stray/late `itemLoaded` callback that no longer applies
             // (e.g. a race after a fast double-skip already moved us on).
             // Never let it clobber whatever is actually happening now.
-            return (state, [.emitTelemetry("itemLoaded.ignored: unexpected in state \(state)")])
+            return (state, [.emitTelemetry("itemLoaded.ignored: unexpected in state \(describe(state))")])
         }
     }
 
@@ -365,7 +453,7 @@ public enum PlayerQueueStateMachine {
             return (.loadingItem(target: target, previous: to), [.restoreRate, .loadItem(target)])
 
         case .idle, .loadingItem, .interrupted, .ended:
-            return (state, [.emitTelemetry("itemEnded.ignored: unexpected in state \(state)")])
+            return (state, [.emitTelemetry("itemEnded.ignored: unexpected in state \(describe(state))")])
         }
     }
 
@@ -394,7 +482,7 @@ public enum PlayerQueueStateMachine {
                 .emitTelemetry("interruption.began.duringTransition")
             ])
 
-        case .loadingItem(let target, _):
+        case .loadingItem(let target, _, _):
             // Nothing audible yet; nothing to pause or save. Recording the
             // interruption still matters so a subsequent stray
             // `itemLoaded` doesn't start playback into a call.
@@ -440,7 +528,7 @@ public enum PlayerQueueStateMachine {
             ])
 
         case .idle, .loadingItem, .playing, .transitioning, .ended:
-            return (state, [.emitTelemetry("interruptionEnded.ignored: unexpected in state \(state)")])
+            return (state, [.emitTelemetry("interruptionEnded.ignored: unexpected in state \(describe(state))")])
         }
     }
 
@@ -477,7 +565,7 @@ public enum PlayerQueueStateMachine {
                 .emitTelemetry("route.oldDeviceUnavailable.pausedDuringTransition")
             ])
 
-        case .loadingItem(let target, _):
+        case .loadingItem(let target, _, _):
             // Halt the in-flight load from starting playback into a dead
             // route: once state is `.interrupted`, a subsequent
             // `itemLoaded` is ignored (see handleItemLoaded).
@@ -504,7 +592,7 @@ public enum PlayerQueueStateMachine {
             case .playing(let item): return item
             case .transitioning(_, let to): return to
             case .interrupted(let item, _): return item
-            case .loadingItem(let target, _): return target
+            case .loadingItem(let target, _, _): return target
             case .idle, .ended: return nil
             }
         }
@@ -518,16 +606,28 @@ public enum PlayerQueueStateMachine {
                     .emitTelemetry("skip.previous.restartInPlace")
                 ])
             }
-            return (.ended, [.emitTelemetry("skip.\(direction).queueExhausted")])
+            // Queue genuinely exhausted. STOP WHAT IS AUDIBLE: the scaffold
+            // returned `.ended` with telemetry alone, which left the player
+            // running while the state said the session was over. JS fixed it
+            // in #111 (a short last Foray segment is exactly where someone
+            // presses skip); this is that fix, ported.
+            let done = PlayerEffect.emitTelemetry("skip.\(direction).queueExhausted")
+            switch state {
+            case .playing, .transitioning:
+                return (.ended, [.savePosition, .pausePlayback, done])
+            case .idle, .loadingItem, .interrupted, .ended:
+                return (.ended, [done])
+            }
         }
 
         switch state {
-        case .loadingItem(let inFlightTarget, let previous):
+        case .loadingItem(let inFlightTarget, let previous, _):
             // Fast double-skip serialization (05_CORNER_CASES.md #19-adjacent):
             // a second skip arriving before the first finished loading
             // replaces the in-flight target rather than stacking a second
-            // concurrent load. Exactly one `loadItem` effect results.
-            if inFlightTarget == target {
+            // concurrent load. Exactly one `loadItem` effect results. The
+            // replacement drops any pendingSeek: it belonged to the old target.
+            if QueueItemRef.sameRef(inFlightTarget, target) {
                 return (state, [])
             }
             return (.loadingItem(target: target, previous: previous), [
@@ -549,6 +649,57 @@ public enum PlayerQueueStateMachine {
         }
     }
 
+    // MARK: seek
+    //
+    // Not in the scaffold (queue-state.js §seek). The reducer does NOT decide
+    // whether precision is available; that depends on dai_suspected and on
+    // whether the file is local, and lives in the caller's seek-policy.
+
+    private static func handleSeek(
+        state: PlayerQueueState,
+        seconds: Double,
+        precise: Bool
+    ) -> (PlayerQueueState, [PlayerEffect]) {
+        switch state {
+        case .playing, .interrupted:
+            // Save first: the old position is about to be lost, and
+            // 05_CORNER_CASES.md #17 says position loss must be <= 15s.
+            return (state, [.savePosition, .seekTo(seconds: seconds, precise: precise)])
+
+        case .loadingItem(let target, let previous, _):
+            // Queue it, applied on itemLoaded before playback starts: the
+            // resume-mid-episode path, which must not race the load. A later
+            // seek replaces an earlier pending one (last wins), the same
+            // philosophy as the fast double-skip.
+            return (.loadingItem(target: target, previous: previous,
+                                 pendingSeek: PendingSeek(seconds: seconds, precise: precise)), [])
+
+        case .idle, .ended, .transitioning:
+            // idle / ended: nothing to seek in. transitioning: seeking inside
+            // an ephemeral bridge TTS is meaningless.
+            return (state, [.seekRejected("cannot seek in state \(describe(state))")])
+        }
+    }
+
+    // MARK: elementResumed
+    //
+    // Not in the scaffold (queue-state.js, 2026-09-22, founder report 1).
+    // `.interrupted` is the only state this moves from, and to `.playing` with
+    // NO audio effect: the sound is already coming out, so `startPlayback`
+    // would be a second start and `loadItem` would re-point a player that is
+    // playing. What the transition buys is everything downstream that keys off
+    // `.playing` (the position writer, the transport label, the reconcile that
+    // catches the NEXT external stop). Every other state either already says
+    // audio is flowing or must not be overruled by a player event: a seam beat
+    // is `.loadingItem` with the player paused on purpose.
+
+    private static func handleElementResumed(
+        state: PlayerQueueState
+    ) -> (PlayerQueueState, [PlayerEffect]) {
+        guard case .interrupted(let item, _) = state else { return (state, []) }
+        return (.playing(item: item), [.emitTelemetry("reconcile.elementResumed")])
+    }
+
     // MARK: stop
 
     private static func handleStop(
@@ -564,5 +715,61 @@ public enum PlayerQueueStateMachine {
         case .loadingItem, .interrupted:
             return (.idle, [.emitTelemetry("player.stopped")])
         }
+    }
+
+    // MARK: telemetry labels
+
+    /// queue-state.js `describe(state)`: the state as telemetry spells it.
+    ///
+    /// WHY NOT `\(state)`, as the scaffold had it. Swift's enum printing
+    /// (`loadingItem(target: ForayEngineCore.QueueItemRef(id: ...`) is noise
+    /// no JS string matches, and the telemetry the engine writes must read the
+    /// same as the page's, byte for byte (card NE-07s). The queue-state
+    /// fixtures pin every spelling here.
+    public static func describe(_ state: PlayerQueueState) -> String {
+        switch state {
+        case .idle: return "idle"
+        case .ended: return "ended"
+        case .loadingItem(let target, _, _): return "loadingItem(\(name(target)))"
+        case .playing(let item): return "playing(\(name(item)))"
+        case .transitioning(let from, let to): return "transitioning(\(name(from)) -> \(name(to)))"
+        case .interrupted(let item, let wasPlaying): return "interrupted(\(name(item)), wasPlaying: \(wasPlaying))"
+        }
+    }
+
+    /// queue-state.js `name(ref)`: an unbounded item reads as its bare id,
+    /// exactly as before segments existed; a segment says which slice
+    /// (`id[start-end]`, rounded), because "playing(gastropod-fire)" is
+    /// ambiguous the moment two items share a source.
+    static func name(_ ref: QueueItemRef) -> String {
+        guard let bounds = ref.bounds else { return ref.id }
+        return "\(ref.id)[\(jsRoundedText(bounds.startSec))-\(jsRoundedText(bounds.endSec))]"
+    }
+
+    /// `${Math.round(x)}` for the values `ItemBounds` admits (finite, >= 0).
+    ///
+    /// `Math.round` rounds half UP; for a non-negative number that is
+    /// `.toNearestOrAwayFromZero`, and unlike `floor(x + 0.5)` it does not
+    /// turn 0.49999999999999994 into 1. The text is JavaScript's
+    /// `String(number)` for an integral double: plain digits below 2^53 (where
+    /// every integer is exact); above that JavaScript prints the SHORTEST
+    /// round-tripping digits padded with zeros (2^60 is "1152921504606847000",
+    /// not "...976"), and exponent form from 1e21. Swift's `description` gives
+    /// the same shortest digits, so above 2^53 they come from it and only the
+    /// layout is rebuilt.
+    static func jsRoundedText(_ value: Double) -> String {
+        let rounded = value.rounded(.toNearestOrAwayFromZero)
+        if rounded < 9_007_199_254_740_992 { return String(Int64(rounded)) }
+        let text = "\(rounded)"
+        if rounded >= 1e21 { return text } // "1e+21", "1.5e+300": spelled the same in both
+        let parts = text.split(separator: "e")
+        // Swift may still print a value just above 2^53 positionally
+        // ("9007199254740994.0"); those digits are exact, as JavaScript's are.
+        guard parts.count == 2 else { return String(text.split(separator: ".")[0]) }
+        // Otherwise Swift writes "d.ddde+N"; JavaScript writes those digits
+        // followed by zeros, N + 1 places in all.
+        let exponent = Int(parts[1].replacingOccurrences(of: "+", with: "")) ?? 0
+        let digits = parts[0].replacingOccurrences(of: ".", with: "")
+        return digits + String(repeating: "0", count: max(0, exponent + 1 - digits.count))
     }
 }
