@@ -11,7 +11,7 @@
  * That is one half of a Foray. The other half is the TRANSITION, and Foray #1 has
  * 31 of them. Each is:
  *
- *     stop at end_sec  ->  wait a 2.0 s beat (player/seam-gap.js, a setTimeout)
+ *     stop at end_sec  ->  wait a 0.5 s beat (player/seam-gap.js, a setTimeout)
  *                      ->  load a DIFFERENT episode  ->  seek to its start_sec
  *                      ->  play
  *

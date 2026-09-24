@@ -1534,7 +1534,7 @@ test("A FINISHED ORDINARY EPISODE KEEPS THE SHELL'S SERVICE; A FINISHED FORAY DO
 test("THE SEAM BEAT REPORTS PLAYING, THROUGH THE REAL PLAYER", async () => {
   /* `media-session.js` §4 widens "playing" by exactly one state so a display does not
      blink 31 times an hour. It has to survive the trip: reporting `paused` to Media3
-     for 2.0 s would make the lock screen flicker and — because the service's own
+     for the 0.5 s beat would make the lock screen flicker and — because the service's own
      lifetime is keyed off the page — arm a settle window at every seam. */
   const { session, nav, scheduler, last, turn } = setup();
   session.install();

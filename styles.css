@@ -2872,7 +2872,7 @@ input[type="range"] { accent-color: var(--amber); }
    playing — keying the fill on `is-playing` made that bar the one dark, empty
    thing on a page whose banner says "Jump back in at 19:40". */
 .fy-seg.is-here .fy-seg-fill { opacity: 0.78; }
-/* The 2.0 s seam beat between two unbridged segments: the strip holds still at
+/* The 0.5 s seam beat between two unbridged segments: the strip holds still at
    a boundary and the next bar has not started filling. Said quietly on purpose
    — the silence is the message, and a bar flashing over the top of it would be
    competing with the thing it is trying to explain. */

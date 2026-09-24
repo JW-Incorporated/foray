@@ -296,7 +296,7 @@ test("every capability the engine advertises has zero pending and zero unported 
 });
 
 test("advertising a capability with owed work is refused, naming the work", () => {
-  const pendingSeam = { ...DATA, pending: { "seam-gap/rule-is-2.0s": "NE-05" }, unported: {} };
+  const pendingSeam = { ...DATA, pending: { "seam-gap/rule-is-0.5s": "NE-05" }, unported: {} };
   const p1 = capabilityGate(new Map([["foray", "test"]]), pendingSeam);
   assert.equal(p1.length, 1);
   assert.match(p1[0], /1 swift-pending case/);

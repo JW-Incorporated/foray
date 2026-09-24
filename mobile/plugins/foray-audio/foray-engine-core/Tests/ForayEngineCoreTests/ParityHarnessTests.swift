@@ -16,7 +16,7 @@ final class ParityHarnessTests: XCTestCase {
         report.results.first { $0.id == id }?.outcome
     }
 
-    private var seamId: String { "seam-gap/rule-is-2.0s" }
+    private var seamId: String { "seam-gap/rule-is-0.5s" }
 
     // MARK: the books
 
@@ -269,11 +269,11 @@ final class ParityHarnessTests: XCTestCase {
 
     // MARK: the ported rule, directly
 
-    func testTheSeamRuleIsTwoSecondsBetweenTwoSegmentsOnAutoAdvance() {
+    func testTheSeamRuleIsHalfASecondBetweenTwoSegmentsOnAutoAdvance() {
         let a = SeamItem(startSec: 100, endSec: 210)
         let b = SeamItem(startSec: 0, endSec: 90)
-        XCTAssertEqual(SeamGap.defaultGapSec, 2.0)
-        XCTAssertEqual(SeamGap.gapSec(from: a, to: b), 2.0)
+        XCTAssertEqual(SeamGap.defaultGapSec, 0.5)
+        XCTAssertEqual(SeamGap.gapSec(from: a, to: b), 0.5)
         XCTAssertEqual(SeamGap.gapSec(from: a, to: b, cause: SeamGap.userAction), 0)
         XCTAssertEqual(SeamGap.gapSec(from: a, to: b, bridged: true), 0)
         XCTAssertEqual(SeamGap.gapSec(from: a, to: SeamItem(startSec: nil, endSec: nil)), 0)

@@ -16,16 +16,17 @@ const bridge = (id) => ({ id, kind: "tts" });
 
 /* ---------- the number ---------- */
 
-test("the merged rule is 2.0 s, not 04_VOICE_AUDIO_SPEC's 0.5 s", () => {
-  // docs/curation/segment-length-rules.md §0 and §6b, adopted from the
-  // audiobook section-break convention (§2e). The 0.5 s in
-  // docs/brief/04_VOICE_AUDIO_SPEC.md is padding around a TTS item — a
-  // different job, and the rules doc says so out loud.
-  assert.equal(SEAM_GAP_SEC, 2.0);
+test("the seam silence is the founder's 0.5 s — one number in both specs", () => {
+  // Founder ruling 2026-09-24, verbatim "0.5s" (docs/DECISIONS.md), closing
+  // HUMAN-ACTIONS #3. docs/brief/04_VOICE_AUDIO_SPEC.md line 12 and
+  // docs/curation/segment-length-rules.md §0/§6b now give the same value; the
+  // 2.0 s this pinned until then (the audiobook section-break convention) is
+  // gone, not kept as a second rule.
+  assert.equal(SEAM_GAP_SEC, 0.5);
 });
 
 test("an unbridged segment-to-segment auto-advance gets the full beat", () => {
-  assert.equal(seamGapSec({ from: seg("a"), to: seg("b") }), 2.0);
+  assert.equal(seamGapSec({ from: seg("a"), to: seg("b") }), 0.5);
 });
 
 test("the length is overridable without touching the rule", () => {
@@ -97,7 +98,7 @@ test("a segment starting at 0:00 is still a segment", () => {
 
 test("the beat's log line names both sides and the length", () => {
   const line = describeSeam({ from: seg("foray-1#3"), to: seg("foray-1#4") });
-  assert.match(line, /2\.0s beat/);
+  assert.match(line, /0\.5s beat/);
   assert.match(line, /foray-1#3 -> foray-1#4/);
 });
 

@@ -1007,7 +1007,7 @@ export class PlayerDiagnostics {
       /* A CUT BEAT ENDS THE SEAM. This used to only stamp `cutBy` and leave the row
          open, and that was wrong in three compounding ways. `_cutSeamGap` fires from
          `_transport` for pause, next, previous, reconcile and dispose, so an ordinary
-         pause inside the 2.0 s beat left an open seam, and then:
+         pause inside the seam beat left an open seam, and then:
            1. the listener's own ten-minute pause was measured as
               `observedGapMs: 600000` by the next `playing` — and that number became
               the report's `worst` and dragged its median, which are the two headline

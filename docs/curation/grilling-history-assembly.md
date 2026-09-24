@@ -552,7 +552,8 @@ Same-episode seams, with the span of source episode each one elides:
 
 M1 (a gap under 45 s must be merged rather than left as two segments) is satisfied
 everywhere; the tightest seam is 55.2 s. M5 (a same-episode seam must be marked) is
-satisfied by `player/seam-gap.js`, which ships 2.0 s at every unbridged seam.
+satisfied by `player/seam-gap.js`, which ships its beat at every unbridged seam
+(2.0 s when this was written; 0.5 s since the founder's 2026-09-24 ruling).
 
 **The M6 case is mine and it is a direct consequence of a correct editorial
 decision.** In `grilling-history-1` the two beat-1 segments were separated by
@@ -600,7 +601,8 @@ two are gates rather than suggestions.
 2. **`ORI-1` → `ORI-2` needs a bridge, not silence.** That seam elides 6.3 minutes
    of the source conversation, which is past M6's five-minute line, and no tool in
    the repo enforces M6 (§8a). One sentence saying the conversation moved is
-   enough; 2.0 s of silence is not, and unmarked it will sound like a jump cut in
+   enough; the seam beat's half-second of silence (2.0 s when this was written) is
+   not, and unmarked it will sound like a jump cut in
    the stretch the founder already said was the good part.
 3. **Rule on the three spine questions stage 2 raised**, because two change what
    narration says: beat 27's mustard trace (recommend: revise to a disputed
