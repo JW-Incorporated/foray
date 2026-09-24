@@ -14,7 +14,7 @@
  *
  *   {
  *     "version":  "<deploy_id>",             // the generation these files shipped in
- *     "built_at": "2026-09-10T12:34:56.000Z",// when THIS version of the pointer was written
+ *     "built_at": "2026-09-10T12:34:56.000Z",// the newest stamp-input commit's committer date (`buildTimestamp`)
  *     "files":    { "forays": "data/forays.json", "segments": "data/segments.json",
  *                   "sources": "data/segment-sources.json" },
  *     "bytes":    { "forays": 54997, "segments": 177321, "sources": 59553 },
@@ -40,19 +40,26 @@
  * lines — the pointer is listed in `deploy-manifest.json` (so `sw.js` verifies
  * its bytes like any other shipped file) but does not contribute to
  * `deploy_id`. That is safe because the pointer's content is a pure function
- * of the deploy id and the three files' hashes, plus `built_at`, which
- * `writePointer()` keeps stable while nothing else changed: the pointer
- * changes iff the deploy id changes, except on the deploy that introduces it.
+ * of the deploy id and the three files' hashes, plus `built_at`.
+ *
+ * IT IS A BUILD OUTPUT, NEVER A COMMITTED FILE (issue #701, 2026-09-24)
+ * Until #701 this file was committed, regenerated on every PR by
+ * `manifest-autofix.yml`, and so changed by every merge to `main` — which made
+ * every other open PR conflict with `main` the moment anything merged. It is now
+ * written only into a BUILT tree: `tools/web/prepare-dist.mjs` (the Vercel
+ * deploy the phones read it from, `app.js`'s `API_ORIGIN`), the Pages workflow's
+ * stamped checkout, and — in memory, marked `partial` — the native bundle's seed
+ * (`tools/mobile/prepare-webdir.mjs`). `.gitignore` keeps it out of the tree and
+ * `generate-manifest.mjs --check` (the required `data-and-site` gate) fails if
+ * it is ever committed again. `built_at` comes from `buildTimestamp` below; read
+ * that function's header before changing anything about ordering.
  *
  * WHY THIS IS ITS OWN FILE
- * Same reason as `crlf-guard.mjs`: `generate-manifest.mjs` runs its CLI at
- * module top level and an entrypoint guard there was rejected (a guard that
- * misfires on a runner turns the `data-and-site` gate into an exit-0 no-op).
- * Pure functions over (root, deployId) are testable from a scratch tree on
- * any checkout, CRLF or not.
+ * Pure functions over (root, deployId) are testable from a scratch tree on any
+ * checkout, CRLF or not, and `prepare-webdir.mjs` needs them without the CLI.
  */
 
-import { readFileSync, writeFileSync, existsSync, statSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import path from "node:path";
@@ -107,16 +114,18 @@ export function buildPointer(root, deployId, now = new Date()) {
   return { version: deployId, built_at: now.toISOString(), files, bytes, sha256 };
 }
 
-/** The exact bytes `writePointer` puts on disk for a pointer object. */
+/** The exact bytes a build writes for a pointer object (`generate-manifest.mjs`'s `stampBuild`). */
 export function pointerText(pointer) {
   return JSON.stringify(pointer, null, 2) + "\n";
 }
 
-/** Equal in everything but `built_at`. */
-export function samePointerContent(a, b) {
-  if (!a || !b) return false;
-  const strip = (p) => JSON.stringify({ ...p, built_at: undefined });
-  return strip(a) === strip(b);
+/** `git <args>` in `root`, trimmed stdout, or null on any failure. */
+function gitOut(root, args) {
+  try {
+    return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch (_) {
+    return null;
+  }
 }
 
 function readPointer(root) {
@@ -129,137 +138,89 @@ function readPointer(root) {
   }
 }
 
-/** `a` is a parseable ISO instant strictly before the parseable instant `b`.
-    Anything unparseable is not "older" — it is unknown, and an unknown floor
-    must never cause a rewrite on its own. Mirrors `isOlderThan` in
-    `player/foray-directory.js`, which is the consumer this ordering is for. */
-export function builtAtIsOlder(a, b) {
-  const x = Date.parse(a ?? "");
-  const y = Date.parse(b ?? "");
-  return Number.isFinite(x) && Number.isFinite(y) && x < y;
+/**
+ * The `built_at` a build stamps into the pointer, and where it came from.
+ *
+ * `built_at` is the ONLY order a phone has (`player/foray-directory.js` refuses
+ * a live pointer whose `built_at` is behind the set it holds, `STATUS.OLDER`,
+ * and re-decides that from the same two stamps on every refresh — forever). So
+ * it has two jobs: MOVE FORWARD with `main`, and be the SAME for every stamper
+ * that ships the same content — the Vercel deploy the phones read, the Pages
+ * deploy, and the native bundle's seed.
+ *
+ * THE COMMITTER DATE OF THE NEWEST FIRST-PARENT COMMIT THAT TOUCHED A STAMP
+ * INPUT (`paths`: every file the deploy id hashes, the directory files, and the
+ * stamp modules — `generate-manifest.mjs`'s `stampInputs`). Not HEAD's date:
+ * Vercel's `ignoreCommand` (`tools/web/vercel-should-build.mjs`) SKIPS a commit
+ * that changes nothing it serves — a `mobile/`-only commit, typically the very
+ * commit a release builds from — so the pointer Vercel serves carries the date
+ * of the last commit it BUILT, while a HEAD-dated seed would be later. The phone
+ * then read the live pointer as OLDER than its own partial seed and never
+ * fetched the whole set (PR #795 review, finding 1). Every stamp input is a path
+ * Vercel builds on (pinned by a test), so the newest commit touching one is a
+ * commit Vercel built, and every stamper of the same `main` computes the same
+ * date for the same content.
+ *   - Not committed (issue #701): a committed stamp is exactly what a `git
+ *     revert` walks backwards (audit finding C, 2026-09-12). A revert is a NEW
+ *     commit that touches the inputs, so it carries its own, newer date.
+ *   - Not the wall clock: two builds of the same content then agree byte for
+ *     byte. The clock is the last-resort fallback only.
+ *   - `--first-parent`: a merge commit counts as "when this reached main", never
+ *     the older date of a commit on the merged branch.
+ *
+ * A SHALLOW CLONE can only answer LATE: when the newest input commit is below
+ * the clone's depth, the boundary commit looks as if it added every file. That
+ * is reported as `source: "git-shallow"` — safe for a LIVE pointer (later than
+ * the truth never makes a phone refuse it), wrong for a SEED (a seed later than
+ * the live pointer is the defect above), so `sourceStamp` leaves such a seed
+ * unversioned. Builders that bundle a seed check out with full history.
+ *
+ * With no `paths`, HEAD's own committer date (every file is an input).
+ *
+ * `SOURCE_DATE_EPOCH` (the reproducible-builds convention, integer seconds)
+ * wins when set, so a test or a rebuild can pin the stamp without git.
+ *
+ * -> { builtAt: ISO-8601 string, source: "SOURCE_DATE_EPOCH" | "git" | "git-shallow" | "clock" }
+ */
+export function buildTimestamp(root, { env = process.env, now = () => new Date(), paths = null } = {}) {
+  const epoch = env && env.SOURCE_DATE_EPOCH;
+  if (epoch != null && /^\d+$/.test(String(epoch).trim())) {
+    return { builtAt: new Date(Number(String(epoch).trim()) * 1000).toISOString(), source: "SOURCE_DATE_EPOCH" };
+  }
+  const limited = Array.isArray(paths) && paths.length > 0;
+  const args = ["log", "-1", "--first-parent", "--format=%H %cI", "HEAD"];
+  let line = limited ? gitOut(root, [...args, "--", ...paths.map((p) => String(p).split(path.sep).join("/"))]) : null;
+  /* No commit touched any input (inputs untracked — a fixture): HEAD's date. */
+  if (!line) line = gitOut(root, args);
+  const m = line && /^([0-9a-f]{40,64}) (\S+)$/.exec(line);
+  if (m && Number.isFinite(Date.parse(m[2]))) {
+    const builtAt = new Date(Date.parse(m[2])).toISOString();
+    return { builtAt, source: limited && isShallowBoundary(root, m[1]) ? "git-shallow" : "git" };
+  }
+  return { builtAt: now().toISOString(), source: "clock" };
 }
 
-/** `git <args>` in `root`, trimmed stdout, or null on any failure. */
-function gitOut(root, args) {
+/** Is `sha` a shallow clone's boundary commit — one whose parents were not
+ *  fetched, so a path-limited log sees it as adding every file? */
+function isShallowBoundary(root, sha) {
+  if (gitOut(root, ["rev-parse", "--is-shallow-repository"]) !== "true") return false;
+  const shallowFile = gitOut(root, ["rev-parse", "--path-format=absolute", "--git-path", "shallow"]);
+  if (!shallowFile) return true; // shallow but unreadable: assume the worst
   try {
-    return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    return readFileSync(shallowFile, "utf8").split(/\s+/).includes(sha);
   } catch (_) {
-    return null;
+    return true;
   }
 }
 
 /**
- * The `built_at` of the pointer as it stands on a git ref (or commit sha), or
- * null when there is no git, no such ref, no such file on it, or it does not
- * parse as JSON.
- *
- * This and `builtAtFloorFrom` are the ONLY impure things in this module, and
- * they are deliberately best-effort: every failure returns null, which puts
- * `writePointer` back on exactly the behaviour it had before the floor existed.
- * A pure-function test from a scratch tree never calls them — it passes
- * `builtAtFloor` directly.
+ * Everything wrong with the pointer on disk under `root` (a BUILT tree — `dist/`
+ * or a stamped Pages checkout) for the deploy id that tree computes to. Empty
+ * means it is current. Each string is one operator-facing line;
+ * `generate-manifest.mjs`'s `stampedProblems` prints them all and the build
+ * fails on any.
  */
-export function pointerBuiltAtOnRef(root, ref) {
-  const raw = gitOut(root, ["show", `${ref}:${POINTER_PATH}`]);
-  if (raw === null) return null;
-  try {
-    const doc = JSON.parse(raw);
-    return doc && typeof doc.built_at === "string" ? doc.built_at : null;
-  } catch (_) {
-    return null;
-  }
-}
-
-/**
- * The floor `writePointer` measures against: the pointer's `built_at` at the
- * MERGE BASE of HEAD and the base branch.
- *
- * WHY THE MERGE BASE AND NOT THE BASE BRANCH'S TIP. The tip would make every
- * PR cut before the last data change look like a rollback — its pointer is
- * genuinely older than main's, it is not going backwards, and restamping it
- * would put an autofix commit on every stale branch in the repo. The merge base
- * is the pointer this branch STARTED from, so "behind the floor" means
- * "this branch moved it backwards", which is exactly the rollback case: a
- * revert is cut from the tip, so its merge base carries the stamp the revert
- * just undid.
- *
- * The first base in `bases` that HEAD shares a merge base with wins; null when
- * none does (no git, a shallow clone with no such ref, an orphan branch), which
- * is the pre-floor behaviour.
- */
-export function builtAtFloorFrom(root, bases = ["origin/main", "main"]) {
-  for (const base of bases) {
-    const mergeBase = gitOut(root, ["merge-base", base, "HEAD"]);
-    if (!mergeBase) continue;
-    const at = pointerBuiltAtOnRef(root, mergeBase);
-    if (at) return at;
-  }
-  return null;
-}
-
-/**
- * Write the pointer for `deployId`, idempotently: if the committed pointer
- * already describes exactly these files under exactly this id, it is left
- * byte-for-byte alone (its `built_at` included), so a `--write` that changed
- * nothing produces no diff and the manifest-autofix bot stays quiet.
- * -> { changed, pointer, restamped }
- *
- * ── THE ROLLBACK CLAUSE (`opts.builtAtFloor`, audit finding C, 2026-09-12) ──
- * `built_at` is not decoration: it is the ONLY order the phone has.
- * `player/foray-directory.js` refuses a live pointer whose `built_at` is
- * behind the one it holds (`STATUS.OLDER`) because deploy ids are content
- * hashes with no order of their own, and that refusal is permanent — it is
- * re-evaluated against the same two timestamps on every refresh, forever.
- *
- * A rollback is a `git revert`, and the pointer rides in the SAME squashed
- * commit as the three data files (`manifest-autofix.yml` adds
- * `data/forays-directory.json` to the data PR's own head — see commit e2934d0,
- * "Generated Foray: What Engineers Actually Do All Day"). So a revert restores
- * the pointer's OLD bytes, old `built_at` and all; the tree then computes back
- * to the old deploy id, `samePointerContent` says "nothing changed", and the
- * rolled-back site ships a pointer that every phone holding the reverted
- * version refuses for good. A fresh install is worse: its bundled seed is
- * `partial: true` (F-92) and never `current`, so it refuses the live pointer
- * as older and shows only the seed — no generated Foray, no recovery.
- *
- * WHY A FLOOR AND NOT "RESTAMP WHENEVER THE VERSION CHANGES". Restamping on a
- * version change does not touch this case at all: after the revert the
- * on-disk pointer's version and the computed deploy id are BOTH the old id.
- * Nothing local can tell "rolled back to D1" from "still at D1". The missing
- * fact lives in history, so the floor is read from history: the `built_at` of
- * the pointer at the MERGE BASE of this branch and main (`builtAtFloorFrom`),
- * which on a revert branch is the reverted-from pointer's newer stamp. A
- * pointer behind that floor is restamped even when its content is unchanged.
- *
- * WHY NOT A MONOTONIC COUNTER. A counter is a field in the same file, so a
- * revert walks it backwards exactly as it walks `built_at` backwards. The
- * problem is never the clock — it is that the ordering key is committed and
- * therefore revertible. Only a value derived from something the revert cannot
- * restore (history, or the wall clock at write time) fixes it.
- *
- * The floor changes nothing on an ordinary PR: the merge base's pointer is the
- * one on disk (a branch merely BEHIND main is not a rollback — that is why the
- * floor is the merge base and not main's tip), `builtAtIsOlder` is false, the
- * bytes are left alone and the autofix bot stays as quiet as before.
- */
-export function writePointer(root, deployId, now = new Date(), opts = {}) {
-  const fresh = buildPointer(root, deployId, now);
-  const { pointer: existing } = readPointer(root);
-  const floor = opts.builtAtFloor ?? null;
-  const behindFloor = !!existing && builtAtIsOlder(existing.built_at, floor);
-  if (existing && samePointerContent(existing, fresh) && !behindFloor) {
-    return { changed: false, pointer: existing, restamped: false };
-  }
-  writeFileSync(path.join(root, POINTER_PATH), pointerText(fresh));
-  return { changed: true, pointer: fresh, restamped: behindFloor };
-}
-
-/**
- * Everything wrong with the pointer on disk under `root` for the deploy id the
- * tree computes to. Empty means it is current. Each string is one operator-
- * facing line; `--check` prints them all and exits 1 on any.
- */
-export function pointerProblems(root, deployId, opts = {}) {
+export function pointerProblems(root, deployId) {
   const { pointer, error } = readPointer(root);
   if (error) return [error];
   const problems = [];
@@ -271,20 +232,6 @@ export function pointerProblems(root, deployId, opts = {}) {
   }
   if (typeof pointer.built_at !== "string" || Number.isNaN(Date.parse(pointer.built_at))) {
     problems.push(`built_at is not an ISO-8601 timestamp: ${JSON.stringify(pointer.built_at)}`);
-  }
-  /* The rollback clause (audit finding C) — see `writePointer`. A pointer this
-     branch has moved BACKWARDS from the stamp it started at is one every phone
-     holding the newer version refuses forever, so it is as stale as a wrong
-     hash. `builtAtFloor` is the merge base's stamp (`builtAtFloorFrom`), not
-     the base branch's tip — a branch that is merely behind main is not a
-     rollback. */
-  const floor = opts.builtAtFloor ?? null;
-  if (builtAtIsOlder(pointer.built_at, floor)) {
-    problems.push(
-      `built_at is ${JSON.stringify(pointer.built_at)}, BEHIND the ${floor} this branch started from — ` +
-        "a rollback must carry a NEWER built_at or every phone holding the reverted version refuses it forever " +
-        "(player/foray-directory.js, STATUS.OLDER)"
-    );
   }
   const sections = { files: pointer.files, bytes: pointer.bytes, sha256: pointer.sha256 };
   for (const [name, section] of Object.entries(sections)) {

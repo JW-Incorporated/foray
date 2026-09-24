@@ -158,9 +158,10 @@ export const ISSUE_TITLE = "Release watchdog: the app stores need attention";
  * The failure modes swap. There, allow-list drift silently stops DEPLOYING a
  * file that started mattering — a production 404. Here allow-list drift silently
  * stops NAGGING, which is the status quo and harmless, while deny-list drift
- * produces a false alarm on nearly every PR, because the manifest-autofix bot
- * rewrites deploy-manifest.json, sw.js and data/forays-directory.json on most of
- * them. A flaky alarm is worse than none (nightly-watch.yml).
+ * produced a false alarm on nearly every PR, because the manifest-autofix bot
+ * rewrote deploy-manifest.json, sw.js and data/forays-directory.json on most of
+ * them (until issue #701 made those deploy build outputs). A flaky alarm is worse
+ * than none (nightly-watch.yml).
  *
  * The web half of the list is prepare-webdir.mjs's own plan, which is the
  * executable definition of "what is in the bundle". The native half never passes

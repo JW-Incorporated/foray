@@ -12,9 +12,10 @@
  * installs are not.
  *
  * And this repo pushes a great deal that Vercel does not serve: test suites,
- * `docs/`, `ios/`, `mobile/`, `.github/`, `STATE.md`, `HUMAN-ACTIONS.md`, and
- * the `chore: auto-regenerate deploy-manifest.json` commit that CI pushes onto
- * nearly every PR — which on its own doubles the builds per pull request.
+ * `docs/`, `ios/`, `mobile/`, `.github/`, `STATE.md` and `HUMAN-ACTIONS.md`.
+ * (Until issue #701 it also pushed a `chore: auto-regenerate deploy-manifest.json`
+ * commit onto nearly every PR, which on its own doubled the builds per pull
+ * request; the stamp is generated at build time now and that commit is gone.)
  *
  * ── THE RULE, AND WHY IT IS SHAPED THIS WAY ─────────────────────────────────
  *
@@ -80,9 +81,21 @@ export const IGNORED_PREFIXES = [
  * and every non-test file under it is rescued — which means a NEW player module
  * builds (correct) and only a test does not.
  */
+/* The deploy stamp's modules (issue #701): `prepare-dist.mjs` imports them to
+   write deploy-manifest.json, the Foray directory pointer and sw.js's BUILD_ID
+   into dist/, so a change to one changes the bytes Vercel serves exactly as a
+   change to prepare-dist.mjs itself does. Named, not a `tools/ci/` prefix: the
+   rest of that directory is CI policy and never reaches a deploy. */
+export const STAMP_MODULES = [
+  "tools/ci/generate-manifest.mjs",
+  "tools/ci/forays-directory.mjs",
+  "tools/ci/crlf-guard.mjs",
+];
+
 export const EXCEPTIONS = [
   (p) => p === "docs/ux/foray-m3-prototype.html",
   (p) => p.startsWith("tools/web/") && !p.endsWith(".test.mjs"),
+  (p) => STAMP_MODULES.includes(p),
   (p) => p.startsWith("player/") && p.endsWith(".js") && !p.endsWith(".test.js"),
 ];
 
