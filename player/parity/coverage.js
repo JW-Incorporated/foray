@@ -49,7 +49,7 @@ export const COVERED_SUITES = Object.freeze({
      port that burns these families down. */
   "transport-policy": { card: "NE-09", family: "transport" },
   "position-store": { card: "NE-09", family: "resume-rules" },
-  "continuation": { card: "NE-13", family: "continuation", awaiting: "NE-13" },
+  "continuation": { card: "NE-13", family: "continuation" },
   "queue-manager": { card: "NE-14j", family: "manager-episode" },
   "html-audio-backend": { card: "NE-14j", family: "deck-episode" },
   "tts-bridge": { card: "NE-31j", family: "speech-rate" },
@@ -218,15 +218,18 @@ export function computeManifest(root, fixtures = loadFixtures(root)) {
  * Classify every top-level test of every covered suite.
  * @returns {{status: object, problems: string[]}}
  *   status[stem][name] = {covered: [caseIds], xctest?, excluded?, unported?}
+ * `covered` is the suite table, COVERED_SUITES unless a test hands it a
+ * synthetic one: the "awaiting" refusal must stay testable after the last
+ * real awaiting suite lands (NE-13 made continuation.test.js real).
  */
-export function classify(root, data = loadParityData(root), fixtures = loadFixtures(root), suites = readCoveredSuites(root)) {
+export function classify(root, data = loadParityData(root), fixtures = loadFixtures(root), suites = readCoveredSuites(root), covered = COVERED_SUITES) {
   const problems = [];
   const status = {};
   const known = (stem, name) => suites[stem]?.exists && suites[stem].names.includes(name);
 
   for (const [stem, s] of Object.entries(suites)) {
     status[stem] = {};
-    const cfg = COVERED_SUITES[stem];
+    const cfg = covered[stem];
     if (!s.exists) {
       if (!cfg?.awaiting) problems.push(`${suiteFile(stem)} is a covered suite and is missing`);
       continue;
@@ -241,7 +244,7 @@ export function classify(root, data = loadParityData(root), fixtures = loadFixtu
   const place = (where, key, fn) => {
     const [stem, ...rest] = key.split("::");
     const name = rest.join("::");
-    if (!(stem in COVERED_SUITES)) return problems.push(`${where}: "${stem}" is not a covered suite`);
+    if (!(stem in covered)) return problems.push(`${where}: "${stem}" is not a covered suite`);
     if (!known(stem, name)) return problems.push(`${where}: ${stem} has no top-level test named ${JSON.stringify(name)}`);
     fn(status[stem][name]);
   };

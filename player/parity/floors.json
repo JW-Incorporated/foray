@@ -2,6 +2,7 @@
   "//": "Written by tools/parity/record.mjs; no card types a count. families: the minimum case count of each fixture family (raise-only; --lower-floors lowers it, visibly). suites: the top-level test count of each covered suite when last recorded. test/suite-integrity.test.js enforces both against the tree.",
   "families": {
     "compare": 37,
+    "continuation": 48,
     "media-episode": 118,
     "number-format": 25,
     "queue-state": 87,
@@ -12,6 +13,7 @@
     "transport": 90
   },
   "suites": {
+    "continuation": 11,
     "foray-playback": 91,
     "foray-progress": 59,
     "html-audio-backend": 112,

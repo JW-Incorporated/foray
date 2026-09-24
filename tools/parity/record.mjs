@@ -8,6 +8,9 @@
          `expect`. Every case that is NEW, or whose expect CHANGED, is added to
          swift-pending.json tagged with --port-card — a JS rule change therefore
          never turns the Swift runner red; it hands the Swift card a list.
+         A `jsOnly` fixture family (schema; plan §5.5 C-2, the continuation
+         hops the page computes and the engine only walks) is recorded the same
+         way but owed to no card: its ids never enter swift-pending.
          Refuses (writes nothing, exits 1) when:
            - JS disagrees with an `authored: true` case (a spec value, not ours
              to overwrite — change the spec on purpose, by hand, or fix the JS);
@@ -147,9 +150,11 @@ export async function checkAll({ root = REPO_ROOT, family = null, manifest = tru
       if (JSON.stringify(w.ids) !== JSON.stringify(h.ids)) problems.push(`manifest: family ${f}'s case ids differ from the fixtures on disk`);
     }
     const ids = new Set(Object.values(want.families).flatMap((f) => f.ids));
+    const jsOnlyIds = new Set(all.filter((f) => f.doc.jsOnly === true).flatMap((f) => f.doc.cases.map((c) => c.id)));
     for (const [id, card] of Object.entries(data.pending)) {
       if (id.startsWith("//")) continue;
       if (!ids.has(id)) problems.push(`swift-pending: ${id} names no fixture case`);
+      if (jsOnlyIds.has(id)) problems.push(`swift-pending: ${id} is in a jsOnly family; no Swift card can owe it`);
       if (!CARD_RE.test(card)) problems.push(`swift-pending: ${id} is tagged ${JSON.stringify(card)}, not a card id`);
     }
   }
@@ -171,6 +176,7 @@ export async function record({ root = REPO_ROOT, family = null, portCard = null,
   const data = loadParityData(root);
   const knownIds = new Set(Object.values(data.manifest.families ?? {}).flatMap((f) => f.ids ?? []));
   const affected = [];
+  const jsOnlyAffected = [];
   const dirty = new Set();
 
   if (!refusals.length) {
@@ -184,14 +190,16 @@ export async function record({ root = REPO_ROOT, family = null, portCard = null,
             `either the JS change is wrong, or the spec changed and a person edits the case on purpose.\n${formatDiffs(diffs)}`
           );
         }
-        if (!knownIds.has(r.c.id)) affected.push(r.c.id);
+        if (!knownIds.has(r.c.id)) (r.fx.doc.jsOnly ? jsOnlyAffected : affected).push(r.c.id);
         continue;
       }
       const had = "expect" in r.c;
       const same = had && !compare(r.c.expect, r.actual, { family: r.fx.family, tolerance: r.c.tolerance }).length;
       if (same && knownIds.has(r.c.id)) continue;
       if (!same) { r.c.expect = r.actual; dirty.add(r.fx); }
-      affected.push(r.c.id);
+      /* A JS-only family (schema `jsOnly`, plan §5.5 C-2) has no Swift card to
+         hand its ids to: they are recorded, and owed to nobody. */
+      (r.fx.doc.jsOnly ? jsOnlyAffected : affected).push(r.c.id);
     }
   }
   if (affected.length && !portCard && !refusals.length) {
@@ -263,7 +271,8 @@ export async function record({ root = REPO_ROOT, family = null, portCard = null,
 
   log(formatCounts(c));
   if (affected.length) log(`\nswift-pending: ${affected.length} id(s) tagged ${portCard}`);
-  return { ok: true, refusals: [], written, pendingAdded: affected };
+  if (jsOnlyAffected.length) log(`js-only: ${jsOnlyAffected.length} id(s) recorded, owed to no Swift card`);
+  return { ok: true, refusals: [], written, pendingAdded: affected, jsOnlyRecorded: jsOnlyAffected };
 }
 
 export function formatCounts(c) {

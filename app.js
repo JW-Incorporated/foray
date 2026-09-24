@@ -224,9 +224,13 @@ let _bufferedEvents = [];
    app never logs. */
 let dataDeletionInProgress = false;
 
-function logEvent(type, payload) {
+/* `ts` is for a row that HAPPENED EARLIER than it is logged: an advance or a
+   position the native engine recorded while this page slept, replayed on the
+   next wake (`applyEngineAdvance`, `drainEngineEvents`). Stamping those "now"
+   would put a drive's positions at the moment the phone was unlocked. */
+function logEvent(type, payload, { ts = null } = {}) {
   if (dataDeletionInProgress) return;
-  const row = { ts: new Date().toISOString(), type, builder: state.session?.builder || "unknown", profile: profileId(), payload };
+  const row = { ts: typeof ts === "string" && ts ? ts : new Date().toISOString(), type, builder: state.session?.builder || "unknown", profile: profileId(), payload };
   if (window.forayEventLog && typeof window.forayEventLog.append === "function") {
     flushBufferedEvents();
     window.forayEventLog.append(row);
@@ -2067,50 +2071,56 @@ function setPlayList(ids, playedId = null) {
 
 function isPlayableId(id) { return Boolean(liveEpisode(id)?.audio_url); }
 
-/**
- * What plays after `finishedId`, with no writes: `{ nextId, rest, fromList }`.
- * `rest` is Up Next with the finished episode removed (or null when it was not
- * queued) — the caller saves it. Shared by the end of an episode and by the
- * steering wheel's skip, which must agree on what "next" is.
- *
- * UP NEXT FIRST, THEN THE LIST. The list continues only when the episode that
- * ended belongs to this chain (`state.playChainId`: started by bindPlay from the
- * list, or by an advance), so an episode started from somewhere with no list
- * (a timestamp, the restored bar) does not resume a list from an earlier visit.
- */
+/* THE RULES LIVE IN `player/continuation.js` (NE-13, docs/native-engine-plan.md
+   §5.5) — Up Next first, then the list, the chain and its cursor, all of it.
+   They moved so the native engine can be handed the next eight hops as data
+   while this page sleeps; this file gathers the inputs and does the writes.
+   `player/client.js` publishes the module as `window.forayContinuation`, the
+   same bridge `forayStorage` uses, because this classic script cannot import.
+
+   No player module means no rules — and nothing to play with them: every
+   caller below is reached from `window.ForayPlayer`, which the same module
+   graph publishes after the rules, so "no rules" answers "nothing next"
+   exactly when there is no player to ask. */
+function continuationRules() {
+  const rules = window.forayContinuation;
+  return rules && typeof rules.planAfterEnded === "function" ? rules : null;
+}
+
+/** The injected state `player/continuation.js` reads, from this page's own. */
+function continuationState(currentId = null) {
+  return {
+    queue: queueIds(),
+    playList: state.playList,
+    playChainId: state.playChainId,
+    playListCursor: state.playListCursor,
+    isPlayable: isPlayableId,
+    items: liveEpisode,
+    currentId,
+  };
+}
+
+/** What plays after `finishedId`, with no writes: `{ nextId, rest, fromList }`
+    — see `planAfterEnded` in player/continuation.js. Shared by the end of an
+    episode and by the steering wheel's skip, which must agree on "next". */
 function planAfterEnded(finishedId) {
-  const queued = queueIds();
-  const at = queued.indexOf(finishedId);
-  let rest = null;
-  let fromQueue;
-  if (at >= 0) {
-    rest = queued.filter(x => x !== finishedId);
-    /* The row that took its place first, then anything above it the listener
-       skipped past — every one of them is still unheard, or it would have left. */
-    fromQueue = rest.slice(at).concat(rest.slice(0, at));
-  } else {
-    fromQueue = queued;
-  }
-  const queuedNext = fromQueue.find(isPlayableId);
-  if (queuedNext) return { nextId: queuedNext, rest, fromList: false };
-  const list = state.playList || [];
-  const onChain = Boolean(finishedId) && finishedId === state.playChainId;
-  const anchor = list.includes(finishedId) ? finishedId : (onChain ? state.playListCursor : null);
-  const i = anchor ? list.indexOf(anchor) : -1;
-  const listNext = i >= 0 ? list.slice(i + 1).find(isPlayableId) : null;
-  return { nextId: listNext || null, rest, fromList: Boolean(listNext) };
+  const rules = continuationRules();
+  if (!rules) return { nextId: null, rest: null, fromList: false };
+  return rules.planAfterEnded(continuationState(), finishedId);
 }
 
 /** What plays after `finishedId`, or null. Applies the plan's one write (the
     finished episode leaves Up Next) and moves the chain on to the pick. */
 function nextAfterEnded(finishedId) {
-  const plan = planAfterEnded(finishedId);
-  if (plan.rest) saveQueueIds(plan.rest);
-  if (plan.nextId) {
-    state.playChainId = plan.nextId;
-    if (plan.fromList) state.playListCursor = plan.nextId;
+  const rules = continuationRules();
+  if (!rules) return null;
+  const step = rules.nextAfterEnded(continuationState(), finishedId);
+  if (step.rest) saveQueueIds(step.rest);
+  if (step.nextId) {
+    state.playChainId = step.state.playChainId;
+    if (step.fromList) state.playListCursor = step.state.playListCursor;
   }
-  return plan.nextId;
+  return step.nextId;
 }
 
 /**
@@ -2146,6 +2156,108 @@ const EPISODE_NAVIGATION = {
     re-reads EPISODE_NAVIGATION now rather than at the next play. */
 function refreshEpisodeNavigation() {
   try { window.ForayPlayer?.setEpisodeNavigation?.(EPISODE_NAVIGATION); } catch (_) { /* best-effort */ }
+  sendContinuation();
+}
+
+/* ---------- the native engine's half of continuous playback (NE-13) ----------
+
+   Under the native engine (docs/native-engine-plan.md §5.5) the page is not
+   awake when an episode ends in a car, so it cannot answer "what next" then.
+   It answers AHEAD: every time the answer could change — a play, an Up Next
+   edit, the Continuous playback switch — `refreshEpisodeNavigation` above also
+   hands the player `setContinuation({planSeq, autoAdvance, chain})`, the next
+   eight hops `player/continuation.js` plans from this page's own state. The
+   engine walks them only while `autoAdvance` is on, and offers "next" whenever
+   the chain is non-empty, switch or no switch, as EPISODE_NAVIGATION does.
+
+   The JS player has no `setContinuation` (it asks EPISODE_NAVIGATION at the
+   moment it needs the answer), so on the web and Android this is a no-op;
+   NE-22 gives the native branch of `player/client.js` one that forwards it. */
+
+/** Plans are ordered by `planSeq`, and a hop the engine walked names its plan,
+    so the number must keep rising across page loads too — the engine may still
+    hold a plan from before a reload. Wall-clock ms, bumped past the last one. */
+let lastPlanSeq = 0;
+function nextPlanSeq() {
+  lastPlanSeq = Math.max(lastPlanSeq + 1, Date.now());
+  return lastPlanSeq;
+}
+
+/* Also called straight after each play this page starts: the plan starts from
+   the episode now playing, and until `play()` resolves the player is still on
+   the one before (setPlayList's refresh runs ahead of the tap's play). Only
+   the plan, not setEpisodeNavigation: the JS player installs its own
+   lock-screen actions at play time, and this must change nothing there. */
+function sendContinuation() {
+  const player = window.ForayPlayer;
+  if (!player || typeof player.setContinuation !== "function") return;
+  const rules = continuationRules();
+  if (!rules) return;
+  try {
+    const current = player.currentEpisodeId?.() || null;
+    player.setContinuation(rules.continuationPlan(continuationState(current), {
+      planSeq: nextPlanSeq(),
+      autoAdvance: autoAdvanceOn(),
+    }));
+  } catch (_) { /* best-effort, like the navigation above: a plan is re-sent on the next change */ }
+}
+
+/* THE LEDGER: `cp_engine_applied`, page-owned. When the engine walked hops or
+   recorded positions while this page slept, the next attach hands them over
+   and this page applies each ONCE — it logs `play_started` and `position`
+   rows, and those leave the device. The watermark is written BEFORE each
+   row: a crash in between costs one row, where the other order would repeat
+   it on every attach until the engine's ack landed. The decisions (what is
+   new, in what order, at what time) are `planAdvanceApply`/`planEventDrain`
+   in player/continuation.js; this only executes their steps. */
+const ENGINE_APPLIED_KEY = "cp_engine_applied";
+
+/** Apply one hop the engine played: Up Next as it stood after it, the chain
+    and cursor, `play_started` (ctx `autoadvance`, at the time the engine
+    played it) and history. Returns whether it applied — false for a hop at or
+    below the watermark, so a log delivered twice is a no-op the second time. */
+function applyEngineAdvance(hop) {
+  const rules = continuationRules();
+  if (!rules) return false;
+  const { steps } = rules.planAdvanceApply(lsGet(ENGINE_APPLIED_KEY, null), [hop]);
+  for (const step of steps) {
+    lsSet(ENGINE_APPLIED_KEY, step.applied);
+    const h = step.hop;
+    const id = h.nextId;
+    /* The page handed the engine this item itself; seed it back the way
+       liveEpisode caches a stored snapshot, so history keeps a nameable row
+       after a reload that emptied the pool. */
+    if (!state.itemIndex[id] && h.item && h.item.audio_url) state.itemIndex[id] = h.item;
+    /* The chain first: saving Up Next re-plans (refreshEpisodeNavigation), and
+       the plan must start from where the engine now is. */
+    state.playChainId = id;
+    if (h.fromList) state.playListCursor = id;
+    if (Array.isArray(h.queueAfter)) saveQueueIds(h.queueAfter.filter(x => typeof x === "string" && x));
+    else refreshEpisodeNavigation();
+    const item = liveEpisode(id) || h.item || {};
+    logEvent("play_started", { episode_id: id, topics: item.topics || [], ctx: "autoadvance" }, { ts: step.ts });
+    recordHistory(id);
+  }
+  if (steps.length) trySyncEvents();
+  return steps.length > 0;
+}
+
+/** Replay the engine's `pendingEvents` through `logEvent` with their original
+    timestamps (plan §5.5: the `position` event type is unchanged, so the
+    privacy disclosure is too). Returns how many rows were logged. */
+function drainEngineEvents(events) {
+  const rules = continuationRules();
+  if (!rules) return 0;
+  const { steps } = rules.planEventDrain(lsGet(ENGINE_APPLIED_KEY, null), events);
+  let logged = 0;
+  for (const step of steps) {
+    lsSet(ENGINE_APPLIED_KEY, step.applied);
+    if (!step.row) continue;
+    logEvent(step.row.type, step.row.payload, { ts: step.row.ts });
+    logged++;
+  }
+  if (logged) trySyncEvents();
+  return logged;
 }
 
 /** Called from `ForayPlayer.onEpisodeEnded` (player/client.js) with the id of
@@ -2191,6 +2303,7 @@ function startChained(nextId, ctx) {
       if (!ok) return;
       logEvent("play_started", { episode_id: nextId, topics: nextItem.topics || [], ctx });
       recordHistory(nextId);
+      sendContinuation();
       trySyncEvents();
     }, (err) => {
       /* A THROW SAYS SO, as bindPlay's does (review 2026-09-23): this used to
@@ -4560,6 +4673,7 @@ function bindPlay(scope) {
       }
       logEvent("play_started", { episode_id: id, topics: item.topics || [] });
       recordHistory(id);
+      sendContinuation();
       /* Same "playlist-<id>" convention and the same regex bindPickLogging
          already applies to a picked link's data-ctx — bindPlay is the in-app
          play button, the PRIMARY control on every live playlist row, and it
@@ -8440,6 +8554,7 @@ function bindEpisodeSeeks(scope, item) {
             try { window.ForayPlayer.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
             return;
           }
+          sendContinuation();
         }
         await window.ForayPlayer.seekTo(secs);
       } catch (err) {
@@ -11293,6 +11408,10 @@ function bindDrawerToggles() {
   drawerToggle("autoadvance-toggle", "Continuous playback", autoAdvanceOn, (on) => {
     lsSet("cp_autoadvance", on);
     logEvent("autoadvance_pref", { on });
+    /* The switch changes what the END of the playing episode does, so a
+       player that was handed the plan ahead (the native engine's
+       setContinuation) must hear it now, not at the next play (NE-13). */
+    refreshEpisodeNavigation();
   });
 
   /* §13's jingle (player/interlude.js). THE CONTROL THE PRIVACY POLICY ALREADY

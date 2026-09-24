@@ -11,12 +11,19 @@ public struct FixtureFile {
     /// The JS module every read/call case in the file targets.
     public let module: String?
     public let cases: [FixtureCase]
+    /// The schema's `jsOnly` (plan §5.5 C-2): the file pins a JS rule that is
+    /// deliberately never ported (the continuation hops, which the page
+    /// computes and the engine only walks). The suite skips such a family by
+    /// this flag, because no Swift card can owe its ids and record.mjs refuses
+    /// to write them into swift-pending.json.
+    public let jsOnly: Bool
 
-    public init(path: String, family: String, module: String?, cases: [FixtureCase]) {
+    public init(path: String, family: String, module: String?, cases: [FixtureCase], jsOnly: Bool = false) {
         self.path = path
         self.family = family
         self.module = module
         self.cases = cases
+        self.jsOnly = jsOnly
     }
 
     init(path: String, document: JSONValue) throws {
@@ -27,7 +34,8 @@ public struct FixtureFile {
             throw HarnessError("E_BAD_CASE", "\(path) has no cases")
         }
         self.init(path: path, family: family, module: document["module"]?.stringValue,
-                  cases: try rawCases.map { try FixtureCase(raw: $0, file: path) })
+                  cases: try rawCases.map { try FixtureCase(raw: $0, file: path) },
+                  jsOnly: document["jsOnly"] == .bool(true))
     }
 }
 

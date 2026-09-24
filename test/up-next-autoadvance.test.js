@@ -30,7 +30,7 @@
  * its own and does not belong in the shared harness.
  */
 
-const { test } = require("node:test");
+const { test, before } = require("node:test");
 const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
@@ -42,6 +42,13 @@ const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
 
 process.on("unhandledRejection", () => {});
+
+/* The rules themselves are player/continuation.js since NE-13, published to
+   the page by player/client.js as `window.forayContinuation`. The fake player
+   below stands in for client.js, so the harness publishes the REAL rules the
+   same way — every assertion in this suite runs through the delegation. */
+let CONTINUATION = null;
+before(async () => { CONTINUATION = await import("../player/continuation.js"); });
 
 function makeEl(tag) {
   return {
@@ -133,6 +140,7 @@ function mount({ seed = {} } = {}) {
   };
   ctx.window = ctx;
   ctx.globalThis = ctx;
+  ctx.forayContinuation = CONTINUATION;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
