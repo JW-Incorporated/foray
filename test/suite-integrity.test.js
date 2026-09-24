@@ -275,8 +275,16 @@ const FLOORS = {
      families' own case counts are floored in player/parity/floors.json and
      enforced by "parity fixture families hold their floors" below, so deleting
      fixture cases is loud here too, not only in the suite that reads them. */
-  "player/parity/run.test.js": 31,
-  "player/parity/coverage.test.js": 22, // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
+  "player/parity/run.test.js": 32, // NE-12j: the media-actions adapter records real arity and refuses a press the OS could never deliver; 31 -> 32
+  "player/parity/coverage.test.js": 23, // NE-12j: media-session is wholly classified — media-episode, an exclusion, or NE-29j's Foray half in the foray capability's family; 22 -> 23 // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
+  /* NE-10j: the rows and number-format families. rows.test.js is what makes
+     them a RECORDING — every recorded row is rebuilt from the real builders,
+     and the page's own PositionStore, on the wall clock, writes the recorded
+     bytes. engine-contract.test.js pins OWNED_PREFIXES against both the rows
+     the family records and every cp_ key the app spells, in both directions:
+     a missed row is a clobber, an extra one is a store that stops saving. */
+  "player/parity/rows.test.js": 4,
+  "player/engine-contract.test.js": 3,
   /* NE-08: the suites that READ their fixtures (plan §6.3). Each test runs the
      `transport` / `resume-rules` cases that name it, so the one file is the JS
      assertion and the Swift port's case list (NE-09). Zero slack: a deleted
@@ -1164,7 +1172,7 @@ const FLOORS = {
      overwritten, every new or changed case handed to swift-pending.json with
      its port card, and --mutate's kill/survive/pending verdicts with a no-op
      control. Zero slack. */
-  "tools/parity/record.test.mjs": 15, // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
+  "tools/parity/record.test.mjs": 16, // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
   /* THE TYPE GATE, and the reason it is floored at all. Until 2026-09-12 no CI
      job in this repo had ever run `tsc` or `eslint`: `backend/package.json`
      defined `typecheck` and nothing called it, so the TypeScript backend was

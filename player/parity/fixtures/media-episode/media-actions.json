@@ -1,0 +1,428 @@
+{
+  "family": "media-episode",
+  "module": "player/parity/media-actions.js",
+  "note": "The remote-command half of the mapping: mediaSessionActions (player/media-session.js), asked through the harness adapter player/parity/media-actions.js because its answer is a list of functions. Each case names which surface methods exist and which buttons are pressed, and records which OS commands are enabled and what the surface received. NE-12s ports it as MediaMapping's command enablement and remote-press table.",
+  "cases": [
+    {
+      "id": "media-episode/actions-complete-surface",
+      "covers": [
+        "media-session::a complete surface installs every action this module knows about"
+      ],
+      "call": "mediaActions",
+      "args": [{ "surface": ["play", "pause", "stop", "next", "previous", "seekBy", "seekTo"] }],
+      "expect": {
+        "return": {
+          "calls": [],
+          "installed": [
+            "play",
+            "pause",
+            "stop",
+            "previoustrack",
+            "nexttrack",
+            "seekbackward",
+            "seekforward",
+            "seekto"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-absent-next-previous",
+      "covers": [
+        "media-session::an absent surface method installs no handler — the OS greys the button out"
+      ],
+      "call": "mediaActions",
+      "args": [{ "surface": ["play", "pause", "stop", "seekBy", "seekTo"] }],
+      "expect": {
+        "return": {
+          "calls": [],
+          "installed": ["play", "pause", "stop", "seekbackward", "seekforward", "seekto"]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-no-next-no-button",
+      "covers": ["media-session::a surface with no next offers no next button"],
+      "call": "mediaActions",
+      "args": [{ "surface": ["play", "pause", "stop", "seekBy", "seekTo"] }],
+      "expect": {
+        "return": {
+          "calls": [],
+          "installed": ["play", "pause", "stop", "seekbackward", "seekforward", "seekto"]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-empty-surface",
+      "covers": ["media-session::an empty surface installs nothing rather than throwing"],
+      "call": "mediaActions",
+      "args": [{ "surface": [] }],
+      "expect": { "return": { "calls": [], "installed": [] } }
+    },
+    {
+      "id": "media-episode/actions-undefined-surface",
+      "covers": ["media-session::an empty surface installs nothing rather than throwing"],
+      "call": "mediaActions",
+      "args": [{}],
+      "expect": { "return": { "calls": [], "installed": [] } }
+    },
+    {
+      "id": "media-episode/actions-null-surface",
+      "covers": ["media-session::an empty surface installs nothing rather than throwing"],
+      "call": "mediaActions",
+      "args": [{ "surface": null }],
+      "expect": { "return": { "calls": [], "installed": [] } }
+    },
+    {
+      "id": "media-episode/actions-play-play-pause-never-toggle",
+      "covers": ["media-session::play means play and pause means pause — never a toggle"],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["play", "pause", "stop", "next", "previous", "seekBy", "seekTo"],
+          "presses": [["play"], ["play"], ["pause"]]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [["play"], ["play"], ["pause"]],
+          "installed": [
+            "play",
+            "pause",
+            "stop",
+            "previoustrack",
+            "nexttrack",
+            "seekbackward",
+            "seekforward",
+            "seekto"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-next-previous-take-no-arguments",
+      "covers": [
+        "media-session::previoustrack and nexttrack take no arguments — the surface owns the meaning"
+      ],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["next", "previous"],
+          "presses": [
+            ["nexttrack", { "action": "nexttrack" }],
+            ["previoustrack", { "action": "previoustrack" }]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [["next"], ["previous"]],
+          "installed": ["previoustrack", "nexttrack"]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-seekbackward-default",
+      "covers": ["media-session::seekbackward asks for a NEGATIVE 15 seconds by default"],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["play", "pause", "stop", "next", "previous", "seekBy", "seekTo"],
+          "presses": [["seekbackward"]]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [["seekBy", -15]],
+          "installed": [
+            "play",
+            "pause",
+            "stop",
+            "previoustrack",
+            "nexttrack",
+            "seekbackward",
+            "seekforward",
+            "seekto"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-seekforward-default",
+      "covers": ["media-session::seekforward asks for a positive 30 seconds by default"],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["play", "pause", "stop", "next", "previous", "seekBy", "seekTo"],
+          "presses": [["seekforward"]]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [["seekBy", 30]],
+          "installed": [
+            "play",
+            "pause",
+            "stop",
+            "previoustrack",
+            "nexttrack",
+            "seekbackward",
+            "seekforward",
+            "seekto"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-platform-seek-offset-ignored",
+      "covers": [
+        "media-session::THE PLATFORM'S OWN seekOffset IS IGNORED: the lock screen steps ±15/30 like the in-page buttons"
+      ],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["play", "pause", "stop", "next", "previous", "seekBy", "seekTo"],
+          "presses": [
+            ["seekforward", { "seekOffset": 10 }],
+            ["seekbackward", { "seekOffset": 10 }]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [["seekBy", 30], ["seekBy", -15]],
+          "installed": [
+            "play",
+            "pause",
+            "stop",
+            "previoustrack",
+            "nexttrack",
+            "seekbackward",
+            "seekforward",
+            "seekto"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-any-seek-offset-is-our-step",
+      "covers": [
+        "media-session::any seekOffset at all — nonsense or a real number — lands as our step, never as zero"
+      ],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["play", "pause", "stop", "next", "previous", "seekBy", "seekTo"],
+          "presses": [
+            ["seekforward", { "seekOffset": 0 }],
+            ["seekforward", { "seekOffset": -5 }],
+            ["seekforward", { "seekOffset": { "$num": "NaN" } }],
+            ["seekforward", { "seekOffset": null }],
+            ["seekforward", { "seekOffset": "10" }],
+            ["seekforward", { "seekOffset": { "$undefined": true } }],
+            ["seekforward", { "seekOffset": 10 }],
+            ["seekforward", { "seekOffset": 45 }]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [
+            ["seekBy", 30],
+            ["seekBy", 30],
+            ["seekBy", 30],
+            ["seekBy", 30],
+            ["seekBy", 30],
+            ["seekBy", 30],
+            ["seekBy", 30],
+            ["seekBy", 30]
+          ],
+          "installed": [
+            "play",
+            "pause",
+            "stop",
+            "previoustrack",
+            "nexttrack",
+            "seekbackward",
+            "seekforward",
+            "seekto"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-seek-steps-overridable",
+      "covers": [
+        "media-session::the ±15/30 defaults are overridable in one place, and default to the spec's numbers"
+      ],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["play", "pause", "stop", "next", "previous", "seekBy", "seekTo"],
+          "opts": { "seekBackwardSec": 5, "seekForwardSec": 7 },
+          "presses": [["seekbackward"], ["seekforward"]]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [["seekBy", -5], ["seekBy", 7]],
+          "installed": [
+            "play",
+            "pause",
+            "stop",
+            "previoustrack",
+            "nexttrack",
+            "seekbackward",
+            "seekforward",
+            "seekto"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-seekto-forwards-seek-time",
+      "covers": ["media-session::seekto forwards the head unit's own seekTime"],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["play", "pause", "stop", "next", "previous", "seekBy", "seekTo"],
+          "presses": [["seekto", { "seekTime": 1800 }]]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [["seekTo", 1800]],
+          "installed": [
+            "play",
+            "pause",
+            "stop",
+            "previoustrack",
+            "nexttrack",
+            "seekbackward",
+            "seekforward",
+            "seekto"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-seekto-drops-fast-seek",
+      "covers": [
+        "media-session::seekto passes ONLY the time — fastSeek is our seek policy's call, not the car's"
+      ],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["play", "pause", "stop", "next", "previous", "seekBy", "seekTo"],
+          "presses": [["seekto", { "seekTime": 12, "fastSeek": true }]]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [["seekTo", 12]],
+          "installed": [
+            "play",
+            "pause",
+            "stop",
+            "previoustrack",
+            "nexttrack",
+            "seekbackward",
+            "seekforward",
+            "seekto"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-seekto-unusable-time-does-nothing",
+      "covers": [
+        "media-session::seekto with no usable time does nothing — it is not a seek to zero"
+      ],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["play", "pause", "stop", "next", "previous", "seekBy", "seekTo"],
+          "presses": [
+            ["seekto", { "seekTime": { "$undefined": true } }],
+            ["seekto", { "seekTime": null }],
+            ["seekto", { "seekTime": { "$num": "NaN" } }],
+            ["seekto", { "seekTime": -1 }],
+            ["seekto", { "seekTime": "30" }],
+            ["seekto", { "seekTime": {} }],
+            ["seekto"]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [],
+          "installed": [
+            "play",
+            "pause",
+            "stop",
+            "previoustrack",
+            "nexttrack",
+            "seekbackward",
+            "seekforward",
+            "seekto"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-seekto-zero-is-honoured",
+      "covers": ["media-session::seekto zero is a real destination and is honoured"],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["play", "pause", "stop", "next", "previous", "seekBy", "seekTo"],
+          "presses": [["seekto", { "seekTime": 0 }]]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [["seekTo", 0]],
+          "installed": [
+            "play",
+            "pause",
+            "stop",
+            "previoustrack",
+            "nexttrack",
+            "seekbackward",
+            "seekforward",
+            "seekto"
+          ]
+        }
+      }
+    },
+    {
+      "id": "media-episode/actions-stop-carries-only-close",
+      "covers": [
+        "media-session::the stop action carries `close` through to the surface, and nothing else does"
+      ],
+      "call": "mediaActions",
+      "args": [
+        {
+          "surface": ["stop"],
+          "presses": [
+            ["stop", { "close": true }],
+            ["stop", { "$undefined": true }],
+            ["stop", { "action": "stop" }],
+            ["stop", { "close": "yes" }]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "calls": [
+            ["stop", { "close": true }],
+            ["stop", { "$undefined": true }],
+            ["stop", { "$undefined": true }],
+            ["stop", { "$undefined": true }]
+          ],
+          "installed": ["stop"]
+        }
+      }
+    }
+  ]
+}
