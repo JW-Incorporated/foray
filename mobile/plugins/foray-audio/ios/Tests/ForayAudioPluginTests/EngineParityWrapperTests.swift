@@ -39,6 +39,7 @@ final class EngineParityWrapperTests: XCTestCase {
     func testRateFamily() { assertParityFamily("rate") }
     func testRowsFamily() { assertParityFamily("rows") }
     func testNumberFormatFamily() { assertParityFamily("number-format") }
+    func testMediaEpisodeFamily() { assertParityFamily("media-episode", requireRunner: true) }
 
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.
