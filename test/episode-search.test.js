@@ -697,3 +697,113 @@ test("the show index landing mid-query does not clear the episode section", asyn
   assert.strictEqual(m.container().hidden, false, "the index landing must not hide an answered episode section");
   assert.ok(m.container().innerHTML.includes("Stereothreat"), "nor throw away the rows it had no opinion about");
 });
+
+/* ==================================================================== */
+/* ROUND 2 (2026-09-23): a search result is the same snapshot the show    */
+/* page would have made — search-8, p-switcher-7, honesty-11, states-7    */
+/* ==================================================================== */
+
+test("search-8 / p-switcher-7: a remote row's snapshot carries show_id, the publish date and the show's artwork, and its show name links to the show page", async () => {
+  /* The row shape dropped three things on the floor: `show_id` (so the show
+     name was plain text for every non-curated show), `published_at` (the date
+     every other row shows) and the artwork (so the lock screen and CarPlay
+     showed the 4a icon for anything played from Search — the 2026-09-21 report
+     was fixed for show pages only). MUTATION: remove any of `show_id`,
+     `release_date` or `artwork_url` from the remote `snapshot(...)` call in
+     paintEpisodeSearchResults's rowFor, or drop the `showId ||` clause from
+     showNameLink. */
+  const m = mount({
+    fetchImpl: apiRouter({
+      episodes: () => jsonResponse({
+        query: "huberman",
+        episodes: [{
+          show_id: "1545953110", show_title: "Huberman Lab", title: "Sleep Toolkit", guid: "g-sleep",
+          audio_url: "https://cdn.test/sleep.mp3", duration_seconds: 3600, published_at: "2026-09-12T00:00:00Z",
+          artwork_url: "https://art.test/huberman600.jpg",
+        }],
+        source: ["apple"], degraded: false, error: null, total: 1, capped: false,
+      }),
+    }),
+  });
+  m.state.catalog = { shows: [] };
+  vm.runInContext("renderShowSearchResults('huberman')", m.ctx);
+  await flush();
+
+  const snap = m.state.itemIndex["apple:1545953110:g-sleep"];
+  assert.ok(snap, "the remote row was snapshotted under its apple: id");
+  assert.strictEqual(snap.show_id, "1545953110", "the endpoint's show_id is kept");
+  assert.strictEqual(snap.release_date, "2026-09-12T00:00:00Z", "published_at becomes release_date, as the show page maps it");
+  assert.strictEqual(snap.artwork_url, "https://art.test/huberman600.jpg", "Apple's artwork rides on the snapshot the player reads");
+
+  const html = m.container().innerHTML;
+  assert.ok(html.includes('<a class="show-link" href="#/show/1545953110">Huberman Lab</a>'),
+    `the show name links by id, not by a title lookup that only knows the curated 220: ${html}`);
+  assert.ok(/Sep 12, 2026|12 Sep 2026|2026/.test(html), "and the date is on the row");
+});
+
+test("search-8: with no artwork from the endpoint, the row takes the show record the show passes already cached", async () => {
+  /* The catalogue and directory passes seed state.breadthShowCache with the
+     show's artwork before the episode pass answers; a row for that show has no
+     reason to be blank. MUTATION: drop the `|| showArtworkUrl(showById(ep.show_id))`
+     fallback — artwork_url is null, red. */
+  const m = mount({
+    fetchImpl: apiRouter({
+      episodes: () => jsonResponse({
+        episodes: [{ show_id: "b-77", show_title: "Breadth Show", title: "An Episode", guid: "g1", audio_url: "https://cdn.test/a.mp3" }],
+        source: ["apple"],
+      }),
+    }),
+  });
+  m.state.catalog = { shows: [] };
+  m.state.breadthShowCache["b-77"] = { show_id: "b-77", title: "Breadth Show", artwork_url: "https://art.test/breadth.jpg" };
+  vm.runInContext("renderShowSearchResults('breadth')", m.ctx);
+  await flush();
+  assert.strictEqual(m.state.itemIndex["apple:b-77:g1"].artwork_url, "https://art.test/breadth.jpg");
+});
+
+test("honesty-11: the Episodes section says how many the endpoint held back — 'Showing 10 of 38', with a '+' when the count is a floor", async () => {
+  /* The section was cut to ten with nothing saying whether that was all of
+     them, while the show page's own search says "38 episodes found."
+     MUTATION: drop the `countNote` from the heading/divider — no "Showing",
+     red. Or ignore `capped` — the "+" case goes red. */
+  const rows = (n) => Array.from({ length: n }, (_, i) => ({ show_id: "s", show_title: "S", title: `Ep ${i}`, guid: `g${i}`, audio_url: `https://cdn.test/${i}.mp3` }));
+  const paint = async (payload) => {
+    const m = mount({ fetchImpl: apiRouter({ episodes: () => jsonResponse(payload) }) });
+    m.state.catalog = { shows: [] };
+    vm.runInContext("renderShowSearchResults('history')", m.ctx);
+    await flush();
+    return m.container().innerHTML;
+  };
+  let html = await paint({ episodes: rows(10), source: ["apple"], total: 38, capped: false });
+  assert.ok(html.includes("Showing 10 of 38"), `the count is printed: ${html.slice(0, 300)}`);
+  html = await paint({ episodes: rows(10), source: ["apple"], total: 50, capped: true });
+  assert.ok(html.includes("Showing 10 of 50+"), "a capped count is a floor and says so");
+  html = await paint({ episodes: rows(4), source: ["apple"], total: 4, capped: false });
+  assert.ok(!html.includes("Showing"), "nothing held back, nothing claimed");
+  html = await paint({ episodes: rows(10), source: ["apple"] });
+  assert.ok(!html.includes("Showing"), "an endpoint that reports no total makes no claim either");
+});
+
+test("states-7 / search-4: a DEGRADED episode reply is neither cached nor silent — the partial-load line paints, and the next search asks again", async () => {
+  /* A limiter trip answers 200 with `degraded: true` and no rows; that was
+     cached for the session as the answer, and the failure reached the
+     diagnostics record and never the screen. MUTATION: cache on `if (data)`
+     again — the second search is served the poisoned entry and the count
+     stays at 1. Or drop the `|| data.degraded` from the failure note — the
+     partial note stays hidden. */
+  let calls = 0;
+  const m = mount({
+    fetchImpl: apiRouter({ episodes: () => { calls++; return jsonResponse({ episodes: [], source: [], degraded: true, error: "rate limit exceeded" }); } }),
+  });
+  m.state.catalog = { shows: [] };
+  m.byId.set("sh-partial-note", Object.assign(makeEl("div"), { id: "sh-partial-note", hidden: true }));
+  vm.runInContext("renderShowSearchResults('history')", m.ctx);
+  await flush();
+  assert.strictEqual(calls, 1);
+  const partial = m.byId.get("sh-partial-note");
+  assert.strictEqual(partial.hidden, false, "the degraded episode pass is painted as a failure");
+  assert.match(partial.innerHTML, /Part of this search didn't load\./);
+  vm.runInContext("renderShowSearchResults('history')", m.ctx);
+  await flush();
+  assert.strictEqual(calls, 2, "a degraded reply is not remembered as an answer");
+});

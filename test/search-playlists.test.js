@@ -362,12 +362,20 @@ test("a generated candidate that duplicates an already-shown own playlist id is 
   assert.strictEqual((html.match(/subject-history/g) || []).length, 1, "the shared id must render exactly once");
 });
 
-test("no own or generated match renders neither section content nor the CTA when the topic scorer is not empty", async () => {
-  /* Sanity for the ordering of the branches: a rich topic answer with no
-     playlist match shows nothing extra here (buildPlaylist's own #pl-form
-     flow already answers "what should I listen to" — this section stays
-     honestly quiet rather than duplicating that). MUTATION: unconditionally
-     call createPlaylistCtaHtml regardless of topicSearchStatus's result. */
+/* THE GATE IS INVERTED SINCE AUDIT ROUND 2 (search-2). U-05 shipped the CTA
+   for a query the topic scorer called "empty" — and the tap handed that same
+   query to the same scorer, which said "empty" again on another page, every
+   time. The one-tap-builds-a-playlist case is the OTHER one: a rich (or
+   sparse) topic answer with no own/generated playlist yet. The two tests below
+   used to assert the opposite of each other's outcome; their expectations are
+   flipped, not loosened, and each still names the mutation that kills it. */
+test("the CTA appears when a rich topic answer exists and no own/generated playlist matches — the tap will build one", async () => {
+  /* MUTATION: gate the CTA on `status === "empty"` again (the shipped gate),
+     or on `!own.length && !generated.length` alone. The first hides the CTA
+     for "meditation"; the second is caught by the test after this one. The
+     CTA is computed inside a deferred idle callback (see
+     renderPlaylistSearchResults's "THE DEFER IS LOAD-BEARING") -- await one
+     macrotask before asserting. */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   seedV2Empty(m);
   const discover = readJson("data/discover.json");
@@ -382,27 +390,23 @@ test("no own or generated match renders neither section content nor the CTA when
 
   m.ctx.renderAllShows();
   shForm.submit();
-  /* The section holds "Still looking for playlists…" until the deferred scan
-     answers (persona audit #28, 2026-09-22) — the claim here is about what it
-     settles to, so wait one macrotask for the scan, as the CTA cases do. */
   await new Promise((r) => setTimeout(r, 0));
 
+  const status = m.evalIn("topicSearchStatus")("meditation").status;
+  assert.ok(status === "ok" || status === "sparse", `fixture: the scorer must be able to build "meditation" (got ${status})`);
   const pl = m.byId.get("pl-search-results");
-  assert.strictEqual(pl.hidden, true, "no Playlists section and no CTA when nothing to show and the topic scorer is not empty");
-  assert.strictEqual(pl.innerHTML, "", "and the pending line is gone once the scan answered");
+  assert.strictEqual(pl.hidden, false, "the CTA container must become visible");
+  assert.ok(pl.innerHTML.includes("Create a playlist about"), "must render the CTA copy");
+  assert.ok(pl.innerHTML.includes("meditation"), "must name the actual typed query");
+  assert.ok(pl.innerHTML.includes("“meditation”"), "quoted with the one typographic pair (copy-8)");
+  assert.ok(!pl.innerHTML.includes("data-cta-pending"), "and the pending line is gone once the scan answered");
 });
 
-/* ==================================================================== */
-/* 4. THE CTA — #135/D8, PRESENTATION ONLY, NO SECOND CREATION PATH      */
-/* ==================================================================== */
-
-test("the CTA appears when the topic scorer finds no strong result and no playlist matches", async () => {
+test("the CTA does NOT appear when the topic scorer is empty — the build it offers would fail", async () => {
   /* MUTATION: return the CTA unconditionally rather than gating on
-     topicSearchStatus(query) === "empty". The CTA is computed inside a
-     deferred setTimeout(0) (see renderPlaylistSearchResults's own "THE
-     DEFER IS LOAD-BEARING" comment, added after a review finding that the
-     synchronous topic-scorer call could freeze the Shows page) -- await
-     one macrotask before asserting. */
+     topicSearchStatus, or gate it on "empty". A query with nothing behind it
+     would then offer a violet primary button whose only outcome is
+     "Not much on … yet" on the Create page. */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   seedV2Empty(m);
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
@@ -413,17 +417,26 @@ test("the CTA appears when the topic scorer finds no strong result and no playli
   shForm.submit();
   await new Promise((r) => setTimeout(r, 0));
 
+  assert.strictEqual(m.evalIn("topicSearchStatus")("zzz-nonsense-query-zzz").status, "empty", "fixture: nothing to build from");
   const pl = m.byId.get("pl-search-results");
-  assert.strictEqual(pl.hidden, false, "the CTA container must become visible");
-  assert.ok(pl.innerHTML.includes("Create a playlist about"), "must render the CTA copy");
-  assert.ok(pl.innerHTML.includes("zzz-nonsense-query-zzz"), "must name the actual typed query");
+  assert.strictEqual(pl.hidden, true, "no Playlists section and no CTA when the scorer has nothing to build from");
+  assert.strictEqual(pl.innerHTML, "", "and the pending line is gone once the scan answered");
 });
 
-test("the CTA does not appear when a rich topic answer exists, even with no own/generated playlist match", async () => {
-  /* MUTATION: gate the CTA on `!own.length && !generated.length` alone,
-     ignoring topicSearchStatus. A listener with zero saved playlists
-     searching a well-covered topic would then wrongly see the CTA even
-     though buildPlaylist() would already answer it richly via #pl-form. */
+test("tapping the CTA does not itself create a playlist — it hands off to Create's own form", async () => {
+  /* MUTATION: call buildPlaylist(query) directly from the CTA's click
+     handler instead of navigating + resubmitting #cr-form. D8/the card's
+     scope line requires exactly one playlist-creation code path
+     (bindCreateFormSubmit, since #/playlists' builder left in round 2); a
+     second one defeats that. And: navigate to "#/playlists" again — the page
+     with no builder — and the hash assertion goes red.
+
+     The container's innerHTML is a raw HTML string in this harness (no real
+     parser), so bindCreatePlaylistCta's own querySelector('[data-create-playlist]')
+     cannot find a node from it — this test appends a REAL fake button with
+     the same attribute as a stand-in for what a real DOM would parse from
+     that same markup, then drives its click through bindCreatePlaylistCta
+     exactly as renderPlaylistSearchResults does. */
   const m = mount({ seed: { cp_ui_v2: "true" } });
   seedV2Empty(m);
   const discover = readJson("data/discover.json");
@@ -441,36 +454,10 @@ test("the CTA does not appear when a rich topic answer exists, even with no own/
   await new Promise((r) => setTimeout(r, 0));
 
   const pl = m.byId.get("pl-search-results");
-  assert.ok(!pl.innerHTML.includes("Create a playlist about"), "must not show the CTA when the topic scorer already has a rich answer");
-});
-
-test("tapping the CTA does not itself create a playlist — it hands off to #/playlists' own form", async () => {
-  /* MUTATION: call buildPlaylist(query) directly from the CTA's click
-     handler instead of navigating + resubmitting #pl-form. D8/the card's
-     scope line requires exactly one playlist-creation code path
-     (bindPlaylistFormSubmit); a second one defeats that.
-
-     The container's innerHTML is a raw HTML string in this harness (no real
-     parser), so bindCreatePlaylistCta's own querySelector('[data-create-playlist]')
-     cannot find a node from it — this test appends a REAL fake button with
-     the same attribute as a stand-in for what a real DOM would parse from
-     that same markup, then drives its click through bindCreatePlaylistCta
-     exactly as renderPlaylistSearchResults does. */
-  const m = mount({ seed: { cp_ui_v2: "true" } });
-  seedV2Empty(m);
-  m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
-  const shForm = withSubmittable(m.byId.get("sh-form"));
-  m.byId.get("sh-input").value = "zzz-nonsense-query-zzz";
-
-  m.ctx.renderAllShows();
-  shForm.submit();
-  await new Promise((r) => setTimeout(r, 0));
-
-  const pl = m.byId.get("pl-search-results");
-  assert.ok(pl.innerHTML.includes("data-create-playlist=\"zzz-nonsense-query-zzz\""),
+  assert.ok(pl.innerHTML.includes("data-create-playlist=\"meditation\""),
     "the rendered markup must carry the [data-create-playlist] attribute with the typed query");
 
-  const btnStub = { _attrs: { "data-create-playlist": "zzz-nonsense-query-zzz" }, children: [], dataset: { createPlaylist: "zzz-nonsense-query-zzz" }, _listeners: {} };
+  const btnStub = { _attrs: { "data-create-playlist": "meditation" }, children: [], dataset: { createPlaylist: "meditation" }, _listeners: {} };
   btnStub.addEventListener = (type, fn) => { (btnStub._listeners[type] = btnStub._listeners[type] || []).push(fn); };
   btnStub.dispatchEvent = (evt) => { (btnStub._listeners[evt.type] || []).forEach((fn) => fn(evt)); };
   pl.children.push(btnStub);
@@ -479,7 +466,7 @@ test("tapping the CTA does not itself create a playlist — it hands off to #/pl
   m.evalIn("bindCreatePlaylistCta")(pl);
   btnStub.dispatchEvent({ type: "click" });
 
-  assert.strictEqual(m.ctx.location.hash, "#/playlists", "must navigate to the Playlists page rather than build in place");
+  assert.strictEqual(m.ctx.location.hash, "#/create", "must navigate to the Create page rather than build in place");
   assert.strictEqual(m.store.get("cp_playlists") || "[]", before, "must not write a new playlist synchronously from the CTA's own click handler");
 });
 

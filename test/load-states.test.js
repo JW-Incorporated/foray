@@ -476,7 +476,10 @@ function mountSearch({ catalogue = [], directory = [], directoryError = null, ca
   const said = [];
   let text = "";
   Object.defineProperty(note, "textContent", { get: () => text, set: (v) => { text = String(v); said.push(text); } });
-  return { ...m, calls, note, said, offer: () => m.view.querySelector("#sh-empty-offer") };
+  /* `partial` is where the failure line lives since audit round 2 (states-7):
+     above the rows, painted whether or not the list is empty. `offer` keeps
+     the subject chips. */
+  return { ...m, calls, note, said, offer: () => m.view.querySelector("#sh-empty-offer"), partial: () => m.view.querySelector("#sh-partial-note") };
 }
 
 test("a keystroke with no local match says it is searching — never 'not found' — and the rows arrive under it", async () => {
@@ -487,7 +490,7 @@ test("a keystroke with no local match says it is searching — never 'not found'
      "No shows found" sentence. The first assertion goes red. */
   const m = mountSearch({ catalogue: [{ show_id: "hub", title: "Huberman Lab" }], catalogueDelayMs: 50 });
   m.ctx.onShowSearchInput("huberman");
-  assert.match(m.note.textContent, /Searching for "huberman"/, `the keystroke must not claim an answer: "${m.note.textContent}"`);
+  assert.match(m.note.textContent, /Searching for \u201chuberman\u201d/, `the keystroke must not claim an answer: "${m.note.textContent}"`);
   await sleep(450);
   assert.match(m.view.querySelector("#sh-results").innerHTML, /Huberman Lab/, "the catalogue's row lands");
   assert.ok(m.note.hidden, "and the note steps aside for it");
@@ -503,9 +506,10 @@ test("a search that every pass answered with nothing says 'No shows found' — s
   const m = mountSearch();
   m.ctx.renderShowSearchResults("zzqx");
   await sleep(150);
-  assert.strictEqual(m.note.textContent, 'No shows found for "zzqx".');
+  assert.strictEqual(m.note.textContent, "No shows found for \u201czzqx\u201d.");
   assert.ok(!m.note.hidden);
   assert.ok(m.offer().hidden, "every pass answered, and there is nothing else to offer");
+  assert.ok(m.partial().hidden, "and nothing failed, so no failure line");
 });
 
 test("an empty answer behind a pass that FAILED says part of the search did not load, and Try again re-runs it", async () => {
@@ -518,9 +522,9 @@ test("an empty answer behind a pass that FAILED says part of the search did not 
   m.ctx.renderShowSearchResults("zzqx");
   await sleep(150);
   assert.match(m.note.textContent, /No shows found/);
-  assert.match(m.offer().innerHTML, /Part of this search didn't load\./);
+  assert.match(m.partial().innerHTML, /Part of this search didn't load\./);
   const before = m.calls.filter((u) => u.includes("fallthrough=1")).length;
-  assert.ok(m.retry(m.offer()), "the failure offers Try again");
+  assert.ok(m.retry(m.partial()), "the failure offers Try again");
   await sleep(150);
   assert.ok(m.calls.filter((u) => u.includes("fallthrough=1")).length > before, "Try again asks the directory again");
 });
@@ -533,10 +537,10 @@ test("REVIEW: a search whose requests never answer ends as a failed search with 
   const m = mountSearch({ hangApi: true });
   vm.runInContext("API_DEADLINE_MS = 30", m.ctx);
   m.ctx.renderShowSearchResults("zzqx");
-  assert.match(m.note.textContent, /Searching for "zzqx"/, "precondition: it starts out searching");
+  assert.match(m.note.textContent, /Searching for \u201czzqx\u201d/, "precondition: it starts out searching");
   await sleep(250);
   assert.doesNotMatch(m.note.textContent, /Searching/, `the note must end: "${m.note.textContent}"`);
-  assert.match(m.offer().innerHTML, /Part of this search didn't load\./, "and say the search did not load, with Try again");
+  assert.match(m.partial().innerHTML, /Part of this search didn't load\./, "and say the search did not load, with Try again");
 });
 
 test("REVIEW: a playlist build whose search documents never arrive still runs, and the button comes back", async () => {
@@ -570,7 +574,7 @@ test("a subject's own name that finds no show by title offers that subject's cat
   const m = mountSearch({ taxonomy, catalog });
   m.ctx.renderShowSearchResults("Science");
   await sleep(150);
-  assert.match(m.note.textContent, /No shows found for "Science"/);
+  assert.match(m.note.textContent, /No shows found for \u201cScience\u201d/);
   const html = m.offer().innerHTML;
   assert.match(html, /href="#\/category\/science%2Fphysics"/, `the category that holds a show is offered: ${html}`);
   assert.doesNotMatch(html, /geology/, "a category with no shows is not offered — it would be another dead end");

@@ -268,10 +268,12 @@ function mountApp() {
 /* qa row 136: 210 of the pool's titles end in ? ! or ., and the card appended a
    full stop regardless ("…Save The World?."). MUTATION: always append ".". */
 test("'Starts with' closes its sentence once, whatever the title ends with", () => {
+  /* Typographic quotes since audit round 2 (copy-8): one `quoteQuery` helper
+     for every quoted listener string. */
   const { ctx } = mountApp();
-  assert.strictEqual(ctx.startsWithLine("Can Fusion Save The World?"), 'Starts with "Can Fusion Save The World?"');
-  assert.strictEqual(ctx.startsWithLine("Gearboxes, alive!"), 'Starts with "Gearboxes, alive!"');
-  assert.strictEqual(ctx.startsWithLine("The Fed"), 'Starts with "The Fed."');
+  assert.strictEqual(ctx.startsWithLine("Can Fusion Save The World?"), "Starts with “Can Fusion Save The World?”");
+  assert.strictEqual(ctx.startsWithLine("Gearboxes, alive!"), "Starts with “Gearboxes, alive!”");
+  assert.strictEqual(ctx.startsWithLine("The Fed"), "Starts with “The Fed.”");
 });
 
 /* qa row 148: on a short screen the hook clamps to one line, so the title — the
@@ -320,9 +322,11 @@ test("each shell notice carries its own remedy", () => {
 });
 
 /* qa row 112: the playlist builder left the last query's failure note up while
-   building the next. MUTATION: drop the staleNote hide in bindPlaylistFormSubmit. */
+   building the next. The one builder is Create's since audit round 2
+   (p-first-6; #/playlists' form is gone). MUTATION: drop the staleNote hide in
+   bindCreateFormSubmit. */
 test("the playlist builder hides the last query's note before building the next", () => {
-  const body = APP_SRC.slice(APP_SRC.indexOf("function bindPlaylistFormSubmit"), APP_SRC.indexOf("function bindPlaylistFormSubmit") + 900);
+  const body = APP_SRC.slice(APP_SRC.indexOf("function bindCreateFormSubmit"), APP_SRC.indexOf("function bindCreateFormSubmit") + 900);
   const hide = body.indexOf("staleNote.hidden = true");
   assert.ok(hide > 0, "the stale note must be hidden");
   /* The build is deferred by whenSearchDataReady since L5 (it waits for the
@@ -343,7 +347,9 @@ test("the clear-search control answers the keyboard", () => {
    any of the inputs, or the live-region attributes from either note. */
 test("every text field has a name that survives typing, and search notes are live regions", () => {
   const inputs = [...APP_SRC.matchAll(/<input [^>]*type="text"[^>]*>/g)].map((m) => m[0]);
-  assert.ok(inputs.length >= 5, `expected the app's text inputs, found ${inputs.length}`);
+  /* Four since audit round 2 (p-first-6): the #/playlists builder's field
+     left with the builder; Create's is the one playlist field. */
+  assert.ok(inputs.length >= 4, `expected the app's text inputs, found ${inputs.length}`);
   for (const i of inputs) assert.match(i, /aria-label="[^"]+"/, `a text field named only by its placeholder: ${i}`);
   assert.match(APP_SRC, /typedInput\.setAttribute\("aria-label", /);
   assert.match(APP_SRC, /<p id="sh-note" class="note" role="status" aria-live="polite" hidden><\/p>/);

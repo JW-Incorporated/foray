@@ -165,7 +165,10 @@ export function mapAppleShow(hit: AppleShowRaw): AppleShowResult | null {
  * would collapse every such title into one row. Callers check for it.
  */
 export function normaliseShowTitle(title: string): string {
-  return String(title || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  // Diacritics folded first (NFKD, strip the combining marks) so "Café X" and
+  // "Cafe X" are one key — app.js carries the identical expression, and
+  // test/show-search-fallthrough.test.js pins the two together.
+  return String(title || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 /**

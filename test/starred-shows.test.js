@@ -355,8 +355,12 @@ test("#/starred-shows is reachable from the Shows page and is no longer a drawer
      `above` block. The first assertion fails and #/starred-shows becomes
      reachable only by typing the URL. MUTATION 2: put the
      `<a class="drawer-section" href="#/starred-shows">` line back in
-     index.html. The second assertion fails. */
-  const m = mount();
+     index.html. The second assertion fails.
+
+     WITH A SHOW FOLLOWED: since audit round 2 (p-first-12) the Shows page draws
+     the shortcut only when there is something behind it — the empty half is
+     pinned in test/home-information-architecture.test.js. */
+  const m = mount({ seed: { cp_starred_shows: JSON.stringify({ "show-a": { show_id: "show-a", title: "Show A", starred_at: "2026-09-01T00:00:00Z" } }) } });
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };

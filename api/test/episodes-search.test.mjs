@@ -699,3 +699,54 @@ test("rate limit: the 21st distinct general search within the same instant is re
     globalThis.fetch = originalFetch;
   }
 });
+
+/* ROUND 2 (2026-09-23): what the row carries and what the cut held back. */
+
+test("general search: an Apple hit's artworkUrl600 rides through as artwork_url, and the payload says how many were cut (search-8, honesty-11)", async () => {
+  /* MUTATION: drop `artwork_url` from mapAppleHit — the first assertion goes
+     red; drop `total`/`capped` from the payload — the rest do. */
+  resetSharedState();
+  const hits = Array.from({ length: 12 }, (_, i) => ({
+    collectionId: REAL_COLLECTION_ID, collectionName: "Lex Fridman Podcast", trackName: `Episode ${i}`, episodeGuid: `g${i}`,
+    episodeUrl: `https://cdn.example.com/${i}.mp3`, trackTimeMillis: 60000, releaseDate: "2026-01-01T00:00:00Z",
+    artworkUrl600: "https://is1-ssl.mzstatic.com/image/thumb/x/600x600bb.jpg",
+  }));
+  const fetchImpl = async (url) => {
+    if (String(url).includes("itunes.apple.com")) return new Response(JSON.stringify({ results: hits }), { status: 200 });
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const req = { method: "GET", query: { q: `uniquequery-${Date.now()}-art`, limit: "10" }, headers: {} };
+  const res = mockRes();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  try { await handler(req, res); } finally { globalThis.fetch = originalFetch; }
+
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.episodes.length, 10, "the caller's cut");
+  assert.strictEqual(res.body.episodes[0].artwork_url, "https://is1-ssl.mzstatic.com/image/thumb/x/600x600bb.jpg");
+  assert.strictEqual(res.body.total, 12, "total is what was mapped before the cut");
+  assert.strictEqual(res.body.capped, false, "Apple returned fewer than asked, so the total is the whole count");
+});
+
+test("general search: when Apple fills its over-fetch the total is a floor and the payload says so (honesty-11)", async () => {
+  /* The ask for limit=10 is 50 (APPLE_OVERFETCH_MIN); 50 hits back means there
+     may be more. MUTATION: hard-code `capped: false`. */
+  resetSharedState();
+  const hits = Array.from({ length: 50 }, (_, i) => ({
+    collectionId: REAL_COLLECTION_ID, collectionName: "Lex Fridman Podcast", trackName: `Episode ${i}`, episodeGuid: `c${i}`,
+    episodeUrl: `https://cdn.example.com/${i}.mp3`,
+  }));
+  const fetchImpl = async (url) => {
+    if (String(url).includes("itunes.apple.com")) return new Response(JSON.stringify({ results: hits }), { status: 200 });
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const req = { method: "GET", query: { q: `uniquequery-${Date.now()}-cap`, limit: "10" }, headers: {} };
+  const res = mockRes();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  try { await handler(req, res); } finally { globalThis.fetch = originalFetch; }
+  assert.strictEqual(res.body.episodes.length, 10);
+  assert.strictEqual(res.body.total, 50);
+  assert.strictEqual(res.body.capped, true);
+  assert.strictEqual(res.body.episodes[0].artwork_url, null, "no artwork from Apple, an honest null — the client falls back to the show record");
+});

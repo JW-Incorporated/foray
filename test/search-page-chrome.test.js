@@ -338,7 +338,10 @@ test("the browse furniture is visible when the page opens, before anyone touches
   m.ctx.renderAllShows();
   assert.deepStrictEqual(m.browseHidden(), { cards: false, index: false });
   assert.ok(m.view().includes('id="sh-browse"'), "the cards must be in a container the rule can toggle");
-  assert.ok(m.view().includes('href="#/starred-shows"'), "…and that container holds the starred shortcut");
+  /* The starred shortcut sits in that container only when a show is followed
+     (audit round 2, p-first-12) — test/home-information-architecture.test.js
+     pins both halves; this harness follows nothing, so it is absent here. */
+  assert.ok(!m.view().includes('href="#/starred-shows"'), "…with nothing followed, no dead-end shortcut");
   assert.ok(m.view().includes("Shows we vouch for"), "…and the editorial row");
 });
 
