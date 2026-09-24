@@ -365,6 +365,7 @@ final class FakeOutput: EngineOutput {
     func writeRestore(_ record: RestoreRecord?) { restores.append(record); log.add("output.restore") }
     func appendEvent(_ event: PendingEvent) { events.append(event); log.add("output.event") }
     func emit(_ event: EngineEvent) { emitted.append(event); log.add("output.emit") }
+    func flush() { log.add("output.flush") }
 
     func diag(_ entry: DiagEntry) {
         diags.append(entry)
