@@ -487,6 +487,10 @@ html, body {
   cursor: pointer;
 }
 .topbar button:active { background: var(--surface-2); }
+/* ☰ and ↻ are disabled until init() has bound them (round-2 audit, nav-9):
+   dimmed, so a tap that cannot do anything yet looks like it. */
+.topbar button:disabled { opacity: 0.45; cursor: default; }
+.topbar button:disabled:active { background: none; }
 
 /* ---------- drawer ----------
 

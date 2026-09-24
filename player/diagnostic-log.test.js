@@ -1942,6 +1942,33 @@ test("a Clear is WRITTEN DOWN: the header says cleared at #N and how many rows s
   assert.doesNotMatch(text, /MISSING/);
 });
 
+test("forget() — Delete my data — leaves no count and no clock of the deletion behind (persist-5)", () => {
+  /* `clear()` writes the clear down for the founder's loop; a deletion reused it,
+     so the next background row wrote `cp_diag` back as `recorded 940 · cleared at
+     #939 14:07:31` — how much the listener did and when they deleted it.
+     KILLING MUTATION: make `forget()` just `this.clear()` (or point
+     `forayForgetDiagnostics` back at `clear()`, which data-deletion's wiring test
+     catches). */
+  const store = fakeStore();
+  const c = clock();
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  const diag = new PlayerDiagnostics({ log, now: c.now });
+  diag.build({ shell: false, web: "2b808ec9d50c5b98" });
+  for (let i = 0; i < 5; i++) diag.boot();
+  c.tick(1000);
+  log.forget();
+  assert.equal(store.getItem(DIAG_KEY), null, "the key is removed, as a Clear removes it");
+  diag.boot();
+  const blob = JSON.parse(store.getItem(DIAG_KEY));
+  assert.equal(blob.cleared, null, "the moment of the deletion is not written back");
+  assert.equal(blob.seq, 1, "the pre-deletion count is not carried forward");
+  assert.equal(blob.dropped, 0);
+  const text = formatDiagnosticReport(log.read());
+  assert.doesNotMatch(text, /cleared at/);
+  assert.doesNotMatch(text, /MISSING/, "a record that starts again at #1 is whole");
+  assert.match(text, /build web 2b808ec9d50c5b98/, "the running page's build is not the listener's data");
+});
+
 test("the build SURVIVES a Clear: the header names it with no build row left in the ring", () => {
   /* The founder's second line read `build unknown (no build row yet)` on a page
      that had learned its build at boot — the row was a row, and the Clear took
