@@ -266,6 +266,17 @@ const FLOORS = {
      locked screen fine" because nothing ran is a record that gets pasted into a
      decision, and every one of those tests is one edit from allowing it. */
   "player/kokoro-probe.test.js": 41, // #685 (2026-09-13): the zero-is-not-a-pass floor, the rendered-vs-estimated divisor, the three copies of the synthesis vocabulary, and CPU-is-the-whole-path; 30 -> 41 // K-01 (2026-09-12): the passage is phonemized, so "refuses before the bridge" and "reaches the bridge" are two tests; 29 -> 30
+  /* The native engine's parity harness (NE-03, docs/native-engine-plan.md §6).
+     Zero slack. `run.test.js` is one test per fixture case (a loop, counted
+     once here) plus the codec, comparator, schema and scenario-driver rules
+     the Swift ForayEngineParity library is ported from; `coverage.test.js` is
+     the guard that every rule in fifteen player suites is fixtured, mapped to
+     an XCTest, excluded with a reason, or owed with a card. The fixture
+     families' own case counts are floored in player/parity/floors.json and
+     enforced by "parity fixture families hold their floors" below, so deleting
+     fixture cases is loud here too, not only in the suite that reads them. */
+  "player/parity/run.test.js": 31,
+  "player/parity/coverage.test.js": 21,
   "player/tts-bridge.test.js": 29, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 25 -> 29 // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
@@ -1141,6 +1152,11 @@ const FLOORS = {
      85 -> 97. */
   "tools/ci/pr-triage.test.mjs": 97,
   "tools/ci/run-suites.test.mjs": 36,
+  /* The parity recorder (NE-03): --check in npm test, authored cases never
+     overwritten, every new or changed case handed to swift-pending.json with
+     its port card, and --mutate's kill/survive/pending verdicts with a no-op
+     control. Zero slack. */
+  "tools/parity/record.test.mjs": 14,
   /* THE TYPE GATE, and the reason it is floored at all. Until 2026-09-12 no CI
      job in this repo had ever run `tsc` or `eslint`: `backend/package.json`
      defined `typecheck` and nothing called it, so the TypeScript backend was
@@ -2715,6 +2731,37 @@ test("every suite on disk is covered by a floor", () => {
       "test/suite-integrity.test.js with the suite's current test count:\n" +
       unfloored.join("\n")
   );
+});
+
+/* PARITY FIXTURE FLOORS (NE-03). The native engine's fixtures live as data in
+ * player/parity/fixtures/<family>/*.json, not as test() calls, so the FLOORS
+ * table above cannot see a deleted case: the suite that reads them runs one
+ * test per case and would simply run fewer. player/parity/floors.json holds a
+ * minimum per family, written by tools/parity/record.mjs (raise-only unless
+ * --lower-floors is passed, visibly), and this reads it against the fixtures on
+ * disk — the same two-file friction as FLOORS: gutting a family now takes an
+ * edit to floors.json AND the fixture, in a diff the merge audit shows.
+ * MUTATION: delete one case from fixtures/seam-gap/seam-gap.json -> red. */
+test("parity fixture families hold their floors, and every family has one", () => {
+  const PARITY = path.join(ROOT, "player", "parity");
+  const floorsFile = path.join(PARITY, "floors.json");
+  assert.ok(fs.existsSync(floorsFile), "player/parity/floors.json is missing");
+  const floors = JSON.parse(fs.readFileSync(floorsFile, "utf8")).families || {};
+  const base = path.join(PARITY, "fixtures");
+  const onDisk = {};
+  for (const fam of fs.existsSync(base) ? fs.readdirSync(base) : []) {
+    const dir = path.join(base, fam);
+    if (!fs.statSync(dir).isDirectory()) continue;
+    onDisk[fam] = fs.readdirSync(dir).filter((f) => f.endsWith(".json"))
+      .reduce((n, f) => n + JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")).cases.length, 0);
+  }
+  for (const [fam, floor] of Object.entries(floors)) {
+    assert.ok(fam in onDisk, `parity family ${fam} is floored at ${floor} but has no fixtures on disk`);
+    assert.ok(onDisk[fam] >= floor, `parity family ${fam} has ${onDisk[fam]} cases but its floor is ${floor}`);
+  }
+  const unfloored = Object.keys(onDisk).filter((f) => !(f in floors));
+  assert.deepStrictEqual(unfloored, [], "parity families with no floor (run tools/parity/record.mjs)");
+  assert.ok(Object.keys(onDisk).length > 0, "no parity fixtures at all: the seam-gap family is seeded by NE-03");
 });
 
 /* Node's own default test discovery matches more spellings than this repo's

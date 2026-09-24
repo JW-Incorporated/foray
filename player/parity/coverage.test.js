@@ -1,0 +1,264 @@
+/* The parity coverage guard (NE-03, plan §6.5-6.6).
+
+   WHY THIS EXISTS. The native engine reimplements rules that today live only
+   in JS tests. A rule the Swift side never heard of is not a failing test — it
+   is a missing one, and nothing goes red. So every top-level test() in the
+   fifteen covered suites (player/parity/coverage.js COVERED_SUITES) must be
+   accounted for: fixtured (a case's covers[]), mapped to a named XCTest,
+   excluded with a closed reason, or owed in unported.json with a card. Adding
+   a test to a covered suite therefore turns this red until someone decides
+   which of the four it is — which is the point.
+
+   The same file enforces the bookkeeping that makes those lists honest:
+   manifest hashes match the fixture bytes, every pending/unported/xctest entry
+   names something that exists, every family is charged to a capability, a
+   capability the engine advertises has nothing owed, and the recorded floors
+   hold. Every check below names the mutation that turns it red. */
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { REPO_ROOT, loadFixtures } from "./runner.js";
+import {
+  COVERED_SUITES, EXCLUSION_REASONS, CARD_RE, classify, loadParityData, computeManifest, xctestProblems,
+  swiftTestMethods, topLevelTests, capabilityFamilies, capabilityGate, advertisedCapabilities, counts,
+  readCoveredSuites,
+} from "./coverage.js";
+
+const DATA = loadParityData(REPO_ROOT);
+const FIXTURES = loadFixtures(REPO_ROOT);
+
+/* ---------- the guard itself ---------- */
+
+test("every top-level test in the fifteen covered suites is accounted for exactly once", () => {
+  // MUTATION: add `test("x", () => {})` to seam-gap.test.js -> red, naming it
+  // (the same check, on a scratch copy, is the next test).
+  const { problems } = classify(REPO_ROOT, DATA, FIXTURES);
+  assert.deepStrictEqual(problems, [], problems.slice(0, 20).join("\n"));
+});
+
+test("a new, unmapped test() in a covered suite turns the guard red and names it", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "parity-cov-"));
+  try {
+    fs.mkdirSync(path.join(root, "player"), { recursive: true });
+    const src = fs.readFileSync(path.join(REPO_ROOT, "player", "seam-gap.test.js"), "utf8");
+    fs.writeFileSync(path.join(root, "player", "seam-gap.test.js"), src);
+    // Only seam-gap is on the scratch disk, so only seam-gap's entries are read.
+    const seamOnly = { ...DATA, unported: {}, xctest: {} };
+    const suites = { "seam-gap": readCoveredSuites(root)["seam-gap"] };
+    const before = classify(root, seamOnly, FIXTURES, suites).problems;
+    assert.deepStrictEqual(before, [], "the scratch copy starts clean");
+
+    fs.writeFileSync(path.join(root, "player", "seam-gap.test.js"), src + '\ntest("a brand-new seam rule", () => {});\n');
+    const after = classify(root, seamOnly, FIXTURES, { "seam-gap": readCoveredSuites(root)["seam-gap"] }).problems;
+    assert.equal(after.length, 1, after.join("\n"));
+    assert.match(after[0], /"a brand-new seam rule" is in no case's covers\[\]/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a test accounted for twice is a stale list, not extra safety", () => {
+  // Owed AND ported means the burn-down forgot to burn; the count lies.
+  const [stem, names] = Object.entries(DATA.exclusions).find(([k]) => !k.startsWith("//"));
+  const name = Object.keys(names)[0];
+  const data = { ...DATA, unported: { ...DATA.unported, [stem]: { ...(DATA.unported[stem] ?? {}), [name]: { card: "NE-28j", family: "seam-gap" } } } };
+  const { problems } = classify(REPO_ROOT, data, FIXTURES);
+  assert.ok(problems.some((p) => p.includes(JSON.stringify(name)) && /excluded \+ unported/.test(p)), problems.join("\n"));
+});
+
+test("an entry that names no real test is refused — pending and unported ids exist", () => {
+  const data = { ...DATA, unported: { ...DATA.unported, "seam-gap": { "a test nobody wrote": { card: "NE-28j", family: "seam-gap" } } } };
+  assert.ok(classify(REPO_ROOT, data, FIXTURES).problems.some((p) => /no top-level test named "a test nobody wrote"/.test(p)));
+  const bogus = { ...DATA, exclusions: { "not-a-suite": { x: { reason: "text-pin", why: "long enough why" } } } };
+  assert.ok(classify(REPO_ROOT, bogus, FIXTURES).problems.some((p) => /"not-a-suite" is not a covered suite/.test(p)));
+});
+
+test("exclusions carry a closed reason and a sentence; unported entries carry a card and a family", () => {
+  assert.deepStrictEqual([...EXCLUSION_REASONS], ["webview-only", "dom-only", "text-pin", "js-module-shape"]);
+  const bad = { ...DATA, exclusions: { "seam-gap": { "every refusal explains itself differently": { reason: "boring", why: "x" } } } };
+  const p = classify(REPO_ROOT, bad, FIXTURES).problems.join("\n");
+  assert.match(p, /reason "boring" is not one of/);
+  assert.match(p, /an exclusion says why/);
+  for (const [stem, names] of Object.entries(DATA.unported)) {
+    if (stem.startsWith("//")) continue;
+    for (const [name, v] of Object.entries(names)) {
+      assert.match(v.card, CARD_RE, `${stem}::${name}`);
+      assert.equal(typeof v.family, "string", `${stem}::${name}`);
+    }
+  }
+});
+
+test("the fifteen covered suites are the plan's fifteen, and each not-yet-written one names its card", () => {
+  assert.deepStrictEqual(Object.keys(COVERED_SUITES).sort(), [
+    "continuation", "foray-playback", "foray-progress", "html-audio-backend", "interlude", "media-session",
+    "playback-rate", "position-store", "queue-manager", "queue-state", "seam-gap", "seek-policy",
+    "transport-policy", "transport-reconcile", "tts-bridge",
+  ]);
+  for (const [stem, cfg] of Object.entries(COVERED_SUITES)) {
+    assert.match(cfg.card, CARD_RE, stem);
+    if (cfg.awaiting) assert.match(cfg.awaiting, CARD_RE, stem);
+  }
+});
+
+test("a suite that appears while still marked awaiting is refused, so it is never outside the guard", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "parity-await-"));
+  try {
+    fs.mkdirSync(path.join(root, "player"), { recursive: true });
+    fs.writeFileSync(path.join(root, "player", "continuation.test.js"), 'test("hop", () => {});\n');
+    const suites = { continuation: readCoveredSuites(root).continuation };
+    const { problems } = classify(root, DATA, FIXTURES, suites);
+    assert.ok(problems.some((p) => /still marks it awaiting NE-13/.test(p)), problems.join("\n"));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+/* ---------- reading test names ---------- */
+
+test("topLevelTests reads literal names, decodes escapes, and ignores nested test() calls", () => {
+  const src = [
+    'test("plain", () => {});',
+    "test('single \\'quoted\\'', () => {});",
+    "test(`template`, () => {});",
+    'test("unicode \\u2014 dash", () => {});',
+    '  test("indented is not top level", () => {});',
+  ].join("\n");
+  const { names, problems } = topLevelTests(src);
+  assert.deepStrictEqual(names, ["plain", "single 'quoted'", "template", "unicode — dash"]);
+  assert.deepStrictEqual(problems, []);
+});
+
+test("a computed or duplicated test name is a problem: the guard cannot map what it cannot name", () => {
+  const { problems } = topLevelTests('test(`x ${y}`, () => {});\ntest(name, () => {});\ntest("a", f);\ntest("a", g);\n');
+  assert.equal(problems.length, 3, problems.join("\n"));
+  assert.match(problems.join("\n"), /duplicate test name "a"/);
+});
+
+/* ---------- xctest: mappings ---------- */
+
+test("every xctest: mapping names a test method the Swift sources declare", () => {
+  assert.deepStrictEqual(xctestProblems(REPO_ROOT, DATA.xctest), []);
+});
+
+test("a mapping to a non-existent Swift method turns the guard red; a real one does not", () => {
+  const name = "an unbridged segment-to-segment auto-advance gets the full beat";
+  const ghost = { "seam-gap": { [name]: "xctest:ForayAudioPluginTests/testNoSuchMethod" } };
+  assert.equal(xctestProblems(REPO_ROOT, ghost).length, 1);
+  // Control: the grep can see a method that exists, so red above is not vacuous.
+  const real = { "seam-gap": { [name]: "xctest:ForayAudioPluginTests/testPluginTypeExists" } };
+  assert.deepStrictEqual(xctestProblems(REPO_ROOT, real), []);
+});
+
+test("the Swift grep attributes methods to their class and ignores non-test funcs", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "parity-swift-"));
+  try {
+    const f = path.join(dir, "T.swift");
+    fs.writeFileSync(f, [
+      "final class AlphaTests: XCTestCase {",
+      "    func testOne() {}",
+      "    func helper() {}",
+      "}",
+      "@MainActor final class BetaTests: XCTestCase {",
+      "    @MainActor func testTwo() async throws {}",
+      "}",
+    ].join("\n"));
+    assert.deepStrictEqual([...swiftTestMethods([f])].sort(), ["AlphaTests/testOne", "BetaTests/testTwo"]);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/* ---------- the manifest ---------- */
+
+test("the manifest's hashes and ids match the fixture bytes on disk", () => {
+  // MUTATION: hand-edit any recorded expect -> the file's sha256 no longer
+  // matches, and this is red until record.mjs re-records it (which also puts
+  // the id into swift-pending.json).
+  assert.deepStrictEqual(computeManifest(REPO_ROOT, FIXTURES), DATA.manifest);
+});
+
+test("every swift-pending id names a recorded case and is tagged with a card", () => {
+  const ids = new Set(Object.values(DATA.manifest.families).flatMap((f) => f.ids));
+  for (const [id, card] of Object.entries(DATA.pending)) {
+    if (id.startsWith("//")) continue;
+    assert.ok(ids.has(id), `${id} is pending but no fixture case has that id`);
+    assert.match(card, CARD_RE, id);
+  }
+});
+
+/* ---------- families and capabilities ---------- */
+
+test("every family a fixture, an unported entry or a pending id uses is charged to a capability", () => {
+  const charged = capabilityFamilies(DATA.capabilities);
+  const used = new Set([
+    ...FIXTURES.map((f) => f.family),
+    ...Object.entries(DATA.unported).filter(([k]) => !k.startsWith("//")).flatMap(([, n]) => Object.values(n).map((v) => v.family)),
+    ...Object.keys(DATA.pending).filter((k) => !k.startsWith("//")).map((id) => id.split("/")[0]),
+    ...Object.values(COVERED_SUITES).map((c) => c.family),
+  ]);
+  const loose = [...used].filter((f) => !charged.has(f));
+  assert.deepStrictEqual(loose, [], "a family no capability names can hold owed work that no gate reads");
+});
+
+test("capabilities.json holds the plan §6.6 map", () => {
+  assert.deepStrictEqual(Object.keys(DATA.capabilities).filter((k) => !k.startsWith("//")), ["episode", "continuation", "restore", "foray"]);
+  assert.ok(DATA.capabilities.foray.includes("seam-gap"));
+  assert.ok(DATA.capabilities.episode.includes("manager-episode"));
+});
+
+test("every capability the engine advertises has zero pending and zero unported entries", () => {
+  // Read from mobile/ENGINE_DEFAULT.json and the Swift `advertisedCapabilities`
+  // literal. Today neither exists, so nothing is advertised and this passes
+  // trivially; the synthetic cases below are what prove it has teeth.
+  const advertised = advertisedCapabilities(REPO_ROOT);
+  assert.deepStrictEqual(capabilityGate(advertised, DATA), []);
+});
+
+test("advertising a capability with owed work is refused, naming the work", () => {
+  const pendingSeam = { ...DATA, pending: { "seam-gap/rule-is-2.0s": "NE-05" }, unported: {} };
+  const p1 = capabilityGate(new Map([["foray", "test"]]), pendingSeam);
+  assert.equal(p1.length, 1);
+  assert.match(p1[0], /1 swift-pending case/);
+  const owed = { ...DATA, pending: {}, unported: { "queue-state": { "some rule": { card: "NE-07j", family: "queue-state" } } } };
+  assert.match(capabilityGate(new Map([["episode", "test"]]), owed).join("\n"), /1 unported test/);
+  assert.deepStrictEqual(capabilityGate(new Map([["continuation", "test"]]), owed), [], "another capability's owed work is not this one's");
+  assert.match(capabilityGate(new Map([["teleport", "test"]]), DATA).join("\n"), /does not define/);
+});
+
+test("the advertised list is read from ENGINE_DEFAULT.json and from the Swift source", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "parity-cap-"));
+  try {
+    fs.mkdirSync(path.join(root, "mobile", "plugins", "foray-audio", "ios", "Sources"), { recursive: true });
+    fs.writeFileSync(path.join(root, "mobile", "ENGINE_DEFAULT.json"), JSON.stringify({ mode: "native", capabilities: ["episode"] }));
+    fs.writeFileSync(path.join(root, "mobile", "plugins", "foray-audio", "ios", "Sources", "E.swift"),
+      'enum Engine { static let advertisedCapabilities: [String] = ["episode", "foray"] }\n');
+    assert.deepStrictEqual([...advertisedCapabilities(root).keys()].sort(), ["episode", "foray"]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+/* ---------- floors ---------- */
+
+test("every fixture family holds its recorded floor, and every family has one", () => {
+  // MUTATION: delete a case from the seam-gap fixture -> red (and --check is
+  // red too, on the manifest). Welded to test/suite-integrity.test.js, which
+  // reads the same floors.json.
+  const { families } = counts({}, FIXTURES);
+  for (const [fam, n] of Object.entries(families)) {
+    assert.ok(fam in DATA.floors.families, `family ${fam} has no floor in floors.json (record it)`);
+    assert.ok(n >= DATA.floors.families[fam], `family ${fam} has ${n} cases, below its floor of ${DATA.floors.families[fam]}`);
+  }
+});
+
+test("every covered suite still has at least the test count the recorder last saw", () => {
+  const { status } = classify(REPO_ROOT, DATA, FIXTURES);
+  const { suites } = counts(status, FIXTURES);
+  for (const [stem, floor] of Object.entries(DATA.floors.suites)) {
+    assert.ok(stem in COVERED_SUITES, `${stem} is floored but not covered`);
+    assert.ok(suites[stem].tests >= floor, `${stem} has ${suites[stem].tests} top-level tests, below the recorded ${floor}`);
+  }
+});

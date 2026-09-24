@@ -1,0 +1,237 @@
+{
+  "family": "seam-gap",
+  "module": "player/seam-gap.js",
+  "note": "The seam beat's decision table (player/seam-gap.js), one case per assertion of seam-gap.test.js. describeSeam's two tests are excluded as text-pin: they pin telemetry wording, and the engine's rows are the diag-tokens family's, not these sentences.",
+  "cases": [
+    {
+      "id": "seam-gap/rule-is-2.0s",
+      "covers": ["seam-gap::the merged rule is 2.0 s, not 04_VOICE_AUDIO_SPEC's 0.5 s"],
+      "authored": true,
+      "note": "docs/curation/segment-length-rules.md §0 and §6b. Authored: this is the spec's number, and a JS change that moves it is refused rather than re-recorded.",
+      "read": "SEAM_GAP_SEC",
+      "expect": { "value": 2 }
+    },
+    {
+      "id": "seam-gap/unbridged-auto-advance-full-beat",
+      "covers": ["seam-gap::an unbridged segment-to-segment auto-advance gets the full beat"],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] } }],
+      "expect": { "return": 2 }
+    },
+    {
+      "id": "seam-gap/length-overridable",
+      "covers": ["seam-gap::the length is overridable without touching the rule"],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] }, "gapSec": 3.5 }],
+      "expect": { "return": 3.5 }
+    },
+    {
+      "id": "seam-gap/nonsense-length-nan",
+      "covers": ["seam-gap::a nonsense length collapses to no beat rather than to NaN"],
+      "call": "seamGapSec",
+      "args": [
+        {
+          "from": { "$seg": ["a"] },
+          "to": { "$seg": ["b"] },
+          "gapSec": { "$num": "NaN" }
+        }
+      ],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/nonsense-length-infinity",
+      "covers": ["seam-gap::a nonsense length collapses to no beat rather than to NaN"],
+      "call": "seamGapSec",
+      "args": [
+        {
+          "from": { "$seg": ["a"] },
+          "to": { "$seg": ["b"] },
+          "gapSec": { "$num": "Infinity" }
+        }
+      ],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/nonsense-length-negative",
+      "covers": ["seam-gap::a nonsense length collapses to no beat rather than to NaN"],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] }, "gapSec": -1 }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/nonsense-length-string",
+      "covers": ["seam-gap::a nonsense length collapses to no beat rather than to NaN"],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] }, "gapSec": "2" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/nonsense-length-null",
+      "covers": ["seam-gap::a nonsense length collapses to no beat rather than to NaN"],
+      "note": "null is not undefined: the default parameter does not apply, and null is not a length.",
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] }, "gapSec": null }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/user-action-no-beat",
+      "covers": ["seam-gap::a user-driven move gets no beat — they named where to go"],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] }, "cause": "user" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/user-action-token",
+      "covers": ["seam-gap::a user-driven move gets no beat — they named where to go"],
+      "read": "USER_ACTION",
+      "expect": { "value": "user" }
+    },
+    {
+      "id": "seam-gap/unknown-cause-is-user",
+      "covers": [
+        "seam-gap::an unrecognised cause is treated as user-driven, not as an auto-advance"
+      ],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] }, "cause": "whatever" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/bridged-no-beat",
+      "covers": [
+        "seam-gap::a bridged seam gets no beat — narration is the marker, silence would be dead air"
+      ],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] }, "bridged": true }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/first-item-no-beat",
+      "covers": ["seam-gap::the first item of a Foray has nothing to be marked off from"],
+      "call": "seamGapSec",
+      "args": [{ "from": null, "to": { "$seg": ["b"] } }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/end-of-queue-no-beat",
+      "covers": ["seam-gap::the end of the queue gets no beat — silence before silence"],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": null }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/episode-before-segment",
+      "covers": ["seam-gap::an ordinary unbounded episode on either side is not a seam we made"],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$ep": ["a"] }, "to": { "$seg": ["b"] } }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/segment-before-episode",
+      "covers": ["seam-gap::an ordinary unbounded episode on either side is not a seam we made"],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$ep": ["b"] } }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/episode-to-episode",
+      "covers": ["seam-gap::an ordinary unbounded episode on either side is not a seam we made"],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$ep": ["a"] }, "to": { "$ep": ["b"] } }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/tts-before-segment",
+      "covers": ["seam-gap::a TTS item on either side is not a segment seam"],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$tts": ["n1"] }, "to": { "$seg": ["b"] } }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/segment-before-tts",
+      "covers": ["seam-gap::a TTS item on either side is not a segment seam"],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$tts": ["n1"] } }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/no-arguments",
+      "covers": ["seam-gap::called with nothing at all, it answers zero instead of throwing"],
+      "call": "seamGapSec",
+      "args": [],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "seam-gap/is-segment-forward-slice",
+      "covers": ["seam-gap::a segment is a real forward slice, and nothing else is"],
+      "call": "isSegment",
+      "args": [{ "$seg": ["a", 100, 210] }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "seam-gap/is-segment-no-end",
+      "covers": ["seam-gap::a segment is a real forward slice, and nothing else is"],
+      "call": "isSegment",
+      "args": [{ "id": "a", "start_sec": 100 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "seam-gap/is-segment-zero-length",
+      "covers": ["seam-gap::a segment is a real forward slice, and nothing else is"],
+      "call": "isSegment",
+      "args": [{ "id": "a", "start_sec": 210, "end_sec": 210 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "seam-gap/is-segment-backwards",
+      "covers": ["seam-gap::a segment is a real forward slice, and nothing else is"],
+      "call": "isSegment",
+      "args": [{ "id": "a", "start_sec": 210, "end_sec": 100 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "seam-gap/is-segment-junk-end",
+      "covers": ["seam-gap::a segment is a real forward slice, and nothing else is"],
+      "call": "isSegment",
+      "args": [{ "id": "a", "start_sec": 0, "end_sec": { "$num": "NaN" } }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "seam-gap/is-segment-null",
+      "covers": ["seam-gap::a segment is a real forward slice, and nothing else is"],
+      "call": "isSegment",
+      "args": [null],
+      "expect": { "return": false }
+    },
+    {
+      "id": "seam-gap/is-segment-undefined",
+      "covers": ["seam-gap::a segment is a real forward slice, and nothing else is"],
+      "call": "isSegment",
+      "args": [{ "$undefined": true }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "seam-gap/is-segment-from-zero",
+      "covers": ["seam-gap::a segment starting at 0:00 is still a segment"],
+      "call": "isSegment",
+      "args": [{ "id": "a", "start_sec": 0, "end_sec": 90 }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "seam-gap/auto-advance-token",
+      "covers": [
+        "seam-gap::AUTO_ADVANCE is the default cause, so the ordinary path needs no argument"
+      ],
+      "read": "AUTO_ADVANCE",
+      "expect": { "value": "auto" }
+    },
+    {
+      "id": "seam-gap/explicit-auto-advance-full-beat",
+      "covers": [
+        "seam-gap::AUTO_ADVANCE is the default cause, so the ordinary path needs no argument"
+      ],
+      "call": "seamGapSec",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] }, "cause": "auto" }],
+      "expect": { "return": 2 }
+    }
+  ]
+}

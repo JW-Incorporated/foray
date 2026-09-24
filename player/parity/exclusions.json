@@ -1,0 +1,13 @@
+{
+  "//": "Covered-suite tests with no Swift meaning. Each has one closed reason (webview-only, dom-only, text-pin, js-module-shape) and a sentence of why. An entry claims the engine need never reimplement this rule; a reviewer should be able to check that claim from the sentence alone.",
+  "seam-gap": {
+    "every refusal explains itself differently": {
+      "reason": "text-pin",
+      "why": "Pins that describeSeam's four refusal sentences are distinct English strings; the engine's refusal reasons are closed tokens (the diag-tokens family, NE-04)."
+    },
+    "the beat's log line names both sides and the length": {
+      "reason": "text-pin",
+      "why": "Pins describeSeam's English telemetry sentence. The engine writes packed seam rows from the diag-tokens vocabulary, not this string."
+    }
+  }
+}

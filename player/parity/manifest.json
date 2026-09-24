@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "families": {
+    "seam-gap": {
+      "files": {
+        "player/parity/fixtures/seam-gap/seam-gap.json": "a922c454138b25db506a390a6e5304715612382298e6e03996eab1221c5f2ae3"
+      },
+      "ids": [
+        "seam-gap/rule-is-2.0s",
+        "seam-gap/unbridged-auto-advance-full-beat",
+        "seam-gap/length-overridable",
+        "seam-gap/nonsense-length-nan",
+        "seam-gap/nonsense-length-infinity",
+        "seam-gap/nonsense-length-negative",
+        "seam-gap/nonsense-length-string",
+        "seam-gap/nonsense-length-null",
+        "seam-gap/user-action-no-beat",
+        "seam-gap/user-action-token",
+        "seam-gap/unknown-cause-is-user",
+        "seam-gap/bridged-no-beat",
+        "seam-gap/first-item-no-beat",
+        "seam-gap/end-of-queue-no-beat",
+        "seam-gap/episode-before-segment",
+        "seam-gap/segment-before-episode",
+        "seam-gap/episode-to-episode",
+        "seam-gap/tts-before-segment",
+        "seam-gap/segment-before-tts",
+        "seam-gap/no-arguments",
+        "seam-gap/is-segment-forward-slice",
+        "seam-gap/is-segment-no-end",
+        "seam-gap/is-segment-zero-length",
+        "seam-gap/is-segment-backwards",
+        "seam-gap/is-segment-junk-end",
+        "seam-gap/is-segment-null",
+        "seam-gap/is-segment-undefined",
+        "seam-gap/is-segment-from-zero",
+        "seam-gap/auto-advance-token",
+        "seam-gap/explicit-auto-advance-full-beat"
+      ]
+    }
+  }
+}

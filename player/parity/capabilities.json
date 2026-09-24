@@ -1,0 +1,39 @@
+{
+  "//": "Plan §6.6. A capability the engine advertises (mobile/ENGINE_DEFAULT.json, or the Swift `advertisedCapabilities` literal) requires zero swift-pending cases and zero unported tests in every family listed under it; coverage.test.js enforces that. Every family a fixture or an unported entry uses must appear under some capability, so no family can hold owed work that no gate reads.",
+  "episode": [
+    "queue-state",
+    "rate",
+    "resume-rules",
+    "transport",
+    "rows",
+    "number-format",
+    "session",
+    "session-invariant",
+    "engine-mode",
+    "handshake",
+    "contract",
+    "snapshot",
+    "diag-tokens",
+    "media-episode",
+    "manager-episode",
+    "deck-episode"
+  ],
+  "continuation": ["continuation"],
+  "restore": ["rows", "resume-rules", "engine-mode"],
+  "foray": [
+    "seam-gap",
+    "interlude",
+    "seek-policy",
+    "outpoint",
+    "foray-clock",
+    "foray-progress",
+    "foray-structure",
+    "media",
+    "manager-foray",
+    "deck",
+    "prepare",
+    "speech-rate",
+    "lexicon",
+    "default-voice"
+  ]
+}
