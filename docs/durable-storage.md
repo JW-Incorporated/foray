@@ -37,7 +37,22 @@ A **tiered store behind a synchronous Storage-shaped facade**.
       └─ async tiers Capacitor Preferences   native shell only — UserDefaults /
                                              SharedPreferences, not evictable
                      IndexedDB         write-behind, share-of-disk quota
+      └─ vault       ForayVault        native shell only, and ONLY cp_sb_session:
+                                       iOS Keychain (this device only) / Android
+                                       no-backup file — never in a phone backup
 ```
+
+**The vault (2026-09-24, round-2 audit `persist-6`, founder ruling "Option A").**
+Every tier above it is app data that iCloud / Google backups copy, which is
+wanted for positions and interests and was a defect for the token: a restored
+pre-deletion backup handed the deleted account back. So inside the shell
+`cp_sb_session` is written only to `vaultTier()` (`mobile/plugins/foray-vault/`)
+and to none of the others. A token an earlier build left in them is copied into
+the vault on the next hydration and removed from them only once the vault has
+it; a vault that cannot be read or written leaves those copies alone, and
+`canKeep()` tells `ensureAnonSession` not to refresh or sign up when the result
+could not be kept. `purge()` reads and empties the vault like any tier. On the
+web there is no vault and nothing changed.
 
 The Preferences tier (`preferencesTier()`) was drawn here from the start and
 built on 2026-09-22, after the design/QA audit found that nothing registered it:

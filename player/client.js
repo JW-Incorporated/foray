@@ -120,7 +120,7 @@ import {
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
 import { startDrag, moveDrag, endDrag, dragOffset, claimsTouch } from "./sheet-drag-dismiss.js";
-import { createDurableStore, preferencesTier } from "./durable-store.js";
+import { createDurableStore, preferencesTier, vaultTier } from "./durable-store.js";
 import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
@@ -231,6 +231,12 @@ const storage = createDurableStore({
   /* Inside the native shell only: UserDefaults / SharedPreferences, the one
      tier a WebView storage sweep cannot reach. Null on the web. */
   nativeTier: preferencesTier(typeof window !== "undefined" ? window.Capacitor : null),
+  /* Inside the native shell only: the device-only vault (Keychain this-device-
+     only / Android no-backup storage) that holds the auth token and nothing
+     else, so the token is never in a phone backup (persist-6, founder ruling
+     2026-09-24 "Option A"). Null on the web, and on a shell build without the
+     plugin — where the token stays in the tiers above, as before. */
+  vault: vaultTier(typeof window !== "undefined" ? window.Capacitor : null),
   onFault: (fault, health) => {
     // The player cannot fix a dead tier. What it must not do is hide one.
     console.warn("[storage]", fault.tier, fault.op, fault.key ?? "", fault.error);
