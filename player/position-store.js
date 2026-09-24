@@ -16,13 +16,41 @@
    unavailable. A refused write is counted rather than swallowed; see `save()`.
 */
 
-const KEY = (id) => `cp_pos:${id}`;
+/** One row per episode. `cp_` prefix: renaming wipes user state (CLAUDE.md).
+    Exported because the native engine writes the same key (NE-10j's `rows`
+    family records it, and `player/engine-contract.js` OWNED_PREFIXES names
+    the namespace the engine owns on iOS). */
+export const positionKey = (id) => `cp_pos:${id}`;
+const KEY = positionKey;
 
 /** Positions inside this margin of the end mean "finished" — resuming 4 seconds
     before the outro is worse than starting over. */
 export const NEAR_END_SEC = 30;
 /** Below this, there is nothing worth resuming to. */
 export const MIN_RESUME_SEC = 10;
+
+/**
+ * The stored row, built in one place (NE-10j). It is a pure function so the
+ * row's exact bytes can be recorded: the native engine writes `cp_pos:<id>`
+ * too (plan §4.6, "positions survive switching engines"), and a Swift writer
+ * that orders these four fields differently, or prints `3600` as `3600.0`,
+ * would be a second definition of the row that no JS test ever sees. The
+ * `rows` parity family pins `JSON.stringify` of this, through `save()`.
+ *
+ * @param {number} seconds  already validated by the caller (`save()`)
+ * @param {object} [opts]
+ * @param {*}      [opts.duration]  anything; only a finite number survives,
+ *                                  everything else is stored as null
+ * @param {Date}   [opts.now]
+ */
+export function makePositionRecord(seconds, { duration = null, now = new Date() } = {}) {
+  return {
+    seconds,
+    duration: typeof duration === "number" && Number.isFinite(duration) ? duration : null,
+    updated_at: now.toISOString(),
+    source: "local",
+  };
+}
 
 export class PositionStore {
   /**
@@ -32,9 +60,13 @@ export class PositionStore {
    * @param {Storage} [opts.storage] any Storage-shaped object; defaults to
    *   `localStorage` where one exists, and to nothing where it does not (a
    *   browser that has taken storage away is not a crash).
+   * @param {Function} [opts.now] () => Date, the row's `updated_at` clock.
+   *   Injected only so the parity recorder can write down a row's exact bytes
+   *   (NE-10j); every shipping caller leaves it as the wall clock.
    */
-  constructor({ onSave = null, storage = null } = {}) {
+  constructor({ onSave = null, storage = null, now = () => new Date() } = {}) {
     this._onSave = onSave;
+    this._now = now;
     this._lastEmitted = new Map();
     this._storage = storage ?? (typeof localStorage !== "undefined" ? localStorage : null);
     /** Writes this store attempted and was refused. A non-zero value means
@@ -45,13 +77,8 @@ export class PositionStore {
 
   save(id, seconds, meta = {}) {
     if (!id || typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) return;
-    const duration = typeof meta.duration === "number" && Number.isFinite(meta.duration) ? meta.duration : null;
-    const record = {
-      seconds,
-      duration,
-      updated_at: new Date().toISOString(),
-      source: "local",
-    };
+    const record = makePositionRecord(seconds, { duration: meta.duration, now: this._now() });
+    const { duration } = record;
     if (!this._storage) { this.refusedWrites += 1; return; }
     try {
       this._storage.setItem(KEY(id), JSON.stringify(record));
