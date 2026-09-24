@@ -96,6 +96,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift test --package-path ios/ForayKit
+      # NE-01 (docs/native-engine-plan.md §4.1): the native engine's PURE core,
+      # Foundation only, so it host-tests here on macOS with no Simulator. This
+      # is also the plan's zero-.github fallback for the parity library until
+      # G-1a's `engine-parity` job adds the Linux run; the Simulator-side
+      # wrapper runs in the foray-audio step below.
+      - name: swift test (foray-engine-core, macOS host)
+        run: swift test --package-path mobile/plugins/foray-audio/foray-engine-core
       # L-01 follow-up (docs/ios-controls-and-voice-plan.md, card L-01): foray-audio
       # and foray-tts each ship an iOS SwiftPM package (mobile/plugins/*/Package.swift)
       # with their own XCTests, previously exercised nowhere in CI -- ios-build.yml's
@@ -120,6 +127,23 @@ jobs:
                 console.log(iphone.udid);
               ')
           echo "Using simulator: $DEVICE_ID"
+          # NE-01 (docs/native-engine-plan.md): the scheme list, printed on every
+          # run. The native engine's core is a nested path dependency of this
+          # package, and Xcode derives scheme names from the package graph; the
+          # `-scheme ForayAudio` below is only as stable as this list. Printed
+          # BEFORE the Preferences pin is switched on, so it is the list of the
+          # graph the app ships.
+          xcodebuild -list
+          # NE-01's Preferences pin (CapacitorStoragePrefixTests.swift) writes
+          # through @capacitor/preferences' own native class. That package has
+          # no SwiftPM URL, so it comes from mobile/'s LOCKED install, and
+          # Package.swift links it into the test target only under
+          # FORAY_PREFERENCES_PIN=1, which nothing that builds the app sets.
+          # TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN reaches the test process
+          # (xcodebuild strips the prefix) and turns a pin that compiled out
+          # into a failure rather than a skip.
+          npm ci --prefix ../.. --no-audit --no-fund --ignore-scripts
+          FORAY_PREFERENCES_PIN=1 TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN=1 \
           xcodebuild test \
             -scheme ForayAudio \
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \
@@ -137,6 +161,9 @@ jobs:
                 console.log(iphone.udid);
               ')
           echo "Using simulator: $DEVICE_ID"
+          # NE-01: printed beside foray-audio's, so a change to either list is
+          # visible in the same log.
+          xcodebuild -list
           xcodebuild test \
             -scheme ForayTts \
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \

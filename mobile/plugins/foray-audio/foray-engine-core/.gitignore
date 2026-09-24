@@ -1,0 +1,6 @@
+# SwiftPM's build products and Xcode's per-package state. Nothing here is
+# built on the Windows machine this repo is developed on; this is for a Mac
+# (or the CI runner's checkout) that runs `swift test` in this directory.
+.build/
+.swiftpm/
+Package.resolved
