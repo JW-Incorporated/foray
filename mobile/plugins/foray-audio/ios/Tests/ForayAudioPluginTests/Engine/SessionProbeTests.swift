@@ -72,7 +72,7 @@ final class SessionProbeTests: XCTestCase {
 
         world.timing.fire(afterMs: SessionProbe.armDelayMs)
         XCTAssertEqual(world.speaker.spoken, [SessionProbe.line])
-        XCTAssertEqual(world.deck.count("play"), 0, "no play while the line is being spoken")
+        XCTAssertEqual(world.log.count("deck.play"), 0, "no play while the line is being spoken")
         XCTAssertEqual(engine.probe?.phase, .speaking)
 
         world.timing.advance(900)
@@ -142,7 +142,7 @@ final class SessionProbeTests: XCTestCase {
         XCTAssertEqual(row[field: "activated"], .bool(true))
         XCTAssertEqual(row[field: "activateMs"], .number(37.5))
         XCTAssertEqual(row[field: "session"], .string("inactive"), "what the core believed at didFinish")
-        XCTAssertEqual(world.deck.count("pause"), 1, "\(world.log.entries)")
+        XCTAssertEqual(world.log.count("deck.pause"), 1, "\(world.log.entries)")
     }
 
     /// The system refuses the activation the play needs: the row says
@@ -167,8 +167,8 @@ final class SessionProbeTests: XCTestCase {
         XCTAssertEqual(row[field: "token"], .string("session-failed:cannot-interrupt-others"))
         XCTAssertEqual(row[field: "activated"], .bool(true))
         XCTAssertEqual(row[field: "activateMs"], .number(3))
-        XCTAssertEqual(world.deck.count("play"), 0, "\(world.log.entries)")
-        XCTAssertEqual(world.deck.count("pause"), 0, "\(world.log.entries)")
+        XCTAssertEqual(world.log.count("deck.play"), 0, "\(world.log.entries)")
+        XCTAssertEqual(world.log.count("deck.pause"), 0, "\(world.log.entries)")
         XCTAssertEqual(world.timing.live.count, 0)
         XCTAssertEqual(engine.probe?.phase, .idle)
     }
@@ -184,7 +184,7 @@ final class SessionProbeTests: XCTestCase {
         engine.handle(.command(.probeSession, source: .tap))
         world.timing.fire(afterMs: SessionProbe.armDelayMs)
         world.speaker.end(.finished)
-        XCTAssertEqual(world.deck.count("play"), 1)
+        XCTAssertEqual(world.log.count("deck.play"), 1)
         XCTAssertTrue(engine.state.isRunning)
 
         world.timing.fire(afterMs: SessionProbe.playingTimeoutMs)
@@ -193,7 +193,7 @@ final class SessionProbeTests: XCTestCase {
         XCTAssertEqual(row[field: "result"], .string("failed"))
         XCTAssertEqual(row[field: "token"], .string("no-playing"))
         XCTAssertEqual(row[field: "timeToPlayingMs"], .null)
-        XCTAssertEqual(world.deck.count("pause"), 1, "\(world.log.entries)")
+        XCTAssertEqual(world.log.count("deck.pause"), 1, "\(world.log.entries)")
         XCTAssertFalse(engine.state.isRunning)
     }
 
@@ -235,7 +235,7 @@ final class SessionProbeTests: XCTestCase {
         let engine = try pausedAndLocked(world)
         engine.handle(.command(.probeSession, source: .tap))
         engine.handle(.command(.play, source: .tap))
-        let pausesBefore = world.deck.count("pause")
+        let pausesBefore = world.log.count("deck.pause")
 
         world.timing.fire(afterMs: SessionProbe.armDelayMs)
 
@@ -243,7 +243,7 @@ final class SessionProbeTests: XCTestCase {
         let row = try result(world)
         XCTAssertEqual(row[field: "result"], .string("failed"))
         XCTAssertEqual(row[field: "token"], .string("preempted"))
-        XCTAssertEqual(world.deck.count("pause"), pausesBefore)
+        XCTAssertEqual(world.log.count("deck.pause"), pausesBefore)
         XCTAssertTrue(engine.state.isRunning)
     }
 
@@ -259,7 +259,7 @@ final class SessionProbeTests: XCTestCase {
 
         world.speaker.end(.cancelled)
 
-        XCTAssertEqual(world.deck.count("play"), 0)
+        XCTAssertEqual(world.log.count("deck.play"), 0)
         let row = try result(world)
         XCTAssertEqual(row[field: "token"], .string("speech-cancelled"))
         XCTAssertEqual(world.timing.live.count, 0)
@@ -279,7 +279,7 @@ final class SessionProbeTests: XCTestCase {
 
         XCTAssertEqual(try result(world)[field: "token"], .string("speech-timeout"))
         XCTAssertNotNil(world.log.index(of: "speaker.stop"), "\(world.log.entries)")
-        XCTAssertEqual(world.deck.count("play"), 0)
+        XCTAssertEqual(world.log.count("deck.play"), 0)
         XCTAssertEqual(engine.probe?.phase, .idle)
     }
 
