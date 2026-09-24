@@ -342,7 +342,11 @@ test("a playlist page says how many were played only when some were", () => {
   onePartPlaylist(m);
   m.ctx.renderPlaylistDetail("q1");
   assert.ok(!/0 played/.test(m.view()), m.view());
-  m.ctx.localStorage.setItem("cp_history", JSON.stringify(["ep-1"]));
+  /* "Played" is the player's FINISHED verdict (honesty-6, test/playlist-
+     durability.test.js), not a history entry — so the fixture finishes one. */
+  m.ctx.window.ForayPlayer = { episodeProgress: (id) => (id === "ep-1"
+    ? { state: "played", percent: 100, label: "Played" }
+    : { state: "unplayed", percent: null, label: null }) };
   m.ctx.renderPlaylistDetail("q1");
   assert.match(m.view(), /1 played/);
 });

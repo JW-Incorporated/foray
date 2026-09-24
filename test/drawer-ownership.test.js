@@ -293,6 +293,11 @@ function mount({ boot = false, capacitor = null } = {}) {
     ctx.bindDeveloperToggles();
     ctx.bindDiagnosticsControl();
     ctx.bindDeleteControl();
+    /* init() also runs here — the document is "complete" — but its boot fetch
+       never answers in this mode, so it stops before the line that binds the
+       chrome and leaves ☰/↻ disabled (nav-9, test/boot-path.test.js). The
+       binders above ARE that line's work, so its last step is taken too. */
+    ctx.setBootChrome(true);
   }
   const $ = (s) => doc.body.querySelector(s);
   return { ctx, doc, $, menu, drawer, overlay, view, store };

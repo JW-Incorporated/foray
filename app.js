@@ -6155,7 +6155,7 @@ function showFirstTimeExplainerOnce() {
       if (typed) {
         const node = resolveTypedSubject(typed);
         if (!node) {
-          setStatusText(typedNote, `No subject called "${typed}" yet. Try one of the chips above.`);
+          setStatusText(typedNote, `No subject called ${quoteQuery(typed)} yet. Try one of the chips above.`);
           typedNote.hidden = false;
           return;
         }

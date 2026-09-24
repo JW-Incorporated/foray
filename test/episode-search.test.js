@@ -738,7 +738,9 @@ test("search-8 / p-switcher-7: a remote row's snapshot carries show_id, the publ
   const html = m.container().innerHTML;
   assert.ok(html.includes('<a class="show-link" href="#/show/1545953110">Huberman Lab</a>'),
     `the show name links by id, not by a title lookup that only knows the curated 220: ${html}`);
-  assert.ok(/Sep 12, 2026|12 Sep 2026|2026/.test(html), "and the date is on the row");
+  /* "Sep 12" with no year: a date in the current year omits it (copy-15,
+     test/format-helpers.test.js), and 2026-09-12 is this year until January. */
+  assert.ok(/Sep 12|12 Sep/.test(html), "and the date is on the row");
 });
 
 test("search-8: with no artwork from the endpoint, the row takes the show record the show passes already cached", async () => {

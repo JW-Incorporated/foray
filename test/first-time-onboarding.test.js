@@ -570,7 +570,7 @@ test("a typed subject with no taxonomy match writes nothing, SAYS so, and keeps 
   assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 1, "the sheet stays open");
   const note = m.body.querySelector("#first-time-sheet-typed-note");
   assert.strictEqual(note.hidden, false);
-  assert.strictEqual(note.textContent, 'No subject called "Underwater basket weaving" yet. Try one of the chips above.');
+  assert.strictEqual(note.textContent, 'No subject called “Underwater basket weaving” yet. Try one of the chips above.');
   assert.strictEqual(note.getAttribute("role"), "status", "said, not only shown");
   typed._fire("input");
   assert.strictEqual(note.hidden, true, "editing the word takes the note down");

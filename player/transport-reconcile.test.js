@@ -3060,8 +3060,8 @@ test("ROUND 2 player-7: a Foray clip that will not load says so on the bar and i
   await client.playForay(synthetic(), { startIndex: 0 });
   await settle();
   await settle();
-  assert.equal(secondLine(doc), "Did not load — press play to try again");
-  assert.equal(statusNote(doc).textContent, "Did not load — press play to try again");
+  assert.equal(secondLine(doc), "Couldn't load — press play to try again");
+  assert.equal(statusNote(doc).textContent, "Couldn't load — press play to try again");
   restore();
 });
 
