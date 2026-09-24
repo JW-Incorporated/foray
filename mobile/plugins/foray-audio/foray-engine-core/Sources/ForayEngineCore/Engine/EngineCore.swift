@@ -367,6 +367,12 @@ public struct EngineCore {
     /// A lock-screen, car or headset press. The `remote` row is written FIRST,
     /// before any no-op return (D-4), with `dupCandidate` recorded and nothing
     /// dropped (T-8). A remote stop is a pause (T-7).
+    ///
+    /// Its grace fields are filled in AFTER the press is handled (NE-16g): the
+    /// row keeps its place at the head of the turn, but `grace=y` has to say
+    /// whether THIS press is covered, and a car's play opens its span only
+    /// once it is being handled. Written before, every background play would
+    /// read `grace=n` and the H-1 verdict would have nothing to go on.
     private mutating func onRemote(_ press: RemotePress) {
         var dup = false
         if let last = state.lastRemote, last.command == press.command {
@@ -374,14 +380,16 @@ public struct EngineCore {
             dup = gap >= 0 && gap < EngineCore.remoteDuplicateWindowMs
         }
         state.lastRemote = LastRemote(command: press.command, atMono: now.monoMs)
-        diag("remote", [
+        let fields = [
             JSONMember("cmd", .string(press.command.rawValue)),
             JSONMember("dupCandidate", .string(dup ? "y" : "n")),
             JSONMember("route", press.routePort.map { JSONNode.string($0) } ?? .null),
-            JSONMember("grace", .string(state.grace?.rawValue ?? "none")),
             JSONMember("thread", .string(press.onMain ? "main" : "bg")),
             JSONMember("state", .string(state.stateType))
-        ])
+        ]
+        let rowAt = out.count
+        diag("remote", fields + graceFields())
+        defer { out[rowAt] = .diag(DiagEntry(kind: "remote", fields: fields + graceFields())) }
         let steps = MediaMapping.SeekSteps()
         switch press.command {
         case .play: play(source: .remote)
@@ -409,6 +417,7 @@ public struct EngineCore {
     /// that needs the session parks behind `.sessionActivate`.
     private mutating func begin(_ intent: DeferredIntent, source: EngineSource) {
         if let reason = graceReason(for: intent, source: source) { beginGrace(reason) }
+        spanRow(for: intent)
         let via: SessionPolicy.PlayVia
         switch source {
         case .tap: via = .tap
@@ -436,6 +445,34 @@ public struct EngineCore {
             if source == .remote { return .remotePlay }
             return state.backgrounded ? .backgroundTap : nil
         }
+    }
+
+    /// The `resume` and `cold-play` rows (NE-16g; plan §4.4 and §10): written
+    /// the moment the intent's span opens, before the activation it may wait
+    /// on, with `grace=`, its reason and `bgRemainingMs`. These are the rows
+    /// the H-1/H-3 drives are judged on: every background resume must show
+    /// `grace=y` and a positive budget, and DV-7a's cold play the same.
+    private mutating func spanRow(for intent: DeferredIntent) {
+        let item: JSONNode = state.currentItem.map { .string($0.id) } ?? .null
+        switch intent {
+        case .interruptionResume:
+            diag("resume", [JSONMember("kind", .string("interruption")), JSONMember("item", item)] + graceFields())
+        case .routeResume:
+            diag("resume", [JSONMember("kind", .string("route")), JSONMember("item", item)] + graceFields())
+        case .coldPlay:
+            diag("cold-play", [JSONMember("item", item), JSONMember("index", .number(Double(state.currentIndex)))]
+                 + graceFields())
+        case .playIndex, .resume, .skipNext, .skipPrevious, .walkHop, .audition:
+            break
+        }
+    }
+
+    /// `grace=y|n`, the open span's reason, and the background time the host
+    /// read for this input (nil in the foreground).
+    private func graceFields() -> [JSONMember] {
+        [JSONMember("grace", .string(state.grace == nil ? "n" : "y")),
+         JSONMember("graceReason", state.grace.map { JSONNode.string($0.rawValue) } ?? .null),
+         JSONMember("bgRemainingMs", Rows.finiteOrNull(now.bgRemainingMs.map { $0.rounded() }))]
     }
 
     private mutating func requestActivation(_ intent: DeferredIntent, source: EngineSource) {
@@ -852,7 +889,10 @@ public struct EngineCore {
                                                   holdPolicy: state.holdPolicy)
         let resuming = resume && wasPlaying
         if transition.actions.contains(.activate) {
-            if resuming { beginGrace(.interruptionResume) }
+            if resuming {
+                beginGrace(.interruptionResume)
+                spanRow(for: .interruptionResume)
+            }
             return requestActivation(.interruptionResume, source: .session)
         }
         applySession(transition)
@@ -861,7 +901,10 @@ public struct EngineCore {
             // like any other play.
             return begin(.interruptionResume, source: .autoresume)
         }
-        if resuming { beginGrace(.interruptionResume) }
+        if resuming {
+            beginGrace(.interruptionResume)
+            spanRow(for: .interruptionResume)
+        }
         dispatch(.interruptionEnded(shouldResume: resume), offsets: LoadOffsets(rewind: resume))
     }
 

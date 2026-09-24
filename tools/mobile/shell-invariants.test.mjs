@@ -3420,6 +3420,63 @@ test("NE-16: EngineModeFlag.swift is byte-identical in foray-audio and foray-tts
   assert.match(stripSwiftComments(fs.readFileSync(TTS_SWIFT, "utf8")), /EngineModeFlag\.sessionOwnedByEngine/);
 });
 
+const GRACE_SWIFT = path.join(ENGINE_DIR, "BackgroundGrace.swift");
+const CORE_ENGINE_SWIFT = path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift");
+
+test("NE-16g: BackgroundGrace is the one place background time is begun, every begin carries an expiration handler, no task outlives it, and grace= reaches the remote, resume and cold-play rows", () => {
+  /* plan §4.4: UIBackgroundModes audio keeps the app alive only while audio
+     renders, so the silent span between a car's play and the first audible
+     frame is held by a background task. A begin with no expiration handler,
+     or a handler that returns with its task still open, gets the app killed
+     by UIKit in exactly the drive the task was meant to cover. The behaviour
+     is executed over fakes in ForayAudioPluginTests/Engine/
+     BackgroundGraceTests.swift (ios-kit) and EngineCoreTests (engine-parity);
+     what is pinned here is the shape a refactor could quietly undo.
+     MUTATION: call UIApplication's beginBackgroundTask( anywhere else in the
+     plugins' Swift, or pass `expirationHandler: nil`; drop the backstop
+     `endTask(id)` after the host's handler in expired(); drop the
+     `live.remove` guard in endTask (a second end); observe the lifecycle with
+     `queue: nil`; drop `bgRemainingMs:` from the host's now(); make the host's
+     expiry feed the core before ending the task; drop the defer that fills
+     the remote row's grace fields, or spanRow(for:) from begin. Each fails. */
+  const roots = [
+    path.join(PLUGIN_DIR, "ios/Sources"),
+    path.join(PLUGIN_DIR, "../foray-tts/ios/Sources"),
+    path.join(CORE_DIR, "Sources"),
+  ];
+  const begins = [];
+  for (const file of roots.flatMap((dir) => swiftFilesUnder(dir))) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    for (const m of code.matchAll(/beginBackgroundTask\(withName:[^\n]*/g)) begins.push([path.basename(file), m[0]]);
+    assert.doesNotMatch(code, /expirationHandler:\s*nil/, `${path.basename(file)} begins background time with no expiration handler`);
+  }
+  assert.deepEqual(begins.map(([file]) => file), ["BackgroundGrace.swift"], "UIApplication's beginBackgroundTask( is called once, in BackgroundGrace.swift");
+  assert.match(begins[0][1], /beginBackgroundTask\(withName: name\) \{ expiration\(\) \}/, "the one begin always hands UIKit the engine's expiration handler");
+
+  const grace = stripSwiftComments(fs.readFileSync(GRACE_SWIFT, "utf8"));
+  assert.match(grace, /final class BackgroundGrace: BackgroundTasking \{/);
+  assert.match(swiftFuncBody(grace, "expired") ?? "", /handler\(\)\s*endTask\(id\)/, "the task is ended after the host's handler, whatever the handler did");
+  assert.match(swiftFuncBody(grace, "endTask") ?? "", /guard live\.remove\(id\) != nil else \{ return \}\s*api\.endBackgroundTask\(id\)/, "a task is ended at most once");
+  const lifecycle = swiftFuncBody(grace, "observeLifecycle") ?? "";
+  assert.equal((lifecycle.match(/addObserver\(forName: UIApplication\.\w+Notification,\s*object: nil, queue: \.main\)/g) ?? []).length, 2,
+    "didEnterBackground and willEnterForeground, both on the main queue");
+  assert.doesNotMatch(grace, /queue:\s*nil|addObserver\(self/);
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "now") ?? "", /bgRemainingMs: backgroundRemainingMs\(\)/, "every input carries the background budget into the core's rows");
+  assert.match(swiftFuncBody(host, "graceExpired") ?? "", /endGrace\(outcome: \.expired\)\s*handle\(\.timer\(\.graceExpired\)\)/,
+    "the expired task ends (with its row) before the core hears of it");
+
+  const core = stripSwiftComments(fs.readFileSync(CORE_ENGINE_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(core, "onRemote") ?? "", /defer \{ out\[rowAt\] = \.diag\(DiagEntry\(kind: "remote", fields: fields \+ graceFields\(\)\)\) \}/,
+    "the remote row's grace= says whether THIS press is covered");
+  assert.match(swiftFuncBody(core, "begin") ?? "", /beginGrace\(reason\) \}\s*spanRow\(for: intent\)/, "resume and cold-play rows are written as their span opens");
+  const graceFields = swiftFuncBody(core, "graceFields") ?? "";
+  for (const field of ["grace", "graceReason", "bgRemainingMs"]) {
+    assert.match(graceFields, new RegExp(String.raw`JSONMember\("${field}"`), `the rows carry ${field}`);
+  }
+});
+
 test("NE-25b: the two-deck spike measures AVDeck's own gate: two real decks, no preroll( of its own, a live status reading, the exempt click tracks", () => {
   /* NE-25b measures what NE-32's DeckPair rests on: a standby deck seeked and
      prerolled while the other is audible, its time to ready, and how often a

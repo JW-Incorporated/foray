@@ -108,15 +108,24 @@ public struct DeckReading: Equatable, Sendable {
 
 /// The moment an input arrives: both clocks (wall for rows the page reads,
 /// monotonic for every duration, because the wall clock can jump under a
-/// drive) and the deck's reading.
+/// drive), the deck's reading, and how much background time the system has
+/// left.
 public struct EngineNow: Equatable, Sendable {
     public var wallMs: Double
     public var monoMs: Double
     public var deck: DeckReading
+    /// `UIApplication.backgroundTimeRemaining` in milliseconds, read by the
+    /// host at the moment the input is handled (card NE-16g); nil in the
+    /// foreground, where UIKit reports a meaningless huge number. The core
+    /// decides nothing on it: it only goes into the `remote`, `resume` and
+    /// `cold-play` rows, so a Copy after a drive shows how close each silent
+    /// span came to the suspension it was covering (plan §4.4).
+    public var bgRemainingMs: Double?
 
-    public init(wallMs: Double, monoMs: Double, deck: DeckReading = .idle) {
+    public init(wallMs: Double, monoMs: Double, deck: DeckReading = .idle, bgRemainingMs: Double? = nil) {
         self.wallMs = wallMs
         self.monoMs = monoMs
         self.deck = deck
+        self.bgRemainingMs = bgRemainingMs
     }
 }
