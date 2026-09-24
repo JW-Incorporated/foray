@@ -10,6 +10,10 @@
  *               part-played draft's label REPLACED its "draft" tag.
  *   p-foray-8   nothing before the Foray page said how long a Foray was; every
  *               row and card now carries "51 min · 22 clips · 7 shows".
+ *   p-foray-2   every show credited on the published Foray was plain text with
+ *               an arrow labelled "Open X on Apple Podcasts" that opened a
+ *               SEARCH; credits now join the show index and the arrow says
+ *               where it goes.
  *   p-first-11  the sentence explaining a Foray promised a narrator above the
  *               one listed Foray, which has none, and the intro popup claimed a
  *               stretch Foray that one listed Foray cannot produce.
@@ -222,4 +226,89 @@ test("the intro popup claims a stretch Foray only when Home's Forays row has one
   assert.ok(sub, "the popup's explanation was built");
   assert.match(sub.textContent, /The episodes include one pick outside your usual subjects/);
   assert.doesNotMatch(sub.textContent, /forays/);
+});
+
+/* ---------- p-foray-2: every credited show links in-app, or its arrow says "search" ---------- */
+
+/** The credits half of the bridge, over the REAL player/foray-sources.js, taking
+    the page's `collectionIds` the way player/client.js does. */
+async function withCredits(bridge) {
+  const sources = await import("../player/foray-sources.js");
+  bridge.forayCredits = (r, { discoverDoc = null, collectionIds = null } = {}) => {
+    const ids = new Map(Object.entries(collectionIds || {}));
+    for (const [show, id] of sources.collectionIdsByShow(discoverDoc)) ids.set(show, id);
+    const credits = sources.forayCredits(r, { collectionIds: ids });
+    return { credits, summary: sources.creditsSummary(credits) };
+  };
+  return bridge;
+}
+
+/** Each credit in the "Where this came from" block: [show, in-app href|null, arrow label, arrow href]. */
+function sourceCredits(html) {
+  return [...html.matchAll(/<span class="fy-src-show">([\s\S]*?)<\/span>\s*<a class="fy-src-out" href="([^"]*)"[^>]*aria-label="([^"]*)">/g)]
+    .map((m) => {
+      const link = /href="#\/show\/([^"]+)">([^<]*)</.exec(m[1]);
+      return { show: link ? link[2] : m[1].trim(), inApp: link ? link[1] : null, label: m[3], out: m[2] };
+    });
+}
+
+test("the published Foray: every credited show links in-app, or its arrow says it is a SEARCH (p-foray-2)", async () => {
+  /* capital-types-1 from the frozen fixture. None of its seven shows is in the
+     curated catalogue and there is no discover doc here, so before the index
+     loads every arrow is an Apple search, and it must SAY search. KILLING
+     MUTATION: put back the fixed aria-label "Open X on Apple Podcasts" — red. */
+  const { resolve } = await mods;
+  const app = loadApp(await withCredits(await realBridge()), { showDrafts: false });
+  const doc = resolve.findForay(readFrozen("forays.json"), "capital-types-1", {});
+  const r = resolve.resolveForay(doc, { segments: resolve.indexSegments(readFrozen("segments.json")), sources: resolve.indexSources(readFrozen("segment-sources.json")) });
+  const credits = sourceCredits(app.foraySourcesHtml(r, app.ForayPlayer));
+  assert.equal(credits.length, 7, "fixture: seven credited shows");
+  for (const c of credits) {
+    assert.ok(c.inApp || (c.label === `Search Apple Podcasts for ${c.show}` && /\/search\?term=/.test(c.out)),
+      `${c.show}: no in-app page, so the arrow must say it searches: ${JSON.stringify(c)}`);
+  }
+});
+
+test("once the show index is loaded, a credited show it knows links in-app and to its own Apple page — exact, unique titles only (p-foray-2)", async () => {
+  /* A synthetic index (never the live file): two of the Foray's shows by their
+     Apple collection ids, and one title carried by TWO rows, which is two shows
+     and must not be guessed between. KILLING MUTATION 1: drop the index
+     fallback from showIdForShowName — Acquiring Minds has no in-app link, red.
+     KILLING MUTATION 2: take the first of two same-titled rows — Feel the Boot
+     links, red. KILLING MUTATION 3: stop passing showIndexCollectionIds — the
+     arrow stays a search, red. */
+  const { resolve } = await mods;
+  const app = loadApp(await withCredits(await realBridge()), { showDrafts: false });
+  app.__idx = { keys: [], rows: [
+    { show_id: "1569715379", title: "Acquiring Minds", tier: "breadth" },
+    { show_id: "1236907421", title: "Y Combinator Startup Podcast", tier: "breadth" },
+    { show_id: "111", title: "Feel the Boot", tier: "breadth" },
+    { show_id: "222", title: "Feel the Boot", tier: "breadth" },
+  ] };
+  vm.runInContext("showIndex = __idx;", app);
+  const doc = resolve.findForay(readFrozen("forays.json"), "capital-types-1", {});
+  const r = resolve.resolveForay(doc, { segments: resolve.indexSegments(readFrozen("segments.json")), sources: resolve.indexSources(readFrozen("segment-sources.json")) });
+  const byShow = new Map(sourceCredits(app.foraySourcesHtml(r, app.ForayPlayer)).map((c) => [c.show, c]));
+  const am = byShow.get("Acquiring Minds");
+  assert.equal(am.inApp, "1569715379", "the show page the Shows search would open");
+  assert.equal(am.label, "Open Acquiring Minds on Apple Podcasts");
+  assert.equal(am.out, "https://podcasts.apple.com/us/podcast/id1569715379", "the show's own page, not a search");
+  const ftb = byShow.get("Feel the Boot");
+  assert.equal(ftb.inApp, null, "two rows share the title: no guess");
+  assert.equal(ftb.label, "Search Apple Podcasts for Feel the Boot");
+  const row = app.forayCreditHtml(r.entries.find((e) => e.show === "Y Combinator Startup Podcast"));
+  assert.equal(row, `<a class="fy-credit show-link" href="#/show/1236907421">Y Combinator Startup Podcast</a>`, "the clip row's credit links too");
+});
+
+test("the index landing after paint relinks the row credits in place (p-foray-2)", async () => {
+  /* KILLING MUTATION: make relinkForayCredits skip the `.fy-credit[data-credit-show]`
+     pass — the span is never replaced, red. */
+  const app = loadApp(await withCredits(await realBridge()), { showDrafts: false });
+  const span = { dataset: { creditShow: "Acquiring Minds" }, outerHTML: "<span>" };
+  const view = { querySelectorAll: (sel) => (sel === ".fy-credit[data-credit-show]" ? [span] : []), querySelector: () => null };
+  app.document.querySelector = (sel) => (sel === "#view" ? view : null);
+  app.__idx = { keys: [], rows: [{ show_id: "1569715379", title: "Acquiring Minds", tier: "breadth" }] };
+  vm.runInContext("showIndex = __idx;", app);
+  app.relinkForayCredits({ entries: [] }, app.ForayPlayer);
+  assert.equal(span.outerHTML, `<a class="fy-credit show-link" href="#/show/1569715379">Acquiring Minds</a>`);
 });

@@ -255,7 +255,9 @@ test("a beat whose show joins neither way degrades to exactly plain text, never 
   }));
   assert.ok(!html.includes("<a "), `an unjoinable show must not be a link, got: ${html}`);
   assert.ok(html.includes("Satay? Okay!"), "the show name must still be printed as plain text");
-  assert.ok(html.includes("<span class=\"fy-credit\">Satay? Okay!</span>"),
+  /* `data-credit-show` (audit round 2, p-foray-2) is what lets the page relink
+     it in place if the show index, loaded after paint, knows the show. */
+  assert.ok(html.includes("<span class=\"fy-credit\" data-credit-show=\"Satay? Okay!\">Satay? Okay!</span>"),
     "plain text lives in the same slot the link would have, so the line does not move");
 });
 

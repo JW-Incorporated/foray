@@ -3755,9 +3755,13 @@ const ForayPlayer = {
   /** The publisher credit block for a resolved Foray: which shows and episodes
       it draws on, how much of the runtime each carries, and where to go and
       subscribe. `discoverDoc` is optional and only ever upgrades a link from an
-      Apple search to the show's real page. */
-  forayCredits(resolved, { discoverDoc = null } = {}) {
-    const credits = forayCredits(resolved, { collectionIds: collectionIdsByShow(discoverDoc) });
+      Apple search to the show's real page. `collectionIds` (show -> id, from
+      the page's show index, p-foray-2) does the same for a show discover.json
+      does not carry; discover's own id wins where both know the show. */
+  forayCredits(resolved, { discoverDoc = null, collectionIds = null } = {}) {
+    const ids = new Map(Object.entries(collectionIds && typeof collectionIds === "object" ? collectionIds : {}));
+    for (const [show, id] of collectionIdsByShow(discoverDoc)) ids.set(show, id);
+    const credits = forayCredits(resolved, { collectionIds: ids });
     return { credits, summary: creditsSummary(credits) };
   },
 

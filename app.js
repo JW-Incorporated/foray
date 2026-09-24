@@ -2443,7 +2443,32 @@ function showIdForShowName(showName) {
     const aliasedTitle = Object.keys(TITLE_ALIASES).find(k => TITLE_ALIASES[k] === showName);
     if (aliasedTitle) s = shows.find(sh => sh.title === aliasedTitle);
   }
-  return s ? s.show_id : null;
+  /* THEN THE SHOW INDEX (audit round 2, p-foray-2): the curated 220 is not the
+     set of shows this app can open. Every show in the published Foray was a
+     plain name with no page, while `data/show-index.tsv` — the 10,113 rows the
+     Shows search already links through — carries some of them. Consulted only
+     once it has loaded (it is never fetched for this); see showIndexIdForTitle
+     for why the match is exact and unique. */
+  return s ? s.show_id : showIndexIdForTitle(showName);
+}
+
+/* The show index as an EXACT, UNIQUE title -> id join. Exact because a fuzzy
+   title would attach one publisher's page to another's credit (the rule
+   player/foray-sources.js keeps for Apple ids); unique because two rows with
+   one title are two shows, and guessing between them is the same error. Built
+   once per decoded index: the Foray page asks for ~30 names. */
+let showIndexTitles = null;
+let showIndexTitlesFor = null;
+function showIndexIdForTitle(title) {
+  if (!title || !showIndex) return null;
+  if (showIndexTitlesFor !== showIndex) {
+    showIndexTitles = new Map();
+    for (const r of showIndex.rows) {
+      showIndexTitles.set(r.title, showIndexTitles.has(r.title) ? null : r.show_id);
+    }
+    showIndexTitlesFor = showIndex;
+  }
+  return showIndexTitles.get(title) || null;
 }
 
 /* The show-name text as a link to its show page, or plain escaped text when
@@ -5731,7 +5756,9 @@ function nowMs() {
 
    1. LAZY, ON FIRST FOCUS OF `#sh-input`. Never at `init()`. The decode is
       ~113 ms measured; on the boot path that is a visible stall for a listener
-      who came to press play.
+      who came to press play. The one other asker is a Foray page whose
+      credited shows the catalogue cannot link (audit round 2, p-foray-2), and
+      it asks only AFTER that page has painted (joinForayCreditsToShowIndex).
    2. UNPINNED — a bare `fetch`, not `fetchJson`, and the parentheses are
       left off that name ON PURPOSE: tools/mobile/prepare-webdir.mjs derives
       the native bundle's data list by counting literal CALL SITES of that
@@ -9336,7 +9363,7 @@ function forayCreditHtml(entry) {
      survives the parent's handler. */
   return showId
     ? `<a class="fy-credit show-link" href="#/show/${esc(showId)}">${esc(entry.show)}</a>`
-    : `<span class="fy-credit">${esc(entry.show)}</span>`;
+    : `<span class="fy-credit" data-credit-show="${esc(entry.show)}">${esc(entry.show)}</span>`;
 }
 
 /** What a beat is called when it is spoken aloud — for the play button's
@@ -9659,15 +9686,22 @@ function foraySourcesHtml(r, player) {
   // returning visitor can briefly hold a new app.js against an older module.
   // Losing the credit block is a missing section; throwing here is a blank page.
   if (typeof player.forayCredits !== "function") return "";
-  const { credits, summary } = player.forayCredits(r, { discoverDoc: state.discover });
+  const { credits, summary } = player.forayCredits(r, { discoverDoc: state.discover, collectionIds: showIndexCollectionIds(r) });
   if (!credits.length) return "";
   const clips = (n) => esc(countLabel(n, "clip"));
+  /* THE ARROW SAYS WHERE IT GOES (audit round 2, p-foray-2). It was labelled
+     "Open X on Apple Podcasts" for every show, while for a show with no known
+     Apple id it opens a SEARCH results page. `linkKind` exists in
+     player/foray-sources.js "so a surface can be honest about it". */
+  const outLabel = (c) => c.linkKind === "apple-show"
+    ? `Open ${c.show} on Apple Podcasts`
+    : `Search Apple Podcasts for ${c.show}`;
   const rows = credits.map(c => `
     <div class="fy-src">
       <div class="fy-src-head">
         <span class="fy-src-show">${showNameLink(c.show)}</span>
         <a class="fy-src-out" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
-           data-src-show="${esc(c.show)}" aria-label="Open ${esc(c.show)} on Apple Podcasts">↗</a>
+           data-src-show="${esc(c.show)}" data-link-kind="${esc(c.linkKind || "")}" aria-label="${esc(outLabel(c))}">↗</a>
         <span class="fy-src-meta">${clips(c.clips)} · ${esc(player.fmtSpan(c.seconds))}</span>
       </div>
       <ul class="fy-src-eps">${c.episodes.map(e =>
@@ -9678,6 +9712,50 @@ function foraySourcesHtml(r, player) {
     <p class="fy-src-note">${esc(summary)}. Every clip plays from the show's own feed.</p>
     ${rows}
   </section>`;
+}
+
+/** Show -> Apple collection id for this Foray's shows, from the show index's
+    breadth rows (whose id IS the collection id; a curated row's id is a slug
+    and is skipped). Upgrades the ↗ from a search to the show's own Apple page
+    wherever the index knows the show — the same exact, unique title join. */
+function showIndexCollectionIds(r) {
+  const out = {};
+  for (const show of new Set((r?.entries || []).map(e => e?.show).filter(Boolean))) {
+    const id = showIndexIdForTitle(show);
+    if (id && /^\d+$/.test(id)) out[show] = id;
+  }
+  return out;
+}
+
+/* THE JOIN THAT NEEDS THE INDEX, AFTER THE PAGE IS UP (p-foray-2). The index is
+   ~200 KB and never on the boot path (the S-03 rules above loadShowIndex), so
+   the page paints with what the catalogue knows and, only when some credited
+   show has no page of its own, asks for the index once and relinks in place:
+   the row credits, then the "Where this came from" block. Nothing is re-rendered
+   that the transport owns. */
+function joinForayCreditsToShowIndex(r, player) {
+  if (showIndex) return;
+  const unlinked = (r?.entries || []).some(e => e?.playable && e.show && !isForayNarration(e) && !forayShowId(e));
+  if (!unlinked) return;
+  loadShowIndex().then((idx) => {
+    if (!idx || state.foray !== r) return;   // failed, or the listener has moved on
+    relinkForayCredits(r, player);
+  });
+}
+
+function relinkForayCredits(r, player) {
+  const view = $("#view");
+  if (!view) return;
+  view.querySelectorAll(".fy-credit[data-credit-show]").forEach((span) => {
+    const show = span.dataset.creditShow;
+    const id = showIdForShowName(show);
+    if (id) span.outerHTML = `<a class="fy-credit show-link" href="#/show/${esc(id)}">${esc(show)}</a>`;
+  });
+  const src = view.querySelector(".fy-sources");
+  if (src) {
+    src.outerHTML = foraySourcesHtml(r, player);
+    bindSourceLinks(r);
+  }
 }
 
 function bindSourceLinks(r) {
@@ -9942,6 +10020,7 @@ async function renderForay(id) {
   bindSourceLinks(r);
   bindForayTransport(r, player, resume);
   pageDidPaint();   // the real page is up: a clamped back-step restore can land now
+  joinForayCreditsToShowIndex(r, player);
 }
 
 /* The strip is the signature element (#128) and it is BUILT IN THE PLAYER
