@@ -266,7 +266,7 @@ final class AVDeck: DeckDriving {
         guard stage == .loading, durationKnown, let item,
               player.status == .readyToPlay, item.status == .readyToPlay else { return }
         stage = .gating
-        gateSeek()
+        prerollWhenReady() // MUTANT O
     }
 
     /// Step 4: zero tolerance, because the start offset IS the resume point
