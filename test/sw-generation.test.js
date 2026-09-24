@@ -108,6 +108,7 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
   const posted = [];
   const store = new Map();
   const waits = [];
+  const puts = [];
   let claims = 0;
   let skipped = 0;
 
@@ -157,6 +158,7 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
         breakPointerPutOnce.armed = false;
         throw new Error("simulated CacheStorage/quota failure on pointer write");
       }
+      puts.push({ name, url: keyFor(name, request) });
       bucket(name).set(keyFor(name, request), {
         body: await response.text(),
         status: response.status,
@@ -256,6 +258,8 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
     setNetwork(next) { answer = next; },
     /** Every fetch the worker made, with the init it passed. */
     inits,
+    /** Every CacheStorage write, as { name, url }. */
+    puts,
     cacheNames: () => [...store.keys()],
     cachedBody: (url, name) => {
       const hit = bucket(name).get(keyFor(name, url));
@@ -1381,4 +1385,104 @@ test("an untracked data file (S-03's show index) is runtime-cached into the curr
      served, not about the stamp. */
   assert.ok(appBody.includes("APP@1"), "a manifest-tracked path keeps the bytes install verified");
   assert.ok(!appBody.includes("APP@tampered"));
+});
+
+/* ------------------------------------------- round 2: perf-4, perf-5, perf-6 */
+
+test("perf-6: a revalidation that returns a tracked file's own bytes writes nothing", async () => {
+  /* Every launch used to re-hash and re-put every tracked file it revalidated.
+     MUTATION: drop `if (have) return;` in cachePut. The identical bytes are
+     written again and this goes red. */
+  const files = { "app.js": "APP@1" };
+  const h = loadWorker({ network: networkFor(manifestFor("1", files), files) });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+  const before = h.puts.length;
+  await h.fetch(sub("app.js"), { clientId: "page-1" });
+  await h.settle();
+  assert.deepStrictEqual(h.puts.slice(before), [], "the verified copy was rewritten with itself");
+  assert.equal(h.cachedBody("app.js", "foray-gen-1"), "APP@1");
+});
+
+test("perf-6: an untracked file is rewritten only when its validators say it changed", async () => {
+  /* MUTATION: drop the `sameValidators` branch — the unchanged answer is put. */
+  const files = { "app.js": "APP@1" };
+  const h = loadWorker({ network: networkFor(manifestFor("1", files), files) });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+  const INDEX = "data/show-index.tsv";
+  let etag = '"v1"';
+  h.setNetwork(() => new Response("rows", { status: 200, headers: { ETag: etag } }));
+  await h.fetch(sub(INDEX));
+  await h.settle();
+  const first = h.puts.filter((p) => p.url.endsWith(INDEX)).length;
+  assert.equal(first, 1, "premise: the first answer is cached");
+  await h.fetch(sub(INDEX));
+  await h.settle();
+  assert.equal(h.puts.filter((p) => p.url.endsWith(INDEX)).length, 1, "the same ETag was written again");
+  etag = '"v2"';
+  await h.fetch(sub(INDEX));
+  await h.settle();
+  assert.equal(h.puts.filter((p) => p.url.endsWith(INDEX)).length, 2, "a changed file must still be written");
+});
+
+test("perf-4: a new generation copies unchanged files from the current one and fetches only what changed, with no-cache", async () => {
+  /* Every deploy used to re-download the whole bundle with `cache: "reload"`.
+     MUTATION 1: remove the `reuseVerified` call — app.js is fetched again.
+     MUTATION 2: put `cache: "reload"` back — the init assertion fails. */
+  const A = { "index.html": "INDEX@1", "app.js": "APP-SAME" };
+  const h = loadWorker({ network: networkFor(manifestFor("1", A), A) });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+  const B = { "index.html": "INDEX@2", "app.js": "APP-SAME" };
+  h.setNetwork(networkFor(manifestFor("2", B), B));
+  h.inits.length = 0;
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+  assert.equal(h.pointerDeployId(), "2");
+  const fetched = h.inits.map((i) => i.url.slice(BASE.length));
+  assert.ok(!fetched.includes("app.js"), `an unchanged file was downloaded again: ${fetched.join(", ")}`);
+  assert.ok(fetched.includes("index.html"), "the changed file is fetched");
+  const idx = h.inits.find((i) => i.url.endsWith("index.html"));
+  assert.equal(idx.init && idx.init.cache, "no-cache", "fetched through the HTTP cache's revalidation, not around it");
+  assert.equal(h.cachedBody("app.js", "foray-gen-2"), "APP-SAME", "the copied file is in the new generation");
+});
+
+test("perf-4: a copy whose bytes no longer match is fetched instead, so reuse cannot carry a bad file forward", async () => {
+  /* Generation 1's recorded hash for app.js equals the new manifest's, but the
+     bytes it holds do not hash to it. MUTATION: drop the digest check in
+     reuseVerified — the corrupted copy is carried into generation 2. */
+  const A = { "app.js": "APP-SAME" };
+  const h = loadWorker({
+    network: networkFor(manifestFor("2", A), A),
+    generations: {
+      "1": {
+        "app.js": "CORRUPTED",
+        "https://foray.invalid/__manifest__": JSON.stringify({ [`${BASE}app.js`]: "sha256:" + sha256Hex("APP-SAME") }),
+      },
+    },
+    pointer: "1",
+  });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+  assert.equal(h.cachedBody("app.js", "foray-gen-2"), "APP-SAME");
+  assert.ok(h.inits.some((i) => i.url.endsWith("app.js")), "premise: the bad copy was refused and the file fetched");
+});
+
+test("perf-5: a font is answered from the current generation without asking the network", async () => {
+  /* A revalidation per face per launch meant a swap from the fallback face,
+     and a dead zone meant NET_TIMEOUT_MS of the wrong typeface.
+     MUTATION: route woff2 through handleShell again — the network is asked. */
+  const files = { "app.js": "APP@1", "fonts/fraunces-variable.woff2": "FONT@1" };
+  const h = loadWorker({ network: networkFor(manifestFor("1", files), files) });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+  h.inits.length = 0;
+  h.setNetwork(() => new Promise(() => {}));   // a dead zone
+  const pending = h.fire(sub("fonts/fraunces-variable.woff2"));
+  await new Promise((r) => setTimeout(r, 5));
+  h.fireTimers();   // an origin-first path would be waiting on its timeout here
+  const res = await pending;
+  assert.equal(await res.text(), "FONT@1");
+  assert.deepStrictEqual(h.inits, [], "the network was asked for a file the generation holds");
 });

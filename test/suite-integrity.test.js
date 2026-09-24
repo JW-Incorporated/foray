@@ -284,6 +284,7 @@ const FLOORS = {
      cold open like any other -- two more journeys added to the list this
      suite already existed to protect. */
   "test/back-navigation.test.js": 13, // 2026-09-22: the step comes from the real history entry (a forward tap onto the page two back; a reload keeps ‹) and a removed playlist is not one ‹ away; 11 -> 13
+  "test/boot-path.test.js": 17, // audit round 2 (2026-09-23, lane L5): new suite — boot documents before storage (perf-1), no boot write shadows a late hydration (races-4), ☰/↻ disabled until bound (nav-9), ui-v2 from the first byte (p-first-2), row art at drawn size (perf-2), priming waits for a still listener (perf-3), SW registers after the first page (perf-4), fonts in every generation (perf-5)
   /* Collapsing page header reappears on scroll-up (kanban t_0faae03f, same
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
@@ -419,7 +420,7 @@ const FLOORS = {
      stray tap cannot satisfy. Every one of those is one edit from its opposite,
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
-  "test/data-deletion.test.js": 58, // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
+  "test/data-deletion.test.js": 68, // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
   "test/diagnostics-surface.test.js": 19,
@@ -1038,7 +1039,7 @@ const FLOORS = {
      evidence that THIS suite pins its behaviour; with a floor 19 below the real
      count, an auto-merged `test/` change could thin it while the claim stayed
      green. Zero slack from here on, for the reason media-session has none. */
-  "test/sw-generation.test.js": 52, // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
+  "test/sw-generation.test.js": 57, // audit round 2 (L5): no self-rewrite of a tracked file, validators for untracked (perf-6 x2), unchanged files copied not fetched + no-cache, bad copy refused (perf-4 x2), fonts cache-first (perf-5); 52 -> 57 // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
   /* U-01 (docs/ui-transition-plan.md): the ui-v2 token scope. Four tests --
      the nine tokens' names+values, the "no raw hex leaks outside the block"
      mutation guard, the amber/violet consumption check, and the self-hosted

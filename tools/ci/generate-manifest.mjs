@@ -123,9 +123,24 @@ function playerSources() {
     .map((f) => path.join("player", f));
 }
 
+/* The self-hosted brand faces styles.css's @font-face rules load (round-2
+   audit, perf-5). They were in no generation, so sw.js never precached them:
+   every launch revalidated each face before it could paint, and a new
+   deploy's generation started without them. Derived from the directory, like
+   playerSources(), so a new face cannot be forgotten here. */
+function fontSources() {
+  const dir = path.join(ROOT, "fonts");
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".woff2"))
+    .sort()
+    .map((f) => path.join("fonts", f));
+}
+
 function listedFiles() {
   const files = [
     ...SHELL,
+    ...fontSources(),
     ...playerSources(),
     ...RUNTIME_DATA.map((f) => path.join("data", f)),
   ];
@@ -295,6 +310,8 @@ function readStampedBuildId() {
   return /const BUILD_ID = "([^"]*)";/.exec(m[0])[1];
 }
 
-main();
+/* Run only as a script, so a suite can import `listedFiles` and
+   `playerSources` without triggering a --write/--check. */
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
 
-export { computeManifest, listedFiles };
+export { computeManifest, listedFiles, playerSources, fontSources };

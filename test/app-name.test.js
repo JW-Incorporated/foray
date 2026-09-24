@@ -493,7 +493,10 @@ test("both shell notices name the app", () => {
    14 -> 15 at integration (L1 + L5): L1 had given the playlist miss a helper of
    its own (`notFoundPage`); the two helpers were one idea, so L1's callers now
    go through `statusPageHtml` with their titles and back routes, and the
-   playlist note is counted here with the rest. */
+   playlist note is counted here with the rest.
+   15 -> 16 in round 2 (L5, states-6): the Foray page's player-failed branch now
+   tells "still loading" from "failed to load", and the failed one is its own
+   statusPageHtml note with Reload 4a. */
 test("no note this app renders into #view capitalises the unit", () => {
   const src = read("app.js");
   const notes = [
@@ -503,8 +506,8 @@ test("no note this app renders into #view capitalises the unit", () => {
   ].map((m) => m[1]);
   assert.equal(
     notes.length,
-    15,
-    `expected fifteen #view status notes, found ${notes.length}. More is fine -- ` +
+    16,
+    `expected sixteen #view status notes, found ${notes.length}. More is fine -- ` +
       "raise this count so the new one is covered. Fewer means a note was lost " +
       `or reshaped: ${notes.join(" | ")}`
   );

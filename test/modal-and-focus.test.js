@@ -215,6 +215,10 @@ function mount() {
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  /* init() is parked on its first fetch here, and since round 2 (nav-9) it
+     leaves ☰ and ↻ disabled until it has bound them. These tests are about a
+     booted page's focus, so the chrome is put in its booted state. */
+  ctx.setBootChrome(true);
   const flushFrames = () => { while (frames.length) frames.shift()(); };
   return { ctx, doc, topbar, menu, drawer, view, tabBar, store, scrolls, flushFrames };
 }

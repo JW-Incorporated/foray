@@ -560,8 +560,12 @@ window.forayDiagnosticClear = () => { diagLog.clear(); diag.reset(); return true
  * under a key a listener has just asked to be emptied. `app.js` calls it from the
  * LOCAL clear, not from `stopForDataDeletion`: a run that fails at the server step
  * leaves the device untouched on purpose, and that has to include this record.
+ *
+ * `forget()`, NOT `clear()` (round-2 audit, persist-5): the founder's Clear keeps
+ * the running count and a "cleared at #N, hh:mm:ss" mark, and after a deletion
+ * that mark is a record of how much the listener did and when they deleted it.
  */
-window.forayForgetDiagnostics = () => { diagLog.clear(); diag.reset(); return true; };
+window.forayForgetDiagnostics = () => { diagLog.forget(); diag.reset(); return true; };
 /**
  * A tap the PAGE saw fail, into the record (#225).
  *

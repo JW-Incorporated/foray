@@ -550,8 +550,11 @@ test("a curated-tier show with genuinely zero discover-pool episodes does not cl
   const html = m.view();
   assert.match(html, /Loading episodes/, "the in-flight state is 'loading' for a curated show too");
   assert.ok(!/No episodes yet/.test(html), "the empty state belongs to a finished fetch, not a pending one");
-  assert.strictEqual(m.countLabel(), "Loading episodes…",
-    "and the subtitle agrees, because one function writes both");
+  /* Round 2 (states-8): one sentence per outcome. The body carries the status,
+     so the subtitle stays empty rather than saying it a second time — and in
+     particular never says "0 episodes" or "No episodes" while loading. */
+  assert.strictEqual(m.countLabel(), "",
+    "the subtitle does not restate the body's status, and claims no count");
 });
 
 test("no user-facing string on the show page explains 4a's catalogue to the listener", () => {

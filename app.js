@@ -164,7 +164,8 @@ function lsSet(key, value) {
    deferred and always execute before `DOMContentLoaded`, so that event is an
    exact "it is not coming": if the store is not published by then, the module
    failed to load or threw, and we go on with `localStorage`. */
-const STORAGE_WAIT_MS = 5000;
+/* `let`, so a suite can shorten it (test/boot-path.test.js). */
+let STORAGE_WAIT_MS = 5000;
 
 function waitForStorage() {
   if (window.forayStorage) return Promise.resolve(window.forayStorage);
@@ -184,15 +185,63 @@ function waitForStorage() {
   });
 }
 
+/* WHAT THE BOUND COSTS, AND WHO WAITS PAST IT (round-2 audit, races-4).
+
+   The five-second bound above lets the page paint on a hung IndexedDB, and
+   that is right. What was wrong is that everything after it wrote as though
+   hydration had happened. The store lets the FIRST writer of a key own it for
+   the session (durable-store.js, property 2), so in the case the durable tier
+   exists for — localStorage swept, IndexedDB intact but slow — boot's own
+   writes permanently shadowed the listener's real rows: taxonomy defaults over
+   learned interests on the first play, a new `cp_profile_id`, a new anonymous
+   account, a reset `cp_seen`. Only the playback rate had been fixed
+   (client.js, `storageHydrated`).
+
+   So the rule is now a single gate, `storageWaiting()`: true while a published
+   store's hydration has not finished, on time or late (`storageSettled`). Work
+   that WRITES a key whose durable copy matters asks `afterStorageSettles()`
+   instead of writing blind — the event buffer (and the profile id it mints),
+   the event sync (and the account it may create), the dealt-cards memory. The
+   interests profile is handled at its own writer: `saveInterests` writes only
+   ids this session set, and a late hydration re-seeds the rest. */
+let storageSettled = false;
+const storageSettleWaiters = [];
+
+/** Is there a durable store whose hydration has not landed yet? With no store
+    published there is nothing to wait for: the writes go to plain
+    localStorage, as they always have, and the store adopts them when it
+    arrives. */
+function storageWaiting() {
+  if (storageSettled) return false;
+  const s = window.forayStorage;
+  return Boolean(s && typeof s.hydrate === "function");
+}
+
+/** Run `fn` now unless a store is still hydrating, else the moment it lands. */
+function afterStorageSettles(fn) {
+  if (!storageWaiting()) { fn(); return; }
+  storageSettleWaiters.push(fn);
+}
+
+function markStorageSettled() {
+  if (storageSettled) return;
+  storageSettled = true;
+  flushBufferedEvents();
+  for (const fn of storageSettleWaiters.splice(0)) {
+    try { fn(); } catch (err) { console.error("after storage settled", err); }
+  }
+}
+
 async function storageReady() {
   const store = await waitForStorage();
-  if (!store || typeof store.hydrate !== "function") return null;
-  try {
-    await Promise.race([
-      store.hydrate(),
-      new Promise(resolve => setTimeout(resolve, STORAGE_WAIT_MS)),
-    ]);
-  } catch (_) { /* every tier failure is already recorded in health() */ }
+  if (!store || typeof store.hydrate !== "function") { markStorageSettled(); return null; }
+  const landed = (async () => {
+    try { await store.hydrate(); } catch (_) { /* every tier failure is already recorded in health() */ }
+  })();
+  // Registered BEFORE the race below, so an on-time hydration has settled by
+  // the time the caller resumes.
+  landed.then(markStorageSettled);
+  await Promise.race([landed, new Promise(resolve => setTimeout(resolve, STORAGE_WAIT_MS))]);
   return store;
 }
 
@@ -224,11 +273,29 @@ let _bufferedEvents = [];
    app never logs. */
 let dataDeletionInProgress = false;
 
+/* Bumped by every "Delete my data" run the moment it is confirmed. An event
+   sync notes it when it starts; one that finds it moved has outlived a
+   deletion — its session and its rows belong to an account the listener just
+   deleted, so it writes nothing (round-2 audit, persist-8). `ddBusy` is NOT the
+   test for that: a sync that wakes after the run has finished sees it false. */
+let deletionEpoch = 0;
+
+/** True when the sync that started at `epoch` must not write: a deletion is
+    running now (`ddBusy` from the stop onward, `dataDeletionInProgress` for the
+    purge), or one has run since it started. */
+function syncOutlived(epoch) {
+  return dataDeletionInProgress || ddBusy || epoch !== deletionEpoch;
+}
+
 function logEvent(type, payload) {
   if (dataDeletionInProgress) return;
-  const row = { ts: new Date().toISOString(), type, builder: state.session?.builder || "unknown", profile: profileId(), payload };
-  if (window.forayEventLog && typeof window.forayEventLog.append === "function") {
+  /* `profile` is stamped when the row leaves the buffer, not here: minting it
+     before hydration wrote a fresh `cp_profile_id` over the durable one
+     (races-4). A row logged before storage settles waits in the buffer. */
+  const row = { ts: new Date().toISOString(), type, builder: state.session?.builder || "unknown", profile: null, payload };
+  if (!storageWaiting() && window.forayEventLog && typeof window.forayEventLog.append === "function") {
     flushBufferedEvents();
+    row.profile = profileId();
     window.forayEventLog.append(row);
   } else {
     _bufferedEvents.push(row);
@@ -242,10 +309,14 @@ function logEvent(type, payload) {
     `forayplayer:ready` event. */
 function flushBufferedEvents() {
   if (!_bufferedEvents.length) return;
+  if (storageWaiting()) return;
   if (!window.forayEventLog || typeof window.forayEventLog.append !== "function") return;
   const rows = _bufferedEvents;
   _bufferedEvents = [];
-  for (const row of rows) window.forayEventLog.append(row);
+  for (const row of rows) {
+    if (!row.profile) row.profile = profileId();
+    window.forayEventLog.append(row);
+  }
 }
 
 /* Durable telemetry: flush the buffered events to Supabase (ADR-0005 +
@@ -297,19 +368,26 @@ async function sbAuth(path, body) {
 /* Establish/restore the anonymous session. Refresh a stored token (same user)
    when possible; only create a NEW anonymous user when there's no token or the
    refresh fails — re-signing-up every load would orphan a user per visit. */
-async function ensureAnonSession() {
+async function ensureAnonSession(epoch = deletionEpoch) {
+  if (syncOutlived(epoch)) return null;
   const now = Math.floor(Date.now() / 1000);
   let s = lsGet("cp_sb_session", null);
   if (s && s.access_token && s.expires_at && s.expires_at - 60 > now) return s;
   if (s && s.refresh_token) {
     const r = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
+    /* Asked again AFTER the await: a refresh that was already in flight when
+       Delete was tapped must not write the old account's token back onto a
+       device the deletion emptied (persist-8). */
+    if (syncOutlived(epoch)) return null;
     if (r && r.access_token) {
       s = { user_id: r.user.id, access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now + 3600 };
       lsSet("cp_sb_session", s);
       return s;
     }
   }
+  if (syncOutlived(epoch)) return null;
   const r = await sbAuth("/auth/v1/signup", {});
+  if (syncOutlived(epoch)) return null;
   if (r && r.access_token) {
     s = { user_id: r.user.id, access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now + 3600 };
     lsSet("cp_sb_session", s);
@@ -362,13 +440,34 @@ function toEventRow(e, userId) {
   }
 }
 
-async function trySyncEvents() {
+/* EVERY SYNC IS KNOWN TO "DELETE MY DATA" (round-2 audit, persist-8). A sync
+   already in flight when Delete was tapped went on regardless: its refresh
+   could write the old `cp_sb_session` back after the purge, and its POST could
+   land after the `events` DELETE. So each run is held in `syncsInFlight` for
+   `deleteMyData` to wait out before it touches the server, and every step that
+   writes (the session, a batch) asks `syncOutlived()` first. */
+const syncsInFlight = new Set();
+
+function trySyncEvents() {
+  const epoch = deletionEpoch;
+  if (syncOutlived(epoch)) return Promise.resolve();
+  /* An unread `cp_sb_session` reads as "no account", and `ensureAnonSession`
+     answers that by signing up a new one (races-4). Before storage settles
+     there is nothing to sync that cannot wait for it. */
+  if (storageWaiting()) return new Promise(resolve => afterStorageSettles(() => resolve(trySyncEvents())));
+  const run = syncEventsOnce(epoch);
+  syncsInFlight.add(run);
+  run.finally(() => syncsInFlight.delete(run));
+  return run;
+}
+
+async function syncEventsOnce(epoch) {
   try {
     if (!window.forayEventLog || typeof window.forayEventLog.unsynced !== "function") return;
     flushBufferedEvents();
     const unsynced = await window.forayEventLog.unsynced();
     if (!unsynced.length) return;
-    const s = await ensureAnonSession();
+    const s = await ensureAnonSession(epoch);
     if (!s) return; // offline / auth unavailable — buffer persists, retry next time
     const rows = unsynced.map(e => toEventRow(e, s.user_id)).filter(Boolean);
     const syncedIds = unsynced.map(e => e.id);
@@ -378,6 +477,7 @@ async function trySyncEvents() {
       return;
     }
     for (let i = 0; i < rows.length; i += 500) {
+      if (syncOutlived(epoch)) return;
       const res = await fetch(SB_URL + "/rest/v1/events", {
         method: "POST",
         headers: {
@@ -390,6 +490,7 @@ async function trySyncEvents() {
       });
       if (!res.ok) return; // don't advance the cursor — retry the whole batch next time
     }
+    if (syncOutlived(epoch)) return;   // the queue these ids were in has been emptied
     await window.forayEventLog.markSynced(syncedIds);
     await window.forayEventLog.pruneToRetention(5000);
   } catch (_) { /* buffer persists, retry next time */ }
@@ -425,8 +526,25 @@ function nodeById(id) {
 function loadInterests() {
   const saved = lsGet("cp_interests", {});
   taxonomyNodes().forEach(n => {
+    // An id this session already moved keeps the listener's own move — this
+    // runs again when a late hydration lands (races-4).
+    if (interestsSetThisSession.has(n.id)) return;
     state.interests[n.id] = saved[n.id] ?? Math.max(0, n.weight);
   });
+}
+
+/* The ids this session has actually set (a nudge, a slider, a reset, an
+   onboarding lift). `saveInterests` may overwrite a STORED weight only for
+   these (races-4): it used to write every id `loadInterests` had seeded, so a
+   profile seeded from taxonomy defaults — because hydration had not landed
+   within its bound — was written over the listener's learned weights on the
+   first play. */
+let interestsSetThisSession = new Set();
+
+/** The one way an interest weight changes. */
+function setInterest(id, value) {
+  state.interests[id] = value;
+  interestsSetThisSession.add(id);
 }
 
 /* Persist the profile WITHOUT ever shrinking it (2026-09-22 audit). This used
@@ -441,12 +559,24 @@ function loadInterests() {
    have learned, so nothing is written at all; and the write MERGES over what
    is stored, so an id this session does not know survives it. Nothing in the
    app removes an interest id on purpose — "Delete my data" clears the key
-   through the store, not through here. */
+   through the store, not through here.
+
+   And a third (round 2, races-4): a stored weight is replaced only by one this
+   session SET (`interestsSetThisSession`); every other id is written only
+   where the store has none. A seeded default can fill a gap, never overwrite
+   what the listener taught it. The write itself waits for hydration, so
+   "what the store has" is the durable profile and not an empty mirror. */
 function saveInterests() {
   if (!taxonomyNodes().length) return false;
+  if (storageWaiting()) { afterStorageSettles(saveInterests); return true; }
   const stored = lsGet("cp_interests", {});
   const base = stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
-  return lsSet("cp_interests", { ...base, ...state.interests });
+  const next = { ...base };
+  for (const [id, v] of Object.entries(state.interests)) {
+    if (typeof v !== "number") continue;
+    if (interestsSetThisSession.has(id) || typeof base[id] !== "number") next[id] = v;
+  }
+  return lsSet("cp_interests", next);
 }
 
 /* How much of a leaf's own nudge also moves its parent root. Stated here per
@@ -481,7 +611,7 @@ function nudgeTopics(topics, amount) {
   const parentsToPropagate = new Set();
   list.forEach(t => {
     if (t in state.interests) {
-      state.interests[t] = Math.max(0, Math.min(1, state.interests[t] + amount));
+      setInterest(t, Math.max(0, Math.min(1, state.interests[t] + amount)));
       const parent = nodeById(t)?.parent;
       if (parent && parent in state.interests && !directlyNudged.has(parent)) {
         parentsToPropagate.add(parent);
@@ -489,7 +619,7 @@ function nudgeTopics(topics, amount) {
     }
   });
   parentsToPropagate.forEach(parent => {
-    state.interests[parent] = Math.max(0, Math.min(1, state.interests[parent] + amount * PARENT_NUDGE_RATIO));
+    setInterest(parent, Math.max(0, Math.min(1, state.interests[parent] + amount * PARENT_NUDGE_RATIO)));
   });
   saveInterests();
   /* Bumps the repeated-query cache key (see buildPlaylist's `searchCache`) so
@@ -593,7 +723,7 @@ function bindInterestsControls(scope) {
     const id = input.dataset.interestId;
     const apply = () => {
       const v = Math.max(0, Math.min(1, Number(input.value)));
-      state.interests[id] = v;
+      setInterest(id, v);
       saveInterests();
       state._interestsGen = (state._interestsGen || 0) + 1;
       input.setAttribute("aria-valuenow", String(v));
@@ -615,7 +745,7 @@ function bindInterestsControls(scope) {
       const id = btn.dataset.interestReset;
       const node = nodeById(id);
       if (!node) return;
-      state.interests[id] = Math.max(0, node.weight);
+      setInterest(id, Math.max(0, node.weight));
       saveInterests();
       state._interestsGen = (state._interestsGen || 0) + 1;
       renderInterests();
@@ -926,7 +1056,25 @@ function failedNoteHtml(note) {
   </div>`;
 }
 
-function statusPageHtml({ title = "", note, back = "#/", retry = false }) {
+/* THE ONE FAILURE A RETRY CANNOT FIX (audit round 2, states-6). When
+   `player/client.js` itself did not load — a 404 on a stale generation, a parse
+   error, a blocked script — "Try again" re-awaits a module event that will
+   never fire: five seconds of "Loading…" and the same message, for good. The
+   remedy for a broken shell is a fresh document, so that failure offers a
+   button that reloads rather than one that waits. A BUTTON, not the "reload
+   the page" advice the 2026-09-22 audit removed: the advice named a page the
+   native shell's listener cannot see; `location.reload()` reloads the shell's
+   own document just the same. */
+const RELOAD_LABEL = "Reload 4a";
+
+function reloadNoteHtml(note) {
+  return `<div class="load-failed" role="status">
+    <p class="note">${note}</p>
+    <button type="button" class="fy-btn load-retry" data-reload>${RELOAD_LABEL}</button>
+  </div>`;
+}
+
+function statusPageHtml({ title = "", note, back = "#/", retry = false, reload = false }) {
   /* `back` is always one of our own routes; the "#" is written in the literal so
      no interpolated value can ever start an href (test/app-security.test.js). */
   const route = String(back).replace(/^#/, "");
@@ -935,8 +1083,18 @@ function statusPageHtml({ title = "", note, back = "#/", retry = false }) {
       <a class="back" href="#${esc(route)}">‹</a>
       <div>${title ? `<h2>${esc(title)}</h2>` : ""}</div>
     </div>
-    ${retry ? failedNoteHtml(note) : `<p class="note">${note}</p>`}
+    ${reload ? reloadNoteHtml(note) : retry ? failedNoteHtml(note) : `<p class="note">${note}</p>`}
   </div>`;
+}
+
+/** Wire the Reload button under `scope` to a fresh document. */
+function bindReload(scope) {
+  const btn = scope && typeof scope.querySelector === "function" ? scope.querySelector("[data-reload]") : null;
+  if (!btn) return;
+  btn.addEventListener("click", (e) => {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+    location.reload();
+  }, { once: true });
 }
 
 /** Wire the Retry button under `scope` to `run` — the same function that
@@ -1249,7 +1407,7 @@ function starredShowRow(entry) {
      starred show is never blanker than the same show is on any other surface. */
   const art = entry.artwork_url || showArtworkUrl(showById(entry.show_id));
   return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}">
-    ${art ? `<img class="show-result-art" src="${esc(safeUrl(art))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    ${art ? rowArtImg(art) : `<span class="show-result-art show-result-art-blank"></span>`}
     <span class="show-result-title">${esc(entry.title)}</span>
   </a>`;
 }
@@ -1376,8 +1534,15 @@ function buildCards() {
     };
   }).filter(sl => sl.item);
 
-  lsSet("cp_recent_branches", recentBranches.concat(state.cardSlots.map(sl => sl.branch)).slice(-BRANCH_MEMORY));
-  rememberSeen(state.cardSlots.flatMap(sl => sl.items.map(it => it.id)));
+  /* What was dealt is remembered once storage has settled, and re-read then:
+     written before a late hydration, these two lists replaced the listener's
+     durable ones for good and the seen window started over (races-4). */
+  const dealtBranches = state.cardSlots.map(sl => sl.branch);
+  const dealtIds = state.cardSlots.flatMap(sl => sl.items.map(it => it.id));
+  afterStorageSettles(() => {
+    lsSet("cp_recent_branches", lsGet("cp_recent_branches", []).concat(dealtBranches).slice(-BRANCH_MEMORY));
+    rememberSeen(dealtIds);
+  });
 }
 
 function subjectLabel(branch) {
@@ -1800,7 +1965,11 @@ function playlists() {
   let touched = false;
   if (all === null) {
     all = lsGet("cp_quests", []);   // migrate the old key once
-    touched = true;
+    /* Only a legacy list with something IN it is migrated. An absent key used
+       to be materialised as `[]` by this read, so Home's first paint after
+       "Delete my data" wrote `cp_playlists` straight back into every tier of a
+       device just reported clear (persist-2). */
+    touched = Array.isArray(all) && all.length > 0;
   }
   if (!Array.isArray(all)) return [];   // a store this app never wrote
   /* An entry that is not an object is not a playlist, and dropping it is not data
@@ -2533,6 +2702,29 @@ function episodesForShow(show) {
    without a match. */
 let _artByShowTitle = null;
 let _artIndexPool = null;
+
+/* ARTWORK AT THE SIZE IT IS DRAWN (round-2 audit, perf-2). Every catalogue and
+   pool artwork URL is Apple's `…/600x600bb.jpg`, and the idle Search tab drew
+   all 220 catalogue rows at once, each fetching and decoding a 600 px image
+   for a 44 px box — megabytes of cell data before the listener typed. Apple's
+   image CDN (`*.mzstatic.com`) serves any `<w>x<h>bb` size from the same path,
+   so a row asks for the size it paints; any other host's URL is left alone,
+   because a rewrite it does not understand is a broken image. The episode page
+   and Now Playing keep 600: that art IS the page. */
+const ROW_ART_PX = 132;   // a 44 px row at the 3x density of a current iPhone
+
+function artUrl(url, px) {
+  const u = String(url || "");
+  if (!/^https:\/\/[a-z0-9-]+\.mzstatic\.com\//i.test(u)) return u;
+  return u.replace(/\/\d+x\d+bb\.(jpg|jpeg|png|webp)$/i, `/${px}x${px}bb.$1`);
+}
+
+/** A list row's artwork: small, lazy, decoded off the main thread, and with
+    its box reserved so a late image cannot shift the row. */
+function rowArtImg(url) {
+  return `<img class="show-result-art" src="${esc(safeUrl(artUrl(url, ROW_ART_PX)))}" alt="" loading="lazy" decoding="async" width="44" height="44">`;
+}
+
 function showArtworkUrl(show) {
   if (!show) return null;
   if (show.artwork_url) return show.artwork_url;
@@ -3486,8 +3678,24 @@ async function fetchShowEpisodesUncached(show_id, cursor) {
        fresh response be reused and a stale one be revalidated, which is what
        those headers are for. Our own `showEpisodesCache` sits above this and is
        what makes the first paint instant; this is the second line of defence,
-       and it is the one that also covers the deeper pages. */
-    const res = await fetch(apiUrl(url));
+       and it is the one that also covers the deeper pages.
+
+       BOUNDED (audit round 2, states-4). This was the one `/api/*` call the
+       2026-09-23 "no request waits forever" review did not reach: a bare fetch
+       to API_ORIGIN, which in the native shell — no service worker, no
+       NET_TIMEOUT_MS — could sit on a stalled socket for good, and with it the
+       show page on "Loading episodes…" with no Try again, while
+       `showEpisodesInFlight` handed every later visit to the same show the same
+       hung promise. Same AbortController + withDeadline shape as fetchApiJson;
+       past the bound it answers exactly what a failed fetch answers, so the
+       `failed` outcome and its Try again fire through the one writer. */
+    const ctl = typeof AbortController === "function" ? new AbortController() : null;
+    const res = await withDeadline(
+      fetch(apiUrl(url), ctl ? { signal: ctl.signal } : undefined),
+      API_DEADLINE_MS,
+      () => { try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ } return null; }
+    );
+    if (!res) return { episodes: null, nextCursor: null, error: "timeout" };
     if (!res.ok) return { episodes: null, nextCursor: null, error: `status ${res.status}` };
     const body = await res.json();
     return {
@@ -3661,20 +3869,22 @@ function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBread
        That is precisely the subtitle/body contradiction issue #687 exists to
        remove, reintroduced by a body-only fix that left its own justification
        standing 550 lines away. A count and the rows it labels must come from
-       the same state. */
-    return "Loading episodes…";
-  }
-  if (loadError && loadedCount === 0) {
-    return curatedCount
-      ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue (couldn't load the full list)`
-      : `Couldn't load this show's episodes right now.`;
+       the same state.
+
+       ONE SENTENCE PER OUTCOME (audit round 2, states-8). While the BODY carries
+       a status — "Loading episodes…", "Couldn't load these episodes.", "No
+       episodes yet." — this label is EMPTY. It used to say the same thing a
+       second time in its own words, 200 px above the body's: two regions that
+       agreed on the state and still read as a page repeating itself. The
+       subtitle speaks only where rows are on screen: a count for a loaded list,
+       and the catalogue count over the curated rows, whose failure line now
+       lives under those rows beside its Try again (paintBody). */
+    return "";
   }
   if (loadedCount === 0) {
     return curatedCount
       ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue`
-      : isBreadthTier
-        ? "No episodes found for this show yet."
-        : "No episodes found for this show.";
+      : "";
   }
   const staleNote = stale ? " (showing the last saved list — couldn't refresh just now)" : "";
   if (fullyLoaded) {
@@ -4036,8 +4246,10 @@ function renderShow(show_id, initialQuery = "") {
      the listener could see or act on — it is a fact about which of our two
      ingestion paths found the show — and encoding it in the empty state is
      how "4a's wider catalogue" ended up on a phone screen. `isBreadthTier`
-     still does real work in showEpisodeCountLabel; it just no longer picks
-     the listener's words. */
+     is still handed to showEpisodeCountLabel — a tier-specific subtitle would
+     be composed there and nowhere else — but since the round-2 audit
+     (states-8) no outcome's copy reads it: the "…yet." variant it used to pick
+     went with the doubled empty-state sentence. */
   /* `failed` offers "Try again" rather than "Pull to refresh" (audit
      2026-09-22): there is no pull gesture on this page, and a failure the
      listener cannot act on from where they are standing is a dead end. The
@@ -4047,6 +4259,10 @@ function renderShow(show_id, initialQuery = "") {
     loading: "Loading episodes…",
     empty: "No episodes yet.",
     failed: "Couldn't load these episodes.",
+    /* Under a curated show's rows when the FULL list failed (states-2): the rows
+       on screen are real, so "these episodes" would be wrong; what is missing
+       is the rest. */
+    failedCurated: "Couldn't load the full list.",
   };
 
   /* THE ONE WRITER OF THE EPISODE CONTAINER (issue #687).
@@ -4091,8 +4307,19 @@ function renderShow(show_id, initialQuery = "") {
        that `loading` is a state that RESOLVES — the stale rows buy a second of
        false content and then take it away — while `failed` is terminal. */
     if (loadState !== "loading" && curatedEps.length) {
-      c.innerHTML = curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("");
+      /* AND A WAY FORWARD UNDER THE ROWS (audit round 2, states-2). This branch
+         returned before the `failed` branch below, so every one of the 220
+         catalogue shows — the ones Home and Search link to — lost its Try again
+         the moment its full-list fetch failed: the rows were real, the subtitle
+         said "couldn't load the full list", and nothing on the page could run
+         the fetch again. Theme G's rule ("failed — say it failed, and offer Try
+         again wired to the SAME fetch") holds here too; the rows stay, the
+         failure line and its button sit under them, and the subtitle keeps to
+         the count (showEpisodeCountLabel: one sentence per outcome). */
+      const rows = curatedEps.map((item, i) => epRow(item, i, ctx, -1)).join("");
+      c.innerHTML = loadState === "failed" ? rows + failedNoteHtml(BODY_PLACEHOLDER.failedCurated) : rows;
       bindRows(c);
+      if (loadState === "failed") bindRetry(c, retryEpisodes);
       return;
     }
     /* NOT esc()'d, and that is deliberate rather than an oversight: every
@@ -4925,7 +5152,7 @@ function applyOnboardingPicks(pickedRootIds, typedSubject) {
   const targets = new Set(ids.flatMap(expandTaxonomyPick));
   targets.forEach(id => {
     if (id in state.interests) {
-      state.interests[id] = Math.max(0, Math.min(1, state.interests[id] + lift));
+      setInterest(id, Math.max(0, Math.min(1, state.interests[id] + lift)));
     }
   });
   saveInterests();
@@ -5628,6 +5855,11 @@ if (typeof window !== "undefined") {
    `true` for the same reason that check does: the explainer owns the visit,
    so the returning-user popup must not take its place. */
 let firstRunParked = false;
+/* True only for the one re-render a finished "Delete my data" does (persist-2):
+   Home repainted under the delete sheet must not open onboarding over the
+   result. `deleteMyData` sets it around its `route()` and clears it after. */
+let onboardingHeld = false;
+
 function showFirstTimeExplainerOnce() {
   if (!isGenuineFirstTimeUser()) return false;
   if (lsGet("cp_intro_dismissed", false)) return false;
@@ -5935,7 +6167,7 @@ function showResultRow(show) {
   const art = showArtworkUrl(show);
   const by = typeof show?.artist_name === "string" ? show.artist_name.trim() : "";
   return `<a class="show-result" href="#/show/${encodeURIComponent(show.show_id)}">
-    ${art ? `<img class="show-result-art" src="${esc(safeUrl(art))}" alt="">` : `<span class="show-result-art show-result-art-blank"></span>`}
+    ${art ? rowArtImg(art) : `<span class="show-result-art show-result-art-blank"></span>`}
     <span class="show-result-text">
       <span class="show-result-title">${esc(show.title)}</span>
       ${by ? `<span class="show-result-by">${esc(by)}</span>` : ""}
@@ -6194,7 +6426,18 @@ function loadShowIndex() {
   showIndexFetchCount++;
   showIndexPromise = (async () => {
     try {
-      const res = await fetch(SHOW_INDEX_PATH, { cache: "no-cache" });
+      /* BOUNDED (audit round 2, states-4): a hung fetch here never reached the
+         `finally` that clears `showIndexPromise`, so every later focus was
+         handed the same hung promise and the index never loaded for the rest
+         of the session — the opposite of this header's "a later focus
+         retries". Past the bound it answers null like a failure, the promise
+         clears, and the next focus asks again. */
+      const ctl = typeof AbortController === "function" ? new AbortController() : null;
+      const res = await withDeadline(
+        fetch(SHOW_INDEX_PATH, ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" }),
+        DATA_DEADLINE_MS,
+        () => { try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ } return null; }
+      );
       if (!res || !res.ok) return null;
       const parsed = SearchEngine.parseShowIndex(await res.text());
       /* An empty parse is a failure, not an empty index: it means the file
@@ -7054,6 +7297,31 @@ function paintShowSearchLocal(query, myToken) {
   paintShowResults(query, localShows, myToken);
   const localEpisodes = paintLocalEpisodeSearch(query, myToken);
   return { localShows, localEpisodes, localMs, paintedMs: nowMs() - localStart };
+}
+
+/* WAITING FOR THE LISTENER TO STOP, NOT FOR A FREE FRAME (round-2 audit,
+   perf-3). Vocabulary priming is one synchronous pass measured at 0.2-2.7 s on
+   a laptop, and the native shell has no `requestIdleCallback`, so `whenIdle`
+   fell back to a 0 ms timer and ran it on the next task after the search
+   documents landed — seconds into a cold launch, exactly when the listener
+   starts tapping. Its own comment said it must not compete with a tap in the
+   first second; that is a condition on the LISTENER, so it is measured on
+   them: `whenQuiet` waits until nothing has been touched, typed or scrolled
+   for `PRIME_QUIET_MS`, then hands the work to `whenIdle`. A query typed
+   before then warms the same ctx itself, so nothing is lost by waiting. */
+let lastInteractionAt = 0;
+let PRIME_QUIET_MS = 1500;
+
+function noteInteraction() { lastInteractionAt = Date.now(); }
+
+/** Run `fn` once the listener has been still for `quietMs`, then when idle. */
+function whenQuiet(fn, quietMs = PRIME_QUIET_MS) {
+  const check = () => {
+    const wait = lastInteractionAt + quietMs - Date.now();
+    if (wait > 0) { setTimeout(check, wait); return; }
+    whenIdle(fn, 2000);
+  };
+  setTimeout(check, quietMs);
 }
 
 /** Run `fn` when the main thread is actually free, with a deadline.
@@ -8587,7 +8855,7 @@ function renderHomeV2() {
       ${episodesForYouHtml()}
     </div>`;
 
-  if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
+  if (!onboardingHeld && !showFirstTimeExplainerOnce()) showIntroPopupOnce();
 
   sizeProgressBars($("#view"));
   if (window.ForayPlayer && typeof window.ForayPlayer.applyStripGrow === "function") {
@@ -8652,6 +8920,13 @@ function renderForays() {
     playerBridge().then((player) => {
       if ((location.hash || "") !== "#/forays") return; // the listener has moved on
       if (player) { renderForays(); return; }
+      /* A module that FAILED gets the reload, a module that is merely slow gets
+         the re-await — see playerModuleFailed(). */
+      if (playerModuleFailed()) {
+        paintStatus(reloadNoteHtml("The player didn't load."));
+        bindReload($("#view"));
+        return;
+      }
       paintStatus(failedNoteHtml("The player didn't load."));
       bindRetry($("#view"), renderForays);
     });
@@ -9221,7 +9496,7 @@ function renderEpisode(id) {
           <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show, item.show_id) : "", fmtDur(item.duration_min), esc(dateStr), progHtml)}</p>
         </div>
       </div>
-      ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="">` : ""}
+      ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="" decoding="async" width="600" height="600">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id)}</div>
       ${episodeDescriptionSectionHtml(item)}
@@ -9923,6 +10198,20 @@ function playerBridge() {
   });
 }
 
+/* "STILL LOADING" IS NOT "FAILED TO LOAD" (audit round 2, states-6). A null
+   bridge after the wait means one of two things, and the page used to answer
+   both with a Try again that could only help with the first. Module scripts
+   are deferred and run before `DOMContentLoaded`, so once parsing has finished
+   (`readyState` is no longer "loading") every deferred module has either run
+   — and the bridge would be here — or failed to fetch, parse or evaluate. That
+   is `waitForStorage()`'s exact reading of the same event, applied to the
+   other thing the module publishes. While the document is still parsing the
+   module may simply be slow, and re-awaiting it (Try again) is right. */
+function playerModuleFailed() {
+  if (window.ForayPlayer) return false;
+  try { return document.readyState !== "loading"; } catch (_) { return false; }
+}
+
 /* ---------- per-segment feedback (the learning loop's input) ----------
 
    The mockup's thumbs, and they are deliberately asymmetric: up is one silent
@@ -10484,6 +10773,12 @@ async function renderForay(id) {
   if (forayRouteId() !== id) return;
 
   if (!player) {
+    /* Failed outright — reload; merely slow — re-await (playerModuleFailed). */
+    if (playerModuleFailed()) {
+      $("#view").innerHTML = statusPageHtml({ title: "Foray", note: "The player didn't load.", back: "#/forays", reload: true });
+      bindReload($("#view"));
+      return;
+    }
     $("#view").innerHTML = statusPageHtml({ title: "Foray", note: "The player didn't load.", back: "#/forays", retry: true });
     bindRetry($("#view"), () => renderForay(id));
     return;
@@ -12524,10 +12819,27 @@ const DEL_FAILED = "failed";
  * leave a fresh row behind and delete nothing. A stale token is refreshed if we
  * can; if the refresh fails we try the token we have and let the server's answer
  * be the answer.
+ *
+ * A REFRESH IS SAVED THE MOMENT IT ARRIVES (round-2 audit, persist-1). Supabase
+ * rotates refresh tokens: the one we send is spent by the call that answers it.
+ * This used to return the refreshed session without storing it, so a run that
+ * then hit one failing table left `cp_sb_session` holding a spent token — every
+ * retry 401'd, and the next event sync's own refresh failed and signed up a NEW
+ * account, stranding the rows the "remote before local" rule exists to keep
+ * reachable. It is written through `lsSet`, and ALSO held in `rotatedSession`,
+ * because a store that refused the write would otherwise hand the retry the
+ * spent token all the same.
  */
+let rotatedSession = null;
+
 async function existingAnonSession() {
   const now = Math.floor(Date.now() / 1000);
-  const s = lsGet("cp_sb_session", null);
+  const stored = lsGet("cp_sb_session", null);
+  /* Only while the store still holds the token this module spent: a newer
+     session written since (a sync's own refresh) is the newer truth. */
+  const s = rotatedSession && stored && stored.refresh_token === rotatedSession.spent
+    ? rotatedSession.session
+    : stored;
   if (!s || !s.access_token || !s.user_id) return null;
   if (s.expires_at && s.expires_at - 60 > now) return s;
   if (s.refresh_token) {
@@ -12537,12 +12849,15 @@ async function existingAnonSession() {
          object is not a shape we have seen, but reading through it would throw a
          TypeError out of the whole deletion — and the id we already hold is the
          same account by definition, since this is a refresh of its own token. */
-      return {
+      const fresh = {
         user_id: (r.user && r.user.id) || s.user_id,
         access_token: r.access_token,
         refresh_token: r.refresh_token || s.refresh_token,
         expires_at: r.expires_at || now + 3600,
       };
+      rotatedSession = { spent: stored && stored.refresh_token, session: fresh };
+      lsSet("cp_sb_session", fresh);
+      return fresh;
     }
   }
   return s;
@@ -12624,14 +12939,35 @@ async function clearLocalData() {
      a storage fault raised by the key purge landed a fresh row — under a fresh
      profile id — in a queue already reported empty. */
   dataDeletionInProgress = true;
+  rotatedSession = null;
   try {
     const local = await clearStoredKeys();
     const events = await clearEventLog();
+    const shards = await clearShardCache();
     /* One `ok` for the whole device. A clear `cp_` namespace beside a surviving
        event queue is exactly the false "This device is clear" this replaced. */
-    return { ...local, ok: Boolean(local.ok) && Boolean(events.ok), events };
+    return { ...local, ok: Boolean(local.ok) && Boolean(events.ok) && Boolean(shards.ok), events, shards };
   } finally {
     dataDeletionInProgress = false;
+  }
+}
+
+/**
+ * Drop the Shows-search shard cache (round-2 audit, persist-4).
+ *
+ * Its rows are public, but WHICH rows it holds is not: one entry per two-letter
+ * prefix of the longest word the listener searched for, so the set of keys is
+ * a trace of their searches. It is a cache — losing it costs one re-fetch — so
+ * it goes with everything else. `caches.delete` answers false for a bucket that
+ * was never opened, which is a clear bucket, not a failure; only a throw is.
+ */
+async function clearShardCache() {
+  if (typeof caches === "undefined" || !caches || typeof caches.delete !== "function") return { ok: true, reason: "no-cache-storage" };
+  try {
+    await caches.delete(SHARD_CACHE_NAME);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: "shard-cache", error: errLabel(err) };
   }
 }
 
@@ -12774,6 +13110,8 @@ const DD_COVERS = [
   "Publisher and ad hosts saw your IP as audio played. We cannot delete that.",
 ];
 
+const DD_DEVICE_ONLY_COST = "After this, what 4a's server kept about you can no longer be deleted.";
+
 function buildDeleteSheet() {
   const root = ddEl("div", "fy-sheet");
   root.id = "dd-sheet";
@@ -12814,6 +13152,12 @@ function buildDeleteSheet() {
   const deviceOnly = ddEl("button", "dd-device-only", "Clear this device only");
   deviceOnly.type = "button";
   deviceOnly.hidden = true;
+  /* The cost the button's label cannot carry (round-2 audit, persist-7). This
+     device's token is the only credential that reaches the server copy, and
+     this clear erases it — so "try again" stops being true the moment it runs.
+     Shown beside the button, before the tap, and left up after it. */
+  const deviceOnlyCost = ddEl("p", "fy-sheet-sub dd-device-only-cost", DD_DEVICE_ONLY_COST);
+  deviceOnlyCost.hidden = true;
 
   const status = ddEl("p", "dd-status");
   status.id = "dd-status";
@@ -12823,11 +13167,11 @@ function buildDeleteSheet() {
   panel.append(
     ddEl("div", "fy-grab"), title,
     ddEl("p", "fy-sheet-sub", "This cannot be undone. Here is what it covers."),
-    list, label, input, actions, deviceOnly, status,
+    list, label, input, actions, deviceOnly, deviceOnlyCost, status,
   );
   root.append(scrim, panel);
   document.body.appendChild(root);
-  return { root, scrim, panel, input, go, cancel, deviceOnly, status };
+  return { root, scrim, panel, input, go, cancel, deviceOnly, deviceOnlyCost, status };
 }
 
 function deleteSheet() {
@@ -12861,6 +13205,7 @@ function openDeleteSheet() {
   ui.input.value = "";
   ui.status.textContent = "";
   ui.deviceOnly.hidden = true;
+  ui.deviceOnlyCost.hidden = true;
   ddBusy = false;
   syncDeleteCta();
   openSheet(ui.root, { panel: ui.panel, onRequestClose: closeDeleteSheet });
@@ -12897,6 +13242,7 @@ async function deleteMyData({ deviceOnly = false } = {}) {
     return out;
   }
   ddBusy = true;
+  deletionEpoch += 1;
   syncDeleteCta();
   if (ddUi) ddUi.status.textContent = "Deleting…";
 
@@ -12912,6 +13258,14 @@ async function deleteMyData({ deviceOnly = false } = {}) {
         await player.stopForDataDeletion();
       }
     } catch (_) { /* an unstoppable player is not a reason to refuse a deletion */ }
+
+    /* Then wait out any event sync already running (persist-8), so its POST
+       cannot land after the `events` DELETE. Bounded: a sync stuck on a dead
+       socket must not hold the deletion, and the `syncOutlived()` checks
+       inside it stop it writing anything once it wakes. */
+    if (syncsInFlight.size) {
+      await withDeadline(Promise.allSettled([...syncsInFlight]), SYNC_SETTLE_MS, () => null);
+    }
 
     const remote = deviceOnly
       ? { ok: true, attempted: false, deviceOnly: true, tables: [], deleted: 0 }
@@ -12938,6 +13292,7 @@ async function deleteMyData({ deviceOnly = false } = {}) {
        pre-wipe, interest-ranked result for the exact same query, silently
        undercutting "reset personalization". */
     state.interests = {};
+    interestsSetThisSession = new Set();
     loadInterests();
     state._interestsGen = (state._interestsGen || 0) + 1;
     state.forayResume = null;
@@ -12949,7 +13304,12 @@ async function deleteMyData({ deviceOnly = false } = {}) {
        fresh anonymous account — telling our server about a deletion by starting a
        new identity. */
     paintDeletion(out);
-    route();
+    /* The re-render happens UNDER the open sheet, and a device just emptied is
+       exactly the profile the first-time explainer opens for — it used to slide
+       up over "This device is clear" (persist-2). Held for this one render
+       only; the next real navigation shows it as it would on a new install. */
+    onboardingHeld = true;
+    try { route(); } finally { onboardingHeld = false; }
     return out;
   } finally {
     ddBusy = false;
@@ -12957,10 +13317,15 @@ async function deleteMyData({ deviceOnly = false } = {}) {
   }
 }
 
+/* How long `deleteMyData` waits for an event sync already in flight. `let`, so
+   a suite can shorten it. */
+let SYNC_SETTLE_MS = 5000;
+
 function paintDeletion(result) {
   if (!ddUi) return;
   ddUi.status.textContent = deletionMessage(result);
   ddUi.deviceOnly.hidden = result.state !== "remote-failed";
+  ddUi.deviceOnlyCost.hidden = !(result.state === "remote-failed" || (result.remote && result.remote.deviceOnly));
   syncDeleteCta();
 }
 
@@ -14355,11 +14720,42 @@ function resetPageHeadScrollState() {
 
 /* ---------- init ---------- */
 
+/* BOUNDED (audit round 2, states-4 / races-7). The 2026-09-23 "no request
+   waits forever" review gave `fetchApiJson` and the two search documents a
+   deadline and left this one bare, on the reasoning that `data/*.json` is
+   answered by the worker (NET_TIMEOUT_MS) or the bundle. A first web visit has
+   no worker yet, and a pinned page or a shell with a missing file goes to the
+   network — so "Loading 4a…" and the Foray page's Try again (retryForayDocs)
+   could both wait on a black-holed socket for good. Past the bound the answer
+   is the same `null` a failure gives, which every caller already treats as
+   "absent", so the existing failed states and their Try again become
+   reachable.
+
+   ONE ARGUMENT, DELIBERATELY: `tools/mobile/prepare-webdir.mjs` derives the
+   native bundle's data-file list by matching the literal `fetchJson("data/…")`
+   call shape, so the bound is chosen from the path here rather than passed in.
+   `let`, so a suite can shorten them. */
+let DATA_DEADLINE_MS = 30000;
+/* The boot document gets longer: its failure already offers Try again, and a
+   slow-but-working first visit told "Couldn't load 4a" is the wrong trade. */
+let BOOT_DEADLINE_MS = 45000;
+
+function dataDeadlineMs(path) {
+  return /(^|\/)session\.json$/.test(String(path)) ? BOOT_DEADLINE_MS : DATA_DEADLINE_MS;
+}
+
 async function fetchJson(path) {
-  try {
-    const res = await fetch(pinnedUrl(path), { cache: "no-cache" });
-    return res.ok ? await res.json() : null;
-  } catch (_) { return null; }
+  const ctl = typeof AbortController === "function" ? new AbortController() : null;
+  const attempt = (async () => {
+    try {
+      const res = await fetch(pinnedUrl(path), ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" });
+      return res.ok ? await res.json() : null;
+    } catch (_) { return null; }
+  })();
+  return withDeadline(attempt, dataDeadlineMs(path), () => {
+    try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ }
+    return null;
+  });
 }
 
 /* A3.1/Q3: a plain, unpinned fetch for /api/* backend endpoints — deliberately
@@ -14473,14 +14869,35 @@ function applyForaySet(set) {
     said "N clips from this foray couldn't be found" — a network failure painted
     as a fact about the content, with its Try again gone). A second failure
     lands on the same failed state, with a fresh Try again. */
+/* Pressed once, the button says so (audit round 2, races-7): it is bound
+   `{ once: true }`, so without this a tap on a dead-zone connection changed
+   nothing on screen and left a spent button. */
+const RETRYING_LABEL = "Trying again…";
+
 async function retryForayDocs() {
+  /* THE PAGE THAT ASKED IS THE ONLY PAGE THAT REPAINTS (audit round 2, races-7).
+     The three fetches are bounded now (fetchJson), but tens of seconds is still
+     long enough to give up on a dead Try again and go type a Search query —
+     and this used to `renderCurrentPage()` whatever was on screen when they
+     finally settled, dropping that query and the keyboard. So the render epoch
+     is captured before the await: a set that arrived whole repaints only a
+     Foray surface (through the same in-place path a directory refresh uses);
+     a set that did not repaints only the page that pressed the button, so its
+     Try again is re-armed. Anything else keeps its DOM. */
+  const stillHere = renderToken();
+  const btn = $("#view [data-retry]");
+  if (btn) { btn.disabled = true; setControlLabel(btn, RETRYING_LABEL); }
   const [forays, segments, sources] = await Promise.all([
     fetchJson("data/forays.json"),
     fetchJson("data/segments.json"),
     fetchJson("data/segment-sources.json"),
   ]);
-  if (forays && segments && sources) applyForaySet({ forays, segments, sources });
-  renderCurrentPage();
+  if (forays && segments && sources) {
+    applyForaySet({ forays, segments, sources });
+    if (isForaySurface(location.hash)) repaintForaySurface();
+    return;
+  }
+  if (stillHere()) renderCurrentPage();
 }
 
 /** Where the seed came from, for the diagnostics row: in the shell it is the
@@ -14846,15 +15263,38 @@ function installKeyboardChrome(win) {
   };
 }
 
+/* ☰ AND ↻ ARE DIMMED UNTIL THEY WORK (round-2 audit, nav-9). The top bar is
+   static HTML and paints at once; its listeners are bound at the end of init(),
+   after every boot document has arrived, so on a slow connection both buttons
+   sat there for seconds taking taps and doing nothing. Binding them earlier is
+   not the answer — the drawer renders the listener's playlists and switches,
+   which are storage reads before hydration, and ↻ re-deals cards from data that
+   has not arrived — so they are `disabled` (dimmed, skipped, announced as
+   such) until the line that binds them, and stay so on a failed boot, where
+   the page's own Try again is the one thing that can help. */
+function setBootChrome(ready) {
+  for (const id of ["#menu-btn", "#refresh-btn"]) {
+    const btn = $(id);
+    if (btn) btn.disabled = !ready;
+  }
+}
+
+/* Resolved once init() has put its first page on screen — or its failed-boot
+   page. The service worker's registration waits on it. */
+let markFirstPagePainted = () => {};
+const firstPagePainted = new Promise(resolve => { markFirstPagePainted = resolve; });
+
 /** What `#view` holds between app.js starting and the first `route()`. */
 const BOOT_LOADING_HTML = `<div class="page" data-boot-loading><p class="note">Loading 4a…</p></div>`;
 
 async function init() {
-  /* Storage hydration runs CONCURRENTLY with the first fetch, not before it: it
-     is one IndexedDB read, so it costs nothing on the critical path, and it must
-     finish before the first write — `loadInterests()` below is a read followed by
-     a write, and doing that against a not-yet-hydrated store is how a restored
-     profile gets replaced by taxonomy defaults. */
+  /* EVERY BOOT REQUEST STARTS BEFORE THE FIRST AWAIT (round-2 audit, perf-1).
+     The seven documents used to wait for `storageReady()` — which on the web
+     means the whole deferred player module graph (28 files, five import levels
+     deep, each revalidated by the service worker) plus IndexedDB hydration —
+     and for `session.json` behind it. None of them reads storage. Hydration now
+     runs beside them and is awaited only where it matters: immediately before
+     `loadInterests()`, the first read-then-write. */
   /* THE FIRST PAINT HAPPENS BEFORE THE FIRST AWAIT (audit 2026-09-22, persona
      #43). The body used to be blank behind the header for as long as ~3.5 MB of
      JSON took on a cell connection — indistinguishable from broken, on the one
@@ -14868,27 +15308,12 @@ async function init() {
      (`data-boot-loading`), so a boot that hangs is not certified either. */
   const view = $("#view");
   if (view && !view.firstElementChild) view.innerHTML = BOOT_LOADING_HTML;
-  const [, session] = await Promise.all([storageReady(), fetchJson("data/session.json")]);
-  state.session = session;
-  if (!state.session) {
-    /* A failure offers "Try again", wired to the same boot (theme G). Safe to
-       re-run: nothing above this line binds a listener or starts the directory,
-       so a second init() starts from exactly where the first one stopped. */
-    $("#view").innerHTML = `<div class="page">${failedNoteHtml("Couldn't load 4a — check your connection.")}</div>`;
-    bindRetry($("#view"), () => {
-      $("#view").innerHTML = BOOT_LOADING_HTML;
-      init();
-    });
-    return;
-  }
-  /* The Foray directory's cache read starts HERE, alongside the bundle fetches
-     below, so that by the time they land the one IndexedDB read is done and
-     bootForayDirectory() costs the critical path nothing. Bounded inside the
-     module: a hung IndexedDB costs the cache, never the paint. */
-  const directory = forayDirectoryBridge();
-  if (directory && !pinnedDeployId) {
-    try { directory.start({ localPointerUrl: pinnedUrl(FORAY_DIRECTORY_POINTER) }); } catch (_) { /* seed only */ }
-  }
+  /* Belt for index.html's `<body class="ui-v2">` (p-first-2): a cached older
+     index.html without it still gets the dark design from this line on. */
+  try { document.body.classList.add("ui-v2"); } catch (_) { /* a stub document */ }
+  setBootChrome(false);
+  const storageP = storageReady();
+  const sessionP = fetchJson("data/session.json");
   /* Every one of these may come back null (fetchJson swallows a 404 and a
      parse error alike) and every consumer treats null as "absent", so a
      partial deploy costs the feature that needs the file rather than the
@@ -14899,10 +15324,7 @@ async function init() {
      reads, and Home's first paint never scores a topic. They start after
      `route()` below, through `loadSearchData()`, which the scorer's three
      callers wait on. */
-  [
-    state.validated, state.taxonomy, state.discover,
-    state.forays, state.segments, state.segmentSources, state.catalog,
-  ] = await Promise.all([
+  const documentsP = Promise.all([
     fetchJson("data/validated-links.json"),
     fetchJson("data/taxonomy.json"),
     fetchJson("data/discover.json"),
@@ -14916,13 +15338,65 @@ async function init() {
        see that script's header for the measurement. */
     fetchJson("data/catalog-client.json"),
   ]);
+  const session = await sessionP;
+  state.session = session;
+  if (!state.session) {
+    /* A failure offers "Try again", wired to the same boot (theme G). Safe to
+       re-run: nothing above this line binds a listener or starts the directory,
+       so a second init() starts from exactly where the first one stopped. */
+    $("#view").innerHTML = `<div class="page">${failedNoteHtml("Couldn't load 4a — check your connection.")}</div>`;
+    bindRetry($("#view"), () => {
+      $("#view").innerHTML = BOOT_LOADING_HTML;
+      init();
+    });
+    markFirstPagePainted();
+    return;
+  }
+  /* The Foray directory's cache read starts HERE, alongside the bundle fetches
+     below, so that by the time they land the one IndexedDB read is done and
+     bootForayDirectory() costs the critical path nothing. Bounded inside the
+     module: a hung IndexedDB costs the cache, never the paint.
+     The bridge arrives with the player module, so that much is waited for
+     here — with the documents already on the wire, which is the point. */
+  await waitForStorage();
+  const directory = forayDirectoryBridge();
+  if (directory && !pinnedDeployId) {
+    try { directory.start({ localPointerUrl: pinnedUrl(FORAY_DIRECTORY_POINTER) }); } catch (_) { /* seed only */ }
+  }
+  [
+    state.validated, state.taxonomy, state.discover,
+    state.forays, state.segments, state.segmentSources, state.catalog,
+  ] = await documentsP;
+
+  /* THE THREE FORAY DOCUMENTS ARE ONE ARTIFACT AT BOOT TOO (audit round 2,
+     states-3). retryForayDocs adopts a set only when all three arrived, because
+     a Foray list with no segment pool resolves every clip as "couldn't be
+     found" — a network failure painted as a fact about the content, with the
+     Try again gone. The boot path adopted whatever came back: forays.json
+     present and segments.json missing (a one-file 404 or timeout on a first
+     visit) painted "22 clips from this foray couldn't be found, so they're left
+     out" over an empty running order, on Home's cards and on the page. Any
+     null makes all three null, so the existing "Couldn't load forays right
+     now" + Try again branch is what paints instead. */
+  if (!state.forays || !state.segments || !state.segmentSources) applyForaySet({});
 
   /* FD-03: the three Foray documents just fetched are the SEED. If the directory
      holds a cached set that validates, that set replaces them before the first
      paint; the network is not consulted until after `route()` below. */
   await bootForayDirectory(directory);
 
+  /* The one wait on hydration, bounded at five seconds (see storageReady). */
+  await storageP;
   loadInterests();
+  /* Hydration that overran the bound re-seeds every weight this session has
+     not moved, so Home's next deal ranks by the listener's own profile rather
+     than the taxonomy defaults (races-4). */
+  if (storageWaiting()) {
+    afterStorageSettles(() => {
+      loadInterests();
+      state._interestsGen = (state._interestsGen || 0) + 1;
+    });
+  }
   buildCards();
   state.ready = true;
   enterForayFromQuery();
@@ -14941,6 +15415,7 @@ async function init() {
     console.error("first route failed", err);
     try { renderHome(); renderTabBar(); } catch (_) { /* nothing left to try; the wiring below still runs */ }
   }
+  markFirstPagePainted();
   /* THE RIBBON COMES BACK (founder, 2026-09-18: "When I come back to 4a after a
      day, the podcast I was listening to should still be in the now playing
      ribbon at the bottom.")
@@ -14959,7 +15434,7 @@ async function init() {
   restoreNowPlayingRibbon();
   bindShowPrefetch();
   logEvent("session_shown", { session_id: state.session.session_id });
-  trySyncEvents();
+  trySyncEvents();   // waits for storage to settle itself — see trySyncEvents
 
   /* FD-03, the other half: NOW ask the live origin whether there is a newer set.
      Fire-and-forget, deliberately after `route()` — the first paint is on
@@ -14978,12 +15453,12 @@ async function init() {
      "data finished loading" and "user typed a query and hit Go", instead of
      paying it interleaved into the FIRST real playlist search (H bug, kanban
      t_838a13c0 — a fresh session's first query measured 6.6-8.1s before this
-     fix). Deliberately scheduled via requestIdleCallback (falling back to a
-     0ms timeout where it's unavailable, e.g. older WebKit/the native shell)
-     rather than called inline here: `route()` above has already painted the
-     first screen, and priming is pure CPU with no UI of its own, so it must
-     not compete with that paint or with an impatient user who taps into the
-     playlist search within the first second. searchCtx() builds the same ctx
+     fix). Deliberately scheduled through `whenQuiet` rather than called
+     inline here: `route()` above has already painted the first screen, and
+     priming is pure CPU with no UI of its own, so it must not compete with
+     that paint or with an impatient user who taps into the playlist search
+     within the first second (round 2, perf-3: the 0 ms fallback the native
+     shell took did exactly that). searchCtx() builds the same ctx
      this call warms, so a query that arrives before priming finishes just
      resumes the memoization mid-way — nothing is wasted or redone. */
   const primeSearchVocab = () => {
@@ -14993,10 +15468,10 @@ async function init() {
   };
   /* The search documents first — priming a ctx that has no vocabulary in it
      would warm nothing and then be thrown away when they land. */
-  loadSearchData().then(() => {
-    if (typeof requestIdleCallback === "function") requestIdleCallback(primeSearchVocab, { timeout: 2000 });
-    else setTimeout(primeSearchVocab, 0);
-  });
+  for (const type of ["pointerdown", "touchstart", "keydown", "wheel", "scroll"]) {
+    window.addEventListener(type, noteInteraction, { passive: true, capture: true });
+  }
+  loadSearchData().then(() => whenQuiet(primeSearchVocab));
 
   /* Continuous playback's wiring (§ continuous playback, founder ruling
      2026-09-14). Fire-and-forget: a player that never loads (module failure,
@@ -15035,6 +15510,7 @@ async function init() {
      two settings toggles: it is the one control in there that cannot be undone. */
   bindDeleteControl();
   $("#refresh-btn").addEventListener("click", refreshCurrentPage);
+  setBootChrome(true);
   /* The router owns the viewport now (see route()), so the browser must stop
      owning it too. Left on "auto", its own restoration lands a beat AFTER
      ours and overwrites it — measured: with the restore in route() but this
@@ -15237,7 +15713,13 @@ function showShellNotice(reason) {
 let shellNoticeDismissed = false;
 
 if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
-  navigator.serviceWorker.register("sw.js").catch(() => { /* progressive */ });
+  /* AFTER THE FIRST PAINT (round-2 audit, perf-4). Registered here, at script
+     end, the worker's install — every file in the manifest — ran while init()
+     was still fetching the boot documents, on the first visit of every
+     listener. It waits for the first page and then for an idle moment. */
+  firstPagePainted.then(() => whenIdle(() => {
+    navigator.serviceWorker.register("sw.js").catch(() => { /* progressive */ });
+  }));
   /* Feature-detected rather than assumed: `navigator.serviceWorker` is somebody
      else's object, and a page that threw here would lose everything below it. */
   if (typeof navigator.serviceWorker.addEventListener === "function") {

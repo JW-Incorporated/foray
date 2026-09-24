@@ -40,10 +40,53 @@
 <meta name="apple-mobile-web-app-title" content="4a">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
+<!-- THE FIRST PAINT IS ALREADY THE DESIGN (round-2 audit, perf-5 / perf-1).
+     The two roman faces are asked for before styles.css is parsed, so the first
+     paint can use them rather than swap to them; the italic is left to its
+     @font-face. The player's whole module graph (every player/*.js, all
+     imported by player/client.js) is fetched in parallel here instead of one
+     import level at a time — five serial round trips, each a service-worker
+     revalidation, that app.js's boot waits on for hydration. The list is
+     player/*.js exactly; test/boot-path.test.js fails when it drifts from
+     tools/ci/generate-manifest.mjs's playerSources(). -->
+<link rel="preload" href="fonts/fraunces-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/dm-sans-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="modulepreload" href="player/build-stamp.js">
+<link rel="modulepreload" href="player/client.js">
+<link rel="modulepreload" href="player/default-voice.js">
+<link rel="modulepreload" href="player/diagnostic-log.js">
+<link rel="modulepreload" href="player/durable-store.js">
+<link rel="modulepreload" href="player/episode-progress.js">
+<link rel="modulepreload" href="player/event-log.js">
+<link rel="modulepreload" href="player/foray-directory.js">
+<link rel="modulepreload" href="player/foray-progress.js">
+<link rel="modulepreload" href="player/foray-queue.js">
+<link rel="modulepreload" href="player/foray-resolve.js">
+<link rel="modulepreload" href="player/foray-sources.js">
+<link rel="modulepreload" href="player/html-audio-backend.js">
+<link rel="modulepreload" href="player/idb-tier.js">
+<link rel="modulepreload" href="player/interlude.js">
+<link rel="modulepreload" href="player/kokoro-probe.js">
+<link rel="modulepreload" href="player/media-session.js">
+<link rel="modulepreload" href="player/playback-rate.js">
+<link rel="modulepreload" href="player/position-store.js">
+<link rel="modulepreload" href="player/queue-manager.js">
+<link rel="modulepreload" href="player/queue-state.js">
+<link rel="modulepreload" href="player/queue-strategy.js">
+<link rel="modulepreload" href="player/seam-gap.js">
+<link rel="modulepreload" href="player/seek-policy.js">
+<link rel="modulepreload" href="player/segment-strip.js">
+<link rel="modulepreload" href="player/sheet-drag-dismiss.js">
+<link rel="modulepreload" href="player/strip-scrub-gesture.js">
+<link rel="modulepreload" href="player/tts-bridge.js">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="icon-180.png" type="image/png">
 </head>
-<body>
+<!-- ui-v2 FROM THE FIRST BYTE (round-2 audit, p-first-2). setBodyClass()
+     adds it on every route, but the first route waits for every boot document;
+     until then the retired v1 tokens answered, and a phone set to Light painted
+     "Loading 4a…" on warm off-white before cutting to the dark design. -->
+<body class="ui-v2">
 <header class="topbar">
   <button id="menu-btn" aria-label="Menu">☰</button>
   <h1><a class="wordmark" href="#/">4a</a> <span class="topbar-tag">a daily podcast picker</span></h1>

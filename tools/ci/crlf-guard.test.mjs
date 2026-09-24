@@ -29,16 +29,17 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { crlfOffenders, crlfFatalMessage, BINARY_LISTED } from "./crlf-guard.mjs";
+import { listedFiles } from "./generate-manifest.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-/* The real list, taken from the committed artifact rather than by importing
-   generate-manifest.mjs — that module runs its CLI at top level and would
-   exit(2) on import, which is the same reason the guard lives in its own file.
-   These keys ARE `listedFiles()`: the required `data-and-site` check runs
-   `--check`, which fails unless the committed key set equals the computed one. */
+/* The real list, from the generator itself. It used to be read out of the
+   committed deploy-manifest.json because importing generate-manifest.mjs ran
+   its CLI; since audit round 2 the CLI runs only as a script, and the
+   committed copy lags a change that adds files (the fonts, perf-5) until the
+   manifest is regenerated — exactly when this guard's coverage matters. */
 function manifestListedFiles() {
-  return Object.keys(JSON.parse(readFileSync(path.join(REPO, "deploy-manifest.json"), "utf8")).files);
+  return listedFiles().map((f) => f.split(path.sep).join("/"));
 }
 
 function scratch(files) {

@@ -191,7 +191,9 @@ test("renderHome shows the first-time explainer instead of the older intro popup
 test("renderHome source calls showFirstTimeExplainerOnce() and only falls back to showIntroPopupOnce()", () => {
   assert.match(
     SRC,
-    /if \(!showFirstTimeExplainerOnce\(\)\) showIntroPopupOnce\(\);/,
+    /* `!onboardingHeld &&` is the one re-render a finished Delete my data does
+       under its sheet (round-2 audit, persist-2); the order is unchanged. */
+    /if \((?:!onboardingHeld && )?!showFirstTimeExplainerOnce\(\)\) showIntroPopupOnce\(\);/,
     "renderHome must try the first-time explainer first and only show the old popup when it didn't render"
   );
 });
