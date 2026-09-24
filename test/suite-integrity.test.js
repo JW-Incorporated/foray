@@ -275,8 +275,8 @@ const FLOORS = {
      families' own case counts are floored in player/parity/floors.json and
      enforced by "parity fixture families hold their floors" below, so deleting
      fixture cases is loud here too, not only in the suite that reads them. */
-  "player/parity/run.test.js": 31,
-  "player/parity/coverage.test.js": 22, // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
+  "player/parity/run.test.js": 32, // NE-12j: the media-actions adapter records real arity and refuses a press the OS could never deliver; 31 -> 32
+  "player/parity/coverage.test.js": 23, // NE-12j: media-session is wholly classified — media-episode, an exclusion, or NE-29j's Foray half in the foray capability's family; 22 -> 23 // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
   "player/tts-bridge.test.js": 29, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 25 -> 29 // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
@@ -1156,7 +1156,7 @@ const FLOORS = {
      overwritten, every new or changed case handed to swift-pending.json with
      its port card, and --mutate's kill/survive/pending verdicts with a no-op
      control. Zero slack. */
-  "tools/parity/record.test.mjs": 15, // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
+  "tools/parity/record.test.mjs": 16, // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
   /* THE TYPE GATE, and the reason it is floored at all. Until 2026-09-12 no CI
      job in this repo had ever run `tsc` or `eslint`: `backend/package.json`
      defined `typecheck` and nothing called it, so the TypeScript backend was

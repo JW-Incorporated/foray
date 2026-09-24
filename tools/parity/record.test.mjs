@@ -28,19 +28,41 @@ import { loadFixtures } from "../../player/parity/runner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
+/** Repo-relative module paths plus everything they import relatively,
+    transitively. NE-12j's media-episode family reaches player/media-session.js,
+    which imports foray-queue.js, which imports seek-policy.js (and its
+    adapter, player/parity/media-actions.js, imports media-session.js):
+    copying only each fixture's `module` left a scratch tree whose whole-tree
+    record could not run a single media-episode case. Static
+    `import ... from "./x.js"` / `export ... from` is the only shape the player
+    modules use. */
+function withImports(rels) {
+  const out = new Set();
+  const todo = [...rels];
+  while (todo.length) {
+    const rel = todo.pop();
+    if (out.has(rel)) continue;
+    out.add(rel);
+    const src = fs.readFileSync(path.join(ROOT, rel), "utf8");
+    for (const m of src.matchAll(/^\s*(?:import|export)\s[^;]*?from\s+["'](\.{1,2}\/[^"']+)["']/gm)) {
+      todo.push(path.posix.normalize(path.posix.join(path.posix.dirname(rel), m[1])));
+    }
+  }
+  return out;
+}
+
 /** A scratch repo holding what the recorded families need: every fixture
-    file's module (read from the fixtures, so a new family cannot make a
-    whole-tree record in here fail on a module nobody copied), seam-gap.js's
-    one import, the ESM marker, the seam-gap suite, and the whole parity
-    directory. */
+    file's module and its imports (read from the fixtures, so a new family
+    cannot make a whole-tree record in here fail on a module nobody copied),
+    the ESM marker, the seam-gap suite, and the whole parity directory. */
 function scratch() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "parity-rec-"));
   const copy = (rel) => {
     fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
     fs.copyFileSync(path.join(ROOT, rel), path.join(root, rel));
   };
-  const modules = new Set(loadFixtures(ROOT).map((fx) => fx.doc.module).filter(Boolean));
-  for (const rel of ["player/package.json", "player/queue-state.js", "player/seam-gap.test.js", ...modules]) copy(rel);
+  const modules = withImports(loadFixtures(ROOT).map((fx) => fx.doc.module).filter(Boolean));
+  for (const rel of ["player/package.json", "player/seam-gap.test.js", ...modules]) copy(rel);
   fs.cpSync(path.join(ROOT, "player", "parity"), path.join(root, "player", "parity"), {
     recursive: true,
     filter: (src) => !/\.test\.js$/.test(src),
@@ -244,6 +266,18 @@ test("the four named mutation rules exist, and each anchor occurs exactly once i
 
 test("--mutate on the seam-gap rule fails both the original JS test and the fixture family", () => {
   const r = runMutation("seam-gap", loadMutations()["seam-gap"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the 15/30 rule fails both the original JS test and the media-episode family", () => {
+  /* NE-12j recorded media-episode, so the fixture half of this rule stopped
+     reporting PENDING: WebKit's 10 s forward step now turns the authored
+     seek-forward-is-30 read and every recorded seekforward press red, not only
+     media-session.test.js. MUTATION: drop the seekforward cases and the
+     authored read from media-episode -> "fixture: ... still pass". */
+  const r = runMutation("15/30", loadMutations()["15/30"], { root: ROOT });
   assert.equal(r.js, "killed", r.detail.join("\n"));
   assert.equal(r.fixture, "killed", r.detail.join("\n"));
   assert.equal(r.killed, true);

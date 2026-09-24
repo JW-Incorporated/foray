@@ -202,7 +202,14 @@ export async function runCase(c, fixture, { root = REPO_ROOT } = {}) {
 export const PENDING_DRIVERS = Object.freeze({
   session: "NE-11j",
   lifecycle: "NE-14j",
-  remote: "NE-12j",
+  /* NE-12j recorded media-session's episode subset without it: the remote-press
+     table is a pure function of a surface and the presses, asked through
+     player/parity/media-actions.js, so no press needed a manager behind it. The
+     media-session tests that DO press a lock-screen button into a live manager
+     are the Foray ones (a real Foray's nexttrack, previoustrack, pause, seekto),
+     and NE-12j left them in unported.json for NE-29j — so NE-29j is the first
+     card that needs this driver. */
+  remote: "NE-29j",
 });
 
 /** The manager methods a `call` step may invoke. A closed list: a scenario is

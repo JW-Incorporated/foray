@@ -136,6 +136,38 @@ test("a suite whose recording card has landed owes nothing, and is fixtured into
   }
 });
 
+/* media-session is the one suite recorded in two halves (plan §14): NE-12j
+   classified all of it, fixturing the episode subset into media-episode, and
+   left the Foray and narration tests for NE-29j to record into `media`. So it
+   is not a RECORDED_SUITE — it still owes — but what it owes is fixed: only
+   NE-29j's half, and only in the foray capability's family. */
+test("media-session is wholly classified: media-episode, an exclusion, or NE-29j's Foray half — nothing else", () => {
+  // NE-12j's acceptance. MUTATION: re-tag one unported media-session entry to
+  // NE-12j / media-episode (what `record.mjs --classify` would give a new test)
+  // -> red; add a media-session covers[] entry to a queue-state case -> red (a
+  // lock-screen rule the reducer port would silently own instead of NE-12s).
+  const { status } = classify(REPO_ROOT, DATA, FIXTURES);
+  const names = Object.entries(status["media-session"]);
+  assert.ok(names.length > 0, "media-session has no tests on disk");
+  const tally = { fixtured: 0, excluded: 0, owed: 0 };
+  for (const [name, st] of names) {
+    const label = `media-session :: ${JSON.stringify(name)}`;
+    if (st.covered.length) {
+      tally.fixtured++;
+      for (const id of st.covered) assert.ok(id.startsWith("media-episode/"), `${label} is covered by ${id}, outside media-episode`);
+    } else if (st.excluded) tally.excluded++;
+    else {
+      assert.deepStrictEqual(st.unported, { card: "NE-29j", family: "media" }, `${label} must be fixtured, excluded, or NE-29j's`);
+      tally.owed++;
+    }
+  }
+  assert.ok(tally.fixtured > 0 && tally.excluded > 0 && tally.owed > 0, JSON.stringify(tally));
+  // media-episode is charged to the episode capability and media to foray, so
+  // the half NE-29j owes can never hold the episode capability back (plan §6.6).
+  assert.ok(DATA.capabilities.episode.includes("media-episode"));
+  assert.ok(DATA.capabilities.foray.includes("media") && !DATA.capabilities.episode.includes("media"));
+});
+
 test("a suite that appears while still marked awaiting is refused, so it is never outside the guard", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "parity-await-"));
   try {
