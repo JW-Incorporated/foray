@@ -105,6 +105,7 @@ public struct MultiModuleFamilyRunner: FamilyRunner {
 /// runner here and deletes its ids from `swift-pending.json` in the same PR.
 public enum ParityFamilies {
     public static var all: [FamilyRunner] {
-        [CompareFamily.runner, SeamGapFamily.runner, QueueStateFamily.runner, RateFamily.runner, ResumeRulesFamily.runner, TransportFamily.runner]
+        [CompareFamily.runner, SeamGapFamily.runner, QueueStateFamily.runner, RateFamily.runner, ResumeRulesFamily.runner, TransportFamily.runner,
+         RowsFamily.runner, NumberFormatFamily.runner, DiagTokensFamily.runner]
     }
 }

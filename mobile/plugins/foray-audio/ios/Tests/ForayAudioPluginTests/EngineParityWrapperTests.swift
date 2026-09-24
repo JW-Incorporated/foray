@@ -41,8 +41,10 @@ final class EngineParityWrapperTests: XCTestCase {
     func testRateFamily() { assertParityFamily("rate", requireRunner: true) }
     func testResumeRulesFamily() { assertParityFamily("resume-rules", requireRunner: true) }
     func testTransportFamily() { assertParityFamily("transport", requireRunner: true) }
-    func testRowsFamily() { assertParityFamily("rows") }
-    func testNumberFormatFamily() { assertParityFamily("number-format") }
+    /// NE-10s: the shared rows as the app links them, byte for byte.
+    func testRowsFamily() { assertParityFamily("rows", requireRunner: true) }
+    func testNumberFormatFamily() { assertParityFamily("number-format", requireRunner: true) }
+    func testDiagTokensFamily() { assertParityFamily("diag-tokens", requireRunner: true) }
 
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.

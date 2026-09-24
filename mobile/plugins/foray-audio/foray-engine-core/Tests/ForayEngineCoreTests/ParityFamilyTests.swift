@@ -33,9 +33,12 @@ final class ParityFamilyTests: XCTestCase {
     func testResumeRulesFamily() { assertParityFamily("resume-rules", requireRunner: true) }
     func testTransportFamily() { assertParityFamily("transport", requireRunner: true) }
 
-    /// Recorded by NE-10j, owed by NE-10s.
-    func testRowsFamily() { assertParityFamily("rows") }
-    func testNumberFormatFamily() { assertParityFamily("number-format") }
+    /// Recorded by NE-10j and NE-04, ported by NE-10s: the shared rows byte
+    /// for byte (`Rows`, `JSWriter`) and exact token admission (`Vocabulary`).
+    /// A runner is REQUIRED, so unregistering one is red here, not "owed".
+    func testRowsFamily() { assertParityFamily("rows", requireRunner: true) }
+    func testNumberFormatFamily() { assertParityFamily("number-format", requireRunner: true) }
+    func testDiagTokensFamily() { assertParityFamily("diag-tokens", requireRunner: true) }
 
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree
