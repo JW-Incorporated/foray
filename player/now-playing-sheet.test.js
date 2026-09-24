@@ -146,7 +146,9 @@ test("the sheet's notes are the episode page's notes, built as nodes from the on
   const fn = /function paintNotes\(item\) \{[\s\S]*?\n\}/.exec(TEXT);
   assert.ok(fn, "paintNotes must exist");
   assert.match(fn[0], /window\.ForayNotes/);
-  assert.match(fn[0], /notes\.tokens\(text, episodeDurationSec\(\)\)/, "the one tokeniser, with the honesty guard's duration");
+  assert.match(fn[0], /notes\.lines/, "the line-aware pass (chapter rows) when the page offers it (round-2 review)");
+  assert.match(fn[0], /read\(text, episodeDurationSec\(\)\)/, "the one tokeniser, with the honesty guard's duration");
+  assert.match(fn[0], /el\("button", "ep-chapter-row"\)/, "a stamp-led line is the page's 44px chapter row");
   assert.match(fn[0], /ui\.sDescText\.textContent = text; return;/, "no tokeniser, or a Foray: plain text, as before");
   assert.match(fn[0], /ui\.sDescText\.append\(String\(t\.text \?\? ""\)\);/, "prose tokens go in as strings, never as markup");
   assert.doesNotMatch(fn[0], /replaceChildren|createTextNode/, "nothing the real-client harnesses' DOM stubs lack");

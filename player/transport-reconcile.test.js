@@ -3207,6 +3207,22 @@ test("ROUND 2 review: 30↻ inside the Foray's LAST spoken line does not claim t
   restore();
 });
 
+test("ROUND 2 review (touch-10): the sheet draws a chapter token as a 44px .ep-chapter-row that seeks, not an inline stamp", async (t) => {
+  /* MUTATION: drop the `t.kind === "chapter"` branch from paintNotes -> the
+     row is drawn as prose; red. */
+  const { client, doc, win, audio, restore } = await bootClient(t);
+  win.ForayNotes = { lines: () => [{ kind: "chapter", secs: 754, stamp: "12:34", title: "Tokamaks", label: "Play from 12:34, Tokamaks" }] };
+  await client.play({ ...episodeItem(), description: "12:34 Tokamaks" });
+  await settle();
+  const row = findWhere(doc.body, (n) => n.className === "ep-chapter-row");
+  assert.ok(row, "the chapter line is a row button");
+  assert.strictEqual(row.getAttribute("aria-label"), "Play from 12:34, Tokamaks");
+  for (const fn of row.listeners.get("click") ?? []) await fn({ preventDefault() {}, stopPropagation() {} });
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 754) < 1, `the row seeks: ${audio.currentTime}`);
+  restore();
+});
+
 /* ---- p-car-3 / native-3: after a call ---- */
 
 test("ROUND 2 p-car-3: reconciling an interruption does not tell an already-paused element to pause again", async (t) => {

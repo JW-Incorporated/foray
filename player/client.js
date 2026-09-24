@@ -2015,11 +2015,30 @@ function paintNotes(item) {
   ui.sDescText.textContent = "";
   if (!text) return;
   const notes = typeof window !== "undefined" ? window.ForayNotes : null;
-  const tokens = !foray && notes && typeof notes.tokens === "function"
-    ? notes.tokens(text, episodeDurationSec())
-    : null;
+  /* `lines` (the line-aware pass, with chapter rows) when the page offers it;
+     `tokens` from a page of the vintage before it (audit round 2 review). */
+  const read = notes && typeof notes.lines === "function" ? notes.lines
+    : notes && typeof notes.tokens === "function" ? notes.tokens : null;
+  const tokens = !foray && read ? read(text, episodeDurationSec()) : null;
   if (!Array.isArray(tokens)) { ui.sDescText.textContent = text; return; }
   for (const t of tokens) {
+    /* A STAMP-LED LINE IS A 44px CHAPTER ROW HERE TOO (audit round 2 review
+       of touch-10): the whole line is one button, the episode page's own
+       `.ep-chapter-row`, not a ~21px inline stamp. */
+    if (t.kind === "chapter" && Number.isFinite(t.secs)) {
+      const row = el("button", "ep-chapter-row");
+      row.type = "button";
+      row.dataset.ts = String(t.secs);
+      if (t.label) row.setAttribute("aria-label", t.label);
+      row.append(el("span", "ep-chapter-time", String(t.stamp ?? "")), el("span", "ep-chapter-title", String(t.title ?? "")));
+      row.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        seekEpisodeTo(t.secs).catch(() => {});
+      });
+      ui.sDescText.append(row);
+      continue;
+    }
     if (t.kind === "link" && /^https?:\/\//i.test(String(t.href || ""))) {
       const a = el("a", null, t.text);
       a.href = t.href;

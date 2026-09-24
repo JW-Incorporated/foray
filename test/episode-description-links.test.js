@@ -128,7 +128,7 @@ test("a line that starts with a timestamp is one 44px chapter row: the stamp and
   /* Publishers write chapter lists one stamp per line; as inline buttons the
      stamps' hit boxes met the stamps on the lines above and below, and the
      later one won. As rows, the line IS the target, the shape the Chapters
-     list already has. MUTATION: make descChapterRowHtml return "" always ->
+     list already has. MUTATION: make descChapterToken return null always ->
      red (every stamp goes back inline). */
   const out = html("00:00 Intro\n12:34 - Tokamaks\n(1:02:45) Stellarators");
   const rows = [...out.matchAll(/<button type="button" class="ep-chapter-row" data-ts="(\d+)" aria-label="([^"]*)"><span class="ep-chapter-time">([^<]*)<\/span><span class="ep-chapter-title">([^<]*)<\/span><\/button>/g)]
@@ -440,6 +440,24 @@ test("ROUND 2 review: a timestamp tap STARTS at the stamp (no play-then-seek), a
   }
 });
 
+test("ROUND 2 review (touch-10): the sheet's tokens carry the chapter row, so a chapter list is 44px rows there too — one splitter for both surfaces", () => {
+  /* The promotion lived only in the HTML renderer; the sheet read inline
+     tokens and drew each chapter stamp as a ~21px inline .ep-ts. MUTATION:
+     have episodeNotesTokens push the line's inline tokens for a stamp-led line
+     -> no chapter token; red (and the page's HTML, now rendered from the same
+     tokens, loses its rows too). */
+  const text = "00:00 Intro\n12:34 Tokamaks and you\nsee https://x.test/a at 5:00";
+  const toks = JSON.parse(JSON.stringify(app.episodeNotesTokens(text, 3600)));
+  const chapters = toks.filter((t) => t.kind === "chapter");
+  assert.deepStrictEqual(chapters, [
+    { kind: "chapter", secs: 0, stamp: "00:00", title: "Intro", label: "Play from 00:00, Intro" },
+    { kind: "chapter", secs: 754, stamp: "12:34", title: "Tokamaks and you", label: "Play from 12:34, Tokamaks and you" },
+  ]);
+  assert.ok(toks.some((t) => t.kind === "stamp" && t.secs === 300), "a stamp inside prose stays inline");
+  assert.ok(html(text, 3600).includes('<button type="button" class="ep-chapter-row" data-ts="754" aria-label="Play from 12:34, Tokamaks and you">'),
+    "and the page's HTML is those same tokens rendered");
+});
+
 /* ---------- ROUND 2 (p-switcher-2): one tokeniser, two renderers ---------- */
 
 test("episodeDescriptionTokens is the pass the HTML is rendered from, and is published for the Now Playing sheet", () => {
@@ -461,6 +479,7 @@ test("episodeDescriptionTokens is the pass the HTML is rendered from, and is pub
     { kind: "text", text: "2:00:00" },
   ]);
   assert.strictEqual(app.ForayNotes.tokens, app.episodeDescriptionTokens, "published for client.js under window.ForayNotes");
+  assert.strictEqual(app.ForayNotes.lines, app.episodeNotesTokens, "and the line-aware pass the sheet reads (round-2 review)");
   assert.strictEqual(app.episodeDescriptionTokens("").length, 0);
   assert.strictEqual(
     html("see https://x.test/a at 12:34", 3600),

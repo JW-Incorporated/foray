@@ -838,6 +838,39 @@ test("Home shows the wordmark once: the greeting has it, the bar keeps only its 
   assert.match(APP_JS, /setBodyClass\("view-home"\)/, "fixture assumption: Home's body class is view-home");
 });
 
+test("ROUND 2 review (p-first-8): at 360px and below Home's bar is never EMPTY — the tagline's narrow-screen hide leaves the mark", () => {
+  /* The tagline is hidden under (max-width: 360px), and the Home rule hid the
+     mark at every width, so on 360dp phones the <h1> showed nothing. The rule
+     above only looks for a view-home-scoped tagline hide. MUTATION: delete the
+     (max-width: 360px) wordmark rule -> both children hidden at 360; red. */
+  const appliesAt = (r, w) => r.atRules.every((a) => {
+    if (!a.startsWith("@media")) return true;
+    const max = /max-width:\s*(\d+)px/.exec(a);
+    const min = /min-width:\s*(\d+)px/.exec(a);
+    if (/prefers-|hover|pointer|print/.test(a) && !max && !min) return false;
+    return (!max || w <= Number(max[1])) && (!min || w >= Number(min[1]));
+  });
+  /* Last declaration wins among the rules that apply at `w` whose selector is
+     one of `sels` (source order; the two selectors here are equally specific
+     within their own pair). */
+  const displayAt = (sels, w) => {
+    let v = null;
+    for (const r of RULES) {
+      if (!appliesAt(r, w) || !r.selectors.some((s) => sels.includes(s))) continue;
+      for (const d of r.decls) if (d.prop === "display") v = d.value;
+    }
+    return v;
+  };
+  const MARK = [".topbar h1 .wordmark", "body.view-home .topbar h1 .wordmark"];
+  const TAG = [".topbar-tag", "body.view-home .topbar-tag"];
+  for (const w of [320, 360]) {
+    const shown = [displayAt(MARK, w), displayAt(TAG, w)].filter((v) => v !== "none");
+    assert.ok(shown.length >= 1, `Home's h1 is empty at ${w}px`);
+  }
+  assert.strictEqual(displayAt(MARK, 400), "none", "wider, the greeting keeps the only mark");
+  assert.notStrictEqual(displayAt(TAG, 400), "none", "and the bar its tagline");
+});
+
 test("the episode page's head is two lines at most, at the size Now Playing gives the same title", () => {
   /* Round 2, visual-4: the whole title rode the sticky head at --fs-2xl (a
      fifth of the screen on a long title) and --fs-xl in the sheet. MUTATION:

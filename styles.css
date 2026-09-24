@@ -524,6 +524,14 @@ a[href^="#/"] {
    says what this app is — and leaves the mark to the greeting; every other
    page, where there is no greeting, keeps it. */
 body.view-home .topbar h1 .wordmark { display: none; }
+/* …EXCEPT WHERE THE TAGLINE IS GONE TOO (audit round 2 review). At 360px and
+   below the tagline is hidden (the rule above this one), which covers the
+   common 360dp Android phones; with the mark hidden as well Home's <h1> was
+   empty — a blank bar between ☰ and ↻, and an empty level-1 heading to a
+   screen reader. There the bar keeps its mark. */
+@media (max-width: 360px) {
+  body.view-home .topbar h1 .wordmark { display: inline; }
+}
 .topbar button {
   /* 42px to look at — the bar's content box is 43px (44 less its hairline),
      which test/home-layout.test.js pins — and 44px to hit, through the

@@ -9766,12 +9766,29 @@ function episodeDescriptionHtml(text, durationSec = null) {
      opening the next run would paint an empty line under every chapter.
      Every other line goes through the ONE tokeniser below
      (`episodeDescriptionTokens`), which the Now Playing sheet shares. */
+  return episodeNotesTokens(src, durationSec).map(descTokenHtml).join("");
+}
+
+/** THE NOTES AS LINE-AWARE TOKENS — the chapter-row promotion above AND the
+    inline tokens, in one pass, for both surfaces (audit round 2 review of
+    touch-10). The promotion used to live only in the HTML renderer, so the
+    Now Playing sheet (which reads tokens) drew every chapter-list stamp as a
+    ~21px inline `.ep-ts` — the target touch-10 cut on the promise that a
+    stamp-led line is a 44px `.ep-chapter-row`. Now the sheet gets the row too.
+
+      { kind: "chapter", secs, stamp, title, label }   a whole stamp-led line
+      …and every kind `episodeDescriptionTokens` emits, with a "\n" text token
+      between lines (none after a chapter row: the row is a block). */
+function episodeNotesTokens(text, durationSec = null) {
+  const src = String(text ?? "");
+  if (!src) return [];
   const lines = src.split("\n");
-  let out = "";
+  const out = [];
   for (let i = 0; i < lines.length; i++) {
-    const row = descChapterRowHtml(lines[i], durationSec);
-    if (row) { out += row; continue; }
-    out += descInlineHtml(lines[i], durationSec) + (i < lines.length - 1 ? "\n" : "");
+    const chapter = descChapterToken(lines[i], durationSec);
+    if (chapter) { out.push(chapter); continue; }
+    out.push(...episodeDescriptionTokens(lines[i], durationSec));
+    if (i < lines.length - 1) out.push({ kind: "text", text: "\n" });
   }
   return out;
 }
@@ -9780,33 +9797,41 @@ function episodeDescriptionHtml(text, durationSec = null) {
    bracket, the stamp, an optional closing bracket and separator, the rest. */
 const DESC_STAMP_LINE_RE = /^[ \t]*(?:[-–—•*·][ \t]*)?[([]?((?:\d{1,3}:)?\d{1,2}:[0-5]\d)\b[)\]]?[ \t]*(?:[-–—:|][ \t]*)?(.*?)\r?$/;
 
-function descChapterRowHtml(line, durationSec) {
+function descChapterToken(line, durationSec) {
   const m = DESC_STAMP_LINE_RE.exec(line);
-  if (!m) return "";
+  if (!m) return null;
   const [, stamp, rest] = m;
   const secs = parseTimestampSeconds(stamp);
-  if (secs === null || (durationSec !== null && secs > durationSec)) return "";
+  if (secs === null || (durationSec !== null && secs > durationSec)) return null;
   DESC_TOKEN_RE.lastIndex = 0;
-  if (DESC_TOKEN_RE.test(rest)) return "";
-  return `<button type="button" class="ep-chapter-row" data-ts="${esc(String(secs))}" aria-label="Play from ${esc(stamp)}${rest.trim() ? `, ${esc(rest.trim())}` : ""}"><span class="ep-chapter-time">${esc(stamp)}</span><span class="ep-chapter-title">${esc(rest.trim())}</span></button>`;
+  if (DESC_TOKEN_RE.test(rest)) return null;
+  const title = rest.trim();
+  return { kind: "chapter", secs, stamp, title, label: `Play from ${stamp}${title ? `, ${title}` : ""}` };
 }
 
-/** One run of description text as safe inline HTML: the tokens rendered —
-    URLs linked, in-range timestamps as inline seek buttons, the rest escaped. */
-function descInlineHtml(src, durationSec) {
-  return episodeDescriptionTokens(src, durationSec).map((t) => {
-    if (t.kind === "link") {
-      /* `rel="noopener noreferrer"` because these point off our origin. The
-         token's href is already through `safeUrl`; it goes through again here
-         because "every interpolated href passes through safeUrl" is a rule
-         test/app-security.test.js reads off this line, not off the tokeniser. */
-      return `<a href="${esc(safeUrl(t.href))}" target="_blank" rel="noopener noreferrer">${esc(t.text)}</a>`;
-    }
-    if (t.kind === "stamp") {
-      return `<button type="button" class="ep-ts" data-ts="${esc(String(t.secs))}" aria-label="${esc(t.label)}">${esc(t.text)}</button>`;
-    }
-    return esc(t.text);
-  }).join("");
+/** One token as safe HTML: a chapter row, a link, an inline seek stamp, or
+    escaped prose. */
+function descTokenHtml(t) {
+  if (t.kind === "chapter") {
+    return `<button type="button" class="ep-chapter-row" data-ts="${esc(String(t.secs))}" aria-label="${esc(t.label)}"><span class="ep-chapter-time">${esc(t.stamp)}</span><span class="ep-chapter-title">${esc(t.title)}</span></button>`;
+  }
+  return descInlineTokenHtml(t);
+}
+
+/** One inline token as safe HTML — URLs linked, in-range timestamps as inline
+    seek buttons, the rest escaped. */
+function descInlineTokenHtml(t) {
+  if (t.kind === "link") {
+    /* `rel="noopener noreferrer"` because these point off our origin. The
+       token's href is already through `safeUrl`; it goes through again here
+       because "every interpolated href passes through safeUrl" is a rule
+       test/app-security.test.js reads off this line, not off the tokeniser. */
+    return `<a href="${esc(safeUrl(t.href))}" target="_blank" rel="noopener noreferrer">${esc(t.text)}</a>`;
+  }
+  if (t.kind === "stamp") {
+    return `<button type="button" class="ep-ts" data-ts="${esc(String(t.secs))}" aria-label="${esc(t.label)}">${esc(t.text)}</button>`;
+  }
+  return esc(t.text);
 }
 
 /**
@@ -9857,7 +9882,7 @@ function episodeDescriptionTokens(text, durationSec = null) {
 }
 
 if (typeof window !== "undefined") {
-  window.ForayNotes = { tokens: episodeDescriptionTokens };
+  window.ForayNotes = { tokens: episodeDescriptionTokens, lines: episodeNotesTokens };
 }
 
 /* COLLAPSED BY DEFAULT (founder, 2026-09-18): "When I'm listening to a podcast
