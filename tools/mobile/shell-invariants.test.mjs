@@ -2700,3 +2700,62 @@ test("NE-02: every one of the original reducer tests survives in the core's copy
     "the copied tests must stay an XCTestCase, or `swift test` runs none of them"
   );
 });
+
+/* ─────────── NE-10s: JSWriter and Rows, byte-identical shared rows ───────────
+ *
+ * docs/native-engine-plan.md §4.6 and card NE-10s. The engine writes
+ * cp_pos:<id>, cp_foray:<id> and cp_last_episode into the rows the page reads,
+ * so the Swift bytes must be JSON.stringify's. The rows, number-format and
+ * diag-tokens families (executed by both XCTest wrappers in CI) prove the
+ * port; these pins keep the proof from being quietly switched off. */
+
+test("NE-10s: the shared rows are written by JSWriter only, and both wrappers require the rows, number-format and diag-tokens runners", () => {
+  /* FOUNDATION'S JSON IS THE DRIFT THIS CARD REMOVES. JSONSerialization and
+     JSONEncoder print `3600.0`/`1e-07`, escape `/` as `\/`, and order keys by
+     a dictionary (or alphabetically), so a row they wrote would read back as
+     the same VALUE and differ in BYTES, which only a byte comparison sees. No
+     file under Persist/ or Diag/ may reach for them, so a later "simpler"
+     writer cannot land without editing this pin.
+     A family whose runner is merely "optional" turns "owed" the moment the
+     runner is unregistered, and swift-pending then hides it; requireRunner
+     makes that red instead.
+     MUTATION: use JSONEncoder in Rows.swift; drop RowsFamily.runner from
+     ParityFamilies.all; or drop `requireRunner: true` from either wrapper's
+     testRowsFamily; each fails here. */
+  for (const sub of ["Sources/ForayEngineCore/Persist", "Sources/ForayEngineCore/Diag"]) {
+    for (const file of swiftFilesUnder(path.join(CORE_DIR, sub))) {
+      const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+      const rel = path.relative(ROOT, file).split(path.sep).join("/");
+      assert.doesNotMatch(code, /\b(JSONSerialization|JSONEncoder|JSONDecoder|DateFormatter|ISO8601DateFormatter)\b/,
+        `${rel} uses Foundation's JSON or date formatting; the shared rows go through JSWriter (NE-10s)`);
+    }
+  }
+  const persist = path.join(CORE_DIR, "Sources/ForayEngineCore/Persist");
+  for (const name of ["JSWriter.swift", "Rows.swift"]) {
+    assert.ok(fs.existsSync(path.join(persist, name)), `foray-engine-core Persist/${name} is missing (plan §4.1)`);
+  }
+  const rows = stripSwiftComments(fs.readFileSync(path.join(persist, "Rows.swift"), "utf8"));
+  assert.match(rows, /JSWriter\.stringify\(/, "Rows.swift must print its rows through JSWriter");
+
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  for (const runner of ["RowsFamily.runner", "NumberFormatFamily.runner", "DiagTokensFamily.runner"]) {
+    assert.ok(all[1].includes(runner), `ParityFamilies.all no longer registers ${runner}`);
+  }
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    for (const family of ["rows", "number-format", "diag-tokens"]) {
+      assert.match(src, new RegExp(`assertParityFamily\\("${family}", requireRunner: true\\)`),
+        `${where} must require a ${family} runner (NE-10s ported it)`);
+    }
+  }
+  /* The generated vocabulary stays generated: admission is hand-written beside it. */
+  const vocabulary = fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Diag/Vocabulary.swift"), "utf8");
+  assert.doesNotMatch(vocabulary, /func admit\(/, "admission belongs in VocabularyAdmission.swift, not the generated file");
+});
