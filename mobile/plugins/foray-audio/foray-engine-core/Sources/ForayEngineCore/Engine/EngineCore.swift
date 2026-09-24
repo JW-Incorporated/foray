@@ -926,6 +926,9 @@ public struct EngineCore {
             if autoplay { begin(.coldPlay, source: .restore) }
         case .background:
             state.backgrounded = true
+            flushPosition()
+        case .terminating:
+            flushPosition()
         case .foreground:
             state.backgrounded = false
             reconcile(unexplainedPause: false, routeAttributed: false)
@@ -1014,6 +1017,18 @@ public struct EngineCore {
             appendEvent(episodeId: item.id, seconds: event.seconds, duration: event.duration)
         }
         writeRestore()
+    }
+
+    /// client.js `flushPositions` (corner case #17, #689): pocketing the phone
+    /// must not lose the position, so the app leaving the foreground or being
+    /// terminated writes the playhead NOW, playing or paused, whatever the
+    /// cadence last wrote. EngineStore writes it synchronously (NE-19), so the
+    /// row is in `UserDefaults` before the notification handler returns.
+    /// `persistPosition` keeps its own refusals: no item, a segment, or an
+    /// item the deck does not hold writes nothing.
+    private mutating func flushPosition() {
+        guard state.currentItem != nil else { return }
+        persistPosition()
     }
 
     /// `_persistIfDue`: the periodic write, while playing, when the playhead

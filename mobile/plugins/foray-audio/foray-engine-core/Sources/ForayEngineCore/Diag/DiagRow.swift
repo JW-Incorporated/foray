@@ -124,6 +124,11 @@ public struct SeamRow: Equatable {
         DiagRow(seq: seq, wallMs: wallMs, monoMs: monoMs, kind: SeamRow.kind, fields: fields)
     }
 
+    /// The seam as the ring takes it (`DiagRing.append`), before it is stamped.
+    public var entry: DiagEntry {
+        DiagEntry(kind: SeamRow.kind, fields: fields)
+    }
+
     /// A seam row back from a `DiagRow`, or nil for another kind or a row
     /// missing a field. A stage token outside the vocabulary is DROPPED, not
     /// fatal (`Vocabulary.admit`): the rest of the seam is still evidence, and

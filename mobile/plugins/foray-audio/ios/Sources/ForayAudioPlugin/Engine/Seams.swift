@@ -87,8 +87,8 @@ protocol BackgroundTasking: AnyObject {
     /// `UIApplication.backgroundTimeRemaining` in seconds, nil while in the
     /// foreground (UIKit reports `greatestFiniteMagnitude` there).
     var backgroundTimeRemainingSec: Double? { get }
-    /// `didEnterBackground` / `willEnterForeground` as `.background` /
-    /// `.foreground`, on main.
+    /// `didEnterBackground` / `willEnterForeground` / `willTerminate` as
+    /// `.background` / `.foreground` / `.terminating`, on main.
     func observeLifecycle(_ handler: @escaping (LifecycleEvent) -> Void) -> EngineObservation
 }
 
@@ -203,6 +203,10 @@ protocol EngineOutput: AnyObject {
     func appendEvent(_ event: PendingEvent)
     func emit(_ event: EngineEvent)
     func diag(_ entry: DiagEntry)
+    /// Make every write so far durable NOW: called by the host right after
+    /// the core has handled `.background` or `.terminating` (whose position
+    /// flush has just been written), before the notification handler returns.
+    func flush()
 }
 
 // MARK: - The pause-hold policy's private key (HoldPolicyStore, NE-16)
