@@ -1304,7 +1304,9 @@ test("search-1: a painted index row takes the catalogue's artwork IN PLACE — s
   assert.ok(html.includes("https://art/deep.jpg"), `the catalogue's artwork reached the painted row: ${html}`);
   assert.ok(html.includes("Some Publisher"), "and its byline");
   assert.ok(!html.includes("show-result-art-blank"), "no blank square is left for a show the catalogue drew");
-  assert.strictEqual((html.match(/Deep History Hour/g) || []).length, 1, "upgraded in place, not appended as a second row");
+  /* Counted as a row's VISIBLE title: each row also carries its full name in
+     `title=` since search-11 (the visible one is clamped to two lines). */
+  assert.strictEqual((html.match(/class="show-result-title">Deep History Hour</g) || []).length, 1, "upgraded in place, not appended as a second row");
   const painted = m.evalIn("showSearchPainted.rows");
   assert.strictEqual(painted[0].show_id, "1000001", "the row keeps its position (#684) and its id");
 });

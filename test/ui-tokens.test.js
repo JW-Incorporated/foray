@@ -684,7 +684,7 @@ test("every range input is the listener's own material: amber, never the UA's sy
 test("one text field: every field reads the one element rule, and only the floating search capsule differs", () => {
   /* Round 2, visual-8: 52px at the card radius, 48px, and ~40px at the control
      radius in the body step, for one object. MUTATIONS: `.dd-input {
-     border-radius: var(--radius-md) }` -> red; `#pl-input { min-height: 52px }`
+     border-radius: var(--radius-md) }` -> red; `#cr-input { min-height: 52px }`
      -> red; `input[type="text"] { font-size: var(--fs-md) }` -> red. */
   assert.strictEqual(lastOn('input[type="text"]', "border-radius"), "var(--radius-lg)");
   assert.strictEqual(lastOn('input[type="text"]', "min-height"), "48px");
@@ -694,7 +694,9 @@ test("one text field: every field reads the one element rule, and only the float
   for (const m of APP_JS.matchAll(/<input\b[^>]*\bid="([^"]+)"[^>]*type="text"/g)) fields.add(`#${m[1]}`);
   if (/<input\b[^>]*\bdata-show-ep-search-input\b[^>]*type="text"/.test(APP_JS)) fields.add(".show-ep-search input");
   for (const m of APP_JS.matchAll(/ddEl\("input", "([^"]+)"\)|\.className = "([^"]+-input)"/g)) fields.add(`.${m[1] || m[2]}`);
-  assert.ok(fields.size >= 7, `fixture assumption: the census finds the app's text fields (${[...fields]})`);
+  /* Six since round 2's p-first-6 took the second playlist builder (#pl-input)
+     off #/playlists: Create's #cr-input is the one builder field left. */
+  assert.ok(fields.size >= 6, `fixture assumption: the census finds the app's text fields (${[...fields]})`);
   const OWN = ["border-radius", "min-height", "height", "font-size", "padding"];
   const bad = [];
   for (const r of RULES) {

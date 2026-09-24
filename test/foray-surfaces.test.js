@@ -243,9 +243,10 @@ async function withCredits(bridge) {
   return bridge;
 }
 
-/** Each credit in the "Where this came from" block: [show, in-app href|null, arrow label, arrow href]. */
+/** Each credit in the "Where this came from" block: [show, in-app href|null, arrow label, arrow href].
+    The meta line may sit between the show and the arrow (L7's head order). */
 function sourceCredits(html) {
-  return [...html.matchAll(/<span class="fy-src-show">([\s\S]*?)<\/span>\s*<a class="fy-src-out" href="([^"]*)"[^>]*aria-label="([^"]*)">/g)]
+  return [...html.matchAll(/<span class="fy-src-show">((?:(?!<\/span>)[\s\S])*?(?:<\/a>)?)<\/span>(?:\s*<span class="fy-src-meta">[^<]*<\/span>)?\s*<a class="fy-src-out" href="([^"]*)"[^>]*aria-label="([^"]*)">/g)]
     .map((m) => {
       const link = /href="#\/show\/([^"]+)">([^<]*)</.exec(m[1]);
       return { show: link ? link[2] : m[1].trim(), inApp: link ? link[1] : null, label: m[3], out: m[2] };
