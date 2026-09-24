@@ -27,6 +27,7 @@ import assert from "node:assert/strict";
 import {
   DurableStore, createDurableStore, localStorageTier, requestPersistence, isNewer,
   DEFAULT_PREFIX, HEALTH_KEY, LOCAL_STALE_KEY, MAX_FAULTS, preferencesTier, MAX_CONSECUTIVE_TIER_FAILURES,
+  vaultTier, VAULT_PLUGIN, DEVICE_ONLY_KEYS,
   PERSIST_GRANTED, PERSIST_DENIED, PERSIST_UNSUPPORTED, PERSIST_ERROR, PERSIST_UNKNOWN,
 } from "./durable-store.js";
 import { ForayProgressStore, makeProgress, readProgress, progressKey } from "./foray-progress.js";
@@ -1305,4 +1306,317 @@ test("NATIVE: the player wires the tier into the store it publishes", async () =
   const call = /const storage = createDurableStore\(\{[\s\S]*?\}\);/.exec(src);
   assert.ok(call, "client.js no longer builds the store where this test looks");
   assert.match(call[0], /nativeTier:\s*preferencesTier\(/, "the native tier is not wired");
+});
+
+
+/* ---------- the device-only vault (round-2 audit persist-6, founder ruling 2026-09-24) ----------
+
+   "Option A": the auth token stays on the device and out of the phone's
+   backups; every other row stays where it is and IS backed up. Inside the shell
+   `cp_sb_session` therefore lives in the `ForayVault` plugin (Keychain
+   this-device-only / Android no-backup storage) and in NO backed-up tier:
+   not localStorage, not IndexedDB, not Preferences. These pin that routing, the
+   copy-then-remove migration of a token an earlier build left behind, that a
+   vault which fails never costs the account, and that Delete my data reaches
+   it. The fake bridge serves BOTH plugins from separate maps, so "the token is
+   in Preferences" and "the token is in the vault" are different facts. */
+
+const TOKEN = '{"user_id":"u-1","access_token":"at","refresh_token":"rt","expires_at":1}';
+const TOKEN_2 = '{"user_id":"u-1","access_token":"at2","refresh_token":"rt2","expires_at":2}';
+
+function shellBridge({ vaultPlugin = true, failVaultRead = false, failVaultWrite = false } = {}) {
+  const maps = { Preferences: new Map(), [VAULT_PLUGIN]: new Map() };
+  const b = {
+    prefs: maps.Preferences,
+    vault: maps[VAULT_PLUGIN],
+    failVaultRead,
+    failVaultWrite,
+    calls: [],
+    isNativePlatform: () => true,
+    isPluginAvailable: (n) => n === "Preferences" || (vaultPlugin && n === VAULT_PLUGIN),
+    async nativePromise(name, method, opts = {}) {
+      b.calls.push(`${name}.${method}`);
+      const m = maps[name];
+      if (!m) throw new Error(`"${name}" plugin is not implemented`);
+      if (name === VAULT_PLUGIN && b.failVaultRead && (method === "keys" || method === "get")) {
+        throw new Error("errSecInteractionNotAllowed");
+      }
+      if (name === VAULT_PLUGIN && b.failVaultWrite && method === "set") {
+        throw new Error("errSecMissingEntitlement");
+      }
+      if (method === "keys") return { keys: [...m.keys()] };
+      if (method === "get") return { value: m.has(opts.key) ? m.get(opts.key) : null };
+      if (method === "set") { m.set(opts.key, opts.value); return {}; }
+      if (method === "remove") { m.delete(opts.key); return {}; }
+      throw new Error(`unknown method ${method}`);
+    },
+  };
+  return b;
+}
+
+function shellStore(bridge, { local = new FakeLocal(), idb = fakeDurable() } = {}) {
+  const store = createDurableStore({
+    localStorage: local, idbTier: idb,
+    nativeTier: preferencesTier(bridge), vault: vaultTier(bridge),
+  });
+  return { store, local, idb };
+}
+
+test("VAULT: the only device-only key is the auth token", () => {
+  assert.deepEqual([...DEVICE_ONLY_KEYS], ["cp_sb_session"]);
+  assert.equal(VAULT_PLUGIN, "ForayVault");
+});
+
+test("VAULT: no vault on the web, on a non-native bridge, or on a build without the plugin", () => {
+  assert.equal(vaultTier(null), null, "a browser tab has no window.Capacitor");
+  assert.equal(vaultTier({}), null);
+  assert.equal(vaultTier({ ...shellBridge(), isNativePlatform: () => false }), null);
+  assert.equal(vaultTier(shellBridge({ vaultPlugin: false })), null);
+  const t = vaultTier(shellBridge());
+  assert.equal(t.name, "vault");
+  assert.equal(t.vault, true);
+  assert.equal(t.sync, false);
+});
+
+test("VAULT: in the shell the token is written to the vault and to NO backed-up tier", async () => {
+  /* MUTATION: drop the `_confined` branch in setItem -> the token lands in
+     localStorage, IndexedDB and Preferences, and this fails three ways. */
+  const bridge = shellBridge();
+  const { store, local, idb } = shellStore(bridge);
+  await store.hydrate();
+  store.setItem("cp_sb_session", TOKEN);
+  await store.flush();
+  assert.equal(bridge.vault.get("cp_sb_session"), TOKEN);
+  assert.equal(local.map.has("cp_sb_session"), false, "localStorage is in the WebView's backed-up data");
+  assert.equal(idb.store.has("cp_sb_session"), false, "so is IndexedDB");
+  assert.equal(bridge.prefs.has("cp_sb_session"), false, "and UserDefaults / SharedPreferences");
+  assert.equal(store.getItem("cp_sb_session"), TOKEN, "the session still reads it");
+  assert.ok(bridge.calls.includes(`${VAULT_PLUGIN}.set`), "addressed by the plugin's registered name");
+});
+
+test("VAULT: every other row stays in the backed-up tiers and never enters the vault", async () => {
+  const bridge = shellBridge();
+  const { store, local, idb } = shellStore(bridge);
+  await store.hydrate();
+  store.setItem("cp_interests", '{"food":0.9}');
+  await store.flush();
+  assert.equal(local.map.get("cp_interests"), '{"food":0.9}');
+  assert.equal(idb.store.get("cp_interests"), '{"food":0.9}');
+  assert.equal(bridge.prefs.get("cp_interests"), '{"food":0.9}');
+  assert.deepEqual([...bridge.vault.keys()], [], "the vault is for the token alone");
+});
+
+test("VAULT: next launch reads the account from the vault, with every WebView tier intact", async () => {
+  const bridge = shellBridge();
+  const first = shellStore(bridge);
+  await first.store.hydrate();
+  first.store.setItem("cp_sb_session", TOKEN);
+  await first.store.flush();
+
+  const second = shellStore(bridge, { local: first.local, idb: first.idb });
+  assert.equal(second.store.getItem("cp_sb_session"), null, "not in localStorage, so unknown until hydration");
+  await second.store.hydrate();
+  assert.equal(second.store.getItem("cp_sb_session"), TOKEN, "the listener became a new account");
+});
+
+test("VAULT MIGRATION: an earlier build's token is moved into the vault, then out of all three backed-up tiers", async () => {
+  /* The upgrade path. MUTATION: skip `_moveLegacyIntoVault` -> the copies stay
+     in the backup, which is the defect. */
+  const bridge = shellBridge();
+  bridge.prefs.set("cp_sb_session", TOKEN);
+  const local = new FakeLocal({ cp_sb_session: TOKEN, cp_seen: "[]" });
+  const idb = fakeDurable({ rows: { cp_sb_session: TOKEN, cp_seen: "[]" } });
+  const { store } = shellStore(bridge, { local, idb });
+  assert.equal(store.getItem("cp_sb_session"), TOKEN, "the first paint still knows the account");
+  await store.hydrate();
+  await store.flush();
+  assert.equal(bridge.vault.get("cp_sb_session"), TOKEN);
+  assert.equal(local.map.has("cp_sb_session"), false);
+  assert.equal(idb.store.has("cp_sb_session"), false);
+  assert.equal(bridge.prefs.has("cp_sb_session"), false);
+  assert.equal(store.getItem("cp_sb_session"), TOKEN, "and it never stopped being readable");
+  assert.equal(local.map.get("cp_seen"), "[]", "nothing else moved");
+  assert.equal(store.health().tiers.vault.migrated, 1);
+});
+
+test("VAULT MIGRATION: a vault that refuses the write leaves every old copy where it was", async () => {
+  /* Copy first, remove second. MUTATION: evict regardless of the vault write
+     -> the only copies of the account are gone. */
+  const bridge = shellBridge({ failVaultWrite: true });
+  bridge.prefs.set("cp_sb_session", TOKEN);
+  const local = new FakeLocal({ cp_sb_session: TOKEN });
+  const idb = fakeDurable({ rows: { cp_sb_session: TOKEN } });
+  const { store } = shellStore(bridge, { local, idb });
+  await store.hydrate();
+  await store.flush();
+  assert.equal(bridge.vault.has("cp_sb_session"), false);
+  assert.equal(local.map.get("cp_sb_session"), TOKEN);
+  assert.equal(idb.store.get("cp_sb_session"), TOKEN);
+  assert.equal(bridge.prefs.get("cp_sb_session"), TOKEN);
+  assert.equal(store.getItem("cp_sb_session"), TOKEN);
+  assert.equal(store.health().ok, false, "and the refusal is on the record");
+});
+
+test("VAULT MIGRATION: a vault that cannot be READ moves nothing and removes nothing", async () => {
+  /* "Could not look" is not "has none": writing the old copy over a vault we
+     could not read could replace a newer account. */
+  const bridge = shellBridge({ failVaultRead: true });
+  bridge.vault.set("cp_sb_session", TOKEN_2);
+  const local = new FakeLocal({ cp_sb_session: TOKEN });
+  const { store } = shellStore(bridge, { local });
+  await store.hydrate();
+  await store.flush();
+  assert.equal(bridge.vault.get("cp_sb_session"), TOKEN_2, "the vault's row was not overwritten");
+  assert.equal(local.map.get("cp_sb_session"), TOKEN, "the old copy was not removed");
+  assert.equal(store.canKeep("cp_sb_session"), false);
+});
+
+test("VAULT MIGRATION: a tier we could not read keeps what it may hold when nothing else has the token", async () => {
+  /* localStorage swept, IndexedDB unreadable this launch (it may hold the
+     account), vault empty. MUTATION: drop the "nothing to move" guard -> the
+     blind eviction deletes the only copy from IndexedDB. */
+  const bridge = shellBridge();
+  const idb = fakeDurable({ rows: { cp_sb_session: TOKEN }, failRead: true });
+  const { store } = shellStore(bridge, { idb });
+  await store.hydrate();
+  await store.flush();
+  assert.equal(idb.store.get("cp_sb_session"), TOKEN);
+  assert.equal(store.getItem("cp_sb_session"), null);
+});
+
+test("VAULT: the vault's copy wins over a backed-up one, which is then removed", async () => {
+  const bridge = shellBridge();
+  bridge.vault.set("cp_sb_session", TOKEN_2);
+  const local = new FakeLocal({ cp_sb_session: TOKEN });
+  const { store } = shellStore(bridge, { local });
+  await store.hydrate();
+  await store.flush();
+  assert.equal(store.getItem("cp_sb_session"), TOKEN_2);
+  assert.equal(bridge.vault.get("cp_sb_session"), TOKEN_2, "not overwritten by the older copy");
+  assert.equal(local.map.has("cp_sb_session"), false);
+});
+
+test("VAULT: a token written before hydration lands is not clobbered, and the old copies still go", async () => {
+  const bridge = shellBridge();
+  bridge.vault.set("cp_sb_session", TOKEN);
+  const local = new FakeLocal({ cp_sb_session: TOKEN });
+  const { store } = shellStore(bridge, { local });
+  store.setItem("cp_sb_session", TOKEN_2);
+  await store.hydrate();
+  await store.flush();
+  assert.equal(store.getItem("cp_sb_session"), TOKEN_2);
+  assert.equal(bridge.vault.get("cp_sb_session"), TOKEN_2);
+  assert.equal(local.map.has("cp_sb_session"), false);
+});
+
+test("VAULT: removing the token removes it from the vault and from every other tier", async () => {
+  const bridge = shellBridge();
+  bridge.vault.set("cp_sb_session", TOKEN);
+  bridge.prefs.set("cp_sb_session", TOKEN);
+  const { store, local } = shellStore(bridge, { local: new FakeLocal({ cp_sb_session: TOKEN }) });
+  store.removeItem("cp_sb_session");
+  await store.flush();
+  assert.equal(bridge.vault.has("cp_sb_session"), false);
+  assert.equal(bridge.prefs.has("cp_sb_session"), false);
+  assert.equal(local.map.has("cp_sb_session"), false);
+  await store.hydrate();
+  assert.equal(store.getItem("cp_sb_session"), null, "and hydration does not bring it back");
+});
+
+test("VAULT PURGE: Delete my data empties the vault and verifies it", async () => {
+  /* MUTATION: stop `_readTiers` asking the vault -> a row the vault holds that
+     memory never saw survives a purge that reports ok. */
+  const bridge = shellBridge();
+  const { store } = shellStore(bridge);
+  await store.hydrate();
+  store.setItem("cp_seen", "[]");
+  await store.flush();
+  /* Another launch wrote the token; this session's memory never saw it. */
+  bridge.vault.set("cp_sb_session", TOKEN_2);
+  const out = await store.purge();
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.ok(out.keys.includes("cp_sb_session"), JSON.stringify(out.keys));
+  assert.deepEqual([...bridge.vault.keys()], []);
+  assert.deepEqual([...bridge.prefs.keys()], []);
+});
+
+test("VAULT PURGE: a vault that cannot be read makes the purge report NOT ok", async () => {
+  const bridge = shellBridge();
+  const { store } = shellStore(bridge);
+  await store.hydrate();
+  store.setItem("cp_sb_session", TOKEN);
+  await store.flush();
+  bridge.failVaultRead = true;
+  const out = await store.purge();
+  assert.equal(out.ok, false);
+  assert.ok(out.unverified.some((u) => u.tier === "vault"), JSON.stringify(out.unverified));
+});
+
+test("VAULT: canKeep says yes on the web, and in the shell only once the vault has been read", async () => {
+  const web = createDurableStore({ localStorage: new FakeLocal(), idbTier: fakeDurable() });
+  assert.equal(web.canKeep("cp_sb_session"), true, "no vault: localStorage keeps it, as always");
+  const { store } = shellStore(shellBridge());
+  assert.equal(store.canKeep("cp_interests"), true, "an ordinary key is always keepable");
+  assert.equal(store.canKeep("cp_sb_session"), false, "before hydration, absence means nothing");
+  await store.hydrate();
+  assert.equal(store.canKeep("cp_sb_session"), true);
+});
+
+test("VAULT: a vault the circuit breaker dropped cannot keep the token, and setItem says so", async () => {
+  const bridge = shellBridge();
+  const { store } = shellStore(bridge);
+  await store.hydrate();
+  bridge.failVaultWrite = true;
+  for (let i = 0; i < MAX_CONSECUTIVE_TIER_FAILURES; i++) {
+    store.setItem("cp_sb_session", TOKEN);
+    await store.flush();
+  }
+  assert.equal(store.canKeep("cp_sb_session"), false);
+  assert.throws(() => store.setItem("cp_sb_session", TOKEN), /device-only store is unavailable/);
+  assert.equal(store.health().tiers.vault.disabled, true);
+});
+
+test("VAULT: an earlier build's stale-mirror ledger entry for the token is dropped, not obeyed", async () => {
+  const bridge = shellBridge();
+  bridge.vault.set("cp_sb_session", TOKEN_2);
+  const idb = fakeDurable({ rows: { [LOCAL_STALE_KEY]: '["cp_sb_session"]', cp_sb_session: TOKEN } });
+  const { store } = shellStore(bridge, { idb });
+  await store.hydrate();
+  await store.flush();
+  assert.equal(store.getItem("cp_sb_session"), TOKEN_2);
+  assert.equal(idb.store.has(LOCAL_STALE_KEY), false, "the ledger row named only the token, so it goes");
+});
+
+test("VAULT: health() names the vault and what it holds; the web reports none", async () => {
+  const { store } = shellStore(shellBridge());
+  await store.hydrate();
+  assert.deepEqual(store.health().vault, { tier: "vault", read: true, keys: ["cp_sb_session"] });
+  assert.equal(store.health().tiers.vault.deviceOnly, true);
+  assert.equal(store.health().tiers.native.deviceOnly, false);
+  assert.deepEqual(store.health().durableTiers, ["native", "idb"], "the vault protects one key, not the rows");
+  const web = createDurableStore({ localStorage: new FakeLocal() });
+  assert.equal(web.health().vault, null);
+});
+
+test("VAULT: the player wires the vault into the store it publishes", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("./client.js", import.meta.url), "utf8");
+  const call = /const storage = createDurableStore\(\{[\s\S]*?\}\);/.exec(src);
+  assert.ok(call, "client.js no longer builds the store where this test looks");
+  assert.match(call[0], /vault:\s*vaultTier\(/, "the vault is not wired, so the token rides the backup again");
+});
+
+test("VAULT: a new token the vault refuses does not take the old copies with it", async () => {
+  /* The same copy-then-remove rule for a write made this session (a refresh).
+     MUTATION: evict after a failed vault write -> the backed-up copy, the last
+     durable trace of the account, is gone with nothing in its place. */
+  const bridge = shellBridge({ failVaultWrite: true });
+  const local = new FakeLocal({ cp_sb_session: TOKEN });
+  const { store } = shellStore(bridge, { local });
+  await store.hydrate();
+  store.setItem("cp_sb_session", TOKEN_2);
+  await store.flush();
+  assert.equal(bridge.vault.has("cp_sb_session"), false);
+  assert.equal(local.map.get("cp_sb_session"), TOKEN);
+  assert.equal(store.getItem("cp_sb_session"), TOKEN_2, "the session still has the new one in memory");
 });

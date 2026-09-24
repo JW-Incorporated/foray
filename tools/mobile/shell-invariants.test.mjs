@@ -1011,14 +1011,17 @@ test("mobile/'s only non-Capacitor dependency is our own plugin, by a file: path
     );
     local.push({ name, target });
   }
-  /* Pinned at exactly two, because "how many local plugins does the shell have" is a
-     decision and today's answer is two. `foray-tts` is the second, added by this
-     card (docs/research/on-device-tts.md) — say so here, in the PR that adds the
-     next one, same as this comment already asked of the PR that added this one. */
-  assert.equal(local.length, 2, "expected exactly two local plugins, found: " + (local.map((l) => l.name).join(", ") || "none"));
+  /* Pinned at exactly three, because "how many local plugins does the shell have" is a
+     decision and today's answer is three. `foray-tts` is the second, added by its
+     card (docs/research/on-device-tts.md). `foray-vault` is the third (2026-09-24,
+     round-2 audit persist-6, founder ruling "Option A"): the device-only store that
+     keeps the account token out of the phone's backups — iOS Keychain this-device-
+     only, Android no-backup storage; tools/mobile/foray-vault.test.mjs pins it. Say
+     so here, in the PR that adds the next one. */
+  assert.equal(local.length, 3, "expected exactly three local plugins, found: " + (local.map((l) => l.name).join(", ") || "none"));
   assert.deepEqual(
     local.map((l) => l.name).sort(),
-    ["foray-audio", "foray-tts"]
+    ["foray-audio", "foray-tts", "foray-vault"]
   );
 });
 

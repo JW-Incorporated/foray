@@ -242,6 +242,13 @@ so the invariant now permits a non-Capacitor entry only as a `file:` specifier
 resolving inside `mobile/`, and still rejects a registry range, a git URL, a tarball,
 or a `file:` path pointing out of the tree.
 
+`foray-tts` and `foray-vault` are declared the same way and for the same reason.
+`foray-vault` (2026-09-24, round-2 audit `persist-6`) is the device-only store for
+the anonymous-account token: an iOS Keychain item marked this-device-only and an
+Android file in the no-backup directory, so the token is never in a phone backup
+while every other row still is. `tools/mobile/foray-vault.test.mjs` pins its
+source facts; `docs/durable-storage.md` has the web half.
+
 One mechanical consequence: `tools/ci/run-suites.mjs` hard-errors on a
 `package.json` that declares dependencies but no `test` script. `mobile/` is safe
 because the runner only scans `player/`, `test/` and `tools/` — but that is why
