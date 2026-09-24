@@ -122,6 +122,8 @@ import {
 import { startDrag, moveDrag, endDrag, dragOffset, claimsTouch } from "./sheet-drag-dismiss.js";
 import { createDurableStore, preferencesTier, vaultTier, deferredPrefixesFor } from "./durable-store.js";
 import { OWNED_PREFIXES } from "./engine-contract.js";
+import { createNativeEngine } from "./native-engine.js";
+import { engineDiagnosticReport, engineBridgePresent, pageEngineView } from "./engine-diagnostics.js";
 import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
@@ -567,7 +569,35 @@ function recordBuildStamp() {
 /** The record, as text, for the surface app.js builds. Published beside
     `forayStorageHealth` and for the same reason: app.js is a classic script and
     cannot import this module, so anything it needs is handed over on `window`. */
-window.forayDiagnosticReport = () => formatDiagnosticReport(diagLog.read());
+window.forayDiagnosticReport = () => formatDiagnosticReport(
+  diagLog.read(),
+  pageEngineView({ engine: diagEngine, capacitor: typeof window !== "undefined" ? window.Capacitor ?? null : null }),
+);
+/**
+ * The same record with the native engine's ring merged in (NE-26): what Copy
+ * copies, and what the sheet repaints with once it has it. ONE
+ * engineRead('diagnostics') per call, bounded, never rejecting on the engine's
+ * account (`engine-diagnostics.js`).
+ *
+ * THE CLIENT IT READS THROUGH. The page's engine client is NE-22's to build;
+ * until it does, Copy makes a read-only one (no hello, no send, no listener),
+ * and only inside the iOS shell — on the web and Android there is no engine,
+ * and the header says `engine=js reason=not-ios` without a bridge call. Read
+ * from `window.Capacitor` at CALL time, not at module load, because the bridge
+ * is the shell's to inject and the record is read long after boot.
+ */
+let diagEngine = null;
+function engineForDiagnostics() {
+  const cap = typeof window !== "undefined" ? window.Capacitor ?? null : null;
+  if (!engineBridgePresent(cap)) return null;
+  if (!diagEngine) diagEngine = createNativeEngine({ capacitor: cap });
+  return diagEngine;
+}
+window.forayDiagnosticReportWithEngine = () => engineDiagnosticReport({
+  record: () => diagLog.read(),
+  engine: engineForDiagnostics(),
+  capacitor: typeof window !== "undefined" ? window.Capacitor ?? null : null,
+});
 /**
  * Empty it — the founder's loop is clear, drive, copy, and three earlier drives in
  * the buffer make the drive under test hard to find.

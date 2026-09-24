@@ -1082,3 +1082,39 @@ test("a Clear on the real page keeps the build on the header and says the record
   assert.equal(blob.entries[0].seq, recorded + 1, "and it continues the counter from the clear mark");
   restore();
 });
+
+test("NE-26: the real page's Copy report reads the engine's ring once through ForayAudio and merges it", async (t) => {
+  /* client.js's wiring, through the bridges app.js calls. The shell is
+     injected AFTER boot on purpose: the report reads `window.Capacitor` when
+     Copy is pressed, not when the module loaded.
+
+     KILLING MUTATION 1: publish forayDiagnosticReportWithEngine without an
+     engine (`engine: null`). No engineRead is made and no engine row is shown.
+     KILLING MUTATION 2: drop the engine view from the synchronous report. Its
+     third line is no longer the engine line. */
+  const { restore } = await bootClient(t, { deployId: "2b808ec9d50c5b98" });
+  await settle();
+  const web = globalThis.window.forayDiagnosticReport().split("\n");
+  assert.equal(web[2], "engine=js reason=not-ios build=? | web=2b808ec9d50c5b98", "no shell: the web says so, with no bridge call");
+
+  const calls = [];
+  const at = Date.now() + 1;
+  globalThis.window.Capacitor = {
+    getPlatform: () => "ios",
+    isPluginAvailable: (name) => name === "ForayAudio",
+    nativePromise(plugin, method, payload) {
+      calls.push({ plugin, method, payload });
+      if (method === "engineRead") {
+        return Promise.resolve({ rows: [{ seq: 1, at, mono: 1, kind: "session", event: "activated", ok: true, token: null, activateMs: 9, phase: "active", hint: false }] });
+      }
+      return Promise.reject(Object.assign(new Error("not implemented"), { code: "UNIMPLEMENTED" }));
+    },
+  };
+  const text = await globalThis.window.forayDiagnosticReportWithEngine();
+  assert.deepEqual(calls, [{ plugin: "ForayAudio", method: "engineRead", payload: { what: "diagnostics" } }]);
+  assert.match(text, /src=engine activated activateMs=9ms ok=y/);
+  assert.equal(text.split("\n")[2], "engine=js reason=undecided build=? | web=2b808ec9d50c5b98");
+  assert.match(text, /^engine rows 1 of 2000, #1\.\.#1$/m);
+  delete globalThis.window.Capacitor;
+  restore();
+});
