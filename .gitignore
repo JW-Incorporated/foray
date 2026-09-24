@@ -45,3 +45,12 @@ __pycache__/
 # unignored, so `git add -A` in the main checkout tried to stage all of them.
 # The worktrees themselves are managed by `git worktree`, never by `git add`.
 .claude/worktrees/
+
+# The deploy stamp (issue #701). Build outputs of tools/ci/generate-manifest.mjs,
+# written into dist/ by tools/web/prepare-dist.mjs (Vercel) and into a throwaway
+# checkout by .github/workflows/pages.yml — never into the working tree you
+# commit from. They used to be committed, changed on every merge to main, and so
+# conflicted with every open PR. `generate-manifest.mjs --check` (data-and-site)
+# fails if either is tracked again. Root-anchored: only these exact paths.
+/deploy-manifest.json
+/data/forays-directory.json
