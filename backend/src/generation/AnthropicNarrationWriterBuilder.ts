@@ -14,6 +14,7 @@ import type {
   SeamBrief
 } from "./NarrationWriterBuilder";
 import { recordUsage } from "./usageTracking";
+import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
  * Real §4.7 narration writing via the Anthropic API, mirroring
@@ -260,7 +261,11 @@ const ACT_CLAIM_RULES = [
 const ACT_PROSE_RULES = [
   "One voice, one story. The beats are the checklist the prose must carry, not its template: make each beat's point where it belongs, in your own words, joined to what comes before and after it. A beat may be carried in any seam, and by what a clip itself says.",
   "Never announce a beat, never list the beats, never say what the next clip is going to say.",
-  "NEVER MENTION THIS FORAY'S OWN STRUCTURE (Q-08). No \"this act\", no \"the next beat\", no \"in this segment\", no \"part one of three\", no \"this Foray has three acts\", no \"this documentary\" - the listener cannot see a running order and does not need one. Say what changed, not where they are. The same words are FINE when they belong to something else: \"in the first act of Macbeth\", \"the second act of the crisis\", \"his first act as chairman\". A machine checks this after you answer and sends the seam back.",
+  /* Q-08, one definition for every prompt that writes spoken narration
+     (`copy/narratorStructure.js`). This prompt says "act", "beat" and "seam"
+     throughout because they are how the WORK is described to the model; the
+     rule is what keeps them out of what the listener hears. */
+  NARRATOR_STRUCTURE_RULE,
   "A seam that follows a clip may restate what that clip said once, in the act's own words — then move on.",
   "Introductions, by the weight given on the SEAM line:",
   "  full  — one or two sentences: who is speaking (name and role, as the tape or the episode title gives them) and on which show, and what to listen for. Write it from the clip's OPENING as printed on its CLIP line — what the listener is about to hear — never from the point the clip goes on to make. Do not repeat the clip's first sentences.",

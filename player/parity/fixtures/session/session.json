@@ -1,0 +1,1832 @@
+{
+  "family": "session",
+  "module": "player/engine-contract.js",
+  "note": "SessionPolicy.transition as a pure table (docs/native-engine-plan.md §4.4; player/engine-contract.js sessionTransition, NE-11j). Every phase crossed with every input, including the interruption reasons, a stale appWasSuspended, holdExpired, the relinquish edge carrying neither deactivate nor notify, and deactivate+notify only on close, finalEnd and dataDeletion. Activation is a request (activate, phase unchanged) and a response (sessionResult). Ported by NE-11s to SessionPolicy.swift.",
+  "cases": [
+    {
+      "id": "session/session-phases",
+      "covers": [],
+      "read": "SESSION_PHASES",
+      "expect": { "value": ["inactive", "active", "lostToInterruption", "relinquished"] }
+    },
+    {
+      "id": "session/session-inputs",
+      "covers": [],
+      "read": "SESSION_INPUTS",
+      "expect": {
+        "value": [
+          "userPlay",
+          "sessionResult",
+          "pause",
+          "beat",
+          "narration",
+          "background",
+          "holdExpired",
+          "interruptionBegan",
+          "interruptionEnded",
+          "mediaServicesReset",
+          "relinquish",
+          "close",
+          "finalEnd",
+          "dataDeletion"
+        ]
+      }
+    },
+    {
+      "id": "session/play-vias",
+      "covers": [],
+      "read": "PLAY_VIAS",
+      "expect": { "value": ["tap", "remote", "autoresume", "auditionTap"] }
+    },
+    {
+      "id": "session/session-actions",
+      "covers": [],
+      "read": "SESSION_ACTIONS",
+      "expect": {
+        "value": [
+          "activate",
+          "deactivate",
+          "deactivate-notify",
+          "reapply-category",
+          "rebuild",
+          "command-failed"
+        ]
+      }
+    },
+    {
+      "id": "session/session-rows",
+      "covers": [],
+      "read": "SESSION_ROWS",
+      "expect": {
+        "value": ["stale-suspension", "mic-muted", "stale-hold", "media-services-reset"]
+      }
+    },
+    {
+      "id": "session/hold-policy-kinds",
+      "covers": [],
+      "read": "HOLD_POLICY_KINDS",
+      "expect": { "value": ["forever", "none", "until"] }
+    },
+    {
+      "id": "session/default-hold-policy",
+      "covers": [],
+      "read": "DEFAULT_HOLD_POLICY",
+      "expect": { "value": "forever" }
+    },
+    {
+      "id": "session/inactive-user-play-tap",
+      "covers": [],
+      "authored": true,
+      "note": "The request half: activate, and the phase does not move until sessionResult says ok.",
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "userPlay", "via": "tap" }],
+      "expect": {
+        "return": { "actions": ["activate"], "phase": "inactive", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/inactive-user-play-remote",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "userPlay", "via": "remote" }],
+      "expect": {
+        "return": { "actions": ["activate"], "phase": "inactive", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/inactive-user-play-autoresume",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "userPlay", "via": "autoresume" }],
+      "expect": {
+        "return": { "actions": ["activate"], "phase": "inactive", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/inactive-user-play-audition-tap",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "userPlay", "via": "auditionTap" }],
+      "expect": {
+        "return": { "actions": ["activate"], "phase": "inactive", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/inactive-result-ok",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "sessionResult", "ok": true }],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-result-failed-cannot-interrupt-others",
+      "covers": [],
+      "authored": true,
+      "note": "fail: stay, token, .commandFailed - and no audible command (session-invariant).",
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        { "kind": "sessionResult", "ok": false, "token": "cannot-interrupt-others" }
+      ],
+      "expect": {
+        "return": {
+          "actions": ["command-failed"],
+          "phase": "inactive",
+          "reason": "session-failed:cannot-interrupt-others",
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/inactive-result-failed-cannot-start-playing",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        { "kind": "sessionResult", "ok": false, "token": "cannot-start-playing" }
+      ],
+      "expect": {
+        "return": {
+          "actions": ["command-failed"],
+          "phase": "inactive",
+          "reason": "session-failed:cannot-start-playing",
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/inactive-result-failed-unknown-token",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "sessionResult", "ok": false, "token": "busy" }],
+      "expect": {
+        "return": {
+          "actions": ["command-failed"],
+          "phase": "inactive",
+          "reason": "session-failed:other",
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/inactive-pause",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "pause" }],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-pause-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "pause" }, "none"],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-pause-hold-until",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "pause" }, "until:30"],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-beat",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "beat" }],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-beat-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "beat" }, "none"],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-narration",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "narration" }],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-narration-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "narration" }, "none"],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-background",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "background" }],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-background-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "background" }, "none"],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-hold-expired-until-paused",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "holdExpired", "running": false }, "until:60"],
+      "expect": {
+        "return": { "actions": [], "phase": "inactive", "reason": null, "row": "stale-hold" }
+      }
+    },
+    {
+      "id": "session/inactive-hold-expired-until-running",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "holdExpired", "running": true }, "until:60"],
+      "expect": {
+        "return": { "actions": [], "phase": "inactive", "reason": null, "row": "stale-hold" }
+      }
+    },
+    {
+      "id": "session/inactive-hold-expired-forever",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "holdExpired", "running": false }],
+      "expect": {
+        "return": { "actions": [], "phase": "inactive", "reason": null, "row": "stale-hold" }
+      }
+    },
+    {
+      "id": "session/inactive-hold-expired-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "holdExpired", "running": false }, "none"],
+      "expect": {
+        "return": { "actions": [], "phase": "inactive", "reason": null, "row": "stale-hold" }
+      }
+    },
+    {
+      "id": "session/inactive-began-default",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        {
+          "kind": "interruptionBegan",
+          "reason": "default",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-began-unknown",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        {
+          "kind": "interruptionBegan",
+          "reason": "unknown",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-began-unlisted-reason",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        {
+          "kind": "interruptionBegan",
+          "reason": "wasSuspendedForSiri",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-began-mic-muted",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        {
+          "kind": "interruptionBegan",
+          "reason": "builtInMicMuted",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "inactive", "reason": null, "row": "mic-muted" }
+      }
+    },
+    {
+      "id": "session/inactive-began-suspended-stale",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "actions": [],
+          "phase": "inactive",
+          "reason": null,
+          "row": "stale-suspension"
+        }
+      }
+    },
+    {
+      "id": "session/inactive-began-suspended-not-running",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": false,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-began-suspended-not-activated-here",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": true,
+          "activatedInProcess": false
+        }
+      ],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-ended-resume-was-playing",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        { "kind": "interruptionEnded", "shouldResume": true, "wasPlaying": true }
+      ],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-ended-resume-was-paused",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        { "kind": "interruptionEnded", "shouldResume": true, "wasPlaying": false }
+      ],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-ended-no-resume",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "inactive",
+        { "kind": "interruptionEnded", "shouldResume": false, "wasPlaying": true }
+      ],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-media-services-reset",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "mediaServicesReset" }],
+      "expect": {
+        "return": {
+          "actions": ["reapply-category", "rebuild"],
+          "phase": "inactive",
+          "reason": null,
+          "row": "media-services-reset"
+        }
+      }
+    },
+    {
+      "id": "session/inactive-relinquish",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "relinquish" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/inactive-close",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "close" }],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-final-end",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "finalEnd" }],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/inactive-data-deletion",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "dataDeletion" }],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-user-play-tap",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "userPlay", "via": "tap" }],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-user-play-remote",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "userPlay", "via": "remote" }],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-user-play-autoresume",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "userPlay", "via": "autoresume" }],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-user-play-audition-tap",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "userPlay", "via": "auditionTap" }],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-result-ok",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "sessionResult", "ok": true }],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-result-failed-cannot-interrupt-others",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        { "kind": "sessionResult", "ok": false, "token": "cannot-interrupt-others" }
+      ],
+      "expect": {
+        "return": {
+          "actions": ["command-failed"],
+          "phase": "active",
+          "reason": "session-failed:cannot-interrupt-others",
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/active-result-failed-cannot-start-playing",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        { "kind": "sessionResult", "ok": false, "token": "cannot-start-playing" }
+      ],
+      "expect": {
+        "return": {
+          "actions": ["command-failed"],
+          "phase": "active",
+          "reason": "session-failed:cannot-start-playing",
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/active-result-failed-unknown-token",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "sessionResult", "ok": false, "token": "busy" }],
+      "expect": {
+        "return": {
+          "actions": ["command-failed"],
+          "phase": "active",
+          "reason": "session-failed:other",
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/active-pause",
+      "covers": [],
+      "authored": true,
+      "note": "S-4: a pause holds the session under the default pauseHoldPolicy (.forever). NE-11s mutation: a deactivate on this edge turns it red.",
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "pause" }],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-pause-hold-none",
+      "covers": [],
+      "authored": true,
+      "note": "The H-1b arm: released at pause WITHOUT notify; Now Playing is kept.",
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "pause" }, "none"],
+      "expect": {
+        "return": { "actions": ["deactivate"], "phase": "inactive", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/active-pause-hold-until",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "pause" }, "until:30"],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-beat",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "beat" }],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-beat-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "beat" }, "none"],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-narration",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "narration" }],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-narration-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "narration" }, "none"],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-background",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "background" }],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-background-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "background" }, "none"],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-hold-expired-until-paused",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "holdExpired", "running": false }, "until:60"],
+      "expect": {
+        "return": { "actions": ["deactivate"], "phase": "inactive", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/active-hold-expired-until-running",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "holdExpired", "running": true }, "until:60"],
+      "expect": {
+        "return": { "actions": [], "phase": "active", "reason": null, "row": "stale-hold" }
+      }
+    },
+    {
+      "id": "session/active-hold-expired-forever",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "holdExpired", "running": false }],
+      "expect": {
+        "return": { "actions": [], "phase": "active", "reason": null, "row": "stale-hold" }
+      }
+    },
+    {
+      "id": "session/active-hold-expired-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "holdExpired", "running": false }, "none"],
+      "expect": {
+        "return": { "actions": [], "phase": "active", "reason": null, "row": "stale-hold" }
+      }
+    },
+    {
+      "id": "session/active-began-default",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        {
+          "kind": "interruptionBegan",
+          "reason": "default",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/active-began-unknown",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        {
+          "kind": "interruptionBegan",
+          "reason": "unknown",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/active-began-unlisted-reason",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        {
+          "kind": "interruptionBegan",
+          "reason": "wasSuspendedForSiri",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/active-began-mic-muted",
+      "covers": [],
+      "authored": true,
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        {
+          "kind": "interruptionBegan",
+          "reason": "builtInMicMuted",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "active", "reason": null, "row": "mic-muted" }
+      }
+    },
+    {
+      "id": "session/active-began-suspended-stale",
+      "covers": [],
+      "authored": true,
+      "note": "A late began(appWasSuspended) while running after activating here: unchanged, stale=y row.",
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "active", "reason": null, "row": "stale-suspension" }
+      }
+    },
+    {
+      "id": "session/active-began-suspended-not-running",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": false,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/active-began-suspended-not-activated-here",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": true,
+          "activatedInProcess": false
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/active-ended-resume-was-playing",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        { "kind": "interruptionEnded", "shouldResume": true, "wasPlaying": true }
+      ],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-ended-resume-was-paused",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        { "kind": "interruptionEnded", "shouldResume": true, "wasPlaying": false }
+      ],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-ended-no-resume",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "active",
+        { "kind": "interruptionEnded", "shouldResume": false, "wasPlaying": true }
+      ],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/active-media-services-reset",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "mediaServicesReset" }],
+      "expect": {
+        "return": {
+          "actions": ["reapply-category", "rebuild"],
+          "phase": "inactive",
+          "reason": null,
+          "row": "media-services-reset"
+        }
+      }
+    },
+    {
+      "id": "session/active-relinquish",
+      "covers": [],
+      "authored": true,
+      "note": "§4.6: relinquish keeps the session active - no deactivate, no notifyOthers. NE-11s mutation: notify on this edge turns it red.",
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "relinquish" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/active-close",
+      "covers": [],
+      "authored": true,
+      "note": "deactivate+notify only on close, finalEnd and dataDeletion.",
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "close" }],
+      "expect": {
+        "return": {
+          "actions": ["deactivate-notify"],
+          "phase": "inactive",
+          "reason": null,
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/active-final-end",
+      "covers": [],
+      "authored": true,
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "finalEnd" }],
+      "expect": {
+        "return": {
+          "actions": ["deactivate-notify"],
+          "phase": "inactive",
+          "reason": null,
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/active-data-deletion",
+      "covers": [],
+      "authored": true,
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "dataDeletion" }],
+      "expect": {
+        "return": {
+          "actions": ["deactivate-notify"],
+          "phase": "inactive",
+          "reason": null,
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-user-play-tap",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "userPlay", "via": "tap" }],
+      "expect": {
+        "return": {
+          "actions": ["activate"],
+          "phase": "lostToInterruption",
+          "reason": null,
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-user-play-remote",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "userPlay", "via": "remote" }],
+      "expect": {
+        "return": {
+          "actions": ["activate"],
+          "phase": "lostToInterruption",
+          "reason": null,
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-user-play-autoresume",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "userPlay", "via": "autoresume" }],
+      "expect": {
+        "return": {
+          "actions": ["activate"],
+          "phase": "lostToInterruption",
+          "reason": null,
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-user-play-audition-tap",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "userPlay", "via": "auditionTap" }],
+      "expect": {
+        "return": {
+          "actions": ["activate"],
+          "phase": "lostToInterruption",
+          "reason": null,
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-result-ok",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "sessionResult", "ok": true }],
+      "expect": { "return": { "actions": [], "phase": "active", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/lost-to-interruption-result-failed-cannot-interrupt-others",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        { "kind": "sessionResult", "ok": false, "token": "cannot-interrupt-others" }
+      ],
+      "expect": {
+        "return": {
+          "actions": ["command-failed"],
+          "phase": "lostToInterruption",
+          "reason": "session-failed:cannot-interrupt-others",
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-result-failed-cannot-start-playing",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        { "kind": "sessionResult", "ok": false, "token": "cannot-start-playing" }
+      ],
+      "expect": {
+        "return": {
+          "actions": ["command-failed"],
+          "phase": "lostToInterruption",
+          "reason": "session-failed:cannot-start-playing",
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-result-failed-unknown-token",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "sessionResult", "ok": false, "token": "busy" }],
+      "expect": {
+        "return": {
+          "actions": ["command-failed"],
+          "phase": "lostToInterruption",
+          "reason": "session-failed:other",
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-pause",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "pause" }],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-pause-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "pause" }, "none"],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-pause-hold-until",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "pause" }, "until:30"],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-beat",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "beat" }],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-beat-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "beat" }, "none"],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-narration",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "narration" }],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-narration-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "narration" }, "none"],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-background",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "background" }],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-background-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "background" }, "none"],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-hold-expired-until-paused",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "holdExpired", "running": false }, "until:60"],
+      "expect": {
+        "return": {
+          "actions": [],
+          "phase": "lostToInterruption",
+          "reason": null,
+          "row": "stale-hold"
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-hold-expired-until-running",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "holdExpired", "running": true }, "until:60"],
+      "expect": {
+        "return": {
+          "actions": [],
+          "phase": "lostToInterruption",
+          "reason": null,
+          "row": "stale-hold"
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-hold-expired-forever",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "holdExpired", "running": false }],
+      "expect": {
+        "return": {
+          "actions": [],
+          "phase": "lostToInterruption",
+          "reason": null,
+          "row": "stale-hold"
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-hold-expired-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "holdExpired", "running": false }, "none"],
+      "expect": {
+        "return": {
+          "actions": [],
+          "phase": "lostToInterruption",
+          "reason": null,
+          "row": "stale-hold"
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-began-default",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        {
+          "kind": "interruptionBegan",
+          "reason": "default",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-began-unknown",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        {
+          "kind": "interruptionBegan",
+          "reason": "unknown",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-began-unlisted-reason",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        {
+          "kind": "interruptionBegan",
+          "reason": "wasSuspendedForSiri",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-began-mic-muted",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        {
+          "kind": "interruptionBegan",
+          "reason": "builtInMicMuted",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "actions": [],
+          "phase": "lostToInterruption",
+          "reason": null,
+          "row": "mic-muted"
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-began-suspended-stale",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "actions": [],
+          "phase": "lostToInterruption",
+          "reason": null,
+          "row": "stale-suspension"
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-began-suspended-not-running",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": false,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-began-suspended-not-activated-here",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": true,
+          "activatedInProcess": false
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "lostToInterruption", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-ended-resume-was-playing",
+      "covers": [],
+      "authored": true,
+      "note": "Resume after an interruption goes through a fresh activation.",
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        { "kind": "interruptionEnded", "shouldResume": true, "wasPlaying": true }
+      ],
+      "expect": {
+        "return": {
+          "actions": ["activate"],
+          "phase": "lostToInterruption",
+          "reason": null,
+          "row": null
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-ended-resume-was-paused",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        { "kind": "interruptionEnded", "shouldResume": true, "wasPlaying": false }
+      ],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/lost-to-interruption-ended-no-resume",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "lostToInterruption",
+        { "kind": "interruptionEnded", "shouldResume": false, "wasPlaying": true }
+      ],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/lost-to-interruption-media-services-reset",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "mediaServicesReset" }],
+      "expect": {
+        "return": {
+          "actions": ["reapply-category", "rebuild"],
+          "phase": "inactive",
+          "reason": null,
+          "row": "media-services-reset"
+        }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-relinquish",
+      "covers": [],
+      "authored": true,
+      "note": "Relinquish from an interrupted session: still no deactivate, no notify.",
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "relinquish" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/lost-to-interruption-close",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "close" }],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/lost-to-interruption-final-end",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "finalEnd" }],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/lost-to-interruption-data-deletion",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["lostToInterruption", { "kind": "dataDeletion" }],
+      "expect": { "return": { "actions": [], "phase": "inactive", "reason": null, "row": null } }
+    },
+    {
+      "id": "session/relinquished-user-play-tap",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "userPlay", "via": "tap" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-user-play-remote",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "userPlay", "via": "remote" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-user-play-autoresume",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "userPlay", "via": "autoresume" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-user-play-audition-tap",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "userPlay", "via": "auditionTap" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-result-ok",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "sessionResult", "ok": true }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-result-failed-cannot-interrupt-others",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        { "kind": "sessionResult", "ok": false, "token": "cannot-interrupt-others" }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-result-failed-cannot-start-playing",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        { "kind": "sessionResult", "ok": false, "token": "cannot-start-playing" }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-result-failed-unknown-token",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "sessionResult", "ok": false, "token": "busy" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-pause",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "pause" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-pause-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "pause" }, "none"],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-pause-hold-until",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "pause" }, "until:30"],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-beat",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "beat" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-beat-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "beat" }, "none"],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-narration",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "narration" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-narration-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "narration" }, "none"],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-background",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "background" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-background-hold-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "background" }, "none"],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-hold-expired-until-paused",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "holdExpired", "running": false }, "until:60"],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-hold-expired-until-running",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "holdExpired", "running": true }, "until:60"],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-hold-expired-forever",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "holdExpired", "running": false }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-hold-expired-none",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "holdExpired", "running": false }, "none"],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-began-default",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        {
+          "kind": "interruptionBegan",
+          "reason": "default",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-began-unknown",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        {
+          "kind": "interruptionBegan",
+          "reason": "unknown",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-began-unlisted-reason",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        {
+          "kind": "interruptionBegan",
+          "reason": "wasSuspendedForSiri",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-began-mic-muted",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        {
+          "kind": "interruptionBegan",
+          "reason": "builtInMicMuted",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-began-suspended-stale",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": true,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-began-suspended-not-running",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": false,
+          "activatedInProcess": true
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-began-suspended-not-activated-here",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        {
+          "kind": "interruptionBegan",
+          "reason": "appWasSuspended",
+          "running": true,
+          "activatedInProcess": false
+        }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-ended-resume-was-playing",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        { "kind": "interruptionEnded", "shouldResume": true, "wasPlaying": true }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-ended-resume-was-paused",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        { "kind": "interruptionEnded", "shouldResume": true, "wasPlaying": false }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-ended-no-resume",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": [
+        "relinquished",
+        { "kind": "interruptionEnded", "shouldResume": false, "wasPlaying": true }
+      ],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-media-services-reset",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "mediaServicesReset" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-relinquish",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "relinquish" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-close",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "close" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-final-end",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "finalEnd" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/relinquished-data-deletion",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["relinquished", { "kind": "dataDeletion" }],
+      "expect": {
+        "return": { "actions": [], "phase": "relinquished", "reason": null, "row": null }
+      }
+    },
+    {
+      "id": "session/throws-unknown-phase",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["playing", { "kind": "pause" }],
+      "expect": { "throws": { "name": "RangeError" } }
+    },
+    {
+      "id": "session/throws-unknown-input",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "routeChanged" }],
+      "expect": { "throws": { "name": "RangeError" } }
+    },
+    {
+      "id": "session/throws-unknown-via",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["inactive", { "kind": "userPlay", "via": "siri" }],
+      "expect": { "throws": { "name": "RangeError" } }
+    },
+    {
+      "id": "session/throws-unknown-hold-policy",
+      "covers": [],
+      "call": "sessionTransition",
+      "args": ["active", { "kind": "pause" }, "until:0"],
+      "expect": { "throws": { "name": "RangeError" } }
+    },
+    {
+      "id": "session/parse-hold-policy-forever",
+      "covers": [],
+      "call": "parseHoldPolicy",
+      "args": ["forever"],
+      "expect": { "return": { "kind": "forever", "minutes": null } }
+    },
+    {
+      "id": "session/parse-hold-policy-none",
+      "covers": [],
+      "call": "parseHoldPolicy",
+      "args": ["none"],
+      "expect": { "return": { "kind": "none", "minutes": null } }
+    },
+    {
+      "id": "session/parse-hold-policy-until-60",
+      "covers": [],
+      "call": "parseHoldPolicy",
+      "args": ["until:60"],
+      "expect": { "return": { "kind": "until", "minutes": 60 } }
+    },
+    {
+      "id": "session/parse-hold-policy-until-zero",
+      "covers": [],
+      "call": "parseHoldPolicy",
+      "args": ["until:0"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "session/parse-hold-policy-until-fraction",
+      "covers": [],
+      "call": "parseHoldPolicy",
+      "args": ["until:1.5"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "session/parse-hold-policy-garbage",
+      "covers": [],
+      "call": "parseHoldPolicy",
+      "args": ["sometimes"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "session/parse-hold-policy-not-a-string",
+      "covers": [],
+      "call": "parseHoldPolicy",
+      "args": [60],
+      "expect": { "return": null }
+    },
+    {
+      "id": "session/session-failed-reason-cannot-interrupt-others",
+      "covers": [],
+      "call": "sessionFailedReason",
+      "args": ["cannot-interrupt-others"],
+      "expect": { "return": "session-failed:cannot-interrupt-others" }
+    },
+    {
+      "id": "session/session-failed-reason-other",
+      "covers": [],
+      "call": "sessionFailedReason",
+      "args": ["other"],
+      "expect": { "return": "session-failed:other" }
+    },
+    {
+      "id": "session/session-failed-reason-unknown-token",
+      "covers": [],
+      "call": "sessionFailedReason",
+      "args": ["busy"],
+      "expect": { "return": "session-failed:other" }
+    },
+    {
+      "id": "session/session-failed-reason-missing-token",
+      "covers": [],
+      "call": "sessionFailedReason",
+      "args": [null],
+      "expect": { "return": "session-failed:other" }
+    }
+  ]
+}

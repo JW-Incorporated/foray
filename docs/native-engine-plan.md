@@ -24,6 +24,8 @@ That is Tier 2. On iOS the native plugin owns playback: the queue, Foray segment
 
 ## 1. Why: the field record
 
+> **Addendum 2026-09-24 — the HA #108 baseline (`docs/field-records/2026-09-24-car-baseline.md`).** On build 2026092429 the app-process `.playback` hold SUCCEEDED (activated in the foreground) and was held and re-asserted for 8 minutes while paused and locked — and the car still chose Spotify on connect. A held session is not sufficient; iOS returns the car to the app whose audio last PLAYED, which for 4a was WebKit's media process. So NE-16's hold must be the session the engine's own playback ran through, and NE-27's car test is judged against this record: (1) paused in the app, locked, car connects → 4a resumes; (2) paused from the car, long pause, play → 4a resumes and stays.
+
 Source: the founder's diagnostics, build 2026092327, iPhone, in the car, 2026-09-23/24 (**Measured**).
 
 | # | What the record shows | Mechanism | Fixed in |

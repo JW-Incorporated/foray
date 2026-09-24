@@ -22,13 +22,27 @@ final class ParityFamilyTests: XCTestCase {
     /// NE-05's proof family: `SeamGap` against player/seam-gap.js.
     func testSeamGapFamily() { assertParityFamily("seam-gap", requireRunner: true) }
 
-    /// Recorded by NE-07j, owed by NE-07s: every id must be pending until then.
-    func testQueueStateFamily() { assertParityFamily("queue-state") }
-    func testRateFamily() { assertParityFamily("rate") }
+    /// Recorded by NE-07j, burned down by NE-07s: the reducer at parity with
+    /// player/queue-state.js, so the family must now have a runner that ran.
+    func testQueueStateFamily() { assertParityFamily("queue-state", requireRunner: true) }
 
-    /// Recorded by NE-10j, owed by NE-10s.
-    func testRowsFamily() { assertParityFamily("rows") }
-    func testNumberFormatFamily() { assertParityFamily("number-format") }
+    /// NE-09's ports, which must RUN (a runner registered, cases executed):
+    /// `PlaybackRate` (the ladder and ForayTts's utteranceRate curve),
+    /// `ResumeRules` (three JS modules, one runner) and `TransportPolicy`.
+    func testRateFamily() { assertParityFamily("rate", requireRunner: true) }
+    func testResumeRulesFamily() { assertParityFamily("resume-rules", requireRunner: true) }
+    func testTransportFamily() { assertParityFamily("transport", requireRunner: true) }
+
+    /// Recorded by NE-10j and NE-04, ported by NE-10s: the shared rows byte
+    /// for byte (`Rows`, `JSWriter`) and exact token admission (`Vocabulary`).
+    /// A runner is REQUIRED, so unregistering one is red here, not "owed".
+    func testRowsFamily() { assertParityFamily("rows", requireRunner: true) }
+    func testNumberFormatFamily() { assertParityFamily("number-format", requireRunner: true) }
+    func testDiagTokensFamily() { assertParityFamily("diag-tokens", requireRunner: true) }
+
+    /// NE-12s's port, which must RUN: `MediaMapping` against
+    /// player/media-session.js and the media-actions adapter (NE-12j).
+    func testMediaEpisodeFamily() { assertParityFamily("media-episode", requireRunner: true) }
 
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree

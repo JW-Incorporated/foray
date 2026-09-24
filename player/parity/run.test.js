@@ -273,7 +273,7 @@ test("scenario: on a manual clock the seam beat holds the next play until the cl
 });
 
 test("scenario: a verb with no JS driver fails loudly with its card, never silently skips", async () => {
-  await assert.rejects(scenario([{ session: "interruption" }]), /E_NO_JS_DRIVER.*NE-11j/);
+  await assert.rejects(scenario([{ session: "interruption" }]), /E_NO_JS_DRIVER.*NE-14j/);
   await assert.rejects(scenario([{ remote: "next" }]), /E_NO_JS_DRIVER.*NE-29j/);
 });
 

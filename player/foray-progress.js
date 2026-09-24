@@ -411,6 +411,32 @@ export function progressLabel(point, { estimated = false } = {}) {
 export const SAVE_EVERY_SEC = 5;
 
 /**
+ * Whether a Foray's playhead should be written now: the throttle inside
+ * `ForayProgressStore.save`, lifted out as a pure function in NE-09 so the
+ * native engine's ResumeRules port is checked against it (the `resume-rules`
+ * fixtures, foray-cadence.json). No behaviour change: `save` asks this with
+ * exactly the values it used to test inline.
+ *
+ *  - AN UNKNOWN POSITION NEVER OVERWRITES A KNOWN ONE (#263): an elapsed value
+ *    that is not a finite number writes nothing, so the last good row stands.
+ *  - `force` (pause, page-hide: the moments the next tick may never come)
+ *    writes any known position.
+ *  - Otherwise the clock must have moved `everySec` since the last write of
+ *    this Foray; the first write is due at once. Written as `!(d < everySec)`,
+ *    the negation of the old skip test, so it stays that test exactly.
+ *
+ * @param {number|null|undefined} lastWritten  the elapsed value last written
+ * @param {*} elapsedSec
+ * @param {object} [opts]  `{everySec = SAVE_EVERY_SEC, force = false}`
+ * @returns {boolean}
+ */
+export function forayWriteDue(lastWritten, elapsedSec, { everySec = SAVE_EVERY_SEC, force = false } = {}) {
+  if (!isNum(elapsedSec)) return false;
+  if (force || lastWritten == null) return true;
+  return !(Math.abs(elapsedSec - lastWritten) < everySec);
+}
+
+/**
  * A throttled writer, so the player can call `save()` on every position tick
  * (4 Hz) without writing to localStorage 14,000 times an hour.
  *
@@ -451,8 +477,7 @@ export class ForayProgressStore {
     segmentId = null, intoSec = 0, force = false, now = new Date(),
   }) {
     if (!nonEmpty(forayId) || !isNum(elapsedSec) || !isNum(totalSec) || totalSec <= 0) return false;
-    const last = this._lastWritten.get(forayId);
-    if (!force && last != null && Math.abs(elapsedSec - last) < this.everySec) return false;
+    if (!forayWriteDue(this._lastWritten.get(forayId), elapsedSec, { everySec: this.everySec, force })) return false;
     const ok = writeProgress(this.storage, makeProgress({
       forayId, title, elapsedSec, totalSec, index, segmentId, intoSec, now,
     }));

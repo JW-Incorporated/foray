@@ -27,8 +27,58 @@ public enum EngineConstants {
 
     /// `player/engine-contract.js`
     public enum EngineContract {
+        /// `AUDIBLE_COMMANDS`
+        public static let audibleCommands: [String] = ["deckPlay", "speak", "interludeStart", "silenceStart"]
+        /// `BRIDGE_METHODS`
+        public static let bridgeMethods: [String] = ["engineHello", "engineSend", "engineRead"]
+        /// `CAPABILITIES`
+        public static let capabilities: [String] = ["episode", "continuation", "restore", "foray"]
+        /// `COMMANDS`
+        public static let commands: [String] = ["playEpisode", "playForay", "setContinuation", "play", "pause", "toggle", "next", "previous", "seekBy", "seekTo", "jump", "stop", "setRate", "setVoice", "setInterludeEnabled", "setPageVisible", "ackAdvances", "ackEvents", "restoreBar", "purge", "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession"]
+        /// `CONTRACT_KINDS`
+        public static let contractKinds: [String] = ["helloRequest", "helloResponse", "sendRequest", "sendResponse", "readRequest", "rowsResponse", "diagnosticsResponse", "snapshot", "event"]
+        /// `DEFAULT_HOLD_POLICY`
+        public static let defaultHoldPolicy: String = "forever"
+        /// `ENGINE_MODES`
+        public static let engineModes: [String] = ["native", "legacy"]
+        /// `ENGINE_MODE_EVENTS`
+        public static let engineModeEvents: [String] = ["launch", "healthy", "page-health", "set-override"]
+        /// `EVENTS`
+        public static let events: [String] = ["snapshot", "advanced", "skipped", "error", "voiceFallback", "diag", "modeChanged"]
+        /// `HANDSHAKE_REASONS`
+        public static let handshakeReasons: [String] = ["native", "not-ios", "no-method", "no-hello", "bad-hello", "engine-legacy", "protocol-mismatch"]
+        /// `HOLD_POLICY_KINDS`
+        public static let holdPolicyKinds: [String] = ["forever", "none", "until"]
+        /// `MODE_OVERRIDES`
+        public static let modeOverrides: [String] = ["auto", "native", "web"]
         /// `OWNED_PREFIXES`
         public static let ownedPrefixes: [String] = ["cp_pos:", "cp_foray:", "cp_last_episode"]
+        /// `PAGE_MODES`
+        public static let pageModes: [String] = ["native", "js"]
+        /// `PLAYER_STATES`
+        public static let playerStates: [String] = ["idle", "loadingItem", "playing", "transitioning", "interrupted", "ended"]
+        /// `PLAY_VIAS`
+        public static let playVias: [String] = ["tap", "remote", "autoresume", "auditionTap"]
+        /// `PROTOCOL`
+        public static let `protocol`: Double = 1
+        /// `READ_KINDS`
+        public static let readKinds: [String] = ["snapshot", "rows", "diagnostics"]
+        /// `REFUSALS`
+        public static let refusals: [String] = ["not-loaded", "no-next", "no-previous", "ended", "refused-structure", "capability-off", "session-failed:cannot-interrupt-others", "session-failed:cannot-start-playing", "session-failed:other", "engine-busy", "relinquished", "unknown-cmd"]
+        /// `RELINQUISH_CAPS`
+        public static let relinquishCaps: [String] = ["episode", "continuation", "restore", "foray", "all"]
+        /// `SESSION_ACTIONS`
+        public static let sessionActions: [String] = ["activate", "deactivate", "deactivate-notify", "reapply-category", "rebuild", "command-failed"]
+        /// `SESSION_INPUTS`
+        public static let sessionInputs: [String] = ["userPlay", "sessionResult", "pause", "beat", "narration", "background", "holdExpired", "interruptionBegan", "interruptionEnded", "mediaServicesReset", "relinquish", "close", "finalEnd", "dataDeletion"]
+        /// `SESSION_PHASES`
+        public static let sessionPhases: [String] = ["inactive", "active", "lostToInterruption", "relinquished"]
+        /// `SESSION_ROWS`
+        public static let sessionRows: [String] = ["stale-suspension", "mic-muted", "stale-hold", "media-services-reset"]
+        /// `SNAPSHOT_MODES`
+        public static let snapshotModes: [String] = ["none", "episode", "foray"]
+        /// `STRIKE_LIMIT`
+        public static let strikeLimit: Double = 3
     }
 
     /// `player/episode-progress.js`
@@ -147,6 +197,16 @@ public enum EngineConstants {
         public static let rates: [Double] = [0.75, 1, 1.25, 1.5, 1.75, 2]
         /// `RATE_KEY`
         public static let rateKey: String = "cp_rate"
+        /// `UTTERANCE_CALIBRATION_PERCEIVED`
+        public static let utteranceCalibrationPerceived: Double = 3
+        /// `UTTERANCE_CALIBRATION_REQUESTED`
+        public static let utteranceCalibrationRequested: Double = 1.5
+        /// `UTTERANCE_DEFAULT_RATE`
+        public static let utteranceDefaultRate: Double = 0.5
+        /// `UTTERANCE_MAX_RATE`
+        public static let utteranceMaxRate: Double = 1
+        /// `UTTERANCE_MIN_RATE`
+        public static let utteranceMinRate: Double = 0
     }
 
     /// `player/position-store.js`
@@ -165,6 +225,8 @@ public enum EngineConstants {
         public static let narrationRate: Double = 1
         /// `POSITION_INTERVAL_MS`
         public static let positionIntervalMs: Double = 15000
+        /// `POSITION_MIN_DELTA_SEC`
+        public static let positionMinDeltaSec: Double = 10
     }
 
     /// `player/queue-state.js`

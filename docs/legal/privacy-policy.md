@@ -87,12 +87,18 @@ iPhone it is a Keychain item marked for **this device only**
 Keychain and cannot be restored onto another phone; Apple can put it back only
 when an iPhone's own backup is restored onto that same iPhone. On Android it is
 a file in the app's no-backup directory, which Android's backup and
-phone-to-phone transfer always leave out. Restoring a backup onto a new phone
-therefore brings back your settings but not your account: the app starts a new
-anonymous account, as §3 describes. An app installed before this change moves
-the token there on its next launch, and removes the old copies only once the
-move has succeeded. In the web app, which has no phone backup, the token is
-stored like every other key.
+phone-to-phone transfer always leave out. Restoring such a backup onto a new
+phone therefore brings back your settings but not your account: the app starts
+a new anonymous account, as §3 describes. **A backup made by an earlier version
+of the app is different.** Before this change the token was stored like every
+other key, so an older backup does hold it, and restoring one onto a new phone
+brings that account back with it. An app installed before this change moves the
+token into the phone-only store on its next launch, and removes the old copies
+only once the move has succeeded; backups made after that no longer contain it.
+If you use **Delete my data** (§7), the app also signs the account out on our
+server (`app.js:sbRevokeSessions()`), so the token in an older backup stops
+working. In the web app, which has no phone backup, the token is stored like
+every other key.
 
 Two honest qualifications to "two places". The diagnostic record
 `cp_storage_health` is deliberately **never** written to IndexedDB — a failing
@@ -263,13 +269,19 @@ password**. It is an opaque identifier. If you clear the app's storage, the toke
 is gone and the app creates a new anonymous account the next time it needs one —
 the old rows remain but nothing on your device points to them any more. The same
 is true of deleting the iOS or Android app, and of restoring a phone backup onto
-a new phone: the token is never in the backup (§1). (iOS keeps an app's Keychain
-items after the app is deleted, so the app empties its own the first time a
-fresh install opens.)
+a new phone, because the app keeps the token out of the phone's backups (§1).
+The exception is a backup made by an earlier version of the app, which does hold
+the token: restoring it brings that account back, unless you have since used
+Delete my data, which makes that token stop working. (iOS keeps an app's
+Keychain items after the app is deleted, so the app empties its own the first
+time a fresh install opens.)
 
 **That is exactly why the delete control in §7 deletes the rows first and the
 token second.** It also cuts the link deliberately: after a deletion the app
-starts a new anonymous account rather than re-attaching you to the old one. The
+starts a new anonymous account rather than re-attaching you to the old one, and
+it signs the old account out on our server (`app.js:sbRevokeSessions()`), so no
+other copy of the token, such as one in an older phone backup, can re-attach to
+it either. The
 old account row itself stays, because removing it needs an administrative key we
 do not ship in a public web page — §7 says so plainly.
 
@@ -461,6 +473,11 @@ optional) — one stray tap cannot trigger it.
   you typed), the account's own `app_users` row, and the other per-user tables the
   database defines, whether or not they hold anything of yours. Row-level security
   means the request can only ever reach your rows.
+- **Your sign-in on our server.** After the rows, the app signs your anonymous
+  account out everywhere (`app.js:sbRevokeSessions()`), so every copy of its
+  token stops working, including one in a phone backup made by an earlier
+  version of the app. If that step fails, the app says so and leaves your
+  device untouched, the same as a table that refuses.
 
 **What it deletes in what order, and why that matters.** The server rows go
 first. Your token (`cp_sb_session`) is the only thing that can reach them, and

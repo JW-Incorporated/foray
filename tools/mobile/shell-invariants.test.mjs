@@ -2678,6 +2678,141 @@ test("NE-05: both wrappers run the seam-gap and compare families and the whole m
   assert.match(all[1], /CompareFamily\.runner/);
 });
 
+test("NE-09: both wrappers require the rate, resume-rules and transport runners, and the registry holds them", () => {
+  /* NE-09 burned these three families out of swift-pending.json, so from here
+     on their cases must EXECUTE in Swift. A wrapper that lost its method, or a
+     `requireRunner: true` quietly dropped, would let a deregistered runner
+     read as "owed" for zero ids and stay green; the registry line is what
+     makes them run at all.
+     MUTATION: drop `requireRunner: true` from testTransportFamily in either
+     wrapper, or TransportFamily.runner from ParityFamilies.all; each fails here. */
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  const families = { rate: "testRateFamily", "resume-rules": "testResumeRulesFamily", transport: "testTransportFamily" };
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    for (const [family, method] of Object.entries(families)) {
+      assert.match(src, new RegExp(String.raw`func ${method}\(\)\s*\{\s*assertParityFamily\("${family}", requireRunner: true\)`),
+        `${where}: ${method} must require a ${family} runner`);
+    }
+  }
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  for (const runner of ["RateFamily.runner", "ResumeRulesFamily.runner", "TransportFamily.runner"]) {
+    assert.ok(all[1].includes(runner), `ParityFamilies.all has no ${runner}`);
+  }
+});
+
+test("NE-07s: the queue-state runner is registered and both wrappers require it to have run", () => {
+  /* NE-07s burned the queue-state family out of swift-pending.json. From then
+     on the ids are owed by nobody, so if the runner fell out of the registry
+     the Swift books would call each id "unaccounted" and go red, which is
+     right; but a wrapper that only says assertParityFamily("queue-state")
+     would also accept a family that is ENTIRELY pending again (a re-record
+     with --port-card), and the reducer would stop being checked with every
+     step green. requireRunner makes "it ran" part of the assertion.
+     MUTATION: drop QueueStateFamily.runner from ParityFamilies.all, or
+     `requireRunner: true` from either wrapper's testQueueStateFamily; each
+     fails here. */
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  assert.match(all[1], /QueueStateFamily\.runner/, "ParityFamilies.all must hold the queue-state runner (NE-07s)");
+  for (const file of [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ]) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    assert.match(src, /assertParityFamily\("queue-state", requireRunner: true\)/,
+      `${path.relative(ROOT, file)} must require the queue-state runner to have run`);
+  }
+});
+
+/* ─────────── NE-12s: MediaMapping, the lock screen's rules in Swift ───────────
+ *
+ * docs/native-engine-plan.md §4.5 and card NE-12s. `Policy/MediaMapping.swift`
+ * ports player/media-session.js; the `media-episode` fixtures (NE-12j) are the
+ * contract and run in both XCTest wrappers. What the fixtures cannot see is
+ * where a NUMBER comes from, and the seek pair is the number that has already
+ * been wrong once: the founder's "In the app, I can jump back 15s and forward
+ * 30s. On the lock screen, it's 10s in both directions. Both should be 15/30"
+ * (2026-09-23) was a second copy of the pair drifting from the first. */
+
+/** A Swift numeric literal's value, or NaN for anything that is not a plain
+ *  decimal literal (hex, binary and octal forms are skipped, not guessed). */
+function swiftDecimalLiterals(code) {
+  return [...code.matchAll(/(?<![\w.])\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d[\d_]*)?(?![\w.])/g)]
+    .map((m) => ({ text: m[0], value: Number(m[0].replace(/_/g, "")) }));
+}
+
+test("NE-12s: no literal 15 or 30 (nor 15_000 / 30_000) anywhere in the engine core's Swift but the generated constants", () => {
+  /* The pair lives ONCE, in EngineConstants.swift, which NE-04 generates from
+     media-session.js and gen-constants.test.mjs keeps in step. Every other
+     file reads `EngineConstants.MediaSession.seekBackwardSec` /
+     `seekForwardSec` (MediaMapping re-exports them). A literal anywhere else
+     in the core is a second copy, however innocent its purpose, and the pin
+     does not try to tell a seek step from a coincidence: a real 30 that is
+     not the seek pair belongs in the JS it comes from, and then in the
+     generated file too (plan §6.7). Comments are stripped; a WHY paragraph
+     may say "15/30".
+     MUTATION: `case .seekForward: return .seekBy(30)` in MediaMapping.swift,
+     or `let step = 15_000` in any core source; each fails here. */
+  const sources = swiftFilesUnder(path.join(CORE_DIR, "Sources/ForayEngineCore"))
+    .filter((file) => path.basename(file) !== "EngineConstants.swift");
+  assert.ok(sources.some((f) => f.endsWith(path.join("Policy", "MediaMapping.swift"))), "MediaMapping.swift is missing from the core");
+  const forbidden = new Set([15, 30, 15000, 30000]);
+  const found = [];
+  for (const file of sources) {
+    for (const lit of swiftDecimalLiterals(stripSwiftComments(fs.readFileSync(file, "utf8")))) {
+      if (forbidden.has(lit.value)) found.push(`${path.relative(ROOT, file)}: ${lit.text}`);
+    }
+  }
+  assert.deepEqual(found, [], "a literal seek step in the core; read EngineConstants.MediaSession instead");
+
+  // Not vacuous: the port does read the pair from the generated file.
+  const mapping = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Policy/MediaMapping.swift"), "utf8"));
+  assert.match(mapping, /seekBackwardSec = EngineConstants\.MediaSession\.seekBackwardSec/);
+  assert.match(mapping, /seekForwardSec = EngineConstants\.MediaSession\.seekForwardSec/);
+  // And the scanner itself sees every spelling it claims to.
+  assert.deepEqual(swiftDecimalLiterals("a(15) b = 30.0; c = 15_000; d = 3e1; e = 0x1E; f = x15; g = 1.5")
+    .filter((l) => forbidden.has(l.value)).map((l) => l.text), ["15", "30.0", "15_000", "3e1"]);
+});
+
+test("NE-12s: both wrappers require the media-episode runner, the registry holds it, and nothing in the family is still owed", () => {
+  /* NE-12s burned media-episode out of swift-pending.json, so from here on its
+     cases must EXECUTE in Swift. A wrapper that lost its method, or a
+     `requireRunner: true` quietly dropped, would let a deregistered runner
+     read as "owed" for zero ids and stay green; the registry line is what
+     makes them run at all; and one pending id put back would hand the Swift
+     side a case it may fail without anyone noticing until the capability gate.
+     MUTATION: drop `requireRunner: true` from testMediaEpisodeFamily in either
+     wrapper, MediaEpisodeFamily.runner from ParityFamilies.all, or re-add
+     "media-episode/state-playing": "NE-12s" to swift-pending.json; each fails. */
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    assert.match(src, /func testMediaEpisodeFamily\(\)\s*\{\s*assertParityFamily\("media-episode", requireRunner: true\)/,
+      `${path.relative(ROOT, file)}: testMediaEpisodeFamily must require a media-episode runner`);
+  }
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  assert.ok(all[1].includes("MediaEpisodeFamily.runner"), "ParityFamilies.all has no MediaEpisodeFamily.runner");
+
+  const pending = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/swift-pending.json"), "utf8"));
+  assert.deepEqual(Object.keys(pending).filter((id) => id.startsWith("media-episode/")), [],
+    "media-episode is ported (NE-12s): no id of it may be pending");
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/manifest.json"), "utf8"));
+  assert.ok((manifest.families["media-episode"]?.ids ?? []).length >= 118, "the media-episode family shrank below NE-12j's 118 cases");
+});
+
 /* ─────────── NE-02: the reducer, copied into the core with its tests ───────────
  *
  * docs/native-engine-plan.md §4.1 and card NE-02. PlayerQueueState.swift and
@@ -2748,6 +2883,65 @@ test("NE-02: every one of the original reducer tests survives in the core's copy
     /final class PlayerQueueStateTests: XCTestCase/,
     "the copied tests must stay an XCTestCase, or `swift test` runs none of them"
   );
+});
+
+/* ─────────── NE-10s: JSWriter and Rows, byte-identical shared rows ───────────
+ *
+ * docs/native-engine-plan.md §4.6 and card NE-10s. The engine writes
+ * cp_pos:<id>, cp_foray:<id> and cp_last_episode into the rows the page reads,
+ * so the Swift bytes must be JSON.stringify's. The rows, number-format and
+ * diag-tokens families (executed by both XCTest wrappers in CI) prove the
+ * port; these pins keep the proof from being quietly switched off. */
+
+test("NE-10s: the shared rows are written by JSWriter only, and both wrappers require the rows, number-format and diag-tokens runners", () => {
+  /* FOUNDATION'S JSON IS THE DRIFT THIS CARD REMOVES. JSONSerialization and
+     JSONEncoder print `3600.0`/`1e-07`, escape `/` as `\/`, and order keys by
+     a dictionary (or alphabetically), so a row they wrote would read back as
+     the same VALUE and differ in BYTES, which only a byte comparison sees. No
+     file under Persist/ or Diag/ may reach for them, so a later "simpler"
+     writer cannot land without editing this pin.
+     A family whose runner is merely "optional" turns "owed" the moment the
+     runner is unregistered, and swift-pending then hides it; requireRunner
+     makes that red instead.
+     MUTATION: use JSONEncoder in Rows.swift; drop RowsFamily.runner from
+     ParityFamilies.all; or drop `requireRunner: true` from either wrapper's
+     testRowsFamily; each fails here. */
+  for (const sub of ["Sources/ForayEngineCore/Persist", "Sources/ForayEngineCore/Diag"]) {
+    for (const file of swiftFilesUnder(path.join(CORE_DIR, sub))) {
+      const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+      const rel = path.relative(ROOT, file).split(path.sep).join("/");
+      assert.doesNotMatch(code, /\b(JSONSerialization|JSONEncoder|JSONDecoder|DateFormatter|ISO8601DateFormatter)\b/,
+        `${rel} uses Foundation's JSON or date formatting; the shared rows go through JSWriter (NE-10s)`);
+    }
+  }
+  const persist = path.join(CORE_DIR, "Sources/ForayEngineCore/Persist");
+  for (const name of ["JSWriter.swift", "Rows.swift"]) {
+    assert.ok(fs.existsSync(path.join(persist, name)), `foray-engine-core Persist/${name} is missing (plan §4.1)`);
+  }
+  const rows = stripSwiftComments(fs.readFileSync(path.join(persist, "Rows.swift"), "utf8"));
+  assert.match(rows, /JSWriter\.stringify\(/, "Rows.swift must print its rows through JSWriter");
+
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  for (const runner of ["RowsFamily.runner", "NumberFormatFamily.runner", "DiagTokensFamily.runner"]) {
+    assert.ok(all[1].includes(runner), `ParityFamilies.all no longer registers ${runner}`);
+  }
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    for (const family of ["rows", "number-format", "diag-tokens"]) {
+      assert.match(src, new RegExp(`assertParityFamily\\("${family}", requireRunner: true\\)`),
+        `${where} must require a ${family} runner (NE-10s ported it)`);
+    }
+  }
+  /* The generated vocabulary stays generated: admission is hand-written beside it. */
+  const vocabulary = fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Diag/Vocabulary.swift"), "utf8");
+  assert.doesNotMatch(vocabulary, /func admit\(/, "admission belongs in VocabularyAdmission.swift, not the generated file");
 });
 
 /* ─────────── NE-15: AVDeck, the readiness-gated deck adapter ───────────

@@ -35,10 +35,18 @@ final class EngineParityWrapperTests: XCTestCase {
 
     func testCompareFamily() { assertParityFamily("compare", requireRunner: true) }
     func testSeamGapFamily() { assertParityFamily("seam-gap", requireRunner: true) }
-    func testQueueStateFamily() { assertParityFamily("queue-state") }
-    func testRateFamily() { assertParityFamily("rate") }
-    func testRowsFamily() { assertParityFamily("rows") }
-    func testNumberFormatFamily() { assertParityFamily("number-format") }
+    /// NE-07s: the reducer runs at parity here too, as the app links it.
+    func testQueueStateFamily() { assertParityFamily("queue-state", requireRunner: true) }
+    /// NE-09's ports run here too, against the core as the app links it.
+    func testRateFamily() { assertParityFamily("rate", requireRunner: true) }
+    func testResumeRulesFamily() { assertParityFamily("resume-rules", requireRunner: true) }
+    func testTransportFamily() { assertParityFamily("transport", requireRunner: true) }
+    /// NE-10s: the shared rows as the app links them, byte for byte.
+    func testRowsFamily() { assertParityFamily("rows", requireRunner: true) }
+    func testNumberFormatFamily() { assertParityFamily("number-format", requireRunner: true) }
+    func testDiagTokensFamily() { assertParityFamily("diag-tokens", requireRunner: true) }
+    /// NE-12s: the lock screen and car rules as the app links them.
+    func testMediaEpisodeFamily() { assertParityFamily("media-episode", requireRunner: true) }
 
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.

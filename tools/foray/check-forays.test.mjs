@@ -1872,6 +1872,55 @@ test("the pipeline's own words are rejected in a title, a summary and a slot tit
   }
 });
 
+test("a Foray title keeps the house style: sentence case, no closing period, ? and ! allowed — curated and generated alike", () => {
+  /* Wyatt, 2026-09-24, answering the audit's qa 146 (agent-generated titles
+     in Title Case with no closing period, next to sentence-case curated ones in
+     the same rail): "Sentence case, no period, though ? And ! Are allowed".
+     The first title is a committed generated title as it was before this
+     change. MUTATION THAT KILLS THIS: drop the `titleStyleProblems` loop from
+     check-forays.mjs -> every refused case goes red, for both kinds. */
+  const refused = [
+    ["What Engineers Actually Do All Day", /is in Title Case \(Actually, Do\)/],
+    ["The types of capital a startup can raise.", /closing period/],
+    ["grilling: the surprising origin story", /starts in lower case/],
+  ];
+  for (const make of [fx, generatedFixture]) {
+    for (const [title, why] of refused) {
+      const f = make();
+      boundary(f).title = title;
+      /* Title Case on a GENERATED Foray warns instead (the next test). */
+      if (make === generatedFixture && /Title Case/.test(String(why))) continue;
+      assert.match(errorsFor(f).join("\n"), why, `${make.name}: "${title}" must be refused`);
+    }
+    /* A closing ? or !, a proper noun and an acronym are all the style. */
+    for (const title of ["Was the Clean Air Act a success?", "The day the music died!", "How Earth got plate tectonics and Venus never did", "How AI actually gets built"]) {
+      const f = make();
+      boundary(f).title = title;
+      assert.doesNotMatch(errorsFor(f).join("\n"), /^title "/m, `${make.name}: "${title}" keeps the house style`);
+    }
+  }
+  /* The summary is a sentence and the ruling left it alone. */
+  const f = fx();
+  boundary(f).summary = "Why most of an ML system is plumbing.";
+  assert.doesNotMatch(errorsFor(f).join("\n"), /closing period/);
+});
+
+test("Title Case on a GENERATED Foray's title is a warning, not a refusal after the spend (review of PR #785)", () => {
+  /* The Title Case test is a heuristic that cannot know names, and on a
+     generated Foray this gate runs after every model stage has been paid for.
+     The period and the first letter stay refusals (code fixes both before any
+     spend). MUTATION THAT KILLS THIS: route the Title Case problem to E() on
+     every Foray again -> the first assertion goes red. */
+  const f = generatedFixture();
+  boundary(f).title = "What Engineers Actually Do All Day";
+  const { errors, warnings } = checkForays(f);
+  assert.doesNotMatch(errors.join("\n"), /Title Case/);
+  assert.match(warnings.join("\n"), /title "What Engineers Actually Do All Day" is in Title Case/);
+  const curated = fx();
+  boundary(curated).title = "What Engineers Actually Do All Day";
+  assert.match(checkForays(curated).errors.join("\n"), /is in Title Case/);
+});
+
 test("an over-long slot title is rejected", () => {
   const f = fx();
   boundary(f).slots[0].title = "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen";
@@ -2506,6 +2555,26 @@ test("a generated Foray whose narration mentions its own acts is rejected", () =
   assert.match(errorsFor(f).join("\n"), /never mentions the Foray's own acts/);
 });
 
+test("a generated Foray's narration may not count back through its acts, point at a slot, or hide a pointer behind \"That's\" (persona 65)", () => {
+  /* Wyatt, 2026-09-24, on the audit's persona 65 — the narrator says "this
+     act", "Act one", "two acts back" out loud: "update our foray generation
+     scripting to avoid making more in the future." The publish gate reads the
+     same rule the generator refuses and rewrites with
+     (backend/src/copy/narratorStructure.js), so these shapes, which it used to
+     pass, are refused here too. MUTATION THAT KILLS THIS: revert
+     narratorStructure.js's 2026-09-24 additions (the contraction exemption,
+     `slot`, INTERNAL_VOCABULARY) -> red, naming the line. */
+  for (const script of [
+    "Budget line, vendors, outages. That's this act.",
+    "The next slot follows the money into the budget meeting.",
+    "It runs to eight beats, and the listener hears all of them.",
+  ]) {
+    const f = generatedFixture();
+    spliceNarration(f, "nar-p65", script);
+    assert.match(errorsFor(f).join("\n"), /never mentions the Foray's own acts/, `"${script}" must be refused`);
+  }
+});
+
 test("Q-08 leaves a structural word that belongs to something else alone", () => {
   /* The founder's own example of a LEGITIMATE mention, at the gate rather
      than in the unit test: "mentioning 'in the first act of Macbeth' is fine
@@ -2515,6 +2584,27 @@ test("Q-08 leaves a structural word that belongs to something else alone", () =>
   const f = generatedFixture();
   spliceNarration(f, "nar-q07-ok", "In the first act of Macbeth the witches speak, and the second act of the crisis began in March.");
   assert.equal(errorsFor(f).filter((e) => /own acts/.test(e)).length, 0);
+});
+
+test("Q-08 does not read the prelude's fixed disclosure sentence, whose subject nothing can rewrite, but does read its overview (review of PR #785)", () => {
+  /* The subject is spoken verbatim ("This is a Foray about <subject>.")
+     because DISCLOSURE_RX requires it, so a subject the rule flags made every
+     generation on it unpublishable after the spend. MUTATION THAT KILLS THIS:
+     check `item.script` whole on items[0] again -> the first two go red.
+     Hyphenated counts are adjectives in speech ("the three-act structure");
+     narrowing INTERNAL_VOCABULARY's `[ -]` to a space in narratorStructure.js
+     is what keeps the second and the spliced line clean. */
+  for (const subject of ["Chapter Eleven bankruptcy", "the three-act structure"]) {
+    const f = generatedFixture();
+    const prelude = boundary(f).items[0];
+    prelude.script = prelude.script.replace("This is a Foray about grilling.", `This is a Foray about ${subject}.`);
+    spliceNarration(f, "nar-adj", "Screenwriters swear by the three-act structure, and Chekhov wrote a one-act comedy.");
+    assert.deepEqual(errorsFor(f).filter((e) => /own acts/.test(e)), [], subject);
+  }
+  const f = generatedFixture();
+  const prelude = boundary(f).items[0];
+  prelude.script = `${prelude.script} By the end of this act you will know who signed it off.`;
+  assert.match(errorsFor(f).filter((e) => /items\[0\]/.test(e)).join("\n"), /never mentions the Foray's own acts/);
 });
 
 test("a generated Foray with no narration item first is rejected the same way", () => {

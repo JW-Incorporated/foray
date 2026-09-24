@@ -1,6 +1,6 @@
 {
-  "version": "145bfca3fc0bd060",
-  "built_at": "2026-09-24T11:07:03.567Z",
+  "version": "42a1efe78b37c751",
+  "built_at": "2026-09-24T13:46:49.172Z",
   "files": {
     "forays": "data/forays.json",
     "segments": "data/segments.json",
@@ -12,7 +12,7 @@
     "sources": 72475
   },
   "sha256": {
-    "forays": "3267095839240604614e32e40b17a13ee6a22c9e238d29d2ba64a232838b74cb",
+    "forays": "23779c57feae4cbc7ae879f4cf0fe170b7087719202ffa6ae7ca9656b0e3d1a2",
     "segments": "21915b8a913855a11f16b840f564164aaae7b30a8fe9c04731b0edda199ba0df",
     "sources": "26ec6df6bd87a091ae64b536e167c14202bcba44cddf1b51bacb8a32eccd56f9"
   }

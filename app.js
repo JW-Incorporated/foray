@@ -14005,10 +14005,36 @@ async function sbDeleteOwnRows(table, session) {
 }
 
 /**
- * Delete every server row this device's account owns.
+ * Sign the account out EVERYWHERE, on the server: every refresh token it was
+ * ever issued stops working (`POST /auth/v1/logout?scope=global`, with the
+ * account's own access token — no administrative key needed).
  *
- * `ok` is false if ANY table refused, and the caller must then not clear local
- * storage — see the ordering rules above.
+ * WHY A DELETION DOES THIS (review of #773, 2026-09-24). Clearing the device
+ * destroys this copy of the token, not the others. A phone backup made by a
+ * build before the device-only vault holds `cp_sb_session` in three places,
+ * and restoring it onto a new phone put the deleted account's live refresh
+ * token back in the app, which re-attached to it. Revoked here, that copy is
+ * dead wherever it is, which is what the privacy policy's §3 and §7 promise.
+ */
+async function sbRevokeSessions(session) {
+  try {
+    const res = await fetch(SB_URL + "/auth/v1/logout?scope=global", {
+      method: "POST",
+      headers: { apikey: SB_KEY, Authorization: "Bearer " + session.access_token },
+    });
+    return { ok: Boolean(res.ok), status: res.status };
+  } catch (_) {
+    return { ok: false, status: 0 };
+  }
+}
+
+/**
+ * Delete every server row this device's account owns, then revoke its sign-in.
+ *
+ * `ok` is false if ANY table refused or the revocation failed, and the caller
+ * must then not clear local storage — see the ordering rules above. The
+ * revocation comes LAST: it needs the token the row DELETEs need, and a retry
+ * after a failed table must still be able to reach the rows.
  */
 async function deleteRemoteData() {
   const session = await existingAnonSession();
@@ -14016,11 +14042,13 @@ async function deleteRemoteData() {
   const tables = [];
   for (const t of SB_USER_TABLES) tables.push(await sbDeleteOwnRows(t, session));
   const failed = tables.filter(r => r.state === DEL_FAILED);
+  const revoked = failed.length === 0 ? await sbRevokeSessions(session) : null;
   return {
-    ok: failed.length === 0,
+    ok: failed.length === 0 && Boolean(revoked && revoked.ok),
     attempted: true,
     tables,
     failed,
+    revoked,
     deleted: tables.filter(r => r.state === DEL_DELETED).length,
   };
 }
@@ -14174,6 +14202,11 @@ function deletionMessage(result) {
   if (state === "unconfirmed") return "Type DELETE to confirm.";
   if (state === "busy") return "Deleting…";
   if (state === "remote-failed") {
+    /* Every table answered but the sign-in could not be revoked: the rows ARE
+       gone, and saying otherwise would be its own untruth. */
+    if (remote && Array.isArray(remote.failed) && !remote.failed.length && remote.revoked && !remote.revoked.ok) {
+      return "Your rows on 4a's server are deleted, but its sign-in is NOT switched off yet. Nothing on this device was touched, so you can try again.";
+    }
     return "What 4a's server kept about you was NOT deleted. Nothing on this device was touched, so you can try again.";
   }
   const server = remote && remote.deviceOnly

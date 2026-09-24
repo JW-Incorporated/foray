@@ -200,7 +200,7 @@ const FLOORS = {
      key is `cp_rate`, whose rename would forget every listener's speed; and that a
      stale stored value SNAPS onto the ladder rather than resetting to 1x. Raise it
      when the suite grows. */
-  "player/playback-rate.test.js": 22,
+  "player/playback-rate.test.js": 24, // NE-09: utteranceRate, ForayTts's curve read from the rate fixtures (every ladder stop; the non-positive edges); 22 -> 24
   /* The default narration voice (founder decision 2026-09-10: Samantha).
      One pure rule read by two surfaces — `client.js` for what narration
      speaks with, `app.js` for which row is selected — so a deleted test here
@@ -290,8 +290,16 @@ const FLOORS = {
      bytes. engine-contract.test.js pins OWNED_PREFIXES against both the rows
      the family records and every cp_ key the app spells, in both directions:
      a missed row is a clobber, an extra one is a store that stops saving. */
-  "player/parity/rows.test.js": 4,
-  "player/engine-contract.test.js": 3,
+  "player/parity/rows.test.js": 6, // NE-10s: the page's own readers accept every recorded row (the bytes the Swift engine must write) and re-save it unchanged, and the page's isNewer orders them by updated_at; 4 -> 6
+  /* NE-11j: the rest of the contract. Beside the recorded families (checked
+     case by case by record.mjs --check), this suite states each RULE across
+     every case at once: the schema file is current and its examples are the
+     contract/snapshot cases one-to-one; SessionPolicy never notifies but on
+     close/finalEnd/dataDeletion, relinquish carries nothing, only an ok
+     sessionResult activates, and composed with the audible-start invariant
+     no audible command follows a failed activation; the strike rules; and the
+     six families owed to NE-11s. Zero slack. 3 -> 15 */
+  "player/engine-contract.test.js": 15,
   /* NE-04: the engine's closed vocabularies. The diag-tokens family records
      the sets for Swift; this suite holds what is about the sets themselves —
      the plan's named tokens, every page transport source admissible, the NE-01
@@ -304,7 +312,7 @@ const FLOORS = {
      coverage guard would still count those cases as fixtured. The families'
      case counts are floored separately in player/parity/floors.json. */
   "player/transport-policy.test.js": 19, // merge of main into engine/m1 (2026-09-24): audit round 2's rule changes reached the policy module — the Foray nudge's end guard (player-5), a nudge inside a spoken line (player-11), an episode's previous (p-car-5); 16 -> 19
-  "player/position-store.test.js": 10,
+  "player/position-store.test.js": 12, // NE-09: the write cadence read from the resume-rules fixtures (the 10-media-second tick, the Foray's 5 s throttle; an unknown position never writes); 10 -> 12
   "player/tts-bridge.test.js": 29, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 25 -> 29 // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
@@ -1307,7 +1315,7 @@ const FLOORS = {
      D3's (1) went with their rules; the pair clause gained six (reported on
      pre-Q-01 tape, gated on a Q-01 Foray, the CLI exit, the row fields, the
      IQR still reported, the helper) and M4's restatement three. */
-  "tools/foray/check-forays.test.mjs": 164, // founder ruling 2026-09-24 ("Publish any foray so that the statement is correct"): a published Foray has a narrator between its clips, so the first-run sheet's narrator clause is true for a newcomer (round-1 persona 14); 163 -> 164 // audit round 2 (L8, p-foray-5): a published Foray's why-lines are captions -- no bare leading name the titles do not introduce, no gendered pronoun with no one to point at; 161 -> 163 // L8 review (2026-09-23): §0 and slot headers declared again, by doc path, so a doc cannot lose them silently; 160 -> 161. L8 (2026-09-22): the pipeline's own words (beat, segment, act, running order) refused in Foray copy — the audit found "eight beats of a forty-beat history" as a title; 159 -> 160. // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
+  "tools/foray/check-forays.test.mjs": 166, // generator vocabulary + title style (2026-09-24): the title house style refused on curated and generated Forays ("Sentence case, no period, though ? And ! Are allowed", qa 146), and persona 65's shapes refused in generated narration at the publish gate; 164 -> 166 // founder ruling 2026-09-24 ("Publish any foray so that the statement is correct"): a published Foray has a narrator between its clips, so the first-run sheet's narrator clause is true for a newcomer (round-1 persona 14); 163 -> 164 // audit round 2 (L8, p-foray-5): a published Foray's why-lines are captions -- no bare leading name the titles do not introduce, no gendered pronoun with no one to point at; 161 -> 163 // L8 review (2026-09-23): §0 and slot headers declared again, by doc path, so a doc cannot lose them silently; 160 -> 161. L8 (2026-09-22): the pipeline's own words (beat, segment, act, running order) refused in Foray copy — the audit found "eight beats of a forty-beat history" as a title; 159 -> 160. // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
   /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
      of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
      accepted value (~30 today), so the floor is the count of `test(` lines this
@@ -1445,7 +1453,7 @@ const FLOORS = {
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
   "tools/mobile/prepare-webdir.test.mjs": 84, // 2026-09-22 audit (L2), founder report 3: the bundle carries build-stamp.json with the committed deploy_id; 83 -> 84 // +1 audit finding E (2026-09-12): seedCarries is exactly the negation of the one `isGeneratedDraft`; 82 -> 83 // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
-  "tools/mobile/shell-invariants.test.mjs": 85, // NE-25b (docs/native-engine-plan.md): the two-deck spike measures AVDeck's own gate (two real decks, no preroll( in the test file, the primitive records the statuses it read, every table tagged NE-25b, the exempt click tracks); 84 -> 85 // NE-15 (docs/native-engine-plan.md), merged onto engine/m1 2026-09-24: preroll( only in AVDeck.prerollWhenReady behind both statuses and rate 0; the deck settings, zero-tolerance seeks, the 20 s MEASURE deadline, the iOS 16 rate branch and the implicit-activation fault; AVDeckTests play NE-25a's CBR MP3 and WAV (the one exempt click-track set) and report through the one FORAY_MEASURE_SUMMARY hand-off; 81 -> 84 // merge of main into engine/m1 (2026-09-24): both sides grew the file off 66 — engine/m1 by nine (NE-01/02/05, 66 -> 75), main by six (audit round 2, 66 -> 72) — so 75 + 6 = 81 // main: round-2 sweep (2026-09-23): a stall stops the lock-screen clock on both natives (p-car-8); 71 -> 72 | audit round 2, lane L3 (2026-09-23): the route-gated track pair and the unmirrored track handlers, one .spokenAudio mode, the Android seek pair + custom buttons, no re-post on a press, the narration-first start; 66 -> 71 // NE-05 (docs/native-engine-plan.md): the Swift parity library imports no XCTest, reads player/parity in place (no .json copy under the core) and keeps the FORAY_PARITY_DIR / PARITY_REPORT / family-line interface; both XCTest wrappers run the compare and seam-gap families and the whole manifest, and the registry holds both runners; 73 -> 75 // NE-02 (docs/native-engine-plan.md): the core's reducer and its tests are copies whose headers name the ios/ source @ adde5e12 and say ios/ is frozen reference; every one of the 34 original reducer tests survives in the copy, by name; 71 -> 73 // NE-01 (docs/native-engine-plan.md): foray-engine-core is pure (no deps, Foundation-only sources, no XCTest in the parity library); foray-audio links it by path and keeps one product (the scheme list); engineHello is an iOS-only stub that answers from the core; the Preferences pin is test-only and cannot compile out; the page never configures a Preferences group; 66 -> 71 // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
+  "tools/mobile/shell-invariants.test.mjs": 90, // merge of engine/m1 into NE-25b (2026-09-24): NE-25b added one test off 84, engine/m1 five (NE-12s two, NE-10s one, NE-09 one, NE-07s one), so 89 + 1 = 90 // NE-25b (docs/native-engine-plan.md): the two-deck spike measures AVDeck's own gate (two real decks, no preroll( in the test file, the primitive records the statuses it read, every table tagged NE-25b, the exempt click tracks); 84 -> 85 // merge of engine/m1 into NE-12s (2026-09-24): NE-12s added two tests off 75 (the literal-15/30 scan and the media-episode runner pin), engine/m1 twelve (NE-10s one, NE-09 one, NE-15 three, NE-07s one, main six), so 87 + 2 = 89 // NE-12s (docs/native-engine-plan.md): no literal 15 or 30 (nor 15_000 / 30_000) in the engine core's Swift outside the generated EngineConstants, and MediaMapping reads the pair from it; both XCTest wrappers require the media-episode runner, the registry holds it, and swift-pending owes none of the family; 75 -> 77 // merge of engine/m1 into NE-10s (2026-09-24): NE-10s added one test off 75, engine/m1 eleven (NE-09 one, NE-15 three, NE-07s one, main six), so 86 + 1 = 87 // NE-10s (docs/native-engine-plan.md): nothing under the core's Persist/ or Diag/ writes through Foundation's JSON or date formatters, the rows / number-format / diag-tokens runners are registered and REQUIRED by both wrappers, and admission stays out of the generated Vocabulary.swift; 75 -> 76 // merge of engine/m1 into NE-09 (2026-09-24): NE-09 added one test off 75, engine/m1 ten (NE-15 three, NE-07s one, main six), so 85 + 1 = 86 // NE-09 (docs/native-engine-plan.md): both parity wrappers REQUIRE runners for rate, resume-rules and transport, and the registry holds all three; 75 -> 76 // NE-07s (docs/native-engine-plan.md): the queue-state runner is registered and both XCTest wrappers require it to have run, so the burned-down family cannot fall back to "owed" quietly; 84 -> 85 // NE-15 (docs/native-engine-plan.md), merged onto engine/m1 2026-09-24: preroll( only in AVDeck.prerollWhenReady behind both statuses and rate 0; the deck settings, zero-tolerance seeks, the 20 s MEASURE deadline, the iOS 16 rate branch and the implicit-activation fault; AVDeckTests play NE-25a's CBR MP3 and WAV (the one exempt click-track set) and report through the one FORAY_MEASURE_SUMMARY hand-off; 81 -> 84 // merge of main into engine/m1 (2026-09-24): both sides grew the file off 66 — engine/m1 by nine (NE-01/02/05, 66 -> 75), main by six (audit round 2, 66 -> 72) — so 75 + 6 = 81 // main: round-2 sweep (2026-09-23): a stall stops the lock-screen clock on both natives (p-car-8); 71 -> 72 | audit round 2, lane L3 (2026-09-23): the route-gated track pair and the unmirrored track handlers, one .spokenAudio mode, the Android seek pair + custom buttons, no re-post on a press, the narration-first start; 66 -> 71 // NE-05 (docs/native-engine-plan.md): the Swift parity library imports no XCTest, reads player/parity in place (no .json copy under the core) and keeps the FORAY_PARITY_DIR / PARITY_REPORT / family-line interface; both XCTest wrappers run the compare and seam-gap families and the whole manifest, and the registry holds both runners; 73 -> 75 // NE-02 (docs/native-engine-plan.md): the core's reducer and its tests are copies whose headers name the ios/ source @ adde5e12 and say ios/ is frozen reference; every one of the 34 original reducer tests survives in the copy, by name; 71 -> 73 // NE-01 (docs/native-engine-plan.md): foray-engine-core is pure (no deps, Foundation-only sources, no XCTest in the parity library); foray-audio links it by path and keeps one product (the scheme list); engineHello is an iOS-only stub that answers from the core; the Preferences pin is test-only and cannot compile out; the page never configures a Preferences group; 66 -> 71 // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only
@@ -2089,7 +2097,7 @@ const BACKEND_FLOORS = {
   "test/AnthropicDeepenActBuilder.test.ts": 9,
   "test/AnthropicEnricher.test.ts": 10,
   "test/AnthropicExternalResearcher.test.ts": 9,
-  "test/AnthropicPromptUnderstander.test.ts": 10, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 9 -> 10
+  "test/AnthropicPromptUnderstander.test.ts": 13, // generator title style (2026-09-24, qa 146): the prompt asks for sentence case; one case-only re-ask for a Title Case title; no re-ask for a period; 10 -> 13 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 9 -> 10
   /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
      transcript windows and the one seed rule when the research map has them,
      neither when it does not, and the seed the reply carries back. */
@@ -2098,7 +2106,7 @@ const BACKEND_FLOORS = {
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
-  "test/copyRules.test.ts": 6, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
+  "test/copyRules.test.ts": 12, // title house style (2026-09-24, qa 146): refused shapes, no false positives on names/acronyms/quoted works, houseStyleTitle never lowercases; 6 -> 12 (9 on disk before it) // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
   "test/createEnricher.test.ts": 1,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c). */
   "test/createPromptUnderstander.test.ts": 1,
@@ -2202,7 +2210,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 31, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 33, // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -2718,6 +2726,17 @@ const BACKEND_FLOORS = {
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
   "test/actNarration.test.ts": 52,
+  /* Generator vocabulary (2026-09-24). Wyatt, on the audit's persona 65 (the
+     narrator says "this act", "Act one", "two acts back" aloud): "Accept the
+     ones that are currently there; update our foray generation scripting to
+     avoid making more in the future." The check reaches the persona's shapes,
+     a contraction, INTERNAL_VOCABULARY, slot/spine and counted runs; the
+     rewrite's table and its fixed point on the frozen generated Foray; the
+     rule's examples agree with the check and every narration prompt carries
+     it; and the rewrite runs where no retry is left (§4.4's last attempt,
+     §4.8, forayItems.ts, the prelude overview, the hand-off). One named
+     mutation per test. */
+  "test/narratorStructure.test.ts": 13,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
@@ -2826,6 +2845,24 @@ const SWIFT_FLOORS = {
   /* NE-04: the generated constants and vocabularies compile, and mean what
      the generator says (distinct drift tolerances, keyword-named tokens). */
   "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/EngineConstantsTests.swift": 6,
+  /* NE-07s: the card's mutation (swap two itemLoaded effects -> a named
+     queue-state case red) kept as a test, plus the telemetry spellings no
+     fixture reaches. */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/QueueStateParityTests.swift": 4,
+  /* NE-09: the ground the rate / resume-rules / transport ports stand on
+     (JSMath, ToNumber, the snap, the generated tokens), the framework's speech
+     scale against the core's copy, and the shipping plugin's utteranceRate
+     against the same fixture the core answers to. */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/PolicyPortTests.swift": 6,
+  "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/EnginePolicyFrameworkTests.swift": 2,
+  "mobile/plugins/foray-tts/ios/Tests/ForayTtsPluginTests/UtteranceRateParityTests.swift": 1,
+  /* NE-10s: JSON.stringify / JSON.parse / toISOString / Date.parse, from Node's
+     own answers, past what the number-format family names; and the shared
+     rows at the UTF-8 byte level (Swift String equality is canonical
+     equivalence, which the comparator inherits), read-back, isNewer, the
+     restore record and the packed seam row. */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/JSWriterTests.swift": 8,
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/RowsTests.swift": 10,
 };
 
 for (const [rel, floor] of Object.entries(SWIFT_FLOORS)) {
