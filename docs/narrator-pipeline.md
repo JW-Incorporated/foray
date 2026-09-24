@@ -50,12 +50,16 @@ Better than expected, and the gaps are not where the charter guessed.
   and silence on top of it would be dead air.
 - **A bridged seam is excluded from seam prefetch**, since eligibility is
   `seamGapSec > 0`. **This matters for reading any seam measurement on a narrated
-  Foray**: today's 2.0 s warmed seam depends on `html-audio-backend.js` warming
-  the next segment during the current one. A narrated Foray gets no warm at
-  bridged seams, so the narration item itself becomes the thing that has to cover
-  the next segment's load. On the measured numbers that is a *feature* — the
-  backgrounded-WebView load was 9.2 s against a 2.0 s beat, and an 8 s bridge
-  covers far more of it than the beat did — but it is unmeasured, and it means
+  Foray**: a warmed seam would be the 0.5 s beat (`SEAM_GAP_SEC`), but only if
+  `html-audio-backend.js` warmed the next segment during the current one, and
+  that handover is **parked** (`prefetch` defaults to false and `player/client.js`
+  does not turn it on). So today every unbridged seam is `max(0.5 s, load)`, and at
+  most cross-episode seams the load is the longer term. A narrated Foray gets no
+  warm at bridged seams either way, so the narration item itself becomes the thing
+  that has to cover the next segment's load. On the measured numbers that is a
+  *feature* — the backgrounded-WebView load was 9.2 s against the 2.0 s beat of the
+  time, and an 8 s bridge covers far more of it than the beat did — but it is
+  unmeasured, and it means
   **narration is doing load-hiding work that nothing currently accounts for.**
 - **`player/media-session.js`** already handles narration on the lock screen:
   a `kind: "tts"` item is titled `"Up next: <episode>"`, is credited to **Foray
@@ -367,7 +371,7 @@ Bitrate is the only real lever:
 
 **64 kbps mono is the recommendation and 32 should be resisted.** Narration sits
 directly against publisher tape at every seam, and an audible quality drop at the
-join is the exact artefact the 2.0 s beat exists to smooth over. 32 kbps saves
+join is the exact artefact the seam beat exists to smooth over. 32 kbps saves
 6 MB a Foray and spends it on sounding like a worse product.
 
 ### 2.3 The four candidate homes, with numbers

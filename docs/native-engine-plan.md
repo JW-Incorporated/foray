@@ -423,7 +423,7 @@ Reason tokens: `not-loaded`, `no-next`, `no-previous`, `ended`, `refused-structu
 2. **Case format.** Pure calls `{id, covers[], call, args, expect}`. Scenarios `{setup, steps[], expect}`, with the closed verbs `call`, `settle`, `clock`, `deck`, `tts`, `interlude`, `session`, `lifecycle`, `remote` and `checkpoint`. Macros `$seg`, `$ep`, `$tts`, `$foray`. The op-log grammar is unchanged. Native-only `n.*` tokens are stripped, **except in the `prepare` family, which asserts them**.
 3. **JS runner and recorder.**
    - `record.mjs --check` runs in `npm test`.
-   - `authored: true` cases are never overwritten. They cover the 0.5 s seam beat (founder, 2026-09-24; 2.0 s before), 15/30, 0.25 s inside-end, never-early, "4a is never the artist", `INTERRUPTION_REWIND_SEC`, and the prepare timing.
+   - `authored: true` cases are never overwritten. They cover the seam beat (0.5 s since the founder's 2026-09-24 ruling; `engine/m1`'s `seam-gap/rule-is-2.0s` still pins 2.0 s until the merge that brings the ruling in renames it, see `docs/DECISIONS.md` 2026-09-24), 15/30, 0.25 s inside-end, never-early, "4a is never the artist", `INTERRUPTION_REWIND_SEC`, and the prepare timing.
    - **Mutation smoke:** for a named set of rules (seam gap, never-early, 15/30, pause-silence), `record.mjs --mutate` flips the rule, and both the original JS test and its fixture must fail.
    - New suites (`position-store`, `transport-policy`, `continuation`) **read their fixtures**, so one file is both the JS assertion and the Swift case. Existing suites are not rewritten, because that would put hundreds of passing tests at risk.
 4. **Swift runner.**

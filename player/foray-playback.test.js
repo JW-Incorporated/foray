@@ -478,8 +478,9 @@ test("the beats cost a bounded share of the Foray, and cost no audio at all", as
   /* Bounded by the RULE, not by Foray #1's segment lengths. The share is
      approximately SEAM_GAP_SEC / mean segment duration, so a flat 2 % was a claim
      that Foray #1's mean stays near 100 s — while segment-length-rules.md §5c's
-     D3 floor permits a mean of 90 s, at which the beats legally cost 2.2 %. The
-     old bound had 1.69 % against 2 % of margin, so a legal re-curation toward
+     D3 floor permits a mean of 90 s, at which 2.0 s beats legally cost 2.2 % of
+     the runtime (today's 0.5 s beats: 0.56 %). The old bound, set when the beat was
+     2.0 s, had 1.69 % against 2 % of margin, so a legal re-curation toward
      shorter segments turned it red with no rule broken (#236 review).
      D3_MEAN_FLOOR_SEC is written out rather than imported: tools/ importing
      player/ is the direction this repo allows, not the reverse. */

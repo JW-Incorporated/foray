@@ -1,11 +1,11 @@
 {
-  "deploy_id": "58c3268c08768a6d",
+  "deploy_id": "d6fa599fc144cf79",
   "files": {
     "app.js": "sha256:7c8f0bbe2150cff0aa5d35e7d32aeba688be95c1e6502c9ae64bfb097e8e4780",
     "data/catalog-client.json": "sha256:734c542d08decc62fd401593cbf19c25216c366fe99ebc86fce2192dcf9d85c4",
     "data/dai-classification.json": "sha256:ee2f78c91287a18228640265d603537a0554d01cc035b64d3856c6da884310f3",
     "data/discover.json": "sha256:8ad28a4be7b77626317efe0770965183579c1d61d46c8da0410c1a96e0499813",
-    "data/forays-directory.json": "sha256:0c3b480a76872ba5c106a955ef048838b32df6d5ecc1275c665488ed2d7e0b3a",
+    "data/forays-directory.json": "sha256:c1a748dd445e113903a3ddc5fe6a5c3dfa839ec7fc54acfb09fea9a566996a3b",
     "data/forays.json": "sha256:23779c57feae4cbc7ae879f4cf0fe170b7087719202ffa6ae7ca9656b0e3d1a2",
     "data/item-tags.json": "sha256:d4a1eccdbf270a4982cf79c6f737e68052b80a91569bbe45aba70ce576d6c064",
     "data/ladders.json": "sha256:7af481f27ac45de519f6ed6d75fccb3fee1208e6f642dd2dad4fad635c55de5b",
@@ -45,7 +45,7 @@
     "player/queue-manager.js": "sha256:f506aa01be6f17a0327822ad32c4e7b5f16e2f9ee9ac717736df4f5dfbc9f092",
     "player/queue-state.js": "sha256:27fc756517ec8b25c44c6edfeaf586d442a16f9ee62716b706878fe3d0f34c73",
     "player/queue-strategy.js": "sha256:6f6c65f71315bef2e8c85d0f196f15f87d7e24d9c39c002cc98eef5b4999ff3c",
-    "player/seam-gap.js": "sha256:5bad0453709c0e73bade2abde5a714922640c6f43dd2b0a2e5064f13481b4e68",
+    "player/seam-gap.js": "sha256:a9aeeecad16436e9d67dd0fd536134638f30e907a42b983fff7cdeb920e78524",
     "player/seek-policy.js": "sha256:248ca07cef5c5c7c09bd5967b1e86d8a3254493033aec77bb8e3d4b8f25e350c",
     "player/segment-strip.js": "sha256:3a894ae16a63fbbecf35be19149b06f496309007666320b1209bd48143dff32b",
     "player/sheet-drag-dismiss.js": "sha256:5b16f836feff55da9c1ba00a2c576ab31d55d8afdf9f439fb0394fba1ccab15e",

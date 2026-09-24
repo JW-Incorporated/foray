@@ -221,8 +221,9 @@ checks. A Foray that plays is worth more than one that satisfies a rule on paper
 and stalls on a phone, and this one plays: **19 of 19 items resolve,
 `unplayable` is empty, `totalSec` equals `runtime_sec`.**
 
-**What the seams get instead.** `player/seam-gap.js` spends **2.0 s** between
-two auto-advanced segments — §6b's audiobook section-break number — so every
+**What the seams get instead.** `player/seam-gap.js` spends a beat between
+two auto-advanced segments (**2.0 s** when this was written, §6b's audiobook
+section-break number; **0.5 s** since the founder's 2026-09-24 ruling), so every
 seam reached by playing straight through is marked as an edit. It is just not
 *explained* as one. (A seam a listener jumps or scrubs to gets no beat; the rule
 is `isSegment(from) && isSegment(to)` on an auto-advance, and it is

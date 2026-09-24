@@ -23,17 +23,27 @@
    boundary** and this module's decision was correct throughout; all 9.1 s was
    the media load, for a file bundled inside the app.
 
-   `player/html-audio-backend.js` §"prefetch" now moves that load off the
-   boundary — it warms the next segment on a second element while the current one
-   is still audible — so a warmed seam really is `SEAM_GAP_SEC`. Two things follow
-   for anyone editing THIS file:
+   `player/html-audio-backend.js` §"prefetch" was built to move that load off the
+   boundary, by warming the next segment on a second element while the current one
+   is still audible, so that a warmed seam would really be `SEAM_GAP_SEC`. **That
+   handover is PARKED.** `HtmlAudioBackend` defaults to `prefetch: false`, and
+   `player/client.js` builds it without `prefetch: true`, so in production nothing
+   preloads and `_warmNextSegment` is dead code (`queue-manager.js` §11). Every
+   seam is therefore `max(SEAM_GAP_SEC, load)`. At 2.0 s the beat hid a typical
+   foreground cross-episode load (~0.5-2 s) and the pause was a fairly steady 2 s;
+   at 0.5 s the LOAD is the longer term at most cross-episode seams, so what a
+   listener hears there is the load, and it varies with the network. Only a
+   same-file seam, or a load that finishes inside 0.5 s, sounds like 0.5 s. That
+   stays true until the warm path is re-enabled. Two things follow for anyone
+   editing THIS file:
 
      - The beat is still spent in full when the load finishes early. That is
-       deliberate: the silence between two voices is authored (the founder's
-       number, below), not an artifact of loading.
-     - `seamGapSec()` is now ALSO the eligibility rule for warming: the manager
-       warms exactly the transitions that get a beat (`queue-manager.js` §11).
-       So a change here changes what gets prefetched. That coupling is on
+       deliberate: the beat is the authored FLOOR of the silence between two
+       voices (the founder's number, below), and the load can only lengthen it.
+     - `seamGapSec()` is ALSO the eligibility rule for warming: the manager
+       warms exactly the transitions that get a beat (`queue-manager.js` §11),
+       whenever the backend's prefetch is switched back on. So a change here
+       changes what would get prefetched. That coupling is on
        purpose — two answers to "is this a seam" is the drift this module exists
        to prevent — but it is wider than it looks.
 

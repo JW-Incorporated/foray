@@ -23,10 +23,52 @@ to him the same day.
      M5 say 0.5 s, and the "does not decide" bullet in §10 is deleted.
    - The TTS padding was already ~0.5 s each side and does not change
      (`tools/narrate` `padSecPerItem` = 1.0 per item).
+   - **What a listener hears is `max(0.5 s, load)`, and today it is usually
+     the load.** The manager spends the beat and the next segment's load in
+     parallel. The warm path that was meant to take the load off the boundary
+     (`html-audio-backend.js` §"prefetch") is parked: `prefetch` defaults to
+     false and `player/client.js` does not turn it on. At 2.0 s the beat hid a
+     typical foreground cross-episode load (~0.5-2 s), so the pause was a steady
+     2 s. At 0.5 s the load is longer at most cross-episode seams, so the pause
+     there is load-length and varies with the network. Only a same-file seam
+     or a fast load sounds like 0.5 s. That stays true until the warm path is
+     re-enabled.
    - JS is the reference for the native engine (`docs/native-engine-plan.md`
-     §6). No parity fixture on `main` recorded the beat, so none needed
-     re-recording. The Swift port on `engine/m1` picks the value up from its
-     fixtures.
+     §6). No parity fixture on `main` records the beat. **`engine/m1` still pins
+     2.0 s and needs a companion change in the merge that brings this in**; it
+     does not pick the value up by itself:
+     - `player/parity/fixtures/seam-gap/seam-gap.json`: the authored case
+       `seam-gap/rule-is-2.0s` expects `SEAM_GAP_SEC` 2 and is never
+       overwritten by the recorder. Rename it `seam-gap/rule-is-0.5s` and
+       expect 0.5.
+     - Swift: `SeamGap.defaultGapSec` (`Policy/SeamGap.swift`) and
+       `EngineConstants.SeamGap.seamGapSec` go to 0.5, and
+       `ParityHarnessTests.swift`'s `XCTAssertEqual(SeamGap.defaultGapSec, 2.0)`
+       follows.
+     - Parity coverage is keyed on JS test names, and this change renamed
+       seven of them. Rename the keys in `covers[]` and `unported.json`:
+       - seam-gap: "the merged rule is 2.0 s, not 04_VOICE_AUDIO_SPEC's 0.5 s"
+         -> "the seam silence is the founder's 0.5 s — one number in both specs"
+       - media-session: "THE SEAM BEAT REPORTS PLAYING — 2.0 s of authored
+         silence is not a pause" -> "… — 0.5 s of authored silence is not a
+         pause"
+       - "the beats cost about a minute of the Foray, and cost no audio at all"
+         -> "the beats cost a bounded share of the Foray, and cost no audio at
+         all"
+       - "the seam beat stays 2.0 s of WALL clock at 2x — it does not scale
+         with speed" -> "the seam beat stays SEAM_GAP_SEC of WALL clock at 2x —
+         it does not scale with speed"
+       - "a jingle that cannot start leaves the seam its ordinary 2.0 s beat"
+         -> "a jingle that cannot start leaves the seam its ordinary beat"
+       - "a warmed seam is the 2.0 s beat; an unwarmed one is the load —
+         measured on the virtual clock" -> "a warmed seam is the beat; an
+         unwarmed one is the load — measured on the virtual clock"
+       - "an unbridged segment-to-segment seam holds 2.0 s before the next
+         segment is audible" -> "an unbridged segment-to-segment seam holds the
+         full beat before the next segment is audible"
+       Without these, `record.mjs --check` fails on the authored case and
+       `coverage.js` reports the new names as uncovered and the old keys as
+       unknown.
    - The iOS CI probe's `SEAM_ASKED_MS` follows the constant to 500 ms. Its
      "a beat observed below this did not happen" floor
      (`SEAM_MIN_PLAUSIBLE_MS`) drops from 500 ms to 250 ms, half the beat.

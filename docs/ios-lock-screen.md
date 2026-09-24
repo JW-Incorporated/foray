@@ -93,7 +93,7 @@ keeps paying for.
 
 **Nothing about what the lock screen *says* was decided here.** `player/media-session.js`
 decided all of it — three metadata fields, previous/next are segments, the position is
-the **Foray's** clock, a finished Foray reports `"none"`, the 2.0 s seam beat reads as
+the **Foray's** clock, a finished Foray reports `"none"`, the seam beat (`SEAM_GAP_SEC`, 0.5 s) reads as
 playing — and `docs/android-lock-screen.md` §2 already argues why. iOS's job, like
 Android's, is to **deliver** that decision to a second platform's native surface, not
 re-litigate it. What follows is what changes because the surface is
