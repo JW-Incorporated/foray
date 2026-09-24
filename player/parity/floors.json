@@ -1,6 +1,7 @@
 {
   "//": "Written by tools/parity/record.mjs; no card types a count. families: the minimum case count of each fixture family (raise-only; --lower-floors lowers it, visibly). suites: the top-level test count of each covered suite when last recorded. test/suite-integrity.test.js enforces both against the tree.",
   "families": {
+    "diag-tokens": 30,
     "media-episode": 118,
     "number-format": 25,
     "queue-state": 87,

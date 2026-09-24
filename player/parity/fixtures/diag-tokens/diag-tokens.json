@@ -1,0 +1,288 @@
+{
+  "family": "diag-tokens",
+  "module": "player/engine-vocabulary.js",
+  "note": "The closed vocabularies of the engine diagnostics rows (player/engine-vocabulary.js, NE-04) and exact admission into them. The Swift side holds the sets as generated enums (Diag/Vocabulary.swift) and ports admitToken (NE-10s); these cases hold both to the same answers.",
+  "cases": [
+    {
+      "id": "diag-tokens/set-names",
+      "covers": [],
+      "note": "The seven closed sets, by the name admitToken takes, in declaration order.",
+      "read": "VOCABULARY_SETS",
+      "expect": {
+        "value": [
+          "stage",
+          "sessionError",
+          "interruptionReason",
+          "stopCause",
+          "source",
+          "modeReason",
+          "faultKind"
+        ]
+      }
+    },
+    {
+      "id": "diag-tokens/stage-tokens",
+      "covers": [],
+      "read": "STAGES",
+      "expect": {
+        "value": [
+          "attach",
+          "duration",
+          "gate",
+          "readiness",
+          "seek",
+          "preroll",
+          "ready",
+          "play",
+          "playing",
+          "skip",
+          "not-ready",
+          "retry",
+          "ordinary-load",
+          "deadline"
+        ]
+      }
+    },
+    {
+      "id": "diag-tokens/session-error-tokens",
+      "covers": [],
+      "read": "SESSION_ERRORS",
+      "expect": { "value": ["cannot-interrupt-others", "cannot-start-playing", "other"] }
+    },
+    {
+      "id": "diag-tokens/interruption-reason-tokens",
+      "covers": [],
+      "read": "INTERRUPTION_REASONS",
+      "expect": { "value": ["default", "appWasSuspended", "builtInMicMuted", "unknown"] }
+    },
+    {
+      "id": "diag-tokens/stop-cause-tokens",
+      "covers": [],
+      "read": "STOP_CAUSES",
+      "expect": {
+        "value": [
+          "pause",
+          "ended",
+          "final-end",
+          "system-pause",
+          "route-change",
+          "interruption",
+          "grace-expired",
+          "seam-timeout",
+          "load-deadline",
+          "error",
+          "relinquish",
+          "data-deletion",
+          "close",
+          "media-services-reset",
+          "unknown"
+        ]
+      }
+    },
+    {
+      "id": "diag-tokens/source-tokens",
+      "covers": [],
+      "read": "SOURCES",
+      "expect": {
+        "value": [
+          "tap",
+          "remote",
+          "reconcile",
+          "session",
+          "restore",
+          "autoadvance",
+          "autoresume",
+          "audition"
+        ]
+      }
+    },
+    {
+      "id": "diag-tokens/mode-reason-tokens",
+      "covers": [],
+      "read": "MODE_REASONS",
+      "expect": {
+        "value": [
+          "build-default",
+          "override",
+          "no-plist-key",
+          "not-built",
+          "crash-loop",
+          "page-health",
+          "downgrade"
+        ]
+      }
+    },
+    {
+      "id": "diag-tokens/fault-kind-tokens",
+      "covers": [],
+      "read": "FAULT_KINDS",
+      "expect": { "value": ["implicit-activation", "externally-owned"] }
+    },
+    {
+      "id": "diag-tokens/admit-stage-ready",
+      "covers": [],
+      "note": "A token in its set is admitted as itself.",
+      "call": "admitToken",
+      "args": ["stage", "ready"],
+      "expect": { "return": "ready" }
+    },
+    {
+      "id": "diag-tokens/admit-session-error-other",
+      "covers": [],
+      "call": "admitToken",
+      "args": ["sessionError", "other"],
+      "expect": { "return": "other" }
+    },
+    {
+      "id": "diag-tokens/admit-interruption-reason-app-was-suspended",
+      "covers": [],
+      "note": "Apple's lowerCamel case name, verbatim.",
+      "call": "admitToken",
+      "args": ["interruptionReason", "appWasSuspended"],
+      "expect": { "return": "appWasSuspended" }
+    },
+    {
+      "id": "diag-tokens/admit-stop-cause-grace-expired",
+      "covers": [],
+      "call": "admitToken",
+      "args": ["stopCause", "grace-expired"],
+      "expect": { "return": "grace-expired" }
+    },
+    {
+      "id": "diag-tokens/admit-stop-cause-seam-timeout",
+      "covers": [],
+      "call": "admitToken",
+      "args": ["stopCause", "seam-timeout"],
+      "expect": { "return": "seam-timeout" }
+    },
+    {
+      "id": "diag-tokens/admit-source-autoadvance",
+      "covers": [],
+      "call": "admitToken",
+      "args": ["source", "autoadvance"],
+      "expect": { "return": "autoadvance" }
+    },
+    {
+      "id": "diag-tokens/admit-mode-reason-no-plist-key",
+      "covers": [],
+      "call": "admitToken",
+      "args": ["modeReason", "no-plist-key"],
+      "expect": { "return": "no-plist-key" }
+    },
+    {
+      "id": "diag-tokens/admit-mode-reason-not-built",
+      "covers": [],
+      "note": "The NE-01 stub hello answers reason=not-built; it must be admissible.",
+      "call": "admitToken",
+      "args": ["modeReason", "not-built"],
+      "expect": { "return": "not-built" }
+    },
+    {
+      "id": "diag-tokens/admit-fault-kind-implicit-activation",
+      "covers": [],
+      "call": "admitToken",
+      "args": ["faultKind", "implicit-activation"],
+      "expect": { "return": "implicit-activation" }
+    },
+    {
+      "id": "diag-tokens/admit-wrong-set",
+      "covers": [],
+      "note": "A real token from ANOTHER set is dropped: sets are not one pool.",
+      "call": "admitToken",
+      "args": ["stopCause", "default"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "diag-tokens/admit-case-folded",
+      "covers": [],
+      "note": "No case folding: Default is not default.",
+      "call": "admitToken",
+      "args": ["interruptionReason", "Default"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "diag-tokens/admit-padded",
+      "covers": [],
+      "note": "No trimming: a padded token is a defect to surface, not to repair.",
+      "call": "admitToken",
+      "args": ["interruptionReason", " default"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "diag-tokens/admit-camel-for-dashed",
+      "covers": [],
+      "note": "No dashed/camel equivalence: the Swift case name is not the token.",
+      "call": "admitToken",
+      "args": ["faultKind", "implicitActivation"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "diag-tokens/admit-dashed-for-camel",
+      "covers": [],
+      "note": "No dashed/camel equivalence the other way either.",
+      "call": "admitToken",
+      "args": ["interruptionReason", "app-was-suspended"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "diag-tokens/admit-url",
+      "covers": [],
+      "note": "Free text never rides in a token slot.",
+      "call": "admitToken",
+      "args": ["stopCause", "https://example.com/episode.mp3"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "diag-tokens/admit-sentence",
+      "covers": [],
+      "call": "admitToken",
+      "args": ["stopCause", "the car took over"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "diag-tokens/admit-empty",
+      "covers": [],
+      "call": "admitToken",
+      "args": ["stage", ""],
+      "expect": { "return": null }
+    },
+    {
+      "id": "diag-tokens/admit-number",
+      "covers": [],
+      "note": "A non-string is dropped, not coerced.",
+      "call": "admitToken",
+      "args": ["stage", 1],
+      "expect": { "return": null }
+    },
+    {
+      "id": "diag-tokens/admit-null",
+      "covers": [],
+      "call": "admitToken",
+      "args": ["stage", null],
+      "expect": { "return": null }
+    },
+    {
+      "id": "diag-tokens/admit-unknown-set",
+      "covers": [],
+      "note": "Naming a vocabulary that does not exist is a bug in code: a RangeError, not a dropped token.",
+      "call": "admitToken",
+      "args": ["stopCauses", "unknown"],
+      "expect": { "throws": { "name": "RangeError" } }
+    },
+    {
+      "id": "diag-tokens/admit-prototype-key-set",
+      "covers": [],
+      "note": "Own sets only: an inherited property name is not a set.",
+      "call": "admitToken",
+      "args": ["constructor", "unknown"],
+      "expect": { "throws": { "name": "RangeError" } }
+    },
+    {
+      "id": "diag-tokens/admit-non-string-set",
+      "covers": [],
+      "call": "admitToken",
+      "args": [null, "unknown"],
+      "expect": { "throws": { "name": "RangeError" } }
+    }
+  ]
+}

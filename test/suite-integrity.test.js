@@ -285,6 +285,11 @@ const FLOORS = {
      a missed row is a clobber, an extra one is a store that stops saving. */
   "player/parity/rows.test.js": 4,
   "player/engine-contract.test.js": 3,
+  /* NE-04: the engine's closed vocabularies. The diag-tokens family records
+     the sets for Swift; this suite holds what is about the sets themselves —
+     the plan's named tokens, every page transport source admissible, the NE-01
+     stub's reason admissible, and exact admission for every token. Zero slack. */
+  "player/engine-vocabulary.test.js": 4,
   /* NE-08: the suites that READ their fixtures (plan §6.3). Each test runs the
      `transport` / `resume-rules` cases that name it, so the one file is the JS
      assertion and the Swift port's case list (NE-09). Zero slack: a deleted
@@ -1173,6 +1178,12 @@ const FLOORS = {
      its port card, and --mutate's kill/survive/pending verdicts with a no-op
      control. Zero slack. */
   "tools/parity/record.test.mjs": 16, // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
+  /* NE-04: EngineConstants.swift, Diag/Vocabulary.swift and vocabulary.json
+     are GENERATED from the JS, and this is what makes them unable to drift:
+     stale on disk, a duplicate export name, both DRIFT_TOLERANCE_SEC values in
+     distinct namespaces, every export emitted or omitted with a reason, the
+     Swift escaping rules, and the CLI. Zero slack. */
+  "tools/parity/gen-constants.test.mjs": 9,
   /* THE TYPE GATE, and the reason it is floored at all. Until 2026-09-12 no CI
      job in this repo had ever run `tsc` or `eslint`: `backend/package.json`
      defined `typecheck` and nothing called it, so the TypeScript backend was
@@ -2772,6 +2783,9 @@ const SWIFT_FLOORS = {
      frozen ios/ original, which a count cannot do. */
   "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/PlayerQueueStateTests.swift": 34,
   "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/ParityStubTests.swift": 6,
+  /* NE-04: the generated constants and vocabularies compile, and mean what
+     the generator says (distinct drift tolerances, keyword-named tokens). */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/EngineConstantsTests.swift": 6,
 };
 
 for (const [rel, floor] of Object.entries(SWIFT_FLOORS)) {
