@@ -520,11 +520,18 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      with the "Open in" switch that wrote it. Its only reader was `playLink`,
      which nothing had called since the link-out to another podcast app was
      deleted. A copy on an older device is still `cp_`-prefixed, so the
-     enumeration above clears it; policy §2 says so in prose. */
+     enumeration above clears it; policy §2 says so in prose.
+
+     29 -> 30 on 2026-09-24 (NE-13, docs/native-engine-plan.md §5.5):
+     `cp_engine_applied`, the page-owned watermark that makes applying an
+     advance or a position the native iOS engine recorded while the page slept
+     happen once (app.js § applyEngineAdvance). Sequence numbers, no ids.
+     Same mechanism: this count failed first, then the policy check, until
+     privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 29,
-    `expected 29 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 30,
+    `expected 30 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

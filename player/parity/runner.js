@@ -105,7 +105,14 @@ export function validateFixtures(fixtures, schema = loadSchema()) {
   const sets = closedSets(schema);
   const problems = [];
   const seen = new Map();
+  const jsOnlyOf = new Map();
   for (const { family, file, doc } of fixtures) {
+    /* A family is ported or it is not; half a family marked JS-only would hide
+       its ported half from swift-pending (plan §5.5 C-2). */
+    const jsOnly = doc.jsOnly === true;
+    if ("jsOnly" in doc && typeof doc.jsOnly !== "boolean") problems.push(`${file}: jsOnly must be a boolean`);
+    if (jsOnlyOf.has(family) && jsOnlyOf.get(family) !== jsOnly) problems.push(`${file}: jsOnly disagrees with another file of family "${family}"`);
+    jsOnlyOf.set(family, jsOnly);
     const where = (m) => problems.push(`${file}: ${m}`);
     if (doc.family !== family) where(`family "${doc.family}" does not match its directory "${family}"`);
     if (!sets.familyPattern.test(family)) where(`family "${family}" is not a valid family name`);

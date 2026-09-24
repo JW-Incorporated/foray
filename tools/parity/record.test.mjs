@@ -160,6 +160,40 @@ test("recording a new case writes its expect and adds its id to swift-pending.js
   }
 });
 
+/* NE-13 (plan §5.5 C-2): the continuation hops are computed by the page and
+   only walked by the engine, so their family is ported by nobody. Without the
+   flag the recorder would hand its ids to some Swift card forever, and the
+   capability gate would never let "continuation" ship. */
+test("a jsOnly family records with no port card, owes swift-pending nothing, and must be jsOnly throughout", async () => {
+  const root = scratch();
+  const CONT = "player/parity/fixtures/continuation/continuation.json";
+  try {
+    const doc = readJ(root, CONT);
+    assert.equal(doc.jsOnly, true, "precondition: the continuation family is JS-only");
+    doc.cases.push({ id: "continuation/brand-new", covers: [], call: "canNext", args: [{ chain: [{}] }] });
+    writeJ(root, CONT, doc);
+    const pendingBefore = fs.readFileSync(path.join(root, "player/parity/swift-pending.json"), "utf8");
+
+    const r = await record({ root, log: quiet });
+    assert.equal(r.ok, true, r.refusals.join("\n"));
+    assert.deepStrictEqual(r.pendingAdded, []);
+    assert.deepStrictEqual(r.jsOnlyRecorded, ["continuation/brand-new"]);
+    assert.equal(fs.readFileSync(path.join(root, "player/parity/swift-pending.json"), "utf8"), pendingBefore);
+    assert.deepStrictEqual(readJ(root, CONT).cases.at(-1).expect, { return: true });
+    assert.deepStrictEqual((await checkAll({ root })).problems, []);
+
+    // A pending entry naming a JS-only case is a stale promise no card can keep.
+    writeJ(root, "player/parity/swift-pending.json", { ...readJ(root, "player/parity/swift-pending.json"), "continuation/brand-new": "NE-14s" });
+    assert.ok((await checkAll({ root })).problems.some((p) => /continuation\/brand-new is in a jsOnly family/.test(p)));
+
+    // Half a family JS-only would hide its ported half from swift-pending.
+    writeJ(root, "player/parity/fixtures/continuation/second.json", { family: "continuation", module: "player/continuation.js", cases: [{ id: "continuation/second", covers: [], read: "CHAIN_HOPS" }] });
+    assert.ok((await checkAll({ root })).problems.some((p) => /jsOnly disagrees with another file of family "continuation"/.test(p)));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("a JS change to a recorded (non-authored) case re-records it and puts it back in swift-pending", async () => {
   const root = scratch();
   try {

@@ -97,7 +97,6 @@ import {
 import { SINGLE_ITEM } from "./queue-strategy.js";
 import { seekPrecision, formatTimestamp, EXACT, OWN } from "./seek-policy.js";
 import { itemRuntimeSec } from "./foray-queue.js";
-import { TTS } from "./queue-state.js";
 import {
   resolveForay, indexSegments, indexSources, findForay, listableForays, allForays,
   forayElapsed, segmentAtElapsed, fmtClock, fmtSpan, progressSegments,
@@ -134,6 +133,20 @@ import {
   readRate, writeRate, nextRate, normalizeRate, rateLabel, rateAriaLabel, RATES,
 } from "./playback-rate.js";
 import { pickDefaultVoice, VOICE_LIST_LANG } from "./default-voice.js";
+import * as continuation from "./continuation.js";
+
+/* Continuous playback's rules (NE-13), for app.js: it decides what plays after
+   an episode, and it is a classic script that cannot import them. Published at
+   module evaluation, before `window.ForayPlayer` exists, so every caller that
+   reaches app.js through the player finds the rules already there. */
+window.forayContinuation = continuation;
+/* The transport's DECISIONS live in transport-policy.js as pure functions
+   (NE-08), so the native engine can port them and be checked against them.
+   This file gathers the state, asks, and acts; it keeps no copy of a rule. */
+import {
+  resolveToggle, previousAction, skipTarget, scrubTarget, seekAction, remoteStopAction,
+  clampEpisodeTarget, sourceOffsetFor, TOGGLE, PREVIOUS, SEEK, REMOTE_STOP,
+} from "./transport-policy.js";
 
 /* The in-page buttons and the lock screen use ONE pair of numbers, imported
    rather than declared twice — `04_VOICE_AUDIO_SPEC.md`'s "±30/15 s seek". */
@@ -1373,20 +1386,6 @@ function episodeDurationSec() {
   return Number.isFinite(stored) && stored > 0 ? stored : null;
 }
 
-/** Forward seeks stop this far short of the end. A 30-second nudge with eight
-    seconds left must not become "finished": seeking past the end makes the
-    element fire `ended`, which records the episode as done and — with Up Next —
-    starts the next one, from a button whose label promised a nudge. */
-const SEEK_END_GUARD_SEC = 1;
-
-/** A target the episode can actually hold: never below zero, never past the end. */
-function clampEpisodeTarget(seconds, dur = episodeDurationSec()) {
-  const s = Number(seconds);
-  if (!Number.isFinite(s)) return null;
-  const floor = Math.max(0, s);
-  return dur ? Math.min(floor, Math.max(0, dur - SEEK_END_GUARD_SEC)) : floor;
-}
-
 /**
  * THE episode seek. Every surface goes through this.
  *
@@ -1397,17 +1396,30 @@ function clampEpisodeTarget(seconds, dur = episodeDurationSec()) {
  * next press of play starts THERE (`setRunning`'s restored branch). Before this
  * a scrub on a restored bar was thrown away and play started from the old
  * stored position.
+ *
+ * The clamp and the pend-or-seek rule are transport-policy.js's
+ * (`clampEpisodeTarget`, `seekAction`). NOT `async`: it hands back
+ * `landEpisodeSeek`'s own promise, so a caller settles on the same tick it did
+ * before the rules moved out (NE-08 changes no behaviour, timing included).
  */
-async function seekEpisodeTo(seconds) {
-  if (!current || foray || !manager) return false;
-  const target = clampEpisodeTarget(seconds);
+function seekEpisodeTo(seconds) {
+  if (!current || foray || !manager) return Promise.resolve(false);
+  return landEpisodeSeek(clampEpisodeTarget(seconds, episodeDurationSec()));
+}
+
+/** A relative seek, from wherever the bar says the listener is. */
+function seekEpisodeBy(offsetSec) {
+  if (!current || foray || !manager) return Promise.resolve(false);
+  return landEpisodeSeek(skipTarget({
+    foray: false, positionSec: episodePositionSec(), offsetSec, durationSec: episodeDurationSec(),
+  }));
+}
+
+/** Land an already-clamped episode target: written down when there is nothing
+    to seek in, sent to the manager otherwise. */
+async function landEpisodeSeek(target) {
   if (target == null) return false;
-  /* `idle` is the restored bar (nothing has loaded) and a failed load; `ended`
-     is an episode that ran out. Both are states the reducer refuses a seek in. */
-  const nothingToSeekIn = restoredPending != null
-    || manager.state?.type === "idle"
-    || manager.state?.type === "ended";
-  if (nothingToSeekIn) {
+  if (seekAction({ restored: restoredPending != null, stateType: manager.state?.type }) === SEEK.PEND) {
     /* Spread, so a restored FORAY keeps the Foray it will start (`restoreForay`).
        `moved` marks a position the LISTENER chose, so the start honours it even
        at 0:00 — see `setRunning`'s restored branch. */
@@ -1420,18 +1432,14 @@ async function seekEpisodeTo(seconds) {
   return true;
 }
 
-/** A relative seek, from wherever the bar says the listener is. */
-function seekEpisodeBy(offsetSec) {
-  return seekEpisodeTo(episodePositionSec() + Number(offsetSec || 0));
-}
-
 /** THE ONE NUDGE. ↺15 / 30↻ on the sheet, ↺15 on the mini bar, the Foray
     page's own pair and the lock screen's seek all come here: inside a Foray
     the step is taken on the Foray's clock through `foraySeek` (so it crosses
-    a clip boundary the way the scrubber does), otherwise on the episode's. */
+    a clip boundary the way the scrubber does), otherwise on the episode's.
+    Where the step lands is `skipTarget`'s (transport-policy.js). */
 function nudgeBy(offsetSec) {
   const offset = Number(offsetSec || 0);
-  if (foray) return ForayPlayer.foraySeek(Math.max(0, forayPosition() + offset));
+  if (foray) return ForayPlayer.foraySeek(skipTarget({ foray: true, positionSec: forayPosition(), offsetSec: offset }));
   return seekEpisodeBy(offset);
 }
 
@@ -1953,9 +1961,28 @@ let restoredPending = null;
     from somewhere other than its page. */
 let forayWatcher = null;
 
+/** What `resolveToggle` (transport-policy.js) needs to know, read now. Only
+    reads: asking twice in one press is free. */
+function toggleInputs(want, { restored }) {
+  return {
+    want,
+    restored,
+    foray: Boolean(foray),
+    stateType: manager.state?.type ?? null,
+    running: transportIsRunning(),
+    hasCurrent: Boolean(current),
+    queueLength: manager.queue.length,
+  };
+}
+
 async function setRunning(want, source = "tap") {
   if (!manager) return;
-  if (want && restoredPending) {
+  /* The rule is `resolveToggle`'s; this function only acts on its answer. It
+     is ASKED TWICE, around the reconcile below, because that is where the old
+     inline code decided: the restored branch before the element is consulted,
+     everything else after. The second ask passes `restored: false` because the
+     restored branch has already been decided by the first. */
+  if (resolveToggle(toggleInputs(want, { restored: Boolean(restoredPending) })) === TOGGLE.PLAY_RESTORED) {
     const { item, positionSec, moved, foray: pendingForay } = restoredPending;
     restoredPending = null;
     diag.transport(source, "play-restored");
@@ -2027,21 +2054,22 @@ async function setRunning(want, source = "tap") {
      Safari's gesture window, so this is belt and braces; it is cheap, and #225
      is the bug where the belt broke. */
   if (isPlaying()) await manager.reconcileWithBackend(`transport:${source}`);
-  /* A FINISHED FORAY STARTS OVER (audit 2026-09-22). `manager.resume()` from
-     `ended` re-loads the LAST segment at its in-point, so "play" on a Foray
-     that had finished replayed its final ninety seconds and ended again — while
-     the Foray page's button offered to "Resume" something with nothing left to
-     resume. The page now says "Start over", and this is what makes that true
-     for every surface that presses play. */
-  if (want && foray && manager.state?.type === "ended") {
+  const action = resolveToggle(toggleInputs(want, { restored: false }));
+  /* A FINISHED FORAY STARTS OVER (audit 2026-09-22; `endedPlayAction`).
+     `manager.resume()` from `ended` re-loads the LAST segment at its in-point,
+     so "play" on a Foray that had finished replayed its final ninety seconds and
+     ended again — while the Foray page's button offered to "Resume" something
+     with nothing left to resume. The page now says "Start over", and this is
+     what makes that true for every surface that presses play. */
+  if (action === TOGGLE.START_OVER) {
     await ForayPlayer.forayJump(0);
     return;
   }
-  /* `transportIsRunning()`, NOT `isRunning()`. The belief alone is what made a
-     press a no-op when it was wrong — "the button said play, sound was coming
-     out, and pressing it did nothing but repaint". */
-  if (want === transportIsRunning()) { render(); return; }
-  if (want) {
+  /* `transportIsRunning()`, NOT `isRunning()` (`toggleInputs`' `running`). The
+     belief alone is what made a press a no-op when it was wrong — "the button
+     said play, sound was coming out, and pressing it did nothing but repaint". */
+  if (action === TOGGLE.NONE) { render(); return; }
+  if (action !== TOGGLE.PAUSE) {
     /* NOTHING LOADED, BUT SOMETHING SHOWING: load it rather than resume it.
        `manager.resume()` answers `resume.ignored.noCurrentItem` on an empty
        queue and repaints, which is a button that does nothing — and the ribbon
@@ -2053,7 +2081,7 @@ async function setRunning(want, source = "tap") {
        Written against the QUEUE rather than against a flag, so it does not care
        WHY the queue is empty — which is the difference between fixing one bug
        and closing the shape of it. */
-    if (current && manager.queue.length === 0) {
+    if (action === TOGGLE.LOAD) {
       const started = await ForayPlayer.play(current);
       /* Seek after the start, exactly as the restored branch does and for the
          same reason: `play` sets the queue and begins at 0. `resumeOffset` is
@@ -2137,7 +2165,7 @@ async function stopAndClose({ persist = true } = {}) {
  */
 function remoteStop(details) {
   diag.transport("remote", "stop");
-  if (details?.close === true) return stopAndClose();
+  if (remoteStopAction(details) === REMOTE_STOP.CLOSE) return stopAndClose();
   return setRunning(false, "remote");
 }
 
@@ -3824,8 +3852,7 @@ const ForayPlayer = {
     foray.error = null;
     const index = manager.currentIndex;
     const item = foray.resolved.playable[index];
-    const into = item ? (backend.currentTime ?? 0) - item.start_sec : 0;
-    if (index > 0 && into < RESTART_WINDOW_SEC) {
+    if (previousAction({ index, item, currentTime: backend.currentTime }) === PREVIOUS.ITEM_BEFORE) {
       setForayIndex(index - 1);
       await manager.play(foray.index);
     } else {
@@ -3839,60 +3866,27 @@ const ForayPlayer = {
   async foraySeek(elapsedSec) {
     if (!foray) return;
     const at = segmentAtElapsed(foray.resolved.playable, elapsedSec);
-    if (!at) return;
-    const item = foray.resolved.playable[at.index];
-    /* A FINISHED Foray has nothing loaded to seek in — the reducer refuses a
-       seek in `ended` — so a scrub back into the last segment reloads it, the
-       same as a scrub into any other segment does (audit 2026-09-22). */
-    const reload = at.index !== manager.currentIndex
-      || manager.state?.type === "ended" || manager.state?.type === "idle";
-    if (reload) {
+    /* Where it lands and whether it reloads are `scrubTarget`'s: a FINISHED
+       Foray has nothing loaded to seek in, so a scrub back into the last
+       segment reloads it like any other segment (audit 2026-09-22). */
+    const scrub = scrubTarget({
+      at, item: at ? foray.resolved.playable[at.index] : null,
+      currentIndex: manager.currentIndex, stateType: manager.state?.type ?? null,
+    });
+    if (!scrub) return;
+    if (scrub.reload) {
       foray.error = null;
-      setForayIndex(at.index);
-      await manager.play(at.index);
+      setForayIndex(scrub.index);
+      await manager.play(scrub.index);
     }
-    const offset = sourceOffsetFor(item, at.into);
-    if (offset != null) await manager.seek(offset, { precise: true });
+    if (scrub.offset != null) await manager.seek(scrub.offset, { precise: true });
     render();
   },
 };
 
-/** Below this many seconds into a segment, "previous" means the segment before. */
-const RESTART_WINDOW_SEC = 4;
-
-/** How far inside the end of an item a Foray-clock seek may land. See
-    `sourceOffsetFor`. */
-const SEEK_INSIDE_END_SEC = 0.25;
-
-/**
- * Where in the element's OWN clock a point `into` seconds into queue item
- * `item` lives — the one translation from the Foray's clock to a source file's
- * clock, used by the scrubber (`foraySeek`) and by a resume (`playForay`).
- * Returns null when there is nothing to seek (audit 2026-09-22, two defects):
- *
- *  - A NARRATION ITEM HAS NO `start_sec`. `item.start_sec + into` was
- *    `undefined + into` — NaN, refused at the bottom of the stack, so a scrub
- *    into a bridge restarted it from its first word. A rendered bridge's file IS
- *    the item, so its offset is `into` itself. A SPOKEN one has no file at all:
- *    the synthesiser cannot start mid-sentence, so there is nothing to seek and
- *    the line starts from the top, as `_loadItem` states for every bridge.
- *  - THE CLOCK'S END-CLAMP IS NOT A SCRUB PAST THE BOUNDARY. `segmentAtElapsed`
- *    answers a position at or past the total with the last segment's END, and
- *    the backend reads a seek landing exactly on an out-point as a deliberate
- *    scrub past it — and disarms the boundary, so the audio free-played on into
- *    the rest of a stranger's episode with the countdown frozen. A seek always
- *    lands just inside the item, so "take me to the end" ends the Foray.
- */
-function sourceOffsetFor(item, into) {
-  if (!item || !Number.isFinite(into)) return null;
-  const len = itemRuntimeSec(item);
-  const inside = Number.isFinite(len) && len > 0
-    ? Math.min(Math.max(0, into), Math.max(0, len - SEEK_INSIDE_END_SEC))
-    : Math.max(0, into);
-  if (Number.isFinite(item.start_sec)) return item.start_sec + inside;
-  if (item.kind === TTS && !item.audio_url) return null;
-  return inside;
-}
+/* RESTART_WINDOW_SEC, SEEK_INSIDE_END_SEC and `sourceOffsetFor` moved to
+   transport-policy.js (NE-08), exported, so the native engine's generated
+   constants and its TransportPolicy port read the same numbers. */
 
 const isFiniteNum = (n) => typeof n === "number" && Number.isFinite(n);
 
