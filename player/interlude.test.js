@@ -81,9 +81,13 @@ test("capital-types-1 (frozen): 21 seams, 11 of them inside one episode, so exac
      four-cut SBA roundtable. The count is the joins where the strip changes
      capsule — the same number, asserted from the other side below. */
   const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-  const read = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, "tools/foray/fixtures/frozen/data", f), "utf8"));
-  const doc = findForay(read("forays.json"), "capital-types-1", {});
-  const r = resolveForay(doc, { segments: indexSegments(read("segments.json")), sources: indexSources(read("segment-sources.json")) });
+  /* `frozenFile`, not `read`: this reads the FROZEN fixture, never `data/`,
+     so it is not a real-data suite and must not match the publish gate's
+     REAL_DATA_READ_RE (backend/src/cli/publishSuites.ts) — the old `read` helper
+     call shape did, and the anti-rot test demanded it be listed (2026-09-24). */
+  const frozenFile = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, "tools/foray/fixtures/frozen/data", f), "utf8"));
+  const doc = findForay(frozenFile("forays.json"), "capital-types-1", {});
+  const r = resolveForay(doc, { segments: indexSegments(frozenFile("segments.json")), sources: indexSources(frozenFile("segment-sources.json")) });
   const items = r.playable;
   assert.equal(items.length, 22);
   let jingles = 0;

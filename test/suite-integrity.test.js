@@ -207,7 +207,7 @@ const FLOORS = {
      is a default that can silently drift back to #491's "best installed
      voice of any name", the exact behaviour the founder overruled. */
   "player/default-voice.test.js": 10,
-  "player/queue-manager.test.js": 147, // audit round 2 (2026-09-23, L1): onStateSettled fires after every handled event, a spoken line past its deadline is treated as finished, should-resume never resumes a listener's pause; 144 -> 147 // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
+  "player/queue-manager.test.js": 159, // fix/narration-1x (2026-09-24, founder: "1x for now"): synthesized narration speaks at NARRATION_RATE whatever the listener's rate, on both call paths, and its deadline follows; 147 -> 159 // audit round 2 (2026-09-23, L1): onStateSettled fires after every handled event, a spoken line past its deadline is treated as finished, should-resume never resumes a listener's pause; 144 -> 147 // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 58, // 2026-09-22 audit (L2): `elementResumed` — interrupted -> playing with no audio effect, and nothing from any other state; 56 -> 58
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
@@ -483,7 +483,7 @@ const FLOORS = {
      a nineteen-test suite; L4 added the one-radio-group cell (qa row 81) and L3
      the two "a rebuild must not throw focus out of the sheet" cells. Set to the
      post-merge count. */
-  "test/voice-settings.test.js": 22,
+  "test/voice-settings.test.js": 24, // fix/narration-1x (2026-09-24): the Preview speaks at NARRATION_RATE, never the listener's speed; 22 -> 24
   /* Theme F of the 2026-09-22 audit: tap targets sized by a RULE. Enumerates
      every control the audit measured below 44px and requires a 44px hit area
      by size or by the one `:where(...)::after` rule, checks that rule's shape,
@@ -1239,7 +1239,7 @@ const FLOORS = {
      D3's (1) went with their rules; the pair clause gained six (reported on
      pre-Q-01 tape, gated on a Q-01 Foray, the CLI exit, the row fields, the
      IQR still reported, the helper) and M4's restatement three. */
-  "tools/foray/check-forays.test.mjs": 163, // audit round 2 (L8, p-foray-5): a published Foray's why-lines are captions -- no bare leading name the titles do not introduce, no gendered pronoun with no one to point at; 161 -> 163 // L8 review (2026-09-23): §0 and slot headers declared again, by doc path, so a doc cannot lose them silently; 160 -> 161. L8 (2026-09-22): the pipeline's own words (beat, segment, act, running order) refused in Foray copy — the audit found "eight beats of a forty-beat history" as a title; 159 -> 160. // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
+  "tools/foray/check-forays.test.mjs": 164, // founder ruling 2026-09-24 ("Publish any foray so that the statement is correct"): a published Foray has a narrator between its clips, so the first-run sheet's narrator clause is true for a newcomer (round-1 persona 14); 163 -> 164 // audit round 2 (L8, p-foray-5): a published Foray's why-lines are captions -- no bare leading name the titles do not introduce, no gendered pronoun with no one to point at; 161 -> 163 // L8 review (2026-09-23): §0 and slot headers declared again, by doc path, so a doc cannot lose them silently; 160 -> 161. L8 (2026-09-22): the pipeline's own words (beat, segment, act, running order) refused in Foray copy — the audit found "eight beats of a forty-beat history" as a title; 159 -> 160. // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
   /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
      of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
      accepted value (~30 today), so the floor is the count of `test(` lines this
@@ -1427,7 +1427,7 @@ const FLOORS = {
      the no-backup directory, the plugin name and four calls, the declaration
      in mobile/package.json. No toolchain runs here, so these pins ARE the gate. */
   "tools/mobile/foray-vault.test.mjs": 14,
-  "tools/mobile/foray-tts.test.mjs": 62, // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
+  "tools/mobile/foray-tts.test.mjs": 66, // fix/narration-1x (2026-09-24): rate 1 is each platform's normal rate — passed through, Web Speech 1, Android setSpeechRate(1.0f), iOS AVSpeechUtteranceDefaultSpeechRate; 62 -> 66 // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody

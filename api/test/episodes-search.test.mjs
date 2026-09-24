@@ -658,49 +658,9 @@ test("the URL sent to Apple carries the over-fetch, and the caller still gets ex
 });
 
 
-/* THIS TEST MUST STAY LAST IN THE FILE. It deliberately drains
-   appleBucket.ts's 20/min bucket, which is module state shared by every test
-   above it — node:test runs a file's top-level tests in source order, so any
-   Apple-path test placed after this one is answered `degraded: true, "rate
-   limit exceeded"` and fails for a reason that has nothing to do with what it
-   asserts. That is not hypothetical: P-05's end-to-end test was appended below
-   it and failed exactly this way before being moved above. Add new Apple-path
-   tests ABOVE this comment. */
-test("rate limit: the 21st distinct general search within the same instant is refused without calling Apple", async () => {
-  // Drives the handler itself through the bucket capacity — imports across
-  // separate test files can get separate module instances under tsx's ESM
-  // loader, so exhausting the bucket via the handler's OWN calls (rather
-  // than importing appleBucket.ts directly here) is what actually proves
-  // the acceptance criterion end-to-end.
-  resetSharedState();
-  let appleCallCount = 0;
-  const fetchImpl = async (url) => {
-    if (String(url).includes("itunes.apple.com")) {
-      appleCallCount++;
-    }
-    return new Response(JSON.stringify({ results: [] }), { status: 200 });
-  };
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = fetchImpl;
-  const prefix = `burst-${Date.now()}`;
-  try {
-    const results = [];
-    // 25 distinct (uncached) queries fired as fast as this loop can go.
-    for (let i = 0; i < 25; i++) {
-      const req = { method: "GET", query: { q: `${prefix}-${i}` }, headers: {} };
-      const res = mockRes();
-      await handler(req, res);
-      results.push(res.body);
-    }
-    const refused = results.filter((r) => r.degraded && /rate limit/.test(r.error || ""));
-    assert.ok(refused.length > 0, "at least one of the 25 rapid distinct queries must be rate-limited");
-    assert.ok(appleCallCount <= 20, `Apple must never be called more than 20 times in the burst, got ${appleCallCount}`);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
-/* ROUND 2 (2026-09-23): what the row carries and what the cut held back. */
+/* ROUND 2 (2026-09-23): what the row carries and what the cut held back.
+   Placed above the rate-limit test (see its comment): appended below it, both
+   were answered "rate limit exceeded" with zero episodes. */
 
 test("general search: an Apple hit's artworkUrl600 rides through as artwork_url, and the payload says how many were cut (search-8, honesty-11)", async () => {
   /* MUTATION: drop `artwork_url` from mapAppleHit — the first assertion goes
@@ -749,4 +709,47 @@ test("general search: when Apple fills its over-fetch the total is a floor and t
   assert.strictEqual(res.body.total, 50);
   assert.strictEqual(res.body.capped, true);
   assert.strictEqual(res.body.episodes[0].artwork_url, null, "no artwork from Apple, an honest null — the client falls back to the show record");
+});
+
+
+/* THIS TEST MUST STAY LAST IN THE FILE. It deliberately drains
+   appleBucket.ts's 20/min bucket, which is module state shared by every test
+   above it — node:test runs a file's top-level tests in source order, so any
+   Apple-path test placed after this one is answered `degraded: true, "rate
+   limit exceeded"` and fails for a reason that has nothing to do with what it
+   asserts. That is not hypothetical: P-05's end-to-end test was appended below
+   it and failed exactly this way before being moved above. Add new Apple-path
+   tests ABOVE this comment. */
+test("rate limit: the 21st distinct general search within the same instant is refused without calling Apple", async () => {
+  // Drives the handler itself through the bucket capacity — imports across
+  // separate test files can get separate module instances under tsx's ESM
+  // loader, so exhausting the bucket via the handler's OWN calls (rather
+  // than importing appleBucket.ts directly here) is what actually proves
+  // the acceptance criterion end-to-end.
+  resetSharedState();
+  let appleCallCount = 0;
+  const fetchImpl = async (url) => {
+    if (String(url).includes("itunes.apple.com")) {
+      appleCallCount++;
+    }
+    return new Response(JSON.stringify({ results: [] }), { status: 200 });
+  };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  const prefix = `burst-${Date.now()}`;
+  try {
+    const results = [];
+    // 25 distinct (uncached) queries fired as fast as this loop can go.
+    for (let i = 0; i < 25; i++) {
+      const req = { method: "GET", query: { q: `${prefix}-${i}` }, headers: {} };
+      const res = mockRes();
+      await handler(req, res);
+      results.push(res.body);
+    }
+    const refused = results.filter((r) => r.degraded && /rate limit/.test(r.error || ""));
+    assert.ok(refused.length > 0, "at least one of the 25 rapid distinct queries must be rate-limited");
+    assert.ok(appleCallCount <= 20, `Apple must never be called more than 20 times in the burst, got ${appleCallCount}`);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

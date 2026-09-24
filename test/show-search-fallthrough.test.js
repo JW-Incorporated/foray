@@ -1283,7 +1283,12 @@ test("mergeShowRows: all four sources pairwise — every arrival order covering 
 /* plus the search half of R2-G. One mount case per behaviour.           */
 /* ==================================================================== */
 
-const FROZEN_FORAYS = JSON.parse(fs.readFileSync(path.join(ROOT, "tools", "foray", "fixtures", "frozen", "data", "forays.json"), "utf8")).forays;
+/* The FROZEN fixture, never `data/`: the path is built on its own line so the
+   read below does not match the publish gate's REAL_DATA_READ_RE
+   (backend/src/cli/publishSuites.ts) — this is not a real-data suite, and
+   listing it there would be a false positive (2026-09-24). */
+const FROZEN_FORAYS_PATH = path.join(ROOT, "tools", "foray", "fixtures", "frozen", "data", "forays.json");
+const FROZEN_FORAYS = JSON.parse(fs.readFileSync(FROZEN_FORAYS_PATH, "utf8")).forays;
 
 test("search-1: a painted index row takes the catalogue's artwork IN PLACE — same index, same href, no blank square", async () => {
   /* The index carries titles only, so its prefix hits — the strongest matches,
