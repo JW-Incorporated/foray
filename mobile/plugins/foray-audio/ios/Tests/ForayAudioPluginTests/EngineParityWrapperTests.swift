@@ -35,7 +35,8 @@ final class EngineParityWrapperTests: XCTestCase {
 
     func testCompareFamily() { assertParityFamily("compare", requireRunner: true) }
     func testSeamGapFamily() { assertParityFamily("seam-gap", requireRunner: true) }
-    func testQueueStateFamily() { assertParityFamily("queue-state") }
+    /// NE-07s: the reducer runs at parity here too, as the app links it.
+    func testQueueStateFamily() { assertParityFamily("queue-state", requireRunner: true) }
     /// NE-09's ports run here too, against the core as the app links it.
     func testRateFamily() { assertParityFamily("rate", requireRunner: true) }
     func testResumeRulesFamily() { assertParityFamily("resume-rules", requireRunner: true) }

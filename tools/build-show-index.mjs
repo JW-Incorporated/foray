@@ -157,6 +157,12 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
+import { createRequire } from "node:module";
+
+/* The client's own fold, not a copy of it: the sort key here and the lookup
+   key in `parseShowIndex` have to be one function or the binary search is
+   silently wrong for every accented title (design comment (2) below). */
+const { foldDiacritics } = createRequire(import.meta.url)("../search-engine.js");
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..");
@@ -214,12 +220,17 @@ export function mergeShowIndexRows(curated, breadth, { maxRank = BUILD_MAX_RANK 
     rows.push({ title, id, chart_rank: rank, curated: false });
   }
 
-  /* CODE-UNIT ORDER on the lowercased title — see the design comment (2).
-     `id` breaks a title tie so the file is byte-stable across two runs over
-     the same input, which is what makes `--check` meaningful. */
+  /* CODE-UNIT ORDER on the FOLDED, lowercased title — see the design comment
+     (2), and search-engine.js's `foldDiacritics`, which is the key
+     `parseShowIndex` builds and `prefixSearchShows` binary-searches with `<`
+     (audit round 2, search-9: the builder sorted on the unfolded title and the
+     client looked up the unfolded key, so "cafe" could never reach "Café …";
+     folding both sides keeps the two in the one order that binary search
+     needs). `id` breaks a title tie so the file is byte-stable across two runs
+     over the same input, which is what makes `--check` meaningful. */
   rows.sort((a, b) => {
-    const at = a.title.toLowerCase();
-    const bt = b.title.toLowerCase();
+    const at = foldDiacritics(a.title);
+    const bt = foldDiacritics(b.title);
     if (at < bt) return -1;
     if (at > bt) return 1;
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;

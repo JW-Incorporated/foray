@@ -207,8 +207,12 @@ test("the accessible name says the value, because aria-label REPLACES the button
      five multiplication sign" — true and useless — so the control needs an
      `aria-label`. But `aria-label` on a button replaces its content, so the value
      has to be said again inside it or it is lost entirely. Sentence case, no
-     exclamation, em-dash as in the surrounding copy (CLAUDE.md § Conventions). */
-  assert.equal(rateAriaLabel(1.5), "Playback speed 1.5× — tap for the next speed");
+     exclamation, em-dash as in the surrounding copy (CLAUDE.md § Conventions).
+     "OPENS THE SPEED MENU" (audit round 2, player-9): both speed buttons open
+     the picker since #349, and the name still promised a cycle. KILLING
+     MUTATION: put "tap for the next speed" back. */
+  assert.equal(rateAriaLabel(1.5), "Playback speed 1.5× — opens the speed menu");
+  assert.doesNotMatch(rateAriaLabel(1), /next speed/, "nothing cycles any more");
   assert.match(rateAriaLabel(1), /^Playback speed 1× — /);
   for (const r of RATES) {
     assert.ok(rateAriaLabel(r).includes(rateLabel(r)), `${r}'s accessible name must carry its value`);

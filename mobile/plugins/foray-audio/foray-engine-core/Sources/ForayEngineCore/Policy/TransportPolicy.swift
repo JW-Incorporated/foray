@@ -6,13 +6,16 @@ import Foundation
 /// reference; the `transport` parity family is the contract, and
 /// transport-policy.js's comments are where each rule's reason lives (the
 /// audit of 2026-09-22 for start-over, the out-point disarm, the narration
-/// scrub; the Android Stop for remote stop).
+/// scrub; the Android Stop for remote stop; audit round 2 for the Foray
+/// clock under previous, the nudge's end guard, a nudge inside a spoken line
+/// and an episode's previous).
 ///
 /// QUIRKS ARE PORTED, NOT TIDIED. NE-08 recorded the old inline code as it
-/// was, including answers a fresh design would not give (`previousAction` on
-/// a narration item is the manager's previous, because `into` is NaN), and a
-/// port that "fixes" one here would be a rule change that skipped the JS. A
-/// change goes JS first, then a re-record, then this file.
+/// was, including answers a fresh design would not give (`skipTarget`'s
+/// `Number(offset || 0)`), and a port that "fixes" one here would be a rule
+/// change that skipped the JS. A change goes JS first, then a re-record, then
+/// this file: audit round 2 (player-4, player-5, player-11, p-car-5) took that
+/// route, and reached this port when engine/m1 was merged into NE-09.
 ///
 /// Every token is a closed `enum` whose raw values are the JS strings (the
 /// fixtures compare them, and PolicyPortTests checks them against the
@@ -36,6 +39,16 @@ public enum TransportPolicy {
         case load
         case resume
         case pause
+    }
+
+    /// `NUDGE`: what a ↺15 / 30↻ nudge inside a Foray does.
+    public enum Nudge: String, CaseIterable {
+        case seek
+        case restartLine = "restart-line"
+        case skipLine = "skip-line"
+        /// `NUDGE.NONE`: forward from the closing spoken line. Not named
+        /// `none`, for the reason `Toggle.noChange` is not.
+        case nothing = "none"
     }
 
     /// `PREVIOUS`: what "previous" does inside a Foray.
@@ -130,17 +143,29 @@ public enum TransportPolicy {
 
     // MARK: previous
 
-    /// `previousAction({index, item, currentTime})`: restart this item while
-    /// we are inside it, go to the one before in the first
-    /// `restartWindowSec`, measured from the item's OWN start.
+    /// `previousAction({index, positionSec, segmentStartSec})`: restart this
+    /// item while we are inside it, go to the one before in the first
+    /// `restartWindowSec`, measured from the segment's own start ON THE
+    /// FORAY'S CLOCK (audit round 2, player-4: on the element's clock `into`
+    /// was NaN for every narration line, so previous there never went back
+    /// past the narrator).
     ///
-    /// `item?.startSec` here is the value JS SUBTRACTS (`x - item.start_sec`),
-    /// so nil means NaN: a narration item has no start, `into` is NaN, and
-    /// the answer is the manager's previous (recorded as it is, not tidied).
-    /// No item at all is `into = 0`. A missing clock is 0 (`?? 0`).
-    public static func previousAction(index: Double, item: Item?, currentTime: Double?) -> Previous {
-        let into: Double = item.map { (currentTime ?? 0) - ($0.startSec ?? .nan) } ?? 0
+    /// A nil `positionSec` is a jump still in flight and reads as "deep
+    /// inside" (Infinity), which restarts: the safe answer. A NaN start (JS
+    /// subtracting `undefined`) makes `into` NaN, and `NaN < 4` is false, so
+    /// the manager's previous, as in JS.
+    public static func previousAction(index: Double, positionSec: Double?, segmentStartSec: Double) -> Previous {
+        let into: Double = positionSec.map { $0 - segmentStartSec } ?? .infinity
         return index > 0 && into < restartWindowSec ? .itemBefore : .manager
+    }
+
+    /// `episodePreviousRestarts({positionSec})`: on an ordinary episode,
+    /// previous RESTARTS from `restartWindowSec` in (audit round 2, p-car-5:
+    /// the meaning every podcast player gives ◀◀), the same window a Foray
+    /// clip is measured against, so there is one number; inside it the page
+    /// may go to the row before. JS's `>=` coerces, so NaN (undefined) is false.
+    public static func episodePreviousRestarts(positionSec: Double) -> Bool {
+        positionSec >= restartWindowSec
     }
 
     // MARK: skip and seek
@@ -158,15 +183,38 @@ public enum TransportPolicy {
     }
 
     /// `skipTarget({foray, positionSec, offsetSec, durationSec})`: where a
-    /// ↺15 / 30↻ nudge lands. In a Foray the step is on the Foray's clock and
-    /// only floored at 0 (the clock clamps the far end); on an episode it is
-    /// `clampEpisodeTarget`. `Number(offsetSec || 0)`: a falsy offset (nil,
-    /// 0, NaN) is no step.
+    /// ↺15 / 30↻ nudge lands. In a Foray the step is on the Foray's clock,
+    /// floored at 0 and, given the Foray's total (`durationSec > 0`), stopped
+    /// `seekEndGuardSec` short of it (audit round 2, player-5: a Foray-clock
+    /// target at the total lands inside the last clip's out-point and ENDS the
+    /// Foray, which a button labelled thirty seconds must not do; the scrubber
+    /// never passes a total, so "take me to the end" still ends it). On an
+    /// episode it is `clampEpisodeTarget`. `Number(offsetSec || 0)`: a falsy
+    /// offset (nil, 0, NaN) is no step.
     public static func skipTarget(foray: Bool, positionSec: Double, offsetSec: Double?,
                                   durationSec: Double?) -> Double? {
         let offset = truthy(offsetSec) ? offsetSec! : 0
-        if foray { return JSMath.max(0, positionSec + offset) }
+        if foray {
+            let floor = JSMath.max(0, positionSec + offset)
+            guard let total = durationSec, total > 0 else { return floor }
+            return JSMath.min(floor, JSMath.max(0, total - seekEndGuardSec))
+        }
         return clampEpisodeTarget(positionSec + offset, duration: durationSec)
+    }
+
+    /// `nudgeAction({offsetSec, landsInCurrentItem, narrationPlayhead,
+    /// onLastItem})`: what a Foray nudge does once `skipTarget` has said where
+    /// it lands. A spoken line has no offset to seek to (audit round 2,
+    /// player-11: the seek did nothing, silently, while the clock ran on), so
+    /// a nudge that stays inside one says plainly what it does: back re-speaks
+    /// the line, forward skips it, and forward from the LAST line does nothing
+    /// (the Foray's next returns early there). A nudge that crosses out of the
+    /// line, or lands in a clip, is an ordinary seek.
+    public static func nudgeAction(offsetSec: Double, landsInCurrentItem: Bool, narrationPlayhead: Bool,
+                                   onLastItem: Bool) -> Nudge {
+        guard landsInCurrentItem && narrationPlayhead else { return .seek }
+        if offsetSec < 0 { return .restartLine }
+        return onLastItem ? .nothing : .skipLine
     }
 
     /// `seekAction({restored, stateType})`: with nothing loaded to seek in (a

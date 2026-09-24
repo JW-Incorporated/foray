@@ -4,7 +4,7 @@ import Foundation
 /// case's untyped arguments into a typed Swift port's parameters (NE-09).
 ///
 /// A JS rule sometimes reads an argument through the language's coercions:
-/// `Number(seconds)` (clampEpisodeTarget), `x - item.start_sec`
+/// `Number(seconds)` (clampEpisodeTarget), `positionSec - segmentStartSec`
 /// (previousAction), `lastEmitted ?? 0`. The Swift port takes a Double, so the
 /// runner has to do the conversion JavaScript would have done, and do it
 /// EXACTLY: a runner that coerced `null` to NaN where JS gives 0 would move a

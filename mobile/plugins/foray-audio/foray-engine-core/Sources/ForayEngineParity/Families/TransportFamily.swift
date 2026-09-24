@@ -25,8 +25,10 @@ public enum TransportFamily {
             "endedPlayAction": TransportFamily.endedPlayAction,
             "resolveToggle": TransportFamily.resolveToggle,
             "previousAction": TransportFamily.previousAction,
+            "episodePreviousRestarts": TransportFamily.episodePreviousRestarts,
             "clampEpisodeTarget": TransportFamily.clampEpisodeTarget,
             "skipTarget": TransportFamily.skipTarget,
+            "nudgeAction": TransportFamily.nudgeAction,
             "seekAction": TransportFamily.seekAction,
             "sourceOffsetFor": TransportFamily.sourceOffsetFor,
             "scrubTarget": TransportFamily.scrubTarget,
@@ -79,19 +81,23 @@ public enum TransportFamily {
             queueLength: s["queueLength"].numberValue)) // `=== 0`: only a number can be 0
     }
 
-    /// `previousAction({ index, item, currentTime })`: `index > 0` and
-    /// `(currentTime ?? 0) - item.start_sec` are both ARITHMETIC, so they
-    /// coerce (a null start is 0, a missing one NaN), unlike the `typeof`
-    /// reads `sourceOffsetFor` makes of the same field.
+    /// `previousAction({ index, positionSec, segmentStartSec })`:
+    /// `positionSec == null` (loose, so undefined too) is the jump in flight;
+    /// otherwise `index > 0` and `positionSec - segmentStartSec` are
+    /// ARITHMETIC, so they coerce (a null start is 0, a missing one NaN).
     static func previousAction(_ args: [JSValue]) throws -> CallOutcome {
         guard let s = param(args) else { return .threw("TypeError") }
-        let itemArg = s["item"]
-        let item: TransportPolicy.Item? = itemArg.isTruthy
-            ? TransportPolicy.Item(startSec: itemArg["start_sec"].toNumber)
-            : nil
-        let clock = s["currentTime"]
-        return token(TransportPolicy.previousAction(index: s["index"].toNumber, item: item,
-                                                    currentTime: clock.isNullish ? nil : clock.toNumber))
+        let position = s["positionSec"]
+        return token(TransportPolicy.previousAction(index: s["index"].toNumber,
+                                                    positionSec: position.isNullish ? nil : position.toNumber,
+                                                    segmentStartSec: s["segmentStartSec"].toNumber))
+    }
+
+    /// `episodePreviousRestarts({ positionSec })`: `positionSec >= 4` against
+    /// a number coerces (null is 0, undefined NaN, a string its ToNumber).
+    static func episodePreviousRestarts(_ args: [JSValue]) throws -> CallOutcome {
+        guard let s = param(args) else { return .threw("TypeError") }
+        return .returned(.bool(TransportPolicy.episodePreviousRestarts(positionSec: s["positionSec"].toNumber)))
     }
 
     /// `clampEpisodeTarget(seconds, dur)`: `Number(seconds)`, then `dur ? ...`.
@@ -104,6 +110,8 @@ public enum TransportFamily {
     /// `skipTarget({ foray, positionSec, offsetSec, durationSec = null })`.
     /// `positionSec + offset` would CONCATENATE a string, so the position must
     /// be a number; `Number(offsetSec || 0)` reads the offset by truthiness.
+    /// The duration is read by truthiness on an episode (`dur ? ...`) and by
+    /// `> 0` in a Foray; every falsy value fails both, so one reading serves.
     static func skipTarget(_ args: [JSValue]) throws -> CallOutcome {
         guard let s = param(args) else { return .threw("TypeError") }
         guard let position = s["positionSec"].numberValue else {
@@ -114,6 +122,16 @@ public enum TransportFamily {
         let target = TransportPolicy.skipTarget(foray: s["foray"].isTruthy, positionSec: position,
                                                 offsetSec: offset, durationSec: duration)
         return .returned(ArgReading.numberOrNull(target))
+    }
+
+    /// `nudgeAction({ offsetSec, landsInCurrentItem, narrationPlayhead, onLastItem })`:
+    /// the three flags by truthiness; `offsetSec < 0` coerces.
+    static func nudgeAction(_ args: [JSValue]) throws -> CallOutcome {
+        guard let s = param(args) else { return .threw("TypeError") }
+        return token(TransportPolicy.nudgeAction(offsetSec: s["offsetSec"].toNumber,
+                                                 landsInCurrentItem: s["landsInCurrentItem"].isTruthy,
+                                                 narrationPlayhead: s["narrationPlayhead"].isTruthy,
+                                                 onLastItem: s["onLastItem"].isTruthy))
     }
 
     /// `seekAction({ restored, stateType })`.

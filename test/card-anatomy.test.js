@@ -25,6 +25,13 @@
  *      cannot sit at 12px beside an episode row at 16px.
  *   7. THE RHYTHM between an intro paragraph and the first card is a section
  *      (20px), not the row gap.
+ *   8. WHAT A ROW, A CARD AND A PAGE HEAD CARRY (audit round 2): a number only
+ *      where order is the content (visual-10), a tag only where its section
+ *      does not already say it (visual-9), one name per Interests block
+ *      (visual-17), the credits ↗ as a right-hand column (visual-7), no ‹ on a
+ *      tab's root (visual-6), an eyebrow on every search tier (visual-16), a
+ *      two-line show row with its full name in `title=` (search-11), one
+ *      silhouette on the Up Next row (visual-11).
  *
  * Every test names its killing mutation.
  */
@@ -281,14 +288,150 @@ test("an episode row wraps its controls under the title instead of squeezing the
   /* MUTATION: delete `.ep-row { flex-wrap: wrap; … }` -> the number, the
      text block, ▶, ☆ and "+ Up Next" share one line again. */
   assert.strictEqual(valueOf(".ep-row", "flex-wrap"), "wrap");
-  assert.match(valueOf(".ep-row > .info", "flex") || "", /^1 1 calc\(100% - \d+px\)$/, "the text block takes the first line minus the number");
-  assert.match(valueOf(".ep-row > .info + :is(.play-btn, button.star, button.up-next, .not-playable)", "margin-left") || "", /^\d+px$/,
+  assert.strictEqual(valueOf(".ep-row > .info", "flex"), "1 1 100%", "the text block takes the whole first line");
+  /* Where a number leads the row (a playlist, Up Next — round 2, visual-10),
+     the text block gives it its width and the second tier indents to match. */
+  assert.match(valueOf(".ep-row > .q-num + .info", "flex-basis") || "", /^calc\(100% - \d+px\)$/, "…minus the number, when there is one");
+  assert.match(valueOf(".ep-row > .q-num + .info + :is(.play-btn, button.star, button.up-next, .not-playable)", "margin-left") || "", /^\d+px$/,
     "the first control on the second line aligns under the title, not under the number");
+  assert.ok(!hasRule(".ep-row > .info + :is(.play-btn, button.star, button.up-next, .not-playable)"),
+    "and an un-numbered row does not indent its controls under a number that is not there");
   /* A playlist row is a one-line link row and must NOT wrap. */
   assert.notStrictEqual(valueOf(".pl-row", "flex-wrap"), "wrap");
   /* The row title is the display face at the title step, like every card. */
   assert.strictEqual(valueOf(".ep-row .t, .pl-row .t", "font-family"), "var(--font-display)");
   assert.strictEqual(valueOf(".ep-row .t, .pl-row .t", "font-size"), "var(--fs-lg)");
+});
+
+/* ==================================================================== */
+/* 2b. audit round 2: what a row, a card and a page head carry          */
+/* ==================================================================== */
+
+const ITEM = { id: "show-x--ep-1", title: "An episode", show: "A Show", duration_min: 30, audio_url: "https://cdn.test/a.mp3" };
+
+test("only a list whose order is the point is numbered: a playlist, not Saved, History, a show or search", () => {
+  /* Round 2, visual-10: every epRow printed a numbered circle, so a Saved list
+     read as a playlist the listener never built and a show's episodes counted
+     the newest as "1". MUTATION: make `orderedRowCtx` return true -> red on
+     every unordered context; return false -> red on the playlist. */
+  const run = loadApp();
+  for (const ctx of ["library-saved", "library-history", "show-x", "search", "episode-more", undefined]) {
+    const html = run(`epRow(${JSON.stringify(ITEM)}, 2, ${JSON.stringify(ctx ?? null)}, -1)`);
+    assert.doesNotMatch(html, /class="q-num/, `${ctx}: no number`);
+    const gone = run(`archivedRow(${JSON.stringify(ITEM)}, 2, ${JSON.stringify(ctx ?? null)})`);
+    assert.doesNotMatch(gone, /class="q-num/, `${ctx}: an archived row carries none either`);
+  }
+  for (const ctx of ["playlist-p1", "subject-science", "generated-g1"]) {
+    const html = run(`epRow(${JSON.stringify(ITEM)}, 2, ${JSON.stringify(ctx)}, 2)`);
+    assert.match(html, /<span class="q-num next">3<\/span>/, `${ctx}: numbered, and "start here" still marks the next part`);
+    assert.match(run(`archivedRow(${JSON.stringify(ITEM)}, 4, ${JSON.stringify(ctx)})`), /<span class="q-num">5<\/span>/,
+      `${ctx}: an archived part keeps its number, so the count above stays true`);
+  }
+  /* Up Next is a queue: its own row always numbers. */
+  assert.match(APP_SRC, /function upNextRow[\s\S]*?<span class="q-num">\$\{idx \+ 1\}<\/span>/, "Up Next keeps its numbers");
+  /* The Library's unnamed-history fallback row carries none. */
+  assert.doesNotMatch(APP_SRC, /<div class="ep-row gone"><span class="q-num">/, "the History fallback row is not numbered");
+});
+
+test("a tag says what its section does not: no JUMP BACK IN under 'Jump back in', no FORAY under 'Forays'", () => {
+  /* Round 2, visual-9. MUTATION: drop `{ inSection: true }` from Home's rail
+     (or from renderForays' forayListHtml call) -> red. */
+  const run = loadApp();
+  assert.match(run(`jumpBackInCardHtml(${JSON.stringify(JBI)})`), /<span class="hv2-jbi-kicker">Jump back in<\/span>/,
+    "on a mixed surface the tag stays — it is the one place it says something");
+  assert.doesNotMatch(run(`jumpBackInCardHtml(${JSON.stringify(JBI)}, { inSection: true })`), /hv2-jbi-kicker/,
+    "under its own heading it goes");
+  assert.match(APP_SRC, /<h2 class="hv2-title">Jump back in<\/h2>\s*<div class="hv2-hscroll">\$\{cards\.map\(c => jumpBackInCardHtml\(c, \{ inSection: true \}\)\)/,
+    "Home's rail renders its cards as in-section");
+  assert.match(APP_SRC, /\? forayListHtml\(\{ inSection: true \}\)/, "the Forays page's list sits under its 'Forays' heading");
+  const pub = { id: "f1", title: "A Foray", status: "published" };
+  const draft = { id: "f2", title: "A draft", status: "draft" };
+  run(`forayCards = () => ${JSON.stringify([pub, draft])};`);
+  const inSection = run("forayListHtml({ inSection: true })");
+  const rows = inSection.split('class="fy-home-row"').slice(1);
+  assert.doesNotMatch(rows[0], /fy-home-kicker/, "a published row under 'Forays' carries no FORAY tag");
+  assert.match(rows[1], /<span class="fy-home-kicker">foray · draft<\/span>/, "a draft keeps its tag — 'draft' is news");
+  assert.match(run("forayListHtml()"), /<span class="fy-home-kicker">foray<\/span>/, "outside a section, every row is tagged");
+});
+
+test("the Interests page names a lone root once: its card, with no heading restating it", () => {
+  /* Round 2, visual-17: every root is always its own group's first row, so a
+     new listener's page was "Adventure" over a card named "Adventure", 39
+     times. MUTATION: always render the h3 -> red on the lone root; never
+     render it -> red on the root with a sub-topic. */
+  const run = loadApp();
+  const root = { id: "adventure", label: "Adventure", parent: null, weight: 0.5 };
+  const leaf = { id: "adventure/climbing", label: "Climbing", parent: "adventure", weight: 0.2 };
+  const lone = run(`interestGroupHtml(${JSON.stringify({ root, rows: [root] })})`);
+  assert.doesNotMatch(lone, /interest-group-label/, "a lone root: the card names itself");
+  assert.strictEqual((lone.match(/Adventure/g) || []).length >= 1, true);
+  const grouped = run(`interestGroupHtml(${JSON.stringify({ root, rows: [root, leaf] })})`);
+  assert.match(grouped, /<h3 class="interest-group-label">Adventure<\/h3>/, "a root with a sub-topic keeps the heading that gathers them");
+});
+
+test("a credits row ends in its ↗, so the links make one straight right-hand column", () => {
+  /* Round 2, visual-7: the ↗ was the MIDDLE child of a space-between row, so it
+     sat halfway through whatever width each show name left. MUTATION: put the
+     `.fy-src-out` link back between the name and the count -> red. */
+  const run = loadApp();
+  run(`showNameLink = (s) => s;`);
+  const html = run(`foraySourcesHtml({}, {
+    forayCredits: () => ({ summary: "2 shows", credits: [{ show: "A Show", link: "https://podcasts.apple.com/x", clips: 2, seconds: 300, episodes: [] }] }),
+    fmtSpan: () => "5m",
+  })`);
+  const head = /<div class="fy-src-head">([\s\S]*?)<\/div>/.exec(html)[1];
+  const order = ["fy-src-show", "fy-src-meta", "fy-src-out"].map((c) => head.indexOf(`class="${c}"`));
+  assert.ok(order.every((i) => i >= 0) && order[0] < order[1] && order[1] < order[2], `name, count, ↗ — got ${order}`);
+  assert.strictEqual(valueOf(".fy-src-show", "flex"), "1 1 auto", "the name takes the free width");
+  assert.notStrictEqual(valueOf(".fy-src-head", "justify-content"), "space-between", "nothing is spread into the middle");
+});
+
+test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
+  /* Round 2, visual-6: Search, Create and Library carried a boxed ‹ that only
+     duplicated the Home tab. MUTATION: drop `{ tabRoot: true }` from
+     renderAllShows, or put the ‹ back in renderLibrary / renderCreate -> red. */
+  const body = (name) => {
+    const at = APP_SRC.indexOf(`function ${name}(`);
+    return APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
+  };
+  for (const fn of ["renderLibrary", "renderCreate"]) {
+    assert.doesNotMatch(body(fn), /class="back"/, `${fn} is a tab root`);
+  }
+  assert.match(body("renderShowIndexPage"), /\$\{tabRoot \? "" : `<a class="back" href="#\/">‹<\/a>`\}/, "the shared template omits it on request");
+  assert.match(body("renderAllShows"), /`, \{ tabRoot: true \}\);/, "Search asks");
+  assert.doesNotMatch(body("renderCategory"), /tabRoot/, "a category page is pushed: it keeps its ‹");
+  for (const fn of ["renderPlaylists", "renderQueue", "renderForays", "renderInterests"]) {
+    assert.match(body(fn), /class="back"/, `${fn} is pushed from a tab and keeps its ‹`);
+  }
+});
+
+test("search's shows tier wears the eyebrow its Episodes and Playlists tiers do, only while it has rows", () => {
+  /* Round 2, visual-16. MUTATION: delete the `<h3 class="sh-results-head">` or
+     its `:has(+ #sh-results[hidden])` rule -> red. */
+  assert.match(APP_SRC, /<h3 class="sh-results-head">Shows<\/h3>\s*<div id="sh-results" class="show-results" hidden><\/div>/,
+    "the label sits directly before the tier it names");
+  assert.strictEqual(valueOf(".sh-results-head:has(+ #sh-results[hidden])", "display"), "none", "and hides with it");
+  assert.strictEqual(valueOf(".ep-more h3, .sh-results-head", "text-transform"), "uppercase", "the same eyebrow as Episodes");
+});
+
+test("a show row's title is two lines at most and the whole name is still on the row", () => {
+  /* Round 2, search-11: 152 index titles run past 80 characters. MUTATION:
+     delete the clamp, or the `title=` -> red. */
+  const run = loadApp();
+  const long = "Budget Effect: How to Budget, How to Pay off Debt, Save Money, Live on a Budget, Improve your Money Mindset";
+  const html = run(`showResultRow(${JSON.stringify({ show_id: "s1", title: long })})`);
+  assert.match(html, new RegExp(`<a class="show-result" href="#/show/s1" title="${long}">`), "the row carries the full name");
+  assert.strictEqual(valueOf(".show-result-title", "-webkit-line-clamp"), "2");
+  assert.strictEqual(valueOf(".show-result-title", "overflow"), "hidden");
+  assert.strictEqual(valueOf(".show-result-title", "display"), "-webkit-box");
+});
+
+test("the Up Next row is one silhouette: every control on it is round", () => {
+  /* Round 2, visual-11: round ▶ and ✕ around rounded-square ↑ ↓. MUTATION:
+     `button.reorder { border-radius: var(--radius-md) }` -> red. */
+  for (const sel of ["button.reorder", "button.up-next-remove", ".play-btn"]) {
+    assert.strictEqual(valueOf(sel, "border-radius"), "var(--radius-round)", sel);
+  }
 });
 
 /* ==================================================================== */

@@ -47,11 +47,12 @@
     },
     "continuation": {
       "files": {
-        "player/parity/fixtures/continuation/continuation.json": "ceafa4a4673a23a4d666b4d40c597f33b35dcb7dde524373384b9bb35a21e0f2"
+        "player/parity/fixtures/continuation/continuation.json": "e571360141d9848d8cc6b076d20327bf4da6b4398f438788ccbcbdd7437ef7c8"
       },
       "ids": [
-        "continuation/plan-queue-row-after-finished",
-        "continuation/plan-queue-wraps-to-skipped-rows",
+        "continuation/plan-queue-head-not-row-after-finished",
+        "continuation/plan-queue-last-row-finished-plays-head",
+        "continuation/plan-queue-finished-head-leaves-for-the-next-row",
         "continuation/plan-finish-elsewhere-plays-queue-head",
         "continuation/plan-queue-removed-while-playing",
         "continuation/plan-list-next-row",
@@ -140,7 +141,7 @@
     "media-episode": {
       "files": {
         "player/parity/fixtures/media-episode/media-actions.json": "334f3d62f2e5f8f67f87d3f6c0915e512e6bce29baf07261f0e5295b1836967b",
-        "player/parity/fixtures/media-episode/media-mapping.json": "e41322661e484d66c2d6e30d1ed4e31b6fb095bc3970b3155c67fe8df646d453"
+        "player/parity/fixtures/media-episode/media-mapping.json": "55e94cdaa23668f8cee4702ee5293e5bfe337b6a0a1191bd3e62e8d9a1161b1a"
       },
       "ids": [
         "media-episode/actions-complete-surface",
@@ -238,6 +239,8 @@
         "media-episode/rate-string-becomes-1",
         "media-episode/rate-undefined-becomes-1",
         "media-episode/rate-real-passes-through",
+        "media-episode/position-stall-reports-rate-zero",
+        "media-episode/position-no-stall-keeps-the-rate",
         "media-episode/state-nothing-loaded-playing",
         "media-episode/state-no-arguments",
         "media-episode/state-playing",
@@ -248,12 +251,16 @@
         "media-episode/state-beat-with-nothing-loaded",
         "media-episode/state-finished-while-playing-is-none",
         "media-episode/state-finished-in-beat-is-none",
+        "media-episode/state-finished-episode-is-paused",
+        "media-episode/state-finished-episode-while-playing-is-paused",
         "media-episode/read-state-none",
         "media-episode/read-state-paused",
         "media-episode/read-state-playing",
         "media-episode/view-carries-seam-beat",
         "media-episode/view-no-beat-is-paused",
         "media-episode/view-carries-ended",
+        "media-episode/view-carries-ended-episode-is-paused",
+        "media-episode/view-stall-stays-playing-at-rate-zero",
         "media-episode/view-not-ended-is-playing",
         "media-episode/view-carries-item",
         "media-episode/view-no-item-is-none",
@@ -644,7 +651,7 @@
     },
     "transport": {
       "files": {
-        "player/parity/fixtures/transport/transport.json": "71715b0a97c58dfbbff06c8bef690b85981a82cd74f983293a1d5e76ccf26e0d"
+        "player/parity/fixtures/transport/transport.json": "712660987500a5129245e7b3ee0a25d181923431cad073c2c1acea33e55a7ea7"
       },
       "ids": [
         "transport/restart-window-4s",
@@ -676,14 +683,18 @@
         "transport/previous-at-window-edge",
         "transport/previous-well-in",
         "transport/previous-first-clip",
-        "transport/previous-no-clock",
-        "transport/previous-no-item",
-        "transport/previous-narration",
-        "transport/previous-narration-rendered",
+        "transport/previous-narration-just-started-goes-back-past-it",
+        "transport/previous-narration-at-its-start",
+        "transport/previous-narration-well-in-restarts-it",
+        "transport/previous-jump-in-flight-restarts",
         "transport/skip-foray-forward",
         "transport/skip-foray-back",
         "transport/skip-foray-back-below-zero",
-        "transport/skip-foray-past-total-is-not-clamped-here",
+        "transport/skip-foray-past-total-stops-short",
+        "transport/skip-foray-near-end-stops-short",
+        "transport/skip-foray-back-near-end-is-untouched",
+        "transport/skip-foray-no-total-is-only-floored",
+        "transport/skip-foray-total-shorter-than-guard",
         "transport/skip-foray-string-offset",
         "transport/skip-foray-nan-offset",
         "transport/skip-foray-missing-offset",
@@ -694,6 +705,16 @@
         "transport/skip-episode-unknown-duration",
         "transport/skip-episode-shorter-than-guard",
         "transport/skip-episode-missing-offset",
+        "transport/nudge-in-a-clip-seeks",
+        "transport/nudge-out-of-a-line-seeks",
+        "transport/nudge-back-in-a-line-restarts-it",
+        "transport/nudge-back-in-the-last-line-restarts-it",
+        "transport/nudge-forward-in-a-line-skips-it",
+        "transport/nudge-forward-in-the-last-line-does-nothing",
+        "transport/episode-previous-at-start",
+        "transport/episode-previous-inside-window",
+        "transport/episode-previous-at-window-edge",
+        "transport/episode-previous-well-in",
         "transport/clamp-nan",
         "transport/clamp-infinity",
         "transport/clamp-junk-string",

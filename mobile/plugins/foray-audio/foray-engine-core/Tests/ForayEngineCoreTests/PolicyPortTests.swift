@@ -93,6 +93,8 @@ final class PolicyPortTests: XCTestCase {
         XCTAssertEqual(Set(TransportPolicy.Toggle.allCases.map(\.rawValue)),
                        [T.Toggle.playRestored, T.Toggle.startOver, T.Toggle.none, T.Toggle.load,
                         T.Toggle.resume, T.Toggle.pause])
+        XCTAssertEqual(Set(TransportPolicy.Nudge.allCases.map(\.rawValue)),
+                       [T.Nudge.seek, T.Nudge.restartLine, T.Nudge.skipLine, T.Nudge.none])
         XCTAssertEqual(Set(TransportPolicy.Previous.allCases.map(\.rawValue)),
                        [T.Previous.itemBefore, T.Previous.manager])
         XCTAssertEqual(Set(TransportPolicy.Seek.allCases.map(\.rawValue)), [T.Seek.pend, T.Seek.seek])

@@ -132,6 +132,7 @@ function makeDocument() {
     set innerHTML(v) { if (v === "") this.children.forEach((c) => { c.parentElement = null; }), this.children = []; }
     get innerHTML() { return ""; }
     focus() { doc.activeElement = this; }
+    blur() { if (doc.activeElement === this) doc.activeElement = doc.body; }
     getBoundingClientRect() { return { top: this.top, left: 0, width: 40, height: 40 }; }
     addEventListener(t, fn) { if (!this._on.has(t)) this._on.set(t, []); this._on.get(t).push(fn); }
     removeEventListener() {}
@@ -177,6 +178,10 @@ function mount() {
   menu.id = "menu-btn";
   topbar.appendChild(menu);
   const drawer = add("nav", "drawer");
+  /* CLOSED, as index.html ships it (`<nav id="drawer" hidden>`). The drawer
+     is a modal since round 2 and takes the keys while it is open, so a
+     harness whose drawer was silently open would test nothing about sheets. */
+  drawer.hidden = true;
   const view = add("main", "view");
   const tabBar = add("nav", null, "tab-bar");
 
@@ -210,6 +215,10 @@ function mount() {
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  /* init() is parked on its first fetch here, and since round 2 (nav-9) it
+     leaves ☰ and ↻ disabled until it has bound them. These tests are about a
+     booted page's focus, so the chrome is put in its booted state. */
+  ctx.setBootChrome(true);
   const flushFrames = () => { while (frames.length) frames.shift()(); };
   return { ctx, doc, topbar, menu, drawer, view, tabBar, store, scrolls, flushFrames };
 }
@@ -435,16 +444,23 @@ test("the Foray speed menu is one instance however often it is opened", () => {
   assert.ok(!inert(m.view), "and no inert page");
 });
 
-test("the first-run explainer is a real dialog: focus moves in, and Escape is the same 'not now' as Skip", () => {
+test("the first-run explainer is a real dialog: focus moves in, and Escape parks it for the visit — only Skip ends onboarding", () => {
   /* MUTATION: open it without the owner (the old appendChild + classList.add)
-     -> focus never moves; red. */
+     -> focus never moves; red. ROUND 2 (p-first-4): Escape used to write the
+     never-again flag, the same as Skip; it is now "not now, this visit".
+     MUTATION: route `onRequestClose` back to `dismiss` -> the flag assertion
+     is red. */
   const m = mount();
   assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true, "fixture assumption: a fresh profile gets the explainer");
   const wrap = m.doc.body.querySelector("#first-time-sheet");
   assert.ok(wrap && m.doc.activeElement === wrap.querySelector(".fy-panel"));
   m.doc.key("Escape");
-  assert.strictEqual(m.doc.body.querySelector("#first-time-sheet"), null, "Escape dismissed it");
-  assert.strictEqual(m.store.get("cp_intro_dismissed"), "true", "exactly as Skip would");
+  assert.strictEqual(m.doc.body.querySelector("#first-time-sheet"), null, "Escape closed it");
+  assert.strictEqual(m.store.get("cp_intro_dismissed"), undefined, "without ending onboarding");
+  const fresh = mount();
+  assert.strictEqual(fresh.ctx.showFirstTimeExplainerOnce(), true);
+  fresh.doc.body.querySelector("#first-time-sheet-skip").fire("click");
+  assert.strictEqual(fresh.store.get("cp_intro_dismissed"), "true", "Skip is the considered press that does");
 });
 
 test("no sheet writes the modal lock itself any more — they all go through the owner", () => {
@@ -520,6 +536,35 @@ test("at the top of the list, focus goes to the other arrow (its own is disabled
   assert.strictEqual(m.doc.activeElement.getAttribute("data-reorder-down"), "c");
 });
 
+test("ROUND 2 review: the live Up Next repaint (a ▶ tap, an episode chaining) keeps focus on the same control", () => {
+  /* repaintQueuePage replaced #view and focus fell to <body>. MUTATION: drop
+     `queueFocusAfter(held)` from repaintQueuePage -> red. */
+  const m = mount();
+  m.ctx.location.hash = "#/queue";
+  let rows = ["a", "b", "c"];
+  const paint = () => {
+    queueView(m, rows, rows.map((_, i) => 100 + i * 80));
+    for (const id of rows) {
+      const play = m.doc.createElement("button");
+      play.setAttribute("data-play", id);
+      m.view.appendChild(play);
+    }
+  };
+  m.ctx.renderQueue = paint;   // what renderQueue does to #view, as nodes
+  paint();
+  const playB = m.view.querySelectorAll("[data-play]").find((b) => b.getAttribute("data-play") === "b");
+  playB.focus();
+  m.ctx.repaintQueuePage();
+  const now = m.doc.activeElement;
+  assert.notStrictEqual(now, playB, "precondition: the old node was replaced");
+  assert.strictEqual(now && now.getAttribute("data-play"), "b", "focus is on b's ▶ again");
+
+  rows = ["a", "c"];            // b left (played from Up Next, then chained on)
+  m.ctx.repaintQueuePage();
+  assert.strictEqual(m.doc.activeElement && m.doc.activeElement.getAttribute("data-play"), "c",
+    "the row that took its place");
+});
+
 test("after ✕, focus is on the ✕ of the row that took its place, and the removal is said", () => {
   const m = mount();
   m.store.set("cp_queue", JSON.stringify(["a", "c"]));
@@ -531,11 +576,14 @@ test("after ✕, focus is on the ✕ of the row that took its place, and the rem
 });
 
 test("the Up Next binders run the after-steps (the helpers are not orphans)", () => {
-  /* MUTATION: drop `afterQueueMove(id, -1, top);` from the ↑ binder -> red. */
+  /* MUTATION: drop `afterQueueMove(id, -1, top);` from the ↑ binder -> red.
+     The repaint sits in `saveQueueIds` since audit round 2 (the page is a live
+     view of the list), so the binders write and then run the after-step. */
   const binder = /function bindUpNextReorder\(scope\) \{[\s\S]*?\n\}/.exec(APP_SRC)[0];
-  assert.match(binder, /renderQueue\(\);\s*afterQueueMove\(id, -1, top\);/);
-  assert.match(binder, /renderQueue\(\);\s*afterQueueMove\(id, 1, top\);/);
-  assert.match(binder, /renderQueue\(\);\s*afterQueueRemove\(/);
+  assert.match(binder, /moveQueueItem\(id, -1\);\s*afterQueueMove\(id, -1, top\);/);
+  assert.match(binder, /moveQueueItem\(id, 1\);\s*afterQueueMove\(id, 1, top\);/);
+  assert.match(binder, /removeFromQueue\(btn\.dataset\.dequeue\);\s*afterQueueRemove\(/);
+  assert.doesNotMatch(binder, /renderQueue\(\)/, "the binders do not paint a second time");
 });
 
 /* ==================================================================== */
@@ -727,4 +775,369 @@ test("an async page's real paint renames the document (pageDidPaint)", () => {
   m.ctx.location.hash = "#/foray/x";
   m.ctx.pageDidPaint();
   assert.strictEqual(m.doc.title, "A Foray · 4a");
+});
+
+/* ==================================================================== */
+/* 6. AUDIT ROUND 2 (2026-09-23): gestures commit on release, the        */
+/*    first-run sheet parks, Stop lands focus, every panel drags         */
+/* ==================================================================== */
+
+const scrubModule = () => import(pathToFileURL(path.join(ROOT, "player", "strip-scrub-gesture.js")).href);
+const dragModule = () => import(pathToFileURL(path.join(ROOT, "player", "sheet-drag-dismiss.js")).href);
+
+/** The bridge client.js publishes for the strip, built from the real module. */
+function scrubBridge(gest) {
+  return {
+    scrubGesture: {
+      HOLD_MS: gest.HOLD_MS, ZOOM_SCALE: gest.ZOOM_SCALE,
+      start: gest.startGesture, move: gest.moveGesture, holdTimeout: gest.holdTimeoutGesture,
+      end: gest.endGesture, originPercent: gest.zoomOriginPercent, unzoomedX: gest.unzoomedStripX,
+      BUBBLE_SCALE: gest.BUBBLE_SCALE, BUBBLE_WIDTH: gest.BUBBLE_WIDTH,
+      bubblePosition: gest.bubblePosition, bubbleContentOffset: gest.bubbleContentOffset,
+    },
+  };
+}
+
+/** A strip whose box is 40px wide before the zoom and 100px once `.is-zooming`
+    is on — what a real strip reports mid-gesture (`transform: scale()` changes
+    the client rect), and the difference that tells a release reading the
+    PRE-zoom box from one reading whatever the browser reports at that instant. */
+function zoomableStrip(m) {
+  const strip = m.doc.createElement("div");
+  strip.id = "fy-strip";
+  m.view.appendChild(strip);
+  strip.getBoundingClientRect = () => ({ top: 0, left: 0, width: strip.classList.contains("is-zooming") ? 100 : 40, height: 40 });
+  const proto = Object.getPrototypeOf(strip);
+  if (!proto.replaceChildren) proto.replaceChildren = function (...ks) { for (const k of [...this.children]) k.remove(); this.append(...ks); };
+  if (!proto.cloneNode) proto.cloneNode = function () { const c = m.doc.createElement(this.tagName); c.className = this.className; return c; };
+  if (!("firstElementChild" in proto)) Object.defineProperty(proto, "firstElementChild", { get() { return this.children[0] || null; } });
+  return strip;
+}
+
+test("ROUND 2 touch-1: a zoomed gesture's release SEEKS, read from the pre-zoom box; a plain tap leaves the seek to its click", async () => {
+  /* The headline gesture committed through a `click` no mobile browser sends
+     after a moved touch. MUTATION 1: drop the `commit(at)` from the pointerup
+     handler -> nothing is committed; red. MUTATION 2: compute the release from
+     `strip.getBoundingClientRect()` at release instead of `preZoomRect` -> the
+     box is 100px wide by then and the seek lands elsewhere; red. MUTATION 3:
+     drop `strip._seekCommitted = true` -> the trailing mouse click would seek
+     a second time; the flag assertion is red. */
+  const gest = await scrubModule();
+  const m = mount();
+  const strip = zoomableStrip(m);
+  const committed = [];
+  const r = { totalSec: 1000, playable: [] };
+  m.ctx.bindStripZoomScrub(r, scrubBridge(gest), (at) => committed.push(at));
+  strip.fire("pointerdown", { pointerId: 1, pointerType: "touch", button: 0, clientX: 10, clientY: 20 });
+  strip.fire("pointermove", { pointerId: 1, clientX: 30, clientY: 21 });
+  assert.ok(strip.classList.contains("is-zooming"), "precondition: the sideways drag entered zoom");
+  strip.fire("pointerup", { pointerId: 1, clientX: 30, clientY: 21 });
+  assert.deepStrictEqual(committed, [750], "30px into a 40px strip is 75% of the hour, against the box measured BEFORE the zoom");
+  assert.strictEqual(strip._seekCommitted, true, "and the click a mouse still sends is told it has been answered");
+  assert.ok(!strip.classList.contains("is-zooming"), "the zoom is cleared on release");
+  strip.fire("pointerdown", { pointerId: 2, pointerType: "touch", button: 0, clientX: 10, clientY: 20 });
+  assert.strictEqual(strip._seekCommitted, false, "a new press starts clean");
+  strip.fire("pointerup", { pointerId: 2, clientX: 10, clientY: 20 });
+  assert.deepStrictEqual(committed, [750], "a tap that never zoomed commits nothing here: its click does, as before");
+  assert.match(APP_SRC, /_seekCommitted\) \{\s*e\.currentTarget\._seekCommitted = false;\s*return;/, "the click handler swallows the answered click");
+  assert.match(APP_SRC, /bindStripZoomScrub\(r, player, commitStripSeek\)/, "the release commits through the same path a tap's click takes");
+  assert.match(APP_SRC, /const at = stripElapsedAt\(e, r\);\s*if \(at != null\) return commitStripSeek\(at\);/);
+});
+
+test("ROUND 2 a11y-5: 'Get started' lands focus on the new step's title, so the step is spoken", () => {
+  /* The button that was pressed is destroyed by the body swap and focus fell
+     to <body> inside an open dialog. MUTATION: drop `landOnStep()` from the
+     "Get started" handler -> red. */
+  const m = mount();
+  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
+  const wrap = m.doc.body.querySelector("#first-time-sheet");
+  assert.strictEqual(m.doc.activeElement, wrap.querySelector(".fy-panel"), "the first render: the dialog itself is what is announced");
+  wrap.querySelector("#first-time-sheet-go").fire("click");
+  const title = wrap.querySelector("#first-time-sheet-title");
+  assert.ok(title && /What are you into/.test(title.textContent), "precondition: step 2 rendered");
+  assert.strictEqual(m.doc.activeElement, title, "focus is on the new step's title, not on <body>");
+  assert.strictEqual(title.getAttribute("tabindex"), "-1", "as a programmatic target");
+});
+
+test("ROUND 2 p-first-4: a scrim tap PARKS the first-run sheet for the visit: it neither ends onboarding nor pops back up", () => {
+  /* MUTATION 1: bind the scrim to `dismiss` -> the flag assertion is red.
+     MUTATION 2: drop `|| firstRunParked` from the on-screen check -> the sheet
+     re-mounts on Home's next render; red. */
+  const m = mount();
+  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
+  m.doc.body.querySelector("#first-time-sheet").querySelector(".fy-scrim").fire("click");
+  assert.strictEqual(m.doc.body.querySelector("#first-time-sheet"), null, "the scrim closes it");
+  assert.strictEqual(m.store.get("cp_intro_dismissed"), undefined, "without the never-again flag");
+  /* Home's gate, as renderHomeV2 writes it: the popup runs only when the
+     explainer says it did not render — and "parked" answers true for exactly
+     that reason. */
+  if (!m.ctx.showFirstTimeExplainerOnce()) m.ctx.showIntroPopupOnce();
+  assert.strictEqual(m.doc.body.querySelector("#first-time-sheet"), null, "Home's next render this visit does not bring it back");
+  assert.strictEqual(m.doc.body.querySelector("#intro-sheet"), null, "and the returning-user popup does not take its place");
+});
+
+test("ROUND 2 p-first-5: the first-run sheet leaves the player reachable, so a shared Foray keeps its controls under it", () => {
+  /* MUTATION: drop `keepReachable: ONBOARDING_KEEPS_REACHABLE` -> #foray-player
+     goes inert with the page; red. */
+  const m = mount();
+  const player = m.doc.createElement("div");
+  player.id = "foray-player";
+  m.doc.body.appendChild(player);
+  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
+  assert.ok(inert(m.view), "the page is out of reach");
+  assert.ok(!inert(player), "the mini bar's play and back-15 are not");
+  m.doc.key("Escape");
+  assert.ok(!inert(m.view) && !inert(player));
+});
+
+test("ROUND 2 review (p-first-5): an onboarding sheet lifts the player OVER its scrim and does not trap VoiceOver with aria-modal", () => {
+  /* Out of `inert` was not reachable: the z-70 scrim covered the z-60 bar, so
+     a tap on ❚❚ parked the sheet and the audio played on, and aria-modal kept
+     VoiceOver inside the dialog. MUTATIONS: drop SHEET_KEEPS_PLAYER_CLASS from
+     sheetBodyClasses; set aria-modal back to "true"; delete the styles.css
+     lift rule. */
+  const m = mount();
+  const player = m.doc.createElement("div");
+  player.id = "foray-player";
+  m.doc.body.appendChild(player);
+  assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true);
+  assert.ok(m.doc.body.classList.contains("fy-sheet-keeps-player"), "the body says the player is lifted");
+  const panel = m.doc.body.querySelector("#first-time-sheet").querySelector(".fy-panel");
+  assert.notStrictEqual(panel.getAttribute("aria-modal"), "true", "VoiceOver can leave the dialog for the player");
+  m.doc.key("Escape");
+  assert.ok(!m.doc.body.classList.contains("fy-sheet-keeps-player"), "and it drops when the sheet goes");
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+  const lift = /body\.fy-sheet-keeps-player #foray-player\s*\{[^}]*z-index:\s*(\d+)/.exec(css);
+  const sheetZ = /\.fy-sheet \{[^}]*z-index:\s*(\d+)/.exec(css);
+  assert.ok(lift && sheetZ && Number(lift[1]) > Number(sheetZ[1]), "the lifted player stacks above the sheet");
+});
+
+test("ROUND 2 a11y-6: with the player hidden BEFORE the owner lets go, Stop leaves focus on the page, not on a hidden button", () => {
+  /* The owner's half of client.js's `stopAndClose` order (its source order is
+     pinned in player/now-playing-sheet.test.js): a return target inside a
+     hidden subtree is skipped, and `landOnPage` then puts focus on the page.
+     MUTATION: drop `!inHiddenSubtree(el)` from closeSheet's candidate filter
+     -> focus lands on the hidden title button; red. */
+  const m = mount();
+  const root = m.doc.createElement("div");
+  root.id = "foray-player";
+  const bar = m.doc.createElement("div");
+  const info = m.doc.createElement("button");
+  bar.appendChild(info);
+  const sheet = m.doc.createElement("div");
+  sheet.className = "fp-sheet";
+  sheet.setAttribute("role", "dialog");
+  const stop = m.doc.createElement("button");
+  sheet.appendChild(stop);
+  root.append(bar, sheet);
+  m.doc.body.appendChild(root);
+  info.focus();
+  m.ctx.openSheet(sheet, { panel: sheet, returnFocus: info });
+  stop.focus();
+  root.hidden = true;                 // client.js: the root first,
+  sheet.hidden = true;
+  m.doc.activeElement.blur();         // focus on Stop is let go,
+  m.ctx.closeSheet(sheet);            // and only then the owner
+  assert.notStrictEqual(m.doc.activeElement, info, "the owner skips a return target inside the hidden root");
+  m.ctx.landOnPage({ navigated: false });
+  const active = m.doc.activeElement;
+  assert.ok(active && active !== m.doc.body && active.isConnected && !root.contains(active), "focus lands on the page");
+  assert.ok(!inert(m.view), "and the page is released");
+});
+
+test("ROUND 2 touch-4: a panel the owner opens can be pulled down, finishes its slide, and closes through the sheet's own close", async () => {
+  /* Eight sheets painted the handle and none answered it. MUTATION 1: drop
+     `bindPanelDrag(entry)` from openSheet -> the pull does nothing; red.
+     MUTATION 2: call `entry.requestClose()` straight from pointerup instead
+     of after `slideOut` -> "still open until the slide has settled" is red.
+     MUTATION 3: drop the `closest("button, ...")` guard -> a pull that starts
+     on a button dismisses the sheet under the finger; red. */
+  const drag = await dragModule();
+  const m = mount();
+  m.ctx.ForayPlayer = { sheetDrag: { start: drag.startDrag, move: drag.moveDrag, end: drag.endDrag, offset: drag.dragOffset, claimsTouch: drag.claimsTouch } };
+  const s = sheet(m);
+  let asked = 0;
+  m.ctx.openSheet(s.wrap, { panel: s.panel, onRequestClose: () => { asked++; m.ctx.closeSheet(s.wrap); } });
+  s.panel.fire("pointerdown", { pointerId: 1, pointerType: "touch", button: 0, clientY: 100, timeStamp: 0 });
+  s.panel.fire("pointermove", { pointerId: 1, clientY: 300, timeStamp: 40 });
+  let cancelled = false;
+  s.panel.fire("touchmove", { cancelable: true, preventDefault() { cancelled = true; } });
+  assert.strictEqual(cancelled, true, "the panel claims the finger, so its own scroller cannot rubber-band");
+  s.panel.fire("pointerup", { pointerId: 1, clientY: 300, timeStamp: 60 });
+  assert.strictEqual(asked, 0, "still open until the slide has settled");
+  assert.strictEqual(s.wrap.hidden, false);
+  s.panel.fire("transitionend");
+  assert.strictEqual(asked, 1, "then the sheet's own close is asked, as Escape would");
+  assert.strictEqual(s.wrap.hidden, true);
+  /* A press on a control is that control's. */
+  m.ctx.openSheet(s.wrap, { panel: s.panel, onRequestClose: () => { asked++; m.ctx.closeSheet(s.wrap); } });
+  s.panel.fire("pointerdown", { pointerId: 2, pointerType: "touch", button: 0, clientY: 100, timeStamp: 0, target: s.a });
+  s.panel.fire("pointermove", { pointerId: 2, clientY: 300, timeStamp: 40 });
+  s.panel.fire("pointerup", { pointerId: 2, clientY: 300, timeStamp: 60 });
+  assert.strictEqual(asked, 1, "a pull that started on a button is not a dismiss");
+  assert.strictEqual(s.wrap.hidden, false);
+});
+
+test("ROUND 2 touch-8: slideOut settles once, on transitionend or the timer, and reduced motion means no motion at all", () => {
+  /* MUTATION 1: drop the `settled` guard in slideOut's finish -> `done` runs
+     twice (transitionend, then the timer); red. MUTATION 2: drop the
+     `reducedMotion()` check from canSlide -> a listener who asked for no
+     motion gets a slide, and a caller waits on a transition styles.css has
+     switched off; red. */
+  const m = mount();
+  const el = m.doc.createElement("div");
+  m.doc.body.appendChild(el);
+  let done = 0;
+  assert.strictEqual(m.ctx.slideOut(el, "--x", 40, () => done++), true);
+  assert.strictEqual(done, 0, "not before the transition ends");
+  el.fire("transitionend");
+  el.fire("transitionend");
+  assert.strictEqual(done, 1, "once");
+  assert.strictEqual(m.ctx.slideIn(el, "--x", 40, "dragging"), true);
+  assert.strictEqual(m.ctx.slideOut(el, "--x", 0, () => done++), false, "nothing to move: the caller closes at once");
+  m.ctx.matchMedia = () => ({ matches: true });
+  assert.strictEqual(m.ctx.slideOut(el, "--x", 40, () => done++), false, "reduced motion: no slide");
+  assert.strictEqual(m.ctx.slideIn(el, "--x", 40, "dragging"), false);
+  assert.strictEqual(done, 1);
+});
+
+test("ROUND 2 touch-8: a close that settles late leaves focus alone when it has already moved on", () => {
+  /* A navigation under Now Playing lands focus on the new page's heading
+     while the sheet is still sliding out; the owner's late return must not
+     take it back to the mini bar. MUTATION: drop the `held` guard in
+     closeSheet (return focus unconditionally) -> red. */
+  const m = mount();
+  const opener = m.doc.createElement("button");
+  m.view.appendChild(opener);
+  opener.focus();
+  const s = sheet(m);
+  m.ctx.openSheet(s.wrap);
+  const heading = m.doc.createElement("h2");
+  m.view.appendChild(heading);
+  heading.focus();                       // landOnPage, in the beat before the slide settles
+  m.ctx.closeSheet(s.wrap);
+  assert.strictEqual(m.doc.activeElement, heading, "focus that moved on is left where it is");
+  opener.focus();                        // the ordinary case: opened from the button…
+  const again = sheet(m);
+  m.ctx.openSheet(again.wrap);
+  again.a.focus();                       // …focus is inside the sheet when it closes
+  m.ctx.closeSheet(again.wrap);
+  assert.strictEqual(m.doc.activeElement, opener, "focus the sheet still held goes back to the opener");
+});
+
+/* ==================================================================== */
+/* 7. WHAT A PAGE IS CALLED, AND WHEN IT IS SAID (audit round 2)         */
+/* ==================================================================== */
+
+/* A router whose pages this test describes: `null` paints a loading page (no
+   heading), a string paints a `.page-head` h2, `{ explicit }` adds the badge
+   the show and episode pages put straight after the title, and `home` paints
+   the greeting. */
+function routedPages(m, pages) {
+  vm.runInContext("state.ready = true;", m.ctx);
+  const overlay = m.doc.createElement("div");
+  overlay.id = "drawer-overlay";
+  m.doc.body.appendChild(overlay);
+  const paint = (spec) => {
+    m.view.children.forEach((c) => { c.parentElement = null; });
+    m.view.children = [];
+    if (spec === "home") {
+      const g = m.doc.createElement("div");
+      g.className = "hv2-greeting";
+      m.view.appendChild(g);
+      return;
+    }
+    if (!spec) { m.view.appendChild(m.doc.createElement("p")); return; }
+    const name = typeof spec === "string" ? spec : spec.name;
+    const head = m.doc.createElement("div");
+    head.className = "page-head";
+    const h2 = m.doc.createElement("h2");
+    h2.textContent = name + (spec.explicit ? "E" : "");   // textContent reads the badge's "E" too
+    if (spec.explicit) {
+      const badge = m.doc.createElement("span");
+      badge.className = "explicit-badge";
+      badge.textContent = "E";
+      h2.appendChild(badge);
+    }
+    head.appendChild(h2);
+    m.view.appendChild(head);
+  };
+  m.ctx.renderCurrentPage = () => paint(pages[m.ctx.location.hash]);
+  const go = (hash) => { m.ctx.location.hash = hash; m.ctx.route(); };
+  go("#/library");
+  return { go, paint };
+}
+const said = (m) => { m.flushFrames(); return (m.doc.querySelector("#a11y-status") || { textContent: "" }).textContent; };
+function tabFocus(m) {
+  const tab = m.doc.createElement("a");
+  m.tabBar.appendChild(tab);
+  tab.focus();
+  return tab;
+}
+
+test("an explicit page is named without its badge's 'E', in the title and in what is said (nav-7)", () => {
+  /* MUTATION: read `head.textContent` directly in landOnPage again -> "Some
+     EpisodeE · 4a"; red. */
+  const m = mount();
+  const { go } = routedPages(m, { "#/library": "Library", "#/episode/x": { name: "Some Episode", explicit: true } });
+  tabFocus(m);
+  go("#/episode/x");
+  assert.strictEqual(m.doc.title, "Some Episode · 4a");
+  assert.strictEqual(said(m), "Some Episode");
+});
+
+test("a page that paints 'Loading…' first is announced once, when its real paint brings a name (races-6)", () => {
+  /* The Foray page. MUTATION: drop the `announceOwedFor` branch from
+     landOnPage -> the late paint (navigated:false) says nothing; red.
+     MUTATION 2: never clear it -> a later re-render says the name again; red. */
+  const m = mount();
+  const { go, paint } = routedPages(m, { "#/library": "Library", "#/foray/x": null });
+  tabFocus(m);
+  go("#/foray/x");
+  assert.strictEqual(said(m), "", "the loading paint has no name to say");
+  assert.strictEqual(m.doc.title, "4a");
+  paint("A Foray");
+  m.ctx.pageDidPaint();
+  assert.strictEqual(said(m), "A Foray");
+  assert.strictEqual(m.doc.title, "A Foray · 4a");
+  m.doc.querySelector("#a11y-status").textContent = "";
+  m.ctx.pageDidPaint();                           // a later background repaint
+  assert.strictEqual(said(m), "", "said once, not on every repaint");
+});
+
+test("a late paint for a page the listener already left says nothing (races-6)", () => {
+  /* MUTATION: let every late paint announce (`const owed = true` in
+     landOnPage) -> the page the listener moved on to is said a second time by
+     a paint that was never a navigation; red. */
+  const m = mount();
+  const { go, paint } = routedPages(m, { "#/library": "Library", "#/forays": "Forays", "#/foray/x": null });
+  tabFocus(m);
+  go("#/foray/x");
+  go("#/forays");
+  said(m);
+  m.doc.querySelector("#a11y-status").textContent = "";
+  paint("Forays");
+  m.ctx.pageDidPaint();
+  assert.strictEqual(said(m), "");
+});
+
+test("Home names itself: 'Home' is said when focus survived, and a lost focus lands on the greeting (a11y-10)", () => {
+  /* MUTATION: drop the `home ? "Home"` name -> a tab-bar Home says nothing;
+     red. MUTATION 2: drop the `.hv2-greeting` target -> focus lands on bare
+     #view; red. */
+  const m = mount();
+  const { go } = routedPages(m, { "#/library": "Library", "#/": "home" });
+  tabFocus(m);
+  go("#/");
+  assert.strictEqual(said(m), "Home");
+  assert.strictEqual(m.doc.title, "4a", "the document stays plain 4a");
+
+  go("#/library");
+  const inPage = m.doc.createElement("a");
+  m.view.appendChild(inPage);
+  inPage.focus();
+  go("#/");
+  const greeting = m.view.querySelector(".hv2-greeting");
+  assert.strictEqual(m.doc.activeElement, greeting, "focus lands on the greeting, not the bare region");
+  assert.strictEqual(greeting.getAttribute("tabindex"), "-1");
 });

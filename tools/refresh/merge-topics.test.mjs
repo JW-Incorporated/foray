@@ -454,3 +454,25 @@ test("the real merge.mjs reaches the deploy-manifest step, and a redirected run 
   assert.ok(before[0].equals(after[0]), "deploy-manifest.json was rewritten by a redirected merge run");
   assert.ok(before[1].equals(after[1]), "sw.js was rewritten by a redirected merge run");
 });
+
+// ------------------------------------------------ one length per episode --
+
+test("merge writes an episode's minute count from its seconds when it has them (audit round 2, honesty-1)", () => {
+  /* The listing's rounded minutes and the enclosure's seconds drifted apart for
+     19 shipped items ("45 min · 53 min left" on one row), and
+     tools/check-durations.mjs now fails the pool on any such drift — so the
+     writer must not introduce one.
+     KILLED BY: `duration_min: ep.duration_min,` in merge.mjs (the old line). */
+  const { status, items } = runMerge({
+    resolved: [{ ...resolvedFromBackfill(), duration_min: 45, duration_sec: 3581 }],
+    edits: { "sysk--kola": EDIT },
+  });
+  assert.equal(status, 0);
+  assert.equal(items[0].duration_sec, 3581);
+  assert.equal(items[0].duration_min, 60);
+  const unmeasured = runMerge({
+    resolved: [{ ...resolvedFromBackfill(), duration_min: 45, duration_sec: null }],
+    edits: { "sysk--kola": EDIT },
+  });
+  assert.equal(unmeasured.items[0].duration_min, 45, "no seconds: the listing's minutes stand");
+});

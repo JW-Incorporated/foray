@@ -10,7 +10,9 @@
 
    TO SEE ONE FAIL: set RESTART_WINDOW_SEC to 5, or drop `restored` from the
    first line of `resolveToggle`, or make `remoteStopAction` close on any truthy
-   `close` — each turns the named test red with the case id and the diff.
+   `close`, or drop the Foray branch's `durationSec` ceiling from `skipTarget`,
+   or let `nudgeAction` skip forward from the last line — each turns the named
+   test red with the case id and the diff.
 
    The behaviour of client.js ITSELF (that the bar, the lock screen and the car
    really take these answers) is pinned where it always was, by the suites that
@@ -39,11 +41,14 @@ test("play with something showing and nothing queued loads it; otherwise play re
 /* ---------- previous: previousAction ---------- */
 
 test("previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's", (t) => cases(t));
-test("a narration item has no start, so previous on one is always the manager's", (t) => cases(t));
+test("previous is measured on the Foray clock, so it goes back past a narration line too; a jump in flight restarts", (t) => cases(t));
+test("an episode's previous restarts from 4 s in; before that the page may go to the row before", (t) => cases(t));
 
 /* ---------- nudges and seeks ---------- */
 
 test("a Foray nudge moves on the Foray clock and never below zero", (t) => cases(t));
+test("a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored", (t) => cases(t));
+test("a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks", (t) => cases(t));
 test("an episode nudge is clamped between 0 and 1 s before the end", (t) => cases(t));
 test("an episode target that is not a number is refused, and only a known duration caps it", (t) => cases(t));
 test("a seek with nothing loaded is written down as the next start; paused, loading and playing seek", (t) => cases(t));
@@ -71,7 +76,7 @@ test("client.js asks these rules and keeps no private copy of one", () => {
   const imported = /import\s*\{([^}]*)\}\s*from\s*"\.\/transport-policy\.js";/.exec(code);
   assert.ok(imported, "client.js must import its transport rules from ./transport-policy.js");
   const names = imported[1].split(",").map((s) => s.trim()).filter(Boolean);
-  for (const fn of ["resolveToggle", "previousAction", "skipTarget", "scrubTarget", "seekAction", "remoteStopAction", "clampEpisodeTarget", "sourceOffsetFor"]) {
+  for (const fn of ["resolveToggle", "previousAction", "episodePreviousRestarts", "skipTarget", "nudgeAction", "scrubTarget", "seekAction", "remoteStopAction", "clampEpisodeTarget", "sourceOffsetFor"]) {
     assert.ok(names.includes(fn), `client.js does not import ${fn}`);
     assert.match(code, new RegExp(`\\b${fn}\\(`), `client.js imports ${fn} but never asks it`);
     assert.doesNotMatch(code, new RegExp(`function\\s+${fn}\\s*\\(`), `client.js declares its own ${fn}`);

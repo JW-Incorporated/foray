@@ -7,7 +7,9 @@ written on, so every Swift claim is either **CI-executed** (with the job, the
 run and the head SHA) or marked **not executed**. An estimate is labelled as
 one and is never quoted as a measurement.
 
-Cards append their own section. NE-01 (the packaging spike) wrote §1-§6.
+Cards append their own section. NE-01 (the packaging spike) wrote §1-§6;
+NE-25a (the click-track spike) wrote §7, NE-15 (AVDeck) §8 and NE-06
+(engine-parity CI) §9.
 
 ## 1. What NE-01 changed, in one paragraph
 
@@ -165,6 +167,10 @@ The pre-existing red: on the very first run of this PR (run 35951040271,
 returns `.supersede` for a stale hold while playing, which is the row
 `shell-invariants.test.mjs` pins and the build that shipped. Commit `2baa8f8a`
 corrects the assertion; the plugin's code is unchanged.
+Main fixed the same red the other way in audit round 2 (#749): the table
+gained a `(.playing, .playing) -> .none` case (a position write is not a
+resume). When main was merged into engine/m1 the two halves met and ios-kit
+went red again, so the assertion is back to `.none`, main's reading.
 
 ## 6. Mutation checks
 
@@ -185,3 +191,388 @@ rejecting / unregistered / `native` `engineHello`, the Preferences path moved
 out of its gate, `ios-build.yml` setting the pin, `ci.yml` dropping the runtime
 requirement, the XCTFail turned into a skip, the page configuring a Preferences
 group, a second Preferences caller), all 14 killed.
+
+## 7. NE-25a: in-point and out-point on click tracks (Measured, 2026-09-24)
+
+**CI-executed**, Simulator only: ios-kit, `xcodebuild test -scheme ForayAudio`,
+iPhone 17 Pro Simulator, iOS 26.4.1. The numbers below come from **run
+35967960596** (head `765abf5e`). Runs 35964966803 (`458bf447`), 35963652605
+(`c7def6d5`) and 35962279894 (`c9705f78`) measured the same things with the
+earlier methods described in §7.2 and are cited only where they agree or show
+why a method changed. Every number is in that run's job summary (the test
+appends its tables there) and in its log as `NE-25a |` table lines and one
+`NE-25a-json` line per trial.
+
+A Simulator is not a phone and a local file is not a CDN. **DV-5 repeats this
+on real CDNs in M2.** Nothing here is a pass mark except the never-early rule.
+
+### 7.1 The rig
+
+- **Fixtures** (`tools/audio/make-click-tracks.py`, deterministic; checked
+  without a decoder by `tools/audio/click-tracks.test.mjs`): a 1 ms click
+  every second and a double click (50 ms apart) every ten.
+  `click-cbr.mp3` (16 kHz mono, CBR 16 kbps, no header frame),
+  `click-vbr-xing.mp3` and `click-vbr-notoc.mp3` (the same VBR audio frames,
+  with and without a Xing TOC), all 90 s; `click.wav` (8 kHz u8 PCM, the
+  control). 964 KB in all. **Deviation:** the WAV is 60 s, not 90 s, to stay
+  under the card's 1 MB (a 90 s WAV alone is 720 KB).
+- **Listening:** an `MTAudioProcessingTap` on the item's audio mix sees every
+  buffer the player renders, with AVFoundation's `timeRange` label.
+- **Loading** follows plan §4.3 step by step (`MeasuredDeck`): asset and
+  tracks, both statuses `.readyToPlay`, a zero-tolerance seek, `preroll`
+  only after readiness and at rate 0, then play. "Precise" is
+  `AVURLAssetPreferPreciseDurationAndTimingKey = true`.
+- **Out-point layers**, as §4.3 describes them: `forwardPlaybackEndTime = end`,
+  a boundary observer at `end`, and the windowed watchdog (one timer at
+  `(end - t)/rate - 1.5 s`, then a 250 ms poll). The first layer to fire
+  stops playback. Out-point 55.005 s, playback from 4 s before it.
+
+### 7.2 How a landing is read, and why the method changed twice
+
+The tap's per-buffer labels **cannot be trusted to the millisecond**:
+
+- Run 35962279894 read the landing from labels, with the reference taken by
+  playing from zero. The sample-exact WAV came out 10.2 ms "late" at every
+  in-point: its from-zero reference read 11.1 ms, but 0.9 ms after any seek.
+- Run 35963652605 took the reference after a precise seek. The WAV's
+  from-zero offset then read 6.4 ms, a double click's 50 ms gap read 45 ms,
+  and one click's ringing read as two onsets 7.5 ms apart.
+- Run 35964966803 counted frames inside a run, anchored at the run's first
+  label. The landings snapped to 6-7 ms steps, and the worst label-vs-count
+  drift was 11.5 ms (10.8 ms in the final run).
+
+The final method uses **no label in any measured number**
+(`ClickRuler.swift`; pinned by `ClickRulerTests` and `BufferTimelineTests`):
+
+1. A seek starts a new run of contiguous buffers.
+2. The frames counted from the run's first sample to the first double click
+   (a whole ten seconds of content) place that sample in the file's decoded
+   timeline.
+3. The decoder delay is counted the same way from the stream's first sample
+   when playing from zero: 66.0 ms for all three MP3s (LAME's encoder delay as
+   Apple's decoder presents it, plus the lead-in in §7.4), and 27.9 ms for the
+   WAV.
+
+Labels only tell runs apart and pick the nearest ten-second mark, which
+tolerates any error under 5 s.
+
+### 7.3 In-point landing error
+
+The landing error is the first sample the tap hears, minus the in-point, in ms.
+Negative means the listener starts EARLY and hears audio from before the
+in-point. After every seek `currentTime` equalled the request exactly (0.0 ms
+in all 30 trials): AVFoundation reports the position it was asked for, whatever
+it landed on.
+
+| fixture | timing | 9.65 s | 19.65 s | 49.65 s | 79.65 s |
+|---|---|---|---|---|---|
+| click-cbr.mp3 | precise | 0.0 | -4.9 | 0.0 | 0.0 |
+| click-cbr.mp3 | approximate | -4.9 | 0.0 | 0.0 | -4.9 |
+| click-vbr-xing.mp3 | precise | 0.0 | -4.9 | -7.2 (a) | 0.0 |
+| click-vbr-xing.mp3 | approximate | 0.0 | 0.0 | **-220.9** | **+36.0** |
+| click-vbr-notoc.mp3 | precise | 0.0 | 0.0 | -7.2 (a) | 0.0 |
+| click-vbr-notoc.mp3 | approximate | 0.0 | 0.0 | **-396.0** | **-576.0** |
+| click.wav | precise | 0.0 | 0.0 | 0.0 | (60 s file) |
+| click.wav | approximate | 0.0 | 0.0 | 0.0 | (60 s file) |
+
+- **Approximate seeks into VBR are wrong by hundreds of milliseconds, and
+  AVFoundation cannot tell.** Without a TOC the landing drifts EARLY with
+  depth into the file (-396 ms at 49.65 s, -576 ms at 79.65 s). A Xing TOC
+  helps but does not fix it (-221 ms, +36 ms).
+- The approximate numbers repeat across runs to within about 8 ms:
+  - no TOC: -399.2 / -404.4 / -396.0 ms at 49.65 s;
+  - Xing: -217.4 / -215.9 / -216.0 / -220.9 ms.
+
+  So they are properties of the files, not noise.
+- **Precise seeks, CBR and the WAV land within 0 to -4.9 ms** of where playing
+  from zero puts the same content. The -4.9 ms rows are a run starting 78
+  samples earlier, which is visible in the counted offsets (0.4209 s vs
+  0.4160 s to the double click). A precise seek never landed late.
+- (a) **After a precise seek to 49.65 s, both VBR files decoded the double
+  click at 50 s weak and displaced** (peak 0.28 against 0.81, +7.3 ms). The
+  same thing happened in runs 35963652605 and 35964966803. The -7.2 ms
+  reading comes from that damaged click: the ruler residual (7.3 ms) flags
+  it, and the next click sits on the whole second. The two VBR files share
+  their audio frames, so this is the frames, not the TOC. It is a decode
+  artefact about 0.4 s after a VBR seek. NE-32 should not treat it as
+  landing error, and DV-5 should listen for it.
+- The implication for the plan: this **confirms P-7's provisional rule
+  (precise timing for bounded segments)**. It is also the evidence for
+  ADR-0007's "approximate means skip": an approximate VBR landing can put a
+  listener more than half a second into the previous segment's audio.
+
+**Time to ready.** This covers asset + readiness + seek + preroll, local files.
+
+- Final run: 30-110 ms in 27 of 30 trials, with no visible precise-vs-
+  approximate difference at this file size.
+- The first two loads of the run took 1.0 s and 1.7 s (the process's first
+  AVPlayer), and one took 294 ms. Isolated loads of 578 ms, 888 ms and 1.2 s
+  appear in other runs.
+- The 20 s provisional load deadline (P-13) is two orders of magnitude above
+  anything measured locally; NE-38 sets it from the field.
+
+### 7.4 What the tap cannot settle: a 23-35 ms lead-in
+
+The first buffer of every run is labelled 23.2 ms (sometimes 34.8 ms) BEFORE
+the in-point, and 22.9-23.2 ms before zero when playing from the start.
+Playing from zero, there is no content before 0, so that lead-in is at least
+partly render-pipeline priming. It is consistent with the `.timeDomain`
+algorithm's look-ahead.
+
+Whether any of it is AUDIBLE cannot be observed from here: the tap sits before
+the time-pitch unit. The landing errors above measure seek against playback
+from zero, so a constant lead-in cancels out of them.
+
+**Open, not measured:** a `.varispeed` comparison would settle it on the
+Simulator. DV-5 settles it on a phone.
+
+### 7.5 Out-point overshoot
+
+Figures are the player's `currentTime` when each layer fired, minus the
+out-point, in ms. Every configuration ran once per fixture and rate (32
+trials).
+
+| layer (armed alone) | 1x (four fixtures) | 2x (four fixtures) |
+|---|---|---|
+| `forwardPlaybackEndTime` | 0.0, 0.0, 0.0, 0.0 | 0.0, 0.0, 0.0, 0.0 |
+| boundary observer (fire / settled after `pause()`) | 0.1-0.4 / 0.8-2.4 | 0.2-0.6 / 1.6-2.9 |
+| windowed watchdog (fire) | 14.1-49.5 | 61.3-236.4 |
+
+- **Never early: green.** The assertion covered every layer's fire and every
+  settled position, at 1x and 2x, with 1 ms of CMTime slack and stopPad 0. It
+  was green in all four runs (128 trials).
+- **No early stop was measured, so NE-32's stopPad stays 0.** The assertion
+  (`InOutPointMeasurementTests.neverEarlyToleranceSec`) is pinned by
+  `click-tracks.test.mjs`, so it cannot be widened in silence.
+- **`forwardPlaybackEndTime` stops exactly at the out-point** (0.0 ms in all
+  64 trials across the four runs that armed it). It is the layer to trust.
+  Its `AVPlayerItemDidPlayToEndTime` notification, though, arrived 29.7-37.3
+  ms (host clock) after the boundary observer fired, in every "all three"
+  trial of the final run. **The boundary observer is the fastest signal**
+  that the out-point was reached, 0.0-0.4 ms past it.
+- **A boundary observer can fail to fire at all.** When
+  `forwardPlaybackEndTime` stopped the player exactly on the boundary first
+  (8 trials across runs 35962279894, 35963652605 and 35964966803), the
+  observer never fired. The
+  engine must not depend on it.
+- **The watchdog's overshoot is its poll**, up to 250 ms of wall clock, which
+  is up to 500 ms of media at 2x: measured up to 49.5 ms at 1x and 236.4 ms
+  at 2x, and 227 ms in run 35962279894. It is a backstop for a layer that
+  failed, not a stop. NE-32 could make it a one-shot timer at the computed
+  end instead of a poll, but that is not measured here.
+- The watchdog's one-shot delay was 2,500 ms at 1x and 500 ms at 2x (4 s of
+  lead-in, `4/rate - 1.5`), so it was armed for real in every trial.
+- 'Tap pulled-to' reached 360-822 ms past the out-point. It is where the
+  render pipeline had PULLED audio (an upper bound, ahead of the speaker), not
+  the overshoot: with `forwardPlaybackEndTime` the player stops at the
+  boundary regardless.
+
+### 7.6 The WebView out-point probe: same run not feasible
+
+The card asks to run the WebView probe on the same file, in the same run,
+"where feasible". **It was not feasible in this card.**
+
+- The WebView probe runs inside the built app in `ios-build.yml`'s
+  `ios-shell` job. This measurement runs in `ci.yml`'s ios-kit, a different
+  workflow, so it can never share a run.
+- Moving the probe to the click track would mean changing `ios-build.yml`
+  and the probe installer. That belongs with NE-36, which owns the ios-build
+  native probe phase.
+
+For comparison only, from this PR's own ios-build run 35963652608 (`c7def6d5`),
+on its generated tone:
+
+- the JavaScript out-point stopped 0.006 s past `end_sec`;
+- with the page VISIBLE, the backgrounded case read `inconclusive`.
+
+### 7.7 Mutation checks
+
+**Node (local, all killed):**
+
+- `click-tracks.test.mjs`: 10 of 10. Covered: a changed fixture byte, a stray
+  WAV sample, a click moved by one sample, a Xing TOC byte, the Xing frame
+  count, resources on the plugin target, a raised stopPad, a raised tolerance,
+  the early assertion deleted, and a hard-coded ruler.
+- The audio-guard exemption in `fetch-audio.test.mjs`: 3 of 3. Covered: no
+  hash check, a 200 MB cap, and exempting every file in the directory.
+
+**Swift:** `ClickRulerTests` and `BufferTimelineTests` name their mutations
+in their comments (`TO SEE IT FAIL`). They ran green in CI on every head. The
+mutations were **not executed in CI**: no throwaway mutant PR was opened for
+this card. The loop cost (about 15 minutes per push) went to the four
+measurement runs instead.
+
+## 8. NE-15: AVDeck, what the Simulator measured
+
+Card NE-15 (PR #766, base `engine/m1`) added `Engine/AVDeck.swift`, one
+`AVPlayer` behind the `DeckDriving` seam with a readiness-gated preroll, and
+`AVDeckTests.swift` (14 Simulator tests on a bundled 20 s CBR MP3, 64 kbit/s
+with no Xing tag, and a 20 s PCM WAV, 601 KB together). Every number below
+is **CI-executed** by ios-kit's `xcodebuild test -scheme ForayAudio` step. No
+device has run AVDeck, and nothing in the app calls it yet.
+
+**The fixtures changed after these runs.** When NE-15 merged onto
+`engine/m1` (2026-09-24), NE-25a's click tracks (§7.1) were already there,
+and the repo's audio guards exempt exactly one descriptor-named, hash-checked
+set under 1 MB (`tools/audio/click-tracks.mjs`). So `AVDeckTests` now play
+NE-25a's `click-cbr.mp3` (90 s, CBR 16 kbit/s, no header frame) and
+`click.wav` (60 s, 8 kHz u8 PCM), and NE-15's own two tracks and their
+generator are gone. The numbers below were taken on the original 20 s tracks;
+the post-merge ios-kit runs write the same lines to their job summaries under
+"AVDeck (NE-15): Simulator measurements".
+
+### 8.1 Landing and time to ready
+
+The same three loads ran in every green run, starting at 7.3 s:
+
+| Load | Landing error (`currentTime` after the zero-tolerance seek) | Time to ready, per run |
+|---|---|---|
+| CBR MP3, precise timing | +0.000 ms | 445, 222, 404 ms |
+| CBR MP3, approximate timing | +0.000 ms | 891, 959, 401 ms |
+| WAV, precise timing | +0.000 ms | 391, 428, 646 ms |
+
+The runs are 35961598950 (`fdfc9b23`), 35962750658 (`e8587ea1`) and
+35967059600 (`14694a77`). Each load was prerolled (`finished == true`) on its
+first attempt, so the retry and ordinary-load fallback never ran.
+
+**What the landing number is not.** `currentTime` reports the requested time,
+not the audible one. A mutant that gave the gate seek infinite tolerance
+(run 35963951606) also landed both fixtures on exactly 7.300 s, because CBR
+and PCM seek exactly anyway. The audible landing, and the VBR fixtures where
+tolerance matters, are NE-25a's measurement (`MTAudioProcessingTap`). The zero
+tolerance is pinned statically in `shell-invariants.test.mjs`.
+
+### 8.2 The cold first load is close to the 20 s deadline
+
+Before any deck exists, the test class loads the WAV once and records how
+long it takes (`DeckMeasurements.warmUpOnce`). Results by run: **19,599 ms**
+(35962750658), 13,829 ms (35963951606), 6,825 ms (35967059600) and 1,464 ms
+(35967120142). Later loads in the same run were typically ready in under 1 s. In the
+first run, which had no warm-up, the first AVDeck test had not even loaded a
+local WAV's duration after 15 s.
+
+On the Simulator, a cold media stack can therefore take nearly the whole
+provisional 20 s load deadline (P-13, `// MEASURE:`). **This is a Simulator
+number, not the phone's.** It is the reason AVDeck's behaviour tests give the
+deck a 40 s deadline (the 20 s production value keeps its own test).
+NE-25a's rig (§7.3) saw its process's first loads at 1.0 s and 1.7 s, so the
+cold cost varies by run as much as by rig; neither is a device number. NE-38
+should look for the device equivalent: the first load after a cold launch
+(DV-7a) in the `build launch=background` rows.
+
+### 8.3 A false stop right after a play (fixed in this card)
+
+The event trace of the green run 35962750658 showed a second
+`pausedUncommanded` 13 ms after the first. It came right after the test's
+re-play and just before `.playing`: AVPlayer still reported `rate == 0` after
+the play command. Reported at once, that is a false "the system stopped us"
+while audio is starting. It also cleared the deck's intent to play, so the
+next real system pause would not have been reported. AVDeck now treats a stop
+as a suspicion. It confirms the stop 0.25 s later (`pauseSettleSec`, inside
+the core's 500 ms route-attribution window), and only if the player is still
+stopped (rate 0 and `.paused`), it is not the end, and no play was commanded
+in between. The rule itself is `AVDeck.isUncommandedPause`, a pure function
+that NE-14s moves into `DeckPolicy`.
+
+### 8.4 Mutation checks (Swift)
+
+Each mutant ran on a throwaway draft PR (#769, #770, #771, closed unmerged).
+
+| Mutation | Result |
+|---|---|
+| `play` allowed before `.ready` | **Killed** (`testNothingIsAudibleBeforeReady`), 35963951606 |
+| `load` no longer pauses a playing deck first | **Killed** (`testALoadSilences…`), 35963951606 |
+| a seek before `.ready` ignored | **Killed** (`testASeekBeforeReadyMovesTheStart`), 35963951606 |
+| `load` neither detaches the old item nor guards `durationLoaded` on the generation | **Killed** (`testASupersededLoadIsSilent`: two durations), 35963951606 |
+| the rate reset to 1 on every load | **Killed** (`testRateIsHeldAcrossThreeLoads`), 35963951606 |
+| no load deadline | **Killed** (`testANeverReadyUrl…`), 35963951606 |
+| uncommanded-pause detection off | **Killed** (`testAnExternalPause…`), 35963951606 |
+| no session check before play | **Killed** (`testAPlayWithoutAnActiveSession…`), 35963951606 |
+| `pause()` keeps the intent to play | **Killed** (`testAnExternalPause…`, the commanded-pause phase), 35965812640 |
+| the gate skips its seek | **Killed** (`testOffsetLands…` and two more), 35965819905 |
+| a stop reported at once, with no settle | **Killed** (`testAPlayInsideTheSettleWindowVoidsTheStop`), 35967120142 |
+| the `reachedEnd`, `.paused` and end-slack branches of the rule | **Killed**, each by its own assertion in `testTheUncommandedPauseRule`, 35967120142 |
+| the end-slack check (before the rule required `.paused`) | **Killed** (`testTheEndIsEnded…`), 35963951987 |
+| no `.timeDomain` line | **Survived**: the Simulator's default is already `.timeDomain`. The line is pinned statically. |
+| a tolerant gate seek | **Survived**: see "What the landing number is not" above. Pinned statically. |
+| the settle removed (Simulator only), or the end's guards removed | **Survived** in run 35965798877: both are races whose order varies from run to run. This is why the pure-rule test and the deterministic settle test exist. |
+
+The node-side pins (`shell-invariants.test.mjs`, three NE-15 tests) were
+mutation-checked locally. There were 14 mutations: a second `preroll(`; the
+item-status and rate guards before the preroll; skipping the seek; a tolerant seek;
+the deadline at 30 s; no session check; `defaultRate` outside the iOS 16
+branch; `play()` called from `setRate`; `actionAtItemEnd`; the pitch
+algorithm; no DEBUG assert; and the job-summary hand-off and fixture
+resources removed. All 14 were killed.
+
+At the merge onto `engine/m1` the third of those tests was rewritten for
+NE-25a's fixtures (AVDeckTests play `click-cbr.mp3` and `click.wav`, the one
+exempt set, and report through `FORAY_MEASURE_SUMMARY`). Its 7 local
+mutations were all killed: a test pointed at `click-vbr-notoc.mp3`; the
+helper's subdirectory back to `Fixtures`; a second fixture set beside
+`ClickTracks/`; `.copy("Fixtures")` whole; `DeckMeasurements` reading
+`GITHUB_STEP_SUMMARY`; the ci.yml hand-off dropped; and a second hand-off
+added.
+
+## 9. engine-parity CI, ios-gate and release refusal (NE-06)
+
+NE-06 landed G-1a (the Linux parity job) and the code half of G-1b (the
+short-circuit, `ios-gate`, release refusal) in one PR (#772), because it
+lands on `engine/m1`, and G-1a's week of green runs happens on that
+branch's PRs well before `engine/m1` reaches `main`. **The other half of G-1b
+is a founder action:** add `engine-parity` and `ios-gate` to `protect-main`'s
+required checks, then record it in STATE.md. That is a branch-protection
+setting, so no file in this repo can do it.
+
+### The fast loop, measured
+
+Every row is CI-executed, from GitHub's job timestamps.
+
+| What | Run | Wall clock |
+|---|---|---|
+| `engine-parity`, full parity run (head `3e3d5a6b`) | 35966876624 | **59 s**: 36 s pulling `swift:5.10` (Swift 5.10.1), about 8 s to build and run 70 XCTests, the rest checkout and setup-node |
+| `engine-parity`, short-circuited (content-only probe #774, head `15990b34`) | 35968721212 | 29 s, nearly all of it the image pull |
+| `ios-gate`, no Swift path changed (same probe) | 35968721212 | **15 s**, and it never read ios-kit |
+| `ios-gate`, Swift path changed (head `3e3d5a6b`) | 35966876624 | 18 min 37 s: it waited for ios-kit, which spent 4 min 46 s in the macOS queue and 13 min 46 s running |
+
+So a Swift author's loop is now about **one minute on Linux** against 15 to
+30 minutes for ios-kit with its queue. The macOS queue is also the variable
+part: with four ios-kit runs in flight, the red probe's ios-kit waited
+28 minutes to start.
+
+**The image is not cached.** The plan says "image cached", but GitHub
+pulls a job `container:` before the first step runs, so no `actions/cache`
+step can reach it. The 36 s pull above is the cost, and it is paid even when
+the job short-circuits.
+
+The first Linux run printed every family, including `continuation`, which
+NE-13 had just recorded as JS only:
+`compare 37/37 passed, seam-gap 30/30 passed, continuation 48 js-only, and
+queue-state, rate, resume-rules, rows, number-format, transport and
+media-episode all owed by their port cards`. That is the same result as the
+macOS host run, so Linux Foundation raised nothing in the current core.
+
+### Acceptance, CI-executed
+
+| Criterion | Evidence |
+|---|---|
+| G-1a: engine-parity green on the PR, with the family table | run 35966876624 (head `3e3d5a6b`); the summary step writes the table from `parity-report.json` |
+| A pr-hygiene round trip reports engine-parity on the new head | `gh workflow run ci.yml --ref engine/ne-06`, the same dispatch pr-hygiene makes: run 35968735311 (head `2ad29ab5`), where engine-paths diffed against `main` (95 files, engine=true, swift=true) and engine-parity, ios-kit (now run on a Swift dispatch) and ios-gate were all green |
+| A content-only PR short-circuits both | probe #774 (closed unmerged), run 35968721212: `1 changed file(s) on pull_request; engine=false swift=false`, and both gates green in under 30 s |
+| A deliberately red ios-kit on a Swift PR keeps ios-gate red | probe #775 (closed unmerged; `SeamGap.defaultGapSec` 2.0 -> 1.5), run 35968727263: ios-kit failed in `swift test (foray-engine-core, macOS host)`, and ios-gate printed `FAIL: a Swift path changed and ios-kit ended 'failure'` |
+| Release refuses a SHA with red parity (dry run) | `node tools/ci/engine-ci.mjs release-checks 66c3122a...` (the probe's head) exited 1 with `refusing to cut an iOS TestFlight ... engine-parity: failure (.../job/107533230225); ios-kit: queued`. The same command on `3e3d5a6b` exited 0: `engine-parity: success; ios-kit: success` |
+| The engine-parity summary still prints when swift test fails | on probe #775 the table step and the artifact step ran after the failed test step; the log shows `seam-gap cases=30 executed=30 passed=27 failed=3` |
+| Branch protection lists engine-parity and ios-gate | **not done: a founder action** (above) |
+
+### Mutation checks (local, node)
+
+`tools/ci/engine-ci.mjs` has 24 single-line mutations and every one is
+killed by `engine-ci.test.mjs`. The first pass let two survive: the all-zero
+`before` guard and the dispatch-on-main guard were both hidden by the fake
+git throwing. The tests now answer the fetch and the diff, so only the guard
+can return "unknown". There are 9 mutations of `ci.yml` (dropping
+`workflow_dispatch`, the raw `RUN_PARITY` output, an unguarded swift test, a
+dispatch skip on engine-parity, ios-kit's old skip, `ios-gate` needing
+ios-kit, `fetch-depth: 1`, a dropped summary, and no container). There are
+5 of `release.yml` and 2 of `ios-build.yml`, one of which moves the negation
+above the pattern it narrows. All are killed by the workflow suites.

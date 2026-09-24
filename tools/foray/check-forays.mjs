@@ -584,6 +584,48 @@ const nonEmptyString = (s) => typeof s === "string" && s.trim().length > 0;
  * @param {{forays: object, segments: object, sources: object, taxonomy: object}} files
  * @returns {{errors: string[], warnings: string[], report: object}}
  */
+/* ---- a PUBLISHED Foray's why-lines are captions (audit round 2, p-foray-5) --
+ * The `why` on a segment was written as curation rationale and is rendered as
+ * the caption on the clip's row (and read aloud as its accessible name). On
+ * the published Foray two of them read as the curator's private notes: "Kahl
+ * names the power imbalance ..." (who is Kahl?) and "The terms: shares stay
+ * his until he sells ..." (whose?). A listener has the row, the show and the
+ * episode title, and nothing else, so a caption may lean on those and no more:
+ *
+ *   - A line that STARTS with a bare name (a capitalised word, or its
+ *     possessive, followed by an attribution verb: "Kahl names", "Roizen's")
+ *     must be introduced by the show or episode title ("... with Tyler
+ *     Tringas" introduces Tringas).
+ *   - A gendered pronoun needs a name in the same line to point at.
+ *
+ * Deliberately a heuristic for PUBLISHED Forays only: the pool carries ~30
+ * such lines on draft material, and draft copy is rewritten when it is
+ * promoted. A false positive costs one reworded caption before publishing. */
+const ATTRIBUTION_VERBS = new Set([
+  "names", "explains", "argues", "says", "describes", "walks", "lays", "recounts",
+  "traces", "defines", "recalls", "admits", "warns", "notes", "asks", "reads", "on",
+]);
+
+export function captionProblems(why, { show = "", episodeTitle = "" } = {}) {
+  const text = typeof why === "string" ? why.trim() : "";
+  if (!text) return [];
+  const problems = [];
+  const anchor = `${show} ${episodeTitle}`;
+  const lead = /^([A-Z][A-Za-z]+(?:-[A-Z][A-Za-z]+)?)(['\u2019]s)?\s+([a-z]+)/.exec(text);
+  const named = lead && (lead[2] || ATTRIBUTION_VERBS.has(lead[3])) ? lead[1] : null;
+  if (named && !new RegExp(`\\b${named}\\b`).test(anchor)) {
+    problems.push(`starts with the bare name "${named}", which neither the show nor the episode title introduces`);
+  }
+  const pronoun = /\b(he|she|his|her|hers|him|himself|herself)\b/i.exec(text);
+  /* A name to point at: the leading one, or any capitalised word that does not
+     open the line or a sentence/clause after ".", ":", "!" or "?". */
+  const nameLater = /[^.:!?]\s+[A-Z][a-z]+/.test(text.slice(1));
+  if (pronoun && !named && !nameLater) {
+    problems.push(`"${pronoun[1]}" has no one in the line to refer to`);
+  }
+  return problems;
+}
+
 export function checkForays(files) {
   const errors = [];
   const warnings = [];
@@ -1092,6 +1134,13 @@ export function checkForays(files) {
       if (!seg) { E(`${at}: unknown segment_id "${item.segment_id}" — not in data/segments.json`); itemsOk = false; continue; }
       if (seenSegmentIds.has(item.segment_id)) E(`${at}: segment "${item.segment_id}" appears twice in one Foray`);
       seenSegmentIds.add(item.segment_id);
+
+      if (foray.status === "published") {
+        const src = sources.get(seg.item_id);
+        for (const p of captionProblems(seg.why, { show: src?.show, episodeTitle: src?.title })) {
+          E(`${at}: the why-line "${seg.why}" is the row's caption on a published Foray and ${p} — rewrite it for a listener (p-foray-5)`);
+        }
+      }
 
       if (slotIds.length && !slotIds.includes(item.slot)) E(`${at}: slot "${item.slot}" is not declared in \`slots\``);
 

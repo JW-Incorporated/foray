@@ -92,14 +92,16 @@ import {
   seedForays, seedCarries,
 } from "./prepare-webdir.mjs";
 import { artworkUrlsByShow, collectionIdsByShow } from "../../player/foray-sources.js";
+import { SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC } from "../../player/media-session.js";
 import { hydrateForayItems, indexSegments, indexSources } from "../../player/foray-resolve.js";
 import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
 import {
   PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS, CLOSE_ACTION,
-  WEBKIT_ORIGIN, REMOTE_COMMAND_FOR_ACTION, remoteCommandFor,
+  WEBKIT_ORIGIN, REMOTE_COMMAND_FOR_ACTION, remoteCommandFor, UNMIRRORED_ACTIONS,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
 import { REMOTE_ORIGINS, REMOTE_COMMANDS } from "../../player/diagnostic-log.js";
+import { CLICK_TRACK_DIR, exemptClickTrackPaths } from "../audio/click-tracks.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -533,8 +535,12 @@ const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
 /** Evaluate the REAL app.js the way a page does, and report whether it tried to
  *  register the service worker. `init()` suspends on its first await because
  *  `fetch` never settles (the same trick player/foray-playback.test.js uses), so
- *  nothing beyond the top-level statements runs. */
-function runAppShell({ capacitor = undefined, protocol = "https:", userAgent = "node" } = {}) {
+ *  nothing beyond the top-level statements runs. The registration waits for the
+ *  first page and an idle moment (round-2 audit, perf-4), and that first page
+ *  never comes here, so the harness plays init()'s part — `markFirstPagePainted()`,
+ *  the one signal the registration listens for — and lets the idle turn pass.
+ *  The decision under test (register or not) is untouched by either step. */
+async function runAppShell({ capacitor = undefined, protocol = "https:", userAgent = "node" } = {}) {
   const registered = [];
   const store = new Map();
 
@@ -580,39 +586,41 @@ function runAppShell({ capacitor = undefined, protocol = "https:", userAgent = "
   ctx.globalThis = ctx;
   vm.createContext(ctx);
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  vm.runInContext("markFirstPagePainted();", ctx);
+  await new Promise((r) => setTimeout(r, 5));
   return { registered, ctx };
 }
 
-test("on the web, app.js still registers the service worker", () => {
+test("on the web, app.js still registers the service worker", async () => {
   /* The direction that is easy to lose by over-tightening the guard. Without
      this test, "never register" would pass every other assertion here and the
      offline shell — the founding "sessions survive cell dead zones" constraint —
      would be silently gone from the website. */
-  const { registered } = runAppShell();
+  const { registered } = await runAppShell();
   assert.deepEqual(registered, ["sw.js"]);
 });
 
-test("inside the Capacitor shell, app.js does not register the service worker", () => {
-  const { registered } = runAppShell({ capacitor: { isNativePlatform: () => true } });
+test("inside the Capacitor shell, app.js does not register the service worker", async () => {
+  const { registered } = await runAppShell({ capacitor: { isNativePlatform: () => true } });
   assert.deepEqual(registered, [], "sw.js was registered inside the native shell.");
 });
 
-test("the capacitor:// origin alone is enough to suppress the service worker", () => {
+test("the capacitor:// origin alone is enough to suppress the service worker", async () => {
   /* Second, independent signal. If `window.Capacitor` is ever absent or injected
      late on iOS, the origin still gives the right answer. */
-  const { registered } = runAppShell({ protocol: "capacitor:" });
+  const { registered } = await runAppShell({ protocol: "capacitor:" });
   assert.deepEqual(registered, []);
 });
 
-test("a Capacitor bridge reporting the web platform still gets a service worker", () => {
+test("a Capacitor bridge reporting the web platform still gets a service worker", async () => {
   /* `isNativePlatform()` is false when Capacitor's own web target is in use.
      Treating "window.Capacitor exists" as "we are native" would be wrong here,
      and this is the case that tells the two apart. */
-  const { registered } = runAppShell({ capacitor: { isNativePlatform: () => false } });
+  const { registered } = await runAppShell({ capacitor: { isNativePlatform: () => false } });
   assert.deepEqual(registered, ["sw.js"]);
 });
 
-test("a phone browsing the real website still gets the offline shell", () => {
+test("a phone browsing the real website still gets the offline shell", async () => {
   /* THE LIKELIEST ACCIDENT, and the one the original suite could not see because
      it hardcoded `userAgent: "node"`. Someone debugging the Android shell adds
      `if (/Android|iPhone/.test(navigator.userAgent)) return false;` — every other
@@ -623,23 +631,23 @@ test("a phone browsing the real website still gets the offline shell", () => {
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
     "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36",
   ]) {
-    const { registered } = runAppShell({ userAgent: ua });
+    const { registered } = await runAppShell({ userAgent: ua });
     assert.deepEqual(registered, ["sw.js"], `a mobile web browser (${ua.slice(0, 24)}…) lost the offline shell`);
   }
 });
 
-test("a bridge that throws still suppresses the service worker on the iOS origin", () => {
+test("a bridge that throws still suppresses the service worker on the iOS origin", async () => {
   /* THE FAIL-OPEN CASE. Both signals used to live in one `try`, so an
      `isNativePlatform()` that threw skipped the origin check as well and
      registered the worker inside the shell — precisely the case the origin check
      was written to cover. A bridge can throw: it may not be ready, and a
      plugin-proxy getter is somebody else's code. */
   const throwing = { isNativePlatform: () => { throw new Error("bridge not ready"); } };
-  const { registered } = runAppShell({ capacitor: throwing, protocol: "capacitor:" });
+  const { registered } = await runAppShell({ capacitor: throwing, protocol: "capacitor:" });
   assert.deepEqual(registered, [], "a throwing bridge let sw.js register inside the iOS shell");
 });
 
-test("a bridge that throws on an https origin degrades to the web answer", () => {
+test("a bridge that throws on an https origin degrades to the web answer", async () => {
   /* The other half, stated so the behaviour is a decision and not an accident:
      with no usable native signal and an ordinary web origin, registering is the
      right answer. This is Android's shell, where the origin is
@@ -647,7 +655,7 @@ test("a bridge that throws on an https origin degrades to the web answer", () =>
      `window.Capacitor` must survive there. See docs/mobile-shell.md § the open
      risk on CSP and Capacitor's injected bridge. */
   const throwing = { isNativePlatform: () => { throw new Error("bridge not ready"); } };
-  const { registered } = runAppShell({ capacitor: throwing, protocol: "https:" });
+  const { registered } = await runAppShell({ capacitor: throwing, protocol: "https:" });
   assert.deepEqual(registered, ["sw.js"]);
 });
 
@@ -1004,14 +1012,17 @@ test("mobile/'s only non-Capacitor dependency is our own plugin, by a file: path
     );
     local.push({ name, target });
   }
-  /* Pinned at exactly two, because "how many local plugins does the shell have" is a
-     decision and today's answer is two. `foray-tts` is the second, added by this
-     card (docs/research/on-device-tts.md) — say so here, in the PR that adds the
-     next one, same as this comment already asked of the PR that added this one. */
-  assert.equal(local.length, 2, "expected exactly two local plugins, found: " + (local.map((l) => l.name).join(", ") || "none"));
+  /* Pinned at exactly three, because "how many local plugins does the shell have" is a
+     decision and today's answer is three. `foray-tts` is the second, added by its
+     card (docs/research/on-device-tts.md). `foray-vault` is the third (2026-09-24,
+     round-2 audit persist-6, founder ruling "Option A"): the device-only store that
+     keeps the account token out of the phone's backups — iOS Keychain this-device-
+     only, Android no-backup storage; tools/mobile/foray-vault.test.mjs pins it. Say
+     so here, in the PR that adds the next one. */
+  assert.equal(local.length, 3, "expected exactly three local plugins, found: " + (local.map((l) => l.name).join(", ") || "none"));
   assert.deepEqual(
     local.map((l) => l.name).sort(),
-    ["foray-audio", "foray-tts"]
+    ["foray-audio", "foray-tts", "foray-vault"]
   );
 });
 
@@ -1990,7 +2001,8 @@ test("the iOS ForayAudioPlugin keeps a paused transport ON the lock screen: rate
   const info = swiftFuncBody(code, "applyNowPlayingInfo");
   assert.match(info, /guard payload\.state != \.none else \{[\s\S]*?nowPlayingInfo = nil/);
   assert.equal((code.match(/nowPlayingInfo = nil/g) ?? []).length, 1, "nowPlayingInfo is cleared in exactly one place, for .none");
-  assert.match(info, /payload\.state == \.playing \? payload\.playbackRate : 0/);
+  // `&& !payload.stalled`: a network stall also writes 0 (audit round 2, p-car-8).
+  assert.match(info, /payload\.state == \.playing && !payload\.stalled \? payload\.playbackRate : 0/);
   assert.match(info, /center\.playbackState = Self\.playbackState\(for: payload\.state\)/);
   assert.match(swiftFuncBody(code, "handleDidEnterBackground"), /reassertNowPlaying\(reason: "background"\)/);
   assert.match(swiftFuncBody(code, "handleRouteChange"), /reason == "new-device"[\s\S]*?reassertNowPlaying\(reason: "route"\)/);
@@ -2043,6 +2055,37 @@ test("the seek pair has ONE source — the payload — on both natives, and the 
   assert.match(shim, /seekForwardMs: SEEK_FORWARD_SEC \* 1000/);
 });
 
+test("a network stall stops the lock screen's clock on BOTH natives, and the seam beat does not (audit round 2, p-car-8)", () => {
+  /* In a dead zone the mini bar said "Buffering…" and the car said PLAYING at
+     full rate, counting on over silence and snapping back when audio returned.
+     The page reports the stall (rate 0, state playing); the shim sends it as
+     `stalled`; iOS writes rate 0 and Android reports BUFFERING. The Swift and the
+     Java compile only in CI, so the lines are pinned here as well as by their own
+     unit tests (ForayAudioPluginTests.testStalledIsCarriedOnlyWhilePlaying,
+     NowPlayingParsingTest.stalledFlag_isCarriedOnlyWhilePlaying).
+     MUTATION: drop `&& !payload.stalled` from applyNowPlayingInfo, or put
+     `Player.STATE_READY` back unconditionally -> red. */
+  const swift = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(swift, "applyNowPlayingInfo"),
+    /MPNowPlayingInfoPropertyPlaybackRate\] = Double\(\s*payload\.state == \.playing && !payload\.stalled \? payload\.playbackRate : 0\s*\)/,
+    "iOS keeps counting through a stall");
+  const payload = stripSwiftComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/NowPlayingPayload.swift"), "utf8"
+  ));
+  assert.match(payload, /stalled: state == \.playing && boolValue\(data, "stalled"\)/);
+  const java = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/WebViewPlayer.java"), "utf8"
+  ));
+  assert.match(java, /\.setPlaybackState\(np\.stalled \? Player\.STATE_BUFFERING : Player\.STATE_READY\)/,
+    "Android keeps extrapolating the playhead through a stall");
+  const np = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/NowPlaying.java"), "utf8"
+  ));
+  assert.match(np, /state == PLAYING && bool\(data, "stalled"\)/);
+  const shim = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8"));
+  assert.match(shim, /const stalled = state === "playing" && positionState\?\.playbackRate === 0;/);
+});
+
 test("a one-button remote press resolves from the last reported state on iOS (2026-09-23)", () => {
   /* `togglePlayPause` was mapped to `"play"` unconditionally; the page's
      `setRunning(true)` on a playing transport is a deliberate no-op, so a car
@@ -2082,7 +2125,9 @@ test("every transport event names its door and its command, on both natives, in 
     assert.ok(REMOTE_ORIGINS.has(m[1]), `the Java origin "${m[1]}" is not in REMOTE_ORIGINS`);
   }
   const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
-  assert.match(service, /NowPlayingHub\.dispatch\(action, 0L, 0L, NowPlayingHub\.ORIGIN_NOTIFICATION\)/,
+  /* `offsetMs` since audit round 2 (native-7): the seek pair's buttons carry the
+     payload's own ±15/30, as the Media3 path does; every other press carries 0. */
+  assert.match(service, /NowPlayingHub\.dispatch\(action, 0L, offsetMs, NowPlayingHub\.ORIGIN_NOTIFICATION\)/,
     "the notification's buttons must name their door");
   const plugin = stripJavaComments(fs.readFileSync(path.join(dir, "ForayAudioPlugin.java"), "utf8"));
   assert.match(plugin, /event\.put\("origin", origin\)/);
@@ -2167,7 +2212,11 @@ test("Android's session stays READY while paused, so a head unit's play reaches 
   const player = stripJavaComments(fs.readFileSync(path.join(dir, "WebViewPlayer.java"), "utf8"));
   const state = /protected State getState\(\)\s*\{([\s\S]*?)\n    \}/.exec(player);
   assert.ok(state, "WebViewPlayer must override getState");
-  assert.match(state[1], /setPlaybackState\(Player\.STATE_READY\)\s*\.setPlayWhenReady\(\s*np\.state == NowPlaying\.PLAYING/);
+  /* READY unless STALLED (audit round 2, p-car-8), and `stalled` is only ever
+     parsed on a PLAYING payload — so a paused transport is still READY. */
+  assert.match(state[1], /setPlaybackState\(np\.stalled \? Player\.STATE_BUFFERING : Player\.STATE_READY\)\s*\.setPlayWhenReady\(\s*np\.state == NowPlaying\.PLAYING/);
+  assert.match(stripJavaComments(fs.readFileSync(path.join(dir, "NowPlaying.java"), "utf8")),
+    /state == PLAYING && bool\(data, "stalled"\)/, "a paused payload can never be stalled, so paused stays READY");
   assert.match(state[1], /if \(!np\.isLoaded\(\)\)[\s\S]*?STATE_IDLE/, "only an unloaded transport is IDLE");
   const now = stripJavaComments(fs.readFileSync(path.join(dir, "NowPlaying.java"), "utf8"));
   assert.match(now, /boolean acceptsTransport\(\)\s*\{\s*return state == PLAYING \|\| state == PAUSED;/);
@@ -2658,6 +2707,31 @@ test("NE-09: both wrappers require the rate, resume-rules and transport runners,
   }
 });
 
+test("NE-07s: the queue-state runner is registered and both wrappers require it to have run", () => {
+  /* NE-07s burned the queue-state family out of swift-pending.json. From then
+     on the ids are owed by nobody, so if the runner fell out of the registry
+     the Swift books would call each id "unaccounted" and go red, which is
+     right; but a wrapper that only says assertParityFamily("queue-state")
+     would also accept a family that is ENTIRELY pending again (a re-record
+     with --port-card), and the reducer would stop being checked with every
+     step green. requireRunner makes "it ran" part of the assertion.
+     MUTATION: drop QueueStateFamily.runner from ParityFamilies.all, or
+     `requireRunner: true` from either wrapper's testQueueStateFamily; each
+     fails here. */
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  assert.match(all[1], /QueueStateFamily\.runner/, "ParityFamilies.all must hold the queue-state runner (NE-07s)");
+  for (const file of [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ]) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    assert.match(src, /assertParityFamily\("queue-state", requireRunner: true\)/,
+      `${path.relative(ROOT, file)} must require the queue-state runner to have run`);
+  }
+});
+
 /* ─────────── NE-02: the reducer, copied into the core with its tests ───────────
  *
  * docs/native-engine-plan.md §4.1 and card NE-02. PlayerQueueState.swift and
@@ -2728,4 +2802,272 @@ test("NE-02: every one of the original reducer tests survives in the core's copy
     /final class PlayerQueueStateTests: XCTestCase/,
     "the copied tests must stay an XCTestCase, or `swift test` runs none of them"
   );
+});
+
+/* ─────────── NE-15: AVDeck, the readiness-gated deck adapter ───────────
+ *
+ * docs/native-engine-plan.md §4.3 and card NE-15. AVDeck wraps one AVPlayer
+ * behind the DeckDriving seam. Its behaviour is executed by the Simulator
+ * XCTests in `ForayAudioPluginTests/AVDeckTests.swift` (ios-kit); what is
+ * pinned here is what a later edit could quietly undo without any of those
+ * tests noticing, above all the one call that CRASHES rather than fails:
+ * `preroll` on a player that is not `.readyToPlay` raises an Objective-C
+ * exception Swift cannot catch. */
+
+const ENGINE_DIR = path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Engine");
+const AVDECK_SWIFT = path.join(ENGINE_DIR, "AVDeck.swift");
+
+test("NE-15: preroll( is called from exactly one place, AVDeck.prerollWhenReady, which re-checks both statuses and the rate first", () => {
+  /* Every Swift source the app or the core compiles, not just AVDeck: a
+     second deck (NE-32's DeckPair) or a probe that prerolls on its own is the
+     likeliest way the gate gets bypassed.
+     MUTATION: add `player.preroll(atRate: 1) { _ in }` to `play()` or to any
+     other file; drop the `item.status == .readyToPlay` or `player.rate == 0`
+     guard; call `prerollWhenReady()` from `advanceIfReady` (skipping the
+     zero-tolerance seek). Each fails. */
+  const sources = [
+    ...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")),
+    ...swiftFilesUnder(path.join(MOBILE, "plugins/foray-tts/ios/Sources")),
+    ...swiftFilesUnder(path.join(CORE_DIR, "Sources")),
+  ];
+  const callers = [];
+  for (const file of sources) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    for (const m of code.matchAll(/\bpreroll\s*\(/g)) callers.push(path.relative(ROOT, file).split(path.sep).join("/"));
+  }
+  assert.deepEqual(
+    callers,
+    ["mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/AVDeck.swift"],
+    "expected exactly one preroll( call, in AVDeck.swift"
+  );
+
+  const code = stripSwiftComments(fs.readFileSync(AVDECK_SWIFT, "utf8"));
+  const body = swiftFuncBody(code, "prerollWhenReady");
+  assert.ok(body, "AVDeck.swift has no func prerollWhenReady");
+  const call = body.search(/\bpreroll\s*\(/);
+  assert.ok(call > 0, "the one preroll( call is not inside prerollWhenReady");
+  const before = body.slice(0, call);
+  assert.match(before, /player\.status\s*==\s*\.readyToPlay/, "prerollWhenReady must re-check player.status right before preroll");
+  assert.match(before, /item\.status\s*==\s*\.readyToPlay/, "prerollWhenReady must re-check item.status right before preroll");
+  assert.match(before, /player\.rate\s*==\s*0/, "prerollWhenReady must preroll only while the player's rate is 0");
+
+  /* The gate's order: prerollWhenReady runs only after a FINISHED seek, and
+     that seek is issued only by advanceIfReady once the duration and both
+     statuses are in. */
+  assert.deepEqual(swiftCallersOf(code, "prerollWhenReady"), ["gateSeekCompleted"]);
+  const completed = swiftFuncBody(code, "gateSeekCompleted");
+  const finishedGuard = completed.search(/guard finished else/);
+  assert.ok(finishedGuard > 0 && finishedGuard < completed.search(/prerollWhenReady\(/), "prerollWhenReady must follow the finished check");
+  assert.deepEqual(swiftCallersOf(code, "gateSeek"), ["advanceIfReady", "gateSeekCompleted", "notReady", "prerollCompleted"]);
+  const advance = swiftFuncBody(code, "advanceIfReady");
+  assert.match(advance, /durationKnown/);
+  assert.match(advance, /player\.status\s*==\s*\.readyToPlay/);
+  assert.match(advance, /item\.status\s*==\s*\.readyToPlay/);
+});
+
+test("NE-15: AVDeck's settings, zero-tolerance seeks, the 20 s MEASURE deadline, the iOS 16 rate branch, and the implicit-activation fault", () => {
+  /* The plan's deck settings are decisions (§4.3), and each one is a single
+     line a refactor could drop:
+       - `.pause` at the item's end, so the CORE picks what plays next;
+       - stall-waiting on; `.timeDomain` for speech at 1.25-2x;
+       - every seek zero-tolerance (the start offset IS the resume point);
+       - the deadline is the provisional 20 s and says MEASURE (OQ-4: NE-38
+         replaces it from field rows, so it must stay findable);
+       - `defaultRate` only behind `#available(iOS 16`, since the floor is 15;
+       - audio starts in ONE function, called only from play(), which checks
+         the session owner first (§4.4: AVPlayer.play() activates an inactive
+         session implicitly).
+     MUTATION: drop any setting; give one seek a tolerance; change 20 or drop
+     the MEASURE marker; move `defaultRate` out of the availability branch;
+     call `player.play()` from `setRate`; drop the sessionIsActive check. Each
+     fails. */
+  const raw = fs.readFileSync(AVDECK_SWIFT, "utf8");
+  const code = stripSwiftComments(raw);
+  assert.match(code, /player\.actionAtItemEnd\s*=\s*\.pause/);
+  assert.match(code, /player\.automaticallyWaitsToMinimizeStalling\s*=\s*true/);
+  assert.match(code, /audioTimePitchAlgorithm\s*=\s*\.timeDomain/);
+
+  const seeks = [...code.matchAll(/player\.seek\(([^{]*)\{/g)];
+  assert.ok(seeks.length >= 3, `expected the gate, fallback and transport seeks, found ${seeks.length}`);
+  for (const [, args] of seeks) {
+    assert.match(args, /toleranceBefore:\s*\.zero,\s*toleranceAfter:\s*\.zero/, `a seek without zero tolerance: player.seek(${args}`);
+  }
+
+  assert.match(raw, /static let defaultLoadDeadlineSec: Double = 20 \/\/ MEASURE:/, "the load deadline must stay the provisional 20 s, marked MEASURE");
+
+  const rateBranches = [...code.matchAll(/if #available\(iOS 16\.0, \*\) \{([\s\S]*?)\}/g)].map((m) => m[1]);
+  const outside = rateBranches.reduce((rest, branch) => rest.replace(branch, ""), code);
+  assert.doesNotMatch(outside, /defaultRate/, "defaultRate is iOS 16+; the plugin's floor is iOS 15");
+  assert.ok(rateBranches.some((b) => /defaultRate\s*=\s*rate\b/.test(b)), "play must re-apply the held rate through defaultRate on iOS 16+");
+
+  assert.deepEqual(swiftCallersOf(code, "player\\.play"), ["applyRateAndPlay"], "audio must start from applyRateAndPlay only");
+  assert.deepEqual(swiftCallersOf(code, "applyRateAndPlay"), ["play"]);
+  const play = swiftFuncBody(code, "play");
+  const check = play.search(/config\.sessionIsActive\(\)/);
+  assert.ok(check > 0, "play() no longer checks the session owner before starting audio");
+  assert.ok(check < play.search(/applyRateAndPlay\(/), "the session check must come before the audible call");
+  assert.match(play, /"fault implicit-activation/);
+  assert.match(play, /config\.writeRow\(/);
+  assert.match(play, /config\.debugFault\(/);
+  assert.match(code, /debugFault:[^=]*=\s*\{\s*assertionFailure\(\$0\)\s*\}/, "the production fault must assert in DEBUG");
+});
+
+test("NE-15: AVDeck's Simulator tests play NE-25a's CBR MP3 and PCM WAV, the one exempt click-track set, and report through the one summary hand-off", () => {
+  /* NE-15 first carried two 20 s tracks of its own. NE-25a landed a set of
+     the same shape first, and the repo's two audio guards exempt exactly ONE
+     descriptor-named, hash-checked set under 1 MB (tools/audio/click-tracks.mjs),
+     so the deck plays NE-25a's files. What click-tracks.test.mjs does not know
+     is which of them AVDeck's tests rely on, and why: "CBR" is the property
+     the landing check is about (an MP3 whose frames change bitrate seeks by a
+     different mechanism, NE-25a's VBR rows), and PCM is the exact control. The
+     frame walk and the test-target-only resources are click-tracks.test.mjs's.
+     The summary hand-off is pinned here too, or the card's measurement would
+     vanish from the job summary with every test green.
+     MUTATION: point a test at click-vbr-notoc.mp3; commit a second set beside
+     ClickTracks/; bundle "Fixtures" whole again; read GITHUB_STEP_SUMMARY in
+     DeckMeasurements; drop TEST_RUNNER_FORAY_MEASURE_SUMMARY from ci.yml. Each
+     fails. */
+  const testsPath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/AVDeckTests.swift");
+  const tests = stripSwiftComments(fs.readFileSync(testsPath, "utf8"));
+  const used = [...new Set([...tests.matchAll(/fixture\("([^"]+)",\s*"([^"]+)"\)/g)].map((x) => `${x[1]}.${x[2]}`))].sort();
+  assert.deepEqual(used, ["click-cbr.mp3", "click.wav"], "AVDeckTests' fixtures");
+  assert.match(swiftFuncBody(tests, "fixture"), /subdirectory:\s*"ClickTracks"/);
+  assert.match(tests, /forResource:\s*"click",\s*withExtension:\s*"wav",\s*subdirectory:\s*"ClickTracks"/, "the warm-up loads the same WAV");
+
+  const descriptor = JSON.parse(fs.readFileSync(path.join(ROOT, CLICK_TRACK_DIR, "click-tracks.json"), "utf8"));
+  const byFile = new Map(descriptor.fixtures.map((x) => [x.file, x]));
+  assert.equal(byFile.get("click-cbr.mp3")?.kind, "mp3-cbr");
+  assert.equal(byFile.get("click-cbr.mp3")?.header, "none", "the CBR fixture carries no Xing/Info header frame");
+  assert.match(byFile.get("click.wav")?.kind ?? "", /^wav-pcm/);
+  const exempt = exemptClickTrackPaths(ROOT);
+  for (const file of used) assert.ok(exempt.has(`${CLICK_TRACK_DIR}/${file}`), `${file} is not in the hash-checked exempt set`);
+  const fixturesRoot = path.dirname(path.join(ROOT, CLICK_TRACK_DIR));
+  assert.deepEqual(fs.readdirSync(fixturesRoot), [path.basename(CLICK_TRACK_DIR)], "one click-track set, not two");
+
+  const manifest = stripSwiftComments(fs.readFileSync(AUDIO_MANIFEST, "utf8"));
+  const testTarget = /\.testTarget\(\s*name:\s*"ForayAudioPluginTests"[\s\S]*?\)\s*\]\s*\)/.exec(manifest);
+  assert.ok(testTarget, "the ForayAudioPluginTests target is missing");
+  assert.match(testTarget[0], /resources:\s*\[\s*\.copy\("Fixtures\/ClickTracks"\)\s*\]/);
+
+  const ci = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
+  assert.match(ci, /TEST_RUNNER_FORAY_MEASURE_SUMMARY="\$GITHUB_STEP_SUMMARY"/, "ios-kit no longer hands the job summary to the Simulator tests");
+  assert.doesNotMatch(ci, /TEST_RUNNER_GITHUB_STEP_SUMMARY/, "one hand-off, not two");
+  assert.match(tests, /environment\["FORAY_MEASURE_SUMMARY"\]/, "DeckMeasurements writes through the hand-off ci.yml passes");
+  assert.match(tests, /CBR MP3, precise/);
+});
+
+/* ───────────── audit round 2 (2026-09-23): the platform contract, pinned ───────────── */
+
+test("the iOS track pair follows the ROUTE, and the page's track handlers are not mirrored onto WebKit (round 2, p-impatient-3)", () => {
+  /* Founder question 1: the lock screen shows the SKIP pair, always. iOS draws
+     ⏮/⏭ over ↺15/30↻ whenever the track commands are enabled, so they are
+     enabled only where a track button exists without looking (a headset, a
+     Bluetooth stack, a car), re-read on every route change; and WebKit's own
+     session — which enables the same commands for every mirrored handler — no
+     longer gets them. MUTATION: drop `&& trackRoutePresent` from either line;
+     drop the route re-apply from handleRouteChange; put UNMIRRORED_ACTIONS back
+     to ["seekto"]. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const availability = swiftFuncBody(code, "applyCommandAvailability");
+  assert.match(availability, /nextTrackCommand\.isEnabled = transportable && payload\.hasNext && trackRoutePresent/);
+  assert.match(availability, /previousTrackCommand\.isEnabled = transportable && payload\.hasPrevious && trackRoutePresent/);
+  assert.ok(swiftFuncDecl(code, "trackCommandsAllowed"), "the pure route rule exists for the XCTests");
+  for (const port of ["headphones", "bluetoothA2DP", "bluetoothHFP", "bluetoothLE", "carAudio", "usbAudio", "airPlay"]) {
+    assert.match(code, new RegExp(`AVAudioSession\\.Port\\.${port}\\.rawValue`), `${port} is a route with a track button`);
+  }
+  assert.doesNotMatch(code, /Port\.builtInSpeaker\.rawValue/, "the speaker is never a track route");
+  const route = swiftFuncBody(code, "handleRouteChange");
+  assert.match(route, /trackRoutePresent = Self\.trackCommandsAllowed\(portTypes: outputs\)/, "re-read on every route change");
+  assert.match(route, /applyCommandAvailability\(self\.lastPayload, force: true\)/, "and re-applied when it moved");
+  assert.match(swiftFuncBody(code, "load"), /trackRoutePresent = Self\.trackCommandsAllowed/, "and read at load");
+  assert.ok(UNMIRRORED_ACTIONS.includes("nexttrack") && UNMIRRORED_ACTIONS.includes("previoustrack"), "WebKit's session gets no track handlers");
+  assert.ok(!UNMIRRORED_ACTIONS.includes("seekforward") && !UNMIRRORED_ACTIONS.includes("seekbackward"), "the skip pair is still mirrored");
+});
+
+test("one audio-session mode, .spokenAudio, in both iOS plugins; category only at load, setActive untouched (round 2, native-10)", () => {
+  /* A navigation prompt paused narration mid-sentence and ducked a clip: two
+     modes, one app. MUTATION: `mode: .default` back in holdSession -> red;
+     drop the load() setCategory -> red; add setActive to load() -> the F11/F13
+     test above goes red. */
+  const audio = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const tts = stripSwiftComments(fs.readFileSync(path.join(PLUGIN_DIR, "../foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"), "utf8"));
+  assert.doesNotMatch(audio, /mode:\s*\.default/, "the audio plugin holds no second mode");
+  assert.doesNotMatch(tts, /mode:\s*\.default/, "nor does the TTS plugin");
+  assert.match(swiftFuncBody(audio, "holdSession"), /setCategory\(\.playback, mode: \.spokenAudio/);
+  const load = swiftFuncBody(audio, "load");
+  assert.match(load, /setCategory\(\.playback, mode: \.spokenAudio, options: \[\]\)/, "set once for the tape between narration and holds");
+  assert.doesNotMatch(load, /setActive/, "category only: the playing path never activates");
+  assert.ok((tts.match(/mode:\s*\.spokenAudio/g) ?? []).length >= 2, "speak() and resume() both set the app's one mode");
+});
+
+test("the Android notification carries the seek pair and the session its custom buttons (round 2, native-7)", () => {
+  /* API 24-32 draw the notification's own actions; API 33+ draw the session's
+     custom buttons and never rewind/fast-forward — so both. The words are the
+     page's handler names, routable like every other press. MUTATION: drop
+     either transportIntent; drop setMediaButtonPreferences; rename CMD_SEEK_BACK. */
+  const dir = path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio");
+  const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
+  assert.match(service, /transportIntent\("seekbackward",\s*6\)/, "↺15 on the notification");
+  assert.match(service, /transportIntent\("seekforward",\s*7\)/, "30↻ on the notification");
+  assert.match(service, /static final String CMD_SEEK_BACK = "seekbackward";/);
+  assert.match(service, /static final String CMD_SEEK_FORWARD = "seekforward";/);
+  for (const word of ["seekbackward", "seekforward"]) assert.ok(ROUTABLE_ACTIONS.includes(word), `${word} is routable`);
+  assert.match(service, /\.setMediaButtonPreferences\(seekButtons\(\)\)/, "the session's custom buttons for API 33+");
+  assert.match(service, /onCustomCommand\(/, "…and their handler");
+  assert.match(service, /CommandButton\.ICON_SKIP_BACK_15/);
+  assert.match(service, /CommandButton\.ICON_SKIP_FORWARD_30/);
+  assert.match(service, /compactActions\(prevIndex, playIndex, nextIndex, seekBackIndex, seekForwardIndex, np\.hasNext\)/, "the compact view prefers the pair for a single episode");
+  const strings = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/res/values/strings.xml"), "utf8");
+  assert.match(strings, /name="foray_action_seek_back">Back 15 seconds</);
+  assert.match(strings, /name="foray_action_seek_forward">Forward 30 seconds</);
+});
+
+test("THE ONE ANDROID EXCEPTION to 'the natives never hold a literal': the label and glyph are pinned to media-session.js's pair (round 2 review)", () => {
+  /* The seek itself reads np.seekBackMs/seekForwardMs from the payload, but
+     Media3's CommandButton icons are fixed constants (ICON_SKIP_BACK_15, …) and
+     the strings are resources, so the Android label and glyph are literals. A
+     change to the pair in player/media-session.js would then seek one distance
+     while the notification and TalkBack said another. This test is what ties
+     them: change the pair and it is red until the icon constants and the
+     strings follow. MUTATION: set SEEK_FORWARD_SEC = 45 -> red. */
+  const service = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/PlaybackKeepAliveService.java"), "utf8"
+  ));
+  const strings = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/res/values/strings.xml"), "utf8");
+  const icon = (dir) => Number((new RegExp(`CommandButton\\.ICON_SKIP_${dir}_(\\d+)`).exec(service) || [])[1]);
+  const said = (name) => Number((new RegExp(`name="${name}">[^<]*?(\\d+) seconds<`).exec(strings) || [])[1]);
+  assert.strictEqual(icon("BACK"), SEEK_BACKWARD_SEC, "the back glyph's number is the page's");
+  assert.strictEqual(icon("FORWARD"), SEEK_FORWARD_SEC, "the forward glyph's number is the page's");
+  assert.strictEqual(said("foray_action_seek_back"), SEEK_BACKWARD_SEC, "the back label's number is the page's");
+  assert.strictEqual(said("foray_action_seek_forward"), SEEK_FORWARD_SEC, "the forward label's number is the page's");
+  const decisions = fs.readFileSync(path.join(ROOT, "docs/DECISIONS.md"), "utf8");
+  assert.match(decisions, /Android's label and glyph are the one exception/, "the contract names the exception");
+});
+
+test("a transport press on a running Android service is dispatched and NOT re-posted; a close removes the notification at once (round 2, native-8)", () => {
+  /* MUTATION: call startForeground unconditionally again (drop the
+     foregroundStartNeeded return) -> red; drop STOP_FOREGROUND_REMOVE -> red. */
+  const service = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/PlaybackKeepAliveService.java"), "utf8"
+  ));
+  const start = /public int onStartCommand\([^)]*\)\s*\{([\s\S]*?)\n    \}/.exec(service);
+  assert.ok(start, "onStartCommand");
+  const body = start[1];
+  const dispatchAt = body.indexOf("NowPlayingHub.dispatch(");
+  const guardAt = body.indexOf("if (!foregroundStartNeeded(running, transport)) return START_NOT_STICKY;");
+  const foregroundAt = body.indexOf("startForeground(");
+  assert.ok(dispatchAt >= 0 && guardAt > dispatchAt && foregroundAt > guardAt, "dispatch, then the guard, then (only if needed) startForeground");
+  assert.match(body, /CLOSE_TRANSPORT\.equals\(action\)[\s\S]*STOP_FOREGROUND_REMOVE/, "a close takes the notification down now");
+  assert.match(service, /static boolean foregroundStartNeeded\(boolean running, boolean transportIntent\)\s*\{\s*return !running \|\| !transportIntent;/);
+  assert.match(service, /if \(!running \|\| closing\) return;/, "and nothing re-posts while closing");
+});
+
+test("the Android shell starts the service for a narration-first Foray from the transport's first playing payload (round 2, native-2)", () => {
+  /* Four of the seven shipped Forays open with narration: no element, no play
+     patch, no service, and the first tape segment's background start refused.
+     MUTATION: drop noteTransportPlaying from the shell's returned object. */
+  const shellSrc = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-audio-shell.js"), "utf8"));
+  assert.match(shellSrc, /return \{ install, uninstall, inspect, refresh, setMediaLoaded, noteTransportPlaying, noteServiceRunning, newDocument \};/);
+  const shim = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8"));
+  assert.match(shim, /shell\.noteTransportPlaying\(playing\)/, "the shim hands the transition to the shell");
 });

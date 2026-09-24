@@ -46,7 +46,7 @@ front of a listener*, and every mechanism behind those decisions.
 
 | # | Surface | Route / function | What it promises the listener | What it actually reads |
 |---|---|---|---|---|
-| 1 | **Home** | `#/` → `app.js:renderHome` → `app.js:renderHomeV2` | Nothing about shows. Home has four sections — greeting, Jump back in, Forays for you, Playlists for you, Episodes for you — and **no show-shaped row at all**. | Show names appear only as `app.js:showNameLink` inside an episode card. |
+| 1 | **Home** | `#/` → `app.js:renderHome` → `app.js:renderHomeV2` | Nothing about shows. Home has four sections — greeting, Jump back in, Forays for you, Playlists for you, Suggested — and **no show-shaped row at all**. | Show names appear only as `app.js:showNameLink` inside an episode card. |
 | 2 | **Shows tab** | `#/shows` → `app.js:renderAllShows` | "Does this show exist here?" — a search box, a browse-by-subject pill row, a starred-shows link, an editorial row, and an A–Z index. | `state.catalog` (the 220 curated shows), `state.taxonomy`, plus two live endpoints. |
 | 3 | **Show page — "Similar shows"** | `#/show/:id` → `app.js:similarShowsSection` | "Shows like this one." | `state.catalog` only. Up to 6. |
 | 4 | **Search results** | `#/shows`, after a submit → `app.js:renderShowSearchResults` | Three result blocks — Shows, Episodes, Playlists — for one typed query. | Local catalogue, then `GET /api/shows/search`, then `GET /api/episodes/search`, then local playlists. |
@@ -460,7 +460,7 @@ The show page's own chips are the same component:
 
 `app.js:renderHomeV2` renders, top to bottom: `homeGreeting()`,
 `jumpBackInV2Html()`, `foraysForYouHtml()`, `playlistsForYouHtml()`,
-`episodesForYouHtml()`. None of the five is show-shaped.
+`suggestedHtml()`. None of the five is show-shaped.
 
 The interest model:
 
@@ -483,7 +483,7 @@ The interest model:
   `app.js:ONBOARDING_SEED_LIFT = 0.20` — "worth about four finishes or two and a
   half thumbs-ups, never a fact."
 
-"Episodes for you" is `state.cardSlots` verbatim, built by `app.js:buildCards`:
+"Suggested" is `state.cardSlots` verbatim, built by `app.js:buildCards`:
 group the pool by `app.js:branchOf(item)` (the **root** of `topics[0]`), rank
 branches by average `interestScore`, reserve one slot for a branch outside the
 top `Math.ceil(n * 0.6)` ("the stretch"), take 4 slots of `QUEUE_SIZE = 3` items

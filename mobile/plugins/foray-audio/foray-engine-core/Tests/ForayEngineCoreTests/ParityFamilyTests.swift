@@ -22,8 +22,9 @@ final class ParityFamilyTests: XCTestCase {
     /// NE-05's proof family: `SeamGap` against player/seam-gap.js.
     func testSeamGapFamily() { assertParityFamily("seam-gap", requireRunner: true) }
 
-    /// Recorded by NE-07j, owed by NE-07s: every id must be pending until then.
-    func testQueueStateFamily() { assertParityFamily("queue-state") }
+    /// Recorded by NE-07j, burned down by NE-07s: the reducer at parity with
+    /// player/queue-state.js, so the family must now have a runner that ran.
+    func testQueueStateFamily() { assertParityFamily("queue-state", requireRunner: true) }
 
     /// NE-09's ports, which must RUN (a runner registered, cases executed):
     /// `PlaybackRate` (the ladder and ForayTts's utteranceRate curve),

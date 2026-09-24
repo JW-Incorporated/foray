@@ -66,7 +66,14 @@ function itemLookup(state) {
  * What plays after `finishedId`, with no writes: `{ nextId, rest, fromList }`.
  * `rest` is Up Next with the finished episode removed (or null when it was not
  * queued) — the caller saves it. Shared by the end of an episode and by the
- * steering wheel's skip, which must agree on what "next" is.
+ * steering wheel's and the sheet's ⏭, which must agree on what "next" is.
+ *
+ * UP NEXT'S HEAD IS NEXT (founder, 2026-09-24; app.js § the Up Next model).
+ * A row played from the Up Next page jumps to the top and nothing else moves,
+ * so the finished episode leaving leaves the head as the next one. The rule
+ * this replaced resumed the queue at the finished row's old position and then
+ * wrapped to the rows above it — with the played row at the top there is no
+ * "above it", and wrapping would re-serve an abandoned row.
  *
  * UP NEXT FIRST, THEN THE LIST. The list continues only when the episode that
  * ended belongs to this chain (`playChainId`: started from the list, or by an
@@ -76,18 +83,8 @@ function itemLookup(state) {
 export function planAfterEnded(state, finishedId) {
   const isPlayable = playableTest(state);
   const queued = idList(state?.queue);
-  const at = queued.indexOf(finishedId);
-  let rest = null;
-  let fromQueue;
-  if (at >= 0) {
-    rest = queued.filter((x) => x !== finishedId);
-    /* The row that took its place first, then anything above it the listener
-       skipped past — every one of them is still unheard, or it would have left. */
-    fromQueue = rest.slice(at).concat(rest.slice(0, at));
-  } else {
-    fromQueue = queued;
-  }
-  const queuedNext = fromQueue.find((id) => isPlayable(id));
+  const rest = queued.includes(finishedId) ? queued.filter((x) => x !== finishedId) : null;
+  const queuedNext = (rest || queued).find((id) => isPlayable(id));
   if (queuedNext) return { nextId: queuedNext, rest, fromList: false };
   const list = idList(state?.playList);
   const onChain = Boolean(finishedId) && finishedId === state?.playChainId;
