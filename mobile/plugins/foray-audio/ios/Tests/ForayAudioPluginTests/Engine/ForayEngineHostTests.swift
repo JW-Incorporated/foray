@@ -72,6 +72,7 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertEqual(world.session.activateCalls, 2)
         XCTAssertEqual(world.deck.count("play"), 0, "\(world.log.entries)")
         XCTAssertEqual(world.background.liveTasks, 0, "a refused play must not hold background time")
+        withExtendedLifetime(engine) {}
     }
 
     /// The car test's first second (plan §4.5 cold path): with a restored
@@ -209,16 +210,27 @@ final class ForayEngineHostTests: XCTestCase {
 
     // MARK: - BackgroundGrace
 
-    /// The system takes the grace time back. UIKit's rule: the task ends
-    /// INSIDE the expiration handler, even when the handler lands while a
-    /// turn is being interpreted (the core hears it only after that turn).
-    /// Then the core's deterministic outcome: a pause, with its cause row.
+    /// The system takes the grace time back while the engine is still
+    /// silent (a background tap play whose load has not landed). UIKit's
+    /// rule: the task ends INSIDE the expiration handler, even when the
+    /// handler lands while a turn is being interpreted (the core hears it
+    /// only after that turn). Then the core's deterministic outcome: the
+    /// intent stops, with its cause row, and nothing ever sounds.
+    ///
+    /// (An expiry while the deck is AUDIBLE never reaches the core as a stop:
+    /// the core closes grace itself on the first turn that finds the deck
+    /// audible, so the queued expiry finds no span. ios-kit run 36053713800
+    /// showed exactly that when this test first played the deck.)
     /// TO SEE IT FAIL: drop `endGrace()` at the top of `graceExpired` (the
     /// task then outlives its handler), or register a no-op expiration.
     @MainActor
-    func testAnExpiredGraceTaskEndsInsideItsHandlerAndPauses() throws {
+    func testAnExpiredGraceTaskEndsInsideItsHandlerAndStopsTheIntent() throws {
         let world = FakeWorld()
-        let engine = playing(world, backgrounded: true)
+        let engine = started(world)
+        world.background.post(.background)
+        engine.handle(.queue(.load([Self.item("a")])))
+        engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        XCTAssertEqual(engine.state.stateType, "loadingItem", "\(world.log.entries)")
         let task = try XCTUnwrap(world.background.onlyLiveTask)
         var endedInside: Bool?
         world.output.onDiag = { entry in
@@ -232,9 +244,10 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertEqual(world.background.ended, [task], "ended exactly once")
         XCTAssertEqual(world.background.liveTasks, 0)
         XCTAssertFalse(engine.hasGraceTask)
-        XCTAssertEqual(world.deck.count("pause"), 1, "\(world.log.entries)")
-        XCTAssertTrue(world.output.diags.contains { $0.kind == "stop" && $0[field: "cause"] == .string("grace-expired") })
+        XCTAssertTrue(world.output.diags.contains { $0.kind == "stop" && $0[field: "cause"] == .string("grace-expired") },
+                      "\(world.log.entries)")
         XCTAssertFalse(engine.state.isRunning)
+        XCTAssertEqual(world.deck.count("play"), 0)
     }
 
     /// A refused begin (`.invalid`) and the remaining background budget are
@@ -277,8 +290,11 @@ final class ForayEngineHostTests: XCTestCase {
     @MainActor
     func testARemotePlayWithNothingToPlayIsNoActionableItem() {
         let world = FakeWorld()
-        _ = started(world)
+        // Held: the remote targets hold the engine weakly (it is the process
+        // singleton), so a dropped engine answers every press `.commandFailed`.
+        let engine = started(world)
         XCTAssertEqual(world.remote.press(.play), .noActionableNowPlayingItem)
+        withExtendedLifetime(engine) {}
         XCTAssertEqual(RemoteVerdict(failures: []), .success)
         XCTAssertEqual(RemoteVerdict(failures: ["no-next"]), .commandFailed)
     }
