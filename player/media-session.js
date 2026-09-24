@@ -170,7 +170,10 @@
    larger one that is right.
 
    A FINISHED Foray reports `"none"`, not `"paused"`. A car display offering a
-   play button that does nothing is worse than no display at all.
+   play button that does nothing is worse than no display at all. A finished
+   ORDINARY EPISODE reports `"paused"` (audit round 2, p-car-6): its play button
+   does do something — it starts the episode over — and `"none"` at the end of
+   the last episode took the whole transport off the car.
 
    ── 5. ARTWORK ────────────────────────────────────────────────────────────
 
@@ -443,14 +446,26 @@ function albumOf(forayTitle, index, total) {
  * caller, and returns null — "do not report" — for the cases no clamp can
  * rescue. §3 above is which clock these seconds are on.
  */
-export function mediaPositionState({ durationSec = null, positionSec = 0, playbackRate = 1 } = {}) {
+export function mediaPositionState({
+  durationSec = null, positionSec = 0, playbackRate = 1, buffering = false,
+} = {}) {
   if (!isNum(durationSec) || durationSec <= 0) return null;
   const duration = durationSec;
   const raw = isNum(positionSec) ? positionSec : 0;
   const position = Math.min(Math.max(0, raw), duration);
   // A zero or negative rate is a TypeError, and we never play backwards.
   const rate = isNum(playbackRate) && playbackRate > 0 ? playbackRate : 1;
-  return { duration, position, playbackRate: rate };
+  /* A STALL STOPS THE CLOCK (audit round 2, p-car-8). The element is halted for
+     data, the bar says "Buffering…", and the OS was still told PLAYING at full
+     rate — so the lock screen and the car counted on over silence and snapped
+     back when the audio returned. Rate 0 is what Apple reports for exactly this
+     (`MPNowPlayingInfoPropertyPlaybackRate`), and it reaches the native plugin
+     through the shim's `setPositionState`. On the WEB the same write is the
+     spec's TypeError; `createMediaSession` swallows it, which leaves the last
+     good report standing — the honest alternative there does not exist, and a
+     report with a rate the element is not running at would be the old lie. The
+     transport STATE stays playing: the listener did not pause. */
+  return { duration, position, playbackRate: buffering ? 0 : rate };
 }
 
 /**
@@ -460,13 +475,22 @@ export function mediaPositionState({ durationSec = null, positionSec = 0, playba
  * @param {boolean} [view.hasItem]    something is loaded at all
  * @param {boolean} [view.playing]    the element is actually producing audio
  * @param {boolean} [view.inSeamGap]  the 2.0 s authored beat between segments
- * @param {boolean} [view.ended]      the Foray finished
+ * @param {boolean} [view.ended]      the item finished
+ * @param {boolean} [view.foray]      the item is a Foray (its own end rule, §4)
  */
-export function mediaPlaybackState({ hasItem = false, playing = false, inSeamGap = false, ended = false } = {}) {
+export function mediaPlaybackState({
+  hasItem = false, playing = false, inSeamGap = false, ended = false, foray = false,
+} = {}) {
   if (!hasItem) return NONE;
-  // Checked before `playing` on purpose: a finished Foray is not a paused one,
-  // and a play button that cannot do anything is worse than none.
-  if (ended) return NONE;
+  /* Checked before `playing` on purpose. A finished FORAY reports none (§4: a
+     play button that cannot do anything is worse than none — the argument of
+     2026-08, and the one docs/ios-lock-screen.md still rules by). A finished
+     ORDINARY EPISODE reports paused (audit round 2, p-car-6): play from `ended`
+     reloads it from the top, so the button does something, and NONE at the end
+     of the last episode blanked the head unit and every wheel button — the
+     driver had to unlock the phone to hear anything from 4a again. Apple keeps
+     the finished episode on the lock screen, paused; so do we. */
+  if (ended) return foray ? NONE : PAUSED;
   if (playing || inSeamGap) return PLAYING;
   return PAUSED;
 }
@@ -488,6 +512,7 @@ export function mediaSessionView(view = {}) {
       playing: Boolean(view.playing),
       inSeamGap: Boolean(view.inSeamGap),
       ended: Boolean(view.ended),
+      foray: Boolean(view.foray),
     }),
   };
 }

@@ -261,7 +261,10 @@ test("the mini bar's title button is named by what is playing and says whether t
 
 /* MUTATION: remove the aria-valuetext write in render(). */
 test("the scrub slider announces a time, not a 0-1000 fraction", () => {
-  assert.match(clientFn("render"), /ui\.scrub\.setAttribute\("aria-valuetext"/);
+  /* Audit round 2 (player-6): the clocks and the spoken value are painted by
+     `paintClocks`, from the audio in `paintPage` and from the thumb mid-drag. */
+  assert.match(clientFn("paintClocks"), /ui\.scrub\.setAttribute\("aria-valuetext"/);
+  assert.match(clientFn("paintPage"), /paintClocks\(pos, dur/);
 });
 
 /* ------------------------------------------------------------------ */

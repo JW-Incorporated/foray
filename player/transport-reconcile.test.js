@@ -814,12 +814,18 @@ class MemoryStorage {
    scope. A test that booted first and seeded second would be asserting against
    an empty store and would pass for the wrong reason. */
 let bootSeq = 0;
-async function bootClient(t, { seed = [], mediaSession = null, capacitor = null } = {}) {
+/* `speech` (audit round 2) is a fake `window.speechSynthesis`: with it, a
+   script-only narration item speaks through the REAL `foray-tts.js` web
+   fallback (`tts-bridge.js` resolves the module by its repo path here), so a
+   spoken line can be interrupted, nudged and resumed through the real client.
+   Absent by default. */
+async function bootClient(t, { seed = [], mediaSession = null, capacitor = null, speech = null } = {}) {
   const audio = new Element();
   const storage = new MemoryStorage();
   for (const [k, v] of seed) storage.setItem(k, v);
   const doc = {
     hidden: false,
+    activeElement: null,
     body: new Node("body"),
     createElement: (tag) => (String(tag).toLowerCase() === "audio" ? audio : new Node(tag)),
     querySelectorAll: () => [],
@@ -843,6 +849,7 @@ async function bootClient(t, { seed = [], mediaSession = null, capacitor = null 
     /* The Capacitor shell, when a test is about the shell (2026-09-22: the
        build stamp asks the binary for its build number). Absent by default. */
     ...(capacitor ? { Capacitor: capacitor } : {}),
+    ...(speech ? { speechSynthesis: speech, SpeechSynthesisUtterance: FakeUtterance } : {}),
   };
 
   /* `defineProperty`, not assignment: `globalThis.navigator` is an accessor with
@@ -1732,22 +1739,26 @@ test("AUDIT: a cold start on a FINISHED episode begins at the top, not at the ou
   restore();
 });
 
-test("AUDIT: the Jump back in card says a finished episode is FINISHED", async (t) => {
-  /* The card reads how far the listener GOT, which is the raw row; where a
-     press starts is the collapsed offset. KILLING MUTATION: feed `offset` to
-     the card's reading again — "60 min left", 0%. INTEGRATION (2026-09-22): L5
-     fixed the same defect through the shared `episodeProgress` reading, whose
-     word for a finished episode is "Played" on every surface; that one won. */
+test("AUDIT / ROUND 2: a FINISHED episode leaves Jump back in and the ribbon; a part-heard one stays", async (t) => {
+  /* 2026-09-22: the card read how far the listener GOT (the raw row, "Played",
+     100%) while the ribbon restored the same episode from `resumeOffset`, which
+     collapses a finished one to 0 — so Home said Played and the bar said 0:00
+     with the whole runtime left (audit round 2, player-8). Founder question 3,
+     ruled 2026-09-23: finished things LEAVE Jump back in and say "Played" on
+     their own rows and pages. So neither surface offers it now, and there is
+     one presentation left to disagree with. KILLING MUTATIONS: drop the
+     `progress.state === "played"` return from `lastEpisodeCard` (the card comes
+     back, "Played"), or the same check from `restoreLastEpisode` (the ribbon
+     restores at 0:00). */
   const carried = await aSessionThatReached(t, 3590);
-  const { client, restore } = await bootClient(t, { seed: carried });
-  const card = client.lastEpisodeCard();
-  assert.ok(card, "the pointer is still offered");
-  assert.equal(card.label, "Played");
-  assert.equal(card.percent, 100);
-  assert.equal(card.position_sec, 0, "and a press on it starts from the top");
+  const { client, audio, restore } = await bootClient(t, { seed: carried });
+  assert.equal(client.lastEpisodeCard(), null, "a finished episode has no Jump back in card");
+  assert.equal(client.restoreLastEpisode(), null, "and is not restored on the ribbon");
+  assert.equal(audio.calls.includes("load"), false);
   const mid = await aSessionThatReached(t, 1800);
   const again = await bootClient(t, { seed: mid });
   assert.equal(again.client.lastEpisodeCard().label, "30 min left", "a part-heard episode is unchanged");
+  assert.ok(again.client.restoreLastEpisode(), "and its ribbon restores");
   again.restore();
   restore();
 });
@@ -2583,5 +2594,694 @@ test("VISUAL PASS: previous/next clip are their own labelled row, shown only whi
   await prev.click();
   await settle();
   assert.equal(client.forayStatus().index, 0, "Previous clip, just into a clip, goes back one");
+  restore();
+});
+
+/* ==================================================================== */
+/* part 11 — audit round 2 (2026-09-23), lane L1: the transport hook,    */
+/*           loads that carry their own start, clocks, the car           */
+/* ==================================================================== */
+
+/** A `window.speechSynthesis` for the REAL `foray-tts.js` web fallback, so a
+    script-only narration line goes through the real bridge, the real manager
+    and the real client. `speaking`/`paused` are what `state()` reads, so a test
+    can be the OS taking the session away by flipping them. */
+function fakeSpeech() {
+  return {
+    spoken: [], transport: [], speaking: false, paused: false, pending: false,
+    speak(u) { this.spoken.push(u.text); this.speaking = true; this.paused = false; },
+    pause() { this.transport.push("pause"); this.paused = true; },
+    resume() { this.transport.push("resume"); this.paused = false; },
+    cancel() { this.transport.push("cancel"); this.speaking = false; this.paused = false; },
+    getVoices() { return []; },
+  };
+}
+class FakeUtterance { constructor(text) { this.text = text; } }
+
+/** Two segments from two episodes whose ABSOLUTE seconds do not overlap the
+    way `synthetic()`'s do: A sits at 1000-1100 of its file, B at 500-600, so an
+    offset meant for A is PAST B's out-point — the shape that disarms a boundary. */
+function disjointForay() {
+  const foray = {
+    id: "f-r2", kind: "deep-dive", title: "A Foray", status: "published",
+    slots: [{ id: "one", title: "Slot one" }],
+    items: [
+      { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: "sa" },
+      { type: "segment", slot: "one", label: "L2", role: "explanation", segment_id: "sb" },
+    ],
+  };
+  const segments = indexSegments({
+    segments: [
+      { id: "sa", item_id: "ep-a", start_sec: 1000, end_sec: 1100, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+      { id: "sb", item_id: "ep-b", start_sec: 500, end_sec: 600, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+    ],
+  });
+  const sources = indexSources({
+    sources: [
+      { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
+      { id: "ep-b", show: "Show B", title: "Ep B", audio_url: "https://cdn.test/b.mp3", duration_sec: 3600, dai_suspected: false },
+    ],
+  });
+  return resolveForay(foray, { segments, sources });
+}
+
+/** A segment, a narration line in the MIDDLE, a segment. `rendered: true` gives
+    the line a file of its own (no `start_sec`, like every bridge); false makes
+    it script-only, spoken through `fakeSpeech`. `lineFirst` puts the line at
+    index 0 with one segment after it. */
+function forayWithLine({ rendered = true, lineSec = 30, lineFirst = false } = {}) {
+  const line = rendered
+    ? { type: "narration", slot: "one", id: "n1", audio_url: "https://cdn.test/n1.mp3", duration_sec: lineSec, script: "Hello there." }
+    : { type: "narration", slot: "one", id: "n1", duration_sec: lineSec, script: "Hello there." };
+  const segA = { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: "sa" };
+  const segB = { type: "segment", slot: "one", label: "L2", role: "explanation", segment_id: "sb" };
+  const foray = {
+    id: "f-line", kind: "deep-dive", title: "A Foray", status: "published",
+    slots: [{ id: "one", title: "Slot one" }],
+    items: lineFirst ? [line, segA] : [segA, line, segB],
+  };
+  const segments = indexSegments({
+    segments: [
+      { id: "sa", item_id: "ep-a", start_sec: 100, end_sec: 200, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+      { id: "sb", item_id: "ep-b", start_sec: 500, end_sec: 600, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+    ],
+  });
+  const sources = indexSources({
+    sources: [
+      { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
+      { id: "ep-b", show: "Show B", title: "Ep B", audio_url: "https://cdn.test/b.mp3", duration_sec: 3600, dai_suspected: false },
+    ],
+  });
+  return resolveForay(foray, { segments, sources });
+}
+
+const clocks = (doc) => ({ now: find(doc.body, "fp-now"), left: find(doc.body, "fp-left"), scrub: find(doc.body, "fp-scrub") });
+
+/* ---- player-1: the natural end repaints, and continuous playback starts ---- */
+
+test("ROUND 2 player-1: the natural end of an episode repaints the transport and fires onEpisodeEnded with NO other event", async (t) => {
+  /* Both engines fire `timeupdate`, `pause`, `ended` in that order and the
+     reducer moves to `ended` only inside the `ended` listener, so every
+     media-event repaint ran against `playing`: the bar kept saying Pause with
+     the thumb at 100%, and the next Up Next episode — announced from `render()`
+     — never started until the phone was touched. KILLING MUTATION: delete
+     `onStateSettled: () => render()` from `ensureBooted`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  const ended = [];
+  client.onEpisodeEnded((id) => ended.push(id));
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(transport(doc).label, "Pause", "precondition");
+  audio.runOut();
+  await settle();
+  await settle();
+  assert.deepEqual(ended, ["ep-a"], "continuous playback was told, from the end itself");
+  assert.equal(transport(doc).label, "Play", "and the bar no longer offers to pause something that is over");
+  assert.equal(transport(doc).glyph, "▶");
+  restore();
+});
+
+test("ROUND 2 player-1 / perf-7: with the screen OFF the next episode still starts, and the page is not painted", async (t) => {
+  /* The founder's headline case is a car with the screen off: `document.hidden`
+     is true, and the one signal that matters — the end — must fire from there.
+     The page's own DOM is skipped while hidden (perf-7) and repainted on the way
+     back. KILLING MUTATIONS: move `_announceEpisodeEndedIfNeeded()` inside
+     `paintPage` (the first assertion fails), or drop the `document.hidden` guard
+     from `render()` (the second). */
+  const { client, doc, audio, restore } = await bootClient(t);
+  const ended = [];
+  client.onEpisodeEnded((id) => ended.push(id));
+  await client.play(episodeItem());
+  await settle();
+  doc.hidden = true;
+  doc.fire("visibilitychange");
+  audio.runOut();
+  await settle();
+  await settle();
+  assert.deepEqual(ended, ["ep-a"], "the end reaches continuous playback with the screen off");
+  assert.equal(transport(doc).label, "Pause", "nothing on the hidden page was repainted");
+  doc.hidden = false;
+  doc.fire("visibilitychange");
+  await settle();
+  assert.equal(transport(doc).label, "Play", "coming back repaints in full");
+  restore();
+});
+
+/* ---- p-impatient-4 / p-impatient-1: the load is a state, with a position ---- */
+
+test("ROUND 2 p-impatient-4: a cold load says Loading, keeps ▶, and shows the resume point rather than 0:00", async (t) => {
+  /* KILLING MUTATIONS: drop `isLoading()` from `paintStatus` (no line), or the
+     `loadingStart` branch from `episodePositionSec` (the countdown reads the
+     whole runtime). */
+  const carried = await aSessionThatReached(t, 2280);
+  const { client, doc, audio, restore } = await bootClient(t, { seed: carried });
+  audio.holdLoad = true;
+  const started = client.play(episodeItem());
+  await settle();
+  assert.equal(secondLine(doc), "Loading…");
+  assert.equal(statusNote(doc).textContent, "Loading…");
+  assert.equal(transport(doc).glyph, "▶", "never playing before audio exists");
+  assert.equal(find(doc.body, "fp-play").dataset.loading, "1");
+  assert.equal(find(doc.body, "fp-bar").getAttribute("aria-busy"), "true");
+  assert.equal(clocks(doc).left.textContent, "-22:00", "the bar shows where the load will land, not 0:00");
+  audio.releaseLoad();
+  await started;
+  await settle();
+  assert.equal(secondLine(doc), "Show A", "the line clears when the audio is there");
+  assert.equal(find(doc.body, "fp-play").dataset.loading, undefined);
+  assert.ok(Math.abs(audio.currentTime - 2280) < 1);
+  restore();
+});
+
+test("ROUND 2 p-impatient-1: ↺15 tapped while a resumed episode is still loading keeps the resume point", async (t) => {
+  /* `seekEpisodeBy` read the element's clock, which is 0 until `loadedmetadata`
+     applies the offset — so ↺15 during the load became `seek(0)`, queued as the
+     pending seek and applied AFTER the load had positioned the element at 38
+     minutes. KILLING MUTATION: the `loadingStart` branch of `episodePositionSec`. */
+  const carried = await aSessionThatReached(t, 2280);
+  const { client, doc, audio, restore } = await bootClient(t, { seed: carried });
+  audio.holdLoad = true;
+  const started = client.play(episodeItem());
+  await settle();
+  await sheet(doc).back.click();
+  await settle();
+  audio.releaseLoad();
+  await started;
+  await settle();
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 2265) < 1, `landed at ${audio.currentTime}s, not 15 s before the resume point`);
+  restore();
+});
+
+/* ---- races-1 / p-impatient-2: a load carries its own start; the answer is for the item ---- */
+
+test("ROUND 2 races-1: a resume superseded by Next clip inside its load window never seeks the new clip", async (t) => {
+  /* `playForay` was `play()` then `seek(offsetAt)`; a superseded load resolves
+     quietly, so the trailing seek landed on the NEW clip at the OLD clip's
+     absolute second — past its out-point, which disarmed the boundary. The
+     offset now rides on the load and dies with it. KILLING MUTATION: put
+     `await manager.seek(offsetAt, { precise: true })` back after `manager.play`
+     in `playForay` (and drop `startOffset`). */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = disjointForay();
+  audio.holdLoad = true;
+  const started = client.playForay(resolved, { startElapsedSec: 50 });   // clip 1 at 1050 s of ep-a
+  await settle();
+  const next = client.forayNext();                                       // the impatient tap; its load is held too
+  await settle();
+  audio.releaseLoad();
+  await Promise.all([started, next]);
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1);
+  assert.ok(Math.abs(audio.currentTime - 500) < 1, `clip 2 starts at its own in-point, got ${audio.currentTime}s`);
+  audio.currentTime = 600.01;
+  audio.fire("timeupdate");
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().ended, true, "and its boundary is still armed");
+  restore();
+});
+
+test("ROUND 2 races-1: a restored bar's press superseded by another row's ▶ does not seek the new episode", async (t) => {
+  /* Same shape on the ribbon: the seek to yesterday's position landed on the
+     episode tapped next. KILLING MUTATION: the two-step back in `setRunning`'s
+     restored branch. */
+  const { doc, client, audio, restore } = await aRestoredRibbon(t, 1800);
+  audio.holdLoad = true;
+  transport(doc).press();
+  await settle();
+  const other = client.play({ ...episodeItem("ep-b"), title: "Ep B" });
+  await settle();
+  audio.releaseLoad();
+  await other;
+  await settle();
+  await settle();
+  assert.equal(client.isCurrent("ep-b"), true);
+  assert.ok(audio.currentTime < 1, `ep-b starts from its own top, got ${audio.currentTime}s`);
+  restore();
+});
+
+test("ROUND 2 p-impatient-2: a play superseded mid-load answers false, so the row is never recorded as played", async (t) => {
+  /* `play()` returned `manager.state.type !== "idle"` — the state of whoever
+     owns the player NOW — so A's caller was told true while B loaded, and A
+     entered History. KILLING MUTATION: `return manager.state?.type !== "idle";`. */
+  const { client, audio, restore } = await bootClient(t);
+  audio.holdLoad = true;
+  const first = client.play(episodeItem("ep-a"));
+  await settle();
+  const second = client.play(episodeItem("ep-b"));
+  await settle();
+  audio.releaseLoad();
+  assert.equal(await first, false, "A never made a sound");
+  assert.equal(await second, true, "B did");
+  assert.equal(client.isCurrent("ep-b"), true);
+  restore();
+});
+
+/* ---- player-3: leaving is a flush ---- */
+
+test("ROUND 2 player-3: a scrub made while paused survives playing something else", async (t) => {
+  /* `handleSeek` in `interrupted` saves the position being LEFT, nothing writes
+     while paused, and `play()` flushed only the Foray store. KILLING MUTATION:
+     put `persistForayProgress({ force: true })` back in place of
+     `flushPositions()` in `play()`. */
+  const { client, doc, audio, storage, restore } = await pausedAt(t, 600);
+  const { scrub } = sheet(doc);
+  scrub.value = "500";                                   // 1800 s
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 1800) < 1, "precondition: the element moved");
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 600) < 1, "precondition: the reducer wrote the position being left");
+  await client.play(episodeItem("ep-b"));
+  await settle();
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1800) < 1, `the scrub is what was kept, got ${posRow(storage, "ep-a").seconds}`);
+  restore();
+});
+
+test("ROUND 2 player-3: a scrub made while paused survives Stop", async (t) => {
+  /* KILLING MUTATION: `stopAndClose` flushing the Foray row only. */
+  const { doc, audio, storage, restore } = await pausedAt(t, 600);
+  const { scrub } = sheet(doc);
+  scrub.value = "500";
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 1800) < 1, "precondition");
+  await find(doc.body, "fp-stop").click();
+  await settle();
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1800) < 1, `got ${posRow(storage, "ep-a").seconds}`);
+  restore();
+});
+
+/* ---- the clocks: player-6, a11y-7, honesty-13 ---- */
+
+test("ROUND 2 player-6: dragging the scrubber moves the clocks with the thumb, not the audio", async (t) => {
+  /* `input` only set a flag; the clocks kept ticking the live position until
+     release, so you could not aim for 32:00. KILLING MUTATION: the `input`
+     handler back to `() => { scrubbing = true; }`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  audio.currentTime = 600;
+  audio.fire("timeupdate");
+  const { now, left, scrub } = clocks(doc);
+  assert.equal(now.textContent, "10:00", "precondition");
+  scrub.value = "750";
+  for (const fn of scrub.listeners.get("input") ?? []) fn();
+  assert.equal(now.textContent, "45:00", "the elapsed clock shows the thumb");
+  assert.equal(left.textContent, "-15:00", "so does the countdown");
+  assert.equal(scrub.getAttribute("aria-valuetext"), "45:00 of 1:00:00", "and the slider says it too");
+  audio.currentTime = 601;
+  audio.fire("timeupdate");
+  assert.equal(now.textContent, "45:00", "the audio ticking on does not take the readout back");
+  restore();
+});
+
+test("ROUND 2 a11y-7: a slider that has FOCUS is not rewritten every tick", async (t) => {
+  /* WebKit posts a value-changed notification on a focused slider whenever its
+     value or text moves, so a VoiceOver user parked on Seek heard a running
+     clock. KILLING MUTATION: drop the `held` check in `paintPage`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const { now, scrub } = clocks(doc);
+  const valuetext = scrub.getAttribute("aria-valuetext");
+  doc.activeElement = scrub;
+  audio.currentTime = 600;
+  audio.fire("timeupdate");
+  assert.equal(scrub.value, "0", "the focused slider keeps its value");
+  assert.equal(scrub.getAttribute("aria-valuetext"), valuetext, "and its spoken value");
+  assert.equal(now.textContent, "10:00", "the clock beside it still moves");
+  doc.activeElement = null;
+  audio.fire("timeupdate");
+  assert.equal(scrub.value, "167", "and it follows again once focus leaves");
+  restore();
+});
+
+test("ROUND 2 honesty-13: elapsed and remaining add up, and the countdown keeps its sign until it shows nothing", async (t) => {
+  /* The episode clock rounds while the comment said both floor: 12.5 s into 60
+     read "0:13" and "-0:48", and the last half-second read an unsigned "0:01".
+     KILLING MUTATIONS: `remainingClock(dur - pos)` from the raw difference (61
+     seconds shown), or `left >= 1 ? "-" + clock : clock` (the unsigned 0:01). */
+  const { client, doc, audio, restore } = await bootClient(t);
+  audio.duration = 60;
+  await client.play({ ...episodeItem(), duration_sec: 60 });
+  await settle();
+  const { now, left } = clocks(doc);
+  audio.currentTime = 12.5;
+  audio.fire("timeupdate");
+  assert.equal(now.textContent, "0:13");
+  assert.equal(left.textContent, "-0:47", "13 + 47 = 60");
+  audio.currentTime = 59.3;
+  audio.fire("timeupdate");
+  assert.equal(left.textContent, "-0:01", "a clock that shows a second keeps its minus");
+  audio.currentTime = 59.6;
+  audio.fire("timeupdate");
+  assert.equal(left.textContent, "0:00", "and only a clock that shows nothing drops it");
+  restore();
+});
+
+/* ---- honesty-4: the measured duration wins ---- */
+
+test("ROUND 2 honesty-4: a row's progress is measured against the duration the player MEASURED, not the catalogue's", async (t) => {
+  /* KILLING MUTATION: prefer `durationSec` over `stored.duration` in the
+     `episodeProgress` bridge again. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  audio.duration = 3581;                                  // the file that actually played
+  await client.play(episodeItem());
+  await settle();
+  audio.currentTime = 1800;
+  audio.fire("timeupdate");
+  transport(doc).press();                                 // the pause writes the row with the measured duration
+  await settle();
+  assert.equal(client.episodeProgress("ep-a", 2700).label, "30 min left", "the catalogue said 45 minutes; the tape is 59:41");
+  assert.equal(client.episodeProgress("ep-a", 2700).state, "in-progress");
+  restore();
+});
+
+/* ---- player-9: the speed button says what it opens ---- */
+
+test("ROUND 2 player-9: the speed button is named for the menu it opens", async (t) => {
+  /* KILLING MUTATION: drop the `aria-haspopup` line in `buildUI`. The string
+     itself is pinned in playback-rate.test.js. */
+  const { client, doc, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const rate = find(doc.body, "fp-rate");
+  assert.equal(rate.getAttribute("aria-haspopup"), "dialog");
+  assert.match(rate.getAttribute("aria-label"), /opens the speed menu$/);
+  restore();
+});
+
+/* ---- copy-5 / player-10: one second line, and the OS entry of a restored Foray ---- */
+
+test("ROUND 2 copy-5: the live Foray bar's second line is the show and the clip, with no 'Now:'", async (t) => {
+  /* KILLING MUTATION: `Now: ${item.show}` back in `foraySecondLine`. */
+  const { client, doc, restore } = await bootClient(t);
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+  assert.equal(secondLine(doc), "Show A · clip 1 of 2");
+  restore();
+});
+
+test("ROUND 2 copy-5 / player-10: a RESTORED Foray reads the same on the bar and the lock screen, and its clip follows a scrub", async (t) => {
+  /* The restored bar said "Foray · clip 2 of 2" until the first press, and the
+     lock screen took the placeholder for an episode: artist "Foray · clip 2 of
+     2", album blank. KILLING MUTATIONS: the old string in `restoreForay`; drop
+     the restored branch from `mediaViewFields`; drop the `pendingForay` block
+     from `paintPage`. */
+  const ms = fakeMediaSession();
+  const { client, doc, restore } = await bootClient(t, { mediaSession: ms });
+  const resolved = synthetic();
+  assert.ok(client.restoreForay(resolved, { startElapsedSec: 150 }), "precondition: restored");
+  await settle();
+  assert.equal(secondLine(doc), "Show B · clip 2 of 2", "the restored line is the live line");
+  assert.equal(ms.metadata.title, "Ep B", "the lock screen shows the clip");
+  assert.equal(ms.metadata.artist, "Show B");
+  assert.equal(ms.metadata.album, "A Foray · clip 2 of 2");
+  const { scrub } = sheet(doc);
+  scrub.value = "0";
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.equal(secondLine(doc), "Show A · clip 1 of 2", "the clip number follows the thumb");
+  assert.equal(ms.metadata.artist, "Show A");
+  transport(doc).press();
+  await settle();
+  await settle();
+  assert.equal(secondLine(doc), "Show A · clip 1 of 2", "and the first press changes nothing about the wording");
+  restore();
+});
+
+/* ---- player-4 / player-5 / player-7 / player-11: the Foray's own controls ---- */
+
+test("ROUND 2 player-4: Previous clip pressed just into a narration line goes back PAST the narrator", async (t) => {
+  /* `into` was `backend.currentTime - item.start_sec`, NaN for a line with no
+     `start_sec`, and `NaN < 4` is false — so Previous always restarted the line.
+     KILLING MUTATION: put that subtraction back in `forayPrevious`. */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = forayWithLine({ rendered: true });
+  await client.playForay(resolved, { startIndex: 1 });
+  await settle();
+  assert.equal(client.forayStatus().index, 1, "precondition: on the line");
+  audio.currentTime = 1;
+  audio.fire("timeupdate");
+  await client.forayPrevious();
+  await settle();
+  assert.equal(client.forayStatus().index, 0, "the clip before the narrator");
+  restore();
+});
+
+test("ROUND 2 player-5: 30↻ near the end of a Foray stops short of the end instead of finishing it", async (t) => {
+  /* The Foray nudge had no end guard: `segmentAtElapsed` answers a target past
+     the total with the last clip's END, and the seek landed 0.25 s inside the
+     out-point, which ended the Foray and cleared its resume row. KILLING
+     MUTATION: `foraySeek(Math.max(0, forayPosition() + offset))` in `nudgeBy`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.playForay(synthetic(), { startIndex: 1 });
+  await settle();
+  audio.currentTime = 580;                                // 20 s left in the last clip
+  audio.fire("timeupdate");
+  await sheet(doc).fwd.click();
+  await settle();
+  assert.ok(audio.currentTime >= 598.99 && audio.currentTime <= 599.01, `one second short of the end, got ${audio.currentTime}s`);
+  audio.fire("timeupdate");
+  await settle();
+  assert.equal(client.forayStatus().ended, false, "the Foray is not over");
+  assert.equal(client.forayStatus().index, 1);
+  restore();
+});
+
+test("ROUND 2 player-7: a Foray clip that will not load says so on the bar and in the sheet", async (t) => {
+  /* `paintStatus` dropped a Foray's failure on the assumption its page was on
+     screen; started from the ribbon, Jump back in or the car it is not.
+     KILLING MUTATION: `const failure = foray ? null : playFailure;`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  audio.loadPlan.set("https://cdn.test/a.mp3", "error");
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+  await settle();
+  assert.equal(secondLine(doc), "Did not load — press play to try again");
+  assert.equal(statusNote(doc).textContent, "Did not load — press play to try again");
+  restore();
+});
+
+test("ROUND 2 player-11: a nudge inside a SPOKEN line restarts it (back) or skips it (forward), and says so", async (t) => {
+  /* The synthesiser cannot start mid-sentence, so `foraySeek` into the line
+     being spoken did nothing at all, silently. KILLING MUTATION: drop the
+     `isNarrationPlayhead` branch from `nudgeBy`. */
+  const speech = fakeSpeech();
+  const { client, doc, restore } = await bootClient(t, { speech });
+  t.after(() => client.stopForDataDeletion().catch(() => {}));   // stops the narration ticker
+  await client.playForay(forayWithLine({ rendered: false, lineSec: 60, lineFirst: true }), { startIndex: 0 });
+  await settle();
+  await settle();
+  assert.equal(speech.spoken.length, 1, "precondition: the line is being spoken");
+  const announce = find(doc.body, "fp-announce sr-only");
+  await sheet(doc).back.click();
+  await settle();
+  await settle();
+  assert.equal(speech.spoken.length, 2, "↺15 at the top of the line speaks it again");
+  assert.equal(announce.textContent, "Narration restarted");
+  await sheet(doc).fwd.click();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1, "30↻ inside the line skips it");
+  assert.equal(announce.textContent, "Narration skipped");
+  restore();
+});
+
+/* ---- p-car-3 / native-3: after a call ---- */
+
+test("ROUND 2 p-car-3: reconciling an interruption does not tell an already-paused element to pause again", async (t) => {
+  /* In WebKit a script `pause()` during an interruption records "paused" as the
+     state to restore, so the OS's own resume then resumes nothing. The fake
+     counts every `pause()` call. KILLING MUTATION: `this.el.pause()`
+     unconditionally in `HtmlAudioBackend.pause`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const before = audio.calls.filter((c) => c === "pause").length;
+  audio.routeLost();                                      // the call took the audio; the page saw the pause
+  await settle();
+  await settle();
+  assert.equal(transport(doc).label, "Play", "precondition: the reconcile corrected the machine");
+  assert.equal(audio.calls.filter((c) => c === "pause").length, before, "and issued no pause of its own");
+  restore();
+});
+
+test("ROUND 2 p-car-3 (founder question 2): the call ends with should-resume, and 4a comes back on its own", async (t) => {
+  /* `manager.interruptionEnded` had no production caller. KILLING MUTATION:
+     drop the `interruptionEnded` branch from `onNativeSession`. */
+  const { client, doc, win, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  audio.currentTime = 900;
+  audio.routeLost();
+  await settle();
+  assert.equal(audio.paused, true, "precondition: silent during the call");
+  nativeSession(win, { kind: "interruptionEnded", reason: "should-resume", producer: "audio", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "the audio is back");
+  assert.equal(transport(doc).label, "Pause");
+  assert.ok(Math.abs(audio.currentTime - 900) < 1, "from where the call took it");
+  restore();
+});
+
+test("ROUND 2 p-car-3: should-resume never resumes a pause the LISTENER made before the call", async (t) => {
+  /* iOS still sends should-resume for an app that held its session while
+     paused (2026-09-23). KILLING MUTATION: drop `!this._pausedByListener` from
+     `interruptionEnded`. */
+  const { win, audio, restore } = await pausedAt(t, 600);
+  nativeSession(win, { kind: "interruptionBegan", reason: "began-while-held", producer: "audio", at: Date.now() });
+  await settle();
+  const plays = audio.calls.filter((c) => c === "play").length;
+  nativeSession(win, { kind: "interruptionEnded", reason: "should-resume", producer: "audio", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(audio.paused, true, "still paused, as the listener left it");
+  assert.equal(audio.calls.filter((c) => c === "play").length, plays, "nothing started");
+  restore();
+});
+
+test("ROUND 2 p-car-3: a STALE should-resume, a no-resume, and a resume the listener already did all change nothing", async (t) => {
+  /* KILLING MUTATIONS: drop the lag guard (`fresh`) from `onNativeSession`
+     (the first block starts audio); the reducer's `interrupted`-only rule
+     covers the third. */
+  const { client, doc, win, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  audio.routeLost();
+  await settle();
+  nativeSession(win, { kind: "interruptionEnded", reason: "should-resume", producer: "audio", at: Date.now() - 60_000 });
+  await settle();
+  await settle();
+  assert.equal(audio.paused, true, "a minute-old event is a listener who has since opened the app");
+  nativeSession(win, { kind: "interruptionEnded", reason: "no-resume", producer: "audio", at: Date.now() });
+  await settle();
+  assert.equal(audio.paused, true, "the OS said not to");
+  transport(doc).press();                                 // the listener resumes it themselves
+  await settle();
+  await settle();
+  assert.equal(audio.paused, false, "precondition");
+  const calls = audio.calls.length;
+  nativeSession(win, { kind: "interruptionEnded", reason: "should-resume", producer: "audio", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(audio.calls.length, calls, "a late should-resume after their own press touches nothing");
+  restore();
+});
+
+test("ROUND 2 native-3: an interruption during a SPOKEN line pauses the Foray, and should-resume continues the line", async (t) => {
+  /* `AVSpeechSynthesizer` stops when the session is taken and reports nothing;
+     the reconcile returned early for every synth item, so the Foray said
+     Playing over silence forever. Now the synthesiser is asked. KILLING
+     MUTATIONS: `if (this._loadedIsSynth) return false;` (no `interruption`
+     branch) in `reconcileWithBackend`; or pass `interruption: false` from
+     `onNativeSession`. */
+  const speech = fakeSpeech();
+  const { client, doc, win, restore } = await bootClient(t, { speech });
+  t.after(() => client.stopForDataDeletion().catch(() => {}));
+  await client.playForay(forayWithLine({ rendered: false, lineSec: 60, lineFirst: true }), { startIndex: 0 });
+  await settle();
+  await settle();
+  assert.equal(transport(doc).label, "Pause", "precondition: the line is speaking");
+  // A late event: the line is still speaking — the call was declined.
+  nativeSession(win, { kind: "interruptionBegan", reason: "began", producer: "tts", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(transport(doc).label, "Pause", "a synthesiser that is still speaking was not interrupted");
+  // The real one: the session was taken and the synthesiser fell silent.
+  speech.speaking = false;
+  nativeSession(win, { kind: "interruptionBegan", reason: "began", producer: "tts", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(transport(doc).label, "Play", "the Foray says paused, not Playing over silence");
+  assert.deepEqual(speech.transport, ["pause"]);
+  nativeSession(win, { kind: "interruptionEnded", reason: "should-resume", producer: "tts", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(transport(doc).label, "Pause", "and the line continues when the call ends");
+  assert.deepEqual(speech.transport, ["pause", "resume"]);
+  restore();
+});
+
+/* ---- p-car-8 / p-car-6 / perf-7: what the OS is told, and how often ---- */
+
+test("ROUND 2 p-car-8: a stall is reported to the OS at rate 0, with the state still playing", async (t) => {
+  /* KILLING MUTATION: drop `buffering` from `mediaViewFields`. */
+  const ms = fakeMediaSession();
+  const states = [];
+  ms.setPositionState = (s) => { if (s) states.push(s); };
+  const { client, audio, restore } = await bootClient(t, { mediaSession: ms });
+  await client.play(episodeItem());
+  await settle();
+  audio.currentTime = 100;
+  audio.fire("timeupdate");
+  assert.equal(states[states.length - 1].playbackRate, 1, "precondition");
+  audio.fire("waiting");
+  assert.equal(states[states.length - 1].playbackRate, 0, "the clock stops");
+  assert.equal(ms.playbackState, "playing", "the listener did not pause");
+  audio.fire("playing");
+  assert.equal(states[states.length - 1].playbackRate, 1, "and starts again with the audio");
+  restore();
+});
+
+test("ROUND 2 p-car-6: a finished EPISODE stays on the lock screen paused; a finished Foray still clears it", async (t) => {
+  /* KILLING MUTATION: `if (ended) return NONE;` in `mediaPlaybackState`, or drop
+     `foray: true` from the Foray branch of `mediaViewFields`. */
+  const ms = fakeMediaSession();
+  const { client, audio, restore } = await bootClient(t, { mediaSession: ms });
+  await client.play(episodeItem());
+  await settle();
+  audio.runOut();
+  await settle();
+  await settle();
+  assert.equal(ms.playbackState, "paused", "the car keeps a play button that starts it over");
+  assert.ok(ms.handlers.has("play"), "and the button is wired");
+  await client.playForay(synthetic(), { startIndex: 1 });
+  await settle();
+  await settle();
+  audio.runOut();
+  await settle();
+  await settle();
+  assert.equal(ms.playbackState, "none", "a finished Foray is not a paused one");
+  restore();
+});
+
+test("ROUND 2 perf-7: the OS position is written once a second, not four times", async (t) => {
+  /* KILLING MUTATION: `media.update(view)` unconditionally in `publishMediaView`
+     — the bridge dedupes to a tenth, so four ticks inside one second are four
+     writes. */
+  const ms = fakeMediaSession();
+  const states = [];
+  ms.setPositionState = (s) => { if (s) states.push(s); };
+  const { client, audio, restore } = await bootClient(t, { mediaSession: ms });
+  await client.play(episodeItem());
+  await settle();
+  const before = states.length;
+  for (const at of [100.1, 100.3, 100.6, 100.9]) { audio.currentTime = at; audio.fire("timeupdate"); }
+  assert.equal(states.length - before, 1, "one write for the second");
+  audio.currentTime = 101.2;
+  audio.fire("timeupdate");
+  assert.equal(states.length - before, 2, "the next second is the next write");
+  restore();
+});
+
+test("ROUND 2 perf-7: a control's accessible name is not rewritten to itself on every tick", async (t) => {
+  /* KILLING MUTATION: `btn.setAttribute("aria-label", label)` unconditionally in
+     `paintControl`. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const btn = find(doc.body, "fp-play");
+  let writes = 0;
+  const original = btn.setAttribute.bind(btn);
+  btn.setAttribute = (k, v) => { if (k === "aria-label") writes++; return original(k, v); };
+  for (const at of [10, 20, 30]) { audio.currentTime = at; audio.fire("timeupdate"); }
+  assert.equal(writes, 0);
+  transport(doc).press();
+  await settle();
+  assert.equal(writes, 1, "and a real change is still written");
   restore();
 });
