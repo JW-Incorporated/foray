@@ -14589,8 +14589,9 @@ const VOICE_SETTINGS_PATH = "Settings \u2192 Accessibility \u2192 Spoken Content
     halve, and HUMAN-ACTIONS.md H3 carries the dated note. DELIBERATELY NOT
     LABELLED WITH A CLAIMED SECOND COUNT, for the same reason as before: the
     word count is not tuned to any seconds-per-word rate, so a spoken "ten
-    seconds" would be a claim this text cannot back up at whatever playback
-    speed the listener has chosen. */
+    seconds" would be a claim this text cannot back up in whatever voice the
+    listener picks. (It is spoken at 1x, never the listener's playback speed,
+    since the founder's 2026-09-24 ruling — see `auditionVoiceRow`.) */
 const AUDITION_LINE = "one, two, three, four, five, six, seven, eight, nine, ten.";
 
 let voiceUi = null;
@@ -14874,7 +14875,12 @@ function moveVoiceChoice(id, step) {
 }
 
 /** V-01's Audition: speak the fixed counting line, in this row's voice, at
-    the current playback speed — doubling as H3's stopwatch test. Guarded the
+    1x — the speed every synthesized narration line is spoken at since the
+    founder's 2026-09-24 ruling ("1x for now, but maybe we change later"), so
+    the Preview sounds like the narration it previews. It used to speak at the
+    current playback speed, doubling as H3's stopwatch test of the rate curve
+    above 1x; narration no longer uses that part of the curve. The speed is
+    `player/client.js`'s `auditionVoice`, not this function's. Guarded the
     same way every Foray tap is (#225): a rejected promise here must not
     become a console line nobody has open. */
 async function auditionVoiceRow(id) {

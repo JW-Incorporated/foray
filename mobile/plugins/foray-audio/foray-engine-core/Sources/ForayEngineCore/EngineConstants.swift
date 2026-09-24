@@ -161,6 +161,8 @@ public enum EngineConstants {
 
     /// `player/queue-manager.js`
     public enum QueueManager {
+        /// `NARRATION_RATE`
+        public static let narrationRate: Double = 1
         /// `POSITION_INTERVAL_MS`
         public static let positionIntervalMs: Double = 15000
     }

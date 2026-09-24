@@ -87,7 +87,7 @@
        no URLs, no identity. `diagnostic-log.js`'s header holds the full rule.
 */
 
-import { PlayerQueueManager } from "./queue-manager.js";
+import { PlayerQueueManager, NARRATION_RATE } from "./queue-manager.js";
 import { HtmlAudioBackend } from "./html-audio-backend.js";
 import { PositionStore } from "./position-store.js";
 import {
@@ -4212,18 +4212,23 @@ const ForayPlayer = {
   },
 
   /**
-   * Speak the fixed audition line through a SPECIFIC voice, at the listener's
-   * CURRENT playback speed — V-01's stopwatch test for H3 (#490's rate
-   * curve). Deliberately independent of `manager`/a live Foray: auditioning a
+   * Speak the fixed audition line through a SPECIFIC voice, at
+   * `NARRATION_RATE` — the 1x every synthesized narration line is spoken at
+   * since the founder's 2026-09-24 ruling (*"1x for now, but maybe we change
+   * later"*). It used to speak at the listener's CURRENT playback speed, as
+   * V-01's stopwatch test for H3 (#490's rate curve); once narration stopped
+   * following that speed, a Preview at 2x would have been a sample of a pace
+   * the narrator never uses, so a preview now sounds like what it previews.
+   * Deliberately independent of `manager`/a live Foray: auditioning a
    * voice from the picker must work whether or not anything is playing, and
    * must never touch the queue (an audition mid-Foray is not "the next
    * narration item" — it is a one-off the listener asked for by name).
    *
    * Goes straight to the shared `ttsBridge`, not through `_speakNarration` —
-   * that method reads `this._voice`/`this._rate` off the LIVE manager, which
-   * is exactly the wrong source here: the picker is choosing a DIFFERENT
-   * voice than whatever is currently selected, possibly before any manager
-   * exists at all.
+   * that method reads `this._voice` off the LIVE manager, which is exactly
+   * the wrong source here: the picker is choosing a DIFFERENT voice than
+   * whatever is currently selected, possibly before any manager exists at
+   * all. The speed is the same constant `_speakNarration` passes.
    *
    * @param {string} text  the fixed line the caller supplies (app.js owns the
    *   copy; this file has no business authoring narration text)
@@ -4232,7 +4237,7 @@ const ForayPlayer = {
    *   `voiceFallback`, etc. — unchanged, so the caller can show V-01's notice.
    */
   auditionVoice(text, voiceId) {
-    return ttsBridge.speak(text, { rate: currentRate(), voice: voiceId });
+    return ttsBridge.speak(text, { rate: NARRATION_RATE, voice: voiceId });
   },
 
   /* ---------- K-01: the bundled-voice measurement ----------

@@ -214,7 +214,7 @@ const FLOORS = {
      whose case count is floored in player/parity/floors.json), so a deleted test
      here is a rule nothing asserts any more. */
   "player/continuation.test.js": 11,
-  "player/queue-manager.test.js": 147, // audit round 2 (2026-09-23, L1): onStateSettled fires after every handled event, a spoken line past its deadline is treated as finished, should-resume never resumes a listener's pause; 144 -> 147 // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
+  "player/queue-manager.test.js": 159, // fix/narration-1x (2026-09-24, founder: "1x for now"): synthesized narration speaks at NARRATION_RATE whatever the listener's rate, on both call paths, and its deadline follows; 147 -> 159 // audit round 2 (2026-09-23, L1): onStateSettled fires after every handled event, a spoken line past its deadline is treated as finished, should-resume never resumes a listener's pause; 144 -> 147 // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 58, // 2026-09-22 audit (L2): `elementResumed` — interrupted -> playing with no audio effect, and nothing from any other state; 56 -> 58
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
@@ -522,7 +522,7 @@ const FLOORS = {
      a nineteen-test suite; L4 added the one-radio-group cell (qa row 81) and L3
      the two "a rebuild must not throw focus out of the sheet" cells. Set to the
      post-merge count. */
-  "test/voice-settings.test.js": 22,
+  "test/voice-settings.test.js": 24, // fix/narration-1x (2026-09-24): the Preview speaks at NARRATION_RATE, never the listener's speed; 22 -> 24
   /* Theme F of the 2026-09-22 audit: tap targets sized by a RULE. Enumerates
      every control the audit measured below 44px and requires a 44px hit area
      by size or by the one `:where(...)::after` rule, checks that rule's shape,
@@ -1477,7 +1477,7 @@ const FLOORS = {
      neither Python nor misaki, which is the point: it re-checks on every CI run
      a file that CI could not have produced. */
   "tools/mobile/kokoro-vocab.test.mjs": 7,
-  "tools/mobile/foray-tts.test.mjs": 62, // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
+  "tools/mobile/foray-tts.test.mjs": 66, // fix/narration-1x (2026-09-24): rate 1 is each platform's normal rate — passed through, Web Speech 1, Android setSpeechRate(1.0f), iOS AVSpeechUtteranceDefaultSpeechRate; 62 -> 66 // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody
