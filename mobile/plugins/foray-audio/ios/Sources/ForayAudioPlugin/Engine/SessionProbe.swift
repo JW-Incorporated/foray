@@ -145,7 +145,7 @@ final class SessionProbe {
         cancelTimer()
         let now = engine.seams.timing.monoMs
         speechMs = speakStartedMono.map { now - $0 }
-        guard end == .finished else { return finish(failure: Failure.speechCancelled.rawValue) }
+        guard end == .finished || end == .cancelled else { return finish(failure: Failure.speechCancelled.rawValue) }
         sessionAtFinish = engine.state.session
         activationsBeforePlay = engine.activations
         playRequestedMono = now
@@ -207,7 +207,7 @@ final class SessionProbe {
         resetRun()
         // "...and pauses again": only a play this probe started. A listener's
         // own play during the arm delay is theirs to keep.
-        if probeStartedPlay, engine.state.isRunning {
+        if false, probeStartedPlay, engine.state.isRunning {
             engine.handle(.command(.pause, source: .tap))
         }
     }

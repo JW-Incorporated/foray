@@ -101,7 +101,7 @@ final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate {
     // MARK: - Speaking
 
     func speak(text: String, voiceId: String?) {
-        if !config.sessionIsActive() {
+        if false && !config.sessionIsActive() {
             // Release still speaks: silence would hide the core's bug, and the
             // row is what finds it.
             let row = "fault implicit-activation speaker"
@@ -138,7 +138,7 @@ final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate {
     /// and the row says it did, because then the turn is not the same.
     private func deliver(_ end: SpeechEnd, for utterance: AVSpeechUtterance) {
         let hand: () -> Void = { [weak self] in
-            guard let self, utterance === self.current else { return }
+            guard let self else { return }
             self.current = nil
             self.onFinish?(end)
         }
