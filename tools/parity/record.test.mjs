@@ -122,12 +122,12 @@ test("JS that disagrees with an authored case is refused, and nothing is written
   const root = scratch();
   try {
     const mod = path.join(root, "player", "seam-gap.js");
-    fs.writeFileSync(mod, fs.readFileSync(mod, "utf8").replace("export const SEAM_GAP_SEC = 2.0;", "export const SEAM_GAP_SEC = 2.5;"));
+    fs.writeFileSync(mod, fs.readFileSync(mod, "utf8").replace("export const SEAM_GAP_SEC = 0.5;", "export const SEAM_GAP_SEC = 2.5;"));
     const before = fs.readFileSync(path.join(root, FIXTURE), "utf8");
     const pendingBefore = fs.readFileSync(path.join(root, "player/parity/swift-pending.json"), "utf8");
     const r = await record({ root, portCard: "NE-28s", log: quiet });
     assert.equal(r.ok, false);
-    assert.ok(r.refusals.some((x) => /seam-gap\/rule-is-2\.0s is AUTHORED/.test(x)), r.refusals.join("\n"));
+    assert.ok(r.refusals.some((x) => /seam-gap\/rule-is-0\.5s is AUTHORED/.test(x)), r.refusals.join("\n"));
     assert.equal(fs.readFileSync(path.join(root, FIXTURE), "utf8"), before, "the fixture is untouched");
     assert.equal(fs.readFileSync(path.join(root, "player/parity/swift-pending.json"), "utf8"), pendingBefore);
   } finally {
@@ -314,6 +314,28 @@ test("--mutate on the 15/30 rule fails both the original JS test and the media-e
      media-session.test.js. MUTATION: drop the seekforward cases and the
      authored read from media-episode -> "fixture: ... still pass". */
   const r = runMutation("15/30", loadMutations()["15/30"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the never-early rule fails both the original JS test and the deck-episode family", () => {
+  /* NE-14j recorded deck-episode, so the fixture half stopped reporting
+     PENDING: a fine wake that stops half a second short turns the authored
+     wake cases red as well as html-audio-backend.test.js. MUTATION: drop the
+     authored fineWakeAction cases from deck-episode -> "fixture: ... still pass". */
+  const r = runMutation("never-early", loadMutations()["never-early"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the pause-silence rule fails both the original JS test and the manager-episode family", () => {
+  /* NE-14j recorded manager-episode. The mutant trusts the reducer and leaves
+     an audible element playing behind a paused machine; the
+     pause-silences-an-audible-element scenario loses its `pause`. MUTATION:
+     delete that scenario -> "fixture: ... still pass". */
+  const r = runMutation("pause-silence", loadMutations()["pause-silence"], { root: ROOT });
   assert.equal(r.js, "killed", r.detail.join("\n"));
   assert.equal(r.fixture, "killed", r.detail.join("\n"));
   assert.equal(r.killed, true);

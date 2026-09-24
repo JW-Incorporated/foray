@@ -1,5 +1,59 @@
 {
   "//": "Covered-suite tests with no Swift meaning. Each has one closed reason (webview-only, dom-only, text-pin, js-module-shape) and a sentence of why. An entry claims the engine need never reimplement this rule; a reviewer should be able to check that claim from the sentence alone.",
+  "html-audio-backend": {
+    "A TELEMETRY SINK THAT THROWS CANNOT BREAK THE PLAYER (#264)": {
+      "reason": "js-module-shape",
+      "why": "A JS telemetry callback that throws. The engine writes diagnostics rows through EngineDiagnostics (plan §4.1), a typed seam with its own recording fake, not an injected callback."
+    },
+    "THE SEEK PATH'S deadline is ref'd too — the half of the seams nothing covered": {
+      "reason": "js-module-shape",
+      "why": "Node's timer ref/unref semantics on the in-place seek's deadline. The native deadline is a main-queue timer with no such mode."
+    },
+    "a prime whose play() rejects does not become an unhandled rejection": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
+    },
+    "a released backend does not spend a gesture on a dead element": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
+    },
+    "a throwing isHidden cannot stop a load, and falls back to the visible budget": {
+      "reason": "webview-only",
+      "why": "A page-supplied isHidden() callback (document.hidden) that throws. The native engine reads application state natively; an unknown visibility getting the visible budget is fixtured in deck-episode (deadline-unknown-visibility-is-visible)."
+    },
+    "every deadline is ref'd, so it fires whether or not anything else is running": {
+      "reason": "js-module-shape",
+      "why": "Node's timer ref/unref semantics (an unref'd timer only fires while something else holds the event loop). The native deadline is a main-queue timer with no such mode; its firing is AVDeckTests' testANeverReadyUrlHitsTheDeadlineWithNoPreroll."
+    },
+    "notePlayGesture is one-shot — the restriction is only ever lifted once": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
+    },
+    "notePlayGesture never touches an element that already holds audio": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
+    },
+    "notePlayGesture spends the tap on the element, before there is anything to load": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
+    },
+    "seek carries the precise flag into telemetry without changing behaviour": {
+      "reason": "text-pin",
+      "why": "Pins that the backend's English telemetry line names the precise flag. The engine's rows use the diag-tokens vocabulary (NE-04), not this string."
+    },
+    "the SECOND load of one source settles without yielding — why the second tap worked": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend. What this pins is that the same-source path resolves inside the tap's task; the same-source rule itself is fixtured in deck-episode (same-source-is-a-seek)."
+    },
+    "the element is never given a crossorigin attribute": {
+      "reason": "webview-only",
+      "why": "An <audio> element's crossorigin attribute turns a working no-cors podcast load into a hard failure. AVPlayer has no CORS; the engine's deck never sees this attribute."
+    },
+    "the hidden deadline says which budget it used, so an artifact can be read": {
+      "reason": "text-pin",
+      "why": "Pins the backend's English `load.deadline Nms (hidden|visible)` telemetry string. Which budget applies is fixtured in deck-episode (deadline-hidden, deadline-visible); the engine's rows carry tokens, not this sentence."
+    }
+  },
   "media-session": {
     "EVERY playForay call site in app.js passes the artwork document": {
       "reason": "js-module-shape",
@@ -308,6 +362,32 @@
     "PositionStore writes positionRow, emits by positionEvent per item, and resumes by resumeOffsetFor": {
       "reason": "js-module-shape",
       "why": "Pins that the JS PositionStore class routes its storage writes, per-item event marks and resume reads through the pure rules; the Swift engine has its own store (EngineStore, NE-19) and shares only the rules, which the resume-rules family carries."
+    }
+  },
+  "queue-manager": {
+    "CONTINUE_TAIL appends the part-heard item": {
+      "reason": "js-module-shape",
+      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
+    },
+    "PICKED_FIRST puts the pick ahead of the other cards, without duplicating it": {
+      "reason": "js-module-shape",
+      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
+    },
+    "SINGLE_ITEM is the default and yields a one-episode queue": {
+      "reason": "js-module-shape",
+      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
+    },
+    "a malformed strategy is rejected at construction, not at play time": {
+      "reason": "js-module-shape",
+      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
+    },
+    "a second manager cannot be constructed while one is alive": {
+      "reason": "js-module-shape",
+      "why": "PlayerQueueManager's module-level singleton guard (corner case #19's first layer). The engine is one @MainActor ForayEngine per process by construction (plan §4.2, A-4); the single-audible half of #19 is fixtured in manager-episode (double-skip-with-slow-loads-plays-once)."
+    },
+    "the manager adds no macrotask between a settled load and play()": {
+      "reason": "webview-only",
+      "why": "WebKit's user-gesture indicator is task-scoped, so a timer between the load and play() strands an autoplay start. The native engine starts audio from native code, where no autoplay gesture exists to lose."
     }
   },
   "queue-state": {

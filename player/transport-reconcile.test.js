@@ -41,6 +41,7 @@ import assert from "node:assert/strict";
 import { HtmlAudioBackend } from "./html-audio-backend.js";
 import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
 import { itemRef } from "./queue-state.js";
+import { INTERRUPTION_REWIND_SEC } from "./transport-policy.js";
 import { indexSegments, indexSources, resolveForay, segmentStarts } from "./foray-resolve.js";
 import { ForayProgressStore, progressKey } from "./foray-progress.js";
 
@@ -484,7 +485,7 @@ test("a transition in flight is not a lie: reconciling mid-effect cannot stop a 
 
 test("A LOAD IN FLIGHT IS NOT AN EXTERNAL STOP: a seam must survive being reconciled", async () => {
   /* `loadingItem` with a paused element is the ordinary shape of every seam in
-     the hour — including the 2.0 s authored beat, where the silence IS the
+     the hour — including the 0.5 s authored beat, where the silence IS the
      product — so a reconcile that fired on it would turn each of the 21 seams in
      `capital-types-1` into an interruption. And this is exactly when it would
      fire: bringing the app back to the foreground mid-seam is a listener
@@ -3257,7 +3258,10 @@ test("ROUND 2 p-car-3 (founder question 2): the call ends with should-resume, an
   await settle();
   assert.equal(audio.paused, false, "the audio is back");
   assert.equal(transport(doc).label, "Pause");
-  assert.ok(Math.abs(audio.currentTime - 900) < 1, "from where the call took it");
+  // From where the call took it, INTERRUPTION_REWIND_SEC back (NE-14j, plan
+  // §4.4): 898.5, not 900 — the listener hears the words the call cut into.
+  assert.ok(Math.abs(audio.currentTime - (900 - INTERRUPTION_REWIND_SEC)) < 0.5,
+    `from where the call took it, stepped back: ${audio.currentTime}`);
   restore();
 });
 

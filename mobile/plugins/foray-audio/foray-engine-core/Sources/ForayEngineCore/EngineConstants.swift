@@ -17,6 +17,38 @@
 import Foundation
 
 public enum EngineConstants {
+    /// `player/deck-policy.js`
+    public enum DeckPolicy {
+        /// `FINE_WAKE`
+        public enum FineWake {
+            /// `FINE_WAKE.STOP`
+            public static let stop: String = "stop"
+            /// `FINE_WAKE.RESCHEDULE`
+            public static let reschedule: String = "reschedule"
+            /// `FINE_WAKE.STAND_DOWN`
+            public static let standDown: String = "stand-down"
+        }
+        /// `LOAD_SETTLE_TIMEOUT_HIDDEN_MS`
+        public static let loadSettleTimeoutHiddenMs: Double = 20000
+        /// `LOAD_SETTLE_TIMEOUT_MS`
+        public static let loadSettleTimeoutMs: Double = 10000
+        /// `OUT_POINT_ARM_LEAD_SEC`
+        public static let outPointArmLeadSec: Double = 2
+        /// `OUT_POINT_MIN_TIMER_MS`
+        public static let outPointMinTimerMs: Double = 4
+        /// `RECOVERY`
+        public enum Recovery {
+            /// `RECOVERY.ARM_OUT_POINT`
+            public static let armOutPoint: String = "arm-out-point"
+            /// `RECOVERY.PLAY`
+            public static let play: String = "play"
+            /// `RECOVERY.REPORT`
+            public static let report: String = "report"
+        }
+        /// `SETTLE_NEAR_SEC`
+        public static let settleNearSec: Double = 1
+    }
+
     /// `player/default-voice.js`
     public enum DefaultVoice {
         /// `DEFAULT_VOICE_NAME`
@@ -246,7 +278,7 @@ public enum EngineConstants {
         /// `AUTO_ADVANCE`
         public static let autoAdvance: String = "auto"
         /// `SEAM_GAP_SEC`
-        public static let seamGapSec: Double = 2
+        public static let seamGapSec: Double = 0.5
         /// `USER_ACTION`
         public static let userAction: String = "user"
     }
@@ -271,6 +303,8 @@ public enum EngineConstants {
 
     /// `player/transport-policy.js`
     public enum Transport {
+        /// `INTERRUPTION_REWIND_SEC`
+        public static let interruptionRewindSec: Double = 1.5
         /// `NUDGE`
         public enum Nudge {
             /// `NUDGE.SEEK`

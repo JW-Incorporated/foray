@@ -168,7 +168,7 @@ final class WebViewPlayer extends SimpleBasePlayer {
         return state
             /* READY for both playing and paused — EXCEPT a real network stall. The
                page's seam is not a stall: `media-session.js` §4 reports the authored
-               2.0 s beat as PLAYING because a transport state that blinks 31 times an
+               0.5 s beat as PLAYING because a transport state that blinks 31 times an
                hour is how an app stops feeling native, and nothing here changes that
                (a seam never sets `stalled`). A stall is different (audit round 2,
                p-car-8): the element is waiting for data, the mini bar says

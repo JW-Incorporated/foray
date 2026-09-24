@@ -989,7 +989,8 @@ has no asset" row under a banner announcing the Foray is broken. That is a worse
 listener experience in exchange for a rule no gate checks. Nothing in this change
 authored a narration item.
 
-**What a listener gets instead** is `player/seam-gap.js`'s 2.0 s beat at every
+**What a listener gets instead** is `player/seam-gap.js`'s beat (0.5 s since 2026-09-24; 2.0 s when this was
+written) at every
 auto-advanced seam — an edit marked but not explained.
 
 ### 11c. Three other things that are still not true

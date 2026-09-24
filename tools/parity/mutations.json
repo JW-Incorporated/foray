@@ -2,22 +2,22 @@
   "//": "record.mjs --mutate (NE-03, plan §6.3). Each rule is flipped in a child process's module loader only (mutate-hooks.mjs; the working tree is never edited), then BOTH the original JS test and the rule's fixture family must fail. A family with no fixtures yet reports PENDING and names the card that records it; once that card records it, the fixture half is enforced with no edit here. `find` must occur exactly once in `file`.",
   "rules": {
     "seam-gap": {
-      "why": "An unbridged seam gets 2.0 s of silence (seam-gap.js, docs/curation/segment-length-rules.md §6b). The mutant is 04_VOICE_AUDIO_SPEC's 0.5 s, the number the rule was chosen over.",
+      "why": "An unbridged seam gets 0.5 s of silence (seam-gap.js; the founder's ruling of 2026-09-24, docs/DECISIONS.md; docs/curation/segment-length-rules.md §6b). The mutant is the 2.0 s audiobook section-break beat the ruling replaced.",
       "patch": {
         "file": "player/seam-gap.js",
-        "find": "export const SEAM_GAP_SEC = 2.0;",
-        "replace": "export const SEAM_GAP_SEC = 0.5;"
+        "find": "export const SEAM_GAP_SEC = 0.5;",
+        "replace": "export const SEAM_GAP_SEC = 2.0;"
       },
-      "jsTest": { "suite": "seam-gap", "name": "the merged rule is 2.0 s, not 04_VOICE_AUDIO_SPEC's 0.5 s" },
+      "jsTest": { "suite": "seam-gap", "name": "the seam silence is the founder's 0.5 s — one number in both specs" },
       "family": "seam-gap",
       "recordedBy": "NE-03"
     },
     "never-early": {
-      "why": "An out-point never stops a segment before its boundary: a fine wake re-reads the playhead and only stops once it is reached. The mutant stops half a second short, clipping the payoff.",
+      "why": "An out-point never stops a segment before its boundary: a fine wake re-reads the playhead and only stops once it is reached (deck-policy.js fineWakeAction, which HtmlAudioBackend asks since NE-14j). The mutant stops half a second short, clipping the payoff.",
       "patch": {
-        "file": "player/html-audio-backend.js",
-        "find": "    if (t >= this._outPoint) return this._reachOutPoint();",
-        "replace": "    if (t >= this._outPoint - 0.5) return this._reachOutPoint();"
+        "file": "player/deck-policy.js",
+        "find": "  if (atSec >= outPointSec) return FINE_WAKE.STOP;",
+        "replace": "  if (atSec >= outPointSec - 0.5) return FINE_WAKE.STOP;"
       },
       "jsTest": { "suite": "html-audio-backend", "name": "an early fine wake reschedules instead of stopping short" },
       "family": "deck-episode",

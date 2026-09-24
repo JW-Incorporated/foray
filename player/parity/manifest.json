@@ -164,6 +164,71 @@
         "contract/throws-unknown-kind"
       ]
     },
+    "deck-episode": {
+      "files": {
+        "player/parity/fixtures/deck-episode/deck-policy.json": "3c130cba7adc0f2a1842bbf7524e0f5d6265731dc790e7ff74857626f0ef360d"
+      },
+      "ids": [
+        "deck-episode/arm-lead-2.0s",
+        "deck-episode/min-timer-4ms",
+        "deck-episode/load-deadline-visible-10s",
+        "deck-episode/load-deadline-hidden-20s",
+        "deck-episode/settle-near-1s",
+        "deck-episode/fine-watch-wall-clock-1x",
+        "deck-episode/fine-watch-wall-clock-2x",
+        "deck-episode/fine-watch-wall-clock-4x",
+        "deck-episode/fine-watch-wall-clock-8x",
+        "deck-episode/fine-watch-outside-lead-at-1x",
+        "deck-episode/fine-watch-same-boundary-at-2x-arms",
+        "deck-episode/fine-watch-exactly-at-the-lead-arms",
+        "deck-episode/fine-watch-worst-tick-arms-at-0-75x",
+        "deck-episode/fine-watch-worst-tick-arms-at-1x",
+        "deck-episode/fine-watch-worst-tick-arms-at-1-25x",
+        "deck-episode/fine-watch-worst-tick-arms-at-1-5x",
+        "deck-episode/fine-watch-worst-tick-arms-at-1-75x",
+        "deck-episode/fine-watch-worst-tick-arms-at-2x",
+        "deck-episode/fine-watch-disarmed-arms-nothing-1x",
+        "deck-episode/fine-watch-disarmed-arms-nothing-2x",
+        "deck-episode/fine-watch-disarmed-arms-nothing-4x",
+        "deck-episode/fine-watch-paused-arms-nothing",
+        "deck-episode/fine-watch-no-boundary-arms-nothing",
+        "deck-episode/fine-watch-timer-floor",
+        "deck-episode/fine-watch-junk-rate-is-1x",
+        "deck-episode/fine-watch-rederived-faster",
+        "deck-episode/armed-before-the-boundary",
+        "deck-episode/disarmed-past-the-boundary",
+        "deck-episode/disarmed-on-the-boundary",
+        "deck-episode/wake-on-the-boundary-stops",
+        "deck-episode/wake-past-the-boundary-stops",
+        "deck-episode/wake-early-reschedules",
+        "deck-episode/wake-a-hair-early-reschedules",
+        "deck-episode/wake-early-with-progress-reschedules",
+        "deck-episode/wake-with-no-progress-stands-down",
+        "deck-episode/wake-on-the-boundary-after-a-stall-stops",
+        "deck-episode/deadline-hidden",
+        "deck-episode/deadline-visible",
+        "deck-episode/deadline-pinned-hidden",
+        "deck-episode/deadline-pinned-visible",
+        "deck-episode/deadline-unknown-visibility-is-visible",
+        "deck-episode/deadline-truthy-non-boolean-is-visible",
+        "deck-episode/same-source-is-a-seek",
+        "deck-episode/different-source-reloads",
+        "deck-episode/same-source-without-metadata-reloads",
+        "deck-episode/same-source-in-error-reloads",
+        "deck-episode/nothing-loaded-reloads",
+        "deck-episode/settled-on-target",
+        "deck-episode/settled-within-1s",
+        "deck-episode/not-settled-past-1s",
+        "deck-episode/recovery-landed-arms-then-plays",
+        "deck-episode/recovery-stopped-arms-but-does-not-play",
+        "deck-episode/recovery-superseded-does-nothing",
+        "deck-episode/recovery-unbounded-plays",
+        "deck-episode/recovery-unbounded-stopped-does-nothing",
+        "deck-episode/recovery-failed-reports",
+        "deck-episode/recovery-failed-after-a-stop-is-silent",
+        "deck-episode/recovery-failed-superseded-is-silent"
+      ]
+    },
     "diag-tokens": {
       "files": {
         "player/parity/fixtures/diag-tokens/diag-tokens.json": "c06d91072a29c828523c22c41ecd98bda58ce9f728717516d0aa3503ced8b0db"
@@ -263,10 +328,51 @@
         "handshake/decide-no-input"
       ]
     },
+    "manager-episode": {
+      "files": {
+        "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
+        "player/parity/fixtures/manager-episode/scenarios.json": "cb9d7c9ba06ae8a87f6d6762828643481a886dcb18be72386a839d754add4198"
+      },
+      "ids": [
+        "manager-episode/last-episode-row-full-snapshot",
+        "manager-episode/last-episode-row-kept-verbatim",
+        "manager-episode/last-episode-row-order-is-the-pages",
+        "manager-episode/last-episode-row-play-time-replaces-a-stale-stamp",
+        "manager-episode/last-episode-row-without-an-id-is-refused",
+        "manager-episode/play-loads-then-starts",
+        "manager-episode/an-ended-last-item-ends-the-session",
+        "manager-episode/an-ended-item-advances-to-the-next",
+        "manager-episode/two-skips-land-two-items-along",
+        "manager-episode/concurrent-double-skip-starts-one-item",
+        "manager-episode/double-skip-with-slow-loads-plays-once",
+        "manager-episode/a-superseded-load-never-plays",
+        "manager-episode/an-interruption-saves-and-pauses",
+        "manager-episode/declined-call-resumes-answered-call-stays-paused",
+        "manager-episode/interruption-resume-steps-back-in-place",
+        "manager-episode/a-listeners-resume-does-not-step-back",
+        "manager-episode/interruption-step-back-stops-at-the-in-point",
+        "manager-episode/a-lost-route-pauses",
+        "manager-episode/only-a-known-car-route-resumes",
+        "manager-episode/a-lost-route-is-not-resumed-by-a-later-call",
+        "manager-episode/a-listeners-pause-is-not-resumed-by-a-call",
+        "manager-episode/a-foreground-reconcile-is-not-resumable",
+        "manager-episode/an-observed-pause-stays-resumable",
+        "manager-episode/cold-launch-loads-at-the-saved-position",
+        "manager-episode/cold-launch-without-autoplay-is-silent",
+        "manager-episode/a-part-heard-episode-resumes-a-fresh-one-starts-at-zero",
+        "manager-episode/previous-restarts-at-zero",
+        "manager-episode/a-skip-saves-the-outgoing-position",
+        "manager-episode/every-effect-has-a-handler",
+        "manager-episode/set-rate-hands-the-deck-only-ladder-values",
+        "manager-episode/pause-silences-an-audible-element",
+        "manager-episode/position-events-at-most-once-a-minute",
+        "manager-episode/position-events-are-per-item"
+      ]
+    },
     "media-episode": {
       "files": {
         "player/parity/fixtures/media-episode/media-actions.json": "334f3d62f2e5f8f67f87d3f6c0915e512e6bce29baf07261f0e5295b1836967b",
-        "player/parity/fixtures/media-episode/media-mapping.json": "55e94cdaa23668f8cee4702ee5293e5bfe337b6a0a1191bd3e62e8d9a1161b1a"
+        "player/parity/fixtures/media-episode/media-mapping.json": "b4af7d2bd34911c8240ac2f3b5ceaf53fb94c46304b643f9fe1ce64547d977e9"
       },
       "ids": [
         "media-episode/actions-complete-surface",
@@ -739,10 +845,10 @@
     },
     "seam-gap": {
       "files": {
-        "player/parity/fixtures/seam-gap/seam-gap.json": "a922c454138b25db506a390a6e5304715612382298e6e03996eab1221c5f2ae3"
+        "player/parity/fixtures/seam-gap/seam-gap.json": "7ab0bd00a4ef78c5061ff0d2228d0382ba884cffd7eb81b9fa4151d3943e540c"
       },
       "ids": [
-        "seam-gap/rule-is-2.0s",
+        "seam-gap/rule-is-0.5s",
         "seam-gap/unbridged-auto-advance-full-beat",
         "seam-gap/length-overridable",
         "seam-gap/nonsense-length-nan",
@@ -1008,7 +1114,7 @@
     },
     "transport": {
       "files": {
-        "player/parity/fixtures/transport/transport.json": "712660987500a5129245e7b3ee0a25d181923431cad073c2c1acea33e55a7ea7"
+        "player/parity/fixtures/transport/transport.json": "ff647462944435dc9ace8410ffffc8c7bcfdc3451210e703f4cdc3469aa098df"
       },
       "ids": [
         "transport/restart-window-4s",
@@ -1114,7 +1220,14 @@
         "transport/remote-stop-no-details",
         "transport/remote-stop-null-details",
         "transport/remote-stop-close-must-be-true",
-        "transport/remote-stop-close-false"
+        "transport/remote-stop-close-false",
+        "transport/interruption-rewind-1.5s",
+        "transport/interruption-resume-episode-steps-back",
+        "transport/interruption-resume-episode-floor-is-zero",
+        "transport/interruption-resume-segment-steps-back-inside",
+        "transport/interruption-resume-segment-never-before-in-point",
+        "transport/interruption-resume-unknown-playhead",
+        "transport/interruption-resume-nan-playhead"
       ]
     }
   }

@@ -401,8 +401,8 @@ test("the seam window is long enough for the chain probe-seam.js actually asks f
   );
   const middleSec = middle.reduce((n, q) => n + (q.end - q.start), 0);
   /* MEASURED, run 32036295743: the beat is max(gap, load) and the load dominated at
-     9.2 s. Using 2.0 s here — the number `seam-gap.js` defines — would under-budget
-     every window by 7 s per seam, which is the error the workflow's own comment was
+     9.2 s. Using 0.5 s here — the number `seam-gap.js` defines — would under-budget
+     every window by ~9 s per seam, which is the error the workflow's own comment was
      corrected for. */
   const MEASURED_BEAT_SEC = 9.2;
   /* One beat per transition, plus every middle segment. The LAST transition completing

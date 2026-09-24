@@ -109,6 +109,7 @@
       "required": ["target"],
       "properties": {
         "target": { "description": "What the scenario drives. JS drivers exist for: manager.", "enum": ["manager", "deck", "engine"] },
+        "positionEvents": { "description": "NE-14j: the manager's position store is the real PositionStore, and its onSave writes event.position:<id>@<seconds>:<duration> into the op log (plan §5.5 pendingEvents).", "type": "boolean" },
         "scheduler": { "enum": ["instant", "manual"] },
         "backend": { "type": "object" },
         "catalogue": { "description": "The Foray resolver's table: item_id -> episode row.", "type": "object" },
@@ -121,11 +122,11 @@
       }
     },
     "verb": {
-      "description": "The closed scenario verbs (plan §6.2). session, lifecycle and remote have no JS driver yet; a JS case using one fails with E_NO_JS_DRIVER naming the card that adds it (runner.js PENDING_DRIVERS).",
+      "description": "The closed scenario verbs (plan §6.2). remote has no JS driver yet; a JS case using it fails with E_NO_JS_DRIVER naming the card that adds it (runner.js PENDING_DRIVERS). session and lifecycle (NE-14j) take the values in runner.js SESSION_EVENTS and LIFECYCLE_EVENTS.",
       "enum": ["call", "settle", "clock", "deck", "tts", "interlude", "session", "lifecycle", "remote", "checkpoint"]
     },
     "step": {
-      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible).",
+      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay).",
       "type": "object",
       "minProperties": 1
     },

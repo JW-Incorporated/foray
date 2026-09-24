@@ -46,6 +46,10 @@ export const SEEK_INSIDE_END_SEC = 0.25;
     starts the next one, from a button whose label promised a nudge. */
 export const SEEK_END_GUARD_SEC = 1;
 
+/** How far back an OS interruption's should-resume picks the audio up
+    (`interruptionResumeOffset`). Authored (plan §4.4, NE-14j). */
+export const INTERRUPTION_REWIND_SEC = 1.5;
+
 /** What a play/pause press does (`resolveToggle`). */
 export const TOGGLE = Object.freeze({
   /** A restored bar (or one whose seek was written down): start its item. */
@@ -331,6 +335,38 @@ export function scrubTarget({ at, item, currentIndex, stateType }) {
   if (!at) return null;
   const reload = at.index !== currentIndex || stateType === "ended" || stateType === "idle";
   return { index: at.index, reload, offset: sourceOffsetFor(item, at.into) };
+}
+
+/**
+ * Where an OS interruption's should-resume starts the audio again, when the
+ * element still holds the item (a declined call, Siri, a navigation prompt).
+ *
+ * WHY IT REWINDS (docs/native-engine-plan.md §4.4, NE-14j). The OS takes the
+ * audio mid-sentence, and resuming on the exact sample drops the listener into
+ * the middle of words they lost the start of — in the car, under a navigation
+ * prompt, that is the ordinary case rather than a rare one. The number is
+ * AUTHORED (`INTERRUPTION_REWIND_SEC`, a fixture), and it lands here first
+ * because JS is the reference: the web and Android players take the same step
+ * back on the same event as the native engine will, one behaviour everywhere.
+ *
+ * NEVER BEFORE THE ITEM'S OWN START. A Foray segment's in-point is where its
+ * slice begins (`start_sec`); stepping back past it would play the end of
+ * whatever the stranger's episode said before the slice — the #65 §4 failure.
+ * An unbounded episode's floor is 0:00.
+ *
+ * ONLY THE INTERRUPTION PATH. A listener's own play after a pause resumes
+ * exactly where they paused, and a known car route reappearing is not an
+ * interruption; the manager asks this only from `interruptionEnded`.
+ *
+ * @param {object} s
+ * @param {number} s.playheadSec     where the element is parked, in the source's seconds
+ * @param {number|null} [s.startSec] the item's in-point, or null for an episode
+ * @returns {number|null} the offset to resume at; null when the playhead is not a number
+ */
+export function interruptionResumeOffset({ playheadSec, startSec = null }) {
+  if (typeof playheadSec !== "number" || !Number.isFinite(playheadSec)) return null;
+  const floor = typeof startSec === "number" && Number.isFinite(startSec) ? startSec : 0;
+  return Math.max(floor, playheadSec - INTERRUPTION_REWIND_SEC);
 }
 
 /**

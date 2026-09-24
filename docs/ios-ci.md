@@ -18,7 +18,7 @@ each of them blocking a decision:
 | The Capacitor shell compiles at all | `docs/mobile-shell.md` §0 | **Never generated, never installed, never compiled.** Its author said so in a table |
 | Our CSP does not block Capacitor's injected bridge *on iOS* | `docs/mobile-shell.md` §5 | Reasoned from WKWebView's `WKUserScript` injection. `HUMAN-ACTIONS.md` #16 step 6.2 asks a human to type `Capacitor` into a console |
 | Our out-point still fires when the app is backgrounded | `docs/research/mp1-background-audio.md` §8 | "**The single most load-bearing untested claim** in this document" — its words. **SETTLED, run 32026332637: it holds.** See §4b |
-| A Foray's 31 seam **transitions** survive backgrounding — the 2.0 s beat's `setTimeout`, then a fresh cross-episode load | `docs/research/mp1-background-audio.md` §8, last paragraph | Named as a risk and left unmeasured. The out-point result does **not** cover it: different mechanism, and the beat runs on the clock the same run measured at 1 s alignment. Probe C (§3). **STILL OPEN after run 32036295743** — one hidden transition completed, which is below this workflow's own floor of two, so the verdict is `too-few-transitions`. And the one that completed took **9.2 s against a 2.0 s beat** — since fixed by #227, which this probe is now the only thing that can verify. See §4c |
+| A Foray's 31 seam **transitions** survive backgrounding — the seam beat's `setTimeout` (`SEAM_GAP_SEC`, 0.5 s since 2026-09-24), then a fresh cross-episode load | `docs/research/mp1-background-audio.md` §8, last paragraph | Named as a risk and left unmeasured. The out-point result does **not** cover it: different mechanism, and the beat runs on the clock the same run measured at 1 s alignment. Probe C (§3). **STILL OPEN after run 32036295743** — one hidden transition completed, which is below this workflow's own floor of two, so the verdict is `too-few-transitions`. And the one that completed took **9.2 s against a 2.0 s beat** (the beat's length at the time) — since fixed by #227, which this probe is now the only thing that can verify. See §4c |
 
 **The fourth row is the one to read carefully.** A green `ios-build` run does not
 mean the seam is sound, and this document's own machinery says so: a single
@@ -283,7 +283,7 @@ and #16 still want one real phone.
 settled the *stop*. A Foray is 32 segments joined by **31 transitions**, and each
 transition is a different mechanism:
 
-> stop at `end_sec` → wait a **2.0 s** beat (`player/seam-gap.js`, a `setTimeout`)
+> stop at `end_sec` → wait a **0.5 s** beat (`SEAM_GAP_SEC` in `player/seam-gap.js`, a `setTimeout`; 2.0 s before the founder's 2026-09-24 ruling)
 > → load a **different episode** → seek to its `start_sec` → play
 
 Probe B's own numbers are the reason to doubt it. `timeupdate` kept its 252 ms rate
@@ -515,7 +515,7 @@ B's out-point result that is the whole chain running hidden, and it is why the
 `fired-on-resume` reading that argued for a native audio backend is retracted
 (§4b). **A native out-point owner was started on that reading and thrown away.**
 
-### The defect half: the 2.0 s beat took 9.2 seconds
+### The defect half: the beat, then 2.0 s, took 9.2 seconds
 
 `askedGapMs: 2000` → `observedGapMs: 9153`. **4.6x.** A listener with a locked screen
 hears about **seven seconds of nothing** at that seam. The per-stage trace, offsets
@@ -549,7 +549,8 @@ WAS NOT THE SEAM THE PRODUCT HAD"* and says to read its number as the length of 
 **beat**; and `html-audio-backend.js` moves the load off the boundary entirely,
 warming the next segment on a second element `PREFETCH_LEAD_SEC` (12 s) before the
 out-point while the current one is still audible. **The beat is still spent in full**
-— 2.0 s between two voices is authored, not an artifact of loading.
+— the beat between two voices is authored, not an artifact of loading (2.0 s then;
+0.5 s since the founder's 2026-09-24 ruling).
 
 So a real Foray is no longer worse than this measurement in the way it was. What
 remains true is the compounding: the file here was **local**, and Foray #1 has
@@ -573,7 +574,8 @@ backgrounded WebView. This workflow can, and it is the only thing that can.
 > say anything about the handover either way.
 
 **Dispatch `ios-build` on `main` and read `observedGapMs` in the seam record.
-Against this run's 9,153 ms baseline, expect ~2,000–3,000 ms.** Two things to check
+Against this run's 9,153 ms baseline, a working handover would read the beat plus a
+little: ~2,000–3,000 ms when the beat was 2.0 s, ~500–1,500 ms at today's 0.5 s.** Two things to check
 before reading a number as a verdict:
 
 - **A bridged Foray gets no warming at all.** Eligibility is `seamGapSec(...) > 0`,
@@ -582,10 +584,12 @@ before reading a number as a verdict:
   **unbridged cross-episode** seam. The probe's own queue is three unbridged bounded
   segments over three files, so a dispatch of this workflow is the right shape by
   construction; the caveat matters for anyone reading a *product* Foray instead.
-- **`SEAM_MIN_PLAUSIBLE_MS = 500` stays meaningful.** The beat is still 2.0 s, so a
-  transition completing in under 500 ms still means the beat did not happen rather
-  than that the prefetch was fast, and `seamTransitionVerdict` should still call that
-  `inconclusive`. Do not relax that floor to accommodate a good result.
+- **`SEAM_MIN_PLAUSIBLE_MS` is half the shipped beat: 250 ms against 0.5 s** (since the
+  founder's 2026-09-24 ruling; it was 500 ms against 2.0 s). A transition completing in
+  under 250 ms still means the beat did not happen rather than that the prefetch was
+  fast, and `seamTransitionVerdict` should still call that `inconclusive`. The floor is
+  defined as `SEAM_ASKED_MS / 2` in `tools/mobile/ios-ci.mjs`, so it tracks the beat
+  when the beat changes. It is never relaxed to accommodate a good result.
 
 ### The founder's own ears found the failure mode this predicted — #224
 

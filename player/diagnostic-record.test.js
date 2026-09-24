@@ -21,7 +21,7 @@
  * non-negative, never to be under some threshold: the widest delivered
  * `timeupdate` interval recorded in this repo is 1,825 ms against a 250 ms
  * nominal, and a budget here would be a flake with a story. The one place a real
- * timer is waited on is the 2.0 s beat, which is the product's own constant and
+ * timer is waited on is the seam beat, which is the product's own constant and
  * comes from `SEAM_GAP_SEC` rather than from a number typed here.
  *
  * The DOM stub is `player/transport-reconcile.test.js`'s, kept deliberately
@@ -680,7 +680,7 @@ test("a refused play() becomes a stop row naming the refusal", async (t) => {
 test("A LISTENER'S PAUSE INSIDE THE BEAT is a cut seam, not a 10-minute gap", async (t) => {
   /* Review's worst finding, end to end through the real manager. `_cutSeamGap` runs
      from `_transport` for pause, so the shape is ordinary: the out-point fires, the
-     2.0 s beat arms, and the listener presses pause before it elapses.
+     beat arms, and the listener presses pause before it elapses.
 
      MUTATION: make `RE.seamCut` stamp `cutBy` without closing the seam. The row stays
      open, the resumed `playing` measures the whole pause into `observedGapMs`, and

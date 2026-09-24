@@ -56,6 +56,11 @@
 */
 
 import { END_NATURAL, END_OUT_POINT } from "./queue-state.js";
+import {
+  LOAD_SETTLE_TIMEOUT_HIDDEN_MS, FINE_WAKE, RECOVERY,
+  outPointArmed, fineWatchDelayMs, fineWakeAction, loadDeadlineMs, sameSourceIsSeek, settledNear,
+  recoveryLoadedOps, recoveryFailedOps,
+} from "./deck-policy.js";
 
 const READY_ENOUGH = 3; // HAVE_FUTURE_DATA
 
@@ -90,172 +95,16 @@ const READY_ENOUGH = 3; // HAVE_FUTURE_DATA
    boundary from below. Jump beyond it by hand and there is no crossing, so
    nothing fires and the item free-plays; come back to before it and the next
    crossing stops as usual. See setOutPoint().
+
+   THE NUMBERS AND THE DECISIONS LIVE IN deck-policy.js (NE-14j): the arm lead
+   (`OUT_POINT_ARM_LEAD_SEC`, with why it is 2.0 s), the timer floor, both load
+   deadlines with their derivations, and the pure rules below that this class
+   asks — when the fine watch arms (`fineWatchDelayMs`), what a wake does
+   (`fineWakeAction`), which deadline a load gets, when a new item is a seek,
+   and what the handover's recovery may still do. The native engine's DeckPolicy
+   ports those, pinned by the `deck-episode` parity family; this class keeps the
+   element and the timers.
 */
-/**
- * How much WALL CLOCK before the boundary the fine stage takes over.
- *
- * ── WHY IT IS 2.0 s AND NOT 0.5 s (raised 2026-08-17, with playback speed) ──
- *
- * It has to exceed the widest gap the COARSE stage can leave, because the
- * handover only happens on a tick and a boundary the coarse stage never gets
- * within the lead of is stopped BY the coarse stage — one tick late.
- *
- * `timeupdate` is nominally 250 ms, measures a 252 ms median in a hidden page,
- * and **the widest interval this repo has actually recorded is 1,825 ms** (see
- * the section header, and `PREFETCH_LEAD_SEC`, which is sized off the same
- * number). At a 0.5 s lead a run that delivered a 1.8 s gap armed nothing at all
- * and the stop landed on the late tick.
- *
- * **THAT IS THE ONE PLACE RATE MADE THE BOUNDARY WORSE, and it is why this
- * number moved with the speed control rather than before it.** The fine timer's
- * content window is already flat in rate by arithmetic — it is armed for
- * `(end - now) / rate` of wall clock, so `armed x rate` is constant, which the
- * suite pins with no clock in it. The coarse stage has no such property: its
- * window is one tick of WALL clock, which is `rate` times as much CONTENT. So a
- * 1,825 ms gap costs 1.8 s of overshoot at 1x and **3.7 s at 2x** — most of a
- * sentence of the next show, on the path this repo prices at a median 936.5 s of
- * the wrong episode when it goes wrong.
- *
- * Raising the lead past the worst recorded gap means the fine stage is armed from
- * whichever tick lands inside it, at any rate, so the overshoot is bounded by
- * TIMER latency (single-digit to tens of ms) instead of EVENT latency — and
- * `overshoot x rate` stops being the thing that grows. 2.0 s is 1,825 ms plus
- * enough not to be exactly on the boundary of the observation.
- *
- * ── WHAT A LONGER LEAD COSTS, WHICH IS ALMOST NOTHING ──────────────────────
- *
- * The original 0.5 s was reasoned as "timeupdate is free and already firing, and
- * a fine timer armed minutes out would just be rescheduled hundreds of times",
- * which is correct and does not argue for 0.5 over 2.0: at 4 Hz this is ~8
- * reschedules per segment instead of ~2, against a segment median of 103 s. Each
- * one is a `clearTimeout` and a `setTimeout`. It buys, in exchange, one thing
- * that matters at every rate: the timer is armed from `playing` and from the
- * first tick inside the window, rather than from whichever tick happens to fall
- * in the last half second.
- *
- * It cannot cause an early stop at any length — the wake re-reads the playhead
- * and only stops on a genuine crossing — and it cannot spin, because a wake with
- * no progress stands the stage down.
- */
-const OUT_POINT_ARM_LEAD_SEC = 2.0;
-/** Browsers clamp nested timeouts to ~4 ms; asking for less just burns wakeups. */
-const OUT_POINT_MIN_TIMER_MS = 4;
-
-/** How long EITHER load path may take to settle before we give up and let the
-    manager degrade. Generous — a range request into the middle of a podcast
-    normally settles in well under a second, and the cost of being wrong in the
-    impatient direction is dropping a segment that would have played. The cost
-    of no deadline at all is a player that never recovers.
-
-    Both paths need one for the same reason: the events that mean "ready"
-    (`canplay`, `seeked`) and the event that means "broken" (`error`) do not
-    cover a network that simply stops. A stalled fetch fires `stalled` and
-    `suspend` and then nothing at all, forever. Without a deadline the promise
-    stays pending, `_loadItem` awaits it forever, and the state machine sits in
-    `loadingItem` with no path out — a listener stranded mid-Foray with a UI
-    that still says "loading".
-
-    NEVER `unref()` A DEADLINE. That was the actual CI failure on this PR
-    (#111): the seek deadline was unref'd, so it was not guaranteed to fire at
-    all — an unref'd timer only runs if something ELSE keeps the event loop
-    alive, which makes a recovery path depend on unrelated activity elsewhere in
-    the process. Node 24's test runner happened to hold the loop open, Node 22's
-    did not, and the suite hung with "Promise resolution is still pending but
-    the event loop has already resolved". `unref()` is for periodic
-    housekeeping that nobody awaits (the manager's 15s position timer); it is
-    never right for a timer something is waiting on.
-
-    THIS NUMBER IS FOR A VISIBLE PAGE ONLY. A hidden page is a different machine
-    — see `LOAD_SETTLE_TIMEOUT_HIDDEN_MS`. */
-const LOAD_SETTLE_TIMEOUT_MS = 10_000;
-
-/**
- * The same deadline for a page that is HIDDEN, which on iOS is a different
- * machine rather than the same one running slower.
- *
- * WHY IT HAS TO BE SEPARATE. A visible load is measured at **590 ms**
- * (run 32057395270, `WebKit:Media` lifecycle). A hidden load runs the same
- * algorithm as a chain of queued tasks delivered SECONDS apart, so it takes
- * 5-11 s for the identical file. 10 s therefore has ~17x headroom while visible
- * and NEGATIVE headroom while hidden: a seam on a backgrounded Simulator was measured at
- * 9,153 ms, i.e. 847 ms inside a budget it is supposed to be nowhere near, and
- * a run that crossed it DROPPED THE SEGMENT — the manager degrades, and the
- * listener loses ~110 s of Foray rather than waiting a few more seconds.
- *
- * ── DERIVED FROM THE FLOOR. THERE IS NO USABLE CEILING — SEE BELOW ────────
- *
- * FLOOR — the worst CLEAN chain, times the observed spread. Three runs on an
- * **iOS Simulator** (backgrounded by launching Settings; no real audio route; no
- * phone was locked), all on `probe-tone-b.wav`, a small file BUNDLED INSIDE THE
- * APP:
- *
- *     32064639785   5,114 ms   clean, one element
- *     32036295743   9,153 ms   clean, one element     <- the worst CLEAN sample
- *     32057395270  11,140 ms   a second element's teardown sharing the task
- *                              queue — that path is parked (see §"prefetch"),
- *                              so it is EXCLUDED from the derivation rather
- *                              than being the worst case. Stated, because
- *                              "worst evidenced" would otherwise be false: at
- *                              11.14 s the same arithmetic gives 21.5 s.
- *
- * The **1.8x spread between the two clean samples** is the load-bearing part:
- * same code path, same 15.0 s of hidden playback before the boundary, same file,
- * 5.1 s against 9.2 s — and the whole difference sits in one phase (`stalled` ->
- * `loadedmetadata`, 1,902 ms against 5,954 ms). A hidden chain is a distribution
- * we have three samples of, not a constant to bound tightly. So the bound wants
- * to be a MULTIPLE of 9.2 s: 9.2 x 1.8 = 16.6 s, plus the cold cross-origin CDN
- * none of these exercised (ranged GETs against six real sources: TTFB 0.99 s
- * median, 1.41 s worst, desktop, a lower bound) ~= 18 s. Rounded to **20 s**.
- *
- * ── AND THE THING THAT LOOKS LIKE A CEILING IS NOT ONE ────────────────────
- *
- * A first draft of this comment bounded 20 s from above by the page's hidden
- * lifetime, and that was wrong twice over. The page IS suspended while hidden —
- * the durable record ends after 25.2 s, 26.8 s and 27.9 s of hidden time, with
- * `didChangeThrottleState(Suspended)` and `uiAssertionWillExpireImminently` in
- * the log (§4.1b) — but:
- *
- *   1. **That clock starts when the app hides; this deadline starts at the
- *      boundary**, which the probe pins 15.0 s later. The post-boundary budget is
- *      therefore only **10.2 / 11.8 / 12.9 s** — and in two of three runs the
- *      load finished with under a second to spare. NOTHING above ~13 s can fire
- *      in the measured configuration, which includes 20 s.
- *   2. The suspension is plausibly a Simulator artifact (§4.1b), so it is not
- *      something to size a shipped constant against in either direction.
- *
- * **So the two constraints are incompatible, and that is the finding rather than
- * a problem with the number.** No value both clears the floor (~18 s) and fits
- * the measured post-boundary window (~13 s). Picking a value below the floor
- * guarantees the drops this exists to prevent; picking 20 s means that when a
- * hidden load is slow enough to matter, the thing that ends the Foray is the
- * SUSPENSION rather than our impatience. That is strictly better — one cause
- * removed, the next one exposed — and it is why §4.1b's suspension question,
- * not this constant, is the top of the queue.
- *
- * ── WHAT THIS DELIBERATELY DOES NOT CLAIM ─────────────────────────────────
- *
- * Every hidden number above comes from the FIRST ~15 s OF HIDDEN TIME, because
- * `tools/mobile/probe/probe-seam.js` pinned its first boundary at
- * `ARM_AFTER_HIDDEN_SEC = 15` and the record had never contained a second
- * transition. **That constant is 60 s as of 2026-08-17 (PR #240), so numbers from
- * deeper in the hidden window now exist — read the run linked from that PR before
- * quoting the paragraph above as current.** The reason it moved is not this
- * deadline: 15 s of playback plus WebKit's ~12 s assertion release landed on the
- * same ~28 s the record always stopped at, so the probe could not tell a platform
- * suspension ceiling apart from a suspension following its own silence.
- * A phone locked for twenty minutes is still UNMEASURED. If hidden
- * throttling deepens with time hidden — plausible, untested, and NOT assumed
- * here — then 20 s is a floor rather than a bound, and the right shape may not
- * be a single number at all. What the change is worth does not depend on that:
- * it converts a dropped segment into a slower seam inside the window we have
- * actually observed, and a listener who hears a long gap still has a Foray.
- *
- * The cost, stated plainly: a genuinely dead URL now strands a hidden player for
- * 20 s instead of 10 s before the manager degrades. That is the right trade only
- * because the two outcomes are not symmetric — a slow seam is recoverable and a
- * dropped segment is not.
- */
-const LOAD_SETTLE_TIMEOUT_HIDDEN_MS = 20_000;
 
 /* ── prefetch: the next segment loads while this one is still audible ─────
    (issue #111's seam, measured on a device-class run — see the numbers below.)
@@ -280,7 +129,7 @@ const LOAD_SETTLE_TIMEOUT_HIDDEN_MS = 20_000;
 
    Two consequences, and the second one is worse than the first:
 
-     1. The seam a listener hears is `max(SEAM_GAP_SEC, load)`, not 2.0 s.
+     1. The seam a listener hears is `max(SEAM_GAP_SEC, load)`, not the beat.
         16 of Foray #1's 31 seams cross to a different episode (the other 15
         are same-source and take the seek shortcut below), so that is ~2.5
         minutes of dead air in a one-hour Foray, on a locked screen.
@@ -402,10 +251,11 @@ const LOAD_SETTLE_TIMEOUT_HIDDEN_MS = 20_000;
    afford. Not another inference from the timer numbers.
 
    WHAT THIS DOES NOT DO. It does not make the beat shorter, and it must not:
-   2.0 s of silence between two different voices is authored (`seam-gap.js`,
-   `segment-length-rules.md` §6b), and the beat still runs — the manager waits
+   the silence between two different voices is authored (`seam-gap.js`,
+   `segment-length-rules.md` §6b — 0.5 s since the founder's 2026-09-24 ruling,
+   2.0 s when this was measured), and the beat still runs — the manager waits
    out its remainder after the handover. The point is that the listener finally
-   hears the 2.0 s the product documents instead of 9.2 s of nothing.
+   hears the beat the product documents instead of 9.2 s of nothing.
 
    AND IT NEVER DELAYS OR MOVES THE BOUNDARY. If the warm element is not ready
    when the out-point fires, `load()` takes exactly the path it takes today.
@@ -806,7 +656,7 @@ export class HtmlAudioBackend {
       return;
     }
     this._outPoint = seconds;
-    this._outArmed = this.currentTime < seconds;
+    this._outArmed = outPointArmed({ atSec: this.currentTime, outPointSec: seconds });
     const dur = this.duration;
     if (dur != null && seconds >= dur) {
       // Not an error: end_sec past the real audio just means the file ends
@@ -832,7 +682,7 @@ export class HtmlAudioBackend {
       boundary (disarms), and a scrub back to an earlier segment (re-arms). */
   _reArmFromPlayhead() {
     if (this._outPoint == null) return;
-    const armed = this.currentTime < this._outPoint;
+    const armed = outPointArmed({ atSec: this.currentTime, outPointSec: this._outPoint });
     if (armed !== this._outArmed) {
       this._outArmed = armed;
       this._emit(`outPoint.${armed ? "reArmed" : "disarmed"} at=${this.currentTime.toFixed(2)}`);
@@ -859,13 +709,15 @@ export class HtmlAudioBackend {
   /** Fine stage. Only ever scheduled inside the last ARM_LEAD_SEC. */
   _scheduleFineWatch() {
     this._clearFineTimer();
-    if (this._released || this._outPoint == null || !this._outArmed) return;
-    if (this.el.paused) return; // nothing is moving; play/timeupdate re-schedules
-    const rate = typeof this.el.playbackRate === "number" && this.el.playbackRate > 0
-      ? this.el.playbackRate : 1;
-    const remainingWallSec = (this._outPoint - this.currentTime) / rate;
-    if (remainingWallSec > OUT_POINT_ARM_LEAD_SEC) return; // timeupdate will bring us closer
-    const ms = Math.max(OUT_POINT_MIN_TIMER_MS, Math.ceil(remainingWallSec * 1000));
+    if (this._released) return;
+    // Null when there is nothing to watch yet: no boundary, disarmed, paused
+    // (play/timeupdate re-schedules), or still further out than the lead
+    // (timeupdate will bring us closer). deck-policy.js, `fineWatchDelayMs`.
+    const ms = fineWatchDelayMs({
+      outPointSec: this._outPoint, atSec: this.currentTime, rate: this.el.playbackRate,
+      armed: this._outArmed, paused: this.el.paused,
+    });
+    if (ms == null) return;
     // Not unref'd either: this is the timer that STOPS the audio at the
     // boundary. It is always cleared on reach, disarm, pause or release, so it
     // can never outlive the item it belongs to.
@@ -878,12 +730,13 @@ export class HtmlAudioBackend {
   _onFineWake() {
     if (this._released || this._outPoint == null || !this._outArmed) return;
     const t = this.currentTime;
-    if (t >= this._outPoint) return this._reachOutPoint();
-
-    // Woke early. Either ordinary timer jitter (reschedule, we are within a
-    // few ms) or the playhead is not moving at all (a buffering stall). Only
-    // the second one can spin, so only the second one stands down.
-    if (this._lastFineTime !== null && t <= this._lastFineTime) {
+    // Never early: the wake re-reads the playhead and stops only on a genuine
+    // crossing. Woke early, it is either ordinary timer jitter (reschedule, we
+    // are within a few ms) or the playhead is not moving at all (a buffering
+    // stall). Only the second one can spin, so only the second one stands down.
+    const action = fineWakeAction({ atSec: t, outPointSec: this._outPoint, lastWakeAtSec: this._lastFineTime });
+    if (action === FINE_WAKE.STOP) return this._reachOutPoint();
+    if (action === FINE_WAKE.STAND_DOWN) {
       this._lastFineTime = null;
       this._emit(`outPoint.stalled at=${t.toFixed(2)} — handing back to timeupdate`);
       return;
@@ -1376,7 +1229,9 @@ export class HtmlAudioBackend {
     settled.then(
       () => {
         if (this._released) return;
-        if (this._loadSeq !== mine) {
+        const superseded = this._loadSeq !== mine;
+        const stopped = this._stopEpoch !== stopMark;
+        if (superseded) {
           return this._emit(`handover.recovery.superseded ${item.id} — a newer load owns the element`);
         }
         /* ARMED BEFORE THE STOP CHECK, DELIBERATELY. Declining to play is not
@@ -1392,14 +1247,18 @@ export class HtmlAudioBackend {
            by that path rather than running the segment to the end of its source
            episode. This ordering is what makes the backend correct on its own
            terms, for a caller that resumes without reloading, and it costs one
-           line. Keep it; do not upgrade the claim. */
-        if (boundary != null) this.setOutPoint(boundary);
-        if (this._stopEpoch !== stopMark) {
-          return this._emit(
+           line. Keep it; do not upgrade the claim.
+           The ORDER is deck-policy.js's `recoveryLoadedOps`: arm, then play
+           unless stopped. */
+        for (const op of recoveryLoadedOps({ superseded, stopped, boundarySec: boundary })) {
+          if (op === RECOVERY.ARM_OUT_POINT) this.setOutPoint(boundary);
+          else if (op === RECOVERY.PLAY) this.play();
+        }
+        if (stopped) {
+          this._emit(
             `handover.recovery.stopped ${item.id} — something paused the player; the boundary is armed, audio is not`
           );
         }
-        this.play();
       },
       (loadErr) => {
         /* THE SAME THREE CLAIMS THE SUCCESS BRANCH MAKES, and each one for a
@@ -1426,17 +1285,20 @@ export class HtmlAudioBackend {
            the URL really is dead, THAT load fails with somebody waiting for it
            and the degrade path runs then, which is where it belongs. */
         if (this._released) return;
-        if (this._loadSeq !== mine) {
-          return this._emit(`handover.recovery.superseded ${item.id} — a newer load owns the element`);
+        const superseded = this._loadSeq !== mine;
+        const stopped = this._stopEpoch !== stopMark;
+        if (superseded) {
+          this._emit(`handover.recovery.superseded ${item.id} — a newer load owns the element`);
+        } else if (stopped) {
+          this._emit(`handover.recovery.stopped ${item.id} — it also failed, but nobody is waiting on it`);
         }
-        if (this._stopEpoch !== stopMark) {
-          return this._emit(
-            `handover.recovery.stopped ${item.id} — it also failed, but nobody is waiting on it`
-          );
+        // Only a failure somebody is still waiting on is reported
+        // (deck-policy.js, `recoveryFailedOps`): the manager's degrade path.
+        for (const op of recoveryFailedOps({ superseded, stopped })) {
+          if (op !== RECOVERY.REPORT) continue;
+          this._emit(`handover.recovery.failed ${item.id}: ${loadErr?.message ?? loadErr}`);
+          if (this.onError) this.onError(`play rejected: ${err?.name ?? err}`);
         }
-        // Now it is a genuine failure and the manager's degrade path is right.
-        this._emit(`handover.recovery.failed ${item.id}: ${loadErr?.message ?? loadErr}`);
-        if (this.onError) this.onError(`play rejected: ${err?.name ?? err}`);
       }
     );
     return true;
@@ -1464,7 +1326,7 @@ export class HtmlAudioBackend {
   }
 
   _loadDeadlineMs() {
-    if (this._loadTimeoutMs != null) return this._loadTimeoutMs;
+    if (this._loadTimeoutMs != null) return loadDeadlineMs({ pinnedMs: this._loadTimeoutMs });
     let hidden = false;
     // A surface's throwing `isHidden` must not decide whether audio loads.
     try {
@@ -1476,7 +1338,7 @@ export class HtmlAudioBackend {
       hidden = false;
       this._emit(`load.deadline.visibilityThrew ${err?.message ?? err} — using the visible budget`);
     }
-    return hidden ? LOAD_SETTLE_TIMEOUT_HIDDEN_MS : LOAD_SETTLE_TIMEOUT_MS;
+    return loadDeadlineMs({ hidden });
   }
 
   /**
@@ -1505,7 +1367,9 @@ export class HtmlAudioBackend {
     // DIFFERENT stitch, which moves every subsequent timestamp under us. So
     // when the element already holds this URL we keep the buffer and move the
     // playhead, which is also what makes back-to-back segments gapless.
-    if (this._currentUrl && this._currentUrl === item.audio_url && this.el.readyState >= 1 && !this.el.error) {
+    if (sameSourceIsSeek({
+      loadedUrl: this._currentUrl, url: item.audio_url, hasMetadata: this.el.readyState >= 1, failed: Boolean(this.el.error),
+    })) {
       this._currentItem = item;
       // Whatever was being warmed was warmed for a different "next" than the
       // one we just turned out to want — see the invariant below.
@@ -1646,7 +1510,7 @@ export class HtmlAudioBackend {
     return new Promise((resolve, reject) => {
       let settled = false;
       let timer = null;
-      const near = () => Math.abs(el.currentTime - target) <= 1 && el.readyState >= READY_ENOUGH;
+      const near = () => settledNear({ atSec: el.currentTime, targetSec: target }) && el.readyState >= READY_ENOUGH;
       const cleanup = () => {
         el.removeEventListener("seeked", onProgress);
         el.removeEventListener("canplay", onProgress);
@@ -1679,7 +1543,7 @@ export class HtmlAudioBackend {
       el.addEventListener("seeked", onProgress);
       el.addEventListener("canplay", onProgress);
       el.addEventListener("error", onErr);
-      // Deliberately NOT unref'd — see LOAD_SETTLE_TIMEOUT_MS.
+      // Deliberately NOT unref'd — see LOAD_SETTLE_TIMEOUT_MS (deck-policy.js).
       const deadlineMs = this._loadDeadlineMs();
       timer = setTimeout(
         () => fail(`in-place seek to ${Math.round(target)}s did not settle within ${deadlineMs}ms`),

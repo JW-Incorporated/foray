@@ -10,7 +10,9 @@ import Foundation
 ///
 /// THE LOG. Every table line is printed with an `NE-25a |` prefix, and every
 /// trial as one `NE-25a-json` line, so a run whose summary was lost can still
-/// be read back from `gh run view --log`.
+/// be read back from `gh run view --log`. Another card's measurements pass
+/// their own `tag` (NE-25b's two-deck spike prints `NE-25b |`), so each
+/// card's lines can be grepped out of a run that measured both.
 enum MeasurementReport {
     static var environment: [String: String] { ProcessInfo.processInfo.environment }
 
@@ -24,7 +26,7 @@ enum MeasurementReport {
         return "\(model), \(ProcessInfo.processInfo.operatingSystemVersionString)"
     }
 
-    static func table(title: String, columns: [String], rows: [[String]], notes: [String]) {
+    static func table(title: String, columns: [String], rows: [[String]], notes: [String], tag: String = "NE-25a") {
         var lines: [String] = ["", "### \(title)", "", "\(runLabel) · \(deviceLabel)", ""]
         lines.append("| " + columns.joined(separator: " | ") + " |")
         lines.append("|" + columns.map { _ in "---" }.joined(separator: "|") + "|")
@@ -36,16 +38,16 @@ enum MeasurementReport {
             lines.append(contentsOf: notes.map { "- " + $0 })
         }
         for line in lines {
-            print("NE-25a | " + line)
+            print("\(tag) | " + line)
         }
         append(lines.joined(separator: "\n") + "\n")
     }
 
-    static func json<T: Encodable>(_ value: T) {
+    static func json<T: Encodable>(_ value: T, tag: String = "NE-25a") {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         guard let data = try? encoder.encode(value), let text = String(data: data, encoding: .utf8) else { return }
-        print("NE-25a-json " + text)
+        print("\(tag)-json " + text)
     }
 
     private static func append(_ text: String) {

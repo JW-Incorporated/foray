@@ -353,6 +353,7 @@ test("loading a second item reuses the same element", async () => {
 
 import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
 import { PICKED_FIRST } from "./queue-strategy.js";
+import { INTERRUPTION_REWIND_SEC } from "./transport-policy.js";
 
 function wired(opts = {}) {
   __resetInstanceForTests();
@@ -1138,7 +1139,7 @@ test("the top speed's overshoot is the fine timer's latency times the rate, not 
 
      Driven clock, so the numbers are exact and identical on every box. MUTATION
      THAT KILLS THIS: lead back to 0.5 (2x becomes 1,650 ms), or drop the `/ rate`
-     from `_scheduleFineWatch` (2x becomes ~1,500 ms). */
+     from deck-policy.js's `fineWatchDelayMs` (2x becomes ~1,500 ms). */
   const LATENCY_MS = 10;
   const NOMINAL_TICK_MS = 250;
   for (const tickMs of [NOMINAL_TICK_MS, WORST_RECORDED_TICK_MS]) {
@@ -1749,12 +1750,21 @@ test("integration: a three-segment Foray plays every slice and stops", async () 
     "two slices of one episode must not refetch it");
   assert.ok(slice2.at >= 300 && slice2.at < 301, `second in-point, got ${slice2.at}`);
 
-  // A phone call mid-slice must not replay the slice.
+  // A phone call mid-slice resumes INTERRUPTION_REWIND_SEC back (NE-14j), and
+  // never before the slice's own in-point: stepping back past 300 would play
+  // the end of whatever the episode said before the slice (#65 §4). These
+  // slices are 0.5 s long, so the step back is always clamped to the in-point
+  // here — which is the half of the rule only this real-backend run can show.
   await m.interruptionBegan();
   const pausedAt = el.currentTime;
   await m.interruptionEnded(true);
   assert.equal(m.state.type, "playing");
-  assert.ok(el.currentTime >= pausedAt - 0.05, `resumed at ${el.currentTime}, was at ${pausedAt}`);
+  const resumedAt = el.currentTime;
+  assert.ok(resumedAt >= 300, `resumed at ${resumedAt}, before the slice's in-point (300)`);
+  assert.ok(
+    resumedAt >= Math.max(300, pausedAt - INTERRUPTION_REWIND_SEC) - 0.05,
+    `resumed at ${resumedAt}, was at ${pausedAt}: more than INTERRUPTION_REWIND_SEC back`
+  );
 
   // Slice 2 -> slice 3: different episode, so a real load.
   const slice3 = await waitForPlaying(m, "f1#2", el);
@@ -2352,10 +2362,10 @@ test("a stop DURING the recovery must not start audio when its load lands (#267)
      `transport-reconcile.test.js` pins that reachability through the real
      manager; this pins the mechanism.
 
-     MUTATION: delete `this._stopEpoch++;` from `pause()` (or change the
-     continuation's `if (this._stopEpoch !== stopMark)` to `if (false)`) and this
-     fails on the `a.paused` assertion — the recovery calls `play()` and the
-     element goes audible.
+     MUTATION: delete `this._stopEpoch++;` from `pause()` (or make deck-policy.js's
+     `recoveryLoadedOps` push PLAY whether or not `stopped`) and this fails on the
+     `a.paused` assertion — the recovery calls `play()` and the element goes
+     audible.
 
      THE RACE IS DRIVEN, NOT HOPED FOR — same technique as the skip test below.
      `laggySeek` on the gesture-holding element means the recovery's own load
@@ -2402,15 +2412,15 @@ test("a stop during the recovery still ARMS the boundary, so the queue advances 
      median 936.5 s of the wrong show. That is exactly the strand #267 describes
      and a listener cannot tell it apart from #224.
 
-     So `setOutPoint(boundary)` is deliberately sequenced BEFORE the stop check in
-     the continuation, and this test is what pins that ordering rather than the
-     mere presence of the two lines.
+     So the boundary is deliberately armed BEFORE the stop is consulted
+     (deck-policy.js, `recoveryLoadedOps`), and this test is what pins that
+     ordering rather than the mere presence of the two steps.
 
-     MUTATION: move `if (boundary != null) this.setOutPoint(boundary);` below the
-     `this._stopEpoch !== stopMark` early return in `_recoverFromRefusedHandover`
-     — a one-line move, nothing deleted — and this fails: `b.outPoint` is null and
-     `ends` stays empty because no boundary was ever armed. The test above still
-     passes under that mutation, which is why these are two tests.
+     MUTATION: make `recoveryLoadedOps` return `[]` when `stopped` — the old
+     early return above the arm, nothing else changed — and this fails:
+     `b.outPoint` is null and `ends` stays empty because no boundary was ever
+     armed. The test above still passes under that mutation, which is why these
+     are two tests.
 
      AND THE PRECONDITION BELOW IS NOT DECORATION — a pre-push review broke this
      test by removing it. Without `laggySeek` the recovery settles BEFORE the
@@ -2500,9 +2510,9 @@ test("a recovery that FAILS after a deliberate stop reports nothing either (#267
      `load()` and issues a fresh load; if the URL really is dead, that one fails
      with somebody waiting on it.
 
-     MUTATION: delete the `if (this._stopEpoch !== stopMark)` early return from
-     the REJECT branch of `_recoverFromRefusedHandover` (the success branch's copy
-     is a different line and does not affect this test). Fails on `reported`. */
+     MUTATION: drop `stopped` from deck-policy.js's `recoveryFailedOps` (the
+     success branch asks `recoveryLoadedOps`, a different rule, and does not
+     affect this test). Fails on `reported`. */
   const { b, a, log } = pair({ a: { laggySeek: true }, warm: { refuse: true } });
   /* THE ELEMENT-LEVEL `error` HANDLER REPORTS TOO, and that is not what this is
      about — the same split the superseded test below makes. `media error 4` is

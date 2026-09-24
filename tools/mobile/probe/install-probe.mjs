@@ -11,7 +11,7 @@
  *      (`docs/research/mp1-background-audio.md` §8, its own "single most
  *      load-bearing untested claim".) — ANSWERED, run 32026332637: yes, 4 ms
  *      late over a 15.056 s hidden window, with the app never resumed.
- *   3. Does the SEAM TRANSITION survive backgrounding — the 2.0 s beat's
+ *   3. Does the SEAM TRANSITION survive backgrounding — the seam beat's
  *      `setTimeout`, then a fresh load of a DIFFERENT episode, then a seek, then
  *      play? (#28's iOS half.) That is a different mechanism from (2) on a
  *      different clock: the same run measured hidden DOM timers aligned to a
@@ -91,6 +91,9 @@ export const PHASE_ASSET = "probe-phase.js";
  *  Phase B imports `html-audio-backend.js`; phase C imports `queue-manager.js`,
  *  `html-audio-backend.js` and `seam-gap.js`, and `queue-manager.js` in turn imports
  *  `queue-state.js`, `queue-strategy.js`, `seek-policy.js` and `foray-queue.js`.
+ *  Since NE-14j `html-audio-backend.js` asks `deck-policy.js` its out-point and
+ *  deadline decisions, and `queue-manager.js` asks `transport-policy.js` for the
+ *  interruption resume's step back.
  *  Listed in full rather than spot-checked — see `assertBuildArtefact`. */
 export const PROBE_PLAYER_DEPS = [
   "html-audio-backend.js",
@@ -100,6 +103,8 @@ export const PROBE_PLAYER_DEPS = [
   "seam-gap.js",
   "seek-policy.js",
   "foray-queue.js",
+  "deck-policy.js",
+  "transport-policy.js",
 ];
 
 /** The generated tone. Not committed — a 2 MB WAV in a repo that guards a 3 MB

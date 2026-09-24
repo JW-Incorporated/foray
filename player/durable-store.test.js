@@ -28,9 +28,13 @@ import {
   DurableStore, createDurableStore, localStorageTier, requestPersistence, isNewer,
   DEFAULT_PREFIX, HEALTH_KEY, LOCAL_STALE_KEY, MAX_FAULTS, preferencesTier, MAX_CONSECUTIVE_TIER_FAILURES,
   vaultTier, VAULT_PLUGIN, DEVICE_ONLY_KEYS,
+  deferredPrefixesFor, engineDataDeletion, OWNER_TIER, EXTERNALLY_OWNED,
+  OWNERSHIP_DEFERRED, OWNERSHIP_EXTERNAL, OWNERSHIP_RELEASED,
   PERSIST_GRANTED, PERSIST_DENIED, PERSIST_UNSUPPORTED, PERSIST_ERROR, PERSIST_UNKNOWN,
 } from "./durable-store.js";
 import { ForayProgressStore, makeProgress, readProgress, progressKey } from "./foray-progress.js";
+import { OWNED_PREFIXES } from "./engine-contract.js";
+import { FAULT_KINDS } from "./engine-vocabulary.js";
 
 /* ---------- fakes ----------
 
@@ -1783,4 +1787,429 @@ test("VAULT: a vault error that quotes the vault's contents never reaches the he
   assert.doesNotMatch(local.map.get(HEALTH_KEY) || "", new RegExp(SECRET), "the token was mirrored into a backed-up tier");
   assert.ok(seen.length > 0);
   for (const f of seen) assert.doesNotMatch(f, new RegExp(SECRET), "the token reached the fault sink");
+});
+
+/* ---------- single writer: the native engine's rows (NE-23, native-engine plan §4.6) ----------
+
+   On the iOS shell the engine writes `cp_pos:*`, `cp_foray:*` and
+   `cp_last_episode` straight into UserDefaults — the rows the Preferences tier
+   holds — so the page is a second writer that can be STALE. These pin the four
+   acceptance criteria of the card (a stale mirror never reaches Preferences, a
+   deleted row is never resurrected, a refused write changes nothing, the
+   deferred migration runs once) and the wiring that makes them apply on iOS
+   and nowhere else. `native` below is the Preferences tier; the engine is
+   modelled as the thing that has written it. */
+
+/** A fake durable tier that also records removals, and whose reads can be
+    held open (`gate`) to model a WKWebView IndexedDB that answers late. */
+function ownerTier(name, rows = {}, { gate = null } = {}) {
+  const tier = fakeDurable({ name, rows });
+  const read = tier.readAll.bind(tier);
+  const remove = tier.remove.bind(tier);
+  tier.removed = [];
+  tier.readAll = async (prefix) => { if (gate) await gate; return read(prefix); };
+  tier.remove = async (k) => { tier.removed.push(k); return remove(k); };
+  return tier;
+}
+
+const isOwnerKey = (k) => OWNED_PREFIXES.some((p) => k.startsWith(p));
+const ownerWrites = (tier) => tier.writes.filter(isOwnerKey);
+const sorted = (m) => [...m].filter(([k]) => k !== HEALTH_KEY).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+
+/** The iOS shell's store: deferral from construction. */
+function iosStore({ local = {}, native = {}, idb = {}, gate = null, onFault = null } = {}) {
+  const tiers = {
+    local: new FakeLocal(local),
+    native: ownerTier("native", native),
+    idb: ownerTier("idb", idb, { gate }),
+  };
+  const store = createDurableStore({
+    localStorage: tiers.local, nativeTier: tiers.native, idbTier: tiers.idb,
+    deferredPrefixes: OWNED_PREFIXES, onFault,
+  });
+  return { store, ...tiers };
+}
+
+/** What `engineRead("rows")` answers: every engine row UserDefaults holds. */
+const engineRows = (native) => Object.fromEntries([...native.store].filter(([k]) => isOwnerKey(k)));
+
+test("SINGLE WRITER: deferral is for the iOS shell only — not the web, not Android, not an older shell", () => {
+  /* MUTATION: answer the prefixes for any native platform -> Android defers a
+     migration nothing on Android will ever release, and its positions stop
+     reaching SharedPreferences. */
+  const shell = (platform, native = true) => ({ getPlatform: () => platform, isNativePlatform: () => native });
+  assert.deepEqual(deferredPrefixesFor(null, OWNED_PREFIXES), [], "a browser tab has no window.Capacitor");
+  assert.deepEqual(deferredPrefixesFor({}, OWNED_PREFIXES), [], "a shell with no getPlatform predates the engine");
+  assert.deepEqual(deferredPrefixesFor(shell("android"), OWNED_PREFIXES), []);
+  assert.deepEqual(deferredPrefixesFor(shell("web", false), OWNED_PREFIXES), []);
+  assert.deepEqual(deferredPrefixesFor({ getPlatform() { throw new Error("x"); } }, OWNED_PREFIXES), []);
+  assert.deepEqual(deferredPrefixesFor(shell("ios"), OWNED_PREFIXES), [...OWNED_PREFIXES]);
+  const web = createDurableStore({ localStorage: new FakeLocal() });
+  assert.equal(web.ownership(), null, "a store nobody defers has no owner state at all");
+  const ios = createDurableStore({ localStorage: new FakeLocal(), deferredPrefixes: OWNED_PREFIXES });
+  assert.deepEqual(ios.ownership(), { state: OWNERSHIP_DEFERRED, prefixes: [...OWNED_PREFIXES] });
+});
+
+test("SINGLE WRITER: the player defers the engine's rows from construction, and (no engine client yet) releases before hydrating", async () => {
+  /* MUTATION: drop `deferredPrefixes` from client.js -> the pin fails; drop the
+     release, or move it after `storage.hydrate()` -> on iOS every position
+     would sit in memory for good, or hydration would run deferred first. */
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("./client.js", import.meta.url), "utf8");
+  const call = /const storage = createDurableStore\(\{[\s\S]*?\}\);/.exec(src);
+  assert.ok(call, "client.js no longer builds the store where this test looks");
+  assert.match(call[0], /deferredPrefixes:\s*deferredPrefixesFor\([^)]*window\.Capacitor[^)]*,\s*OWNED_PREFIXES\)/);
+  assert.match(src, /import \{ OWNED_PREFIXES \} from "\.\/engine-contract\.js";/);
+  const release = src.indexOf("storage.releaseOwnership()");
+  const hydrate = src.indexOf("storage.hydrate()");
+  assert.ok(release > call.index, "the store is released after it is built");
+  assert.ok(hydrate > 0 && release < hydrate, "released before hydration, so hydration runs as it always did");
+});
+
+test("SINGLE WRITER (acceptance): a stale localStorage row beside a newer native row — page boot writes NOTHING to Preferences for it", async () => {
+  /* The clobber. Engine rows carry no timestamp `isNewer` can use against an
+     undated mirror, so "local wins" pushed the page's stale copy down over the
+     engine's. The control store shows the defect is real; the deferred store
+     must not have it. MUTATION: drop the `_withheld` skip in `_migrateUp` ->
+     Preferences receives cp_pos:ep-1 = the stale 10 s. */
+  const local = { "cp_pos:ep-1": '{"seconds":10}', "cp_last_episode": '{"id":"ep-0"}', cp_rate: "1.5" };
+  const native = { "cp_pos:ep-1": '{"seconds":900}', "cp_last_episode": '{"id":"ep-1"}' };
+
+  const controlNative = ownerTier("native", native);
+  const control = createDurableStore({
+    localStorage: new FakeLocal(local), nativeTier: controlNative, idbTier: ownerTier("idb"),
+  });
+  await control.hydrate();
+  assert.equal(controlNative.store.get("cp_pos:ep-1"), '{"seconds":10}', "premise: without deferral the mirror clobbers the engine's row");
+
+  const { store, native: prefs, idb, local: ls } = iosStore({ local, native });
+  await store.hydrate();
+  await store.flush();
+  assert.deepEqual(ownerWrites(prefs), [], "Preferences received a write for an engine row");
+  assert.deepEqual(ownerWrites(idb), [], "nor is any engine row mirrored into IndexedDB until the lane is known");
+  assert.equal(prefs.store.get("cp_pos:ep-1"), '{"seconds":900}');
+  assert.equal(ls.map.get("cp_last_episode"), '{"id":"ep-0"}', "nor up into localStorage");
+  assert.ok(prefs.writes.includes("cp_rate"), "a row the engine does not own migrates exactly as before");
+});
+
+test("SINGLE WRITER: the engine's set REPLACES the page's on attach — a row absent natively is dropped from memory, other rows untouched", async () => {
+  /* MUTATION: merge instead of replace (skip the drop loop) -> cp_pos:gone and
+     cp_foray:old stay readable, and the page paints a position the engine deleted. */
+  const { store, native, idb, local } = iosStore({
+    local: { "cp_pos:gone": "1", "cp_pos:kept": "2", "cp_foray:old": "{}", cp_rate: "1.5", "cp_foray_feedback": "{}" },
+  });
+  await store.hydrate();
+  assert.equal(store.externallyOwned(OWNED_PREFIXES), true);
+  assert.equal(store.adoptOwnedSet({
+    "cp_pos:kept": "20", "cp_last_episode": '{"id":"ep-9"}',
+    cp_rate: "3", "cp_pos:bad": 7, // not an engine row / not a string: ignored
+  }), true);
+  assert.equal(store.getItem("cp_pos:gone"), null);
+  assert.equal(store.getItem("cp_foray:old"), null);
+  assert.equal(store.getItem("cp_pos:kept"), "20");
+  assert.equal(store.getItem("cp_last_episode"), '{"id":"ep-9"}');
+  assert.equal(store.getItem("cp_pos:bad"), null);
+  assert.equal(store.getItem("cp_rate"), "1.5", "a page row is never taken from the engine's answer");
+  assert.equal(store.getItem("cp_foray_feedback"), "{}", "the colon is load-bearing: the thumbs store is the page's");
+  await store.flush();
+  assert.deepEqual([...ownerWrites(native), ...ownerWrites(idb), ...native.removed, ...idb.removed], [], "adoption writes no tier");
+  assert.equal(local.map.get("cp_pos:gone"), "1", "the mirror is brought into line on release, not here");
+});
+
+test("SINGLE WRITER (acceptance): a row the engine deleted is not resurrected — by a native reboot, nor by a JS launch after a relinquish", async () => {
+  /* UserDefaults lost cp_pos:gone (the engine finished the episode and
+     deleted it); localStorage and IndexedDB still hold the page's old copies.
+     MUTATIONS: drop the `_withheld` skip in `_migrateUp` -> boot 1 writes it
+     back into Preferences; skip the release's first step (committing what the
+     engine's set decided) -> the relinquish leaves the stale mirrors behind,
+     and a JS launch would read the row back out of them. */
+  const stale = { "cp_pos:gone": '{"seconds":1200}', "cp_pos:live": '{"seconds":5}' };
+  const local = new FakeLocal(stale);
+  const idb = ownerTier("idb", stale);
+  const native = ownerTier("native", { "cp_pos:live": '{"seconds":60}' });
+  const boot = () => createDurableStore({ localStorage: local, nativeTier: native, idbTier: idb, deferredPrefixes: OWNED_PREFIXES });
+
+  for (let i = 0; i < 2; i++) {                 // two native launches
+    const s = boot();
+    await s.hydrate();
+    s.externallyOwned(OWNED_PREFIXES);
+    s.adoptOwnedSet(engineRows(native));
+    await s.flush();
+    assert.equal(s.getItem("cp_pos:gone"), null, `native launch ${i + 1} reads the deleted row`);
+    assert.equal(s.getItem("cp_pos:live"), '{"seconds":60}');
+    assert.equal(native.store.has("cp_pos:gone"), false, `native launch ${i + 1} resurrected it in UserDefaults`);
+  }
+
+  // A relinquish: rows adopted once more, then the page becomes the writer.
+  const r = boot();
+  await r.hydrate();
+  r.externallyOwned(OWNED_PREFIXES);
+  r.adoptOwnedSet(engineRows(native));
+  await r.releaseOwnership();
+  assert.equal(local.map.has("cp_pos:gone"), false, "the stale mirror survived the release");
+  assert.equal(idb.store.has("cp_pos:gone"), false, "IndexedDB's stale copy survived the release");
+  assert.equal(local.map.get("cp_pos:live"), '{"seconds":60}', "the engine's row is mirrored up");
+
+  // The next launch is JS mode (released before hydration, as client.js does).
+  const js = boot();
+  await js.releaseOwnership();
+  await js.hydrate();
+  await js.flush();
+  assert.equal(js.getItem("cp_pos:gone"), null);
+  assert.equal(native.store.has("cp_pos:gone"), false);
+});
+
+test("SINGLE WRITER: after a replace-set, release sweeps a stale copy hydration never loaded", async () => {
+  /* The adoption beat IndexedDB's read, so memory never held cp_pos:late and
+     the ordinary removal path never saw it. MUTATION: drop the async half of
+     `_sweepOwnerRows` -> IndexedDB keeps it, and the next JS launch adopts it
+     from there and migrates it back into Preferences. */
+  let open;
+  const gate = new Promise((r) => { open = r; });
+  const { store, idb } = iosStore({ idb: { "cp_pos:late": "1" }, gate });
+  const hydrated = store.hydrate();
+  store.externallyOwned(OWNED_PREFIXES);
+  store.adoptOwnedSet({});
+  const released = store.releaseOwnership();
+  open();
+  await hydrated;
+  await released;
+  await store.flush();
+  assert.equal(idb.store.has("cp_pos:late"), false);
+  assert.equal(store.getItem("cp_pos:late"), null);
+});
+
+test("SINGLE WRITER: a durable read that lands AFTER the replace-set cannot put a deleted row back", async () => {
+  /* IndexedDB answering late is ordinary in a WKWebView (idb-tier.js hazard 1).
+     MUTATION: drop the `_replaced` guard in `_doHydrate` -> the late read
+     adopts cp_pos:gone into memory and the page paints it again. */
+  let open;
+  const gate = new Promise((r) => { open = r; });
+  const { store } = iosStore({ idb: { "cp_pos:gone": "1", cp_seen: "[]" }, gate });
+  const hydrated = store.hydrate();
+  store.externallyOwned(OWNED_PREFIXES);
+  store.adoptOwnedSet({ "cp_pos:live": "2" });
+  open();
+  await hydrated;
+  assert.equal(store.getItem("cp_pos:gone"), null);
+  assert.equal(store.getItem("cp_pos:live"), "2");
+  assert.equal(store.getItem("cp_seen"), "[]", "a page row from the same late read is adopted as ever");
+});
+
+test("SINGLE WRITER (acceptance): a refused write leaves the store untouched, does not throw, and is a `fault externally-owned`", async () => {
+  /* MUTATION: hold the write in memory instead of refusing it (drop the
+     external branch of `_holdWrite`) -> the stale page's 10 s is what the
+     facade reads, and what a release would later commit. */
+  const faults = [];
+  const { store, native, idb, local } = iosStore({
+    native: { "cp_pos:ep-1": "900", "cp_foray:f": "{}" },
+    onFault: (f) => faults.push(f),
+  });
+  await store.hydrate();
+  store.externallyOwned(OWNED_PREFIXES);
+  store.adoptOwnedSet(engineRows(native));
+  assert.equal(store.ownership().state, OWNERSHIP_EXTERNAL);
+
+  assert.doesNotThrow(() => store.setItem("cp_pos:ep-1", "10"));
+  assert.doesNotThrow(() => store.removeItem("cp_foray:f"));
+  store.setItem("cp_rate", "2");                 // the page's own rows still write
+  await store.flush();
+
+  assert.equal(store.getItem("cp_pos:ep-1"), "900");
+  assert.equal(store.getItem("cp_foray:f"), "{}");
+  assert.deepEqual([...ownerWrites(native), ...ownerWrites(idb), ...native.removed, ...idb.removed], []);
+  assert.equal(local.map.has("cp_pos:ep-1"), false);
+  assert.equal(store.getItem("cp_rate"), "2");
+  assert.ok(native.writes.includes("cp_rate"));
+
+  const refused = store.health().faults.filter((f) => f.tier === OWNER_TIER);
+  assert.deepEqual(refused.map(({ op, key, error }) => ({ op, key, error })), [
+    { op: "write", key: "cp_pos:ep-1", error: "externally-owned" },
+    { op: "remove", key: "cp_foray:f", error: "externally-owned" },
+  ]);
+  assert.equal(faults.length, 2, "the app's fault sink hears each refusal");
+  assert.ok(FAULT_KINDS.includes(EXTERNALLY_OWNED), "the token is the engine vocabulary's own spelling (NE-26r counts it)");
+});
+
+test("SINGLE WRITER: a page write while the lane is unknown lands in memory only, and is committed on release", async () => {
+  /* MUTATION: write held rows through at once (skip `_withheld` in setItem)
+     -> Preferences gets the write before anyone knows who the writer is. */
+  const { store, native, idb, local } = iosStore({ local: { "cp_foray:f": "{}" }, native: { "cp_foray:f": "{}" } });
+  await store.hydrate();
+  store.setItem("cp_pos:new", "42");
+  store.removeItem("cp_foray:f");
+  await store.flush();
+  assert.equal(store.getItem("cp_pos:new"), "42", "the session stays coherent");
+  assert.equal(store.getItem("cp_foray:f"), null);
+  assert.equal(local.map.has("cp_pos:new"), false);
+  assert.equal(native.store.get("cp_foray:f"), "{}", "nothing is committed while nothing is decided");
+  assert.deepEqual(ownerWrites(native), []);
+
+  await store.releaseOwnership();
+  assert.equal(local.map.get("cp_pos:new"), "42");
+  assert.equal(native.store.get("cp_pos:new"), "42");
+  assert.equal(idb.store.get("cp_pos:new"), "42");
+  assert.equal(local.map.has("cp_foray:f"), false);
+  assert.equal(native.store.has("cp_foray:f"), false);
+});
+
+test("SINGLE WRITER (acceptance): after releaseOwnership the deferred migration runs ONCE — and leaves the tiers where no deferral would have", async () => {
+  /* MUTATION: skip the held migration in `_commitHeld` (drop step 4) -> the
+     row only localStorage had never reaches Preferences, so an eviction loses
+     it. MUTATION: re-run the commit on each call -> Preferences is written
+     twice. MUTATION: drop the held mirror (step 2) -> localStorage never gets
+     cp_last_episode. */
+  const seed = {
+    local: { "cp_pos:local-only": "7", "cp_foray:both": "{}" },
+    native: { "cp_last_episode": '{"id":"ep-3"}', "cp_foray:both": "{}" },
+  };
+  const { store, native, idb, local } = iosStore(seed);
+  await store.hydrate();
+  assert.equal(store.getItem("cp_last_episode"), '{"id":"ep-3"}', "deferred rows are READ");
+  assert.equal(local.map.has("cp_last_episode"), false, "and not mirrored up yet");
+  assert.deepEqual([...ownerWrites(native), ...ownerWrites(idb)], []);
+
+  const first = store.releaseOwnership();
+  assert.equal(store.releaseOwnership(), first, "a second call is the first call");
+  assert.equal(await first, true);
+  await store.releaseOwnership();
+  await store.hydrate();
+  await store.flush();
+  assert.equal(store.ownership().state, OWNERSHIP_RELEASED);
+  assert.deepEqual(ownerWrites(native).sort(), ["cp_pos:local-only"]);
+  assert.deepEqual(ownerWrites(idb).sort(), ["cp_foray:both", "cp_last_episode", "cp_pos:local-only"]);
+  assert.equal(local.map.get("cp_last_episode"), '{"id":"ep-3"}');
+
+  /* The same end state as a store that never deferred. */
+  const plainLocal = new FakeLocal(seed.local);
+  const plainNative = ownerTier("native", seed.native);
+  const plainIdb = ownerTier("idb");
+  const plain = createDurableStore({ localStorage: plainLocal, nativeTier: plainNative, idbTier: plainIdb });
+  await plain.hydrate();
+  assert.deepEqual(sorted(native.store), sorted(plainNative.store));
+  assert.deepEqual(sorted(idb.store), sorted(plainIdb.store));
+  assert.deepEqual(sorted(local.map), sorted(plainLocal.map));
+});
+
+test("SINGLE WRITER: a release while hydration is still reading runs the migration when hydration finishes, once", async () => {
+  /* The relinquish can beat a slow IndexedDB. MUTATION: drop the
+     `_hydrationMigrated` hand-off in `_doHydrate` -> the migration is lost. */
+  let open;
+  const gate = new Promise((r) => { open = r; });
+  const { store, native } = iosStore({ local: { "cp_pos:a": "1" }, gate });
+  const hydrated = store.hydrate();
+  const released = store.releaseOwnership();
+  store.setItem("cp_pos:b", "2");                 // ordinary, the moment it is released
+  await released;
+  assert.equal(native.store.has("cp_pos:a"), false, "premise: hydration has not migrated yet");
+  open();
+  await hydrated;
+  await store.flush();
+  assert.deepEqual(ownerWrites(native).filter((k) => k === "cp_pos:a"), ["cp_pos:a"], "the held row is migrated once");
+  /* cp_pos:b is written by its own setItem, and — like any row written during
+     hydration, deferral or not — once more by hydration's migration. */
+  assert.deepEqual([...new Set(ownerWrites(native))].sort(), ["cp_pos:a", "cp_pos:b"]);
+});
+
+test("SINGLE WRITER: a ledger ghost among the deferred rows is read as gone, and removed from localStorage only on release", async () => {
+  /* The durable tier removed cp_pos:g while localStorage refused to (property
+     4); its ledger says so. MUTATION: remove it from localStorage while still
+     deferred -> the page writes before the lane is known; drop `_heldGhost`
+     from the release -> the ghost outlives it and comes back next launch. */
+  const { store, local } = iosStore({
+    local: { "cp_pos:g": "1" },
+    native: { [LOCAL_STALE_KEY]: JSON.stringify(["cp_pos:g"]) },
+  });
+  await store.hydrate();
+  assert.equal(store.getItem("cp_pos:g"), null);
+  assert.equal(local.map.get("cp_pos:g"), "1");
+  await store.releaseOwnership();
+  assert.equal(local.map.has("cp_pos:g"), false);
+});
+
+test("SINGLE WRITER: relinquish is one way — no re-owning, no adopting, and ordinary writes after it", async () => {
+  /* MUTATION: let `externallyOwned` run after a release -> the engine takes the
+     rows back from a page that has already become their writer. */
+  const { store, native } = iosStore();
+  await store.hydrate();
+  store.externallyOwned(OWNED_PREFIXES);
+  await store.releaseOwnership();
+  assert.equal(store.externallyOwned(OWNED_PREFIXES), false);
+  assert.equal(store.adoptOwnedSet({ "cp_pos:x": "1" }), false);
+  assert.equal(store.getItem("cp_pos:x"), null);
+  store.setItem("cp_pos:y", "5");
+  await store.flush();
+  assert.equal(native.store.get("cp_pos:y"), "5");
+  assert.equal(await createDurableStore({ localStorage: new FakeLocal() }).releaseOwnership(), false, "nothing deferred, nothing to release");
+});
+
+test("SINGLE WRITER: Delete my data in native mode is stop{persist:false} -> the engine's purge -> the page's own, and reaches the engine's rows everywhere", async () => {
+  /* MUTATIONS: purge the tiers before the engine -> the order below fails;
+     leave the removal loop subject to the refusal (drop `_purgeBypass`) -> the
+     stale mirrors of the engine's rows survive "Delete my data"; ignore the
+     engine's answer -> a failed engine purge reports ok. */
+  const order = [];
+  const engine = { rows: new Map([["cp_pos:e", "9"]]), private: new Set(["ForayEngine.restore", "ForayEngine.strikes"]) };
+  const send = async (cmd, args) => {
+    order.push(`${cmd}${cmd === "stop" ? `:${args.persist}` : ""}`);
+    if (cmd === "purge") { engine.rows.clear(); engine.private.clear(); return { ok: true }; }
+    return { ok: false, reason: "not-loaded" };
+  };
+  const { store, native, idb, local } = iosStore({
+    local: { "cp_pos:e": "1", cp_engine_applied: '{"advances":3}' },
+    idb: { "cp_pos:e": "1" },
+    native: { "cp_pos:e": "9" },
+  });
+  const nativeRemove = native.remove;
+  native.remove = async (k) => { order.push(`tier-remove:${k}`); return nativeRemove(k); };
+  await store.hydrate();
+  store.externallyOwned(OWNED_PREFIXES, { purge: engineDataDeletion(send) });
+  store.adoptOwnedSet({ "cp_pos:e": "9" });
+
+  const out = await store.purge();
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.deepEqual(out.engine, { ok: true });
+  assert.deepEqual(order.slice(0, 2), ["stop:false", "purge"], "stop without persisting, then purge, before any tier");
+  assert.ok(order.indexOf("tier-remove:cp_pos:e") > 1);
+  assert.deepEqual(engine.private, new Set(), "the engine's private keys go with its purge");
+  for (const [name, keys] of [["local", [...local.map.keys()]], ["native", [...native.store.keys()]], ["idb", [...idb.store.keys()]]]) {
+    assert.deepEqual(keys.filter((k) => k.startsWith("cp_")), [], `${name} still holds ${keys}`);
+  }
+  assert.equal(store.ownership().state, OWNERSHIP_EXTERNAL, "the engine still owns the rows after a purge");
+
+  const failing = iosStore();
+  await failing.store.hydrate();
+  failing.store.externallyOwned(OWNED_PREFIXES, { purge: engineDataDeletion(async (cmd) => (cmd === "purge" ? { ok: false, reason: "relinquished" } : { ok: true })) });
+  const bad = await failing.store.purge();
+  assert.equal(bad.ok, false, "a purge the engine refused is not a deletion");
+  assert.deepEqual(bad.engine, { ok: false, reason: "relinquished" });
+  const thrown = iosStore();
+  thrown.store.externallyOwned(OWNED_PREFIXES, { purge: async () => { throw new Error("bridge gone"); } });
+  const t = await thrown.store.purge();
+  assert.equal(t.ok, false);
+  assert.equal(t.engine.reason, "engine-purge-failed");
+  const web = await createDurableStore({ localStorage: new FakeLocal({ cp_rate: "1" }) }).purge();
+  assert.equal("engine" in web, false, "no engine, no engine field: the web's answer is unchanged");
+});
+
+test("SINGLE WRITER: a release that lands while hydration's own migration is mid-way still migrates the rows it skipped", async () => {
+  /* The migration skips a held row, awaits a write, and the relinquish lands in
+     that await: the skipped row belongs to neither the migration (already past
+     it) nor the release (hydration has not finished). MUTATION: drop the
+     hand-off at the end of `_doHydrate` -> Preferences never gets cp_pos:a. */
+  let open;
+  let started;
+  const gate = new Promise((r) => { open = r; });
+  const writing = new Promise((r) => { started = r; });
+  const { store, native } = iosStore({ local: { "cp_pos:a": "1", cp_rate: "2" } });
+  const write = native.write;
+  native.write = async (k, v) => { if (k === "cp_rate") { started(); await gate; } return write(k, v); };
+  const hydrated = store.hydrate();
+  await writing;                                 // cp_pos:a already skipped, cp_rate in flight
+  const released = store.releaseOwnership();
+  open();
+  await hydrated;
+  await released;
+  await store.flush();
+  assert.deepEqual(ownerWrites(native), ["cp_pos:a"]);
 });

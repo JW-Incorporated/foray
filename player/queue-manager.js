@@ -49,7 +49,7 @@
    Ended` below cannot tell the difference, and that is the design.
 
    ── 10. The seam beat (`player/seam-gap.js`) ──────────────────────────────
-   An unbridged segment-to-segment seam gets 2.0 s of silence before the next
+   An unbridged segment-to-segment seam gets 0.5 s of silence before the next
    segment becomes audible. The RULE lives in seam-gap.js; the CLOCK lives here,
    for the same reason the 15 s position timer does — the reducer models no
    timers, and adding a `gapping` state would buy nothing the deadline below
@@ -106,7 +106,7 @@
 
      THE BEAT IS STILL SPENT IN FULL. `_awaitSeamGap` is untouched, so a
      handover that finishes early waits out the remainder and the listener hears
-     the authored 2.0 s instead of 9.2 s of nothing. The beat is an editorial
+     the authored beat instead of 9.2 s of nothing. The beat is an editorial
      pause between two voices, not an artifact of loading; shortening it was
      never the fix.
 
@@ -168,6 +168,7 @@ import { buildForayQueue } from "./foray-queue.js";
 import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap.js";
 import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 import { interludeEligible, describeInterlude, INTERLUDE_CEILING_SEC } from "./interlude.js";
+import { interruptionResumeOffset } from "./transport-policy.js";
 
 /** The periodic position write's cadence. Exported (NE-08) so the native
     engine's generated constants (NE-04) and its ResumeRules port read this
@@ -435,6 +436,9 @@ export class PlayerQueueManager {
         `loadItem`, and a blind clear there turned the restart into a resume.
         The finally clears only what its OWN action armed. */
     this._offsetArmedBy = null;
+    /** True only while `interruptionEnded` dispatches an OS should-resume, so
+        the load it causes steps back INTERRUPTION_REWIND_SEC (NE-14j). */
+    this._rewindNextResume = false;
     this._transportInFlight = null;
     /** Whether the last pause was the LISTENER's (a press, a stop) rather than
         the OS's (a call, Siri, another app taking the session). Audit round 2
@@ -936,7 +940,7 @@ export class PlayerQueueManager {
    * transport means they have named a destination. Changing speed names no
    * destination — it is a preference about how the rest of the hour sounds — so
    * cutting the beat here would start the next segment early and swallow the
-   * authored 2.0 s for a tap that was not about going anywhere.
+   * authored beat for a tap that was not about going anywhere.
    *
    * It also does not need to be: the beat is wall clock and the element is paused
    * for it, so writing the rate mid-beat is applied to a stopped element and
@@ -1048,7 +1052,17 @@ export class PlayerQueueManager {
         ? "interruption.ended.routeLost — not resumed (corner case #13)"
         : "interruption.ended.listenerPaused — not resumed");
     }
-    await this._handle(E.interruptionEnded(resume));
+    /* THE RESUME STEPS BACK INTERRUPTION_REWIND_SEC (NE-14j, plan §4.4;
+       `interruptionResumeOffset`). Held for exactly this dispatch: the reducer's
+       resume is `loadItem`, and `_loadItem` reads the flag synchronously at its
+       top, before any await — so no other transport's load can spend it, and a
+       listener's own play after a pause never sees it. */
+    this._rewindNextResume = resume;
+    try {
+      await this._handle(E.interruptionEnded(resume));
+    } finally {
+      this._rewindNextResume = false;
+    }
   }
 
   /** Corner case #13. The reducer never auto-resumes; that policy lives here.
@@ -1184,7 +1198,7 @@ export class PlayerQueueManager {
        playback effect, because the sound is already coming out. */
     if (this.state.type === "interrupted") return this._reconcileTowardsPlaying(why);
     /* `playing` and nothing wider. A seam beat is `loadingItem` with a paused
-       element BY DESIGN — the 2.0 s silence is the product — and `interrupted`,
+       element BY DESIGN — the 0.5 s silence is the product — and `interrupted`,
        `idle` and `ended` all already agree with a paused element. `playing` is
        the only state that claims audio is coming out right now, so it is the only
        one that can be caught lying. */
@@ -1468,6 +1482,10 @@ export class PlayerQueueManager {
        `forced`, so a superseded load cannot hand it to its successor. */
     const explicit = this._startOffsetNext;
     this._startOffsetNext = null;
+    /* An OS interruption's should-resume (see `interruptionEnded`). Spent here
+       like the two above, so it can only ever shape the load it was armed for. */
+    const rewind = this._rewindNextResume === true;
+    this._rewindNextResume = false;
     // A segment's in-point OVERRIDES any saved position, always (#65 §4).
     // Resuming to where the listener last left this episode would drop them
     // outside the segment entirely — usually into a different story.
@@ -1529,10 +1547,18 @@ export class PlayerQueueManager {
        the ordinary rule rather than being trusted. */
     const explicitInside = explicit != null
       && (!bounds || (explicit >= bounds.startSec && explicit < bounds.endSec));
+    /* In place after an OS interruption: step back INTERRUPTION_REWIND_SEC, never
+       before this item's own start (NE-14j). Only the in-place resume, which
+       is plan §4.4's healthy item: an element that no longer holds the item is
+       the rebuild path, and that starts from the stored row the way every
+       cold resume does. */
+    const inPlaceAt = resumingInPlace && rewind
+      ? (interruptionResumeOffset({ playheadSec: playhead, startSec: bounds ? bounds.startSec : null }) ?? playhead)
+      : playhead;
     const startOffset = explicitInside
       ? explicit
       : (resumingInPlace
-        ? playhead
+        ? inPlaceAt
         : (bounds
           ? bounds.startSec
           : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item)))));
@@ -1602,7 +1628,7 @@ export class PlayerQueueManager {
          the `itemLoaded` that arms the out-point and starts it. Everything
          expensive already happened, so the remaining silence is the beat and
          nothing else. A load that FAILED never reaches this line — an error
-         must not wait two seconds to be reported. */
+         must not wait out a beat to be reported. */
       if (!(await this._awaitSeamGap(seq))) {
         return this._emit(`seam.gap.superseded ${item.id} — a newer load owns the player`);
       }
@@ -1619,7 +1645,7 @@ export class PlayerQueueManager {
       // only other place that clears it and this path never reaches it, so
       // without this a failed seam leaves a live deadline that the NEXT load —
       // possibly a cold-launch restore, which touches no transport method —
-      // would sit out for up to two seconds for no reason.
+      // would sit out for up to a whole beat for no reason.
       this._endSeamGap("loadFailed");
       await this._handle(E.error(`loadItem(${ref.id}) failed: ${err?.message ?? err}`));
     }
@@ -2029,7 +2055,7 @@ export class PlayerQueueManager {
       the jingle stretches the same deadline (`inInterlude` narrows it).
 
       The surface reads this so it can say "a beat is running" instead of
-      "Loading…", and so the main button means STOP for those two seconds
+      "Loading…", and so the main button means STOP for that half second
       rather than START. `_gapUntil` is the single source of truth: every path
       that ends a beat nulls it. */
   get inSeamGap() {
@@ -2238,7 +2264,7 @@ export class PlayerQueueManager {
    * The jingle reported its end — `ended`, an `error`, or a rejected `play()`.
    * Shrink the seam back to the beat's own deadline: finish the wait now if the
    * beat is already spent, re-time it if the beat still owes something (a
-   * jingle that failed at once must not shorten the 2.0 s beat), or, if the
+   * jingle that failed at once must not shorten the 0.5 s beat), or, if the
    * next segment's load has not even landed yet, just lower the deadline so
    * `_awaitSeamGap` holds only the remainder when it does.
    */

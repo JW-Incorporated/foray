@@ -1,0 +1,566 @@
+{
+  "family": "deck-episode",
+  "module": "player/deck-policy.js",
+  "note": "The episode deck's decisions (NE-14j), from player/deck-policy.js, which HtmlAudioBackend asks: the out-point's fine watch and its never-early wake, the hidden and visible load deadlines, same source as a seek, and the handover recovery's stop rule (#267). A DeckEvent's facts go in (the playhead, the boundary, the rate, visibility, what the deck holds); a DeckPolicy answer comes out. The numbers and fineWakeAction are AUTHORED; the rest is recorded from the JS. Port card NE-14s.",
+  "cases": [
+    {
+      "id": "deck-episode/arm-lead-2.0s",
+      "covers": [
+        "html-audio-backend::with the worst recorded tick, the FINE stage stops the boundary at every speed",
+        "html-audio-backend::the fine watch stays out of the way until the boundary is within the lead"
+      ],
+      "authored": true,
+      "note": "The fine stage takes over 2.0 s of WALL clock before the boundary: past the widest timeupdate gap recorded (1,825 ms), so a late tick never does the stopping.",
+      "read": "OUT_POINT_ARM_LEAD_SEC",
+      "expect": { "value": 2 }
+    },
+    {
+      "id": "deck-episode/min-timer-4ms",
+      "covers": [],
+      "authored": true,
+      "note": "Timers are never asked for less than 4 ms (the browser's nested-timeout clamp).",
+      "read": "OUT_POINT_MIN_TIMER_MS",
+      "expect": { "value": 4 }
+    },
+    {
+      "id": "deck-episode/load-deadline-visible-10s",
+      "covers": [
+        "html-audio-backend::a HIDDEN page gets the hidden load deadline, a visible page the visible one"
+      ],
+      "authored": true,
+      "note": "A visible load (measured at ~590 ms) may take 10 s before the manager degrades.",
+      "read": "LOAD_SETTLE_TIMEOUT_MS",
+      "expect": { "value": 10000 }
+    },
+    {
+      "id": "deck-episode/load-deadline-hidden-20s",
+      "covers": [
+        "html-audio-backend::a HIDDEN page gets the hidden load deadline, a visible page the visible one"
+      ],
+      "authored": true,
+      "note": "A hidden load is a different machine (5-11 s measured for the same file); it gets 20 s, so a slow seam is slow rather than a dropped segment.",
+      "read": "LOAD_SETTLE_TIMEOUT_HIDDEN_MS",
+      "expect": { "value": 20000 }
+    },
+    {
+      "id": "deck-episode/settle-near-1s",
+      "covers": [],
+      "authored": true,
+      "note": "An in-place seek counts as settled within 1 s of its target.",
+      "read": "SETTLE_NEAR_SEC",
+      "expect": { "value": 1 }
+    },
+    {
+      "id": "deck-episode/fine-watch-wall-clock-1x",
+      "covers": [
+        "html-audio-backend::the fine timer is armed in wall clock, so a faster rate shortens the wait",
+        "html-audio-backend::a faster rate does not loosen the boundary: armed wall time x rate is constant"
+      ],
+      "note": "0.5 s of CONTENT before the boundary is (0.5 / rate) s of wall clock, rounded up to a whole ms: armed x rate stays constant.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 100.5, "atSec": 100, "rate": 1 }],
+      "expect": { "return": 500 }
+    },
+    {
+      "id": "deck-episode/fine-watch-wall-clock-2x",
+      "covers": [
+        "html-audio-backend::the fine timer is armed in wall clock, so a faster rate shortens the wait",
+        "html-audio-backend::a faster rate does not loosen the boundary: armed wall time x rate is constant"
+      ],
+      "note": "0.5 s of CONTENT before the boundary is (0.5 / rate) s of wall clock, rounded up to a whole ms: armed x rate stays constant.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 100.5, "atSec": 100, "rate": 2 }],
+      "expect": { "return": 250 }
+    },
+    {
+      "id": "deck-episode/fine-watch-wall-clock-4x",
+      "covers": [
+        "html-audio-backend::the fine timer is armed in wall clock, so a faster rate shortens the wait",
+        "html-audio-backend::a faster rate does not loosen the boundary: armed wall time x rate is constant"
+      ],
+      "note": "0.5 s of CONTENT before the boundary is (0.5 / rate) s of wall clock, rounded up to a whole ms: armed x rate stays constant.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 100.5, "atSec": 100, "rate": 4 }],
+      "expect": { "return": 125 }
+    },
+    {
+      "id": "deck-episode/fine-watch-wall-clock-8x",
+      "covers": [
+        "html-audio-backend::the fine timer is armed in wall clock, so a faster rate shortens the wait",
+        "html-audio-backend::a faster rate does not loosen the boundary: armed wall time x rate is constant"
+      ],
+      "note": "0.5 s of CONTENT before the boundary is (0.5 / rate) s of wall clock, rounded up to a whole ms: armed x rate stays constant.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 100.5, "atSec": 100, "rate": 8 }],
+      "expect": { "return": 63 }
+    },
+    {
+      "id": "deck-episode/fine-watch-outside-lead-at-1x",
+      "covers": [
+        "html-audio-backend::the fine watch stays out of the way until the boundary is within the lead"
+      ],
+      "note": "4 s of wall clock out at 1x is the coarse stage's job: nothing armed.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 104, "atSec": 100, "rate": 1 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck-episode/fine-watch-same-boundary-at-2x-arms",
+      "covers": [
+        "html-audio-backend::the fine watch stays out of the way until the boundary is within the lead"
+      ],
+      "note": "The same boundary at 2x is 2.0 s of wall clock out, so it arms.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 104, "atSec": 100, "rate": 2 }],
+      "expect": { "return": 2000 }
+    },
+    {
+      "id": "deck-episode/fine-watch-exactly-at-the-lead-arms",
+      "covers": [
+        "html-audio-backend::the fine watch stays out of the way until the boundary is within the lead"
+      ],
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 102, "atSec": 100, "rate": 1 }],
+      "expect": { "return": 2000 }
+    },
+    {
+      "id": "deck-episode/fine-watch-worst-tick-arms-at-0-75x",
+      "covers": [
+        "html-audio-backend::with the worst recorded tick, the FINE stage stops the boundary at every speed",
+        "html-audio-backend::the fine watch stays out of the way until the boundary is within the lead"
+      ],
+      "note": "A boundary one worst-recorded tick (1,825 ms of wall clock) out arms at every ladder stop, so the late tick never stops the item.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 101.36875, "atSec": 100, "rate": 0.75 }],
+      "expect": { "return": 1826 }
+    },
+    {
+      "id": "deck-episode/fine-watch-worst-tick-arms-at-1x",
+      "covers": [
+        "html-audio-backend::with the worst recorded tick, the FINE stage stops the boundary at every speed",
+        "html-audio-backend::the fine watch stays out of the way until the boundary is within the lead"
+      ],
+      "note": "A boundary one worst-recorded tick (1,825 ms of wall clock) out arms at every ladder stop, so the late tick never stops the item.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 101.825, "atSec": 100, "rate": 1 }],
+      "expect": { "return": 1826 }
+    },
+    {
+      "id": "deck-episode/fine-watch-worst-tick-arms-at-1-25x",
+      "covers": [
+        "html-audio-backend::with the worst recorded tick, the FINE stage stops the boundary at every speed",
+        "html-audio-backend::the fine watch stays out of the way until the boundary is within the lead"
+      ],
+      "note": "A boundary one worst-recorded tick (1,825 ms of wall clock) out arms at every ladder stop, so the late tick never stops the item.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 102.28125, "atSec": 100, "rate": 1.25 }],
+      "expect": { "return": 1825 }
+    },
+    {
+      "id": "deck-episode/fine-watch-worst-tick-arms-at-1-5x",
+      "covers": [
+        "html-audio-backend::with the worst recorded tick, the FINE stage stops the boundary at every speed",
+        "html-audio-backend::the fine watch stays out of the way until the boundary is within the lead"
+      ],
+      "note": "A boundary one worst-recorded tick (1,825 ms of wall clock) out arms at every ladder stop, so the late tick never stops the item.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 102.7375, "atSec": 100, "rate": 1.5 }],
+      "expect": { "return": 1825 }
+    },
+    {
+      "id": "deck-episode/fine-watch-worst-tick-arms-at-1-75x",
+      "covers": [
+        "html-audio-backend::with the worst recorded tick, the FINE stage stops the boundary at every speed",
+        "html-audio-backend::the fine watch stays out of the way until the boundary is within the lead"
+      ],
+      "note": "A boundary one worst-recorded tick (1,825 ms of wall clock) out arms at every ladder stop, so the late tick never stops the item.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 103.19375, "atSec": 100, "rate": 1.75 }],
+      "expect": { "return": 1825 }
+    },
+    {
+      "id": "deck-episode/fine-watch-worst-tick-arms-at-2x",
+      "covers": [
+        "html-audio-backend::with the worst recorded tick, the FINE stage stops the boundary at every speed",
+        "html-audio-backend::the fine watch stays out of the way until the boundary is within the lead"
+      ],
+      "note": "A boundary one worst-recorded tick (1,825 ms of wall clock) out arms at every ladder stop, so the late tick never stops the item.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 103.65, "atSec": 100, "rate": 2 }],
+      "expect": { "return": 1826 }
+    },
+    {
+      "id": "deck-episode/fine-watch-disarmed-arms-nothing-1x",
+      "covers": [
+        "html-audio-backend::an out-point already behind the playhead arms no timer, at any rate"
+      ],
+      "note": "A boundary behind the playhead is disarmed (outPointArmed), and a disarmed watch arms nothing.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 100.5, "atSec": 200, "rate": 1, "armed": false }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck-episode/fine-watch-disarmed-arms-nothing-2x",
+      "covers": [
+        "html-audio-backend::an out-point already behind the playhead arms no timer, at any rate"
+      ],
+      "note": "A boundary behind the playhead is disarmed (outPointArmed), and a disarmed watch arms nothing.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 100.5, "atSec": 200, "rate": 2, "armed": false }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck-episode/fine-watch-disarmed-arms-nothing-4x",
+      "covers": [
+        "html-audio-backend::an out-point already behind the playhead arms no timer, at any rate"
+      ],
+      "note": "A boundary behind the playhead is disarmed (outPointArmed), and a disarmed watch arms nothing.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 100.5, "atSec": 200, "rate": 4, "armed": false }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck-episode/fine-watch-paused-arms-nothing",
+      "covers": [],
+      "note": "Nothing is moving while paused; `playing` asks again.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 100.5, "atSec": 100, "rate": 1, "paused": true }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck-episode/fine-watch-no-boundary-arms-nothing",
+      "covers": [],
+      "note": "An unbounded episode has no boundary to watch: no timer, whatever the rate.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": null, "atSec": 100, "rate": 1.5 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck-episode/fine-watch-timer-floor",
+      "covers": [],
+      "note": "1 ms of content from the boundary still asks for the 4 ms floor, never less.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 100.5, "atSec": 100.499, "rate": 1 }],
+      "expect": { "return": 4 }
+    },
+    {
+      "id": "deck-episode/fine-watch-junk-rate-is-1x",
+      "covers": [],
+      "note": "A rate that is not a positive number divides as 1x rather than by nothing.",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 100.5, "atSec": 100, "rate": 0 }],
+      "expect": { "return": 500 }
+    },
+    {
+      "id": "deck-episode/fine-watch-rederived-faster",
+      "covers": [],
+      "note": "2.0 s of content at 2x is 1,000 ms of wall clock (the re-derivation a speed change asks for).",
+      "call": "fineWatchDelayMs",
+      "args": [{ "outPointSec": 102, "atSec": 100, "rate": 2 }],
+      "expect": { "return": 1000 }
+    },
+    {
+      "id": "deck-episode/armed-before-the-boundary",
+      "covers": ["html-audio-backend::scrubbing back before the out-point re-arms it"],
+      "call": "outPointArmed",
+      "args": [{ "atSec": 100, "outPointSec": 100.4 }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "deck-episode/disarmed-past-the-boundary",
+      "covers": [
+        "html-audio-backend::scrubbing past the out-point frees the rest of the episode",
+        "html-audio-backend::an out-point already behind the playhead never fires",
+        "html-audio-backend::an out-point already behind the playhead arms no timer, at any rate"
+      ],
+      "call": "outPointArmed",
+      "args": [{ "atSec": 200, "outPointSec": 100.5 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck-episode/disarmed-on-the-boundary",
+      "covers": [],
+      "note": "A playhead exactly ON the boundary is not before it: no crossing is left to wait for.",
+      "call": "outPointArmed",
+      "args": [{ "atSec": 100.5, "outPointSec": 100.5 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck-episode/wake-on-the-boundary-stops",
+      "covers": [
+        "html-audio-backend::the fine timer, not the next timeupdate, is what stops the item",
+        "html-audio-backend::the stop is never early — the payoff is never clipped"
+      ],
+      "authored": true,
+      "note": "The playhead reached the boundary: stop.",
+      "call": "fineWakeAction",
+      "args": [{ "atSec": 100.5, "outPointSec": 100.5 }],
+      "expect": { "return": "stop" }
+    },
+    {
+      "id": "deck-episode/wake-past-the-boundary-stops",
+      "covers": ["html-audio-backend::the stop is never early — the payoff is never clipped"],
+      "authored": true,
+      "note": "A late wake past the boundary stops (the overshoot is recorded, never an early cut).",
+      "call": "fineWakeAction",
+      "args": [{ "atSec": 100.52, "outPointSec": 100.5 }],
+      "expect": { "return": "stop" }
+    },
+    {
+      "id": "deck-episode/wake-early-reschedules",
+      "covers": [
+        "html-audio-backend::an early fine wake reschedules instead of stopping short",
+        "html-audio-backend::the stop is never early — the payoff is never clipped"
+      ],
+      "authored": true,
+      "note": "Woke 0.25 s early: reschedule. NEVER EARLY — the payoff is not clipped.",
+      "call": "fineWakeAction",
+      "args": [{ "atSec": 100.25, "outPointSec": 100.5 }],
+      "expect": { "return": "reschedule" }
+    },
+    {
+      "id": "deck-episode/wake-a-hair-early-reschedules",
+      "covers": ["html-audio-backend::the stop is never early — the payoff is never clipped"],
+      "authored": true,
+      "note": "Even 1 ms of content short is not the boundary.",
+      "call": "fineWakeAction",
+      "args": [{ "atSec": 100.499, "outPointSec": 100.5 }],
+      "expect": { "return": "reschedule" }
+    },
+    {
+      "id": "deck-episode/wake-early-with-progress-reschedules",
+      "covers": [
+        "html-audio-backend::a frozen playhead stands the fine watch down instead of spinning"
+      ],
+      "authored": true,
+      "note": "An early wake that moved since the last one is jitter: reschedule.",
+      "call": "fineWakeAction",
+      "args": [{ "atSec": 100.25, "outPointSec": 100.5, "lastWakeAtSec": 100.1 }],
+      "expect": { "return": "reschedule" }
+    },
+    {
+      "id": "deck-episode/wake-with-no-progress-stands-down",
+      "covers": [
+        "html-audio-backend::a frozen playhead stands the fine watch down instead of spinning"
+      ],
+      "authored": true,
+      "note": "No progress since the last early wake is a stall: stand down instead of spinning.",
+      "call": "fineWakeAction",
+      "args": [{ "atSec": 100.25, "outPointSec": 100.5, "lastWakeAtSec": 100.25 }],
+      "expect": { "return": "stand-down" }
+    },
+    {
+      "id": "deck-episode/wake-on-the-boundary-after-a-stall-stops",
+      "covers": ["html-audio-backend::the stop is never early — the payoff is never clipped"],
+      "authored": true,
+      "note": "Reaching the boundary wins over the stall check.",
+      "call": "fineWakeAction",
+      "args": [{ "atSec": 100.5, "outPointSec": 100.5, "lastWakeAtSec": 100.5 }],
+      "expect": { "return": "stop" }
+    },
+    {
+      "id": "deck-episode/deadline-hidden",
+      "covers": [
+        "html-audio-backend::a HIDDEN page gets the hidden load deadline, a visible page the visible one"
+      ],
+      "call": "loadDeadlineMs",
+      "args": [{ "hidden": true }],
+      "expect": { "return": 20000 }
+    },
+    {
+      "id": "deck-episode/deadline-visible",
+      "covers": [
+        "html-audio-backend::a HIDDEN page gets the hidden load deadline, a visible page the visible one"
+      ],
+      "call": "loadDeadlineMs",
+      "args": [{ "hidden": false }],
+      "expect": { "return": 10000 }
+    },
+    {
+      "id": "deck-episode/deadline-pinned-hidden",
+      "covers": ["html-audio-backend::an injected loadTimeoutMs still wins, at either visibility"],
+      "call": "loadDeadlineMs",
+      "args": [{ "pinnedMs": 200, "hidden": true }],
+      "expect": { "return": 200 }
+    },
+    {
+      "id": "deck-episode/deadline-pinned-visible",
+      "covers": ["html-audio-backend::an injected loadTimeoutMs still wins, at either visibility"],
+      "call": "loadDeadlineMs",
+      "args": [{ "pinnedMs": 200, "hidden": false }],
+      "expect": { "return": 200 }
+    },
+    {
+      "id": "deck-episode/deadline-unknown-visibility-is-visible",
+      "covers": ["html-audio-backend::with no document at all the deadline is the visible one"],
+      "note": "Only a page KNOWN to be hidden gets the hidden budget.",
+      "call": "loadDeadlineMs",
+      "args": [{}],
+      "expect": { "return": 10000 }
+    },
+    {
+      "id": "deck-episode/deadline-truthy-non-boolean-is-visible",
+      "covers": [],
+      "call": "loadDeadlineMs",
+      "args": [{ "hidden": 1 }],
+      "expect": { "return": 10000 }
+    },
+    {
+      "id": "deck-episode/same-source-is-a-seek",
+      "covers": ["html-audio-backend::the same source is a seek, not a refetch"],
+      "call": "sameSourceIsSeek",
+      "args": [
+        {
+          "loadedUrl": "https://cdn.example/one.mp3",
+          "url": "https://cdn.example/one.mp3",
+          "hasMetadata": true,
+          "failed": false
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "deck-episode/different-source-reloads",
+      "covers": ["html-audio-backend::a different source still reloads"],
+      "call": "sameSourceIsSeek",
+      "args": [
+        {
+          "loadedUrl": "https://cdn.example/one.mp3",
+          "url": "https://cdn.example/two.mp3",
+          "hasMetadata": true,
+          "failed": false
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck-episode/same-source-without-metadata-reloads",
+      "covers": [],
+      "call": "sameSourceIsSeek",
+      "args": [
+        {
+          "loadedUrl": "https://cdn.example/one.mp3",
+          "url": "https://cdn.example/one.mp3",
+          "hasMetadata": false,
+          "failed": false
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck-episode/same-source-in-error-reloads",
+      "covers": [],
+      "call": "sameSourceIsSeek",
+      "args": [
+        {
+          "loadedUrl": "https://cdn.example/one.mp3",
+          "url": "https://cdn.example/one.mp3",
+          "hasMetadata": true,
+          "failed": true
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck-episode/nothing-loaded-reloads",
+      "covers": [],
+      "call": "sameSourceIsSeek",
+      "args": [
+        {
+          "loadedUrl": null,
+          "url": "https://cdn.example/one.mp3",
+          "hasMetadata": false,
+          "failed": false
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck-episode/settled-on-target",
+      "covers": [],
+      "call": "settledNear",
+      "args": [{ "atSec": 400, "targetSec": 400 }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "deck-episode/settled-within-1s",
+      "covers": [],
+      "call": "settledNear",
+      "args": [{ "atSec": 400.9, "targetSec": 400 }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "deck-episode/not-settled-past-1s",
+      "covers": [],
+      "call": "settledNear",
+      "args": [{ "atSec": 401.5, "targetSec": 400 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck-episode/recovery-landed-arms-then-plays",
+      "covers": [],
+      "call": "recoveryLoadedOps",
+      "args": [{ "superseded": false, "stopped": false, "boundarySec": 20 }],
+      "expect": { "return": ["arm-out-point", "play"] }
+    },
+    {
+      "id": "deck-episode/recovery-stopped-arms-but-does-not-play",
+      "covers": [
+        "html-audio-backend::a stop during the recovery still ARMS the boundary, so the queue advances on resume (#267)",
+        "html-audio-backend::a stop DURING the recovery must not start audio when its load lands (#267)"
+      ],
+      "note": "#267: a deliberate stop since the recovery began declines to play, and still arms the boundary so one press resumes it bounded.",
+      "call": "recoveryLoadedOps",
+      "args": [{ "superseded": false, "stopped": true, "boundarySec": 20 }],
+      "expect": { "return": ["arm-out-point"] }
+    },
+    {
+      "id": "deck-episode/recovery-superseded-does-nothing",
+      "covers": [
+        "html-audio-backend::a skip during the recovery does not re-arm the previous segment's boundary"
+      ],
+      "call": "recoveryLoadedOps",
+      "args": [{ "superseded": true, "stopped": false, "boundarySec": 20 }],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "deck-episode/recovery-unbounded-plays",
+      "covers": [],
+      "call": "recoveryLoadedOps",
+      "args": [{ "superseded": false, "stopped": false, "boundarySec": null }],
+      "expect": { "return": ["play"] }
+    },
+    {
+      "id": "deck-episode/recovery-unbounded-stopped-does-nothing",
+      "covers": [],
+      "call": "recoveryLoadedOps",
+      "args": [{ "superseded": false, "stopped": true, "boundarySec": null }],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "deck-episode/recovery-failed-reports",
+      "covers": [],
+      "call": "recoveryFailedOps",
+      "args": [{ "superseded": false, "stopped": false }],
+      "expect": { "return": ["report"] }
+    },
+    {
+      "id": "deck-episode/recovery-failed-after-a-stop-is-silent",
+      "covers": [
+        "html-audio-backend::a recovery that FAILS after a deliberate stop reports nothing either (#267)"
+      ],
+      "call": "recoveryFailedOps",
+      "args": [{ "superseded": false, "stopped": true }],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "deck-episode/recovery-failed-superseded-is-silent",
+      "covers": [
+        "html-audio-backend::a recovery that FAILS after being superseded reports nothing to the manager"
+      ],
+      "call": "recoveryFailedOps",
+      "args": [{ "superseded": true, "stopped": false }],
+      "expect": { "return": [] }
+    }
+  ]
+}

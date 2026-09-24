@@ -9,7 +9,7 @@ Audio correctness is the product. A janky transition or a lost playback position
 - **Everything local before play**: session assets pre-downloaded; the player should essentially never stream. If a file is missing (eviction bug, partial download), degrade: stream if network exists, else drop the item with an earcon and advance.
 - Position persistence: every 15 s and on every pause/interruption/route-change/skip, write position locally; sync to backend in the event batch. Restore exactly on relaunch.
 - Lock screen / control center: MPNowPlayingInfoCenter fully populated per item (including TTS items: title = "Up next: <episode>"); MPRemoteCommandCenter: play/pause, ±30/15 s seek, **nextTrack = next queue item**, **prevTrack = restart item / previous**. These map to steering-wheel and headphone controls in every car — this is the baseline hands-free interface and must be flawless before any voice work.
-- Transitions: hard cuts are fine; add ~0.5 s of silence padding around TTS items. Normalize TTS loudness server-side; additionally apply a per-episode playback gain nudge if an episode is obviously quiet (nice-to-have; note in backlog).
+- Transitions: hard cuts are fine; add ~0.5 s of silence padding around TTS items. An unbridged seam (two segments with no narration between them) gets the same 0.5 s of silence — one number for the silence at a seam, founder ruling 2026-09-24 (`docs/DECISIONS.md`; `player/seam-gap.js` `SEAM_GAP_SEC`; `docs/curation/segment-length-rules.md` §6b). Normalize TTS loudness server-side; additionally apply a per-episode playback gain nudge if an episode is obviously quiet (nice-to-have; note in backlog).
 
 ## Spoken intros/transitions
 
