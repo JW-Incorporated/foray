@@ -99,7 +99,7 @@ const FLOORS = {
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
-  "player/durable-store.test.js": 87, // 2026-09-22 audit (theme J, R10): the native Preferences tier the header had promised since #40 — absent on the web, survives a WebView sweep, first word in hydration, owned keys only, purge reaches it, and client.js wires it; 81 -> 87 // 2026-09-22 audit (theme J): a key localStorage refused while IndexedDB took it is not reverted next launch, nor pushed down over the good copy — three keys, the mark clearing, a refused removal, the ledger as bookkeeping, purge, a corrupt ledger; 74 -> 81
+  "player/durable-store.test.js": 107, // persist-6, founder ruling 2026-09-24 "Option A": the device-only vault — the token goes to the vault and to no backed-up tier, other rows never enter it, the account is read back from it, an earlier build's copy is moved in and only then out (a refused or unread vault moves nothing, an unread tier keeps what it may hold), the vault wins, removal and purge reach it, canKeep, the breaker, the old ledger entry, health(), client.js wiring; 87 -> 107 // 2026-09-22 audit (theme J, R10): the native Preferences tier the header had promised since #40 — absent on the web, survives a WebView sweep, first word in hydration, owned keys only, purge reaches it, and client.js wires it; 81 -> 87 // 2026-09-22 audit (theme J): a key localStorage refused while IndexedDB took it is not reverted next launch, nor pushed down over the good copy — three keys, the mark clearing, a refused removal, the ledger as bookkeeping, purge, a corrupt ledger; 74 -> 81
   "player/idb-tier.test.js": 23,
   /* New with M3 (kanban card t_c7199b13): the event queue moved off a
      synchronous `cp_events` localStorage rewrite into its own IndexedDB
@@ -461,7 +461,7 @@ const FLOORS = {
      stray tap cannot satisfy. Every one of those is one edit from its opposite,
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
-  "test/data-deletion.test.js": 68, // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
+  "test/data-deletion.test.js": 73, // persist-6: Delete my data finds the token in the vault and empties it, a sync signs up into the vault only, and never refreshes or signs up against a vault it could not read; 68 -> 73 // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
   "test/diagnostics-surface.test.js": 19,
@@ -1216,7 +1216,13 @@ const FLOORS = {
      Text assertions over workflow YAML — the same idiom as
      tools/mobile/ios-workflow.test.mjs, and the same honest limit: it catches a
      step being deleted, not a step that runs and does nothing. */
-  "tools/ci/ci-workflow.test.mjs": 5,
+  "tools/ci/ci-workflow.test.mjs": 13, // NE-06: +8 -- engine-parity (swift:5.10, parity env, family table, no dispatch skip, step-level short-circuit on an explicit "false" only), engine-paths, ios-gate on every event, and ios-kit running on a Swift dispatch; 5 -> 13
+  /* The native engine's CI gates (NE-06, docs/native-engine-plan.md §6.8):
+     the changed-path classifier whose every "could not tell" is "everything
+     changed", the parity family table, ios-gate's success-only verdict, and
+     release refusal on a red engine-parity or ios-kit. Every test names its
+     mutation; each was run. Zero slack: these become required checks. */
+  "tools/ci/engine-ci.test.mjs": 35,
   /* The deck-drift rule (machinery audit finding 6). Decks whose PRs edit the
      deck in the same commit had a 0% false-claim rate; the drift is all in the
      ones where the marker floats free of the merge, and it runs both ways — one
@@ -1301,7 +1307,7 @@ const FLOORS = {
      D3's (1) went with their rules; the pair clause gained six (reported on
      pre-Q-01 tape, gated on a Q-01 Foray, the CLI exit, the row fields, the
      IQR still reported, the helper) and M4's restatement three. */
-  "tools/foray/check-forays.test.mjs": 163, // audit round 2 (L8, p-foray-5): a published Foray's why-lines are captions -- no bare leading name the titles do not introduce, no gendered pronoun with no one to point at; 161 -> 163 // L8 review (2026-09-23): §0 and slot headers declared again, by doc path, so a doc cannot lose them silently; 160 -> 161. L8 (2026-09-22): the pipeline's own words (beat, segment, act, running order) refused in Foray copy — the audit found "eight beats of a forty-beat history" as a title; 159 -> 160. // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
+  "tools/foray/check-forays.test.mjs": 164, // founder ruling 2026-09-24 ("Publish any foray so that the statement is correct"): a published Foray has a narrator between its clips, so the first-run sheet's narrator clause is true for a newcomer (round-1 persona 14); 163 -> 164 // audit round 2 (L8, p-foray-5): a published Foray's why-lines are captions -- no bare leading name the titles do not introduce, no gendered pronoun with no one to point at; 161 -> 163 // L8 review (2026-09-23): §0 and slot headers declared again, by doc path, so a doc cannot lose them silently; 160 -> 161. L8 (2026-09-22): the pipeline's own words (beat, segment, act, running order) refused in Foray copy — the audit found "eight beats of a forty-beat history" as a title; 159 -> 160. // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
   /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
      of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
      accepted value (~30 today), so the floor is the count of `test(` lines this
@@ -1483,6 +1489,12 @@ const FLOORS = {
      neither Python nor misaki, which is the point: it re-checks on every CI run
      a file that CI could not have produced. */
   "tools/mobile/kokoro-vocab.test.mjs": 7,
+  /* persist-6 (founder ruling 2026-09-24, "Option A"): the source facts the
+     token's "on this phone only, out of its backups" promise rests on — the
+     this-device-only Keychain class, never synchronizable, the reinstall wipe,
+     the no-backup directory, the plugin name and four calls, the declaration
+     in mobile/package.json. No toolchain runs here, so these pins ARE the gate. */
+  "tools/mobile/foray-vault.test.mjs": 14,
   "tools/mobile/foray-tts.test.mjs": 66, // fix/narration-1x (2026-09-24): rate 1 is each platform's normal rate — passed through, Web Speech 1, Android setSpeechRate(1.0f), iOS AVSpeechUtteranceDefaultSpeechRate; 62 -> 66 // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
@@ -1598,7 +1610,7 @@ const FLOORS = {
      plists, so the patcher must touch only what is actually missing the key and
      must never change a vendored plist's format. */
   "tools/mobile/ios-embedded-frameworks.test.mjs": 40,
-  "tools/mobile/ios-workflow.test.mjs": 43, // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
+  "tools/mobile/ios-workflow.test.mjs": 44, // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
@@ -1728,7 +1740,7 @@ const FLOORS = {
      shared build steps into. Registered the same day both suites were
      written, per R-02's own precedent for this map. */
   "tools/mobile/release-ci.test.mjs": 15,
-  "tools/mobile/release-workflow.test.mjs": 29, // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
+  "tools/mobile/release-workflow.test.mjs": 32, // NE-06: +3 -- ios needs ios-checks (release-checks on github.sha via env), ios-checks is guarded and reads checks on Linux, and the summary names a refusal // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
 
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is

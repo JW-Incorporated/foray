@@ -251,6 +251,8 @@ function sessionRow({ expired = false, refresh = "rt-1" } = {}) {
  * @param {object} [opts.tier]      fakeIdb options (deaf / unreadable)
  * @param {boolean} [opts.noStore]  publish no DurableStore at all (a page whose
  *   player module never loaded), so only raw localStorage is reachable
+ * @param {object} [opts.vault]     a device-only vault tier (the native shell's
+ *   `ForayVault`, persist-6); null for the web, as before
  * @param {object[]} [opts.events]   rows already in the event queue
  * @param {object|false} [opts.eventLog]  replace the REAL event queue
  *   (`player/event-log.js`, memory-backed) with a fake, or `false` for none.
@@ -261,7 +263,7 @@ function sessionRow({ expired = false, refresh = "rt-1" } = {}) {
 async function mount({
   seed = {}, localOnly = {}, idbOnly = {}, reply = null, tier = {},
   noStore = false, player = undefined, boot = false, noLocalStorage = false,
-  events = [], eventLog = undefined,
+  events = [], eventLog = undefined, vault = null,
 } = {}) {
   const { createDurableStore } = await import("../player/durable-store.js");
   const { createEventLog } = await import("../player/event-log.js");
@@ -269,7 +271,7 @@ async function mount({
 
   const local = fakeLocal({ ...seed, ...localOnly });
   const idb = fakeIdb({ ...seed, ...idbOnly }, { ...tier, log });
-  const store = noStore ? null : createDurableStore({ localStorage: local, idbTier: idb });
+  const store = noStore ? null : createDurableStore({ localStorage: local, idbTier: idb, vault });
   /* Published with the store or not at all, the way client.js does it. */
   let queue = null;
   if (eventLog !== undefined) queue = eventLog || null;
@@ -1785,4 +1787,76 @@ test("persist-7: 'Clear this device only' says, before the tap and after it, tha
   assert.strictEqual(cost.hidden, false, "and it stays up after the clear it describes");
   await ui.openBtn.click();
   assert.strictEqual(cost.hidden, true, "reopening starts clean");
+});
+
+/* ---------- the device-only vault (round-2 audit persist-6, founder ruling 2026-09-24) ----------
+
+   Inside the app the token lives only in the `ForayVault` plugin (Keychain
+   this-device-only / Android no-backup storage), never in a phone backup. These
+   drive the REAL page against the REAL store with a fake vault tier: the
+   deletion still finds the token there, uses it, and empties the vault; and the
+   event sync never refreshes or creates an account the vault could not keep. */
+
+/** A vault tier shaped like `vaultTier()`'s, over a Map. */
+function fakeVault(seed = {}, { unreadable = false } = {}) {
+  const data = new Map(Object.entries(seed).map(([k, v]) => [k, String(v)]));
+  return {
+    name: "vault", vault: true, sync: false, durable: true, data,
+    async readAll(prefix) {
+      if (unreadable) throw new Error("errSecInteractionNotAllowed");
+      const out = new Map();
+      for (const [k, v] of data) if (!prefix || k.startsWith(prefix)) out.set(k, v);
+      return out;
+    },
+    async write(k, v) { data.set(k, String(v)); },
+    async remove(k) { data.delete(k); },
+  };
+}
+
+test("VAULT: Delete my data uses the token from the device-only vault, then empties the vault", async () => {
+  /* The token is in no backed-up tier, so a deletion that looked only at
+     localStorage/IndexedDB would find no account and delete nothing remotely. */
+  const vault = fakeVault({ cp_sb_session: sessionRow() });
+  const { arm, ui, deletes, cpKeys } = await mount({ seed: { cp_interests: "{}" }, vault });
+  await arm();
+  await ui.go.click();
+  const calls = deletes();
+  assert.strictEqual(calls.length, 8, "the account in the vault was not reached");
+  assert.strictEqual(calls[0].headers.Authorization, "Bearer at-1");
+  assert.deepStrictEqual([...vault.data.keys()], [], "the token survived the deletion in the vault");
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] });
+});
+
+test("VAULT: a sync signs up into the vault — and never into a backed-up tier", async () => {
+  const vault = fakeVault();
+  const { ctx, log, local, idb } = await mount({
+    vault,
+    reply: (url) => (/\/auth\/v1\/signup/.test(url)
+      ? { status: 200, json: { access_token: "at-9", refresh_token: "rt-9", expires_at: 4102444800, user: { id: "uid-new" } } }
+      : { status: 204 }),
+  });
+  const s = await ctx.ensureAnonSession();
+  assert.strictEqual(s && s.user_id, "uid-new");
+  assert.ok(log.some((e) => e.kind === "fetch" && /\/auth\/v1\/signup/.test(e.url)));
+  await new Promise((r) => setTimeout(r, 0));
+  await ctx.window.forayStorage.flush();
+  assert.match(vault.data.get("cp_sb_session") || "", /uid-new/);
+  assert.ok(!local.map.has("cp_sb_session"), "the token reached localStorage, which rides the backup");
+  assert.ok(!idb.data.has("cp_sb_session"), "the token reached IndexedDB, which rides the backup");
+});
+
+test("VAULT: a vault that could not be read is never answered with a refresh or a new account", async () => {
+  /* MUTATION: drop the `sessionKeepable()` check in ensureAnonSession -> the
+     expired token is refreshed (spending its refresh token for a result the
+     vault cannot keep), or a second account is minted over the unread one. */
+  const vault = fakeVault({ cp_sb_session: sessionRow() }, { unreadable: true });
+  const { ctx, log } = await mount({
+    localOnly: { cp_sb_session: sessionRow({ expired: true }) },
+    vault,
+    reply: () => ({ status: 200, json: { access_token: "at-9", refresh_token: "rt-9", user: { id: "uid-new" } } }),
+  });
+  const s = await ctx.ensureAnonSession();
+  assert.strictEqual(s, null);
+  assert.ok(!log.some((e) => e.kind === "fetch" && /\/auth\/v1\//.test(e.url)), JSON.stringify(log.filter((e) => e.kind === "fetch")));
+  assert.match(vault.data.get("cp_sb_session"), /"at-1"/, "the unread account was left alone");
 });

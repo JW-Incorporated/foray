@@ -7,7 +7,9 @@ written on, so every Swift claim is either **CI-executed** (with the job, the
 run and the head SHA) or marked **not executed**. An estimate is labelled as
 one and is never quoted as a measurement.
 
-Cards append their own section. NE-01 (the packaging spike) wrote §1-§6.
+Cards append their own section. NE-01 (the packaging spike) wrote §1-§6;
+NE-25a (the click-track spike) wrote §7, NE-15 (AVDeck) §8, NE-06
+(engine-parity CI) §9 and NE-25b (two-deck preroll) §10.
 
 ## 1. What NE-01 changed, in one paragraph
 
@@ -512,7 +514,70 @@ helper's subdirectory back to `Fixtures`; a second fixture set beside
 `GITHUB_STEP_SUMMARY`; the ci.yml hand-off dropped; and a second hand-off
 added.
 
-## 9. NE-25b: two-deck preroll and readiness timing (Measured, 2026-09-24)
+## 9. engine-parity CI, ios-gate and release refusal (NE-06)
+
+NE-06 landed G-1a (the Linux parity job) and the code half of G-1b (the
+short-circuit, `ios-gate`, release refusal) in one PR (#772), because it
+lands on `engine/m1`, and G-1a's week of green runs happens on that
+branch's PRs well before `engine/m1` reaches `main`. **The other half of G-1b
+is a founder action:** add `engine-parity` and `ios-gate` to `protect-main`'s
+required checks, then record it in STATE.md. That is a branch-protection
+setting, so no file in this repo can do it.
+
+### The fast loop, measured
+
+Every row is CI-executed, from GitHub's job timestamps.
+
+| What | Run | Wall clock |
+|---|---|---|
+| `engine-parity`, full parity run (head `3e3d5a6b`) | 35966876624 | **59 s**: 36 s pulling `swift:5.10` (Swift 5.10.1), about 8 s to build and run 70 XCTests, the rest checkout and setup-node |
+| `engine-parity`, short-circuited (content-only probe #774, head `15990b34`) | 35968721212 | 29 s, nearly all of it the image pull |
+| `ios-gate`, no Swift path changed (same probe) | 35968721212 | **15 s**, and it never read ios-kit |
+| `ios-gate`, Swift path changed (head `3e3d5a6b`) | 35966876624 | 18 min 37 s: it waited for ios-kit, which spent 4 min 46 s in the macOS queue and 13 min 46 s running |
+
+So a Swift author's loop is now about **one minute on Linux** against 15 to
+30 minutes for ios-kit with its queue. The macOS queue is also the variable
+part: with four ios-kit runs in flight, the red probe's ios-kit waited
+28 minutes to start.
+
+**The image is not cached.** The plan says "image cached", but GitHub
+pulls a job `container:` before the first step runs, so no `actions/cache`
+step can reach it. The 36 s pull above is the cost, and it is paid even when
+the job short-circuits.
+
+The first Linux run printed every family, including `continuation`, which
+NE-13 had just recorded as JS only:
+`compare 37/37 passed, seam-gap 30/30 passed, continuation 48 js-only, and
+queue-state, rate, resume-rules, rows, number-format, transport and
+media-episode all owed by their port cards`. That is the same result as the
+macOS host run, so Linux Foundation raised nothing in the current core.
+
+### Acceptance, CI-executed
+
+| Criterion | Evidence |
+|---|---|
+| G-1a: engine-parity green on the PR, with the family table | run 35966876624 (head `3e3d5a6b`); the summary step writes the table from `parity-report.json` |
+| A pr-hygiene round trip reports engine-parity on the new head | `gh workflow run ci.yml --ref engine/ne-06`, the same dispatch pr-hygiene makes: run 35968735311 (head `2ad29ab5`), where engine-paths diffed against `main` (95 files, engine=true, swift=true) and engine-parity, ios-kit (now run on a Swift dispatch) and ios-gate were all green |
+| A content-only PR short-circuits both | probe #774 (closed unmerged), run 35968721212: `1 changed file(s) on pull_request; engine=false swift=false`, and both gates green in under 30 s |
+| A deliberately red ios-kit on a Swift PR keeps ios-gate red | probe #775 (closed unmerged; `SeamGap.defaultGapSec` 2.0 -> 1.5), run 35968727263: ios-kit failed in `swift test (foray-engine-core, macOS host)`, and ios-gate printed `FAIL: a Swift path changed and ios-kit ended 'failure'` |
+| Release refuses a SHA with red parity (dry run) | `node tools/ci/engine-ci.mjs release-checks 66c3122a...` (the probe's head) exited 1 with `refusing to cut an iOS TestFlight ... engine-parity: failure (.../job/107533230225); ios-kit: queued`. The same command on `3e3d5a6b` exited 0: `engine-parity: success; ios-kit: success` |
+| The engine-parity summary still prints when swift test fails | on probe #775 the table step and the artifact step ran after the failed test step; the log shows `seam-gap cases=30 executed=30 passed=27 failed=3` |
+| Branch protection lists engine-parity and ios-gate | **not done: a founder action** (above) |
+
+### Mutation checks (local, node)
+
+`tools/ci/engine-ci.mjs` has 24 single-line mutations and every one is
+killed by `engine-ci.test.mjs`. The first pass let two survive: the all-zero
+`before` guard and the dispatch-on-main guard were both hidden by the fake
+git throwing. The tests now answer the fetch and the diff, so only the guard
+can return "unknown". There are 9 mutations of `ci.yml` (dropping
+`workflow_dispatch`, the raw `RUN_PARITY` output, an unguarded swift test, a
+dispatch skip on engine-parity, ios-kit's old skip, `ios-gate` needing
+ios-kit, `fetch-depth: 1`, a dropped summary, and no container). There are
+5 of `release.yml` and 2 of `ios-build.yml`, one of which moves the negation
+above the pattern it narrows. All are killed by the workflow suites.
+
+## 10. NE-25b: two-deck preroll and readiness timing (Measured, 2026-09-24)
 
 **CI-executed**, Simulator only: ios-kit, `xcodebuild test -scheme ForayAudio`,
 iPhone 17 Pro Simulator, iOS 26.4.1. The tables below come from **run
@@ -533,7 +598,7 @@ a literal.
 A Simulator is not a phone and a local file is not a CDN. **DV-4 and DV-5
 repeat this on a phone and on real CDNs in M2.**
 
-### 9.1 The standby's time to ready, alone and while the other deck is audible
+### 10.1 The standby's time to ready, alone and while the other deck is audible
 
 Deck B loads each click track at 19.65 s with precise timing and runs the full
 gate: duration, both statuses `.readyToPlay`, a zero-tolerance seek, then a
@@ -568,7 +633,7 @@ play command to its `.playing`.
   so its gap is A's pause confirmation plus the 9-19 ms. Either figure is
   small next to the 2.0 s + 250 ms seam budget in NE-32's acceptance.
 
-### 9.2 The gate against a held source
+### 10.2 The gate against a held source
 
 A resource loader on a custom scheme accepted every request and answered none
 for 1.5 s, then served `click-cbr.mp3`, while A played. This stands in for a
@@ -584,7 +649,7 @@ The gate waited for the source. Once bytes flowed, the whole pipeline
 exactly one preroll with no `not-ready`. A was undisturbed. All of this is
 asserted.
 
-### 9.3 `preroll` finished=false under a forced seek
+### 10.3 `preroll` finished=false under a forced seek
 
 While B's preroll ran, the test seeked B's own `AVPlayer` to 22.65 s,
 bypassing the deck, 0-25 ms after its poll (about 0.5 ms) saw the preroll
@@ -629,7 +694,7 @@ reads "finished=false count, run 35988169841 / run 35989547345".
   - On a CDN the preroll window is much longer than 2 ms, so DV-4 should look
     for `not-ready` causes in the seam rows.
 
-### 9.4 Mutation checks
+### 10.4 Mutation checks
 
 **Node (local, all killed):** the `shell-invariants` pin failed on 7 of 7
 mutations:

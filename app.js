@@ -457,6 +457,15 @@ async function sbAuth(path, body) {
   } catch (_) { return null; }
 }
 
+/** Can a new `cp_sb_session` be kept? Asks the durable store (`canKeep`); a
+    page with no store, or an older store without the method, answers yes —
+    plain localStorage, as it always has. */
+function sessionKeepable() {
+  const store = window.forayStorage;
+  if (!store || typeof store.canKeep !== "function") return true;
+  try { return store.canKeep("cp_sb_session") !== false; } catch (_) { return false; }
+}
+
 /* Establish/restore the anonymous session. Refresh a stored token (same user)
    when possible; only create a NEW anonymous user when there's no token or the
    refresh fails — re-signing-up every load would orphan a user per visit. */
@@ -465,6 +474,12 @@ async function ensureAnonSession(epoch = deletionEpoch) {
   const now = Math.floor(Date.now() / 1000);
   let s = lsGet("cp_sb_session", null);
   if (s && s.access_token && s.expires_at && s.expires_at - 60 > now) return s;
+  /* NOTHING WE CANNOT KEEP (persist-6). Inside the app the token lives only in
+     the device-only vault. When that vault could not be read, or has stopped
+     taking writes, a refresh would spend the refresh token for a result that is
+     not saved, and a signup would mint a second account over one we merely
+     failed to read. The events wait in their queue for a launch that can. */
+  if (!sessionKeepable()) return null;
   if (s && s.refresh_token) {
     const r = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
     /* Asked again AFTER the await: a refresh that was already in flight when

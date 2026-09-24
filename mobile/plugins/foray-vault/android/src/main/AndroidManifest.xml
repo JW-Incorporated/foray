@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  `foray-vault` declares nothing: no permission, no service, no backup rule.
+  The file it writes lives in Context.getNoBackupFilesDir(), which Android's
+  backup agent excludes from both cloud backup and device-to-device transfer on
+  its own, so the generated app manifest (not committed, rewritten by
+  `cap add android`) needs no patch for the token to stay out of backups.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+    </application>
+
+</manifest>
