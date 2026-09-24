@@ -104,9 +104,81 @@ id is in a lane. Scopes, merge order and briefs are in `lanes.json` and
 
 ## STATUS
 
-**Not yet worked through.** Nothing in round 2 has been fixed. There is no
-status ledger yet; when the lanes run, add `status.tsv` here with one row per
-`findings.tsv` row (the round-1 shape: id, disposition, where, note), and keep
-the refuted, deliberate and uncertain verdicts. The founder questions in
-`synthesis.md` §3 are unanswered; each carries the default a lane may ship if
-it stays unanswered.
+**Worked through, 2026-09-23** (PR #749, branch `r2fix/integration`). Every
+row of `findings.tsv` has one row in [`status.tsv`](status.tsv) — `id, title,
+disposition, where, note` — including the refuted, deliberate and uncertain
+ones, which keep the verifier's verdict. `where` names the lane and its merge
+commit; `test/audit-status.test.js` holds the ledger to one row per finding,
+the kept verdicts, and this table.
+
+The eight lanes merged into `r2fix/integration` in order L1 → L8. A
+completeness sweep then re-verified every row a lane handed to another lane,
+reported not-done, or that no lane was given. Six hand-offs had landed in
+nobody's files and were finished there: the Foray page's speed button
+(`player-9`), the loading look on the control that was tapped
+(`p-impatient-4`), the current Up Next row's look (`p-impatient-6`), the px
+chrome under Dynamic Type (`a11y-1` part b), Home's card artwork at its drawn
+size (`perf-2`), and the car's clock during a network stall on both natives
+(`p-car-8` — the shim clamped the page's rate 0 back to 1). `native-1` was
+re-verified: `player-1` made its path reachable and `p-car-6` closes it, now
+pinned.
+
+| disposition | rows |
+|---|---:|
+| fixed | 159 |
+| already-fixed | 0 |
+| refuted (verifier) | 2 |
+| deliberate (verifier) | 5 |
+| uncertain (verifier, still needs a device) | 1 |
+| refuted-now (re-verified: no longer holds) | 1 |
+| deferred-founder | 3 |
+| deferred-device | 0 |
+| open | 1 |
+| **all rows** | **172** |
+
+"Fixed" means fixed in code with a test that fails without the fix (each new
+rule mutation-checked, each new suite floored in `test/suite-integrity.test.js`),
+not verified on a phone. Rows whose last step only a device can take say so in
+their note: `p-car-3` (a 20 s call), `p-impatient-3` (which lock-screen pair iOS
+draws), `native-2/3/7/8/10`, `a11y-1` (Larger Text at xxxLarge), `p-car-6`,
+`p-car-8` (a dead zone), `search-3`/`search-8`. The Swift and the Java compile
+only in CI.
+
+### Founder questions (synthesis.md §3)
+
+Defaults applied, each recorded in `docs/DECISIONS.md` where it is a ruling:
+Q1 skip pair on the lock screen, track commands only on a headset/car/AirPlay
+route (`p-impatient-3`); Q2 auto-resume after an OS interruption, guarded by the
+record's lag and never undoing a listener's pause (`p-car-3`); Q3 a finished
+episode or Foray leaves Jump back in and says Played on its own rows and page
+(`player-8`, `honesty-2`); Q4 one playlist builder, on Create (`p-first-6`); Q5
+the Dynamic Type bridge, DECISIONS sentence corrected (`a11y-1`); Q8 "Show my
+picks" (`p-first-7`); Q9 remove-on-skip, with drag / Play next / Clear as one
+follow-up card (`p-impatient-7`, `p-impatient-8`); Q10 Up Next link and Save in
+the sheet, sleep timer parked (`p-switcher-5`); Q11 the shell reopens the last
+route, the web stays bare-URL-means-Home (`nav-10`).
+
+**Held for the founder — the two questions no default could answer:**
+
+- **Q6, backups of the native Preferences copy** (`persist-6`): credential
+  handling. Not implemented. The verifier adds that the WebView's localStorage
+  and IndexedDB are backed up too, so excluding the Preferences suite alone
+  would not be enough.
+- **Q7, privacy-policy wording** (`persist-3`, and the inventory half of
+  `persist-4`): three origins, Vercel as a processor, miss-only dropped. Drafted
+  in lane L5's notes; no `docs/legal` edit made. (`nav-10`'s one new `cp_` key
+  row is in its own commit, 24bdb11d, so it can be reverted if legal edits wait
+  for Q7 too.)
+
+### Still open, and why
+
+- **`persist-9`** (low): `cp_pos:<id>` rows are never pruned and the native tier
+  reads them one bridge call each. Re-verified live. The suggested 30-day prune
+  would un-play episodes — "Played", "N played" and the next-up marker read
+  those rows and nothing else keeps that fact — and the safe fix (one
+  `cp_positions` map, a copy-never-delete migration) renames a key the privacy
+  policy lists, so it waits on Q7 and on a ruling for how long "Played" lasts.
+- **`p-impatient-8`** (deferred-founder, by Q9's default): drag-to-reorder,
+  Play next and Clear Up Next are one follow-up card.
+- **`native-6`** (uncertain): whether WebKit's delayed category change rewrites
+  the app process's audio session. Needs a device record.
