@@ -30,10 +30,14 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 
 /** Repo-relative module paths plus everything they import relatively,
     transitively. NE-10j's rows adapter (player/parity/rows.js) reaches three
-    player modules, one of which imports a fourth: copying only each fixture's
-    `module` left a scratch tree whose whole-tree record could not run a
-    single rows case. Static `import ... from "./x.js"` / `export ... from` is
-    the only shape the player modules use. */
+    player modules, one of which imports a fourth, and NE-12j's media-episode
+    family reaches player/media-session.js, which imports foray-queue.js,
+    which imports seek-policy.js (and its adapter,
+    player/parity/media-actions.js, imports media-session.js): copying only
+    each fixture's `module` left a scratch tree whose whole-tree record could
+    not run a single rows or media-episode case. Static
+    `import ... from "./x.js"` / `export ... from` is the only shape the
+    player modules use. */
 function withImports(rels) {
   const out = new Set();
   const todo = [...rels];
@@ -264,6 +268,18 @@ test("the four named mutation rules exist, and each anchor occurs exactly once i
 
 test("--mutate on the seam-gap rule fails both the original JS test and the fixture family", () => {
   const r = runMutation("seam-gap", loadMutations()["seam-gap"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the 15/30 rule fails both the original JS test and the media-episode family", () => {
+  /* NE-12j recorded media-episode, so the fixture half of this rule stopped
+     reporting PENDING: WebKit's 10 s forward step now turns the authored
+     seek-forward-is-30 read and every recorded seekforward press red, not only
+     media-session.test.js. MUTATION: drop the seekforward cases and the
+     authored read from media-episode -> "fixture: ... still pass". */
+  const r = runMutation("15/30", loadMutations()["15/30"], { root: ROOT });
   assert.equal(r.js, "killed", r.detail.join("\n"));
   assert.equal(r.fixture, "killed", r.detail.join("\n"));
   assert.equal(r.killed, true);

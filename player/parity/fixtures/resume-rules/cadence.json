@@ -1,0 +1,19 @@
+{
+  "family": "resume-rules",
+  "module": "player/queue-manager.js",
+  "note": "The periodic position write's cadence, from the manager that runs it. Its own file because a fixture file names one module; exported by NE-08 for NE-04's generated constants.",
+  "cases": [
+    {
+      "id": "resume-rules/position-interval-15s",
+      "covers": [
+        "position-store::the numbers: nothing under 10 s, finished inside 30 s of the end, one event a minute, a write every 15 s"
+      ],
+      "authored": true,
+      "note": "Corner case #17: yanking the phone off Bluetooth and pocketing it loses at most 15 s. Authored.",
+      "read": "POSITION_INTERVAL_MS",
+      "expect": {
+        "value": 15000
+      }
+    }
+  ]
+}
