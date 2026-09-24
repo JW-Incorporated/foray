@@ -2763,7 +2763,7 @@ const SWIFT_FLOORS = {
      tools/mobile/shell-invariants.test.mjs also pins them BY NAME against the
      frozen ios/ original, which a count cannot do. */
   "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/PlayerQueueStateTests.swift": 34,
-  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/ParityStubTests.swift": 5,
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/ParityStubTests.swift": 6,
 };
 
 for (const [rel, floor] of Object.entries(SWIFT_FLOORS)) {
