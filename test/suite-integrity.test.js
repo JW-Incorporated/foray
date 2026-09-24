@@ -1182,7 +1182,13 @@ const FLOORS = {
      Text assertions over workflow YAML — the same idiom as
      tools/mobile/ios-workflow.test.mjs, and the same honest limit: it catches a
      step being deleted, not a step that runs and does nothing. */
-  "tools/ci/ci-workflow.test.mjs": 5,
+  "tools/ci/ci-workflow.test.mjs": 13, // NE-06: +8 -- engine-parity (swift:5.10, parity env, family table, no dispatch skip, step-level short-circuit on an explicit "false" only), engine-paths, ios-gate on every event, and ios-kit running on a Swift dispatch; 5 -> 13
+  /* The native engine's CI gates (NE-06, docs/native-engine-plan.md §6.8):
+     the changed-path classifier whose every "could not tell" is "everything
+     changed", the parity family table, ios-gate's success-only verdict, and
+     release refusal on a red engine-parity or ios-kit. Every test names its
+     mutation; each was run. Zero slack: these become required checks. */
+  "tools/ci/engine-ci.test.mjs": 34,
   /* The deck-drift rule (machinery audit finding 6). Decks whose PRs edit the
      deck in the same commit had a 0% false-claim rate; the drift is all in the
      ones where the marker floats free of the merge, and it runs both ways — one
@@ -1559,7 +1565,7 @@ const FLOORS = {
      plists, so the patcher must touch only what is actually missing the key and
      must never change a vendored plist's format. */
   "tools/mobile/ios-embedded-frameworks.test.mjs": 40,
-  "tools/mobile/ios-workflow.test.mjs": 43, // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
+  "tools/mobile/ios-workflow.test.mjs": 44, // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
@@ -1689,7 +1695,7 @@ const FLOORS = {
      shared build steps into. Registered the same day both suites were
      written, per R-02's own precedent for this map. */
   "tools/mobile/release-ci.test.mjs": 15,
-  "tools/mobile/release-workflow.test.mjs": 29, // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
+  "tools/mobile/release-workflow.test.mjs": 32, // NE-06: +3 -- ios needs ios-checks (release-checks on github.sha via env), ios-checks is guarded and reads checks on Linux, and the summary names a refusal // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
 
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
