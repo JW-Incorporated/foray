@@ -104,6 +104,15 @@ final class ForayEngine {
 
     var hasGraceTask: Bool { graceTask != nil }
 
+    /// EngineOwnership's two hooks (NE-17). `onTurnCompleted` runs after every
+    /// input the host handled to the end, on main: the first one is the
+    /// healthy marker that clears the crash-loop sentinel. `onTornDown` runs
+    /// once, at the end of `teardown()`: whatever took the engine down, the
+    /// legacy lane must take the process over, or a JS page would run with no
+    /// remote surface at all.
+    var onTurnCompleted: (() -> Void)?
+    var onTornDown: (() -> Void)?
+
     // MARK: - Start and teardown
 
     /// Register every observer the engine lives on. Idempotent; a torn-down
@@ -156,6 +165,10 @@ final class ForayEngine {
         seams.deck.onEvent = nil
         seams.deck.invalidate()
         inbox = []
+        onTurnCompleted = nil
+        let tornDown = onTornDown
+        onTornDown = nil
+        tornDown?()
     }
 
     // MARK: - Inputs
@@ -173,6 +186,7 @@ final class ForayEngine {
         }
         let failures = runTurn(input)
         drain()
+        onTurnCompleted?()
         return EngineVerdict(failures: failures, deferred: false)
     }
 
