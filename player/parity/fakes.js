@@ -38,8 +38,14 @@ const r = (s) => Math.round(s);
  * FakeBackend, plus a `log` argument so it can share the scenario's log.
  */
 export class FakeBackend {
-  constructor({ log = new OpLog(), failLoadFor = [], durationById = {}, duration = 3600 } = {}) {
+  constructor({ log = new OpLog(), failLoadFor = [], durationById = {}, duration = 3600, holdLoads = false } = {}) {
     this.log = log;
+    /** NE-14j. When true a load does not settle until the scenario says so
+        (the `deck: "loaded"` / `"loadFailed"` verbs, via `settleLoad`), so a
+        superseded load can land AFTER the load that replaced it — the ordering
+        a fast tap or a double skip produces on a real network. */
+    this.holdLoads = holdLoads === true;
+    this._held = [];
     this.currentTime = 0;
     this._duration = duration;
     this.durationById = durationById;
@@ -59,7 +65,21 @@ export class FakeBackend {
     this.paused = true;
     this.currentTime = startOffset;
     this.log.push(`load:${item.id}@${r(startOffset)}`);
+    if (this.holdLoads) {
+      return new Promise((resolve, reject) => this._held.push({ id: item.id, resolve, reject }));
+    }
     if (this.failLoadFor.has(item.id)) throw new Error("missing file");
+  }
+  /** Settle the oldest held load for `id` (or the oldest of all when `id` is
+      null). A load for an id in `failLoadFor` fails however it is settled.
+      Returns false when nothing was held. */
+  settleLoad(id = null, { fail = false } = {}) {
+    const i = this._held.findIndex((h) => id == null || h.id === id);
+    if (i < 0) return false;
+    const [held] = this._held.splice(i, 1);
+    if (fail || this.failLoadFor.has(held.id)) held.reject(new Error("missing file"));
+    else held.resolve();
+    return true;
   }
   play() { this.paused = false; this.log.push("play"); }
   pause() { this.paused = true; this.log.push("pause"); }

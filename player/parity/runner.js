@@ -207,15 +207,10 @@ export async function runCase(c, fixture, { root = REPO_ROOT } = {}) {
     are legal in the schema — the Swift runner needs the vocabulary now — but a
     JS case using one fails loudly rather than being silently skipped. */
 export const PENDING_DRIVERS = Object.freeze({
-  /* NE-03 named NE-11j here, and NE-11j recorded its session, session-invariant
-     and engine-mode families without it: SessionPolicy and EngineMode are pure
-     tables (player/engine-contract.js), asked with `call` cases, so no case
-     needed an AVAudioSession notification driven into a live object. The
-     first scenarios that do are NE-14j's interruption scenarios over the
-     manager (the JS-first interruption rewind), so the driver is NE-14j's. */
-  session: "NE-14j",
-  lifecycle: "NE-14j",
-  /* NE-12j recorded media-session's episode subset without it: the remote-press
+  /* `session` and `lifecycle` were listed here for NE-14j, which drives them
+     now (SESSION_EVENTS and LIFECYCLE_EVENTS below).
+
+     `remote`: NE-12j recorded media-session's episode subset without it: the remote-press
      table is a pure function of a surface and the presses, asked through
      player/parity/media-actions.js, so no press needed a manager behind it. The
      media-session tests that DO press a lock-screen button into a live manager
@@ -224,6 +219,34 @@ export const PENDING_DRIVERS = Object.freeze({
      card that needs this driver. */
   remote: "NE-29j",
 });
+
+/** What a `session` step can say (NE-14j): the audio session's notifications,
+    as the page hands them to the manager.
+
+      interruptionBegan       the manager's own event (`interruptionBegan()`)
+      interruptionReconciled  the iOS page's route for the same notification:
+                              client.js's onNativeSession asks the element
+                              rather than commanding it
+                              (`reconcileWithBackend("session:interruptionBegan",
+                              { interruption: true })`)
+      interruptionEnded       with `shouldResume` (a boolean, required)
+      routeLost               the old device went away (headphones out, the car
+                              switched off); optional `routeName`, `isCarRoute`
+      routeAvailable          a route appeared; `routeName`, `isCarRoute`
+
+    The interruption `reason` vocabulary is SessionPolicy's (the `session`
+    family), not the manager's, so a step carries none. */
+export const SESSION_EVENTS = Object.freeze([
+  "interruptionBegan", "interruptionReconciled", "interruptionEnded", "routeLost", "routeAvailable",
+]);
+
+/** What a `lifecycle` step can say (NE-14j).
+
+      coldLaunch  the process starts with a stored queue and position:
+                  `restoreColdLaunchState({ items, index, autoplay })`
+      foreground  the page comes back and asks the element what happened
+                  while it was away (`reconcileWithBackend("session:foreground")`) */
+export const LIFECYCLE_EVENTS = Object.freeze(["coldLaunch", "foreground"]);
 
 /** The manager methods a `call` step may invoke. A closed list: a scenario is
     a claim about the public surface, and `_private` methods are not one. */
@@ -253,8 +276,7 @@ async function runScenario(c, ctx) {
 
   const log = new OpLog();
   const backend = new FakeBackend({ log, ...(setup.backend ?? {}) });
-  const store = new MemoryStore({ log });
-  for (const [id, seconds] of Object.entries(setup.positions ?? {})) store.positions.set(id, { seconds });
+  const store = await positionStoreFor(setup, log, ctx);
   const scheduler = setup.scheduler === "manual" ? manualScheduler() : instantScheduler();
   const tts = setup.tts ? fakeTts({ log, ...(typeof setup.tts === "object" ? setup.tts : {}) }) : null;
   const interlude = setup.interlude ? fakeInterlude({ log, ...(typeof setup.interlude === "object" ? setup.interlude : {}) }) : null;
@@ -312,9 +334,37 @@ async function runScenario(c, ctx) {
           else if (step.deck === "time") backend.currentTime = step.sec;
           else if (step.deck === "duration") backend.duration = step.sec;
           else if (step.deck === "audible") backend.paused = step.audible === false;
+          /* NE-14j. A pause nobody commanded (a call on an awake page, a route
+             the OS took): the element stops, then says so — the backend's
+             `onUnexplainedPause`, which the manager reconciles. */
+          else if (step.deck === "observedPause") {
+            backend.paused = true;
+            floating.push(Promise.resolve(backend.onUnexplainedPause?.()).catch(() => {}));
+          }
+          /* NE-14j. A held load (setup.backend.holdLoads) lands, or fails: the
+             oldest one held for `id`, or the oldest of all. */
+          else if (step.deck === "loaded" || step.deck === "loadFailed") {
+            if (!backend.settleLoad(step.id ?? null, { fail: step.deck === "loadFailed" })) {
+              throw new HarnessError("E_BAD_CASE", `no held load${step.id ? ` for "${step.id}"` : ""} to settle`);
+            }
+          }
           else throw new HarnessError("E_BAD_CASE", `unknown deck event "${step.deck}"`);
           await tick();
           break;
+        case "session": {
+          const run = sessionStep(m, step);
+          if (step.await === false) floating.push(run.catch(() => {}));
+          else await run;
+          await tick();
+          break;
+        }
+        case "lifecycle": {
+          const run = lifecycleStep(m, step, ctx);
+          if (step.await === false) floating.push(run.catch(() => {}));
+          else await run;
+          await tick();
+          break;
+        }
         case "tts":
           if (!tts) throw new HarnessError("E_BAD_CASE", `"tts" needs setup.tts`);
           if (step.tts !== "finish") throw new HarnessError("E_BAD_CASE", `unknown tts event "${step.tts}"`);
@@ -344,4 +394,70 @@ async function runScenario(c, ctx) {
     __resetInstanceForTests();
   }
   return encode({ checkpoints, ops });
+}
+
+/** The scenario's position store. By default the MemoryStore (`store.save:`
+    tokens, `positions` seeded as `{seconds}` rows). With `setup.positionEvents`
+    (NE-14j) it is the REAL PositionStore over a MemoryStore storage, with its
+    `onSave` writing `event.position:<id>@<seconds>:<duration>` — the event the
+    page logs and the native engine appends to `pendingEvents` (plan §5.5), under
+    the once-a-minute rule the resume-rules family pins. `updated_at` is fixed at
+    the epoch: the rows family owns the row's bytes, this owns WHEN it is written. */
+async function positionStoreFor(setup, log, ctx) {
+  if (setup.positionEvents !== true) {
+    const store = new MemoryStore({ log });
+    for (const [id, seconds] of Object.entries(setup.positions ?? {})) store.positions.set(id, { seconds });
+    return store;
+  }
+  const { PositionStore, positionKey } = await importModule(ctx.root, "player/position-store.js");
+  const initial = {};
+  for (const [id, seconds] of Object.entries(setup.positions ?? {})) {
+    initial[positionKey(id)] = JSON.stringify({ seconds, duration: null, updated_at: new Date(0).toISOString(), source: "local" });
+  }
+  const storage = new MemoryStore({ log, initial });
+  return new PositionStore({
+    storage,
+    now: () => new Date(0),
+    onSave: (id, seconds, meta) => log.push(`event.position:${id}@${seconds}:${meta?.duration ?? "null"}`),
+  });
+}
+
+/** Drive one `session` step (SESSION_EVENTS). */
+function sessionStep(m, step) {
+  switch (step.session) {
+    case "interruptionBegan":
+      return m.interruptionBegan();
+    case "interruptionReconciled":
+      return m.reconcileWithBackend("session:interruptionBegan", { interruption: true });
+    case "interruptionEnded":
+      if (typeof step.shouldResume !== "boolean") {
+        throw new HarnessError("E_BAD_CASE", `session interruptionEnded needs a boolean shouldResume`);
+      }
+      return m.interruptionEnded(step.shouldResume);
+    case "routeLost":
+    case "routeAvailable":
+      return m.routeChanged({
+        oldDeviceUnavailable: step.session === "routeLost",
+        routeName: step.routeName ?? null,
+        isCarRoute: step.isCarRoute === true,
+      });
+    default:
+      throw new HarnessError("E_BAD_CASE", `unknown session event "${step.session}" (one of ${SESSION_EVENTS.join(", ")})`);
+  }
+}
+
+/** Drive one `lifecycle` step (LIFECYCLE_EVENTS). */
+function lifecycleStep(m, step, ctx) {
+  switch (step.lifecycle) {
+    case "coldLaunch":
+      return m.restoreColdLaunchState({
+        items: expandInputs(step.items ?? [], ctx),
+        index: step.index ?? 0,
+        autoplay: step.autoplay === true,
+      });
+    case "foreground":
+      return m.reconcileWithBackend("session:foreground");
+    default:
+      throw new HarnessError("E_BAD_CASE", `unknown lifecycle event "${step.lifecycle}" (one of ${LIFECYCLE_EVENTS.join(", ")})`);
+  }
 }

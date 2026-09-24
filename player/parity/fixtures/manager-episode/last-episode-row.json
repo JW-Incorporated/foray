@@ -1,0 +1,94 @@
+{
+  "family": "manager-episode",
+  "module": "player/parity/rows.js",
+  "note": "lastEpisodeRow pass-through (plan §5.2, NE-14j): playEpisode carries the page's lastEpisodeRow and the engine stores it VERBATIM plus updated_at, as the cp_last_episode string the page reads back. Authored. Port card NE-14s.",
+  "cases": [
+    {
+      "id": "manager-episode/last-episode-row-full-snapshot",
+      "covers": [],
+      "authored": true,
+      "note": "The page's lastEpisodeRow (continuation.js: makeLastEpisode(item) without updated_at) for a full catalogue item, stored with the play's updated_at: the exact bytes the page's own writer produces for the same item.",
+      "call": "engineLastEpisodeRow",
+      "args": [
+        {
+          "id": "ep-1",
+          "title": "An Episode",
+          "show": "A Show",
+          "artwork_url": "https://example.com/a.jpg",
+          "audio_url": "https://example.com/a.mp3",
+          "duration_min": 42,
+          "duration_sec": 2520
+        },
+        1790000000000
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_last_episode",
+            "value": "{\"id\":\"ep-1\",\"title\":\"An Episode\",\"show\":\"A Show\",\"artwork_url\":\"https://example.com/a.jpg\",\"audio_url\":\"https://example.com/a.mp3\",\"duration_min\":42,\"duration_sec\":2520,\"updated_at\":\"2026-09-21T14:13:20.000Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/last-episode-row-kept-verbatim",
+      "covers": [],
+      "authored": true,
+      "note": "Verbatim: a field the engine does not know is kept, in the order the page sent it.",
+      "call": "engineLastEpisodeRow",
+      "args": [{ "id": "ep-2", "title": "Two", "custom": "kept" }, 1790000000000],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_last_episode",
+            "value": "{\"id\":\"ep-2\",\"title\":\"Two\",\"custom\":\"kept\",\"updated_at\":\"2026-09-21T14:13:20.000Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/last-episode-row-order-is-the-pages",
+      "covers": [],
+      "authored": true,
+      "note": "Key order is the page's, not sorted: the row is bytes the page reads back.",
+      "call": "engineLastEpisodeRow",
+      "args": [{ "title": "Three", "id": "ep-3" }, 1790000000000],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_last_episode",
+            "value": "{\"title\":\"Three\",\"id\":\"ep-3\",\"updated_at\":\"2026-09-21T14:13:20.000Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/last-episode-row-play-time-replaces-a-stale-stamp",
+      "covers": [],
+      "authored": true,
+      "note": "updated_at is the engine's to stamp, when the item plays: a stale one in the row is replaced in place.",
+      "call": "engineLastEpisodeRow",
+      "args": [
+        { "id": "ep-4", "updated_at": "2020-01-01T00:00:00.000Z", "title": "Four" },
+        1790000000000
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_last_episode",
+            "value": "{\"id\":\"ep-4\",\"updated_at\":\"2026-09-21T14:13:20.000Z\",\"title\":\"Four\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/last-episode-row-without-an-id-is-refused",
+      "covers": [],
+      "authored": true,
+      "note": "A row with no id is not a pointer (the contract requires one): nothing is written.",
+      "call": "engineLastEpisodeRow",
+      "args": [{ "title": "No id" }, 1790000000000],
+      "expect": { "return": [] }
+    }
+  ]
+}

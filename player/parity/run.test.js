@@ -273,8 +273,69 @@ test("scenario: on a manual clock the seam beat holds the next play until the cl
 });
 
 test("scenario: a verb with no JS driver fails loudly with its card, never silently skips", async () => {
-  await assert.rejects(scenario([{ session: "interruption" }]), /E_NO_JS_DRIVER.*NE-14j/);
   await assert.rejects(scenario([{ remote: "next" }]), /E_NO_JS_DRIVER.*NE-29j/);
+});
+
+/* ---------- NE-14j: the session, lifecycle and held-load drivers ---------- */
+
+test("scenario: session and lifecycle steps drive the manager's own interruption, route and cold-launch paths", async () => {
+  // An OS interruption ending with should-resume steps back 1.5 s in place
+  // (INTERRUPTION_REWIND_SEC) — the same op log queue-manager.test.js asserts.
+  const rewound = await scenario([
+    { call: "loadQueue", args: [[{ $ep: ["a"] }]] }, { call: "play", args: [0] },
+    { deck: "time", sec: 42.5 }, { session: "interruptionBegan" }, { checkpoint: "began" },
+    { session: "interruptionEnded", shouldResume: true }, { checkpoint: "ended" },
+  ]);
+  assert.deepStrictEqual(rewound.checkpoints[0].ops.slice(-2), ["store.save:a@43", "pause"]);
+  assert.deepStrictEqual(rewound.checkpoints[1].ops, ["load:a@41", "rate:1", "play"]);
+  const routed = await scenario([
+    { call: "loadQueue", args: [[{ $ep: ["a"] }]] }, { call: "play", args: [0] },
+    { session: "routeLost", routeName: "Civic", isCarRoute: true }, { checkpoint: "lost" },
+    { session: "routeAvailable", routeName: "Civic" }, { checkpoint: "back" },
+  ]);
+  assert.equal(routed.checkpoints[0].state, "interrupted");
+  assert.equal(routed.checkpoints[1].state, "playing", "a route seen as a car resumes");
+  const cold = await scenario([{ lifecycle: "coldLaunch", items: [{ $ep: ["a"] }], autoplay: true }], { positions: { a: 1800 } });
+  assert.deepStrictEqual(cold.checkpoints[0].ops, ["load:a@1800", "rate:1", "play"]);
+  // The page's two reconcile routes ask the element and only ever move towards paused.
+  const fg = await scenario([
+    { call: "loadQueue", args: [[{ $ep: ["a"] }]] }, { call: "play", args: [0] },
+    { deck: "audible", audible: false }, { lifecycle: "foreground" }, { checkpoint: "fg" },
+  ]);
+  assert.equal(fg.checkpoints[0].state, "interrupted");
+});
+
+test("scenario: a session or lifecycle step it cannot read is a harness error, never a silent no-op", async () => {
+  await assert.rejects(scenario([{ session: "interruption" }]), /E_BAD_CASE/);
+  await assert.rejects(scenario([{ session: "interruptionEnded" }]), /E_BAD_CASE.*shouldResume/);
+  await assert.rejects(scenario([{ lifecycle: "reboot" }]), /E_BAD_CASE/);
+  await assert.rejects(scenario([{ deck: "loaded" }]), /E_BAD_CASE.*no held load/);
+});
+
+test("scenario: a held load settles only when the deck says so, so a superseded load can land late", async () => {
+  const got = await scenario([
+    { call: "loadQueue", args: [[{ $ep: ["a"] }, { $ep: ["b"] }]] },
+    { call: "play", args: [0], await: false }, { call: "play", args: [1], await: false }, { settle: 2 },
+    { checkpoint: "in-flight" },
+    { deck: "loaded", id: "b" }, { checkpoint: "b" },
+    { deck: "loaded", id: "a" }, { checkpoint: "a-late" },
+  ], { backend: { holdLoads: true } });
+  const [inFlight, b, late] = got.checkpoints;
+  assert.deepStrictEqual(inFlight.ops, ["load:a@0", "load:b@0"], "both loads issued, nothing audible yet");
+  assert.deepStrictEqual(b.ops, ["rate:1", "play"]);
+  assert.deepStrictEqual(late.ops, [], "the superseded load plays nothing when it lands");
+  assert.equal(late.playhead, "b");
+});
+
+test("scenario: positionEvents puts the real PositionStore behind the manager, once-a-minute event and all", async () => {
+  const got = await scenario([
+    { call: "loadQueue", args: [[{ $ep: ["a"] }]] }, { call: "play", args: [0] },
+    { deck: "time", sec: 30 }, { call: "pause" }, { checkpoint: "first" },
+    { call: "resume" }, { deck: "time", sec: 45 }, { call: "pause" }, { checkpoint: "second" },
+  ], { positionEvents: true });
+  assert.ok(got.checkpoints[0].ops.includes("event.position:a@30:3600"), got.checkpoints[0].ops.join(" "));
+  assert.ok(got.checkpoints[0].ops.includes("store.set:cp_pos:a"));
+  assert.ok(!got.checkpoints[1].ops.some((o) => o.startsWith("event.position")), "15 s on is inside the minute");
 });
 
 test("scenario: only the manager's public surface is callable", async () => {

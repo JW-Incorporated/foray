@@ -168,6 +168,7 @@ import { buildForayQueue } from "./foray-queue.js";
 import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap.js";
 import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 import { interludeEligible, describeInterlude, INTERLUDE_CEILING_SEC } from "./interlude.js";
+import { interruptionResumeOffset } from "./transport-policy.js";
 
 /** The periodic position write's cadence. Exported (NE-08) so the native
     engine's generated constants (NE-04) and its ResumeRules port read this
@@ -435,6 +436,9 @@ export class PlayerQueueManager {
         `loadItem`, and a blind clear there turned the restart into a resume.
         The finally clears only what its OWN action armed. */
     this._offsetArmedBy = null;
+    /** True only while `interruptionEnded` dispatches an OS should-resume, so
+        the load it causes steps back INTERRUPTION_REWIND_SEC (NE-14j). */
+    this._rewindNextResume = false;
     this._transportInFlight = null;
     /** Whether the last pause was the LISTENER's (a press, a stop) rather than
         the OS's (a call, Siri, another app taking the session). Audit round 2
@@ -1048,7 +1052,17 @@ export class PlayerQueueManager {
         ? "interruption.ended.routeLost — not resumed (corner case #13)"
         : "interruption.ended.listenerPaused — not resumed");
     }
-    await this._handle(E.interruptionEnded(resume));
+    /* THE RESUME STEPS BACK INTERRUPTION_REWIND_SEC (NE-14j, plan §4.4;
+       `interruptionResumeOffset`). Held for exactly this dispatch: the reducer's
+       resume is `loadItem`, and `_loadItem` reads the flag synchronously at its
+       top, before any await — so no other transport's load can spend it, and a
+       listener's own play after a pause never sees it. */
+    this._rewindNextResume = resume;
+    try {
+      await this._handle(E.interruptionEnded(resume));
+    } finally {
+      this._rewindNextResume = false;
+    }
   }
 
   /** Corner case #13. The reducer never auto-resumes; that policy lives here.
@@ -1468,6 +1482,10 @@ export class PlayerQueueManager {
        `forced`, so a superseded load cannot hand it to its successor. */
     const explicit = this._startOffsetNext;
     this._startOffsetNext = null;
+    /* An OS interruption's should-resume (see `interruptionEnded`). Spent here
+       like the two above, so it can only ever shape the load it was armed for. */
+    const rewind = this._rewindNextResume === true;
+    this._rewindNextResume = false;
     // A segment's in-point OVERRIDES any saved position, always (#65 §4).
     // Resuming to where the listener last left this episode would drop them
     // outside the segment entirely — usually into a different story.
@@ -1529,10 +1547,18 @@ export class PlayerQueueManager {
        the ordinary rule rather than being trusted. */
     const explicitInside = explicit != null
       && (!bounds || (explicit >= bounds.startSec && explicit < bounds.endSec));
+    /* In place after an OS interruption: step back INTERRUPTION_REWIND_SEC, never
+       before this item's own start (NE-14j). Only the in-place resume, which
+       is plan §4.4's healthy item: an element that no longer holds the item is
+       the rebuild path, and that starts from the stored row the way every
+       cold resume does. */
+    const inPlaceAt = resumingInPlace && rewind
+      ? (interruptionResumeOffset({ playheadSec: playhead, startSec: bounds ? bounds.startSec : null }) ?? playhead)
+      : playhead;
     const startOffset = explicitInside
       ? explicit
       : (resumingInPlace
-        ? playhead
+        ? inPlaceAt
         : (bounds
           ? bounds.startSec
           : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item)))));

@@ -16,6 +16,8 @@ import { makeLastEpisode, readLastEpisode, KEY as LAST_EPISODE_KEY } from "../ep
 import { PositionStore, makePositionRecord } from "../position-store.js";
 import { makeProgress, progressKey, readProgress } from "../foray-progress.js";
 import { isNewer } from "../durable-store.js";
+import { lastEpisodeRow } from "../continuation.js";
+import { engineLastEpisodeRow } from "./rows.js";
 
 const casesOf = (family) => loadFixtures(REPO_ROOT, { family }).flatMap((fx) => fx.doc.cases);
 
@@ -56,6 +58,31 @@ test("every recorded cp_last_episode row is makeLastEpisode's output, byte for b
     written += want.length;
   }
   assert.ok(written >= 5, "no cp_last_episode case writes a row");
+});
+
+test("NE-14j: the engine's pass-through of the page's lastEpisodeRow writes the page's own cp_last_episode bytes", () => {
+  /* Plan §5.2: playEpisode carries `lastEpisodeRow` (continuation.js, the
+     page's makeLastEpisode without updated_at), and the engine stores it
+     verbatim with the play's updated_at. So for every recorded page row, the
+     pass-through must produce the identical string — the manager-episode
+     last-episode-row cases pin the rule, this pins that it IS the page's row.
+     A numeric id is the one difference, and it is the contract's: playEpisode
+     carries a string id (engine-contract.js), so the engine refuses one the
+     page's writer would take. MUTATION: sort the row's keys, or put updated_at
+     first, in rows.js engineLastEpisodeRow -> red. */
+  const cases = casesOf("rows").filter((c) => c.call === "cpLastEpisodeRow");
+  let compared = 0;
+  for (const c of cases) {
+    const [item, nowMs] = decodeSpecial(c.args);
+    const got = engineLastEpisodeRow(lastEpisodeRow(item), nowMs);
+    if (typeof item?.id === "string" && item.id) {
+      assert.deepStrictEqual(got, c.expect.return, c.id);
+      compared += got.length;
+    } else {
+      assert.deepStrictEqual(got, [], `${c.id}: no string id, so nothing reaches cp_last_episode through the engine`);
+    }
+  }
+  assert.ok(compared >= 5, "no cp_last_episode case was compared");
 });
 
 test("every recorded cp_foray row is makeProgress's output, byte for byte", () => {

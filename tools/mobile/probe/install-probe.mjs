@@ -91,6 +91,9 @@ export const PHASE_ASSET = "probe-phase.js";
  *  Phase B imports `html-audio-backend.js`; phase C imports `queue-manager.js`,
  *  `html-audio-backend.js` and `seam-gap.js`, and `queue-manager.js` in turn imports
  *  `queue-state.js`, `queue-strategy.js`, `seek-policy.js` and `foray-queue.js`.
+ *  Since NE-14j `html-audio-backend.js` asks `deck-policy.js` its out-point and
+ *  deadline decisions, and `queue-manager.js` asks `transport-policy.js` for the
+ *  interruption resume's step back.
  *  Listed in full rather than spot-checked — see `assertBuildArtefact`. */
 export const PROBE_PLAYER_DEPS = [
   "html-audio-backend.js",
@@ -100,6 +103,8 @@ export const PROBE_PLAYER_DEPS = [
   "seam-gap.js",
   "seek-policy.js",
   "foray-queue.js",
+  "deck-policy.js",
+  "transport-policy.js",
 ];
 
 /** The generated tone. Not committed — a 2 MB WAV in a repo that guards a 3 MB

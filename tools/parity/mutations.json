@@ -13,11 +13,11 @@
       "recordedBy": "NE-03"
     },
     "never-early": {
-      "why": "An out-point never stops a segment before its boundary: a fine wake re-reads the playhead and only stops once it is reached. The mutant stops half a second short, clipping the payoff.",
+      "why": "An out-point never stops a segment before its boundary: a fine wake re-reads the playhead and only stops once it is reached (deck-policy.js fineWakeAction, which HtmlAudioBackend asks since NE-14j). The mutant stops half a second short, clipping the payoff.",
       "patch": {
-        "file": "player/html-audio-backend.js",
-        "find": "    if (t >= this._outPoint) return this._reachOutPoint();",
-        "replace": "    if (t >= this._outPoint - 0.5) return this._reachOutPoint();"
+        "file": "player/deck-policy.js",
+        "find": "  if (atSec >= outPointSec) return FINE_WAKE.STOP;",
+        "replace": "  if (atSec >= outPointSec - 0.5) return FINE_WAKE.STOP;"
       },
       "jsTest": { "suite": "html-audio-backend", "name": "an early fine wake reschedules instead of stopping short" },
       "family": "deck-episode",
