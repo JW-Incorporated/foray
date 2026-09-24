@@ -2,22 +2,9 @@
 
 <!-- ha-format: 2 -->
 
-> **33 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **20 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
-
-## #110 🔴 [BLOCKING] Switch GitHub Pages to "GitHub Actions" — before the #701 PR merges (~1 min)
-<!-- ha filed=2026-09-24 kind=default -->
-
-**Why:** Issue #701's fix stops committing `deploy-manifest.json`, `data/forays-directory.json` and `sw.js`'s stamped `BUILD_ID` — they changed on every merge and made every open PR conflict (the native-engine PRs into `engine/m1` included). Vercel already has a build step and stamps them itself. GitHub Pages does not: it serves `main`'s root as-is, so it needs the new `.github/workflows/pages.yml` to build and stamp the site, and a workflow can only publish to Pages when the Pages source is set to "GitHub Actions". That is a production-hosting setting, so it is yours to flip. The phones read the Foray directory from Vercel, so the web data they see is unaffected either way.
-
-**Steps:**
-1. GitHub → JW-Incorporated/foray → **Settings** → **Pages** → **Build and deployment** → **Source**: choose **GitHub Actions**. (The site keeps serving its last deploy until the next one.)
-2. Then merge the #701 PR (or tell Claude it is flipped). Its merge runs `pages`, which deploys the stamped site.
-
-**Worked if:** the `pages` workflow run on `main` is green with no "Pages not deployed" warning, and https://jw-incorporated.github.io/foray/deploy-manifest.json loads.
-
-**If the PR merges first:** the `pages` run stamps and verifies the site, then skips the deploy with a "Pages not deployed" warning. It skips instead of failing on purpose, because a failed run on `main` would make release-trigger hold every app release (`HOLD_MAIN_RED`). Pages keeps serving `main` without a manifest, so the website's service worker does not update until you make the switch and re-run `pages` (Actions → `pages` → Run workflow). Pages still load current code while online. App releases are not affected.
 
 ## #46 🔴 [BLOCKING] Nightly content has been stalled since 2026-09-14 — its Cloud routine is switched off (~5 min)
 <!-- ha filed=2026-09-13 kind=default -->
@@ -130,41 +117,6 @@ was taken as evidence about on-device TTS. It was not: `ForayTtsPlugi
 narration sounded better with it. Both halves are needed — "sounds better" without the
 voice name cannot be reproduced, and th
 
-## #39 🟡 [DECIDE] Decide how the shard-index client (S-05) reaches GitHub Release assets — CORS gap measured, not fixed
-<!-- ha filed=2026-09-11 kind=keyword -->
-
-**Why:** S-04b publishes the shard index as GitHub Release
-assets. Measured against a real release already in this repo
-(`kokoro-fixture-t_f3c788ca`): a download URL
-(`github.com/<owner>/<repo>/releases/download/<tag>/<asset>`) redirects
-(302) to a presigned URL on `release-assets.githubusercontent.com` (an
-
-**Steps:**
-1. Read docs/DECISIONS.md's 2026-09-05 'S-04b' entry: GitHub Release asset URLs redirect to release-assets.githubusercontent.com with no CORS headers, so a client fetch() fails as shipped.
-2. Choose option (a): front release assets with a CORS-capable proxy (e.g. a Cloudflare Worker or an object-storage mirror the pipeline also uploads to).
-3. Or choose option (b): route the fetch through this repo's own api/ layer as a same-origin proxy, matching the pattern api/shows/[show_id]/episodes.ts already uses.
-4. Say which option in a comment on this item or on the S-05 kanban card, since S-05 (the shard-index client) cannot start its CSP connect-src change without this call.
-5. Worked-if is already set: S-05's design doc or PR states which option it picked and why, and any CSP change lands in that same PR.
-
-**Worked if:** S-05's design doc (or its PR) states which option it picked
-and why, and the CSP change (if any) lands in that same PR per the
-project's existing rule.
-
----
-
-## #35 🟡 [DECIDE] Merge PR #429 (Stage 3b full-catalogue RSS ingestion) — first Vercel serverless function, needs Wyatt's architecture sign-off
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** `t_a36252bb` ("remove the listen-elsewhere link-out, play everything in-app") depends on `t_567b570f` shipping real `audio_url`s at scale. That work is done and reviewed (round 3, 216/216 local tests pass, GitHub CI green) in PR #429, but it is genuinely gated on a human decision, not just a routine
-
-**Steps:**
-1. Read the "For Wyatt: one thing to look at specifically" section at the top of PR #429: https://github.com/JW-Incorporated/foray/pull/429
-2. Decide: is reusing the existing Vercel project + existing Supabase service-role connection an acceptable way to stand up the first live backend endpoint, or do you want a different shape?
-3. If acceptable: add the `founder-approved` label (or ask Hermes to add it) and merge (or authorize Hermes to merge) the PR.
-4. If not acceptable: say what should change; the implementing lane will revise.
-
-**Worked if:** PR #429 is merged to `main` (or explicitly redirected), unblocking `t_a36252bb`.
-
 ## #34 🟡 [DECIDE] Type the new App Store Connect listing name into Apple's dashboard
 <!-- ha filed=2026-09-11 kind=default -->
 
@@ -243,27 +195,6 @@ XT on at least one model size, and the Vulkan device line confirms the GPU
 
 ---
 
-## #27 🟡 [DECIDE] Rebase (or reconfigure) five of the six classify shard branches onto `main`, past PR #203
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** PR #203 (2026-08-16) fixed the classify shard key from
-`Number(id) % N` (2.20x unbalanced) to `fnv1a32(String(id)) % N` and merged to
-`main`. Measured 2026-08-31, **five of the six live shard branches
-(`origin/reclassify-0,1,2,4,5`) never received that fix** — they forked from
-`origin/reclassify` on
-
-**Steps:**
-1. Run: git fetch origin 'refs/heads/reclassify-*:refs/remotes/origin/reclassify-*' to pull the six shard branches.
-2. Dry-run the merge tool: node tools/classify/reconcile-shards.mjs --dry-run — it reports the numbers without writing anything.
-3. Review the printed stats, especially cross_shard_conflicts (about 30 shows resolved by newest classified_at).
-4. If the numbers look right, run it for real: node tools/classify/reconcile-shards.mjs (writes data/breadth-classification.json, still needs a PR to land).
-5. Commit and open a PR with the result (data/ auto-merges on green CI per this repo's merge_authority: agent).
-6. Confirm the fix: re-run node tools/classify/reconcile-shards.mjs --dry-run afterward and check every shard reports shard_key hashed, not hashed+legacy.
-
-**Worked if:** a fresh dry-run of `node tools/classify/reconcile-shards.mjs
---dry-run` some time after this ships reports `shard_key hashed` (not
-`hashed+legacy`) for all six branches, meaning every branch's own new
-
 ## #26 🟡 [DECIDE] Publish the Play Store listing from `docs/store/play/`
 <!-- ha filed=2026-09-11 kind=default -->
 
@@ -303,23 +234,6 @@ and was
 
 **Worked if:** (not stated in the legacy item -- needs a real Worked-if)
 
-## #23 🟡 [DECIDE] Apply `founder-approved` to PR #297, so something watches for a dark night
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** On 2026-08-20 and 2026-08-21 the nightly content pipeline
-produced nothing and every workflow in the list was green (#290). The Action did
-its half both nights and logged *"published digest: 29 resolved episodes"* both
-nights; the Cloud agent that turns a digest into a PR had hit a weekly usage
-limi
-
-**Steps:**
-1. Verified 2026-09-11: PR #297 (nightly-watch.yml absence guard + nightly-refresh.yml overwrite guard) is already merged to main (merged 2026-08-25) and already carries the founder-approved label.
-2. Confirm the watchdog is live: check the Actions tab for the nightly-watch workflow running daily at 21:40 UTC and going red if a digest sits unmerged past 12h.
-3. If confirmed live and green/red as expected, this item is done -- reply done to close it (no further action needed on the PR itself).
-4. If the workflow is missing or was reverted since merge, say so here so the watchdog can be re-applied.
-
-**Worked if:** (not stated in the legacy item -- needs a real Worked-if)
-
 ## #22 🟡 [DECIDE] Rule on the alcohol Foray's product mode, and on three narration rules that collide
 <!-- ha filed=2026-09-11 kind=keyword -->
 
@@ -336,24 +250,6 @@ limi
 That file is on `DENIED_PREFIXES`, so the entry needs a separate PR carrying the
 `founder-approved` label; it was deliberately not add
 
-## #21 🟡 [DECIDE] After the next drive, copy the playback diagnostics out of the drawer
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** Two reports came out of your car in one
-evening and neither carried a number, so each one restarted the diagnosis — #224
-has been escalated, downgraded on one clean test, and re-escalated on a failure.
-Five changes have shipped into the seam and transport area (#227, #235, #239,
-#260, #266) with no
-
-**Steps:**
-1. Before the drive, open the app's menu (☰) → **Developer** → **Playback diagnostics** → **Clear
-2. Drive. Play a Foray with the screen off, as usual. Nothing else to do.
-3. Afterwards, same menu → **Developer** → **Playback diagnostics** → **Copy**, and paste it into
-
-**Worked if:** one pasted record from a real drive. **The single most valuable
-line in it is a seam that says `NEVER STARTED`** — that is #224, with the stage it
-reached and the deadline it was measured against, whi
-
 ## #20 🟡 [DECIDE] Revoke one leaked anonymous Supabase session, and delete one CI artifact
 <!-- ha filed=2026-09-11 kind=default -->
 
@@ -369,21 +265,6 @@ error rather than a new session, and the run page shows no `ios-shell-evidence`
 artifact.
 
 ---
-
-## #19 🟡 [DECIDE] Get an Apple Developer account and add seven secrets, so CI can put a build on TestFlight
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** #38 built the iOS build in CI, and **it works without any of this**: `.github/workflows/ios-build.yml` compiles the shell unsigned on every run, for both the simulator and a real device's architecture, and that is deliberate — an unsigned build that always runs is worth more than a signing job that
-
-**Steps:**
-1. Join the Apple Developer Program at **`https://developer.apple.com/programs/enroll/`** ($99/year). Apple may take a day or two to approve.
-2. In **App Store Connect** (`https://appstoreconnect.apple.com`) → **Users and Access** → **Integrations** → **App Store Connect API** → **+**, create a key with the **App Manager** role. You get three
-3. In the developer portal → **Certificates, Identifiers & Profiles**:
-4. Base64-encode the three files. On a Mac:
-5. At **`https://github.com/JW-Incorporated/foray/settings/secrets/actions`**, click **New repository secret** seven times and create **exactly these names** (the workflow reads these and no others — a t
-6. Run the workflow: **`https://github.com/JW-Incorporated/foray/actions/workflows/ios-build.yml`** → **Run workflow**.
-
-**Worked if:** a run of `ios-build` shows `state=ready` at the "Is signing configured?" step and a build appears in App Store Connect → TestFlight. If it gets as far as `altool` and then fails, that is the expected
 
 ## #18 🟡 [DECIDE] On Android: settle whether our CSP kills Capacitor's bridge
 <!-- ha filed=2026-09-11 kind=default -->
@@ -417,24 +298,6 @@ Capacitor injects its native bridge (`native-bridge.js`, the app config, and eve
 **Worked if:** #40 says whether it gates the first public release, and the status below says DONE.
 
 ---
-
-## #16 🟡 [DECIDE] On a Mac: generate the iOS shell, add one `Info.plist` line, and build it
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** (not stated in the legacy item -- needs a real Why)
-
-**Steps:**
-1. Install the toolchain, if it is not there. Xcode must be from the App Store, opened once so it accepts its licence. **Do not install CocoaPods — Capacitor 8 does not use it.**
-2. Install the shell's dependencies and build the web bundle:
-3. Generate the iOS project:
-4. **Add the background-audio key.** This is the single most important step, and it is the *entire* iOS background-audio requirement — no plugin, no Swift, no audio-session code. Open `mobile/ios/App/App
-5. Open and run it:
-6. **The five things to report back**, in one comment on #36:
-7. Does the app launch and show the four cards?
-8. **In the Safari Web Inspector console (Safari → Develop → your device → App), type `Capacitor` and press enter. Is it defined, or does it say "Can't find variable"?** This is the single most important
-9. See the pre-migration item text at commit 275b35e7c023aea1b9b94f28b9f2596ea4502d0b (legacy HUMAN-ACTIONS.md, item #16).
-
-**Worked if:** there is a comment on #36 answering the four questions in step 6, and `mobile/ios/` is committed with `UIBackgroundModes: audio` in its `Info.plist`.
 
 ## #14 🟡 [DECIDE] Delete the empty anonymous accounts a client cannot delete itself
 <!-- ha filed=2026-09-11 kind=default -->
@@ -478,38 +341,6 @@ Capacitor injects its native bridge (`native-bridge.js`, the app config, and eve
 
 ---
 
-## #11 🟡 [DECIDE] Put a Foray on a real phone with the screen off — the one test no machine here can run
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** (not stated in the legacy item -- needs a real Why)
-
-**Steps:**
-1. On your phone, open exactly this:
-2. Press **Play**. Let one segment start (they are ~1–3 minutes each).
-3. **Lock the phone** (side button) and put it in your pocket. Keep listening.
-4. After about 15 minutes, unlock and look at the running order.
-5. Also say whether the audio **stopped** at any point, and roughly when.
-6. **New, 2026-08-17 — and this is now the most useful thing you can report.**
-
-**Worked if:** there is a written note on #35 saying, for at least one real phone: whether audio continued with the screen locked, for how long, and whether segments kept advancing. Three sentences is a complete res
-
-## #10 🟡 [DECIDE] Make the six classify routines land their own work (they open no PR)
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** Each routine commits to **`origin/reclassify-<N>`** and
-
-**Steps:**
-1. Read docs/agents/runners.md's classify-shard section: the six foray-classify-shard0-5 routines push to origin/reclassify-<N> and never open a PR.
-2. Decide option A: fix docs/agents/runner-prompts/classify-batch.md §8 so each routine opens a PR after committing (the prompt already says to; routines don't follow it).
-3. Or decide option B: keep no-PR branches and schedule tools/classify/reconcile-shards.mjs to run weekly and land data on main (mirror S-04b's pointer-PR pattern).
-4. Update docs/agents/runners.md and the chosen automation once ruled, so the fleet's behavior matches what is documented.
-5. Worked-if is already set: data/breadth-classification.json on main gains classify-agent-tier1 rows within 48 hours with nobody running a command locally.
-
-**Worked if:** `data/breadth-classification.json` on `main` gains
-`classify-agent-tier1` rows within 48 hours without anyone running a command
-locally — either from six `classify/*` PRs, or from one
-`classify/reconc
-
 ## #8 🟡 [DECIDE] Listen to Foray #2, and rule on one number the cut budget cost us
 <!-- ha filed=2026-09-11 kind=keyword -->
 
@@ -523,62 +354,6 @@ locally — either from six `classify/*` PRs, or from one
 and raise N", or "here is what I heard that the rules missed".
 
 ---
-
-## #7 🟡 [DECIDE] Confirm the fleet's target list stays the chart-200 catalogue
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** Before spending four weeks classifying 17,875 shows, confirm
-they are the right 17,875 — because the list has a hard, measured ceiling and
-this is a decision about what we are choosing not to see.
-
-`data/catalog-breadth.json` is, by construction, "the top 200 of each of 110
-Apple genre charts" — `CH
-
-**Steps:**
-1. Read `docs/agents/fleet-review-2026-08.md` §1.
-2. Reply **"keep the list"** (recommended) or **"broaden first"**, and change
-3. Either way, one thing is worth knowing and does not need a decision: a show
-
-**Worked if:** nobody re-opens "should we have classified a different list?" in
-week three.
-
----
-
-## #6 🟡 [DECIDE] Decide: add the usability fields before the four-week run, or after
-<!-- ha filed=2026-09-11 kind=keyword -->
-
-**Why:** This is a sequencing decision, and it is cheap now and
-expensive later — which is the only reason it is here rather than being decided
-by a session.
-
-The fleet records 14 fields per show — nine describing subject or display copy,
-five recording provenance. **None of them records whether a show is *u
-
-**Steps:**
-1. Read `docs/agents/fleet-review-2026-08.md` §5 — it is one table of fields
-2. Reply with either **"schema first"** or **"blitz first"** and change the
-3. If **schema first**, expect the engineering PR to also carry: `--shard`
-
-**Worked if:** a session can start the four-week run without having to guess
-whether it will need to be run twice.
-
----
-
-## #5 🟡 [DECIDE] Give each of the six classify routines its own `--shard i/6`
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** `tools/classify/prepare-batch.mjs` supports sharding
-(`--shard i/N` — take only the shows that shard owns, by a hashed, stable key).
-
-**Steps:**
-1. Open <https://claude.ai/settings/automations> on the account that owns the
-2. For each of the six routines, set the schedule and the shard argument as
-3. Then set the full command each routine should run — copy it literally, changing only
-4. **Do not guess the shard string.** It must read `0/6`, `1/6`, `2/6`, `3/6`,
-
-**Worked if:** within one 8-hour window, **six different** `classify/*` PRs have
-merged, and no two of them classified the same show. Quick check after a day:
-`git log origin/main --oneline -- data/breadth-classific
 
 ## #1 🟡 [DECIDE] Make `path-policy` a required check on `main`
 <!-- ha filed=2026-09-11 kind=default -->
