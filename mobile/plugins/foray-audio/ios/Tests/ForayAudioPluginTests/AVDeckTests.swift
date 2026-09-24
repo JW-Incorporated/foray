@@ -1,5 +1,6 @@
 import XCTest
 import AVFoundation
+import ForayEngineCore
 @testable import ForayAudioPlugin
 
 /// AVDeck against a REAL AVPlayer in the iOS Simulator (card NE-15,
@@ -134,7 +135,7 @@ final class AVDeckTests: XCTestCase {
         _ url: URL, token: DeckToken, startSec: Double, precise: Bool = true,
         file: StaticString = #filePath, line: UInt = #line
     ) -> (landedSec: Double, prerolled: Bool, elapsedMs: Int)? {
-        deck.send(.load(token: token, url: url, startSec: startSec, preciseTiming: precise))
+        deck.send(.loadURL(token: token, url: url, startSec: startSec, preciseTiming: precise))
         return readyEvent(token, file: file, line: line)
     }
 
@@ -149,7 +150,7 @@ final class AVDeckTests: XCTestCase {
     func testDeckSettingsAreThePlans() throws {
         XCTAssertEqual(deck.player.actionAtItemEnd, .pause)
         XCTAssertTrue(deck.player.automaticallyWaitsToMinimizeStalling)
-        deck.send(.load(token: 1, url: try fixture("click", "wav"), startSec: 0, preciseTiming: true))
+        deck.send(.loadURL(token: 1, url: try fixture("click", "wav"), startSec: 0, preciseTiming: true))
         XCTAssertEqual(deck.player.currentItem?.audioTimePitchAlgorithm, .timeDomain)
     }
 
@@ -208,7 +209,7 @@ final class AVDeckTests: XCTestCase {
     /// there rather than at the load's original offset.
     /// TO SEE IT FAIL: make `seek(to:)` ignore `.loading`/`.gating`.
     func testASeekBeforeReadyMovesTheStart() throws {
-        deck.send(.load(token: 1, url: try fixture("click", "wav"), startSec: 2, preciseTiming: true))
+        deck.send(.loadURL(token: 1, url: try fixture("click", "wav"), startSec: 2, preciseTiming: true))
         deck.send(.seek(toSec: 11))
         guard let ready = readyEvent(1) else { return }
         XCTAssertEqual(ready.landedSec, 11, accuracy: 0.1)
@@ -221,7 +222,7 @@ final class AVDeckTests: XCTestCase {
     /// play primitive is issued; the same play after `.ready` runs.
     /// TO SEE IT FAIL: drop the `stage == .ready` guard in `play()`.
     func testNothingIsAudibleBeforeReady() throws {
-        deck.send(.load(token: 1, url: try fixture("click-cbr", "mp3"), startSec: 3, preciseTiming: true))
+        deck.send(.loadURL(token: 1, url: try fixture("click-cbr", "mp3"), startSec: 3, preciseTiming: true))
         deck.send(.play)
         XCTAssertTrue(events.contains(.refused(command: "play", reason: "not-ready")), "\(events)")
         XCTAssertEqual(deck.player.rate, 0)
@@ -240,7 +241,7 @@ final class AVDeckTests: XCTestCase {
         guard loadAndWaitReady(try fixture("click", "wav"), token: 1, startSec: 0) != nil else { return }
         deck.send(.play)
         XCTAssertEqual(deck.player.rate, 1)
-        deck.send(.load(token: 2, url: try fixture("click-cbr", "mp3"), startSec: 4, preciseTiming: true))
+        deck.send(.loadURL(token: 2, url: try fixture("click-cbr", "mp3"), startSec: 4, preciseTiming: true))
         XCTAssertEqual(deck.player.rate, 0, "the next item attached to a playing player")
         guard readyEvent(2) != nil else { return }
         XCTAssertEqual(deck.player.rate, 0)
@@ -256,8 +257,8 @@ final class AVDeckTests: XCTestCase {
     /// `gen == generation` guard in `durationLoaded` (either one alone still
     /// holds; that is what having two is for).
     func testASupersededLoadIsSilent() throws {
-        deck.send(.load(token: 1, url: try fixture("click-cbr", "mp3"), startSec: 5, preciseTiming: true))
-        deck.send(.load(token: 2, url: try fixture("click", "wav"), startSec: 6, preciseTiming: true))
+        deck.send(.loadURL(token: 1, url: try fixture("click-cbr", "mp3"), startSec: 5, preciseTiming: true))
+        deck.send(.loadURL(token: 2, url: try fixture("click", "wav"), startSec: 6, preciseTiming: true))
         guard let ready = readyEvent(2) else { return }
         XCTAssertEqual(ready.landedSec, 6, accuracy: 0.1)
         spin(1.0)
@@ -320,7 +321,7 @@ final class AVDeckTests: XCTestCase {
             return asset
         }
         let never = try XCTUnwrap(URL(string: "foray-never://deck.test/never.mp3"))
-        deck.send(.load(token: 7, url: never, startSec: 12, preciseTiming: true))
+        deck.send(.loadURL(token: 7, url: never, startSec: 12, preciseTiming: true))
         let hit = waitFor("deadlineExceeded(token: 7)", timeout: 10) {
             if case .deadlineExceeded(7, _) = $0 { return true }
             return false
@@ -479,6 +480,74 @@ final class AVDeckTests: XCTestCase {
         deck.send(.play)
         XCTAssertEqual(rows, ["fault implicit-activation deck token=5"])
         XCTAssertEqual(faults, ["fault implicit-activation deck token=5"])
+    }
+
+    // MARK: - The core's vocabulary (NE-15h)
+
+    /// The core hands the page's `audio_url` through as a string, nil for an
+    /// item with no audio. Nil, empty, or anything that is not an absolute URL
+    /// fails THAT load at once, under its token, with nothing attached.
+    /// TO SEE IT FAIL: drop the `url.scheme != nil` check (a relative path
+    /// then attaches and fails later, asynchronously, with another message).
+    func testALoadWithNoUsableUrlFailsThatLoad() {
+        for (token, url) in [(21, nil), (22, ""), (23, "episode.mp3")] as [(Int, String?)] {
+            events.removeAll()
+            deck.send(.load(token: token, itemId: "x", url: url, startSec: 0, preciseTiming: false))
+            XCTAssertEqual(events, [.failed(token: token, message: "no-url")], "url \(String(describing: url))")
+            XCTAssertNil(deck.player.currentItem)
+            XCTAssertEqual(deck.reading, .idle)
+        }
+    }
+
+    /// The host reads the deck before every input. Idle reads nothing; a load
+    /// still gating reads the START it will land on (never the 0 of a fresh
+    /// item); a ready deck reads its playhead, silent until played.
+    /// TO SEE IT FAIL: read `currentTime()` while `.loading`/`.gating`, or
+    /// report `audible` from `intendsToPlay` instead of the player's rate.
+    func testTheReadingFollowsTheLoadAndThePlay() throws {
+        XCTAssertNil(deck.reading.positionSec)
+        deck.send(.loadURL(token: 1, url: try fixture("click", "wav"), startSec: 9, preciseTiming: true))
+        XCTAssertEqual(deck.reading.positionSec, 9, "a gating load reads its start")
+        XCTAssertFalse(deck.reading.audible)
+        guard readyEvent(1) != nil else { return }
+        let ready = deck.reading
+        XCTAssertEqual(try XCTUnwrap(ready.positionSec), 9, accuracy: 0.1)
+        XCTAssertFalse(ready.audible)
+        XCTAssertFalse(ready.ended)
+        XCTAssertNotNil(ready.durationSec)
+        deck.send(.play)
+        XCTAssertTrue(deck.reading.audible)
+        deck.send(.pause)
+        XCTAssertFalse(deck.reading.audible)
+    }
+
+    /// The out-point's first layer: the item's `forwardPlaybackEndTime`, and
+    /// nil disarms it.
+    /// TO SEE IT FAIL: ignore `.setOutPoint`.
+    func testSetOutPointSetsTheItemsForwardEndTime() throws {
+        guard loadAndWaitReady(try fixture("click", "wav"), token: 1, startSec: 0) != nil else { return }
+        let item = try XCTUnwrap(deck.player.currentItem)
+        deck.send(.setOutPoint(sec: 10))
+        XCTAssertEqual(item.forwardPlaybackEndTime.seconds, 10, accuracy: 0.001)
+        deck.send(.setOutPoint(sec: nil))
+        XCTAssertFalse(item.forwardPlaybackEndTime.isValid)
+    }
+
+    /// Teardown's deck half: silent, detached, no player KVO, no events, and
+    /// every later command ignored.
+    /// TO SEE IT FAIL: leave the player observations registered in
+    /// `invalidate()`, or let `send` run after it.
+    func testInvalidateSilencesDetachesAndStopsReporting() throws {
+        guard loadAndWaitReady(try fixture("click", "wav"), token: 1, startSec: 0) != nil else { return }
+        deck.send(.play)
+        XCTAssertTrue(deck.isObservingPlayer)
+        deck.invalidate()
+        XCTAssertEqual(deck.player.rate, 0)
+        XCTAssertNil(deck.player.currentItem)
+        XCTAssertFalse(deck.isObservingPlayer)
+        XCTAssertNil(deck.onEvent)
+        deck.send(.loadURL(token: 2, url: try fixture("click", "wav"), startSec: 0, preciseTiming: true))
+        XCTAssertNil(deck.player.currentItem, "a command after invalidate ran")
     }
 }
 

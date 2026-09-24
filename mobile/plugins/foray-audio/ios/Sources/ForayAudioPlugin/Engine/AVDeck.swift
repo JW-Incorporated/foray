@@ -1,9 +1,17 @@
 import Foundation
 import AVFoundation
+import ForayEngineCore
 import os
 
 /// One `AVPlayer`, behind the `DeckDriving` seam (card NE-15;
 /// docs/native-engine-plan.md §4.3 "AVFoundation choices").
+///
+/// It speaks the CORE'S deck vocabulary (`DeckCommand` / `DeckEvent` in
+/// `ForayEngineCore/Engine/DeckVocabulary.swift`). NE-15 built it in week 1
+/// against a stub of those types; NE-15h deleted the stub, moved the seam
+/// into `Seams.swift`, and added what the host needs from a deck: its
+/// `reading` before every input, `invalidate()` at teardown, and the
+/// out-point's first layer.
 ///
 /// The engine plays through two of these (NE-32's DeckPair), at most one
 /// audible. This type is the imperative shell for ONE of them: it runs
@@ -156,6 +164,14 @@ final class AVDeck: DeckDriving {
     /// older value is void (see `checkUncommandedPause`).
     private var playSeq = 0
     private var pauseSuspicion: DispatchWorkItem?
+    /// Set once by `invalidate()`; the deck is inert from then on.
+    private var invalidated = false
+
+    /// The attached item's duration, when AVFoundation knows a finite one.
+    private var itemDurationSec: Double? {
+        guard let duration = item?.duration, duration.isNumeric, duration.seconds.isFinite else { return nil }
+        return duration.seconds
+    }
 
     init(config: Config) {
         self.config = config
@@ -180,8 +196,9 @@ final class AVDeck: DeckDriving {
 
     func send(_ command: DeckCommand) {
         dispatchPrecondition(condition: .onQueue(.main))
+        guard !invalidated else { return }
         switch command {
-        case let .load(token, url, startSec, preciseTiming):
+        case let .load(token, _, url, startSec, preciseTiming):
             load(token: token, url: url, startSec: startSec, preciseTiming: preciseTiming)
         case .play:
             play()
@@ -190,15 +207,58 @@ final class AVDeck: DeckDriving {
         case let .seek(toSec):
             seek(to: toSec)
         case let .setRate(newRate):
-            setRate(newRate)
+            setRate(Float(newRate))
+        case let .setOutPoint(sec):
+            setOutPoint(sec)
         case .unload:
             unload()
         }
     }
 
+    /// The host reads this before every input (`EngineNow.deck`), because the
+    /// core decides from what the deck says NOW, the way the JS asks its
+    /// element (`DeckReading`).
+    ///
+    /// While a load is still gating, the playhead reads as the START it will
+    /// land on, not `currentTime()`: a freshly attached item reads 0 until
+    /// the zero-tolerance seek lands, and an input handled in that window
+    /// (a pause, a restore write) would otherwise save 0 over the listener's
+    /// place. That is also exactly how the core's own view of a turn treats a
+    /// `.load` it just issued.
+    var reading: DeckReading {
+        switch stage {
+        case .idle, .failed:
+            return DeckReading(positionSec: nil, durationSec: nil, audible: false, ended: false)
+        case .loading, .gating:
+            return DeckReading(positionSec: targetStartSec, durationSec: itemDurationSec,
+                               audible: player.rate != 0, ended: false)
+        case .ready:
+            let at = player.currentTime().seconds
+            return DeckReading(positionSec: at.isFinite ? at : targetStartSec, durationSec: itemDurationSec,
+                               audible: player.rate != 0, ended: reachedEnd)
+        }
+    }
+
+    /// Teardown (plan §4.6 relinquish, step 5): silence, drop the item and
+    /// every item observer, invalidate the player's own KVO, and never report
+    /// again. Every later command is ignored.
+    func invalidate() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard !invalidated else { return }
+        unload()
+        invalidated = true
+        onEvent = nil
+        playerObservations.forEach { $0.invalidate() }
+        playerObservations = []
+    }
+
+    /// True while a player-level KVO is registered (the Simulator test of
+    /// `invalidate()` reads it; nothing else does).
+    var isObservingPlayer: Bool { !playerObservations.isEmpty }
+
     // MARK: - Load (steps 1-2)
 
-    private func load(token newToken: DeckToken, url: URL, startSec: Double, preciseTiming: Bool) {
+    private func load(token newToken: DeckToken, url urlString: String?, startSec: Double, preciseTiming: Bool) {
         // Whatever was sounding stops BEFORE the new item attaches. A
         // `replaceCurrentItem` on a playing player keeps the rate, so the new
         // item would start by itself the moment it buffered: audible before
@@ -219,6 +279,16 @@ final class AVDeck: DeckDriving {
         lastTimeControl = nil
         lastWaitingReason = nil
         loadStartedAt = .now()
+        // The core hands the page's `audio_url` through as it is (nil for an
+        // item with no audio of its own). Anything that is not an absolute
+        // URL fails THIS load, under its token, so the core's failure path
+        // runs; it is never an exception in the car.
+        guard let url = urlString.flatMap({ URL(string: $0) }), url.scheme != nil else {
+            stage = .failed
+            record("no-url")
+            emit(.failed(token: newToken, message: "no-url"))
+            return
+        }
 
         let asset = config.makeAsset(url, preciseTiming)
         let item = AVPlayerItem(asset: asset)
@@ -470,6 +540,19 @@ final class AVDeck: DeckDriving {
             record("rate=\(newRate)")
             player.rate = newRate
         }
+    }
+
+    /// The out-point's FIRST layer only (plan §4.3 P-2):
+    /// `forwardPlaybackEndTime` (nil disarms), so AVFoundation itself treats
+    /// that second as the item's end. The boundary observer and the
+    /// watchdog armed for the last 1.5 s are NE-32's, which is also the card
+    /// in which a bounded item first plays; an episode (M1) never sets one.
+    /// It lives on the ITEM, so the next load's fresh item drops it, as the
+    /// core's vocabulary says a load does.
+    private func setOutPoint(_ sec: Double?) {
+        guard let item else { return }
+        let end = sec.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
+        item.forwardPlaybackEndTime = end.map { Self.time($0) } ?? .invalid
     }
 
     private func seek(to sec: Double) {
