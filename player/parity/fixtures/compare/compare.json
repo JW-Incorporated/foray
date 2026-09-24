@@ -1,0 +1,361 @@
+{
+  "family": "compare",
+  "module": "player/parity/compare.js",
+  "note": "The comparator's own decision table (player/parity/compare.js), as the compare META-family (card NE-05). Every other family's verdict goes through a comparator, so the JS one and the Swift port (ForayEngineParity/Comparator.swift) must give the same paths and reasons for the same pair. JS records compareVerdict's answer; the Swift CompareFamily replays it. args are [expected, actual, opts?], encoded values with $num / $undefined tags; no case uses a macro, because an expect never holds one.",
+  "cases": [
+    {
+      "id": "compare/equal-return",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "return": 2 }, { "return": 2 }],
+      "expect": { "return": { "diffs": [], "equal": true } }
+    },
+    {
+      "id": "compare/nested-array-element-differs",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "return": { "a": [1, 2] } }, { "return": { "a": [1, 3] } }],
+      "expect": {
+        "return": { "diffs": [{ "path": "$.return.a[1]", "why": "not equal" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/no-silent-tolerance",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [2, 2.0000001],
+      "expect": { "return": { "diffs": [{ "path": "$", "why": "not equal" }], "equal": false } }
+    },
+    {
+      "id": "compare/tolerance-forgives-within",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [2, 2.05, { "tolerance": 0.1 }],
+      "expect": { "return": { "diffs": [], "equal": true } }
+    },
+    {
+      "id": "compare/tolerance-exceeded-names-the-tolerance",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [2, 2.2, { "tolerance": 0.1 }],
+      "expect": {
+        "return": {
+          "diffs": [{ "path": "$", "why": "differs by more than 0.1" }],
+          "equal": false
+        }
+      }
+    },
+    {
+      "id": "compare/integer-tolerance-is-inclusive",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [10, 11, { "tolerance": 1 }],
+      "expect": { "return": { "diffs": [], "equal": true } }
+    },
+    {
+      "id": "compare/integer-tolerance-spelled-as-js",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [10, 12, { "tolerance": 1 }],
+      "expect": {
+        "return": { "diffs": [{ "path": "$", "why": "differs by more than 1" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/zero-tolerance-is-exact",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [1, 1.5, { "tolerance": 0 }],
+      "expect": { "return": { "diffs": [{ "path": "$", "why": "not equal" }], "equal": false } }
+    },
+    {
+      "id": "compare/negative-tolerance-is-ignored",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [1, 1.5, { "tolerance": -1 }],
+      "expect": { "return": { "diffs": [{ "path": "$", "why": "not equal" }], "equal": false } }
+    },
+    {
+      "id": "compare/non-number-tolerance-is-ignored",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [1, 1.5, { "tolerance": "1" }],
+      "expect": { "return": { "diffs": [{ "path": "$", "why": "not equal" }], "equal": false } }
+    },
+    {
+      "id": "compare/tolerance-never-forgives-negative-zero",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "$num": "-0" }, 0, { "tolerance": 1 }],
+      "expect": {
+        "return": { "diffs": [{ "path": "$", "why": "special number differs" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/negative-zero-equals-its-tag",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "$num": "-0" }, { "$num": "-0" }],
+      "expect": { "return": { "diffs": [], "equal": true } }
+    },
+    {
+      "id": "compare/nan-equals-a-nan-tag",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "$num": "NaN" }, { "$num": "NaN" }],
+      "expect": { "return": { "diffs": [], "equal": true } }
+    },
+    {
+      "id": "compare/nan-is-not-a-number",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "$num": "NaN" }, 1],
+      "expect": {
+        "return": { "diffs": [{ "path": "$", "why": "special number differs" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/infinity-is-not-negative-infinity",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "$num": "Infinity" }, { "$num": "-Infinity" }],
+      "expect": {
+        "return": { "diffs": [{ "path": "$", "why": "special number differs" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/infinity-inside-an-object",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [
+        { "return": { "$num": "Infinity" } },
+        { "return": 1e+308 },
+        { "tolerance": 1e+308 }
+      ],
+      "expect": {
+        "return": {
+          "diffs": [{ "path": "$.return", "why": "special number differs" }],
+          "equal": false
+        }
+      }
+    },
+    {
+      "id": "compare/key-order-never-matters",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "a": 1, "b": 2 }, { "b": 2, "a": 1 }],
+      "expect": { "return": { "diffs": [], "equal": true } }
+    },
+    {
+      "id": "compare/array-order-always-matters",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [["play", "pause"], ["pause", "play"]],
+      "expect": {
+        "return": {
+          "diffs": [
+            { "path": "$[0]", "why": "not equal" },
+            { "path": "$[1]", "why": "not equal" }
+          ],
+          "equal": false
+        }
+      }
+    },
+    {
+      "id": "compare/unexpected-key",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "a": 1 }, { "a": 1, "b": 2 }],
+      "expect": {
+        "return": { "diffs": [{ "path": "$.b", "why": "unexpected key" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/missing-key",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "a": 1, "b": 2 }, { "a": 1 }],
+      "expect": {
+        "return": { "diffs": [{ "path": "$.b", "why": "missing key" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/differences-in-sorted-key-order",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "b": 1, "a": 1, "B": 1 }, {}],
+      "expect": {
+        "return": {
+          "diffs": [
+            { "path": "$.B", "why": "missing key" },
+            { "path": "$.a", "why": "missing key" },
+            { "path": "$.b", "why": "missing key" }
+          ],
+          "equal": false
+        }
+      }
+    },
+    {
+      "id": "compare/native-tokens-stripped-from-ops",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [
+        { "ops": ["load:a@0", "play"] },
+        { "ops": ["load:a@0", "n.prepare:b", "play"] },
+        { "family": "manager-episode" }
+      ],
+      "expect": { "return": { "diffs": [], "equal": true } }
+    },
+    {
+      "id": "compare/native-tokens-kept-in-prepare",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [
+        { "ops": ["load:a@0", "play"] },
+        { "ops": ["load:a@0", "n.prepare:b", "play"] },
+        { "family": "prepare" }
+      ],
+      "expect": {
+        "return": { "diffs": [{ "path": "$.ops", "why": "length 2 != 3" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/native-tokens-stripped-in-a-nested-op-log",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [
+        { "checkpoints": [{ "name": "end", "ops": ["play"] }] },
+        { "checkpoints": [{ "name": "end", "ops": ["n.arm:b", "play"] }] },
+        { "family": "manager-episode" }
+      ],
+      "expect": { "return": { "diffs": [], "equal": true } }
+    },
+    {
+      "id": "compare/only-an-ops-key-strips",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "ids": ["a"] }, { "ids": ["a", "n.x"] }, { "family": "x" }],
+      "expect": {
+        "return": { "diffs": [{ "path": "$.ids", "why": "length 1 != 2" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/without-options-ops-strip",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "ops": ["play"] }, { "ops": ["n.x", "play"] }],
+      "expect": { "return": { "diffs": [], "equal": true } }
+    },
+    {
+      "id": "compare/array-against-object",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [[1], { "0": 1 }],
+      "expect": {
+        "return": {
+          "diffs": [{ "path": "$", "why": "one side is not an array" }],
+          "equal": false
+        }
+      }
+    },
+    {
+      "id": "compare/object-against-null",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "a": 1 }, null],
+      "expect": {
+        "return": {
+          "diffs": [{ "path": "$", "why": "one side is not an object" }],
+          "equal": false
+        }
+      }
+    },
+    {
+      "id": "compare/number-against-string",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [2, "2"],
+      "expect": { "return": { "diffs": [{ "path": "$", "why": "not equal" }], "equal": false } }
+    },
+    {
+      "id": "compare/null-against-undefined",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [null, { "$undefined": true }],
+      "expect": {
+        "return": {
+          "diffs": [{ "path": "$", "why": "one side is not an object" }],
+          "equal": false
+        }
+      }
+    },
+    {
+      "id": "compare/undefined-equals-undefined",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "$undefined": true }, { "$undefined": true }],
+      "expect": { "return": { "diffs": [], "equal": true } }
+    },
+    {
+      "id": "compare/undefined-in-an-array",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [[{ "$undefined": true }], [null]],
+      "expect": {
+        "return": {
+          "diffs": [{ "path": "$[0]", "why": "one side is not an object" }],
+          "equal": false
+        }
+      }
+    },
+    {
+      "id": "compare/booleans",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "ok": true }, { "ok": false }],
+      "expect": {
+        "return": { "diffs": [{ "path": "$.ok", "why": "not equal" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/length-mismatch-reports-once",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "return": [1, 2, 3] }, { "return": [1, 2] }],
+      "expect": {
+        "return": { "diffs": [{ "path": "$.return", "why": "length 3 != 2" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/empty-containers",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "a": [], "b": {} }, { "a": [], "b": {} }],
+      "expect": { "return": { "diffs": [], "equal": true } }
+    },
+    {
+      "id": "compare/strings-exact",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [["4a", "Café"], ["4a", "Cafe"]],
+      "expect": {
+        "return": { "diffs": [{ "path": "$[1]", "why": "not equal" }], "equal": false }
+      }
+    },
+    {
+      "id": "compare/thrown-class",
+      "covers": [],
+      "call": "compareVerdict",
+      "args": [{ "throws": { "name": "TypeError" } }, { "return": 0 }],
+      "expect": {
+        "return": {
+          "diffs": [
+            { "path": "$.return", "why": "unexpected key" },
+            { "path": "$.throws", "why": "missing key" }
+          ],
+          "equal": false
+        }
+      }
+    }
+  ]
+}
