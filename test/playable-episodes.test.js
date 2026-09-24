@@ -27,7 +27,14 @@
  * Every test names the mutation that kills it.
  */
 
-const { test } = require("node:test");
+const { test, before } = require("node:test");
+
+/* Continuous playback's rules are player/continuation.js since NE-13,
+   published to the page by player/client.js as `window.forayContinuation`;
+   the fake player here stands in for client.js, so the harness publishes the
+   real rules the same way. */
+let CONTINUATION = null;
+before(async () => { CONTINUATION = await import("../player/continuation.js"); });
 const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
@@ -98,6 +105,7 @@ function boot(store, { hash = "#/" } = {}) {
   };
   ctx.window = ctx;
   ctx.globalThis = ctx;
+  ctx.forayContinuation = CONTINUATION;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });

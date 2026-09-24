@@ -134,6 +134,13 @@ import {
   readRate, writeRate, nextRate, normalizeRate, rateLabel, rateAriaLabel, RATES,
 } from "./playback-rate.js";
 import { pickDefaultVoice, VOICE_LIST_LANG } from "./default-voice.js";
+import * as continuation from "./continuation.js";
+
+/* Continuous playback's rules (NE-13), for app.js: it decides what plays after
+   an episode, and it is a classic script that cannot import them. Published at
+   module evaluation, before `window.ForayPlayer` exists, so every caller that
+   reaches app.js through the player finds the rules already there. */
+window.forayContinuation = continuation;
 
 /* The in-page buttons and the lock screen use ONE pair of numbers, imported
    rather than declared twice — `04_VOICE_AUDIO_SPEC.md`'s "±30/15 s seek". */

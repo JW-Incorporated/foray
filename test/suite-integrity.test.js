@@ -207,6 +207,13 @@ const FLOORS = {
      is a default that can silently drift back to #491's "best installed
      voice of any name", the exact behaviour the founder overruled. */
   "player/default-voice.test.js": 10,
+  /* Continuous playback's rules (NE-13, docs/native-engine-plan.md §5.5): what
+     plays after an episode, the eight hops the page plans for the native
+     engine, and the once-only ledger for what that engine played while the
+     page slept. The suite READS its fixtures (player/parity/fixtures/continuation,
+     whose case count is floored in player/parity/floors.json), so a deleted test
+     here is a rule nothing asserts any more. */
+  "player/continuation.test.js": 11,
   "player/queue-manager.test.js": 144, // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 58, // 2026-09-22 audit (L2): `elementResumed` — interrupted -> playing with no audio effect, and nothing from any other state; 56 -> 58
   "player/seam-gap.test.js": 16,
@@ -276,7 +283,7 @@ const FLOORS = {
      enforced by "parity fixture families hold their floors" below, so deleting
      fixture cases is loud here too, not only in the suite that reads them. */
   "player/parity/run.test.js": 32, // NE-12j: the media-actions adapter records real arity and refuses a press the OS could never deliver; 31 -> 32
-  "player/parity/coverage.test.js": 23, // NE-12j: media-session is wholly classified — media-episode, an exclusion, or NE-29j's Foray half in the foray capability's family; 22 -> 23 // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
+  "player/parity/coverage.test.js": 24, // NE-13: the continuation capability owes nothing, because its family is JS-only (plan C-2); 23 -> 24 // NE-12j: media-session is wholly classified — media-episode, an exclusion, or NE-29j's Foray half in the foray capability's family; 22 -> 23 // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
   /* NE-10j: the rows and number-format families. rows.test.js is what makes
      them a RECORDING — every recorded row is rebuilt from the real builders,
      and the page's own PositionStore, on the wall clock, writes the recorded
@@ -996,6 +1003,12 @@ const FLOORS = {
      of silent-wrong-behavior this repo's floors exist to catch, not a crash
      path any other suite would notice going missing. Every test names its
      mutation; see the suite header for the full list of what each pins. */
+  /* The page's wiring around those rules (NE-13): app.js delegates to them,
+     re-sends the plan when the Continuous playback switch moves mid-episode,
+     and writes `cp_engine_applied` before logging a replayed advance or
+     position. Each is one deleted line from a car that plays the wrong thing,
+     or a history that counts a drive twice. */
+  "test/engine-continuation.test.js": 6,
   "test/up-next-autoadvance.test.js": 11, // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
      t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
@@ -1164,7 +1177,7 @@ const FLOORS = {
      overwritten, every new or changed case handed to swift-pending.json with
      its port card, and --mutate's kill/survive/pending verdicts with a no-op
      control. Zero slack. */
-  "tools/parity/record.test.mjs": 16, // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
+  "tools/parity/record.test.mjs": 17, // NE-13: a jsOnly family (the continuation hops, plan C-2) records with no port card and owes swift-pending nothing; 16 -> 17 // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
   /* THE TYPE GATE, and the reason it is floored at all. Until 2026-09-12 no CI
      job in this repo had ever run `tsc` or `eslint`: `backend/package.json`
      defined `typecheck` and nothing called it, so the TypeScript backend was
