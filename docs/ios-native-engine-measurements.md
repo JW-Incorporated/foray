@@ -185,3 +185,94 @@ rejecting / unregistered / `native` `engineHello`, the Preferences path moved
 out of its gate, `ios-build.yml` setting the pin, `ci.yml` dropping the runtime
 requirement, the XCTFail turned into a skip, the page configuring a Preferences
 group, a second Preferences caller), all 14 killed.
+
+## NE-15 · AVDeck: what the Simulator measured
+
+Card NE-15 (PR #766, base `engine/m1`) added `Engine/AVDeck.swift`, one
+`AVPlayer` behind the `DeckDriving` seam with a readiness-gated preroll, and
+`AVDeckTests.swift` (14 Simulator tests on a bundled 20 s CBR MP3, 64 kbit/s
+with no Xing tag, and a 20 s PCM WAV, 601 KB together). Every number below
+is **CI-executed** by ios-kit's `xcodebuild test -scheme ForayAudio` step. No
+device has run AVDeck, and nothing in the app calls it yet.
+
+### Landing and time to ready
+
+The same three loads ran in every green run, starting at 7.3 s:
+
+| Load | Landing error (`currentTime` after the zero-tolerance seek) | Time to ready, per run |
+|---|---|---|
+| CBR MP3, precise timing | +0.000 ms | 445, 222, 404 ms |
+| CBR MP3, approximate timing | +0.000 ms | 891, 959, 401 ms |
+| WAV, precise timing | +0.000 ms | 391, 428, 646 ms |
+
+The runs are 35961598950 (`fdfc9b23`), 35962750658 (`e8587ea1`) and
+35967059600 (`14694a77`). Each load was prerolled (`finished == true`) on its
+first attempt, so the retry and ordinary-load fallback never ran.
+
+**What the landing number is not.** `currentTime` reports the requested time,
+not the audible one. A mutant that gave the gate seek infinite tolerance
+(run 35963951606) also landed both fixtures on exactly 7.300 s, because CBR
+and PCM seek exactly anyway. The audible landing, and the VBR fixtures where
+tolerance matters, are NE-25a's measurement (`MTAudioProcessingTap`). The zero
+tolerance is pinned statically in `shell-invariants.test.mjs`.
+
+### The cold first load is close to the 20 s deadline
+
+Before any deck exists, the test class loads the WAV once and records how
+long it takes (`DeckMeasurements.warmUpOnce`). Results by run: **19,599 ms**
+(35962750658), 13,829 ms (35963951606), 6,825 ms (35967059600) and 1,464 ms
+(35967120142). Later loads in the same run were typically ready in under 1 s. In the
+first run, which had no warm-up, the first AVDeck test had not even loaded a
+local WAV's duration after 15 s.
+
+On the Simulator, a cold media stack can therefore take nearly the whole
+provisional 20 s load deadline (P-13, `// MEASURE:`). **This is a Simulator
+number, not the phone's.** It is the reason AVDeck's behaviour tests give the
+deck a 40 s deadline (the 20 s production value keeps its own test). NE-38
+should look for the device equivalent: the first load after a cold launch
+(DV-7a) in the `build launch=background` rows.
+
+### A false stop right after a play (fixed in this card)
+
+The event trace of the green run 35962750658 showed a second
+`pausedUncommanded` 13 ms after the first. It came right after the test's
+re-play and just before `.playing`: AVPlayer still reported `rate == 0` after
+the play command. Reported at once, that is a false "the system stopped us"
+while audio is starting. It also cleared the deck's intent to play, so the
+next real system pause would not have been reported. AVDeck now treats a stop
+as a suspicion. It confirms the stop 0.25 s later (`pauseSettleSec`, inside
+the core's 500 ms route-attribution window), and only if the player is still
+stopped (rate 0 and `.paused`), it is not the end, and no play was commanded
+in between. The rule itself is `AVDeck.isUncommandedPause`, a pure function
+that NE-14s moves into `DeckPolicy`.
+
+### Mutation checks (Swift)
+
+Each mutant ran on a throwaway draft PR (#769, #770, #771, closed unmerged).
+
+| Mutation | Result |
+|---|---|
+| `play` allowed before `.ready` | **Killed** (`testNothingIsAudibleBeforeReady`), 35963951606 |
+| `load` no longer pauses a playing deck first | **Killed** (`testALoadSilences…`), 35963951606 |
+| a seek before `.ready` ignored | **Killed** (`testASeekBeforeReadyMovesTheStart`), 35963951606 |
+| `load` neither detaches the old item nor guards `durationLoaded` on the generation | **Killed** (`testASupersededLoadIsSilent`: two durations), 35963951606 |
+| the rate reset to 1 on every load | **Killed** (`testRateIsHeldAcrossThreeLoads`), 35963951606 |
+| no load deadline | **Killed** (`testANeverReadyUrl…`), 35963951606 |
+| uncommanded-pause detection off | **Killed** (`testAnExternalPause…`), 35963951606 |
+| no session check before play | **Killed** (`testAPlayWithoutAnActiveSession…`), 35963951606 |
+| `pause()` keeps the intent to play | **Killed** (`testAnExternalPause…`, the commanded-pause phase), 35965812640 |
+| the gate skips its seek | **Killed** (`testOffsetLands…` and two more), 35965819905 |
+| a stop reported at once, with no settle | **Killed** (`testAPlayInsideTheSettleWindowVoidsTheStop`), 35967120142 |
+| the `reachedEnd`, `.paused` and end-slack branches of the rule | **Killed**, each by its own assertion in `testTheUncommandedPauseRule`, 35967120142 |
+| the end-slack check (before the rule required `.paused`) | **Killed** (`testTheEndIsEnded…`), 35963951987 |
+| no `.timeDomain` line | **Survived**: the Simulator's default is already `.timeDomain`. The line is pinned statically. |
+| a tolerant gate seek | **Survived**: see "What the landing number is not" above. Pinned statically. |
+| the settle removed (Simulator only), or the end's guards removed | **Survived** in run 35965798877: both are races whose order varies from run to run. This is why the pure-rule test and the deterministic settle test exist. |
+
+The node-side pins (`shell-invariants.test.mjs`, three NE-15 tests) were
+mutation-checked locally. There were 14 mutations: a second `preroll(`; the
+item-status and rate guards before the preroll; skipping the seek; a tolerant seek;
+the deadline at 30 s; no session check; `defaultRate` outside the iOS 16
+branch; `play()` called from `setRate`; `actionAtItemEnd`; the pitch
+algorithm; no DEBUG assert; and the job-summary hand-off and fixture
+resources removed. All 14 were killed.
