@@ -291,8 +291,10 @@ final class TwoDeckPrerollTests: XCTestCase {
             rows: rows,
             notes: [
                 "Both decks are AVDeck (readiness-gated: duration, player.status and item.status .readyToPlay, "
-                    + "zero-tolerance seek to \(Self.standbyStartSec) s, preroll at rate 0). Precise timing. "
-                    + "The audible deck plays \(Self.audibleFixture) at 1x.",
+                    + "zero-tolerance seek to \(Self.standbyStartSec) s, preroll while the player is at rate 0). "
+                    + "Precise timing. The audible deck plays \(Self.audibleFixture) at 1x. The swap sends the audible "
+                    + "deck's pause and the standby's play in one main turn (NE-32 plays after the outgoing deck "
+                    + "confirms .paused).",
                 "Time to ready, all fixtures: alone \(Self.spread(alone.map { Double($0.timeToReadyMs) })) ms; "
                     + "while audible \(Self.spread(audible.map { Double($0.timeToReadyMs) })) ms.",
                 "Swap, play to .playing: alone \(Self.spread(alone.compactMap(\.playToPlayingMs))) ms; "
