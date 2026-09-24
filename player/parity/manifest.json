@@ -100,6 +100,43 @@
         "continuation/applied-valid-kept"
       ]
     },
+    "diag-tokens": {
+      "files": {
+        "player/parity/fixtures/diag-tokens/diag-tokens.json": "c06d91072a29c828523c22c41ecd98bda58ce9f728717516d0aa3503ced8b0db"
+      },
+      "ids": [
+        "diag-tokens/set-names",
+        "diag-tokens/stage-tokens",
+        "diag-tokens/session-error-tokens",
+        "diag-tokens/interruption-reason-tokens",
+        "diag-tokens/stop-cause-tokens",
+        "diag-tokens/source-tokens",
+        "diag-tokens/mode-reason-tokens",
+        "diag-tokens/fault-kind-tokens",
+        "diag-tokens/admit-stage-ready",
+        "diag-tokens/admit-session-error-other",
+        "diag-tokens/admit-interruption-reason-app-was-suspended",
+        "diag-tokens/admit-stop-cause-grace-expired",
+        "diag-tokens/admit-stop-cause-seam-timeout",
+        "diag-tokens/admit-source-autoadvance",
+        "diag-tokens/admit-mode-reason-no-plist-key",
+        "diag-tokens/admit-mode-reason-not-built",
+        "diag-tokens/admit-fault-kind-implicit-activation",
+        "diag-tokens/admit-wrong-set",
+        "diag-tokens/admit-case-folded",
+        "diag-tokens/admit-padded",
+        "diag-tokens/admit-camel-for-dashed",
+        "diag-tokens/admit-dashed-for-camel",
+        "diag-tokens/admit-url",
+        "diag-tokens/admit-sentence",
+        "diag-tokens/admit-empty",
+        "diag-tokens/admit-number",
+        "diag-tokens/admit-null",
+        "diag-tokens/admit-unknown-set",
+        "diag-tokens/admit-prototype-key-set",
+        "diag-tokens/admit-non-string-set"
+      ]
+    },
     "media-episode": {
       "files": {
         "player/parity/fixtures/media-episode/media-actions.json": "334f3d62f2e5f8f67f87d3f6c0915e512e6bce29baf07261f0e5295b1836967b",

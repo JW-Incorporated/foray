@@ -3,6 +3,7 @@
   "families": {
     "compare": 37,
     "continuation": 48,
+    "diag-tokens": 30,
     "media-episode": 118,
     "number-format": 25,
     "queue-state": 87,
