@@ -533,8 +533,12 @@ const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
 /** Evaluate the REAL app.js the way a page does, and report whether it tried to
  *  register the service worker. `init()` suspends on its first await because
  *  `fetch` never settles (the same trick player/foray-playback.test.js uses), so
- *  nothing beyond the top-level statements runs. */
-function runAppShell({ capacitor = undefined, protocol = "https:", userAgent = "node" } = {}) {
+ *  nothing beyond the top-level statements runs. The registration waits for the
+ *  first page and an idle moment (round-2 audit, perf-4), and that first page
+ *  never comes here, so the harness plays init()'s part — `markFirstPagePainted()`,
+ *  the one signal the registration listens for — and lets the idle turn pass.
+ *  The decision under test (register or not) is untouched by either step. */
+async function runAppShell({ capacitor = undefined, protocol = "https:", userAgent = "node" } = {}) {
   const registered = [];
   const store = new Map();
 
@@ -580,39 +584,41 @@ function runAppShell({ capacitor = undefined, protocol = "https:", userAgent = "
   ctx.globalThis = ctx;
   vm.createContext(ctx);
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  vm.runInContext("markFirstPagePainted();", ctx);
+  await new Promise((r) => setTimeout(r, 5));
   return { registered, ctx };
 }
 
-test("on the web, app.js still registers the service worker", () => {
+test("on the web, app.js still registers the service worker", async () => {
   /* The direction that is easy to lose by over-tightening the guard. Without
      this test, "never register" would pass every other assertion here and the
      offline shell — the founding "sessions survive cell dead zones" constraint —
      would be silently gone from the website. */
-  const { registered } = runAppShell();
+  const { registered } = await runAppShell();
   assert.deepEqual(registered, ["sw.js"]);
 });
 
-test("inside the Capacitor shell, app.js does not register the service worker", () => {
-  const { registered } = runAppShell({ capacitor: { isNativePlatform: () => true } });
+test("inside the Capacitor shell, app.js does not register the service worker", async () => {
+  const { registered } = await runAppShell({ capacitor: { isNativePlatform: () => true } });
   assert.deepEqual(registered, [], "sw.js was registered inside the native shell.");
 });
 
-test("the capacitor:// origin alone is enough to suppress the service worker", () => {
+test("the capacitor:// origin alone is enough to suppress the service worker", async () => {
   /* Second, independent signal. If `window.Capacitor` is ever absent or injected
      late on iOS, the origin still gives the right answer. */
-  const { registered } = runAppShell({ protocol: "capacitor:" });
+  const { registered } = await runAppShell({ protocol: "capacitor:" });
   assert.deepEqual(registered, []);
 });
 
-test("a Capacitor bridge reporting the web platform still gets a service worker", () => {
+test("a Capacitor bridge reporting the web platform still gets a service worker", async () => {
   /* `isNativePlatform()` is false when Capacitor's own web target is in use.
      Treating "window.Capacitor exists" as "we are native" would be wrong here,
      and this is the case that tells the two apart. */
-  const { registered } = runAppShell({ capacitor: { isNativePlatform: () => false } });
+  const { registered } = await runAppShell({ capacitor: { isNativePlatform: () => false } });
   assert.deepEqual(registered, ["sw.js"]);
 });
 
-test("a phone browsing the real website still gets the offline shell", () => {
+test("a phone browsing the real website still gets the offline shell", async () => {
   /* THE LIKELIEST ACCIDENT, and the one the original suite could not see because
      it hardcoded `userAgent: "node"`. Someone debugging the Android shell adds
      `if (/Android|iPhone/.test(navigator.userAgent)) return false;` — every other
@@ -623,23 +629,23 @@ test("a phone browsing the real website still gets the offline shell", () => {
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
     "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36",
   ]) {
-    const { registered } = runAppShell({ userAgent: ua });
+    const { registered } = await runAppShell({ userAgent: ua });
     assert.deepEqual(registered, ["sw.js"], `a mobile web browser (${ua.slice(0, 24)}…) lost the offline shell`);
   }
 });
 
-test("a bridge that throws still suppresses the service worker on the iOS origin", () => {
+test("a bridge that throws still suppresses the service worker on the iOS origin", async () => {
   /* THE FAIL-OPEN CASE. Both signals used to live in one `try`, so an
      `isNativePlatform()` that threw skipped the origin check as well and
      registered the worker inside the shell — precisely the case the origin check
      was written to cover. A bridge can throw: it may not be ready, and a
      plugin-proxy getter is somebody else's code. */
   const throwing = { isNativePlatform: () => { throw new Error("bridge not ready"); } };
-  const { registered } = runAppShell({ capacitor: throwing, protocol: "capacitor:" });
+  const { registered } = await runAppShell({ capacitor: throwing, protocol: "capacitor:" });
   assert.deepEqual(registered, [], "a throwing bridge let sw.js register inside the iOS shell");
 });
 
-test("a bridge that throws on an https origin degrades to the web answer", () => {
+test("a bridge that throws on an https origin degrades to the web answer", async () => {
   /* The other half, stated so the behaviour is a decision and not an accident:
      with no usable native signal and an ordinary web origin, registering is the
      right answer. This is Android's shell, where the origin is
@@ -647,7 +653,7 @@ test("a bridge that throws on an https origin degrades to the web answer", () =>
      `window.Capacitor` must survive there. See docs/mobile-shell.md § the open
      risk on CSP and Capacitor's injected bridge. */
   const throwing = { isNativePlatform: () => { throw new Error("bridge not ready"); } };
-  const { registered } = runAppShell({ capacitor: throwing, protocol: "https:" });
+  const { registered } = await runAppShell({ capacitor: throwing, protocol: "https:" });
   assert.deepEqual(registered, ["sw.js"]);
 });
 

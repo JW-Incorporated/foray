@@ -15352,8 +15352,9 @@ function resetPageHeadScrollState() {
    reachable.
 
    ONE ARGUMENT, DELIBERATELY: `tools/mobile/prepare-webdir.mjs` derives the
-   native bundle's data-file list by matching the literal `fetchJson("data/…")`
-   call shape, so the bound is chosen from the path here rather than passed in.
+   native bundle's data-file list from each `fetchJson` call's one quoted
+   data/ path (and counts the call sites, so this comment names no call), so
+   the bound is chosen from the path here rather than passed in.
    `let`, so a suite can shorten them. */
 let DATA_DEADLINE_MS = 30000;
 /* The boot document gets longer: its failure already offers Try again, and a
