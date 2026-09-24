@@ -191,6 +191,19 @@ protocol EngineOutput: AnyObject {
     func diag(_ entry: DiagEntry)
 }
 
+// MARK: - The pause-hold policy's private key (HoldPolicyStore, NE-16)
+
+/// Where `pauseHoldPolicy` lives between launches: the engine-private
+/// `UserDefaults` key `ForayEngine.holdPolicy`, outside `CapacitorStorage.`
+/// so DurableStore never sees it (plan §4.6). The host reads it once at
+/// construction and writes it whenever a turn changed the core's policy
+/// (`engineSend setHoldPolicy`, the Developer row).
+protocol HoldPolicyStoring: AnyObject {
+    /// Nil when nothing valid is stored: the core's default then stands.
+    func load() -> SessionPolicy.HoldPolicy?
+    func save(_ policy: SessionPolicy.HoldPolicy)
+}
+
 /// Every seam the host drives, in one value, so a test builds the whole world
 /// out of fakes and the boot path (NE-17, NE-24) out of the real conformers.
 struct EngineSeams {
@@ -202,4 +215,6 @@ struct EngineSeams {
     var speaker: Speaking
     var timing: EngineTiming
     var output: EngineOutput
+    /// Optional so a world without persistence (most tests) needs no store.
+    var holdPolicy: HoldPolicyStoring? = nil
 }

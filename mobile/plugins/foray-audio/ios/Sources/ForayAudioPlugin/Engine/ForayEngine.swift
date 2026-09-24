@@ -91,8 +91,18 @@ final class ForayEngine {
     /// open (`EngineState.grace`), so the host holds at most one task.
     private var graceTask: BackgroundTaskID?
 
+    /// The pause-hold policy the store last heard (NE-16): a turn that leaves
+    /// the core with a different one is persisted, once.
+    private var storedHoldPolicy: SessionPolicy.HoldPolicy
+
+    /// A stored `pauseHoldPolicy` (the Developer row, `engineSend
+    /// setHoldPolicy`) outranks the config's: the config carries the build's
+    /// default, the key carries what the founder chose on this phone.
     init(seams: EngineSeams, config: EngineConfig, positions: [String: ResumeRules.StoredPosition] = [:]) {
         self.seams = seams
+        var config = config
+        if let stored = seams.holdPolicy?.load() { config.holdPolicy = stored }
+        storedHoldPolicy = config.holdPolicy
         core = EngineCore(config: config, positions: positions)
     }
 
@@ -216,8 +226,23 @@ final class ForayEngine {
             if isTornDown { break }
             failures += interpret(command)
         }
+        persistHoldPolicyIfChanged()
         if core.state.session == .relinquished { teardown() }
         return failures
+    }
+
+    /// `setHoldPolicy` is the core's to apply (`state.holdPolicy`) and the
+    /// host's to keep: written to the private key the moment a turn changed
+    /// it, with a row, so a Copy after the H-1b drive says which arm ran.
+    private func persistHoldPolicyIfChanged() {
+        let policy = core.state.holdPolicy
+        guard policy != storedHoldPolicy else { return }
+        storedHoldPolicy = policy
+        seams.holdPolicy?.save(policy)
+        seams.output.diag(DiagEntry(kind: "session", fields: [
+            JSONMember("kind", .string("hold-policy")),
+            JSONMember("policy", .string(policy.text))
+        ]))
     }
 
     /// Both clocks and the deck's reading at the moment the input is handled
