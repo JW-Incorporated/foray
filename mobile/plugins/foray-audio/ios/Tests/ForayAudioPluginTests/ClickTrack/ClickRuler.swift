@@ -143,3 +143,59 @@ enum ClickRuler {
             .max() ?? 0
     }
 }
+
+/// Places each tap buffer on the timeline by COUNTING frames from the start of
+/// a contiguous run, not by trusting each buffer's own label.
+///
+/// WHY. Run 35963652605 showed the per-buffer `timeRange` labels jitter by a few
+/// milliseconds against the samples they carry: one CBR click read 1.2 ms off
+/// its neighbours, a double click's 50 ms gap read 45 ms, and a single click's
+/// ringing came out as two onsets 7.5 ms apart because the label jumped between
+/// them. The working assumption is that the samples are contiguous and the
+/// labels approximate, so a run is anchored at its first label and counted from
+/// there, and a new run starts only on a jump no jitter explains (a seek, a
+/// flush). The label's drift from the count is kept and reported, which is
+/// what checks the assumption: a drift that grew with time would mean the
+/// count, not the label, is wrong.
+struct BufferTimeline {
+    /// A label further than this from where counting says the buffer starts is
+    /// a new run. Jitter measured in run 35963652605 was a few ms; the
+    /// smallest real jump the tests make is a seek of seconds.
+    var jumpSec = 0.1
+    private(set) var runs = 0
+    private(set) var maxAbsDriftSec = 0.0
+    private var anchorSec: Double?
+    private var framesInRun = 0
+
+    init() {}
+
+    /// The counted start of a buffer of `frames` frames whose label is
+    /// `labelSec` (nil when the tap gave no valid range), or nil when there is
+    /// nothing to count from yet.
+    mutating func place(labelSec: Double?, frames: Int, sampleRate: Double) -> Double? {
+        guard sampleRate > 0 else { return nil }
+        if let label = labelSec {
+            if let anchor = anchorSec {
+                let counted = anchor + Double(framesInRun) / sampleRate
+                let drift = label - counted
+                if abs(drift) > jumpSec {
+                    startRun(at: label)
+                } else {
+                    maxAbsDriftSec = max(maxAbsDriftSec, abs(drift))
+                }
+            } else {
+                startRun(at: label)
+            }
+        }
+        guard let anchor = anchorSec else { return nil }
+        let start = anchor + Double(framesInRun) / sampleRate
+        framesInRun += frames
+        return start
+    }
+
+    private mutating func startRun(at label: Double) {
+        anchorSec = label
+        framesInRun = 0
+        runs += 1
+    }
+}

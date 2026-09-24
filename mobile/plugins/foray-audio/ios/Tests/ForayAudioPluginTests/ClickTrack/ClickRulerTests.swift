@@ -131,3 +131,41 @@ final class ClickRulerTests: XCTestCase {
             0.002, accuracy: 1e-9)
     }
 }
+
+/// Pins `BufferTimeline`: counted time, not labelled time, inside a run.
+final class BufferTimelineTests: XCTestCase {
+    /// TO SEE IT FAIL: return `labelSec` as the start (the first run's method):
+    /// the jittered labels come straight through.
+    func testJitteredLabelsAreCountedThroughAndTheirDriftIsKept() {
+        var timeline = BufferTimeline()
+        let rate = 16000.0
+        let labels = [10.0, 10.0645, 10.1270, 10.1935]  // 1024-frame buffers are 64 ms; labels jitter +-0.5 ms
+        let starts = labels.map { timeline.place(labelSec: $0, frames: 1024, sampleRate: rate) }
+        XCTAssertEqual(starts.compactMap { $0 }.count, 4)
+        for (got, want) in zip(starts.compactMap { $0 }, [10.0, 10.064, 10.128, 10.192]) {
+            XCTAssertEqual(got, want, accuracy: 1e-9)
+        }
+        XCTAssertEqual(timeline.runs, 1)
+        XCTAssertEqual(timeline.maxAbsDriftSec, 0.0015, accuracy: 1e-9)
+    }
+
+    /// A seek is a jump no jitter explains: a new run, anchored at its label.
+    /// TO SEE IT FAIL: never start a second run (the count carries on from the
+    /// old position), or start one on every drift.
+    func testASeekStartsANewRunAtItsLabel() {
+        var timeline = BufferTimeline()
+        _ = timeline.place(labelSec: 0.0, frames: 1600, sampleRate: 16000)
+        XCTAssertEqual(timeline.place(labelSec: 49.65, frames: 1600, sampleRate: 16000) ?? -1, 49.65, accuracy: 1e-9)
+        XCTAssertEqual(timeline.place(labelSec: 49.7505, frames: 1600, sampleRate: 16000) ?? -1, 49.75, accuracy: 1e-9)
+        XCTAssertEqual(timeline.runs, 2)
+    }
+
+    /// A buffer with no valid label is still counted, once a run exists.
+    /// TO SEE IT FAIL: return nil whenever the label is nil.
+    func testAMissingLabelIsCountedFromTheRun() {
+        var timeline = BufferTimeline()
+        XCTAssertNil(timeline.place(labelSec: nil, frames: 800, sampleRate: 8000))
+        _ = timeline.place(labelSec: 5.0, frames: 800, sampleRate: 8000)
+        XCTAssertEqual(timeline.place(labelSec: nil, frames: 800, sampleRate: 8000) ?? -1, 5.1, accuracy: 1e-9)
+    }
+}

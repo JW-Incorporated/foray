@@ -3,7 +3,8 @@ import MediaToolbox
 
 /// The MTAudioProcessingTap NE-25a listens through (docs/native-engine-plan.md,
 /// card NE-25a): it sees every buffer the player renders from the item, with the
-/// source time range AVFoundation assigns it, and feeds both to a
+/// source time range AVFoundation assigns it, places the buffer on the timeline
+/// (`BufferTimeline`: counted from the run's first label) and feeds it to a
 /// `ClickDetector`. It changes nothing: the audio passes through untouched.
 ///
 /// WHY A TAP AND NOT A TIMER. The question is what was RENDERED, and where
@@ -24,10 +25,17 @@ final class ClickTapRecorder {
         var sampleRate: Double
         var firstPulledSec: Double?
         var pulledEndSec: Double?
+        /// Contiguous runs the timeline saw (a seek starts one), and the worst
+        /// distance between a buffer's label and where counting put it.
+        var runs: Int
+        var maxLabelDriftSec: Double
+        var format: String
     }
 
     private let lock = NSLock()
     private var detector = ClickDetector()
+    private var timeline = BufferTimeline()
+    private var format = "not prepared"
     private var sampleRate = 0.0
     private var isFloat = true
     private var isInterleaved = false
@@ -48,6 +56,9 @@ final class ClickTapRecorder {
         bytesPerSample = Int(format.mBitsPerChannel / 8)
         unsupportedFormat = format.mFormatID != kAudioFormatLinearPCM
             || !((isFloat && bytesPerSample == 4) || (!isFloat && bytesPerSample == 2))
+        let kind: String = isFloat ? "float" : "int"
+        let layout: String = isInterleaved ? "interleaved" : "non-interleaved"
+        self.format = "\(Int(format.mSampleRate)) Hz, \(channels) ch, \(format.mBitsPerChannel)-bit \(kind), \(layout)"
     }
 
     func process(_ list: UnsafeMutablePointer<AudioBufferList>, frames: Int, range: CMTimeRange) {
@@ -56,10 +67,9 @@ final class ClickTapRecorder {
         lock.lock(); defer { lock.unlock() }
         buffers += 1
         guard !unsupportedFormat, sampleRate > 0 else { return }
-        guard range.start.isValid, range.start.isNumeric else {
-            invalidRanges += 1
-            return
-        }
+        let label: Double? = range.start.isValid && range.start.isNumeric ? range.start.seconds : nil
+        if label == nil { invalidRanges += 1 }
+        guard let start = timeline.place(labelSec: label, frames: frames, sampleRate: sampleRate) else { return }
         /* Channel 0 only: the fixtures are mono, and a mono file rendered
            through a stereo path carries the same samples on both channels. */
         let stride = isInterleaved ? channels : 1
@@ -71,20 +81,10 @@ final class ClickTapRecorder {
             let p = data.assumingMemoryBound(to: Int16.self)
             for i in 0..<frames { samples[i] = Float(p[i * stride]) / 32768 }
         }
-        let start = range.start.seconds
         if firstPulledSec == nil { firstPulledSec = start }
         let end = start + Double(frames) / sampleRate
         pulledEndSec = max(pulledEndSec ?? end, end)
         detector.consume(samples, sampleRate: sampleRate, startSec: start)
-    }
-
-    /// Forget everything pulled so far: called at the start of each phase, so a
-    /// buffer rendered before a seek is never read as evidence about the landing.
-    func reset() {
-        lock.lock(); defer { lock.unlock() }
-        detector.removeEvents()
-        firstPulledSec = nil
-        pulledEndSec = nil
     }
 
     func snapshot() -> Snapshot {
@@ -97,7 +97,10 @@ final class ClickTapRecorder {
             unsupportedFormat: unsupportedFormat,
             sampleRate: sampleRate,
             firstPulledSec: firstPulledSec,
-            pulledEndSec: pulledEndSec
+            pulledEndSec: pulledEndSec,
+            runs: timeline.runs,
+            maxLabelDriftSec: timeline.maxAbsDriftSec,
+            format: format
         )
     }
 }

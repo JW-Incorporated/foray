@@ -78,6 +78,9 @@ final class InOutPointMeasurementTests: XCTestCase {
         let firstEvents: [[Double]]
         let discontinuities: Int
         let invalidRanges: Int
+        let tapFormat: String
+        let labelRuns: Int
+        let maxLabelDriftSec: Double
         let state: String
     }
 
@@ -85,6 +88,8 @@ final class InOutPointMeasurementTests: XCTestCase {
         let descriptor = try ClickTrackDescriptor.load()
         var rows: [[String]] = []
         var offsets: [String] = []
+        var tapFormats: Set<String> = []
+        var worstDriftSec = 0.0
         for fixture in descriptor.fixtures {
             let url = try descriptor.url(of: fixture)
             /* THE REFERENCE (d0). Where this file's content sits on the tap's
@@ -117,6 +122,8 @@ final class InOutPointMeasurementTests: XCTestCase {
                         url, fixture: fixture.file, precise: precise, requestedSec: requested,
                         contentOffsetSec: d0, descriptor: descriptor)
                     MeasurementReport.json(trial)
+                    tapFormats.insert(trial.tapFormat)
+                    worstDriftSec = max(worstDriftSec, trial.maxLabelDriftSec)
                     XCTAssertNotNil(trial.landingErrorSec,
                         "\(fixture.file) \(trial.mode) @\(requested): no landing measured: \(trial.state)")
                     let landing: String = ms(trial.landingErrorSec) + (trial.ambiguous ? " (ambiguous)" : "")
@@ -146,6 +153,7 @@ final class InOutPointMeasurementTests: XCTestCase {
                 "Seeks are zero-tolerance; 'precise' is AVURLAssetPreferPreciseDurationAndTimingKey=true.",
                 "Landing error is read from the click track's content, not from currentTime, relative to d0 (where a precise seek to \(Self.referenceInPointSec) s puts that file's content): positive = the listener starts late, negative = early (they hear audio from before the in-point).",
                 "The precise \(Self.referenceInPointSec) s row is an independent repeat of the reference, so it reads the repeatability, not 0 by construction.",
+                "Tap format: \(tapFormats.sorted().joined(separator: "; ")). Times inside a run are COUNTED from the run's first buffer label (BufferTimeline); the worst label-vs-count drift in any trial was \(ms(worstDriftSec)) ms.",
                 "Local files on a Simulator: DV-5 repeats this on real CDNs in M2.",
             ])
     }
@@ -213,6 +221,9 @@ final class InOutPointMeasurementTests: XCTestCase {
             firstEvents: heard.prefix(8).map { [$0.believedSec, Double($0.peak)] },
             discontinuities: snapshot.discontinuities,
             invalidRanges: snapshot.invalidRanges,
+            tapFormat: snapshot.format,
+            labelRuns: snapshot.runs,
+            maxLabelDriftSec: snapshot.maxLabelDriftSec,
             state: deck.stateDescription())
     }
 
@@ -230,6 +241,7 @@ final class InOutPointMeasurementTests: XCTestCase {
         let pulledEndSec: Double?
         let watchdogArmDelaySec: Double?
         let watchdogTicks: Int?
+        let maxLabelDriftSec: Double
         let state: String
     }
 
@@ -362,6 +374,7 @@ final class InOutPointMeasurementTests: XCTestCase {
             pulledEndSec: snapshot.pulledEndSec,
             watchdogArmDelaySec: layers.contains(.watchdog) ? watchdog.armDelaySec : nil,
             watchdogTicks: layers.contains(.watchdog) ? watchdog.ticks : nil,
+            maxLabelDriftSec: snapshot.maxLabelDriftSec,
             state: deck.stateDescription())
     }
 }
