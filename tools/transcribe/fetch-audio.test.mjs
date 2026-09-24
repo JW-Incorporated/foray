@@ -634,6 +634,9 @@ test("the download dir is gitignored", { skip: !isRepo && "not a git checkout" }
   assert.match(ignore, /\.gitignore/);
 });
 
+/* Where committed audio may live: ours, small, and never an episode. */
+const OWNED_AUDIO_DIRS = ["player/assets/", "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/"];
+
 test("NOTHING under the download dir is git-tracked", { skip: !isRepo && "not a git checkout" }, () => {
   // 170 MB of mp3 in a repo is unrecoverable without a history rewrite, so this
   // assertion is cheap insurance against one careless `git add -A`.
@@ -645,22 +648,26 @@ test("NOTHING under the download dir is git-tracked", { skip: !isRepo && "not a 
      small, and served to the player — not somebody else's episode. The
      exemption is bounded by the size cap in the next test, so the insurance
      this assertion exists for (an episode file landing in history) still
-     holds: a 170 MB mp3 under player/assets fails there instead. */
+     holds: a 170 MB mp3 under player/assets fails there instead.
+     The SECOND place (NE-15, docs/native-engine-plan.md §14) is AVDeck's
+     Simulator-test click tracks: synthetic clicks we generated
+     (tools/mobile/click-tracks/make-click-tracks.mjs), bundled into the
+     plugin's TEST target only, and bounded by the same cap below. */
   const anyAudio = git(["ls-files", "--", "*.mp3", "*.m4a", "*.wav", "*.flac", "*.opus"])
     .split("\n")
-    .filter((p) => p && !p.startsWith("player/assets/"))
+    .filter((p) => p && !OWNED_AUDIO_DIRS.some((dir) => p.startsWith(dir)))
     .join("\n");
   assert.equal(anyAudio, "", `audio committed to the repo outside player/assets/:\n${anyAudio}`);
 });
 
-test("player/assets holds only small, owned sound marks — never an episode", { skip: !isRepo && "not a git checkout" }, async () => {
+test("player/assets and the deck's test fixtures hold only small, owned sound marks — never an episode", { skip: !isRepo && "not a git checkout" }, async () => {
   /* The cap that bounds the exemption above. 1 MB is twice the placeholder
      jingle (529 KB, 3.0 s of stereo 16-bit PCM) and two orders of magnitude
      under the shortest episode. MUTATION: raise the cap to 200 MB — the
      exemption then admits exactly the file the previous test exists to keep
      out, and this test stops meaning anything. */
   const CAP_BYTES = 1024 * 1024;
-  const tracked = git(["ls-files", "--", "player/assets"]).split("\n").filter(Boolean);
+  const tracked = git(["ls-files", "--", ...OWNED_AUDIO_DIRS]).split("\n").filter(Boolean);
   for (const rel of tracked) {
     const size = (await stat(join(ROOT, rel))).size;
     assert.ok(size <= CAP_BYTES, `${rel} is ${size} bytes — over the ${CAP_BYTES}-byte cap for a shipped sound mark`);

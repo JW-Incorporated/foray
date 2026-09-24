@@ -142,8 +142,12 @@ jobs:
           # TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN reaches the test process
           # (xcodebuild strips the prefix) and turns a pin that compiled out
           # into a failure rather than a skip.
+          # NE-15: TEST_RUNNER_GITHUB_STEP_SUMMARY hands the job summary's path
+          # to AVDeckTests (same prefix stripping), which append the deck's
+          # Simulator measurements (landing error, time to ready) to it.
           npm ci --prefix ../.. --no-audit --no-fund --ignore-scripts
           FORAY_PREFERENCES_PIN=1 TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN=1 \
+          TEST_RUNNER_GITHUB_STEP_SUMMARY="$GITHUB_STEP_SUMMARY" \
           xcodebuild test \
             -scheme ForayAudio \
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \

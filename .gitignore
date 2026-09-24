@@ -23,6 +23,10 @@ data/*.json.tmp
 # under here is tracked.
 audio-cache/
 *.mp3
+# NE-15: AVDeck's Simulator-test click tracks are ours and tiny (< 1 MB with
+# the WAV beside them, pinned by shell-invariants.test.mjs and capped again by
+# fetch-audio.test.mjs, which lists every place committed audio may live).
+!mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/*.mp3
 *.m4a
 *.opus
 *.flac

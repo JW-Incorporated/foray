@@ -96,6 +96,11 @@ let package = Package(
         .testTarget(
             name: "ForayAudioPluginTests",
             dependencies: pluginTestDependencies,
-            path: "ios/Tests/ForayAudioPluginTests")
+            path: "ios/Tests/ForayAudioPluginTests",
+            // NE-15: AVDeck's Simulator tests play two bundled click tracks
+            // (< 1 MB together, pinned by shell-invariants.test.mjs). Test
+            // target only: the app builds the ForayAudio product, which never
+            // carries them.
+            resources: [.copy("Fixtures")])
     ]
 )
