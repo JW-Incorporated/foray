@@ -138,7 +138,14 @@ public enum LifecycleEvent: Equatable {
     /// (corner case #15). `autoplay` is a car's play arriving for it (the
     /// cold path, plan §4.5).
     case coldLaunch(queue: [EngineItem], index: Int, autoplay: Bool)
+    /// `didEnterBackground`. Also the moment the position is flushed
+    /// (client.js `flushPositions` on `visibilitychange` hidden, #689).
     case background
+    /// `willTerminate`: the last chance to write the position (client.js
+    /// `flushPositions` on `pagehide`). It is delivered only when iOS ends an
+    /// app that is still running, so it is a courtesy; the background flush
+    /// is the one that matters on a phone that gets pocketed.
+    case terminating
     /// The app came back: ask the deck what happened while nobody was
     /// listening (#263).
     case foreground

@@ -123,15 +123,23 @@ final class BackgroundGrace: BackgroundTasking {
 
     var backgroundTimeRemainingSec: Double? { api.backgroundTimeRemainingSec }
 
-    /// `didEnterBackground` and `willEnterForeground`, observed on the main
-    /// queue (the core's `backgrounded` flag decides whether a tap opens a
-    /// span, so it must be ordered with every other input on main).
+    /// `didEnterBackground`, `willEnterForeground` and `willTerminate`,
+    /// observed on the main queue (the core's `backgrounded` flag decides
+    /// whether a tap opens a span, so it must be ordered with every other
+    /// input on main).
+    ///
+    /// `willTerminate` is NE-19's: the core flushes the playhead on
+    /// `.terminating` and the host makes it durable before the handler
+    /// returns. This is the only real conformer, so a notification it
+    /// does not observe is a flush that never happens on a device.
     func observeLifecycle(_ handler: @escaping (LifecycleEvent) -> Void) -> EngineObservation {
         let background = center.addObserver(forName: UIApplication.didEnterBackgroundNotification,
                                             object: nil, queue: .main) { _ in handler(.background) }
         let foreground = center.addObserver(forName: UIApplication.willEnterForegroundNotification,
                                             object: nil, queue: .main) { _ in handler(.foreground) }
-        return NotificationObservation(center: center, tokens: [background, foreground])
+        let terminating = center.addObserver(forName: UIApplication.willTerminateNotification,
+                                             object: nil, queue: .main) { _ in handler(.terminating) }
+        return NotificationObservation(center: center, tokens: [background, foreground, terminating])
     }
 
     // MARK: - Expiry

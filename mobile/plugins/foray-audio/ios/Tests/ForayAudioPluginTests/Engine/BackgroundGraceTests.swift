@@ -368,9 +368,10 @@ final class BackgroundGraceTests: XCTestCase {
         }
     }
 
-    /// The lifecycle arrives on main, as `.background` / `.foreground`, and
-    /// stops at cancel.
-    /// TO SEE IT FAIL: observe with `queue: nil`, or skip `removeObserver`.
+    /// The lifecycle arrives on main, as `.background` / `.foreground` /
+    /// `.terminating`, and stops at cancel.
+    /// TO SEE IT FAIL: observe with `queue: nil`, skip `removeObserver`, or
+    /// drop the `willTerminate` observer (NE-19's last position flush).
     func testLifecycleNotificationsArriveOnMainUntilCancelled() {
         let center = NotificationCenter()
         let grace = BackgroundGrace(api: FakeBackgroundTaskAPI(), center: center)
@@ -389,12 +390,15 @@ final class BackgroundGraceTests: XCTestCase {
         spin(until: { !events.isEmpty })
         center.post(name: UIApplication.willEnterForegroundNotification, object: nil)
         spin(until: { events.count >= 2 })
-        XCTAssertEqual(events, [.background, .foreground])
+        center.post(name: UIApplication.willTerminateNotification, object: nil)
+        spin(until: { events.count >= 3 })
+        XCTAssertEqual(events, [.background, .foreground, .terminating])
         XCTAssertTrue(onMain, "a lifecycle event arrived off main")
 
         observation.cancel()
         center.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+        center.post(name: UIApplication.willTerminateNotification, object: nil)
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-        XCTAssertEqual(events, [.background, .foreground], "an event after cancel")
+        XCTAssertEqual(events, [.background, .foreground, .terminating], "an event after cancel")
     }
 }
