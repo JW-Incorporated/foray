@@ -2318,3 +2318,224 @@ test("the session event name is one string across the Swift and the web half (M-
     `player/client.js does not listen for ${domName[1]} — every native cause is dropped before the record`
   );
 });
+
+/* ─────────── NE-01: the native engine's core, folded into foray-audio ───────────
+ *
+ * docs/native-engine-plan.md §4.1 and card NE-01. The engine's pure core is a
+ * nested SwiftPM package, `foray-audio/foray-engine-core`, that the plugin
+ * links by path. None of it compiles on the Windows machine this repo is
+ * written on, so everything that CAN be read without a compiler is pinned
+ * here, and every Swift claim is executed by CI (`ci.yml`'s ios-kit:
+ * `swift test` on the core, `xcodebuild test -scheme ForayAudio`; and
+ * ios-build's app build). These pins are what keep a later edit from quietly
+ * undoing the properties those runs proved. */
+
+const CORE_DIR = path.join(PLUGIN_DIR, "foray-engine-core");
+const CORE_MANIFEST = path.join(CORE_DIR, "Package.swift");
+const AUDIO_MANIFEST = path.join(PLUGIN_DIR, "Package.swift");
+
+/** Every .swift file under `dir`, recursively, as absolute paths. */
+function swiftFilesUnder(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const abs = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...swiftFilesUnder(abs));
+    else if (entry.name.endsWith(".swift")) out.push(abs);
+  }
+  return out;
+}
+
+const swiftImports = (file) =>
+  [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/^\s*(?:@testable\s+)?import\s+(\w+)/gm)].map((m) => m[1]);
+
+test("NE-01: foray-engine-core is a pure package: no dependencies, Foundation-only sources, and no XCTest in the parity library", () => {
+  /* THE PROPERTY THE WHOLE CORE EXISTS FOR. Every playback decision the engine
+     takes lives here so it can run on a host `swift test` (macOS now, Linux in
+     G-1a's container), and one `import AVFoundation` or one Capacitor
+     dependency makes that impossible: the package would then build only for an
+     iOS Simulator, like the plugin around it. The parity library also runs
+     inside the plugin's test target, which is why it must not import XCTest
+     itself (SwiftPM test targets cannot share sources across packages).
+     MUTATION: add `import AVFoundation` to EngineHandshake.swift, or
+     `import XCTest` to ParityRunner.swift, or a `.package(url:)` to the
+     core manifest; each fails here. */
+  assert.ok(fs.existsSync(CORE_MANIFEST), "mobile/plugins/foray-audio/foray-engine-core/Package.swift is missing");
+  const manifest = stripSwiftComments(fs.readFileSync(CORE_MANIFEST, "utf8"));
+  assert.doesNotMatch(manifest, /\.package\s*\(/, "foray-engine-core declares a package dependency; the core is Foundation-only");
+  assert.match(manifest, /\.iOS\(\.v15\)/, "the core must build for iOS 15, the app's floor");
+  assert.match(manifest, /\.macOS\(\.v12\)/, "the core must build for macOS 12, so ios-kit can host-test it");
+  const products = [...manifest.matchAll(/\.library\(\s*name:\s*"(\w+)"/g)].map((m) => m[1]).sort();
+  assert.deepEqual(products, ["ForayEngineCore", "ForayEngineParity"]);
+
+  const sources = swiftFilesUnder(path.join(CORE_DIR, "Sources"));
+  assert.ok(sources.length >= 2, "expected sources in both ForayEngineCore and ForayEngineParity");
+  const allowed = new Set(["Foundation", "ForayEngineCore"]);
+  for (const file of sources) {
+    for (const mod of swiftImports(file)) {
+      assert.ok(allowed.has(mod), `${path.relative(ROOT, file)} imports ${mod}; the core may import Foundation only`);
+    }
+  }
+  for (const file of swiftFilesUnder(path.join(CORE_DIR, "Sources", "ForayEngineCore"))) {
+    assert.ok(!swiftImports(file).includes("ForayEngineCore"), `${path.relative(ROOT, file)} imports its own module`);
+  }
+  /* And the host wrapper exists, or `swift test` on the core runs nothing. */
+  const hostTests = swiftFilesUnder(path.join(CORE_DIR, "Tests"));
+  assert.ok(
+    hostTests.some((f) => /ParityRunner\.run\(/.test(fs.readFileSync(f, "utf8"))),
+    "foray-engine-core/Tests has no wrapper that runs ForayEngineParity"
+  );
+});
+
+test("NE-01: foray-audio links the core by path, keeps ONE product, and its tests wrap the parity library", () => {
+  /* THE SCHEME-LIST PIN. `ci.yml` runs `xcodebuild test -scheme ForayAudio`
+     here, and Xcode names a package's schemes from its products: one product
+     gives the scheme `ForayAudio`, a second adds `ForayAudio-Package` and
+     changes what that step builds. The core's two products belong to the
+     NESTED package, so this one keeps exactly one.
+     The directory name is pinned because a path dependency's identity is its
+     last path component, and the manifest refers to it by that identity.
+     MUTATION: rename the directory, drop the ForayEngineCore product from the
+     plugin target, or add a second `.library` here; each fails. */
+  const manifest = stripSwiftComments(fs.readFileSync(AUDIO_MANIFEST, "utf8"));
+  assert.match(manifest, /\.package\(\s*path:\s*"foray-engine-core"\s*\)/, "foray-audio no longer depends on ./foray-engine-core by path");
+  assert.ok(fs.statSync(CORE_DIR).isDirectory());
+  const products = [...manifest.matchAll(/\.library\(\s*name:\s*"(\w+)"/g)].map((m) => m[1]);
+  assert.deepEqual(products, ["ForayAudio"], "foray-audio must keep exactly one product, or its scheme list changes");
+
+  const pluginTarget = /\.target\(\s*name:\s*"ForayAudioPlugin"[\s\S]*?path:\s*"ios\/Sources\/ForayAudioPlugin"\)/.exec(manifest);
+  assert.ok(pluginTarget, "the ForayAudioPlugin target is missing");
+  assert.match(pluginTarget[0], /\.product\(\s*name:\s*"ForayEngineCore",\s*package:\s*"foray-engine-core"\s*\)/);
+  assert.match(
+    manifest,
+    /var pluginTestDependencies[\s\S]*?\.product\(\s*name:\s*"ForayEngineParity",\s*package:\s*"foray-engine-core"\s*\)/,
+    "ForayAudioPluginTests must link ForayEngineParity, the zero-.github parity fallback"
+  );
+  assert.match(manifest, /name:\s*"ForayAudioPluginTests",\s*dependencies:\s*pluginTestDependencies/);
+
+  const wrapper = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift");
+  assert.match(fs.readFileSync(wrapper, "utf8"), /ParityRunner\.run\(/, "the Simulator-side parity wrapper runs nothing");
+});
+
+test("NE-01: engineHello is an iOS-only stub that answers from the core and always resolves", () => {
+  /* The first of the engine's three bridge methods (§5.1), stubbed until
+     NE-20: `{mode: "legacy", reason: "not-built"}`, i.e. "play the way the
+     app plays today". Its answer is built by ForayEngineCore, which is what
+     makes the app build prove the plugin links the nested package.
+     Android never gains it (§4.1).
+     MUTATION: drop the CAPPluginMethod line, make the body `call.reject(...)`,
+     answer `native`, or add `engineHello` to the Java; each fails. */
+  const swift = fs.readFileSync(AUDIO_SWIFT, "utf8");
+  const declared = [...swift.matchAll(/CAPPluginMethod\(name:\s*"(\w+)"/g)].map((m) => m[1]);
+  assert.ok(declared.includes("engineHello"), "ForayAudioPlugin.swift does not declare engineHello as a CAPPluginMethod");
+  const code = stripSwiftComments(swift);
+  assert.match(code, /^import ForayEngineCore$/m, "ForayAudioPlugin.swift no longer imports ForayEngineCore");
+  const body = swiftFuncBody(code, "engineHello");
+  assert.ok(body, "ForayAudioPlugin.swift has no func engineHello");
+  assert.match(body, /EngineHandshake\.notBuiltHello\(\)/, "engineHello no longer answers from the core");
+  assert.match(body, /call\.resolve\(/, "engineHello must resolve");
+  assert.doesNotMatch(body, /\.reject\(/, "engineHello must never reject (the plugin's every-method-resolves rule)");
+
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/EngineHandshake.swift"), "utf8"));
+  assert.match(core, /notBuiltMode\s*=\s*"legacy"/);
+  assert.match(core, /notBuiltReason\s*=\s*"not-built"/);
+
+  const java = fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"),
+    "utf8"
+  );
+  assert.doesNotMatch(java, /\bengineHello\b/, "the engine's bridge methods are iOS only; Android never gains them");
+});
+
+test("NE-01: the Preferences pin is test-only, cannot reach the app's package graph, and cannot compile out in silence", () => {
+  /* `@capacitor/preferences` has no SwiftPM URL, so foray-audio's manifest
+     adds it from `mobile/node_modules` for the TEST TARGET, and only under
+     FORAY_PREFERENCES_PIN=1, which only ios-kit sets. Three halves:
+       1. the dependency lives inside the env-gated block and nowhere else, so
+          the app's CapApp-SPM graph (which evaluates this manifest with the
+          variable absent) is exactly the graph without it;
+       2. no app-building workflow or action sets the variable;
+       3. ios-kit sets it AND the runner-side requirement, and the test fails
+          (not skips) when the requirement arrives without the module.
+     MUTATION: move the `.package(path: "../../node_modules/@capacitor/preferences")`
+     line into the unconditional list; set FORAY_PREFERENCES_PIN in
+     ios-build.yml; drop TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN from ci.yml;
+     or turn the XCTFail into a skip. Each fails. */
+  const manifest = stripSwiftComments(fs.readFileSync(AUDIO_MANIFEST, "utf8"));
+  assert.match(manifest, /let preferencesPin = Context\.environment\["FORAY_PREFERENCES_PIN"\] == "1"/);
+  const gated = /if preferencesPin \{([\s\S]*?)\n\}/.exec(manifest);
+  assert.ok(gated, "the env-gated block is missing from foray-audio's Package.swift");
+  assert.match(gated[1], /@capacitor\/preferences/);
+  const outside = manifest.replace(gated[0], "");
+  assert.doesNotMatch(outside, /@capacitor\/preferences|CapacitorPreferences/, "the Preferences package is reachable outside the FORAY_PREFERENCES_PIN gate");
+
+  const appBuilders = [
+    ".github/workflows/ios-build.yml",
+    ".github/workflows/release.yml",
+    ".github/actions/ios-archive/action.yml",
+  ];
+  for (const rel of appBuilders) {
+    const abs = path.join(ROOT, rel);
+    assert.ok(fs.existsSync(abs), `${rel} is gone; update this list to whatever builds the app now`);
+    assert.doesNotMatch(fs.readFileSync(abs, "utf8"), /FORAY_PREFERENCES_PIN/, `${rel} builds the app and must not set FORAY_PREFERENCES_PIN`);
+  }
+
+  const ci = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
+  assert.match(ci, /FORAY_PREFERENCES_PIN=1/, "ci.yml's ios-kit no longer switches the Preferences pin on");
+  assert.match(ci, /TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN=1/, "ci.yml's ios-kit no longer requires the pin at runtime");
+
+  const pin = fs.readFileSync(path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/CapacitorStoragePrefixTests.swift"), "utf8");
+  assert.match(pin, /#else[\s\S]*FORAY_REQUIRE_PREFERENCES_PIN"\] == "1"[\s\S]*XCTFail\(/, "the pin must FAIL when required but compiled out");
+  assert.match(pin, /Preferences\(with: PreferencesConfiguration\(\)\)/, "the pin must write through the plugin's own default configuration");
+});
+
+test("NE-01: the page never configures a Preferences group, so the engine's CapacitorStorage. prefix is the page's", async () => {
+  /* The prefix pin above is against Preferences' DEFAULT group. A page that
+     called `configure({group})` would move every row to another prefix and
+     the native engine would read a store the page no longer writes. So: the
+     page's one Preferences client uses only get/set/remove/keys (executed,
+     through a recording bridge), and no other shipped file talks to the
+     plugin at all.
+     MUTATION: add `call("configure", { group: "x" })` to preferencesTier, or
+     a second `nativePromise("Preferences", ...)` caller in player/. */
+  const { preferencesTier, PREFERENCES_PLUGIN } = await import("../../player/durable-store.js");
+  const calls = [];
+  const bridge = {
+    isNativePlatform: () => true,
+    isPluginAvailable: () => true,
+    nativePromise: async (plugin, method, options) => {
+      calls.push([plugin, method, options]);
+      if (method === "keys") return { keys: ["cp_pos:a"] };
+      if (method === "get") return { value: "1" };
+      return {};
+    },
+  };
+  const tier = preferencesTier(bridge);
+  await tier.readAll("cp_");
+  await tier.write("cp_pos:a", "2");
+  await tier.remove("cp_pos:a");
+  assert.ok(calls.length >= 4);
+  for (const [plugin, method, options] of calls) {
+    assert.equal(plugin, PREFERENCES_PLUGIN);
+    assert.ok(["keys", "get", "set", "remove"].includes(method), `the page calls Preferences.${method}`);
+    assert.equal(options && "group" in options, false, "a Preferences call carries a group");
+  }
+
+  const shipped = [path.join(ROOT, "app.js")];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== "node_modules") walk(abs);
+      } else if (/\.m?js$/.test(entry.name) && !/\.test\.m?js$/.test(entry.name)) {
+        shipped.push(abs);
+      }
+    }
+  };
+  walk(path.join(ROOT, "player"));
+  walk(path.join(PLUGIN_DIR, "web"));
+  walk(path.join(MOBILE, "plugins", "foray-tts", "web"));
+  const talkers = shipped
+    .filter((f) => /PREFERENCES_PLUGIN|["']Preferences["']/.test(stripJsComments(fs.readFileSync(f, "utf8"))))
+    .map((f) => path.relative(ROOT, f).split(path.sep).join("/"));
+  assert.deepEqual(talkers, ["player/durable-store.js"], "only durable-store.js may talk to the Preferences plugin");
+});

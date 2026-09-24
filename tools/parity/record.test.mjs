@@ -186,6 +186,42 @@ test("re-recording an unchanged tree changes no byte", async () => {
   }
 });
 
+test("recording one family never vouches for another: its authored cases still reach swift-pending on their own run", async () => {
+  /* NE-07j found this. `--family queue-state` wrote the WHOLE tree's manifest,
+     including the not-yet-recorded rate family's ids; the rate run then read
+     those ids as already recorded, and an authored case (which never needs a
+     re-record, so is pending only when its id is new) was left out of
+     swift-pending. The Swift runner fails on an id that is neither executed
+     nor pending, so that is a red Swift build handed to the port card.
+     MUTATION: drop the `if (family)` block after computeManifest in record(). */
+  const root = scratch();
+  try {
+    const fam = "probe";
+    fs.mkdirSync(path.join(root, "player/parity/fixtures", fam), { recursive: true });
+    writeJ(root, `player/parity/fixtures/${fam}/${fam}.json`, {
+      family: fam,
+      module: "player/playback-rate.js",
+      cases: [
+        { id: `${fam}/max`, covers: [], authored: true, read: "MAX_RATE", expect: { value: 2 } },
+        { id: `${fam}/snap`, covers: [], call: "normalizeRate", args: [1.6] },
+      ],
+    });
+    const first = await record({ root, family: "seam-gap", log: quiet });
+    assert.equal(first.ok, true, first.refusals.join("\n"));
+    assert.equal(readJ(root, "player/parity/manifest.json").families[fam], undefined,
+      "a seam-gap run must not write the probe family's ids into the manifest");
+
+    const r = await record({ root, family: fam, portCard: "NE-09", log: quiet });
+    assert.equal(r.ok, true, r.refusals.join("\n"));
+    assert.deepStrictEqual([...r.pendingAdded].sort(), [`${fam}/max`, `${fam}/snap`]);
+    const pending = readJ(root, "player/parity/swift-pending.json");
+    assert.equal(pending[`${fam}/max`], "NE-09", "the authored case is owed to the port card too");
+    assert.deepStrictEqual((await checkAll({ root })).problems, []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("a family that loses cases is refused unless --lower-floors says so", async () => {
   const root = scratch();
   try {

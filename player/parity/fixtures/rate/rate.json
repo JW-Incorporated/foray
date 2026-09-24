@@ -1,0 +1,569 @@
+{
+  "family": "rate",
+  "module": "player/playback-rate.js",
+  "note": "The playback-speed ladder (player/playback-rate.js): the stops, isRate, the normalizeRate snap/clamp/fallback, and nextRate's upward cycle. The ladder constants are authored. The label and storage tests are excluded (exclusions.json): the page draws the button and still writes cp_rate (plan §5.2 setRate); the engine receives a number.",
+  "cases": [
+    {
+      "id": "rate/ladder",
+      "covers": [
+        "playback-rate::the stops are the 0.25 ladder the major podcast apps converge on",
+        "playback-rate::the ladder is ascending, unique, and every stop is exact in binary",
+        "playback-rate::normal speed is on the ladder — the identity has to be reachable",
+        "playback-rate::there is exactly one stop below normal speed"
+      ],
+      "authored": true,
+      "note": "Authored: a product decision (founder request 2026-08-17; the #224 seam-exposure argument caps it at 2x). The JS suite says changing it should require editing a test; record.mjs refuses to overwrite it, so it also requires editing this case.",
+      "read": "RATES",
+      "expect": { "value": [0.75, 1, 1.25, 1.5, 1.75, 2] }
+    },
+    {
+      "id": "rate/default-is-normal-speed",
+      "covers": [
+        "playback-rate::normal speed is on the ladder — the identity has to be reachable"
+      ],
+      "authored": true,
+      "note": "Authored: 1x is the identity and every fallback in the module; a ladder without it is a trap.",
+      "read": "DEFAULT_RATE",
+      "expect": { "value": 1 }
+    },
+    {
+      "id": "rate/max-is-2x",
+      "covers": [
+        "playback-rate::the top stop is 2x, and nothing above it — a Foray pays per seam"
+      ],
+      "authored": true,
+      "note": "Authored: a product decision (founder request 2026-08-17; the #224 seam-exposure argument caps it at 2x). The JS suite says changing it should require editing a test; record.mjs refuses to overwrite it, so it also requires editing this case.",
+      "read": "MAX_RATE",
+      "expect": { "value": 2 }
+    },
+    {
+      "id": "rate/min-is-0.75x",
+      "covers": [
+        "playback-rate::the top stop is 2x, and nothing above it — a Foray pays per seam"
+      ],
+      "authored": true,
+      "note": "Authored: a product decision (founder request 2026-08-17; the #224 seam-exposure argument caps it at 2x). The JS suite says changing it should require editing a test; record.mjs refuses to overwrite it, so it also requires editing this case.",
+      "read": "MIN_RATE",
+      "expect": { "value": 0.75 }
+    },
+    {
+      "id": "rate/is-rate-1.5",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": [1.5],
+      "expect": { "return": true }
+    },
+    {
+      "id": "rate/is-rate-0.75",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": [0.75],
+      "expect": { "return": true }
+    },
+    {
+      "id": "rate/is-rate-string-1.5",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": ["1.5"],
+      "expect": { "return": false }
+    },
+    {
+      "id": "rate/is-rate-1.6",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": [1.6],
+      "expect": { "return": false }
+    },
+    {
+      "id": "rate/is-rate-0",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": [0],
+      "expect": { "return": false }
+    },
+    {
+      "id": "rate/is-rate-neg-1",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": [-1],
+      "expect": { "return": false }
+    },
+    {
+      "id": "rate/is-rate-nan",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": [{ "$num": "NaN" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "rate/is-rate-infinity",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": [{ "$num": "Infinity" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "rate/is-rate-null",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": [null],
+      "expect": { "return": false }
+    },
+    {
+      "id": "rate/is-rate-undefined",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": [{ "$undefined": true }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "rate/is-rate-object",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": [{}],
+      "expect": { "return": false }
+    },
+    {
+      "id": "rate/is-rate-array",
+      "covers": [
+        "playback-rate::isRate is strict — a numeric STRING is a different bug and must not be hidden"
+      ],
+      "call": "isRate",
+      "args": [[1.5]],
+      "expect": { "return": false }
+    },
+    {
+      "id": "rate/normalize-0",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": [0],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-neg-1",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": [-1],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-neg-0.5",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": [-0.5],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-nan",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": [{ "$num": "NaN" }],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-infinity",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": [{ "$num": "Infinity" }],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-neg-infinity",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": [{ "$num": "-Infinity" }],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-null",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": [null],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-undefined",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": [{ "$undefined": true }],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-empty-string",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": [""],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-string-fast",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": ["fast"],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-string-1.5",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": ["1.5"],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-object",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": [{}],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-array",
+      "covers": [
+        "playback-rate::an unusable value falls back to normal speed rather than reaching the element"
+      ],
+      "call": "normalizeRate",
+      "args": [[]],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-1.6",
+      "covers": [
+        "playback-rate::an off-ladder number snaps to the NEAREST stop, not to normal speed"
+      ],
+      "call": "normalizeRate",
+      "args": [1.6],
+      "expect": { "return": 1.5 }
+    },
+    {
+      "id": "rate/normalize-1.4",
+      "covers": [
+        "playback-rate::an off-ladder number snaps to the NEAREST stop, not to normal speed"
+      ],
+      "call": "normalizeRate",
+      "args": [1.4],
+      "expect": { "return": 1.5 }
+    },
+    {
+      "id": "rate/normalize-1.1",
+      "covers": [
+        "playback-rate::an off-ladder number snaps to the NEAREST stop, not to normal speed"
+      ],
+      "call": "normalizeRate",
+      "args": [1.1],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-0.9",
+      "covers": [
+        "playback-rate::an off-ladder number snaps to the NEAREST stop, not to normal speed"
+      ],
+      "call": "normalizeRate",
+      "args": [0.9],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-1.2",
+      "covers": [
+        "playback-rate::an off-ladder number snaps to the NEAREST stop, not to normal speed"
+      ],
+      "call": "normalizeRate",
+      "args": [1.2],
+      "expect": { "return": 1.25 }
+    },
+    {
+      "id": "rate/normalize-1.9",
+      "covers": [
+        "playback-rate::an off-ladder number snaps to the NEAREST stop, not to normal speed"
+      ],
+      "call": "normalizeRate",
+      "args": [1.9],
+      "expect": { "return": 2 }
+    },
+    {
+      "id": "rate/normalize-3",
+      "covers": [
+        "playback-rate::a value past either end CLAMPS, so shortening the ladder cannot silently reset anyone"
+      ],
+      "call": "normalizeRate",
+      "args": [3],
+      "expect": { "return": 2 }
+    },
+    {
+      "id": "rate/normalize-3.5",
+      "covers": [
+        "playback-rate::a value past either end CLAMPS, so shortening the ladder cannot silently reset anyone"
+      ],
+      "call": "normalizeRate",
+      "args": [3.5],
+      "expect": { "return": 2 }
+    },
+    {
+      "id": "rate/normalize-1000",
+      "covers": [
+        "playback-rate::a value past either end CLAMPS, so shortening the ladder cannot silently reset anyone"
+      ],
+      "call": "normalizeRate",
+      "args": [1000],
+      "expect": { "return": 2 }
+    },
+    {
+      "id": "rate/normalize-0.5",
+      "covers": [
+        "playback-rate::a value past either end CLAMPS, so shortening the ladder cannot silently reset anyone"
+      ],
+      "call": "normalizeRate",
+      "args": [0.5],
+      "expect": { "return": 0.75 }
+    },
+    {
+      "id": "rate/normalize-0.25",
+      "covers": [
+        "playback-rate::a value past either end CLAMPS, so shortening the ladder cannot silently reset anyone"
+      ],
+      "call": "normalizeRate",
+      "args": [0.25],
+      "expect": { "return": 0.75 }
+    },
+    {
+      "id": "rate/normalize-0.01",
+      "covers": [
+        "playback-rate::a value past either end CLAMPS, so shortening the ladder cannot silently reset anyone"
+      ],
+      "call": "normalizeRate",
+      "args": [0.01],
+      "expect": { "return": 0.75 }
+    },
+    {
+      "id": "rate/normalize-0.75",
+      "covers": [
+        "playback-rate::every stop normalises to itself — the function is idempotent on the ladder"
+      ],
+      "call": "normalizeRate",
+      "args": [0.75],
+      "expect": { "return": 0.75 }
+    },
+    {
+      "id": "rate/normalize-1",
+      "covers": [
+        "playback-rate::every stop normalises to itself — the function is idempotent on the ladder"
+      ],
+      "call": "normalizeRate",
+      "args": [1],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/normalize-1.25",
+      "covers": [
+        "playback-rate::every stop normalises to itself — the function is idempotent on the ladder"
+      ],
+      "call": "normalizeRate",
+      "args": [1.25],
+      "expect": { "return": 1.25 }
+    },
+    {
+      "id": "rate/normalize-1.5",
+      "covers": [
+        "playback-rate::every stop normalises to itself — the function is idempotent on the ladder"
+      ],
+      "call": "normalizeRate",
+      "args": [1.5],
+      "expect": { "return": 1.5 }
+    },
+    {
+      "id": "rate/normalize-1.75",
+      "covers": [
+        "playback-rate::every stop normalises to itself — the function is idempotent on the ladder"
+      ],
+      "call": "normalizeRate",
+      "args": [1.75],
+      "expect": { "return": 1.75 }
+    },
+    {
+      "id": "rate/normalize-2",
+      "covers": [
+        "playback-rate::every stop normalises to itself — the function is idempotent on the ladder"
+      ],
+      "call": "normalizeRate",
+      "args": [2],
+      "expect": { "return": 2 }
+    },
+    {
+      "id": "rate/next-0.75",
+      "covers": [
+        "playback-rate::tapping cycles upward and wraps to the slowest stop",
+        "playback-rate::the cycle visits every stop and returns, so no speed is unreachable"
+      ],
+      "call": "nextRate",
+      "args": [0.75],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/next-1",
+      "covers": [
+        "playback-rate::tapping cycles upward and wraps to the slowest stop",
+        "playback-rate::the cycle visits every stop and returns, so no speed is unreachable"
+      ],
+      "call": "nextRate",
+      "args": [1],
+      "expect": { "return": 1.25 }
+    },
+    {
+      "id": "rate/next-1.25",
+      "covers": [
+        "playback-rate::tapping cycles upward and wraps to the slowest stop",
+        "playback-rate::the cycle visits every stop and returns, so no speed is unreachable"
+      ],
+      "call": "nextRate",
+      "args": [1.25],
+      "expect": { "return": 1.5 }
+    },
+    {
+      "id": "rate/next-1.5",
+      "covers": [
+        "playback-rate::tapping cycles upward and wraps to the slowest stop",
+        "playback-rate::the cycle visits every stop and returns, so no speed is unreachable"
+      ],
+      "call": "nextRate",
+      "args": [1.5],
+      "expect": { "return": 1.75 }
+    },
+    {
+      "id": "rate/next-1.75",
+      "covers": [
+        "playback-rate::tapping cycles upward and wraps to the slowest stop",
+        "playback-rate::the cycle visits every stop and returns, so no speed is unreachable"
+      ],
+      "call": "nextRate",
+      "args": [1.75],
+      "expect": { "return": 2 }
+    },
+    {
+      "id": "rate/next-2",
+      "covers": [
+        "playback-rate::tapping cycles upward and wraps to the slowest stop",
+        "playback-rate::the cycle visits every stop and returns, so no speed is unreachable"
+      ],
+      "call": "nextRate",
+      "args": [2],
+      "expect": { "return": 0.75 }
+    },
+    {
+      "id": "rate/next-1.6",
+      "covers": [
+        "playback-rate::an off-ladder stored value advances instead of dead-ending on the first stop"
+      ],
+      "call": "nextRate",
+      "args": [1.6],
+      "expect": { "return": 1.75 }
+    },
+    {
+      "id": "rate/next-1.1",
+      "covers": [
+        "playback-rate::an off-ladder stored value advances instead of dead-ending on the first stop"
+      ],
+      "call": "nextRate",
+      "args": [1.1],
+      "expect": { "return": 1.25 }
+    },
+    {
+      "id": "rate/next-3",
+      "covers": [
+        "playback-rate::an off-ladder stored value advances instead of dead-ending on the first stop"
+      ],
+      "call": "nextRate",
+      "args": [3],
+      "expect": { "return": 0.75 }
+    },
+    {
+      "id": "rate/next-0.5",
+      "covers": [
+        "playback-rate::an off-ladder stored value advances instead of dead-ending on the first stop"
+      ],
+      "call": "nextRate",
+      "args": [0.5],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/next-null",
+      "covers": [
+        "playback-rate::an off-ladder stored value advances instead of dead-ending on the first stop"
+      ],
+      "call": "nextRate",
+      "args": [null],
+      "expect": { "return": 1.25 }
+    },
+    {
+      "id": "rate/next-nan",
+      "covers": [
+        "playback-rate::an off-ladder stored value advances instead of dead-ending on the first stop"
+      ],
+      "call": "nextRate",
+      "args": [{ "$num": "NaN" }],
+      "expect": { "return": 1.25 }
+    },
+    {
+      "id": "rate/next-string-fast",
+      "covers": [
+        "playback-rate::an off-ladder stored value advances instead of dead-ending on the first stop"
+      ],
+      "call": "nextRate",
+      "args": ["fast"],
+      "expect": { "return": 1.25 }
+    },
+    {
+      "id": "rate/next-0",
+      "covers": [
+        "playback-rate::an off-ladder stored value advances instead of dead-ending on the first stop"
+      ],
+      "call": "nextRate",
+      "args": [0],
+      "expect": { "return": 1.25 }
+    }
+  ]
+}
