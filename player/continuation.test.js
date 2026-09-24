@@ -17,8 +17,9 @@
    listener-facing behaviour this extraction must not change is still pinned by
    test/up-next-autoadvance.test.js and test/up-next-queue.test.js, unchanged.
 
-   TO SEE ONE FAIL: flip `rest.slice(at)` to `rest.slice(at + 1)` in
-   planAfterEnded (Up Next), drop the `onChain` test (the list), make `canNext`
+   TO SEE ONE FAIL: look for Up Next's next row in `queued` rather than
+   `rest || queued` in planAfterEnded (Up Next: the finished head plays again),
+   drop the `onChain` test (the list), make `canNext`
    return false when `autoAdvance` is false, or drop the in-loop watermark move
    in planAdvanceApply (replay) — each turns the named test red with the case
    id and the diff. */
@@ -31,7 +32,7 @@ import { nextAfterEnded, continuationChain } from "./continuation.js";
 
 const cases = fixtureCases("continuation", "continuation");
 
-test("Up Next first: the row after the finished one, then the rows above it, and the finished one leaves", (t) => cases(t));
+test("Up Next first: its head, once the finished one has left (the played row sits at the top)", (t) => cases(t));
 test("then the chosen list, after the last row that played, only while the chain is on it", (t) => cases(t));
 test("an unplayable row is passed over, and the end of both is the end", (t) => cases(t));
 test("nextAfterEnded moves the chain on to the pick, and the cursor only for a list row", (t) => cases(t));

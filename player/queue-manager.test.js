@@ -6,7 +6,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
+import { PlayerQueueManager, NARRATION_RATE, __resetInstanceForTests } from "./queue-manager.js";
 import { SINGLE_ITEM, PICKED_FIRST, CONTINUE_TAIL } from "./queue-strategy.js";
 import { forayRuntimeSec } from "./foray-queue.js";
 import { INTERLUDE_CEILING_SEC } from "./interlude.js";
@@ -119,7 +119,7 @@ function make(opts = {}) {
   const m = new PlayerQueueManager({
     backend, positionStore, telemetry: (t) => log.push(t), strategy: opts.strategy,
     scheduler, seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange,
-    onNarrationTick: opts.onNarrationTick,
+    onNarrationTick: opts.onNarrationTick, onStateSettled: opts.onStateSettled,
     rate: opts.rate, tts: opts.tts, voice: opts.voice,
     interlude: opts.interlude, interludeEnabled: opts.interludeEnabled,
   });
@@ -446,6 +446,40 @@ test("skipToPrevious restarts at zero, not at the playhead just saved", async ()
   assert.ok(backend.calls.includes("load:a@0"), `expected restart at 0, got ${backend.calls}`);
 });
 
+test("ROUND 2 review: a play settling mid-skip-back does not wipe the skip's armed restart offset", async () => {
+  /* `_transport`'s finally used to clear `_forceNextOffset` whatever action
+     armed it. A play still awaiting `backend.play()` can settle while a
+     skip-back sits between arming 0 and its own `loadItem` (it awaits
+     savePosition and pausePlayback first); the restart then became a resume
+     at the playhead. KILLING MUTATION: make the finally clear unconditionally. */
+  class SlowPlayBackend extends FakeBackend {
+    constructor(o) { super(o); this.releasePlay = null; this.held = false; }
+    play() {
+      this.calls.push("play");
+      if (this.held) return undefined; // only the FIRST play is slow
+      this.held = true;
+      return new Promise((r) => { this.releasePlay = r; });
+    }
+    async pause() {
+      this.calls.push("pause");
+      // The pending play settles here, while the skip is mid-effects.
+      if (this.releasePlay) { const r = this.releasePlay; this.releasePlay = null; r(); }
+      await tick();
+      await tick();
+    }
+  }
+  const { m, backend } = make({ backendClass: SlowPlayBackend });
+  m.setQueueFromPick(ep("a"));
+  const first = m.play(0);
+  await tick();
+  await tick();
+  assert.ok(backend.releasePlay, "precondition: the play is still awaiting backend.play()");
+  backend.currentTime = 1234;
+  backend.calls.length = 0;
+  await Promise.all([m.skipToPrevious(), first]);
+  assert.ok(backend.calls.includes("load:a@0"), `expected restart at 0, got ${backend.calls}`);
+});
+
 test("a skip saves the OUTGOING episode's position, never the incoming one's", async () => {
   // The bug this whole index split exists to prevent — and the one
   // PlayerQueueManager.swift still has.
@@ -734,18 +768,73 @@ test("a script-only narration item is not dropped and never reaches backend.load
   assert.ok(backend.calls.includes("load:foray-1#1@100"), `got ${backend.calls}`);
 });
 
-test("a script-only narration item speaks at the LISTENER'S current rate, not a hardcoded 1.0x", async () => {
-  // §7 item 2: rate is a property of the utterance for a synthesizer, so the
-  // stored/chosen speed rides into speak() itself rather than being forced to
-  // 1.0x and deferred the way a rendered bridge's rate is.
+/* FOUNDER RULING, 2026-09-24 (round-1 qa 28, native-engine-plan OQ-3): "1x for
+   now, but maybe we change later." Synthesized narration speaks at 1x whatever
+   speed the listener chose for the podcasts. It used to ride the listener's
+   `this._rate` into speak(), so at 2x a spoken bridge was rushed while a
+   rendered one was forced back to 1.0x.
+   TO SEE IT FAIL: put `rate: this._rate` back into `_speakNarration`'s speak()
+   call — every rate but 1 goes red. */
+test("NARRATION_RATE is 1x — the founder's 2026-09-24 ruling, stated as a number", () => {
+  assert.equal(NARRATION_RATE, 1);
+});
+
+/** Speak one script-only line with the listener at `rate`; the spoken rate and
+    the listener's speed afterwards. Unrolled into one `test()` per speed below
+    so each is counted by suite-integrity's floor. */
+async function spokenRateAt(rate) {
   const tts = fakeTts();
-  const { m } = make({ tts, rate: 1.5 });
+  const { m } = make({ tts, rate });
+  assert.equal(m.rate, rate, "precondition: the listener's speed is what they chose");
   await m.playForay(foray([
-    { type: "narration", id: "nar-1", script: "a script spoken at the chosen speed" },
+    { type: "narration", id: "nar-1", script: "a script spoken at the narrator's own pace" },
     fseg(),
   ]), { resolveItem });
+  assert.equal(tts.calls[0].rate, 1, "the utterance is 1x, not the listener's speed");
+  assert.equal(m.rate, rate, "and the listener's speed is untouched, not reset to match");
+}
 
-  assert.equal(tts.calls[0].rate, 1.5);
+test("a script-only narration item speaks at 1x when the listener is at 0.75x (founder, 2026-09-24)", () => spokenRateAt(0.75));
+test("a script-only narration item speaks at 1x when the listener is at 1.5x (founder, 2026-09-24)", () => spokenRateAt(1.5));
+test("a script-only narration item speaks at 1x when the listener is at 2x (founder, 2026-09-24)", () => spokenRateAt(2));
+
+test("a SYNTH bridge mid-Foray at 2x speaks at 1x, and the segment after it comes back at 2x", async () => {
+  /* The transition path (`_playTransitionBridge`), which is the other caller of
+     `_speakNarration` — the one a listener at 2x hears between two podcasts. */
+  const tts = fakeTts();
+  const { m, backend } = make({ tts, rate: 2 });
+  await m.playForay(foray([
+    fseg(),
+    { type: "narration", id: "nar-1", asset: undefined, script: "a bridge line" },
+    fseg({ start_sec: 400, end_sec: 500 }),
+  ]), { resolveItem });
+  await m._handleBackendItemEnded(END_OUT_POINT); // segment 1 ends, the bridge speaks
+  assert.equal(m.state.type, "transitioning", "precondition: the bridge is what is audible");
+  assert.equal(tts.calls.length, 1);
+  assert.equal(tts.calls[0].rate, 1, "the bridge is spoken at 1x");
+
+  tts.finish();
+  await tick();
+  await tick();
+  assert.equal(m.state.type, "playing", "precondition: the next segment loaded");
+  const rates = backend.calls.filter((c) => c.startsWith("rate:"));
+  assert.equal(rates[rates.length - 1], "rate:2", `the podcast after the line is back at the listener's 2x: ${rates}`);
+});
+
+test("a speed tap WHILE a synth line is audible is stored, and the next line is still 1x", async () => {
+  const tts = fakeTts();
+  const { m } = make({ tts, rate: 1 });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "first line" },
+    fseg(),
+  ]), { resolveItem });
+  m.setRate(2);
+  assert.equal(m.rate, 2, "the tap is kept");
+  await m.playForay(foray([
+    { type: "narration", id: "nar-2", script: "second line" },
+    fseg(),
+  ]), { resolveItem, allowMultiple: true });
+  assert.deepEqual(tts.calls.map((c) => c.rate), [1, 1], "neither line follows the listener's speed");
 });
 
 test("resetRateForTTS/restoreRate never touch backend.setRate for a synth item", async () => {
@@ -1004,7 +1093,7 @@ test("setVoice(null) clears the choice — the plugin picks its own best tier", 
 });
 
 // MUTATION: drop `voice: this._voice` from the `speak()` call in
-// `_speakNarration` (leave only `{ rate: this._rate }`) — this test goes red.
+// `_speakNarration` (leave only `{ rate: NARRATION_RATE }`) — this test goes red.
 test("MUTATION GUARD: the voice option reaches speak() alongside rate", async () => {
   const tts = fakeTts();
   const { m } = make({ tts, voice: "the-chosen-voice", rate: 1.5 });
@@ -1014,7 +1103,7 @@ test("MUTATION GUARD: the voice option reaches speak() alongside rate", async ()
   ]), { resolveItem });
 
   assert.equal(tts.calls[0].voice, "the-chosen-voice");
-  assert.equal(tts.calls[0].rate, 1.5);
+  assert.equal(tts.calls[0].rate, 1, "1x, not the listener's 1.5x (founder, 2026-09-24)");
 });
 
 test("lastVoiceFallback reports the plugin's own voiceFallback flag", async () => {
@@ -2762,4 +2851,181 @@ test("L-05: an ordinary segment's pause still goes to the element, never to the 
   await m.pause();
   assert.deepEqual(transportsOf(tts), [], "no plugin call for a rendered segment");
   assert.ok(backend.calls.includes("pause"), `got ${backend.calls}`);
+});
+
+/* ---------- audit round 2 (2026-09-23), lane L1: the settled-state hook, the
+   narration deadline, and whose pause an interruption may resume ---------- */
+
+test("ROUND 2 player-1: onStateSettled fires after EVERY handled event, with the settled state", async () => {
+  /* The surface used to repaint only on media events, and the natural end of an
+     episode moves the reducer to `ended` with no media event after it. KILLING
+     MUTATION: delete the `_onStateSettled` call at the end of `_handle`. */
+  const seen = [];
+  const { m, backend } = make({ onStateSettled: (s) => seen.push(s.type) });
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  assert.deepEqual(seen.slice(-1), ["playing"], `the hook read the state after the effects ran: ${seen}`);
+  seen.length = 0;
+  backend.onItemEnded("natural");
+  await tick();
+  assert.deepEqual(seen, ["ended"], "the end — which produces no media event — is reported too");
+});
+
+test("ROUND 2 native-3: a spoken line that never says finished is treated as finished past its deadline", async () => {
+  /* `AVSpeechSynthesizer` stops when the audio session is taken and reports
+     nothing, so the ticker counted the Foray clock forward over silence forever.
+     Deadline = runtime x 1.5 + 10 s: a 4 s line is given up on after 16 s.
+     KILLING MUTATION: delete the deadline block in `_tickNarration`. */
+  const tts = fakeTts();
+  const scheduler = manualScheduler();
+  const { m } = make({ tts, scheduler, onNarrationTick: () => {} });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "four seconds of narration", duration_sec: 4 },
+    fseg(),
+  ]), { resolveItem });
+  assert.equal(m.currentIndex, 0, "precondition: speaking");
+  /* An AWAKE page: the ticker fires on time, every 250 ms. (One 15 s jump is
+     a suspended page, which the next test pins as NOT a deadline.) */
+  const awake = async (ms) => { for (let t = 0; t < ms; t += 250) await scheduler.advance(250); };
+  await awake(15_000);
+  assert.equal(m.currentIndex, 0, "inside the deadline nothing is assumed");
+  await awake(2_000);
+  await tick();
+  assert.equal(m.currentIndex, 1, "past it the Foray moves on");
+  assert.equal(m.state.type, "playing");
+});
+
+test("FOUNDER 2026-09-24: the narration deadline is the line's 1x runtime even when the listener is at 0.75x", async () => {
+  /* The line is spoken at 1x now, so the deadline must not stretch by the
+     listener's slower speed: 4 s x 1.5 + 10 s = 16 s, not 4/0.75 x 1.5 + 10 = 18 s.
+     KILLING MUTATION: pass `this._rate` to `narrationDeadlineSec` again — the
+     line is still "speaking" at 17 s. */
+  const tts = fakeTts();
+  const scheduler = manualScheduler();
+  const { m } = make({ tts, scheduler, rate: 0.75, onNarrationTick: () => {} });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "four seconds of narration", duration_sec: 4 },
+    fseg(),
+  ]), { resolveItem });
+  assert.equal(m.rate, 0.75, "precondition: a slow listener");
+  const awake = async (ms) => { for (let t = 0; t < ms; t += 250) await scheduler.advance(250); };
+  await awake(15_000);
+  assert.equal(m.currentIndex, 0, "inside the 1x deadline nothing is assumed");
+  await awake(2_000);
+  await tick();
+  assert.equal(m.currentIndex, 1, "past the 1x deadline (16 s) the Foray moves on");
+});
+
+test("ROUND 2 review: a narration line whose page was SUSPENDED through a call is interrupted, never advanced by the deadline", async () => {
+  /* Wall clock runs through a suspension, so the first tick after a 60 s call
+     used to read 60 s elapsed on a 4 s line, trip the deadline and start the
+     next clip with no press. KILLING MUTATION: delete the `late >
+     NARRATION_SUSPEND_GAP_MS` block in `_tickNarration`. */
+  const tts = fakeTts();
+  const scheduler = manualScheduler();
+  const { m } = make({ tts, scheduler, onNarrationTick: () => {} });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "four seconds of narration", duration_sec: 4 },
+    fseg(),
+  ]), { resolveItem });
+  await scheduler.advance(250);
+  await scheduler.advance(60_000); // the page slept through the call
+  await tick();
+  await tick();
+  assert.equal(m.currentIndex, 0, "no advance into the next clip");
+  assert.equal(m.state.type, "interrupted", "the silent synthesiser is an interruption");
+  assert.equal(m.state.wasPlaying, true, "resumable by a press or a fresh should-resume");
+});
+
+test("ROUND 2 review: a deadline that lands mid-transition retries on the next tick instead of killing the ticker", async () => {
+  /* `_onTtsFinished` declines while `_applying > 0`; `_tickNarration` used to
+     return without re-arming, so the line stalled forever. KILLING MUTATION:
+     restore the bare `this._onTtsFinished(); return;`. */
+  const tts = fakeTts();
+  const scheduler = manualScheduler();
+  const { m } = make({ tts, scheduler, onNarrationTick: () => {} });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "four seconds of narration", duration_sec: 4 },
+    fseg(),
+  ]), { resolveItem });
+  for (let t = 0; t < 16_000; t += 250) await scheduler.advance(250);
+  assert.equal(m.currentIndex, 0, "precondition: still inside the deadline");
+  m._applying++; // a transition is being applied when the deadline trips
+  for (let t = 0; t < 1_000; t += 250) await scheduler.advance(250);
+  assert.equal(m.currentIndex, 0, "declined while applying");
+  m._applying--;
+  await scheduler.advance(250);
+  await tick();
+  assert.equal(m.currentIndex, 1, "the ticker survived the refusal and advanced once it could");
+});
+
+test("ROUND 2 p-car-3: interruptionEnded(should-resume) resumes an OS interruption, never a listener's pause", async () => {
+  /* `pause()` is modelled as `interruptionBegan`, so the reducer alone cannot
+     tell the two apart, and iOS sends should-resume for both since the paused
+     app holds its session. KILLING MUTATION: `const resume = Boolean(shouldResume);`. */
+  const { m, backend } = make();
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  await m.pause();
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "interrupted", "the listener paused; a call ending does not unpause them");
+  await m.resume();
+  /* The OS took the audio: the element reports paused and not ended, which is
+     what `reconcileWithBackend` reads (this suite's fake models neither by
+     default, so the two are set here as the reconcile suite's fake sets them). */
+  backend.paused = true;
+  backend.ended = false;
+  assert.equal(await m.reconcileWithBackend("session:interruptionBegan", { interruption: true }), true);
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "playing", "an interruption the OS caused is resumed");
+});
+
+test("ROUND 2 review: a ROUTE LOSS is never resumed by a later call's should-resume (corner case #13)", async () => {
+  /* Headphones pulled / car switched off: 4a pauses. Then a call or Siri comes
+     and goes, and iOS sends should-resume to the paused app holding its
+     session. Resuming there plays through the phone speaker. KILLING
+     MUTATION: drop `this._pausedByRoute = true` from `routeChanged`, or
+     `!this._pausedByRoute` from `interruptionEnded`. */
+  const { m, backend } = make();
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  await m.routeChanged({ oldDeviceUnavailable: true });
+  assert.equal(m.state.type, "interrupted");
+  assert.equal(m.state.wasPlaying, true, "precondition: the reducer alone would resume this");
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "interrupted", "a lost route stays paused through a later call");
+
+  // A press clears it, and a real call after that resumes as before.
+  await m.resume();
+  assert.equal(m.state.type, "playing");
+  backend.paused = true;
+  backend.ended = false;
+  assert.equal(await m.reconcileWithBackend("session:interruptionBegan", { interruption: true }), true);
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "playing", "an OS interruption after a press is resumed");
+});
+
+test("ROUND 2 review: a foreground reconcile of an external stop (#263, route gone while suspended) is not resumable", async () => {
+  /* KILLING MUTATION: drop the `_pausedByRoute = true` line from
+     `reconcileWithBackend`'s externalStop branch. */
+  const { m, backend } = make();
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  backend.paused = true;
+  backend.ended = false;
+  assert.equal(await m.reconcileWithBackend("session:foreground"), true);
+  assert.equal(m.state.type, "interrupted");
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "interrupted", "cause unknown: never started without a press");
+});
+
+test("ROUND 2 review: the element's own unexplained pause (a call on an awake page) stays resumable", async () => {
+  const { m, backend } = make();
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  backend.paused = true;
+  backend.ended = false;
+  assert.equal(await m.reconcileWithBackend("unexplainedPause"), true);
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "playing");
 });

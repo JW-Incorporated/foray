@@ -207,7 +207,13 @@ export async function runCase(c, fixture, { root = REPO_ROOT } = {}) {
     are legal in the schema — the Swift runner needs the vocabulary now — but a
     JS case using one fails loudly rather than being silently skipped. */
 export const PENDING_DRIVERS = Object.freeze({
-  session: "NE-11j",
+  /* NE-03 named NE-11j here, and NE-11j recorded its session, session-invariant
+     and engine-mode families without it: SessionPolicy and EngineMode are pure
+     tables (player/engine-contract.js), asked with `call` cases, so no case
+     needed an AVAudioSession notification driven into a live object. The
+     first scenarios that do are NE-14j's interruption scenarios over the
+     manager (the JS-first interruption rewind), so the driver is NE-14j's. */
+  session: "NE-14j",
   lifecycle: "NE-14j",
   /* NE-12j recorded media-session's episode subset without it: the remote-press
      table is a pure function of a surface and the presses, asked through

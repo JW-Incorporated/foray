@@ -91,6 +91,17 @@ function playerSources() {
     .map((f) => join("player", f));
 }
 
+/* The brand faces (round-2 audit, perf-5): the Vercel dist shipped none, so
+   the web deploy 404'd every @font-face and drew the fallback typeface for
+   good. Derived from the directory, like playerSources(). */
+function fontSources() {
+  const dir = join(ROOT, "fonts");
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".woff2"))
+    .map((f) => join("fonts", f));
+}
+
 /* Joey's UX prototype. Already shared as a live link, so the Vercel deploy has
    to keep serving it or an outward-facing URL breaks. */
 const EXTRAS = ["docs/ux/foray-m3-prototype.html"];
@@ -110,7 +121,7 @@ mkdirSync(OUT, { recursive: true });
 const copied = [];
 const missing = [];
 
-for (const rel of [...SHELL, ...playerSources(), ...EXTRAS]) {
+for (const rel of [...SHELL, ...fontSources(), ...playerSources(), ...EXTRAS]) {
   const r = copy(rel);
   (r.missing ? missing : copied).push(r);
 }

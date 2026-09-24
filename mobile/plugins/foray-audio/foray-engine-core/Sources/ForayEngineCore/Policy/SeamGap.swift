@@ -9,7 +9,12 @@ import Foundation
 /// that function was written to end. The Swift side keeps the same shape: the
 /// seam rule below uses this, and the reducer's parity work (NE-07s, whose
 /// `queue-state/item-bounds-*` cases pin the same function) uses it too.
-public struct ItemBounds: Equatable {
+///
+/// Hashable and Sendable because the reducer's `QueueItemRef` carries one
+/// (NE-07s), and that ref is a Hashable, Sendable value; the conformances are
+/// synthesised, so equality stays "same start, same end", which is exactly
+/// queue-state.js's `sameBounds`.
+public struct ItemBounds: Equatable, Hashable, Sendable {
     public let startSec: Double
     public let endSec: Double
 

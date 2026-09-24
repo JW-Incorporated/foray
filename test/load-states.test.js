@@ -132,7 +132,7 @@ function matches(el, sel) {
 
 /* ---------- the mount ---------- */
 
-function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = null } = {}) {
+function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = null, readyState = "complete" } = {}) {
   const body = new El("body");
   const view = new El("main"); view.id = "view"; body.appendChild(view);
   for (const id of ["drawer", "drawer-overlay", "menu-btn", "refresh-btn", "drawer-playlists"]) {
@@ -140,6 +140,8 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
   }
   const winListeners = new Map();
   const fetched = [];
+  const reloads = [];
+  const docListeners = new Map();
   const ctx = {
     console: { ...console, warn() {}, error() {} },
     /* Only what a test routes answers; everything else (init()'s boot fetches)
@@ -147,8 +149,9 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
     fetch: (url, opts) => { fetched.push(String(url)); return fetchImpl(String(url), opts); },
     localStorage: { get length() { return 0; }, key: () => null, getItem: () => null, setItem() {}, removeItem() {} },
     document: {
-      body, documentElement: body, readyState: "complete", hidden: false,
-      addEventListener() {}, removeEventListener() {},
+      body, documentElement: body, readyState, hidden: false,
+      addEventListener(t, fn) { if (!docListeners.has(t)) docListeners.set(t, []); docListeners.get(t).push(fn); },
+      removeEventListener() {},
       createElement: (t) => new El(t),
       querySelector: (s) => {
         const str = String(s).trim();
@@ -161,7 +164,7 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
     navigator: { userAgent: "node", onLine: true },
     addEventListener(t, fn) { if (!winListeners.has(t)) winListeners.set(t, []); winListeners.get(t).push(fn); },
     removeEventListener() {},
-    location: { hash, search: "", pathname: "/", href: "https://x.test/", protocol: "https:" },
+    location: { hash, search: "", pathname: "/", href: "https://x.test/", protocol: "https:", reload: () => { reloads.push(1); } },
     history: { replaceState() {}, pushState() {}, back() {} },
     CSS: { escape: (s) => String(s) },
     URL, URLSearchParams, Math, Date, JSON, Promise, clearTimeout, queueMicrotask,
@@ -180,7 +183,7 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
   state.discover = { items: [] };
   state.taxonomy = { nodes: [{ id: "science", label: "Science" }] };
   return {
-    ctx, state, view, fetched,
+    ctx, state, view, fetched, reloads,
     html: () => view.innerHTML,
     /** Press the first "Try again" inside `scope` (default: #view). */
     retry: (scope = view) => {
@@ -189,7 +192,15 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
       btn.click();
       return true;
     },
+    /** Press the "Reload 4a" control, or report that there is none. */
+    reload: (scope = view) => {
+      const btn = scope.querySelector("[data-reload]");
+      if (!btn) return false;
+      btn.click();
+      return true;
+    },
     fire: (type) => { for (const fn of winListeners.get(type) || []) fn(); winListeners.set(type, []); },
+    fireDoc: (type) => { ctx.document.readyState = "complete"; for (const fn of docListeners.get(type) || []) fn(); docListeners.set(type, []); },
   };
 }
 
@@ -323,13 +334,15 @@ test("#/forays waits for the player instead of saying there are no Forays, and p
   assert.doesNotMatch(m.html(), /Loading…/);
 });
 
-test("#/forays with a player that never arrives says so, with Try again", async () => {
+test("#/forays with a player that is still loading says so, with Try again", async () => {
   /* The bounded wait ends in a named failure, not in an empty list. The wait is
      shortened here by firing the ready event with no bridge behind it — the same
-     `finish()` the 5 s timeout calls.
+     `finish()` the 5 s timeout calls. The document is still parsing
+     (`readyState: "loading"`), so the module may yet arrive and re-awaiting it
+     is the right offer.
      MUTATION: make the `!player` branch call renderForays()'s empty state
      instead. "The player didn't load." never appears. */
-  const m = mount({ hash: "#/forays" });
+  const m = mount({ hash: "#/forays", readyState: "loading" });
   m.state.forays = FORAYS_DOC;
   m.ctx.renderCurrentPage();
   m.fire("forayplayer:ready"); // the module "arrived" without publishing a bridge
@@ -337,6 +350,141 @@ test("#/forays with a player that never arrives says so, with Try again", async 
   assert.match(m.html(), /The player didn.t load\./);
   assert.doesNotMatch(m.html(), /0 forays|No forays right now/);
   assert.ok(m.view.querySelector("[data-retry]"), "the failure offers Try again");
+  assert.ok(!m.view.querySelector("[data-reload]"), "…and not a reload the slow module does not need");
+});
+
+test("ROUND 2 review (states-6): readyState 'interactive' is BEFORE the deferred modules run, so a slow module is offered Try again, not a reload", async () => {
+  /* The parser sets "interactive" and THEN runs the deferred/module scripts;
+     DOMContentLoaded fires after them. `readyState !== "loading"` called a
+     module still downloading "failed" and offered a reload of the whole slow
+     graph. MUTATION: put `document.readyState !== "loading"` back in
+     playerModuleFailed -> Reload 4a on the first paint; red. */
+  const m = mount({ hash: "#/forays", readyState: "interactive" });
+  m.state.forays = FORAYS_DOC;
+  m.ctx.renderCurrentPage();
+  m.fire("forayplayer:ready"); // the wait ended; the module is still downloading
+  await settle();
+  assert.match(m.html(), /The player didn.t load\./);
+  assert.ok(m.view.querySelector("[data-retry]"), "a slow module: Try again re-awaits it");
+  assert.ok(!m.view.querySelector("[data-reload]"), "no reload of a download still in progress");
+  m.fireDoc("DOMContentLoaded");   // every deferred module has now run: no bridge means it failed
+  m.ctx.renderCurrentPage();
+  m.fire("forayplayer:ready");
+  await settle();
+  assert.ok(m.view.querySelector("[data-reload]"), "after DOMContentLoaded with no bridge, it is a failure");
+});
+
+test("#/forays with a player module that FAILED offers Reload 4a, not a Try again that can never succeed (states-6)", async () => {
+  /* Audit round 2, states-6: once parsing has finished every deferred module
+     has run or failed, so a bridge still missing after the wait is a module that
+     did not load — a 404 on a stale generation, a parse error, a blocked script.
+     "Try again" re-awaited a `forayplayer:ready` that was never coming: five
+     seconds of "Loading…" and the same message, indefinitely. The remedy for a
+     broken shell is a fresh document.
+     MUTATION: make playerModuleFailed() return false. Try again comes back and
+     the reload assertion goes red. MUTATION 2: bind the button to nothing —
+     `reloads` stays empty. */
+  const m = mount({ hash: "#/forays", readyState: "complete" });
+  m.state.forays = FORAYS_DOC;
+  m.ctx.renderCurrentPage();
+  m.fire("forayplayer:ready"); // the wait ended; the module never published a bridge
+  await settle();
+  assert.match(m.html(), /The player didn.t load\./);
+  assert.match(m.html(), /Reload 4a/, `a failed module offers the reload: ${m.html()}`);
+  assert.ok(!m.view.querySelector("[data-retry]"), "no Try again for a module that will not arrive");
+  assert.ok(m.reload(), "the reload control is wired");
+  assert.strictEqual(m.reloads.length, 1, "…to location.reload()");
+});
+
+test("the three Foray documents are one artifact at boot: a missing segments.json makes the set absent, so the page says it failed and offers Try again (states-3)", async () => {
+  /* Audit round 2, states-3: init() adopted whatever came back. forays.json
+     present and segments.json 404 painted "N clips from this foray couldn't be
+     found, so they're left out" over an empty running order — a network failure
+     described as a fact about the content, with no Try again anywhere.
+     retryForayDocs already refused a half set (review 2026-09-23); the boot
+     path now applies the same rule.
+     MUTATION: delete the `applyForaySet({})` guard after the boot Promise.all.
+     `state.forays` holds the list, the page paints it, and this goes red. */
+  const m = mount({
+    hash: "#/forays", bridge: bridge(),
+    fetchImpl: diskFetch({ fail: ["data/segments.json"] }),
+  });
+  for (let i = 0; i < 400 && /data-boot-loading/.test(m.html()); i++) await settle(1);
+  assert.doesNotMatch(m.html(), /data-boot-loading/, "fixture: the boot reached route()");
+  assert.strictEqual(m.state.forays, null, "a set missing its segments is not adopted at boot");
+  assert.strictEqual(m.state.segmentSources, null, "…none of the three is");
+  assert.match(m.html(), /Couldn't load forays right now\./, `the failed page, not a list of empty Forays: ${m.html().slice(0, 300)}`);
+  assert.ok(m.view.querySelector("[data-retry]"), "and Try again is offered");
+});
+
+test("Try again on the Foray docs says it is trying, and a late answer repaints only the page that asked (races-7)", async () => {
+  /* Audit round 2, races-7: the button was bound once and painted no pending
+     state, and `renderCurrentPage()` ran whatever page was on screen when the
+     three fetches finally settled — a listener who gave up and went to Search
+     had their query and keyboard dropped tens of seconds later.
+     MUTATION 1: drop the `RETRYING_LABEL` paint — the first assertion goes red.
+     MUTATION 2: replace `if (stillHere()) renderCurrentPage()` with a bare
+     `renderCurrentPage()` — the Search page is repainted under the listener
+     and the html assertion goes red. */
+  /* All three resolvers are kept: releasing only the last one would leave the
+     Promise.all pending and pass this test against any mutation (caught by the
+     mutation run). */
+  const pending = [];
+  const release = (answer) => { for (const r of pending.splice(0)) r(answer); };
+  const m = mount({
+    hash: "#/forays", bridge: bridge(),
+    fetchImpl: (url) => (/data\/(forays|segments|segment-sources)\.json/.test(url)
+      ? new Promise((resolve) => { pending.push(resolve); })
+      : new Promise(() => {})),
+  });
+  m.state.forays = null;
+  m.state.catalog = CATALOG;
+  m.ctx.renderCurrentPage();
+  const btn = m.view.querySelector("[data-retry]");
+  assert.ok(btn, "precondition: the failure offers Try again");
+  btn.click();
+  assert.strictEqual(btn.textContent, "Trying again…", "the pressed button says what it is doing");
+  assert.strictEqual(btn.disabled, true, "…and cannot be pressed twice");
+
+  // The listener gives up and goes to Search.
+  m.ctx.location.hash = "#/shows";
+  m.ctx.renderCurrentPage();
+  assert.match(m.html(), /Alpha Show/, "fixture: the Search page is on screen");
+  /* A repaint of an idle Search page produces the SAME markup, so equality of
+     the html would not see it; count writes to #view instead. */
+  let paints = 0;
+  const desc = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(m.view), "innerHTML");
+  Object.defineProperty(m.view, "innerHTML", {
+    get() { return desc.get.call(this); },
+    set(v) { paints += 1; desc.set.call(this, v); },
+  });
+
+  // The sockets finally time out.
+  release({ ok: false, status: 503, json: async () => ({}) });
+  await settle();
+  assert.strictEqual(paints, 0, "a late failure must not repaint the page the listener moved to");
+  assert.match(m.html(), /Alpha Show/);
+});
+
+test("Try again on the Foray docs that fails again lands on the same failed page with a fresh button (races-7)", async () => {
+  /* The other half: the page that pressed the button is repainted, so its
+     once-bound Try again is re-armed rather than spent.
+     MUTATION: drop the `if (stillHere()) renderCurrentPage()` line. The button
+     stays "Trying again…" and disabled; this goes red. */
+  const m = mount({
+    hash: "#/forays", bridge: bridge(),
+    fetchImpl: (url) => (/data\/(forays|segments|segment-sources)\.json/.test(url)
+      ? Promise.resolve({ ok: false, status: 503, json: async () => ({}) })
+      : new Promise(() => {})),
+  });
+  m.state.forays = null;
+  m.ctx.renderCurrentPage();
+  assert.ok(m.retry(), "precondition: the failure offers Try again");
+  await settle();
+  const again = m.view.querySelector("[data-retry]");
+  assert.ok(again, "the failed page offers Try again again");
+  assert.strictEqual(again.disabled, false);
+  assert.doesNotMatch(m.html(), /Trying again…/, "the pending label does not outlive the attempt");
 });
 
 test("#/forays with no Forays document says it could not load them, and Try again fetches them", async () => {
@@ -389,9 +537,9 @@ test("#/forays explains what a Foray is, from the same sentence the first-run sh
   const m = mount({ hash: "#/forays", bridge: bridge() });
   m.state.forays = FORAYS_DOC;
   m.ctx.renderCurrentPage();
-  const about = vm.runInContext("FORAY_ABOUT", m.ctx);
+  const about = vm.runInContext("forayAbout()", m.ctx);
   assert.ok(about.length > 40, "the explanation is a real sentence");
-  const shown = vm.runInContext("esc(FORAY_ABOUT)", m.ctx);
+  const shown = vm.runInContext("esc(forayAbout())", m.ctx);
   assert.ok(m.html().includes(shown), "the Forays page states what a Foray is");
   /* Review 2026-09-23: not inside the sticky header, which comes back on every
      scroll-up. MUTATION: put it back as the head's `.sub`. */
@@ -399,13 +547,13 @@ test("#/forays explains what a Foray is, from the same sentence the first-run sh
   assert.ok(head, "fixture: the page has its header");
   assert.ok(!head[0].includes(shown), "the sentence is below the sticky header, not in it");
   assert.doesNotMatch(m.html(), /\b\d+ forays?\b/, "and states no count in its place");
-  assert.match(APP_SRC, /ddEl\("p", "fy-sheet-sub", FORAY_ABOUT\)/, "the first-run sheet reads the same constant");
+  assert.match(APP_SRC, /ddEl\("p", "fy-sheet-sub", forayAbout\(\)\)/, "the first-run sheet reads the same sentence");
 });
 
 test("a Foray page whose player failed has a way back to the list and a Try again", async () => {
   /* MUTATION: restore the bare "The player didn't load — reload the page." note.
      There is no ‹ and no retry, and this goes red. */
-  const m = mount({ hash: "#/foray/f1" });
+  const m = mount({ hash: "#/foray/f1", readyState: "loading" });
   m.state.forays = FORAYS_DOC;
   m.ctx.renderCurrentPage();
   assert.ok(m.view.querySelector(".back"), "the loading page has a way back");
@@ -416,6 +564,17 @@ test("a Foray page whose player failed has a way back to the list and a Try agai
   const back = m.view.querySelector(".back");
   assert.ok(back && back.attrs.href === "#/forays", "‹ goes back to the Forays list");
   assert.ok(m.view.querySelector("[data-retry]"));
+
+  /* And the module that FAILED (parsing finished, no bridge) gets the reload
+     control on this page too, still with its way back (states-6). */
+  const f = mount({ hash: "#/foray/f1", readyState: "complete" });
+  f.state.forays = FORAYS_DOC;
+  f.ctx.renderCurrentPage();
+  f.fire("forayplayer:ready");
+  await settle();
+  assert.match(f.html(), /Reload 4a/);
+  assert.ok(f.view.querySelector(".back"), "the failed page keeps its way back");
+  assert.ok(f.reload() && f.reloads.length === 1, "Reload 4a reloads");
 });
 
 /* ==================================================================== */
@@ -476,7 +635,10 @@ function mountSearch({ catalogue = [], directory = [], directoryError = null, ca
   const said = [];
   let text = "";
   Object.defineProperty(note, "textContent", { get: () => text, set: (v) => { text = String(v); said.push(text); } });
-  return { ...m, calls, note, said, offer: () => m.view.querySelector("#sh-empty-offer") };
+  /* `partial` is where the failure line lives since audit round 2 (states-7):
+     above the rows, painted whether or not the list is empty. `offer` keeps
+     the subject chips. */
+  return { ...m, calls, note, said, offer: () => m.view.querySelector("#sh-empty-offer"), partial: () => m.view.querySelector("#sh-partial-note") };
 }
 
 test("a keystroke with no local match says it is searching — never 'not found' — and the rows arrive under it", async () => {
@@ -487,7 +649,7 @@ test("a keystroke with no local match says it is searching — never 'not found'
      "No shows found" sentence. The first assertion goes red. */
   const m = mountSearch({ catalogue: [{ show_id: "hub", title: "Huberman Lab" }], catalogueDelayMs: 50 });
   m.ctx.onShowSearchInput("huberman");
-  assert.match(m.note.textContent, /Searching for "huberman"/, `the keystroke must not claim an answer: "${m.note.textContent}"`);
+  assert.match(m.note.textContent, /Searching for \u201chuberman\u201d/, `the keystroke must not claim an answer: "${m.note.textContent}"`);
   await sleep(450);
   assert.match(m.view.querySelector("#sh-results").innerHTML, /Huberman Lab/, "the catalogue's row lands");
   assert.ok(m.note.hidden, "and the note steps aside for it");
@@ -503,9 +665,10 @@ test("a search that every pass answered with nothing says 'No shows found' — s
   const m = mountSearch();
   m.ctx.renderShowSearchResults("zzqx");
   await sleep(150);
-  assert.strictEqual(m.note.textContent, 'No shows found for "zzqx".');
+  assert.strictEqual(m.note.textContent, "No shows found for \u201czzqx\u201d.");
   assert.ok(!m.note.hidden);
   assert.ok(m.offer().hidden, "every pass answered, and there is nothing else to offer");
+  assert.ok(m.partial().hidden, "and nothing failed, so no failure line");
 });
 
 test("an empty answer behind a pass that FAILED says part of the search did not load, and Try again re-runs it", async () => {
@@ -518,9 +681,9 @@ test("an empty answer behind a pass that FAILED says part of the search did not 
   m.ctx.renderShowSearchResults("zzqx");
   await sleep(150);
   assert.match(m.note.textContent, /No shows found/);
-  assert.match(m.offer().innerHTML, /Part of this search didn't load\./);
+  assert.match(m.partial().innerHTML, /Part of this search didn't load\./);
   const before = m.calls.filter((u) => u.includes("fallthrough=1")).length;
-  assert.ok(m.retry(m.offer()), "the failure offers Try again");
+  assert.ok(m.retry(m.partial()), "the failure offers Try again");
   await sleep(150);
   assert.ok(m.calls.filter((u) => u.includes("fallthrough=1")).length > before, "Try again asks the directory again");
 });
@@ -533,10 +696,10 @@ test("REVIEW: a search whose requests never answer ends as a failed search with 
   const m = mountSearch({ hangApi: true });
   vm.runInContext("API_DEADLINE_MS = 30", m.ctx);
   m.ctx.renderShowSearchResults("zzqx");
-  assert.match(m.note.textContent, /Searching for "zzqx"/, "precondition: it starts out searching");
+  assert.match(m.note.textContent, /Searching for \u201czzqx\u201d/, "precondition: it starts out searching");
   await sleep(250);
   assert.doesNotMatch(m.note.textContent, /Searching/, `the note must end: "${m.note.textContent}"`);
-  assert.match(m.offer().innerHTML, /Part of this search didn't load\./, "and say the search did not load, with Try again");
+  assert.match(m.partial().innerHTML, /Part of this search didn't load\./, "and say the search did not load, with Try again");
 });
 
 test("REVIEW: a playlist build whose search documents never arrive still runs, and the button comes back", async () => {
@@ -570,7 +733,7 @@ test("a subject's own name that finds no show by title offers that subject's cat
   const m = mountSearch({ taxonomy, catalog });
   m.ctx.renderShowSearchResults("Science");
   await sleep(150);
-  assert.match(m.note.textContent, /No shows found for "Science"/);
+  assert.match(m.note.textContent, /No shows found for \u201cScience\u201d/);
   const html = m.offer().innerHTML;
   assert.match(html, /href="#\/category\/science%2Fphysics"/, `the category that holds a show is offered: ${html}`);
   assert.doesNotMatch(html, /geology/, "a category with no shows is not offered — it would be another dead end");
@@ -632,6 +795,7 @@ async function forayBridge() {
     stripModel: strip.stripModel,
     fmtClock: resolve.fmtClock,
     fmtSpan: resolve.fmtSpan,
+    narratorName: strip.NARRATOR_NAME,
     playbackRate: () => 1, rateStops: () => [1], setPlaybackRate() {},
     watchForay: () => null, forayResume: () => null,
   };
@@ -671,19 +835,45 @@ test("a narrated Foray's header counts the strip's clips, not every queue item, 
      tape count is still the strip model's, never a count of its own. */
   const narr = r.playable.length - model.segmentCount;
   assert.ok(narr > 0, "precondition: a narrated Foray");
-  assert.match(sub, new RegExp(`^${r.playable.length} clips: ${model.segmentCount} from ${model.shows.length} shows? and ${narr} from 4a(&#39;|')s narrator`), `header: "${sub}"`);
+  assert.match(sub, new RegExp(`^${r.playable.length} clips: ${model.segmentCount} from ${model.shows.length} shows? and ${narr} from 4a(&#39;|')s AI narrator`), `header: "${sub}"`);
   assert.ok(strip.stripSummary(model).startsWith(`${r.playable.length} clips: ${model.segmentCount} from`), "the strip says the same numbers");
   assert.match(sub, /· about \d+ min$/, `an estimated runtime says so: "${sub}"`);
   assert.match(m.view.querySelector("#fy-total").textContent, /^~\d/, "the clock beside the scrubber carries the same hedge");
 });
 
-test("a Foray of measured tape keeps its clock", async () => {
+test("a Foray of measured tape states its length in minutes, unhedged", async () => {
   /* The other side of the estimate rule: a runtime that IS measured is not
-     hedged. MUTATION: make forayRuntimeLabel always return "about …". Red. */
+     hedged. MUTATION: make forayRuntimeLabel always return "about …". Red.
+     And one dialect (audit round 2, p-foray-8): the header used to print a
+     measured runtime as a clock ("51:22") and an estimated one in minutes.
+     MUTATION 2: return `player.fmtClock(totalSec)` for a measured runtime. Red. */
   const m = await mountForay("capital-types-1");
   const sub = headSub(m.html());
-  assert.match(sub, /^\d+ clips from \d+ shows · \d+:\d{2}(:\d{2})?$/, `header: "${sub}"`);
+  assert.match(sub, /^\d+ clips from \d+ shows · \d+ min$/, `header: "${sub}"`);
   assert.doesNotMatch(sub, /about|narration/);
+});
+
+test("a finished Foray's page says 'Played' with 'Play again', not the page of one never opened (honesty-2)", async () => {
+  /* Frozen fixture (never a live id). The player answers a FINISHED point only
+     when asked with `includeFinished`, which is how the page tells "Played"
+     from "never opened". KILLING MUTATION: drop `includeFinished: true` from
+     renderForay's forayResume call (the fake below then answers null, as the
+     real one does) — no banner, red. */
+  const FZ = "tools/foray/fixtures/frozen/data";
+  const b = await forayBridge();
+  b.forayResume = (_id, opts = {}) => opts.includeFinished
+    ? { finished: true, percent: 100, elapsedSec: 3000, index: 21, remainingSec: 0, label: "Played", drift: "unverified" }
+    : null;
+  const m = mount({ hash: "#/foray/capital-types-1", bridge: b });
+  m.state.forays = readData(`${FZ}/forays.json`);
+  m.state.segments = readData(`${FZ}/segments.json`);
+  m.state.segmentSources = readData(`${FZ}/segment-sources.json`);
+  m.ctx.renderCurrentPage();
+  await settle(10);
+  const html = m.html();
+  assert.match(html, /class="fy-resume fy-played" id="fy-resume"[\s\S]*?>Played<\/span>[\s\S]*?id="fy-restart">Play again<\/button>/, html.slice(0, 1500));
+  assert.doesNotMatch(html, /Jump back in at/, "a finished Foray is not offered as a place to resume");
+  assert.equal(m.state.forayResume, null, "and the main button starts from the top, as before");
 });
 
 test("a clip missing from the segment pool is not promised as 'listed below'", async () => {
@@ -768,11 +958,12 @@ test("'played' counts history OR a stored position, so it cannot fall as the his
   assert.strictEqual(m.ctx.hasOpened("rotatedOut", history), true, "listened to, then evicted from the ring: still played");
   assert.strictEqual(m.ctx.hasOpened("sampled", history), true, "opened for a few seconds still counts as opened");
   assert.strictEqual(m.ctx.hasOpened("never", history), false);
-  /* And the playlist page reads it for BOTH the count and the next marker, so
-     the two cannot disagree. */
+  /* The playlist page reads it for the next marker. The COUNT no longer does
+     (audit round 2, honesty-6): "N played" means finished, the same word the
+     rows use, so it reads the player's own verdict per row. */
   const body = /function renderPlaylistDetail\(id\) \{[\s\S]*?\n\}/.exec(APP_SRC)[0];
   assert.match(body, /const nextIdx = rows\.findIndex\(r => r\.state === "live" && !hasOpened\(r\.item\.id, history\)\);/);
-  assert.match(body, /const played = rows\.filter\(r => hasOpened\(r\.item\.id, history\)\)\.length;/);
+  assert.match(body, /const played = rows\.filter\(r => rowProgress\(r\.item\)\?\.state === "played"\)\.length;/);
 });
 
 test("a subject card states a total duration only when every episode has one", () => {
@@ -786,7 +977,7 @@ test("a subject card states a total duration only when every episode has one", (
   const kicker = (items) => (/<p class="mc-kicker">([\s\S]*?)<\/p>/.exec(
     m.ctx.miniCard({ branch: "history", role: "anchor", item: items[0], items }),
   ) || [])[1];
-  assert.match(kicker([item("a", 40), item("b", 40)]), /^2 episodes · 1h 20m$/);
+  assert.match(kicker([item("a", 40), item("b", 40)]), /^2 episodes · 1 hr 20 min$/);
   assert.strictEqual(kicker([item("a", 40), item("b", 40), item("c", null)]), "3 episodes",
     "an unknown length means no total, not a smaller one");
 });
@@ -806,7 +997,13 @@ test("a play button whose play() throws or refuses reports it to the player bar"
     ["refuses", async () => false],
   ]) {
     const reports = [];
-    const m = mount({ bridge: { isCurrent: () => false, play, reportPlayFailure: (e) => reports.push(e) } });
+    /* The real player makes the tapped item current before its load answers
+       (setNowPlaying), so a refusal of THIS item is a failure; a refusal while
+       another item is current is a superseded play and is silent (round-2
+       review of p-impatient-2 — test/playable-episodes.test.js). */
+    let cur = null;
+    const tracked = async (item) => { cur = item.id; return play(item); };
+    const m = mount({ bridge: { isCurrent: (id) => id === cur, play: tracked, reportPlayFailure: (e) => reports.push(e) } });
     m.state.itemIndex = { ep1: { id: "ep1", title: "E", audio_url: "https://x.test/e.mp3" } };
     m.view.innerHTML = `<div><button data-play="ep1">▶</button></div>`;
     m.ctx.bindPlay(m.view);

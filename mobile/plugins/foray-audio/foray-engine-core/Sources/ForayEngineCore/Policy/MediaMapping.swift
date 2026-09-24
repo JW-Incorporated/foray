@@ -246,13 +246,18 @@ public enum MediaMapping {
         public let playbackRate: Double
     }
 
-    /// `mediaPositionState({durationSec, positionSec, playbackRate})`: nil when
-    /// there is no finite positive duration ("do not report"); otherwise the
-    /// position clamped into `[0, duration]` and a rate that is a finite
-    /// positive number or 1. A nil argument is "not a number", which every
-    /// JavaScript branch treats as its default.
+    /// `mediaPositionState({durationSec, positionSec, playbackRate, buffering})`:
+    /// nil when there is no finite positive duration ("do not report");
+    /// otherwise the position clamped into `[0, duration]` and a rate that is a
+    /// finite positive number or 1. A nil argument is "not a number", which
+    /// every JavaScript branch treats as its default.
+    ///
+    /// A STALL STOPS THE CLOCK (audit round 2, p-car-8): while `buffering` the
+    /// rate is 0, which is what Apple's `MPNowPlayingInfoPropertyPlaybackRate`
+    /// means by "halted for data". Reporting the listener's rate over silence
+    /// is what made the lock screen and the car count on and snap back.
     public static func positionState(durationSec: Double?, positionSec: Double? = 0,
-                                     playbackRate: Double? = 1) -> PositionState? {
+                                     playbackRate: Double? = 1, buffering: Bool = false) -> PositionState? {
         guard let duration = finite(durationSec), duration > 0 else { return nil }
         let raw = finite(positionSec) ?? 0
         // Math.min(Math.max(0, raw), duration). Written out, not Swift.max:
@@ -264,16 +269,20 @@ public enum MediaMapping {
             guard let r = finite(playbackRate), r > 0 else { return 1 }
             return r
         }()
-        return PositionState(duration: duration, position: position, playbackRate: rate)
+        return PositionState(duration: duration, position: position, playbackRate: buffering ? 0 : rate)
     }
 
-    /// `mediaPlaybackState({hasItem, playing, inSeamGap, ended})`. A finished
-    /// Foray is `none` even while "playing"; the authored seam beat reads as
-    /// playing (media-session.js §4).
+    /// `mediaPlaybackState({hasItem, playing, inSeamGap, ended, foray})`. A
+    /// finished FORAY is `none` even while "playing" (a play button that can
+    /// do nothing is worse than none); a finished ordinary EPISODE is `paused`
+    /// (audit round 2, p-car-6: play from ended starts it over, and `none` at
+    /// the end of the last episode took the whole transport off the car). The
+    /// authored seam beat reads as playing (media-session.js §4).
     public static func playbackState(hasItem: Bool = false, playing: Bool = false,
-                                     inSeamGap: Bool = false, ended: Bool = false) -> String {
+                                     inSeamGap: Bool = false, ended: Bool = false,
+                                     foray: Bool = false) -> String {
         if !hasItem { return none }
-        if ended { return none }
+        if ended { return foray ? none : paused }
         if playing || inSeamGap { return MediaMapping.playing }
         return paused
     }
@@ -293,15 +302,19 @@ public enum MediaMapping {
         public var durationSec: Double?
         public var positionSec: Double?
         public var playbackRate: Double?
+        /// The element is halted for data: the clock reports rate 0 (p-car-8).
+        public var buffering: Bool
         public var playing: Bool
         public var inSeamGap: Bool
         public var ended: Bool
+        /// The item is a Foray, whose end reports `none` (an episode's, `paused`).
+        public var foray: Bool
 
         public init(item: Item? = nil, nextItem: Item? = nil, forayTitle: String? = "", index: Double? = 0,
                     total: Double? = 0, showArtworkUrl: String? = nil,
                     appArtworkUrl: String? = MediaMapping.appArtworkUrl, durationSec: Double? = nil,
-                    positionSec: Double? = 0, playbackRate: Double? = 1, playing: Bool = false,
-                    inSeamGap: Bool = false, ended: Bool = false) {
+                    positionSec: Double? = 0, playbackRate: Double? = 1, buffering: Bool = false,
+                    playing: Bool = false, inSeamGap: Bool = false, ended: Bool = false, foray: Bool = false) {
             self.item = item
             self.nextItem = nextItem
             self.forayTitle = forayTitle
@@ -312,9 +325,11 @@ public enum MediaMapping {
             self.durationSec = durationSec
             self.positionSec = positionSec
             self.playbackRate = playbackRate
+            self.buffering = buffering
             self.playing = playing
             self.inSeamGap = inSeamGap
             self.ended = ended
+            self.foray = foray
         }
     }
 
@@ -331,9 +346,9 @@ public enum MediaMapping {
                                index: view.index, total: view.total, showArtworkUrl: view.showArtworkUrl,
                                appArtworkUrl: view.appArtworkUrl),
             positionState: positionState(durationSec: view.durationSec, positionSec: view.positionSec,
-                                         playbackRate: view.playbackRate),
+                                         playbackRate: view.playbackRate, buffering: view.buffering),
             playbackState: playbackState(hasItem: view.item != nil, playing: view.playing,
-                                         inSeamGap: view.inSeamGap, ended: view.ended))
+                                         inSeamGap: view.inSeamGap, ended: view.ended, foray: view.foray))
     }
 
     // MARK: - Remote commands: which exist, and what a press means

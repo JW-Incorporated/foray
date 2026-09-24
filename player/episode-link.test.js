@@ -29,9 +29,11 @@ const CLIENT = fs.readFileSync(CLIENT_PATH, "utf8");
 function codeOnly(src) {
   return src
     .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/`(?:\\[\s\S]|[^`\\])*`/g, '""')
-    .replace(/'(?:\\.|[^'\\])*'/g, '""')
-    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    /* One pass over the three quote kinds, whichever opens first: three passes
+       read an apostrophe INSIDE a double-quoted literal ("couldn't") as opening
+       a single-quoted string and blinded every assertion after it (audit round
+       2, copy-6). */
+    .replace(/`(?:\\[\s\S]|[^`\\])*`|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g, '""')
     .replace(/(^|[\s(,;{}=])\/\/[^\n]*/gm, "$1");
 }
 
@@ -70,8 +72,8 @@ test("the mini-player's episode link is never built as target=\"_blank\" / windo
 function codeOnlyKeepTemplates(src) {
   return src
     .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/'(?:\\.|[^'\\])*'/g, '""')
-    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    /* One pass over both quote kinds, whichever opens first (see codeOnly). */
+    .replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g, '""')
     .replace(/(^|[\s(,;{}=])\/\/[^\n]*/gm, "$1");
 }
 

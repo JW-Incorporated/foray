@@ -13,7 +13,7 @@ import {
   KEY_PREFIX, MIN_RESUME_SEC, NEAR_END_SEC, MAX_AGE_H, SAVE_EVERY_SEC,
   ForayProgressStore, progressKey, makeProgress, isProgressRecord,
   readProgress, writeProgress, clearProgress, listProgress,
-  resumePoint, percentDone, remainingLabel, reconcileSegment,
+  resumePoint, percentDone, remainingLabel, progressLabel, PLAYED_LABEL, reconcileSegment,
   DRIFT_EXACT, DRIFT_MOVED, DRIFT_DROPPED, DRIFT_UNANCHORED, DRIFT_UNVERIFIED,
 } from "./foray-progress.js";
 
@@ -262,6 +262,40 @@ test("remainingLabel never says 0 min left", () => {
   assert.equal(remainingLabel(0), "finished");
   assert.equal(remainingLabel(-5), "finished");
   assert.equal(remainingLabel(null), "finished");
+});
+
+test("an estimated runtime says 'about' (states-11); under a minute is already a hedge", () => {
+  /* MUTATION (killed): drop the `estimated` prefix — the first assertion is red. */
+  assert.equal(remainingLabel(60 * 32, { estimated: true }), "about 32 min left");
+  assert.equal(remainingLabel(60 * 32, { estimated: false }), "32 min left");
+  assert.equal(remainingLabel(20, { estimated: true }), "under a minute left");
+});
+
+test("progressLabel: 'Played' for a finished Foray, the minutes otherwise, nothing for no point (honesty-2)", () => {
+  /* The episode's word, so one listener who finished one of each reads one
+     vocabulary. MUTATION (killed): return remainingLabel for a finished point —
+     it says "finished", red. */
+  assert.equal(PLAYED_LABEL, "Played");
+  assert.equal(progressLabel({ finished: true, remainingSec: 0 }), "Played");
+  assert.equal(progressLabel({ finished: false, remainingSec: 600 }), "10 min left");
+  assert.equal(progressLabel({ finished: false, remainingSec: 600 }, { estimated: true }), "about 10 min left");
+  assert.equal(progressLabel(null), "");
+});
+
+test("markFinished writes a row that reads back finished at 100%, past the throttle (honesty-2)", () => {
+  /* Reaching the end used to CLEAR the row, so a finished Foray looked exactly
+     like one never opened. MUTATION (killed): make markFinished call
+     `this.clear(forayId)` — `get` is null and this is red. */
+  const s = new FakeStorage();
+  const store = new ForayProgressStore({ storage: s });
+  assert.equal(store.save({ forayId: ID, elapsedSec: TOTAL - 3, totalSec: TOTAL }), true);
+  assert.equal(store.markFinished({ forayId: ID, title: "t", totalSec: TOTAL, index: 31, segmentId: "last", intoSec: 90 }), true,
+    "not held back by the 5 s throttle, though the playhead moved only 3 s");
+  assert.equal(store.get(ID).elapsed_sec, TOTAL, "the row is AT the end");
+  const point = resumePoint(store.get(ID), { totalSec: TOTAL });
+  assert.equal(point.finished, true);
+  assert.equal(point.percent, 100);
+  assert.equal(progressLabel(point), "Played");
 });
 
 /* ---------- the throttled writer ---------- */

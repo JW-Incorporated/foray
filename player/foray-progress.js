@@ -368,10 +368,40 @@ export function percentDone(elapsedSec, totalSec) {
  * precision the segment boundaries do not have. Under a minute it says so
  * rather than rounding to "0 min left".
  */
-export function remainingLabel(remainingSec) {
+export function remainingLabel(remainingSec, { estimated = false } = {}) {
   if (!isNum(remainingSec) || remainingSec <= 0) return "finished";
   if (remainingSec < 60) return "under a minute left";
-  return `${Math.round(remainingSec / 60)} min left`;
+  /* Past the hour it rolls over — "1 hr 5 min left", never "65 min left" — in
+     the one duration dialect every label in 4a uses (audit round 2, copy-2);
+     the rule is foray-resolve's `fmtSpan`, written here as well because this
+     module does not import the resolver for a string. */
+  const mins = Math.round(remainingSec / 60);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  /* AN ESTIMATE SAYS SO (audit round 2, states-11). A narrated Foray's total is
+     partly a script-length projection; the page header already read "about
+     41 min" while this said "32 min left" from the same number. "Under a
+     minute" is its own hedge and needs no "about". */
+  const about = estimated ? "about " : "";
+  return h ? `${about}${h} hr${m ? ` ${m} min` : ""} left` : `${about}${m} min left`;
+}
+
+/** What a finished Foray's row says — the word a finished episode's row says
+    (`episode-progress.js` `episodeProgress`), so one listener who has finished
+    one of each reads one vocabulary (audit round 2, honesty-2). */
+export const PLAYED_LABEL = "Played";
+
+/**
+ * The one progress label for a Foray's resume point: "Played" when finished,
+ * "N min left" (hedged when estimated) otherwise, "" for no point. Every
+ * surface that labels a Foray's progress — Jump back in, Library, the Forays
+ * list, the Foray page — reads this, so none of them can go back to showing a
+ * finished Foray as untouched.
+ */
+export function progressLabel(point, { estimated = false } = {}) {
+  if (!point) return "";
+  if (point.finished) return PLAYED_LABEL;
+  return remainingLabel(point.remainingSec, { estimated });
 }
 
 /* ---------- the writer ---------- */
@@ -379,6 +409,32 @@ export function remainingLabel(remainingSec) {
 /** How often a live playhead is written down. The listener loses at most this
     much on a crash, and it is far inside corner case #17's 15-second bar. */
 export const SAVE_EVERY_SEC = 5;
+
+/**
+ * Whether a Foray's playhead should be written now: the throttle inside
+ * `ForayProgressStore.save`, lifted out as a pure function in NE-09 so the
+ * native engine's ResumeRules port is checked against it (the `resume-rules`
+ * fixtures, foray-cadence.json). No behaviour change: `save` asks this with
+ * exactly the values it used to test inline.
+ *
+ *  - AN UNKNOWN POSITION NEVER OVERWRITES A KNOWN ONE (#263): an elapsed value
+ *    that is not a finite number writes nothing, so the last good row stands.
+ *  - `force` (pause, page-hide: the moments the next tick may never come)
+ *    writes any known position.
+ *  - Otherwise the clock must have moved `everySec` since the last write of
+ *    this Foray; the first write is due at once. Written as `!(d < everySec)`,
+ *    the negation of the old skip test, so it stays that test exactly.
+ *
+ * @param {number|null|undefined} lastWritten  the elapsed value last written
+ * @param {*} elapsedSec
+ * @param {object} [opts]  `{everySec = SAVE_EVERY_SEC, force = false}`
+ * @returns {boolean}
+ */
+export function forayWriteDue(lastWritten, elapsedSec, { everySec = SAVE_EVERY_SEC, force = false } = {}) {
+  if (!isNum(elapsedSec)) return false;
+  if (force || lastWritten == null) return true;
+  return !(Math.abs(elapsedSec - lastWritten) < everySec);
+}
 
 /**
  * A throttled writer, so the player can call `save()` on every position tick
@@ -421,8 +477,7 @@ export class ForayProgressStore {
     segmentId = null, intoSec = 0, force = false, now = new Date(),
   }) {
     if (!nonEmpty(forayId) || !isNum(elapsedSec) || !isNum(totalSec) || totalSec <= 0) return false;
-    const last = this._lastWritten.get(forayId);
-    if (!force && last != null && Math.abs(elapsedSec - last) < this.everySec) return false;
+    if (!forayWriteDue(this._lastWritten.get(forayId), elapsedSec, { everySec: this.everySec, force })) return false;
     const ok = writeProgress(this.storage, makeProgress({
       forayId, title, elapsedSec, totalSec, index, segmentId, intoSec, now,
     }));
@@ -434,6 +489,22 @@ export class ForayProgressStore {
        defect; a zero here is the claim that it did not happen. */
     else this.refusedWrites += 1;
     return ok;
+  }
+
+  /**
+   * Record that the listener reached the END of a Foray (audit round 2,
+   * honesty-2). A row at the Foray's own total, written past the throttle, which
+   * `resumePoint` reads back as `finished` — so the Forays list, Library and the
+   * Foray page can say "Played", the way a finished episode's rows do.
+   *
+   * This REPLACES clearing the row at the end. Clearing was chosen (#193) so a
+   * finished Foray would not keep offering "0 min left"; `progressLabel` now
+   * says "Played" instead, and Jump back in leaves finished Forays out (founder
+   * question 3, round 2), so the reason is gone and the cost was that a
+   * finished Foray looked exactly like one never opened.
+   */
+  markFinished({ forayId, title, totalSec, index = -1, segmentId = null, intoSec = 0, now = new Date() }) {
+    return this.save({ forayId, title, elapsedSec: totalSec, totalSec, index, segmentId, intoSec, force: true, now });
   }
 
   /** How many writes this store has been refused. Non-zero means the listener's

@@ -243,8 +243,15 @@ after" timeline because the process only knows the current item's metadata, and
 `durationMs`/`positionMs` spanning the whole Foray so a scrub lands on the Foray's own
 clock — do not need restating for a different reason: `MPRemoteCommandCenter` does not
 model a timeline the way Media3's `Player` interface does. There is no `hasNextItem()`
-capability query to satisfy; `nextTrackCommand.isEnabled` is a plain boolean the plugin
-sets directly from `payload.hasNext`. So iOS needed no three-window construction at
+capability query to satisfy; `nextTrackCommand.isEnabled` is a boolean the plugin
+sets from `payload.hasNext` — **ANDed with the route since audit round 2
+(p-impatient-3)**: iOS draws one control per side and prefers ⏮/⏭ over the ↺15/30↻
+pair whenever the track commands are enabled, so they are enabled only while a
+headset, a Bluetooth stack or a car is on the route (`trackCommandsAllowed`), and the
+lock screen on the built-in speaker keeps the skip pair whatever Up Next holds. The
+page's track handlers are not mirrored onto WebKit's session either
+(`UNMIRRORED_ACTIONS`). `docs/DECISIONS.md` 2026-09-23 (the platform contract) has
+the ruling and the device check. So iOS needed no three-window construction at
 all — the same `can*`/`has*` flags that already existed for Android's `WebViewPlayer`
 map onto Control Center's command-enablement one field at a time.
 
@@ -687,6 +694,27 @@ plugin's client can read 15 / 30. A press on either steps 15 / 30 once.
    this fix it was no row — the `session … sessionActivated` / `sessionReleased` /
    `nowPlayingReasserted` / `began-while-held` rows, and the `nowplaying …
    state=paused via=state` row.
+
+Added by audit round 2 (`docs/DECISIONS.md` 2026-09-23, the platform contract):
+
+9. **The pair with Up Next full.** Queue two episodes, play a third, lock: the
+   right-hand button must be 30↻, not ⏭, and it must not change as Up Next drains.
+   With AirPods in: a double-tap skips to the next queued episode (and the Up Next
+   page, opened after, shows the skipped one gone); a triple-tap forty minutes in
+   RESTARTS the episode. In the car, during TAPE: the wheel's next/previous must
+   work. If they are dead during tape but alive during narration, WebKit's later
+   command write is winning on the shared command centre — the one branch the
+   ruling could not settle read-only; the fix is a re-assert of availability on
+   WebKit's play/pause.
+10. **One session mode.** Start Maps navigation, play a Foray: a spoken prompt during
+    a clip and one during a narration line must both PAUSE 4a and resume it after.
+    If the clip is ducked instead, WebKit reset the mode when its element started.
+11. **No resume from a listener's pause.** Pause 4a, lock, let a Maps prompt (or a
+    call) come and go: 4a must stay paused.
+12. **Dynamic Type.** Settings › Accessibility › Display & Text Size › Larger Text at
+    xxxLarge, reopen 4a: rows, tab labels and the sheet grow; the top bar title does
+    not clip its first word. Back to default: the page returns to 1× without a
+    relaunch.
 
 ### 8.6 What was merged, and what was deleted
 

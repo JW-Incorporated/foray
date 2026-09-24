@@ -114,14 +114,16 @@ public enum MediaEpisodeFamily {
                 if view == .null { return .threw("TypeError") }
                 let v = MediaEpisodeFamily.decodeView(view)
                 return .returned(MediaEpisodeFamily.encode(MediaMapping.positionState(
-                    durationSec: v.durationSec, positionSec: v.positionSec, playbackRate: v.playbackRate)))
+                    durationSec: v.durationSec, positionSec: v.positionSec, playbackRate: v.playbackRate,
+                    buffering: v.buffering)))
             },
             "mediaPlaybackState": { args in
                 let view = MediaEpisodeFamily.arg(args, 0)
                 if view == .null { return .threw("TypeError") }
                 return .returned(.string(MediaMapping.playbackState(
                     hasItem: view["hasItem"].isTruthy, playing: view["playing"].isTruthy,
-                    inSeamGap: view["inSeamGap"].isTruthy, ended: view["ended"].isTruthy)))
+                    inSeamGap: view["inSeamGap"].isTruthy, ended: view["ended"].isTruthy,
+                    foray: view["foray"].isTruthy)))
             },
             "mediaSessionView": { args in
                 // `view = {}`, then `mediaMetadata(view)` destructures it: null throws.
@@ -155,9 +157,12 @@ public enum MediaEpisodeFamily {
             durationSec: view["durationSec"].numberValue,
             positionSec: numberOrDefault("positionSec", 0),
             playbackRate: numberOrDefault("playbackRate", 1),
+            // `buffering ? 0 : rate`: JavaScript truthiness, like the flags below.
+            buffering: view["buffering"].isTruthy,
             playing: view["playing"].isTruthy,
             inSeamGap: view["inSeamGap"].isTruthy,
-            ended: view["ended"].isTruthy)
+            ended: view["ended"].isTruthy,
+            foray: view["foray"].isTruthy)
     }
 
     /// `appArtworkUrl = APP_ARTWORK_URL`: absent is our icon, an explicit

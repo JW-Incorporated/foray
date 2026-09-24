@@ -1901,7 +1901,31 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          If this goes red again and the cause is item-tags rather than a feature step,
          the instruction from the 2026-09-04 note stands unchanged: build the df
          sidecar, do not raise it a fourth time. */
-      r.total < 2.5 * 1024 * 1024,
+      /* RAISED 2.5 -> 2.7 MB on 2026-09-24, NE-11j (PR #780), the fourth
+         re-baseline, and it is the case the note above allows (a feature step),
+         not the one it forbids (item-tags).
+
+         WHAT MOVED: `player/engine-contract.js`, the page half of the native
+         engine's contract (the founder's "Full native engine", 2026-09-23). The
+         page preloads it (index.html), so it ships: 1.7 KB -> 54 KB of source,
+         ~26 KB minified. The bundle went ~2.49 -> 2.514 MB (LF, minified, as CI
+         measures it) and this line fired at 2.51.
+
+         WHY THE LOAD WAS ALREADY THERE, measured: since the 2026-09-12 raise,
+         `data/item-tags.json` moved 406.0 -> 407.2 KB raw and
+         `data/show-index.tsv` not at all; app.js (470 -> 892 KB raw),
+         styles.css (113 -> 207 KB) and player/client.js (117 -> 248 KB) are the
+         ~270 KB. Feature code, every byte of it; the unbounded half this alarm
+         was written for has not moved. The code half is what it now measures,
+         which the 2026-09-04 note predicted.
+
+         WHAT 2.7 MB BUYS: ~196 KB over today, ~60 nights of item-tags or ~10
+         days of feature code at the rate of the twelve days behind it, and it
+         still fires ~300 KB before the 3 MB cap. If the NEXT red is feature code
+         again, the lever is not a fifth raise but taking build-only code out of
+         the shipped modules (engine-contract.js renders the contract schema for
+         tools/parity/contract-schema.mjs; the page never calls that half). */
+      r.total < 2.7 * 1024 * 1024,
       `the bundle is ${(r.total / 1024 / 1024).toFixed(2)} MB, leaving ` +
         `${((MAX_BYTES - r.total) / 1024).toFixed(0)} KB of headroom under the 3 MB cap`
     );
@@ -2094,8 +2118,12 @@ test("REAL REPO: nothing in the app browses the segment pool — the slice's pre
        this test exists to raise. */
     const isDirectorySwap = /^\s*state\.(segments|segmentSources)\s*=\s*set\.(segments|sources)\b/.test(line);
     const isDirectorySeed = /seed\s*=\s*\{\s*forays:\s*state\.forays,\s*segments:\s*state\.segments,\s*sources:\s*state\.segmentSources\s*\}/.test(line);
+    /* The boot's all-or-nothing check (round-2 audit, states-3): the three
+       documents are one artifact, so any one missing drops all three. It asks
+       whether each document ARRIVED, and enumerates nothing. */
+    const isArtifactCheck = /!state\.forays\s*\|\|\s*!state\.segments\s*\|\|\s*!state\.segmentSources\b/.test(line);
     assert.ok(
-      isFetchAssignment || isResolveArgument || isDirectorySwap || isDirectorySeed,
+      isFetchAssignment || isResolveArgument || isDirectorySwap || isDirectorySeed || isArtifactCheck,
       `app.js:${n} reads the segment pool somewhere new — ${line.trim()}\n` +
         `The mobile bundle ships ONLY the segments the bundled Forays reference ` +
         `(tools/mobile/prepare-webdir.mjs, #327), so any surface that enumerates the pool ` +

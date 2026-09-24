@@ -241,8 +241,28 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// and not on every position report.
     private var lastIntervalsKey: String?
 
+    /// Whether the current audio route has somewhere a next/previous press
+    /// comes from WITHOUT LOOKING -- a headset, a Bluetooth stack, a car (the
+    /// platform contract, `docs/DECISIONS.md` 2026-09-23; audit round 2,
+    /// p-impatient-3). Read from `AVAudioSession.currentRoute` at load and on
+    /// every route change, on `stateQueue`. See `applyCommandAvailability`.
+    private var trackRoutePresent = false
+
     override public func load() {
         registerCommandHandlers()
+        /* ONE SESSION MODE FOR THE WHOLE APP: `.spokenAudio` (the platform
+           contract, `docs/DECISIONS.md` 2026-09-23; audit round 2, native-10).
+           `ForayTtsPlugin` sets the same pair on every utterance, and
+           `holdSession` below on every hold; this is the third site, for the
+           tape that plays between them, so a navigation prompt treats a clip
+           and a narration line the same way (pause-and-resume, which is what
+           a podcast wants -- ducked words are lost words). CATEGORY ONLY, NO
+           `setActive`: the F11/F13 rule stands, and `shell-invariants` pins
+           that `setActive` lives in `holdSession`/`releaseSession` alone.
+           `try?`: a failure here costs the mode, never the launch. DEVICE
+           CHECK, open: whether WebKit resets the mode when its element starts
+           (`docs/ios-lock-screen.md` §8.5). */
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
         // NOTHING IS PLAYING AT LOAD, so nothing is enabled -- the same answer
         // `NowPlaying.acceptsTransport()` gives for IDLE on Android. Without
         // this, every command sits at `MPRemoteCommand`'s default (enabled)
@@ -250,6 +270,9 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // player that has not loaded anything. `.empty` is the payload the
         // page has not sent yet, so the first real `setNowPlaying` is a
         // change the command centre can see.
+        trackRoutePresent = Self.trackCommandsAllowed(
+            portTypes: AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue }
+        )
         applyCommandAvailability(.empty)
         registerSessionObservers()
     }
@@ -346,9 +369,22 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc private func handleRouteChange(_ note: Notification) {
         let raw = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt) ?? 0
         let reason = Self.routeChangeReason(raw)
+        /* Read on the observer's queue: `currentRoute` is the session's answer
+           NOW, and the route it describes is the one the next press comes from. */
+        let outputs = AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue }
         stateQueue.async { [weak self] in
             guard let self = self else { return }
             self.emitSession(kind: "routeChange", reason: reason)
+            /* THE TRACK PAIR FOLLOWS THE ROUTE (audit round 2, p-impatient-3).
+               A headset or car appearing turns next/previous on for it; the
+               built-in speaker alone turns them off, so the lock screen goes
+               back to the skip pair. `force`, because the payload did not
+               change and the write is what matters. */
+            let hadTrackRoute = self.trackRoutePresent
+            self.trackRoutePresent = Self.trackCommandsAllowed(portTypes: outputs)
+            if hadTrackRoute != self.trackRoutePresent {
+                self.applyCommandAvailability(self.lastPayload, force: true)
+            }
             /* A ROUTE APPEARING IS THE CAR CONNECTING (2026-09-23), and it is the
                moment just before that car sends its play. A paused transport
                re-asserts its Now Playing entry here so what the head unit reads --
@@ -570,6 +606,12 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
            listener made it: an interrupted element reports the same bare pause. */
         case (.playing, .paused):
             return interrupted ? .none : .hold
+        /* PLAYING -> PLAYING is a position write, not a resume: nothing started
+           sounding, so there is no new activation for the hold to be
+           superseded by. testSessionMoveTable pins it `.none` (ios-kit had been
+           red on main since #746 because `(_, .playing)` caught it). */
+        case (.playing, .playing):
+            return .none
         case (_, .playing):
             return holding ? .supersede : .none
         case (_, .none), (_, .ended):
@@ -613,14 +655,20 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// Activate the app's own `.playback` session. `try?` throughout: a failure
     /// here costs the car's play button, not the pause -- and the record says
     /// so (`sessionActivated` with `failed`), which is the whole point of the
-    /// row. `mode: .default`, not `.spokenAudio`: `ForayTtsPlugin` sets that
-    /// for narration and navigation apps treat it as something to talk over
-    /// and resume; a paused podcast is not that.
+    /// row. The mode is the app's one mode, `.spokenAudio` -- see `load()`.
     private func holdSession(reason: String) {
         let session = AVAudioSession.sharedInstance()
         var ok = true
         do {
-            try session.setCategory(.playback, mode: .default, options: [])
+            /* `.spokenAudio`, the app's ONE mode (see `load()`; audit round 2,
+               native-10). This was `.default` on the argument that a paused
+               podcast is not something a navigation prompt should talk over
+               and resume -- but with the mode differing per producer, which
+               behaviour a prompt got depended on which second it landed in.
+               The resume-after-prompt that `.spokenAudio` invites is guarded
+               where it is acted on: the page resumes on `shouldResume` only
+               for an interruption that began while PLAYING (the contract). */
+            try session.setCategory(.playback, mode: .spokenAudio, options: [])
             try session.setActive(true, options: [])
         } catch {
             ok = false
@@ -700,8 +748,11 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // floor (see that file's header, and NowPlayingPayload's doc comment
         // below). ZERO while paused is half of Apple's "stay the Now Playing
         // app across a pause" rule; the other half is `playbackState` below.
+        // ZERO while STALLED too (audit round 2, p-car-8): the state stays
+        // playing but the clock stops, so a car in a dead zone does not count
+        // on over silence and snap back when the audio returns.
         info[MPNowPlayingInfoPropertyPlaybackRate] = Double(
-            payload.state == .playing ? payload.playbackRate : 0
+            payload.state == .playing && !payload.stalled ? payload.playbackRate : 0
         )
         info[MPNowPlayingInfoPropertyDefaultPlaybackRate] = Double(payload.playbackRate)
 
@@ -999,6 +1050,32 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         ms > 0 ? [NSNumber(value: Double(ms) / 1000.0)] : []
     }
 
+    /// The output port types on which a next/previous press exists WITHOUT
+    /// LOOKING: wired and Bluetooth headsets, a car (CarPlay's `carAudio`, a
+    /// Bluetooth head unit's A2DP/HFP), USB and AirPlay receivers with their
+    /// own transport. The built-in speaker and receiver are not on it: there
+    /// the only surface is the lock screen, which draws ⏮/⏭ over the founder's
+    /// ↺15/30↻ the moment the track pair is enabled (founder question 1, audit
+    /// round 2). `AVAudioSession.Port` raw values, so the XCTests can table
+    /// them without a live session.
+    static let trackRoutePortTypes: Set<String> = [
+        AVAudioSession.Port.headphones.rawValue,
+        AVAudioSession.Port.bluetoothA2DP.rawValue,
+        AVAudioSession.Port.bluetoothHFP.rawValue,
+        AVAudioSession.Port.bluetoothLE.rawValue,
+        AVAudioSession.Port.carAudio.rawValue,
+        AVAudioSession.Port.usbAudio.rawValue,
+        AVAudioSession.Port.airPlay.rawValue,
+    ]
+
+    /// Whether `nextTrackCommand`/`previousTrackCommand` may be enabled on
+    /// this route (the platform contract, `docs/DECISIONS.md` 2026-09-23):
+    /// true when ANY output is a port from `trackRoutePortTypes`. Pure, so
+    /// `ForayAudioPluginTests` pins it.
+    static func trackCommandsAllowed(portTypes: [String]) -> Bool {
+        portTypes.contains { trackRoutePortTypes.contains($0) }
+    }
+
     /// Enable/disable each command from the `can*`/`has*` flags -- exactly
     /// `nowPlayingPayload()`'s contract, and exactly what `WebViewPlayer`
     /// does with the same flags on Android. A finished Foray
@@ -1029,8 +1106,16 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         commandCenter.pauseCommand.isEnabled = transportable && payload.canPause
         commandCenter.togglePlayPauseCommand.isEnabled =
             transportable && (payload.canPlay || payload.canPause)
-        commandCenter.nextTrackCommand.isEnabled = transportable && payload.hasNext
-        commandCenter.previousTrackCommand.isEnabled = transportable && payload.hasPrevious
+        /* THE TRACK PAIR ONLY WHERE A TRACK BUTTON EXISTS (audit round 2,
+           p-impatient-3; founder question 1: the lock screen shows the skip
+           pair, always). iOS draws one control per side and prefers ⏮/⏭ over
+           the skip pair whenever these are enabled, so on the speaker route --
+           where the lock screen is the only surface -- they stay off, whatever
+           Up Next holds, and the glyph cannot flip as the list drains. On a
+           headset or car route they follow `hasNext`/`hasPrevious`; `previous`
+           is always installed for an episode (restart, else the row before). */
+        commandCenter.nextTrackCommand.isEnabled = transportable && payload.hasNext && trackRoutePresent
+        commandCenter.previousTrackCommand.isEnabled = transportable && payload.hasPrevious && trackRoutePresent
         commandCenter.skipBackwardCommand.isEnabled = transportable && payload.canSeekBack
         commandCenter.skipForwardCommand.isEnabled = transportable && payload.canSeekForward
         commandCenter.changePlaybackPositionCommand.isEnabled = transportable && payload.canSeekTo

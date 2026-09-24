@@ -126,6 +126,11 @@ export interface EpisodeSearchResult {
   published_at: string | null;
   duration_seconds: number | null;
   audio_url: string | null;
+  /** The show's square, when the source carries one (Apple's `artworkUrl600`).
+   *  Null for a live-feed row; the client falls back to the show record it
+   *  already holds. Without it, an episode played from Search reached the lock
+   *  screen and CarPlay with the 4a icon (audit round 2, search-8). */
+  artwork_url: string | null;
   source: "apple" | "live";
 }
 
@@ -138,6 +143,9 @@ interface AppleEpisodeHit {
   releaseDate?: string;
   trackTimeMillis?: number;
   episodeUrl?: string;
+  artworkUrl600?: string;
+  artworkUrl160?: string;
+  artworkUrl60?: string;
 }
 
 /** Maps one Apple search hit to our shape, or null if its collectionId doesn't
@@ -169,6 +177,7 @@ function mapAppleHit(hit: AppleEpisodeHit, idMap: Map<number, string>): EpisodeS
     published_at: hit.releaseDate ?? null,
     duration_seconds: typeof hit.trackTimeMillis === "number" ? Math.round(hit.trackTimeMillis / 1000) : null,
     audio_url: hit.episodeUrl ?? null,
+    artwork_url: hit.artworkUrl600 || hit.artworkUrl160 || hit.artworkUrl60 || null,
     source: "apple"
   };
 }
@@ -185,6 +194,7 @@ function mapLiveEpisode(showId: string, showTitle: string | null, ep: ParsedEpis
     published_at: ep.publishedAt,
     duration_seconds: ep.duration.seconds,
     audio_url: ep.enclosureUrl,
+    artwork_url: null,
     source: "live"
   };
 }
@@ -356,10 +366,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : MAX_RESULTS;
 
   const cacheKey = normalizeQueryKey(q, showScope, limit);
-  const cached = episodeSearchCache.get(cacheKey) as { episodes: EpisodeSearchResult[]; source: string[] } | undefined;
+  const cached = episodeSearchCache.get(cacheKey) as { episodes: EpisodeSearchResult[]; source: string[]; total?: number; capped?: boolean } | undefined;
   if (cached) {
     res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
-    res.status(200).json({ query: q, show: showScope, episodes: cached.episodes, source: cached.source, degraded: false, error: null });
+    res.status(200).json({ query: q, show: showScope, episodes: cached.episodes, source: cached.source, total: cached.total ?? cached.episodes.length, capped: cached.capped ?? false, degraded: false, error: null });
     return;
   }
 
@@ -377,7 +387,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const rememberedFailure = episodeFeedFailureCache.get(showScope);
     if (rememberedFailure) {
       res.setHeader("Cache-Control", "no-store"); // never let the edge outlive our own short window
-      res.status(200).json({ query: q, show: showScope, episodes: [], source: ["live"], degraded: true, error: rememberedFailure });
+      res.status(200).json({ query: q, show: showScope, episodes: [], source: ["live"], total: 0, capped: false, degraded: true, error: rememberedFailure });
       return;
     }
 
@@ -387,10 +397,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       show: showScope,
       episodes: results.slice(0, limit),
       source: ["live"],
+      total: results.length,
+      capped: false, // a feed is read whole; the count is the count
       degraded: !!error && results.length === 0,
       error: error && results.length === 0 ? error : null
     };
-    if (!error) episodeSearchCache.set(cacheKey, { episodes: payload.episodes, source: payload.source });
+    if (!error) episodeSearchCache.set(cacheKey, { episodes: payload.episodes, source: payload.source, total: payload.total, capped: payload.capped });
     else if (feedFailed) episodeFeedFailureCache.set(showScope, error);
     res.setHeader("Cache-Control", error ? "no-store" : "public, max-age=300, stale-while-revalidate=3600");
     res.status(200).json(payload);
@@ -405,6 +417,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       show: null,
       episodes: [],
       source: [],
+      /* One shape on every path (audit round 2, honesty-11 added these two to
+         the answered paths; a refusal that dropped them would make the client
+         and api/test/episodes-search-degraded-honesty.test.mjs branch on keys). */
+      total: 0,
+      capped: false,
       degraded: true,
       error: "rate limit exceeded — try again shortly"
     });
@@ -413,20 +430,27 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
   const idMap = await loadShowIdMap({ fetchImpl: fetch });
   const { hits, error } = await searchApple(q, limit, fetch);
-  const episodes = hits
+  const mapped = hits
     .map((hit) => mapAppleHit(hit, idMap.byCollectionId))
-    .filter((ep): ep is EpisodeSearchResult => ep !== null)
-    .slice(0, limit);
+    .filter((ep): ep is EpisodeSearchResult => ep !== null);
+  const episodes = mapped.slice(0, limit);
 
+  /* HOW MANY WERE CUT (audit round 2, honesty-11). The client asks for ten and
+     printed ten with nothing saying whether that was all of them; `total` is
+     what this mapped before the cut, and `capped` says Apple returned as many
+     rows as it was asked for — so the total is a floor, not the whole count,
+     and the client prints it with a "+". */
   const payload = {
     query: q,
     show: null,
     episodes,
     source: episodes.length ? ["apple"] : [],
+    total: mapped.length,
+    capped: hits.length >= appleEpisodeAsk(limit),
     degraded: !!error,
     error: error ?? null
   };
-  if (!error) episodeSearchCache.set(cacheKey, { episodes: payload.episodes, source: payload.source });
+  if (!error) episodeSearchCache.set(cacheKey, { episodes: payload.episodes, source: payload.source, total: payload.total, capped: payload.capped });
   res.setHeader("Cache-Control", error ? "no-store" : "public, max-age=300, stale-while-revalidate=3600");
   res.status(200).json(payload);
 }

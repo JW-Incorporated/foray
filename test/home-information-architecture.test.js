@@ -210,14 +210,20 @@ test("`.home` renders the v2 layout (U-11 cutover retired the flag-off four-card
 /* 2-5. THE FOUR MOVES, EACH ASSERTED IN BOTH DIRECTIONS                */
 /* ==================================================================== */
 
-test("the playlist builder renders on #/playlists and not on Home", () => {
+test("the playlist builder renders on Create — not on Home, and not on #/playlists, which is the list", () => {
   /* Founder item 4: "remove the playlist builder box from Home; keep all that
-     only on the Playlists page." The Playlists page already carried its own
-     #pl-form, so this move is a deletion on one side only — which is exactly
-     why the Home-side assertion is the one doing the work here.
+     only on the Playlists page." That order took the builder OFF HOME and
+     predates the Create tab (U-06, 2026-09-06). Audit round 2 (p-first-6;
+     founder question 4, default taken) found the newcomer meeting two builders
+     with two vocabularies — Create's and #/playlists' "build me a playlist…" /
+     Go — so #/playlists is now the list with one link to Create, and Create
+     holds the one builder. The drawer keeps its five entries; only the page
+     changed.
 
-     MUTATION: paste the `#pl-form` block back into renderHome's template.
-     The Home assertions fail. RUN: both failed. */
+     MUTATION: paste the `#pl-form` block back into renderHome's or
+     renderPlaylists's template — either page's assertions fail. Drop the
+     `page-link-row` to #/create from renderPlaylists — the list loses its one
+     door to the builder, red. */
   const m = quietMount();
 
   m.ctx.renderHome();
@@ -227,8 +233,13 @@ test("the playlist builder renders on #/playlists and not on Home", () => {
 
   m.ctx.renderPlaylists();
   const playlists = m.view();
-  assert.ok(playlists.includes('id="pl-form"'), "the Playlists page must render the builder");
-  assert.ok(playlists.includes("build me a playlist"), "the builder's placeholder belongs on the Playlists page");
+  assert.ok(!playlists.includes("<form"), "the Playlists page renders no builder form at all");
+  assert.ok(!playlists.includes("build me a playlist"), "and not the old builder's placeholder");
+  assert.ok(playlists.includes('class="page-link-row" href="#/create"'), "the list links to the one builder, on Create");
+  assert.ok(playlists.includes('No playlists yet — <a href="#/create">build one on the Create tab</a>.'),
+    "the empty state says the same sentence Library's does, and points the same way");
+  /* That Create holds the one builder (#cr-form/#cr-input) is test/create-page.test.js's
+     subject, with a harness that parses the form; this by-id stub cannot. */
 });
 
 test("the show search renders on #/shows and not on Home", () => {
@@ -245,7 +256,7 @@ test("the show search renders on #/shows and not on Home", () => {
   assert.ok(m.view().includes('id="sh-form"'), "the Shows page must render the show search");
 });
 
-test("'Shows we vouch for' renders on #/shows and not on Home", () => {
+test("'Shows 4a vouches for' renders on #/shows and not on Home", () => {
   /* Founder item 1: "move the 'shows we recommend' row to the Shows page."
      (He calls it "shows we recommend"; the shipped heading says "Shows we
      vouch for" and is left as it is — he asked for a move, not a rename.)
@@ -261,10 +272,10 @@ test("'Shows we vouch for' renders on #/shows and not on Home", () => {
   };
 
   m.ctx.renderHome();
-  assert.ok(!m.view().includes("Shows we vouch for"), "Home must not render the editorial show row");
+  assert.ok(!m.view().includes("Shows 4a vouches for"), "Home must not render the editorial show row");
 
   m.ctx.renderAllShows();
-  assert.ok(m.view().includes("Shows we vouch for"), "the Shows page must render the editorial show row");
+  assert.ok(m.view().includes("Shows 4a vouches for"), "the Shows page must render the editorial show row");
 });
 
 /* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a): the
@@ -370,8 +381,12 @@ test("'Starred Shows' left the menu without leaving the app — the Shows page c
 
      MUTATION: delete the `page-link-row` anchor from renderAllShows's `above`
      block. The link assertion fails and #/starred-shows becomes reachable
-     only by typing the URL. RUN: failed as named. */
-  const m = quietMount();
+     only by typing the URL. RUN: failed as named.
+
+     WITH A SHOW FOLLOWED, because since audit round 2 (p-first-12) the row is
+     drawn only when there is something behind it — the test below pins the
+     empty half. */
+  const m = quietMount({ cp_starred_shows: JSON.stringify({ "show-a": { show_id: "show-a", title: "Show A", starred_at: "2026-09-01T00:00:00Z" } }) });
 
   m.ctx.renderAllShows();
   assert.ok(
@@ -392,6 +407,19 @@ test("'Starred Shows' left the menu without leaving the app — the Shows page c
   m.ctx.location.hash = "#/starred-shows";
   m.ctx.route();
   assert.ok(m.view().includes("Followed shows"), "#/starred-shows must still route to its own page");
+});
+
+test("with nothing followed, the Search page draws no 'Followed shows ›' row — a fresh install's first tappable row was a dead end", () => {
+  /* Audit round 2, p-first-12: the shortcut was emitted unconditionally, so a
+     newcomer's first tap on the discovery page opened "0 shows you follow".
+     Apple hides an empty Library shortcut. Library still lists the section with
+     its own empty note, so the feature stays discoverable.
+     MUTATION: drop the `Object.keys(starredShowsMap()).length ?` gate in
+     renderAllShows — the row renders for an empty map, red. */
+  const m = quietMount();
+  m.ctx.renderAllShows();
+  assert.ok(!m.view().includes('href="#/starred-shows"'), "no followed shows, no shortcut to an empty page");
+  assert.ok(m.view().includes('id="sh-browse"'), "the browse furniture still renders around the gap");
 });
 
 test("a Foray's back link lands on #/forays, where an unlocked draft is still listed", () => {

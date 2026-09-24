@@ -370,8 +370,8 @@ test("installed allowlisted voices are selectable rows with Audition; the rest a
   }
 });
 
-test("every row carries its one-line description (accent · gender · tier), and unconfirmed names say so", async () => {
-  const { ui } = mount();
+test("every row carries its one-line description (accent · gender), and an unconfirmed name is noted in code, not on the row", async () => {
+  const { ui, ctx } = mount();
   await ui.open.click();
   await tick();
 
@@ -382,11 +382,27 @@ test("every row carries its one-line description (accent · gender · tier), and
   assert.match(byName.Moira, /Irish/);
   assert.match(byName.Tessa, /South African/);
   assert.match(byName.Rishi, /Indian/);
-  // Nicky and Aaron could not be confirmed against any listing of the
-  // Settings → Voices screen (app.js's own note); the row must say so
-  // rather than pass a guess off as a fact.
-  assert.match(byName.Nicky, /unverified name/);
-  assert.match(byName.Aaron, /unverified name/);
+  /* Nicky and Aaron could not be confirmed against any listing of the Settings
+     → Voices screen. That is a note about the ALLOWLIST, not about the voice, and
+     a listener cannot act on it (audit round 2, copy-12), so it lives on the
+     entry (`unverified: true`) and never on the row; nor does a maintainer's
+     tier note ("Enhanced tier is a free download") or a shrug for a language
+     the plugin did not report. MUTATION: put "· unverified name" back into
+     Nicky's `about`, or restore the `|| "unknown language"` fallback. */
+  for (const [name, sub] of Object.entries(byName)) {
+    assert.doesNotMatch(sub, /unverified|free download|\(download\)|unknown language/, `${name}: ${sub}`);
+  }
+  const allow = JSON.parse(JSON.stringify(vm.runInContext("VOICE_ALLOWLIST", ctx)));
+  assert.deepStrictEqual(allow.filter((e) => e.unverified).map((e) => e.name).sort(), ["Aaron", "Nicky"]);
+  for (const e of allow) assert.match(e.about, /^[A-Za-z ]+ · (fe)?male$/, `${e.name}: accent · gender only`);
+
+  /* An installed voice whose language the plugin did not report: the piece is
+     left out, not printed as "unknown language". */
+  const bare = mount({ listVoicesResult: { ok: true, path: "native", voices: [v("com.apple.voice.enhanced.en-US.Samantha", "Samantha", "", "enhanced")] } });
+  await bare.ui.open.click();
+  await tick();
+  const sam = Object.fromEntries(rowsOf(bare.ui).map((r) => [nameOf(r), subOf(r)])).Samantha;
+  assert.ok(sam && !/unknown language/.test(sam) && !/·\s*$/.test(sam), `Samantha: ${sam}`);
 });
 
 test("quality label comes from the plugin's own `quality` field, not re-derived", async () => {
@@ -558,7 +574,7 @@ test("the voices are one named radio group: one tab stop, arrows move the choice
 });
 
 /* ==================================================================== */
-/* 7. Audition: exactly a count to ten, at the current rate              */
+/* 7. Audition: exactly a count to ten, at 1x (founder, 2026-09-24)     */
 /* ==================================================================== */
 
 test("MUTATION GUARD: Audition speaks exactly 'one' through 'ten' — no markers, nothing past ten", async () => {
@@ -574,6 +590,24 @@ test("MUTATION GUARD: Audition speaks exactly 'one' through 'ten' — no markers
   assert.strictEqual(auditionCalls.length, 1);
   assert.strictEqual(auditionCalls[0].id, "com.apple.voice.enhanced.en-US.Samantha");
   assert.strictEqual(auditionCalls[0].text, "one, two, three, four, five, six, seven, eight, nine, ten.");
+});
+
+test("MUTATION GUARD: Audition speaks at NARRATION_RATE (1x), never the listener's playback speed", () => {
+  /* Founder, 2026-09-24: "1x for now, but maybe we change later." Narration is
+     spoken at 1x whatever the listener's speed, so a Preview at 2x would sample
+     a pace the narrator never uses. The speed is chosen in `player/client.js`'s
+     `auditionVoice`, which the harness above replaces with a spy, so this reads
+     that one method's source: `client.js` is the page's player module and
+     cannot be loaded in Node. The value of NARRATION_RATE itself is pinned in
+     `player/queue-manager.test.js`.
+     MUTATION: put `rate: currentRate()` back into `auditionVoice`. */
+  const src = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8");
+  assert.match(src, /import \{[^}]*\bNARRATION_RATE\b[^}]*\} from "\.\/queue-manager\.js";/,
+    "client.js takes the narration speed from the one constant, not a copy");
+  const body = src.match(/\n  auditionVoice\(text, voiceId\) \{\n([\s\S]*?)\n  \},/);
+  assert.ok(body, "auditionVoice(text, voiceId) is still where this test looks for it");
+  assert.match(body[1], /ttsBridge\.speak\(text, \{ rate: NARRATION_RATE, voice: voiceId \}\)/);
+  assert.ok(!/currentRate\(/.test(body[1]), "the listener's speed plays no part in a Preview");
 });
 
 test("the sheet's own copy describes the count to ten", () => {

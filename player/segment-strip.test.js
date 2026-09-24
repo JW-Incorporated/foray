@@ -52,7 +52,8 @@ import {
 import { itemRuntimeSec } from "./foray-queue.js";
 import {
   stripModel, stripSummary, stripTally, mountStrip, renderStrip, assignTones, toneSeed,
-  sourceKeyOf, isNarration, growOf, TONE_COUNT, NARRATOR_SOURCE, SIZES,
+  sourceKeyOf, isNarration, growOf, TONE_COUNT, NARRATOR_SOURCE, NARRATOR_NAME, SIZES,
+  stripFloorPlan, STRIP_METRICS, STRIP_HAIRLINE_PX, FLOOR_BUDGET,
   segmentStripHtml, applyStripGrow,
 } from "./segment-strip.js";
 
@@ -579,7 +580,7 @@ test("the label carries the position and the bridges when there are any", () => 
   const starts = segmentStarts(r.playable);
   const model = stripModel(r.playable, { elapsed: starts[4] + 10 });
   const label = stripSummary(model);
-  assert.ok(label.includes("2 from 4a's narrator"), label);
+  assert.ok(label.includes(`2 from ${NARRATOR_NAME}`), label);
   assert.ok(label.startsWith(`${model.itemCount} clips: `), `the total is the same count the position is "of": ${label}`);
   assert.ok(label.includes(`clip ${model.currentIndex + 1} of ${model.segments.length}`), label);
   assert.ok(label.includes(model.segments[model.currentIndex].show), label);
@@ -1301,7 +1302,7 @@ test("the accessible label still names the show the listener is actually inside,
   const at = starts[to] + lengths[to] / 2;
   const label = stripSummary(stripModel(r.playable, { mergeNarration: true, elapsed: at }));
   assert.ok(from < to);
-  assert.match(label, new RegExp(`Now on clip ${to + 1} of ${r.playable.length}, from 4a's narrator,`));
+  assert.ok(label.includes(`Now on clip ${to + 1} of ${r.playable.length}, from ${NARRATOR_NAME},`), label);
 
   // And the whole sentence is unchanged by merging — it describes the Foray.
   for (const elapsed of [0, at, starts[starts.length - 1] + 1]) {
@@ -1517,4 +1518,79 @@ test("stripTally says a runtime is an estimate when any item's duration was not 
   const tapeOnly = stripTally(real("capital-types-1").playable);
   assert.equal(tapeOnly.estimated, false, "a Foray of measured tape is a measurement");
   assert.equal(tapeOnly.bridges, 0);
+});
+
+test("the resolved Foray carries the same `estimated` answer, so every surface can hedge (states-11)", () => {
+  /* Only the strip's tally knew, so the header said "about 41 min" while Jump
+     back in and the Now Playing sheet printed the same total unmarked.
+     MUTATION (killed): drop `estimated` from resolveForay's return — the first
+     assertion is red (undefined). */
+  const narrated = resolveDoc(realDoc(NARRATED_ID));
+  assert.equal(narrated.estimated, true);
+  assert.equal(narrated.estimated, stripTally(narrated.playable).estimated, "one rule, two readers");
+  assert.equal(real("capital-types-1").estimated, false);
+});
+
+/* ==================================================================== */
+/* p-foray-7: the Foray page's strip FITS a phone, one bar per item      */
+/* ==================================================================== */
+
+/** What a strip's floors and breaks cost at a given floor/seam — the width no
+    layout can go under. */
+function floorCost(model, { segMin, seam }) {
+  const n = model.segments.length;
+  const seams = model.segments.filter((b, i) => i > 0 && b.runStart).length;
+  return n * segMin + (n - 1) * STRIP_HAIRLINE_PX + seams * seam;
+}
+
+test("STRIP_METRICS is the stylesheet's --seg-min / --seam per size, not a second opinion", () => {
+  /* MUTATION (killed): change one size's floor in either file — red. */
+  for (const size of SIZES) {
+    const rule = new RegExp(String.raw`\.fy-strip--${size}\s*\{[^}]*--seam:\s*(\d+)px;[^}]*--seg-min:\s*(\d+)px`).exec(CSS);
+    assert.ok(rule, `styles.css states .fy-strip--${size}`);
+    assert.deepEqual({ segMin: Number(rule[2]), seam: Number(rule[1]) }, STRIP_METRICS[size], size);
+  }
+  assert.match(CSS, /\.fy-strip \{\s*display: flex;\s*gap: 1px;/, "the hairline is the strip's 1px gap");
+});
+
+test("the frozen 56-item narrated Foray FITS a 358px page strip, and no bar is narrower than the break beside it (p-foray-7)", () => {
+  /* 56 bars, 40 of them bridges, 33 capsules: 607px of floors and breaks at the
+     page size's 7px/5px against a ~358px strip on a 390px phone. The tail ran
+     off the edge and the bar-measured scrub fell back to a flat map.
+     MUTATION (killed): make stripFloorPlan return null always — red. */
+  const r = resolveDoc(realDoc(NARRATED_ID));
+  const model = stripModel(r.playable);
+  assert.equal(model.segments.length, 56, "fixture: one bar per item, unmerged");
+  assert.ok(floorCost(model, STRIP_METRICS.lg) > 358, "precondition: the stylesheet's own floors overflow");
+  const plan = stripFloorPlan(model, 358, "lg");
+  assert.ok(plan, "a plan is needed");
+  assert.ok(floorCost(model, plan) <= 358 * FLOOR_BUDGET, `fits with room for the runtime's proportions: ${floorCost(model, plan)}px`);
+  assert.ok(plan.segMin >= STRIP_HAIRLINE_PX + plan.seam + 1, "the floor still beats the whole break (styles.css --seg-min rule)");
+
+  /* Mounted, it reaches the element through CSSOM, measured from the element. */
+  const el = new StubEl("div");
+  el.getBoundingClientRect = () => ({ width: 358 });
+  mountStrip(el, r.playable, { document: stubDocument, size: "lg" });
+  assert.equal(el.style["--seg-min"], `${plan.segMin}px`);
+  assert.equal(el.style["--seam"], `${plan.seam}px`);
+  assert.equal(el.children.length, 56, "still one bar per item, so the scrub and the fill index items");
+});
+
+test("a Foray that already fits keeps the stylesheet's look, and a re-mount clears a stale plan (p-foray-7)", () => {
+  /* capital-types-1: 22 bars, 225px of floors at 7/5 — no change for the one
+     published Foray. MUTATION (killed): drop the `null` early return — a plan
+     appears here, red. MUTATION (killed): skip clearing on a null plan — the
+     re-mounted element keeps the narrated Foray's 3px floor, red. */
+  const cap = real("capital-types-1");
+  assert.equal(stripFloorPlan(stripModel(cap.playable), 358, "lg"), null);
+  const el = new StubEl("div");
+  el.getBoundingClientRect = () => ({ width: 358 });
+  mountStrip(el, resolveDoc(realDoc(NARRATED_ID)).playable, { document: stubDocument, size: "lg" });
+  assert.ok(el.style["--seg-min"], "precondition: the dense Foray set a plan");
+  mountStrip(el, cap.playable, { document: stubDocument, size: "lg" });
+  assert.equal(el.style["--seg-min"], undefined, "back to the stylesheet");
+  assert.equal(el.style["--seam"], undefined);
+  const unmeasured = new StubEl("div");
+  mountStrip(unmeasured, resolveDoc(realDoc(NARRATED_ID)).playable, { document: stubDocument, size: "lg" });
+  assert.equal(unmeasured.style["--seg-min"], undefined, "no width, no guess");
 });

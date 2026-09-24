@@ -162,6 +162,32 @@ final class MediaMappingTests: XCTestCase {
         XCTAssertEqual(state?.position.sign, .plus)
     }
 
+    // MARK: - audit round 2, carried over from main by the engine/m1 merge
+
+    /// p-car-8: a stall reports rate 0 so the OS clock stops over silence, and
+    /// the transport state stays playing (the listener did not pause).
+    /// MUTATION: return `rate` whatever `buffering` says; this fails.
+    func testAStallStopsTheClockButNotTheTransport() {
+        XCTAssertEqual(MediaMapping.positionState(durationSec: 100, positionSec: 10, playbackRate: 1.5, buffering: true)?.playbackRate, 0)
+        XCTAssertEqual(MediaMapping.positionState(durationSec: 100, positionSec: 10, playbackRate: 1.5)?.playbackRate, 1.5)
+        let stalled = MediaMapping.sessionView(MediaMapping.View(item: MediaMapping.Item(kind: "episode", title: "T"),
+                                                                 durationSec: 100, positionSec: 10, buffering: true, playing: true))
+        XCTAssertEqual(stalled.positionState?.playbackRate, 0)
+        XCTAssertEqual(stalled.playbackState, MediaMapping.playing)
+    }
+
+    /// p-car-6: a finished Foray is `none`, a finished episode is `paused`
+    /// (its play button starts it over; `none` blanked the car's transport).
+    /// MUTATION: `if ended { return none }`; the episode half fails.
+    func testAFinishedEpisodeIsPausedAndAFinishedForayIsNone() {
+        XCTAssertEqual(MediaMapping.playbackState(hasItem: true, playing: true, ended: true), MediaMapping.paused)
+        XCTAssertEqual(MediaMapping.playbackState(hasItem: true, playing: true, ended: true, foray: true), MediaMapping.none)
+        let episode = MediaMapping.sessionView(MediaMapping.View(item: MediaMapping.Item(kind: "episode"), ended: true))
+        XCTAssertEqual(episode.playbackState, MediaMapping.paused)
+        let foray = MediaMapping.sessionView(MediaMapping.View(item: MediaMapping.Item(kind: "episode"), ended: true, foray: true))
+        XCTAssertEqual(foray.playbackState, MediaMapping.none)
+    }
+
     // MARK: - the narration credit ladder (ported now, played in M2)
 
     func testNarrationIsNeverCreditedToTheApp() {

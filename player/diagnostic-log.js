@@ -506,6 +506,26 @@ export class DiagnosticLog {
     if (!this.storage) return;
     try { this.storage.removeItem(this.key); } catch (_) { this.saveErrors += 1; }
   }
+
+  /**
+   * "Delete my data": empty it AND forget that there was anything to empty
+   * (round-2 audit, persist-5).
+   *
+   * `clear()` keeps the sequence and writes the clear down on purpose — for the
+   * founder's clear-drive-copy loop, where "recorded 939, cleared at #939" is the
+   * point. A deletion is the opposite case. This used to share `clear()`, so the
+   * next background transition wrote `cp_diag` back carrying the pre-deletion row
+   * count and the exact time of the deletion, on a device the sheet had just
+   * called clear. Here the counter, the dropped count and the mark all go. The
+   * build stamp stays: it is the running page's own build, not the listener's.
+   */
+  forget() {
+    this.clear();
+    this._seq = 0;
+    this._dropped = 0;
+    this._cleared = null;
+    this.loadError = null;
+  }
 }
 
 /* ---------- reading the player ---------- */

@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
@@ -20,8 +21,16 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.ServiceCompat;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.session.CommandButton;
 import androidx.media3.session.MediaSession;
 import androidx.media3.session.MediaStyleNotificationHelper;
+import androidx.media3.session.SessionCommand;
+import androidx.media3.session.SessionCommands;
+import androidx.media3.session.SessionResult;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
 /**
  * A `mediaPlayback` foreground service that holds the app's process importance up
@@ -129,11 +138,24 @@ public class PlaybackKeepAliveService extends Service {
     static final String ACTION_TRANSPORT = "ai.jwlabs.foura.audio.TRANSPORT";
     static final String EXTRA_TRANSPORT = "action";
 
+    /** The 15/30 pair as Media3 SESSION commands, for the media controls Android 13+
+     *  builds from the session rather than from the notification's own actions
+     *  (audit round 2, native-7). Named with the page's action words so a press
+     *  dispatches through {@link NowPlayingHub} exactly as a notification button
+     *  does; {@code shell-invariants.test.mjs} pins that every word here is one
+     *  {@code foray-media-session.js} routes. */
+    static final String CMD_SEEK_BACK = "seekbackward";
+    static final String CMD_SEEK_FORWARD = "seekforward";
+
     /** Media3 requires a session id unique within the process. There is exactly one
      *  of these services, so a constant is right — and a constant is also what makes
      *  a leaked session from a previous instance fail loudly at construction rather
      *  than quietly becoming a second session on the lock screen. */
     private static final String SESSION_ID = "foray";
+
+    /** The notification's own exit, as {@code transportIntent("close", …)} names it
+     *  (see {@link #ACTION_TRANSPORT}). */
+    static final String CLOSE_TRANSPORT = "close";
 
     /**
      * Read by {@link ForayAudioPlugin} so a JS caller can be told what actually
@@ -167,6 +189,13 @@ public class PlaybackKeepAliveService extends Service {
     /** What the notification last SAID, so an unchanged one is not re-posted. Null
      *  until the first post. */
     @Nullable private String lastNotificationKey;
+
+    /** The notification has been taken down for a close and must not come back
+     *  (audit round 2, native-8): the page's answer to the close -- an idle payload
+     *  -- is a visible change, and {@link #onNowPlayingChanged} would otherwise post
+     *  a placeholder notification for the beat before {@code stop} lands. Cleared by
+     *  the next bare start, which is a new Foray. Main thread only. */
+    private boolean closing = false;
 
     @Nullable private MediaSession session;
     @Nullable private WebViewPlayer player;
@@ -211,7 +240,54 @@ public class PlaybackKeepAliveService extends Service {
                     NowPlayingHub.dispatch(action, positionMs, offsetMs);
                 }
             });
-            MediaSession.Builder builder = new MediaSession.Builder(this, built).setId(SESSION_ID);
+            MediaSession.Builder builder = new MediaSession.Builder(this, built)
+                .setId(SESSION_ID)
+                /* THE 15/30 PAIR ON THE SYSTEM MEDIA CONTROLS (audit round 2,
+                   native-7). From API 33 the lock screen and the shade draw their
+                   media controls from the SESSION: play/pause, prev/next when the
+                   player declares them, and otherwise the session's own custom
+                   buttons -- never rewind/fast-forward from COMMAND_SEEK_BACK/
+                   FORWARD, which `WebViewPlayer` declares and only a car or a
+                   Bluetooth controller ever sends. So a single episode showed
+                   play/pause and nothing else, and no surface on Android could
+                   step 15 s back. These two buttons are the page's own
+                   `seekbackward`/`seekforward` handlers reached as custom
+                   commands; `onCustomCommand` below dispatches them with the
+                   payload's offsets, and `onConnect` grants them. */
+                .setMediaButtonPreferences(seekButtons())
+                .setCallback(new MediaSession.Callback() {
+                    @NonNull
+                    @Override
+                    public MediaSession.ConnectionResult onConnect(
+                        @NonNull MediaSession session, @NonNull MediaSession.ControllerInfo controller
+                    ) {
+                        SessionCommands commands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                            .add(new SessionCommand(CMD_SEEK_BACK, Bundle.EMPTY))
+                            .add(new SessionCommand(CMD_SEEK_FORWARD, Bundle.EMPTY))
+                            .build();
+                        return new MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                            .setAvailableSessionCommands(commands)
+                            .build();
+                    }
+
+                    @NonNull
+                    @Override
+                    public ListenableFuture<SessionResult> onCustomCommand(
+                        @NonNull MediaSession session, @NonNull MediaSession.ControllerInfo controller,
+                        @NonNull SessionCommand customCommand, @NonNull Bundle args
+                    ) {
+                        NowPlaying np = NowPlayingHub.get();
+                        String action = customCommand.customAction;
+                        if (CMD_SEEK_BACK.equals(action)) {
+                            NowPlayingHub.dispatch(CMD_SEEK_BACK, 0L, np.seekBackMs);
+                        } else if (CMD_SEEK_FORWARD.equals(action)) {
+                            NowPlayingHub.dispatch(CMD_SEEK_FORWARD, 0L, np.seekForwardMs);
+                        } else {
+                            return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED));
+                        }
+                        return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS));
+                    }
+                });
             PendingIntent launch = launchIntent();
             /* Only when we have one: `setSessionActivity(null)` is not allowed, and the
                package manager can genuinely fail to resolve a launch intent for our own
@@ -226,6 +302,20 @@ public class PlaybackKeepAliveService extends Service {
             Log.w(TAG, "could not create the MediaSession; continuing without lock-screen controls", e);
             releaseSession();
         }
+    }
+
+    /** The two custom buttons, in the order the controls draw them: back, then
+     *  forward. Media3's own 15/30 icons, so the glyph says the number. */
+    private ImmutableList<CommandButton> seekButtons() {
+        CommandButton back = new CommandButton.Builder(CommandButton.ICON_SKIP_BACK_15)
+            .setDisplayName(getString(R.string.foray_action_seek_back))
+            .setSessionCommand(new SessionCommand(CMD_SEEK_BACK, Bundle.EMPTY))
+            .build();
+        CommandButton forward = new CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD_30)
+            .setDisplayName(getString(R.string.foray_action_seek_forward))
+            .setSessionCommand(new SessionCommand(CMD_SEEK_FORWARD, Bundle.EMPTY))
+            .build();
+        return ImmutableList.of(back, forward);
     }
 
     private void releaseSession() {
@@ -261,7 +351,7 @@ public class PlaybackKeepAliveService extends Service {
      */
     private void onNowPlayingChanged() {
         if (player != null) player.refresh();
-        if (!running) return;
+        if (!running || closing) return;
         NowPlaying np = NowPlayingHub.get();
         /* THE PLAYER IS REFRESHED EVERY TIME AND THE NOTIFICATION IS NOT, and a review
            pass is why. The page reports the playhead about once a second — the web half
@@ -289,18 +379,52 @@ public class PlaybackKeepAliveService extends Service {
         }
     }
 
+    /**
+     * Does this start need a {@code startForeground}? A bare start always does. A
+     * transport press on an ALREADY-running service does not (audit round 2,
+     * native-8): it used to re-post the notification from the hub's PRE-press state
+     * -- byte-identical to the one on screen, then posted again when the page
+     * answered -- and on Android 14+, where a paused notification can be swiped
+     * away, the swipe's own {@code close} intent put the notification straight
+     * back for a beat. Pure and package-visible so the JUnit suite can table it.
+     */
+    static boolean foregroundStartNeeded(boolean running, boolean transportIntent) {
+        return !running || !transportIntent;
+    }
+
     @Override
     public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
         /* HANDLED BEFORE `startForeground`, and it has to be: a transport press arrives
            as a start of an ALREADY-foreground service, and delivering the press first
            means the page has begun acting on it before we spend a frame rebuilding a
-           notification we are about to rebuild again when the page answers. */
-        if (intent != null && ACTION_TRANSPORT.equals(intent.getAction())) {
+           notification. */
+        boolean transport = intent != null && ACTION_TRANSPORT.equals(intent.getAction());
+        if (transport) {
             String action = intent.getStringExtra(EXTRA_TRANSPORT);
             if (action != null && !action.isEmpty()) {
-                NowPlayingHub.dispatch(action, 0L, 0L, NowPlayingHub.ORIGIN_NOTIFICATION);
+                NowPlaying np = NowPlayingHub.get();
+                /* The seek pair carries the payload's own offset, as the Media3 path
+                   does (`WebViewPlayer.seekIncrement`); every other press carries none. */
+                long offsetMs = CMD_SEEK_BACK.equals(action) ? np.seekBackMs
+                    : CMD_SEEK_FORWARD.equals(action) ? np.seekForwardMs : 0L;
+                NowPlayingHub.dispatch(action, 0L, offsetMs, NowPlayingHub.ORIGIN_NOTIFICATION);
+                /* A SWIPE (or the Stop button) IS HONOURED AT ONCE: the notification
+                   goes now, and the service follows when the page's `stopAndClose`
+                   round-trips to `stop`. Leaving it up until then is the pop-back. */
+                if (running && CLOSE_TRANSPORT.equals(action)) {
+                    closing = true;
+                    try {
+                        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE);
+                    } catch (Exception e) {
+                        Log.w(TAG, "could not remove the notification on close", e);
+                    }
+                }
             }
         }
+        if (!foregroundStartNeeded(running, transport)) return START_NOT_STICKY;
+        /* A bare start is a new Foray, or the plugin re-asserting the service: the
+           notification is wanted again. */
+        closing = false;
         try {
             /* SEEDED HERE, because `startForeground` posts the notification too. Without
                this the first `onNowPlayingChanged` after a start would compare against a
@@ -501,6 +625,28 @@ public class PlaybackKeepAliveService extends Service {
             );
             nextIndex = index++;
         }
+        /* THE 15/30 PAIR, for the notification's own actions (API 24-32 draw
+           these; audit round 2, native-7). Gated on the page's handlers like the
+           rest; `onStartCommand` attaches the payload's offset when it dispatches.
+           Request codes 6/7: distinct per action, see `transportIntent`. */
+        int seekBackIndex = -1;
+        int seekForwardIndex = -1;
+        if (transport && np.canSeekBack) {
+            notification.addAction(
+                android.R.drawable.ic_media_rew,
+                getString(R.string.foray_action_seek_back),
+                transportIntent("seekbackward", 6)
+            );
+            seekBackIndex = index++;
+        }
+        if (transport && np.canSeekForward) {
+            notification.addAction(
+                android.R.drawable.ic_media_ff,
+                getString(R.string.foray_action_seek_forward),
+                transportIntent("seekforward", 7)
+            );
+            seekForwardIndex = index++;
+        }
         /* STOP IS NOT GATED ON `transport`, and that gap was a BLOCKING review finding.
            `acceptsTransport()` is false for a FINISHED Foray — correctly, because a play
            button that does nothing is worse than none — and the first version gated every
@@ -540,17 +686,20 @@ public class PlaybackKeepAliveService extends Service {
                audio is actually sounding. */
             MediaStyleNotificationHelper.MediaStyle style =
                 new MediaStyleNotificationHelper.MediaStyle(live);
-            int[] compact = compactActions(prevIndex, playIndex, nextIndex);
+            int[] compact = compactActions(prevIndex, playIndex, nextIndex, seekBackIndex, seekForwardIndex, np.hasNext);
             if (compact.length > 0) style.setShowActionsInCompactView(compact);
             notification.setStyle(style);
         }
         return notification.build();
     }
 
-    /** Previous, play/pause and next, in that order, skipping the ones that are not
-     *  there. Stop is deliberately not in the compact view: it is the cancel button and
-     *  the swipe, and a stop next to a play on a lock screen is a mis-tap away from
-     *  ending the Foray. */
+    /** The three compact slots. A FORAY (something after this: {@code hasNext}) gets
+     *  previous, play/pause, next -- the clip is the track. A SINGLE EPISODE with
+     *  nothing queued gets ↺15, play/pause, 30↻ instead (audit round 2, native-7):
+     *  its previous is only a restart, and the pair is what a podcast lock screen
+     *  shows. Stop is deliberately not in the compact view: it is the cancel button
+     *  and the swipe, and a stop next to a play on a lock screen is a mis-tap away
+     *  from ending the Foray. Pure, so the JUnit suite tables it. */
     /**
      * Everything on the notification a listener can SEE, as one string.
      *
@@ -562,19 +711,24 @@ public class PlaybackKeepAliveService extends Service {
     private static String visibleKey(@NonNull NowPlaying np) {
         return np.state + "|" + np.title + "|" + np.artist + "|" + np.album
             + "|" + np.hasPrevious + np.hasNext + np.canPlay + np.canPause + np.canStop
+            + np.canSeekBack + np.canSeekForward
             + "|" + np.acceptsTransport();
     }
 
-    private static int[] compactActions(int prevIndex, int playIndex, int nextIndex) {
+    static int[] compactActions(
+        int prevIndex, int playIndex, int nextIndex, int seekBackIndex, int seekForwardIndex, boolean hasNext
+    ) {
+        int left = hasNext ? prevIndex : seekBackIndex;
+        int right = hasNext ? nextIndex : seekForwardIndex;
         int count = 0;
-        if (prevIndex >= 0) count++;
+        if (left >= 0) count++;
         if (playIndex >= 0) count++;
-        if (nextIndex >= 0) count++;
+        if (right >= 0) count++;
         int[] out = new int[count];
         int at = 0;
-        if (prevIndex >= 0) out[at++] = prevIndex;
+        if (left >= 0) out[at++] = left;
         if (playIndex >= 0) out[at++] = playIndex;
-        if (nextIndex >= 0) out[at++] = nextIndex;
+        if (right >= 0) out[at++] = right;
         return out;
     }
 

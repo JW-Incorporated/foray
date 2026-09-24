@@ -12,8 +12,12 @@
 
    NO BEHAVIOUR CHANGE, BY CONSTRUCTION. Each function is the old inline code
    with its inputs named, in the same order, with the same quirks — including
-   the ones a fresh design would not choose (`previousAction` on a narration
-   item; `skipTarget`'s `Number(offset || 0)`). The web and Android suites that
+   the ones a fresh design would not choose (`skipTarget`'s
+   `Number(offset || 0)`). Main's audit round 2 then changed some of these
+   rules in client.js (player-4, player-5, player-11, p-car-5); they reached
+   this file when main was merged into engine/m1, as JS changes re-recorded in
+   the `transport` family and handed to NE-09 through swift-pending.json — the
+   route "JS IS THE REFERENCE" below prescribes. The web and Android suites that
    boot the real client.js (transport-reconcile, media-session, foray-playback)
    are the proof; `transport-policy.test.js` pins the rules themselves, from the
    `transport` fixture family, which is also the Swift port's test list.
@@ -54,6 +58,18 @@ export const TOGGLE = Object.freeze({
   LOAD: "load",
   RESUME: "resume",
   PAUSE: "pause",
+});
+
+/** What a ↺15 / 30↻ nudge inside a Foray does (`nudgeAction`). */
+export const NUDGE = Object.freeze({
+  /** The ordinary nudge: seek the Foray clock to `skipTarget`'s answer. */
+  SEEK: "seek",
+  /** Back, inside a spoken line: say the line again from the top. */
+  RESTART_LINE: "restart-line",
+  /** Forward, inside a spoken line: go on to the item after it. */
+  SKIP_LINE: "skip-line",
+  /** Forward, inside the closing spoken line: nothing to skip to. */
+  NONE: "none",
 });
 
 /** What "previous" does inside a Foray (`previousAction`). */
@@ -141,19 +157,39 @@ export function resolveToggle({ want, restored, foray, stateType, running, hasCu
  * long. The threshold is measured against the segment's own start, not the
  * episode's.
  *
- * A narration item has no `start_sec`, so `into` is NaN and the answer is the
- * manager's previous. Recorded as it is (fixture `transport/previous-narration`),
- * not tidied: this card changes no behaviour.
+ * MEASURED ON THE FORAY'S CLOCK, not the element's (audit round 2, player-4).
+ * It used to be `currentTime - item.start_sec`, which was NaN for every
+ * narration line and jingle — they have no `start_sec` — and `NaN < 4` is
+ * false, so Previous during a spoken line always restarted the line and never
+ * went back past the narrator. The caller passes the Foray playhead (which
+ * knows the clock each kind of item runs on) and the segment's start on that
+ * clock (`segmentStarts`). A null playhead (a jump still in flight) reads as
+ * "deep inside", which restarts — the safe answer.
  *
  * @param {object} s
- * @param {number} s.index        the manager's current index
- * @param {object|null} s.item    the playable item at that index
- * @param {number|null} s.currentTime  the element's clock
+ * @param {number} s.index              the manager's current index
+ * @param {number|null} s.positionSec   the Foray playhead, or null
+ * @param {number} s.segmentStartSec    where that segment starts on the Foray clock
  * @returns {string} a `PREVIOUS` token
  */
-export function previousAction({ index, item, currentTime }) {
-  const into = item ? (currentTime ?? 0) - item.start_sec : 0;
+export function previousAction({ index, positionSec, segmentStartSec }) {
+  const into = positionSec == null ? Infinity : positionSec - segmentStartSec;
   return index > 0 && into < RESTART_WINDOW_SEC ? PREVIOUS.ITEM_BEFORE : PREVIOUS.MANAGER;
+}
+
+/**
+ * Does "previous" on an ordinary episode mean RESTART? True from the restart
+ * window on — the same window `previousAction` measures a Foray clip against,
+ * so an episode's ◀◀ has the meaning every podcast player gives it (audit
+ * round 2, p-car-5) without a second copy of the number. Inside the window it
+ * is false, and the page may go to the list's row before instead.
+ *
+ * @param {object} s
+ * @param {number} s.positionSec  where the bar says the listener is
+ * @returns {boolean}
+ */
+export function episodePreviousRestarts({ positionSec }) {
+  return positionSec >= RESTART_WINDOW_SEC;
 }
 
 /** A target the episode can actually hold: never below zero, never past the
@@ -171,18 +207,59 @@ export function clampEpisodeTarget(seconds, dur) {
  * Foray's clock (so it crosses a clip boundary the way the scrubber does) and
  * never goes below zero; on an episode it is the episode clamp.
  *
+ * THE SAME END GUARD FOR BOTH (audit round 2, player-5). A Foray-clock target
+ * at or past the total lands, by `sourceOffsetFor`'s own rule, 0.25 s inside
+ * the last clip's out-point — right for the scrubber ("take me to the end"
+ * ends the Foray, qa 22) and wrong for a button whose label promised thirty
+ * seconds: 30↻ with twenty seconds left finished the Foray and cleared its
+ * Jump back in row. So a Foray nudge given the Foray's total also stops
+ * `SEEK_END_GUARD_SEC` short of it. Only the nudge: the scrubber never asks.
+ *
  * @param {object} s
  * @param {boolean} s.foray        a Foray is loaded
  * @param {number} s.positionSec   where the bar says the listener is (Foray or
  *                                 episode seconds)
  * @param {*} s.offsetSec          the step, signed
- * @param {number|null} [s.durationSec]  the episode's length, when known
+ * @param {number|null} [s.durationSec]  the episode's length, or the Foray's
+ *                                 total, when known
  * @returns {number|null} the target, or null for nothing to seek to
  */
 export function skipTarget({ foray, positionSec, offsetSec, durationSec = null }) {
   const offset = Number(offsetSec || 0);
-  if (foray) return Math.max(0, positionSec + offset);
+  if (foray) {
+    const floor = Math.max(0, positionSec + offset);
+    return durationSec > 0 ? Math.min(floor, Math.max(0, durationSec - SEEK_END_GUARD_SEC)) : floor;
+  }
   return clampEpisodeTarget(positionSec + offset, durationSec);
+}
+
+/**
+ * What a nudge inside a Foray does once `skipTarget` has said where it lands.
+ *
+ * A SPOKEN LINE CANNOT BE SCRUBBED, SO A NUDGE INSIDE ONE IS SAID PLAINLY
+ * (audit round 2, player-11). The synthesiser has no offset to seek to, so a
+ * seek into the line the narrator is already speaking did nothing at all,
+ * silently, while the clock ran on. Back means "hear the line again" (the
+ * restart the manager's previous makes, which re-speaks it from the top);
+ * forward means "skip the line"; the caller says which through its live
+ * region. A nudge that CROSSES out of the line is an ordinary seek.
+ *
+ * THE LAST LINE HAS NOTHING AFTER IT TO SKIP TO (audit round 2 review): the
+ * Foray's next returns early on the last item, so announcing "skipped" there
+ * told a screen-reader user the line was gone while it kept playing. Forward
+ * from the closing line does nothing, and says nothing.
+ *
+ * @param {object} s
+ * @param {number} s.offsetSec           the step, signed (a number)
+ * @param {boolean} s.landsInCurrentItem the target is inside the item now playing
+ * @param {boolean} s.narrationPlayhead  that item is a line the synthesiser speaks
+ * @param {boolean} s.onLastItem         that item is the Foray's last
+ * @returns {string} a `NUDGE` token
+ */
+export function nudgeAction({ offsetSec, landsInCurrentItem, narrationPlayhead, onLastItem }) {
+  if (!(landsInCurrentItem && narrationPlayhead)) return NUDGE.SEEK;
+  if (offsetSec < 0) return NUDGE.RESTART_LINE;
+  return onLastItem ? NUDGE.NONE : NUDGE.SKIP_LINE;
 }
 
 /**

@@ -43,6 +43,19 @@ test("a position that is not a finite, non-negative number, or has no id, is nev
 test("a position event goes out at most once a minute per item", (t) => cases(t));
 test("the first save always emits, and so does every save after one emitted at 0 s", (t) => cases(t));
 
+/* ---------- the write cadence (NE-09) ---------- */
+
+/* The two throttles that decide WHEN a position is written, lifted out of
+   `PlayerQueueManager._persistIfDue` (queue-manager.js, cadence.json) and
+   `ForayProgressStore.save` (foray-progress.js, foray-cadence.json) so the
+   native engine's ResumeRules is checked against the same answers. They live
+   in this suite because it is the resume-rules family's suite; the classes'
+   own suites still pin that the classes route through them.
+   TO SEE ONE FAIL: `<=` for `<` in either delta test, or drop either
+   "not a finite number" guard — the named test goes red with the case id. */
+test("a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes", (t) => cases(t));
+test("a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never", (t) => cases(t));
+
 /* ---------- the class is glue around the rules ---------- */
 
 /* JS-only (exclusions.json, js-module-shape): the Swift engine's store is its

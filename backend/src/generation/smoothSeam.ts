@@ -1,5 +1,5 @@
 import type { DeepenedAct } from "../types/spine";
-import { narratorStructureLeaks } from "../copy/narratorStructure";
+import { narratorStructureLeaks, toNarrationWords } from "../copy/narratorStructure";
 import type { ContinuityBuilder, ContinuityBuildContext } from "./ContinuityBuilder";
 
 /**
@@ -69,12 +69,24 @@ export async function smoothActIntroduction(
     ctx
   );
 
-  const validation = validateSmoothedSeam(nextAct, smoothed.nextIntroduction);
+  /* Q-08: §4.8 makes ONE call per boundary and a failed validation ends the
+     run, so there is no retry to refuse a structural aside into. "The last
+     act showed you..." is the bridge a smoothing prompt invites; it is
+     rewritten in code ("What came before showed you...") before the seam is
+     validated, and the rewrite is reported because it means the prompt was
+     ignored. The validation below still asks the rule, so anything the
+     rewrite could not reach is still refused rather than shipped. */
+  const spoken = toNarrationWords(smoothed.nextIntroduction);
+  if (spoken.changed) {
+    console.warn(`smoothSeam: the smoothed introduction to "${nextAct.title}" named the Foray's own structure; rewritten in code`);
+  }
+
+  const validation = validateSmoothedSeam(nextAct, spoken.text);
   if (!validation.valid) {
     throw new SeamSmoothingError(index, nextAct.title, validation.issues);
   }
 
-  return smoothed.nextIntroduction;
+  return spoken.text;
 }
 
 /**

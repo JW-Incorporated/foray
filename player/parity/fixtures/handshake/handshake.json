@@ -1,0 +1,366 @@
+{
+  "family": "handshake",
+  "module": "player/engine-contract.js",
+  "note": "The page's side of engineHello (docs/native-engine-plan.md §4.6, §5.1; player/engine-contract.js decideMode and helloRequest, NE-11j): native only on iOS, with the method present, a well-formed hello, mode native and a matching protocol; relinquish whenever an engine might be running and the page runs JS anyway. Ported by NE-11s (the engine answers the same hello).",
+  "cases": [
+    {
+      "id": "handshake/protocol",
+      "covers": [],
+      "read": "PROTOCOL",
+      "expect": { "value": 1 }
+    },
+    {
+      "id": "handshake/page-modes",
+      "covers": [],
+      "read": "PAGE_MODES",
+      "expect": { "value": ["native", "js"] }
+    },
+    {
+      "id": "handshake/engine-modes",
+      "covers": [],
+      "read": "ENGINE_MODES",
+      "expect": { "value": ["native", "legacy"] }
+    },
+    {
+      "id": "handshake/handshake-reasons",
+      "covers": [],
+      "read": "HANDSHAKE_REASONS",
+      "expect": {
+        "value": [
+          "native",
+          "not-ios",
+          "no-method",
+          "no-hello",
+          "bad-hello",
+          "engine-legacy",
+          "protocol-mismatch"
+        ]
+      }
+    },
+    {
+      "id": "handshake/hello-request",
+      "covers": [],
+      "call": "helloRequest",
+      "args": ["2026.09.24-1"],
+      "expect": { "return": { "pageBuild": "2026.09.24-1", "protocol": 1 } }
+    },
+    {
+      "id": "handshake/hello-request-no-build",
+      "covers": [],
+      "call": "helloRequest",
+      "args": [],
+      "expect": { "return": { "pageBuild": "", "protocol": 1 } }
+    },
+    {
+      "id": "handshake/decide-android",
+      "covers": [],
+      "note": "Only iOS has a native engine.",
+      "call": "decideMode",
+      "args": [
+        {
+          "platform": "android",
+          "methodPresent": true,
+          "hello": {
+            "mode": "native",
+            "reason": "build-default",
+            "engineVersion": "1.0.0",
+            "protocol": 1,
+            "capabilities": ["episode", "restore"],
+            "ownedKeyPrefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"],
+            "snapshot": {
+              "v": 1,
+              "seq": 0,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 0,
+              "mode": "none",
+              "state": "idle",
+              "running": false,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 0,
+              "durationSec": null,
+              "sourceTimeSec": null,
+              "playheadItemId": null,
+              "isNarrationPlayhead": false,
+              "rate": 1,
+              "effectiveRate": 0,
+              "canNext": false,
+              "canPrevious": false,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "inactive",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "", "artist": "", "album": "" }
+            },
+            "pendingAdvances": [{ "planSeq": 3, "hopSeq": 1, "nextId": "ep-2", "at": 1790000000000 }],
+            "pendingEvents": [
+              {
+                "seq": 7,
+                "kind": "position",
+                "episode_id": "ep-1",
+                "seconds": 60,
+                "duration": 3600,
+                "at": 1790000000000
+              }
+            ]
+          }
+        }
+      ],
+      "expect": { "return": { "mode": "js", "reason": "not-ios", "relinquish": false } }
+    },
+    {
+      "id": "handshake/decide-web",
+      "covers": [],
+      "call": "decideMode",
+      "args": [{ "platform": "web", "methodPresent": false, "hello": null }],
+      "expect": { "return": { "mode": "js", "reason": "not-ios", "relinquish": false } }
+    },
+    {
+      "id": "handshake/decide-no-method",
+      "covers": [],
+      "note": "An older binary without engineHello: the JS player, nothing to relinquish.",
+      "call": "decideMode",
+      "args": [{ "platform": "ios", "methodPresent": false, "hello": null }],
+      "expect": { "return": { "mode": "js", "reason": "no-method", "relinquish": false } }
+    },
+    {
+      "id": "handshake/decide-no-hello",
+      "covers": [],
+      "authored": true,
+      "note": "Timeout (5 s) or rejection: an engine may be running, so relinquish{cap:all} before building anything audible.",
+      "call": "decideMode",
+      "args": [{ "platform": "ios", "methodPresent": true, "hello": null }],
+      "expect": { "return": { "mode": "js", "reason": "no-hello", "relinquish": true } }
+    },
+    {
+      "id": "handshake/decide-bad-hello",
+      "covers": [],
+      "call": "decideMode",
+      "args": [{ "platform": "ios", "methodPresent": true, "hello": { "mode": "native" } }],
+      "expect": { "return": { "mode": "js", "reason": "bad-hello", "relinquish": true } }
+    },
+    {
+      "id": "handshake/decide-not-built-stub",
+      "covers": [],
+      "authored": true,
+      "note": "The NE-01 stub: no protocol, and that is not a mismatch - mode is read first.",
+      "call": "decideMode",
+      "args": [
+        {
+          "platform": "ios",
+          "methodPresent": true,
+          "hello": { "mode": "legacy", "reason": "not-built" }
+        }
+      ],
+      "expect": { "return": { "mode": "js", "reason": "engine-legacy", "relinquish": false } }
+    },
+    {
+      "id": "handshake/decide-crash-loop-legacy",
+      "covers": [],
+      "call": "decideMode",
+      "args": [
+        {
+          "platform": "ios",
+          "methodPresent": true,
+          "hello": { "mode": "legacy", "reason": "crash-loop", "protocol": 1 }
+        }
+      ],
+      "expect": { "return": { "mode": "js", "reason": "engine-legacy", "relinquish": false } }
+    },
+    {
+      "id": "handshake/decide-protocol-mismatch",
+      "covers": [],
+      "authored": true,
+      "note": "A native engine speaking another protocol: run JS and relinquish it.",
+      "call": "decideMode",
+      "args": [
+        {
+          "platform": "ios",
+          "methodPresent": true,
+          "hello": {
+            "mode": "native",
+            "reason": "build-default",
+            "engineVersion": "1.0.0",
+            "protocol": 2,
+            "capabilities": ["episode", "restore"],
+            "ownedKeyPrefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"],
+            "snapshot": {
+              "v": 1,
+              "seq": 0,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 0,
+              "mode": "none",
+              "state": "idle",
+              "running": false,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 0,
+              "durationSec": null,
+              "sourceTimeSec": null,
+              "playheadItemId": null,
+              "isNarrationPlayhead": false,
+              "rate": 1,
+              "effectiveRate": 0,
+              "canNext": false,
+              "canPrevious": false,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "inactive",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "", "artist": "", "album": "" }
+            },
+            "pendingAdvances": [{ "planSeq": 3, "hopSeq": 1, "nextId": "ep-2", "at": 1790000000000 }],
+            "pendingEvents": [
+              {
+                "seq": 7,
+                "kind": "position",
+                "episode_id": "ep-1",
+                "seconds": 60,
+                "duration": 3600,
+                "at": 1790000000000
+              }
+            ]
+          }
+        }
+      ],
+      "expect": { "return": { "mode": "js", "reason": "protocol-mismatch", "relinquish": true } }
+    },
+    {
+      "id": "handshake/decide-native",
+      "covers": [],
+      "authored": true,
+      "note": "iOS, the method present, protocol 1 and mode native: drive the engine.",
+      "call": "decideMode",
+      "args": [
+        {
+          "platform": "ios",
+          "methodPresent": true,
+          "hello": {
+            "mode": "native",
+            "reason": "build-default",
+            "engineVersion": "1.0.0",
+            "protocol": 1,
+            "capabilities": ["episode", "restore"],
+            "ownedKeyPrefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"],
+            "snapshot": {
+              "v": 1,
+              "seq": 0,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 0,
+              "mode": "none",
+              "state": "idle",
+              "running": false,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 0,
+              "durationSec": null,
+              "sourceTimeSec": null,
+              "playheadItemId": null,
+              "isNarrationPlayhead": false,
+              "rate": 1,
+              "effectiveRate": 0,
+              "canNext": false,
+              "canPrevious": false,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "inactive",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "", "artist": "", "album": "" }
+            },
+            "pendingAdvances": [{ "planSeq": 3, "hopSeq": 1, "nextId": "ep-2", "at": 1790000000000 }],
+            "pendingEvents": [
+              {
+                "seq": 7,
+                "kind": "position",
+                "episode_id": "ep-1",
+                "seconds": 60,
+                "duration": 3600,
+                "at": 1790000000000
+              }
+            ]
+          }
+        }
+      ],
+      "expect": { "return": { "mode": "native", "reason": "native", "relinquish": false } }
+    },
+    {
+      "id": "handshake/decide-method-present-not-true",
+      "covers": [],
+      "call": "decideMode",
+      "args": [
+        {
+          "platform": "ios",
+          "methodPresent": "yes",
+          "hello": {
+            "mode": "native",
+            "reason": "build-default",
+            "engineVersion": "1.0.0",
+            "protocol": 1,
+            "capabilities": ["episode", "restore"],
+            "ownedKeyPrefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"],
+            "snapshot": {
+              "v": 1,
+              "seq": 0,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 0,
+              "mode": "none",
+              "state": "idle",
+              "running": false,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 0,
+              "durationSec": null,
+              "sourceTimeSec": null,
+              "playheadItemId": null,
+              "isNarrationPlayhead": false,
+              "rate": 1,
+              "effectiveRate": 0,
+              "canNext": false,
+              "canPrevious": false,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "inactive",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "", "artist": "", "album": "" }
+            },
+            "pendingAdvances": [{ "planSeq": 3, "hopSeq": 1, "nextId": "ep-2", "at": 1790000000000 }],
+            "pendingEvents": [
+              {
+                "seq": 7,
+                "kind": "position",
+                "episode_id": "ep-1",
+                "seconds": 60,
+                "duration": 3600,
+                "at": 1790000000000
+              }
+            ]
+          }
+        }
+      ],
+      "expect": { "return": { "mode": "js", "reason": "no-method", "relinquish": false } }
+    },
+    {
+      "id": "handshake/decide-no-input",
+      "covers": [],
+      "call": "decideMode",
+      "args": [null],
+      "expect": { "return": { "mode": "js", "reason": "not-ios", "relinquish": false } }
+    }
+  ]
+}
