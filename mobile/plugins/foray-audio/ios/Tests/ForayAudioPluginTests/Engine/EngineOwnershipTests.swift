@@ -531,6 +531,29 @@ final class EngineOwnershipTests: XCTestCase {
         XCTAssertEqual(EnginePrivateStore(defaults: defaults).stored, trace(events))
     }
 
+    /// A healthy marker that arrives AFTER a page-health strike clears the
+    /// sentinel but keeps the strike (`EngineMode.trace`'s rule): otherwise a
+    /// page broken on every launch whose strike lands first would never reach
+    /// legacy.
+    /// TO SEE IT FAIL: drop `if !pageHealthTaken` in `markHealthy`.
+    @MainActor
+    func testAHealthyMarkerAfterAPageHealthStrikeKeepsTheStrike() {
+        let (defaults, _) = freshDefaults()
+        let launch = Launch(defaults)
+        launch.load()
+        launch.owner.pageDidFinishLoad(foreground: true)
+        launch.ownerTiming.fire(afterMs: EngineOwnership.pageHealthMs)
+        XCTAssertEqual(launch.owner.store.strikes, 1)
+        XCTAssertNotNil(launch.owner.store.string(.sentinel))
+
+        launch.lifecycle.post()
+        XCTAssertNil(launch.owner.store.string(.sentinel), "healthy: the boot did not crash")
+        XCTAssertEqual(launch.owner.store.strikes, 1, "but the page did not say hello")
+        XCTAssertEqual(launch.owner.store.stored, trace([
+            .launch(buildDefault: .native, currentBuild: "b1", built: true), .pageHealth, .healthy,
+        ]))
+    }
+
     /// engineHello stands both timers down; a background page load arms no
     /// page-health strike (a suspended page cannot say hello).
     /// TO SEE IT FAIL: drop `cancelHelloTimers()` from `helloReceived`, or
