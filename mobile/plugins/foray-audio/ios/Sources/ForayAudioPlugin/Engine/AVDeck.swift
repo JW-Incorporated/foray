@@ -630,7 +630,7 @@ final class AVDeck: DeckDriving {
             self.emit(.pausedUncommanded(token: token, atSec: self.player.currentTime().seconds))
         }
         pauseSuspicion = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.pauseSettleSec, execute: work)
+        work.perform() // MUTANT S
     }
 
     private func looksUncommandedPaused() -> Bool {
@@ -661,10 +661,8 @@ final class AVDeck: DeckDriving {
         rate: Float, timeControlPaused: Bool,
         atSec: Double, durationSec: Double?
     ) -> Bool {
-        guard intendsToPlay, !reachedEnd, ready, rate == 0, timeControlPaused else { return false }
-        if let durationSec, atSec >= durationSec - endSlackSec {
-            return false
-        }
+        guard intendsToPlay, ready, rate == 0 else { return false } // MUTANT R+P
+        _ = durationSec // MUTANT J3
         return true
     }
 
