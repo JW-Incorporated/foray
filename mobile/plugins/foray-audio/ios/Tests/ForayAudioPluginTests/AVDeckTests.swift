@@ -24,8 +24,25 @@ final class AVDeckTests: XCTestCase {
     private var sessionActive = true
     private var stallingLoader: NeverAnsweringLoader?
 
+    /// The deadline these tests give the deck. NOT the production value
+    /// (`AVDeck.defaultLoadDeadlineSec`, pinned by its own test): the first
+    /// CI run (35961598950) had a Simulator load that had not even loaded its
+    /// duration after 15 s, while every other load was ready in under 1 s. A
+    /// behaviour test must not fail because the runner's media stack is
+    /// slow; the deadline itself is tested with an asset that never answers.
+    private static let testDeadlineSec: Double = 40
+    private var testStartedAt = Date()
+
+    /// Warm the Simulator's media stack ONCE, before any deck exists, and
+    /// record how long the cold first load took (a measurement, not a check).
+    override class func setUp() {
+        super.setUp()
+        DeckMeasurements.warmUpOnce()
+    }
+
     override func setUp() {
         super.setUp()
+        testStartedAt = Date()
         deck = makeDeck()
     }
 
@@ -36,7 +53,7 @@ final class AVDeckTests: XCTestCase {
     }
 
     private func makeDeck(
-        deadlineSec: Double = AVDeck.defaultLoadDeadlineSec,
+        deadlineSec: Double = AVDeckTests.testDeadlineSec,
         makeAsset: ((URL, Bool) -> AVURLAsset)? = nil
     ) -> AVDeck {
         let config = AVDeck.Config(
@@ -47,7 +64,11 @@ final class AVDeckTests: XCTestCase {
             makeAsset: makeAsset ?? AVDeck.defaultAsset
         )
         let deck = AVDeck(config: config)
-        deck.onEvent = { [unowned self] in self.events.append($0) }
+        deck.onEvent = { [unowned self] event in
+            // Timestamped in the log, so a slow CI load shows WHERE it was slow.
+            print("AVDECK-EVENT +\(Int(Date().timeIntervalSince(self.testStartedAt) * 1000)) ms \(event)")
+            self.events.append(event)
+        }
         return deck
     }
 
@@ -63,7 +84,7 @@ final class AVDeckTests: XCTestCase {
     @discardableResult
     private func waitFor(
         _ what: String,
-        timeout: TimeInterval = 15,
+        timeout: TimeInterval = 45,
         file: StaticString = #filePath,
         line: UInt = #line,
         _ match: (DeckEvent) -> Bool
@@ -86,6 +107,7 @@ final class AVDeckTests: XCTestCase {
         let hit = waitFor("ready(token: \(token))", file: file, line: line) {
             if case .ready(token, _, _, _) = $0 { return true }
             if case .failed(token, _) = $0 { return true }
+            if case .deadlineExceeded(token, _) = $0 { return true }
             return false
         }
         switch hit {
@@ -93,6 +115,9 @@ final class AVDeckTests: XCTestCase {
             return (landed, prerolled, elapsed)
         case let .failed(_, message)?:
             XCTFail("load \(token) failed: \(message)", file: file, line: line)
+            return nil
+        case let .deadlineExceeded(_, afterMs)?:
+            XCTFail("load \(token) hit the deadline after \(afterMs) ms; events: \(events)", file: file, line: line)
             return nil
         default:
             return nil
@@ -393,6 +418,24 @@ final class NeverAnsweringLoader: NSObject, AVAssetResourceLoaderDelegate {
 /// job summary under one heading.
 enum DeckMeasurements {
     private static var wroteHeading = false
+    private static var warmed = false
+
+    /// One cold AVPlayerItem load on the WAV, waited for up to 60 s.
+    static func warmUpOnce() {
+        guard !warmed else { return }
+        warmed = true
+        guard let url = Bundle.module.url(forResource: "click-11k", withExtension: "wav", subdirectory: "Fixtures") else { return }
+        let started = Date()
+        let player = AVPlayer(playerItem: AVPlayerItem(url: url))
+        let until = started.addingTimeInterval(60)
+        while Date() < until, let item = player.currentItem, item.status == .unknown {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+        let status = player.currentItem?.status == .readyToPlay ? "readyToPlay" : "NOT ready"
+        let ms = Int(Date().timeIntervalSince(started) * 1000)
+        record("cold start (warm-up, before any AVDeck test): the run's first AVPlayerItem was \(status) after \(ms) ms")
+        player.replaceCurrentItem(with: nil)
+    }
 
     static func record(_ line: String) {
         print("AVDECK-MEASURE \(line)")
