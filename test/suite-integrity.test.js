@@ -1239,7 +1239,7 @@ const FLOORS = {
      D3's (1) went with their rules; the pair clause gained six (reported on
      pre-Q-01 tape, gated on a Q-01 Foray, the CLI exit, the row fields, the
      IQR still reported, the helper) and M4's restatement three. */
-  "tools/foray/check-forays.test.mjs": 164, // founder ruling 2026-09-24 ("Publish any foray so that the statement is correct"): a published Foray has a narrator between its clips, so the first-run sheet's narrator clause is true for a newcomer (round-1 persona 14); 163 -> 164 // audit round 2 (L8, p-foray-5): a published Foray's why-lines are captions -- no bare leading name the titles do not introduce, no gendered pronoun with no one to point at; 161 -> 163 // L8 review (2026-09-23): §0 and slot headers declared again, by doc path, so a doc cannot lose them silently; 160 -> 161. L8 (2026-09-22): the pipeline's own words (beat, segment, act, running order) refused in Foray copy — the audit found "eight beats of a forty-beat history" as a title; 159 -> 160. // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
+  "tools/foray/check-forays.test.mjs": 166, // generator vocabulary + title style (2026-09-24): the title house style refused on curated and generated Forays ("Sentence case, no period, though ? And ! Are allowed", qa 146), and persona 65's shapes refused in generated narration at the publish gate; 164 -> 166 // founder ruling 2026-09-24 ("Publish any foray so that the statement is correct"): a published Foray has a narrator between its clips, so the first-run sheet's narrator clause is true for a newcomer (round-1 persona 14); 163 -> 164 // audit round 2 (L8, p-foray-5): a published Foray's why-lines are captions -- no bare leading name the titles do not introduce, no gendered pronoun with no one to point at; 161 -> 163 // L8 review (2026-09-23): §0 and slot headers declared again, by doc path, so a doc cannot lose them silently; 160 -> 161. L8 (2026-09-22): the pipeline's own words (beat, segment, act, running order) refused in Foray copy — the audit found "eight beats of a forty-beat history" as a title; 159 -> 160. // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
   /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
      of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
      accepted value (~30 today), so the floor is the count of `test(` lines this
@@ -2021,7 +2021,7 @@ const BACKEND_FLOORS = {
   "test/AnthropicDeepenActBuilder.test.ts": 9,
   "test/AnthropicEnricher.test.ts": 10,
   "test/AnthropicExternalResearcher.test.ts": 9,
-  "test/AnthropicPromptUnderstander.test.ts": 10, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 9 -> 10
+  "test/AnthropicPromptUnderstander.test.ts": 13, // generator title style (2026-09-24, qa 146): the prompt asks for sentence case; one case-only re-ask for a Title Case title; no re-ask for a period; 10 -> 13 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 9 -> 10
   /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
      transcript windows and the one seed rule when the research map has them,
      neither when it does not, and the seed the reply carries back. */
@@ -2030,7 +2030,7 @@ const BACKEND_FLOORS = {
   "test/budgetGuard.test.ts": 6,
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
-  "test/copyRules.test.ts": 6, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
+  "test/copyRules.test.ts": 12, // title house style (2026-09-24, qa 146): refused shapes, no false positives on names/acronyms/quoted works, houseStyleTitle never lowercases; 6 -> 12 (9 on disk before it) // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
   "test/createEnricher.test.ts": 1,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c). */
   "test/createPromptUnderstander.test.ts": 1,
@@ -2134,7 +2134,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 31, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 33, // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -2650,6 +2650,17 @@ const BACKEND_FLOORS = {
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
   "test/actNarration.test.ts": 52,
+  /* Generator vocabulary (2026-09-24). Wyatt, on the audit's persona 65 (the
+     narrator says "this act", "Act one", "two acts back" aloud): "Accept the
+     ones that are currently there; update our foray generation scripting to
+     avoid making more in the future." The check reaches the persona's shapes,
+     a contraction, INTERNAL_VOCABULARY, slot/spine and counted runs; the
+     rewrite's table and its fixed point on the frozen generated Foray; the
+     rule's examples agree with the check and every narration prompt carries
+     it; and the rewrite runs where no retry is left (§4.4's last attempt,
+     §4.8, forayItems.ts, the prelude overview, the hand-off). One named
+     mutation per test. */
+  "test/narratorStructure.test.ts": 13,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

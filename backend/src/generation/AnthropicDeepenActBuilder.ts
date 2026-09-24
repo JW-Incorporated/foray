@@ -7,6 +7,7 @@ import { parseWithRetry } from "./parseWithRetry";
 import type { Act, DeepenedAct, Spine } from "../types/spine";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
 import { recordUsage } from "./usageTracking";
+import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
  * Real §4.4 act-deepening via the Anthropic API, mirroring
@@ -137,7 +138,7 @@ export class AnthropicDeepenActBuilder implements DeepenActBuilder {
 }
 
 
-function buildDeepenActPrompt(spine: Spine, targetAct: Act, targetActIndex: number): string {
+export function buildDeepenActPrompt(spine: Spine, targetAct: Act, targetActIndex: number): string {
   const otherActsSummary = spine.acts
     .map((act, i) =>
       i === targetActIndex
@@ -206,7 +207,7 @@ function buildDeepenActPrompt(spine: Spine, targetAct: Act, targetActIndex: numb
     `   act ${targetActIndex + 1} does not re-explain what an earlier act already established.`,
     "5. Write this act's EXIT — the connective tissue into the next act (its own half of the handoff; a",
     "   later continuity pass reconciles the full cross-act seam, this is just this act's side of it).",
-    "6. NEVER MENTION THE FORAY'S OWN STRUCTURE (Q-08). No \"this act\", no \"the next act\", no \"act one\", no \"the next beat\", no \"in this segment\", no \"this Foray has four acts\", no \"this documentary\" - a listener cannot see a running order and does not need one. Say what changed and what comes of it, not where they are. The same words are FINE when they belong to something else: \"in the first act of Macbeth\", \"the second act of the crisis\". A machine checks this after you answer.",
+    `6. The introduction and the exit are SPOKEN. ${NARRATOR_STRUCTURE_RULE}`,
     "",
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
     '{"title": string, "thesis": string, "startState": string, "endState": string, ' +
