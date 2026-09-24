@@ -3,6 +3,7 @@
 <!-- ha-format: 2. Machine record: nothing here needs you. One line per item, newest first.
      Full bodies are in git history. Numbers here are never reused. -->
 
+- #108 · 2026-09-24 · done · One more car trip — the record can finally answer the question — "Taken 2026-09-24 on build 2026092429: both car tests failed (Spotify on connect; Spotify after a long pause). Record and analysis in docs/field-records/2026-09-24-car-baseline.md; it is the baseline NE-27 is judged against." · by founder
 - #2 · 2026-09-24 · skip · Listen to Foray #1 end to end, then decide whether to publish it — "Wyatt, 2026-09-24, answering the round-2 decision list: 'Drop it'. Foray #1 was retired in PR #741 and the ask is dropped for its successor too. Recorded in docs/DECISIONS.md 2026-09-24." · by founder
 - #107 · 2026-09-21 · done · Cut a release build, or the merged fixes never reach your phone — "Claude cut it: run 35616351870, v1.0.0 build 2026092121, uploaded to both App Store and Play. The founder deleted the approval rule that had made this a human action." · by founder
 - #106 · 2026-09-21 · done · PR #725's checks are waiting for your "Approve and run" click — "Approved and merged as 37554f6; all eight founder fixes from 2026-09-17/18 are on main." · by founder
