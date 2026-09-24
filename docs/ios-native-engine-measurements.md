@@ -7,7 +7,8 @@ written on, so every Swift claim is either **CI-executed** (with the job, the
 run and the head SHA) or marked **not executed**. An estimate is labelled as
 one and is never quoted as a measurement.
 
-Cards append their own section. NE-01 (the packaging spike) wrote §1-§6.
+Cards append their own section. NE-01 (the packaging spike) wrote §1-§6;
+NE-06 (engine-parity CI) wrote §7.
 
 ## 1. What NE-01 changed, in one paragraph
 
@@ -185,3 +186,66 @@ rejecting / unregistered / `native` `engineHello`, the Preferences path moved
 out of its gate, `ios-build.yml` setting the pin, `ci.yml` dropping the runtime
 requirement, the XCTFail turned into a skip, the page configuring a Preferences
 group, a second Preferences caller), all 14 killed.
+
+## 7. engine-parity CI, ios-gate and release refusal (NE-06)
+
+NE-06 landed G-1a (the Linux parity job) and the code half of G-1b (the
+short-circuit, `ios-gate`, release refusal) in one PR (#772), because it
+lands on `engine/m1`, and G-1a's week of green runs happens on that
+branch's PRs well before `engine/m1` reaches `main`. **The other half of G-1b
+is a founder action:** add `engine-parity` and `ios-gate` to `protect-main`'s
+required checks, then record it in STATE.md. That is a branch-protection
+setting, so no file in this repo can do it.
+
+### The fast loop, measured
+
+Every row is CI-executed, from GitHub's job timestamps.
+
+| What | Run | Wall clock |
+|---|---|---|
+| `engine-parity`, full parity run (head `3e3d5a6b`) | 35966876624 | **59 s**: 36 s pulling `swift:5.10` (Swift 5.10.1), about 8 s to build and run 70 XCTests, the rest checkout and setup-node |
+| `engine-parity`, short-circuited (content-only probe #774, head `15990b34`) | 35968721212 | 29 s, nearly all of it the image pull |
+| `ios-gate`, no Swift path changed (same probe) | 35968721212 | **15 s**, and it never read ios-kit |
+| `ios-gate`, Swift path changed (head `3e3d5a6b`) | 35966876624 | 18 min 37 s: it waited for ios-kit, which spent 4 min 46 s in the macOS queue and 13 min 46 s running |
+
+So a Swift author's loop is now about **one minute on Linux** against 15 to
+30 minutes for ios-kit with its queue. The macOS queue is also the variable
+part: with four ios-kit runs in flight, the red probe's ios-kit waited
+28 minutes to start.
+
+**The image is not cached.** The plan says "image cached", but GitHub
+pulls a job `container:` before the first step runs, so no `actions/cache`
+step can reach it. The 36 s pull above is the cost, and it is paid even when
+the job short-circuits.
+
+The first Linux run printed every family, including `continuation`, which
+NE-13 had just recorded as JS only:
+`compare 37/37 passed, seam-gap 30/30 passed, continuation 48 js-only, and
+queue-state, rate, resume-rules, rows, number-format, transport and
+media-episode all owed by their port cards`. That is the same result as the
+macOS host run, so Linux Foundation raised nothing in the current core.
+
+### Acceptance, CI-executed
+
+| Criterion | Evidence |
+|---|---|
+| G-1a: engine-parity green on the PR, with the family table | run 35966876624 (head `3e3d5a6b`); the summary step writes the table from `parity-report.json` |
+| A pr-hygiene round trip reports engine-parity on the new head | `gh workflow run ci.yml --ref engine/ne-06`, the same dispatch pr-hygiene makes: run 35968735311 (head `2ad29ab5`), where engine-paths diffed against `main` (95 files, engine=true, swift=true) and engine-parity, ios-kit (now run on a Swift dispatch) and ios-gate were all green |
+| A content-only PR short-circuits both | probe #774 (closed unmerged), run 35968721212: `1 changed file(s) on pull_request; engine=false swift=false`, and both gates green in under 30 s |
+| A deliberately red ios-kit on a Swift PR keeps ios-gate red | probe #775 (closed unmerged; `SeamGap.defaultGapSec` 2.0 -> 1.5), run 35968727263: ios-kit failed in `swift test (foray-engine-core, macOS host)`, and ios-gate printed `FAIL: a Swift path changed and ios-kit ended 'failure'` |
+| Release refuses a SHA with red parity (dry run) | `node tools/ci/engine-ci.mjs release-checks 66c3122a...` (the probe's head) exited 1 with `refusing to cut an iOS TestFlight ... engine-parity: failure (.../job/107533230225); ios-kit: queued`. The same command on `3e3d5a6b` exited 0: `engine-parity: success; ios-kit: success` |
+| The engine-parity summary still prints when swift test fails | on probe #775 the table step and the artifact step ran after the failed test step; the log shows `seam-gap cases=30 executed=30 passed=27 failed=3` |
+| Branch protection lists engine-parity and ios-gate | **not done: a founder action** (above) |
+
+### Mutation checks (local, node)
+
+`tools/ci/engine-ci.mjs` has 24 single-line mutations and every one is
+killed by `engine-ci.test.mjs`. The first pass let two survive: the all-zero
+`before` guard and the dispatch-on-main guard were both hidden by the fake
+git throwing. The tests now answer the fetch and the diff, so only the guard
+can return "unknown". There are 9 mutations of `ci.yml` (dropping
+`workflow_dispatch`, the raw `RUN_PARITY` output, an unguarded swift test, a
+dispatch skip on engine-parity, ios-kit's old skip, `ios-gate` needing
+ios-kit, `fetch-depth: 1`, a dropped summary, and no container). There are
+5 of `release.yml` and 2 of `ios-build.yml`, one of which moves the negation
+above the pattern it narrows. All are killed by the workflow suites.
