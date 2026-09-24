@@ -920,12 +920,45 @@ function buildUI() {
   const stopBtn = el("button", "fp-stop", "Stop");
   stopBtn.type = "button";
   stopBtn.setAttribute("aria-label", "Stop");
+  /* THE THREE STAPLES AN APPLE USER REACHES FOR FROM THE PLAYER (audit round 2,
+     p-impatient-7 / p-switcher-5; founder question 10: the link and Save now,
+     the sleep timer parked). The sheet had Stop, speed and "Episode": with five
+     episodes queued there was no in-app way to move to the next one — ⏭ existed
+     only on the lock screen and the car — and no way to see what was queued or
+     to save what was playing without leaving the sheet.
+
+       ⏭        `Next episode`: the SAME action the steering wheel's next is
+                (`episodeNavigation.next`, app.js's `playNextAfter(cur, "skip")`),
+                so the skipped episode leaves Up Next the same way. Hidden when
+                the page offers no next, and inside a Foray (its clip row is the
+                next there).
+       Up Next  a link to `#/queue` carrying the count, hidden at zero.
+       Save     the page's own star for the current episode (`toggleSaved`), so
+                the sheet and the rows cannot disagree about what is saved.
+
+     All three read `episodeNavigation` — the object the page hands
+     `setEpisodeNavigation` — and are painted by `paintEpisodeSurface` from
+     `render()` and from every `setEpisodeNavigation`. The page owns Up Next and
+     the stars; the sheet only shows them. `.fp-rate` is borrowed for the two
+     buttons' box so they sit at the row's tap floor; `.fp-next` / `.fp-save` /
+     `.fp-upnext` are the hooks for their own rules. */
+  const nextBtn = el("button", "fp-rate fp-next", "⏭");
+  nextBtn.type = "button";
+  nextBtn.setAttribute("aria-label", "Next episode");
+  nextBtn.hidden = true;
+  const queueLink = el("a", "fp-openep fp-upnext", "Up Next");
+  queueLink.href = "#/queue";
+  queueLink.hidden = true;
+  const saveBtn = el("button", "fp-rate fp-save", "Save");
+  saveBtn.type = "button";
+  saveBtn.setAttribute("aria-pressed", "false");
+  saveBtn.hidden = true;
   /* STOP FIRST, ALONE AT THE DANGER END (audit 2026-09-22, persona "Stop sits
      next to Close"; visual pass 1). It used to sit in the middle of the row
      beside an identical grey Close. The row is `justify-content: space-between`,
      so Stop leads and the navigation links trail; styles.css gives `.fp-stop`
      the danger colour. No confirmation (a stop is undone by pressing play). */
-  row2.append(stopBtn, rateBtn, openLink, forayLink);
+  row2.append(stopBtn, rateBtn, nextBtn, saveBtn, queueLink, openLink, forayLink);
 
   const note = el("p", "fp-note");
   note.hidden = true;
@@ -964,7 +997,7 @@ function buildUI() {
     root, bar, art, title, show, playBtn, skipBtn, closeBtn, fill, sheet,
     grabZone, scroll, sArt, sDesc, sDescText, clips, clipPrev, clipNext,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
-    rateBtn, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
+    rateBtn, nextBtn, saveBtn, queueLink, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
   };
 }
 
@@ -1718,6 +1751,7 @@ function paintPage(running) {
     paintClocks(pos, dur, !held);
   }
   syncCardButtons(loading);
+  paintEpisodeSurface();
 }
 
 /**
@@ -2556,6 +2590,37 @@ function episodeNeighbour(which) {
     at all, so a page without Up Next costs nothing. */
 function reaskEpisodeNeighbours() {
   if (episodeNavigation && media && current && !foray) media.setActions(episodeMediaSurface);
+  paintEpisodeSurface();
+}
+
+/** The sheet's ⏭, Up Next link and Save, from the page's episode surface (see
+    `buildUI`'s row2). Every reading is a getter on the page's object, taken now,
+    so the count and the saved state are the list's and the stars' as they are
+    at this paint. A Foray hides all three: its next is a clip, its Up Next is
+    not consulted, and its "current" is not an episode a star can name. */
+function paintEpisodeSurface() {
+  if (!ui) return;
+  const nav = episodeNavigation;
+  /* `current`/`foray` directly rather than `ForayPlayer.currentEpisodeId()`:
+     the same answer, without a read of a `const` this render may reach
+     before the object is built. */
+  const id = !foray && current?.id && !current.forayId ? current.id : null;
+  const showEpisode = Boolean(nav && id);
+  let hasNext = false;
+  let count = 0;
+  let saved = false;
+  if (showEpisode) {
+    try { hasNext = typeof nav.next === "function"; } catch (_) { hasNext = false; }
+    try { count = Number(nav.upNextCount) || 0; } catch (_) { count = 0; }
+    try { saved = typeof nav.isSaved === "function" && nav.isSaved(id) === true; } catch (_) { saved = false; }
+  }
+  ui.nextBtn.hidden = !(showEpisode && hasNext);
+  ui.queueLink.hidden = !(showEpisode && count > 0);
+  paintControl(ui.queueLink, `Up Next (${count})`, null);
+  ui.saveBtn.hidden = !(showEpisode && typeof nav.toggleSaved === "function");
+  paintControl(ui.saveBtn, saved ? "Saved ✓" : "Save", saved ? "Saved — tap to unsave" : "Save this episode");
+  ui.saveBtn.setAttribute("aria-pressed", saved ? "true" : "false");
+  ui.saveBtn.classList.toggle("on", saved);
 }
 
 /** Previous/next are the page's (see `episodeNavigation`), read at the moment
@@ -2986,6 +3051,20 @@ function bind() {
   // hash route too, not target="_blank", the sheet must not linger open
   // over the page it navigates to.
   ui.openLink.addEventListener("click", () => setExpanded(false));
+  ui.queueLink.addEventListener("click", () => setExpanded(false));
+  /* ⏭ IS THE STEERING WHEEL'S NEXT, not a second opinion: `episodeNeighbour`
+     is the same wrapper `episodeMediaSurface.next` hands the lock screen. */
+  ui.nextBtn.addEventListener("click", () => {
+    const next = episodeNeighbour("next");
+    if (next) next();
+  });
+  ui.saveBtn.addEventListener("click", () => {
+    const id = !foray && current?.id && !current.forayId ? current.id : null;
+    const nav = episodeNavigation;
+    if (!id || typeof nav?.toggleSaved !== "function") return;
+    try { nav.toggleSaved(id); } catch (_) { /* the page's own star failed; the paint below says so */ }
+    paintEpisodeSurface();
+  });
 
   /* ---------- drag the sheet down to dismiss it ----------
 
@@ -3669,7 +3748,21 @@ const ForayPlayer = {
   setEpisodeNavigation(nav) {
     episodeNavigation = nav && typeof nav === "object" ? nav : null;
     if (media && current && !foray) media.setActions(episodeMediaSurface);
+    paintEpisodeSurface();
     return true;
+  },
+
+  /**
+   * Does "previous" mean RESTART right now? True past the restart window —
+   * the same `RESTART_WINDOW_SEC` `forayPrevious` measures a clip against —
+   * and for a restored bar (whose position is the stored one). The page's
+   * `EPISODE_NAVIGATION.previous` asks this so an ordinary episode's ◀◀ has
+   * the meaning every podcast player gives it (audit round 2, p-car-5) without
+   * a second copy of the window. Null when no episode is current.
+   */
+  previousMeansRestart() {
+    if (!current || foray) return null;
+    return episodePositionSec() >= RESTART_WINDOW_SEC;
   },
 
   /**

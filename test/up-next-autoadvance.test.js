@@ -85,6 +85,13 @@ function makeFakePlayer() {
     /* The two halves of the steering wheel's skip (review 2026-09-23). */
     setEpisodeNavigation(nav) { navCalls.push(nav); return true; },
     currentEpisodeId() { return currentId; },
+    /* The round-2 previous rule (p-car-5): the page asks whether ◀◀ means
+       restart, and restarts through the player's own seek. */
+    restartWindowPassed: true,
+    previousMeansRestart() { return this.restartWindowPassed; },
+    seeks: [],
+    async seekTo(pos) { this.seeks.push(pos); return true; },
+    isCurrent(id) { return id === currentId; },
     /** What the OS would be offered right now: the getters, read as the real
         surface reads them at install time. */
     offered() {
@@ -195,7 +202,12 @@ test("the switch is labelled 'Continuous playback', not its storage key", () => 
 /* ==================================================================== */
 
 test("a finished Up Next episode plays the next queued one, and leaves Up Next", () => {
-  /* MUTATION: flip `rest.slice(at)` to `rest.slice(at + 1)` — c is skipped.
+  /* The natural end of a queued episode: it leaves, and Up Next's HEAD plays —
+     a row sitting above it was put there (reordered up while it played, or
+     the episode was started from elsewhere), so it is next. Nothing wraps
+     (audit round 2, p-impatient-7: the old `rest.slice(at).concat(rest.slice(0,
+     at))` re-served an abandoned row after the last one).
+     MUTATION: restore the wrap-around — c plays here and a comes back later.
      MUTATION 2: drop `saveQueueIds(rest)` — b is still queued afterwards. */
   const m = mount();
   const [a, b, c] = m.playable;
@@ -209,8 +221,55 @@ test("a finished Up Next episode plays the next queued one, and leaves Up Next",
   m.ctx.advanceQueueOnEnded(b.id);
 
   assert.strictEqual(fake.calls.length, 1, "exactly one advance must fire");
-  assert.strictEqual(fake.calls[0].item.id, c.id, "the item AFTER the finished one plays next");
+  assert.strictEqual(fake.calls[0].item.id, a.id, "Up Next's head plays next");
   assert.deepStrictEqual([...m.queueRaw()], [a.id, c.id], "the finished episode leaves Up Next");
+
+  /* From the top of the list, the row below is the head. */
+  m.ctx.advanceQueueOnEnded(a.id);
+  assert.strictEqual(fake.calls[1].item.id, c.id);
+  assert.deepStrictEqual([...m.queueRaw()], [c.id]);
+});
+
+test("REVIEW: ⏭ from row k drops row k AND the rows above it — Up Next moves down, never around (founder question 9)", async () => {
+  /* Apple's model. With [a, b, c] queued and b playing, a skip lands on c and
+     leaves [c]: a was gone past. MUTATION: make the skip's `rest`
+     `queued.filter(x => x !== finishedId)` (the natural-end shape) -> a plays
+     instead of c and stays queued. */
+  const m = mount();
+  const [a, b, c] = m.playable;
+  seedLivePool(m, [a, b, c]);
+  m.ctx.addToQueue(a.id);
+  m.ctx.addToQueue(b.id);
+  m.ctx.addToQueue(c.id);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await fake.play(b, {});
+  m.ctx.refreshEpisodeNavigation();
+
+  const { next } = fake.offered();
+  assert.strictEqual(typeof next, "function", "b has something after it");
+  await next();
+  assert.strictEqual(fake.calls[1]?.item.id, c.id, "the skip lands on the row below");
+  assert.deepStrictEqual([...m.queueRaw()], [c.id], "b and the row above it left Up Next");
+});
+
+test("REVIEW: playing row k from the Up Next page drops the rows above it (founder question 9)", async () => {
+  /* The page's ▶ carries `data-ctx="upnext"`; a play accepted from it is a
+     move down the list. MUTATION: drop the `playedFromUpNext` call from
+     bindPlay -> [a, b, c] survives with b playing. */
+  const m = mount();
+  const [a, b, c] = m.playable;
+  seedLivePool(m, [a, b, c]);
+  m.ctx.addToQueue(a.id);
+  m.ctx.addToQueue(b.id);
+  m.ctx.addToQueue(c.id);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  const rows = [a, b, c].map((it) => ({ id: it.id, ctx: "upnext" }));   // the literal upNextRow stamps (pinned below)
+  await clickRow(m, rows, 1);
+  assert.strictEqual(fake.calls[0]?.item.id, b.id);
+  assert.deepStrictEqual([...m.queueRaw()], [b.id, c.id], "a left; b stays until it ends");
+  assert.match(m.ctx.upNextRow({ item: b, id: b.id, state: "live" }, 0, 1), /data-ctx="upnext"/, "the page's ▶ names its list");
 });
 
 /* ==================================================================== */
@@ -364,7 +423,7 @@ test("REVIEW: the page gives the player its next/previous, so the steering wheel
   assert.ok(fake.navCalls.length > 0, "the page must hand the player its navigation");
   let offered = fake.offered();
   assert.strictEqual(typeof offered.next, "function", "a list with a row after this one offers the skip");
-  assert.strictEqual(offered.previous, null, "the first row has nothing before it");
+  assert.strictEqual(typeof offered.previous, "function", "previous is always offered for an episode: it can at least restart (p-car-5)");
 
   await offered.next();
   assert.strictEqual(fake.calls[1]?.item.id, b.id, "the skip plays what the end of the episode would");
@@ -471,4 +530,45 @@ test("REVIEW: a chained play that throws is reported to the bar, not left as an 
   await m.ctx.advanceQueueOnEnded(a.id);
   assert.strictEqual(reported.length, 1, "the bar is told the next episode did not start");
   assert.strictEqual(reported[0].name, "TypeError");
+});
+
+/* ==================================================================== */
+/* 9. PREVIOUS MEANS RESTART, THEN THE ROW BEFORE (audit round 2, p-car-5) */
+/* ==================================================================== */
+
+test("REVIEW: ◀◀ restarts the episode past the window, and goes to the previous row only inside it", async () => {
+  /* Forty minutes into episode 3, previous landed at the start of episode 2,
+     and from the mini bar it was greyed out. The rule every podcast player
+     uses, and the Foray's own `forayPrevious`: restart, unless we have only
+     just started AND there is a row before this one. The window is the
+     player's (`previousMeansRestart`), not a second copy here.
+     MUTATION: `if (!prev) return null` back in the getter -> the mini-bar
+     case below offers nothing. MUTATION 2: ignore `previousMeansRestart` ->
+     the forty-minute case starts episode 2. */
+  const m = mount();
+  const [a, b] = m.playable;
+  seedLivePool(m, [a, b]);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  await clickRow(m, [a, b].map((it) => ({ id: it.id, ctx: "show-x" })), 1);   // b, with a before it
+
+  fake.restartWindowPassed = true;                                             // forty minutes in
+  await fake.offered().previous();
+  assert.deepStrictEqual(fake.seeks, [0], "past the window, previous restarts");
+  assert.strictEqual(fake.calls.length, 1, "…and starts nothing else");
+
+  fake.restartWindowPassed = false;                                            // just started
+  await fake.offered().previous();
+  assert.strictEqual(fake.calls[1]?.item.id, a.id, "inside the window, the row before plays");
+
+  /* Started from the mini bar / Jump back in: no list, so previous can only
+     restart — and it is offered, not greyed out. */
+  m.ctx.setPlayList(null);
+  await fake.play(b, {});
+  m.ctx.refreshEpisodeNavigation();
+  const { previous } = fake.offered();
+  assert.strictEqual(typeof previous, "function", "an episode with no list still has a previous");
+  fake.restartWindowPassed = false;
+  await previous();
+  assert.deepStrictEqual(fake.seeks, [0, 0], "with no row before it, previous restarts even inside the window");
 });

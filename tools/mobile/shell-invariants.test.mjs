@@ -96,7 +96,7 @@ import { hydrateForayItems, indexSegments, indexSources } from "../../player/for
 import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
 import {
   PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS, CLOSE_ACTION,
-  WEBKIT_ORIGIN, REMOTE_COMMAND_FOR_ACTION, remoteCommandFor,
+  WEBKIT_ORIGIN, REMOTE_COMMAND_FOR_ACTION, remoteCommandFor, UNMIRRORED_ACTIONS,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
 import { REMOTE_ORIGINS, REMOTE_COMMANDS } from "../../player/diagnostic-log.js";
@@ -2082,7 +2082,9 @@ test("every transport event names its door and its command, on both natives, in 
     assert.ok(REMOTE_ORIGINS.has(m[1]), `the Java origin "${m[1]}" is not in REMOTE_ORIGINS`);
   }
   const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
-  assert.match(service, /NowPlayingHub\.dispatch\(action, 0L, 0L, NowPlayingHub\.ORIGIN_NOTIFICATION\)/,
+  /* `offsetMs` since audit round 2 (native-7): the seek pair's buttons carry the
+     payload's own ±15/30, as the Media3 path does; every other press carries 0. */
+  assert.match(service, /NowPlayingHub\.dispatch\(action, 0L, offsetMs, NowPlayingHub\.ORIGIN_NOTIFICATION\)/,
     "the notification's buttons must name their door");
   const plugin = stripJavaComments(fs.readFileSync(path.join(dir, "ForayAudioPlugin.java"), "utf8"));
   assert.match(plugin, /event\.put\("origin", origin\)/);
@@ -2317,4 +2319,98 @@ test("the session event name is one string across the Swift and the web half (M-
     client.includes(`"${domName[1]}"`),
     `player/client.js does not listen for ${domName[1]} — every native cause is dropped before the record`
   );
+});
+
+/* ───────────── audit round 2 (2026-09-23): the platform contract, pinned ───────────── */
+
+test("the iOS track pair follows the ROUTE, and the page's track handlers are not mirrored onto WebKit (round 2, p-impatient-3)", () => {
+  /* Founder question 1: the lock screen shows the SKIP pair, always. iOS draws
+     ⏮/⏭ over ↺15/30↻ whenever the track commands are enabled, so they are
+     enabled only where a track button exists without looking (a headset, a
+     Bluetooth stack, a car), re-read on every route change; and WebKit's own
+     session — which enables the same commands for every mirrored handler — no
+     longer gets them. MUTATION: drop `&& trackRoutePresent` from either line;
+     drop the route re-apply from handleRouteChange; put UNMIRRORED_ACTIONS back
+     to ["seekto"]. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const availability = swiftFuncBody(code, "applyCommandAvailability");
+  assert.match(availability, /nextTrackCommand\.isEnabled = transportable && payload\.hasNext && trackRoutePresent/);
+  assert.match(availability, /previousTrackCommand\.isEnabled = transportable && payload\.hasPrevious && trackRoutePresent/);
+  assert.ok(swiftFuncDecl(code, "trackCommandsAllowed"), "the pure route rule exists for the XCTests");
+  for (const port of ["headphones", "bluetoothA2DP", "bluetoothHFP", "bluetoothLE", "carAudio", "usbAudio", "airPlay"]) {
+    assert.match(code, new RegExp(`AVAudioSession\\.Port\\.${port}\\.rawValue`), `${port} is a route with a track button`);
+  }
+  assert.doesNotMatch(code, /Port\.builtInSpeaker\.rawValue/, "the speaker is never a track route");
+  const route = swiftFuncBody(code, "handleRouteChange");
+  assert.match(route, /trackRoutePresent = Self\.trackCommandsAllowed\(portTypes: outputs\)/, "re-read on every route change");
+  assert.match(route, /applyCommandAvailability\(self\.lastPayload, force: true\)/, "and re-applied when it moved");
+  assert.match(swiftFuncBody(code, "load"), /trackRoutePresent = Self\.trackCommandsAllowed/, "and read at load");
+  assert.ok(UNMIRRORED_ACTIONS.includes("nexttrack") && UNMIRRORED_ACTIONS.includes("previoustrack"), "WebKit's session gets no track handlers");
+  assert.ok(!UNMIRRORED_ACTIONS.includes("seekforward") && !UNMIRRORED_ACTIONS.includes("seekbackward"), "the skip pair is still mirrored");
+});
+
+test("one audio-session mode, .spokenAudio, in both iOS plugins; category only at load, setActive untouched (round 2, native-10)", () => {
+  /* A navigation prompt paused narration mid-sentence and ducked a clip: two
+     modes, one app. MUTATION: `mode: .default` back in holdSession -> red;
+     drop the load() setCategory -> red; add setActive to load() -> the F11/F13
+     test above goes red. */
+  const audio = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const tts = stripSwiftComments(fs.readFileSync(path.join(PLUGIN_DIR, "../foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"), "utf8"));
+  assert.doesNotMatch(audio, /mode:\s*\.default/, "the audio plugin holds no second mode");
+  assert.doesNotMatch(tts, /mode:\s*\.default/, "nor does the TTS plugin");
+  assert.match(swiftFuncBody(audio, "holdSession"), /setCategory\(\.playback, mode: \.spokenAudio/);
+  const load = swiftFuncBody(audio, "load");
+  assert.match(load, /setCategory\(\.playback, mode: \.spokenAudio, options: \[\]\)/, "set once for the tape between narration and holds");
+  assert.doesNotMatch(load, /setActive/, "category only: the playing path never activates");
+  assert.ok((tts.match(/mode:\s*\.spokenAudio/g) ?? []).length >= 2, "speak() and resume() both set the app's one mode");
+});
+
+test("the Android notification carries the seek pair and the session its custom buttons (round 2, native-7)", () => {
+  /* API 24-32 draw the notification's own actions; API 33+ draw the session's
+     custom buttons and never rewind/fast-forward — so both. The words are the
+     page's handler names, routable like every other press. MUTATION: drop
+     either transportIntent; drop setMediaButtonPreferences; rename CMD_SEEK_BACK. */
+  const dir = path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio");
+  const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
+  assert.match(service, /transportIntent\("seekbackward",\s*6\)/, "↺15 on the notification");
+  assert.match(service, /transportIntent\("seekforward",\s*7\)/, "30↻ on the notification");
+  assert.match(service, /static final String CMD_SEEK_BACK = "seekbackward";/);
+  assert.match(service, /static final String CMD_SEEK_FORWARD = "seekforward";/);
+  for (const word of ["seekbackward", "seekforward"]) assert.ok(ROUTABLE_ACTIONS.includes(word), `${word} is routable`);
+  assert.match(service, /\.setMediaButtonPreferences\(seekButtons\(\)\)/, "the session's custom buttons for API 33+");
+  assert.match(service, /onCustomCommand\(/, "…and their handler");
+  assert.match(service, /CommandButton\.ICON_SKIP_BACK_15/);
+  assert.match(service, /CommandButton\.ICON_SKIP_FORWARD_30/);
+  assert.match(service, /compactActions\(prevIndex, playIndex, nextIndex, seekBackIndex, seekForwardIndex, np\.hasNext\)/, "the compact view prefers the pair for a single episode");
+  const strings = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/res/values/strings.xml"), "utf8");
+  assert.match(strings, /name="foray_action_seek_back">Back 15 seconds</);
+  assert.match(strings, /name="foray_action_seek_forward">Forward 30 seconds</);
+});
+
+test("a transport press on a running Android service is dispatched and NOT re-posted; a close removes the notification at once (round 2, native-8)", () => {
+  /* MUTATION: call startForeground unconditionally again (drop the
+     foregroundStartNeeded return) -> red; drop STOP_FOREGROUND_REMOVE -> red. */
+  const service = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/PlaybackKeepAliveService.java"), "utf8"
+  ));
+  const start = /public int onStartCommand\([^)]*\)\s*\{([\s\S]*?)\n    \}/.exec(service);
+  assert.ok(start, "onStartCommand");
+  const body = start[1];
+  const dispatchAt = body.indexOf("NowPlayingHub.dispatch(");
+  const guardAt = body.indexOf("if (!foregroundStartNeeded(running, transport)) return START_NOT_STICKY;");
+  const foregroundAt = body.indexOf("startForeground(");
+  assert.ok(dispatchAt >= 0 && guardAt > dispatchAt && foregroundAt > guardAt, "dispatch, then the guard, then (only if needed) startForeground");
+  assert.match(body, /CLOSE_TRANSPORT\.equals\(action\)[\s\S]*STOP_FOREGROUND_REMOVE/, "a close takes the notification down now");
+  assert.match(service, /static boolean foregroundStartNeeded\(boolean running, boolean transportIntent\)\s*\{\s*return !running \|\| !transportIntent;/);
+  assert.match(service, /if \(!running \|\| closing\) return;/, "and nothing re-posts while closing");
+});
+
+test("the Android shell starts the service for a narration-first Foray from the transport's first playing payload (round 2, native-2)", () => {
+  /* Four of the seven shipped Forays open with narration: no element, no play
+     patch, no service, and the first tape segment's background start refused.
+     MUTATION: drop noteTransportPlaying from the shell's returned object. */
+  const shellSrc = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-audio-shell.js"), "utf8"));
+  assert.match(shellSrc, /return \{ install, uninstall, inspect, refresh, setMediaLoaded, noteTransportPlaying, noteServiceRunning, newDocument \};/);
+  const shim = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8"));
+  assert.match(shim, /shell\.noteTransportPlaying\(playing\)/, "the shim hands the transition to the shell");
 });

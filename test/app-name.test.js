@@ -770,10 +770,11 @@ test("no Android string capitalises the unit, and none of them says the old app 
   const entries = [
     ...read(rel).matchAll(/<string name="([^"]+)">([^<]*)<\/string>/g),
   ].map((m) => ({ name: m[1], value: m[2] }));
+  /* 12 since audit round 2 (native-7): the notification's ↺15 / 30↻ labels. */
   assert.equal(
     entries.length,
-    10,
-    `expected 10 <string> entries, found ${entries.length}: ` +
+    12,
+    `expected 12 <string> entries, found ${entries.length}: ` +
       entries.map((e) => e.name).join(", ")
   );
   for (const e of entries) {

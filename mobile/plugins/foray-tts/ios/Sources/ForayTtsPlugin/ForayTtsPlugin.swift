@@ -638,11 +638,17 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
            narration-only Foray (no concurrent <audio> element already
            holding the session open, per generation-architecture.md §1.2)
            cannot rely on some other code path having already done this, so
-           it is done here -- the same category/mode PlayerQueueManager.swift
-           line 555 already sets for the (currently unused) Swift player, and
-           the same one WebKit sets automatically for <audio>. `try?`
-           matches this plugin's own "every method resolves, none reject"
-           rule stated in the class header: a failure to configure the
+           it is done here. `.spokenAudio` IS THE APP'S ONE MODE (the platform
+           contract, docs/DECISIONS.md 2026-09-23; audit round 2, native-10):
+           `ForayAudioPlugin` sets the same pair at load and on every paused
+           hold, so a navigation prompt pauses-and-resumes a clip and a
+           narration line alike. (This comment used to claim WebKit sets the
+           same mode for <audio> automatically; it does not -- WebKit's own
+           category write leaves the mode at `.default`, which is why the
+           audio plugin now writes it too. Whether WebKit RESETS it when its
+           element starts is a device check, `docs/ios-lock-screen.md` §8.5.)
+           `try?` matches this plugin's own "every method resolves, none
+           reject" rule stated in the class header: a failure to configure the
            session should not turn into a rejected promise mid-narration. */
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
         try? AVAudioSession.sharedInstance().setActive(true)

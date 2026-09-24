@@ -543,11 +543,14 @@ test("after ✕, focus is on the ✕ of the row that took its place, and the rem
 });
 
 test("the Up Next binders run the after-steps (the helpers are not orphans)", () => {
-  /* MUTATION: drop `afterQueueMove(id, -1, top);` from the ↑ binder -> red. */
+  /* MUTATION: drop `afterQueueMove(id, -1, top);` from the ↑ binder -> red.
+     The repaint sits in `saveQueueIds` since audit round 2 (the page is a live
+     view of the list), so the binders write and then run the after-step. */
   const binder = /function bindUpNextReorder\(scope\) \{[\s\S]*?\n\}/.exec(APP_SRC)[0];
-  assert.match(binder, /renderQueue\(\);\s*afterQueueMove\(id, -1, top\);/);
-  assert.match(binder, /renderQueue\(\);\s*afterQueueMove\(id, 1, top\);/);
-  assert.match(binder, /renderQueue\(\);\s*afterQueueRemove\(/);
+  assert.match(binder, /moveQueueItem\(id, -1\);\s*afterQueueMove\(id, -1, top\);/);
+  assert.match(binder, /moveQueueItem\(id, 1\);\s*afterQueueMove\(id, 1, top\);/);
+  assert.match(binder, /removeFromQueue\(btn\.dataset\.dequeue\);\s*afterQueueRemove\(/);
+  assert.doesNotMatch(binder, /renderQueue\(\)/, "the binders do not paint a second time");
 });
 
 /* ==================================================================== */

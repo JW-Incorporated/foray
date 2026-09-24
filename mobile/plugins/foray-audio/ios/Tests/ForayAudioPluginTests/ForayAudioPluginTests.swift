@@ -122,12 +122,39 @@ final class ForayAudioPluginTests: XCTestCase {
     }
 
     /// MUTATION: enable `nextTrack` when `hasNext` is false -> this goes red.
+    /// Since audit round 2 (p-impatient-3) the pair ALSO needs a track route:
+    /// `applyCommandAvailability` ANDs `trackCommandsAllowed(portTypes:)` in,
+    /// mirrored here as the third term.
     func testNextTrackEnabledExactlyWhenHasNextAndTransportable() {
         let withNext = NowPlayingPayload.from(["state": "playing", "hasNext": true])
         XCTAssertTrue(transportable(withNext) && withNext.hasNext)
 
         let withoutNext = NowPlayingPayload.from(["state": "playing", "hasNext": false])
         XCTAssertFalse(transportable(withoutNext) && withoutNext.hasNext)
+
+        let headset = ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.bluetoothA2DP.rawValue])
+        let speaker = ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue])
+        XCTAssertTrue(transportable(withNext) && withNext.hasNext && headset, "a headset route gets ⏭")
+        XCTAssertFalse(transportable(withNext) && withNext.hasNext && speaker, "the speaker route -- the lock screen alone -- keeps the skip pair")
+    }
+
+    /// The track pair follows the ROUTE, not Up Next (founder question 1, audit
+    /// round 2): the lock screen draws ⏮/⏭ over ↺15/30↻ whenever the pair is
+    /// enabled, so it is enabled only where a track button exists without
+    /// looking -- a headset, a Bluetooth stack, a car. TO SEE IT FAIL: return
+    /// true for an empty route, or drop `carAudio` from the set (CarPlay's
+    /// steering wheel goes dead).
+    func testTrackCommandsAllowedOnlyOnARouteWithATrackButton() {
+        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: []))
+        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue]))
+        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInReceiver.rawValue]))
+        for port in [AVAudioSession.Port.headphones, .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .carAudio, .usbAudio, .airPlay] {
+            XCTAssertTrue(ForayAudioPlugin.trackCommandsAllowed(portTypes: [port.rawValue]), "\(port.rawValue) has a track button")
+        }
+        XCTAssertTrue(
+            ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue, AVAudioSession.Port.carAudio.rawValue]),
+            "any one track route is enough"
+        )
     }
 
     /// "none" disables all transport, regardless of what flags were sent --
