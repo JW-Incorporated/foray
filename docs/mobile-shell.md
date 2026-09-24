@@ -759,11 +759,12 @@ median overrun: 15.6 minutes**. Two tests guard it: one on the parsed config at
 any depth, case-insensitively; one that walks `mobile/` for the Cordova-compat
 `config.xml` files `cap add` will generate.
 
-**Do not redesign the 2.0 s seam beat for backgrounding.** It is safe. The beat
+**Do not redesign the seam beat for backgrounding.** It is safe. The beat
 pauses the element, which withdraws audibility, but both engines carry a far
 longer grace window — 30 s on Chromium, 10 s on WebKit
-(`docs/research/mp1-background-audio.md` §8). Measured, the beat stretches to
-2.8–4.6 s in a hidden page: baggy, not broken.
+(`docs/research/mp1-background-audio.md` §8). Measured when the beat was 2.0 s
+(it is 0.5 s, `SEAM_GAP_SEC`, since the founder's 2026-09-24 ruling), it stretched
+to 2.8–4.6 s in a hidden page: baggy, not broken.
 
 ## 5. What is blocked, and on what
 

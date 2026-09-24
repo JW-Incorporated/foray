@@ -37,7 +37,7 @@ final class NowPlaying {
 
     /** No Foray is loaded. The player was closed, or nothing has played yet. */
     static final int IDLE = 0;
-    /** Loaded and sounding — which per {@code media-session.js} §4 INCLUDES the 2.0 s
+    /** Loaded and sounding — which per {@code media-session.js} §4 INCLUDES the 0.5 s
      *  authored seam beat, because a transport state that blinks 31 times an hour is
      *  how an app stops feeling native. */
     static final int PLAYING = 1;

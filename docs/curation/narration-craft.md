@@ -131,9 +131,9 @@ smoothing a seam that did not need smoothing.
   are on the tape.
 - **Not a summariser.** If narration says what the tape is about to say, the tape
   becomes illustration and the listener stops auditioning it (§3c).
-- **Not a smoother.** Some seams should be audible. `player/seam-gap.js` spends a 2.0
-  s beat at an unbridged seam *deliberately*, and its own comment says shortening it
-  "was never the fix". Narration that exists only to make a seam disappear has
+- **Not a smoother.** Some seams should be audible. `player/seam-gap.js` spends a
+  0.5 s beat at an unbridged seam *deliberately* (the founder's number,
+  2026-09-24) — silence authored as a mark, not an artifact of loading. Narration that exists only to make a seam disappear has
   replaced a good marker with a worse one.
 
 ---
@@ -159,9 +159,9 @@ scrub or resume, never straight after an authored `jingle` item, and never
 between two cuts of the **same episode** (`sameSourceEpisode`, the key the
 strip draws capsules by: "an interlude between podcasts", not between two
 minutes of one guest; audit round 2, p-foray-1). A same-episode jump cut keeps
-the plain 2.0 s beat (`segment-length-rules.md` §6b). It is a
+the plain 0.5 s beat (`segment-length-rules.md` §6b). It is a
 **player-side** mark: no field in `data/forays.json`, no change to
-`check-forays.mjs`, and it is **not part of `runtime_sec`** — like the 2.0 s
+`check-forays.mjs`, and it is **not part of `runtime_sec`** — like the 0.5 s
 seam beat it replaces at an unbridged seam (`player/seam-gap.js`), it is wall
 clock the player spends at the seam, not authored content. The beat and the
 jingle are alternatives, never both (§4.8); the beat remains the floor if the
@@ -243,7 +243,8 @@ payback rule on it and it demands a 368-second segment after it, which is absurd
 the absurdity is the tell that the rule is out of scope rather than wrong.
 
 **The ruling this document makes, and it needs recording as a spec divergence in the
-same way `segment-length-rules.md` §6b recorded the 0.5 s / 2.0 s one:**
+same way `segment-length-rules.md` §6b recorded the 0.5 s / 2.0 s one** (which the
+founder has since ruled out: one number, 0.5 s, 2026-09-24)**:**
 
 | | transition item | narration item |
 |---|---|---|
@@ -267,7 +268,8 @@ the bridge has done any editorial work at all. So:
 > transition: type it as a narration item.
 
 That is a real conflict resolved, not papered over. It touches the player's
-accounting, so it wants a founder line the same way the 2.0 s divergence did.
+accounting, so it wants a founder line the same way the 2.0 s divergence did (that one
+got its line on 2026-09-24: *"0.5s"*).
 
 ### 2c. The modes
 
@@ -1939,7 +1941,8 @@ have one.
 
 1. **The 8 s / 12 s transition ceiling** (§2b). This is a divergence from
    `04_VOICE_AUDIO_SPEC.md` of the same kind as the 0.5 s / 2.0 s one that
-   `segment-length-rules.md` §10 escalated "since it touches the player." The
+   `segment-length-rules.md` §10 escalated "since it touches the player" (ruled
+   2026-09-24: 0.5 s, one number). The
    narration item / transition item distinction touches progress accounting too.
 2. **R-foray's ceiling at 35 %, and the consequence that the complete barbecue spine
 is

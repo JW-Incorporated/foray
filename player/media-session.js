@@ -131,14 +131,13 @@
 
    ── 4. THE SEAM BEAT REPORTS "PLAYING" ────────────────────────────────────
 
-   `seam-gap.js` puts 2.0 s of silence between two unbridged segments. The
+   `seam-gap.js` puts 0.5 s of silence between two unbridged segments. The
    element is genuinely paused for it, so the honest-looking answer is
    `playbackState = "paused"`. That is the wrong answer, deliberately:
 
      - The listener did not pause. Nothing they did caused it. The beat is an
-       edit WE authored — the audiobook section break of
-       `docs/curation/segment-length-rules.md` §6b — which makes it content, not
-       an interruption.
+       edit WE authored — `docs/curation/segment-length-rules.md` §6b, the
+       founder's 0.5 s — which makes it content, not an interruption.
      - It would flicker to paused and back 31 times an hour, roughly every two
        minutes, on a display the listener glances at while driving. A transport
        state that blinks is how an app stops feeling native.
@@ -154,16 +153,17 @@
    spec makes a zero `playbackRate` a `TypeError`. We took a bounded drift over
    a state that blinks.
 
-   **THE BOUND IS `SEAM_GAP_SEC x playbackRate`, NOT 2.0 s** — restated when the
-   speed control shipped (#242), because the original text said "up to
-   `SEAM_GAP_SEC` (2.0 s)" and that was only true at 1x. The beat is 2.0 s of WALL
-   clock and does not scale with rate (`seam-gap.js`, and the decision is pinned in
-   `player/foray-playback.test.js`), while the OS extrapolates in CONTENT seconds
-   at the rate we reported — so a beat costs 2.0 s of apparent progress at 1x and
-   4.0 s at 2x, which is the top of the ladder and therefore the bound.
+   **THE BOUND IS `SEAM_GAP_SEC x playbackRate`, NOT `SEAM_GAP_SEC`** — restated
+   when the speed control shipped (#242), because the original text said "up to
+   `SEAM_GAP_SEC`" and that was only true at 1x. The beat is 0.5 s of WALL clock
+   (the founder's 2026-09-24 ruling; 2.0 s before it) and does not scale with rate
+   (`seam-gap.js`, and the decision is pinned in `player/foray-playback.test.js`),
+   while the OS extrapolates in CONTENT seconds at the rate we reported — so a beat
+   costs 0.5 s of apparent progress at 1x and 1.0 s at 2x, which is the top of the
+   ladder and therefore the bound.
 
-   Still the right trade, and the arithmetic barely moves: 4.0 s is 0.13% of a
-   51-minute bar against 0.065%, it is bounded by the beat rather than growing, it
+   Still the right trade, and the arithmetic barely moves: 1.0 s is 0.03% of a
+   51-minute bar against 0.016%, it is bounded by the beat rather than growing, it
    self-corrects on the next tick, and it lands at the one moment the display is
    redrawing its title anyway. What matters is that the number is stated
    correctly — a documented bound that is quietly wrong at 2x is worse than a
@@ -476,7 +476,7 @@ export function mediaPositionState({
  * @param {object} [view]
  * @param {boolean} [view.hasItem]    something is loaded at all
  * @param {boolean} [view.playing]    the element is actually producing audio
- * @param {boolean} [view.inSeamGap]  the 2.0 s authored beat between segments
+ * @param {boolean} [view.inSeamGap]  the 0.5 s authored beat between segments
  * @param {boolean} [view.ended]      the item finished
  * @param {boolean} [view.foray]      the item is a Foray (its own end rule, §4)
  */

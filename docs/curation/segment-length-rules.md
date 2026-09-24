@@ -37,7 +37,7 @@ elsewhere in the repo, and moving them means moving those.
 | **Anti-uniformity** | no 3 consecutive segments within ±20 % of each other | **evidenced** (§2d) |
 | Whole-Foray mean | mean segment duration **≥ 90 s** | judgement |
 | Same-episode merge | elided gap **< 45 s → must merge**; 45–180 s → should merge | judgement |
-| Same-episode seam silence | **≥ 2.0 s** where narration is not used | convention (audiobook standard) |
+| Same-episode seam silence | **0.5 s** where narration is not used | founder ruling, 2026-09-24 (§6b) |
 | Same-episode order | **never non-chronological** | integrity, not taste |
 
 Two findings most likely to be missed:
@@ -359,11 +359,14 @@ cue, *"you may need to add this transitional silence to alert the listener of a
 scene change."* ACX's technical spec separately requires 0.5–1 s of room tone at
 the head of a file and 1–5 s at the tail.
 
-`docs/brief/04_VOICE_AUDIO_SPEC.md` currently specifies ~0.5 s of padding around
-TTS items. That is right for *joining* audio and too short for *marking an
-edit*. §6b therefore asks for ≥ 2.0 s where a same-episode seam is left
-unbridged. This is convention, not measurement, but it is the only convention
-anyone has written down.
+`docs/brief/04_VOICE_AUDIO_SPEC.md` specifies ~0.5 s of padding around TTS
+items. This document used to argue that 0.5 s was right for *joining* audio and
+too short for *marking an edit*, and asked for ≥ 2.0 s at an unbridged seam on
+the strength of the convention above. **The founder overruled that on
+2026-09-24** — *"0.5s"* (`docs/DECISIONS.md`, 2026-09-24) — so an unbridged seam
+is **0.5 s**, the same number the brief gives, and the two documents give one
+answer. The audiobook convention stays here as the evidence that was weighed,
+not as the rule.
 
 **Source:** Narrators Roadmap, https://www.narratorsroadmap.com/standards-for-silence-in-the-book/
 
@@ -766,14 +769,15 @@ unmarked butt-cut inside one voice.** Two ways, in preference order:
    exceeds 5 min, because across a large gap the listener will otherwise build a
    false model of continuity and then be confused by a reference to something
    they did not hear.
-2. **Silence.** **≥ 2.0 s** of padding, against the ~0.5 s standard from
-   `04_VOICE_AUDIO_SPEC.md`. That number is the audiobook section-break
-   convention (§2e), which is the only published answer to "how much silence
-   tells a listener they have moved." Enough that the listener hears a beat and
-   reads it as an edit rather than a defect. Acceptable for short elisions in
-   narration-off mode (the spec's verbosity setting), never for long ones.
-   Note this is a *deliberate divergence* from `04_VOICE_AUDIO_SPEC.md`'s 0.5 s:
-   that number is right for joining audio and too short for marking an edit.
+2. **Silence.** **0.5 s**, the same ~0.5 s `04_VOICE_AUDIO_SPEC.md` gives.
+   Founder ruling, 2026-09-24: *"0.5s"* (`docs/DECISIONS.md`). This rule used
+   to ask for ≥ 2.0 s, the audiobook section-break convention (§2e), as a
+   deliberate divergence from the brief; the founder ruled the divergence out,
+   so one number now answers "how much silence goes at a seam" everywhere.
+   `player/seam-gap.js` `SEAM_GAP_SEC` implements it — as wall clock between two
+   loads, never as silence added to anybody's audio. Acceptable for short
+   elisions in narration-off mode (the spec's verbosity setting), never for long
+   ones.
 
 **Cross-episode transitions always carry narration.** A hard cut from one
 person's voice to another's, unbridged, is exactly the montage the founder is
@@ -951,7 +955,7 @@ tiers**, because they need different amounts of context:
 | M2 | same `item_id`, gap 45–180 s ⇒ flag; requires `keep_separate_reason` | B | **flag only** |
 | M3 | same `item_id` segments never out of chronological order | A | **yes** |
 | M4 | ≤ 25 % of a Foray's segments *and* runtime from one `item_id` | A | **yes** |
-| M5 | same-episode seam is marked (narration, or ≥ 2.0 s silence) | A | **yes**, once the bridge record exists |
+| M5 | same-episode seam is marked (narration, or 0.5 s silence) | A | **yes**, once the bridge record exists |
 | M6 | elided span > 5 min ⇒ narration required, silence not sufficient | A | **yes** |
 | X1 | cross-episode seam always carries narration | A | **yes** |
 | X2 | cross-episode bridge names its source (speaker + show) | A | **flag only** — presence of an attribution is checkable, correctness is not |
@@ -1008,19 +1012,6 @@ Four notes for whoever writes `docs/agents/runner-prompts/segment-batch.md`
 - **The bridge writing rules.** Length of bridge is capped by
   `04_VOICE_AUDIO_SPEC.md` at 8 s; what a good bridge *says* is a separate
   question and a founder-facing one.
-- **The 0.5 s → 2.0 s padding divergence.** §6b asks for more silence at an
-  unbridged same-episode seam than `04_VOICE_AUDIO_SPEC.md` specifies around TTS
-  items. That is deliberate (different job: marking an edit vs joining audio) but
-  it is a spec change and needs Wyatt, since it touches the player.
-  **Status, 2026-08-16: it now touches the player.** `player/seam-gap.js` ships
-  §6b's 2.0 s at every unbridged segment-to-segment seam — as a gap *between*
-  two loads, never as silence added to anybody's audio — and it applies to
-  cross-episode seams as well as same-episode ones, because Foray #1 has no
-  narration and X1's "cross-episode always carries narration" has nothing to
-  carry yet. `04_VOICE_AUDIO_SPEC.md` line 12 is unchanged and still says 0.5 s,
-  so the two documents still disagree on their face. **That reconciliation is
-  still undecided and is filed as `HUMAN-ACTIONS.md` #3.** Do not read this
-  paragraph as it having been made.
 - **Loudness normalisation across segments.** §6b uses it as an argument for
   narration at seams. It is not a substitute for the real work, which is
   unassigned.

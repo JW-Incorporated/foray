@@ -3,7 +3,7 @@
  * WHAT THIS SUITE IS FOR
  * `player/media-session.js` decides four things a listener meets without ever
  * looking at our page: what the display says, what previous/next do, which
- * clock the progress bar is on, and what the 2.0 s seam beat reports. Those are
+ * clock the progress bar is on, and what the 0.5 s seam beat reports. Those are
  * product decisions living in code, so each one is PINNED here rather than
  * merely exercised — a future edit that flips the seam beat to "paused" or
  * moves the publisher out of `artist` has to delete an assertion that says why.
@@ -543,7 +543,7 @@ test("playing reports playing, and paused reports paused", () => {
   assert.equal(mediaPlaybackState({ hasItem: true, playing: false }), PAUSED);
 });
 
-test("THE SEAM BEAT REPORTS PLAYING — 2.0 s of authored silence is not a pause", () => {
+test("THE SEAM BEAT REPORTS PLAYING — 0.5 s of authored silence is not a pause", () => {
   /* player/media-session.js §4. The element really is paused for the beat, so
      "paused" is the literal answer and the wrong one: the listener did not
      pause, the Foray is advancing on its own, and a car display that blinks

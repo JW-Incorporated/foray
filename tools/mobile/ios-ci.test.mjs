@@ -725,7 +725,7 @@ test("medianMs handles absent, dirty and even-length input", () => {
 /* ───────────────────── the seam transition (#28's iOS half) ──────────────── */
 
 /** A healthy backgrounded run: backgrounded at t=1000, never resumed, two
- *  transitions that both begin and end while hidden with ~2.1 s beats. */
+ *  transitions that both begin and end while hidden with ~0.6 s beats. */
 function seamRecord(overrides = {}) {
   return {
     phase: "seam",
@@ -747,12 +747,12 @@ function seamRecord(overrides = {}) {
       {
         fromId: "seg-a", toId: "seg-b", endReason: "outPoint",
         boundaryAtWall: 16000, hiddenAtBoundary: true,
-        nextPlayingAtWall: 18100, hiddenAtNextPlaying: true, observedGapMs: 2100, lastStage: "playing",
+        nextPlayingAtWall: 16600, hiddenAtNextPlaying: true, observedGapMs: 600, lastStage: "playing",
       },
       {
         fromId: "seg-b", toId: "seg-c", endReason: "outPoint",
         boundaryAtWall: 26000, hiddenAtBoundary: true,
-        nextPlayingAtWall: 28200, hiddenAtNextPlaying: true, observedGapMs: 2200, lastStage: "playing",
+        nextPlayingAtWall: 26700, hiddenAtNextPlaying: true, observedGapMs: 700, lastStage: "playing",
       },
     ],
     timerIntervalsMs: [1000, 1000, 998],
@@ -791,7 +791,7 @@ test("two clean hidden transitions is the pass, and it names what that settles",
   const v = seamTransitionVerdict(seamRecord());
   assert.equal(v.verdict, "seam-crosses-in-background");
   assert.equal(v.completedHiddenTransitions, 2);
-  assert.equal(v.worstGapMs, 2200);
+  assert.equal(v.worstGapMs, 700);
   assert.match(v.headline, /COMPLETED while the app was backgrounded/);
   assert.match(v.detail, /never resumed/i);
 });
@@ -870,11 +870,11 @@ test("a late beat is a different verdict from a stalled one", () => {
 
 test("the seam tolerance is derived from a measurement and admits it is ours", () => {
   /* SEAM_OK_MS allows for the 1000 ms hidden-timer alignment run 32026332637
-     measured, on top of the 2000 ms the player asks for. The number is OURS, not one
+     measured, on top of the 500 ms the player asks for. The number is OURS, not one
      any source document contains — the same distinction `OVERSHOOT_OK_SEC` carries a
      paragraph about, after an earlier version of this file attributed its own
      threshold to MP1. */
-  assert.equal(SEAM_ASKED_MS, 2000);
+  assert.equal(SEAM_ASKED_MS, 500);
   assert.ok(SEAM_OK_MS > SEAM_ASKED_MS + 1000, "the tolerance must clear the measured timer alignment");
   assert.ok(SEAM_BAD_MS > SEAM_OK_MS);
   const src = fs.readFileSync(path.join(HERE, "ios-ci.mjs"), "utf8");
@@ -914,7 +914,7 @@ test("pickSeam ranks the decisive negative above a tidy foreground run", () => {
    ── */
 
 test("a beat observed at ~0 ms is not a beat that survived", () => {
-  /* The one-edit defeat: `seamGapSec: 0.05` in the probe collapses the 2.0 s beat to
+  /* The one-edit defeat: `seamGapSec: 0.05` in the probe collapses the shipped beat to
      50 ms, which is the entire mechanism this phase measures. A unit test can forbid
      that spelling; only a floor on the OBSERVED number catches the class. It also
      catches a real bug with no edit at all — `seamGapSec()` returning 0 because the
@@ -924,7 +924,7 @@ test("a beat observed at ~0 ms is not a beat that survived", () => {
     rec.transitions.forEach((t) => { t.observedGapMs = gap; });
     const v = seamTransitionVerdict(rec);
     assert.notEqual(v.verdict, "seam-crosses-in-background", `a ${gap} ms beat was accepted`);
-    assert.match(v.headline, /not the 2\.0 s beat running|not a beat/);
+    assert.match(v.headline, /not the 0\.5 s beat running|not a beat/);
   }
   assert.ok(SEAM_MIN_PLAUSIBLE_MS > 0 && SEAM_MIN_PLAUSIBLE_MS < SEAM_ASKED_MS);
 });
@@ -1025,7 +1025,7 @@ test("a beat that is not the SHIPPED beat cannot pass, however it was overridden
      literal cannot see. Only a comparison against the module's own value can. */
   const v = seamTransitionVerdict(seamRecord({ askedGapMs: 50 }));
   assert.equal(v.verdict, "inconclusive");
-  assert.match(v.headline, /not the 2000 ms/);
+  assert.match(v.headline, /not the 500 ms/);
   assert.equal(seamTransitionVerdict(seamRecord({ askedGapMs: SEAM_ASKED_MS })).verdict,
     "seam-crosses-in-background");
 });

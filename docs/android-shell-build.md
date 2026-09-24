@@ -671,7 +671,9 @@ Before #227, a cross-episode seam was **measured at 9,153 ms of silence**
 being audible, and only then did the next segment load. #227 loads the next
 segment on a second `<audio>` element **while the current one is still audible**,
 and pauses the outgoing element only after the incoming one is `canplay`. The
-silent window drops to the authored **2.0 s** beat.
+silent window drops to the authored beat (**2.0 s** then; `SEAM_GAP_SEC`, 0.5 s since
+the founder's 2026-09-24 ruling). That handover is now parked (`prefetch`
+defaults to false), so today the window is `max(beat, load)` again.
 
 That matters here specifically because **audibility is the currency the whole
 Android argument is denominated in** — and be careful which half of that is

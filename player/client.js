@@ -1155,11 +1155,11 @@ function isPlaying() {
 
 /** Is the Foray RUNNING, as a listener would say it?
  *
- *  Wider than `isPlaying()` by exactly one state: the 2.0 s seam beat between
+ *  Wider than `isPlaying()` by exactly one state: the 0.5 s seam beat between
  *  two unbridged segments (`player/seam-gap.js`). Structurally that is
  *  `loadingItem`, so `isPlaying()` is false — but nobody has pressed anything,
  *  the Foray is advancing on its own, and the only sane meaning for the main
- *  button during those two seconds is STOP.
+ *  button during that half second is STOP.
  *
  *  Every play/pause control goes through this. The first draft changed the
  *  Foray page's LABEL to "❚❚ Pause" during a beat while `forayToggle` still
@@ -1186,7 +1186,7 @@ function isRunning() {
  *     the disagreement.
  *
  * Composed rather than replaced: `isRunning()` is the wider answer in the states
- * only this app knows about (the 2.0 s seam beat, a spoken narration item, the
+ * only this app knows about (the 0.5 s seam beat, a spoken narration item, the
  * instant between `playing` and `startPlayback`), and `elementIsAudible` is the
  * wider answer in the states only the element knows about. Either one saying yes
  * is a yes, because both mean "the listener should be pressing STOP".
@@ -1348,7 +1348,7 @@ function forayStateSnapshot() {
        paused. A page in another file cannot call `transportIsRunning()`, so it
        is handed the value; `playing` and `gap` stay for what they describe. */
     running: transportIsRunning(),
-    /* The 2.0 s seam beat between two unbridged segments (player/seam-gap.js).
+    /* The 0.5 s seam beat between two unbridged segments (player/seam-gap.js).
        Structurally this is `loadingItem` too, but calling it "Loading…" on the
        page would be the app apologising for a silence it chose on purpose —
        and it is the one state where pressing the main button has to mean
@@ -1686,7 +1686,7 @@ function render() {
   if (!ui || !current) return;
   syncForaySegment();
   /* A seam beat reads as playing everywhere, or the mini bar shows "▶" while
-     the Foray page shows "❚❚ Pause" for the same two seconds.
+     the Foray page shows "❚❚ Pause" for the same half second.
      `transportIsRunning()` rather than `isRunning()` since #689: the founder's
      third report is a button that said Play with sound coming out of it, and the
      button the listener presses has to be painted from the same answer the press
@@ -1890,7 +1890,7 @@ function syncCardButtons(loading = false) {
   /* Reflect play state on the originating card so the page and the bar agree.
      `transportIsRunning()`, the same authority `render()` paints the bar from
      two calls up (audit 2026-09-22). This read `isPlaying()` under a comment
-     promising "a seam beat reads as playing everywhere", so during the 2.0 s
+     promising "a seam beat reads as playing everywhere", so during the 0.5 s
      beat — and in the #689 drift, sound out of a machine that says paused — the
      card showed "▶" beside a bar showing "❚❚". Since #735 the card's press
      delegates to the bar's toggle, so its glyph has to come from the same
@@ -2867,7 +2867,7 @@ function mediaViewFields() {
          PAUSED over sound. `playbackState` is also what tells the OS whether to
          keep the session foregrounded, so the lie was not only cosmetic. */
       playing: transportIsRunning(),
-      // The 2.0 s authored beat reads as playing, exactly as `isRunning()` has
+      // The 0.5 s authored beat reads as playing, exactly as `isRunning()` has
       // it for the in-page buttons. `media-session.js` §4 is the argument.
       inSeamGap: manager?.inSeamGap === true,
       ended: Boolean(foray) && manager?.state?.type === "ended",
