@@ -1190,6 +1190,12 @@ const FLOORS = {
      85 -> 97. */
   "tools/ci/pr-triage.test.mjs": 97,
   "tools/ci/run-suites.test.mjs": 36,
+  /* NE-25a's click tracks, read without a decoder: the bytes are the ones the
+     descriptor names, the WAV is sample-exact, "CBR" and "no TOC" mean what
+     the measurements doc says they mean, the Xing TOC points at frames, the
+     audio never reaches the app target, and the never-early tolerance is not
+     widened in silence. Zero slack. */
+  "tools/audio/click-tracks.test.mjs": 7,
   /* The parity recorder (NE-03): --check in npm test, authored cases never
      overwritten, every new or changed case handed to swift-pending.json with
      its port card, and --mutate's kill/survive/pending verdicts with a no-op
@@ -1945,7 +1951,7 @@ const FLOORS = {
      channel and the App Store rejects one, so the inversion is the whole
      point. */
   "tools/store/play-listing.test.mjs": 21,
-  "tools/transcribe/fetch-audio.test.mjs": 64,
+  "tools/transcribe/fetch-audio.test.mjs": 65, // NE-25a: the click-track exemption covers only descriptor-named, hash-matching files under 1 MB; 64 -> 65
   /* ADR-0008's decode-and-compare: the instrument the cheap ones defer to.
      Floored because everything expensive about it — the download, the PyAV
      demux — is deliberately OUTSIDE CI, so what remains is the arithmetic that

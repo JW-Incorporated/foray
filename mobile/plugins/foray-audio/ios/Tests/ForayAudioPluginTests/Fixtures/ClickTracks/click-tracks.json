@@ -1,0 +1,53 @@
+{
+  "//": "Written by tools/audio/make-click-tracks.py; read by ClickTrackFixture.swift and tools/audio/click-tracks.test.mjs. Do not edit by hand.",
+  "card": "NE-25a",
+  "firstClickSec": 1,
+  "maxBytesTotal": 1000000,
+  "doubleEverySec": 10,
+  "doubleGapSec": 0.05,
+  "clickLengthSec": 0.001,
+  "clickFreqHz": 1000.0,
+  "clickPeak": 0.8,
+  "encoder": "lameenc 1.8.4",
+  "fixtures": [
+    {
+      "file": "click-cbr.mp3",
+      "bytes": 180144,
+      "sha256": "471cfafda2e978fed362bda56da8e59d4b18dd71f3db0db74e075bfd5ef51248",
+      "kind": "mp3-cbr",
+      "durationSec": 90,
+      "sampleRate": 16000,
+      "bitrateKbps": 16,
+      "header": "none"
+    },
+    {
+      "file": "click-vbr-xing.mp3",
+      "bytes": 152208,
+      "sha256": "1f4b0975a8d70ba9aa0b39cba3276515db5ace405a3a2414f5531778e0d8c111",
+      "kind": "mp3-vbr-xing",
+      "durationSec": 90,
+      "sampleRate": 16000,
+      "vbrQuality": 4,
+      "header": "xing-toc"
+    },
+    {
+      "file": "click-vbr-notoc.mp3",
+      "bytes": 152064,
+      "sha256": "08f855a817bff3d03bc14a1ab8d0fc359fe51d113b0b6a31816457867ccc7ad2",
+      "kind": "mp3-vbr-notoc",
+      "durationSec": 90,
+      "sampleRate": 16000,
+      "vbrQuality": 4,
+      "header": "none"
+    },
+    {
+      "file": "click.wav",
+      "bytes": 480044,
+      "sha256": "57a914b581084549a4e7c1edf409f65931e6960540cef9bef70096e23b99ad25",
+      "kind": "wav-pcm-u8",
+      "durationSec": 60,
+      "sampleRate": 8000,
+      "header": "riff"
+    }
+  ]
+}
