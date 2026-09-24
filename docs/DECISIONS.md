@@ -2,6 +2,44 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-24 (seam silence is 0.5 s; iOS narration 1x stays Apple's default rate)
+
+Wyatt, verbatim: **"0.5s and assume 1x speed"**. It answers two questions put
+to him the same day.
+
+1. **"0.5s": the silence at an unbridged seam is 0.5 s.** This closes
+   `HUMAN-ACTIONS.md` #3 ("Reconcile the two silence numbers: 0.5 s in the
+   brief, 2.0 s in the rules"). `docs/brief/04_VOICE_AUDIO_SPEC.md` line 12
+   gave ~0.5 s of padding around TTS items, and
+   `docs/curation/segment-length-rules.md` §6b asked for ≥ 2.0 s at an
+   unbridged seam (the audiobook section-break convention), which is what the
+   player shipped. The founder chose one number, 0.5 s. No separate
+   "authored 2.0 s between two voices" rule survives: that 2.0 s was this rule.
+   - `player/seam-gap.js` `SEAM_GAP_SEC` goes from 2.0 to 0.5. It is still wall
+     clock between two loads, never silence added to an episode file (product
+     principle 3), and still does not scale with playback speed.
+   - Both specs now give the same answer. `04_VOICE_AUDIO_SPEC.md` line 12 says
+     an unbridged seam gets 0.5 s. `segment-length-rules.md` §0, §2e, §6b and
+     M5 say 0.5 s, and the "does not decide" bullet in §10 is deleted.
+   - The TTS padding was already ~0.5 s each side and does not change
+     (`tools/narrate` `padSecPerItem` = 1.0 per item).
+   - JS is the reference for the native engine (`docs/native-engine-plan.md`
+     §6). No parity fixture on `main` recorded the beat, so none needed
+     re-recording. The Swift port on `engine/m1` picks the value up from its
+     fixtures.
+   - The iOS CI probe's `SEAM_ASKED_MS` follows the constant to 500 ms. Its
+     "a beat observed below this did not happen" floor
+     (`SEAM_MIN_PLAUSIBLE_MS`) drops from 500 ms to 250 ms, half the beat.
+     Otherwise a beat that fires on time would be read as one that never ran.
+2. **"assume 1x speed": on iOS, synthesized narration at 1x stays at
+   `AVSpeechUtteranceDefaultSpeechRate` (0.5).** The question was whether to
+   move it to an estimated ~0.58, to make up for the earlier "1x felt like 0.6x"
+   report. It does not move, and no code changes. This is recorded in
+   `mobile/plugins/foray-tts/README.md`, in the `utteranceRate` doc comment in
+   `ForayTtsPlugin.swift` (anchor 1), and in `docs/native-engine-plan.md`'s OQ-3
+   row. The ~0.58 is an unmeasured estimate that is not in effect. Moving it
+   needs a new ruling.
+
 ## 2026-09-24 (founder rulings on the round-2 decision list, PR #749)
 
 Wyatt answered the orchestrator's thirteen-item decision list for round 2 of

@@ -25,32 +25,36 @@
 
    `player/html-audio-backend.js` §"prefetch" now moves that load off the
    boundary — it warms the next segment on a second element while the current one
-   is still audible — so a warmed seam really is 2.0 s. Two things follow for
-   anyone editing THIS file:
+   is still audible — so a warmed seam really is `SEAM_GAP_SEC`. Two things follow
+   for anyone editing THIS file:
 
      - The beat is still spent in full when the load finishes early. That is
-       deliberate: 2.0 s between two voices is authored (§6b below), not an
-       artifact of loading, and shortening it was never the fix.
+       deliberate: the silence between two voices is authored (the founder's
+       number, below), not an artifact of loading.
      - `seamGapSec()` is now ALSO the eligibility rule for warming: the manager
        warms exactly the transitions that get a beat (`queue-manager.js` §11).
        So a change here changes what gets prefetched. That coupling is on
        purpose — two answers to "is this a seam" is the drift this module exists
        to prevent — but it is wider than it looks.
 
-   ── The number, and the two specs that disagree about it ──────────────────
+   ── The number: 0.5 s, the founder's ruling of 2026-09-24 ────────────────
 
-   `docs/curation/segment-length-rules.md` §6b and §2e: an unbridged seam gets
-   **>= 2.0 s**, taken from the audiobook mid-chapter section-break convention
-   (2-3.5 s, commonly 2-2.5 s), which is the only published answer anyone has
-   written down to "how much silence tells a listener they have moved."
+   Wyatt, verbatim: *"0.5s"* — answering `HUMAN-ACTIONS.md` #3, which asked
+   him to reconcile two documents that gave two numbers (`docs/DECISIONS.md`,
+   2026-09-24). Until then this file shipped **2.0 s**, from
+   `docs/curation/segment-length-rules.md` §2e/§6b (the audiobook mid-chapter
+   section-break convention, 2-3.5 s), while `docs/brief/04_VOICE_AUDIO_SPEC.md`
+   line 12 said ~0.5 s of padding around TTS items. The rules doc argued the two
+   did different jobs (joining audio vs marking an edit); the founder ruled one
+   number, and both documents now give it. There is no separate "authored 2.0 s
+   between two voices" rule left anywhere: that WAS this rule.
 
-   `docs/brief/04_VOICE_AUDIO_SPEC.md` line 12 says ~0.5 s of padding around TTS
-   items. **These are not the same number and not the same job**, which the
-   rules doc says out loud (§6b: "that number is right for joining audio and too
-   short for marking an edit") and lists in §10 as a real spec divergence that
-   needs a founder, "since it touches the player." This module implements the
-   merged rule — 2.0 s at an unbridged seam — and 0.5 s stays correct for the
-   padding baked around a TTS item whenever narration exists.
+   The beat is wall clock and does not scale with playback speed (pinned in
+   `player/foray-playback.test.js`), so 0.5 s is 0.5 s at 1x and at 2x.
+
+   The native engine takes this number from here: JS is the reference
+   implementation (`docs/native-engine-plan.md` §6 — a rule change is JS first,
+   then the parity fixtures are re-recorded, then Swift follows them).
 
    ── What is NOT a seam ────────────────────────────────────────────────────
 
@@ -61,7 +65,7 @@
        carries the 0.5 s padding of its own spec. Silence on top of it is dead
        air, not a beat.
      - anything the listener drove — a skip, a row tap, a scrub, a resume.
-       They named a destination; a 2 s wait on a button press is a stall.
+       They named a destination; any wait on a button press is a stall.
      - the first item of a Foray. There is nothing to be marked off from.
      - an ordinary unbounded episode on either side. A full episode ending is
        not an edit we made, and product principle 3 means we never touched it.
@@ -78,9 +82,10 @@
 
 import { itemBounds } from "./queue-state.js";
 
-/** The merged rule. `docs/curation/segment-length-rules.md` §0 ("Same-episode
-    seam silence >= 2.0 s where narration is not used") and §6b. */
-export const SEAM_GAP_SEC = 2.0;
+/** The founder's number (2026-09-24, "0.5s"): the silence at an unbridged
+    seam. `docs/curation/segment-length-rules.md` §0 and §6b, and
+    `docs/brief/04_VOICE_AUDIO_SPEC.md` line 12, give the same value. */
+export const SEAM_GAP_SEC = 0.5;
 
 /** Why the player moved from one item to the next. Only the first gets a beat. */
 export const AUTO_ADVANCE = "auto";

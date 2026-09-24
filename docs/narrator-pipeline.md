@@ -83,8 +83,10 @@ Better than expected, and the gaps are not where the charter guessed.
    it**: encode leading and trailing silence into the file. It costs no
    characters and it does cost bytes, which is why `projection.mjs` carries
    `padSecPerItem` in the byte arithmetic and not the credit arithmetic. The
-   spec divergence itself (0.5 s padding vs the 2.0 s seam beat) is still
-   `HUMAN-ACTIONS.md` #3 and is **not** resolved here.
+   spec divergence itself (0.5 s padding vs the 2.0 s seam beat) was
+   `HUMAN-ACTIONS.md` #3, and the founder closed it on 2026-09-24 with
+   *"0.5s"*: the seam beat is now 0.5 s too, so there is one number
+   (`docs/DECISIONS.md`).
 5. **The device-TTS fallback does not exist.** The spec says a missing TTS asset
    falls back to `AVSpeechSynthesizer` reading the why-line. There is **no
    `speechSynthesis`, no `AVSpeechSynthesizer` and no utterance code anywhere in
@@ -260,13 +262,14 @@ a running order out of authored order now that they are not.
 **Still not decided here**, and both are recommendations to the founder rather
 than changes:
 
-- **0.5 s padding vs the 2.0 s seam beat** (`HUMAN-ACTIONS.md` #3). The runtime
-  work needed no number: the beat is wall clock the manager spends and has never
-  been part of authored runtime, and the padding is baked into the asset, so a
-  *measured* duration carries it for free while an *estimated* one deliberately
-  does not guess it. `player/seam-gap.js`'s existing 2.0 s is untouched.
-  **Recommendation: keep both, as #3 already argues** — they do different jobs,
-  and a measured `duration_sec` makes the question invisible to the clock.
+- ~~**0.5 s padding vs the 2.0 s seam beat** (`HUMAN-ACTIONS.md` #3).~~
+  **Decided 2026-09-24: 0.5 s.** The founder ruled *"0.5s"*, so
+  `player/seam-gap.js`'s beat moved from 2.0 s to 0.5 s and the padding stays
+  ~0.5 s: one number (`docs/DECISIONS.md`). The runtime work still needs no
+  number: the beat is wall clock the manager spends and has never been part of
+  authored runtime, and the padding is baked into the asset, so a *measured*
+  duration carries it for free while an *estimated* one deliberately does not
+  guess it.
 - **The ≤ 8 s transition budget vs 12 s where an attribution is required.**
   narration-craft §0 and §2b have **already ruled** for the 12 s exception, on the
   argument that naming a source properly costs 8-12 words before the bridge says
@@ -658,7 +661,8 @@ by exactly those five, each of which genuinely produces different audio:
    padding change will be a different file even though the TTS provider is
    never told about it and it never reaches the request body. Fixed
    2026-09-02: this field was previously missing from the key, which would
-   have meant the still-undecided padding value (`HUMAN-ACTIONS.md` #3)
+   have meant the then-undecided padding value (`HUMAN-ACTIONS.md` #3, ruled
+   0.5 s on 2026-09-24)
    could be set or revised and silently serve stale-padding audio from cache
    under an unchanged key once synthesis existed. Until synthesis exists,
    `createAdapter()` refuses any non-default `padSecPerItem` outright (see

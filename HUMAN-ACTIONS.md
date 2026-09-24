@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **34 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **33 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -579,26 +579,6 @@ whether it will need to be run twice.
 **Worked if:** within one 8-hour window, **six different** `classify/*` PRs have
 merged, and no two of them classified the same show. Quick check after a day:
 `git log origin/main --oneline -- data/breadth-classific
-
-## #3 🟡 [DECIDE] Reconcile the two silence numbers: 0.5 s in the brief, 2.0 s in the rules
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** Two committed documents give different numbers for the
-silence at a seam, and as of this change the player implements one of them, so
-the other is now wrong in a way a reader cannot detect:
-
-- `docs/brief/04_VOICE_AUDIO_SPEC.md`, line 12: *"Transitions: hard cuts are
-  fine; add ~0.5 s of silence pa
-
-**Steps:**
-1. Listen first, to any Foray (item #2, the listen to Foray #1, was dropped on 2026-09-24). This is a judgement about a sound.
-2. Pick one of three:
-3. 0 s…", "an unbridged segment-to-segment auto-advance…"),
-4. Whichever you pick, delete the "does not decide" bullet in
-
-**Worked if:** `04_VOICE_AUDIO_SPEC.md` and `segment-length-rules.md` can both
-be read start to finish without coming away with two different answers to "how
-much silence goes at a seam".
 
 ## #1 🟡 [DECIDE] Make `path-policy` a required check on `main`
 <!-- ha filed=2026-09-11 kind=default -->

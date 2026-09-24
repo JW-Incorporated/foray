@@ -24,7 +24,7 @@ What it makes, and why each number:
     commit.
   - 3.0 s total. generation-architecture.md §4.8 asks for "roughly 1-2 s"; the
     extra second is the tail of the last note ringing out under a fade, so the
-    seam reads as a soft mark rather than a stab. Longer than the 2.0 s seam
+    seam reads as a soft mark rather than a stab. Longer than the 0.5 s seam
     beat it replaces (player/seam-gap.js), by design — a beat and a jingle are
     alternatives, never both.
   - D major pentatonic arpeggio D4 F#4 A4 D5, staggered so the notes overlap

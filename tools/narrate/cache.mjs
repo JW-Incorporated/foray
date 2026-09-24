@@ -74,10 +74,10 @@ import { billableText, countChars } from "./billable.mjs";
     voice or model change does, even though the TTS provider is never told
     about it. Leaving it out of the key is Leak 2 from this file's header —
     "a key that omits an input that changes the audio" — and it is not
-    hypothetical: `HUMAN-ACTIONS.md` #3 records the padding value as still
-    undecided, so the first time it is set (or later revised), every existing
-    cache entry would otherwise silently serve stale-padding audio under an
-    unchanged key. */
+    hypothetical: the padding value was an open founder decision until
+    2026-09-24 (`HUMAN-ACTIONS.md` #3, ruled "0.5s"), and if it is ever
+    revised, every existing cache entry would otherwise silently serve
+    stale-padding audio under an unchanged key. */
 export const KEY_INPUTS = Object.freeze(["text", "voiceId", "modelId", "outputFormat", "padSecPerItem"]);
 
 /** Canonical default for `padSecPerItem`, defined here (not in `adapter.mjs`)
@@ -85,9 +85,9 @@ export const KEY_INPUTS = Object.freeze(["text", "voiceId", "modelId", "outputFo
     cycle — `adapter.mjs` already imports from this file, and the reverse
     would be circular. `adapter.mjs` re-exports this under the same name for
     callers that only import from there. Mirrors `projection.mjs`'s
-    `BUDGETS.padSecPerItem`; `HUMAN-ACTIONS.md` #3 still has the actual value
-    as an open founder decision — this is only the fallback used when no
-    caller overrides it (and, per `adapter.mjs`'s guard, no caller may
+    `BUDGETS.padSecPerItem`: 0.5 s each side, confirmed by the founder's
+    2026-09-24 ruling ("0.5s", closing `HUMAN-ACTIONS.md` #3) — this is the
+    fallback used when no caller overrides it (and, per `adapter.mjs`'s guard, no caller may
     override it with anything else until padding synthesis exists). */
 export const DEFAULT_PAD_SEC_PER_ITEM = 1.0;
 
