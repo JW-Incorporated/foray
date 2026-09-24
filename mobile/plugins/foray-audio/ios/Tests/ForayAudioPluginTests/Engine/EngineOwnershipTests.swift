@@ -85,11 +85,14 @@ final class EngineOwnershipTests: XCTestCase {
             let lifecycle = FakeOwnershipLifecycle()
             let flag = FakeFlag()
             let sink = RowSink()
-            let factory: (@MainActor () -> ForayEngine)? = built ? {
-                let engine = ForayEngine(seams: world.seams, config: EngineConfig(build: build))
-                engine.start()
-                return engine
-            } : nil
+            var factory: (@MainActor () -> ForayEngine)?
+            if built {
+                factory = { @MainActor () -> ForayEngine in
+                    let engine = ForayEngine(seams: world.seams, config: EngineConfig(build: build))
+                    engine.start()
+                    return engine
+                }
+            }
             self.world = world
             self.ownerTiming = ownerTiming
             self.lifecycle = lifecycle
