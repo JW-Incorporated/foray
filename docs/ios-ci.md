@@ -1008,3 +1008,5 @@ they never become so: proving the shell compiles is the one claim this workflow 
 make on its own, and a build that cannot fail proves nothing. The **reporting**
 step is not either, because the only thing that flag could hide there is a crash in
 the reporter — a green run with no summary at all, which reads as fine.
+
+<!-- NE-06 probe: content-only change; this PR is closed unmerged. -->
