@@ -650,3 +650,200 @@ test("every row and card title is the display face: a show's name in a search ro
   }
   assert.strictEqual(lastOn("body.ui-v2 .show-result-by", "font-family"), "var(--font-body)", "the byline stays in the text face");
 });
+
+/* ======================================================================
+   AUDIT ROUND 2 (2026-09-23): ONE RULE PER ROLE (theme R2-K)
+   ======================================================================
+   The first pass gave each family one SCALE; round 2 found the rules still
+   reading three steps of it for one role — three field shapes, two transport
+   specs, three section-title sizes, four gutters, rows lifted and flat in one
+   column. Each role below is enumerated by the selectors that play it, so a
+   rule that drifts off its step is named. (The transport family is pinned in
+   test/transport-controls.test.js; rows, tags and the row number in
+   test/card-anatomy.test.js; touch in test/tap-targets.test.js.) */
+
+test("no C1 control character anywhere in the sheet: the notes chevron is the \\203A escape, not U+0083 + 'A'", () => {
+  /* Round 2, visual-1: `content: "\203A"` reached disk as the bytes C2 83 41 —
+     a C1 control and a literal A — and every episode page with notes drew a
+     sideways letter. MUTATION: write U+0083 back in front of the "A" -> red. */
+  const c1 = [...CSS].map((ch, i) => [ch.charCodeAt(0), i]).filter(([c]) => c >= 0x80 && c <= 0x9f);
+  assert.deepStrictEqual(c1.map(([c, i]) => `U+${c.toString(16).padStart(4, "0")} at line ${CSS.slice(0, i).split("\n").length}`), [],
+    "a C1 control character in styles.css is always a mangled escape");
+  assert.strictEqual(lastOn(".ep-description-toggle::after", "content"), '"\\203A"', "the chevron is the › escape");
+});
+
+test("every range input is the listener's own material: amber, never the UA's system blue", () => {
+  /* Round 2, visual-2: the Interests sliders set no accent-color and painted
+     system blue. MUTATION: delete `input[type="range"] { accent-color }` -> red. */
+  assert.strictEqual(lastOn('input[type="range"]', "accent-color"), "var(--amber)");
+  const others = RULES.filter((r) => r.decls.some((d) => d.prop === "accent-color") && !r.selectors.includes('input[type="range"]'));
+  assert.deepStrictEqual(others.map((r) => r.selectors.join(", ")), [], "no class re-colours a range input on its own");
+  assert.match(APP_JS, /<input type="range" class="interest-slider"/, "fixture assumption: the sliders are range inputs");
+});
+
+test("one text field: every field reads the one element rule, and only the floating search capsule differs", () => {
+  /* Round 2, visual-8: 52px at the card radius, 48px, and ~40px at the control
+     radius in the body step, for one object. MUTATIONS: `.dd-input {
+     border-radius: var(--radius-md) }` -> red; `#pl-input { min-height: 52px }`
+     -> red; `input[type="text"] { font-size: var(--fs-md) }` -> red. */
+  assert.strictEqual(lastOn('input[type="text"]', "border-radius"), "var(--radius-lg)");
+  assert.strictEqual(lastOn('input[type="text"]', "min-height"), "48px");
+  assert.strictEqual(lastOn('input[type="text"]', "font-size"), "var(--fs-lg)");
+  /* The fields the app renders, found in its markup rather than listed. */
+  const fields = new Set();
+  for (const m of APP_JS.matchAll(/<input\b[^>]*\bid="([^"]+)"[^>]*type="text"/g)) fields.add(`#${m[1]}`);
+  if (/<input\b[^>]*\bdata-show-ep-search-input\b[^>]*type="text"/.test(APP_JS)) fields.add(".show-ep-search input");
+  for (const m of APP_JS.matchAll(/ddEl\("input", "([^"]+)"\)|\.className = "([^"]+-input)"/g)) fields.add(`.${m[1] || m[2]}`);
+  assert.ok(fields.size >= 7, `fixture assumption: the census finds the app's text fields (${[...fields]})`);
+  const OWN = ["border-radius", "min-height", "height", "font-size", "padding"];
+  const bad = [];
+  for (const r of RULES) {
+    for (const sel of r.selectors) {
+      const target = [...fields].find((f) => sel === f || sel.endsWith(` ${f}`) || sel.startsWith(`${f}:`));
+      if (!target || target === "#sh-input") continue; // the capsule: its field gives its box to the pill
+      for (const d of r.decls) if (OWN.includes(d.prop)) bad.push(`${sel} { ${d.prop}: ${d.value} }`);
+    }
+  }
+  assert.deepStrictEqual(bad, [], "a field restating the field rule's shape");
+});
+
+test("section titles are one step: the display face at --fs-xl, 600, wherever a heading gathers cards", () => {
+  /* Round 2, visual-12: Home's were --fs-xl, a Foray's running order --fs-lg
+     (under a comment claiming the section step), Interests' --fs-lg at 700.
+     MUTATION: `.fy-slot h3 { font-size: var(--fs-lg) }` -> red. */
+  for (const sel of ["body.ui-v2 .hv2-title", ".fy-slot h3", ".interest-group-label"]) {
+    assert.strictEqual(lastOn(sel, "font-size"), "var(--fs-xl)", `${sel}: the section-title step`);
+    assert.strictEqual(lastOn(sel, "font-weight"), "600", `${sel}: 600`);
+    assert.strictEqual(lastOn(sel, "font-family"), "var(--font-display)", `${sel}: the display face`);
+  }
+});
+
+test("row titles are 600, and the display face at 700 is only a page title or the wordmark", () => {
+  /* Round 2, visual-15: the same Foray was 700 on the Forays page and 600 on
+     its Home card. MUTATION: `.fy-home-title { font-weight: 700 }` -> red,
+     naming it. */
+  const ROWS = [".ep-row .t", ".show-result-title", ".mc-info h3", ".fy-home-title", ".fy-src-show", ".interest-row-name",
+    ".show-forays-title", "body.ui-v2 .hv2-jbi-title", ".ft-value-prop h4"];
+  for (const sel of ROWS) {
+    assert.strictEqual(lastOn(sel, "font-weight"), "600", `${sel} is a row title: 600`);
+    assert.strictEqual(lastOn(sel, "font-size"), "var(--fs-lg)", `${sel} at the row-title step`);
+  }
+  /* A page's title, the Now Playing sheet's, another sheet's: the titles of a whole surface. */
+  const TITLES_AT_700 = new Set([".page-head h2", ".fp-s-title", ".fy-panel h3"]);
+  const bold = [];
+  for (const r of RULES) {
+    const face = r.decls.find((d) => d.prop === "font-family");
+    const weight = r.decls.find((d) => d.prop === "font-weight");
+    if (!face || face.value !== "var(--font-display)" || !weight || !/^(700|800|900|bold)$/.test(weight.value)) continue;
+    for (const sel of r.selectors) if (!TITLES_AT_700.has(sel)) bold.push(sel);
+  }
+  assert.deepStrictEqual(bold, [], "a display-face 700 outside the page titles");
+});
+
+test("one gutter: pages, Home, Now Playing and the sheets all inset by --gutter", () => {
+  /* Round 2, visual-13: 12 / 14 / 16 / 18. MUTATION: `.fy-panel { padding: 8px
+     18px … }` -> red. */
+  assert.strictEqual(ROOT_DECLS.get("--gutter"), "16px");
+  const inline = (v) => { const p = String(v || "").trim().split(/\s+(?![^(]*\))/); return p.length === 1 ? p[0] : p[1]; };
+  for (const sel of [".page", ".fp-sheet-scroll", ".fy-panel", "body.ui-v2 .hv2-greeting", "body.ui-v2 .hv2-title",
+    "body.ui-v2 .hv2-hscroll", "body.ui-v2 .hv2-cards"]) {
+    assert.strictEqual(inline(lastOn(sel, "padding")), "var(--gutter)", `${sel} insets by the gutter`);
+  }
+  assert.strictEqual(lastOn("body.ui-v2 .hv2-hscroll", "scroll-padding-inline"), "var(--gutter)");
+});
+
+test("rows in a list sit flat; the shadow is for cards and fields", () => {
+  /* Round 2, visual-14 — the qa 53 deferral, decided: lifted, flat, lifted in
+     one Library column. MUTATION: `.ep-row, .pl-row { box-shadow:
+     var(--shadow) }` -> red. */
+  const ROWS = [".ep-row", ".pl-row", ".show-result", ".fy-row", ".fy-src", ".fy-home-row", ".interest-row"];
+  const lifted = [];
+  for (const r of RULES) {
+    if (r.atRules.length) continue;
+    if (!r.selectors.some((s) => ROWS.includes(s.replace(/^body\.ui-v2 /, "")))) continue;
+    const sh = r.decls.find((d) => d.prop === "box-shadow");
+    if (sh && sh.value !== "none") lifted.push(`${r.selectors.join(", ")} { box-shadow: ${sh.value} }`);
+  }
+  assert.deepStrictEqual(lifted, [], "a list row carrying an elevation");
+  assert.strictEqual(lastOn(".mini-card", "box-shadow"), "var(--shadow)", "a card on Home's grid is still lifted");
+});
+
+test("the Home card's branch dot is gone, with the ten raw v1 hexes that coloured it", () => {
+  /* Round 2, visual-3: 29 of 39 branches fell to violet, so the dot said
+     nothing and read as the Stretch tag's bullet. MUTATION: restore
+     `.mc-kicker::before { … background: var(--branch-color) }` -> red. */
+  assert.ok(!RULES.some((r) => r.selectors.includes(".mc-kicker::before")), "no dot");
+  assert.doesNotMatch(CSS.replace(/\/\*[\s\S]*?\*\//g, ""), /--branch-color|\[data-branch=/, "and nothing left to colour one");
+});
+
+test("the one focus ring reaches the search field: the capsule draws it; no bare outline: none anywhere", () => {
+  /* Round 2, a11y-3: `#sh-compose #sh-input:focus { outline: none }` out-ranked
+     the ring and nothing replaced it. The rule now: an `outline: none` is
+     either `:not(:focus-visible)`-qualified, or an ANCESTOR draws the ring on
+     `:focus-within`. MUTATIONS: delete the `:focus-within` ring -> red; add
+     `.fy-chip:focus { outline: none }` anywhere -> red. */
+  const ANCESTOR_RING = { "#sh-compose #sh-form #sh-input:focus": "#sh-compose #sh-form:focus-within" };
+  const bare = [];
+  for (const r of RULES) {
+    if (!r.decls.some((d) => d.prop === "outline" && /^(none|0)$/.test(d.value))) continue;
+    for (const sel of r.selectors) {
+      if (/:not\(:focus-visible\)/.test(sel)) continue;
+      const ring = ANCESTOR_RING[sel];
+      if (ring && lastOn(ring, "outline") === "2px solid var(--amber)") continue;
+      bare.push(sel);
+    }
+  }
+  assert.deepStrictEqual(bare, [], "an outline: none with no ring to replace it");
+  assert.match(APP_JS, /<form id="sh-form"[^>]*>[\s\S]*?<input id="sh-input"[\s\S]*?<\/form>/, "the field really is inside the capsule that rings");
+});
+
+test("Reduce Motion is one block and it names every transition in the sheet", () => {
+  /* Round 2, a11y-9: three strip rules honoured it; the sheet's spring-back,
+     the chevron, the card press and the page head did not. MUTATIONS: add
+     `transition: opacity .2s` to any rule -> red, naming it; remove `.fp-sheet`
+     from the block -> red. */
+  const blocks = RULES.filter((r) => r.atRules.some((a) => /prefers-reduced-motion:\s*reduce/.test(a)));
+  const covered = new Set(blocks.filter((r) => r.decls.some((d) => d.prop === "transition" && d.value === "none"))
+    .flatMap((r) => r.selectors));
+  const atRules = new Set(blocks.map((r) => r.atRules.join("|")));
+  assert.strictEqual(atRules.size, 1, "one reduce-motion block, not one per component");
+  const moving = [];
+  for (const r of RULES) {
+    if (r.atRules.length) continue;
+    const t = r.decls.find((d) => d.prop === "transition");
+    if (!t || t.value === "none") continue;
+    for (const sel of r.selectors) if (!covered.has(sel)) moving.push(`${sel} { transition: ${t.value} }`);
+  }
+  assert.deepStrictEqual(moving, [], "a transition Reduce Motion does not stop");
+  assert.ok(covered.has(".fp-sheet:not(.fp-sheet-dragging)"), "fixture assumption: the sheet's release is among them");
+});
+
+test("'N min left' is amber and bold on Home's card, as on the Forays page and the Foray page", () => {
+  /* Round 2, honesty-8. MUTATION: delete `body.ui-v2 .hv2-jbi-left { … }` -> red. */
+  assert.strictEqual(lastOn("body.ui-v2 .hv2-jbi-left", "color"), "var(--amber)");
+  assert.strictEqual(lastOn("body.ui-v2 .hv2-jbi-left", "font-weight"), "700");
+  assert.strictEqual(lastOn("body.ui-v2 .fy-jbi-left", "color"), "var(--amber)", "the Forays page's, for comparison");
+  assert.strictEqual(lastOn(".fy-jbi-left", "font-weight"), "700");
+});
+
+test("Home shows the wordmark once: the greeting has it, the bar keeps only its tagline there", () => {
+  /* Round 2, p-first-8: two identical italic "4a" marks ~50px apart. MUTATION:
+     delete `body.view-home .topbar h1 .wordmark { display: none }` -> red. */
+  assert.strictEqual(lastOn("body.view-home .topbar h1 .wordmark", "display"), "none");
+  assert.ok(!RULES.some((r) => r.selectors.some((s) => /view-home .*topbar-tag/.test(s)) && r.decls.some((d) => d.value === "none")),
+    "the tagline — what this app is — stays on Home");
+  assert.match(APP_JS, /class="hv2-greeting-brand"/, "fixture assumption: the greeting carries the brand");
+  assert.match(APP_JS, /setBodyClass\("view-home"\)/, "fixture assumption: Home's body class is view-home");
+});
+
+test("the episode page's head is two lines at most, at the size Now Playing gives the same title", () => {
+  /* Round 2, visual-4: the whole title rode the sticky head at --fs-2xl (a
+     fifth of the screen on a long title) and --fs-xl in the sheet. MUTATION:
+     delete `.page-head .fp-s-title { … }` -> red. */
+  assert.strictEqual(lastOn(".fp-s-title", "font-size"), "var(--fs-xl)", "the sheet's size");
+  assert.strictEqual(lastOn(".page-head .fp-s-title", "font-size"), "var(--fs-xl)", "the same size on the episode page's head");
+  assert.strictEqual(lastOn(".page-head .fp-s-title", "-webkit-line-clamp"), "2");
+  assert.strictEqual(lastOn(".page-head .fp-s-title", "overflow"), "hidden");
+  assert.match(APP_JS, /<div class="page-head">\s*<a class="back" href="#\/">‹<\/a>\s*<div>\s*<h2 class="fp-s-title">\$\{esc\(item\.title\)\}/,
+    "fixture assumption: renderEpisode's head is an h2.fp-s-title inside .page-head");
+});
