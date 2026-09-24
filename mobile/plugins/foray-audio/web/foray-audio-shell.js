@@ -668,6 +668,41 @@ export function createForayAudioShell(env) {
     requestStop();
   }
 
+  /**
+   * The transport is SOUNDING, or has stopped sounding, as the page reports it.
+   *
+   * THE SERVICE STARTS WHEN SOUND IS WANTED, NOT ONLY WHEN AN ELEMENT PLAYS (audit
+   * round 2, native-2). Every other start in this file hangs off the patched
+   * `HTMLMediaElement.prototype.play`, and the header's assumption that every Foray
+   * begins with one was true when it was written. It is not now: a narration line
+   * with a script and no asset is spoken by `ForayTtsPlugin` (`queue-manager.js`
+   * `_speakNarration`) and no element ever plays, and four of the seven shipped
+   * Forays open with three to seven of them. So the opening minute ran with no
+   * foreground service, no notification and no lock-screen controls — and when the
+   * first tape segment's `play()` finally asked, the phone was pocketed and Android
+   * 12+ refused the background start, so the WHOLE Foray played unprotected.
+   *
+   * The first `playing` payload comes from the listener's own tap, in the
+   * foreground, so this start is always permitted. `wanted` is the guard: a start
+   * already asked for (accepted or refused) is not re-asked from here — the element
+   * path keeps its own retry — and a stop only ever clears `wanted` on dispatch, so
+   * the next playing transition after a close asks again. Only an ANDROID transport
+   * reaches this (`shellApplies`); everywhere else the shell is not installed.
+   *
+   * Called by `foray-media-session.js` on the transition of the page's transport
+   * state to and from `"playing"` — not on every write, so the 4 Hz position path
+   * never touches the bridge from here. A FALSE does nothing: sound stopping is
+   * the element path's business (its settle window), and narration pausing keeps
+   * the service exactly as a paused element does, because the page is still loaded.
+   */
+  function noteTransportPlaying(playing) {
+    if (!playing) return;
+    if (!installed) return;
+    if (wanted) return;
+    if (activeCount() > 0) return;
+    ensureStarted();
+  }
+
   function reconcile() {
     /* Guarded on `installed` because per-element listeners cannot be removed once
        an element is gone — `watch` registers them in a closure and `uninstall`
@@ -865,7 +900,7 @@ export function createForayAudioShell(env) {
     };
   }
 
-  return { install, uninstall, inspect, refresh, setMediaLoaded, noteServiceRunning, newDocument };
+  return { install, uninstall, inspect, refresh, setMediaLoaded, noteTransportPlaying, noteServiceRunning, newDocument };
 }
 
 /* ------------------------------------------------------------- auto-install */

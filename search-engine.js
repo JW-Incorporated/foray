@@ -1831,10 +1831,14 @@ const SHOW_MATCH_UNMATCHED = SHOW_MATCH_SUBSTRING + 1;
     folding is the identity transform for plain ASCII, so this is a pure
     widening with no effect on any existing unaccented title. */
 function foldDiacritics(s) {
+  /* NORMALISE FIRST, LOWERCASE LAST (audit round 2, search-9). NFKD maps the
+     compatibility letters some titles are typed in \u2014 "\ud835\udc01\ud835\udfd1\ud835\udfd2\ud835\udc27\u2019\ud835\udc2c \ud835\udc2d\ud835\udc1e\ud835\udc2b\ud835\udc2b\ud835\udc22\ud835\udc2d\ud835\udc28\ud835\udc2b\ud835\udc22\ud835\udc2e\ud835\udc26" \u2014 to
+     plain "B34n's territorium"; lowercasing BEFORE that left the "B" upper
+     (\ud835\udc01 has no lowercase mapping), so no typed query could ever prefix it. */
   return String(s || "")
-    .toLowerCase()
     .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "");
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
 /* ---------- THE MATCH TIER, and why the bucket is no longer the first key ----
@@ -2022,11 +2026,15 @@ function compareShowMatches(a, b) {
 }
 
 function searchShows(query, shows) {
-  const q = String(query || "").trim().toLowerCase();
+  /* FOLDED, like `rankShows` below and the shard functions (audit round 2,
+     search-9): the 2026-09-15 fold fix reached the re-rank and the shard pass
+     and not the local pass, so "cafe" found no "Café …" title on the device
+     and the show arrived a second later from Apple, at the bottom. */
+  const q = foldDiacritics(query).trim();
   if (!q) return [];
   const scored = [];
   for (const show of shows || []) {
-    const { bucket } = showMatchBucket(show?.title, q);
+    const { bucket } = showMatchBucket(foldDiacritics(show?.title), q);
     if (bucket === SHOW_MATCH_NONE) continue;
     scored.push({ show, bucket });
   }
@@ -2126,9 +2134,12 @@ function rankShows(query, shows) {
    repo reads. So: binary search on every keystroke, linear scan only on the
    debounce tick and only when the prefix pass under-delivers. */
 
-/** Decodes the TSV into `{ keys, rows }` — `keys[i]` is the lowercased title
-    `rows[i]` is sorted by, precomputed once so the per-keystroke path never
-    lowercases 19,904 strings again. Tolerant of a trailing newline and of a
+/** Decodes the TSV into `{ keys, rows }` — `keys[i]` is the FOLDED, lowercased
+    title `rows[i]` is sorted by (`foldDiacritics`, the same key
+    tools/build-show-index.mjs sorts on — audit round 2, search-9: an
+    unfolded key meant "cafe" could never binary-search onto "Café Society"),
+    precomputed once so the per-keystroke path never folds 19,904 strings
+    again. Tolerant of a trailing newline and of a
     malformed row (skipped, not thrown): a truncated download degrades to a
     smaller index, and the curated pass is still underneath it. */
 function parseShowIndex(text) {
@@ -2155,7 +2166,7 @@ function parseShowIndex(text) {
       chart_rank: Number.isFinite(rank) ? rank : null,
       tier: parts[3] === "1" ? "curated" : "breadth",
     });
-    keys.push(title.toLowerCase());
+    keys.push(foldDiacritics(title));
   }
   return { keys, rows };
 }
@@ -2178,7 +2189,7 @@ function showIndexLowerBound(keys, needle) {
     so `q + "￿"` sorts after every string that starts with `q` and before
     the next distinct prefix. */
 function prefixSearchShows(query, index, limit = 0) {
-  const q = String(query || "").trim().toLowerCase();
+  const q = foldDiacritics(query).trim(); // the keys are folded (parseShowIndex), so the needle must be
   if (!q || !index || !index.keys || !index.keys.length) return [];
   const lo = showIndexLowerBound(index.keys, q);
   const hi = showIndexLowerBound(index.keys, q + "￿");
@@ -2197,7 +2208,7 @@ function prefixSearchShows(query, index, limit = 0) {
     and substring hits ONLY; a prefix/exact hit is already the prefix pass's
     answer and returning it twice would make the caller dedupe. */
 function scanShowIndex(query, index, limit = 0) {
-  const q = String(query || "").trim().toLowerCase();
+  const q = foldDiacritics(query).trim(); // folded keys, folded needle
   if (!q || !index || !index.keys || !index.keys.length) return [];
   const scored = [];
   for (let i = 0; i < index.keys.length; i++) {
@@ -2385,6 +2396,10 @@ const SearchEngine = {
   SHOW_MATCH_UNMATCHED,
   SHOW_TIER_EXACT, SHOW_TIER_BOUNDARY, SHOW_TIER_SUBSTRING, SHOW_TIER_UNMATCHED, showMatchTier,
   showMatchBucket, isBreadthShow, popularityBand, compareShowMatches, rankShows,
+  /* The one fold, exported so tools/build-show-index.mjs sorts on the key
+     parseShowIndex will binary-search over, and app.js's Foray group matches
+     the way the show passes do (audit round 2, search-9 / p-foray-4). */
+  foldDiacritics,
   parseShowIndex, showIndexLowerBound, prefixSearchShows, scanShowIndex,
   /* S-05 (4a-shows-pipeline-plan.md §3.2). Exported for app.js's shard fetch
      integration and for test/show-search-shard.test.js and

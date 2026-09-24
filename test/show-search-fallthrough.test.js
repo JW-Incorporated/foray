@@ -97,7 +97,8 @@ const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
   "player-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note", "sh-form", "sh-input", "sh-note", "sh-results",
-  "ep-search-results", "pl-search-results",
+  "ep-search-results", "pl-search-results", "sh-partial-note", "sh-offline-note",
+  "sh-empty-offer", "fy-search-results",
 ];
 
 const SHOWS = [
@@ -138,10 +139,19 @@ const INDEX_TSV = [
     non-ok response is the one shape it never sends on either path, so
     `directoryOk: false` alone could not have caught a client that read HTTP 200
     as "the directory answered". */
+/* Round 2 (2026-09-23) additions: `episodesOk: false` makes the episode
+   endpoint a non-ok response (states-7), `catalogueDegraded` makes the
+   CATALOGUE pass answer the endpoint's 200 `{shows: [], degraded: true}`
+   (search-4 — the shape defect 2's fix modelled for the directory only),
+   `catalogueDelayMs` holds the catalogue pass in flight (search-7),
+   `onLine: false` is the runtime reporting offline (search-12), and
+   `forays` stands in the player bridge's `listForays` up so the Forays group
+   has something to find (p-foray-4). */
 function mount({
   indexBody = INDEX_TSV, indexOk = true, breadth = [], directory = [],
   directoryOk = true, directoryDelayMs = 0, directoryError = null,
   directoryDegraded = false, showById = null, idDelayMs = 0,
+  episodesOk = true, catalogueDegraded = false, catalogueDelayMs = 0, onLine = true, forays = null,
 } = {}) {
   const calls = [];
   const byId = new Map(PAGE_IDS.map((id) => {
@@ -177,9 +187,11 @@ function mount({
       return directoryDelayMs ? new Promise((r) => setTimeout(() => r(answer), directoryDelayMs)) : Promise.resolve(answer);
     }
     if (u.includes("api/shows/search")) {
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ shows: breadth, degraded: false }) });
+      const answer = { ok: true, status: 200, json: () => Promise.resolve(catalogueDegraded ? { shows: [], degraded: true } : { shows: breadth, degraded: false }) };
+      return catalogueDelayMs ? new Promise((r) => setTimeout(() => r(answer), catalogueDelayMs)) : Promise.resolve(answer);
     }
     if (u.includes("api/episodes/search")) {
+      if (!episodesOk) return Promise.resolve({ ok: false, status: 502, json: () => Promise.resolve({}) });
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ episodes: [] }) });
     }
     /* S-05's shard pass fires its own request alongside the ones above.
@@ -212,7 +224,7 @@ function mount({
       },
       querySelectorAll: () => [],
     },
-    navigator: { userAgent: "node" },
+    navigator: { userAgent: "node", onLine },
     addEventListener() {}, removeEventListener() {},
     location: { hash: "#/shows", search: "", pathname: "/", href: "https://x.test/" },
     history: { replaceState() {}, pushState() {} },
@@ -232,6 +244,10 @@ function mount({
   state.discover = { items: [] };
   state.cardSlots = [];
   state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
+  if (forays) {
+    state.forays = { forays };
+    ctx.ForayPlayer = { listForays: (doc, { showDrafts = false } = {}) => doc.forays.filter((f) => f.status === "published" || showDrafts) };
+  }
   ctx.renderAllShows();
 
   const input = byId.get("sh-input");
@@ -507,7 +523,9 @@ test("the two normalised-title rules are one rule: app.js and api/shows/appleSho
 
      MUTATION: change either copy — `\W` for `[^\p{L}\p{N}]`, or drop the
      `.trim()`. The expressions differ and this goes red. */
-  const EXPR = String.raw`String(title || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()`;
+  /* Folded since audit round 2 (search-9): the NFKD + combining-mark strip is
+     part of the rule now, in both copies. */
+  const EXPR = String.raw`String(title || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()`;
   const server = fs.readFileSync(path.join(ROOT, "api", "shows", "appleShowSearch.ts"), "utf8");
   assert.ok(APP_SRC.includes(EXPR), "app.js must carry the rule verbatim");
   assert.ok(server.includes(EXPR), "api/shows/appleShowSearch.ts must carry the same rule verbatim");
@@ -1258,4 +1276,317 @@ test("mergeShowRows: all four sources pairwise — every arrival order covering 
       }
     }
   }
+});
+
+/* ==================================================================== */
+/* ROUND 2 (2026-09-23): the painted record is the truth — theme R2-H,   */
+/* plus the search half of R2-G. One mount case per behaviour.           */
+/* ==================================================================== */
+
+/* The FROZEN fixture, never `data/`: the path is built on its own line so the
+   read below does not match the publish gate's REAL_DATA_READ_RE
+   (backend/src/cli/publishSuites.ts) — this is not a real-data suite, and
+   listing it there would be a false positive (2026-09-24). */
+const FROZEN_FORAYS_PATH = path.join(ROOT, "tools", "foray", "fixtures", "frozen", "data", "forays.json");
+const FROZEN_FORAYS = JSON.parse(fs.readFileSync(FROZEN_FORAYS_PATH, "utf8")).forays;
+
+test("search-1: a painted index row takes the catalogue's artwork IN PLACE — same index, same href, no blank square", async () => {
+  /* The index carries titles only, so its prefix hits — the strongest matches,
+     the top of the list — painted as blank grey squares and stayed that way
+     for the life of the query while weaker rows beneath arrived with art:
+     `mergeShowRows` dropped the richer copy as "already painted" and only
+     the tap-time cache learned it. MUTATION: delete the `upgradeShowRows`
+     call in mergeBreadth (or make it return null). The row keeps
+     `show-result-art-blank` and this goes red. */
+  const m = mount({ breadth: [{ show_id: "1000001", title: "Deep History Hour", artwork_url: "https://art/deep.jpg", artist_name: "Some Publisher", tier: "breadth" }] });
+  m.input.fire("focus");
+  await sleep(10);
+  m.input.value = "deep";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  const html = m.results().innerHTML;
+  assert.ok(html.includes("Deep History Hour"), "the index row is on the page");
+  assert.ok(html.includes("https://art/deep.jpg"), `the catalogue's artwork reached the painted row: ${html}`);
+  assert.ok(html.includes("Some Publisher"), "and its byline");
+  assert.ok(!html.includes("show-result-art-blank"), "no blank square is left for a show the catalogue drew");
+  /* Counted as a row's VISIBLE title: each row also carries its full name in
+     `title=` since search-11 (the visible one is clamped to two lines). */
+  assert.strictEqual((html.match(/class="show-result-title">Deep History Hour</g) || []).length, 1, "upgraded in place, not appended as a second row");
+  const painted = m.evalIn("showSearchPainted.rows");
+  assert.strictEqual(painted[0].show_id, "1000001", "the row keeps its position (#684) and its id");
+});
+
+test("search-6: arriving with a query (a browse pill, ‹, a reload) loads the show index once; the bare page still loads nothing", async () => {
+  /* S-03 tied the index to the first FOCUS; #684 made every pill a
+     `#/shows/q/<label>` arrival that never focuses. So a pill's local pass ran
+     over the curated 220 only. MUTATION: drop `loadShowIndex()` from the
+     `if (query)` branch of renderAllShows — the first assertion goes red. The
+     second assertion is S-03's own line, kept. */
+  const m = mount();
+  assert.deepStrictEqual(m.indexCalls(), [], "the bare #/shows arrival fetches nothing (S-03)");
+  m.ctx.renderAllShows("deep history");
+  await sleep(20);
+  assert.strictEqual(m.indexCalls().length, 1, "a query arrival fetches the index, once");
+  assert.ok(m.results().innerHTML.includes("Deep History Hour"), "and the index's row lands in the answer without a focus");
+});
+
+test("search-7: the same query again — a trailing space, or return while the tick is pending — never shrinks the list or doubles the requests", async () => {
+  /* Both paths used to bump the token and repaint LOCAL rows over a list the
+     passes had grown, then re-fetch. MUTATION: delete the
+     `if (query && isShowSearchCurrent(query)) return;` guard in
+     onShowSearchInput — the merged row vanishes for 250 ms and a second
+     catalogue request fires. Or delete the `isShowSearchCurrent` branch of
+     renderShowSearchResults — return inside the debounce fires a second
+     catalogue request. */
+  const m = mount({ breadth: [{ show_id: "b-1", title: "Deep Dive Daily", tier: "breadth" }] });
+  m.type("deep");
+  await sleep(400);
+  assert.ok(m.results().innerHTML.includes("Deep Dive Daily"), "precondition: the catalogue row merged");
+  assert.strictEqual(m.catalogueCalls().length, 1);
+
+  m.type("deep ");                                    // same trimmed query
+  assert.ok(m.results().innerHTML.includes("Deep Dive Daily"), "the merged row is still on the page the instant after the keystroke");
+  await sleep(400);
+  assert.strictEqual(m.catalogueCalls().length, 1, "no second request for the query already answered");
+
+  const n = mount({ breadth: [{ show_id: "b-1", title: "Deep Dive Daily", tier: "breadth" }] });
+  n.type("deep");                                     // tick pending
+  n.input.value = "deep";
+  n.byId.get("sh-form").fire("submit");               // return inside the debounce
+  await sleep(400);
+  assert.strictEqual(n.catalogueCalls().length, 1, "return ran the pending tick once, it did not add a second pass");
+  assert.ok(n.results().innerHTML.includes("Deep Dive Daily"));
+});
+
+test("races-2: ✕ inside the debounce takes the in-flight search with it — no results, no episodes, no address for a query nobody can see", async () => {
+  /* dismissShowSearch cleared the field and the paint but not the token or the
+     pending tick, so the tick ran anyway: rows under an empty field, and
+     noteShowQueryInRoute wrote `#/shows/q/<q>` back. MUTATION: delete the
+     `supersedeShowSearch()` call at the top of dismissShowSearch. */
+  const m = mount({ breadth: [{ show_id: "b-1", title: "Deep Dive Daily", tier: "breadth" }] });
+  m.type("deep");
+  m.ctx.dismissShowSearch(m.input);                   // inside the 250 ms window
+  assert.strictEqual(m.input.value, "");
+  await sleep(400);
+  assert.strictEqual(m.results().hidden, true, `nothing may come back under the empty field: ${m.results().innerHTML}`);
+  assert.strictEqual(m.catalogueCalls().length, 0, "the cleared query's passes never ran");
+  assert.strictEqual(m.ctx.location.hash, "#/shows", "and the address stays at the root");
+});
+
+test("search-4: a DEGRADED catalogue reply (200, shows: [], degraded: true) is not cached and is reported as the failure it is", async () => {
+  /* Defect 2's fix was applied to the directory pass only; the catalogue pass
+     still wrote the degraded answer into its session cache and settled as
+     "answered". MUTATION: change `answered` back to `!!data` in the catalogue
+     pass — the cache holds the poisoned entry and no failure line paints. */
+  const m = mount({ catalogueDegraded: true, directoryDegraded: true });
+  m.input.value = "zz";                               // two characters: the directory pass does not run, so only the catalogue pass can report
+  m.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  assert.strictEqual(m.evalIn('showBreadthQueryCache.has("zz")'), false, "a degraded reply is not an answer to remember");
+  const partial = m.byId.get("sh-partial-note");
+  assert.strictEqual(partial.hidden, false, "the pass that did not answer says so");
+  assert.match(partial.innerHTML, /Part of this search didn't load\./);
+  assert.match(partial.innerHTML, /data-retry/, "with Try again");
+});
+
+test("states-7: a dead episode endpoint under a FULL show list still says part of the search did not load, with Try again", async () => {
+  /* The failure line lived in the EMPTY branch of paintShowResults, and the
+     episode pass never reported at all — on Wi-Fi with no internet a few
+     curated rows painted and the Episodes section silently never came.
+     MUTATION: delete the `noteShowSearchFailure(query, myToken, "episodes")`
+     line in renderEpisodeSearchResults's .then — red. Or paint the partial
+     note only when `rows.length === 0` — the second mount goes red. */
+  const m = mount({ episodesOk: false });
+  m.input.value = "radiolab";                         // a curated hit: the list is NOT empty
+  m.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  assert.ok(m.results().innerHTML.includes("Radiolab"), "precondition: rows are on the page");
+  const partial = m.byId.get("sh-partial-note");
+  assert.strictEqual(partial.hidden, false, "the episode failure is painted over a full list");
+  assert.match(partial.innerHTML, /Part of this search didn't load\./);
+  assert.match(partial.innerHTML, /data-retry/);
+
+  const n = mount({ directoryOk: false });
+  n.input.value = "radiolab";
+  n.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  assert.ok(n.results().innerHTML.includes("Radiolab"));
+  assert.strictEqual(n.byId.get("sh-partial-note").hidden, false, "a failed show pass is painted over a full list too");
+
+  const ok = mount();
+  ok.input.value = "radiolab";
+  ok.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  assert.strictEqual(ok.byId.get("sh-partial-note").hidden, true, "and nothing failed, nothing is said");
+});
+
+test("states-7: Try again on the partial-load line re-runs the same search — and a failed search is re-runnable by return too", async () => {
+  /* The failure line's Try again is the plain submit path; a search with a
+     recorded failure is not "current" to isShowSearchCurrent, so the same
+     query runs again from the top. MUTATION: make isShowSearchCurrent ignore
+     showSearchFailure — return does nothing and the count stays at 1. */
+  const m = mount({ episodesOk: false });
+  m.input.value = "radiolab";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  const before = m.apiCalls().filter((u) => u.includes("api/episodes/search")).length;
+  assert.strictEqual(before, 1);
+  m.byId.get("sh-form").fire("submit");               // return, same query, after a failure
+  await sleep(30);
+  assert.strictEqual(m.apiCalls().filter((u) => u.includes("api/episodes/search")).length, 2, "the failed pass is asked again");
+});
+
+test("search-12 / states-9: offline, a NON-empty list carries the honest offline note and no failure line; the network passes' failure is explained, not stacked", async () => {
+  /* Offline, the catalogue and directory passes fail (fetch rejects), so the
+     failure line joined the offline note over the rows. The offline note is
+     the explanation; a Try again with no connection is a button that does
+     nothing. MUTATION: drop the `isOfflineForShardSearch()` clause from
+     paintShowSearchPartialNote — the failure line paints alongside, red. */
+  const m = mount({ onLine: false, directoryOk: false });
+  m.input.value = "radiolab";
+  m.byId.get("sh-form").fire("submit");
+  await sleep(30);
+  assert.ok(m.results().innerHTML.includes("Radiolab"), "the local pass still answers offline");
+  assert.strictEqual(m.byId.get("sh-offline-note").hidden, false, "the offline note explains the rows");
+  assert.strictEqual(m.byId.get("sh-partial-note").hidden, true, "and no failure line is stacked on it");
+});
+
+test("search-5: the lit Search tab returns to the search that was left — to the top on the results, to the root only from the root", () => {
+  /* The tab's href is the bare `#/shows`, so from an opened result the browser
+     navigated there and renderAllShows("") threw the query away. MUTATION:
+     delete the `href === "#/shows" && tabForHash(here) === "search"` branch
+     of onTabBarClick — the first case navigates to the root, red. */
+  const m = mount();
+  m.type("lex");
+  m.ctx.location.hash = "#/shows/q/lex";             // what noteShowQueryInRoute wrote on the tick
+  m.evalIn('noteShowQueryInRoute("lex")');
+  const tab = { getAttribute: (a) => (a === "href" ? "#/shows" : null) };
+  const fire = () => { let prevented = false; m.ctx.onTabBarClick({ target: { closest: () => tab }, preventDefault() { prevented = true; } }); return prevented; };
+
+  m.ctx.location.hash = "#/show/lex-fridman-podcast"; // a result was opened
+  assert.strictEqual(fire(), true, "from a pushed page the tap is handled, not a navigation to the root");
+  assert.strictEqual(m.ctx.location.hash, "#/shows/q/lex", "it pops back to the search that was left");
+
+  m.ctx.location.hash = "#/shows/q/lex";             // on the results themselves
+  assert.strictEqual(fire(), true, "on the results the tap is the same-tab gesture");
+  assert.strictEqual(m.ctx.location.hash, "#/shows/q/lex", "and the results stay");
+
+  m.ctx.dismissShowSearch(m.input);                   // the search was cleared: the tab's last stop is the root
+  m.ctx.location.hash = "#/show/radiolab";
+  assert.strictEqual(fire(), false, "with nothing to return to, the tap is the ordinary navigation to the root");
+
+  m.ctx.location.hash = "#/library";                  // another tab: never touched
+  assert.strictEqual(fire(), false);
+});
+
+test("search-3: return puts the keyboard away, and both search fields ask for the search keyboard without autocorrect", () => {
+  /* The submit handler ran the search and never let go of the field, so
+     WebKit's keyboard stayed up; the comments claimed the opposite. MUTATION:
+     delete the `input.blur()` line in the #sh-form submit handler, or the
+     `${SEARCH_INPUT_ATTRS}` from either input. */
+  const m = mount();
+  let blurred = 0;
+  m.input.blur = () => { blurred++; };
+  m.input.value = "radiolab";
+  m.byId.get("sh-form").fire("submit");
+  assert.strictEqual(blurred, 1, "return blurs the field");
+  assert.ok(m.results().innerHTML.includes("Radiolab"), "and the results stay");
+
+  const attrs = 'enterkeyhint="search" autocorrect="off" autocapitalize="none" spellcheck="false"';
+  assert.ok(APP_SRC.includes(`const SEARCH_INPUT_ATTRS = '${attrs}';`), "one constant holds the keyboard hints");
+  assert.match(APP_SRC, /<input id="sh-input" type="text"[^>]*\$\{SEARCH_INPUT_ATTRS\}>/, "the Search page's field carries them");
+  assert.match(APP_SRC, /<input data-show-ep-search-input type="text"[^>]*\$\{SEARCH_INPUT_ATTRS\}>/, "and the show page's episode field");
+});
+
+test("p-foray-4: typing a Foray's own subject finds the Foray — a Forays group above the shows, from the same list Home and Library read", () => {
+  /* Search had no Foray result kind at all. The frozen fixture's published
+     Foray is the one a listener could find. MUTATION: delete the
+     `paintForaySearchResults(query, myToken)` call in paintShowSearchLocal —
+     the group never paints, red. */
+  const m = mount({ forays: FROZEN_FORAYS });
+  const published = FROZEN_FORAYS.find((f) => f.id === "capital-types-1");
+  assert.strictEqual(published.status, "published", "fixture: capital-types-1 is the published one");
+  m.type("capital");
+  const box = m.byId.get("fy-search-results");
+  assert.strictEqual(box.hidden, false, "the Forays group paints on the keystroke");
+  assert.ok(box.innerHTML.includes('href="#/foray/capital-types-1"'), `the Foray is linked: ${box.innerHTML}`);
+  assert.ok(box.innerHTML.includes(m.ctx.esc(published.title)));
+  assert.ok(box.innerHTML.includes("<h3>Forays</h3>"), "under its own heading");
+
+  m.type("wrong default");                            // a running-order slot title, not in the title or summary
+  assert.strictEqual(box.hidden, false, "slot titles count too");
+  assert.ok(box.innerHTML.includes("capital-types-1"));
+
+  m.type("grilling");                                 // a DRAFT's subject: not listed, not found
+  assert.strictEqual(box.hidden, true, "a draft is not searchable, the same rule Home and Library apply");
+
+  m.type("zzqx");
+  assert.strictEqual(box.hidden, true, "nothing matched, nothing painted");
+  assert.strictEqual(box.innerHTML, "");
+});
+
+test("ROUND 2 review (p-foray-4 / visual-9 / p-foray-8): a Foray found in Search is the SAME row as on #/forays — no FORAY tag under 'Forays', and its length line", () => {
+  /* The group hand-copied the old row: a published hit wore a FORAY kicker
+     right under its own <h3>Forays</h3> and had no length/progress line.
+     MUTATION: put the hand-written row template back in
+     paintForaySearchResults -> the kicker is back and the rows differ; red. */
+  const m = mount({ forays: FROZEN_FORAYS });
+  m.type("capital");
+  const box = m.byId.get("fy-search-results");
+  const html = box.innerHTML;
+  assert.ok(html.includes('href="#/foray/capital-types-1"'), "precondition: the published Foray is found");
+  assert.ok(!html.includes("fy-home-kicker"), `a published row does not restate the heading: ${html}`);
+  const published = FROZEN_FORAYS.find((f) => f.id === "capital-types-1");
+  const listRow = m.evalIn("forayRowsHtml")([published], { inSection: true });
+  assert.ok(html.includes(listRow.trim()), "the row is the #/forays list's own row, byte for byte");
+  assert.match(m.evalIn("forayListHtml").toString(), /forayRowsHtml\(/, "and #/forays renders through the same builder");
+});
+
+test("copy-8: every quoted query goes through the one typographic pair — no straight-quoted interpolation is left in a listener string", () => {
+  /* The CTA used curly quotes and every other quoted query used straight ones,
+     side by side on the empty-search screen. MUTATION: put `"${query}"`
+     back in any of the five sites — the count goes to 1, red. */
+  const straight = [...APP_SRC.matchAll(/[A-Za-z] "\$\{[^}]*\}"/g)].map((x) => x[0]);
+  assert.deepStrictEqual(straight, [], `a listener string quotes an interpolation with straight quotes: ${JSON.stringify(straight)}`);
+  assert.match(APP_SRC, /function quoteQuery\(text\) \{\s*return `\\u201c\$\{text\}\\u201d`;/, "the helper is the one place the pair lives");
+  for (const site of [
+    "No shows found for ${quoteQuery(query)}.",
+    "Searching for ${quoteQuery(query)}…",
+    "No episodes match ${quoteQuery(esc(searchQuery.trim()))}.",
+    "Not much on ${quoteQuery(query)} yet",
+    "Create a playlist about ${quoteQuery(esc(query))}",
+    "Starts with ${quoteQuery(",
+  ]) assert.ok(APP_SRC.includes(site), `site must use the helper: ${site}`);
+  const m = mount();
+  assert.strictEqual(m.evalIn("quoteQuery")("x"), "\u201cx\u201d");
+});
+
+test("search-9: the local passes and the dedup keys fold diacritics, so 'cafe' finds 'Café' on the device and an Apple 'Café X' is one show with the index's 'Cafe X'", () => {
+  /* foldDiacritics reached rankShows and the shard pass on 2026-09-15 and not
+     searchShows, prefixSearchShows, scanShowIndex or normaliseShowTitle.
+     MUTATION: put `.toLowerCase()` back in place of `foldDiacritics` in
+     searchShows (first block), in parseShowIndex/prefixSearchShows (second),
+     or drop the NFKD strip from normaliseShowTitle (third). Each block goes
+     red on its own. */
+  const m = mount();
+  const SE = m.evalIn("SearchEngine");
+  assert.strictEqual(SE.searchShows("cafe", [{ show_id: "c", title: "Café con Pam" }]).length, 1, "the curated pass folds");
+  assert.strictEqual(SE.searchShows("café", [{ show_id: "c", title: "Cafe con Pam" }]).length, 1, "in both directions");
+
+  const idx = SE.parseShowIndex("Café Society\t1\t3\t0\nZebra Hour\t2\t4\t0\n");
+  assert.deepStrictEqual([...idx.keys], ["cafe society", "zebra hour"], "the index keys are folded"); // spread: a vm-realm array has a foreign prototype
+  assert.strictEqual(SE.prefixSearchShows("cafe", idx).length, 1, "the prefix pass folds the needle");
+  assert.strictEqual(SE.scanShowIndex("societe", SE.parseShowIndex("La Société\t9\t3\t0\n")).length, 1, "the scan pass too");
+  assert.strictEqual(SE.foldDiacritics("𝐁𝟑𝟒𝐧"), "b34n", "NFKD before lowercase: compatibility letters fold to plain lowercase");
+
+  const norm = m.evalIn("normaliseShowTitle");
+  assert.strictEqual(norm("Café X"), norm("Cafe X"), "the dedup key folds");
+  /* Round-2 review: NFKD before lowercase, as foldDiacritics does. MUTATION:
+     `.toLowerCase().normalize("NFKD")` in either copy -> red (the copies are
+     pinned to each other above, so both move together). */
+  assert.strictEqual(norm("𝐁𝟑𝟒𝐧’𝐬 𝐭𝐞𝐫𝐫𝐢𝐭𝐨𝐫𝐢𝐮𝐦"), norm("B34n's Territorium"), "a compatibility-letter title is the plain one");
+  const merged = m.evalIn("mergeShowRows")("cafe",
+    [{ show_id: "1000009", title: "Cafe X" }],
+    [{ show_id: "555", title: "Café X", source: "apple" }]);
+  assert.strictEqual(merged, null, "an Apple 'Café X' is the index's 'Cafe X', not a second row");
 });

@@ -12,9 +12,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { REPO_ROOT, loadFixtures } from "./runner.js";
 import { decodeSpecial } from "./codec.js";
-import { makeLastEpisode, KEY as LAST_EPISODE_KEY } from "../episode-progress.js";
+import { makeLastEpisode, readLastEpisode, KEY as LAST_EPISODE_KEY } from "../episode-progress.js";
 import { PositionStore, makePositionRecord } from "../position-store.js";
-import { makeProgress, progressKey } from "../foray-progress.js";
+import { makeProgress, progressKey, readProgress } from "../foray-progress.js";
+import { isNewer } from "../durable-store.js";
 
 const casesOf = (family) => loadFixtures(REPO_ROOT, { family }).flatMap((fx) => fx.doc.cases);
 
@@ -88,4 +89,71 @@ test("the page's PositionStore, on the wall clock, writes exactly makePositionRe
   // And the recorded typical case is the same four fields in the same order.
   const typical = casesOf("rows").find((c) => c.id === "rows/cp-pos-typical");
   assert.deepStrictEqual(Object.keys(JSON.parse(typical.expect.return[0].value)), Object.keys(JSON.parse(raw)));
+});
+
+/* NE-10s: the engine side of these rows. Swift's Rows/JSWriter must write
+   every recorded row byte for byte (the rows family, zero pending, and
+   RowsTests' UTF-8 comparison), so a recorded value IS the string the engine
+   writes. The two tests below are the card's JS-side acceptance on exactly
+   those strings: the page's own readers accept every one, and the page's
+   own `isNewer` orders them by their stamp. */
+
+const writtenRows = () => casesOf("rows")
+  .filter((c) => Array.isArray(c.expect?.return))
+  .flatMap((c) => c.expect.return.map((w) => ({ id: c.id, call: c.call, ...w })));
+
+test("NE-10s: every row the engine writes reads back through the page's own reader, and re-saves unchanged", () => {
+  // MUTATION: make readProgress demand segment_id, or make PositionStore.load
+  // refuse a null duration -> red on the recorded rows that carry them.
+  const rows = writtenRows();
+  assert.ok(rows.length >= 30, `only ${rows.length} written rows are recorded`);
+  const kinds = new Set();
+  for (const row of rows) {
+    const storage = new MapStorage();
+    storage.setItem(row.key, row.value);
+    let read = null;
+    if (row.call === "cpPosRow") {
+      read = new PositionStore({ storage }).load(row.key.slice("cp_pos:".length));
+    } else if (row.call === "cpForayRow") {
+      read = readProgress(storage, JSON.parse(row.value).foray_id);
+    } else if (row.call === "cpLastEpisodeRow") {
+      read = readLastEpisode(storage);
+    }
+    assert.ok(read, `${row.id}: the page's reader refused the engine's row ${row.value}`);
+    assert.deepStrictEqual(read, JSON.parse(row.value), `${row.id}: the reader changed the row`);
+    // Canonical: the page re-saving what it read writes the same bytes, so a
+    // round trip through the page never looks like a newer, different row.
+    assert.equal(JSON.stringify(read), row.value, `${row.id}: re-saving the row changes its bytes`);
+    kinds.add(row.call);
+  }
+  assert.deepStrictEqual([...kinds].sort(), ["cpForayRow", "cpLastEpisodeRow", "cpPosRow"]);
+});
+
+test("NE-10s: the page's isNewer orders engine-written rows by updated_at", () => {
+  // DurableStore hydration adopts the newer copy of a key, so a row the engine
+  // wrote later must win against an earlier one, and a same-instant row must
+  // not. The recorded rows of each kind carry three instants: the epoch, ...000
+  // and ...123 ms.
+  // MUTATION: make stampOf read `ts` before `updated_at`, or compare with >=,
+  // in durable-store.js -> red.
+  const rows = writtenRows();
+  const byCall = new Map();
+  for (const row of rows) {
+    const at = Date.parse(JSON.parse(row.value).updated_at);
+    assert.ok(Number.isFinite(at), `${row.id}: updated_at does not parse`);
+    if (!byCall.has(row.call)) byCall.set(row.call, []);
+    byCall.get(row.call).push({ ...row, at });
+  }
+  let ordered = 0;
+  for (const [call, list] of byCall) {
+    const instants = new Set(list.map((r) => r.at));
+    assert.ok(instants.size >= 2, `${call}: the recorded rows all share one instant, so nothing is ordered`);
+    for (const a of list) {
+      for (const b of list) {
+        assert.equal(isNewer(a.value, b.value), a.at > b.at, `${call}: isNewer(${a.id}, ${b.id})`);
+        if (a.at > b.at) ordered += 1;
+      }
+    }
+  }
+  assert.ok(ordered >= 10, `only ${ordered} ordered pairs were checked`);
 });

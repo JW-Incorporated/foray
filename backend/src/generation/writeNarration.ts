@@ -615,7 +615,7 @@ export function pageCarriesContent(mode: NarrationMode): boolean {
  * evidence never arrived.
  */
 export const HANDOFF_SCRIPT =
-  "Where does this part of the story go next? Keep listening — the thread picks it up on the other side.";
+  "Where does the story go from here? Keep listening — the thread picks it up on the other side.";
 
 /** Connective, because the page IS a hand-off now: a Hinge's 50-135
  * character band is the one `HANDOFF_SCRIPT` sits inside, and holding the

@@ -5,5 +5,8 @@
  */
 export declare function narratorStructureLeaks(text: string): Array<{ phrase: string; rule: string; why: string }>;
 export declare function narratorStructureErrors(text: string, where: string): string[];
+export declare function toNarrationWords(text: string): { text: string; changed: boolean };
+export declare const NARRATOR_STRUCTURE_RULE: string;
+export declare const NARRATOR_STRUCTURE_EXAMPLES: { refused: string[]; fine: string[] };
 export declare const STRUCTURE_NOUN: string;
 export declare const PROGRAMME_NOUN: string;

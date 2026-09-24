@@ -176,8 +176,35 @@ export const POSITION_INTERVAL_MS = 15_000;
 /** How far the playhead must have moved since the last write before a TICK
     writes again (2026-09-22). Media seconds, not wall: at 2x a listener covers
     ground twice as fast and loses twice as much to a missed write. Under the
-    15 s corner case #17 allows, with room for a tick to be late. */
-const POSITION_MIN_DELTA_SEC = 10;
+    15 s corner case #17 allows, with room for a tick to be late. Exported
+    (NE-09) with the rule below, so the native engine's ResumeRules port reads
+    the number from the generated constants and the rule from the fixtures. */
+export const POSITION_MIN_DELTA_SEC = 10;
+
+/**
+ * Whether a periodic TICK (the 15 s interval or the element's `timeupdate`)
+ * should write the playhead now: the tail of `_persistIfDue`, lifted out as a
+ * pure function in NE-09 so the native engine's ResumeRules can be checked
+ * against it (`resume-rules` fixtures, cadence.json). No behaviour change: the
+ * method asks this with exactly the values it used to test inline.
+ *
+ *  - AN UNKNOWN POSITION NEVER OVERWRITES A KNOWN ONE. A clock that is not a
+ *    finite number (no element, a NaN mid-load) writes nothing; the last good
+ *    row stands.
+ *  - The playhead must have moved POSITION_MIN_DELTA_SEC media seconds since
+ *    the last write of THIS item (by anyone). A different item, or no write
+ *    yet, is due at once.
+ *
+ * @param {{id: string, seconds: number}|null|undefined} last  the last write
+ * @param {string} id        the item the element holds
+ * @param {*} seconds        the element's clock
+ * @returns {boolean}
+ */
+export function positionTickDue(last, id, seconds) {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds)) return false;
+  if (last && last.id === id && Math.abs(seconds - last.seconds) < POSITION_MIN_DELTA_SEC) return false;
+  return true;
+}
 
 /** How often the narration ticker fires `onNarrationTick` while a script-only
     line is speaking (L-03, generation-architecture.md §7 item 3's position
@@ -189,6 +216,58 @@ const POSITION_MIN_DELTA_SEC = 10;
     already repaints at, so a narration line does not look smoother or
     choppier than an ordinary segment. */
 const NARRATION_TICK_MS = 250;
+
+/** A narration tick that lands this much later than it was due means the page
+    was SUSPENDED, not busy (audit round 2 review). `nowMs` is wall clock and
+    keeps running through a call that froze the WebView, so without this the
+    first tick after waking read an elapsed time that included the whole call,
+    tripped the deadline and advanced into the next clip with no press — past
+    the 30 s lag bound and `_pausedByListener` that guard every other resume.
+    A suspension is asked about as an interruption instead. */
+const NARRATION_SUSPEND_GAP_MS = 5_000;
+
+/** The speed every SYNTHESIZED narration line is spoken at, whatever speed the
+    listener has chosen for the podcasts around it. Founder ruling, 2026-09-24
+    (round-1 qa 28, OQ-3 of docs/native-engine-plan.md): *"1x for now, but maybe
+    we change later. I recall 1x felt like 0.6x or so, it was very slow."*
+
+    Until that ruling a script-only line rode the listener's `this._rate` into
+    `speak()` — on purpose, on the theory that a synthesized bridge did not carry
+    a rendered file's "our pace, not yours" argument — so at 2x the narrator was
+    rushed while a RENDERED bridge in the same Foray was forced back to 1.0x by
+    `resetRateForTTS`, and `setRate`'s own "narration plays at 1.0x" telemetry
+    was untrue for the newest narration path. Now both kinds of narration speak
+    at one speed, corner case #18's rule holds for both, and the Foray clock
+    (wall clock for a spoken line, clamped to the item's 1x length by
+    foray-resolve.js) no longer jumps at the seam after a line spoken at 2x.
+
+    What 1 MEANS on each platform is the plugin's job, not this file's: 1 is
+    `TextToSpeech.setSpeechRate(1.0)` on Android and `utterance.rate = 1` on Web
+    Speech (both "normal" by their own specs), and
+    `AVSpeechUtteranceDefaultSpeechRate` on iOS via
+    `ForayTtsPlugin.utteranceRate(playbackMultiplier:)`. None of the three lands
+    below its platform's normal rate, so the "felt like 0.6x" in the ruling is
+    Apple's own default pace as heard, not a mapping here — traced in
+    `mobile/plugins/foray-tts/README.md` and pinned by
+    `tools/mobile/foray-tts.test.mjs`.
+
+    Also the speed the voice picker's Preview speaks at (`client.js`
+    `auditionVoice`): a preview should sound like the narration it previews. */
+export const NARRATION_RATE = 1;
+
+/** How long a spoken line may run past its estimate before the ticker stops
+    trusting the synthesiser (audit round 2, native-3). `AVSpeechSynthesizer`
+    stops when the audio session is taken by a call or Siri and reports no
+    `didCancel` for it, so a Foray interrupted mid-sentence said "Playing" over
+    silence forever: the only advance was the `finished` event that would never
+    come, and the ticker re-armed itself with no deadline. The deadline is the
+    item's runtime at the speed it is spoken at (`NARRATION_RATE`, 1x since the
+    founder's 2026-09-24 ruling — never the listener's rate), times this factor,
+    plus the margin — generous, because advancing early cuts a slow
+    voice off mid-word, and the cost of waiting is only that the stall lasts a
+    little longer. */
+const NARRATION_DEADLINE_FACTOR = 1.5;
+const NARRATION_DEADLINE_MARGIN_SEC = 10;
 
 const nonEmptyStr = (s) => typeof s === "string" && s.trim().length > 0;
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
@@ -232,6 +311,19 @@ export class PlayerQueueManager {
    *   same problem `onSeamGapChange` solves for the beat: a synth utterance
    *   produces no `timeupdate`, so without this hook a surface's Now Playing
    *   position and in-page clock freeze for the utterance's whole length.
+   * @param {Function} [opts.onStateSettled] (state) => void — fires after EVERY
+   *   event the reducer handled, once its effects have run (audit round 2,
+   *   player-1). The third hook of the same family, for the same reason: a
+   *   surface that repaints only on media events misses every transition that
+   *   produces none. The one that mattered is the natural end of an ordinary
+   *   episode — both engines fire `timeupdate`, `pause`, `ended` in that order
+   *   and the reducer only moves to `ended` INSIDE the `ended` listener, so every
+   *   media-event repaint ran while the machine still said `playing`, and the
+   *   next episode of continuous playback never started until the phone was
+   *   touched. `E.error` from a refused `play()` and `interruptionEnded` are the
+   *   same shape. Fired from `_handle` after the effects, so a listener reads
+   *   the settled state; it may re-enter the transport (start the next item),
+   *   which is safe because every entry point goes through the reducer.
    * @param {number}   [opts.rate]  the listener's speed (§12). Stored, not
    *   applied: a constructor that reached into the backend would make building a
    *   manager audible. `setRate()` is what applies it, and `client.js` calls it
@@ -281,7 +373,7 @@ export class PlayerQueueManager {
   constructor({
     backend, positionStore = null, strategy = SINGLE_ITEM, telemetry = null, allowMultiple = false,
     seamGapSec: gapSec = SEAM_GAP_SEC, scheduler = REAL_SCHEDULER, onSeamGapChange = null,
-    onNarrationTick = null,
+    onNarrationTick = null, onStateSettled = null,
     rate = DEFAULT_RATE, tts = null, voice = null,
     interlude = null, interludeEnabled = true,
   } = {}) {
@@ -309,6 +401,9 @@ export class PlayerQueueManager {
         then simply never starts, exactly like `_onSeamGapChange`'s absence
         already leaves the beat's own hook inert. */
     this._onNarrationTick = typeof onNarrationTick === "function" ? onNarrationTick : null;
+    /** Audit round 2 (player-1). `null` when the surface passed nothing, exactly
+        like the two hooks above. */
+    this._onStateSettled = typeof onStateSettled === "function" ? onStateSettled : null;
     /** The narration ticker's own interval handle, distinct from `_timer`
         (the 15s position-persistence timer) — the two run on different
         schedules and must not be confused when either is stopped. */
@@ -323,6 +418,41 @@ export class PlayerQueueManager {
     this._timer = null;
     this._knownCarRoutes = new Set();
     this._forceNextOffset = null;
+    /** A start position the SURFACE asked for, in the source's own seconds —
+        `play(index, { startOffset })`. Audit round 2 (races-1, p-impatient-1):
+        every resume used to be two steps, `play()` then `seek()`, and a
+        transport press inside the load window — Next clip, a row tap, ↺15 —
+        let the second step land on whatever loaded next. Carried INTO the load
+        there is no second step to race. Distinct from `_forceNextOffset`, which
+        is `skipToPrevious`'s "restart" (a segment restarts at its in-point, so
+        bounds beat it); an explicit offset inside the item's bounds is the
+        listener's own destination and beats everything. */
+    this._startOffsetNext = null;
+    /** Which transport action armed the offset above (audit round 2 review).
+        `_transport`'s finally clears a leaked offset, but transport actions are
+        not serialised: a play still awaiting `backend.play()` can settle while
+        a skip-back sits between arming `_forceNextOffset = 0` and its own
+        `loadItem`, and a blind clear there turned the restart into a resume.
+        The finally clears only what its OWN action armed. */
+    this._offsetArmedBy = null;
+    this._transportInFlight = null;
+    /** Whether the last pause was the LISTENER's (a press, a stop) rather than
+        the OS's (a call, Siri, another app taking the session). Audit round 2
+        (p-car-3): `interruptionEnded` with `shouldResume` resumes only an
+        interruption the OS caused. `pause()` models a press as
+        `interruptionBegan` too, so the reducer alone cannot tell a listener who
+        paused before the call from one whose audio the call took — and a
+        `shouldResume` after the former would start audio nobody asked for. */
+    this._pausedByListener = false;
+    /** Whether the last pause was a ROUTE going away (headphones pulled, the
+        car switched off) — or an external stop whose cause nobody reported,
+        which is how the #263 route loss reaches a suspended page (audit round
+        2 review). Corner case #13 says a lost route never comes back on its
+        own; since 2026-09-23 the paused app keeps its session, so iOS can send
+        `shouldResume` at the end of a LATER call or Siri, and without this the
+        phone speaker in a parked car would start talking. Only a press, or a
+        known car route reappearing, clears it. */
+    this._pausedByRoute = false;
     // Two distinct notions of "where we are", conflated in the Swift:
     //   currentIndex  what is actually LOADED — savePosition writes against it
     //   _targetIndex  where a skip is HEADING, before the load resolves
@@ -634,18 +764,59 @@ export class PlayerQueueManager {
    */
   async _transport(why, run) {
     this._cutSeamGap(why);
+    /* Arming happens synchronously at the top of `run()`, before its first
+       await, so the token read by `_armOffset` is this action's own. */
+    const token = { why };
     try {
-      return await run();
+      const outer = this._transportInFlight;
+      this._transportInFlight = token;
+      let pending;
+      try {
+        pending = run();
+      } finally {
+        this._transportInFlight = outer;
+      }
+      return await pending;
     } finally {
       this._releaseSeamGap();
+      /* AN OFFSET ARMED FOR A LOAD THAT NEVER HAPPENED MUST NOT LEAK into the
+         next one (audit round 2). `_loadItem` spends both at its top, but a
+         `play` the reducer answers as redundant (the same item already loading
+         or playing) emits no `loadItem`, and the armed offset would then start
+         whatever the NEXT load was — a skip's segment at a stranger's second.
+         By the time `run()` has returned, every load this action was going to
+         issue has begun, so anything still armed is a leak — IF this action
+         armed it. Another action's arming is that action's to spend. */
+      if (this._offsetArmedBy === token) {
+        this._forceNextOffset = null;
+        this._startOffsetNext = null;
+        this._offsetArmedBy = null;
+      }
     }
   }
 
-  async play(index = 0) {
+  /** Arm the next load's offset on behalf of the transport action running now. */
+  _armOffset(field, value) {
+    this[field] = value;
+    this._offsetArmedBy = value == null ? this._offsetArmedBy : this._transportInFlight;
+  }
+
+  /**
+   * @param {number} index
+   * @param {object} [opts]
+   * @param {number} [opts.startOffset]  where to begin, in the SOURCE's own
+   *   seconds — see `_startOffsetNext`. Omitted, the load resumes as it always
+   *   has (the stored row, or the segment's in-point).
+   */
+  async play(index = 0, opts = {}) {
     const item = this.queue[index];
     if (!item) return this._emit(`play.ignored.noItemAt=${index}`);
     return this._transport("play", () => {
       this.currentIndex = index;
+      this._pausedByListener = false;
+      this._pausedByRoute = false;
+      const at = Number(opts?.startOffset);
+      this._armOffset("_startOffsetNext", Number.isFinite(at) && at >= 0 ? at : null);
       return this._handle(E.play(refOf(item)));
     });
   }
@@ -653,7 +824,11 @@ export class PlayerQueueManager {
   async resume() {
     const item = this._currentItem();
     if (!item) return this._emit("resume.ignored.noCurrentItem");
-    return this._transport("resume", () => this._handle(E.play(refOf(item))));
+    return this._transport("resume", () => {
+      this._pausedByListener = false;
+      this._pausedByRoute = false;
+      return this._handle(E.play(refOf(item)));
+    });
   }
 
   /** Pause is modelled as an interruption, matching the Swift. This slightly
@@ -661,6 +836,7 @@ export class PlayerQueueManager {
       as a single code path — see the note in PlayerQueueState.swift. */
   async pause() {
     return this._transport("pause", async () => {
+      this._pausedByListener = true;
       await this._handle(E.interruptionBegan());
       /* THE POSTCONDITION OF `pause()` IS SILENCE, and the reducer alone cannot
          promise it (#689 report 3). `interruptionBegan` is idempotent by design
@@ -709,7 +885,7 @@ export class PlayerQueueManager {
       // "Restart" must mean zero. Without this the reducer's savePosition fires
       // first, stores the current playhead, and the reload then resumes to the
       // exact spot the user just asked to leave.
-      this._forceNextOffset = 0;
+      this._armOffset("_forceNextOffset", 0);
       return this._handle(E.skipToPrevious(null));
     });
   }
@@ -728,6 +904,7 @@ export class PlayerQueueManager {
        about to become a stop. */
     const wasSynth = this._loadedIsSynth;
     this._narrationStopping = wasSynth;
+    this._pausedByListener = true;
     try {
       await this._transport("stop", () => this._handle(E.stop()));
     } finally {
@@ -847,7 +1024,32 @@ export class PlayerQueueManager {
   async interruptionBegan() {
     return this._transport("interruption", () => this._handle(E.interruptionBegan()));
   }
-  async interruptionEnded(shouldResume) { await this._handle(E.interruptionEnded(Boolean(shouldResume))); }
+
+  /**
+   * The OS says the interruption is over (audit round 2, p-car-3; founder
+   * question 2, ruled 2026-09-23 in docs/DECISIONS.md: resume when iOS says
+   * should-resume).
+   *
+   * ONLY AN INTERRUPTION THE OS CAUSED IS RESUMED. `pause()` models a press as
+   * `interruptionBegan`, so the reducer's `wasPlaying` is true for a listener who
+   * paused at 10:00 and then took a call as it is for one whose call took the
+   * audio — and iOS still sends `shouldResume` for the first (the paused app
+   * holds its session since 2026-09-23). `_pausedByListener` is the difference;
+   * a stop, a pause or a listener's own resume all move it, a reconcile of an
+   * external stop clears it. Anything the reducer is not `interrupted` for — the
+   * listener already pressed play, WebKit resumed the element itself and
+   * `_reconcileTowardsPlaying` caught it — is a no-op inside the reducer, which
+   * is what makes a late event safe to deliver.
+   */
+  async interruptionEnded(shouldResume) {
+    const resume = Boolean(shouldResume) && !this._pausedByListener && !this._pausedByRoute;
+    if (shouldResume && !resume) {
+      this._emit(this._pausedByRoute
+        ? "interruption.ended.routeLost — not resumed (corner case #13)"
+        : "interruption.ended.listenerPaused — not resumed");
+    }
+    await this._handle(E.interruptionEnded(resume));
+  }
 
   /** Corner case #13. The reducer never auto-resumes; that policy lives here.
       A route reappearing only resumes if we have seen it before as a car route
@@ -860,6 +1062,8 @@ export class PlayerQueueManager {
     // BECOMING available cannot interrupt a beat — that path only acts on an
     // `interrupted` state — so it needs no cut and takes the plain call.
     if (oldDeviceUnavailable) {
+      /* Non-resumable: a later call's should-resume must not undo it. */
+      this._pausedByRoute = true;
       await this._transport("routeLost", () => this._handle(E.routeChanged(true)));
     } else {
       await this._handle(E.routeChanged(false));
@@ -869,6 +1073,7 @@ export class PlayerQueueManager {
       const item = this._currentItem();
       if (item && this.state.type === "interrupted" && this.state.wasPlaying) {
         this._emit(`route.autoResume.knownCar=${routeName}`);
+        this._pausedByRoute = false;
         await this._handle(E.play(refOf(item)));
       }
     }
@@ -913,6 +1118,13 @@ export class PlayerQueueManager {
       this._applying--;
     }
     this._syncTimer();
+    /* AFTER the effects and the timer, so the surface reads a settled machine
+       (audit round 2, player-1). Not guarded on `next !== prev`: a redundant
+       event settles the same state, and a repaint of an unchanged state costs
+       one pass over a handful of nodes, while a missed one costs a press. */
+    if (this._onStateSettled && !this._disposed) {
+      try { this._onStateSettled(this.state); } catch (_) { /* a surface must never break the player */ }
+    }
   }
 
   /**
@@ -954,9 +1166,14 @@ export class PlayerQueueManager {
    * accompanying `savePosition` writes the playhead the route died at, which is
    * the other half of what a listener needs to be right after an interruption.
    *
+   * @param {string} why
+   * @param {object} [opts]
+   * @param {boolean} [opts.interruption]  the trigger is the OS saying an
+   *   interruption BEGAN (a call, Siri, another app). The one reason a spoken
+   *   line is reconciled at all — see `_reconcileNarrationInterrupted`.
    * @returns {Promise<boolean>} true iff the machine was actually corrected.
    */
-  async reconcileWithBackend(why = "visible") {
+  async reconcileWithBackend(why = "visible", { interruption = false } = {}) {
     if (this._disposed) return false;
     /* THE OTHER DIRECTION (2026-09-22, founder report 1). This used to return
        for anything but `playing`, so an element resumed from outside the
@@ -986,7 +1203,7 @@ export class PlayerQueueManager {
     // as it was before this item, and always will be for one. Reading that
     // as an external stop would interrupt every script-only line the moment
     // a surface's visibilitychange handler ran.
-    if (this._loadedIsSynth) return false;
+    if (this._loadedIsSynth) return interruption ? this._reconcileNarrationInterrupted(why) : false;
     // The element agrees with us. Nothing to correct, and asking cost nothing.
     if (this.backend.paused !== true) return false;
     // It ran out rather than being taken away — `onItemEnded` owns that, and
@@ -997,6 +1214,51 @@ export class PlayerQueueManager {
     }
 
     this._emit(`reconcile.externalStop why=${why} — the element is paused and we said playing`);
+    // The OS took the audio; the listener did not press anything. See `interruptionEnded`.
+    this._pausedByListener = false;
+    /* WHO took it decides whether a should-resume may bring it back. Only a
+       reconcile the OS delivered as an interruption (`{ interruption: true }`)
+       or the element's own pause event is a call/Siri; a foreground or
+       visible reconcile finding the element stopped is the #263 case — the
+       route vanished while the page was suspended — and corner case #13 says
+       that never resumes by itself. A route loss the plugin DID report has
+       already set the flag in `routeChanged`, whatever order the two arrive. */
+    if (!interruption && why !== "unexplainedPause") this._pausedByRoute = true;
+    await this._transport("reconcile", () => this._handle(E.interruptionBegan()));
+    return true;
+  }
+
+  /**
+   * A spoken line, and the OS says an interruption began (audit round 2,
+   * native-3). There is no element to ask, so the SYNTHESISER is asked instead:
+   * `foray-tts.js`'s `state()` answers `speaking | paused | idle` from whoever
+   * is actually speaking. Still `speaking` means the event is late — the call
+   * was declined, the line carried on — and nothing is touched, the same rule
+   * the tape path keeps for a late event. Anything else is the session taken
+   * from under the utterance, which `AVSpeechSynthesizer` reports to nobody
+   * (`ForayTtsPlugin.swift`: it stops, and `didCancel` is not called for it),
+   * so the reducer is moved through `interruptionBegan` exactly as an element
+   * stop moves it: `interrupted`, `wasPlaying`, the narration clock frozen by
+   * `_pauseNarration` (the bridge's pause is accepted or answers "nothing to
+   * act on" — either is fine, the point is the state), and the one press, or
+   * `interruptionEnded` with should-resume, resumes from there. A bridge with no
+   * `state()` cannot say, and the interruption is taken at its word.
+   */
+  async _reconcileNarrationInterrupted(why) {
+    let word = null;
+    if (this._tts && typeof this._tts.state === "function") {
+      try {
+        const answer = await this._tts.state();
+        word = typeof answer?.state === "string" ? answer.state : null;
+      } catch (_) { word = null; }
+    }
+    if (word === "speaking") {
+      this._emit(`reconcile.skipped.narrationSpeaking why=${why}`);
+      return false;
+    }
+    if (this._applying > 0 || this.state.type !== "playing") return false;
+    this._emit(`reconcile.narrationInterrupted why=${why} tts=${word ?? "unknown"} — the synthesiser is silent and we said playing`);
+    this._pausedByListener = false;
     await this._transport("reconcile", () => this._handle(E.interruptionBegan()));
     return true;
   }
@@ -1134,9 +1396,8 @@ export class PlayerQueueManager {
         // for `backend.setRate` to mean anything about — and forcing 1.0x here
         // would be a no-op on the wrong object, not a safe default. A
         // synthesizer's rate is a property of the UTTERANCE, so it is already
-        // set — to the listener's own `this._rate`, not 1.0x, because a
-        // synthesized bridge does not carry the same "our pace, not yours"
-        // argument a rendered narration file does — at the `speak()` call
+        // set — to `NARRATION_RATE` (1x, founder 2026-09-24), the same speed
+        // this effect forces on a rendered bridge — at the `speak()` call
         // inside `_loadItem`/`_speakNarration`, before this effect ever runs.
         if (this._loadedIsSynth) return;
         return this.backend.setRate(1.0);
@@ -1201,6 +1462,12 @@ export class PlayerQueueManager {
     // one-line transition would be nonsense.
     const forced = this._forceNextOffset;
     this._forceNextOffset = null;
+    /* THE SURFACE'S OWN DESTINATION (audit round 2, races-1 / p-impatient-1):
+       a resume point in the source's seconds, a scrub on a restored bar, a
+       Foray-clock seek translated by `sourceOffsetFor`. Spent here like
+       `forced`, so a superseded load cannot hand it to its successor. */
+    const explicit = this._startOffsetNext;
+    this._startOffsetNext = null;
     // A segment's in-point OVERRIDES any saved position, always (#65 §4).
     // Resuming to where the listener last left this episode would drop them
     // outside the segment entirely — usually into a different story.
@@ -1243,8 +1510,8 @@ export class PlayerQueueManager {
        after the end resumed "in place" at the end and ended again. A finished
        item is a cold start, and the cold start's rule (`_savedPositionFor`, which
        is `PositionStore.resumeOffset`) already says what that means: the top. */
-    const reEnteringLoadedItem = forced == null && this._loadedId === item.id && playheadReadable
-      && this.backend.ended !== true;
+    const reEnteringLoadedItem = forced == null && explicit == null && this._loadedId === item.id
+      && playheadReadable && this.backend.ended !== true;
     const resumingInPlace = Boolean(
       reEnteringLoadedItem && (
         bounds
@@ -1255,11 +1522,20 @@ export class PlayerQueueManager {
           : (item.kind !== TTS && playhead > 0)
       )
     );
-    const startOffset = resumingInPlace
-      ? playhead
-      : (bounds
-        ? bounds.startSec
-        : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item))));
+    /* An explicit offset beats the in-point ONLY from inside the slice: the
+       surface translated a Foray-clock position into this segment's own seconds
+       (`sourceOffsetFor` lands inside by construction), and one outside it would
+       be the "stranger's episode" #65 §4 exists to prevent — so it falls back to
+       the ordinary rule rather than being trusted. */
+    const explicitInside = explicit != null
+      && (!bounds || (explicit >= bounds.startSec && explicit < bounds.endSec));
+    const startOffset = explicitInside
+      ? explicit
+      : (resumingInPlace
+        ? playhead
+        : (bounds
+          ? bounds.startSec
+          : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item)))));
 
     // Move the index only now — after savePosition has already run against the
     // outgoing item. currentIndex tracks what is actually loaded, never what we
@@ -1364,14 +1640,15 @@ export class PlayerQueueManager {
       can treat the two paths identically apart from the branch that picks
       between them.
 
-      THE RATE IS READ HERE, AT CALL TIME, not cached at construction and not
-      the hardcoded 1.0x `resetRateForTTS` forces on a rendered bridge. §7
-      item 2 is explicit that this is the mechanism that has to change: "rate
-      is a property of the utterance, not the media element" for a
-      synthesizer, so the listener's current speed (`this._rate`, the same
-      value `cp_rate` seeded — see playback-rate.js) is passed straight into
-      the plugin's own `speak()` call instead of being applied to a media
-      element that, for this item, does not exist.
+      THE RATE RIDES ON THE UTTERANCE, and it is `NARRATION_RATE` — 1x — not
+      the listener's `this._rate`. §7 item 2 is explicit that "rate is a
+      property of the utterance, not the media element" for a synthesizer, so
+      the speed goes into the plugin's own `speak()` call rather than onto a
+      media element that, for this item, does not exist. WHICH speed was a
+      founder question (round-1 qa 28) until 2026-09-24: *"1x for now, but
+      maybe we change later."* This line used to pass `this._rate`, so at 2x a
+      spoken bridge was rushed while a rendered one was forced to 1.0x; see
+      `NARRATION_RATE` for the whole ruling.
 
       A refusal (`{ ok: false }`) or a thrown rejection is NOT this method's
       failure to swallow — `foray-tts.js`'s own `speak()` already never
@@ -1391,9 +1668,9 @@ export class PlayerQueueManager {
       (`_playTransitionBridge`) and both call sites need the same start/finish
       bookkeeping around one `speak()` call rather than a second copy of it.
 
-      VOICE (V-01): `this._voice`, read here at call time for the same reason
-      `this._rate` is — a choice made from the page while nothing is speaking
-      must reach the very next utterance, not just the one after a rebuild.
+      VOICE (V-01): `this._voice`, read here at call time — a choice made from
+      the page while nothing is speaking must reach the very next utterance,
+      not just the one after a rebuild.
       `null` is passed through unchanged; `foray-tts.js`'s own `speak()`
       contract treats an absent `voice` as "pick the best installed tier",
       which is exactly the fallback V-01's design wants. A requested-but-not-
@@ -1402,7 +1679,7 @@ export class PlayerQueueManager {
       unchanged, so a page can show the one-line notice V-01 specifies. */
   async _speakNarration(item) {
     if (!this._tts) throw new Error(`no on-device TTS plugin wired for ${item.id}`);
-    const result = await this._tts.speak(item.script, { rate: this._rate, voice: this._voice });
+    const result = await this._tts.speak(item.script, { rate: NARRATION_RATE, voice: this._voice });
     if (result && result.ok === false) {
       /* A failed speak is not a voice-fallback report — clear the stale flag
          from whatever spoke last, rather than leaving `lastVoiceFallback`
@@ -1637,6 +1914,7 @@ export class PlayerQueueManager {
   _startNarrationTicker() {
     this._stopNarrationTicker();
     if (!this._onNarrationTick) return;
+    this._narrationTickDueAtMs = this._scheduler.nowMs() + NARRATION_TICK_MS;
     this._narrationTicker = this._scheduler.schedule(NARRATION_TICK_MS, () => this._tickNarration());
   }
 
@@ -1648,8 +1926,41 @@ export class PlayerQueueManager {
   _tickNarration() {
     this._narrationTicker = null;
     if (this._disposed || !this._loadedIsSynth) return;
+    const late = typeof this._narrationTickDueAtMs === "number"
+      ? this._scheduler.nowMs() - this._narrationTickDueAtMs : 0;
     if (this._onNarrationTick) {
       try { this._onNarrationTick(); } catch (_) { /* a surface must never break the player */ }
+    }
+    /* SUSPENDED, NOT FINISHED (audit round 2 review). The time the page slept
+       is never counted towards the deadline — it moves the start stamp the way
+       a pause does, so the deadline measures only time the page was awake to
+       hear a `finished` — and the synthesiser is asked, exactly as a fresh
+       `interruptionBegan` asks it: still speaking is left alone, anything else
+       is an interruption (`interrupted`, resumable only by a press or a fresh
+       should-resume), never an advance. */
+    if (late > NARRATION_SUSPEND_GAP_MS) {
+      this._emit(`tts.tick.suspended late=${Math.round(late / 1000)}s — asked as an interruption, not a deadline`);
+      if (this._narrationStartedAtMs != null) this._narrationStartedAtMs += late;
+      this._startNarrationTicker();
+      this._reconcileNarrationInterrupted("narration.suspended")
+        .catch((err) => this._emit(`tts.suspended.reconcileFailed: ${err?.message ?? err}`));
+      return;
+    }
+    /* THE DEADLINE (audit round 2, native-3). A synthesiser whose session was
+       taken never says `finished`, and until now this ticker counted the Foray
+       clock forward over silence forever. Past the deadline the line is treated
+       as finished — the same advance a `finished` event makes, once, through the
+       same guards — so a Foray interrupted mid-sentence moves on instead of
+       saying Playing over nothing until somebody presses pause and play. */
+    const deadline = narrationDeadlineSec(this._currentItem(), NARRATION_RATE);
+    const elapsed = this.narrationElapsedSec;
+    if (deadline > 0 && typeof elapsed === "number" && elapsed > deadline) {
+      this._emit(`tts.deadline item=${this._currentItem()?.id ?? "?"} elapsed=${Math.round(elapsed)}s limit=${Math.round(deadline)}s — treated as finished`);
+      /* `_onTtsFinished` declines while a transition is being applied; the
+         ticker must outlive that refusal or the line stalls for good — the
+         defect this deadline exists to fix. Retried on the next tick. */
+      if (this._onTtsFinished()) return;
+      if (!this._loadedIsSynth || this._advancedSpeakSeq === this._speakSeq) return;
     }
     this._startNarrationTicker();
   }
@@ -1690,16 +2001,17 @@ export class PlayerQueueManager {
    *      either's `_handle` call resolves cannot both pass the check.
    */
   _onTtsFinished() {
-    if (this._disposed) return;
-    if (!this._loadedIsSynth) return;
-    if (this._applying > 0) return;
+    if (this._disposed) return false;
+    if (!this._loadedIsSynth) return false;
+    if (this._applying > 0) return false;
     const seq = this._speakSeq;
-    if (this._advancedSpeakSeq === seq) return;
+    if (this._advancedSpeakSeq === seq) return false;
     this._advancedSpeakSeq = seq;
     this._stopNarrationTicker();
     this._emit(`tts.finished item=${this._currentItem()?.id ?? "?"}`);
     this._handleBackendItemEnded(END_NATURAL)
       .catch((err) => this._emit(`tts.finished.advanceFailed: ${err?.message ?? err}`));
+    return true;
   }
 
   /* ---------- the seam beat ---------- */
@@ -2180,10 +2492,7 @@ export class PlayerQueueManager {
     if (!(this.state.type === "playing" || this.elementIsAudible)) return;
     const item = this._currentItem();
     if (!item || boundsOf(item) || this._loadedIsSynth || this._loadedId !== item.id) return;
-    const t = this.backend.currentTime;
-    if (typeof t !== "number" || !Number.isFinite(t)) return;
-    const last = this._lastPersisted;
-    if (last && last.id === item.id && Math.abs(t - last.seconds) < POSITION_MIN_DELTA_SEC) return;
+    if (!positionTickDue(this._lastPersisted, item.id, this.backend.currentTime)) return;
     this._persistPosition();
   }
 
@@ -2237,6 +2546,22 @@ export class PlayerQueueManager {
   _emit(message) {
     if (this._telemetry) this._telemetry(message);
   }
+}
+
+/** How long a spoken line may run before `_tickNarration` stops waiting for a
+    `finished` that is not coming (native-3). Zero — no deadline — when the item
+    carries no runtime at all, because a limit derived from nothing would cut
+    every unmeasured line off at the margin. The runtime is stretched by the
+    rate the line is SPOKEN at only when that is slower than 1x: a faster rate
+    ends sooner, and the factor already covers an estimate that ran long. The
+    one caller passes `NARRATION_RATE`, never the listener's rate — a line is
+    not spoken at the listener's rate, so a 0.75x listener must not have their
+    stall wait a third longer than the line can take. */
+function narrationDeadlineSec(item, rate) {
+  const runtime = isNum(item?.duration_sec) && item.duration_sec > 0 ? item.duration_sec : 0;
+  if (runtime <= 0) return 0;
+  const slow = isNum(rate) && rate > 0 && rate < 1 ? 1 / rate : 1;
+  return runtime * slow * NARRATION_DEADLINE_FACTOR + NARRATION_DEADLINE_MARGIN_SEC;
 }
 
 /** Is this queue item a bounded slice, and if so which one? The single

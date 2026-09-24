@@ -9,8 +9,8 @@
  *     test/home-layout.test.js / test/home-information-architecture.test.js
  *     already pin.
  *  2. The five sections render in the card's specified order: greeting,
- *     Jump back in, Forays for you, Playlists for you, Episodes for you.
- *  3. THE FLOOR: "Forays for you" and "Episodes for you" each carry a
+ *     Jump back in, Forays for you, Playlists for you, Suggested.
+ *  3. THE FLOOR: "Forays for you" and "Suggested" each carry a
  *     visible Stretch label with its required bridge line, on 20
  *     consecutive seeded renders — and the pairing is exact: a card can
  *     never have one without the other.
@@ -117,7 +117,7 @@ function mount({ seed = {} } = {}) {
 }
 
 /* A mounted, flag-on app with two card slots (one "top", one "stretch") for
-   Episodes for you, and two Forays for Forays for you with topics on
+   Suggested, and two Forays for Forays for you with topics on
    opposite sides of a clear interest split, so pickWithStretchFloor always
    has a real lower tier to draw its stretch pick from. */
 function ui2Mount(overrides = {}) {
@@ -188,7 +188,7 @@ test("renderHome always renders the v2 layout (cp_ui_v2 retired, U-11 cutover)",
 /* 2. SECTION ORDER                                                      */
 /* ==================================================================== */
 
-test("the five sections render top to bottom: greeting, Jump back in, Forays for you, Playlists for you, Episodes for you", () => {
+test("the five sections render top to bottom: greeting, Jump back in, Forays for you, Playlists for you, Suggested", () => {
   // MUTATION: swap the order of any two section calls inside renderHomeV2's
   // template literal. The strictly-increasing index assertion below fails,
   // naming the two that are out of order.
@@ -203,13 +203,26 @@ test("the five sections render top to bottom: greeting, Jump back in, Forays for
   const iJbi = html.indexOf("hv2-jbi");
   const iForays = html.indexOf("hv2-forays");
   const iPlaylists = html.indexOf("hv2-playlists");
-  const iEpisodes = html.indexOf("hv2-episodes");
+  const iEpisodes = html.indexOf("hv2-suggested");
 
-  for (const [label, i] of [["greeting", iGreeting], ["Jump back in", iJbi], ["Forays for you", iForays], ["Playlists for you", iPlaylists], ["Episodes for you", iEpisodes]]) {
+  for (const [label, i] of [["greeting", iGreeting], ["Jump back in", iJbi], ["Forays for you", iForays], ["Playlists for you", iPlaylists], ["Suggested", iEpisodes]]) {
     assert.ok(i !== -1, `${label} section did not render at all`);
   }
   assert.ok(iGreeting < iJbi && iJbi < iForays && iForays < iPlaylists && iPlaylists < iEpisodes,
     `sections rendered out of order: greeting=${iGreeting} jbi=${iJbi} forays=${iForays} playlists=${iPlaylists} episodes=${iEpisodes}`);
+});
+
+test("the card-slot section is headed \"Suggested\" (founder, 2026-09-24), and Home never says \"Episodes for you\"", () => {
+  /* FOUNDER, 2026-09-24: "Rename it 'Suggested'". He named the section
+     "Episodes for you" in the ui-transition brief; the cards are subject
+     queues, not episodes (persona 56/82), and the new name promises no shape.
+     MUTATION: restore the old heading in suggestedHtml(). */
+  const m = ui2Mount();
+  m.ctx.renderHome();
+  const html = m.view();
+  const section = html.slice(html.indexOf("hv2-suggested"));
+  assert.match(section, /<h2 class="hv2-title">Suggested<\/h2>/);
+  assert.ok(!/Episodes for you/i.test(html), "the old section name is gone from Home");
 });
 
 /* ==================================================================== */
@@ -229,7 +242,7 @@ test("both 'for you' sections carry a visible Stretch label with its bridge line
     m.ctx.renderHome();
     const html = m.view();
     assert.ok(/class="hv2-stretch-tag">Stretch</.test(html), `run ${i}: Forays for you must carry a visible Stretch tag`);
-    assert.ok(/class="mc-stretch"[^>]*>Stretch</.test(html), `run ${i}: Episodes for you must carry a visible Stretch tag`);
+    assert.ok(/class="mc-stretch"[^>]*>Stretch</.test(html), `run ${i}: Suggested must carry a visible Stretch tag`);
     assert.ok(html.includes('class="hv2-bridge">'), `run ${i}: the stretch pick must carry a bridge line`);
   }
 });
@@ -302,7 +315,7 @@ test("a generated playlist card is badged 'Generated for you'; the listener's ow
 });
 
 /* ==================================================================== */
-/* 5b. F14: GENERATED PLAYLISTS ARE NOT "EPISODES FOR YOU" REGROUPED     */
+/* 5b. F14: GENERATED PLAYLISTS ARE NOT "SUGGESTED" REGROUPED     */
 /* ==================================================================== */
 
 test("F14: a generated playlist is an interest leaf filled from the pool, never a card slot", () => {
@@ -314,7 +327,7 @@ test("F14: a generated playlist is an interest leaf filled from the pool, never 
   m.state.discover = { items: [1, 2, 3, 4].map(i => ({ id: "st" + i, title: "Startup " + i, show: "Founders", duration_min: 30, topics: ["business/startups"], release_date: "2026-09-0" + i, audio_url: "https://cdn.test/st" + i + ".mp3" })) };
   m.ctx.renderHome();
   const html = m.view();
-  const section = html.slice(html.indexOf("hv2-playlists"), html.indexOf("hv2-episodes"));
+  const section = html.slice(html.indexOf("hv2-playlists"), html.indexOf("hv2-suggested"));
   assert.ok(section.includes("Startups"), "the interest leaf playlist renders under Playlists for you");
   /* Encoded since 2026-09-22 (audit: one spelling of a playlist route —
      playlistRoute()); the router decodes it back to `gen-business/startups`. */

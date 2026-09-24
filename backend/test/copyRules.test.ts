@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BANNED, COMMUTE_FRAMING, INTERNAL_VOCABULARY, toListenerWords, wordCount } from "../src/copy/rules";
+import { BANNED, COMMUTE_FRAMING, INTERNAL_VOCABULARY, demotedNames, houseStyleTitle, titleStyleProblems, toListenerWords, wordCount } from "../src/copy/rules";
 
 /**
  * Golden copy rules — the editorial standards from 03_CURATION_SPEC.md and
@@ -230,5 +230,108 @@ describe("Foray titles, summaries and slot titles", () => {
     expect(toListenerWords("Barbecue: eight beats of a forty-beat history").text).toBe("Barbecue: eight stories of a forty-part history");
     expect(toListenerWords("Act one: the hearth").text).toBe("Part one: the hearth");
     for (const text of PLAIN_ENGLISH) expect(toListenerWords(text)).toEqual({ text, changed: false });
+  });
+});
+
+/**
+ * THE FORAY TITLE HOUSE STYLE. Wyatt, 2026-09-24, answering the audit's qa 146
+ * (agent-generated titles were Title Case with no closing period, next to
+ * sentence-case curated ones in the same rail): "Sentence case, no period,
+ * though ? And ! Are allowed". The rule is rules.js `titleStyleProblems`;
+ * check-forays.mjs refuses what it returns, on every Foray.
+ */
+describe("Foray title house style", () => {
+  it("refuses Title Case and a closing period, and allows ? and ! — the four generated titles that prompted the ruling among them", () => {
+    /* The first four are the committed generated titles as they were before
+       this change. MUTATION THAT KILLS THIS: empty TITLE_CASE_TELLS -> the
+       three with a capitalised "Actually"/"Really" go red; delete the
+       lone-capital branch -> "Beyond the Algorithm..." goes red; delete the
+       closing-period check -> the period case goes red. */
+    const refused = [
+      "Beyond the Algorithm: Engineering Production AI Systems",
+      "How AI Actually Gets Built",
+      "The Chain Reaction: How Engineering Disasters Really Happen",
+      "What Engineers Actually Do All Day",
+      "Why Doctors Didn't Believe In Germs",
+      "A history of the iPhone.",
+      "grilling: the surprising origin story"
+    ];
+    for (const title of refused) expect(titleStyleProblems(title), title).not.toEqual([]);
+    expect(titleStyleProblems("A history of the iPhone.").join(" ")).toMatch(/closing period/);
+    expect(titleStyleProblems("How AI Actually Gets Built").join(" ")).toMatch(/Title Case \(Actually, Gets\)/);
+  });
+
+  it("does not mistake a proper noun, an acronym or a quoted work's title for Title Case (no false positives)", () => {
+    /* A name is a run of capitals; Title Case scatters them. MUTATION THAT
+       KILLS THIS: drop the `lone` condition, or the quoted-word exemption, or
+       add "will" or "may" back to TITLE_CASE_TELLS -> red, naming the title. */
+    const fine = [
+      "Barbecue: eight stories from a much longer history",
+      "The types of capital a startup can raise",
+      "How Earth got plate tectonics and Venus never did",
+      "Beyond the algorithm: engineering production AI systems",
+      "How AI actually gets built",
+      "The chain reaction: how engineering disasters really happen",
+      "What engineers actually do all day",
+      "Inside NASA's Jet Propulsion Laboratory",
+      "Steve Jobs and Bill Gates",
+      "Why New York City and Los Angeles hate each other",
+      "Why “How I Built This” still works",
+      "Why Will Smith keeps working",
+      "Was the Clean Air Act a success?",
+      "The day the music died!",
+      "How the war reached the U.S.",
+      "eBay and the auction economy",
+      "World War II from the air"
+    ];
+    for (const title of fine) expect(titleStyleProblems(title), title).toEqual([]);
+  });
+
+  it("does not refuse a title for a name that starts with a closed-class word, or a list of names (review of PR #785)", () => {
+    /* Each of these was refused, and on a generated Foray that meant the run's
+       whole spend, or a re-ask that lower-cased the name. MUTATION THAT KILLS
+       THIS: put "who", "ever", "under", "our", "against", "much", "into" or
+       "before" back in TITLE_CASE_TELLS -> that title goes red; drop the
+       comma condition on the scattered-capitals fallback -> the two lists go
+       red. */
+    const fine = [
+      "Why Doctor Who still works",
+      "How The Who got loud",
+      "How the Ever Given blocked Suez",
+      "How Under Armour lost its edge",
+      "What Our World in Data counts",
+      "Rage Against the Machine and the nineties",
+      "Why Much Ado still lands",
+      "Why Into the Wild still divides readers",
+      "Why Before Sunrise still works",
+      "Marx, Engels, Lenin and Mao",
+      "Watergate: Nixon, Deep Throat and the Post"
+    ];
+    for (const title of fine) expect(titleStyleProblems(title), title).toEqual([]);
+  });
+
+  it("demotedNames: a case-only restyle may lower-case Title Case words, never half a name or a name the listener wrote (review of PR #785)", () => {
+    /* MUTATION THAT KILLS THIS: return [] from demotedNames -> the first two
+       go red; drop the neighbour check -> the first goes red; drop the
+       context check -> the second goes red. */
+    expect(demotedNames("Why Doctor Who Still Works", "Why Doctor who still works")).toEqual(["Who"]);
+    expect(demotedNames("How the Ever Given Blocked Suez", "How the ever given blocked Suez", "how did the Ever Given block the canal")).toEqual(
+      expect.arrayContaining(["Ever", "Given"])
+    );
+    expect(demotedNames("How AI Actually Gets Built", "How AI actually gets built", "how AI gets built")).toEqual([]);
+    expect(demotedNames("Beyond the Algorithm: Engineering Production AI Systems", "Beyond the algorithm: engineering production AI systems")).toEqual([]);
+  });
+
+  it("houseStyleTitle does only what is safe on any title: drops a closing period, raises a lower-case first letter, lowercases nothing", () => {
+    /* The generator's code-side half (runPipeline.ts forayCopy). MUTATION
+       THAT KILLS THIS: lowercase the words after the first -> "AI" and
+       "Venus" go red. */
+    expect(houseStyleTitle("A history of the iPhone.")).toBe("A history of the iPhone");
+    expect(houseStyleTitle("grilling: the surprising origin story")).toBe("Grilling: the surprising origin story");
+    expect(houseStyleTitle("How Earth got plate tectonics and Venus never did")).toBe("How Earth got plate tectonics and Venus never did");
+    expect(houseStyleTitle("How AI Actually Gets Built")).toBe("How AI Actually Gets Built");
+    expect(houseStyleTitle("Why?")).toBe("Why?");
+    expect(houseStyleTitle("How the war reached the U.S.")).toBe("How the war reached the U.S.");
+    expect(houseStyleTitle("eBay and the auction economy")).toBe("eBay and the auction economy");
   });
 });

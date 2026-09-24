@@ -52,7 +52,10 @@ function mockRes() {
   };
 }
 
-const RESPONSE_KEYS = ["query", "show", "episodes", "source", "degraded", "error"].sort();
+/* `total` and `capped` joined the healthy show-scoped payload in audit round 2
+   (honesty-11: "Showing 10 of 38"); the unavailable case carries them too, so
+   the shape is still one shape. */
+const RESPONSE_KEYS = ["query", "show", "episodes", "source", "total", "capped", "degraded", "error"].sort();
 
 test("show-scoped search: both catalog files unreadable reports an honest degraded failure, never a false-empty success", async (t) => {
   _resetShowIdMapCacheForTests();

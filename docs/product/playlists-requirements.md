@@ -62,7 +62,7 @@ collapse of two of these into each other.
 | **Playlist** | `app.js:buildPlaylist` from typed text | whole episodes | yes, `cp_playlists`, cap 50 | `#/playlist/<id>` |
 | **Generated playlist** | `app.js:generatedPlaylists` from interest leaves | whole episodes | no — recomputed per render | `#/playlist/gen-<leaf>` |
 | **Subject queue** | `app.js:buildCards` → `state.cardSlots`, projected by `app.js:subjectQueueById` | whole episodes | no — rebuilt every load | `#/subject/<branch>` |
-| **"Episodes for you"** | `app.js:buildCards`, rendered by `app.js:episodesForYouHtml` | single episodes in cards | no | Home only |
+| **"Suggested"** | `app.js:buildCards`, rendered by `app.js:suggestedHtml` | single episodes in cards | no | Home only |
 | **Foray** | `backend/src/generation/runPipeline.ts` | *segments* of episodes plus 4a's own narration | yes, `data/forays.json`, committed | `#/foray/<id>` |
 | **Up Next** | the listener, one episode at a time (`app.js:addToQueue`) | whole episodes | yes, `cp_queue` (ids only) | `#/queue` |
 
@@ -74,8 +74,8 @@ The load-bearing distinctions:
   deterministic local scorer, published by nobody. They share no code:
   `player/foray-resolve.js` never sees a playlist, and `app.js:buildPlaylist`
   never sees a segment.
-- **A playlist is not "Episodes for you".** "Episodes for you" is
-  `state.cardSlots` rendered verbatim (`app.js:episodesForYouHtml`) — the
+- **A playlist is not "Suggested".** "Suggested" is
+  `state.cardSlots` rendered verbatim (`app.js:suggestedHtml`) — the
   discover pool ranked by interest, one episode per branch. F14 reported that
   "Playlists for you" had become the same thing, because the first
   implementation of `playlistsForYouHtml` projected `state.cardSlots` into
@@ -482,7 +482,7 @@ are worth stating because they are not written down anywhere else** (§6.4):
 - Because `buildCards` gives card slots the listener's **highest**-interest
   roots, and generated playlists exclude every leaf under a card-slot root, a
   generated playlist is by construction drawn from a *lower*-interest root than
-  "Episodes for you". That is what keeps the two sections distinct (F14); it also
+  "Suggested". That is what keeps the two sections distinct (F14); it also
   means the listener's single strongest interest never produces a generated
   playlist.
 - The **23** root-level topic values in the pool can never seed a generated
@@ -706,7 +706,7 @@ Stated plainly, because these are the gaps §6 draws on.
 ### 5.1 Home — "Playlists for you"
 
 `app.js:playlistsForYouHtml`, the fourth section of `renderHomeV2` (greeting →
-Jump back in → Forays for you → **Playlists for you** → Episodes for you), pinned
+Jump back in → Forays for you → **Playlists for you** → Suggested), pinned
 in that order by `test/home-v2.test.js`.
 
 - Own playlists: `[...playlists()]` sorted by `(b.last_played_at || b.created || "")`
@@ -855,7 +855,7 @@ All three follow from `app.js:generatedPlaylists` and none is written down:
    generated playlists.
 2. **The strongest interest never generates a playlist**, because its root is a
    card slot and `!slotBranches.has(n.parent)` excludes it. This is deliberate
-   (it is what makes the section differ from "Episodes for you", per F14) but it
+   (it is what makes the section differ from "Suggested", per F14) but it
    is the opposite of what "Playlists for you" implies to a listener.
 3. **Root-level interests are invisible to the generator.** 23 of the pool's 135
    topic values are roots; none can seed a generated playlist. A listener who
@@ -1016,7 +1016,7 @@ Cost if added: ~16 B a part, ~0.8 KB across a full 50-playlist store.
 | `interestScore` | `app.js` | Mean interest over an item's topics (0.5 when it has none) — the scorer's rank fallback. |
 | `interestGroups` / `interestSliderRow` / `renderInterests` / `bindInterestsControls` | `app.js` | The `#/interests` page. |
 | `taxonomyNodes` / `leafNodes` / `nodeById` | `app.js` | Taxonomy access; the roots-and-leaves vs leaves-only distinction. |
-| `buildCards` / `branchChain` | `app.js` | `state.cardSlots` — "Episodes for you", and the exclusion set generated playlists subtract. |
+| `buildCards` / `branchChain` | `app.js` | `state.cardSlots` — "Suggested", and the exclusion set generated playlists subtract. |
 | `poolFiltered` / `fullPool` / `snapshot` | `app.js` | The pool, Family-Mode filtering, and the id→snapshot projection. |
 | `searchCtx` / `listenedShows` | `app.js` | The scorer's memo context and the history-derived down-weight set. |
 | `interpretQuery` | `search-engine.js` | Free text → concept groups and filters. |
@@ -1075,7 +1075,7 @@ fewer than two. An empty answer offers adjacent topics; it never pads.
 filters) when nothing matched. Computed, currently discarded (§6.6).
 
 **Card slot** — one of the (up to four) branch queues `buildCards` produces for
-"Episodes for you". Their roots and their episodes are both subtracted from the
+"Suggested". Their roots and their episodes are both subtracted from the
 generated-playlist candidate set.
 
 **Up Next** — `cp_queue`, a flat ordered array of ids, the only list in the app

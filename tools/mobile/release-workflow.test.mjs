@@ -273,3 +273,43 @@ test("both iOS build paths run the SAME script, not two copies of the rule — M
     assert.match(src, /node tools\/mobile\/ios-embedded-frameworks\.mjs verify/);
   }
 });
+
+/* ─────────── NE-06, G-1b: no TestFlight from a SHA with red parity ─────────── */
+
+/** release.yml without its full-line comments, and one job's slice of it. */
+const RCODE = WF.split(/\r?\n/).filter((l) => !l.trimStart().startsWith("#")).join("\n");
+const rjob = (name, next) => RCODE.slice(RCODE.indexOf(`\n  ${name}:`), RCODE.indexOf(`\n  ${next}:`));
+
+test("NE-06: ios waits on ios-checks, which runs the tested release-checks gate on github.sha", () => {
+  /* MUTATION: drop ios-checks from the ios job's needs -> the refusal runs
+     beside the upload instead of before it, and a red-parity SHA still reaches
+     TestFlight. */
+  assert.match(rjob("ios", "android"), /^ {4}needs: \[version, ios-checks\]$/m);
+  const s = step(WF, "engine-parity and ios-kit are green on this exact SHA") ?? "";
+  assert.ok(s, "no release-checks step");
+  assert.match(s, /run: node tools\/ci\/engine-ci\.mjs release-checks "\$SHA"/);
+  assert.match(s, /SHA: \$\{\{ github\.sha \}\}/);
+  assert.equal(/release-checks\s+"?\$\{\{/.test(s), false, "github.sha goes through env:, never into the command");
+});
+
+test("NE-06: ios-checks is behind the guard, reads checks, and waits on Linux", () => {
+  /* MUTATION: drop the guard condition -> an unguarded ref gets a job; drop
+     `checks: read` -> the API refuses and every release is refused; macOS ->
+     a 40-minute wait on the expensive runner. */
+  const job = rjob("ios-checks", "ios");
+  assert.match(job, /^ {4}needs: guard$/m);
+  assert.match(job, /^ {4}if: needs\.guard\.outputs\.allowed == 'true'$/m);
+  assert.match(job, /checks: read/);
+  assert.match(job, /runs-on: ubuntu-latest/);
+  assert.doesNotMatch(rjob("ios", "android"), /if:\s*always\(\)/, "an always() on ios would build a refused SHA");
+});
+
+test("NE-06: the summary names a refusal, so a skipped iOS is not mistaken for a credential gap", () => {
+  /* MUTATION: drop IOS_CHECKS from the summary -> a refused release reads
+     "iOS not reached", which the header teaches readers to take as a missing
+     credential. */
+  const summaryStep = step(WF, "One table") ?? "";
+  assert.match(summaryStep, /IOS_CHECKS: \$\{\{ needs\.ios-checks\.result \}\}/);
+  assert.match(summaryStep, /iOS was refused before building/);
+  assert.match(RCODE.slice(RCODE.indexOf("\n  summary:")),/needs: \[version, ios-checks, ios, android\]/);
+});

@@ -1,0 +1,161 @@
+{
+  "family": "rate",
+  "module": "player/playback-rate.js",
+  "note": "The synthesiser's rate for a playback multiplier (utteranceRate, NE-09): ForayTtsPlugin's calibrated curve, written down in JS so there is one reference. One case per ladder stop plus the anchors and the edges. Checked by the core's PlaybackRate port (the rate FamilyRunner) AND by ForayTtsPluginTests, which reads this file, so the plugin and the engine cannot narrate at different speeds. tolerance 1e-12: V8's and the platform libm's log may differ in the last bit; nothing audible lives below that.",
+  "cases": [
+    {
+      "id": "rate/utterance-rate-0.75",
+      "covers": [
+        "playback-rate::the synthesiser's rate is ForayTts's calibrated curve, at every ladder stop"
+      ],
+      "call": "utteranceRate",
+      "args": [0.75],
+      "tolerance": 1e-12,
+      "expect": { "return": 0.4345351232142713 }
+    },
+    {
+      "id": "rate/utterance-rate-1",
+      "covers": [
+        "playback-rate::the synthesiser's rate is ForayTts's calibrated curve, at every ladder stop"
+      ],
+      "call": "utteranceRate",
+      "args": [1],
+      "tolerance": 1e-12,
+      "expect": { "return": 0.5 }
+    },
+    {
+      "id": "rate/utterance-rate-1.25",
+      "covers": [
+        "playback-rate::the synthesiser's rate is ForayTts's calibrated curve, at every ladder stop"
+      ],
+      "call": "utteranceRate",
+      "args": [1.25],
+      "tolerance": 1e-12,
+      "expect": { "return": 0.5507785033937531 }
+    },
+    {
+      "id": "rate/utterance-rate-1.5",
+      "covers": [
+        "playback-rate::the synthesiser's rate is ForayTts's calibrated curve, at every ladder stop"
+      ],
+      "call": "utteranceRate",
+      "args": [1.5],
+      "tolerance": 1e-12,
+      "expect": { "return": 0.5922675616071357 }
+    },
+    {
+      "id": "rate/utterance-rate-1.75",
+      "covers": [
+        "playback-rate::the synthesiser's rate is ForayTts's calibrated curve, at every ladder stop"
+      ],
+      "call": "utteranceRate",
+      "args": [1.75],
+      "tolerance": 1e-12,
+      "expect": { "return": 0.6273460605046268 }
+    },
+    {
+      "id": "rate/utterance-rate-2",
+      "covers": [
+        "playback-rate::the synthesiser's rate is ForayTts's calibrated curve, at every ladder stop"
+      ],
+      "call": "utteranceRate",
+      "args": [2],
+      "tolerance": 1e-12,
+      "expect": { "return": 0.6577324383928644 }
+    },
+    {
+      "id": "rate/utterance-rate-3-is-the-measured-anchor",
+      "covers": [
+        "playback-rate::the synthesiser's rate is ForayTts's calibrated curve, at every ladder stop"
+      ],
+      "note": "HUMAN-ACTIONS.md #29: rate default*1.5 was heard at roughly 3x, so 3x asks for it.",
+      "call": "utteranceRate",
+      "args": [3],
+      "tolerance": 1e-12,
+      "expect": { "return": 0.75 }
+    },
+    {
+      "id": "rate/utterance-rate-4-off-ladder-probe",
+      "covers": [
+        "playback-rate::the synthesiser's rate is ForayTts's calibrated curve, at every ladder stop"
+      ],
+      "note": "Off the ladder: equal ratios cost equal rate steps (1->2 = 2->4), which only the log form gives.",
+      "call": "utteranceRate",
+      "args": [4],
+      "tolerance": 1e-12,
+      "expect": { "return": 0.8154648767857288 }
+    },
+    {
+      "id": "rate/utterance-rate-1000-clamps",
+      "covers": [
+        "playback-rate::the synthesiser's rate is ForayTts's calibrated curve, at every ladder stop"
+      ],
+      "call": "utteranceRate",
+      "args": [1000],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/utterance-rate-infinity-is-the-fastest",
+      "covers": [
+        "playback-rate::the synthesiser's rate is ForayTts's calibrated curve, at every ladder stop"
+      ],
+      "call": "utteranceRate",
+      "args": [{ "$num": "Infinity" }],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "rate/utterance-rate-0",
+      "covers": [
+        "playback-rate::a multiplier that is not a positive number is the slowest synthesiser rate, never NaN"
+      ],
+      "call": "utteranceRate",
+      "args": [0],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "rate/utterance-rate-negative",
+      "covers": [
+        "playback-rate::a multiplier that is not a positive number is the slowest synthesiser rate, never NaN"
+      ],
+      "call": "utteranceRate",
+      "args": [-5],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "rate/utterance-rate-nan",
+      "covers": [
+        "playback-rate::a multiplier that is not a positive number is the slowest synthesiser rate, never NaN"
+      ],
+      "call": "utteranceRate",
+      "args": [{ "$num": "NaN" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "rate/utterance-rate-neg-infinity",
+      "covers": [
+        "playback-rate::a multiplier that is not a positive number is the slowest synthesiser rate, never NaN"
+      ],
+      "call": "utteranceRate",
+      "args": [{ "$num": "-Infinity" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "rate/utterance-rate-null",
+      "covers": [
+        "playback-rate::a multiplier that is not a positive number is the slowest synthesiser rate, never NaN"
+      ],
+      "call": "utteranceRate",
+      "args": [null],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "rate/utterance-rate-string",
+      "covers": [
+        "playback-rate::a multiplier that is not a positive number is the slowest synthesiser rate, never NaN"
+      ],
+      "call": "utteranceRate",
+      "args": ["1.5"],
+      "expect": { "return": 0 }
+    }
+  ]
+}

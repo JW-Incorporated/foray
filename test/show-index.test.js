@@ -60,9 +60,10 @@ test("the committed index decodes to a usable index rather than an empty one", (
     "every committed line must decode — a skipped row means the file and the parser disagree");
 });
 
-test("the emitted file is sorted by lowercased title in code-unit order", () => {
-  /* THE CONTRACT. `prefixSearchShows` binary-searches with `<`; if the file is
-     not in that order the search is meaningless.
+test("the emitted file is sorted by the folded, lowercased title in code-unit order", () => {
+  /* THE CONTRACT. `prefixSearchShows` binary-searches with `<` over the keys
+     `parseShowIndex` folds (audit round 2, search-9); if the file is not in
+     that order the search is meaningless.
 
      MUTATION (the one S-03's card names): unsort the emitted file — e.g. sort
      `mergeShowIndexRows` with `localeCompare`, or reverse the array before
@@ -102,7 +103,10 @@ test("the prefix pass also agrees on accented and non-ASCII prefixes, where loca
   const accented = INDEX.rows.filter((r) => /^[^\x00-\x7F]/.test(r.title));
   assert.ok(accented.length > 0, "fixture assumption: the committed index has non-ASCII-initial titles");
   for (const row of accented.slice(0, 25)) {
-    const q = row.title.slice(0, 3);
+    /* Three CODE POINTS, not three UTF-16 units: the committed index holds a
+       title typed in mathematical bold ("𝐁𝟑𝟒𝐧’𝐬 …"), whose letters are
+       surrogate pairs, and cutting one in half is a query nobody can type. */
+    const q = Array.from(row.title).slice(0, 3).join("");
     const got = SearchEngine.prefixSearchShows(q, INDEX).map((s) => s.show_id);
     assert.ok(got.includes(row.show_id), `${JSON.stringify(q)} did not find ${row.title}`);
   }

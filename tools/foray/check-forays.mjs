@@ -84,7 +84,7 @@ import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
 import { MODE_CHAR_BANDS, narratorStructureErrors } from "./check-narration.mjs";
 const NARRATION_MODES = new Set(Object.keys(MODE_CHAR_BANDS));
 
-const { BANNED, INTERNAL_VOCABULARY, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
+const { BANNED, INTERNAL_VOCABULARY, titleStyleProblems, TITLE_CASE_PROBLEM, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /* ------------------------------------------------------------------ rules */
@@ -584,6 +584,48 @@ const nonEmptyString = (s) => typeof s === "string" && s.trim().length > 0;
  * @param {{forays: object, segments: object, sources: object, taxonomy: object}} files
  * @returns {{errors: string[], warnings: string[], report: object}}
  */
+/* ---- a PUBLISHED Foray's why-lines are captions (audit round 2, p-foray-5) --
+ * The `why` on a segment was written as curation rationale and is rendered as
+ * the caption on the clip's row (and read aloud as its accessible name). On
+ * the published Foray two of them read as the curator's private notes: "Kahl
+ * names the power imbalance ..." (who is Kahl?) and "The terms: shares stay
+ * his until he sells ..." (whose?). A listener has the row, the show and the
+ * episode title, and nothing else, so a caption may lean on those and no more:
+ *
+ *   - A line that STARTS with a bare name (a capitalised word, or its
+ *     possessive, followed by an attribution verb: "Kahl names", "Roizen's")
+ *     must be introduced by the show or episode title ("... with Tyler
+ *     Tringas" introduces Tringas).
+ *   - A gendered pronoun needs a name in the same line to point at.
+ *
+ * Deliberately a heuristic for PUBLISHED Forays only: the pool carries ~30
+ * such lines on draft material, and draft copy is rewritten when it is
+ * promoted. A false positive costs one reworded caption before publishing. */
+const ATTRIBUTION_VERBS = new Set([
+  "names", "explains", "argues", "says", "describes", "walks", "lays", "recounts",
+  "traces", "defines", "recalls", "admits", "warns", "notes", "asks", "reads", "on",
+]);
+
+export function captionProblems(why, { show = "", episodeTitle = "" } = {}) {
+  const text = typeof why === "string" ? why.trim() : "";
+  if (!text) return [];
+  const problems = [];
+  const anchor = `${show} ${episodeTitle}`;
+  const lead = /^([A-Z][A-Za-z]+(?:-[A-Z][A-Za-z]+)?)(['\u2019]s)?\s+([a-z]+)/.exec(text);
+  const named = lead && (lead[2] || ATTRIBUTION_VERBS.has(lead[3])) ? lead[1] : null;
+  if (named && !new RegExp(`\\b${named}\\b`).test(anchor)) {
+    problems.push(`starts with the bare name "${named}", which neither the show nor the episode title introduces`);
+  }
+  const pronoun = /\b(he|she|his|her|hers|him|himself|herself)\b/i.exec(text);
+  /* A name to point at: the leading one, or any capitalised word that does not
+     open the line or a sentence/clause after ".", ":", "!" or "?". */
+  const nameLater = /[^.:!?]\s+[A-Z][a-z]+/.test(text.slice(1));
+  if (pronoun && !named && !nameLater) {
+    problems.push(`"${pronoun[1]}" has no one in the line to refer to`);
+  }
+  return problems;
+}
+
 export function checkForays(files) {
   const errors = [];
   const warnings = [];
@@ -709,6 +751,29 @@ export function checkForays(files) {
        * (runPipeline.ts forayCopy / slotsFromSpine, `toListenerWords`), so this
        * refusal is the backstop, not the first line. */
       for (const rx of INTERNAL_VOCABULARY) if (rx.test(text)) E(`${field} uses the pipeline's word ${rx}, which a listener cannot decode: "${text}"`);
+    }
+    /* THE TITLE HOUSE STYLE (rules.js `titleStyleProblems`). Wyatt, 2026-09-24,
+     * answering the audit's qa 146 — generated titles in Title Case with no
+     * closing period, next to sentence-case curated ones in the same rail:
+     * "Sentence case, no period, though ? And ! Are allowed". On every Foray,
+     * curated and generated alike, and on the title only (a summary is a
+     * sentence and the ruling left it alone). The generator asks for sentence
+     * case and fixes what code safely can (a closing period, a lower-case
+     * first letter — runPipeline.ts `forayCopy`), so on that side this is the
+     * backstop.
+     *
+     * EXCEPT TITLE CASE ON A GENERATED FORAY, which WARNS (review of PR #785).
+     * The period and the first letter are certain and code fixes both before
+     * any spend; Title Case is a heuristic that cannot know names ("Why Doctor
+     * Who still works", "Marx, Engels, Lenin and Mao"), and this gate runs
+     * after the research, spine, deepen and narration spend — a false positive
+     * here threw all of it away, or pushed the re-ask to lower-case the name.
+     * The understander already asks, and re-asks once, before any spend. */
+    if (typeof foray.title === "string") {
+      for (const problem of titleStyleProblems(foray.title)) {
+        if (isGeneratedForay(foray) && problem.startsWith(TITLE_CASE_PROBLEM)) W(`title "${foray.title}" ${problem}`);
+        else E(`title "${foray.title}" ${problem}`);
+      }
     }
 
     if (!Array.isArray(foray.items) || foray.items.length === 0) { E("`items` must be a non-empty ordered array"); continue; }
@@ -871,9 +936,18 @@ export function checkForays(files) {
         /* Q-08: the narrator never mentions the Foray's own structure. Read off
          * the SCRIPT, on a generated Foray only — an admin-authored bridge has
          * an author who can be asked what "the next part" meant, and
-         * `check-narration.mjs` warns on that side for exactly that reason. */
+         * `check-narration.mjs` warns on that side for exactly that reason.
+         *
+         * The prelude's DISCLOSURE sentence is not checked: it is a fixed
+         * template whose `<subject>` is the listener's own topic, spoken
+         * verbatim because DISCLOSURE_RX requires it, so nothing in the
+         * pipeline can rewrite it — "This is a Foray about Chapter Eleven
+         * bankruptcy" would otherwise refuse every generation on that subject,
+         * after the spend (review of PR #785). The overview after it is the
+         * model's and is checked like every other line. */
         if (isGeneratedForay(foray) && hasScript && !FORAYS_PREDATING_THE_NARRATOR_RULES.has(fid)) {
-          for (const problem of narratorStructureErrors(item.script, where)) E(problem);
+          const spoken = i === 0 ? item.script.trim().replace(DISCLOSURE_RX, "") : item.script;
+          for (const problem of narratorStructureErrors(spoken, where)) E(problem);
         }
         /* K-02: an item that CLAIMS to be phonemized must be. Inert on every
          * item in `data/forays.json` today (none carries a `tts` block), which
@@ -1092,6 +1166,13 @@ export function checkForays(files) {
       if (!seg) { E(`${at}: unknown segment_id "${item.segment_id}" — not in data/segments.json`); itemsOk = false; continue; }
       if (seenSegmentIds.has(item.segment_id)) E(`${at}: segment "${item.segment_id}" appears twice in one Foray`);
       seenSegmentIds.add(item.segment_id);
+
+      if (foray.status === "published") {
+        const src = sources.get(seg.item_id);
+        for (const p of captionProblems(seg.why, { show: src?.show, episodeTitle: src?.title })) {
+          E(`${at}: the why-line "${seg.why}" is the row's caption on a published Foray and ${p} — rewrite it for a listener (p-foray-5)`);
+        }
+      }
 
       if (slotIds.length && !slotIds.includes(item.slot)) E(`${at}: slot "${item.slot}" is not declared in \`slots\``);
 

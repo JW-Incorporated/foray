@@ -31,6 +31,7 @@ import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { audioFieldsFrom, hostOf, normalizeAudioUrl } from "./enclosure.mjs";
 import { UA, NIGHTLY_UA } from "../segments/politeness.mjs";
+import { minutesFromSeconds } from "../check-durations.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
@@ -228,7 +229,13 @@ function apply(t, fields) {
   target.audio_url = fields.audio_url;
   target.audio_type = fields.audio_type;
   target.audio_bytes = fields.audio_bytes;
-  if (fields.duration_sec != null) target.duration_sec = fields.duration_sec;
+  if (fields.duration_sec != null) {
+    target.duration_sec = fields.duration_sec;
+    /* One length per episode (audit round 2, honesty-1): the minute count
+       follows the measurement, or tools/check-durations.mjs fails the pool. */
+    const min = minutesFromSeconds(fields.duration_sec);
+    if (min !== null && t.where !== "session") target.duration_min = min;
+  }
 }
 
 /* ---------- report ---------- */

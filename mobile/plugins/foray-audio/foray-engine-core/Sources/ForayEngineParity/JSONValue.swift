@@ -1,4 +1,5 @@
 import Foundation
+import ForayEngineCore
 
 /// Any JSON value, compared structurally: what a fixture file holds, before
 /// any macro or `$num` tag means anything (docs/native-engine-plan.md §6.2).
@@ -116,50 +117,14 @@ public enum JSONValue: Codable, Equatable, CustomStringConvertible {
 /// failure message that must read the same as `record.mjs --check`'s.
 ///
 /// WHY NOT `"\(double)"`. Swift prints `2.0`, `1e-07` and `1e+16` where
-/// JavaScript prints `2`, `1e-7` and `10000000000000000`. Both runtimes pick
-/// the SHORTEST digits that round-trip, so only the layout differs, and the
-/// layout is what this rebuilds: take Swift's digits and exponent, then place
-/// the decimal point by ECMA's rules (plain from 1e-6 up to 1e21, exponent
-/// outside). The full rule, with its fixtures, is NE-10s's `number-format`
-/// family; this is the same algorithm, kept here so the comparator does not
-/// wait on that card.
+/// JavaScript prints `2`, `1e-7` and `10000000000000000`.
+///
+/// ONE implementation: the core's `JSWriter.numberToString`, which the shared
+/// rows are printed with and the `number-format` family pins (NE-10s). Until
+/// that card this was a copy of the same algorithm; a second copy is a second
+/// definition that only one of the two families would ever check.
 public enum JSNumber {
     public static func string(_ value: Double) -> String {
-        if value.isNaN { return "NaN" }
-        if value.isInfinite { return value < 0 ? "-Infinity" : "Infinity" }
-        if value == 0 { return "0" } // -0 too: String(-0) is "0" in JavaScript
-        let sign = value < 0 ? "-" : ""
-        let text = "\(Swift.abs(value))"
-        let parts = text.split(separator: "e", maxSplits: 1).map(String.init)
-        let exponent = parts.count == 2 ? Int(parts[1]) ?? 0 : 0
-        let mantissa = parts[0].split(separator: ".", maxSplits: 1).map(String.init)
-        let integerPart = mantissa[0]
-        let fractionPart = mantissa.count == 2 ? mantissa[1] : ""
-        var digits = Array(integerPart + fractionPart)
-        // value = 0.d1d2d3... x 10^point
-        var point = integerPart.count + exponent
-        while digits.count > 1 && digits.first == "0" {
-            digits.removeFirst()
-            point -= 1
-        }
-        while digits.count > 1 && digits.last == "0" {
-            digits.removeLast()
-        }
-        let k = digits.count
-        let n = point
-        let d = String(digits)
-        if k <= n && n <= 21 {
-            return sign + d + String(repeating: "0", count: n - k)
-        }
-        if 0 < n && n <= 21 {
-            return sign + String(digits[0..<n]) + "." + String(digits[n...])
-        }
-        if -6 < n && n <= 0 {
-            return sign + "0." + String(repeating: "0", count: -n) + d
-        }
-        let e = n - 1
-        let expText = (e < 0 ? "-" : "+") + String(Swift.abs(e))
-        if k == 1 { return sign + d + "e" + expText }
-        return sign + String(digits[0]) + "." + String(digits[1...]) + "e" + expText
+        JSWriter.numberToString(value)
     }
 }

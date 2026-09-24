@@ -144,6 +144,8 @@ function setup(opts = {}) {
   const scheduler = makeScheduler();
   const nav = opts.nav || {};
   const loaded = [];
+  /** Every `onPlayingChange` report, in order (audit round 2, native-2). */
+  const playing = [];
   const answers = [];
   const logs = [];
   let t = 1_000_000;
@@ -166,13 +168,14 @@ function setup(opts = {}) {
     clearTimeout: opts.noTimer ? undefined : (id) => timers.delete(id),
     onNativeAnswer: (result) => answers.push(result),
     onLoadedChange: opts.onLoadedChange === null ? undefined : (v) => loaded.push(v),
+    onPlayingChange: opts.onPlayingChange === null ? undefined : (v) => playing.push(v),
     positionMinIntervalMs: opts.positionMinIntervalMs,
     baseUrl: opts.baseUrl === null ? "" : (opts.baseUrl || BASE),
     origin: opts.origin === null ? "" : (opts.origin || ORIGIN),
     log: (m, e) => logs.push({ m, e }),
   });
   return {
-    capacitor, scheduler, nav, loaded, answers, logs, session,
+    capacitor, scheduler, nav, loaded, playing, answers, logs, session,
     advance(ms) { t += ms; },
     /** Every armed trailing timer's delay, so a test can assert one exists. */
     timerDelays() {
@@ -500,7 +503,10 @@ test("iOS: WebKit's OWN Now Playing entry says what the page said — title, sho
   assert.equal(shown.title, "The brisket episode");
   assert.equal(shown.artist, "A show");
   assert.match(shown.album, /Weekend grilling/);
-  assert.ok(shown.handlers.has("nexttrack"), "WebKit's client routes next to the page's handler");
+  /* The TRACK PAIR IS NOT ON WEBKIT'S CLIENT (audit round 2, p-impatient-3):
+     with it there iOS drew ⏮/⏭ over the founder's 15/30 whenever Up Next held
+     anything. The skip pair is; next/previous are the plugin's, route-gated. */
+  assert.ok(!shown.handlers.has("nexttrack") && !shown.handlers.has("previoustrack"), "WebKit's client carries no track commands, so the lock screen keeps the skip pair");
   assert.ok(shown.handlers.has("seekforward") && shown.handlers.has("seekbackward"));
   /* THE ORIGINAL ARTWORK URL, not the `bundle://` rewrite: WebKit fetches it
      inside the WebView and only the Swift side understands `bundle://`. */
@@ -610,15 +616,16 @@ test("a press through WebKit's door is a `foray:remote` row of its own, named as
     const nav = { mediaSession: wk.target };
     const { session } = setup({ bridge: { platform: "ios" }, nav });
     session.install();
-    nav.mediaSession.setActionHandler("nexttrack", () => {});
+    /* seekforward, since audit round 2: the track pair is no longer mirrored. */
+    nav.mediaSession.setActionHandler("seekforward", () => {});
     const rows = [];
     win.addEventListener(REMOTE_DOM_EVENT, (e) => rows.push(e.detail));
-    wk.received.get("nexttrack")();
+    wk.received.get("seekforward")();
     assert.equal(rows.length, 1);
     assert.equal(rows[0].origin, WEBKIT_ORIGIN);
-    assert.equal(rows[0].command, "next-track");
+    assert.equal(rows[0].command, "skip-forward");
     assert.ok(REMOTE_COMMANDS.has(rows[0].command), "the record admits the command the tee reports");
-    assert.equal(rows[0].action, "nexttrack");
+    assert.equal(rows[0].action, "seekforward");
     assert.equal(rows[0].handled, true);
     assert.equal(typeof rows[0].at, "number", "stamped, so the record's lag is a number");
   });
@@ -705,7 +712,11 @@ test("seekto is NEVER mirrored — WebKit's timeline is the element's, the page'
      position from `element->currentTime()`, so a scrub on WebKit's client is a
      second of the CLIP; the page's `seekto` handler takes a second of the
      FORAY. Mirroring it would send "1:00 of this clip" to "1:00 of the Foray". */
-  assert.deepEqual([...UNMIRRORED_ACTIONS], ["seekto"]);
+  /* And the TRACK PAIR (audit round 2, p-impatient-3): WebKit enables
+     next/previous on the shared command centre for every mirrored handler, and
+     iOS then draws ⏮/⏭ in place of the founder's ↺15/30↻. The pair is the
+     plugin's alone, route-gated in Swift. MUTATION: put `["seekto"]` back. */
+  assert.deepEqual([...UNMIRRORED_ACTIONS], ["seekto", "nexttrack", "previoustrack"]);
   const wk = webkitSession();
   const nav = { mediaSession: wk.target };
   const { session } = setup({ bridge: { platform: "ios" }, nav });
@@ -1099,7 +1110,7 @@ test("identityKey ignores the playhead and nothing else", () => {
     ["canPlay", false], ["canPause", false], ["canStop", false],
     ["hasNext", false], ["hasPrevious", false],
     ["canSeekBack", false], ["canSeekForward", false], ["canSeekTo", false],
-    ["seekBackMs", 1], ["seekForwardMs", 1],
+    ["seekBackMs", 1], ["seekForwardMs", 1], ["stalled", true],
   ]) {
     assert.notEqual(
       identityKey({ ...base, [field]: value }), identityKey(base),
@@ -1446,6 +1457,78 @@ test("A SINGLE EPISODE GETS NO SKIP BUTTONS, THROUGH THE REAL PLAYER", async () 
   assert.equal(last().hasNext, false);
   assert.equal(last().hasPrevious, false);
   assert.equal(last().canPlay, true);
+});
+
+test("A NETWORK STALL REACHES NATIVE AS A STALL, THROUGH THE REAL PLAYER (p-car-8)", async () => {
+  /* Audit round 2, p-car-8, the native half. `media-session.js` reports a stall as
+     rate 0 with the state still playing, and this file's clamp turned the 0 into 1 —
+     so the car counted on over silence. The stall now travels as `stalled` (iOS
+     writes rate 0, Android reports BUFFERING), is part of the identity so it is sent
+     at once, and a seam — the authored beat — is never one.
+     MUTATION: `const stalled = false` in `nowPlayingPayload` -> red. */
+  const { session, nav, last, turn } = setup();
+  session.install();
+  const media = createMediaSession({ nav, MediaMetadata: null });
+  const view = {
+    item: { title: "One episode", show: "A show" }, forayTitle: "", index: 0, total: 0,
+    durationSec: 1800, positionSec: 600, playbackRate: 1.5, playing: true,
+  };
+  media.update(mediaSessionView(view));
+  await turn();
+  assert.equal(last().state, "playing");
+  assert.equal(last().stalled, false);
+  assert.equal(last().playbackRate, 1.5);
+
+  media.update(mediaSessionView({ ...view, buffering: true }));
+  await turn();
+  assert.equal(last().state, "playing", "a stall is not a pause: the controls still say pause");
+  assert.equal(last().stalled, true, "the stall never reached native, so the car's clock ran on");
+  assert.ok(last().playbackRate > 0, "no zero speed reaches Media3");
+
+  media.update(mediaSessionView(view));
+  await turn();
+  assert.equal(last().stalled, false, "the clock runs again when the audio does");
+
+  media.update(mediaSessionView({ ...view, playing: false, inSeamGap: true }));
+  await turn();
+  assert.equal(last().state, "playing");
+  assert.equal(last().stalled, false, "the seam beat is authored silence, not a stall");
+});
+
+test("A FINISHED ORDINARY EPISODE KEEPS THE SHELL'S SERVICE; A FINISHED FORAY DOES NOT (native-1)", async () => {
+  /* native-1 (round-2 verdict: uncertain, latent) said continuous playback on
+     Android tore the foreground service down at every episode boundary: the
+     `ended` report arrived before the next episode's play, `ended` is not
+     transportable, and `setMediaLoaded(false)` stops at once, with no settle
+     window. It was latent only because nothing repainted at a natural end —
+     and player-1 (this round) made that repaint happen. What keeps it closed
+     is p-car-6: a finished ORDINARY episode reports PAUSED, so the service's
+     loaded flag never drops between one episode and the next, and the chain's
+     play finds the service up. A finished Foray (which chains nothing) still
+     reports none and still releases it. This pins the two rules together.
+     MUTATION: make `mediaPlaybackState` return NONE for any `ended` -> red. */
+  const { session, nav, loaded, last, turn } = setup();
+  session.install();
+  const media = createMediaSession({ nav, MediaMetadata: null });
+  const episode = {
+    item: { title: "Episode one", show: "A show" }, forayTitle: "", index: 0, total: 0,
+    durationSec: 1800, positionSec: 1799, playbackRate: 1, playing: true,
+  };
+  media.update(mediaSessionView(episode));
+  await turn();
+  assert.deepEqual(loaded, [true]);
+  media.update(mediaSessionView({ ...episode, playing: false, ended: true, positionSec: 1800 }));
+  await turn();
+  assert.equal(last().state, "paused", "a finished episode is described as paused");
+  assert.deepEqual(loaded, [true], "the episode's end released the service before continuous playback's next play");
+
+  const foray = { ...episode, forayTitle: "A Foray", index: 1, total: 2, foray: true };
+  media.update(mediaSessionView(foray));
+  await turn();
+  media.update(mediaSessionView({ ...foray, playing: false, ended: true }));
+  await turn();
+  assert.equal(last().state, "ended");
+  assert.deepEqual(loaded, [true, false], "a finished Foray still lets the service go");
 });
 
 test("THE SEAM BEAT REPORTS PLAYING, THROUGH THE REAL PLAYER", async () => {
@@ -2046,4 +2129,48 @@ test("`sends` CANNOT BE READ IN THE TURN OF THE WRITE — the founder's `sent=0`
     capacitor.calls.filter((c) => c.method === SET_METHOD).length, 1,
     "and it really was one native call, not a counter moving on its own",
   );
+});
+
+/* ---------------------------------------- the playing transition, for the shell */
+
+test("onPlayingChange fires on the transition to and from playing — never on a position write (audit round 2, native-2)", async () => {
+  /* A narration-first Foray plays its opening minute through ForayTtsPlugin with
+     no <audio> element, so the shell's play-patch never runs and nothing starts
+     the foreground service. The transport's own state is the signal.
+     MUTATION: report on every flush (drop `playing !== lastPlaying`) -> the
+     position writes below add entries. MUTATION 2: never report -> empty. */
+  const { session, nav, playing, loaded, turn, advance } = setup({ positionMinIntervalMs: 0 });
+  session.install();
+  nav.mediaSession.metadata = meta();
+  nav.mediaSession.playbackState = "playing";
+  await turn();
+  assert.deepEqual(playing, [true]);
+  assert.deepEqual(loaded, [true], "loaded is reported first (the start depends on it)");
+
+  nav.mediaSession.setPositionState({ duration: 100, position: 10, playbackRate: 1 });
+  await turn();
+  advance(2000);
+  nav.mediaSession.setPositionState({ duration: 100, position: 12, playbackRate: 1 });
+  await turn();
+  assert.deepEqual(playing, [true], "position writes are not transitions");
+
+  nav.mediaSession.playbackState = "paused";
+  await turn();
+  assert.deepEqual(playing, [true, false]);
+  assert.deepEqual(loaded, [true], "a pause is still loaded");
+
+  nav.mediaSession.playbackState = "playing";
+  await turn();
+  assert.deepEqual(playing, [true, false, true], "a resume is a transition again");
+
+  session.uninstall();
+  assert.deepEqual(loaded, [true, false], "uninstall still reports unloaded");
+});
+
+test("the auto-install block hands the playing transition to the shell's noteTransportPlaying", () => {
+  /* Source pin, in the same shape as the loaded seam's: the shell is looked up
+     LAZILY, per call, because the two module scripts may run in either order.
+     MUTATION: drop the `onPlayingChange` entry from the auto-install env. */
+  const src = fs.readFileSync(new URL("../../mobile/plugins/foray-audio/web/foray-media-session.js", import.meta.url), "utf8");
+  assert.match(src, /onPlayingChange: function \(playing\) \{\s*const shell = window\.ForayAudioShell;\s*if \(shell && typeof shell\.noteTransportPlaying === "function"\) shell\.noteTransportPlaying\(playing\);/);
 });

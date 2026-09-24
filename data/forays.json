@@ -528,7 +528,7 @@
     {
       "id": "beyond-the-algorithm-engineering-production-ai-s-e6533b",
       "kind": "deep-dive",
-      "title": "Beyond the Algorithm: Engineering Production AI Systems",
+      "title": "Beyond the algorithm: engineering production AI systems",
       "topic": "engineering/ai-robotics",
       "status": "draft",
       "summary": "AI production success depends on data engineering, infrastructure, and operations more than pure ML",
@@ -901,9 +901,9 @@
     {
       "id": "how-ai-actually-gets-built-3b83e1",
       "kind": "deep-dive",
-      "title": "How AI Actually Gets Built",
+      "title": "How AI actually gets built",
       "topic": "engineering/ai-robotics",
-      "status": "draft",
+      "status": "published",
       "summary": "The unglamorous engineering pipeline that turns raw data into a working AI system in production",
       "runtime_sec": 2587.673,
       "generated": true,
@@ -1271,7 +1271,7 @@
     {
       "id": "the-chain-reaction-how-engineering-disasters-rea-25f1b7",
       "kind": "deep-dive",
-      "title": "The Chain Reaction: How Engineering Disasters Really Happen",
+      "title": "The chain reaction: how engineering disasters really happen",
       "topic": "engineering/disasters",
       "status": "draft",
       "summary": "Catastrophic failures aren't single mistakes but chains of small, reasonable decisions that compound unnoticed until collapse",
@@ -1633,7 +1633,7 @@
     {
       "id": "what-engineers-actually-do-all-day-e08236",
       "kind": "deep-dive",
-      "title": "What Engineers Actually Do All Day",
+      "title": "What engineers actually do all day",
       "topic": "business/careers",
       "status": "draft",
       "summary": "Working engineers describe the failures, identity shifts, and tradeoffs that actually shape a real engineering career.",

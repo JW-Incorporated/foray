@@ -22,6 +22,14 @@
                                                 UserDefaults / Android
                                                 SharedPreferences — NOT evictable)
                           IndexedDB            (write-behind, larger quota)
+         └─ vault         ForayVault           (native shell only, and ONLY the
+                                                auth token: iOS Keychain this-
+                                                device-only / Android no-backup
+                                                storage — never in a phone backup)
+
+   Every tier but the vault rides the phone's own backup, and that is intended:
+   the founder ruled on 2026-09-24 that the token alone stays on the device
+   (persist-6). See "the device-only vault" below.
 
    The Preferences tier exists only inside the native shell, where the plugin
    is registered (`mobile/package.json` has carried `@capacitor/preferences`
@@ -47,7 +55,10 @@
       tiers and durable-only rows back up into localStorage, and removes
       nothing. A listener mid-Foray when this ships cannot lose their place to
       the fix, because the fix only ever adds a copy.
-      The one deletion in this file is `purge()` (#42), and it is the opposite
+      The one exception is the auth token inside the native shell (persist-6):
+      it is MOVED into the vault, and removed from the backed-up tiers only once
+      the vault has taken it — so the move, too, never costs the value.
+      Apart from that move, the one deletion here is `purge()` (#42), the opposite
       case: a listener asking for all of it to go. It deletes from EVERY tier and
       then re-reads them, because the tiering that protects a resume point from
       eviction is the same tiering that would leave half a listener behind.
@@ -267,10 +278,59 @@ export const PREFERENCES_PLUGIN = "Preferences";
  * @param {object|null} bridge  `window.Capacitor`, or a fake
  */
 export function preferencesTier(bridge, { name = "native" } = {}) {
+  return nativeKvTier(bridge, PREFERENCES_PLUGIN, name);
+}
+
+/* ---------- the device-only vault (round-2 audit, persist-6) ----------
+
+   THE FOUNDER'S RULING, 2026-09-24, "Option A": the auth token stays on the
+   device and out of the phone's backups; everything else stays where it is and
+   IS backed up, and the privacy policy says both plainly.
+
+   Every tier above rides the phone's own backup. localStorage and IndexedDB
+   live in the WebView's data directory, and Preferences is `UserDefaults` /
+   `SharedPreferences` — all three inside the app container that iCloud / Finder
+   backup and Android Auto Backup copy by default. For most rows that is what a
+   listener wants (a new phone keeps their place). For `cp_sb_session` it was a
+   defect: the token IS the anonymous account (ADR-0005), so restoring a backup
+   taken before "Delete my data" handed the deleted account's live refresh token
+   back to the app, which re-attached to it — contradicting §3/§7 of the policy
+   ("it cuts the link") and the old §1 claim that the native copy "never leaves
+   the device".
+
+   So a DEVICE-ONLY key lives in exactly one durable place inside the native
+   shell: the vault, `mobile/plugins/foray-vault/`.
+     - iOS: a Keychain generic-password item, accessibility
+       `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, never synchronizable
+       — so it is not in iCloud Keychain and cannot be restored onto another
+       phone. A first launch after a reinstall wipes it, because iOS keeps
+       Keychain items across an uninstall and the app never used to survive one.
+     - Android: a file in `getNoBackupFilesDir()`, which Auto Backup and
+       device-to-device transfer always skip.
+   It is NOT written to localStorage, IndexedDB or Preferences at all. On the web
+   there is no vault (no `window.Capacitor`) and nothing changes: a browser has
+   no phone backup to leak into.
+
+   The migration keeps property 1's spirit — nothing is deleted until the copy
+   it is moving to has taken it. A token an earlier build left in the three
+   backed-up tiers is written to the vault first; only once that write has
+   succeeded is it removed from them. A vault that cannot be read or written
+   leaves the old copies exactly where they are. */
+
+/** The rows that must never be in a phone backup. Only the credential: the
+    founder ruled the rest of the app's data stays backed up. */
+export const DEVICE_ONLY_KEYS = Object.freeze(["cp_sb_session"]);
+
+/** The plugin name `mobile/plugins/foray-vault/` registers on both platforms. */
+export const VAULT_PLUGIN = "ForayVault";
+
+/** Both native tiers speak the same four calls (`keys`/`get`/`set`/`remove`),
+    because the vault plugin copies the Preferences plugin's method shapes. */
+function nativeKvTier(bridge, plugin, name) {
   if (!bridge || typeof bridge.nativePromise !== "function") return null;
   if (typeof bridge.isNativePlatform === "function" && !bridge.isNativePlatform()) return null;
-  if (typeof bridge.isPluginAvailable === "function" && !bridge.isPluginAvailable(PREFERENCES_PLUGIN)) return null;
-  const call = (method, options) => bridge.nativePromise(PREFERENCES_PLUGIN, method, options);
+  if (typeof bridge.isPluginAvailable === "function" && !bridge.isPluginAvailable(plugin)) return null;
+  const call = (method, options) => bridge.nativePromise(plugin, method, options);
   return {
     name,
     sync: false,
@@ -293,6 +353,22 @@ export function preferencesTier(bridge, { name = "native" } = {}) {
   };
 }
 
+/**
+ * The vault tier: where DEVICE_ONLY_KEYS live inside the native shell, and the
+ * only place they live there (see the block above).
+ *
+ * Null — no vault, not a broken one — on the web, on a non-native bridge, and on
+ * a shell build that predates the plugin. With no vault the store behaves
+ * exactly as it did before 2026-09-24, token included.
+ *
+ * @param {object|null} bridge  `window.Capacitor`, or a fake
+ */
+export function vaultTier(bridge, { name = "vault" } = {}) {
+  const tier = nativeKvTier(bridge, VAULT_PLUGIN, name);
+  if (tier) tier.vault = true;
+  return tier;
+}
+
 /* ---------- the store ---------- */
 
 export class DurableStore {
@@ -305,7 +381,7 @@ export class DurableStore {
    * @param {Function} [opts.onFault]  (fault, health) — the app logs an event
    * @param {Function} [opts.now]      injected clock, so a fault has a testable ts
    */
-  constructor({ tiers = [], prefix = DEFAULT_PREFIX, onFault = null, now = null } = {}) {
+  constructor({ tiers = [], prefix = DEFAULT_PREFIX, onFault = null, now = null, deviceOnlyKeys = DEVICE_ONLY_KEYS } = {}) {
     this.prefix = typeof prefix === "string" && prefix ? prefix : DEFAULT_PREFIX;
     this._now = typeof now === "function" ? now : () => Date.now();
     this._onFault = typeof onFault === "function" ? onFault : null;
@@ -328,10 +404,37 @@ export class DurableStore {
 
     this._sync = [];
     this._async = [];
+    /** The device-only vault (persist-6), or null. Kept OUT of `_async`, so no
+        ordinary row is ever written to it and no device-only row is ever
+        written anywhere else — see `_confined`. */
+    this._vault = null;
     for (const t of tiers) {
       if (!t || typeof t.write !== "function") continue;
+      if (t.vault === true && !t.sync) { if (!this._vault) this._vault = t; continue; }
       (t.sync ? this._sync : this._async).push(t);
     }
+    this._deviceOnly = new Set(Array.isArray(deviceOnlyKeys) ? deviceOnlyKeys.map(String) : []);
+    /** True once hydration has READ the vault. Until then — and for good, when
+        the read failed — a device-only key's absence means "could not look",
+        never "there is none"; `canKeep` answers from this. */
+    this._vaultRead = false;
+    /** Device-only keys an earlier build left in a backed-up tier (or that a tier
+        we could not read might still hold). Removed from those tiers once the
+        vault has taken them, and not before. */
+    this._legacy = new Set();
+    /** Device-only keys an earlier build left in a SYNC tier (localStorage).
+        The stale-mirror ledger describes exactly that copy, so an entry for one
+        of these is obeyed at migration and leaves the ledger only once this
+        copy is gone — see `_obeyConfinedLedger`. */
+    this._legacySync = new Set();
+    /** Device-only keys whose last vault write or removal FAILED. The vault is
+        the key's only durable home, so such a key exists in memory alone: it
+        is retried (`_retryUnsaved`) on `flush()` and whenever `canKeep` is
+        asked, and `canKeep` says no until a retry lands — a refresh made now
+        would spend the refresh token the vault still holds. */
+    this._unsaved = new Set();
+    /** Vault operations queued and not yet finished, per device-only key. */
+    this._confinedInFlight = new Map();
 
     this._faults = [];
     this._stats = new Map();
@@ -400,6 +503,18 @@ export class DurableStore {
     if (!this.owns(k)) { this._passSet(k, v); return; }
     this._mem.set(k, v);
     this._dirty.add(k);
+    if (this._confined(k)) {
+      /* Device-only (persist-6): the vault and nothing else. No localStorage
+         write, so there is no mirror to go stale and no ledger entry. */
+      if (!this._queueConfined(k, v)) {
+        const last = this._faults[this._faults.length - 1];
+        throw new Error(
+          `no storage tier accepted ${k}: the device-only store is unavailable`
+          + (last ? ` (${last.tier} ${last.error})` : "")
+        );
+      }
+      return;
+    }
     const accepted = this._writeSync(k, v);
     /* The ledger is queued BEFORE the value (property 4). If only the ledger
        lands, the next launch adopts the durable row, which is never older than
@@ -427,6 +542,7 @@ export class DurableStore {
     if (!this.owns(k)) { this._passRemove(k); return; }
     this._mem.delete(k);
     this._dirty.add(k);
+    if (this._confined(k)) { this._queueConfined(k, null); return; }
     let removed = this._sync.length > 0;
     for (const t of this._sync) {
       try { t.remove(k); } catch (err) { removed = false; this._fault(t.name, "remove", err, k); }
@@ -438,6 +554,28 @@ export class DurableStore {
   }
 
   owns(key) { return typeof key === "string" && key.startsWith(this.prefix); }
+
+  /**
+   * Can a value written to `key` now be trusted to be there next launch — and
+   * does "not there" mean there is none?
+   *
+   * True for every ordinary key, and for every key on a store with no vault (the
+   * web). For a device-only key inside the shell it is true only once hydration
+   * has read the vault and while the vault is still in the write path. The app
+   * asks before it creates or refreshes an account (`app.js`
+   * `ensureAnonSession`): a Supabase refresh SPENDS the old refresh token, and a
+   * signup against a vault that could not be read would mint a second account
+   * over the first. Neither is worth doing when the result cannot be kept.
+   */
+  canKeep(key) {
+    const k = String(key);
+    if (!this._confined(k)) return true;
+    /* A value the vault refused is held in memory only. Retry it, and say no
+       until the retry lands: the vault still holds the token a refresh would
+       spend, so refreshing now could leave the next launch with a dead one. */
+    if (this._unsaved.has(k)) { this._retryUnsaved(); return false; }
+    return this._vaultRead && !this._disabled.has(this._vault.name);
+  }
 
   /* ---------- lifecycle ---------- */
 
@@ -460,6 +598,10 @@ export class DurableStore {
       it; `pagehide` calls it and cannot await, which is fine — the synchronous
       localStorage write already happened. */
   async flush() {
+    /* A device-only value the vault refused has no other durable copy, so this
+       is where it gets its next chance — `pagehide` and `visibilitychange` call
+       this (player/client.js). */
+    this._retryUnsaved();
     await this._queue;
     return this.health();
   }
@@ -520,10 +662,19 @@ export class DurableStore {
        itself is one of the keys `_readTiers` finds and removes below. */
     this._stale.clear();
     const targets = new Set([...this._mem.keys()].filter((k) => this.owns(k)));
-    for (const k of await this._readTiers(unverified, "before")) targets.add(k);
+    const vaultHeld = new Set();
+    for (const k of await this._readTiers(unverified, "before", vaultHeld)) targets.add(k);
 
     const keys = [...targets].sort();
     for (const k of keys) this.removeItem(k);
+    /* A device-only key's removal already reached the vault. Anything else the
+       vault admits to holding (nothing this app writes, but a purge answers for
+       what is there, not for what should be) is removed from it here. */
+    for (const k of vaultHeld) {
+      if (!this._confined(k)) this._queueOn(this._vault, (t) => t.remove(k), k, "remove");
+    }
+    this._legacy.clear();
+    this._legacySync.clear();
     await this._queue;
 
     /* Belt to the `_purging` braces: a health record written by an EARLIER
@@ -569,7 +720,7 @@ export class DurableStore {
    * it cannot be confirmed). Both force `ok: false`, for different reasons, and a
    * human reading the record should be able to tell which happened.
    */
-  async _readTiers(unverified, phase) {
+  async _readTiers(unverified, phase, vaultHeld = null) {
     const found = new Set();
     const take = (rows) => {
       for (const k of rows.keys()) if (this.owns(k)) found.add(k);
@@ -587,6 +738,16 @@ export class DurableStore {
       if (typeof t.readAll !== "function") { cannot(t.name, "tier cannot be enumerated"); continue; }
       try { take(await t.readAll(this.prefix)); }
       catch (err) { this._fault(t.name, "read", err); cannot(t.name, errText(err)); }
+    }
+    /* The vault is asked like every other tier: "Delete my data" has to reach
+       the token, and has to say so when it cannot confirm it did (persist-6). */
+    const v = this._vault;
+    if (v) {
+      try {
+        const rows = await v.readAll(this.prefix);
+        take(rows);
+        if (vaultHeld) for (const k of rows.keys()) if (this.owns(k)) vaultHeld.add(k);
+      } catch (err) { this._fault(v.name, "read", err); cannot(v.name, vaultErrText(err)); }
     }
     return found;
   }
@@ -608,11 +769,13 @@ export class DurableStore {
    */
   health() {
     const tiers = {};
-    for (const t of [...this._sync, ...this._async]) {
+    for (const t of [...this._sync, ...this._async, ...(this._vault ? [this._vault] : [])]) {
       const s = this._stat(t.name);
       tiers[t.name] = {
         durable: Boolean(t.durable),
         sync: Boolean(t.sync),
+        /* The vault holds DEVICE_ONLY_KEYS and nothing else (persist-6). */
+        deviceOnly: t === this._vault,
         writes: s.writes,
         failures: s.failures,
         migrated: s.migrated,
@@ -630,6 +793,11 @@ export class DurableStore {
          circuit breaker dropped is no longer durability, whatever it claims —
          `HUMAN-ACTIONS.md` #9's check reads this. */
       durableTiers: this._async.filter((t) => t.durable && !this._disabled.has(t.name)).map((t) => t.name),
+      /* Null on the web. Inside the shell: the vault's name, whether hydration
+         could read it, and the keys it is the only home for. */
+      vault: this._vault
+        ? { tier: this._vault.name, read: this._vaultRead, keys: [...this._deviceOnly].sort() }
+        : null,
       persisted: this._persist.state,
       persistedAlready: Boolean(this._persist.already),
       keys: this._ownedKeys().length,
@@ -668,6 +836,143 @@ export class DurableStore {
     return this._async.filter((t) => !this._disabled.has(t.name));
   }
 
+  /** Is `key` a device-only key on a store that HAS a vault? On the web (no
+      vault) nothing is confined and every key behaves as it always has. */
+  _confined(key) {
+    return this._vault !== null && this._deviceOnly.has(key);
+  }
+
+  _liveVault() {
+    return this._vault && !this._disabled.has(this._vault.name) ? this._vault : null;
+  }
+
+  /** One queued operation on one tier, on the same serial queue as every other
+      durable write, so it is ordered against them. */
+  _queueOn(tier, op, key, kind) {
+    if (!tier) return false;
+    this._pending += 1;
+    const done = () => { this._pending -= 1; };
+    this._queue = this._queue.then(async () => {
+      try { await op(tier); this._ok(tier.name); }
+      catch (err) { this._fault(tier.name, kind, err, key); }
+    }).then(done, done);
+    return true;
+  }
+
+  /**
+   * Write (`value` a string) or remove (`value` null) a device-only key.
+   *
+   * A WRITE goes to the vault, and only once the vault has taken it is the key
+   * removed from every backed-up tier that might still hold an earlier build's
+   * copy: a vault that refuses leaves those copies in place, so a failed write
+   * never costs the listener their account.
+   *
+   * A REMOVAL goes everywhere at once — the vault and every other tier — because
+   * a key asked to be gone is asked to be gone from all of them.
+   *
+   * @returns {boolean} whether a live vault took responsibility for a write
+   */
+  _queueConfined(key, value) {
+    const vault = this._liveVault();
+    if (value === null) {
+      const syncClean = this._evictSync(key);
+      if (!vault) this._unsaved.add(key);
+      const done = this._confinedQueued(key);
+      this._queue = this._queue.then(async () => {
+        if (vault) {
+          try { await vault.remove(key); this._ok(vault.name); this._unsaved.delete(key); }
+          catch (err) { this._fault(vault.name, "remove", err, key); this._unsaved.add(key); }
+        }
+        await this._evictAsync(key);
+        if (syncClean) await this._localCopyGone(key);
+      }).then(done, done);
+      return Boolean(vault);
+    }
+    if (!vault) { this._unsaved.add(key); return false; }
+    const done = this._confinedQueued(key);
+    this._queue = this._queue.then(async () => {
+      try { await vault.write(key, value); this._ok(vault.name); }
+      catch (err) {
+        /* NOT the end of it. This key has no other durable copy now, so a
+           refusal left alone would lose a refreshed token at the next app kill
+           (review, 2026-09-24). `_unsaved` gets it retried and makes `canKeep`
+           say no until it lands. */
+        this._fault(vault.name, "write", err, key);
+        this._unsaved.add(key);
+        return;
+      }
+      /* Only the value memory still holds counts as saved: a later write of
+         this key that failed is not undone by an earlier one landing. */
+      if (this._mem.get(key) === value) this._unsaved.delete(key);
+      if (this._evictSync(key)) await this._localCopyGone(key);
+      await this._evictAsync(key);
+    }).then(done, done);
+    return true;
+  }
+
+  /**
+   * Give every device-only key the vault refused another try, with the value
+   * memory holds NOW (a removal when memory has none). Queued like any other
+   * vault operation, so it is ordered against this session's writes; a retry
+   * that fails puts the key straight back in `_unsaved`.
+   */
+  _retryUnsaved() {
+    if (!this._unsaved.size || !this._liveVault()) return;
+    for (const k of [...this._unsaved]) {
+      /* A write or removal of this key already queued IS the retry, and it
+         carries the newer value; a second one would only double the faults. */
+      if (this._confinedInFlight.get(k)) continue;
+      this._unsaved.delete(k);
+      this._queueConfined(k, this._mem.has(k) ? this._mem.get(k) : null);
+    }
+  }
+
+  /** Count a queued vault operation on `key`; returns its completion callback. */
+  _confinedQueued(key) {
+    this._pending += 1;
+    this._confinedInFlight.set(key, (this._confinedInFlight.get(key) || 0) + 1);
+    return () => {
+      this._pending -= 1;
+      const n = (this._confinedInFlight.get(key) || 1) - 1;
+      if (n > 0) this._confinedInFlight.set(key, n); else this._confinedInFlight.delete(key);
+    };
+  }
+
+  /**
+   * An earlier build's localStorage copy of a device-only key is gone, so the
+   * stale-mirror ledger has nothing left to describe for it: drop the entry.
+   * Called from inside the queue, so it writes the ledger directly.
+   */
+  async _localCopyGone(key) {
+    this._legacySync.delete(key);
+    if (!this._stale.delete(key) || this._purging) return;
+    const op = this._staleOp();
+    for (const t of this._liveAsync()) {
+      try { await op(t); this._ok(t.name); }
+      catch (err) { this._fault(t.name, "write", err, LOCAL_STALE_KEY); }
+    }
+  }
+
+  /** Remove a device-only key from the backed-up SYNC tiers. */
+  _evictSync(key) {
+    let clean = true;
+    for (const t of this._sync) {
+      try { t.remove(key); } catch (err) { clean = false; this._fault(t.name, "remove", err, key); }
+    }
+    return clean;
+  }
+
+  /** Remove a device-only key from the backed-up ASYNC tiers. Called from inside
+      the queue, so it awaits the tiers directly rather than re-queueing. */
+  async _evictAsync(key) {
+    let clean = true;
+    for (const t of this._liveAsync()) {
+      try { await t.remove(key); this._ok(t.name); }
+      catch (err) { clean = false; this._fault(t.name, "remove", err, key); }
+    }
+    return clean;
+  }
+
   _loadSync() {
     for (const t of this._sync) {
       let snap = null;
@@ -675,7 +980,13 @@ export class DurableStore {
       catch (err) { this._fault(t.name, "read", err); continue; }
       if (!snap) continue;
       // First tier wins: the list is in preference order.
-      for (const [k, v] of snap) if (!this._mem.has(k)) this._mem.set(k, v);
+      for (const [k, v] of snap) {
+        /* A device-only key in localStorage is an earlier build's copy. It is
+           read (so the first paint still knows the account) and remembered, so
+           hydration can move it into the vault and then take it out of here. */
+        if (this._confined(k)) { this._legacy.add(k); this._legacySync.add(k); }
+        if (!this._mem.has(k)) this._mem.set(k, v);
+      }
     }
   }
 
@@ -731,6 +1042,28 @@ export class DurableStore {
   }
 
   async _doHydrate() {
+    /* THE VAULT FIRST, and it has the only word on a device-only key: it is the
+       one place a vault-aware build ever writes one. */
+    let vaultRows = null;
+    if (this._vault) {
+      try {
+        vaultRows = await this._vault.readAll(this.prefix);
+        this._vaultRead = true;
+      } catch (err) {
+        // Could not look. The backed-up copies (if any) stay exactly where they
+        // are, and `canKeep` says no until a later launch can read it.
+        this._fault(this._vault.name, "read", err);
+      }
+      if (vaultRows) {
+        for (const [k, v] of vaultRows) {
+          if (typeof v !== "string" || !this._confined(k) || this._dirty.has(k)) continue;
+          this._mem.set(k, v);
+        }
+      }
+    }
+    /* Device-only keys whose value an earlier build's ledger already settled
+       from a durable tier this hydration — see `_obeyConfinedLedger`. */
+    const ledgerWon = new Set();
     for (const t of this._async) {
       const seen = new Set();
       this._seen.set(t.name, seen);
@@ -747,6 +1080,8 @@ export class DurableStore {
            the next launch cannot read the durable tier. */
         this._fault(t.name, "read", err);
         this._unread.add(t.name);
+        // It may be holding an earlier build's copy of a device-only key.
+        for (const k of this._deviceOnly) if (this._confined(k)) this._legacy.add(k);
         continue;
       }
       if (!rows) continue;
@@ -756,10 +1091,30 @@ export class DurableStore {
          same tier, so "the ledger names a key this tier does not hold" can only
          mean the durable tier removed it and the mirror refused to. */
       const staleHere = parseStale(rows.get(LOCAL_STALE_KEY));
+      /* A device-only key has no localStorage mirror in a vault-aware build, but
+         an EARLIER build's ledger entry for one still says which copy is older,
+         and it is exactly the migration that has to believe it: otherwise the
+         refused mirror's spent token is moved into the vault over the newer
+         durable one (review, 2026-09-24). Obeyed here, before the rows. */
+      let ledgerChanged = false;
+      for (const k of [...staleHere]) {
+        if (!this._confined(k)) continue;
+        staleHere.delete(k);
+        if (this._obeyConfinedLedger(k, rows, vaultRows, ledgerWon)) ledgerChanged = true;
+      }
       for (const k of staleHere) this._stale.add(k);
       for (const [k, v] of rows) {
         if (typeof k !== "string" || typeof v !== "string") continue;
         if (!this.owns(k)) continue;
+        if (this._confined(k)) {
+          /* An earlier build's copy in a backed-up tier. It is the account only
+             when the vault has none and this session has not written one; either
+             way it is moved out below, once the vault holds the key. */
+          this._legacy.add(k);
+          const inVault = vaultRows !== null && vaultRows.has(k);
+          if (!inVault && !this._dirty.has(k) && !this._mem.has(k)) this._mem.set(k, v);
+          continue;
+        }
         seen.add(k);
         if (k === HEALTH_KEY) continue;          // diagnostics, never authoritative
         if (k === LOCAL_STALE_KEY) continue;     // bookkeeping, read above
@@ -788,11 +1143,86 @@ export class DurableStore {
         }
         if (removed) this._stale.delete(k);
       }
-      if (staleHere.size) this._persistStale();
+      if (staleHere.size || ledgerChanged) this._persistStale();
     }
+    this._moveLegacyIntoVault(vaultRows);
     await this._migrateUp();
     this._hydrated = true;
     return this;
+  }
+
+  /**
+   * An earlier build's stale-mirror ledger names a device-only key (property 4,
+   * written before the vault existed). It says localStorage's copy is OLDER
+   * than the one in `rows`, the durable tier the ledger rode in with:
+   *
+   *   - `rows` holds the key: the durable value is the account. It replaces the
+   *     localStorage copy in memory, so it is the one moved into the vault. A
+   *     localStorage copy that won here would carry a refresh token Supabase
+   *     has already spent into the vault, and evict the good one.
+   *   - `rows` does not: the durable tier REMOVED it (Delete my data) while
+   *     localStorage refused to. The localStorage copy is the ghost of a deleted
+   *     account, so it is dropped from memory and from localStorage and never
+   *     reaches the vault.
+   *
+   * The vault's own copy, or one this session wrote, outranks both. The entry
+   * stays on the ledger until the localStorage copy is gone, so a vault that
+   * refuses the move leaves the next launch the same answer.
+   *
+   * @returns {boolean} whether the entry was settled, and so left `_stale`, now
+   */
+  _obeyConfinedLedger(k, rows, vaultRows, ledgerWon) {
+    /* No localStorage copy: nothing for the ledger to overrule. */
+    if (!this._legacySync.has(k)) return true;
+    this._stale.add(k);
+    if (this._dirty.has(k) || (vaultRows !== null && vaultRows.has(k))) return false;
+    if (rows.has(k)) {
+      const v = rows.get(k);
+      if (!ledgerWon.has(k) && typeof v === "string") { this._mem.set(k, v); ledgerWon.add(k); }
+      return false;
+    }
+    if (ledgerWon.has(k)) return false;
+    this._mem.delete(k);
+    if (!this._evictSync(k)) return false;
+    this._legacySync.delete(k);
+    this._stale.delete(k);
+    return true;
+  }
+
+  /**
+   * Move an earlier build's copy of each device-only key into the vault, then
+   * out of every backed-up tier (persist-6). Queued, so it is ordered against
+   * this session's own writes; and each key is re-checked when its turn comes,
+   * because a write or removal made meanwhile has already done this itself.
+   *
+   * Nothing moves when the vault could not be read: "could not look" is not
+   * "has none", and writing over a vault we could not read could replace the
+   * real account with a stale copy.
+   */
+  _moveLegacyIntoVault(vaultRows) {
+    if (!this._vault || vaultRows === null) return;
+    for (const k of [...this._legacy]) {
+      this._pending += 1;
+      const done = () => { this._pending -= 1; };
+      this._queue = this._queue.then(async () => {
+        if (this._dirty.has(k)) { this._legacy.delete(k); return; }
+        const vault = this._liveVault();
+        if (!vault) return;
+        const v = this._mem.get(k);
+        /* Nothing to move: every copy we could read is gone. A tier we could
+           NOT read may still hold the account, so it is not touched. */
+        if (typeof v !== "string") return;
+        if (vaultRows.get(k) !== v) {
+          try { await vault.write(k, v); this._ok(vault.name); this._stat(vault.name).migrated += 1; }
+          catch (err) { this._fault(vault.name, "migrate", err, k); return; }
+        }
+        const syncClean = this._evictSync(k);
+        if (syncClean) await this._localCopyGone(k);
+        const asyncClean = await this._evictAsync(k);
+        const allRead = this._async.every((t) => !this._unread.has(t.name) && !this._disabled.has(t.name));
+        if (syncClean && asyncClean && allRead) this._legacy.delete(k);
+      }).then(done, done);
+    }
   }
 
   /**
@@ -832,12 +1262,14 @@ export class DurableStore {
       is empty. Never during a purge — see `_purging`. */
   _persistStale() {
     if (this._purging) return;
-    if (!this._stale.size) {
-      this._enqueue((t) => t.remove(LOCAL_STALE_KEY), LOCAL_STALE_KEY, "remove");
-      return;
-    }
+    this._enqueue(this._staleOp(), LOCAL_STALE_KEY, this._stale.size ? "write" : "remove");
+  }
+
+  /** The tier operation that makes a durable tier's ledger row match `_stale`. */
+  _staleOp() {
+    if (!this._stale.size) return (t) => t.remove(LOCAL_STALE_KEY);
     const blob = JSON.stringify([...this._stale].sort());
-    this._enqueue((t) => t.write(LOCAL_STALE_KEY, blob), LOCAL_STALE_KEY, "write");
+    return (t) => t.write(LOCAL_STALE_KEY, blob);
   }
 
   /**
@@ -865,6 +1297,9 @@ export class DurableStore {
            a "start over" DURING hydration is a real sequence, and review proved
            it resurrected the row. */
         if (!this._mem.has(k)) continue;
+        /* A device-only key never goes into a backed-up tier (persist-6);
+           `_moveLegacyIntoVault` is its migration. */
+        if (this._confined(k)) continue;
         /* A tier we could not read gets only the keys this session wrote, which
            are the only ones we know to be newer than whatever is down there. */
         if (unread && !this._dirty.has(k)) continue;
@@ -885,7 +1320,13 @@ export class DurableStore {
     const s = this._stat(tier);
     s.failures += 1;
     s.consecutive += 1;
-    s.lastError = errText(err);
+    /* The vault's error text is cut down before it is kept anywhere: this
+       record is mirrored into `cp_storage_health`, a BACKED-UP tier, and handed
+       to the app's fault sink, which logs it. A native error that quoted the
+       vault's contents would put the token exactly where the vault keeps it
+       out of (review, 2026-09-24: Android's org.json parse errors quote their
+       whole input). */
+    s.lastError = this._vault && tier === this._vault.name ? vaultErrText(err) : errText(err);
     const fault = { tier, op, key: key ?? null, error: s.lastError, at: this._now() };
     this._faults.push(fault);
     while (this._faults.length > MAX_FAULTS) this._faults.shift();
@@ -895,7 +1336,7 @@ export class DurableStore {
        fault, one more notification, and one more write from the app's fault sink.
        Stop asking it. Reads are unaffected — hydration has already happened. */
     if (!this._disabled.has(tier) && s.consecutive >= MAX_CONSECUTIVE_TIER_FAILURES
-        && this._async.some((t) => t.name === tier)) {
+        && (this._async.some((t) => t.name === tier) || (this._vault && this._vault.name === tier))) {
       this._disabled.add(tier);
     }
 
@@ -982,6 +1423,15 @@ function parseStale(raw) {
   }
 }
 
+/** A vault error, with anything that could be the vault's CONTENT cut off: the
+    text stops at the first `{`, `"` or `'`, and at 160 characters. What is left
+    (the call, the exception class, an OSStatus) is what a human needs. */
+export function vaultErrText(err) {
+  const full = errText(err);
+  const cut = full.split(/[{"']/)[0].slice(0, 160).trim();
+  return cut === full ? full : `${cut} [vault detail withheld]`;
+}
+
 function errText(err) {
   if (!err) return "unknown error";
   const name = err.name ? String(err.name) : "";
@@ -1002,6 +1452,7 @@ export function createDurableStore({
   localStorage: ls = null,
   idbTier = null,
   nativeTier = null,
+  vault = null,
   prefix = DEFAULT_PREFIX,
   onFault = null,
   now = null,
@@ -1009,8 +1460,10 @@ export function createDurableStore({
   return new DurableStore({
     /* The native tier goes BEFORE IndexedDB. Hydration reads the async tiers in
        order and the first one to hold a row localStorage lost is the one
-       adopted, so the tier a WebView sweep cannot reach gets the first word. */
-    tiers: [localStorageTier(ls), nativeTier, idbTier],
+       adopted, so the tier a WebView sweep cannot reach gets the first word.
+       The vault (persist-6) is not in that order at all: it holds the
+       device-only keys and nothing else, and hydration reads it first. */
+    tiers: [localStorageTier(ls), vault, nativeTier, idbTier],
     prefix,
     onFault,
     now,

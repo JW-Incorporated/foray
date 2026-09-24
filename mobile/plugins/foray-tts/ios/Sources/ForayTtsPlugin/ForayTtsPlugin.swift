@@ -243,10 +243,18 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     }
 
     /// The `rate` this plugin receives is a PLAYBACK-SPEED MULTIPLIER, not a
-    /// normalised rate. Its one caller is `PlayerQueueManager._speakNarration`
-    /// (`player/queue-manager.js`), which passes `this._rate` — a value off
-    /// `player/playback-rate.js`'s `RATES` ladder `[0.75, 1, 1.25, 1.5, 1.75, 2]`,
-    /// where **1 means the listener's normal speed**. That is also exactly what
+    /// normalised rate, where **1 means normal speed**. Since the founder's
+    /// 2026-09-24 ruling (*"1x for now, but maybe we change later. I recall 1x
+    /// felt like 0.6x or so, it was very slow."*) both callers —
+    /// `PlayerQueueManager._speakNarration` (`player/queue-manager.js`) and the
+    /// voice picker's Preview (`player/client.js` `auditionVoice`) — pass
+    /// `NARRATION_RATE`, which is 1, whatever speed the listener chose; they
+    /// used to pass the listener's speed off `player/playback-rate.js`'s ladder
+    /// `[0.75, 1, 1.25, 1.5, 1.75, 2]`. So today only the 1.0x point of the
+    /// curve below is ever asked for, and it is the one point that is not an
+    /// estimate: `AVSpeechUtteranceDefaultSpeechRate`. The "felt like 0.6x" is
+    /// that default rate as heard, not a mapping error — see anchor 1 below.
+    /// That multiplier is also exactly what
     /// Android's `TextToSpeech.setSpeechRate()` means — AOSP's own javadoc on that
     /// method reads *"1.0 is the normal speech rate, lower values slow down the
     /// speech (0.5 is half the normal speech rate), greater values accelerate it
@@ -278,7 +286,11 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// So the mapping rests on **two anchors and one assumption of form**:
     ///
     /// 1. `AVSpeechUtteranceDefaultSpeechRate` = 1.0x normal. Definitional, from
-    ///    Apple's own naming of the constant, not from this measurement.
+    ///    Apple's own naming of the constant, not from this measurement. The one
+    ///    listener's ear disagrees (2026-09-24: "1x felt like 0.6x or so"): if 4a
+    ///    ever wants 1x to sound faster than Apple's default, that is a product
+    ///    choice to move THIS anchor (and the XCTest that pins it), not a bug in
+    ///    the curve.
     /// 2. `AVSpeechUtteranceDefaultSpeechRate * 1.5` ≈ 3.0x normal. The one reading.
     /// 3. **Form: perceived speed is EXPONENTIAL in utterance rate** — equivalently,
     ///    utterance rate is affine in `log(multiplier)`:
@@ -305,7 +317,10 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// its wiring are deleted.) If it does not, the *form* above is what is wrong,
     /// and the fix is a third anchor, not a nudge to these two. Until someone runs
     /// that, treat every value here except 1.0x as an estimate with one point
-    /// behind it.
+    /// behind it. **Parked since 2026-09-24:** the Preview now speaks at 1x like
+    /// all narration, so H3 cannot be run from the app as written, and no call
+    /// from the app reaches the curve above 1x until narration follows the
+    /// listener's speed again ("maybe we change later").
     ///
     /// Consequences worth knowing at the ladder's stops (`[0.75, 1, 1.25, 1.5, 1.75, 2]`):
     /// rates ≈ 0.435, 0.500, 0.551, 0.592, 0.627, 0.658. The old mapping sent 0.750 for
@@ -638,11 +653,17 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
            narration-only Foray (no concurrent <audio> element already
            holding the session open, per generation-architecture.md §1.2)
            cannot rely on some other code path having already done this, so
-           it is done here -- the same category/mode PlayerQueueManager.swift
-           line 555 already sets for the (currently unused) Swift player, and
-           the same one WebKit sets automatically for <audio>. `try?`
-           matches this plugin's own "every method resolves, none reject"
-           rule stated in the class header: a failure to configure the
+           it is done here. `.spokenAudio` IS THE APP'S ONE MODE (the platform
+           contract, docs/DECISIONS.md 2026-09-23; audit round 2, native-10):
+           `ForayAudioPlugin` sets the same pair at load and on every paused
+           hold, so a navigation prompt pauses-and-resumes a clip and a
+           narration line alike. (This comment used to claim WebKit sets the
+           same mode for <audio> automatically; it does not -- WebKit's own
+           category write leaves the mode at `.default`, which is why the
+           audio plugin now writes it too. Whether WebKit RESETS it when its
+           element starts is a device check, `docs/ios-lock-screen.md` §8.5.)
+           `try?` matches this plugin's own "every method resolves, none
+           reject" rule stated in the class header: a failure to configure the
            session should not turn into a rejected promise mid-narration. */
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
         try? AVAudioSession.sharedInstance().setActive(true)
