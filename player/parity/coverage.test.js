@@ -24,7 +24,7 @@ import { REPO_ROOT, loadFixtures } from "./runner.js";
 import {
   COVERED_SUITES, EXCLUSION_REASONS, CARD_RE, classify, loadParityData, computeManifest, xctestProblems,
   swiftTestMethods, topLevelTests, capabilityFamilies, capabilityGate, advertisedCapabilities, counts,
-  readCoveredSuites,
+  readCoveredSuites, facadeProblems, FACADE_MAPPED_SUITES, FACADE_SUITES,
 } from "./coverage.js";
 
 const DATA = loadParityData(REPO_ROOT);
@@ -48,7 +48,7 @@ test("a new, unmapped test() in a covered suite turns the guard red and names it
     // Only seam-gap is on the scratch disk, so only seam-gap's entries are read:
     // its exclusions and its family's cases. Every other family's covers[] would
     // name a suite this disk does not hold (NE-07j added the first two).
-    const seamOnly = { ...DATA, unported: {}, xctest: {}, exclusions: { "seam-gap": DATA.exclusions["seam-gap"] } };
+    const seamOnly = { ...DATA, unported: {}, xctest: {}, facades: {}, exclusions: { "seam-gap": DATA.exclusions["seam-gap"] } };
     const seamFixtures = FIXTURES.filter((f) => f.family === "seam-gap");
     const suites = { "seam-gap": readCoveredSuites(root)["seam-gap"] };
     const before = classify(root, seamOnly, seamFixtures, suites).problems;
@@ -167,6 +167,62 @@ test("media-session is wholly classified: media-episode, an exclusion, or NE-29j
   // the half NE-29j owes can never hold the episode capability back (plan §6.6).
   assert.ok(DATA.capabilities.episode.includes("media-episode"));
   assert.ok(DATA.capabilities.foray.includes("media") && !DATA.capabilities.episode.includes("media"));
+});
+
+/* transport-reconcile is NE-21's (plan §6.5): each of its tests is a rule the
+   page keeps in native mode (a JS-only facade test in native-facades.test.js,
+   facades.json), a rule with no Swift meaning (an exclusion), or a rule the
+   engine reimplements and that another card owes. NE-21 itself owes nothing
+   after it lands, so a new test here that `record.mjs --classify` tags with the
+   suite's default card turns this red until someone decides which it is. */
+test("transport-reconcile is wholly classified: a facade test, an exclusion, or owed to the engine's own cards", () => {
+  // NE-21's acceptance ("the transport-reconcile mapping is complete in the
+  // guard"). MUTATION: re-tag one facades.json entry back into unported.json as
+  // {card: "NE-21"} -> red; map a Foray reconcile test to a facade test -> the
+  // family check below goes red only if it was owed, so the tally checks the
+  // three routes are all in use.
+  const { status } = classify(REPO_ROOT, DATA, FIXTURES);
+  const names = Object.entries(status["transport-reconcile"]);
+  assert.ok(names.length > 0, "transport-reconcile has no tests on disk");
+  const tally = { facade: 0, excluded: 0, owed: 0 };
+  for (const [name, st] of names) {
+    const label = `transport-reconcile :: ${JSON.stringify(name)}`;
+    assert.equal(st.covered.length, 0, `${label} is fixtured; a reconcile rule is a facade test, an exclusion or owed`);
+    if (st.facade) tally.facade++;
+    else if (st.excluded) tally.excluded++;
+    else {
+      assert.ok(st.unported, `${label} is unaccounted for`);
+      assert.notEqual(st.unported.card, "NE-21", `${label} is still owed to NE-21, which is the card that classifies it`);
+      tally.owed++;
+    }
+  }
+  assert.ok(tally.facade > 0 && tally.excluded > 0 && tally.owed > 0, JSON.stringify(tally));
+});
+
+test("every facades.json mapping names a native-facades test that exists", () => {
+  // MUTATION: rename any facade test in native-facades.test.js -> red, naming it.
+  assert.deepStrictEqual(facadeProblems(REPO_ROOT, DATA.facades), []);
+  assert.deepStrictEqual([...FACADE_MAPPED_SUITES], ["transport-reconcile"]);
+  assert.deepStrictEqual([...FACADE_SUITES], ["native-facades"]);
+});
+
+test("a facade mapping is refused for a missing test, a non-facade suite, or a suite whose rules Swift owns", () => {
+  const name = Object.keys(DATA.facades["transport-reconcile"])[0];
+  const ghost = { "transport-reconcile": { [name]: "facade:native-facades::a facade test nobody wrote" } };
+  assert.match(facadeProblems(REPO_ROOT, ghost).join("\n"), /does not declare/);
+  const wrongSuite = { "transport-reconcile": { [name]: "facade:queue-manager::anything" } };
+  assert.match(facadeProblems(REPO_ROOT, wrongSuite).join("\n"), /not a facade suite/);
+  const malformed = { "transport-reconcile": { [name]: "xctest:Foo/testBar" } };
+  assert.match(facadeProblems(REPO_ROOT, malformed).join("\n"), /is not "facade:/);
+  // The route that could hide a Swift rule: a covered suite other than
+  // transport-reconcile mapped to a JS test. Refused, and the guard says so.
+  const [seamName] = Object.keys(DATA.exclusions["seam-gap"]);
+  const hiding = { "seam-gap": { [seamName]: `facade:native-facades::${Object.values(DATA.facades["transport-reconcile"])[0].split("::")[1]}` } };
+  assert.match(facadeProblems(REPO_ROOT, hiding).join("\n"), /only transport-reconcile may be mapped/);
+  const { problems } = classify(REPO_ROOT, { ...DATA, facades: { ...DATA.facades, ...hiding } }, FIXTURES);
+  assert.ok(problems.some((p) => /only transport-reconcile may be mapped/.test(p)), problems.join("\n"));
+  // Control: a real mapping is clean, so the reds above are not vacuous.
+  assert.deepStrictEqual(facadeProblems(REPO_ROOT, { "transport-reconcile": { [name]: DATA.facades["transport-reconcile"][name] } }), []);
 });
 
 test("the continuation capability owes nothing: its family is JS-only, so the gate would let it ship today", () => {

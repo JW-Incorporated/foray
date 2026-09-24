@@ -7,7 +7,8 @@
 
      - a fixture case lists it in `covers[]`, or xctest.json maps it to a named
        XCTest method (the two may combine: a rule can have a fixture AND a
-       Simulator test) — it is PORTED;
+       Simulator test), or facades.json maps it to a JS-only facade test (below)
+       — it is PORTED;
      - exclusions.json names it with a closed reason — it has no Swift meaning;
      - unported.json names it with the card that will port it — it is owed.
 
@@ -56,6 +57,60 @@ export const COVERED_SUITES = Object.freeze({
   "foray-playback": { card: "NE-30j", family: "manager-foray" },
   "transport-reconcile": { card: "NE-21", family: "manager-episode" },
 });
+
+/* ---------- JS-only facade mappings (plan §6.5; NE-21) ----------
+
+   Some covered-suite rules live, in native mode, on the PAGE side of the
+   bridge: transport-reconcile.test.js is 117 tests about the page's belief and
+   the audio disagreeing, and in native mode the page's half of that rule — the
+   belief is the engine's snapshot, re-read on return, and returning never
+   starts audio — is carried by native-facades.js, not by Swift. A facades.json
+   entry maps such a test to the top-level facade test that pins it
+   (`facade:<suite>::<test name>`). It counts as PORTED, and it is deliberately
+   narrow:
+     - only FACADE_MAPPED_SUITES may use it (the plan names transport-reconcile
+       alone), because a mapping to a JS test is exactly how a rule the Swift
+       engine must reimplement could vanish from the guard; and
+     - only FACADE_SUITES may be named, and the named test must exist on disk,
+       so renaming or deleting a facade test breaks the promise loudly (the
+       xctest.json rule, applied to JS). */
+
+/** Covered suites whose tests may be mapped to a facade test. */
+export const FACADE_MAPPED_SUITES = Object.freeze(["transport-reconcile"]);
+
+/** The JS suites a facade mapping may name. */
+export const FACADE_SUITES = Object.freeze(["native-facades"]);
+
+const FACADE_RE = /^facade:([a-z0-9-]+)::(.+)$/s;
+
+/** Every facades.json mapping that is malformed, names a suite outside
+    FACADE_SUITES, or names a test that suite does not have. */
+export function facadeProblems(root, facades) {
+  const problems = [];
+  const names = new Map();
+  const namesOf = (stem) => {
+    if (!names.has(stem)) {
+      const file = path.join(root, suiteFile(stem));
+      names.set(stem, fs.existsSync(file) ? new Set(topLevelTests(fs.readFileSync(file, "utf8")).names) : null);
+    }
+    return names.get(stem);
+  };
+  for (const [stem, entries] of Object.entries(facades ?? {})) {
+    if (stem.startsWith("//")) continue;
+    if (!FACADE_MAPPED_SUITES.includes(stem)) {
+      problems.push(`facades.json maps ${stem}, but only ${FACADE_MAPPED_SUITES.join(", ")} may be mapped to a facade test — a rule the Swift engine reimplements is owed, not facade-mapped`);
+      continue;
+    }
+    for (const [name, v] of Object.entries(entries)) {
+      const m = typeof v === "string" ? v.match(FACADE_RE) : null;
+      if (!m) { problems.push(`facades.json ${stem}::${JSON.stringify(name)}: ${JSON.stringify(v)} is not "facade:<suite>::<test name>"`); continue; }
+      const [, target, test] = m;
+      if (!FACADE_SUITES.includes(target)) { problems.push(`facades.json ${stem}::${JSON.stringify(name)} names ${target}, which is not a facade suite (${FACADE_SUITES.join(", ")})`); continue; }
+      if (!namesOf(target)?.has(test)) problems.push(`facades.json ${stem}::${JSON.stringify(name)} maps to ${JSON.stringify(test)}, which ${suiteFile(target)} does not declare`);
+    }
+  }
+  return problems;
+}
 
 /** The closed exclusion reasons (plan §6.1). */
 export const EXCLUSION_REASONS = Object.freeze(["webview-only", "dom-only", "text-pin", "js-module-shape"]);
@@ -195,6 +250,10 @@ export function loadParityData(root) {
     capabilities: rd("capabilities.json"),
     floors: rd("floors.json"),
     xctest: rd("xctest.json"),
+    /* Optional on disk: a scratch root with no facades.json maps nothing, and
+       the real tree cannot lose it quietly — its 117 reconcile tests would
+       fall back to "in no list" and turn the guard red. */
+    facades: fs.existsSync(path.join(root, PARITY_DIR, "facades.json")) ? rd("facades.json") : {},
   };
 }
 
@@ -262,6 +321,8 @@ export function classify(root, data = loadParityData(root), fixtures = loadFixtu
     if (typeof v !== "string" || !/^xctest:[A-Za-z_]\w*\/test\w*$/.test(v)) problems.push(`xctest.json ${stem}::${name}: ${JSON.stringify(v)} is not "xctest:<Class>/<testMethod>"`);
     st.xctest = v;
   });
+  for (const p of facadeProblems(root, data.facades)) problems.push(p);
+  nested(data.facades ?? {}, "facades.json", (st, v) => { st.facade = v; });
   nested(data.exclusions, "exclusions.json", (st, v, stem, name) => {
     if (!EXCLUSION_REASONS.includes(v?.reason)) problems.push(`exclusions.json ${stem}::${name}: reason ${JSON.stringify(v?.reason)} is not one of ${EXCLUSION_REASONS.join(", ")}`);
     if (typeof v?.why !== "string" || v.why.length < 10) problems.push(`exclusions.json ${stem}::${name}: an exclusion says why, in words`);
@@ -275,7 +336,7 @@ export function classify(root, data = loadParityData(root), fixtures = loadFixtu
 
   for (const [stem, names] of Object.entries(status)) {
     for (const [name, st] of Object.entries(names)) {
-      const ported = st.covered.length > 0 || Boolean(st.xctest);
+      const ported = st.covered.length > 0 || Boolean(st.xctest) || Boolean(st.facade);
       const ways = [ported, Boolean(st.excluded), Boolean(st.unported)].filter(Boolean).length;
       const label = `${suiteFile(stem)} :: ${JSON.stringify(name)}`;
       if (ways === 0) problems.push(`${label} is in no case's covers[], no xctest mapping, exclusions.json or unported.json`);
@@ -354,11 +415,12 @@ export function capabilityGate(advertised, data) {
 export function counts(status, fixtures) {
   const suites = {};
   for (const [stem, names] of Object.entries(status)) {
-    const c = { tests: 0, fixtured: 0, xctest: 0, excluded: 0, unported: 0 };
+    const c = { tests: 0, fixtured: 0, xctest: 0, facade: 0, excluded: 0, unported: 0 };
     for (const st of Object.values(names)) {
       c.tests++;
       if (st.covered.length) c.fixtured++;
       if (st.xctest) c.xctest++;
+      if (st.facade) c.facade++;
       if (st.excluded) c.excluded++;
       if (st.unported) c.unported++;
     }
