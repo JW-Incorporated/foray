@@ -2540,6 +2540,95 @@ test("NE-01: the page never configures a Preferences group, so the engine's Capa
   assert.deepEqual(talkers, ["player/durable-store.js"], "only durable-store.js may talk to the Preferences plugin");
 });
 
+/* ─────────── NE-05: the Swift parity runner and its two wrappers ───────────
+ *
+ * docs/native-engine-plan.md §6.4 and card NE-05. `ForayEngineParity` reads
+ * `player/parity/` IN PLACE, runs each family through its FamilyRunner, keeps
+ * the swift-pending books and writes parity-report.json; a thin XCTest wrapper
+ * in the core's own tests and another in ForayAudioPluginTests (the step
+ * ios-kit already runs, the zero-.github fallback) turn the results into one
+ * XCTFail per case. The Swift is executed by CI only; these pins keep what
+ * those runs proved from being quietly undone by an edit made on Windows. */
+
+test("NE-05: the parity library imports no XCTest, reads the fixtures in place, and honours FORAY_PARITY_DIR / PARITY_REPORT", () => {
+  /* WHY EACH HALF.
+       - No XCTest in ForayEngineParity: the library is linked by TWO test
+         targets in two packages, and SwiftPM test targets cannot share
+         sources; a library that imports XCTest also drags it into anything
+         else that ever links the library.
+       - No .json under foray-engine-core: plan §6 says fixtures are read in
+         place. A copy would be a second contract that drifts from the one JS
+         records, and every Swift green would then be about the copy.
+       - The two environment variables are the interface G-1a's engine-parity
+         job (NE-06) drives; renaming one would make that job read the walk's
+         tree and write no report, silently.
+     MUTATION: add `import XCTest` to ParitySuite.swift; drop a fixture copy
+     into foray-engine-core/Tests; rename "PARITY_REPORT" in ParitySuite.swift;
+     each fails here. */
+  const parityDir = path.join(CORE_DIR, "Sources", "ForayEngineParity");
+  const librarySources = swiftFilesUnder(parityDir);
+  assert.ok(librarySources.length >= 5, "ForayEngineParity should hold the runner, codec, comparator, fixtures and families");
+  for (const file of librarySources) {
+    assert.ok(!swiftImports(file).includes("XCTest"), `${path.relative(ROOT, file)} imports XCTest`);
+  }
+
+  const jsonCopies = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith(".")) continue; // .build/.swiftpm on a Mac
+      const abs = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(abs);
+      else if (entry.name.endsWith(".json")) jsonCopies.push(path.relative(ROOT, abs));
+    }
+  };
+  walk(CORE_DIR);
+  assert.deepEqual(jsonCopies, [], "fixtures are read in place from player/parity, never copied into the core");
+
+  const code = librarySources.map((f) => stripSwiftComments(fs.readFileSync(f, "utf8"))).join("\n");
+  assert.match(code, /environmentKey\s*=\s*"FORAY_PARITY_DIR"/);
+  assert.match(code, /reportKey\s*=\s*"PARITY_REPORT"/);
+  assert.ok(code.includes('"parity family=\\(family) cases=\\(cases)'),"the family log line the plan names (parity family=<f> cases=<n>)");
+  assert.match(code, /#filePath/, "the runner must be able to find player/parity without any environment");
+  /* NE-13: the schema promises "the Swift runner skips these files by this
+     flag". Without it, every id of a jsOnly family (continuation) is
+     "unaccounted" on macOS while JS stays green, and record.mjs refuses the
+     swift-pending entries that would quiet it. MUTATION: drop the
+     `document["jsOnly"]` read from Fixtures.swift; this fails here. */
+  assert.match(code, /document\["jsOnly"\]/, "FixtureFile must read the schema's jsOnly flag");
+  assert.match(code, /case jsOnly = "js-only"/, "the books need a js-only outcome: never run, never owed");
+});
+
+test("NE-05: both wrappers run the seam-gap and compare families and the whole manifest, and the registry holds both runners", () => {
+  /* THE ZERO-.github FALLBACK IS ONLY AS GOOD AS ITS WRAPPER. ios-kit's
+     `xcodebuild test -scheme ForayAudio` executes whatever
+     ForayAudioPluginTests declares; if the plugin-side wrapper lost its
+     seam-gap method or its catch-all, parity would stop running there with
+     every step still green. The host wrapper is pinned the same way for
+     G-1a's Linux run.
+     MUTATION: delete testSeamGapFamily from EngineParityWrapperTests.swift, or
+     SeamGapFamily.runner from ParityFamilies.all; each fails here. */
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    for (const method of ["testCompareFamily", "testSeamGapFamily", "testEveryManifestFamilyIsExecutedOrPending"]) {
+      assert.match(src, new RegExp(`func ${method}\\(`), `${where} has no ${method}`);
+    }
+    assert.match(src, /assertParityFamily\("seam-gap", requireRunner: true\)/, `${where} must require a seam-gap runner`);
+    assert.match(src, /SharedParityRun\.report\(/, `${where} does not run the parity suite`);
+    assert.match(src, /XCTFail\(/, `${where} reports no per-case failure`);
+  }
+
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  assert.match(all[1], /SeamGapFamily\.runner/);
+  assert.match(all[1], /CompareFamily\.runner/);
+});
+
 /* ─────────── NE-02: the reducer, copied into the core with its tests ───────────
  *
  * docs/native-engine-plan.md §4.1 and card NE-02. PlayerQueueState.swift and

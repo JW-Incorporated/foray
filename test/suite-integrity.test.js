@@ -207,6 +207,13 @@ const FLOORS = {
      is a default that can silently drift back to #491's "best installed
      voice of any name", the exact behaviour the founder overruled. */
   "player/default-voice.test.js": 10,
+  /* Continuous playback's rules (NE-13, docs/native-engine-plan.md §5.5): what
+     plays after an episode, the eight hops the page plans for the native
+     engine, and the once-only ledger for what that engine played while the
+     page slept. The suite READS its fixtures (player/parity/fixtures/continuation,
+     whose case count is floored in player/parity/floors.json), so a deleted test
+     here is a rule nothing asserts any more. */
+  "player/continuation.test.js": 11,
   "player/queue-manager.test.js": 144, // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 58, // 2026-09-22 audit (L2): `elementResumed` — interrupted -> playing with no audio effect, and nothing from any other state; 56 -> 58
   "player/seam-gap.test.js": 16,
@@ -276,7 +283,7 @@ const FLOORS = {
      enforced by "parity fixture families hold their floors" below, so deleting
      fixture cases is loud here too, not only in the suite that reads them. */
   "player/parity/run.test.js": 32, // NE-12j: the media-actions adapter records real arity and refuses a press the OS could never deliver; 31 -> 32
-  "player/parity/coverage.test.js": 23, // NE-12j: media-session is wholly classified — media-episode, an exclusion, or NE-29j's Foray half in the foray capability's family; 22 -> 23 // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
+  "player/parity/coverage.test.js": 24, // NE-13: the continuation capability owes nothing, because its family is JS-only (plan C-2); 23 -> 24 // NE-12j: media-session is wholly classified — media-episode, an exclusion, or NE-29j's Foray half in the foray capability's family; 22 -> 23 // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
   /* NE-10j: the rows and number-format families. rows.test.js is what makes
      them a RECORDING — every recorded row is rebuilt from the real builders,
      and the page's own PositionStore, on the wall clock, writes the recorded
@@ -1009,6 +1016,12 @@ const FLOORS = {
      of silent-wrong-behavior this repo's floors exist to catch, not a crash
      path any other suite would notice going missing. Every test names its
      mutation; see the suite header for the full list of what each pins. */
+  /* The page's wiring around those rules (NE-13): app.js delegates to them,
+     re-sends the plan when the Continuous playback switch moves mid-episode,
+     and writes `cp_engine_applied` before logging a replayed advance or
+     position. Each is one deleted line from a car that plays the wrong thing,
+     or a history that counts a drive twice. */
+  "test/engine-continuation.test.js": 6,
   "test/up-next-autoadvance.test.js": 11, // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
      t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
@@ -1177,7 +1190,7 @@ const FLOORS = {
      overwritten, every new or changed case handed to swift-pending.json with
      its port card, and --mutate's kill/survive/pending verdicts with a no-op
      control. Zero slack. */
-  "tools/parity/record.test.mjs": 16, // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
+  "tools/parity/record.test.mjs": 17, // NE-13: a jsOnly family (the continuation hops, plan C-2) records with no port card and owes swift-pending nothing; 16 -> 17 // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
   /* NE-04: EngineConstants.swift, Diag/Vocabulary.swift and vocabulary.json
      are GENERATED from the JS, and this is what makes them unable to drift:
      stale on disk, a duplicate export name, both DRIFT_TOLERANCE_SEC values in
@@ -1416,7 +1429,7 @@ const FLOORS = {
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
   "tools/mobile/prepare-webdir.test.mjs": 84, // 2026-09-22 audit (L2), founder report 3: the bundle carries build-stamp.json with the committed deploy_id; 83 -> 84 // +1 audit finding E (2026-09-12): seedCarries is exactly the negation of the one `isGeneratedDraft`; 82 -> 83 // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
-  "tools/mobile/shell-invariants.test.mjs": 73, // NE-02 (docs/native-engine-plan.md): the core's reducer and its tests are copies whose headers name the ios/ source @ adde5e12 and say ios/ is frozen reference; every one of the 34 original reducer tests survives in the copy, by name; 71 -> 73 // NE-01 (docs/native-engine-plan.md): foray-engine-core is pure (no deps, Foundation-only sources, no XCTest in the parity library); foray-audio links it by path and keeps one product (the scheme list); engineHello is an iOS-only stub that answers from the core; the Preferences pin is test-only and cannot compile out; the page never configures a Preferences group; 66 -> 71 // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
+  "tools/mobile/shell-invariants.test.mjs": 75, // NE-05 (docs/native-engine-plan.md): the Swift parity library imports no XCTest, reads player/parity in place (no .json copy under the core) and keeps the FORAY_PARITY_DIR / PARITY_REPORT / family-line interface; both XCTest wrappers run the compare and seam-gap families and the whole manifest, and the registry holds both runners; 73 -> 75 // NE-02 (docs/native-engine-plan.md): the core's reducer and its tests are copies whose headers name the ios/ source @ adde5e12 and say ios/ is frozen reference; every one of the 34 original reducer tests survives in the copy, by name; 71 -> 73 // NE-01 (docs/native-engine-plan.md): foray-engine-core is pure (no deps, Foundation-only sources, no XCTest in the parity library); foray-audio links it by path and keeps one product (the scheme list); engineHello is an iOS-only stub that answers from the core; the Preferences pin is test-only and cannot compile out; the page never configures a Preferences group; 66 -> 71 // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only

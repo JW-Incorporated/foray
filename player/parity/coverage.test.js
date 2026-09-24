@@ -115,6 +115,7 @@ test("the fifteen covered suites are the plan's fifteen, and each not-yet-writte
 const RECORDED_SUITES = Object.freeze({
   "queue-state": { family: "queue-state", card: "NE-07j" },
   "playback-rate": { family: "rate", card: "NE-07j" },
+  "continuation": { family: "continuation", card: "NE-13" },
 });
 
 test("a suite whose recording card has landed owes nothing, and is fixtured into its own family only", () => {
@@ -168,14 +169,26 @@ test("media-session is wholly classified: media-episode, an exclusion, or NE-29j
   assert.ok(DATA.capabilities.foray.includes("media") && !DATA.capabilities.episode.includes("media"));
 });
 
+test("the continuation capability owes nothing: its family is JS-only, so the gate would let it ship today", () => {
+  // Plan §5.5 C-2: the page computes the hops, the engine walks them, and no
+  // Swift card ports the rule. MUTATION: drop `"jsOnly": true` from the
+  // continuation fixture and re-record with a --port-card -> its 48 ids land
+  // in swift-pending and advertising "continuation" is refused.
+  assert.ok(FIXTURES.filter((f) => f.family === "continuation").every((f) => f.doc.jsOnly === true));
+  assert.deepStrictEqual(capabilityGate(new Map([["continuation", "a test"]]), DATA), []);
+});
+
 test("a suite that appears while still marked awaiting is refused, so it is never outside the guard", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "parity-await-"));
   try {
     fs.mkdirSync(path.join(root, "player"), { recursive: true });
-    fs.writeFileSync(path.join(root, "player", "continuation.test.js"), 'test("hop", () => {});\n');
-    const suites = { continuation: readCoveredSuites(root).continuation };
-    const { problems } = classify(root, DATA, FIXTURES, suites);
-    assert.ok(problems.some((p) => /still marks it awaiting NE-13/.test(p)), problems.join("\n"));
+    /* A synthetic entry: the real awaiting suites land one by one (NE-13 made
+       continuation.test.js real), and this refusal must outlive the last. */
+    const covered = { ...COVERED_SUITES, hopper: { card: "NE-99", family: "continuation", awaiting: "NE-99" } };
+    fs.writeFileSync(path.join(root, "player", "hopper.test.js"), 'test("hop", () => {});\n');
+    const suites = { hopper: readCoveredSuites(root, { hopper: covered.hopper }).hopper };
+    const { problems } = classify(root, DATA, FIXTURES, suites, covered);
+    assert.ok(problems.some((p) => /still marks it awaiting NE-99/.test(p)), problems.join("\n"));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
