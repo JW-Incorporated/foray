@@ -625,6 +625,25 @@ Weeks 12-14:  NE-38..NE-40 → TestFlight 3 → G-6
 | G-6 | Wyatt | DV-7a, DV-7b, DV-11, the regression drive. | M3 exit |
 | G-7 | Wyatt (`founder-approved`; `docs/DECISIONS.md` is denied) | Separate DECISIONS PRs: NE-27d, NE-37d, NE-40d. Batched with label sittings. | Records only; never blocks a flip |
 
+### 9a. Defaults applied by the orchestrator (2026-09-24), so no card waits
+
+The founder's standing instruction is to route only true product/spend/legal calls to him and take a sensible default for the rest, recording it (CLAUDE.md, `docs/DECISIONS.md`). His instruction for this deck, 2026-09-24: *"Please wrap up whatever is in flight and then focus on getting this out the door before starting new work."* Each default below is reversible and is named in the card that implements it; a founder ruling overrides it.
+
+| OQ | Default | Why |
+|---|---|---|
+| OQ-1 placement | The pure core lives under `mobile/plugins/` (a new SwiftPM package beside `foray-audio`), not in `ios/`. | `ios/` is reference material and outside auto-merge; the shipping plugins already live here. `PlayerQueueState.swift` is copied (NE-02), `ios/` untouched. |
+| OQ-2 required parity check | Yes, after G-1a's week green (G-1b). | The repo is public, so macOS runner minutes cost nothing; drift between JS and Swift is the failure this deck exists to prevent. |
+| OQ-3 synthesized narration speed | Keep today's behaviour (the listener's rate) behind the switch; still a founder question (round-1 qa 28). | No behaviour change without his ruling. |
+| OQ-4 provisional values | Ship M1 with provisional deadlines + diagnostics; NE-38 replaces them from field rows. | Measurements need a native build to exist first. |
+| OQ-5 audition | Through the engine (single session owner, S-1). | Two owners is the defect this deck removes. |
+| OQ-6 jingle clock | Count an authored JINGLE at the asset's measured duration (3.0 s), fixed JS-first before fixtures freeze (NE-29j). | The clock and the audio must agree; 1.5 s vs 3.0 s is a latent drift. |
+| OQ-7 remote de-dup | Keep until DV-6 shows single delivery; retire in NE-39s/NE-41. | Removing a guard needs evidence. |
+| OQ-8 playbackState on iOS | Fix in the engine only (write `nowPlayingInfo` rate; do not rely on the macOS-only property). | The legacy shim is retired by this deck. |
+| OQ-9 kill switch | Native default-on for the founder's builds, with a Developer drawer toggle back to the JS player. | He tests in the car; a one-tap fallback protects his daily listening. |
+| OQ-10 cold launch | In M1 (NE-24): a car's play after iOS terminated the app must work. | "Paused for a long time" is exactly when iOS terminates a background app. |
+| OQ-11 delayed rows | Accepted: `play_started`/history rows written on the next page wake are local-only rows the privacy policy already discloses. | No new data leaves the device. |
+| OQ-12 pause-hold policy | Decided from the H-1/H-1b rows in NE-38, default `.forever` until then. | Needs measurements. |
+
 ## 10. What needs the founder's phone
 
 | Question | When | Answered by rows |
