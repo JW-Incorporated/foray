@@ -163,7 +163,8 @@ function heldIdb(seed = {}) {
  * @param {object|null} [o.eventLog] a queue to publish as window.forayEventLog
  * @param {number} [o.storageWaitMs] the hydration bound, shortened
  */
-function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs = null, hash = "#/" } = {}) {
+function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs = null, hash = "#/", readyState = "complete", ceilingMs = null } = {}) {
+  const docListeners = new Map();
   const body = new El("body");
   const view = new El("main"); view.id = "view"; body.appendChild(view);
   for (const id of ["drawer", "drawer-overlay", "drawer-playlists", "family-toggle", "player-toggle", "autoadvance-toggle"]) {
@@ -187,8 +188,9 @@ function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs 
     ...(store ? { forayStorage: store, forayStorageReady: store.hydrate() } : {}),
     ...(eventLog ? { forayEventLog: eventLog } : {}),
     document: {
-      body, documentElement: body, readyState: "complete", hidden: false,
-      addEventListener() {}, removeEventListener() {},
+      body, documentElement: body, readyState, hidden: false,
+      addEventListener(t, fn) { if (!docListeners.has(t)) docListeners.set(t, []); docListeners.get(t).push(fn); },
+      removeEventListener() {},
       createElement: (t) => new El(t),
       querySelector: (s) => {
         const str = String(s).trim();
@@ -217,9 +219,12 @@ function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs 
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
   if (storageWaitMs != null) vm.runInContext(`STORAGE_WAIT_MS = ${storageWaitMs};`, ctx);
+  if (ceilingMs != null) vm.runInContext(`STORAGE_SETTLE_CEILING_MS = ${ceilingMs};`, ctx);
   const state = vm.runInContext("state", ctx);
   return {
     ctx, state, view, menu, refresh, fetched, winListeners,
+    fireWin: (t) => { for (const fn of winListeners.get(t) || []) fn(); winListeners.set(t, []); },
+    fireDoc: (t) => { ctx.document.readyState = "complete"; for (const fn of docListeners.get(t) || []) fn(); docListeners.set(t, []); },
     booted: async (max = 600) => {
       for (let i = 0; i < max && (/data-boot-loading/.test(view.innerHTML) || !state.ready); i++) await settle(1);
       await settle(5);
@@ -268,6 +273,33 @@ test("perf-1: all eight boot documents are requested before storage hydration ha
     assert.ok(m.fetched.some((u) => u.includes(doc)), `${doc} waited for storage`);
   }
   assert.strictEqual(m.state.ready, false, "premise: hydration is still held, so the boot has not finished");
+});
+
+test("ROUND 2 review: generate-manifest runs as a script when reached through a symlink or junction, not a silent exit 0", async () => {
+  /* The entry guard compared path.resolve(argv[1]) with import.meta.url, which
+     Node realpaths and argv[1] is not: from a symlinked or junctioned checkout
+     `--check` exited 0 without checking. MUTATION: put
+     `path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)` back
+     inside isEntryScript -> red. */
+  const os = require("node:os");
+  const url = pathToFileURL(path.join(ROOT, "tools/ci/generate-manifest.mjs")).href;
+  const { isEntryScript } = await import(url);
+  const real = path.join(ROOT, "tools", "ci", "generate-manifest.mjs");
+  assert.strictEqual(isEntryScript(real, url), true, "the plain path");
+  assert.strictEqual(isEntryScript(path.join(ROOT, "tools", "ci", "boot-path-not-this.mjs"), url), false, "another file is not it");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gm-link-"));
+  const link = path.join(dir, "ci");
+  try {
+    fs.symlinkSync(path.join(ROOT, "tools", "ci"), link, "junction");
+    assert.strictEqual(isEntryScript(path.join(link, "generate-manifest.mjs"), url), true, "through a symlink or junction");
+    if (process.platform === "win32") {
+      const flipped = real[0] === real[0].toUpperCase() ? real[0].toLowerCase() + real.slice(1) : real[0].toUpperCase() + real.slice(1);
+      assert.strictEqual(isEntryScript(flipped, url), true, "with the drive letter cased differently");
+    }
+  } finally {
+    try { fs.unlinkSync(link); } catch (_) { try { fs.rmdirSync(link); } catch (_) { /* best effort */ } }
+    try { fs.rmdirSync(dir); } catch (_) { /* best effort */ }
+  }
 });
 
 test("perf-1: index.html modulepreloads exactly the player graph the manifest generator lists", async () => {
@@ -344,6 +376,63 @@ test("races-4: no profile id is minted and no account is signed up before hydrat
   assert.ok(log.rows.every((r) => r.profile === "p-durable"), "and stamped with the durable id");
   assert.ok(!m.fetched.some((u) => /auth\/v1\/signup/.test(u)), "no signup after it either: the old account is reused");
   assert.strictEqual(JSON.parse(store.getItem("cp_sb_session")).user_id, "uid-old");
+});
+
+test("ROUND 2 review (races-4): a store that arrives AFTER the bound (a slow module, not a slow IndexedDB) still gates boot's writes until it hydrates", async () => {
+  /* storageReady latched "settled" whenever the wait came back empty, the 5 s
+     timeout included, so a module still downloading published its store into
+     an open gate: logEvent minted a new cp_profile_id against the unhydrated
+     store. MUTATION: `markStorageSettled(); return null;` for an empty wait
+     again -> a new profile id shadows the durable one; red. */
+  const { store, tier } = await storeOver({ idb: { cp_profile_id: JSON.stringify("p-durable") } });
+  const log = fakeEventLog();
+  const m = mount({ eventLog: log, storageWaitMs: 20, readyState: "interactive" });
+  await m.booted();
+  assert.strictEqual(m.state.ready, true, "premise: the page painted at the bound, with no store yet");
+  assert.strictEqual(m.ctx.storageWaiting(), true, "the module is still loading: the store is late, not absent");
+
+  m.ctx.forayStorage = store;          // the module lands and publishes its store...
+  m.fireWin("forayplayer:ready");
+  m.ctx.logEvent("picked", { episode_id: "e1" });   // ...and the listener does something before it hydrates
+  assert.strictEqual(m.ctx.storageWaiting(), true, "the gate is shut while it hydrates");
+
+  tier.release();
+  await store.hydrate();
+  await settle(20);
+  await store.flush();
+  assert.strictEqual(JSON.parse(store.getItem("cp_profile_id")), "p-durable", "the durable profile id was not shadowed");
+  assert.ok(log.rows.length >= 1 && log.rows.every((r) => r.profile === "p-durable"), "the buffered row carries the durable id");
+});
+
+test("ROUND 2 review (races-4): with the modules run and no store published, the gate opens (nothing is coming)", async () => {
+  const m = mount({ storageWaitMs: 20, readyState: "interactive" });
+  await m.booted();
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise: still parsing, the store may yet come");
+  m.fireDoc("DOMContentLoaded");
+  await settle(3);
+  assert.strictEqual(m.ctx.storageWaiting(), false, "DOMContentLoaded with no store: plain localStorage, as always");
+});
+
+test("ROUND 2 review (races-4): a hydration that NEVER finishes is bounded, and nudges before it share one waiter", async () => {
+  /* Nothing bounded the settle: a hung IndexedDB held every waiter for the
+     session, so interests, the seen list and events were lost at page close,
+     and each nudge pushed one more closure. MUTATIONS: drop
+     armStorageSettleCeiling from settleOnHydrate -> the gate never opens; red.
+     Push `saveInterests` per call again -> the waiter count grows; red. */
+  const { store } = await storeOver({ idb: { cp_seen: JSON.stringify(["x"]) } });   // never released
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 4000 });
+  await m.booted();
+  const tax = JSON.parse(read("data/taxonomy.json"));
+  const root = tax.nodes.find((n) => n.parent === null);
+  const before = vm.runInContext("storageSettleWaiters.length", m.ctx);
+  for (let i = 0; i < 5; i++) m.ctx.nudgeTopics([root.id], 0.05);
+  const after = vm.runInContext("storageSettleWaiters.length", m.ctx);
+  assert.ok(after - before <= 1, `five nudges queued ${after - before} waiters`);
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise: still hydrating");
+  for (let i = 0; i < 80 && m.ctx.storageWaiting(); i++) await sleep(100);
+  assert.strictEqual(m.ctx.storageWaiting(), false, "the ceiling opened the gate");
+  const saved = JSON.parse(store.getItem("cp_interests") || "null");
+  assert.ok(saved && typeof saved[root.id] === "number", "the interests reached the store's sync tier");
 });
 
 test("races-4: saveInterests replaces a stored weight only for an id this session set", () => {
@@ -466,6 +555,25 @@ test("perf-2 (sweep): EVERY image app.js draws below hero size asks for its draw
   const card = m.ctx.miniCard({ branch: "science", role: "core", item: ep, items: [ep] });
   assert.match(card, /\/168x168bb\.jpg"/, "Home's card fetched the 600 px image for a 56 px box");
   assert.match(card, /decoding="async" width="56" height="56"/);
+});
+
+test("ROUND 2 review (perf-2): an <img> whose width/height attributes CSS resizes by width also frees its height", () => {
+  /* The attributes become CSS width and height. `.ep-art` overrode the width
+     (min(100%, 68vmin)) and left the 600px height, so with both definite its
+     aspect-ratio was ignored and a phone drew the art ~265 x 600. MUTATION:
+     drop `height: auto` from `.ep-art` -> red, naming it. */
+  const css = read("styles.css").replace(/\/\*[\s\S]*?\*\//g, " ");
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ sels: m[1].split(",").map((x) => x.trim()), body: m[2] }));
+  const bad = [];
+  for (const tag of APP_SRC.match(/<img\b[^>]*>/g) || []) {
+    if (!/\bheight="\d+"/.test(tag)) continue;
+    for (const cls of ((/class="([^"]+)"/.exec(tag) || [])[1] || "").split(/\s+/).filter(Boolean)) {
+      const mine = rules.filter((r) => r.sels.some((sel) => new RegExp(`\\.${cls}(?![\\w-])(?!.*[ >+~])`).test(sel) && !/:hover|:focus/.test(sel)));
+      const sets = (prop) => mine.some((r) => new RegExp(`(^|;)\\s*${prop}\\s*:`).test(r.body));
+      if (sets("width") && !sets("height")) bad.push(cls);
+    }
+  }
+  assert.deepStrictEqual(bad, [], "an image whose CSS width overrides its attribute keeps the attribute's height");
 });
 
 /* ==================================================================== */

@@ -2203,6 +2203,12 @@ body.fp-expanded { overflow: hidden; }
    aspect means a publisher's non-square art is fitted rather than stretched. */
 .ep-art {
   width: min(100%, 68vmin);
+  /* `height: auto` (audit round 2 review of perf-2): the template's
+     width="600" height="600" become CSS width and height; the width is
+     overridden above, and without this the 600px HEIGHT stayed — with both
+     definite, aspect-ratio is ignored, and a phone drew the art ~265 x 600,
+     a tall cropped strip. With it, the attributes only reserve the ratio. */
+  height: auto;
   aspect-ratio: 1 / 1;
   object-fit: cover;
   max-width: 100%;

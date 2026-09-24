@@ -70,7 +70,7 @@
  *   - .github/workflows/manifest-autofix.yml, the safety net for every other PR.
  */
 
-import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, realpathSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -311,7 +311,24 @@ function readStampedBuildId() {
 }
 
 /* Run only as a script, so a suite can import `listedFiles` and
-   `playerSources` without triggering a --write/--check. */
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+   `playerSources` without triggering a --write/--check.
 
-export { computeManifest, listedFiles, playerSources, fontSources };
+   REALPATH ON BOTH SIDES, CASE-FOLDED ON WINDOWS (round-2 review). Node
+   realpaths the main module before it builds `import.meta.url`, but
+   `process.argv[1]` is only made absolute — so from a symlinked checkout, a
+   Windows junction, or a shell whose drive letter is cased differently, the
+   two never matched and `--check` exited 0 WITHOUT CHECKING (and `--write`
+   wrote nothing), letting a stale manifest pass a local gate. */
+function isEntryScript(argv1 = process.argv[1], metaUrl = import.meta.url) {
+  if (!argv1) return false;
+  const canon = (p) => {
+    let r;
+    try { r = realpathSync(p); } catch (_) { r = path.resolve(p); }
+    return process.platform === "win32" ? r.toLowerCase() : r;
+  };
+  return canon(argv1) === canon(fileURLToPath(metaUrl));
+}
+
+if (isEntryScript()) main();
+
+export { computeManifest, listedFiles, playerSources, fontSources, isEntryScript };

@@ -141,6 +141,7 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
   const winListeners = new Map();
   const fetched = [];
   const reloads = [];
+  const docListeners = new Map();
   const ctx = {
     console: { ...console, warn() {}, error() {} },
     /* Only what a test routes answers; everything else (init()'s boot fetches)
@@ -149,7 +150,8 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
     localStorage: { get length() { return 0; }, key: () => null, getItem: () => null, setItem() {}, removeItem() {} },
     document: {
       body, documentElement: body, readyState, hidden: false,
-      addEventListener() {}, removeEventListener() {},
+      addEventListener(t, fn) { if (!docListeners.has(t)) docListeners.set(t, []); docListeners.get(t).push(fn); },
+      removeEventListener() {},
       createElement: (t) => new El(t),
       querySelector: (s) => {
         const str = String(s).trim();
@@ -198,6 +200,7 @@ function mount({ hash = "#/", fetchImpl = () => new Promise(() => {}), bridge = 
       return true;
     },
     fire: (type) => { for (const fn of winListeners.get(type) || []) fn(); winListeners.set(type, []); },
+    fireDoc: (type) => { ctx.document.readyState = "complete"; for (const fn of docListeners.get(type) || []) fn(); docListeners.set(type, []); },
   };
 }
 
@@ -348,6 +351,27 @@ test("#/forays with a player that is still loading says so, with Try again", asy
   assert.doesNotMatch(m.html(), /0 forays|No forays right now/);
   assert.ok(m.view.querySelector("[data-retry]"), "the failure offers Try again");
   assert.ok(!m.view.querySelector("[data-reload]"), "…and not a reload the slow module does not need");
+});
+
+test("ROUND 2 review (states-6): readyState 'interactive' is BEFORE the deferred modules run, so a slow module is offered Try again, not a reload", async () => {
+  /* The parser sets "interactive" and THEN runs the deferred/module scripts;
+     DOMContentLoaded fires after them. `readyState !== "loading"` called a
+     module still downloading "failed" and offered a reload of the whole slow
+     graph. MUTATION: put `document.readyState !== "loading"` back in
+     playerModuleFailed -> Reload 4a on the first paint; red. */
+  const m = mount({ hash: "#/forays", readyState: "interactive" });
+  m.state.forays = FORAYS_DOC;
+  m.ctx.renderCurrentPage();
+  m.fire("forayplayer:ready"); // the wait ended; the module is still downloading
+  await settle();
+  assert.match(m.html(), /The player didn.t load\./);
+  assert.ok(m.view.querySelector("[data-retry]"), "a slow module: Try again re-awaits it");
+  assert.ok(!m.view.querySelector("[data-reload]"), "no reload of a download still in progress");
+  m.fireDoc("DOMContentLoaded");   // every deferred module has now run: no bridge means it failed
+  m.ctx.renderCurrentPage();
+  m.fire("forayplayer:ready");
+  await settle();
+  assert.ok(m.view.querySelector("[data-reload]"), "after DOMContentLoaded with no bridge, it is a failure");
 });
 
 test("#/forays with a player module that FAILED offers Reload 4a, not a Try again that can never succeed (states-6)", async () => {
@@ -973,7 +997,13 @@ test("a play button whose play() throws or refuses reports it to the player bar"
     ["refuses", async () => false],
   ]) {
     const reports = [];
-    const m = mount({ bridge: { isCurrent: () => false, play, reportPlayFailure: (e) => reports.push(e) } });
+    /* The real player makes the tapped item current before its load answers
+       (setNowPlaying), so a refusal of THIS item is a failure; a refusal while
+       another item is current is a superseded play and is silent (round-2
+       review of p-impatient-2 — test/playable-episodes.test.js). */
+    let cur = null;
+    const tracked = async (item) => { cur = item.id; return play(item); };
+    const m = mount({ bridge: { isCurrent: (id) => id === cur, play: tracked, reportPlayFailure: (e) => reports.push(e) } });
     m.state.itemIndex = { ep1: { id: "ep1", title: "E", audio_url: "https://x.test/e.mp3" } };
     m.view.innerHTML = `<div><button data-play="ep1">▶</button></div>`;
     m.ctx.bindPlay(m.view);

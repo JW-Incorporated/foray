@@ -1638,6 +1638,31 @@ test("persist-8: a sync already running is waited for before the server step", a
   assert.ok(post < del, "the events DELETE went out before a batch already in flight landed");
 });
 
+test("ROUND 2 review (persist-8): a sync whose POST landed while a deletion that then FAILED remotely was running marks its rows synced — no duplicate batch", async () => {
+  /* syncOutlived was true for the whole deletion (ddBusy, the moved epoch), so
+     a POST that succeeded skipped markSynced; the deletion then failed remotely
+     and left the device untouched on purpose, and the next sync re-POSTed the
+     same rows. MUTATION: put `if (syncOutlived(epoch)) return;` back before
+     markSynced -> the rows are still unsynced; red. */
+  const { arm, ctx, log, queue } = await mount({
+    seed: { cp_sb_session: sessionRow(), cp_interests: "{}" },
+    events: QUEUED,
+    reply: (url, method) => (method === "DELETE" ? { status: 500 } : { status: 204 }),
+  });
+  const real = ctx.fetch;
+  ctx.fetch = (url, opts) => (opts && opts.method === "POST" && String(url).includes("/rest/v1/events")
+    ? new Promise((r) => setTimeout(r, 30)).then(() => real(url, opts))
+    : real(url, opts));
+  const sync = ctx.trySyncEvents();
+  await new Promise((r) => setTimeout(r, 0));
+  await arm();
+  const out = await ctx.deleteMyData();
+  await sync;
+  assert.strictEqual(out.state, "remote-failed", "premise: the server step failed and the device was left as it was");
+  assert.ok(log.some((e) => e.method === "POST" && e.url.includes("/rest/v1/events")), "premise: the batch was delivered");
+  assert.deepStrictEqual(await queue.unsynced(), [], "the delivered rows are marked synced, so they are not sent twice");
+});
+
 test("persist-2: a finished deletion on Home writes no cp_playlists and opens no onboarding over the result", async () => {
   /* Booted for real (state.ready, a real renderHome), because the parked harness
      returns from route() at its first line and could not see either effect.
@@ -1709,6 +1734,14 @@ test("persist-7: 'Clear this device only' says, before the tap and after it, tha
   assert.strictEqual(cost.hidden, false, "the cost is not stated beside the button");
   assert.match(cost.textContent, /can no longer be deleted/);
   assert.ok(cost.textContent.trim().split(/\s+/).length <= 18);
+  /* Round-2 review: a screen reader reaches the cost BEFORE the button, and
+     the button is described by it. MUTATIONS: append the cost after the button
+     again; drop the aria-describedby. */
+  assert.ok(cost.id, "the cost line has an id to be referenced by");
+  assert.strictEqual(ui.deviceOnly.getAttribute("aria-describedby"), cost.id, "the button is described by its cost");
+  const parent = ui.deviceOnly.parentElement || ui.deviceOnly.parent;
+  const kids = parent ? parent.children : [];
+  assert.ok(kids.indexOf(cost) >= 0 && kids.indexOf(cost) < kids.indexOf(ui.deviceOnly), "and the cost comes first in reading order");
   await ctx.deleteMyData({ deviceOnly: true });
   assert.strictEqual(cost.hidden, false, "and it stays up after the clear it describes");
   await ui.openBtn.click();

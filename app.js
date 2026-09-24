@@ -167,6 +167,38 @@ function lsSet(key, value) {
 /* `let`, so a suite can shorten it (test/boot-path.test.js). */
 let STORAGE_WAIT_MS = 5000;
 
+/* HAVE THE DEFERRED MODULES RUN? (audit round 2 review of states-6 and
+   races-4.) Per the HTML spec the parser sets `readyState` to "interactive"
+   BEFORE it runs the deferred and module scripts, and DOMContentLoaded fires
+   only after them -- so "readyState is no longer loading" does NOT mean the
+   player module has run or failed; on a slow cell link its 28-file graph can
+   still be downloading. Both readers below took it to mean exactly that: a
+   slow module was offered "Reload 4a" (restarting the slow download), and a
+   storage wait that timed out latched the hydration gate open for good. The
+   flag flips on DOMContentLoaded, or is already true once the document is
+   "complete". A stub document with neither state reads as run. */
+let deferredScriptsRan = (() => {
+  try {
+    const rs = document.readyState;
+    return rs !== "loading" && rs !== "interactive";
+  } catch (_) { return true; }
+})();
+const deferredScriptsWaiters = [];
+if (!deferredScriptsRan) {
+  try {
+    document.addEventListener("DOMContentLoaded", () => {
+      deferredScriptsRan = true;
+      for (const fn of deferredScriptsWaiters.splice(0)) {
+        try { fn(); } catch (err) { console.error("after DOMContentLoaded", err); }
+      }
+    }, { once: true });
+  } catch (_) { deferredScriptsRan = true; }
+}
+function afterDeferredScripts(fn) {
+  if (deferredScriptsRan) fn();
+  else deferredScriptsWaiters.push(fn);
+}
+
 function waitForStorage() {
   if (window.forayStorage) return Promise.resolve(window.forayStorage);
   if (typeof window.addEventListener !== "function") return Promise.resolve(null);
@@ -174,13 +206,9 @@ function waitForStorage() {
     let done = false;
     const finish = () => { if (!done) { done = true; resolve(window.forayStorage || null); } };
     window.addEventListener("forayplayer:ready", finish, { once: true });
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", finish, { once: true });
-    } else {
-      // Parsing already finished, so every deferred module has run. Either the
-      // store is here (handled above) or it is never arriving.
-      finish();
-    }
+    /* Every deferred module has run (or failed) once DOMContentLoaded has
+       fired: either the store is here (handled above) or it is never arriving. */
+    afterDeferredScripts(finish);
     setTimeout(finish, STORAGE_WAIT_MS);
   });
 }
@@ -206,15 +234,69 @@ function waitForStorage() {
    ids this session set, and a late hydration re-seeds the rest. */
 let storageSettled = false;
 const storageSettleWaiters = [];
+/** The bound ran out while the player module (which publishes the store) was
+    still loading: the store is LATE, not absent (audit round 2 review). */
+let storageLate = false;
 
-/** Is there a durable store whose hydration has not landed yet? With no store
-    published there is nothing to wait for: the writes go to plain
-    localStorage, as they always have, and the store adopts them when it
-    arrives. */
+/** Is there a durable store whose hydration has not landed yet -- or one that
+    is still on its way? With no store coming there is nothing to wait for: the
+    writes go to plain localStorage, as they always have. */
 function storageWaiting() {
   if (storageSettled) return false;
   const s = window.forayStorage;
-  return Boolean(s && typeof s.hydrate === "function");
+  if (s && typeof s.hydrate === "function") return true;
+  return storageLate;
+}
+
+/* A CEILING OF ITS OWN (audit round 2 review). The five-second bound lets the
+   page PAINT past a hung IndexedDB; nothing bounded the settle, so a hydration
+   that never answered (idb-tier.js has no open timeout -- a WKWebView IndexedDB
+   that never calls back) held every waiter for the whole session: interests,
+   the seen list and the event rows were all lost at page close. Past this the
+   gate opens and they flush to the store's sync tier (or plain localStorage).
+   `let`, so a suite can shorten it. */
+let STORAGE_SETTLE_CEILING_MS = 30000;
+let storageCeilingArmed = false;
+function armStorageSettleCeiling() {
+  if (storageCeilingArmed || storageSettled) return;
+  storageCeilingArmed = true;
+  setTimeout(() => {
+    if (storageSettled) return;
+    console.warn("[4a] storage never settled; writing to the local tier");
+    storageLate = false;
+    markStorageSettled();
+  }, STORAGE_SETTLE_CEILING_MS);
+}
+
+/** Settle when THIS store's hydration lands (or the ceiling passes). */
+function settleOnHydrate(store) {
+  const landed = (async () => {
+    try { await store.hydrate(); } catch (_) { /* every tier failure is already recorded in health() */ }
+  })();
+  landed.then(markStorageSettled);
+  armStorageSettleCeiling();
+  return landed;
+}
+
+/** The wait ended with no store. Settle only when it is KNOWN not to be coming
+    (the deferred modules have run and published none); a store merely late --
+    the bound passed while the module graph was still downloading -- keeps the
+    gate shut until it arrives and hydrates. Latching "settled" on the timeout
+    let logEvent mint a new cp_profile_id and the sync sign up a new account
+    against the unhydrated store the moment it arrived (races-4, by a slow
+    module instead of a slow IndexedDB). */
+function settleWhenStoreArrives() {
+  const arrived = () => {
+    if (storageSettled) return;
+    const s = window.forayStorage;
+    if (s && typeof s.hydrate === "function") { storageLate = false; settleOnHydrate(s); return; }
+    if (deferredScriptsRan) { storageLate = false; markStorageSettled(); }
+  };
+  if (deferredScriptsRan) { arrived(); return; }
+  storageLate = true;
+  try { window.addEventListener("forayplayer:ready", arrived, { once: true }); } catch (_) { /* no events: DOMContentLoaded below */ }
+  afterDeferredScripts(arrived);
+  armStorageSettleCeiling();
 }
 
 /** Run `fn` now unless a store is still hydrating, else the moment it lands. */
@@ -234,13 +316,10 @@ function markStorageSettled() {
 
 async function storageReady() {
   const store = await waitForStorage();
-  if (!store || typeof store.hydrate !== "function") { markStorageSettled(); return null; }
-  const landed = (async () => {
-    try { await store.hydrate(); } catch (_) { /* every tier failure is already recorded in health() */ }
-  })();
+  if (!store || typeof store.hydrate !== "function") { settleWhenStoreArrives(); return null; }
   // Registered BEFORE the race below, so an on-time hydration has settled by
   // the time the caller resumes.
-  landed.then(markStorageSettled);
+  const landed = settleOnHydrate(store);
   await Promise.race([landed, new Promise(resolve => setTimeout(resolve, STORAGE_WAIT_MS))]);
   return store;
 }
@@ -286,6 +365,15 @@ let deletionEpoch = 0;
 function syncOutlived(epoch) {
   return dataDeletionInProgress || ddBusy || epoch !== deletionEpoch;
 }
+
+/* How many times the device's rows have actually been purged. A sync whose
+   POSTs all succeeded marks its rows synced unless a purge reached the queue
+   meanwhile (audit round 2 review): skipping markSynced merely because a
+   deletion STARTED left rows the server already held unsynced, and when that
+   deletion then failed remotely (the device deliberately untouched) the next
+   sync re-sent the batch — event rows carry no client id, so the server
+   stored every one twice. */
+let localClears = 0;
 
 function logEvent(type, payload) {
   if (dataDeletionInProgress) return;
@@ -462,6 +550,7 @@ function trySyncEvents() {
 }
 
 async function syncEventsOnce(epoch) {
+  const clearsAtStart = localClears;
   try {
     if (!window.forayEventLog || typeof window.forayEventLog.unsynced !== "function") return;
     flushBufferedEvents();
@@ -490,7 +579,10 @@ async function syncEventsOnce(epoch) {
       });
       if (!res.ok) return; // don't advance the cursor — retry the whole batch next time
     }
-    if (syncOutlived(epoch)) return;   // the queue these ids were in has been emptied
+    /* Every batch landed. Only a purge that reached the queue (or is reaching
+       it now) makes these ids meaningless; a deletion merely started — which
+       may yet fail remotely and leave the device as it is — does not. */
+    if (dataDeletionInProgress || localClears !== clearsAtStart) return;
     await window.forayEventLog.markSynced(syncedIds);
     await window.forayEventLog.pruneToRetention(5000);
   } catch (_) { /* buffer persists, retry next time */ }
@@ -566,9 +658,19 @@ function setInterest(id, value) {
    where the store has none. A seeded default can fill a gap, never overwrite
    what the listener taught it. The write itself waits for hydration, so
    "what the store has" is the durable profile and not an empty mirror. */
+let saveInterestsPending = false;
 function saveInterests() {
   if (!taxonomyNodes().length) return false;
-  if (storageWaiting()) { afterStorageSettles(saveInterests); return true; }
+  /* ONE waiter, however many nudges arrive before the store settles (audit
+     round 2 review): each call pushed another closure, and the write they all
+     make reads state.interests at settle time anyway. */
+  if (storageWaiting()) {
+    if (!saveInterestsPending) {
+      saveInterestsPending = true;
+      afterStorageSettles(() => { saveInterestsPending = false; saveInterests(); });
+    }
+    return true;
+  }
   const stored = lsGet("cp_interests", {});
   const base = stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
   const next = { ...base };
@@ -10609,7 +10711,10 @@ function playerBridge() {
    module may simply be slow, and re-awaiting it (Try again) is right. */
 function playerModuleFailed() {
   if (window.ForayPlayer) return false;
-  try { return document.readyState !== "loading"; } catch (_) { return false; }
+  /* NOT `readyState !== "loading"`: "interactive" comes BEFORE the deferred
+     modules run (see `deferredScriptsRan`), so a module still downloading was
+     called failed and offered a reload of the whole slow graph. */
+  return deferredScriptsRan;
 }
 
 /* ---------- per-segment feedback (the learning loop's input) ----------
@@ -13537,6 +13642,7 @@ async function clearLocalData() {
      a storage fault raised by the key purge landed a fresh row — under a fresh
      profile id — in a queue already reported empty. */
   dataDeletionInProgress = true;
+  localClears++;
   rotatedSession = null;
   try {
     const local = await clearStoredKeys();
@@ -13756,6 +13862,13 @@ function buildDeleteSheet() {
      Shown beside the button, before the tap, and left up after it. */
   const deviceOnlyCost = ddEl("p", "fy-sheet-sub dd-device-only-cost", DD_DEVICE_ONLY_COST);
   deviceOnlyCost.hidden = true;
+  /* BEFORE THE TAP FOR A SCREEN READER TOO (audit round 2 review): the
+     sentence sat AFTER the button in DOM order and was not linked to it, so
+     VoiceOver and TalkBack read "Clear this device only, button" and the one
+     irreversible choice on the sheet could be taken before the cost was heard.
+     It now comes first in the panel, and the button is described by it. */
+  deviceOnlyCost.id = "dd-device-only-cost";
+  deviceOnly.setAttribute("aria-describedby", deviceOnlyCost.id);
 
   const status = ddEl("p", "dd-status");
   status.id = "dd-status";
@@ -13765,7 +13878,7 @@ function buildDeleteSheet() {
   panel.append(
     ddEl("div", "fy-grab"), title,
     ddEl("p", "fy-sheet-sub", "This cannot be undone. Here is what it covers."),
-    list, label, input, actions, deviceOnly, deviceOnlyCost, status,
+    list, label, input, actions, deviceOnlyCost, deviceOnly, status,
   );
   root.append(scrim, panel);
   document.body.appendChild(root);
