@@ -3277,6 +3277,145 @@ test("NE-15h: the host and its seams touch no platform API, every seam has a rec
   assert.match(timing, /DispatchSource\.makeTimerSource\(queue: \.main\)/, "the engine's timers are DispatchSourceTimers on main");
 });
 
+/* ─────────── NE-19: EngineStore, private keys, the diagnostics ring, os.Logger ───────────
+ *
+ * docs/native-engine-plan.md §4.6 and §10, card NE-19. What the Simulator
+ * XCTests cannot see: which FILE reaches for UserDefaults or the unified log,
+ * and whether the private key names are the ones Delete-my-data purges. */
+
+const STORE_SWIFT = path.join(ENGINE_DIR, "EngineStore.swift");
+const DIAGNOSTICS_SWIFT = path.join(ENGINE_DIR, "EngineDiagnostics.swift");
+const ENGINE_KEYS_SWIFT = path.join(CORE_DIR, "Sources/ForayEngineCore/Persist/EngineKeys.swift");
+const DIAG_RING_SWIFT = path.join(CORE_DIR, "Sources/ForayEngineCore/Diag/DiagRing.swift");
+/** The engine files allowed a logger of their own, and its one category (see the NE-19 logger test). */
+const PRE_RING_LOGGERS = new Map([
+  [path.resolve(AVDECK_SWIFT), "ForayEngine.AVDeck"],
+  [path.resolve(ENGINE_DIR, "AudioSessionOwner.swift"), "ForayEngine.AudioSessionOwner"],
+]);
+/** NE-16's HoldPolicyStore: the one engine file besides EngineStore that names UserDefaults (see the NE-19 store test). */
+const HOLD_POLICY_STORE_SWIFT = path.join(ENGINE_DIR, "HoldPolicyStore.swift");
+
+test("NE-19: one os.Logger (ai.jwlabs.foura / engine), whose only .public line is the gated DiagGate.loggerText, and nothing else in the engine logs", () => {
+  /* The ring's gate keeps URLs, route names and sentences out of a paste; a
+     second logger, a print( or a .public interpolation of anything but the
+     gated text would carry them into a sysdiagnose instead.
+     MUTATION: log `\(row.line(), privacy: .public)`; add a second `.public`;
+     change the subsystem or the category; add `print(` or `NSLog(` to any
+     file under Engine/. Each fails here. */
+  const diagnostics = stripSwiftComments(fs.readFileSync(DIAGNOSTICS_SWIFT, "utf8"));
+  assert.deepEqual(swiftImports(DIAGNOSTICS_SWIFT).sort(), ["ForayEngineCore", "Foundation", "os"]);
+  const loggers = [...diagnostics.matchAll(/Logger\(([^)]*)\)/g)].map((m) => m[1]);
+  assert.deepEqual(loggers, ['subsystem: "ai.jwlabs.foura", category: "engine"'], "exactly one engine logger, by its needle");
+  const privacies = [...diagnostics.matchAll(/privacy:\s*\.(\w+)/g)].map((m) => m[1]);
+  assert.deepEqual(privacies, ["public"], "one interpolation, and it is the one marked public");
+  const mirror = swiftFuncBody(diagnostics, "mirror") ?? "";
+  assert.match(mirror, /let text = DiagGate\.loggerText\(row\)\s*logger\.log\("\\\(text, privacy: \.public\)"\)/,
+    "the public line is the gate's logger text and nothing else");
+  assert.equal([...diagnostics.matchAll(/logger\.\w+\(/g)].length, 1, "one call site writes to the logger");
+  assert.match(swiftFuncBody(diagnostics, "record") ?? "", /ring\.append\([\s\S]*mirror\(/, "a row reaches the logger only after the ring (and its gate) took it");
+
+  for (const file of swiftFilesUnder(ENGINE_DIR)) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    assert.doesNotMatch(code, /\b(print|NSLog|os_log|debugPrint)\(/, `${where} logs around the gate`);
+    if (file === DIAGNOSTICS_SWIFT) continue;
+    /* THE TWO EXCEPTIONS, NAMED: NE-15's AVDeck (category ForayEngine.AVDeck,
+       the deck-level trace the NE-25a/b spikes read off the Simulator) and
+       NE-16's AudioSessionOwner (category ForayEngine.AudioSessionOwner) each
+       keep a DEFAULT os.Logger sink behind an injectable row closure
+       (`Config.writeRow`, `Config.diag`). Both cards landed beside NE-19, not
+       on it, so neither default writes into the ring yet; the boot path
+       (NE-17/NE-24) hands them EngineOutput.diag. Routing them through
+       DiagGate is a follow-up, not a licence for a third. */
+    const preRing = PRE_RING_LOGGERS.get(path.resolve(file));
+    if (preRing) {
+      assert.deepEqual([...code.matchAll(/Logger\(\s*subsystem:[^,]*,\s*category:\s*"([^"]*)"/g)].map((m) => m[1]), [preRing]);
+      continue;
+    }
+    assert.doesNotMatch(code, /\bLogger\(|^import os$/m, `${where} opens a second logger`);
+  }
+});
+
+test("NE-19: only EngineStore touches UserDefaults in the engine, its shared writes are owned rows under the Preferences prefix, and the purge covers every private key and the ring", () => {
+  /* MUTATION: drop the isOwnedRow guard from writeShared; write
+     `defaults.set(` of a shared row outside writeShared; purge only
+     EnginePrivateKey.allCases; forget the ring file in purge; name
+     UserDefaults in any other Engine/ file; drop the host's flush or the
+     core's lifecycle flush. Each fails here. */
+  for (const file of swiftFilesUnder(ENGINE_DIR)) {
+    if (file === STORE_SWIFT) continue;
+    /* THE ONE EXCEPTION, NAMED: NE-16's HoldPolicyStore landed beside NE-19
+       with its own UserDefaults. It may keep it only while its whole reach is
+       the one private key §4.6 lists, which the purge (every ForayEngine.*
+       key) and test/data-deletion.test.js both already cover; folding it into
+       EngineStore is a follow-up. A second key, or any other file, is red.
+       MUTATION: key it `CapacitorStorage.holdPolicy`, or add a second
+       `forKey:` of another name. */
+    if (file === HOLD_POLICY_STORE_SWIFT) {
+      const hold = stripSwiftComments(fs.readFileSync(file, "utf8"));
+      assert.deepEqual([...hold.matchAll(/static let \w+ = "([^"]*)"/g)].map((m) => m[1]), ["ForayEngine.holdPolicy"]);
+      assert.deepEqual([...hold.matchAll(/forKey: ([\w.]+)/g)].map((m) => m[1]), ["Self.key", "Self.key"],
+        "HoldPolicyStore reads and writes its one key and nothing else");
+      assert.match(stripSwiftComments(fs.readFileSync(ENGINE_KEYS_SWIFT, "utf8")), /case holdPolicy = "ForayEngine\.holdPolicy"/,
+        "the hold policy's key is one of EnginePrivateKey's, so the purge and the deletion list cover it");
+      continue;
+    }
+    assert.doesNotMatch(stripSwiftComments(fs.readFileSync(file, "utf8")), /\bUserDefaults\b/,
+      `${path.relative(ROOT, file)} reaches UserDefaults; engine storage goes through EngineStore`);
+  }
+  const store = stripSwiftComments(fs.readFileSync(STORE_SWIFT, "utf8"));
+  assert.match(store, /final class EngineStore: EngineOutput \{/, "EngineStore is the real EngineOutput");
+  const writeShared = swiftFuncBody(store, "writeShared") ?? "";
+  assert.match(writeShared, /guard EngineKeys\.isOwnedRow\(row\.key\) else \{[\s\S]*return false[\s\S]*\}\s*defaults\.set\(row\.value, forKey: SharedRowStore\.userDefaultsKey\(for: row\.key\)\)/,
+    "a shared row is written verbatim, under the Preferences prefix, and only when the engine owns it");
+  assert.deepEqual(swiftCallersOf(store, "writeShared"), ["writePosition", "writeRow"], "the core's rows reach UserDefaults through writeShared only");
+  assert.equal([...store.matchAll(/SharedRowStore\.userDefaultsKey\(/g)].length, 2, "writeShared and readShared, nowhere else");
+  const purge = swiftFuncBody(store, "purge") ?? "";
+  assert.match(purge, /EngineKeys\.sharedRowKey\(rawKey: rawKey\) != nil \|\| EngineKeys\.isPrivate\(rawKey: rawKey\)/,
+    "the purge enumerates the defaults: shared engine rows and EVERY ForayEngine.* key");
+  assert.match(purge, /diagnostics\.purge\(\)/, "the purge removes the ring file");
+  for (const name of ["writePosition", "writeRow", "writeRestore", "appendEvent", "emit", "diag", "flush"]) {
+    assert.ok(swiftFuncBody(store, name), `EngineStore has no ${name}`);
+  }
+  // Written synchronously: nothing in the store defers a write.
+  assert.doesNotMatch(store, /DispatchQueue|asyncAfter|\.async\b|Task\s*\{|OperationQueue/, "EngineStore defers a write");
+
+  // The host makes the flush durable right after the core handled the lifecycle.
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "lifecycle") ?? "", /handle\(\.lifecycle\(event\)\)\s*if event == \.background \|\| event == \.terminating \{ seams\.output\.flush\(\) \}/);
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  const lifecycle = swiftFuncBody(core, "onLifecycle") ?? "";
+  assert.match(lifecycle, /case \.background:\s*state\.backgrounded = true\s*flushPosition\(\)/, "backgrounding flushes the playhead (client.js flushPositions)");
+  assert.match(lifecycle, /case \.terminating:\s*flushPosition\(\)/, "willTerminate flushes the playhead");
+});
+
+test("NE-19: the engine's private keys are §4.6's six, outside CapacitorStorage., the ones Delete my data purges, and the ring is a capped file in Application Support", () => {
+  /* NE-27's privacy text will enumerate these keys, and test/data-deletion
+     .test.js purges them BY NAME; a key the Swift writes that the deletion
+     list does not name is a key a deletion forgets.
+     MUTATION: rename or add an EnginePrivateKey case; move the ring out of
+     foray-engine/diag.jsonl; change DiagRing.capacity from 2_000. Each fails. */
+  const keys = stripSwiftComments(fs.readFileSync(ENGINE_KEYS_SWIFT, "utf8"));
+  const swiftKeys = [...keys.matchAll(/case \w+ = "(ForayEngine\.\w+)"/g)].map((m) => m[1]);
+  const deletion = fs.readFileSync(path.join(ROOT, "test/data-deletion.test.js"), "utf8");
+  const fake = /function fakeEngine\([\s\S]*?private: new Map\(\[([\s\S]*?)\]\),/.exec(deletion);
+  assert.ok(fake, "test/data-deletion.test.js's fakeEngine private map is missing");
+  const jsKeys = [...fake[1].matchAll(/\["(ForayEngine\.\w+)"/g)].map((m) => m[1]);
+  assert.deepEqual(swiftKeys, ["ForayEngine.modeOverride", "ForayEngine.strikes", "ForayEngine.sentinel",
+    "ForayEngine.stickyLegacyBuild", "ForayEngine.restore", "ForayEngine.holdPolicy"], "plan §4.6's list");
+  assert.deepEqual(swiftKeys, jsKeys, "the Swift private keys and the deletion test's list differ");
+  for (const key of swiftKeys) assert.ok(!key.startsWith("CapacitorStorage."), key);
+  assert.match(keys, /privatePrefix = "ForayEngine\."/);
+  assert.match(keys, /diagDirectoryName = "foray-engine"/);
+  assert.match(keys, /diagFileName = "diag\.jsonl"/);
+  assert.match(fake[1], /"Application Support\/foray-engine\/diag\.jsonl"/, "the deletion test names the ring file where it lives");
+  assert.match(stripSwiftComments(fs.readFileSync(DIAGNOSTICS_SWIFT, "utf8")), /\.applicationSupportDirectory/, "the ring lives in Application Support");
+
+  const ring = stripSwiftComments(fs.readFileSync(DIAG_RING_SWIFT, "utf8"));
+  assert.match(ring, /public static let capacity = 2_000\b/, "the ring holds 2,000 rows (plan §13 item 37)");
+  assert.match(swiftFuncBody(ring, "append") ?? "", /DiagGate\.admit\(entry\)/, "every row passes the gate");
+});
+
 const OWNER_SWIFT = path.join(ENGINE_DIR, "AudioSessionOwner.swift");
 const HOLD_STORE_SWIFT = path.join(ENGINE_DIR, "HoldPolicyStore.swift");
 const TTS_SWIFT = path.join(PLUGIN_DIR, "../foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift");

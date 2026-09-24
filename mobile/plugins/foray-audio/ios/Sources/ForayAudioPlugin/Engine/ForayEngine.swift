@@ -130,7 +130,7 @@ final class ForayEngine {
             MainActor.assumeIsolated { self?.receive(.session(event)) }
         })
         observations.append(seams.background.observeLifecycle { [weak self] event in
-            MainActor.assumeIsolated { self?.receive(.lifecycle(event)) }
+            MainActor.assumeIsolated { self?.lifecycle(event) }
         })
         for command in MediaMapping.RemoteCommand.allCases {
             observations.append(seams.remote.addTarget(command) { [weak self] press in
@@ -197,6 +197,16 @@ final class ForayEngine {
 
     private func receive(_ input: EngineInput) {
         handle(input)
+    }
+
+    /// The app leaving the foreground or being terminated. The core writes the
+    /// playhead (its position flush) and the store has it in `UserDefaults`
+    /// synchronously; `flush()` then makes it durable BEFORE this handler
+    /// returns, because after `didEnterBackground` returns iOS may suspend
+    /// the process at any moment, and after `willTerminate` it will (NE-19).
+    private func lifecycle(_ event: LifecycleEvent) {
+        handle(.lifecycle(event))
+        if event == .background || event == .terminating { seams.output.flush() }
     }
 
     /// A remote press: the `remote` row, the core's ruling, and its verdict

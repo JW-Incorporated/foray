@@ -299,6 +299,31 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertEqual(RemoteVerdict(failures: ["no-next"]), .commandFailed)
     }
 
+    // MARK: - The lifecycle flush (NE-19)
+
+    /// Backgrounding writes the playhead (the core's flush) and THEN asks the
+    /// store to make it durable, inside the one notification handler; coming
+    /// back to the foreground flushes nothing.
+    /// TO SEE IT FAIL: drop the `seams.output.flush()` line in `lifecycle`,
+    /// or call it before `handle`.
+    @MainActor
+    func testBackgroundWritesThePlayheadThenFlushesTheStore() throws {
+        let world = FakeWorld()
+        let engine = playing(world)
+        world.deck.reading.positionSec = 42
+        world.log.clear()
+        world.background.post(.background)
+        let position = try XCTUnwrap(world.log.index(of: "output.position"), "\(world.log.entries)")
+        let flush = try XCTUnwrap(world.log.index(of: "output.flush"), "\(world.log.entries)")
+        XCTAssertLessThan(position, flush, "the flush makes the NEW row durable")
+        XCTAssertEqual(world.output.positions.last?.seconds, 42)
+
+        world.log.clear()
+        world.background.post(.foreground)
+        XCTAssertEqual(world.log.count("output.flush"), 0)
+        engine.teardown()
+    }
+
     // MARK: - Timers
 
     /// The position cadence is armed while playing and fires through the core
