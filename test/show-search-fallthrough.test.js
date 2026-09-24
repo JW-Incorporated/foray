@@ -525,7 +525,7 @@ test("the two normalised-title rules are one rule: app.js and api/shows/appleSho
      `.trim()`. The expressions differ and this goes red. */
   /* Folded since audit round 2 (search-9): the NFKD + combining-mark strip is
      part of the rule now, in both copies. */
-  const EXPR = String.raw`String(title || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim()`;
+  const EXPR = String.raw`String(title || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()`;
   const server = fs.readFileSync(path.join(ROOT, "api", "shows", "appleShowSearch.ts"), "utf8");
   assert.ok(APP_SRC.includes(EXPR), "app.js must carry the rule verbatim");
   assert.ok(server.includes(EXPR), "api/shows/appleShowSearch.ts must carry the same rule verbatim");
@@ -1520,6 +1520,23 @@ test("p-foray-4: typing a Foray's own subject finds the Foray — a Forays group
   assert.strictEqual(box.innerHTML, "");
 });
 
+test("ROUND 2 review (p-foray-4 / visual-9 / p-foray-8): a Foray found in Search is the SAME row as on #/forays — no FORAY tag under 'Forays', and its length line", () => {
+  /* The group hand-copied the old row: a published hit wore a FORAY kicker
+     right under its own <h3>Forays</h3> and had no length/progress line.
+     MUTATION: put the hand-written row template back in
+     paintForaySearchResults -> the kicker is back and the rows differ; red. */
+  const m = mount({ forays: FROZEN_FORAYS });
+  m.type("capital");
+  const box = m.byId.get("fy-search-results");
+  const html = box.innerHTML;
+  assert.ok(html.includes('href="#/foray/capital-types-1"'), "precondition: the published Foray is found");
+  assert.ok(!html.includes("fy-home-kicker"), `a published row does not restate the heading: ${html}`);
+  const published = FROZEN_FORAYS.find((f) => f.id === "capital-types-1");
+  const listRow = m.evalIn("forayRowsHtml")([published], { inSection: true });
+  assert.ok(html.includes(listRow.trim()), "the row is the #/forays list's own row, byte for byte");
+  assert.match(m.evalIn("forayListHtml").toString(), /forayRowsHtml\(/, "and #/forays renders through the same builder");
+});
+
 test("copy-8: every quoted query goes through the one typographic pair — no straight-quoted interpolation is left in a listener string", () => {
   /* The CTA used curly quotes and every other quoted query used straight ones,
      side by side on the empty-search screen. MUTATION: put `"${query}"`
@@ -1559,6 +1576,10 @@ test("search-9: the local passes and the dedup keys fold diacritics, so 'cafe' f
 
   const norm = m.evalIn("normaliseShowTitle");
   assert.strictEqual(norm("Café X"), norm("Cafe X"), "the dedup key folds");
+  /* Round-2 review: NFKD before lowercase, as foldDiacritics does. MUTATION:
+     `.toLowerCase().normalize("NFKD")` in either copy -> red (the copies are
+     pinned to each other above, so both move together). */
+  assert.strictEqual(norm("𝐁𝟑𝟒𝐧’𝐬 𝐭𝐞𝐫𝐫𝐢𝐭𝐨𝐫𝐢𝐮𝐦"), norm("B34n's Territorium"), "a compatibility-letter title is the plain one");
   const merged = m.evalIn("mergeShowRows")("cafe",
     [{ show_id: "1000009", title: "Cafe X" }],
     [{ show_id: "555", title: "Café X", source: "apple" }]);

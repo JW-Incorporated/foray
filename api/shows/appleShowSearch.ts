@@ -168,7 +168,10 @@ export function normaliseShowTitle(title: string): string {
   // Diacritics folded first (NFKD, strip the combining marks) so "Café X" and
   // "Cafe X" are one key — app.js carries the identical expression, and
   // test/show-search-fallthrough.test.js pins the two together.
-  return String(title || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  // Normalise FIRST, lowercase LAST (foldDiacritics' order): a compatibility
+  // letter like mathematical-bold "𝐁" has no lowercase mapping, so lowercasing
+  // before NFKD left it an uppercase "B" and the two sources never met.
+  return String(title || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 /**

@@ -151,6 +151,18 @@ async function clickPlay(m, id, ctxName = "show-x") {
   await handler({ preventDefault() {}, stopPropagation() {} });
 }
 
+test("ROUND 2 review (p-switcher-7): a show-page row's snapshot carries show_id, so its show name links after a save", () => {
+  /* fullCatalogueRowToEpRowItem is the other producer of breadth rows, and it
+     passed only `show: show.title`: saved or queued, the show name was plain
+     text again. MUTATION: drop `show_id` from its snapshot source -> red. */
+  const m = boot(new Map());
+  const ep = showPageEpisode(m, 51);
+  assert.strictEqual(ep.show_id, "lex-fridman-podcast");
+  m.state.catalog = { shows: [] };   // not a curated show: no title join to fall back on
+  const row = m.ctx.epRow(ep, 0, "saved");
+  assert.ok(row.includes('href="#/show/lex-fridman-podcast"'), `the show name links by id: ${row.slice(0, 400)}`);
+});
+
 test("an episode queued from a show page is still a playable Up Next row after a reload", () => {
   /* qa 95 / persona 29. MUTATION: drop `rememberEpisode(id)` from addToQueue —
      the reloaded row resolves "unnamed" ("Episode no longer available"). */

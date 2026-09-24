@@ -763,6 +763,20 @@ test("search-8: with no artwork from the endpoint, the row takes the show record
   assert.strictEqual(m.state.itemIndex["apple:b-77:g1"].artwork_url, "https://art.test/breadth.jpg");
 });
 
+test("ROUND 2 review (honesty-11): endpoint rows de-duplicated against the listener's own episodes still count as shown", () => {
+  /* `total` counts before the dedup, and the note compared it with the rows
+     left AFTER it: all 10 of 10 returned, 3 of them saved -> "Showing 7 of 10"
+     over ten visible rows. MUTATION: compare with `remote.length` again. */
+  const m = mount();
+  const rows = Array.from({ length: 10 }, (_, i) => ({ show_id: "s", show_title: "S", title: `Ep ${i}`, guid: `g${i}`, audio_url: `https://cdn.test/${i}.mp3` }));
+  const local = [0, 1, 2].map((i) => m.ctx.localEpisodeRow(`apple:s:g${i}`, { title: `Ep ${i}`, show: "S", audio_url: `https://cdn.test/${i}.mp3` }));
+  const container = { innerHTML: "", hidden: true, querySelectorAll: () => [] };
+  m.ctx.paintEpisodeSearchResults("q", { episodes: rows, source: ["apple"], total: 10, capped: false }, container, local);
+  assert.ok(!container.innerHTML.includes("Showing"), `nothing was held back: ${container.innerHTML.slice(0, 200)}`);
+  m.ctx.paintEpisodeSearchResults("q", { episodes: rows, source: ["apple"], total: 38, capped: false }, container, local);
+  assert.ok(container.innerHTML.includes("Showing 10 of 38"), "ten of the 38 are on screen, three of them in the listener's own tier");
+});
+
 test("honesty-11: the Episodes section says how many the endpoint held back — 'Showing 10 of 38', with a '+' when the count is a floor", async () => {
   /* The section was cut to ten with nothing saying whether that was all of
      them, while the show page's own search says "38 episodes found."

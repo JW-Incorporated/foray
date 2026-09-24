@@ -3683,6 +3683,12 @@ function fullCatalogueRowToEpRowItem(show, ep) {
   const id = `${show.show_id}--${ep.guid}`;
   return snapshot(id, {
     show: show.title,
+    /* THE SHOW'S ID RIDES ON THE SNAPSHOT (audit round 2 review of
+       p-switcher-7): `snapshot()` keeps it, and without it an episode saved or
+       queued from a breadth show's page rendered its show name as plain text in
+       Library, Up Next and on #/episode — the title join reaches only the
+       curated 220 and whatever of the show index happens to be loaded. */
+    show_id: show.show_id || null,
     title: ep.title,
     hook: ep.description_text || "",
     /* THE SHOW'S ARTWORK, which this mapping did not carry (founder,
@@ -7067,9 +7073,13 @@ function showBreadthCacheKey(query) {
     sensibly. */
 /* FOLDED TOO (audit round 2, search-9): a precomposed "é" is \p{L}, so
    "Café X" and "Cafe X" never met as one show and an Apple copy of an index
-   title rendered twice. NFKD, then the combining marks go, in both copies. */
+   title rendered twice. NFKD, then the combining marks go, in both copies.
+   NORMALISE FIRST, LOWERCASE LAST — foldDiacritics' order (search-engine.js;
+   round-2 review): a compatibility letter such as mathematical-bold "𝐁" has no
+   lowercase mapping, so lowercasing before NFKD left it an uppercase "B" and
+   "𝐁𝟑𝟒𝐧’𝐬 …" never met the plain "B34n's …" from the other source. */
 function normaliseShowTitle(title) {
-  return String(title || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return String(title || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 /* P-02's dedup key was exact normalised EQUALITY, and the shape Apple actually
@@ -8428,12 +8438,20 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
   const local = localEpisodes || [];
   const seen = new Set();
   for (const ep of local) for (const k of episodeDedupKeys(ep)) seen.add(k);
+  const localKeys = new Set(seen);
   const remote = [];
+  /* The endpoint's rows that are ON SCREEN: the ones painted below, plus the
+     ones a local row already shows (audit round 2 review of honesty-11). */
+  let endpointShown = 0;
   for (const ep of (data?.episodes || [])) {
     const keys = episodeDedupKeys(ep);
-    if (keys.some((k) => seen.has(k))) continue;
+    if (keys.some((k) => seen.has(k))) {
+      if (keys.some((k) => localKeys.has(k))) endpointShown++;
+      continue;
+    }
     for (const k of keys) seen.add(k);
     remote.push(ep);
+    endpointShown++;
   }
   if (!local.length && !remote.length) {
     container.innerHTML = "";
@@ -8470,6 +8488,7 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
     if (ep._localId) {
       const item = state.itemIndex[ep._localId] || snapshot(ep._localId, ep._localSnapshot || {
         show: ep.show_title || ep.show_id,
+        show_id: ep.show_id || null,
         title: ep.title,
         hook: ep.description_text || "",
         audio_url: ep.audio_url,
@@ -8515,9 +8534,15 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
      "38 episodes found." The endpoint now reports `total` — the matches it
      mapped before the cut — and `capped` when Apple filled its over-fetch, in
      which case the count is a floor and says so with a `+`. */
+  /* `total` is the endpoint's count BEFORE the dedup against the listener's
+     own saved and queued episodes, so it is compared with every endpoint row on
+     screen — the ones a local row already shows included — not with the rows
+     left below the divider. Comparing with those said "Showing 7 of 10" over
+     ten visible rows whenever the listener searched for something they had
+     saved (audit round 2 review). */
   const total = Number(data?.total);
-  const heldBack = Number.isFinite(total) && total > remote.length && remote.length > 0;
-  const countNote = heldBack ? `<span class="note">Showing ${remote.length} of ${total}${data?.capped ? "+" : ""}</span>` : "";
+  const heldBack = Number.isFinite(total) && total > endpointShown && remote.length > 0;
+  const countNote = heldBack ? `<span class="note">Showing ${endpointShown} of ${total}${data?.capped ? "+" : ""}</span>` : "";
   const appleNote = fromApple ? `<span class="note">from Apple's index</span>` : "";
   const notes = [countNote, appleNote].filter(Boolean).join(" ");
   container.innerHTML = `<section class="ep-more fy-episode-search">
@@ -8576,11 +8601,7 @@ function paintForaySearchResults(query, myToken) {
   }
   container.innerHTML = `<section class="ep-more fy-foray-search">
     <h3>Forays</h3>
-    <div class="fy-home">${hits.map(f => `
-      <a class="fy-home-row" href="#/foray/${esc(f.id)}">
-        <span class="fy-home-kicker">foray${f.status === "published" ? "" : " · draft"}</span>
-        <span class="fy-home-title">${esc(f.title)}</span>
-      </a>`).join("")}</div>
+    ${forayRowsHtml(hits, { inSection: true })}
   </section>`;
   container.hidden = false;
   return hits;
@@ -12560,11 +12581,20 @@ function forayCards() {
 function forayListHtml({ inSection = false } = {}) {
   const list = forayCards();
   if (!list.length) return "";
+  return forayRowsHtml(list, { inSection });
+}
+
+/** THE ONE FORAY ROW (audit round 2 review): the #/forays list and Search's
+    Forays group both render through here, so "a Foray found here looks like a
+    Foray found there" is the code and not a comment — the search group used to
+    hand-copy the old row and kept the FORAY tag under its own "Forays" heading
+    (visual-9) with no length or progress line (p-foray-8).
+    HOW LONG, AND HOW FAR (audit round 2, p-foray-8 / honesty-2): a row was a
+    tag and a title, so nothing before a Foray's own page said how long it
+    was, and a finished Foray looked never opened. The kicker already says
+    "draft", so the sub line leaves it out. */
+function forayRowsHtml(list, { inSection = false } = {}) {
   const progress = forayProgressLabels();
-  /* HOW LONG, AND HOW FAR (audit round 2, p-foray-8 / honesty-2): a row was a
-     tag and a title, so nothing before a Foray's own page said how long it
-     was, and a finished Foray looked never opened. The kicker already says
-     "draft", so the sub line leaves it out. */
   return `<div class="fy-home">${list.map(f => {
     const sub = forayListSubLabel(f, progress, { draftTag: false });
     return `
