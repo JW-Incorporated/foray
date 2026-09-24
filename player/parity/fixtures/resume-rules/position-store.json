@@ -1,0 +1,382 @@
+{
+  "family": "resume-rules",
+  "module": "player/position-store.js",
+  "note": "Where to resume and what a saved position looks like (player/position-store.js's pure rules, NE-08). player/position-store.test.js reads these cases, so one file is both the JS assertion and the Swift case (ResumeRules.swift, NE-09). updated_at is the caller's clock, passed in, so every case is deterministic.",
+  "cases": [
+    {
+      "id": "resume-rules/min-resume-10s",
+      "covers": [
+        "position-store::the numbers: nothing under 10 s, finished inside 30 s of the end, one event a minute, a write every 15 s"
+      ],
+      "authored": true,
+      "note": "Below 10 s there is nothing worth resuming to (#26). Authored: the number is the rule.",
+      "read": "MIN_RESUME_SEC",
+      "expect": { "value": 10 }
+    },
+    {
+      "id": "resume-rules/near-end-30s",
+      "covers": [
+        "position-store::the numbers: nothing under 10 s, finished inside 30 s of the end, one event a minute, a write every 15 s"
+      ],
+      "authored": true,
+      "note": "Inside 30 s of the end the episode is finished: resuming 4 s before the outro is worse than starting over. Authored.",
+      "read": "NEAR_END_SEC",
+      "expect": { "value": 30 }
+    },
+    {
+      "id": "resume-rules/position-event-every-60s",
+      "covers": [
+        "position-store::the numbers: nothing under 10 s, finished inside 30 s of the end, one event a minute, a write every 15 s"
+      ],
+      "authored": true,
+      "note": "At most one cp_events position row a minute per item; ~240 rows an hour otherwise. Authored.",
+      "read": "POSITION_EVENT_EVERY_SEC",
+      "expect": { "value": 60 }
+    },
+    {
+      "id": "resume-rules/min-just-below",
+      "covers": ["position-store::a position under 10 s is nothing to resume"],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 9.9, "duration": 3600 }, { "duration": null }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "resume-rules/min-exactly-10",
+      "covers": ["position-store::a position under 10 s is nothing to resume"],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 10, "duration": 3600 }, { "duration": null }],
+      "expect": { "return": 10 }
+    },
+    {
+      "id": "resume-rules/min-zero",
+      "covers": ["position-store::a position under 10 s is nothing to resume"],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 0, "duration": 3600 }, { "duration": null }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "resume-rules/min-short-episode",
+      "covers": ["position-store::a position under 10 s is nothing to resume"],
+      "note": "Both rules apply to a 20 s file; under 10 s wins first either way.",
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 5, "duration": 20 }, { "duration": null }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "resume-rules/end-inside-30s",
+      "covers": [
+        "position-store::a position inside 30 s of the end means the episode is finished"
+      ],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 3571, "duration": 3600 }, { "duration": null }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "resume-rules/end-exactly-30s-out",
+      "covers": [
+        "position-store::a position inside 30 s of the end means the episode is finished"
+      ],
+      "note": "Strictly greater: exactly 30 s from the end still resumes.",
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 3570, "duration": 3600 }, { "duration": null }],
+      "expect": { "return": 3570 }
+    },
+    {
+      "id": "resume-rules/end-past-the-end",
+      "covers": [
+        "position-store::a position inside 30 s of the end means the episode is finished"
+      ],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 4000, "duration": 3600 }, { "duration": null }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "resume-rules/end-mid-episode",
+      "covers": [
+        "position-store::a position inside 30 s of the end means the episode is finished"
+      ],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 1200.5, "duration": 3600 }, { "duration": null }],
+      "expect": { "return": 1200.5 }
+    },
+    {
+      "id": "resume-rules/dur-caller-wins",
+      "covers": [
+        "position-store::the caller's duration wins, and the row's own stands in when there is none"
+      ],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 1000, "duration": 3600 }, { "duration": 1020 }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "resume-rules/dur-caller-wins-the-other-way",
+      "covers": [
+        "position-store::the caller's duration wins, and the row's own stands in when there is none"
+      ],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 1000, "duration": 1020 }, { "duration": 3600 }],
+      "expect": { "return": 1000 }
+    },
+    {
+      "id": "resume-rules/dur-row-stands-in",
+      "covers": [
+        "position-store::the caller's duration wins, and the row's own stands in when there is none"
+      ],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 1000, "duration": 1020 }, { "duration": null }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "resume-rules/dur-row-stands-in-no-opts",
+      "covers": [
+        "position-store::the caller's duration wins, and the row's own stands in when there is none"
+      ],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 1000, "duration": 1020 }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "resume-rules/dur-unknown-everywhere",
+      "covers": [
+        "position-store::the caller's duration wins, and the row's own stands in when there is none"
+      ],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 1000, "duration": null }, {}],
+      "expect": { "return": 1000 }
+    },
+    {
+      "id": "resume-rules/dur-zero-is-unknown",
+      "covers": [
+        "position-store::the caller's duration wins, and the row's own stands in when there is none"
+      ],
+      "call": "resumeOffsetFor",
+      "args": [{ "seconds": 1000, "duration": 0 }, { "duration": null }],
+      "expect": { "return": 1000 }
+    },
+    {
+      "id": "resume-rules/none-null-row",
+      "covers": ["position-store::no row resumes at 0"],
+      "call": "resumeOffsetFor",
+      "args": [null, { "duration": 3600 }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "resume-rules/none-no-arguments",
+      "covers": ["position-store::no row resumes at 0"],
+      "call": "resumeOffsetFor",
+      "args": [],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "resume-rules/row-shape",
+      "covers": ["position-store::a saved row is {seconds, duration, updated_at, source: local}"],
+      "call": "positionRow",
+      "args": ["ep-1", 123.4, { "duration": 3600 }, "2026-09-23T12:00:00.000Z"],
+      "expect": {
+        "return": {
+          "duration": 3600,
+          "seconds": 123.4,
+          "source": "local",
+          "updated_at": "2026-09-23T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "resume-rules/row-no-meta",
+      "covers": ["position-store::a saved row is {seconds, duration, updated_at, source: local}"],
+      "call": "positionRow",
+      "args": ["ep-1", 123.4, { "$undefined": true }, "2026-09-23T12:00:00.000Z"],
+      "expect": {
+        "return": {
+          "duration": null,
+          "seconds": 123.4,
+          "source": "local",
+          "updated_at": "2026-09-23T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "resume-rules/row-junk-duration",
+      "covers": ["position-store::a saved row is {seconds, duration, updated_at, source: local}"],
+      "call": "positionRow",
+      "args": ["ep-1", 123.4, { "duration": "3600" }, "2026-09-23T12:00:00.000Z"],
+      "expect": {
+        "return": {
+          "duration": null,
+          "seconds": 123.4,
+          "source": "local",
+          "updated_at": "2026-09-23T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "resume-rules/row-nan-duration",
+      "covers": ["position-store::a saved row is {seconds, duration, updated_at, source: local}"],
+      "call": "positionRow",
+      "args": ["ep-1", 123.4, { "duration": { "$num": "NaN" } }, "2026-09-23T12:00:00.000Z"],
+      "expect": {
+        "return": {
+          "duration": null,
+          "seconds": 123.4,
+          "source": "local",
+          "updated_at": "2026-09-23T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "resume-rules/row-zero-is-a-position",
+      "covers": ["position-store::a saved row is {seconds, duration, updated_at, source: local}"],
+      "call": "positionRow",
+      "args": ["ep-1", 0, {}, "2026-09-23T12:00:00.000Z"],
+      "expect": {
+        "return": {
+          "duration": null,
+          "seconds": 0,
+          "source": "local",
+          "updated_at": "2026-09-23T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "resume-rules/bad-empty-id",
+      "covers": [
+        "position-store::a position that is not a finite, non-negative number, or has no id, is never written"
+      ],
+      "call": "positionRow",
+      "args": ["", 5, { "duration": 3600 }, "2026-09-23T12:00:00.000Z"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "resume-rules/bad-null-id",
+      "covers": [
+        "position-store::a position that is not a finite, non-negative number, or has no id, is never written"
+      ],
+      "call": "positionRow",
+      "args": [null, 5, { "duration": 3600 }, "2026-09-23T12:00:00.000Z"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "resume-rules/bad-negative",
+      "covers": [
+        "position-store::a position that is not a finite, non-negative number, or has no id, is never written"
+      ],
+      "call": "positionRow",
+      "args": ["ep-1", -1, { "duration": 3600 }, "2026-09-23T12:00:00.000Z"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "resume-rules/bad-nan",
+      "covers": [
+        "position-store::a position that is not a finite, non-negative number, or has no id, is never written"
+      ],
+      "call": "positionRow",
+      "args": ["ep-1", { "$num": "NaN" }, { "duration": 3600 }, "2026-09-23T12:00:00.000Z"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "resume-rules/bad-infinity",
+      "covers": [
+        "position-store::a position that is not a finite, non-negative number, or has no id, is never written"
+      ],
+      "call": "positionRow",
+      "args": ["ep-1", { "$num": "Infinity" }, { "duration": 3600 }, "2026-09-23T12:00:00.000Z"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "resume-rules/bad-string-seconds",
+      "covers": [
+        "position-store::a position that is not a finite, non-negative number, or has no id, is never written"
+      ],
+      "call": "positionRow",
+      "args": ["ep-1", "5", { "duration": 3600 }, "2026-09-23T12:00:00.000Z"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "resume-rules/bad-null-seconds",
+      "covers": [
+        "position-store::a position that is not a finite, non-negative number, or has no id, is never written"
+      ],
+      "call": "positionRow",
+      "args": ["ep-1", null, { "duration": 3600 }, "2026-09-23T12:00:00.000Z"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "resume-rules/event-under-a-minute",
+      "covers": ["position-store::a position event goes out at most once a minute per item"],
+      "call": "positionEvent",
+      "args": [5, 64.9, 3600],
+      "expect": { "return": null }
+    },
+    {
+      "id": "resume-rules/event-a-minute-on",
+      "covers": ["position-store::a position event goes out at most once a minute per item"],
+      "call": "positionEvent",
+      "args": [5, 65, 3600],
+      "expect": { "return": { "duration": 3600, "mark": 65, "seconds": 65 } }
+    },
+    {
+      "id": "resume-rules/event-rounds-the-reported-seconds",
+      "covers": ["position-store::a position event goes out at most once a minute per item"],
+      "call": "positionEvent",
+      "args": [65, 125.4, null],
+      "expect": { "return": { "duration": null, "mark": 125.4, "seconds": 125 } }
+    },
+    {
+      "id": "resume-rules/event-rounds-half-up",
+      "covers": ["position-store::a position event goes out at most once a minute per item"],
+      "call": "positionEvent",
+      "args": [65, 125.5, 3600],
+      "expect": { "return": { "duration": 3600, "mark": 125.5, "seconds": 126 } }
+    },
+    {
+      "id": "resume-rules/event-backwards-seek",
+      "covers": ["position-store::a position event goes out at most once a minute per item"],
+      "call": "positionEvent",
+      "args": [300, 100, 3600],
+      "expect": { "return": null }
+    },
+    {
+      "id": "resume-rules/event-long-jump",
+      "covers": ["position-store::a position event goes out at most once a minute per item"],
+      "call": "positionEvent",
+      "args": [100, 2000, 3600],
+      "expect": { "return": { "duration": 3600, "mark": 2000, "seconds": 2000 } }
+    },
+    {
+      "id": "resume-rules/first-save-emits",
+      "covers": [
+        "position-store::the first save always emits, and so does every save after one emitted at 0 s"
+      ],
+      "call": "positionEvent",
+      "args": [{ "$undefined": true }, 12.3, 3600],
+      "expect": { "return": { "duration": 3600, "mark": 12.3, "seconds": 12 } }
+    },
+    {
+      "id": "resume-rules/first-save-at-zero-emits",
+      "covers": [
+        "position-store::the first save always emits, and so does every save after one emitted at 0 s"
+      ],
+      "call": "positionEvent",
+      "args": [{ "$undefined": true }, 0.4, 3600],
+      "expect": { "return": { "duration": 3600, "mark": 0.4, "seconds": 0 } }
+    },
+    {
+      "id": "resume-rules/after-a-zero-event-emits-again",
+      "covers": [
+        "position-store::the first save always emits, and so does every save after one emitted at 0 s"
+      ],
+      "call": "positionEvent",
+      "args": [0, 3, 3600],
+      "expect": { "return": { "duration": 3600, "mark": 3, "seconds": 3 } }
+    },
+    {
+      "id": "resume-rules/null-last-is-none",
+      "covers": [
+        "position-store::the first save always emits, and so does every save after one emitted at 0 s"
+      ],
+      "call": "positionEvent",
+      "args": [null, 3, 3600],
+      "expect": { "return": { "duration": 3600, "mark": 3, "seconds": 3 } }
+    }
+  ]
+}

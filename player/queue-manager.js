@@ -169,7 +169,10 @@ import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap
 import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 import { interludeEligible, describeInterlude, INTERLUDE_CEILING_SEC } from "./interlude.js";
 
-const POSITION_INTERVAL_MS = 15_000;
+/** The periodic position write's cadence. Exported (NE-08) so the native
+    engine's generated constants (NE-04) and its ResumeRules port read this
+    number rather than restating it; the `resume-rules` fixtures pin it. */
+export const POSITION_INTERVAL_MS = 15_000;
 /** How far the playhead must have moved since the last write before a TICK
     writes again (2026-09-22). Media seconds, not wall: at 2x a listener covers
     ground twice as fast and loses twice as much to a missed write. Under the
