@@ -1910,7 +1910,7 @@ const FLOORS = {
      channel and the App Store rejects one, so the inversion is the whole
      point. */
   "tools/store/play-listing.test.mjs": 21,
-  "tools/transcribe/fetch-audio.test.mjs": 64,
+  "tools/transcribe/fetch-audio.test.mjs": 65, // NE-25a: the click-track exemption covers only descriptor-named, hash-matching files under 1 MB; 64 -> 65
   /* ADR-0008's decode-and-compare: the instrument the cheap ones defer to.
      Floored because everything expensive about it — the download, the PyAV
      demux — is deliberately OUTSIDE CI, so what remains is the arithmetic that

@@ -23,7 +23,9 @@ final class InOutPointMeasurementTests: XCTestCase {
     /// Each is 0.35 s before a double click, so a landing within [-9.65, +0.35] s
     /// of the request hears that double click within a second. WAV (60 s) uses
     /// the ones that fit.
-    static let inPointsSec = [19.65, 49.65, 79.65]
+    static let inPointsSec = [9.65, 19.65, 49.65, 79.65]
+    /// Where the per-file reference offset is read (see `referenceOffset`).
+    static let referenceInPointSec = 9.65
     /// 5 ms after a whole-second click, inside the WAV's 60 s too.
     static let outPointSec = 55.005
     /// Playback starts this long before the out-point: past the watchdog's 1.5 s
@@ -70,6 +72,10 @@ final class InOutPointMeasurementTests: XCTestCase {
         let residualSec: Double?
         let clicksHeard: Int
         let minPeak: Float?
+        /// The first onsets after the landing, [believed s, peak], so a weak or
+        /// missing click after a seek (an MP3 decoder that was not primed) can
+        /// be read back from the log.
+        let firstEvents: [[Double]]
         let discontinuities: Int
         let invalidRanges: Int
         let state: String
@@ -81,21 +87,35 @@ final class InOutPointMeasurementTests: XCTestCase {
         var offsets: [String] = []
         for fixture in descriptor.fixtures {
             let url = try descriptor.url(of: fixture)
-            /* d0 from a PRECISE play from zero is the file's own decoded
-               timeline: the truth every landing is measured against. The
-               approximate d0 is reported beside it and should agree (nothing
-               is estimated when playing from the start). */
-            let d0 = try contentOffset(url, precise: true, descriptor: descriptor)
-            let d0Approx = try contentOffset(url, precise: false, descriptor: descriptor)
-            let heardNote: String = d0.value == nil ? " (NOT HEARD: \(d0.state))" : ""
-            offsets.append("\(fixture.file): d0 precise \(ms(d0.value)) ms, approximate \(ms(d0Approx.value)) ms\(heardNote)")
-            XCTAssertNotNil(d0.value, "\(fixture.file): no click heard playing from zero: \(d0.state)")
+            /* THE REFERENCE (d0). Where this file's content sits on the tap's
+               timeline, read after a PRECISE seek to 9.65 s: the double click
+               authored at 10 s is labelled 10 + d0. For the WAV that is the
+               rig's own bias (detector + resampler); for an MP3 it adds the
+               encoder delay as AVFoundation presents it. Every landing below is
+               measured against it, so "landing error" means "where this seek
+               put the listener, relative to where a precise seek puts them".
+
+               Why not from zero, the obvious choice: the first run (35962279894)
+               measured it both ways, and from zero the WAV (sample-exact PCM)
+               read 11.1 ms against 0.9 ms after any seek. The labels on the
+               first buffers of a stream are not comparable with the labels after
+               a seek, so a from-zero reference would put a ~10 ms error into
+               every row. The from-zero offset is still reported, as a note. */
+            let reference = try measureInPoint(
+                url, fixture: fixture.file, precise: true, requestedSec: Self.referenceInPointSec,
+                contentOffsetSec: 0, descriptor: descriptor)
+            let d0 = reference.beliefErrorSec
+            let fromZero = try contentOffset(url, precise: true, descriptor: descriptor)
+            let refNote: String = d0 == nil ? " (NOT HEARD: \(reference.state))" : ""
+            offsets.append("\(fixture.file): d0 \(ms(d0)) ms after a precise seek to \(Self.referenceInPointSec) s; "
+                + "\(ms(fromZero.value)) ms playing from zero\(refNote)")
+            XCTAssertNotNil(d0, "\(fixture.file): no double click heard after the reference seek: \(reference.state)")
 
             for precise in [true, false] {
                 for requested in Self.inPointsSec where requested + 2 < fixture.durationSec {
                     let trial = try measureInPoint(
                         url, fixture: fixture.file, precise: precise, requestedSec: requested,
-                        contentOffsetSec: d0.value, descriptor: descriptor)
+                        contentOffsetSec: d0, descriptor: descriptor)
                     MeasurementReport.json(trial)
                     XCTAssertNotNil(trial.landingErrorSec,
                         "\(fixture.file) \(trial.mode) @\(requested): no landing measured: \(trial.state)")
@@ -124,13 +144,14 @@ final class InOutPointMeasurementTests: XCTestCase {
             rows: rows,
             notes: offsets + [
                 "Seeks are zero-tolerance; 'precise' is AVURLAssetPreferPreciseDurationAndTimingKey=true.",
-                "Landing error is read from the click track's content, not from currentTime: positive = the listener starts late.",
+                "Landing error is read from the click track's content, not from currentTime, relative to d0 (where a precise seek to \(Self.referenceInPointSec) s puts that file's content): positive = the listener starts late, negative = early (they hear audio from before the in-point).",
+                "The precise \(Self.referenceInPointSec) s row is an independent repeat of the reference, so it reads the repeatability, not 0 by construction.",
                 "Local files on a Simulator: DV-5 repeats this on real CDNs in M2.",
             ])
     }
 
     /// Plays from zero and reports where the first click lands relative to where
-    /// it was authored (d0: an MP3's encoder delay, 0 for the WAV).
+    /// it was authored. Reported only (see the reference note above).
     private func contentOffset(_ url: URL, precise: Bool, descriptor: ClickTrackDescriptor) throws -> (value: Double?, state: String) {
         let deck = MeasuredDeck()
         defer { deck.tearDown() }
@@ -189,6 +210,7 @@ final class InOutPointMeasurementTests: XCTestCase {
             },
             clicksHeard: heard.count,
             minPeak: heard.map(\.peak).min(),
+            firstEvents: heard.prefix(8).map { [$0.believedSec, Double($0.peak)] },
             discontinuities: snapshot.discontinuities,
             invalidRanges: snapshot.invalidRanges,
             state: deck.stateDescription())
@@ -246,6 +268,7 @@ final class InOutPointMeasurementTests: XCTestCase {
                     row.append(ms(trial.settledSec - end))
                     row.append(ms(pulled))
                     row.append(ms(trial.watchdogArmDelaySec))
+                    row.append(laterFires(trial))
                     rows.append(row)
                 }
             }
@@ -254,7 +277,8 @@ final class InOutPointMeasurementTests: XCTestCase {
             title: "NE-25a (2): out-point overshoot (ms past the out-point; negative = EARLY)",
             columns: ["fixture", "rate", "layers armed", "fired first",
                       "forwardPlaybackEndTime ms", "boundary observer ms", "windowed watchdog ms",
-                      "settled currentTime ms", "tap pulled-to ms (upper bound)", "watchdog one-shot delay ms"],
+                      "settled currentTime ms", "tap pulled-to ms (upper bound)", "watchdog one-shot delay ms",
+                      "later fires (host ms after the first)"],
             rows: rows,
             notes: [
                 "Out-point \(end) s, playback started \(Self.leadInSec) s before it, precise timing, zero-tolerance seek.",
@@ -265,6 +289,15 @@ final class InOutPointMeasurementTests: XCTestCase {
                 early.isEmpty ? "No early stop was measured." : "EARLY STOPS MEASURED: " + early.joined(separator: "; "),
             ])
         XCTAssertEqual(early, [], "an out-point layer stopped EARLY (never-early, plan §4.3 P-2): record it and set NE-32's stopPad from it")
+    }
+
+    /// "boundaryObserver +3.1, windowedWatchdog +120.4": how long after the
+    /// first layer each other layer reported, on the host clock. It is what
+    /// says whether a slower layer is a backstop or merely a duplicate.
+    private func laterFires(_ trial: OutPointTrial) -> String {
+        guard let first = trial.fires.first else { return "-" }
+        let later = trial.fires.dropFirst().map { "\($0.layer) +\(msValue($0.hostMs - first.hostMs))" }
+        return later.isEmpty ? "-" : later.joined(separator: ", ")
     }
 
     private func measureOutPoint(_ url: URL, fixture: String, rate: Float, layers: [Layer], endSec: Double) throws -> OutPointTrial {
