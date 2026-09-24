@@ -263,8 +263,7 @@ final class AVDeck: DeckDriving {
     /// Step 3. Runs on every observation that could complete readiness, and
     /// moves on only when the duration AND both statuses say so.
     private func advanceIfReady() {
-        guard stage == .loading, durationKnown, let item,
-              player.status == .readyToPlay, item.status == .readyToPlay else { return }
+        guard stage == .loading, durationKnown, item != nil else { return }
         stage = .gating
         gateSeek()
     }
