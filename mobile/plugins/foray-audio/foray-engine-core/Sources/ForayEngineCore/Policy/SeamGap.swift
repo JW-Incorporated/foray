@@ -53,7 +53,7 @@ public enum SeamGap {
     /// `SEAM_GAP_SEC`. Pinned by the AUTHORED case `seam-gap/rule-is-2.0s`:
     /// a port that hard-codes another number fails a parity case, not only
     /// NE-04's generated-constants check.
-    public static let defaultGapSec: Double = 2.0
+    public static let defaultGapSec: Double = 1.5
 
     /// `AUTO_ADVANCE` and `USER_ACTION`: why the player moved on. Only an
     /// auto-advance gets a beat.
