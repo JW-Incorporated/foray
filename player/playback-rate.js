@@ -241,3 +241,53 @@ export function writeRate(storage, v) {
     return false;
   }
 }
+
+/* ---------- the synthesiser's rate (native iOS only) ---------- */
+
+/* WHY THIS LIVES IN A WEB MODULE THAT NEVER CALLS IT (NE-09). The page never
+   speaks at an `AVSpeechUtterance.rate`: Web Speech takes the playback
+   multiplier as it is. Two Swift places do, and they must agree to the digit:
+   `ForayTtsPlugin.utteranceRate(playbackMultiplier:)` (the shipping plugin,
+   where the calibration below was measured and argued) and the native engine's
+   `PlaybackRate.utteranceRate` (foray-engine-core, which narrates in native
+   mode, plan §3 R-4). The deck's rule is that JS is the reference and fixtures
+   are the contract, so the curve is written down here once, the `rate`
+   family's `utterance-rate` cases record it at every ladder stop, and BOTH
+   Swift copies are tested against those cases — ForayTtsPluginTests reads the
+   fixture file directly. A re-fit of the curve (H3, a second device reading)
+   is therefore: change these numbers, re-record, then both Swift sides.
+
+   The numbers are ForayTtsPlugin's, copied, not re-derived; its doc comment on
+   `utteranceRate` is where the reasoning lives (one device reading, HUMAN-
+   ACTIONS.md #29: rate 0.75 was heard at "roughly 3x"). The three framework
+   values are Apple's `AVSpeechUtteranceMinimumSpeechRate`, `...Default...` and
+   `...Maximum...` on iOS; ForayAudioPluginTests pins them against AVFAudio. */
+
+/** `AVSpeechUtteranceMinimumSpeechRate`, and the answer to a multiplier that
+    is not a positive number. */
+export const UTTERANCE_MIN_RATE = 0;
+/** `AVSpeechUtteranceDefaultSpeechRate`: ordinary speech, i.e. 1x. */
+export const UTTERANCE_DEFAULT_RATE = 0.5;
+/** `AVSpeechUtteranceMaximumSpeechRate`. */
+export const UTTERANCE_MAX_RATE = 1;
+/** The playback multiplier asked for on the device in #29's reading... */
+export const UTTERANCE_CALIBRATION_REQUESTED = 1.5;
+/** ...and what the rate that mapping sent was HEARD as. A soft number. */
+export const UTTERANCE_CALIBRATION_PERCEIVED = 3;
+
+/**
+ * A playback multiplier -> `AVSpeechUtterance.rate`, on ForayTtsPlugin's
+ * curve: affine in log(multiplier) through (1x, default) and (3x, default *
+ * 1.5), clamped to the framework's range. Not a positive number (0, negative,
+ * NaN, not a number at all) -> the slowest rate, never NaN; +Infinity -> the
+ * fastest. The arithmetic is the plugin's, in its order, so the two agree to
+ * the last bit wherever the platform's `log` does.
+ */
+export function utteranceRate(multiplier) {
+  if (!(typeof multiplier === "number" && multiplier > 0)) return UTTERANCE_MIN_RATE;
+  const anchorRate = UTTERANCE_DEFAULT_RATE * UTTERANCE_CALIBRATION_REQUESTED;
+  const anchorSpan = anchorRate - UTTERANCE_DEFAULT_RATE;
+  const scaled = UTTERANCE_DEFAULT_RATE
+    + anchorSpan * Math.log(multiplier) / Math.log(UTTERANCE_CALIBRATION_PERCEIVED);
+  return Math.min(Math.max(scaled, UTTERANCE_MIN_RATE), UTTERANCE_MAX_RATE);
+}

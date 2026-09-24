@@ -176,8 +176,35 @@ export const POSITION_INTERVAL_MS = 15_000;
 /** How far the playhead must have moved since the last write before a TICK
     writes again (2026-09-22). Media seconds, not wall: at 2x a listener covers
     ground twice as fast and loses twice as much to a missed write. Under the
-    15 s corner case #17 allows, with room for a tick to be late. */
-const POSITION_MIN_DELTA_SEC = 10;
+    15 s corner case #17 allows, with room for a tick to be late. Exported
+    (NE-09) with the rule below, so the native engine's ResumeRules port reads
+    the number from the generated constants and the rule from the fixtures. */
+export const POSITION_MIN_DELTA_SEC = 10;
+
+/**
+ * Whether a periodic TICK (the 15 s interval or the element's `timeupdate`)
+ * should write the playhead now: the tail of `_persistIfDue`, lifted out as a
+ * pure function in NE-09 so the native engine's ResumeRules can be checked
+ * against it (`resume-rules` fixtures, cadence.json). No behaviour change: the
+ * method asks this with exactly the values it used to test inline.
+ *
+ *  - AN UNKNOWN POSITION NEVER OVERWRITES A KNOWN ONE. A clock that is not a
+ *    finite number (no element, a NaN mid-load) writes nothing; the last good
+ *    row stands.
+ *  - The playhead must have moved POSITION_MIN_DELTA_SEC media seconds since
+ *    the last write of THIS item (by anyone). A different item, or no write
+ *    yet, is due at once.
+ *
+ * @param {{id: string, seconds: number}|null|undefined} last  the last write
+ * @param {string} id        the item the element holds
+ * @param {*} seconds        the element's clock
+ * @returns {boolean}
+ */
+export function positionTickDue(last, id, seconds) {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds)) return false;
+  if (last && last.id === id && Math.abs(seconds - last.seconds) < POSITION_MIN_DELTA_SEC) return false;
+  return true;
+}
 
 /** How often the narration ticker fires `onNarrationTick` while a script-only
     line is speaking (L-03, generation-architecture.md §7 item 3's position
@@ -2180,10 +2207,7 @@ export class PlayerQueueManager {
     if (!(this.state.type === "playing" || this.elementIsAudible)) return;
     const item = this._currentItem();
     if (!item || boundsOf(item) || this._loadedIsSynth || this._loadedId !== item.id) return;
-    const t = this.backend.currentTime;
-    if (typeof t !== "number" || !Number.isFinite(t)) return;
-    const last = this._lastPersisted;
-    if (last && last.id === item.id && Math.abs(t - last.seconds) < POSITION_MIN_DELTA_SEC) return;
+    if (!positionTickDue(this._lastPersisted, item.id, this.backend.currentTime)) return;
     this._persistPosition();
   }
 

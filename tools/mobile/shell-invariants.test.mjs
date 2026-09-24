@@ -2629,6 +2629,35 @@ test("NE-05: both wrappers run the seam-gap and compare families and the whole m
   assert.match(all[1], /CompareFamily\.runner/);
 });
 
+test("NE-09: both wrappers require the rate, resume-rules and transport runners, and the registry holds them", () => {
+  /* NE-09 burned these three families out of swift-pending.json, so from here
+     on their cases must EXECUTE in Swift. A wrapper that lost its method, or a
+     `requireRunner: true` quietly dropped, would let a deregistered runner
+     read as "owed" for zero ids and stay green; the registry line is what
+     makes them run at all.
+     MUTATION: drop `requireRunner: true` from testTransportFamily in either
+     wrapper, or TransportFamily.runner from ParityFamilies.all; each fails here. */
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  const families = { rate: "testRateFamily", "resume-rules": "testResumeRulesFamily", transport: "testTransportFamily" };
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    for (const [family, method] of Object.entries(families)) {
+      assert.match(src, new RegExp(String.raw`func ${method}\(\)\s*\{\s*assertParityFamily\("${family}", requireRunner: true\)`),
+        `${where}: ${method} must require a ${family} runner`);
+    }
+  }
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  for (const runner of ["RateFamily.runner", "ResumeRulesFamily.runner", "TransportFamily.runner"]) {
+    assert.ok(all[1].includes(runner), `ParityFamilies.all has no ${runner}`);
+  }
+});
+
 /* ─────────── NE-02: the reducer, copied into the core with its tests ───────────
  *
  * docs/native-engine-plan.md §4.1 and card NE-02. PlayerQueueState.swift and

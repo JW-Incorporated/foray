@@ -391,7 +391,8 @@
     },
     "rate": {
       "files": {
-        "player/parity/fixtures/rate/rate.json": "3f050242c0e403c177ba630c2d4b7f4dc7094e79ee6b4ed7500b829eeca1a987"
+        "player/parity/fixtures/rate/rate.json": "3f050242c0e403c177ba630c2d4b7f4dc7094e79ee6b4ed7500b829eeca1a987",
+        "player/parity/fixtures/rate/utterance-rate.json": "76e45aa0303c13f42d8360ee7f516b578436578599e7d51bc01feff8cb09f0a1"
       },
       "ids": [
         "rate/ladder",
@@ -454,16 +455,59 @@
         "rate/next-null",
         "rate/next-nan",
         "rate/next-string-fast",
-        "rate/next-0"
+        "rate/next-0",
+        "rate/utterance-rate-0.75",
+        "rate/utterance-rate-1",
+        "rate/utterance-rate-1.25",
+        "rate/utterance-rate-1.5",
+        "rate/utterance-rate-1.75",
+        "rate/utterance-rate-2",
+        "rate/utterance-rate-3-is-the-measured-anchor",
+        "rate/utterance-rate-4-off-ladder-probe",
+        "rate/utterance-rate-1000-clamps",
+        "rate/utterance-rate-infinity-is-the-fastest",
+        "rate/utterance-rate-0",
+        "rate/utterance-rate-negative",
+        "rate/utterance-rate-nan",
+        "rate/utterance-rate-neg-infinity",
+        "rate/utterance-rate-null",
+        "rate/utterance-rate-string"
       ]
     },
     "resume-rules": {
       "files": {
-        "player/parity/fixtures/resume-rules/cadence.json": "522d39eed26a0b14728c5041f6caa468a990fc91d41a978403260f2b7d8658e9",
+        "player/parity/fixtures/resume-rules/cadence.json": "5f42ab9b168eac20091755da9624a3864900a1ab0cedf42592b85f07aa42e982",
+        "player/parity/fixtures/resume-rules/foray-cadence.json": "9cec02d9f5f252d39542419ed4399bcdb921ea50d8faebec789ff4ee5f0d9275",
         "player/parity/fixtures/resume-rules/position-store.json": "301b769f10075577f4a82d388309a8d064efb7a59482797c99b7eca17cc4ec58"
       },
       "ids": [
         "resume-rules/position-interval-15s",
+        "resume-rules/tick-delta-10s",
+        "resume-rules/tick-first-write",
+        "resume-rules/tick-first-write-undefined",
+        "resume-rules/tick-same-item-under-10s",
+        "resume-rules/tick-same-item-10s-on",
+        "resume-rules/tick-same-item-back-10s",
+        "resume-rules/tick-same-item-back-under-10s",
+        "resume-rules/tick-other-item",
+        "resume-rules/tick-unknown-nan",
+        "resume-rules/tick-unknown-null",
+        "resume-rules/tick-unknown-infinity",
+        "resume-rules/tick-unknown-string",
+        "resume-rules/foray-save-every-5s",
+        "resume-rules/foray-first-write",
+        "resume-rules/foray-first-write-undefined",
+        "resume-rules/foray-under-5s",
+        "resume-rules/foray-5s-on",
+        "resume-rules/foray-back-5s",
+        "resume-rules/foray-back-under-5s",
+        "resume-rules/foray-force",
+        "resume-rules/foray-force-first",
+        "resume-rules/foray-unknown-null",
+        "resume-rules/foray-unknown-nan-even-forced",
+        "resume-rules/foray-unknown-string",
+        "resume-rules/foray-custom-interval-due",
+        "resume-rules/foray-custom-interval-not-due",
         "resume-rules/min-resume-10s",
         "resume-rules/near-end-30s",
         "resume-rules/position-event-every-60s",

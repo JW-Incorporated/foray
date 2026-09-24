@@ -145,6 +145,16 @@ public enum EngineConstants {
         public static let rates: [Double] = [0.75, 1, 1.25, 1.5, 1.75, 2]
         /// `RATE_KEY`
         public static let rateKey: String = "cp_rate"
+        /// `UTTERANCE_CALIBRATION_PERCEIVED`
+        public static let utteranceCalibrationPerceived: Double = 3
+        /// `UTTERANCE_CALIBRATION_REQUESTED`
+        public static let utteranceCalibrationRequested: Double = 1.5
+        /// `UTTERANCE_DEFAULT_RATE`
+        public static let utteranceDefaultRate: Double = 0.5
+        /// `UTTERANCE_MAX_RATE`
+        public static let utteranceMaxRate: Double = 1
+        /// `UTTERANCE_MIN_RATE`
+        public static let utteranceMinRate: Double = 0
     }
 
     /// `player/position-store.js`
@@ -161,6 +171,8 @@ public enum EngineConstants {
     public enum QueueManager {
         /// `POSITION_INTERVAL_MS`
         public static let positionIntervalMs: Double = 15000
+        /// `POSITION_MIN_DELTA_SEC`
+        public static let positionMinDeltaSec: Double = 10
     }
 
     /// `player/queue-state.js`
