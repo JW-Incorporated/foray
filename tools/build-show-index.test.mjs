@@ -34,19 +34,27 @@ const cur = (show_id, title) => ({ show_id, title });
 const bre = (apple_collection_id, title, chart_rank, extra = {}) =>
   ({ apple_collection_id, title, chart_rank, ...extra });
 
-test("rows are sorted by lowercased title in CODE-UNIT order, not locale order", () => {
-  /* The contract with prefixSearchShows. "Zebra" and "Ähnlich" are the pair
-     that separates the two orders: code-unit puts "ähnlich" (U+00E4) AFTER
-     "zebra" (U+007A); `localeCompare` puts it with the a's, before it.
+test("rows are sorted by the FOLDED lowercased title in CODE-UNIT order, not locale order", () => {
+  /* The contract with prefixSearchShows, which binary-searches the keys
+     `parseShowIndex` builds with `foldDiacritics` (audit round 2, search-9).
+     Two pairs, because two orders have to be told apart:
 
-     MUTATION (the one that matters): sort with
-     `at.localeCompare(bt)` in mergeShowIndexRows. This goes red immediately,
+       "Ähnlich" and "middle": FOLDED code-unit order puts "ähnlich" with the
+       a's (it folds to "ahnlich"); the UNFOLDED order this used to pin put it
+       after "zebra" (U+00E4 > U+007A). This pair goes red under the old sort.
+       "Zebra" and "🎙 Mic": code-unit order puts the emoji (U+D83C…) AFTER
+       every letter; `localeCompare` puts symbols BEFORE letters. This pair
+       goes red under a locale sort — the mutation the old fixture caught,
+       which "Ähnlich" alone can no longer catch now that it folds.
+
+     MUTATIONS: sort with `a.title.toLowerCase()` (unfolded) -> "Ähnlich" moves
+     last, red; sort with `at.localeCompare(bt)` -> "🎙 Mic" moves first, red;
      and test/show-index.test.js's binary-search parity test goes red too. */
   const rows = mergeShowIndexRows(
-    { shows: [cur("z", "Zebra Hour"), cur("a", "Ähnlich Podcast"), cur("m", "middle show")] },
+    { shows: [cur("z", "Zebra Hour"), cur("a", "Ähnlich Podcast"), cur("m", "middle show"), cur("e", "🎙 Mic Podcast")] },
     { shows: [] }
   );
-  assert.deepStrictEqual(rows.map((r) => r.title), ["middle show", "Zebra Hour", "Ähnlich Podcast"]);
+  assert.deepStrictEqual(rows.map((r) => r.title), ["Ähnlich Podcast", "middle show", "Zebra Hour", "🎙 Mic Podcast"]);
 });
 
 test("a breadth row marked in_curated is dropped, and a curated id always wins a collision", () => {

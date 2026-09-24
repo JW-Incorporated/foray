@@ -1042,7 +1042,7 @@ function ShareSheet({ target, onClose }) {
 /* ---------------------------- Feedback ---------------------------- */
 
 const FB_CHIPS = [
-  "Not into this topic", "Didn't like the voice", "Leans too far left",
+  "Not my subject", "Didn't like the voice", "Leans too far left",
   "Leans too far right", "Too surface-level", "Too in-the-weeds",
   "Bad audio quality", "Heard this already", "Just not this show",
 ];

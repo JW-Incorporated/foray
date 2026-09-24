@@ -97,6 +97,22 @@ final class ForayAudioPluginTests: XCTestCase {
         XCTAssertEqual(negative.playbackRate, 1.0, accuracy: 0.0001)
     }
 
+    /// Audit round 2, p-car-8: a network stall is PLAYING with the clock
+    /// stopped. The flag is what `applyNowPlayingInfo` turns into a 0
+    /// `MPNowPlayingInfoPropertyPlaybackRate`; the speed itself is kept.
+    /// TO SEE IT FAIL: parse `stalled` as `false` always.
+    func testStalledIsCarriedOnlyWhilePlaying() {
+        let stalled = NowPlayingPayload.from(["state": "playing", "playbackRate": 1.5, "stalled": true])
+        XCTAssertTrue(stalled.stalled)
+        XCTAssertEqual(stalled.playbackRate, 1.5, accuracy: 0.0001)
+
+        let paused = NowPlayingPayload.from(["state": "paused", "stalled": true])
+        XCTAssertFalse(paused.stalled, "a paused player is not waiting for anything")
+
+        XCTAssertFalse(NowPlayingPayload.from(["state": "playing"]).stalled)
+        XCTAssertFalse(NowPlayingPayload.empty.stalled)
+    }
+
     func testMissingBooleans_defaultToFalse() {
         let payload = NowPlayingPayload.from(["state": "paused"])
         XCTAssertFalse(payload.canPlay)
@@ -122,12 +138,39 @@ final class ForayAudioPluginTests: XCTestCase {
     }
 
     /// MUTATION: enable `nextTrack` when `hasNext` is false -> this goes red.
+    /// Since audit round 2 (p-impatient-3) the pair ALSO needs a track route:
+    /// `applyCommandAvailability` ANDs `trackCommandsAllowed(portTypes:)` in,
+    /// mirrored here as the third term.
     func testNextTrackEnabledExactlyWhenHasNextAndTransportable() {
         let withNext = NowPlayingPayload.from(["state": "playing", "hasNext": true])
         XCTAssertTrue(transportable(withNext) && withNext.hasNext)
 
         let withoutNext = NowPlayingPayload.from(["state": "playing", "hasNext": false])
         XCTAssertFalse(transportable(withoutNext) && withoutNext.hasNext)
+
+        let headset = ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.bluetoothA2DP.rawValue])
+        let speaker = ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue])
+        XCTAssertTrue(transportable(withNext) && withNext.hasNext && headset, "a headset route gets ⏭")
+        XCTAssertFalse(transportable(withNext) && withNext.hasNext && speaker, "the speaker route -- the lock screen alone -- keeps the skip pair")
+    }
+
+    /// The track pair follows the ROUTE, not Up Next (founder question 1, audit
+    /// round 2): the lock screen draws ⏮/⏭ over ↺15/30↻ whenever the pair is
+    /// enabled, so it is enabled only where a track button exists without
+    /// looking -- a headset, a Bluetooth stack, a car. TO SEE IT FAIL: return
+    /// true for an empty route, or drop `carAudio` from the set (CarPlay's
+    /// steering wheel goes dead).
+    func testTrackCommandsAllowedOnlyOnARouteWithATrackButton() {
+        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: []))
+        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue]))
+        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInReceiver.rawValue]))
+        for port in [AVAudioSession.Port.headphones, .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .carAudio, .usbAudio, .airPlay] {
+            XCTAssertTrue(ForayAudioPlugin.trackCommandsAllowed(portTypes: [port.rawValue]), "\(port.rawValue) has a track button")
+        }
+        XCTAssertTrue(
+            ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue, AVAudioSession.Port.carAudio.rawValue]),
+            "any one track route is enough"
+        )
     }
 
     /// "none" disables all transport, regardless of what flags were sent --

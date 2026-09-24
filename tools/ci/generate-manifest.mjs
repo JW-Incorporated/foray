@@ -70,7 +70,7 @@
  *   - .github/workflows/manifest-autofix.yml, the safety net for every other PR.
  */
 
-import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, realpathSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -123,9 +123,24 @@ function playerSources() {
     .map((f) => path.join("player", f));
 }
 
+/* The self-hosted brand faces styles.css's @font-face rules load (round-2
+   audit, perf-5). They were in no generation, so sw.js never precached them:
+   every launch revalidated each face before it could paint, and a new
+   deploy's generation started without them. Derived from the directory, like
+   playerSources(), so a new face cannot be forgotten here. */
+function fontSources() {
+  const dir = path.join(ROOT, "fonts");
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".woff2"))
+    .sort()
+    .map((f) => path.join("fonts", f));
+}
+
 function listedFiles() {
   const files = [
     ...SHELL,
+    ...fontSources(),
     ...playerSources(),
     ...RUNTIME_DATA.map((f) => path.join("data", f)),
   ];
@@ -295,6 +310,25 @@ function readStampedBuildId() {
   return /const BUILD_ID = "([^"]*)";/.exec(m[0])[1];
 }
 
-main();
+/* Run only as a script, so a suite can import `listedFiles` and
+   `playerSources` without triggering a --write/--check.
 
-export { computeManifest, listedFiles };
+   REALPATH ON BOTH SIDES, CASE-FOLDED ON WINDOWS (round-2 review). Node
+   realpaths the main module before it builds `import.meta.url`, but
+   `process.argv[1]` is only made absolute — so from a symlinked checkout, a
+   Windows junction, or a shell whose drive letter is cased differently, the
+   two never matched and `--check` exited 0 WITHOUT CHECKING (and `--write`
+   wrote nothing), letting a stale manifest pass a local gate. */
+function isEntryScript(argv1 = process.argv[1], metaUrl = import.meta.url) {
+  if (!argv1) return false;
+  const canon = (p) => {
+    let r;
+    try { r = realpathSync(p); } catch (_) { r = path.resolve(p); }
+    return process.platform === "win32" ? r.toLowerCase() : r;
+  };
+  return canon(argv1) === canon(fileURLToPath(metaUrl));
+}
+
+if (isEntryScript()) main();
+
+export { computeManifest, listedFiles, playerSources, fontSources, isEntryScript };

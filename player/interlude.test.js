@@ -18,13 +18,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  interludeEligible, describeInterlude, createInterludePlayer,
+  interludeEligible, describeInterlude, createInterludePlayer, sameSourceEpisode,
   readInterludePref, writeInterludePref,
   INTERLUDE_ASSET_URL, INTERLUDE_ASSET_PATH, INTERLUDE_DURATION_SEC, INTERLUDE_CEILING_SEC,
   INTERLUDE_RATE, INTERLUDE_KEY,
 } from "./interlude.js";
 import { AUTO_ADVANCE, USER_ACTION } from "./seam-gap.js";
 import { JINGLE } from "./foray-queue.js";
+import { findForay, resolveForay, indexSegments, indexSources } from "./foray-resolve.js";
 
 const seg = (id, extra = {}) => ({ id, kind: "episode", start_sec: 100, end_sec: 210, ...extra });
 const nar = (id) => ({ id, kind: "tts", script: "a line" });
@@ -54,6 +55,49 @@ test("the rule: into a segment on auto-advance, from anything but a jingle", () 
     assert.equal(interludeEligible(seam), expected, why);
   }
   assert.equal(interludeEligible(), false, "no arguments at all");
+});
+
+test("two cuts of the SAME episode get no jingle; the strip's capsule key decides (p-foray-1)", () => {
+  /* MUTATION (killed): delete the `sameSourceEpisode` clause from
+     `interludeEligible` — rows 1-2 flip to true. MUTATION (killed): make
+     `sameSourceEpisode` accept two "" keys — row 5 flips to false. */
+  const cut = (id, key, field = "source_item_id") => seg(id, { [field]: key });
+  const rows = [
+    [{ from: cut("a", "ep-1"), to: cut("b", "ep-1") }, false, "one episode, two cuts: the strip draws no seam here"],
+    [{ from: cut("a", "ep-1", "item_id"), to: cut("b", "ep-1", "item_id") }, false, "the authored item_id shape"],
+    [{ from: cut("a", "ep-1"), to: cut("b", "ep-2") }, true, "a change of episode is a seam"],
+    [{ from: nar("n"), to: cut("b", "ep-1") }, true, "narration -> tape still marks the seam"],
+    [{ from: seg("a"), to: seg("b") }, true, "two unidentified episodes are not evidence of one"],
+  ];
+  for (const [seam, expected, why] of rows) assert.equal(interludeEligible(seam), expected, why);
+  assert.equal(sameSourceEpisode(seg("a"), seg("b")), false);
+  assert.match(describeInterlude(rows[0][0]), /one episode/);
+});
+
+test("capital-types-1 (frozen): 21 seams, 11 of them inside one episode, so exactly 10 jingles", () => {
+  /* The only published Foray, read from the frozen fixture. Before p-foray-1
+     every one of its 21 auto seams sounded the sting (about every 2.4 min of a
+     51-minute listen), including FAM-1 > FAM-2 and all three joins of the
+     four-cut SBA roundtable. The count is the joins where the strip changes
+     capsule — the same number, asserted from the other side below. */
+  const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+  /* `frozenFile`, not `read`: this reads the FROZEN fixture, never `data/`,
+     so it is not a real-data suite and must not match the publish gate's
+     REAL_DATA_READ_RE (backend/src/cli/publishSuites.ts) — the old `read` helper
+     call shape did, and the anti-rot test demanded it be listed (2026-09-24). */
+  const frozenFile = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, "tools/foray/fixtures/frozen/data", f), "utf8"));
+  const doc = findForay(frozenFile("forays.json"), "capital-types-1", {});
+  const r = resolveForay(doc, { segments: indexSegments(frozenFile("segments.json")), sources: indexSources(frozenFile("segment-sources.json")) });
+  const items = r.playable;
+  assert.equal(items.length, 22);
+  let jingles = 0;
+  let capsuleChanges = 0;
+  for (let i = 1; i < items.length; i++) {
+    if (interludeEligible({ from: items[i - 1], to: items[i] })) jingles++;
+    if (items[i - 1].source_item_id !== items[i].source_item_id) capsuleChanges++;
+  }
+  assert.equal(jingles, 10);
+  assert.equal(jingles, capsuleChanges, "a jingle exactly where the strip draws a seam");
 });
 
 test("describeInterlude names the decision it made, not one it did not", () => {

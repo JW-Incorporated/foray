@@ -232,7 +232,17 @@ export const ROUTABLE_ACTIONS = Object.freeze([
  *  mirrored set therefore drops `SeekToPlaybackPosition` from what WebKit's
  *  client advertises (its set becomes ours ∪ {play, pause}); the Foray-clock
  *  scrub lives on `ForayAudioPlugin`'s client, which is built for it. */
-export const UNMIRRORED_ACTIONS = Object.freeze(["seekto"]);
+/** AND THE TRACK PAIR (audit round 2, p-impatient-3; founder question 1: the lock
+ *  screen shows the SKIP pair, always). WebKit's remote-command listener enables
+ *  `nextTrackCommand`/`previousTrackCommand` on the shared command centre for
+ *  every handler the page installs on its session, and iOS draws ⏮/⏭ in place of
+ *  ↺15/30↻ whenever those are enabled — so with anything in Up Next the founder's
+ *  15/30 became ⏭, and flipped back mid-drive as Up Next drained. The track pair
+ *  is the plugin's alone now: `ForayAudioPlugin.swift` enables it only while a
+ *  headset, Bluetooth or car route is present (`trackCommandsAllowed`), which is
+ *  where next/previous are pressed without looking. `docs/DECISIONS.md`
+ *  2026-09-23 (the platform contract) records the ruling and the device check. */
+export const UNMIRRORED_ACTIONS = Object.freeze(["seekto", "nexttrack", "previoustrack"]);
 
 /** The notification's own Stop button (and its swipe, from Android 14), and
  *  nothing else. NOT a spec action and deliberately not in `ROUTABLE_ACTIONS`: no
@@ -438,6 +448,16 @@ export function nowPlayingPayload({
   const rate = isNum(positionState?.playbackRate) && positionState.playbackRate > 0
     ? positionState.playbackRate
     : 1;
+  /* A STALL IS PLAYING WITH THE CLOCK STOPPED (audit round 2, p-car-8).
+     `media-session.js` reports a network stall as `playbackRate: 0` with the state
+     still playing — Apple's rule — and until now this clamp turned that 0 into 1, so
+     the lock screen and the car counted on over silence and snapped back when the
+     audio returned. Neither native side can take a zero SPEED (Media3's
+     `PlaybackParameters` throws; iOS's default rate must be positive), so the speed
+     keeps the clamp and the stall travels as its own flag: iOS writes rate 0,
+     Android reports `STATE_BUFFERING`. Only an explicit 0 on a playing transport is
+     a stall — a missing rate is not. */
+  const stalled = state === "playing" && positionState?.playbackRate === 0;
 
   return {
     state,
@@ -448,6 +468,7 @@ export function nowPlayingPayload({
     durationMs,
     positionMs,
     playbackRate: rate,
+    stalled,
     canPlay: installed.has("play"),
     canPause: installed.has("pause"),
     canStop: installed.has("stop"),
@@ -509,7 +530,7 @@ const KEY_SEPARATOR = String.fromCharCode(31);
 export function identityKey(payload) {
   return [
     payload.state, payload.title, payload.artist, payload.album, payload.artworkUri,
-    payload.durationMs, payload.playbackRate,
+    payload.durationMs, payload.playbackRate, payload.stalled,
     payload.canPlay, payload.canPause, payload.canStop,
     payload.hasNext, payload.hasPrevious,
     payload.canSeekBack, payload.canSeekForward, payload.canSeekTo,
@@ -571,6 +592,11 @@ function currentPlatform(capacitor) {
  *   shell can notice a foreground service that went away underneath it
  * @param {Function} [env.onLoadedChange] told whether media is loaded — the seam
  *   with `foray-audio-shell.js`; see the header
+ * @param {Function} [env.onPlayingChange] told when the transport starts or stops
+ *   SOUNDING (the payload's state crossing `"playing"`), on the transition only.
+ *   The second seam with the shell (audit round 2, native-2): a narration-first
+ *   Foray plays its opening minute through `ForayTtsPlugin` with no element, so
+ *   this is the only signal that can start the foreground service for it
  * @param {number} [env.positionMinIntervalMs]
  * @param {string} [env.baseUrl]
  * @param {string} [env.origin]
@@ -584,6 +610,7 @@ export function createForayMediaSession(env) {
     ? env.schedule
     : (fn) => Promise.resolve().then(fn);
   const onLoadedChange = typeof env.onLoadedChange === "function" ? env.onLoadedChange : null;
+  const onPlayingChange = typeof env.onPlayingChange === "function" ? env.onPlayingChange : null;
   const onNativeAnswer = typeof env.onNativeAnswer === "function" ? env.onNativeAnswer : null;
   const setTimer = typeof env.setTimeout === "function" ? env.setTimeout : null;
   const clearTimer = typeof env.clearTimeout === "function" ? env.clearTimeout : null;
@@ -652,6 +679,8 @@ export function createForayMediaSession(env) {
   let lastPositionMs = null;
   let lastSentAt = 0;
   let lastLoaded = null;
+  /** Whether the last flushed payload said `"playing"`; see `onPlayingChange`. */
+  let lastPlaying = false;
   /** A position write the rate limit refused, still waiting to be sent. See `flush`. */
   let deferredTimer = null;
   let sends = 0;
@@ -762,6 +791,19 @@ export function createForayMediaSession(env) {
           onLoadedChange(loaded);
         } catch (e) {
           log("foray-media-session: onLoadedChange failed", e);
+        }
+      }
+    }
+    /* AFTER the loaded report, for the same ordering reason: the shell's start
+       for a narration-first Foray must follow the "loaded" it depends on. */
+    const playing = payload.state === "playing";
+    if (playing !== lastPlaying) {
+      lastPlaying = playing;
+      if (onPlayingChange) {
+        try {
+          onPlayingChange(playing);
+        } catch (e) {
+          log("foray-media-session: onPlayingChange failed", e);
         }
       }
     }
@@ -1391,6 +1433,7 @@ export function createForayMediaSession(env) {
        leaving `mediaLoaded` true would leave the foreground service with no JS able
        to stop it — the same hole `foray-audio-shell.js`'s `uninstall` closes by
        stopping the service before restoring the prototype. */
+    lastPlaying = false;
     if (lastLoaded === true && onLoadedChange) {
       lastLoaded = false;
       try {
@@ -1545,6 +1588,11 @@ if (typeof window !== "undefined") {
       onLoadedChange: function (loaded) {
         const shell = window.ForayAudioShell;
         if (shell && typeof shell.setMediaLoaded === "function") shell.setMediaLoaded(loaded);
+      },
+      /* The narration-first start (audit round 2, native-2), same lazy lookup. */
+      onPlayingChange: function (playing) {
+        const shell = window.ForayAudioShell;
+        if (shell && typeof shell.noteTransportPlaying === "function") shell.noteTransportPlaying(playing);
       },
       /* The same lazy lookup, for the same reason: neither script may assume the other
          has run. */

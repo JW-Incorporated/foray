@@ -102,10 +102,26 @@ describe("deriveInterestDeltas", () => {
     expect(deltas).toHaveLength(0);
   });
 
-  it("thumbs down is a medium negative on the named node", () => {
-    const deltas = deriveInterestDeltas(evt({ type: "thumbs", payload: { direction: "down", node_id: POLITICS } }));
+  it("thumbs down FOR A SUBJECT REASON is a medium negative on the named node", () => {
+    const deltas = deriveInterestDeltas(evt({ type: "thumbs", payload: { direction: "down", node_id: POLITICS, reasons: ["Not my subject"] } }));
     expect(deltas[0]).toMatchObject({ nodeId: POLITICS, reason: "thumbs_down_named_node", durable: true });
     expect(deltas[0]!.delta).toBeLessThan(0);
+  });
+
+  it("thumbs down for a reason NOT about the subject is audited with no weight change (round 2 review, p-foray-6)", () => {
+    // MUTATION: drop the TOPIC_DOWNVOTE_REASONS check -> a microphone complaint lowers the subject; red.
+    for (const reasons of [["Bad audio quality"], ["Didn't like the voice"], [], undefined]) {
+      const payload = reasons === undefined
+        ? { direction: "down" as const, node_id: POLITICS }
+        : { direction: "down" as const, node_id: POLITICS, reasons };
+      const deltas = deriveInterestDeltas(evt({ type: "thumbs", payload }));
+      expect(deltas).toHaveLength(1);
+      expect(deltas[0]).toMatchObject({ nodeId: POLITICS, durable: false });
+      expect(deltas[0]!.delta).toBe(0);
+    }
+    const mixed = deriveInterestDeltas(evt({ type: "thumbs", payload: { direction: "down", node_id: POLITICS, reasons: ["Bad audio quality", "Too surface-level"] } }));
+    expect(mixed[0]!.durable).toBe(true);
+    expect(mixed[0]!.delta).toBeLessThan(0);
   });
 
   it("thumbs up reuses the more_like_this reason (approved overload, no enum migration)", () => {

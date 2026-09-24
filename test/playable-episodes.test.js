@@ -136,10 +136,15 @@ function showPageEpisode(m, n) {
 /** A fake player that records plays; `pointer` is its durable now-playing row. */
 function fakePlayer(pointer = null) {
   const calls = [];
+  /* What the real player answers right after a successful `play(item)`: that
+     item IS current. `bindPlay` checks it before the play (toggle vs start) and
+     after it (audit round 2, p-impatient-2: a play superseded mid-load is not
+     recorded), so a fake stuck on `false` was a fake the real thing contradicts. */
+  let current = null;
   return {
     calls,
-    async play(item) { calls.push(item); return true; },
-    isCurrent: () => false,
+    async play(item) { calls.push(item); current = item.id; return true; },
+    isCurrent: (id) => id === current,
     onEpisodeEnded() { return () => {}; },
     lastEpisodeCard: () => pointer,
     restoreLastEpisode: () => !!pointer,
@@ -153,6 +158,18 @@ async function clickPlay(m, id, ctxName = "show-x") {
   m.ctx.bindPlay({ querySelectorAll: (sel) => (sel === "[data-play]" ? [btn] : []) });
   await handler({ preventDefault() {}, stopPropagation() {} });
 }
+
+test("ROUND 2 review (p-switcher-7): a show-page row's snapshot carries show_id, so its show name links after a save", () => {
+  /* fullCatalogueRowToEpRowItem is the other producer of breadth rows, and it
+     passed only `show: show.title`: saved or queued, the show name was plain
+     text again. MUTATION: drop `show_id` from its snapshot source -> red. */
+  const m = boot(new Map());
+  const ep = showPageEpisode(m, 51);
+  assert.strictEqual(ep.show_id, "lex-fridman-podcast");
+  m.state.catalog = { shows: [] };   // not a curated show: no title join to fall back on
+  const row = m.ctx.epRow(ep, 0, "saved");
+  assert.ok(row.includes('href="#/show/lex-fridman-podcast"'), `the show name links by id: ${row.slice(0, 400)}`);
+});
 
 test("an episode queued from a show page is still a playable Up Next row after a reload", () => {
   /* qa 95 / persona 29. MUTATION: drop `rememberEpisode(id)` from addToQueue —
@@ -195,6 +212,61 @@ test("an episode played from a show page is a playable History row after a reloa
   const [row] = b.ctx.rowsForIds(b.ctx.pickedHistory());
   assert.strictEqual(row.state, "live", "history must not deny the listening happened");
   assert.strictEqual(row.item.title, "Episode 3");
+});
+
+test("ROUND 2 review: a play SUPERSEDED mid-load reports no failure; a refused play that is still current does", async () => {
+  /* `play()` answers false for row A once row B's tap replaced it, and bindPlay
+     painted "That episode couldn't load" over B while B loaded. MUTATION:
+     drop the `isCurrent` return inside `if (!ok)`. */
+  const m = boot(new Map());
+  const a = showPageEpisode(m, 21);
+  const reports = [];
+  let current = null;
+  m.ctx.window.ForayPlayer = {
+    // A's load resolves after B was tapped: B is current, A's answer is false.
+    async play() { current = "some-later-row"; return false; },
+    isCurrent: (id) => id === current,
+    reportPlayFailure: (e) => reports.push(e),
+    onEpisodeEnded() { return () => {}; },
+  };
+  await clickPlay(m, a.id);
+  assert.deepStrictEqual(reports, [], "superseded is silent");
+  assert.strictEqual(m.store.get("cp_history"), undefined, "and not recorded as played");
+
+  m.ctx.window.ForayPlayer.play = async (item) => { current = item.id; return false; };
+  current = null;
+  await clickPlay(m, a.id);
+  assert.strictEqual(reports.length, 1, "a refused play of the current item still says so");
+});
+
+test("ROUND 2 review: a ▶ on Up Next does not snapshot the queue as a second play list", async () => {
+  /* With `data-ctx="upnext"` the rows on screen became `state.playList`, so a
+     row the listener then removed with ✕ still played next (planAfterEnded
+     falls back to the list). MUTATION: drop `listCtx !== UP_NEXT_CTX`. */
+  const m = boot(new Map());
+  const eps = [31, 32, 33].map((n) => showPageEpisode(m, n));
+  m.ctx.window.ForayPlayer = fakePlayer();
+  const handlers = new Map();
+  const btns = eps.map((e) => ({ dataset: { play: e.id, ctx: "upnext" }, addEventListener: (_t, fn) => { handlers.set(e.id, fn); } }));
+  m.ctx.bindPlay({ querySelectorAll: (sel) => (sel === "[data-play]" ? btns : []) });
+  await handlers.get(eps[0].id)({ preventDefault() {}, stopPropagation() {} });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(m.state.playList)), [eps[0].id], "the list is the one episode; Up Next is the continuation");
+});
+
+test("ROUND 2 review: a row star reaches the Now Playing sheet with the NEW saved state", () => {
+  /* toggleStar refreshed the sheet before writing cp_saved, and the sheet
+     paints synchronously from storage, so it showed the pre-toggle Save.
+     MUTATION: move refreshEpisodeNavigation() back above lsSet -> red. */
+  const m = boot(new Map());
+  const ep = showPageEpisode(m, 41);
+  const painted = [];
+  m.ctx.window.ForayPlayer = {
+    setEpisodeNavigation: (nav) => painted.push(nav.isSaved(ep.id)),
+  };
+  m.ctx.toggleStar(ep.id);
+  assert.strictEqual(painted[painted.length - 1], true, "the sheet paints Saved");
+  m.ctx.toggleStar(ep.id);
+  assert.strictEqual(painted[painted.length - 1], false, "and Save again after un-saving");
 });
 
 test("a starred show-page episode is PLAYABLE in Library → Saved after a reload, not greyed", () => {

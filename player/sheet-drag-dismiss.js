@@ -145,3 +145,42 @@ export function dragOffset(state) {
   if (!state || !state.active || !state.engaged) return 0;   /* see endDrag on why not `allowed` too */
   return state.dy;
 }
+
+/**
+ * Does this gesture own the finger — should the caller cancel the browser's
+ * own `touchmove` so the scroller under the sheet cannot start a pan?
+ *
+ * WHY A SEPARATE QUESTION FROM `dragOffset` (audit round 2, touch-2). The
+ * body of the sheet has no `touch-action: none` — it is the scroller, and it
+ * must keep scrolling when the listener reads a long description. The only
+ * thing that keeps a pull-DOWN at scrollTop 0 from becoming a rubber-band
+ * scroll is a cancelled, non-passive `touchmove`; `preventDefault` on
+ * `pointermove`, which this sheet used to do, has no effect on panning at
+ * all. But the browser decides "is this a scroll" on the FIRST touchmove
+ * past its own slop, which on iOS is smaller than `DIRECTION_LOCK_PX` — so
+ * the caller cannot wait for `engaged`. The rule is therefore: an ELIGIBLE
+ * gesture (`allowed`) whose finger is below where it started claims every
+ * touchmove from the first pixel; a finger moving UP (dy clamps to 0) claims
+ * none, and the scroller scrolls.
+ *
+ * MUTATION TO BREAK THIS: return `state.engaged` instead and `an eligible
+ * pull claims the touch from the first downward pixel` fails.
+ */
+export function claimsTouch(state) {
+  if (!(state && state.active && state.allowed)) return false;
+  /* Once the sheet is following the finger it keeps it, whichever way it
+     wobbles; the sheet is being dragged. */
+  if (state.engaged) return true;
+  /* BEFORE THAT, A SLOP AND A DIRECTION (audit round 2 review). Claiming from
+     the first pixel meant a thumb that meant to swipe UP to read the notes, but
+     whose first sample drifted 1 px down, had that first touchmove cancelled —
+     and WebKit and Chrome then disable panning for the rest of the touch
+     sequence, so the swipe did nothing at all. CLAIM_SLOP_PX is still below
+     the platforms' own pan slop, so a real pull is claimed before the browser
+     decides it is a scroll; and a sample moving up is never claimed. */
+  return state.dy >= CLAIM_SLOP_PX && state.lastY >= state.prevY;
+}
+
+/** How far down a finger must be, in CSS px, before an eligible gesture
+    claims the touch from the scroller (see `claimsTouch`). */
+export const CLAIM_SLOP_PX = 3;

@@ -22,8 +22,16 @@
    never segment -> narration, where the narration is the marker. Never on a
    skip, a row tap, a scrub or a resume: the listener named a destination, and
    a 3 s sting on a button press is a stall (`seam-gap.js` § "What is NOT a
-   seam" — the same rule, for the same reason). And never straight after an
-   authored `JINGLE` item (`foray-queue.js`): one mark per seam.
+   seam" — the same rule, for the same reason). Never straight after an
+   authored `JINGLE` item (`foray-queue.js`): one mark per seam. And never
+   between two cuts of the SAME episode (audit round 2, p-foray-1): the brief
+   is "an interlude between PODCASTS", and the Foray strip draws a same-episode
+   join as a hairline inside one capsule, not a seam (`segment-strip.js`
+   `sourceKeyOf`). A sting there is the ear hearing a channel change the eye
+   says did not happen — on capital-types-1 it was 11 of 21 seams, one guest
+   interrupted by the app's logo every couple of minutes. The jump cut keeps
+   `seam-gap.js`'s 2.0 s beat, which is exactly the mark
+   `docs/curation/segment-length-rules.md` §6b asks for inside one episode.
 
    ── Why it is NOT a queue item, and what that buys ────────────────────────
    `foray-queue.js` already defines a `JINGLE` item KIND for a jingle the
@@ -77,6 +85,7 @@
 
 import { AUTO_ADVANCE, isSegment } from "./seam-gap.js";
 import { JINGLE } from "./foray-queue.js";
+import { sourceKeyOf } from "./segment-strip.js";
 
 /** Repo-relative path of the asset — what the generator writes and the live
     site serves at the same path (GitHub Pages deploys the repo root verbatim). */
@@ -112,6 +121,24 @@ export const INTERLUDE_KEY = "cp_interlude";
 /* ---------- the rule ---------- */
 
 /**
+ * Are these two items cuts of one source episode? The SAME key the strip draws
+ * capsules by (`sourceKeyOf`), so the jingle and the picture cannot disagree
+ * about where one conversation ends and the next begins.
+ *
+ * Only a POSITIVE match counts. `sourceKeyOf` answers "" for an item whose
+ * episode it cannot identify (the strip lets those join a neighbour's capsule,
+ * the less wrong picture), but two unknowns are not evidence of one episode,
+ * and dropping a jingle on a guess is the quieter failure to hide. A built
+ * queue item always carries `source_item_id` (`foray-queue.js`), so this is
+ * the test-fixture case, not a live one.
+ */
+export function sameSourceEpisode(from, to) {
+  const a = sourceKeyOf(from);
+  const b = sourceKeyOf(to);
+  return typeof a === "string" && a !== "" && a === b;
+}
+
+/**
  * Does this transition get the jingle?
  *
  * @param {object}  seam
@@ -125,6 +152,7 @@ export function interludeEligible({ from, to, cause = AUTO_ADVANCE } = {}) {
   if (!from || !to) return false;
   if (!isSegment(to)) return false;
   if (from.kind === JINGLE) return false;
+  if (sameSourceEpisode(from, to)) return false;
   return true;
 }
 
@@ -136,7 +164,8 @@ export function describeInterlude({ from, to, cause = AUTO_ADVANCE } = {}) {
   if (!from) return "no jingle: nothing before this item";
   if (!to) return "no jingle: nothing follows this item";
   if (!isSegment(to)) return `no jingle: ${to.id} is not a tape segment`;
-  return `no jingle: ${from.id} is already a jingle`;
+  if (from.kind === JINGLE) return `no jingle: ${from.id} is already a jingle`;
+  return `no jingle: ${from.id} -> ${to.id} is one episode (the 2.0 s beat marks the cut)`;
 }
 
 /* ---------- the setting ---------- */
