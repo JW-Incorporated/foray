@@ -1,0 +1,1143 @@
+{
+  "family": "engine-mode",
+  "module": "player/engine-contract.js",
+  "note": "EngineMode.decideOnce as a pure table (docs/native-engine-plan.md §4.6; player/engine-contract.js decideEngineMode and engineModeTrace, NE-11j): an absent plist key is legacy with reason no-plist-key; a strike only for a still-set sentinel; three clean background launches give 0 strikes; sticky legacy until CFBundleVersion changes; a setting change clears; a page-health strike. Ported by NE-11s to EngineMode.swift; NE-17 wraps it in decideOnce().",
+  "cases": [
+    {
+      "id": "engine-mode/strike-limit",
+      "covers": [],
+      "read": "STRIKE_LIMIT",
+      "expect": { "value": 3 }
+    },
+    {
+      "id": "engine-mode/engine-mode-events",
+      "covers": [],
+      "read": "ENGINE_MODE_EVENTS",
+      "expect": { "value": ["launch", "healthy", "page-health", "set-override"] }
+    },
+    {
+      "id": "engine-mode/mode-overrides",
+      "covers": [],
+      "read": "MODE_OVERRIDES",
+      "expect": { "value": ["auto", "native", "web"] }
+    },
+    {
+      "id": "engine-mode/decide-no-plist-key",
+      "covers": [],
+      "authored": true,
+      "note": "§4.6: ForayEngineDefault absent -> the JS lane (legacy), reason=no-plist-key.",
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "override": "auto",
+          "sentinelWasSet": false,
+          "strikes": 0,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "no-plist-key",
+          "stickyLegacyBuild": null,
+          "strikes": 0,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-plist-null",
+      "covers": [],
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": null,
+          "override": "auto",
+          "sentinelWasSet": false,
+          "strikes": 0,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "no-plist-key",
+          "stickyLegacyBuild": null,
+          "strikes": 0,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-plist-garbage",
+      "covers": [],
+      "note": "An unreadable plist value is treated as absent: today's player.",
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "banana",
+          "override": "auto",
+          "sentinelWasSet": false,
+          "strikes": 0,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "no-plist-key",
+          "stickyLegacyBuild": null,
+          "strikes": 0,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-build-default-native",
+      "covers": [],
+      "authored": true,
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "auto",
+          "sentinelWasSet": false,
+          "strikes": 0,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "native",
+          "reason": "build-default",
+          "stickyLegacyBuild": null,
+          "strikes": 0,
+          "writeSentinel": true
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-build-default-js",
+      "covers": [],
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "js",
+          "override": "auto",
+          "sentinelWasSet": false,
+          "strikes": 0,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "build-default",
+          "stickyLegacyBuild": null,
+          "strikes": 0,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-not-built",
+      "covers": [],
+      "note": "NE-01's stub answer: no engine in this binary.",
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "auto",
+          "sentinelWasSet": false,
+          "strikes": 0,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": false
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "not-built",
+          "stickyLegacyBuild": null,
+          "strikes": 0,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-not-built-ignores-override",
+      "covers": [],
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "native",
+          "sentinelWasSet": false,
+          "strikes": 0,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": false
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "not-built",
+          "stickyLegacyBuild": null,
+          "strikes": 0,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-override-native-over-js-default",
+      "covers": [],
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "js",
+          "override": "native",
+          "sentinelWasSet": false,
+          "strikes": 0,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "native",
+          "reason": "override",
+          "stickyLegacyBuild": null,
+          "strikes": 0,
+          "writeSentinel": true
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-override-web-over-native-default",
+      "covers": [],
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "web",
+          "sentinelWasSet": false,
+          "strikes": 0,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "override",
+          "stickyLegacyBuild": null,
+          "strikes": 0,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-override-unknown-is-auto",
+      "covers": [],
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "js",
+          "override": "sometimes",
+          "sentinelWasSet": false,
+          "strikes": 0,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "build-default",
+          "stickyLegacyBuild": null,
+          "strikes": 0,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-sentinel-set-adds-a-strike",
+      "covers": [],
+      "authored": true,
+      "note": "A strike is added only if the previous sentinel is still set.",
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "auto",
+          "sentinelWasSet": true,
+          "strikes": 1,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "native",
+          "reason": "build-default",
+          "stickyLegacyBuild": null,
+          "strikes": 2,
+          "writeSentinel": true
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-sentinel-clear-adds-none",
+      "covers": [],
+      "authored": true,
+      "note": "A launch whose previous boot went healthy is not a crash: no strike (R18).",
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "auto",
+          "sentinelWasSet": false,
+          "strikes": 2,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "native",
+          "reason": "build-default",
+          "stickyLegacyBuild": null,
+          "strikes": 2,
+          "writeSentinel": true
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-third-strike-is-crash-loop",
+      "covers": [],
+      "authored": true,
+      "note": "At 3 strikes the process runs legacy, reason=crash-loop, pinned to this CFBundleVersion.",
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "auto",
+          "sentinelWasSet": true,
+          "strikes": 2,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "crash-loop",
+          "stickyLegacyBuild": "2026092401",
+          "strikes": 3,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-crash-loop-beats-override-native",
+      "covers": [],
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "native",
+          "sentinelWasSet": true,
+          "strikes": 2,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "crash-loop",
+          "stickyLegacyBuild": "2026092401",
+          "strikes": 3,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-sticky-legacy-same-build",
+      "covers": [],
+      "authored": true,
+      "note": "Legacy stays sticky until CFBundleVersion changes.",
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "auto",
+          "sentinelWasSet": false,
+          "strikes": 3,
+          "stickyLegacyBuild": "2026092401",
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "crash-loop",
+          "stickyLegacyBuild": "2026092401",
+          "strikes": 3,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-sticky-legacy-same-build-even-with-no-strikes",
+      "covers": [],
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "auto",
+          "sentinelWasSet": false,
+          "strikes": 0,
+          "stickyLegacyBuild": "2026092401",
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "legacy",
+          "reason": "crash-loop",
+          "stickyLegacyBuild": "2026092401",
+          "strikes": 0,
+          "writeSentinel": false
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-sticky-legacy-cleared-by-new-build",
+      "covers": [],
+      "authored": true,
+      "note": "A new CFBundleVersion drops the pin and its strikes.",
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "auto",
+          "sentinelWasSet": false,
+          "strikes": 3,
+          "stickyLegacyBuild": "2026092301",
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "native",
+          "reason": "build-default",
+          "stickyLegacyBuild": null,
+          "strikes": 0,
+          "writeSentinel": true
+        }
+      }
+    },
+    {
+      "id": "engine-mode/decide-negative-strikes-read-as-zero",
+      "covers": [],
+      "call": "decideEngineMode",
+      "args": [
+        {
+          "buildDefault": "native",
+          "override": "auto",
+          "sentinelWasSet": true,
+          "strikes": -4,
+          "stickyLegacyBuild": null,
+          "currentBuild": "2026092401",
+          "built": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "mode": "native",
+          "reason": "build-default",
+          "stickyLegacyBuild": null,
+          "strikes": 1,
+          "writeSentinel": true
+        }
+      }
+    },
+    {
+      "id": "engine-mode/trace-three-clean-background-launches",
+      "covers": [],
+      "authored": true,
+      "note": "§4.6 fixture: three background launches with clean sentinels give strikes = 0.",
+      "call": "engineModeTrace",
+      "args": [
+        {
+          "override": "auto",
+          "strikes": 0,
+          "sentinel": false,
+          "stickyLegacyBuild": null
+        },
+        [
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          { "kind": "healthy" },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          { "kind": "healthy" },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          { "kind": "healthy" }
+        ]
+      ],
+      "expect": {
+        "return": [
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "healthy",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "healthy",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "healthy",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "engine-mode/trace-crash-loop-then-new-build",
+      "covers": [],
+      "note": "Three uncleared sentinels: the fourth launch is legacy, sticky for the build; a new build runs native again with strikes 0.",
+      "call": "engineModeTrace",
+      "args": [
+        {
+          "override": "auto",
+          "strikes": 0,
+          "sentinel": false,
+          "stickyLegacyBuild": null
+        },
+        [
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092402",
+            "built": true
+          }
+        ]
+      ],
+      "expect": {
+        "return": [
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 1
+          },
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 2
+          },
+          {
+            "kind": "launch",
+            "mode": "legacy",
+            "override": "auto",
+            "reason": "crash-loop",
+            "sentinel": false,
+            "stickyLegacyBuild": "2026092401",
+            "strikes": 3
+          },
+          {
+            "kind": "launch",
+            "mode": "legacy",
+            "override": "auto",
+            "reason": "crash-loop",
+            "sentinel": false,
+            "stickyLegacyBuild": "2026092401",
+            "strikes": 3
+          },
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "engine-mode/trace-page-health-strikes-reach-crash-loop",
+      "covers": [],
+      "note": "A page that never says hello: one strike per launch, counted from the launch's own strikes, so the healthy marker that fires first cannot wipe it; the fourth launch is legacy.",
+      "call": "engineModeTrace",
+      "args": [
+        {
+          "override": "auto",
+          "strikes": 0,
+          "sentinel": false,
+          "stickyLegacyBuild": null
+        },
+        [
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          { "kind": "healthy" },
+          { "kind": "page-health" },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          { "kind": "healthy" },
+          { "kind": "page-health" },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          { "kind": "healthy" },
+          { "kind": "page-health" },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          }
+        ]
+      ],
+      "expect": {
+        "return": [
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "healthy",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "page-health",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 1
+          },
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 1
+          },
+          {
+            "kind": "healthy",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "page-health",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 2
+          },
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 2
+          },
+          {
+            "kind": "healthy",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "page-health",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 3
+          },
+          {
+            "kind": "launch",
+            "mode": "legacy",
+            "override": "auto",
+            "reason": "crash-loop",
+            "sentinel": false,
+            "stickyLegacyBuild": "2026092401",
+            "strikes": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "engine-mode/trace-page-health-once-per-process",
+      "covers": [],
+      "note": "One page-health strike per process, and a later healthy marker clears the sentinel without resetting it.",
+      "call": "engineModeTrace",
+      "args": [
+        {
+          "override": "auto",
+          "strikes": 0,
+          "sentinel": false,
+          "stickyLegacyBuild": null
+        },
+        [
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          { "kind": "page-health" },
+          { "kind": "page-health" },
+          { "kind": "healthy" }
+        ]
+      ],
+      "expect": {
+        "return": [
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "page-health",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 1
+          },
+          {
+            "kind": "page-health",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 1
+          },
+          {
+            "kind": "healthy",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "engine-mode/trace-page-health-ignored-in-legacy",
+      "covers": [],
+      "note": "No engine, no hello watchdog: a legacy process takes no page-health strike, and its healthy marker changes nothing.",
+      "call": "engineModeTrace",
+      "args": [
+        {
+          "override": "auto",
+          "strikes": 0,
+          "sentinel": false,
+          "stickyLegacyBuild": null
+        },
+        [
+          {
+            "kind": "launch",
+            "buildDefault": "js",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          { "kind": "page-health" },
+          { "kind": "healthy" }
+        ]
+      ],
+      "expect": {
+        "return": [
+          {
+            "kind": "launch",
+            "mode": "legacy",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "page-health",
+            "mode": "legacy",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "healthy",
+            "mode": "legacy",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "engine-mode/trace-setting-change-clears-strikes-and-sticky",
+      "covers": [],
+      "note": "Changing the Developer engine setting clears strikes and the sticky flag; it applies after restart.",
+      "call": "engineModeTrace",
+      "args": [
+        {
+          "override": "auto",
+          "strikes": 3,
+          "sentinel": false,
+          "stickyLegacyBuild": "2026092401"
+        },
+        [
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          { "kind": "set-override", "mode": "native" },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          }
+        ]
+      ],
+      "expect": {
+        "return": [
+          {
+            "kind": "launch",
+            "mode": "legacy",
+            "override": "auto",
+            "reason": "crash-loop",
+            "sentinel": false,
+            "stickyLegacyBuild": "2026092401",
+            "strikes": 3
+          },
+          {
+            "kind": "set-override",
+            "mode": "legacy",
+            "override": "native",
+            "reason": "crash-loop",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "native",
+            "reason": "override",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "engine-mode/trace-override-web-then-auto",
+      "covers": [],
+      "call": "engineModeTrace",
+      "args": [
+        {
+          "override": "auto",
+          "strikes": 0,
+          "sentinel": false,
+          "stickyLegacyBuild": null
+        },
+        [
+          { "kind": "set-override", "mode": "web" },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          },
+          { "kind": "set-override", "mode": "auto" },
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          }
+        ]
+      ],
+      "expect": {
+        "return": [
+          {
+            "kind": "set-override",
+            "mode": null,
+            "override": "web",
+            "reason": null,
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "launch",
+            "mode": "legacy",
+            "override": "web",
+            "reason": "override",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "set-override",
+            "mode": "legacy",
+            "override": "auto",
+            "reason": "override",
+            "sentinel": false,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          },
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "engine-mode/trace-stored-garbage-reads-as-fresh",
+      "covers": [],
+      "call": "engineModeTrace",
+      "args": [
+        { "override": 7, "strikes": "3", "sentinel": "yes", "stickyLegacyBuild": "" },
+        [
+          {
+            "kind": "launch",
+            "buildDefault": "native",
+            "currentBuild": "2026092401",
+            "built": true
+          }
+        ]
+      ],
+      "expect": {
+        "return": [
+          {
+            "kind": "launch",
+            "mode": "native",
+            "override": "auto",
+            "reason": "build-default",
+            "sentinel": true,
+            "stickyLegacyBuild": null,
+            "strikes": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "engine-mode/trace-throws-unknown-event",
+      "covers": [],
+      "call": "engineModeTrace",
+      "args": [
+        {
+          "override": "auto",
+          "strikes": 0,
+          "sentinel": false,
+          "stickyLegacyBuild": null
+        },
+        [{ "kind": "reboot" }]
+      ],
+      "expect": { "throws": { "name": "RangeError" } }
+    },
+    {
+      "id": "engine-mode/trace-throws-unknown-override",
+      "covers": [],
+      "call": "engineModeTrace",
+      "args": [
+        {
+          "override": "auto",
+          "strikes": 0,
+          "sentinel": false,
+          "stickyLegacyBuild": null
+        },
+        [{ "kind": "set-override", "mode": "legacy" }]
+      ],
+      "expect": { "throws": { "name": "RangeError" } }
+    }
+  ]
+}

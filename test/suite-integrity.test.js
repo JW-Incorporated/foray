@@ -291,7 +291,15 @@ const FLOORS = {
      the family records and every cp_ key the app spells, in both directions:
      a missed row is a clobber, an extra one is a store that stops saving. */
   "player/parity/rows.test.js": 6, // NE-10s: the page's own readers accept every recorded row (the bytes the Swift engine must write) and re-save it unchanged, and the page's isNewer orders them by updated_at; 4 -> 6
-  "player/engine-contract.test.js": 3,
+  /* NE-11j: the rest of the contract. Beside the recorded families (checked
+     case by case by record.mjs --check), this suite states each RULE across
+     every case at once: the schema file is current and its examples are the
+     contract/snapshot cases one-to-one; SessionPolicy never notifies but on
+     close/finalEnd/dataDeletion, relinquish carries nothing, only an ok
+     sessionResult activates, and composed with the audible-start invariant
+     no audible command follows a failed activation; the strike rules; and the
+     six families owed to NE-11s. Zero slack. 3 -> 15 */
+  "player/engine-contract.test.js": 15,
   /* NE-04: the engine's closed vocabularies. The diag-tokens family records
      the sets for Swift; this suite holds what is about the sets themselves —
      the plan's named tokens, every page transport source admissible, the NE-01
