@@ -2,22 +2,9 @@
 
 <!-- ha-format: 2 -->
 
-> **33 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **32 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
-
-## #108 🔴 [BLOCKING] One more car trip — the record can finally answer the question (~3 min)
-<!-- ha filed=2026-09-21 kind=default -->
-
-**Why:** Two records in, and neither could settle it — because the number they turned on was unreadable. Your 2026-09-22 record shows `native=on/sent=0` on every `nowplaying` row, which reads as "the payload never reached the car". It could not have read anything else: the app logged that row synchronously with the write, and the shim that forwards it to iOS only *queues* the send. Every row in the record is the first write after a boot, so all seven read `0` however healthy the bridge was. Fixed in #733 — the count is now read after the send, and the restore path now installs the transport handlers it was missing (which is the likeliest reason the steering-wheel play button did nothing).
-
-**Steps:**
-1. Install TestFlight build **2026092224** or higher — both fixes only exist there.
-2. Play a podcast in the car. Press **play/pause on the steering wheel or head unit** at least once, and note whether it responds.
-3. Leave it playing a minute or two, then in 4a: menu → **Developer** → **Playback diagnostics** → **Copy**, and paste it here.
-4. Say whether it was CarPlay, Android Auto, or plain Bluetooth — and whether the head-unit buttons worked.
-
-**Worked if:** a pasted record whose `nowplaying` rows show a `sent=` that CLIMBS as playback continues. A `sent=` still pinned at 0 in that build is now a real finding rather than an artefact, and points at the shim.
 
 ## #46 🔴 [BLOCKING] Nightly content has been stalled since 2026-09-14 — its Cloud routine is switched off (~5 min)
 <!-- ha filed=2026-09-13 kind=default -->
