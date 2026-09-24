@@ -387,7 +387,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const rememberedFailure = episodeFeedFailureCache.get(showScope);
     if (rememberedFailure) {
       res.setHeader("Cache-Control", "no-store"); // never let the edge outlive our own short window
-      res.status(200).json({ query: q, show: showScope, episodes: [], source: ["live"], degraded: true, error: rememberedFailure });
+      res.status(200).json({ query: q, show: showScope, episodes: [], source: ["live"], total: 0, capped: false, degraded: true, error: rememberedFailure });
       return;
     }
 
@@ -417,6 +417,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       show: null,
       episodes: [],
       source: [],
+      /* One shape on every path (audit round 2, honesty-11 added these two to
+         the answered paths; a refusal that dropped them would make the client
+         and api/test/episodes-search-degraded-honesty.test.mjs branch on keys). */
+      total: 0,
+      capped: false,
       degraded: true,
       error: "rate limit exceeded — try again shortly"
     });

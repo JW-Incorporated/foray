@@ -1603,7 +1603,15 @@ test("persist-8: a sync in flight when Delete is tapped cannot put the old token
   assert.ok(held, "premise: the sync's refresh is on the wire");
 
   await arm();
-  const out = await ctx.deleteMyData();
+  /* deleteMyData() now waits out SYNC_SETTLE_MS (20 ms) for the held sync, and
+     that timer is app.js's own — which this suite's sandbox unrefs. Nothing
+     else holds the event loop open here: on Windows the stdio pipes happen to,
+     but on Linux CI node found the loop empty mid-await and cancelled this test
+     and every one after it ("Promise resolution is still pending but the event
+     loop has already resolved", 2026-09-24). A ref'd keep-alive for the wait. */
+  const keepAlive = setInterval(() => {}, 1000);
+  let out;
+  try { out = await ctx.deleteMyData(); } finally { clearInterval(keepAlive); }
   assert.strictEqual(out.ok, true, JSON.stringify(out.local));
   assert.ok(log.some((e) => e.kind === "fetch" && e.method === "DELETE" && e.url.includes("/rest/v1/events")));
 

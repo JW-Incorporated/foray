@@ -217,7 +217,19 @@ function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs 
   ctx.globalThis = ctx;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
-  vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
+  /* The bound is shortened IN THE SOURCE, not only after it runs: boot calls
+     `waitForStorage()` synchronously while app.js executes, and with no store
+     published its `setTimeout(finish, STORAGE_WAIT_MS)` is armed right then —
+     at the real 5000 ms. Assigning afterwards reached only the later race in
+     storageReady(), so the no-store cases (readyState "interactive") painted
+     at 5 s, outside booted()'s 600 ticks: green on Windows, where 600 ticks
+     happen to outlast 5 s, red on Linux CI (2026-09-24). */
+  const appSrc = storageWaitMs == null ? APP_SRC : (() => {
+    const decl = "let STORAGE_WAIT_MS = 5000;";
+    assert.ok(APP_SRC.includes(decl), `app.js no longer declares \`${decl}\`; update mount()`);
+    return APP_SRC.replace(decl, `let STORAGE_WAIT_MS = ${storageWaitMs};`);
+  })();
+  vm.runInContext(appSrc, ctx, { filename: "app.js" });
   if (storageWaitMs != null) vm.runInContext(`STORAGE_WAIT_MS = ${storageWaitMs};`, ctx);
   if (ceilingMs != null) vm.runInContext(`STORAGE_SETTLE_CEILING_MS = ${ceilingMs};`, ctx);
   const state = vm.runInContext("state", ctx);

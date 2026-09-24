@@ -581,6 +581,12 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
            listener made it: an interrupted element reports the same bare pause. */
         case (.playing, .paused):
             return interrupted ? .none : .hold
+        /* PLAYING -> PLAYING is a position write, not a resume: nothing started
+           sounding, so there is no new activation for the hold to be
+           superseded by. testSessionMoveTable pins it `.none` (ios-kit had been
+           red on main since #746 because `(_, .playing)` caught it). */
+        case (.playing, .playing):
+            return .none
         case (_, .playing):
             return holding ? .supersede : .none
         case (_, .none), (_, .ended):
