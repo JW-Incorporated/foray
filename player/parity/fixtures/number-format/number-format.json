@@ -1,0 +1,182 @@
+{
+  "family": "number-format",
+  "module": "player/parity/rows.js",
+  "note": "How a number inside any shared row is printed: JSON.stringify, i.e. ECMAScript Number::toString (shortest round-trip digits; exponent form from 1e21 up and below 1e-6; -0 as 0; NaN and the infinities as null). NE-10s's JSWriter must print every one of these identically.",
+  "cases": [
+    {
+      "id": "number-format/zero",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [0],
+      "expect": { "return": "0" }
+    },
+    {
+      "id": "number-format/negative-zero",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [{ "$num": "-0" }],
+      "expect": { "return": "0" }
+    },
+    {
+      "id": "number-format/one",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [1],
+      "expect": { "return": "1" }
+    },
+    {
+      "id": "number-format/negative-integer",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [-42],
+      "expect": { "return": "-42" }
+    },
+    {
+      "id": "number-format/integral-double-3600",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [3600],
+      "expect": { "return": "3600" }
+    },
+    {
+      "id": "number-format/integral-double-2-pow-53",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [9007199254740992],
+      "expect": { "return": "9007199254740992" }
+    },
+    {
+      "id": "number-format/point-one",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [0.1],
+      "expect": { "return": "0.1" }
+    },
+    {
+      "id": "number-format/point-one-plus-point-two",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [0.30000000000000004],
+      "expect": { "return": "0.30000000000000004" }
+    },
+    {
+      "id": "number-format/one-third-of-100",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [33.333333333333336],
+      "expect": { "return": "33.333333333333336" }
+    },
+    {
+      "id": "number-format/times-100-noise",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [434.99999999999994],
+      "expect": { "return": "434.99999999999994" }
+    },
+    {
+      "id": "number-format/typical-position",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [1234.5678],
+      "expect": { "return": "1234.5678" }
+    },
+    {
+      "id": "number-format/eighths-exact",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [123456789.125],
+      "expect": { "return": "123456789.125" }
+    },
+    {
+      "id": "number-format/plain-1e20",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [100000000000000000000],
+      "expect": { "return": "100000000000000000000" }
+    },
+    {
+      "id": "number-format/plain-just-below-1e21",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [123456789012345680000],
+      "expect": { "return": "123456789012345680000" }
+    },
+    {
+      "id": "number-format/exponent-from-1e21",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [1e+21],
+      "expect": { "return": "1e+21" }
+    },
+    {
+      "id": "number-format/exponent-1.5e300",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [1.5e+300],
+      "expect": { "return": "1.5e+300" }
+    },
+    {
+      "id": "number-format/max-value",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [1.7976931348623157e+308],
+      "expect": { "return": "1.7976931348623157e+308" }
+    },
+    {
+      "id": "number-format/plain-down-to-1e-6",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [0.000001],
+      "expect": { "return": "0.000001" }
+    },
+    {
+      "id": "number-format/plain-2.5e-5",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [0.000025],
+      "expect": { "return": "0.000025" }
+    },
+    {
+      "id": "number-format/exponent-below-1e-6",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [5e-7],
+      "expect": { "return": "5e-7" }
+    },
+    {
+      "id": "number-format/negative-exponent-small",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [-1.5e-7],
+      "expect": { "return": "-1.5e-7" }
+    },
+    {
+      "id": "number-format/min-value",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [5e-324],
+      "expect": { "return": "5e-324" }
+    },
+    {
+      "id": "number-format/nan-is-null",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [{ "$num": "NaN" }],
+      "expect": { "return": "null" }
+    },
+    {
+      "id": "number-format/infinity-is-null",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [{ "$num": "Infinity" }],
+      "expect": { "return": "null" }
+    },
+    {
+      "id": "number-format/negative-infinity-is-null",
+      "covers": [],
+      "call": "jsonNumber",
+      "args": [{ "$num": "-Infinity" }],
+      "expect": { "return": "null" }
+    }
+  ]
+}

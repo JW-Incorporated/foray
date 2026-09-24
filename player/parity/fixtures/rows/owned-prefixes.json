@@ -1,0 +1,13 @@
+{
+  "family": "rows",
+  "module": "player/engine-contract.js",
+  "note": "The keys the native engine owns on iOS (plan §4.6): EngineStore writes exactly these rows under CapacitorStorage., and DurableStore defers them (NE-23). Read, so the Swift side reads the same strings rather than retyping them.",
+  "cases": [
+    {
+      "id": "rows/owned-prefixes",
+      "covers": [],
+      "read": "OWNED_PREFIXES",
+      "expect": { "value": ["cp_pos:", "cp_foray:", "cp_last_episode"] }
+    }
+  ]
+}

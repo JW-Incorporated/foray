@@ -277,6 +277,14 @@ const FLOORS = {
      fixture cases is loud here too, not only in the suite that reads them. */
   "player/parity/run.test.js": 31,
   "player/parity/coverage.test.js": 21,
+  /* NE-10j: the rows and number-format families. rows.test.js is what makes
+     them a RECORDING — every recorded row is rebuilt from the real builders,
+     and the page's own PositionStore, on the wall clock, writes the recorded
+     bytes. engine-contract.test.js pins OWNED_PREFIXES against both the rows
+     the family records and every cp_ key the app spells, in both directions:
+     a missed row is a clobber, an extra one is a store that stops saving. */
+  "player/parity/rows.test.js": 4,
+  "player/engine-contract.test.js": 3,
   "player/tts-bridge.test.js": 29, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 25 -> 29 // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that

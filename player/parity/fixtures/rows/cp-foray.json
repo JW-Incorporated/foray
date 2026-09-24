@@ -1,0 +1,271 @@
+{
+  "family": "rows",
+  "module": "player/parity/rows.js",
+  "note": "cp_foray:<id>, written by ForayProgressStore.save (player/foray-progress.js makeProgress then writeProgress), forced past the 5 s throttle (that rule is foray-progress's, NE-29j). [] is a refused write.",
+  "cases": [
+    {
+      "id": "rows/cp-foray-typical",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [
+        {
+          "forayId": "f-1",
+          "title": "Morning run",
+          "elapsedSec": 1394.2,
+          "totalSec": 3673.5,
+          "index": 7,
+          "segmentId": "seg-8",
+          "intoSec": 12.25
+        },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"Morning run\",\"elapsed_sec\":1394.2,\"total_sec\":3673.5,\"index\":7,\"segment_id\":\"seg-8\",\"into_sec\":12.25,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-minimal-defaults",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [{ "forayId": "f-1", "elapsedSec": 30, "totalSec": 3600 }, 1790000000000],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"\",\"elapsed_sec\":30,\"total_sec\":3600,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.000Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-blank-title-is-empty",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [
+        { "forayId": "f-1", "title": "   ", "elapsedSec": 30, "totalSec": 3600 },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"\",\"elapsed_sec\":30,\"total_sec\":3600,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-non-string-title-is-empty",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [
+        { "forayId": "f-1", "title": 42, "elapsedSec": 30, "totalSec": 3600 },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"\",\"elapsed_sec\":30,\"total_sec\":3600,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-negative-index-is-minus-one",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [
+        { "forayId": "f-1", "elapsedSec": 30, "totalSec": 3600, "index": -3 },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"\",\"elapsed_sec\":30,\"total_sec\":3600,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-fractional-index-is-minus-one",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [
+        { "forayId": "f-1", "elapsedSec": 30, "totalSec": 3600, "index": 2.5 },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"\",\"elapsed_sec\":30,\"total_sec\":3600,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-index-zero-kept",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [
+        { "forayId": "f-1", "elapsedSec": 30, "totalSec": 3600, "index": 0 },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"\",\"elapsed_sec\":30,\"total_sec\":3600,\"index\":0,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-blank-segment-id-is-null",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [
+        { "forayId": "f-1", "elapsedSec": 30, "totalSec": 3600, "segmentId": "" },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"\",\"elapsed_sec\":30,\"total_sec\":3600,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-negative-into-is-zero",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [
+        { "forayId": "f-1", "elapsedSec": 30, "totalSec": 3600, "intoSec": -4 },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"\",\"elapsed_sec\":30,\"total_sec\":3600,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-nan-into-is-zero",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [
+        {
+          "forayId": "f-1",
+          "elapsedSec": 30,
+          "totalSec": 3600,
+          "intoSec": { "$num": "NaN" }
+        },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"\",\"elapsed_sec\":30,\"total_sec\":3600,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-negative-elapsed-clamps-to-zero",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [{ "forayId": "f-1", "elapsedSec": -5, "totalSec": 3600 }, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"\",\"elapsed_sec\":0,\"total_sec\":3600,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-float-noise-kept",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [
+        {
+          "forayId": "f-1",
+          "elapsedSec": 0.30000000000000004,
+          "totalSec": 3673.4999999999995,
+          "intoSec": 434.99999999999994
+        },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f-1",
+            "value": "{\"foray_id\":\"f-1\",\"title\":\"\",\"elapsed_sec\":0.30000000000000004,\"total_sec\":3673.4999999999995,\"index\":-1,\"segment_id\":null,\"into_sec\":434.99999999999994,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-escaped-title-and-ids",
+      "covers": [],
+      "note": "JSON.stringify's escapes: quote and backslash escaped, U+0001 as \\u0001, tab and newline as \\t and \\n; slash, DEL, U+2028 and non-ASCII (including an astral emoji) raw",
+      "call": "cpForayRow",
+      "args": [
+        {
+          "forayId": "f/é:1",
+          "title": "Ain't \"it\" a \\ / </script>\u0001\t\n é — 🎧  end",
+          "elapsedSec": 30,
+          "totalSec": 3600,
+          "segmentId": "seg \"8\""
+        },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_foray:f/é:1",
+            "value": "{\"foray_id\":\"f/é:1\",\"title\":\"Ain't \\\"it\\\" a \\\\ / </script>\\u0001\\t\\n é — 🎧  end\",\"elapsed_sec\":30,\"total_sec\":3600,\"index\":-1,\"segment_id\":\"seg \\\"8\\\"\",\"into_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-foray-refuses-zero-total",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [{ "forayId": "f-1", "elapsedSec": 30, "totalSec": 0 }, 1790000000123],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "rows/cp-foray-refuses-nan-elapsed",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [
+        { "forayId": "f-1", "elapsedSec": { "$num": "NaN" }, "totalSec": 3600 },
+        1790000000123
+      ],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "rows/cp-foray-refuses-blank-id",
+      "covers": [],
+      "call": "cpForayRow",
+      "args": [{ "forayId": " ", "elapsedSec": 30, "totalSec": 3600 }, 1790000000123],
+      "expect": { "return": [] }
+    }
+  ]
+}
