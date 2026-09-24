@@ -1013,3 +1013,18 @@ test("the BUILT device bundle is checked for the keys App Store Connect requires
     "the embedded-framework check carries continue-on-error, so a rejectable bundle would not fail the job"
   );
 });
+
+test("NE-17: the plist step still runs the injector bare and then --check, which carries ForayEngineDefault", () => {
+  /* The native engine's build default (`ForayEngineDefault`, from
+     mobile/ENGINE_DEFAULT.json) rides on these two lines: a bare run writes it,
+     and `--check` reads it back and prints `ForayEngineDefault=js` into this
+     job's log. NE-17 needs no .github edit only because both lines exist and
+     neither names another source of truth.
+     MUTATION: drop the bare invocation, drop the `--check` line, or add
+     `--engine-default` to either -> red. */
+  const s = code(step(WF, "Add UIBackgroundModes") ?? "");
+  assert.ok(s, "the plist step is gone");
+  assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST"\s*$/m, "the bare write is gone");
+  assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST" --check\s*$/m, "the read-back is gone");
+  assert.doesNotMatch(YML, /--engine-default/, "the build must read the committed mobile/ENGINE_DEFAULT.json");
+});
