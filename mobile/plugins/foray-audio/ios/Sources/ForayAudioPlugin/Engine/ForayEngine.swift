@@ -91,6 +91,16 @@ final class ForayEngine {
     /// open (`EngineState.grace`), so the host holds at most one task.
     private var graceTask: BackgroundTaskID?
 
+    /// The Developer session probe (NE-25c), built by the first
+    /// `probeSession`. Nil on every launch nobody probed.
+    private(set) var probe: SessionProbe?
+
+    /// How many times the host has called `SessionControlling.activate()`,
+    /// and what the last call answered: the probe reads both to say whether
+    /// its play needed an activation and what that cost (`activateMs`).
+    private(set) var activations = 0
+    private(set) var lastActivation: SessionActivation?
+
     /// The pause-hold policy the store last heard (NE-16): a turn that leaves
     /// the core with a different one is persisted, once.
     private var storedHoldPolicy: SessionPolicy.HoldPolicy
@@ -125,6 +135,11 @@ final class ForayEngine {
         // a hop would reorder the input against the turn in progress).
         seams.deck.onEvent = { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.deck(event)) }
+        }
+        // The end of a spoken line. M1's core has no input for it (narration
+        // is M2's); the only listener is the Developer probe (NE-25c).
+        seams.speaker.onFinish = { [weak self] end in
+            MainActor.assumeIsolated { self?.probe?.speechEnded(end) }
         }
         observations.append(seams.session.observe { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.session(event)) }
@@ -165,6 +180,8 @@ final class ForayEngine {
         }
         seams.deck.onEvent = nil
         seams.deck.invalidate()
+        seams.speaker.onFinish = nil
+        probe?.cancel()
         inbox = []
     }
 
@@ -176,6 +193,16 @@ final class ForayEngine {
     func handle(_ input: EngineInput) -> EngineVerdict {
         if isTornDown {
             return EngineVerdict(failures: [EngineContract.Refusal.relinquished.rawValue], deferred: false)
+        }
+        if case .command(.probeSession, _) = input {
+            // Developer only (NE-25c). The core leaves it to the host: the
+            // probe is a sequence of ordinary inputs (an audition, a play, a
+            // pause) spread over timers and the synthesizer's didFinish, so it
+            // never needs a rule of its own, and every step it takes goes
+            // through the same audible-start invariant a listener's would.
+            let probe = self.probe ?? SessionProbe(engine: self)
+            self.probe = probe
+            return probe.arm()
         }
         if depth > 0 {
             inbox.append(input)
@@ -195,8 +222,11 @@ final class ForayEngine {
         }
     }
 
+    /// A seam's observation. The probe hears it after the core has: it is
+    /// waiting for the deck's own `.playing` (`timeToPlayingMs`).
     private func receive(_ input: EngineInput) {
         handle(input)
+        probe?.observe(input)
     }
 
     /// A remote press: the `remote` row, the core's ruling, and its verdict
@@ -260,6 +290,8 @@ final class ForayEngine {
         case let .sessionActivate(requestId):
             // Synchronous, and answered before the next command in this list.
             let answer = seams.session.activate()
+            activations += 1
+            lastActivation = answer
             return runTurn(.sessionResult(SessionResult(
                 requestId: requestId, ok: answer.ok, error: answer.error, activateMs: answer.activateMs)))
         case let .sessionDeactivate(notifyOthers):
