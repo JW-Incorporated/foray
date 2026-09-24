@@ -395,13 +395,15 @@ final class TwoDeckPrerollTests: XCTestCase {
     /// `notReady(preroll-unfinished)` per delay is the finished=false
     /// frequency the card asks for. Asserted: every load still reaches
     /// `.ready` (retry once, then the ordinary load), every preroll,
-    /// including the retry's, reads both statuses ready at rate 0, and the
-    /// audible deck is not disturbed.
-    /// TO SEE IT FAIL: make `prerollCompleted` ignore `finished` (a
-    /// retry-free `ready` after an interrupted preroll has prerolled=true
-    /// with a notReady count of 0 while the seek moved the player; the
-    /// landing column shows it), or retry forever in `notReady` (the load
-    /// never reaches `.ready` and the wait fails).
+    /// including the retry's, reads both statuses ready at rate 0, the
+    /// audible deck is not disturbed, and AT LEAST ONE preroll really was
+    /// interrupted: a run where none was would publish "every load
+    /// recovered" having tested no recovery (run 35988169841 interrupted 12
+    /// of 40, every one at 0-2 ms).
+    /// TO SEE IT FAIL: make `prerollCompleted` ignore `finished` (no
+    /// preroll-unfinished is ever reported, so the vacuity guard fails), or
+    /// skip the retry in `notReady` and go straight to `ordinaryLoad` (an
+    /// unprimed ready after ONE not-ready fails `assertGateHeld`).
     func testPrerollFinishedFalseUnderAForcedSeek() throws {
         decks["A"] = makeDeck("A")
         decks["B"] = makeDeck("B")
@@ -418,6 +420,8 @@ final class TwoDeckPrerollTests: XCTestCase {
         }
         XCTAssertEqual(trials.count, Self.forcedSeekFixtures.count * Self.forcedSeekDelaysMs.count * Self.forcedSeekReps,
                        "a trial produced no measurement")
+        XCTAssertGreaterThan(trials.filter { $0.outcome == "preroll-unfinished" }.count, 0,
+                             "no forced seek interrupted a preroll, so the retry path was never exercised and the recovery claim proves nothing")
         reportForcedSeek(trials)
     }
 

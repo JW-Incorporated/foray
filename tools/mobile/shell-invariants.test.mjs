@@ -2933,6 +2933,12 @@ test("NE-25b: the two-deck spike measures AVDeck's own gate: two real decks, no 
   }
   assert.match(swiftFuncBody(tests, "forcedSeekTrial"), /player\.seek\(to:/, "the forced seek is on the standby's player");
   assert.match(swiftFuncBody(tests, "assertGateHeld"), /Self\.gatePrimitive/);
+  /* A forced-seek run in which no preroll was interrupted tested no recovery. */
+  assert.match(
+    swiftFuncBody(tests, "testPrerollFinishedFalseUnderAForcedSeek"),
+    /XCTAssertGreaterThan\(trials\.filter \{ \$0\.outcome == "preroll-unfinished" \}\.count, 0,/,
+    "the forced-seek test must fail when no preroll was interrupted"
+  );
 
   const deck = stripSwiftComments(fs.readFileSync(AVDECK_SWIFT, "utf8"));
   assert.match(
