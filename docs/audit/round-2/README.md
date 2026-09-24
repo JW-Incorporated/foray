@@ -125,13 +125,13 @@ pinned.
 
 | disposition | rows |
 |---|---:|
-| fixed | 160 |
+| fixed | 161 |
 | already-fixed | 0 |
 | refuted (verifier) | 2 |
 | deliberate (verifier) | 5 |
 | uncertain (verifier, still needs a device) | 1 |
 | refuted-now (re-verified: no longer holds) | 1 |
-| deferred-founder | 2 |
+| deferred-founder | 1 |
 | deferred-device | 0 |
 | open | 1 |
 | **all rows** | **172** |
@@ -165,9 +165,12 @@ answered on 2026-09-24, `docs/DECISIONS.md`: Q6 "Option A", a follow-up PR; Q7
 "Approved", applied in PR #749):
 
 - **Q6, backups of the native Preferences copy** (`persist-6`): credential
-  handling. Not implemented. The verifier adds that the WebView's localStorage
-  and IndexedDB are backed up too, so excluding the Preferences suite alone
-  would not be enough.
+  handling. **Answered "Option A" and fixed in `fix/auth-token-device-only`**:
+  inside the app the token lives only in the new `ForayVault` plugin (iOS
+  Keychain, this-device-only; Android no-backup storage) and in no backed-up
+  tier, and the rest of the app's data stays backed up, which the privacy
+  policy now says plainly. That answers the verifier's point that the WebView's
+  localStorage and IndexedDB are backed up too.
 - **Q7, privacy-policy wording** (`persist-3`, and the inventory half of
   `persist-4`): three origins, Vercel as a processor, miss-only dropped.
   **Approved and applied 2026-09-24** (`persist-3` fixed); the approved draft did
