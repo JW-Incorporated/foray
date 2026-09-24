@@ -52,7 +52,7 @@ import {
 import { itemRuntimeSec } from "./foray-queue.js";
 import {
   stripModel, stripSummary, stripTally, mountStrip, renderStrip, assignTones, toneSeed,
-  sourceKeyOf, isNarration, growOf, TONE_COUNT, NARRATOR_SOURCE, SIZES,
+  sourceKeyOf, isNarration, growOf, TONE_COUNT, NARRATOR_SOURCE, NARRATOR_NAME, SIZES,
   segmentStripHtml, applyStripGrow,
 } from "./segment-strip.js";
 
@@ -579,7 +579,7 @@ test("the label carries the position and the bridges when there are any", () => 
   const starts = segmentStarts(r.playable);
   const model = stripModel(r.playable, { elapsed: starts[4] + 10 });
   const label = stripSummary(model);
-  assert.ok(label.includes("2 from 4a's narrator"), label);
+  assert.ok(label.includes(`2 from ${NARRATOR_NAME}`), label);
   assert.ok(label.startsWith(`${model.itemCount} clips: `), `the total is the same count the position is "of": ${label}`);
   assert.ok(label.includes(`clip ${model.currentIndex + 1} of ${model.segments.length}`), label);
   assert.ok(label.includes(model.segments[model.currentIndex].show), label);
@@ -1301,7 +1301,7 @@ test("the accessible label still names the show the listener is actually inside,
   const at = starts[to] + lengths[to] / 2;
   const label = stripSummary(stripModel(r.playable, { mergeNarration: true, elapsed: at }));
   assert.ok(from < to);
-  assert.match(label, new RegExp(`Now on clip ${to + 1} of ${r.playable.length}, from 4a's narrator,`));
+  assert.ok(label.includes(`Now on clip ${to + 1} of ${r.playable.length}, from ${NARRATOR_NAME},`), label);
 
   // And the whole sentence is unchanged by merging — it describes the Foray.
   for (const elapsed of [0, at, starts[starts.length - 1] + 1]) {

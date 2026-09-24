@@ -4680,8 +4680,19 @@ function miniCard(slot) {
    playback ruling rejects by name — it reads as the Stitcher/Luminary
    behaviour: "Copy must follow the mechanism: no user-facing language implying
    we produce a new audio file." A foray plays each moment from the show's own
-   feed, in turn. test/listener-copy.test.js now fails on the old verbs. */
-const FORAY_ABOUT = "One subject, heard across several podcasts: the best moment of each episode, played in turn from the show's own feed, with a narrator between them.";
+   feed, in turn. test/listener-copy.test.js now fails on the old verbs.
+
+   ONLY WHAT THE LISTED FORAYS DO (audit round 2, p-first-11 / p-foray-11). It
+   promised "the best moment of each episode ... with a narrator between them"
+   directly above the one Foray a newcomer can play, which has no narration and
+   plays four moments from one episode. So it says "moments", and the narrator
+   clause appears only while a Foray this listener can see actually carries
+   narration. A function, not a constant, for that one clause; still ONE
+   sentence for the Forays page and the first-run sheet. */
+function forayAbout() {
+  const narrated = forayCards().some(f => Array.isArray(f?.items) && f.items.some(i => i?.type === "narration"));
+  return `One subject, heard across several podcasts: moments from their episodes, played in turn from each show's own feed${narrated ? ", with a narrator between them" : ""}.`;
+}
 
 /* First-time explanation/consent screen (docs/ux/foray-m3-prototype.html +
    docs/ux/README.md § "First-time vs. returning user"). Ports the INTENT of
@@ -5340,7 +5351,7 @@ function showFirstTimeExplainerOnce() {
     const propForay = ddEl("div", "ft-value-prop");
     propForay.append(
       ddEl("h4", null, "Forays: one subject, many shows"),
-      ddEl("p", "fy-sheet-sub", FORAY_ABOUT)
+      ddEl("p", "fy-sheet-sub", forayAbout())
     );
     const stripHtml = welcomeStripHtml();
     if (stripHtml) {
@@ -5482,10 +5493,14 @@ function showIntroPopupOnce() {
        describes the Home that ships, and it is where a listener who skipped
        the first-run sheet learns what a foray is.
        Review 2026-09-23: no "stitch clips" (the 2026-08-11 playback ruling —
-       see FORAY_ABOUT), and only what Home renders: the stretch pick is in
+       see forayAbout), and only what Home renders: the stretch pick is in
        Forays for you and Episodes for you (pickWithStretchFloor, the cardSlots
-       stretch role), not in Playlists, which are mostly the listener's own. */
-    "A foray plays moments from several shows, straight from each show's own feed, one after another. Below them are your playlists and episodes picked for you. The forays and the episodes each include one pick outside your usual subjects, on purpose.");
+       stretch role), not in Playlists, which are mostly the listener's own.
+       Audit round 2 (p-first-11): the Forays row has a stretch pick only when
+       the listed Forays span more than one subject, and with one published
+       Foray it cannot. The sentence asks the SAME pick Home renders
+       (foraysForYouPicks) instead of assuming. */
+    `A foray plays moments from several shows, straight from each show's own feed, one after another. Below them are your playlists and episodes picked for you. The episodes ${foraysForYouPicks()?.stretchIndex >= 0 ? "and the forays each " : ""}include one pick outside your usual subjects, on purpose.`);
 
   const actions = ddEl("div", "fy-sheet-actions");
   const ok = ddEl("button", "fy-sheet-go", "Got it");
@@ -7799,15 +7814,27 @@ function forayCardV2Html(foray, { stretch = false, draft = false } = {}) {
     every one, badged "draft", in draftTrackOrder. Appended rather than pooled
     because the founder turned this on to find a specific generated Foray, and
     a four-card pick over six candidates would hide two of them. */
-function foraysForYouHtml() {
-  if (!state.forays || !window.ForayPlayer) return "";
+/** The "Forays for you" pick: the four cards, which one is the stretch (-1 for
+    none), and the test-track drafts appended after them — or null when there
+    is nothing to list. One function, so the row Home renders and any sentence
+    ABOUT that row (the intro popup's stretch claim, p-first-11) read the same
+    answer. */
+function foraysForYouPicks() {
+  if (!state.forays || !window.ForayPlayer) return null;
   const { listed, drafts } = splitTestTrackDrafts(opts => window.ForayPlayer.listForays(state.forays, opts));
-  if (!listed.length && !drafts.length) return "";
+  if (!listed.length && !drafts.length) return null;
   const { picks, stretchIndex } = pickWithStretchFloor(listed, {
     branchFn: f => (f.topic || "other").split("/")[0],
     scoreFn: f => interestScore({ topics: [(f.topic || "other").split("/")[0]] }),
     take: 4,
   });
+  return { picks, stretchIndex, drafts };
+}
+
+function foraysForYouHtml() {
+  const pick = foraysForYouPicks();
+  if (!pick) return "";
+  const { picks, stretchIndex, drafts } = pick;
   return `<section class="hv2-section hv2-forays">
     <h2 class="hv2-title">Forays for you</h2>
     <div class="hv2-hscroll">${picks.map((f, i) => forayCardV2Html(f, { stretch: i === stretchIndex })).join("")}${drafts.map(f => forayCardV2Html(f, { draft: true })).join("")}</div>
@@ -7952,7 +7979,7 @@ function renderForays() {
           <h2>Forays</h2>
         </div>
       </div>
-      <p class="note fy-about">${esc(FORAY_ABOUT)}</p>`;
+      <p class="note fy-about">${esc(forayAbout())}</p>`;
   const paintStatus = (body) => { $("#view").innerHTML = `<div class="page">${head}${body}</div>`; };
 
   if (!window.ForayPlayer) {
@@ -9269,24 +9296,35 @@ function isForayNarration(entry) {
 
    Narration is excluded rather than falling through: a narration entry has no
    `show`, so the title join would return null anyway, but saying so here is
-   what keeps "AI Narrator" from ever being asked to be a link. */
+   what keeps the narrator's credit from ever being asked to be a link. */
 function forayShowId(entry) {
   if (!entry || isForayNarration(entry)) return null;
   if (entry.show_id && showById(entry.show_id)) return entry.show_id;
   return showIdForShowName(entry.show);
 }
 
-/* The credit that leads a row's meta line: a link to the show, the show's name
-   as plain text when it does not join, or "AI Narrator" for a beat we wrote.
+/* ONE NAME FOR THE NARRATOR (audit round 2, p-foray-12): the credit, the
+   header and the accessible name each spelled it differently ("AI Narrator",
+   "4a's narrator", "4a's AI Narrator"). The player owns the name
+   (`segment-strip.js` NARRATOR_NAME, which its own summary speaks); this page
+   reads it through the bridge. The Foray page never renders without the
+   bridge, so the fallback is a plain noun, not a second spelling. */
+function narratorName() {
+  return window.ForayPlayer?.narratorName || "the narrator";
+}
 
-   "AI Narrator" is deliberately NOT a link. There is no 4a show page to send
+/* The credit that leads a row's meta line: a link to the show, the show's name
+   as plain text when it does not join, or the narrator's name for a beat we
+   wrote.
+
+   The narrator's credit is deliberately NOT a link. There is no 4a show page to send
    anyone to, and a control that navigates nowhere is worse than a label — the
    same rule `thumbsHtml` keeps. It carries the same class and sits in the same
    slot as a show credit so the two row kinds read as siblings: one credits a
    podcast, one credits us. */
 function forayCreditHtml(entry) {
   if (isForayNarration(entry)) {
-    return `<span class="fy-credit is-narrator">AI Narrator</span>`;
+    return `<span class="fy-credit is-narrator">${esc(narratorName())}</span>`;
   }
   if (!entry.show) return "";
   const showId = forayShowId(entry);
@@ -9306,7 +9344,7 @@ function forayCreditHtml(entry) {
     a listener would use to tell two rows apart; the curation code
     (`entry.label`) never was, and is no longer rendered anywhere on this page. */
 function forayBeatName(entry) {
-  if (isForayNarration(entry)) return "narration by 4a's AI Narrator";
+  if (isForayNarration(entry)) return `narration by ${narratorName()}`;
   return [entry.show, entry.why].filter(Boolean).join(", ") || "this clip";
 }
 
@@ -9701,7 +9739,7 @@ function forayHeadSub(r, player) {
        count now: the same total, split the same way the strip splits it. */
     const from = tally.shows ? ` from ${countLabel(tally.shows, "show")}` : "";
     parts.push(tally.bridges
-      ? `${countLabel(tally.clips + tally.bridges, "clip")}: ${tally.clips}${from} and ${tally.bridges} from 4a's narrator`
+      ? `${countLabel(tally.clips + tally.bridges, "clip")}: ${tally.clips}${from} and ${tally.bridges} from ${narratorName()}`
       : `${countLabel(tally.clips, "clip")}${from}`);
   }
   parts.push(forayRuntimeLabel(player, tally, r.totalSec));

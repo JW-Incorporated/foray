@@ -384,7 +384,7 @@ test("REVIEW: the returning-listener popup claims a stretch pick only where Home
     return APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
   };
   const hasStretch = {
-    forays: /pickWithStretchFloor/.test(body("foraysForYouHtml")),
+    forays: /pickWithStretchFloor/.test(body("foraysForYouPicks")),
     playlists: /pickWithStretchFloor|stretch/.test(body("playlistsForYouHtml")),
     episodes: /miniCardV2/.test(body("episodesForYouHtml")) && /role !== "stretch"/.test(body("miniCardV2")),
   };
@@ -392,7 +392,15 @@ test("REVIEW: the returning-listener popup claims a stretch pick only where Home
   const popup = literals(APP_SRC).map((l) => l.text).find((t) => /outside your usual subjects/.test(t));
   assert.ok(popup, "the popup sentence exists");
   const claim = popup.split(/(?<=\.)\s+/).find((sentence) => /outside your usual subjects/.test(sentence));
+  /* Audit round 2 (p-first-11): the Forays row has a stretch pick only when the
+     listed Forays span more than one subject, so the popup names forays only
+     when `foraysForYouPicks()` found one; that branch is exercised in
+     test/foray-surfaces.test.js. Here: the Forays half of the claim is
+     CONDITIONED on the same pick Home renders, never stated outright. */
+  assert.ok(APP_SRC.includes('The episodes ${foraysForYouPicks()?.stretchIndex >= 0 ? "and the forays each " : ""}include one pick'),
+    "the Forays half of the stretch claim asks Home's own pick");
   for (const [section, has] of Object.entries(hasStretch)) {
+    if (section === "forays") continue;
     const named = new RegExp(`\\b${section}\\b`, "i").test(claim);
     assert.strictEqual(named, has, `the stretch claim ${has ? "must" : "must not"} name ${section}: "${claim}"`);
   }

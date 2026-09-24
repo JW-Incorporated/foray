@@ -389,9 +389,9 @@ test("#/forays explains what a Foray is, from the same sentence the first-run sh
   const m = mount({ hash: "#/forays", bridge: bridge() });
   m.state.forays = FORAYS_DOC;
   m.ctx.renderCurrentPage();
-  const about = vm.runInContext("FORAY_ABOUT", m.ctx);
+  const about = vm.runInContext("forayAbout()", m.ctx);
   assert.ok(about.length > 40, "the explanation is a real sentence");
-  const shown = vm.runInContext("esc(FORAY_ABOUT)", m.ctx);
+  const shown = vm.runInContext("esc(forayAbout())", m.ctx);
   assert.ok(m.html().includes(shown), "the Forays page states what a Foray is");
   /* Review 2026-09-23: not inside the sticky header, which comes back on every
      scroll-up. MUTATION: put it back as the head's `.sub`. */
@@ -399,7 +399,7 @@ test("#/forays explains what a Foray is, from the same sentence the first-run sh
   assert.ok(head, "fixture: the page has its header");
   assert.ok(!head[0].includes(shown), "the sentence is below the sticky header, not in it");
   assert.doesNotMatch(m.html(), /\b\d+ forays?\b/, "and states no count in its place");
-  assert.match(APP_SRC, /ddEl\("p", "fy-sheet-sub", FORAY_ABOUT\)/, "the first-run sheet reads the same constant");
+  assert.match(APP_SRC, /ddEl\("p", "fy-sheet-sub", forayAbout\(\)\)/, "the first-run sheet reads the same sentence");
 });
 
 test("a Foray page whose player failed has a way back to the list and a Try again", async () => {
@@ -632,6 +632,7 @@ async function forayBridge() {
     stripModel: strip.stripModel,
     fmtClock: resolve.fmtClock,
     fmtSpan: resolve.fmtSpan,
+    narratorName: strip.NARRATOR_NAME,
     playbackRate: () => 1, rateStops: () => [1], setPlaybackRate() {},
     watchForay: () => null, forayResume: () => null,
   };
@@ -671,7 +672,7 @@ test("a narrated Foray's header counts the strip's clips, not every queue item, 
      tape count is still the strip model's, never a count of its own. */
   const narr = r.playable.length - model.segmentCount;
   assert.ok(narr > 0, "precondition: a narrated Foray");
-  assert.match(sub, new RegExp(`^${r.playable.length} clips: ${model.segmentCount} from ${model.shows.length} shows? and ${narr} from 4a(&#39;|')s narrator`), `header: "${sub}"`);
+  assert.match(sub, new RegExp(`^${r.playable.length} clips: ${model.segmentCount} from ${model.shows.length} shows? and ${narr} from 4a(&#39;|')s AI narrator`), `header: "${sub}"`);
   assert.ok(strip.stripSummary(model).startsWith(`${r.playable.length} clips: ${model.segmentCount} from`), "the strip says the same numbers");
   assert.match(sub, /· about \d+ min$/, `an estimated runtime says so: "${sub}"`);
   assert.match(m.view.querySelector("#fy-total").textContent, /^~\d/, "the clock beside the scrubber carries the same hedge");

@@ -74,6 +74,14 @@ export const TONE_COUNT = 8;
     and Set keys, which is all this value is ever used as. */
 export const NARRATOR_SOURCE = Symbol("narrator");
 
+/** What the narrator is CALLED, everywhere a listener reads or hears it (audit
+    round 2, p-foray-12). One Foray page named it three ways: "AI Narrator" on
+    each narration row, 4a's plain "narrator" in the header and this strip's
+    summary, and 4a's "AI Narrator" to a screen reader. One name, and it keeps
+    the AI disclosure the row credit carried. app.js reads it through the bridge
+    (`ForayPlayer.narratorName`), since a classic script cannot import it. */
+export const NARRATOR_NAME = "4a's AI narrator";
+
 /** The three sizes #128 asks for: a list row, a card, the player. */
 export const SIZES = ["sm", "md", "lg"];
 
@@ -415,7 +423,7 @@ export function stripSummary(model) {
   const clips = (n) => `${n} clip${n === 1 ? "" : "s"}`;
   const fromShows = `from ${shows} ${unit}${shows === 1 ? "" : "s"}`;
   let out = narr > 0
-    ? `${clips(total)}: ${segs} ${fromShows} and ${narr} from 4a's narrator, ${fmtSpan(m.totalSec)} in all.`
+    ? `${clips(total)}: ${segs} ${fromShows} and ${narr} from ${NARRATOR_NAME}, ${fmtSpan(m.totalSec)} in all.`
     : `${clips(total)} ${fromShows}, ${fmtSpan(m.totalSec)} in all.`;
 
   if (m.positioned && m.currentIndex != null) {
@@ -428,7 +436,7 @@ export function stripSummary(model) {
        actually inside. */
     const cur = currentBar(m);
     const from = cur?.kind === "narration"
-      ? "4a's narrator"
+      ? NARRATOR_NAME
       : (nonEmpty(cur?.show) ? cur.show : "an unnamed show");
     const pieces = m.itemCount ?? m.segments?.length ?? 0;
     out += ` Now on clip ${m.currentIndex + 1} of ${pieces}, from ${from}, `

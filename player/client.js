@@ -112,7 +112,7 @@ import {
 } from "./diagnostic-log.js";
 import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
 import { createForayDirectory, DIRECTORY_DB_NAME } from "./foray-directory.js";
-import { mountStrip, stripModel, stripSummary, stripTally, segmentStripHtml, applyStripGrow } from "./segment-strip.js";
+import { mountStrip, stripModel, stripSummary, stripTally, segmentStripHtml, applyStripGrow, NARRATOR_NAME } from "./segment-strip.js";
 import {
   HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
   startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent,
@@ -3277,6 +3277,9 @@ const ForayPlayer = {
 
   fmtClock,
   fmtSpan,
+
+  /** The narrator's one name (p-foray-12) — see `segment-strip.js`. */
+  narratorName: NARRATOR_NAME,
 
   /* ---------- the SegmentStrip (#128) ----------
 

@@ -10,6 +10,9 @@
  *               part-played draft's label REPLACED its "draft" tag.
  *   p-foray-8   nothing before the Foray page said how long a Foray was; every
  *               row and card now carries "51 min · 22 clips · 7 shows".
+ *   p-first-11  the sentence explaining a Foray promised a narrator above the
+ *               one listed Foray, which has none, and the intro popup claimed a
+ *               stretch Foray that one listed Foray cannot produce.
  *
  * The player's half (the finished row written at the end, `progressLabel`) is
  * pinned in player/foray-progress.test.js and player/transport-reconcile.test.js.
@@ -64,17 +67,19 @@ async function realBridge(rows = []) {
   };
 }
 
-function loadApp(bridge, { showDrafts = true } = {}) {
+function loadApp(bridge, { showDrafts = true, created = [] } = {}) {
   const noop = () => {};
   function makeEl() {
-    return {
-      addEventListener: noop, removeEventListener: noop, appendChild: noop,
+    const el = {
+      addEventListener: noop, removeEventListener: noop, appendChild: noop, append: noop,
       setAttribute: noop, removeAttribute: noop,
       classList: { add: noop, remove: noop, toggle: noop, contains: () => false },
       style: {}, dataset: {}, children: [], hidden: false,
       innerHTML: "", textContent: "", className: "",
       querySelector: () => makeEl(), querySelectorAll: () => [],
     };
+    created.push(el);
+    return el;
   }
   const store = new Map();
   if (showDrafts) store.set("cp_show_drafts", "true");
@@ -89,7 +94,8 @@ function loadApp(bridge, { showDrafts = true } = {}) {
     document: {
       body: makeEl(), documentElement: makeEl(),
       addEventListener: noop, createElement: makeEl,
-      querySelector: () => makeEl(), querySelectorAll: () => [],
+      /* No intro sheet is mounted yet: the popup's duplicate guard asks. */
+      querySelector: (sel) => (sel === "#intro-sheet" ? null : makeEl()), querySelectorAll: () => [],
     },
     navigator: { userAgent: "node" },
     location: { hash: "#/library", href: "https://example.test/#/library" },
@@ -185,4 +191,35 @@ test("a narrated Foray's length is hedged on every list surface, and counts the 
   const list = app.forayListHtml();
   const row = new RegExp(`href="#/foray/${id}">[\\s\\S]*?</a>`).exec(list)[0];
   assert.match(row, /<span class="fy-home-sub">about \d+ min · 56 clips · \d+ shows?<\/span>/, row);
+});
+
+/* ---------- p-first-11: the sentences ABOUT Forays say only what the list does ---------- */
+
+test("the Foray explanation promises a narrator only while a listed Foray has one (p-first-11)", async () => {
+  /* With the test track off, the frozen fixture lists capital-types-1 alone:
+     22 moments, no narration, four of them from one episode. The sentence said
+     "the best moment of each episode ... with a narrator between them" right
+     above it. KILLING MUTATION: put the narrator clause back unconditionally —
+     the first assertion is red. */
+  const plain = loadApp(await realBridge(), { showDrafts: false });
+  assert.deepEqual(plain.forayCards().map((f) => f.id), ["capital-types-1"], "fixture: one listed Foray");
+  const about = plain.forayAbout();
+  assert.doesNotMatch(about, /narrator/, `no narrator is listed, so none is promised: "${about}"`);
+  assert.doesNotMatch(about, /best moment of each episode/, "and it does not promise one moment per episode");
+  const drafts = loadApp(await realBridge(), { showDrafts: true });
+  assert.match(drafts.forayAbout(), /with a narrator between them\.$/, "a listed narrated Foray earns the clause");
+});
+
+test("the intro popup claims a stretch Foray only when Home's Forays row has one (p-first-11)", async () => {
+  /* One listed Foray is one subject root, so pickWithStretchFloor has no
+     branch left over for a stretch pick. KILLING MUTATION: restore the fixed
+     sentence "The forays and the episodes each include ..." — red. */
+  const created = [];
+  const app = loadApp(await realBridge(), { showDrafts: false, created });
+  assert.equal(app.foraysForYouPicks().stretchIndex, -1, "fixture: no stretch Foray is possible");
+  try { app.showIntroPopupOnce(); } catch (_) { /* the stub cannot open a sheet; the copy is already built */ }
+  const sub = created.find((el) => el.className === "fy-sheet-sub" && /outside your usual subjects/.test(el.textContent));
+  assert.ok(sub, "the popup's explanation was built");
+  assert.match(sub.textContent, /The episodes include one pick outside your usual subjects/);
+  assert.doesNotMatch(sub.textContent, /forays/);
 });

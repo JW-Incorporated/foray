@@ -335,7 +335,7 @@ const FLOORS = {
      `player/client.js`, where a rename would otherwise make the card silently go
      back to restarting episodes rather than throwing. */
   "test/card-play-pause.test.js": 7, // 2026-09-22: new -- a card showing the pause glyph must pause, and the paused current item must resume rather than restart
-  "test/foray-surfaces.test.js": 5, // audit round 2 (L8): new -- Library labels every part-played Foray and keeps draft beside progress, a finished Foray says Played and leaves Jump back in, every list row and card states its length
+  "test/foray-surfaces.test.js": 7, // audit round 2 (L8, p-first-11): the Foray explanation and the intro popup say only what the listed Forays do; 5 -> 7 // audit round 2 (L8): new -- Library labels every part-played Foray and keeps draft beside progress, a finished Foray says Played and leaves Jump back in, every list row and card states its length
   "test/foray-ribbon-restore.test.js": 5, // 2026-09-23 audit sweep: the Jump back in rows are read through a live resolver behind forayViewOpts(); 4 -> 5 // 2026-09-22 audit (L2): new -- the ribbon asks for the Foray played last first, through the forayViewOpts() gate, and falls back to the episode pointer
   /* 2026-09-22, audit theme A: "playable" means a snapshot with audio, not
      curated-pool membership. ZERO SLACK: most cells reboot app.js over the same
@@ -402,7 +402,7 @@ const FLOORS = {
      with no cites draws no Sources block", "no committed Foray renders a
      curation code" — and a degrade test is the kind that looks redundant to a
      reader who does not know what it is holding down. */
-  "test/foray-row-links.test.js": 18,
+  "test/foray-row-links.test.js": 19, // audit round 2 (L8, p-foray-12): the narrator has one name on the row, in the accessible name and in the strip; 18 -> 19
   /* Visible explicit-content ("E") badge (kanban card t_02c6bb0b):
      explicitBadge() itself, its four call sites (epRow, archivedRow,
      renderEpisode, renderShow at both episode- and show-level), and a check
