@@ -1291,9 +1291,11 @@ test("player/client.js drives the lock screen through this module and nothing el
 function codeOnly(src) {
   return src
     .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/`(?:\\[\s\S]|[^`\\])*`/g, '""')
-    .replace(/'(?:\\.|[^'\\])*'/g, '""')
-    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    /* One pass over the three quote kinds, whichever opens first: three passes
+       read an apostrophe INSIDE a double-quoted literal ("couldn't") as opening
+       a single-quoted string and blinded every assertion after it (audit round
+       2, copy-6). */
+    .replace(/`(?:\\[\s\S]|[^`\\])*`|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g, '""')
     .replace(/(^|[\s(,;{}=])\/\/[^\n]*/gm, "$1");
 }
 

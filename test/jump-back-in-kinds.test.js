@@ -327,3 +327,27 @@ test("the card's bar and label read the RAW stored position, never the collapsed
   assert.match(fn, /episodeProgress\(\{ \.\.\.rec, duration_sec: durationSec \}, stored\?\.seconds \?\? null\)/);
   assert.match(fn, /position_sec: offset,/, "where play resumes is still the resume offset");
 });
+
+/* ---------- where you are in a playlist (audit round 2, honesty-7) ------- */
+
+test("a playlist card says how far in you are, in the same reading as the playlist page", () => {
+  /* The rail mixed three grammars: a bar and "N min left" on Foray and episode
+     cards, a bare "12 episodes" on a playlist's, though its page knew
+     "3 played". MUTATION: drop `percent`/`left` from the playlist entry, or
+     count them some other way than `hasOpened` (history OR a position). */
+  const app = loadApp();
+  const item = (id) => ({ id, title: `T ${id}`, show: "S", audio_url: `https://a.test/${id}.mp3`, topics: [] });
+  app._state("state.discover = { items: [] }; state.session = { session_id: 's', builder: 't', episodes: {}, cards: [] }; state.itemIndex = {};");
+  app._state("state.discover.items = " + JSON.stringify(["a", "b", "c", "d"].map(item)) + "; fullPool();");
+  app.savePlaylists([{
+    id: "pl-3", title: "Four", items: ["a", "b", "c", "d"].map((id) => app.playlistPart(item(id))),
+    created: "2026-09-18T07:00:00.000Z", last_played_at: "2026-09-18T08:00:00.000Z",
+  }]);
+  app.lsSet("cp_history", ["a"]);
+  const pl = app.jumpBackInEntries().find((e) => e.kind === "playlist");
+  assert.strictEqual(pl.left, "1 of 4 played");
+  assert.strictEqual(pl.percent, 25);
+  const html = app.jumpBackInCardHtml(pl);
+  assert.match(html, /class="fy-bar"/, "the card draws the same bar the other kinds do");
+  assert.match(html, /1 of 4 played/);
+});

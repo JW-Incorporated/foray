@@ -371,7 +371,14 @@ export function percentDone(elapsedSec, totalSec) {
 export function remainingLabel(remainingSec) {
   if (!isNum(remainingSec) || remainingSec <= 0) return "finished";
   if (remainingSec < 60) return "under a minute left";
-  return `${Math.round(remainingSec / 60)} min left`;
+  /* Past the hour it rolls over — "1 hr 5 min left", never "65 min left" — in
+     the one duration dialect every label in 4a uses (audit round 2, copy-2);
+     the rule is foray-resolve's `fmtSpan`, written here as well because this
+     module does not import the resolver for a string. */
+  const mins = Math.round(remainingSec / 60);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h ? `${h} hr${m ? ` ${m} min` : ""} left` : `${m} min left`;
 }
 
 /* ---------- the writer ---------- */

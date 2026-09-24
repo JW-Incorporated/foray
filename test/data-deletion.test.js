@@ -646,7 +646,7 @@ test("with no durable store published, the control says so instead of claiming s
   assert.strictEqual(result.ok, false);
   assert.strictEqual(result.local.reason, "no-durable-tier");
   assert.deepStrictEqual([...local.map.keys()].filter((k) => k.startsWith("cp_")), []);
-  assert.match(ui.status.textContent, /reload and try again/i);
+  assert.match(ui.status.textContent, /close 4a fully and try again/i);
 });
 
 /* ================= 3. the server rows ================= */
@@ -764,7 +764,7 @@ test("deleting never signs up a new anonymous account", async () => {
     "creating an account in order to delete one would leave a fresh row behind"
   );
   assert.strictEqual(result.remote.attempted, false, "no token on the device means no rows to reach");
-  assert.match(ui.status.textContent, /no account token/i);
+  assert.match(ui.status.textContent, /never signed in/i);
   assert.strictEqual(result.ok, true);
 });
 
@@ -1057,7 +1057,7 @@ test("a browser with no storage at all is told so, not told it is clear", async 
   assert.strictEqual(result.ok, false, "there is no storage to have cleared");
   assert.strictEqual(result.local.reason, "no-storage");
   assert.match(ui.status.textContent, /NOT fully clear/);
-  assert.match(ui.status.textContent, /taken storage away/);
+  assert.match(ui.status.textContent, /nowhere to store anything/);
 });
 
 test("a localStorage that throws on READ is handled, not left to throw mid-delete", async () => {

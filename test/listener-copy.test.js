@@ -183,9 +183,10 @@ const STALE = [
   // [what, pattern, why it is wrong]
   ["pull to refresh", /pull to refresh/i, "there is no pull-to-refresh gesture anywhere in 4a"],
   ["home-screen builder", /build one from the home screen/i, "the playlist builder left Home on 2026-09-03"],
-  /* "This browser has taken storage away." (deletionMessage) is left to the
-     delete-my-data lane, which is rewriting that function's result copy. */
-  ["browser copy", /your browser|reload the page|on this page, so the probe/i, "the same bytes run in a native shell with no visible browser"],
+  /* Widened in round 2 (copy-1): the delete result's "This browser has taken
+     storage away" and "Reload and try again" were exempted here while each lane
+     thought the other had rewritten them. No exemption now. */
+  ["browser copy", /your browser|this browser|reload the page|reload and try again|on this page, so the probe/i, "the same bytes run in a native shell with no visible browser"],
   ["four topic queues", /four topic queues/i, "Home has not been four topic cards since the U-11 cutover"],
   ["daily claim", /today's queue/i, "buildCards() re-deals on every load; nothing is daily"],
   ["raw resolver reason", /Can't play:/, "foray-resolve's reasons name our data files"],
@@ -282,7 +283,8 @@ test("the subject card's hook leads with the episode it starts with", () => {
      count at integration, which pushed the hook past a 900-character window. */
   const at = APP_SRC.indexOf("function miniCard(slot)");
   const body = APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
-  assert.match(body, /<p class="mc-hook">\$\{startsWithLine\(item\.title\)\} \$\{esc\(subjectBlurb\(slot\)\)\}<\/p>/);
+  /* The Stretch reason may follow, as visible text (audit round 2, a11y-11). */
+  assert.match(body, /<p class="mc-hook">\$\{startsWithLine\(item\.title\)\} \$\{esc\(subjectBlurb\(slot\)\)\}/);
 });
 
 /* qa row 193: the greeting was computed once per render. MUTATION: drop the
@@ -396,4 +398,103 @@ test("REVIEW: the returning-listener popup claims a stretch pick only where Home
     const named = new RegExp(`\\b${section}\\b`, "i").test(claim);
     assert.strictEqual(named, has, `the stretch claim ${has ? "must" : "must not"} name ${section}: "${claim}"`);
   }
+});
+
+/* ------------------------------------------------------------------ */
+/* Round 2 copy rules (docs/DECISIONS.md 2026-09-23), over every       */
+/* listener string in the app and the player                           */
+/* ------------------------------------------------------------------ */
+
+/** Every prose literal a listener can read in `file`, with its line; HTML
+    comments inside a template are markup, and console / error / diagnostics
+    lines are code. */
+function listenerProse(file) {
+  const src = read(file);
+  const lines = src.split("\n");
+  return literals(src)
+    .map((l) => ({ ...l, text: l.text.replace(/<!--[\s\S]*?-->/g, "") }))
+    .filter((l) => isProse(l.text) && !/console\.|diag\.\w+\(|new Error\(/.test(lines[l.line - 1] || ""));
+}
+const hitsIn = (re) => LISTENER_FILES.flatMap((file) =>
+  listenerProse(file).filter((l) => re.test(l.text)).map((l) => `${file}:${l.line}: "${l.text.trim().slice(0, 90)}"`));
+
+/* copy-11. MUTATION: put back any of "we learn either way", "Shows we vouch
+   for", "here's what we've got", "Tell us in your own words…", "Our server:",
+   "We cannot delete that" or "if we ask for it". */
+test("the app speaks as 4a, never as 'we', 'us' or 'our'", () => {
+  assert.deepStrictEqual(hitsIn(/\b(we|we'll|we've|we're|we'd|us|our|ours)\b/i), []);
+  /* The scanner can see: the rewritten strings are listener prose it finds. */
+  const all = listenerProse("app.js").map((l) => l.text).join("\n");
+  assert.ok(all.includes("Shows 4a vouches for"), "the editorial row's heading");
+  assert.ok(all.includes("This is how 4a tunes your suggestions."), "the first-run sheet");
+});
+
+/* copy-7. MUTATION: restore "Not into this topic". */
+test("a listener reads 'subject', never 'topic'", () => {
+  assert.deepStrictEqual(hitsIn(/\btopics?\b/i), []);
+});
+
+/* copy-1 (incomplete fix of qa 141): the delete result said "This browser has
+   taken storage away" and "Reload and try again" five times, inside a shell
+   with neither. MUTATION: put back either. */
+test("no listener string names a browser or a reload the shell does not have", () => {
+  assert.deepStrictEqual(hitsIn(/this browser|your browser|reload and try again|reload the page/i), []);
+});
+
+/* copy-6: one failure worded three ways ("wouldn't load" / "could not load" /
+   "Did not load"). MUTATION: change any one of the three back. */
+test("a load that failed is one sentence pair, on the Foray page, the sheet and the bar", () => {
+  const client = read("player/client.js");
+  const clip = /const FY_START_FAILED = "([^"]+)";/.exec(APP_SRC)[1];
+  const ep = /const EP_START_FAILED = "([^"]+)";/.exec(client)[1];
+  const bar = /const EPISODE_FAILED_LINE = "([^"]+)";/.exec(client)[1];
+  const tail = (s) => s.replace(/^That \w+ /, "");
+  assert.strictEqual(tail(clip), tail(ep), `${clip} / ${ep}`);
+  assert.match(ep, /^That episode couldn't load\. Check the connection, then press play\.$/);
+  assert.match(bar, /^Couldn't load — /, bar);
+});
+
+/* a11y-11: `aria-label` on a bare <span> is ignored by most screen readers, and
+   a `title=` tooltip is unreachable on a phone. MUTATION: drop `role="img"`
+   from explicitBadge, or put a `title=` back on the Stretch tag or the
+   not-playable chip. */
+test("the explicit badge is a named image, and no explanation lives only in a tooltip", () => {
+  const { ctx, state } = mountApp();
+  const badge = ctx.explicitBadge(true);
+  assert.match(badge, /role="img"/);
+  assert.match(badge, /aria-label="Explicit"/);
+  assert.doesNotMatch(badge, /title=/);
+  assert.doesNotMatch(ctx.notPlayableNote(), /title=/);
+  state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History" }] };
+  const item = { id: "a", title: "A title", show: "S", duration_min: 30 };
+  const card = ctx.miniCard({ branch: "history", role: "stretch", item, items: [item] });
+  assert.doesNotMatch(card, /title="/, card);
+  assert.match(card, /<p class="mc-hook">[^<]*Outside your usual subjects, on purpose\.<\/p>/, "the reason is visible text");
+  const plain = ctx.miniCard({ branch: "history", role: "top", item, items: [item] });
+  assert.doesNotMatch(plain, /on purpose/, "only a stretch card says it");
+  /* The not-playable chip's explanation moved to the episode page, as text.
+     MUTATION: drop the NOT_PLAYABLE_WHY note from renderEpisode. */
+  state.discover = { items: [{ id: "silent", title: "No audio here", show: "S", duration_min: 30, topics: [] }] };
+  ctx.fullPool();
+  ctx.renderEpisode("silent");
+  const page = ctx.document.querySelector("#view").innerHTML;
+  assert.match(page, /Not available to play/);
+  assert.match(page, /<p class="note">4a could not get an audio file for this episode, so it cannot play here\.<\/p>/, page.slice(0, 400));
+});
+
+/* p-foray-6: a down-vote for the microphone lowered the whole subject exactly
+   like "Not my subject". MUTATION: nudge on every down-vote again. */
+test("a down-vote moves the subject's weight only when its reason is about the subject", () => {
+  const { ctx, state } = mountApp();
+  state.taxonomy = { nodes: [{ id: "business", parent: null, label: "Business" }, { id: "business/startups", parent: "business", label: "Startups" }] };
+  state.interests = { business: 0.5, "business/startups": 0.5 };
+  const entry = (n) => ({ segment_id: `seg-${n}`, topic: "business/startups", item_id: "ep" });
+  ctx.setFeedback(entry(1), "down", { reasons: ["Bad audio quality", "Didn't like the voice", "Heard this already", "Just not this show"] });
+  assert.deepStrictEqual({ ...state.interests }, { business: 0.5, "business/startups": 0.5 }, "not a word about the subject");
+  assert.ok(ctx.forayFeedback()["seg-1"], "the vote itself is still recorded");
+  ctx.setFeedback(entry(2), "down", { reasons: ["Not my subject"] });
+  assert.ok(state.interests["business/startups"] < 0.5, "a subject-shaped reason moves it");
+  const before = state.interests["business/startups"];
+  ctx.setFeedback(entry(3), "up");
+  assert.ok(state.interests["business/startups"] > before, "a thumbs-up still does");
 });

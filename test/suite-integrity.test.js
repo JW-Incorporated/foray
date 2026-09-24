@@ -283,7 +283,7 @@ const FLOORS = {
      needing a special case, and a deep link into a tab-owned route is a
      cold open like any other -- two more journeys added to the list this
      suite already existed to protect. */
-  "test/back-navigation.test.js": 13, // 2026-09-22: the step comes from the real history entry (a forward tap onto the page two back; a reload keeps ‹) and a removed playlist is not one ‹ away; 11 -> 13
+  "test/back-navigation.test.js": 17, // audit round 2 (L6): nav-1 — a traversal onto a same-hash neighbour routes from popstate, once per step, and never on a load-time popstate; init binds it; 13 -> 17 // 2026-09-22: the step comes from the real history entry (a forward tap onto the page two back; a reload keeps ‹) and a removed playlist is not one ‹ away; 11 -> 13
   /* Collapsing page header reappears on scroll-up (kanban t_0faae03f, same
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
@@ -304,6 +304,7 @@ const FLOORS = {
      reproduces the reported bug, and losing the back-step restore quietly
      ruins every deep browse instead — the failure mode that has no bug report
      because it feels like the app forgetting rather than like a defect. */
+  "test/navigation-memory.test.js": 6, // audit round 2 (L6): new — nav-3 (the Search page and a retried catalogue report their real paint), perf-8 (a shelf keeps its place across ‹ and an in-place repaint)
   "test/route-scroll-position.test.js": 14, // 2026-09-22: a tab tap onto the page two back starts at the top, and an async page's clamped restore lands at its terminal paint without filing the clamp; 11 -> 14
   /* 2026-09-22, audit: the router's own rules — safe decoding on every param
      route, one playlist-route spelling, a first route that throws cannot skip
@@ -340,19 +341,19 @@ const FLOORS = {
      curated-pool membership. ZERO SLACK: most cells reboot app.js over the same
      storage to model a reload, which is the only place the defect lived. */
   "test/playable-episodes.test.js": 12, // 2026-09-22: new -- Up Next, History, Saved, continuous playback, Open episode and #/show/pi: all survive a reload
-  "test/jump-back-in-kinds.test.js": 19, // 2026-09-22 audit: the card reads the RAW stored position, never the collapsed resume offset (a finished episode said "180 min left"); 18 -> 19 // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
+  "test/jump-back-in-kinds.test.js": 20, // audit round 2 (L6): honesty-7 — a playlist card carries its bar and 'N of M played'; 19 -> 20 // 2026-09-22 audit: the card reads the RAW stored position, never the collapsed resume offset (a finished episode said "180 min left"); 18 -> 19 // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
   /* Audit 2026-09-22, theme C: the four listener-facing formatters (fmtDur,
      countLabel/playlistLengthLabel, joinMeta, fmtDate) and the surfaces that
      used to do each by hand — "1h 0m", "1 parts", "Show ·  · date", "Invalid
      Date". ZERO SLACK: every cell is the only one pinning its surface. */
-  "test/format-helpers.test.js": 11, // 2026-09-22: new
+  "test/format-helpers.test.js": 18, // audit round 2 (L6): copy-2/15, honesty-1, copy-13, p-first-10, copy-10 — one duration dialect across four files, the year only when not this one, an episode's length is its seconds (and the pool is gated), no zero counts, plural agreement; 11 -> 18 // 2026-09-22: new
   /* Audit 2026-09-22, theme D: a control's text and its accessible name move
      together — the Save/Follow toggles, the play buttons and their player-side
      repaint, the Foray main button's four states, the running order's
      playing/played rows, the down-vote chips, the 4 Hz notice line — plus the
      standing rule that no control's text in app.js or player/client.js is
      written except through the label helpers. ZERO SLACK. */
-  "test/toggle-labels.test.js": 12, // 2026-09-22: new
+  "test/toggle-labels.test.js": 13, // audit round 2 (L6): a11y-8 — a drawer setting is a role=switch named by its label, aria-checked, and a flip is said; 12 -> 13 // 2026-09-22: new
   /* Visual pass 1 (2026-09-23, docs/audit/status.tsv qa 43/54/59/78, persona
      10/40/58 — the founder-approved visual changes). Card anatomy: no <button>
      inside an <a> (three cards restructured as stretched-link cards), the
@@ -373,7 +374,7 @@ const FLOORS = {
      its cause (pull to refresh, the home-screen builder, browser copy in the
      shell, the four-queue popup, raw resolver reasons) stays gone, with the
      behaviour behind the copy. ZERO SLACK. */
-  "test/listener-copy.test.js": 13, // 2026-09-22: new
+  "test/listener-copy.test.js": 20, // audit round 2 (L6): copy-11/7/1/6, a11y-11, p-foray-6 — 4a never 'we', 'subject' not 'topic', no browser words, one failure sentence pair, no tooltip-only explanation, and a down-vote moves the subject only for a subject reason; 13 -> 20 // 2026-09-22: new
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
   "test/show-episodes-cache.test.js": 10,
@@ -408,7 +409,7 @@ const FLOORS = {
      that Family Mode's pre-existing poolFiltered() filter still fires
      unchanged — the badge is additive, not a replacement for that filter. */
   "test/explicit-badge.test.js": 9,
-  "test/first-time-onboarding.test.js": 28, // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
+  "test/first-time-onboarding.test.js": 32, // audit round 2 (L6): p-first-1/3/7 — picks fill the first Home's top tier over the shipped pool with real randomness, never the stretch slot; a typed word matches label words and leaves, and a miss is said with the sheet kept open; 'Show my picks'; 28 -> 32 // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
      and no numeric ID repeats. */
@@ -494,7 +495,7 @@ const FLOORS = {
      thumb surviving Up Next's rebuild, and the strip's click suppression.
      Seventeen tests over a small DOM with real parent links and focus, each
      mutation-checked red. */
-  "test/modal-and-focus.test.js": 26, // 2026-09-23 audit sweep (qa row 80): part 5 — a route lands lost focus on the page heading (or #view), names the document, leaves surviving focus and announces instead, is silent on a same-page re-render, and pageDidPaint renames an async page; 21 -> 26 (L3 took it to 21 unfloored)
+  "test/modal-and-focus.test.js": 30, // audit round 2 (L6): nav-7/races-6/a11y-10 — a page is named without its explicit badge, a Loading-first page is said once on its real paint, Home says 'Home' and lands a lost focus on the greeting; 26 -> 30 // 2026-09-23 audit sweep (qa row 80): part 5 — a route lands lost focus on the page heading (or #view), names the document, leaves surviving focus and announces instead, is silent on a same-page re-render, and pageDidPaint renames an async page; 21 -> 26 (L3 took it to 21 unfloored)
   /* S-08's mechanical privacy tripwire: SHOWS_SEARCH_OFF_DEVICE flag detection
      (source and env), the pinned current-sentence check, the core AND-gate
      that fails release builds only when the flag is on AND the old sentence
@@ -1709,7 +1710,7 @@ const FLOORS = {
      All 19 mutations run against it were killed, and two false-alarm probes
      (a comment-only edit to scan.mjs; one new nightly episode) were confirmed to
      stay green. Each test names its own mutation. */
-  "tools/refresh/merge-topics.test.mjs": 16,
+  "tools/refresh/merge-topics.test.mjs": 18, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18
   /* The nightly's deploy-manifest step (HUMAN-ACTIONS #37). Floored because its
      failure mode is silence: if merge.mjs stops restamping the manifest,
      nothing goes red — `manifest-autofix.yml` pushes the `github-actions[bot]`

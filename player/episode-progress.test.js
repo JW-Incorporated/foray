@@ -174,7 +174,10 @@ test("nothing stored, or an unparseable timestamp, is `none`", () => {
 test("percent and remaining agree, and both come from the caller's position", () => {
   const rec = makeLastEpisode(EPISODE); // 7200 s
   assert.equal(episodePercentDone(rec, 1800), 0.25);
-  assert.equal(episodeRemainingLabel(rec, 1800), "90 min left");
+  /* Past the hour it rolls over (audit round 2, copy-2): the row beside it
+     says "2 hr", so this says "1 hr 30 min left", never "90 min left". */
+  assert.equal(episodeRemainingLabel(rec, 1800), "1 hr 30 min left");
+  assert.equal(episodeRemainingLabel(rec, 4200), "50 min left");
 });
 
 test("an unknown duration produces no numbers rather than wrong ones", () => {

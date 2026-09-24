@@ -245,7 +245,7 @@ test("the show search renders on #/shows and not on Home", () => {
   assert.ok(m.view().includes('id="sh-form"'), "the Shows page must render the show search");
 });
 
-test("'Shows we vouch for' renders on #/shows and not on Home", () => {
+test("'Shows 4a vouches for' renders on #/shows and not on Home", () => {
   /* Founder item 1: "move the 'shows we recommend' row to the Shows page."
      (He calls it "shows we recommend"; the shipped heading says "Shows we
      vouch for" and is left as it is — he asked for a move, not a rename.)
@@ -261,10 +261,10 @@ test("'Shows we vouch for' renders on #/shows and not on Home", () => {
   };
 
   m.ctx.renderHome();
-  assert.ok(!m.view().includes("Shows we vouch for"), "Home must not render the editorial show row");
+  assert.ok(!m.view().includes("Shows 4a vouches for"), "Home must not render the editorial show row");
 
   m.ctx.renderAllShows();
-  assert.ok(m.view().includes("Shows we vouch for"), "the Shows page must render the editorial show row");
+  assert.ok(m.view().includes("Shows 4a vouches for"), "the Shows page must render the editorial show row");
 });
 
 /* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a): the

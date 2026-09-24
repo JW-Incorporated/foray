@@ -339,7 +339,7 @@ test("the browse furniture is visible when the page opens, before anyone touches
   assert.deepStrictEqual(m.browseHidden(), { cards: false, index: false });
   assert.ok(m.view().includes('id="sh-browse"'), "the cards must be in a container the rule can toggle");
   assert.ok(m.view().includes('href="#/starred-shows"'), "…and that container holds the starred shortcut");
-  assert.ok(m.view().includes("Shows we vouch for"), "…and the editorial row");
+  assert.ok(m.view().includes("Shows 4a vouches for"), "…and the editorial row");
 });
 
 test("FOCUSING the search box hides the cards and the A-Z list — before a single keystroke", () => {
