@@ -1,5 +1,7 @@
 # A native iOS playback engine: what it would have to contain, against what exists
 
+> **Decided 2026-09-23: Tier 2, see `docs/native-engine-plan.md`.**
+
 CarPlay is happening (founder decision). Whether CarPlay *requires* native playback
 rather than the HTML `<audio>` element in the Capacitor WebView is a separate
 question being established elsewhere and is **deliberately not answered here** —

@@ -272,6 +272,29 @@ default, round 2; nav-10). Inside the iOS/Android shell every route is filed
 as a cold open (‹ falls back to Home). The web is unchanged: a bare URL means
 Home, on purpose (qa 132).
 
+## 2026-09-23 (iOS playback: the full native engine, iOS first)
+
+**The decision (Wyatt, 2026-09-23), verbatim as relayed:** *"Full native engine"*.
+It was chosen from three priced options — **Native audio backend** (Tier 1),
+**Full native engine** (Tier 2) and **Park it** — after the founder read the field
+record from build 2026092327 in the car (the paused-then-backgrounded session hold
+refused by iOS, car play presses routed to Spotify, "4a / Unknown / Unknown" on the
+lock screen, a 2.0 s seam measured at 9,153 ms while hidden). That is Tier 2 of
+`docs/ios-native-player-gap.md` §4: on iOS the native plugin owns playback — the
+queue, Foray segments, out-points and seams, narration, positions, remote commands,
+Now Playing and the audio session — and the web page becomes a remote control and a
+view.
+
+**Scope: iOS first.** Android and the website keep today’s JS player until iOS has
+been proven on the founder’s phone. Behaviour parity is enforced by shared fixtures
+that the Swift engine must pass; JS stays the reference, so a rule change is JS,
+then re-record, then Swift. The build default stays `js` until the M1 flip (NE-27),
+which waits on the required parity CI (G-1b) and the founder’s answer to OQ-9.
+
+**The plan** is `docs/native-engine-plan.md` (the NE- deck, revision 2, four
+milestones; M1 ends in the car test on a named TestFlight build). Later DECISIONS
+entries for the flips (NE-27d, NE-37d, NE-40d) land in their own PRs, never in a flip PR.
+
 ## 2026-09-23 (six founder reports from one drive: no zoom at all, the drawer leaves when used, the lock screen's 15/30, the paused app keeps the car, and "4a / unknown / unknown")
 
 **The report (Wyatt, 2026-09-23, iPhone, build 2026092326), verbatim — the four
