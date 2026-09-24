@@ -1,0 +1,198 @@
+{
+  "family": "session-invariant",
+  "module": "player/engine-contract.js",
+  "note": "The audible-start invariant (docs/native-engine-plan.md §4.4; player/engine-contract.js audibleStartViolations, NE-11j). AUTHORED: in every handle() turn, each deckPlay, speak, interludeStart or silenceStart must follow an active session at entry or a successful sessionResult answering a sessionActivate in the same turn. The mutation cases are the core bugs NE-14s's EngineCore must never have; its scenario outputs are checked by this same rule.",
+  "cases": [
+    {
+      "id": "session-invariant/audible-commands",
+      "covers": [],
+      "authored": true,
+      "read": "AUDIBLE_COMMANDS",
+      "expect": { "value": ["deckPlay", "speak", "interludeStart", "silenceStart"] }
+    },
+    {
+      "id": "session-invariant/active-at-entry-plays",
+      "covers": [],
+      "authored": true,
+      "note": "Session active when the turn began: a deckPlay needs nothing more.",
+      "call": "audibleStartViolations",
+      "args": ["active", ["deckLoad", "deckPlay"]],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "session-invariant/activation-ok-then-play",
+      "covers": [],
+      "authored": true,
+      "note": "Inactive at entry: activate, a successful result, THEN the audible command.",
+      "call": "audibleStartViolations",
+      "args": ["inactive", ["sessionActivate", "sessionResult:ok", "deckPlay"]],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "session-invariant/activation-failed-no-audible",
+      "covers": [],
+      "authored": true,
+      "note": "A failed activation ends in commandFailed and nothing audible: the invariant holds.",
+      "call": "audibleStartViolations",
+      "args": ["inactive", ["sessionActivate", "sessionResult:failed", "commandFailed"]],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "session-invariant/audition-speaks-after-activation",
+      "covers": [],
+      "authored": true,
+      "note": "OQ-5: an audition while idle activates through SessionPolicy as a tap before it speaks.",
+      "call": "audibleStartViolations",
+      "args": ["inactive", ["sessionActivate", "sessionResult:ok", "speak"]],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "session-invariant/resume-after-interruption-activates-first",
+      "covers": [],
+      "authored": true,
+      "note": "lostToInterruption, ended(shouldResume) & wasPlaying: activate, ok, rewind, play.",
+      "call": "audibleStartViolations",
+      "args": [
+        "lostToInterruption",
+        ["sessionActivate", "sessionResult:ok", "deckSeek", "deckPlay"]
+      ],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "session-invariant/mutation-deck-play-in-lost-to-interruption",
+      "covers": [],
+      "authored": true,
+      "note": "MUTATION CASE: a core that emits deckPlay while the session is lost to an interruption.",
+      "call": "audibleStartViolations",
+      "args": ["lostToInterruption", ["deckPlay"]],
+      "expect": { "return": [{ "at": 0, "cmd": "deckPlay" }] }
+    },
+    {
+      "id": "session-invariant/mutation-autoadvance-hop-after-interruption",
+      "covers": [],
+      "authored": true,
+      "note": "MUTATION CASE: an autoadvance hop walked while the session is lost (the episode ended during a call) must not start the next episode unactivated.",
+      "call": "audibleStartViolations",
+      "args": ["lostToInterruption", ["advanceLog", "deckLoad", "deckPlay"]],
+      "expect": { "return": [{ "at": 2, "cmd": "deckPlay" }] }
+    },
+    {
+      "id": "session-invariant/mutation-reconcile-correction-while-inactive",
+      "covers": [],
+      "authored": true,
+      "note": "MUTATION CASE: a reconcile correction that restarts a deck the session was released for.",
+      "call": "audibleStartViolations",
+      "args": ["inactive", ["deckSeek", "deckPlay"]],
+      "expect": { "return": [{ "at": 1, "cmd": "deckPlay" }] }
+    },
+    {
+      "id": "session-invariant/mutation-seam-timer-tail-after-interruption",
+      "covers": [],
+      "authored": true,
+      "note": "MUTATION CASE: the seam beat's timer fires after an interruption began and starts the next segment.",
+      "call": "audibleStartViolations",
+      "args": ["lostToInterruption", ["seamTimerFired", "deckLoad", "deckPlay"]],
+      "expect": { "return": [{ "at": 2, "cmd": "deckPlay" }] }
+    },
+    {
+      "id": "session-invariant/mutation-interlude-in-lost-to-interruption",
+      "covers": [],
+      "authored": true,
+      "note": "MUTATION CASE: a seam's interlude started while the session is lost.",
+      "call": "audibleStartViolations",
+      "args": ["lostToInterruption", ["interludeStart"]],
+      "expect": { "return": [{ "at": 0, "cmd": "interludeStart" }] }
+    },
+    {
+      "id": "session-invariant/mutation-silence-fallback-while-inactive",
+      "covers": [],
+      "authored": true,
+      "note": "MUTATION CASE: the silence fallback never runs without an active session (§4.4).",
+      "call": "audibleStartViolations",
+      "args": ["inactive", ["silenceStart"]],
+      "expect": { "return": [{ "at": 0, "cmd": "silenceStart" }] }
+    },
+    {
+      "id": "session-invariant/play-after-failed-activation",
+      "covers": [],
+      "authored": true,
+      "note": "fail: NO audible cmd. A deckPlay after a failed result is a violation.",
+      "call": "audibleStartViolations",
+      "args": ["inactive", ["sessionActivate", "sessionResult:failed", "deckPlay"]],
+      "expect": { "return": [{ "at": 2, "cmd": "deckPlay" }] }
+    },
+    {
+      "id": "session-invariant/unrequested-success-does-not-count",
+      "covers": [],
+      "authored": true,
+      "note": "A success nobody asked for in this turn is not an activation this engine owns.",
+      "call": "audibleStartViolations",
+      "args": ["inactive", ["sessionResult:ok", "deckPlay"]],
+      "expect": { "return": [{ "at": 1, "cmd": "deckPlay" }] }
+    },
+    {
+      "id": "session-invariant/audible-before-activation",
+      "covers": [],
+      "authored": true,
+      "note": "Order matters: an interlude before the activation request is a violation even though a later deckPlay is fine.",
+      "call": "audibleStartViolations",
+      "args": [
+        "inactive",
+        ["interludeStart", "sessionActivate", "sessionResult:ok", "deckPlay"]
+      ],
+      "expect": { "return": [{ "at": 0, "cmd": "interludeStart" }] }
+    },
+    {
+      "id": "session-invariant/deactivate-then-play",
+      "covers": [],
+      "authored": true,
+      "note": "A deactivate in the same turn (hold policy none) revokes the session for the rest of the turn.",
+      "call": "audibleStartViolations",
+      "args": ["active", ["deckPause", "sessionDeactivate", "deckPlay"]],
+      "expect": { "return": [{ "at": 2, "cmd": "deckPlay" }] }
+    },
+    {
+      "id": "session-invariant/relinquished-plays-nothing",
+      "covers": [],
+      "authored": true,
+      "note": "Terminal: after relinquish nothing may start (handle() returns [] there).",
+      "call": "audibleStartViolations",
+      "args": ["relinquished", ["deckPlay"]],
+      "expect": { "return": [{ "at": 0, "cmd": "deckPlay" }] }
+    },
+    {
+      "id": "session-invariant/every-audible-violation-listed",
+      "covers": [],
+      "authored": true,
+      "note": "Every unbacked audible command is reported, not only the first.",
+      "call": "audibleStartViolations",
+      "args": ["inactive", ["speak", "deckPlay"]],
+      "expect": { "return": [{ "at": 0, "cmd": "speak" }, { "at": 1, "cmd": "deckPlay" }] }
+    },
+    {
+      "id": "session-invariant/silent-commands-need-nothing",
+      "covers": [],
+      "authored": true,
+      "note": "Loads, seeks, Now Playing and rows make no sound and need no session.",
+      "call": "audibleStartViolations",
+      "args": ["inactive", ["deckLoad", "deckSeek", "nowPlaying", "diag"]],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "session-invariant/throws-unknown-phase",
+      "covers": [],
+      "authored": true,
+      "call": "audibleStartViolations",
+      "args": ["playing", []],
+      "expect": { "throws": { "name": "RangeError" } }
+    },
+    {
+      "id": "session-invariant/throws-non-string-command",
+      "covers": [],
+      "authored": true,
+      "call": "audibleStartViolations",
+      "args": ["active", [42]],
+      "expect": { "throws": { "name": "TypeError" } }
+    }
+  ]
+}
