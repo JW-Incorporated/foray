@@ -13002,6 +13002,7 @@ function route() {
   if (!state.ready) return;
   const h = currentHash();
   const step = noteNavigation(h);
+  rememberRouteForRelaunch(h);
   /* Read BEFORE the render: renderCurrentPage() replaces #view's innerHTML,
      and a shorter page clamps window.scrollY on the spot. */
   const target = step === "back" ? (navScrollY.get(h) || 0) : 0;
@@ -13125,6 +13126,34 @@ function landOnPage({ navigated = false } = {}) {
    place, so the address the history holds agrees with this. */
 function currentHash(hash = location.hash) {
   return !hash || hash === "#" ? "#/" : hash;
+}
+
+/* THE NATIVE SHELL REOPENS WHERE YOU LEFT (audit round 2, nav-10; founder
+   question 11, default ruling). The route lived only in the URL hash, and a
+   cold relaunch after iOS or Android tore the WebView down loads the bundled
+   page with no hash — so a listener who backgrounded 4a on a show page came
+   back to Home. Apple Podcasts reopens on the screen you left.
+
+   The shell ONLY. On the web a bare URL means Home on purpose (qa 132): a
+   shared or typed address is an arrival, not a return, and a reload keeps its
+   hash anyway. So the route is filed only inside the shell, and read back only
+   there, only for a bare arrival — a deep link the shell was opened with
+   (a `?foray=` link, a notification) is where the listener asked to go. It is
+   a cold open all the same: no stamp behind it, so ‹ keeps its href fallback. */
+const LAST_ROUTE_KEY = "cp_last_route";
+
+function rememberRouteForRelaunch(hash) {
+  if (!isNativeShell()) return;
+  if (lsGet(LAST_ROUTE_KEY, null) !== hash) lsSet(LAST_ROUTE_KEY, hash);
+}
+
+/** The route a bare native arrival reopens, or "#/". Only one of this app's
+    own hash routes is accepted — the stored value is ours, but it is read
+    back into the address bar, so it is checked like any input. */
+function relaunchRoute() {
+  if (!isNativeShell()) return "#/";
+  const last = lsGet(LAST_ROUTE_KEY, null);
+  return typeof last === "string" && /^#\/[^\s]*$/.test(last) && last.length <= 2048 ? last : "#/";
 }
 
 /* WHICH RENDER IS ON SCREEN (audit 2026-09-22, theme B). Async work used to ask
@@ -14223,8 +14252,10 @@ async function init() {
   state.ready = true;
   enterForayFromQuery();
   /* A bare arrival is Home, and the address says so from the first paint —
-     see currentHash(). In place: no hashchange, no history entry. */
-  if (location.hash === "" || location.hash === "#") replaceHash("#/");
+     see currentHash(). In place: no hashchange, no history entry. Inside the
+     native shell a bare arrival is a relaunch, and reopens the page the
+     listener left (see relaunchRoute). */
+  if (location.hash === "" || location.hash === "#") replaceHash(relaunchRoute());
   /* THE FIRST ROUTE MAY NOT TAKE THE APP DOWN WITH IT (audit 2026-09-22). Every
      listener this function wires — hashchange, the menu, the drawer, the
      keyboard chrome — is bound BELOW this line, so a throw out of the first

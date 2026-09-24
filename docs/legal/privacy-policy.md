@@ -111,6 +111,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_voice_probe` | Whether the settings switch that offers the voice-engine measurement on this device is on — a local per-device preference used to test a bundled narration voice before it ships. Off by default; when it is off the control is not shown at all | **No** |
 | `cp_autoadvance` | Continuous playback on/off — a local per-device preference for whether finishing an episode starts the next one: your Up Next list first, then the rest of the list you started from. On by default | **No** (but see `autoadvance_pref` in §2) |
 | `cp_intro_dismissed` | Whether you dismissed the intro card | **No** |
+| `cp_last_route` | In the iOS and Android app only: which screen of 4a you were last on (for example a show's page), so the app reopens there after your phone closes it in the background. Never written in a web browser | **No** |
 | `cp_foray_feedback` | Your per-segment thumbs: direction, reason codes, any note you typed, timestamp | **Yes, via `thumbs`** — see §2 |
 | `cp_profile_id` | A random local id (e.g. `p-a1b2c3d4...`) generated on this device | **No** — it is stamped on local events but is **not** included in anything sent |
 | `cp_sb_session` | The access and refresh token for your anonymous account, and its user id | It **is** your credential for our database — see §3 |

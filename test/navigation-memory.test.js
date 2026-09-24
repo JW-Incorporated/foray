@@ -1,7 +1,7 @@
 /* What the router remembers beyond the page's height (audit round 2).
  *
  * WHY THIS EXISTS. Round 1 (qa 115) taught the router to put a listener back at
- * the height they left a list at. Two things it still forgot:
+ * the height they left a list at. Three things it still forgot:
  *
  *  1. nav-3 — the Search page never reported its REAL paint. Its show, directory,
  *     shard and episode passes land after route() has restored the scroll, so a
@@ -10,6 +10,10 @@
  *  2. perf-8 — Home's shelves (Jump back in, Forays for you, Playlists for you)
  *     are horizontal scroll containers, rebuilt at card one on every render: a ‹
  *     back to Home, a settings switch, the late now-playing ribbon.
+ *  3. nav-10 — inside the native shell, a cold relaunch after the OS tore the
+ *     WebView down opened on Home: the route lived only in the URL hash. Founder
+ *     question 11's default: the shell reopens where the listener left; the web
+ *     keeps "a bare URL means Home" (qa 132).
  *
  * Harness: app.js in node:vm, with the page painters (renderHome, renderLibrary)
  * replaced by ones that build exactly the shelves a test names — what is under
@@ -228,4 +232,47 @@ test("an in-place repaint of Home (a settings switch, the late ribbon) keeps the
   r.rail("hv2-playlists").scrollLeft = 300;
   m.evalIn("renderCurrentPage()");
   assert.strictEqual(r.rail("hv2-playlists").scrollLeft, 300);
+});
+
+/* ==================================================================== */
+/* 3. nav-10 — the native shell reopens where the listener left          */
+/* ==================================================================== */
+
+function routeTo(m, hash) {
+  m.evalIn("state.ready = true; renderCurrentPage = () => {}; openDrawer = () => {}; landOnPage = () => {};");
+  m.ctx.location.hash = hash;
+  m.evalIn("route()");
+}
+
+test("inside the native shell every route is filed, and a bare relaunch reopens it (nav-10)", () => {
+  /* MUTATION: drop `rememberRouteForRelaunch(h)` from route() -> the relaunch
+     route is Home; red. */
+  const m = mount({ native: true });
+  routeTo(m, "#/show/lex-fridman-podcast");
+  assert.strictEqual(m.ctx.relaunchRoute(), "#/show/lex-fridman-podcast");
+  /* A new page-life: the WebView was torn down, the store survived. */
+  const again = mount({ native: true, seed: { cp_last_route: m.store.get("cp_last_route") } });
+  assert.strictEqual(again.ctx.relaunchRoute(), "#/show/lex-fridman-podcast");
+});
+
+test("on the web nothing is filed and a bare URL is still Home (nav-10, qa 132)", () => {
+  /* MUTATION: drop the `isNativeShell()` guard from rememberRouteForRelaunch or
+     relaunchRoute -> the web reopens a stale page for a bare URL; red. */
+  const m = mount({ native: false, seed: { cp_last_route: JSON.stringify("#/show/x") } });
+  routeTo(m, "#/library");
+  assert.strictEqual(m.store.get("cp_last_route"), JSON.stringify("#/show/x"), "the web writes nothing");
+  assert.strictEqual(m.ctx.relaunchRoute(), "#/");
+});
+
+test("a stored route that is not one of 4a's own hash routes reopens Home (nav-10)", () => {
+  /* MUTATION: return the stored value unchecked. */
+  for (const bad of ["javascript:alert(1)", "https://evil.test/#/", "#/ x", 42]) {
+    const m = mount({ native: true, seed: { cp_last_route: JSON.stringify(bad) } });
+    assert.strictEqual(m.ctx.relaunchRoute(), "#/", String(bad));
+  }
+});
+
+test("init rewrites only a BARE arrival, and to the relaunch route (nav-10)", () => {
+  /* MUTATION: restore `replaceHash("#/")` for a bare arrival. */
+  assert.match(APP_SRC, /if \(location\.hash === "" \|\| location\.hash === "#"\) replaceHash\(relaunchRoute\(\)\);/);
 });

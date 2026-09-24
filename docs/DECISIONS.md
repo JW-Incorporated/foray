@@ -2,7 +2,7 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
-## 2026-09-23 (the app's copy speaks as "4a", never "we"; one duration dialect; round-2 ruling Q8)
+## 2026-09-23 (the app's copy speaks as "4a", never "we"; one duration dialect; round-2 rulings Q8 and Q11)
 
 **The narrator is 4a (audit round 2, copy-11).** Listener copy said "4a picks
 podcast episodes for you" and "we learn either way" on one sheet, "Shows we
@@ -38,6 +38,12 @@ suite or `test/format-helpers.test.js`):
 **Q8 — the last onboarding button is "Show my picks"** (founder default,
 round 2). "Start listening" started nothing: the button closes the sheet onto a
 Home re-dealt from the picks, and that is what it now says.
+
+**Q11 — the native shell reopens the page the listener left** (founder
+default, round 2; nav-10). Inside the iOS/Android shell every route is filed
+(`cp_last_route`, device-only, never sent) and a bare cold launch reopens it,
+as a cold open (‹ falls back to Home). The web is unchanged: a bare URL means
+Home, on purpose (qa 132).
 
 ## 2026-09-23 (six founder reports from one drive: no zoom at all, the drawer leaves when used, the lock screen's 15/30, the paused app keeps the car, and "4a / unknown / unknown")
 

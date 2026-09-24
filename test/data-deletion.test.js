@@ -520,11 +520,17 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      with the "Open in" switch that wrote it. Its only reader was `playLink`,
      which nothing had called since the link-out to another podcast app was
      deleted. A copy on an older device is still `cp_`-prefixed, so the
-     enumeration above clears it; policy §2 says so in prose. */
+     enumeration above clears it; policy §2 says so in prose.
+
+     29 -> 30 on 2026-09-23 (audit round 2, nav-10; founder question 11):
+     `cp_last_route`, the page the native shell reopens on a cold relaunch
+     (app.js § relaunchRoute). Written and read only inside the iOS/Android
+     shell, never on the web, never sent. Same mechanism: this count failed
+     first, then the policy check, until privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 29,
-    `expected 29 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 30,
+    `expected 30 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");

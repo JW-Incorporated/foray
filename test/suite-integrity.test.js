@@ -304,7 +304,7 @@ const FLOORS = {
      reproduces the reported bug, and losing the back-step restore quietly
      ruins every deep browse instead — the failure mode that has no bug report
      because it feels like the app forgetting rather than like a defect. */
-  "test/navigation-memory.test.js": 6, // audit round 2 (L6): new — nav-3 (the Search page and a retried catalogue report their real paint), perf-8 (a shelf keeps its place across ‹ and an in-place repaint)
+  "test/navigation-memory.test.js": 10, // audit round 2 (L6): new — nav-3 (the Search page and a retried catalogue report their real paint), perf-8 (a shelf keeps its place across ‹ and an in-place repaint), nav-10 (the native shell reopens the page left; the web keeps a bare URL as Home)
   "test/route-scroll-position.test.js": 14, // 2026-09-22: a tab tap onto the page two back starts at the top, and an async page's clamped restore lands at its terminal paint without filing the clamp; 11 -> 14
   /* 2026-09-22, audit: the router's own rules — safe decoding on every param
      route, one playlist-route spelling, a first route that throws cannot skip
