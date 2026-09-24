@@ -337,10 +337,6 @@ final class AVDeck: DeckDriving {
             gateSeek()
             return
         }
-        guard finished else {
-            notReady(cause: "preroll-unfinished")
-            return
-        }
         becomeReady(prerolled: true)
     }
 
