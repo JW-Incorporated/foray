@@ -296,7 +296,8 @@ final class AudioSessionOwnerTests: XCTestCase {
     /// The owner's phase follows the session-losing interruptions only: a
     /// muted built-in mic stops nothing of ours, and a late appWasSuspended
     /// is the core's call (stale or not).
-    /// TO SEE IT FAIL: move the phase on every `began`.
+    /// TO SEE IT FAIL: move the phase on every `began`, or compare the raw
+    /// reason instead of the admitted one (an absent key then keeps `.active`).
     func testOnlyASessionLosingInterruptionMovesThePhase() {
         let api = FakeSessionAPI()
         let center = NotificationCenter()
@@ -318,6 +319,15 @@ final class AudioSessionOwnerTests: XCTestCase {
             events = 0
             XCTAssertEqual(owner.phase, expected, "after \(reason.rawValue)")
         }
+
+        // No reason key at all reads as `unknown`, as the table reads it:
+        // the session was taken.
+        _ = owner.activate()
+        post(center, AVAudioSession.interruptionNotification, object: api,
+             [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue],
+             fromBackground: false)
+        spin(until: { events >= 1 })
+        XCTAssertEqual(owner.phase, .lostToInterruption)
         observation.cancel()
     }
 

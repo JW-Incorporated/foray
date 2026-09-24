@@ -207,12 +207,14 @@ final class AudioSessionOwner: SessionControlling {
             // The system deactivated us, except for a muted built-in mic
             // (nothing of ours stopped) and a late appWasSuspended (the
             // core's call: stale or not). See the type comment.
-            if reason == Vocabulary.InterruptionReason.default.rawValue || reason == Vocabulary.InterruptionReason.unknown.rawValue,
-               phase == .active {
+            // Admitted exactly as the table admits it, so an absent reason
+            // is `unknown` here too, and takes the session there.
+            let admitted = SessionPolicy.interruptionReason(reason)
+            if admitted != .builtInMicMuted, admitted != .appWasSuspended, phase == .active {
                 phase = .lostToInterruption
             }
             row("notification", [JSONMember("name", .string("interruption")), JSONMember("type", .string("began")),
-                                 JSONMember("reason", .string(reason ?? Vocabulary.InterruptionReason.unknown.rawValue))])
+                                 JSONMember("reason", .string(admitted.rawValue))])
         case let .interruptionEnded(shouldResume):
             row("notification", [JSONMember("name", .string("interruption")), JSONMember("type", .string("ended")),
                                  JSONMember("shouldResume", .bool(shouldResume))])
