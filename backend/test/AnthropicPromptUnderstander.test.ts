@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { AnthropicPromptUnderstander, buildIntentPrompt } from "../src/generation/AnthropicPromptUnderstander";
-import { INTERNAL_VOCABULARY } from "../src/copy/rules";
+import { INTERNAL_VOCABULARY, titleStyleProblems } from "../src/copy/rules";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { makeFakeAnthropicClient, textBlock, toolUseBlock } from "./helpers/fakeAnthropicClient";
@@ -130,5 +130,57 @@ describe("AnthropicPromptUnderstander", () => {
     const examples = [...rule.matchAll(/"([^"]+)"/g)].map((m) => m[1]!);
     expect(examples.length).toBeGreaterThanOrEqual(4);
     for (const text of examples) expect(INTERNAL_VOCABULARY.some((rx) => rx.test(text)), `"${text}" must be caught`).toBe(true);
+  });
+
+  /* THE TITLE HOUSE STYLE (Wyatt, 2026-09-24, qa 146): "Sentence case, no
+     period, though ? And ! Are allowed". The understander writes the title,
+     so it is the one asked. */
+  const intentJson = (title: string): string =>
+    JSON.stringify({ subject: "AI systems", angle: "the engineering", priorKnowledge: "p", disappointment: "d", title, summary: "Why most of a model is plumbing." });
+
+  it("asks for a sentence-case title by name, with examples the house-style check agrees with", () => {
+    /* MUTATION THAT KILLS THIS: put back "no trailing punctuation" (which
+       forbade the ? and ! the ruling allows) or drop the sentence-case lines ->
+       red. */
+    const prompt = buildIntentPrompt("how AI gets built");
+    expect(prompt).toContain("SENTENCE CASE");
+    expect(prompt).toContain("a closing ? or ! is fine");
+    expect(prompt).not.toContain("no trailing punctuation");
+    expect(titleStyleProblems("How AI actually gets built")).toEqual([]);
+    expect(titleStyleProblems("How AI Actually Gets Built")).not.toEqual([]);
+  });
+
+  it("re-asks ONCE for a title still in Title Case, and keeps the answer only if it changed nothing but the case", async () => {
+    /* MUTATION THAT KILLS THIS: return the parsed intent without
+       `sentenceCaseTitle` -> the first title stays Title Case and there is one
+       call, not two; drop the same-letters guard -> the reworded reply is
+       taken. */
+    const { client, create } = makeFakeAnthropicClient([]);
+    create
+      .mockResolvedValueOnce({ content: [textBlock(intentJson("How AI Actually Gets Built"))] })
+      .mockResolvedValueOnce({ content: [textBlock('{"title": "How AI actually gets built"}')] });
+    const understander = new AnthropicPromptUnderstander(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+    const intent = await understander.extractIntent("how AI gets built", ctx);
+    expect(intent.title).toBe("How AI actually gets built");
+    expect(create).toHaveBeenCalledTimes(2);
+
+    const reworded = makeFakeAnthropicClient([]);
+    reworded.create
+      .mockResolvedValueOnce({ content: [textBlock(intentJson("How AI Actually Gets Built"))] })
+      .mockResolvedValueOnce({ content: [textBlock('{"title": "Inside the AI factory"}')] });
+    const kept = await new AnthropicPromptUnderstander(new BudgetGuard(new InMemoryCostEventSink(), 100), reworded.client).extractIntent("how AI gets built", ctx);
+    expect(kept.title).toBe("How AI Actually Gets Built");
+  });
+
+  it("does not re-ask for a title that keeps the style, or one only a closing period away from it", async () => {
+    /* The period is code's job (houseStyleTitle), not a second model call.
+       MUTATION THAT KILLS THIS: check `titleStyleProblems(title)` instead of
+       `titleStyleProblems(houseStyleTitle(title))` -> two calls. */
+    for (const title of ["How Earth got plate tectonics and Venus never did", "Was it worth it?", "How AI actually gets built."]) {
+      const { client, create } = makeFakeAnthropicClient([textBlock(intentJson(title))]);
+      const intent = await new AnthropicPromptUnderstander(new BudgetGuard(new InMemoryCostEventSink(), 100), client).extractIntent("x", ctx);
+      expect(intent.title).toBe(title);
+      expect(create).toHaveBeenCalledTimes(1);
+    }
   });
 });

@@ -44,7 +44,8 @@ import {
   type TopicDecision
 } from "./topicSupply";
 import { slugifySlotTitle } from "./forayItems";
-import { toListenerWords } from "../copy/rules";
+import { houseStyleTitle, titleStyleProblems, toListenerWords } from "../copy/rules";
+import { toNarrationWords } from "../copy/narratorStructure";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { NARRATION_CHARS_PER_SEC } from "../types/narration";
 import { disclosureTemplate, preludeTemplate } from "../types/narration";
@@ -430,12 +431,28 @@ export function clampWords(text: string, max: number = MAX_COPY_WORDS): string {
  * after the spend. So a match the understander wrote anyway is rewritten here
  * into the listener's word by `toListenerWords` (the rule's own module, never
  * a copy of the list) and reported in `rewritten`, exactly as a clamp is.
+ *
+ * AND THE TITLE KEEPS THE HOUSE STYLE (rules.js `titleStyleProblems`). Wyatt,
+ * 2026-09-24, on qa 146: "Sentence case, no period, though ? And ! Are
+ * allowed". The understander is asked for sentence case by name; in code the
+ * title only loses a closing period and has a lower-case first letter raised
+ * (rules.js `houseStyleTitle`), both of which are safe on any title and are
+ * reported in `styled`, and the understander re-asks once for a title that is
+ * still in Title Case. Nothing here
+ * lowercases a word — code cannot tell "Venus" from "Actually" — so a Title
+ * Case title the understander wrote anyway is reported in `unstyled`, and
+ * check-forays refuses it. `mintedFrom` is the title BEFORE the house style,
+ * which is what `forayIdFor` is seeded with, so the ids of the fallback
+ * `subject: angle` shape above do not move.
  */
 export function forayCopy(intent: { subject: string; angle?: string; title?: string; summary?: string }): {
   title: string;
   summary: string;
+  mintedFrom: string;
   clamped: string[];
   rewritten: string[];
+  styled: string[];
+  unstyled: string[];
 } {
   const clamped: string[] = [];
   const rewritten: string[] = [];
@@ -446,12 +463,16 @@ export function forayCopy(intent: { subject: string; angle?: string; title?: str
   };
   const rawTitle = listener("title", intent.title?.trim() || `${intent.subject}${intent.angle ? `: ${intent.angle}` : ""}`.slice(0, 120));
   const rawSummary = listener("summary", intent.summary?.trim() || intent.subject);
-  const title = clampWords(rawTitle);
+  const mintedFrom = clampWords(rawTitle);
+  const title = houseStyleTitle(mintedFrom);
+  const styled = title !== mintedFrom ? [`title ("${mintedFrom}" -> "${title}")`] : [];
   const summary = clampWords(rawSummary);
   if (wordCount(rawTitle) > MAX_COPY_WORDS) clamped.push(`title (${wordCount(rawTitle)} words)`);
   if (wordCount(rawSummary) > MAX_COPY_WORDS) clamped.push(`summary (${wordCount(rawSummary)} words)`);
-  return { title, summary, clamped, rewritten };
+  const unstyled = titleStyleProblems(title).map((problem) => `title "${title}" ${problem}`);
+  return { title, summary, mintedFrom, clamped, rewritten, styled, unstyled };
 }
+
 
 export function slotsFromSpine(spine: Spine): ForaySlot[] {
   const slots: ForaySlot[] = [];
@@ -573,12 +594,19 @@ export function disclosureItem(subject: string, firstSlotId: string): ForayItem 
  *
  * It carries a `slot`, and must: an item that opens a Foray has no preceding
  * item to inherit one from, and check-forays rejects that case explicitly.
+ *
+ * The OVERVIEW is spoken, and is the one narration item that does not leave
+ * through `forayItems.ts` — so the Q-08 rewrite that every other item gets
+ * there (`toNarrationWords`) is applied here. The spine prompt tells the
+ * model the rule; nothing retries a spine for its overview, so this is where
+ * "over the next four acts" becomes "over what follows" instead of a
+ * publish-gate refusal after the spend (2026-09-24).
  */
 export function preludeItem(subject: string, overview: string, firstSlotId: string): ForayItem {
   return {
     type: "narration",
     id: "prelude",
-    script: preludeTemplate(subject, overview),
+    script: preludeTemplate(subject, toNarrationWords(overview).text),
     mode: "marker",
     slot: firstSlotId
   } as ForayItem;
@@ -983,12 +1011,18 @@ export async function runForayPipeline(
 
   /* THE FORAY'S COPY, from the intent alone — hoisted ahead of the topic
      decision below because a stop there has to name the Foray it refused. */
-  const { title, summary, clamped: clampedCopy, rewritten: rewrittenCopy } = forayCopy(intent);
+  const { title, summary, mintedFrom, clamped: clampedCopy, rewritten: rewrittenCopy, styled: styledCopy, unstyled: unstyledCopy } = forayCopy(intent);
   for (const what of clampedCopy) {
     console.warn(`runPipeline: ${what} exceeded the ${MAX_COPY_WORDS}-word copy rule and was clamped — the understander ignored its length instruction (F-64)`);
   }
   for (const what of rewrittenCopy) {
     console.warn(`runPipeline: ${what} used the pipeline's own words and was rewritten — the understander ignored its vocabulary instruction`);
+  }
+  for (const what of styledCopy) {
+    console.warn(`runPipeline: ${what} was put in the title house style (no closing period, a capital first letter)`);
+  }
+  for (const what of unstyledCopy) {
+    console.warn(`runPipeline: ${what} — the understander ignored its sentence-case instruction, and check-forays will refuse the title`);
   }
 
   /* THE FORAY'S TOPIC, DECIDED HERE — BEFORE THE RESEARCH MAP AND THE SPINE
@@ -1203,7 +1237,7 @@ export async function runForayPipeline(
      to `finalizeForay`, which would otherwise throw on the duplicate at act 1
      (and again at the end, after the whole run was paid for). The read is the
      same file finalize reads; a checkout without it takes the id as minted. */
-  const forayId = uniqueForayId(forayIdFor(title, startedAt), (deps.existingForayIds ?? readExistingForayIds)(options.root));
+  const forayId = uniqueForayId(forayIdFor(mintedFrom, startedAt), (deps.existingForayIds ?? readExistingForayIds)(options.root));
   const slots = slotsFromSpine(spine);
   const allActTitles = spine.acts.map((a) => a.title);
 

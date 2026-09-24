@@ -122,11 +122,11 @@ another lane and every row no lane was given, and fixed the six still live
 
 | disposition | QA | persona | total |
 |---|---:|---:|---:|
-| fixed | 175 | 63 | 238 |
+| fixed | 176 | 64 | 240 |
 | already-fixed (before the lanes, or when audited) | 1 | 3 | 4 |
 | refuted (verifier) | 16 | — | 16 |
 | deliberate (verifier) | — | 16 | 16 |
-| deferred-founder | 1 | 2 | 3 |
+| deferred-founder | 0 | 1 | 1 |
 | deferred-device | 0 | 0 | 0 |
 | open | 0 | 0 | 0 |
 | **all rows** | **193** | **84** | **277** |
@@ -150,11 +150,14 @@ note says so: the notched-inset change (qa 13), the native Preferences tier
   (PR #744) made the Jump back in and subject cards stretched-link cards and
   deleted the unreachable Continue banner, so it is fixed — still worth a look on
   a phone, as the PR body says.
-- **deferred-founder** (3): qa 146; persona 44, 65. Each is one of the
+- **deferred-founder** (1): persona 44. It is one of the
   questions below. Of the seven this line used to list, qa 28 was answered on
   2026-09-24 ("1x for now") and fixed in PR #777, persona 56 and 82 were fixed
   by the 2026-09-24 rename (question 10), and persona 14 by publishing a
-  narrated Foray (question 19). Questions 5, 6 and 16–18 were answered on 2026-09-23
+  narrated Foray (question 19). qa 146 and persona 65 were answered the same day
+  ("Sentence case, no period, though ? And ! Are allowed"; "Accept the ones that
+  are currently there; update our foray generation scripting to avoid making more
+  in the future") and fixed on `fix/generator-vocabulary-title-style`. Questions 5, 6 and 16–18 were answered on 2026-09-23
   (`docs/DECISIONS.md`, "the visual changes - have at them"): qa 43, 47, 51,
   54, 59, 60 and persona 10, 40, 58 are fixed in visual pass 1 (PR #744).
 

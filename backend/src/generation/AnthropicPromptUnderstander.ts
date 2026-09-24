@@ -7,6 +7,7 @@ import { parseWithRetry } from "./parseWithRetry";
 import type { ClarityResult, IntentUnderstanding } from "../types/generation";
 import type { PromptUnderstander, PromptUnderstandContext } from "./PromptUnderstander";
 import { recordUsage } from "./usageTracking";
+import { houseStyleTitle, titleStyleProblems } from "../copy/rules";
 
 /**
  * Real §4.1 clarity/intent understanding via the Anthropic API, mirroring
@@ -171,7 +172,67 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
       return retryTextBlock.text;
     };
 
-    return parseWithRetry(IntentSchema, textBlock.text, "Anthropic intent output", reask);
+    const intent = await parseWithRetry(IntentSchema, textBlock.text, "Anthropic intent output", reask);
+    return this.sentenceCaseTitle(intent, promptText, ctx);
+  }
+
+  /**
+   * THE TITLE HOUSE STYLE, ASKED OF THE MODEL (Wyatt, 2026-09-24, qa 146:
+   * "Sentence case, no period, though ? And ! Are allowed").
+   *
+   * Code can strip a closing period and raise a first letter
+   * (`houseStyleTitle`), but it cannot lowercase "Actually" without also
+   * lowercasing "Venus", so a title still in Title Case after those two fixes
+   * goes back to the model ONCE, with the checker's own words for what is
+   * wrong, and the answer is kept only if it keeps the style and changes
+   * nothing but the case. One Haiku call,
+   * gated like every other; a second miss keeps the first title, which
+   * `forayCopy` reports and check-forays refuses. Asked HERE, before a single
+   * expensive stage runs, because the gate that would otherwise catch it runs
+   * after the spend.
+   */
+  private async sentenceCaseTitle<T extends { title?: string }>(intent: T, promptText: string, ctx: PromptUnderstandContext): Promise<T> {
+    const title = intent.title?.trim();
+    if (!title) return intent;
+    const problems = titleStyleProblems(houseStyleTitle(title));
+    if (problems.length === 0) return intent;
+    const line =
+      `The title "${title}" ${problems.join("; ")}. Reply with ONLY a JSON object {"title": string}: the same title in sentence case — ` +
+      "the first word, proper nouns and acronyms capitalised, every other word lower case, no closing period.";
+    await this.budgetGuard.checkAndRecord({
+      userId: ctx.userId,
+      operation: "prompt_intent",
+      provider: this.providerName,
+      model: MODEL,
+      estimatedUsd: roughTokenEstimate(promptText + line) * USD_PER_INPUT_TOKEN + 60 * USD_PER_OUTPUT_TOKEN,
+      sessionId: ctx.sessionId
+    });
+    const response = await this.client.messages.create({
+      model: MODEL,
+      max_tokens: 120,
+      messages: [
+        { role: "user", content: promptText },
+        { role: "assistant", content: JSON.stringify(intent) },
+        { role: "user", content: line }
+      ]
+    });
+    recordUsage(response.usage);
+    const text = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
+    let restyled: string | undefined;
+    try {
+      const parsed = z.object({ title: z.string() }).safeParse(JSON.parse(text.replace(/^[^{]*/, "").replace(/[^}]*$/, "")));
+      restyled = parsed.success ? parsed.data.title.trim() : undefined;
+    } catch {
+      restyled = undefined;
+    }
+    /* Only the CASE may change: a reply that rewords the title is not the
+       title the rest of the intent was written around. */
+    const letters = (t: string): string => houseStyleTitle(t).toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!restyled || letters(restyled) !== letters(title) || titleStyleProblems(houseStyleTitle(restyled)).length > 0) {
+      console.warn(`AnthropicPromptUnderstander: the title "${title}" is still not sentence case after one re-ask; keeping it`);
+      return intent;
+    }
+    return { ...intent, title: restyled };
   }
 }
 
@@ -211,7 +272,9 @@ export function buildIntentPrompt(prompt: string): string {
     "- priorKnowledge: what the listener probably already knows about this",
     "- disappointment: what would make this Foray a disappointment to the listener — this is",
     "  the most important field; be concrete, not generic",
-    "- title: the Foray's public title, at most 10 words, no trailing punctuation",
+    "- title: the Foray's public title, at most 10 words, in SENTENCE CASE: capitalise the first word, proper",
+    "  nouns and acronyms, and nothing else (\"How AI actually gets built\", \"How Earth got plate tectonics and",
+    "  Venus never did\" — not \"How AI Actually Gets Built\"). No closing period; a closing ? or ! is fine.",
     "- summary: one plain sentence of at most 16 words that a listener sees under the title —",
     "  what they will come away knowing, not a list of subtopics",
     "  Neither the title nor the summary may count or number the Foray's parts (\"eight beats\", \"22 segments\",",

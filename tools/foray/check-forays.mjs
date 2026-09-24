@@ -84,7 +84,7 @@ import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
 import { MODE_CHAR_BANDS, narratorStructureErrors } from "./check-narration.mjs";
 const NARRATION_MODES = new Set(Object.keys(MODE_CHAR_BANDS));
 
-const { BANNED, INTERNAL_VOCABULARY, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
+const { BANNED, INTERNAL_VOCABULARY, titleStyleProblems, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /* ------------------------------------------------------------------ rules */
@@ -752,6 +752,16 @@ export function checkForays(files) {
        * refusal is the backstop, not the first line. */
       for (const rx of INTERNAL_VOCABULARY) if (rx.test(text)) E(`${field} uses the pipeline's word ${rx}, which a listener cannot decode: "${text}"`);
     }
+    /* THE TITLE HOUSE STYLE (rules.js `titleStyleProblems`). Wyatt, 2026-09-24,
+     * answering the audit's qa 146 — generated titles in Title Case with no
+     * closing period, next to sentence-case curated ones in the same rail:
+     * "Sentence case, no period, though ? And ! Are allowed". On every Foray,
+     * curated and generated alike, and on the title only (a summary is a
+     * sentence and the ruling left it alone). The generator asks for sentence
+     * case and fixes what code safely can (a closing period, a lower-case
+     * first letter — runPipeline.ts `forayCopy`), so on that side this is the
+     * backstop. */
+    if (typeof foray.title === "string") for (const problem of titleStyleProblems(foray.title)) E(`title "${foray.title}" ${problem}`);
 
     if (!Array.isArray(foray.items) || foray.items.length === 0) { E("`items` must be a non-empty ordered array"); continue; }
 

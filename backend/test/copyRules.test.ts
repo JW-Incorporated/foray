@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BANNED, COMMUTE_FRAMING, INTERNAL_VOCABULARY, toListenerWords, wordCount } from "../src/copy/rules";
+import { BANNED, COMMUTE_FRAMING, INTERNAL_VOCABULARY, houseStyleTitle, titleStyleProblems, toListenerWords, wordCount } from "../src/copy/rules";
 
 /**
  * Golden copy rules — the editorial standards from 03_CURATION_SPEC.md and
@@ -230,5 +230,73 @@ describe("Foray titles, summaries and slot titles", () => {
     expect(toListenerWords("Barbecue: eight beats of a forty-beat history").text).toBe("Barbecue: eight stories of a forty-part history");
     expect(toListenerWords("Act one: the hearth").text).toBe("Part one: the hearth");
     for (const text of PLAIN_ENGLISH) expect(toListenerWords(text)).toEqual({ text, changed: false });
+  });
+});
+
+/**
+ * THE FORAY TITLE HOUSE STYLE. Wyatt, 2026-09-24, answering the audit's qa 146
+ * (agent-generated titles were Title Case with no closing period, next to
+ * sentence-case curated ones in the same rail): "Sentence case, no period,
+ * though ? And ! Are allowed". The rule is rules.js `titleStyleProblems`;
+ * check-forays.mjs refuses what it returns, on every Foray.
+ */
+describe("Foray title house style", () => {
+  it("refuses Title Case and a closing period, and allows ? and ! — the four generated titles that prompted the ruling among them", () => {
+    /* The first four are the committed generated titles as they were before
+       this change. MUTATION THAT KILLS THIS: empty TITLE_CASE_TELLS -> the
+       three with a capitalised "Actually"/"Really" go red; delete the
+       lone-capital branch -> "Beyond the Algorithm..." goes red; delete the
+       closing-period check -> the period case goes red. */
+    const refused = [
+      "Beyond the Algorithm: Engineering Production AI Systems",
+      "How AI Actually Gets Built",
+      "The Chain Reaction: How Engineering Disasters Really Happen",
+      "What Engineers Actually Do All Day",
+      "Why Doctors Didn't Believe In Germs",
+      "A history of the iPhone.",
+      "grilling: the surprising origin story"
+    ];
+    for (const title of refused) expect(titleStyleProblems(title), title).not.toEqual([]);
+    expect(titleStyleProblems("A history of the iPhone.").join(" ")).toMatch(/closing period/);
+    expect(titleStyleProblems("How AI Actually Gets Built").join(" ")).toMatch(/Title Case \(Actually, Gets\)/);
+  });
+
+  it("does not mistake a proper noun, an acronym or a quoted work's title for Title Case (no false positives)", () => {
+    /* A name is a run of capitals; Title Case scatters them. MUTATION THAT
+       KILLS THIS: drop the `lone` condition, or the quoted-word exemption, or
+       add "will" or "may" back to TITLE_CASE_TELLS -> red, naming the title. */
+    const fine = [
+      "Barbecue: eight stories from a much longer history",
+      "The types of capital a startup can raise",
+      "How Earth got plate tectonics and Venus never did",
+      "Beyond the algorithm: engineering production AI systems",
+      "How AI actually gets built",
+      "The chain reaction: how engineering disasters really happen",
+      "What engineers actually do all day",
+      "Inside NASA's Jet Propulsion Laboratory",
+      "Steve Jobs and Bill Gates",
+      "Why New York City and Los Angeles hate each other",
+      "Why “How I Built This” still works",
+      "Why Will Smith keeps working",
+      "Was the Clean Air Act a success?",
+      "The day the music died!",
+      "How the war reached the U.S.",
+      "eBay and the auction economy",
+      "World War II from the air"
+    ];
+    for (const title of fine) expect(titleStyleProblems(title), title).toEqual([]);
+  });
+
+  it("houseStyleTitle does only what is safe on any title: drops a closing period, raises a lower-case first letter, lowercases nothing", () => {
+    /* The generator's code-side half (runPipeline.ts forayCopy). MUTATION
+       THAT KILLS THIS: lowercase the words after the first -> "AI" and
+       "Venus" go red. */
+    expect(houseStyleTitle("A history of the iPhone.")).toBe("A history of the iPhone");
+    expect(houseStyleTitle("grilling: the surprising origin story")).toBe("Grilling: the surprising origin story");
+    expect(houseStyleTitle("How Earth got plate tectonics and Venus never did")).toBe("How Earth got plate tectonics and Venus never did");
+    expect(houseStyleTitle("How AI Actually Gets Built")).toBe("How AI Actually Gets Built");
+    expect(houseStyleTitle("Why?")).toBe("Why?");
+    expect(houseStyleTitle("How the war reached the U.S.")).toBe("How the war reached the U.S.");
+    expect(houseStyleTitle("eBay and the auction economy")).toBe("eBay and the auction economy");
   });
 });

@@ -1872,6 +1872,37 @@ test("the pipeline's own words are rejected in a title, a summary and a slot tit
   }
 });
 
+test("a Foray title keeps the house style: sentence case, no closing period, ? and ! allowed — curated and generated alike", () => {
+  /* Wyatt, 2026-09-24, answering the audit's qa 146 (agent-generated titles
+     in Title Case with no closing period, next to sentence-case curated ones in
+     the same rail): "Sentence case, no period, though ? And ! Are allowed".
+     The first title is a committed generated title as it was before this
+     change. MUTATION THAT KILLS THIS: drop the `titleStyleProblems` loop from
+     check-forays.mjs -> every refused case goes red, for both kinds. */
+  const refused = [
+    ["What Engineers Actually Do All Day", /is in Title Case \(Actually, Do\)/],
+    ["The types of capital a startup can raise.", /closing period/],
+    ["grilling: the surprising origin story", /starts in lower case/],
+  ];
+  for (const make of [fx, generatedFixture]) {
+    for (const [title, why] of refused) {
+      const f = make();
+      boundary(f).title = title;
+      assert.match(errorsFor(f).join("\n"), why, `${make.name}: "${title}" must be refused`);
+    }
+    /* A closing ? or !, a proper noun and an acronym are all the style. */
+    for (const title of ["Was the Clean Air Act a success?", "The day the music died!", "How Earth got plate tectonics and Venus never did", "How AI actually gets built"]) {
+      const f = make();
+      boundary(f).title = title;
+      assert.doesNotMatch(errorsFor(f).join("\n"), /^title "/m, `${make.name}: "${title}" keeps the house style`);
+    }
+  }
+  /* The summary is a sentence and the ruling left it alone. */
+  const f = fx();
+  boundary(f).summary = "Why most of an ML system is plumbing.";
+  assert.doesNotMatch(errorsFor(f).join("\n"), /closing period/);
+});
+
 test("an over-long slot title is rejected", () => {
   const f = fx();
   boundary(f).slots[0].title = "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen";
@@ -2504,6 +2535,26 @@ test("a generated Foray whose narration mentions its own acts is rejected", () =
   const f = generatedFixture();
   spliceNarration(f, "nar-q07", "By the end of this act the model looks less like a program and more like a compiled output.");
   assert.match(errorsFor(f).join("\n"), /never mentions the Foray's own acts/);
+});
+
+test("a generated Foray's narration may not count back through its acts, point at a slot, or hide a pointer behind \"That's\" (persona 65)", () => {
+  /* Wyatt, 2026-09-24, on the audit's persona 65 — the narrator says "this
+     act", "Act one", "two acts back" out loud: "update our foray generation
+     scripting to avoid making more in the future." The publish gate reads the
+     same rule the generator refuses and rewrites with
+     (backend/src/copy/narratorStructure.js), so these shapes, which it used to
+     pass, are refused here too. MUTATION THAT KILLS THIS: revert
+     narratorStructure.js's 2026-09-24 additions (the contraction exemption,
+     `slot`, INTERNAL_VOCABULARY) -> red, naming the line. */
+  for (const script of [
+    "Budget line, vendors, outages. That's this act.",
+    "The next slot follows the money into the budget meeting.",
+    "It is a forty-beat history, and the listener hears all of it.",
+  ]) {
+    const f = generatedFixture();
+    spliceNarration(f, "nar-p65", script);
+    assert.match(errorsFor(f).join("\n"), /never mentions the Foray's own acts/, `"${script}" must be refused`);
+  }
 });
 
 test("Q-08 leaves a structural word that belongs to something else alone", () => {

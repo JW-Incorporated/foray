@@ -6,6 +6,7 @@ import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { ContinuityBuilder, ContinuityBuildContext, ContinuitySmoothRequest, ContinuitySmoothResult } from "./ContinuityBuilder";
 import { recordUsage } from "./usageTracking";
+import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
  * Real §4.8 cross-act continuity smoothing via the Anthropic API,
@@ -105,7 +106,7 @@ export class AnthropicContinuityBuilder implements ContinuityBuilder {
 }
 
 
-function buildSmoothPrompt(request: ContinuitySmoothRequest): string {
+export function buildSmoothPrompt(request: ContinuitySmoothRequest): string {
   return [
     `You are the continuity editor for an audio documentary ("Foray"), working ONLY at the seam between two acts.`,
     `The act that just played, "${request.previousActTitle}", ended with this exit line (already played — DO NOT rewrite it, it is given for context only):`,
@@ -117,7 +118,7 @@ function buildSmoothPrompt(request: ContinuitySmoothRequest): string {
     `Rewrite the next act's introduction so it genuinely connects to how the previous act ended — a real callback or handoff, not mere concatenation.`,
     `Keep it a real introduction to "${request.nextActTitle}" — do not drop its own content, only smooth the seam into it.`,
     `Never mention or restate the previous act's exit text verbatim; reference it naturally.`,
-    `NEVER MENTION THE FORAY'S OWN STRUCTURE (Q-08). No 'this act', no 'the next act', no 'act one', no 'the next beat', no 'in this segment', no 'this Foray has four acts', no 'this documentary' - a listener cannot see a running order and does not need one. Say what changed and what comes of it, not where they are. The same words are FINE when they belong to something else: 'in the first act of Macbeth', 'the second act of the crisis'. A machine checks this after you answer.`,
+    NARRATOR_STRUCTURE_RULE,
     ``,
     `Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:`,
     '{"nextIntroduction": string}'

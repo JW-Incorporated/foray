@@ -78,6 +78,16 @@ const BANNED = [
  * listener's word (persona-synthesis §2: a clip, a part, a story), so the
  * generator never produces copy this list refuses (runPipeline.ts `forayCopy`,
  * `slotsFromSpine`).
+ *
+ * SPOKEN NARRATION IS HELD TO IT TOO (2026-09-24). Wyatt, on the audit's
+ * persona 65 — the narrator says "this act", "Act one", "two acts back" aloud:
+ * "update our foray generation scripting to avoid making more in the future."
+ * `narratorStructure.js` applies this list to every generated narration
+ * script, under its of- and possessive-anchors, next to its own wider rules,
+ * and its `toNarrationWords` is this file's `toListenerWords` for speech —
+ * it rewrites into WHEN or WHAT ("earlier", "what comes next"), not into a
+ * second unit word, because a narrator saying "this part" is still pointing
+ * at a piece of the Foray.
  */
 const COUNT_WORDS = [
   "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
@@ -192,11 +202,150 @@ const MAX_HOOK_WORDS = 16;
 const MAX_DISPLAY_TITLE_WORDS = 8;
 const MAX_BLURB_WORDS = 30;
 
+/**
+ * FORAY TITLE HOUSE STYLE. Wyatt, 2026-09-24, answering the audit's qa 146
+ * (agent-generated titles were Title Case with no closing period, next to
+ * sentence-case curated ones in the same rail): "Sentence case, no period,
+ * though ? And ! Are allowed".
+ *
+ * So a Foray's `title` starts with a capital, capitalises nothing else but
+ * proper nouns and acronyms, and does not end in a period; a closing "?" or
+ * "!" is fine. Summaries are not governed by this (they are sentences, and
+ * the ruling was about titles).
+ *
+ * THE HARD PART IS PROPER NOUNS, and this does not pretend to know them. It
+ * refuses Title Case only on evidence that cannot be a name:
+ *   - a capitalised CLOSED-CLASS word mid-title — "Actually", "Do", "Really",
+ *     "How", "With", "Into" — which no person, place or brand is spelled as
+ *     (the few that are, "Will", "May", "Can", "More", "Down", "Beyond", are
+ *     left out of the list, and "The", "A", "An" too, for "The Hague");
+ *   - or, with none of those, a title whose every long word is capitalised
+ *     (three or more) AND at least one of those capitals stands alone between
+ *     lower-case words or punctuation — "Beyond the Algorithm: Engineering
+ *     Production AI Systems". A name is a RUN of capitals ("Jet Propulsion
+ *     Laboratory", "Bill Gates"); Title Case scatters them.
+ * A word in quotation marks is a work's own title and is left alone ("Why
+ * “How I Built This” still works"), and a word after a colon, question mark or
+ * dash starts a clause and may take a capital either way.
+ *
+ * WHAT IT MISSES, stated so nobody trusts it further: a Title Case title made
+ * only of nouns in one unbroken run ("Why Tesla Beat Toyota" passes), and a
+ * lower-case common noun that should have been a proper one.
+ *
+ * The generator is asked for sentence case by name (AnthropicPromptUnderstander
+ * `buildIntentPrompt`) and, in code, only strips a closing period and raises a
+ * lower-case first letter (runPipeline.ts `forayCopy`) — it never lowercases a
+ * word, because it cannot tell "Venus" from "Actually". tools/foray/check-forays.mjs
+ * refuses every problem this returns, on curated and generated titles alike.
+ */
+const TITLE_CASE_TELLS = new Set([
+  "about", "above", "across", "actually", "after", "against", "almost", "also", "always", "among", "and", "are",
+  "around", "as", "at", "be", "became", "become", "becomes", "been", "before", "behind", "being", "below", "beneath",
+  "between", "both", "but", "by", "could", "did", "do", "does", "doing", "done", "during", "each", "even", "ever",
+  "every", "for", "from", "gets", "getting", "got", "had", "happen", "happened", "happens", "has", "have", "how", "if",
+  "in", "into", "is", "its", "just", "made", "makes", "many", "might", "most", "much", "must", "never", "nor", "not",
+  "of", "off", "on", "once", "only", "onto", "or", "our", "over", "really", "should", "so", "some", "still", "such",
+  "than", "that", "their", "them", "then", "there", "these", "they", "those", "through", "to", "too", "under", "until",
+  "upon", "very", "was", "we", "were", "what", "when", "where", "which", "while", "who", "whom", "whose", "why", "with",
+  "within", "without", "would", "you", "your"
+]);
+
+/** A word that is written with capitals whatever the case style: "AI",
+ * "NASA's", "iPhone", "YouTube", "3D". */
+function isAcronymLike(word) {
+  const bare = word.replace(/['’]s$/, "");
+  return (/^[A-Z0-9&.'’-]+$/.test(bare) && (bare.match(/[A-Z]/g) || []).length >= 2) || /[a-z][A-Z]/.test(bare) || /\d/.test(bare);
+}
+
+/** The title's words, each with whether it opens a clause (and so may take a
+ * capital either way) and whether it sits inside quotation marks. */
+function titleWords(title) {
+  const words = [];
+  let clauseStart = true;
+  let quoted = false;
+  for (const raw of String(title).trim().split(/\s+/).filter(Boolean)) {
+    if (/^[—–-]+$/.test(raw)) {
+      clauseStart = true;
+      continue;
+    }
+    const opens = /^["“]/.test(raw);
+    const word = raw.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, "");
+    if (word) words.push({ word, clauseStart, quoted: quoted || opens });
+    const straight = (raw.match(/"/g) || []).length;
+    if (/[”]/.test(raw) || (straight % 2 === 1 && quoted)) quoted = false;
+    else if (/[“]/.test(raw) || (straight % 2 === 1 && !quoted)) quoted = true;
+    clauseStart = /[:?!.—–]["”’)]*$/.test(raw);
+  }
+  return words;
+}
+
+/**
+ * Every way `title` breaks the house style, as messages; empty when it keeps
+ * it.
+ *
+ * @param {string} title
+ * @returns {string[]}
+ */
+function titleStyleProblems(title) {
+  const text = String(title ?? "").trim();
+  if (!text) return [];
+  const problems = [];
+  if (/\.["”’)]*$/.test(text) && !/(?:^|\s)(?:[A-Za-z]\.){2,}$/.test(text)) {
+    problems.push("ends with a period — a Foray title takes no closing period (a closing ? or ! is fine)");
+  }
+  const words = titleWords(text);
+  const first = words.find((w) => /[A-Za-z]/.test(w.word));
+  if (first && /^[a-z]/.test(first.word) && !isAcronymLike(first.word)) {
+    problems.push(`starts in lower case ("${first.word}") — a Foray title is sentence case, so its first word takes a capital`);
+  }
+  const open = words.filter((w) => !w.quoted);
+  const isCap = (w) => /^[A-Z]/.test(w.word) && !isAcronymLike(w.word);
+  const tells = open.filter((w) => !w.clauseStart && isCap(w) && TITLE_CASE_TELLS.has(w.word.replace(/['’]s$/, "").toLowerCase()));
+  let titleCase = tells.map((w) => w.word);
+  if (titleCase.length === 0) {
+    const caps = open.filter((w) => !w.clauseStart && isCap(w));
+    const longLower = open.filter((w) => /^[a-z]/.test(w.word) && !isAcronymLike(w.word) && w.word.length >= 4);
+    const capital = (w) => w !== undefined && !w.quoted && (isCap(w) || isAcronymLike(w.word));
+    const lone = caps.some((w) => {
+      const i = words.indexOf(w);
+      const prev = w.clauseStart ? undefined : words[i - 1];
+      const next = words[i + 1] && !words[i + 1].clauseStart ? words[i + 1] : undefined;
+      return !capital(prev) && !capital(next);
+    });
+    if (caps.length >= 3 && longLower.length === 0 && lone) titleCase = caps.map((w) => w.word);
+  }
+  if (titleCase.length > 0) {
+    problems.push(
+      `is in Title Case (${titleCase.join(", ")}) — a Foray title is sentence case: capitalise the first word, proper nouns and ` +
+        "acronyms only (\"How AI actually gets built\"). Put a work's own title in quotation marks to keep its capitals"
+    );
+  }
+  return problems;
+}
+
+/**
+ * The two parts of the title house style that code can apply to ANY title
+ * without knowing which words are names: no closing period (a closing "?" or
+ * "!" stays, and so does an initialism's own, "the U.S."), and a capital on
+ * the first letter when the first word is plain lower case (not "iPhone",
+ * not "eBay"). It never lowercases anything; the rest is the model's job.
+ *
+ * @param {string} title
+ * @returns {string}
+ */
+function houseStyleTitle(title) {
+  let out = String(title ?? "").trim();
+  if (!/(?:^|\s)(?:[A-Za-z]\.){2,}$/.test(out)) out = out.replace(/\s*\.+$/, "").trimEnd();
+  return out.replace(/^([^A-Za-z]*)([a-z])([a-z'’-]*)(?=[^A-Za-z]|$)/, (_m, lead, letter, rest) => `${lead}${letter.toUpperCase()}${rest}`);
+}
+
 module.exports = {
   BANNED,
   INTERNAL_VOCABULARY,
   COMMUTE_FRAMING,
   toListenerWords,
+  titleStyleProblems,
+  houseStyleTitle,
   wordCount,
   MAX_WHY_LINE_WORDS,
   MAX_HOOK_WORDS,
