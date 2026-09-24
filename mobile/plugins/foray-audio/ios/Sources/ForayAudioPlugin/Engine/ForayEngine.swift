@@ -139,7 +139,7 @@ final class ForayEngine {
         // The end of a spoken line. M1's core has no input for it (narration
         // is M2's); the only listener is the Developer probe (NE-25c).
         seams.speaker.onFinish = { [weak self] end in
-            MainActor.assumeIsolated { self?.probe?.speechEnded(end) }
+            MainActor.assumeIsolated { _ = end }
         }
         observations.append(seams.session.observe { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.session(event)) }
@@ -181,7 +181,6 @@ final class ForayEngine {
         seams.deck.onEvent = nil
         seams.deck.invalidate()
         seams.speaker.onFinish = nil
-        probe?.cancel()
         inbox = []
     }
 
