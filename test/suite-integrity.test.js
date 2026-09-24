@@ -285,6 +285,14 @@ const FLOORS = {
      a missed row is a clobber, an extra one is a store that stops saving. */
   "player/parity/rows.test.js": 4,
   "player/engine-contract.test.js": 3,
+  /* NE-08: the suites that READ their fixtures (plan §6.3). Each test runs the
+     `transport` / `resume-rules` cases that name it, so the one file is the JS
+     assertion and the Swift port's case list (NE-09). Zero slack: a deleted
+     test here is a rule whose cases no JS test asserts any more, and the
+     coverage guard would still count those cases as fixtured. The families'
+     case counts are floored separately in player/parity/floors.json. */
+  "player/transport-policy.test.js": 16,
+  "player/position-store.test.js": 10,
   "player/tts-bridge.test.js": 29, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 25 -> 29 // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that

@@ -28,6 +28,67 @@ const KEY = positionKey;
 export const NEAR_END_SEC = 30;
 /** Below this, there is nothing worth resuming to. */
 export const MIN_RESUME_SEC = 10;
+/** A position event (the cp_events row) goes out at most this often per item,
+    in media seconds. */
+export const POSITION_EVENT_EVERY_SEC = 60;
+
+/* ── The rules, as pure functions (NE-08) ─────────────────────────────────
+   The class below is storage glue; what it DECIDES is here, so the native
+   engine's ResumeRules port (NE-09) can be checked against the same answers.
+   player/position-store.test.js asserts these through the `resume-rules`
+   fixture family (player/parity/fixtures/resume-rules/), which is also the
+   Swift side's test list: one file is both. Each function is the class's old
+   inline code with its inputs named; nothing here reads storage or a clock. */
+
+/**
+ * The row `save` writes, or null when there is nothing to write: no id, or a
+ * seconds value that is not a finite, non-negative number.
+ * @param {string} id
+ * @param {number} seconds
+ * @param {object} [meta]  `{duration}`; a non-number duration is stored as null
+ * @param {string} updatedAt  ISO timestamp (the caller's clock, not ours)
+ */
+export function positionRow(id, seconds, meta = {}, updatedAt) {
+  if (!id || typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) return null;
+  // The row's shape has ONE builder, makePositionRecord (NE-10j, below), whose
+  // bytes the `rows` family pins. This adds only the gate and takes the caller's
+  // timestamp as given; overwriting an existing key keeps the field order.
+  return { ...makePositionRecord(seconds, { duration: meta.duration }), updated_at: updatedAt };
+}
+
+/**
+ * What to resume a stored row at. "We stored 4 seconds" and "resume at 4
+ * seconds" are different questions: under MIN_RESUME_SEC there is nothing worth
+ * resuming to, and inside NEAR_END_SEC of the end the episode is effectively
+ * finished. The caller's duration wins; the row's own stands in for it.
+ * @param {object|null} record  a row as `load` returns it
+ * @param {object} [opts]  `{duration}`
+ */
+export function resumeOffsetFor(record, { duration = null } = {}) {
+  if (!record) return 0;
+  if (record.seconds < MIN_RESUME_SEC) return 0;
+  const dur = duration ?? record.duration;
+  if (dur && record.seconds > dur - NEAR_END_SEC) return 0; // effectively finished
+  return record.seconds;
+}
+
+/**
+ * The once-a-minute position-event rule. Don't emit an event on every 15 s
+ * tick — that would be ~240 rows/hour per listener. Emit at most once every
+ * POSITION_EVENT_EVERY_SEC media seconds per item (and always when nothing, or
+ * 0, was emitted before); the local write is what actually protects the user.
+ * @param {number|undefined} lastEmitted  the seconds of this item's last event
+ * @param {number} seconds    the position being saved
+ * @param {number|null} duration
+ * @returns {{mark:number, seconds:number, duration:number|null}|null}
+ *   null = no event; else the event (`seconds` rounded) and the new `mark`
+ *   to remember as this item's last-emitted position (unrounded)
+ */
+export function positionEvent(lastEmitted, seconds, duration) {
+  const last = lastEmitted ?? 0;
+  if (!(seconds - last >= POSITION_EVENT_EVERY_SEC || last === 0)) return null;
+  return { mark: seconds, seconds: Math.round(seconds), duration };
+}
 
 /**
  * The stored row, built in one place (NE-10j). It is a pure function so the
@@ -37,7 +98,7 @@ export const MIN_RESUME_SEC = 10;
  * would be a second definition of the row that no JS test ever sees. The
  * `rows` parity family pins `JSON.stringify` of this, through `save()`.
  *
- * @param {number} seconds  already validated by the caller (`save()`)
+ * @param {number} seconds  already validated by the caller (`positionRow`)
  * @param {object} [opts]
  * @param {*}      [opts.duration]  anything; only a finite number survives,
  *                                  everything else is stored as null
@@ -76,8 +137,10 @@ export class PositionStore {
   }
 
   save(id, seconds, meta = {}) {
-    if (!id || typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) return;
-    const record = makePositionRecord(seconds, { duration: meta.duration, now: this._now() });
+    // positionRow gates and builds (through makePositionRecord); the clock is
+    // the injected one, so the rows recorder can still fix `updated_at`.
+    const record = positionRow(id, seconds, meta, this._now().toISOString());
+    if (!record) return;
     const { duration } = record;
     if (!this._storage) { this.refusedWrites += 1; return; }
     try {
@@ -90,14 +153,13 @@ export class PositionStore {
       return;
     }
 
-    // Don't emit an event on every 15s tick — that would be ~240 rows/hour per
-    // listener. Emit at most once a minute per item; the local write is what
-    // actually protects the user.
+    // At most one event a minute per item (`positionEvent`); the local write
+    // above is what actually protects the user.
     if (this._onSave) {
-      const last = this._lastEmitted.get(id) ?? 0;
-      if (seconds - last >= 60 || last === 0) {
-        this._lastEmitted.set(id, seconds);
-        try { this._onSave(id, Math.round(seconds), { duration }); } catch (_) {}
+      const event = positionEvent(this._lastEmitted.get(id), seconds, duration);
+      if (event) {
+        this._lastEmitted.set(id, event.mark);
+        try { this._onSave(id, event.seconds, { duration: event.duration }); } catch (_) {}
       }
     }
   }
@@ -118,12 +180,7 @@ export class PositionStore {
   /** What the manager should actually resume to. Distinct from load() because
       "we stored 4 seconds" and "resume at 4 seconds" are different questions. */
   resumeOffset(id, { duration = null } = {}) {
-    const r = this.load(id);
-    if (!r) return 0;
-    if (r.seconds < MIN_RESUME_SEC) return 0;
-    const dur = duration ?? r.duration;
-    if (dur && r.seconds > dur - NEAR_END_SEC) return 0; // effectively finished
-    return r.seconds;
+    return resumeOffsetFor(this.load(id), { duration });
   }
 
   clear(id) {
