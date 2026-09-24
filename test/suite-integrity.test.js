@@ -292,6 +292,14 @@ const FLOORS = {
      a missed row is a clobber, an extra one is a store that stops saving. */
   "player/parity/rows.test.js": 4,
   "player/engine-contract.test.js": 3,
+  /* NE-08: the suites that READ their fixtures (plan §6.3). Each test runs the
+     `transport` / `resume-rules` cases that name it, so the one file is the JS
+     assertion and the Swift port's case list (NE-09). Zero slack: a deleted
+     test here is a rule whose cases no JS test asserts any more, and the
+     coverage guard would still count those cases as fixtured. The families'
+     case counts are floored separately in player/parity/floors.json. */
+  "player/transport-policy.test.js": 16,
+  "player/position-store.test.js": 10,
   "player/tts-bridge.test.js": 29, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 25 -> 29 // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
@@ -1410,7 +1418,7 @@ const FLOORS = {
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
   "tools/mobile/prepare-webdir.test.mjs": 84, // 2026-09-22 audit (L2), founder report 3: the bundle carries build-stamp.json with the committed deploy_id; 83 -> 84 // +1 audit finding E (2026-09-12): seedCarries is exactly the negation of the one `isGeneratedDraft`; 82 -> 83 // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
-  "tools/mobile/shell-invariants.test.mjs": 71, // NE-01 (docs/native-engine-plan.md): foray-engine-core is pure (no deps, Foundation-only sources, no XCTest in the parity library); foray-audio links it by path and keeps one product (the scheme list); engineHello is an iOS-only stub that answers from the core; the Preferences pin is test-only and cannot compile out; the page never configures a Preferences group; 66 -> 71 // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
+  "tools/mobile/shell-invariants.test.mjs": 75, // NE-05 (docs/native-engine-plan.md): the Swift parity library imports no XCTest, reads player/parity in place (no .json copy under the core) and keeps the FORAY_PARITY_DIR / PARITY_REPORT / family-line interface; both XCTest wrappers run the compare and seam-gap families and the whole manifest, and the registry holds both runners; 73 -> 75 // NE-02 (docs/native-engine-plan.md): the core's reducer and its tests are copies whose headers name the ios/ source @ adde5e12 and say ios/ is frozen reference; every one of the 34 original reducer tests survives in the copy, by name; 71 -> 73 // NE-01 (docs/native-engine-plan.md): foray-engine-core is pure (no deps, Foundation-only sources, no XCTest in the parity library); foray-audio links it by path and keeps one product (the scheme list); engineHello is an iOS-only stub that answers from the core; the Preferences pin is test-only and cannot compile out; the page never configures a Preferences group; 66 -> 71 // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only
@@ -2753,6 +2761,48 @@ test("every suite on disk is covered by a floor", () => {
       unfloored.join("\n")
   );
 });
+
+/* SWIFT FLOORS (NE-02). The native engine's pure core,
+ * mobile/plugins/foray-audio/foray-engine-core, is compiled and tested only on
+ * a CI Mac (ci.yml's ios-kit, `swift test` on the core): nobody who writes
+ * this repo can run it, so a PR that deletes XCTests there reads as green to
+ * everyone. mobile/ is not auto-merge territory the way test/ and tools/ are,
+ * but the reason for a floor is the same: deletion should take an edit to two
+ * files. Counted as `func test…(` in the code with comments stripped, so a
+ * commented-out test does not count.
+ *
+ * Named files only, with no "every Swift file has a floor" closure: the
+ * core's parity wrappers run one XCTest over a whole fixture family, and
+ * those families are floored in player/parity/floors.json instead.
+ *
+ * MUTATION: delete testStopWhileIdleIsNoOp from the core's
+ * PlayerQueueStateTests.swift, or wrap it in a block comment -> red. */
+const SWIFT_FLOORS = {
+  /* Copied with the reducer from ios/ForayKit @ adde5e12 (NE-02). NE-07s adds
+     parity cases beside them and must never drop one: they are the proof the
+     extension kept the behaviour the scaffold already had.
+     tools/mobile/shell-invariants.test.mjs also pins them BY NAME against the
+     frozen ios/ original, which a count cannot do. */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/PlayerQueueStateTests.swift": 34,
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/ParityStubTests.swift": 6,
+};
+
+for (const [rel, floor] of Object.entries(SWIFT_FLOORS)) {
+  test(`${rel} still exists and has >= ${floor} XCTest methods`, () => {
+    const full = path.join(ROOT, rel);
+    assert.ok(fs.existsSync(full), `${rel} is missing. Deleting a Swift suite is not a valid way to make CI pass.`);
+    const code = fs.readFileSync(full, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+    const count = (code.match(/\bfunc\s+test\w*\s*\(/g) || []).length;
+    assert.ok(
+      count >= floor,
+      `${rel} has ${count} XCTest methods but the committed floor is ${floor}. ` +
+        `If you removed tests on purpose, lower SWIFT_FLOORS in test/suite-integrity.test.js ` +
+        `in the same PR and say why.`
+    );
+  });
+}
 
 /* PARITY FIXTURE FLOORS (NE-03). The native engine's fixtures live as data in
  * player/parity/fixtures/<family>/*.json, not as test() calls, so the FLOORS

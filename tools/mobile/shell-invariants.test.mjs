@@ -2539,3 +2539,164 @@ test("NE-01: the page never configures a Preferences group, so the engine's Capa
     .map((f) => path.relative(ROOT, f).split(path.sep).join("/"));
   assert.deepEqual(talkers, ["player/durable-store.js"], "only durable-store.js may talk to the Preferences plugin");
 });
+
+/* ─────────── NE-05: the Swift parity runner and its two wrappers ───────────
+ *
+ * docs/native-engine-plan.md §6.4 and card NE-05. `ForayEngineParity` reads
+ * `player/parity/` IN PLACE, runs each family through its FamilyRunner, keeps
+ * the swift-pending books and writes parity-report.json; a thin XCTest wrapper
+ * in the core's own tests and another in ForayAudioPluginTests (the step
+ * ios-kit already runs, the zero-.github fallback) turn the results into one
+ * XCTFail per case. The Swift is executed by CI only; these pins keep what
+ * those runs proved from being quietly undone by an edit made on Windows. */
+
+test("NE-05: the parity library imports no XCTest, reads the fixtures in place, and honours FORAY_PARITY_DIR / PARITY_REPORT", () => {
+  /* WHY EACH HALF.
+       - No XCTest in ForayEngineParity: the library is linked by TWO test
+         targets in two packages, and SwiftPM test targets cannot share
+         sources; a library that imports XCTest also drags it into anything
+         else that ever links the library.
+       - No .json under foray-engine-core: plan §6 says fixtures are read in
+         place. A copy would be a second contract that drifts from the one JS
+         records, and every Swift green would then be about the copy.
+       - The two environment variables are the interface G-1a's engine-parity
+         job (NE-06) drives; renaming one would make that job read the walk's
+         tree and write no report, silently.
+     MUTATION: add `import XCTest` to ParitySuite.swift; drop a fixture copy
+     into foray-engine-core/Tests; rename "PARITY_REPORT" in ParitySuite.swift;
+     each fails here. */
+  const parityDir = path.join(CORE_DIR, "Sources", "ForayEngineParity");
+  const librarySources = swiftFilesUnder(parityDir);
+  assert.ok(librarySources.length >= 5, "ForayEngineParity should hold the runner, codec, comparator, fixtures and families");
+  for (const file of librarySources) {
+    assert.ok(!swiftImports(file).includes("XCTest"), `${path.relative(ROOT, file)} imports XCTest`);
+  }
+
+  const jsonCopies = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith(".")) continue; // .build/.swiftpm on a Mac
+      const abs = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(abs);
+      else if (entry.name.endsWith(".json")) jsonCopies.push(path.relative(ROOT, abs));
+    }
+  };
+  walk(CORE_DIR);
+  assert.deepEqual(jsonCopies, [], "fixtures are read in place from player/parity, never copied into the core");
+
+  const code = librarySources.map((f) => stripSwiftComments(fs.readFileSync(f, "utf8"))).join("\n");
+  assert.match(code, /environmentKey\s*=\s*"FORAY_PARITY_DIR"/);
+  assert.match(code, /reportKey\s*=\s*"PARITY_REPORT"/);
+  assert.ok(code.includes('"parity family=\\(family) cases=\\(cases)'),"the family log line the plan names (parity family=<f> cases=<n>)");
+  assert.match(code, /#filePath/, "the runner must be able to find player/parity without any environment");
+  /* NE-13: the schema promises "the Swift runner skips these files by this
+     flag". Without it, every id of a jsOnly family (continuation) is
+     "unaccounted" on macOS while JS stays green, and record.mjs refuses the
+     swift-pending entries that would quiet it. MUTATION: drop the
+     `document["jsOnly"]` read from Fixtures.swift; this fails here. */
+  assert.match(code, /document\["jsOnly"\]/, "FixtureFile must read the schema's jsOnly flag");
+  assert.match(code, /case jsOnly = "js-only"/, "the books need a js-only outcome: never run, never owed");
+});
+
+test("NE-05: both wrappers run the seam-gap and compare families and the whole manifest, and the registry holds both runners", () => {
+  /* THE ZERO-.github FALLBACK IS ONLY AS GOOD AS ITS WRAPPER. ios-kit's
+     `xcodebuild test -scheme ForayAudio` executes whatever
+     ForayAudioPluginTests declares; if the plugin-side wrapper lost its
+     seam-gap method or its catch-all, parity would stop running there with
+     every step still green. The host wrapper is pinned the same way for
+     G-1a's Linux run.
+     MUTATION: delete testSeamGapFamily from EngineParityWrapperTests.swift, or
+     SeamGapFamily.runner from ParityFamilies.all; each fails here. */
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    for (const method of ["testCompareFamily", "testSeamGapFamily", "testEveryManifestFamilyIsExecutedOrPending"]) {
+      assert.match(src, new RegExp(`func ${method}\\(`), `${where} has no ${method}`);
+    }
+    assert.match(src, /assertParityFamily\("seam-gap", requireRunner: true\)/, `${where} must require a seam-gap runner`);
+    assert.match(src, /SharedParityRun\.report\(/, `${where} does not run the parity suite`);
+    assert.match(src, /XCTFail\(/, `${where} reports no per-case failure`);
+  }
+
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  assert.match(all[1], /SeamGapFamily\.runner/);
+  assert.match(all[1], /CompareFamily\.runner/);
+});
+
+/* ─────────── NE-02: the reducer, copied into the core with its tests ───────────
+ *
+ * docs/native-engine-plan.md §4.1 and card NE-02. PlayerQueueState.swift and
+ * its 34 XCTests were COPIED from ios/ForayKit into foray-engine-core, and the
+ * ios/ originals are frozen reference (ios/ is the dead SwiftUI scaffold; the
+ * existing test "the SwiftUI scaffold and ForayKit are still intact at ios/"
+ * keeps it on disk). The copies compile and pass only in CI (ci.yml's ios-kit,
+ * `swift test` on the core); what can be read without a compiler is pinned
+ * here. */
+
+const CORE_REDUCER = path.join(CORE_DIR, "Sources/ForayEngineCore/Reducer/PlayerQueueState.swift");
+const CORE_REDUCER_TESTS = path.join(CORE_DIR, "Tests/ForayEngineCoreTests/PlayerQueueStateTests.swift");
+const IOS_REDUCER_TESTS = path.join(ROOT, "ios/ForayKit/Tests/ForayKitTests/PlayerQueueStateTests.swift");
+
+/** The leading `//` comment block of a Swift file: its header. */
+const swiftHeader = (file) => {
+  const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+  const end = lines.findIndex((l) => !l.startsWith("//"));
+  return lines.slice(0, end < 0 ? lines.length : end).join("\n");
+};
+
+/** Every `func test…(` declared in the code (comments stripped) of a Swift file. */
+const swiftTestNames = (file) =>
+  [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/\bfunc\s+(test\w*)\s*\(/g)].map((m) => m[1]);
+
+test("NE-02: the core's reducer and its tests are copies that name their ios/ source and commit", () => {
+  /* The header is the provenance: NE-07s extends this copy toward
+     player/queue-state.js, so the two files are meant to drift, and the only
+     way a reader can tell the engine's reducer from the scaffold's is the
+     line that says which one was copied from which, at what commit, and which
+     is frozen. MUTATION: drop "adde5e12" or "FROZEN REFERENCE" from either
+     header, or move the reducer out of Reducer/; each fails. */
+  for (const [copy, source] of [
+    [CORE_REDUCER, "ios/ForayKit/Sources/ForayKit/PlayerQueueState.swift"],
+    [CORE_REDUCER_TESTS, "ios/ForayKit/Tests/ForayKitTests/PlayerQueueStateTests.swift"],
+  ]) {
+    const rel = path.relative(ROOT, copy).split(path.sep).join("/");
+    assert.ok(fs.existsSync(copy), `${rel} is missing (NE-02 copies it into foray-engine-core)`);
+    const header = swiftHeader(copy);
+    assert.ok(header.includes(`${source} @ adde5e12`), `${rel}'s header must name its source as "${source} @ adde5e12"`);
+    assert.match(header, /FROZEN REFERENCE/, `${rel}'s header must say the ios/ copy is frozen reference`);
+  }
+  /* The engine's copy is public API of ForayEngineCore, which the plugin
+     links; the tests reach it with a plain import (release-buildable). */
+  const reducer = stripSwiftComments(fs.readFileSync(CORE_REDUCER, "utf8"));
+  assert.match(reducer, /public enum PlayerQueueState\b/);
+  assert.match(reducer, /public static func reduce\(/);
+  const tests = stripSwiftComments(fs.readFileSync(CORE_REDUCER_TESTS, "utf8"));
+  assert.match(tests, /^import ForayEngineCore$/m, "the copied tests must import this package's module");
+  assert.doesNotMatch(tests, /\bForayKit\b/, "the copied tests still reference ForayKit");
+});
+
+test("NE-02: every one of the original reducer tests survives in the core's copy", () => {
+  /* The 34 scaffold tests are the proof that NE-07s's extension kept the
+     behaviour the reducer already had, so the copy may GAIN tests and never
+     lose one. Compared by name against the frozen ios/ original rather than
+     by count alone: deleting a real test and adding a trivial one keeps the
+     count (the floor in test/suite-integrity.test.js) and fails here.
+     MUTATION: delete or rename testStopWhileIdleIsNoOp in the core's copy, or
+     comment it out; each fails. */
+  const original = swiftTestNames(IOS_REDUCER_TESTS);
+  assert.equal(original.length, 34, "the frozen ios/ PlayerQueueStateTests no longer declares 34 tests; ios/ is frozen reference (NE-02)");
+  const copied = new Set(swiftTestNames(CORE_REDUCER_TESTS));
+  const lost = original.filter((n) => !copied.has(n));
+  assert.deepEqual(lost, [], `the core's PlayerQueueStateTests lost these original tests: ${lost.join(", ")}`);
+  assert.match(
+    stripSwiftComments(fs.readFileSync(CORE_REDUCER_TESTS, "utf8")),
+    /final class PlayerQueueStateTests: XCTestCase/,
+    "the copied tests must stay an XCTestCase, or `swift test` runs none of them"
+  );
+});
