@@ -165,6 +165,10 @@ The pre-existing red: on the very first run of this PR (run 35951040271,
 returns `.supersede` for a stale hold while playing, which is the row
 `shell-invariants.test.mjs` pins and the build that shipped. Commit `2baa8f8a`
 corrects the assertion; the plugin's code is unchanged.
+Main fixed the same red the other way in audit round 2 (#749): the table
+gained a `(.playing, .playing) -> .none` case (a position write is not a
+resume). When main was merged into engine/m1 the two halves met and ios-kit
+went red again, so the assertion is back to `.none`, main's reading.
 
 ## 6. Mutation checks
 
