@@ -840,7 +840,7 @@ turned the `ForayAudio` XCTest run red:
 
 | mutant | run | mutation | failed |
 |---|---|---|---|
-| 1 | 36064544632 | the speaker's implicit-activation guard off; the speaker reporting a stale line's finish; the probe treating a cancelled line as finished; the probe never pausing its own play | 5 `SessionProbeTests`, 2 `SpeechSessionSmokeTests` |
+| 1 | 36064544632 | the speaker's implicit-activation guard off; the speaker reporting a stale line's finish; the probe treating a cancelled line as finished; the probe never pausing its own play | 4 `SessionProbeTests`, 2 `SpeechSessionSmokeTests` |
 | 2 | 36064548407 | the host dropping `Speaking.onFinish` (the probe never hears the line end) and teardown not cancelling the probe | 7 `SessionProbeTests` |
 | 3 | 36064551700 | the row's `activated` hard-wired to `false` | `SessionProbeTests` `testAPlayAfterTheLineActivatesWhenTheSessionWasLostAndRecordsTheCost`, `testARefusedActivationIsRecordedWithItsTokenAndNothingPlays` |
 | 4 | 36066858645 | the speaker reporting a replaced line's finish (the stale-utterance guard alone) | `SpeechSessionSmokeTests` `testAReplacedLineEndsSilentlyAndTheNewOneReportsOnce` |
