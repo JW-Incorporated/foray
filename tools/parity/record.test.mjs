@@ -122,12 +122,12 @@ test("JS that disagrees with an authored case is refused, and nothing is written
   const root = scratch();
   try {
     const mod = path.join(root, "player", "seam-gap.js");
-    fs.writeFileSync(mod, fs.readFileSync(mod, "utf8").replace("export const SEAM_GAP_SEC = 2.0;", "export const SEAM_GAP_SEC = 2.5;"));
+    fs.writeFileSync(mod, fs.readFileSync(mod, "utf8").replace("export const SEAM_GAP_SEC = 0.5;", "export const SEAM_GAP_SEC = 2.5;"));
     const before = fs.readFileSync(path.join(root, FIXTURE), "utf8");
     const pendingBefore = fs.readFileSync(path.join(root, "player/parity/swift-pending.json"), "utf8");
     const r = await record({ root, portCard: "NE-28s", log: quiet });
     assert.equal(r.ok, false);
-    assert.ok(r.refusals.some((x) => /seam-gap\/rule-is-2\.0s is AUTHORED/.test(x)), r.refusals.join("\n"));
+    assert.ok(r.refusals.some((x) => /seam-gap\/rule-is-0\.5s is AUTHORED/.test(x)), r.refusals.join("\n"));
     assert.equal(fs.readFileSync(path.join(root, FIXTURE), "utf8"), before, "the fixture is untouched");
     assert.equal(fs.readFileSync(path.join(root, "player/parity/swift-pending.json"), "utf8"), pendingBefore);
   } finally {

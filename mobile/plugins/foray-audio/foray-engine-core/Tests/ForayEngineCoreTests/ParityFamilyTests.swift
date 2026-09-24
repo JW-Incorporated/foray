@@ -40,6 +40,10 @@ final class ParityFamilyTests: XCTestCase {
     func testNumberFormatFamily() { assertParityFamily("number-format", requireRunner: true) }
     func testDiagTokensFamily() { assertParityFamily("diag-tokens", requireRunner: true) }
 
+    /// NE-12s's port, which must RUN: `MediaMapping` against
+    /// player/media-session.js and the media-actions adapter (NE-12j).
+    func testMediaEpisodeFamily() { assertParityFamily("media-episode", requireRunner: true) }
+
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree
     /// problem. And something must have RUN: zero failures from a runner that

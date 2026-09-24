@@ -55,7 +55,7 @@ test("changing SEAM_GAP_SEC without regenerating turns the check red, and names 
   assert.deepEqual(staleFiles(REPO_ROOT, files), [CONSTANTS_FILE]);
   assert.match(namespaceBlock(files[CONSTANTS_FILE], "SeamGap"), /public static let seamGapSec: Double = 2\.5\n/);
   const committed = fs.readFileSync(path.join(REPO_ROOT, CONSTANTS_FILE), "utf8");
-  assert.match(namespaceBlock(committed, "SeamGap"), /public static let seamGapSec: Double = 2\n/);
+  assert.match(namespaceBlock(committed, "SeamGap"), /public static let seamGapSec: Double = 0\.5\n/);
 });
 
 test("both DRIFT_TOLERANCE_SEC values appear, under distinct namespaces, with their JS values", async () => {
@@ -114,7 +114,7 @@ test("every constant every source module exports is in the generated file, or om
   for (const needle of [
     "enum Transport {", "restartWindowSec: Double = 4", "seekInsideEndSec: Double = 0.25",
     "positionIntervalMs: Double = 15000", "rates: [Double] = [0.75, 1, 1.25, 1.5, 1.75, 2]",
-    "seamGapSec: Double = 2", "interludeCeilingSec: Double = 4.5", "jingleDurationSec: Double = 1.5",
+    "seamGapSec: Double = 0.5", "interludeCeilingSec: Double = 4.5", "jingleDurationSec: Double = 1.5",
     "adPadCeilingSec: Double = 120", "seekBackwardSec: Double = 15", "seekForwardSec: Double = 30",
   ]) assert.ok(committed.includes(needle), `EngineConstants.swift lacks ${needle}`);
 });

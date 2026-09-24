@@ -132,12 +132,12 @@ const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
    `duration_source` survives a second pass, so resolving twice cannot promote an
    estimate to a measurement.
 
-   NOT INCLUDED, deliberately: the seam beat and the TTS padding. The 2.0 s beat
+   NOT INCLUDED, deliberately: the seam beat and the TTS padding. The 0.5 s beat
    is wall clock the manager spends between two items and has never been part of
    authored runtime (`player/seam-gap.js`); the ~0.5 s padding is baked into the
    asset, so a measured duration already carries it and an estimate deliberately
-   does not guess it. Which of those two numbers governs a bridge is
-   `HUMAN-ACTIONS.md` #3 and is not settled here. */
+   does not guess it. The two are the same number since the founder's
+   2026-09-24 ruling (*"0.5s"*, closing `HUMAN-ACTIONS.md` #3). */
 
 /** `docs/curation/narration-craft.md` §0: 170 wpm x 6.0 chars/word. Characters
     rather than words because characters are what the pipeline bills and counts

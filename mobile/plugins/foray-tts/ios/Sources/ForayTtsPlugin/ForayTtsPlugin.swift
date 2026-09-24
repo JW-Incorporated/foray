@@ -290,7 +290,13 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     ///    listener's ear disagrees (2026-09-24: "1x felt like 0.6x or so"): if 4a
     ///    ever wants 1x to sound faster than Apple's default, that is a product
     ///    choice to move THIS anchor (and the XCTest that pins it), not a bug in
-    ///    the curve.
+    ///    the curve. **That choice was put to the founder and he declined it.**
+    ///    The question was whether 1x stays at `AVSpeechUtteranceDefaultSpeechRate`
+    ///    (0.5) or moves to an estimated ~0.58 to make up the "0.6x" feel; his
+    ///    answer, 2026-09-24, verbatim: *"assume 1x speed"* (`docs/DECISIONS.md`).
+    ///    So 1x stays exactly `AVSpeechUtteranceDefaultSpeechRate`; the ~0.58 is
+    ///    an unmeasured estimate that is NOT in effect, and moving it needs a new
+    ///    ruling, not a tidy-up.
     /// 2. `AVSpeechUtteranceDefaultSpeechRate * 1.5` ≈ 3.0x normal. The one reading.
     /// 3. **Form: perceived speed is EXPONENTIAL in utterance rate** — equivalently,
     ///    utterance rate is affine in `log(multiplier)`:

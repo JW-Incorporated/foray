@@ -8,8 +8,8 @@ run and the head SHA) or marked **not executed**. An estimate is labelled as
 one and is never quoted as a measurement.
 
 Cards append their own section. NE-01 (the packaging spike) wrote §1-§6;
-NE-25a (the click-track spike) wrote §7, NE-15 (AVDeck) §8 and NE-06
-(engine-parity CI) §9.
+NE-25a (the click-track spike) wrote §7, NE-15 (AVDeck) §8, NE-06
+(engine-parity CI) §9 and NE-25b (two-deck preroll) §10.
 
 ## 1. What NE-01 changed, in one paragraph
 
@@ -576,3 +576,147 @@ dispatch skip on engine-parity, ios-kit's old skip, `ios-gate` needing
 ios-kit, `fetch-depth: 1`, a dropped summary, and no container). There are
 5 of `release.yml` and 2 of `ios-build.yml`, one of which moves the negation
 above the pattern it narrows. All are killed by the workflow suites.
+
+## 10. NE-25b: two-deck preroll and readiness timing (Measured, 2026-09-24)
+
+**CI-executed**, Simulator only: ios-kit, `xcodebuild test -scheme ForayAudio`,
+iPhone 17 Pro Simulator, iOS 26.4.1. The tables below come from **run
+35988169841** (head `1e5dd14a`). **Run 35989547345** (head `55015225`) repeated
+everything, and its figures are quoted wherever they differ. Both runs'
+job summaries carry the three "NE-25b:" tables, and their logs carry them as
+`NE-25b |` table lines plus one `NE-25b-json` line per trial. `TwoDeckPrerollTests.swift` (PR #784) is the
+rig. NE-32 (DeckPair) reads this section.
+
+**Both decks are the production `AVDeck`**, not a test rig. The readiness gate
+being measured is `AVDeck.prerollWhenReady`, the only `preroll(` in the plugins
+and the core, and the test file issues none of its own (pinned in
+`shell-invariants.test.mjs`). The gate evidence is the primitive the deck
+records from `player.status`, `item.status` and `player.rate` on the line
+before the call. The same pin checks that this record is a live reading, not
+a literal.
+
+A Simulator is not a phone and a local file is not a CDN. **DV-4 and DV-5
+repeat this on a phone and on real CDNs in M2.**
+
+### 10.1 The standby's time to ready, alone and while the other deck is audible
+
+Deck B loads each click track at 19.65 s with precise timing and runs the full
+gate: duration, both statuses `.readyToPlay`, a zero-tolerance seek, then a
+preroll while the player is at rate 0. B runs once with nothing sounding and
+once while deck A plays `click-cbr.mp3` at 1x, three reps each. Then the swap:
+A's pause and B's play are sent in the same main turn, and the time is B's
+play command to its `.playing`.
+
+| fixture | alone: time to ready, ms | while A is audible, ms | swap alone: play to `.playing`, ms | swap after A's pause, ms |
+|---|---|---|---|---|
+| click-cbr.mp3 | 91, 77, 63 | 29, 48, 22 | 16.1, 15.1, 17.6 | 43.6, 47.1, 49.0 |
+| click-vbr-xing.mp3 | 81, 71, 91 | 36, 46, 29 | 13.7, 13.1, 13.6 | 43.0, 44.4, 41.5 |
+| click-vbr-notoc.mp3 | 70, 55, 67 | 31, 35, 27 | 11.7, 15.4, 18.9 | 43.8, 45.5, 38.1 |
+| click.wav | 61, 58, 61 | 11, 21, 43 | 13.4, 16.9, 9.3 | 42.4, 49.1, 50.1 |
+
+- **Preparing the standby did not disturb the audible deck** in any of the 12
+  trials. A reported no stall, wait, pause or failure, and was still
+  `.playing` when B became ready. This is asserted.
+- **Preroll was never issued before `.readyToPlay`.** Every preroll, 24 of 24,
+  read `player=1 item=1 rate=0.0`, and each came directly after the gate's
+  zero-tolerance seek. Every load was prerolled on its first attempt: no
+  preroll finished `false` without a forced seek. B stayed at rate 0 until
+  its own play. All of this is asserted.
+- **Loads were faster with a deck sounding:** median 31 ms against 70 ms
+  alone (the repeat run: 34 ms against 69 ms). This is a measurement, not a rule. A plausible reading is that the
+  render pipeline is already running while A plays. The effect is small and
+  goes the helpful way for NE-32, which always prepares while something is
+  audible.
+- **The swap costs tens of milliseconds, not seconds.** B reaches `.playing`
+  38-50 ms after its play when A pauses in the same turn, and 9-19 ms with
+  nothing to pause (the repeat run: 43-58 ms and 11-23 ms). NE-32 plays B only after A confirms `.paused` (plan §4.3),
+  so its gap is A's pause confirmation plus the 9-19 ms. Either figure is
+  small next to the 2.0 s + 250 ms seam budget in NE-32's acceptance.
+
+### 10.2 The gate against a held source
+
+A resource loader on a custom scheme accepted every request and answered none
+for 1.5 s, then served `click-cbr.mp3`, while A played. This stands in for a
+standby on a slow CDN, which NE-32 meets at every seam.
+
+| hold | loader requests in the hold | prerolls in the hold | item `.readyToPlay` in the hold (133 samples, 10 ms apart) | release to ready | time to ready | prerolls after |
+|---|---|---|---|---|---|---|
+| 1,500 ms | 1 | **0** | no | 19.7 ms | 1,531 ms | 1: `preroll player=1 item=1 rate=0.0` |
+| repeat run | 1 | **0** | no (130 samples) | 23.2 ms | 1,538 ms | the same |
+
+The gate waited for the source. Once bytes flowed, the whole pipeline
+(duration, both statuses, seek, preroll) took under 20 ms, and it issued
+exactly one preroll with no `not-ready`. A was undisturbed. All of this is
+asserted.
+
+### 10.3 `preroll` finished=false under a forced seek
+
+While B's preroll ran, the test seeked B's own `AVPlayer` to 22.65 s,
+bypassing the deck, 0-25 ms after its poll (about 0.5 ms) saw the preroll
+issued. Four trials ran per cell, with A audible throughout. Each cell
+reads "finished=false count, run 35988169841 / run 35989547345".
+
+| fixture | seek 0 ms after | 2 ms | 5 ms | 10 ms | 25 ms |
+|---|---|---|---|---|---|
+| click-cbr.mp3 | **4/4 / 3/4** (+1 raced) | 0/4 / 0/4 | 0/4 / 0/4 | 0/4 / 0/4 | 0/4 / 0/4 |
+| click-vbr-xing.mp3 | **4/4 / 4/4** | **4/4 / 4/4** | 0/4 / 1/4 | 0/4 / 0/4 | 0/4 / 1/4 |
+
+- **Every finished=false recovered on AVDeck's single retry:** 12 of 40 in
+  the first run and 13 of 40 in the repeat. The retry seeks back to the start
+  and prerolls again. Every one ended `prerolled=true` at the requested
+  start, ready 23-86 ms after the load. The ordinary-load fallback was never
+  needed, and no load missed `.ready`.
+- **Preroll timing.** A local preroll usually completes within about 2 ms for
+  CBR and 2-5 ms for this VBR file. Once, it ran past 25 ms. A seek arriving
+  after that found the deck already ready (the rows where no preroll was
+  interrupted).
+- **One race was measured, and it misreports the landing.** In the repeat
+  run, one CBR trial at 0 ms fell into the gap between a preroll completing
+  (`finished == true`) and that completion reaching main. The forced seek had
+  already gone out, so AVDeck reported `.ready(prerolled: true)` with
+  `landedSec` = **22.65 s, 3,000 ms from the requested 19.65 s**. AVPlayer
+  reports a pending seek's time as `currentTime`, and the deck took it as its
+  own landing. The deck did not notice: the gate held, but the player was no
+  longer where the gate put it.
+- **The retry path is exercised on every run.** The test fails if no preroll
+  was interrupted, so "every load recovered" can never be published having
+  tested no recovery.
+- **For NE-32:**
+  - In production, nothing seeks the standby's player behind the deck. A
+    `.seek` before `.ready` only moves the target (NE-15), so a real
+    finished=false needs a system time change or an incompatible rate change.
+    **DeckPair must never touch a deck's `AVPlayer` directly.** The race
+    above shows that a foreign seek can leave the deck `.ready` at the wrong
+    place with no event to say so.
+  - If NE-32 wants a belt-and-braces check, compare `landedSec` with the
+    target at `.ready` and treat a mismatch as `not-ready`. This is not
+    implemented here: a spike measures and does not change the deck.
+  - On a CDN the preroll window is much longer than 2 ms, so DV-4 should look
+    for `not-ready` causes in the seam rows.
+
+### 10.4 Mutation checks
+
+**Node (local, all killed):** the `shell-invariants` pin failed on 7 of 7
+mutations:
+
+- a `preroll(` in the test file;
+- AVDeck recording the literal `preroll player=1 item=1 rate=0.0`;
+- `gatePrimitive` at rate 1.0;
+- an untagged json line;
+- a fixture outside the exempt set;
+- the forced seek no longer on the player;
+- the no-interrupted-preroll guard weakened to `>= 0`.
+
+**Swift (throwaway draft PRs #786, #787, #788, closed unmerged):** each
+mutant changed `AVDeck.swift` alone.
+
+| Mutation | Result |
+|---|---|
+| `prerollCompleted` ignores `finished` | **Killed** (`testPrerollFinishedFalseUnderAForcedSeek`: no preroll-unfinished was ever reported, so the vacuity guard fired), run 35989598006 |
+| `advanceIfReady` proceeds on the duration alone (no status checks) | **Killed** by all three NE-25b tests. `prerollWhenReady`'s re-check then reports `not-ready-to-play`, which `assertGateHeld` refuses. On the held source the load never prerolled at all. Run 35989602152 |
+| `notReady` skips the retry and goes straight to the ordinary load | **Killed** (`testPrerollFinishedFalseUnderAForcedSeek`: `prerolled=false` after one not-ready, in all 8 trials at 0 ms), run 35989605855 |
+
+**NE-15's `AVDeckTests` stayed green against all three mutants** (14 of 14 in
+each run). The retry and the runtime status gate were pinned only statically
+(`shell-invariants`) until this card. NE-25b's tests are the first to
+execute them.

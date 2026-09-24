@@ -1000,7 +1000,7 @@
     {
       "id": "media-episode/state-seam-beat-reports-playing",
       "covers": [
-        "media-session::THE SEAM BEAT REPORTS PLAYING — 2.0 s of authored silence is not a pause"
+        "media-session::THE SEAM BEAT REPORTS PLAYING — 0.5 s of authored silence is not a pause"
       ],
       "call": "mediaPlaybackState",
       "args": [{ "hasItem": true, "playing": false, "inSeamGap": true }],

@@ -142,7 +142,7 @@ do not stop after §7 thinking you are done. Every answer already exists:
      (`docs/curation/tts-locked-screen-check.md`). "A foray" is honest;
      "forays" or "a growing collection" is not.
   2. **Nothing about a host, a narrator or a guide.** A foray is edited tape with
-     a 2.0 s beat between segments and nothing spoken in between. **No narration
+     a short beat (0.5 s) between segments and nothing spoken in between. **No narration
      audio exists anywhere in the repo** — rule X1 ("a cross-episode seam always
      carries narration") is unmet at all 10 of this foray's cross-episode seams,
      and meeting it is ElevenLabs spend nobody has authorised. See

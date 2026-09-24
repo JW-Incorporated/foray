@@ -62,7 +62,7 @@ quoted here because Hermes cannot read it):
   `test/suite-integrity.test.js`). `docs/android-lock-screen.md` argues every decision.
 - `player/media-session.js` (floor 131) already decides everything a lock screen
   says: three metadata fields, previous/next are **segments**, the position is the
-  **Foray's** clock, a finished Foray reports `"none"`, the 2.0 s seam beat reads as
+  **Foray's** clock, a finished Foray reports `"none"`, the seam beat (`SEAM_GAP_SEC`, 0.5 s) reads as
   playing. `player/client.js` `syncMediaSession()` writes it from `render()`.
 - The polyfill's install guard is `mediaSessionApplies()`: `getPlatform() === "android"`
   and nothing else. On iOS it returns false and the file is inert.
