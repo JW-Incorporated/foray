@@ -737,7 +737,8 @@ NE-33 chooses SpeechNarrator's path from that row, not from this one.
 
 **CI-executed:** ios-kit, `xcodebuild test -scheme ForayAudio`, iPhone 17 Pro
 Simulator, iOS 26.4.1, **run 36062420799** (head `4baa88d6`) and **run
-36064494379** (head `5d6d203a`, the same smoke code). The rig is
+36064494379** (head `5d6d203a`, the same smoke code), then **run
+36066775039** (head `67da8c47`, the smoke with its warm-up line). The rig is
 `SpeechSessionSmokeTests.testADeckStartedInTheSameTurnAsDidFinishPlaysWithinOneSecond`
 (PR #805). It uses the production pieces:
 
@@ -754,14 +755,15 @@ The test speaks "Session probe." and sends the deck's `play` from inside the
 |---|---|---|---|---|---|---|---|---|
 | 36062420799 | 1.6 | 2,302.3 | yes (same turn) | **17.2** | **0** | other=n hint=n | other=n hint=n | other=n hint=n |
 | 36064494379 | 40.8 | 10,993.1 | yes (same turn) | **27.5** | **0** | other=n hint=n | other=n hint=n | other=n hint=n |
+| 36066775039 (warm) | 0.1 | 1,209.2 | yes (same turn) | **20.2** | **0** | other=n hint=n | other=n hint=n | other=n hint=n |
 
 `other` is `isOtherAudioPlaying` and `hint` is
 `secondaryAudioShouldBeSilencedHint`. iOS has no public "is my session active"
 getter, so these readings and the deck's `timeControlStatus` are the
 observable proxy. The Simulator had 68 voices installed.
 
-- **Green in both runs.** `.playing` came 17.2 ms and 27.5 ms after the
-  play, inside the card's 1 s bound. No interruption notification arrived during the line, the play or
+- **Green in all three runs.** `.playing` came 17.2 ms, 27.5 ms and 20.2 ms
+  after the play, inside the card's 1 s bound. No interruption notification arrived during the line, the play or
   the 0.5 s after. Neither the deck nor the speaker found the owner's session
   inactive: there was no `fault implicit-activation` row.
 - **The line's own time varied by 5x on the rig**: 2.3 s and 11.0 s for the
@@ -771,7 +773,8 @@ observable proxy. The Simulator had 68 voices installed.
   finished inside 45 s. So the smoke now speaks a warm-up line first, through
   the same owner and configuration (`SpeechWarmUp`, up to 120 s, its time in
   the job summary), and measures a warm line. It skips, and says so, only
-  when even the warm-up never finishes. On the phone, the probe waits up to
+  when even the warm-up never finishes. In run 36066775039 the cold
+  warm-up line took 3,518.3 ms and the measured warm line 1,209.2 ms. On the phone, the probe waits up to
   30 s for `didFinish`, and its row carries `speechMs`.
 - **The synthesizer's delegate ran on main.** So the play really was in the
   same main turn as `didFinish`. If a device ever delivers it elsewhere,
@@ -832,4 +835,12 @@ of 11 mutations:
 - a second `SessionProbe(` builder;
 - a narration rate other than Apple's default.
 
-**Swift:** MUTATION_RESULTS_PENDING
+**Swift (CI, ios-kit, all killed):** four mutant branches, never merged, each
+turned the `ForayAudio` XCTest run red:
+
+| mutant | run | mutation | failed |
+|---|---|---|---|
+| 1 | 36064544632 | the speaker's implicit-activation guard off; the speaker reporting a stale line's finish; the probe treating a cancelled line as finished; the probe never pausing its own play | 5 `SessionProbeTests`, 2 `SpeechSessionSmokeTests` |
+| 2 | 36064548407 | the host dropping `Speaking.onFinish` (the probe never hears the line end) and teardown not cancelling the probe | 7 `SessionProbeTests` |
+| 3 | 36064551700 | the row's `activated` hard-wired to `false` | `SessionProbeTests` `testAPlayAfterTheLineActivatesWhenTheSessionWasLostAndRecordsTheCost`, `testARefusedActivationIsRecordedWithItsTokenAndNothingPlays` |
+| 4 | 36066858645 | the speaker reporting a replaced line's finish (the stale-utterance guard alone) | `SpeechSessionSmokeTests` `testAReplacedLineEndsSilentlyAndTheNewOneReportsOnce` |
