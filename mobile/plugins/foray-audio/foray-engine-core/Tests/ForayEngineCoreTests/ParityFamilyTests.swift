@@ -26,8 +26,12 @@ final class ParityFamilyTests: XCTestCase {
     /// player/queue-state.js, so the family must now have a runner that ran.
     func testQueueStateFamily() { assertParityFamily("queue-state", requireRunner: true) }
 
-    /// Recorded by NE-07j, owed by NE-09.
-    func testRateFamily() { assertParityFamily("rate") }
+    /// NE-09's ports, which must RUN (a runner registered, cases executed):
+    /// `PlaybackRate` (the ladder and ForayTts's utteranceRate curve),
+    /// `ResumeRules` (three JS modules, one runner) and `TransportPolicy`.
+    func testRateFamily() { assertParityFamily("rate", requireRunner: true) }
+    func testResumeRulesFamily() { assertParityFamily("resume-rules", requireRunner: true) }
+    func testTransportFamily() { assertParityFamily("transport", requireRunner: true) }
 
     /// Recorded by NE-10j, owed by NE-10s.
     func testRowsFamily() { assertParityFamily("rows") }

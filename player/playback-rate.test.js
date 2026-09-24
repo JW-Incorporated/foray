@@ -12,6 +12,8 @@ import {
   RATES, RATE_KEY, DEFAULT_RATE, MIN_RATE, MAX_RATE,
   isRate, normalizeRate, nextRate, rateLabel, rateAriaLabel, readRate, writeRate,
 } from "./playback-rate.js";
+import { fixtureCases } from "./parity/suite.js";
+import { loadFixtures } from "./parity/runner.js";
 
 /** The three Storage methods this module touches, and nothing else, so a change
     to what it needs fails loudly rather than silently using a browser global. */
@@ -281,3 +283,30 @@ test("a store that throws is reported, never thrown out of — a refused write i
   assert.equal(writeRate(null, 1.5), false);
   assert.equal(writeRate({}, 1.5), false, "an object with no setItem is not a store");
 });
+
+/* ---------- the synthesiser's rate (NE-09) ---------- */
+
+/* THESE TWO READ THEIR FIXTURES (player/parity/fixtures/rate/utterance-rate.json),
+   like position-store and transport-policy: one file is this assertion, the
+   engine core's PlaybackRate case list, AND what ForayTtsPluginTests holds the
+   shipping plugin to. The curve and its reasons are ForayTtsPlugin's
+   (`utteranceRate(playbackMultiplier:)`); playback-rate.js's copy exists so
+   there is a JS reference at all.
+   TO SEE ONE FAIL: replace `Math.log(multiplier) / Math.log(...)` with the
+   straight line `(multiplier - 1) / (UTTERANCE_CALIBRATION_PERCEIVED - 1)` (the
+   anchors survive, every other stop moves), or drop the `multiplier > 0`
+   guard (NaN and negatives then return NaN). */
+const utteranceCases = fixtureCases("rate", "playback-rate");
+
+test("the synthesiser's rate is ForayTts's calibrated curve, at every ladder stop", async (t) => {
+  await utteranceCases(t);
+  /* A case for EVERY stop (the card's acceptance): a stop added to the ladder
+     without one is a speed nobody checked the plugin and the engine narrate
+     alike. */
+  const asked = loadFixtures(undefined, { family: "rate" })
+    .flatMap((fx) => fx.doc.cases)
+    .filter((c) => c.call === "utteranceRate")
+    .map((c) => c.args[0]);
+  for (const r of RATES) assert.ok(asked.includes(r), `no utteranceRate case for the ${r}x stop`);
+});
+test("a multiplier that is not a positive number is the slowest synthesiser rate, never NaN", (t) => utteranceCases(t));
