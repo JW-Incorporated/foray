@@ -2,6 +2,78 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-24 (founder rulings on the round-2 decision list, PR #749)
+
+Wyatt answered the orchestrator's thirteen-item decision list for round 2 of
+the audit on 2026-09-24. His words are quoted verbatim. Where the ruling is
+applied in PR #749 the entry says so; the rest are follow-up PRs or issues.
+Items this PR does not apply are recorded by their words and their follow-up
+only; each follow-up carries its own context.
+
+1. **Auth token and backups (Q6, `persist-6`):** "Option A". The auth token
+   (`cp_sb_session`) stays on the device and out of platform backups.
+   Follow-up PR.
+2. **Privacy-policy wording (Q7, `persist-3`):** "Approved". Applied in PR #749.
+   `docs/legal/privacy-policy.md` §5 now says `connect-src` names three
+   origins: the app's own, Supabase, and our API on Vercel, which receives the
+   Shows search text with the IP address and user-agent. §4.3 names Vercel as
+   the processor that answers Shows searches and says 4a does not log the
+   query. The `cp_diag` row lists the search, now-playing, remote-command and
+   native-session rows. `docs/legal/data-safety.md`'s two search-history rows
+   drop "miss-only". `test/legal-citations.test.js` now holds the policy's
+   stated origin count to `index.html`'s. HUMAN-ACTIONS #109 asks Wyatt to
+   mirror the changed sentences in the store listings, which he updates himself.
+3. "1x for now, but maybe we change later. I recall
+   1x felt like 0.6x or so, it was very slow." Follow-up PR.
+4. **The nightly content routine (`foray-nightly-enrich`, HUMAN-ACTIONS #46):**
+   "Leave them off but create a GH issue for Joey to get these to run on the rig
+   he's building." Issue #760.
+5. "Publish any foray so that the statement is correct;
+   this is a temporary issue while we are spinning up and will soon be
+   irrelevant." Follow-up PR.
+6. **The verb for shows:** "Follow and let's add notifications to the roadmap."
+   Issue #761 (new-episode notifications for followed shows).
+7. **Home's "Episodes for you" section:** "Rename it 'Suggested'". Applied in
+   PR #749. Wyatt named the section verbatim in the ui-transition brief
+   (`docs/ui-transition-plan.md` §0, which keeps his original words with a
+   note). The heading, `suggestedHtml()`, the `.hv2-suggested` class, the
+   tests and the docs that describe the section now say "Suggested". Audit
+   persona 56/82 are fixed by it.
+8. **A play button on Home:** "Add a play button at the Home Screen level and
+   start playing whatever is first in that list (whether it be Suggested or a
+   Playlist or whatever)". Applied in PR #749. One control sits under the
+   greeting. It plays the first playable thing on Home, walking the rails in
+   render order (Jump back in, Forays for you, Playlists for you, Suggested),
+   and passes over a rail with nothing playable. Each kind starts through its
+   own page's path: a Foray through `playForay`, resuming where it was left; an
+   episode, a playlist or a Suggested queue through the rows' shared
+   `startEpisodePlay`, with the playlist's rows as the continuous-playback
+   list. The button's name is "Play <title>". It shows the loading mark, and it
+   reports a failed start but not a superseded one. It never restarts what the
+   player already holds: a paused item resumes and a playing one is left
+   alone. It is hidden only when nothing on Home can play. Pinned by
+   `test/home-play.test.js`.
+9. "Accept the ones that are currently there; update our foray generation scripting to avoid making more
+   in the future." Follow-up PR.
+10. **HUMAN-ACTIONS #2 (listen to Foray #1):** "Drop it". Closed as `skip` in
+    `HUMAN-ACTIONS-DONE.md`.
+11. **House style for Foray titles and summaries:** "Sentence case, no period,
+    though ? And ! Are allowed". Follow-up PR.
+12. **Up Next drag-to-reorder, Play next, swipe-to-remove and Clear
+    (`p-impatient-8`):** "Build it after native engine". Issue #762.
+13. **The Up Next model, reversing the round-2 default for question 9:**
+    "Playing something from up next removes the items above it - disagree,
+    reverse this. That item in the queue jumps to the top." Applied in PR #749.
+    Playing row k from the Up Next page moves that row to the top, where it is
+    what is playing. Every other row keeps its place and its order, and
+    nothing is removed: with [a, b, c, d] queued, playing c gives [c, a, b, d].
+    When c ends it leaves Up Next and a plays. ⏭ follows the same rule as the
+    natural end, reached early: the skipped episode leaves Up Next as it would
+    at its end, Up Next's head plays, and no other row is dropped. (The
+    round-2 default removed rows 1..k-1 on both paths.) Pinned by
+    `test/up-next-autoadvance.test.js`. `p-impatient-7`'s ledger note is
+    updated to match.
+
 ## 2026-09-23 (audit round 2, lane L3: the platform contract for the lock screen, the car and the Android shade; the Up Next model; the sheet's staples; Dynamic Type)
 
 Round 2 of the 4a audit (`docs/audit/round-2/`, synthesis themes R2-M and R2-N)
@@ -73,7 +145,9 @@ from the transport's first `playing` payload (`noteTransportPlaying`), not only
 from an element's `play()`.
 
 **2. The Up Next model (founder question 9): a list you move down, never
-around.** Playing row k — from the page's ▶ or by ⏭ — removes rows 1..k-1. The
+around.** *(Reversed by the founder on 2026-09-24: the row you play jumps to the
+top and nothing is removed. See the 2026-09-24 entry; this paragraph is kept as
+the record of the default.)* Playing row k — from the page's ▶ or by ⏭ — removes rows 1..k-1. The
 first version kept them and re-served an abandoned row after the last one
 (p-impatient-7). A row moved ABOVE the playing one while it plays is what plays
 next at the natural end (nobody skipped it). The page is a live view of

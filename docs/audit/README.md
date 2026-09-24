@@ -122,11 +122,11 @@ another lane and every row no lane was given, and fixed the six still live
 
 | disposition | QA | persona | total |
 |---|---:|---:|---:|
-| fixed | 174 | 60 | 234 |
+| fixed | 174 | 62 | 236 |
 | already-fixed (before the lanes, or when audited) | 1 | 3 | 4 |
 | refuted (verifier) | 16 | — | 16 |
 | deliberate (verifier) | — | 16 | 16 |
-| deferred-founder | 2 | 5 | 7 |
+| deferred-founder | 2 | 3 | 5 |
 | deferred-device | 0 | 0 | 0 |
 | open | 0 | 0 | 0 |
 | **all rows** | **193** | **84** | **277** |
@@ -184,7 +184,8 @@ Continuous playback and Home
    then stops. Is #691's "then more of what fits" the next step?
 10. "Episodes for you" (your name, from the ui-transition brief) holds subject
     cards. Make the cards episode-shaped, or rename the section "Subjects for
-    you" (persona 56, 82)?
+    you" (persona 56, 82)? **Answered 2026-09-24: "Rename it 'Suggested'"**
+    (`docs/DECISIONS.md`, 2026-09-24).
 11. Should Home's subject cards get a one-tap play that starts "Starts with …"
     and continues through the subject list (persona 44)? The code's rationale
     today says sequence cards are only a way in.

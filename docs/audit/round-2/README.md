@@ -125,13 +125,13 @@ pinned.
 
 | disposition | rows |
 |---|---:|
-| fixed | 159 |
+| fixed | 160 |
 | already-fixed | 0 |
 | refuted (verifier) | 2 |
 | deliberate (verifier) | 5 |
 | uncertain (verifier, still needs a device) | 1 |
 | refuted-now (re-verified: no longer holds) | 1 |
-| deferred-founder | 3 |
+| deferred-founder | 2 |
 | deferred-device | 0 |
 | open | 1 |
 | **all rows** | **172** |
@@ -154,19 +154,24 @@ episode or Foray leaves Jump back in and says Played on its own rows and page
 (`player-8`, `honesty-2`); Q4 one playlist builder, on Create (`p-first-6`); Q5
 the Dynamic Type bridge, DECISIONS sentence corrected (`a11y-1`); Q8 "Show my
 picks" (`p-first-7`); Q9 remove-on-skip, with drag / Play next / Clear as one
-follow-up card (`p-impatient-7`, `p-impatient-8`); Q10 Up Next link and Save in
+follow-up card (`p-impatient-7`, `p-impatient-8`) — **reversed by the founder on
+2026-09-24**: the row played from Up Next jumps to the top and nothing is
+removed (`docs/DECISIONS.md`, 2026-09-24); Q10 Up Next link and Save in
 the sheet, sleep timer parked (`p-switcher-5`); Q11 the shell reopens the last
 route, the web stays bare-URL-means-Home (`nav-10`).
 
-**Held for the founder — the two questions no default could answer:**
+**Held for the founder — the two questions no default could answer** (both
+answered on 2026-09-24, `docs/DECISIONS.md`: Q6 "Option A", a follow-up PR; Q7
+"Approved", applied in PR #749):
 
 - **Q6, backups of the native Preferences copy** (`persist-6`): credential
   handling. Not implemented. The verifier adds that the WebView's localStorage
   and IndexedDB are backed up too, so excluding the Preferences suite alone
   would not be enough.
 - **Q7, privacy-policy wording** (`persist-3`, and the inventory half of
-  `persist-4`): three origins, Vercel as a processor, miss-only dropped. Drafted
-  in lane L5's notes; no `docs/legal` edit made. (`nav-10`'s one new `cp_` key
+  `persist-4`): three origins, Vercel as a processor, miss-only dropped.
+  **Approved and applied 2026-09-24** (`persist-3` fixed); the approved draft did
+  not word `persist-4`'s inventory lines, which are still unwritten. (`nav-10`'s one new `cp_` key
   row is in its own commit, 24bdb11d, so it can be reverted if legal edits wait
   for Q7 too.)
 
@@ -177,7 +182,7 @@ route, the web stays bare-URL-means-Home (`nav-10`).
   would un-play episodes — "Played", "N played" and the next-up marker read
   those rows and nothing else keeps that fact — and the safe fix (one
   `cp_positions` map, a copy-never-delete migration) renames a key the privacy
-  policy lists, so it waits on Q7 and on a ruling for how long "Played" lasts.
+  policy lists, so it needs its own policy edit (Q7's approved wording did not cover it) and a ruling for how long "Played" lasts.
 - **`p-impatient-8`** (deferred-founder, by Q9's default): drag-to-reorder,
   Play next and Clear Up Next are one follow-up card.
 - **`native-6`** (uncertain): whether WebKit's delayed category change rewrites
