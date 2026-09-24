@@ -134,8 +134,12 @@ final class AVDeckTests: XCTestCase {
 
     // MARK: - Settings
 
-    /// Plan §4.3's deck settings. TO SEE IT FAIL: drop any of the three
-    /// assignments in AVDeck (`init` / `load`).
+    /// Plan §4.3's deck settings. TO SEE IT FAIL: drop the `actionAtItemEnd`
+    /// or the stall-waiting assignment in `init`. Dropping the
+    /// `.timeDomain` line in `load(...)` does NOT fail here (mutation run
+    /// 35963951606): the Simulator's default is already `.timeDomain`. The
+    /// line stays explicit, and `shell-invariants.test.mjs` pins it, because
+    /// that default has changed before and is not documented as fixed.
     func testDeckSettingsAreThePlans() throws {
         XCTAssertEqual(deck.player.actionAtItemEnd, .pause)
         XCTAssertTrue(deck.player.automaticallyWaitsToMinimizeStalling)
@@ -149,8 +153,13 @@ final class AVDeckTests: XCTestCase {
     /// issued once, AFTER both statuses were `.readyToPlay` and at rate 0 (the
     /// deck writes what it saw into the primitive). The landing error and the
     /// time to ready go into the job summary as MEASUREMENTS.
-    /// TO SEE IT FAIL: give `gateSeek` a tolerance (`.positiveInfinity`), or
-    /// call `becomeReady` from `advanceIfReady` without the seek.
+    /// TO SEE IT FAIL: skip the seek (call `prerollWhenReady` straight from
+    /// `advanceIfReady`). A TOLERANT seek does not fail here (mutation run
+    /// 35963951606 landed both fixtures on exactly 7.300 s with infinite
+    /// tolerance): CBR and PCM seek exactly anyway, and `currentTime` is the
+    /// requested time, not the audible one. The zero tolerance is pinned by
+    /// `shell-invariants.test.mjs`; the audible landing, on VBR fixtures, is
+    /// NE-25a's measurement.
     func testOffsetLandsOnTheCbrMp3AndTheWav() throws {
         let start = 7.3
         let cases: [(name: String, ext: String, precise: Bool, label: String)] = [
@@ -332,10 +341,14 @@ final class AVDeckTests: XCTestCase {
 
     /// A pause the deck did not command (the system's, stood in for by
     /// pausing the real player behind the deck's back) becomes ONE reconcile
-    /// input; a commanded pause does not.
-    /// TO SEE IT FAIL: make `checkUncommandedPause` return at once, or drop
-    /// the `intendsToPlay = false` in `pause()`.
+    /// input; the play that follows it produces none (the false report run
+    /// 35962750658 recorded, see `checkUncommandedPause`), so a SECOND
+    /// external pause is still reported; and a commanded pause never is.
+    /// TO SEE IT FAIL: make `checkUncommandedPause` return at once; or report
+    /// at once instead of after `pauseSettleSec` (the re-play phase goes red);
+    /// or drop the `intendsToPlay = false` in `pause()`.
     func testAnExternalPauseBecomesAReconcileInput() throws {
+        let uncommanded: (DeckEvent) -> Bool = { if case .pausedUncommanded = $0 { return true }; return false }
         guard loadAndWaitReady(try fixture("click-cbr-64k", "mp3"), token: 3, startSec: 2) != nil else { return }
         deck.send(.play)
         spin(0.3)
@@ -349,21 +362,33 @@ final class AVDeckTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(atSec, 2 - 0.05)
         }
 
+        // Re-play at once, as the core does after attributing the stop.
+        events.removeAll()
         deck.send(.play)
-        spin(0.3)
+        spin(1.0)
+        XCTAssertFalse(events.contains(where: uncommanded), "the play after an external pause was reported as a stop: \(events)")
+
+        // The deck still intends to play, so a second system pause is seen.
+        events.removeAll()
+        deck.player.pause()
+        waitFor("a second pausedUncommanded(token: 3)", timeout: 5) {
+            if case .pausedUncommanded(3, _) = $0 { return true }
+            return false
+        }
+
+        deck.send(.play)
+        spin(1.0)
         events.removeAll()
         deck.send(.pause)
         spin(1.0)
-        XCTAssertFalse(
-            events.contains { if case .pausedUncommanded = $0 { return true }; return false },
-            "a commanded pause was reported as uncommanded: \(events)"
-        )
+        XCTAssertFalse(events.contains(where: uncommanded), "a commanded pause was reported as uncommanded: \(events)")
     }
 
     /// Reaching the end is `.ended`, not an uncommanded pause, even though
     /// `actionAtItemEnd = .pause` drops the rate to 0 there.
-    /// TO SEE IT FAIL: remove the end-slack check in `checkUncommandedPause`
-    /// or the `didPlayToEndTime` observer.
+    /// TO SEE IT FAIL: remove the end-slack check AND the `reachedEnd` guard
+    /// in `looksUncommandedPaused` (before the settle existed, the end-slack
+    /// check alone was the defence; mutation run 35963951987 killed it).
     func testTheEndIsEndedNotAnUncommandedPause() throws {
         guard loadAndWaitReady(try fixture("click-11k", "wav"), token: 4, startSec: 19.2) != nil else { return }
         deck.send(.play)

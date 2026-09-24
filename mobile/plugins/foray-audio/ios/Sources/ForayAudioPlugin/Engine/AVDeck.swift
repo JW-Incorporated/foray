@@ -54,6 +54,11 @@ final class AVDeck: DeckDriving {
     /// at the end, and that KVO can land before `didPlayToEndTime` does.
     static let endSlackSec: Double = 0.5
 
+    /// How long a stopped-while-intending-to-play observation must hold
+    /// before it is reported (see `checkUncommandedPause`). Well inside the
+    /// core's 500 ms route-attribution window (plan §4.3).
+    static let pauseSettleSec: Double = 0.25
+
     /// Bound on `primitives`, the test-visible log of AVPlayer calls.
     private static let primitiveCap = 256
 
@@ -147,6 +152,10 @@ final class AVDeck: DeckDriving {
     private var reachedEnd = false
     private var lastTimeControl: DeckTimeControl?
     private var lastWaitingReason: String?
+    /// Bumped by every commanded play; a pause suspicion armed under an
+    /// older value is void (see `checkUncommandedPause`).
+    private var playSeq = 0
+    private var pauseSuspicion: DispatchWorkItem?
 
     init(config: Config) {
         self.config = config
@@ -162,6 +171,7 @@ final class AVDeck: DeckDriving {
 
     deinit {
         deadline?.cancel()
+        pauseSuspicion?.cancel()
         playerObservations.forEach { $0.invalidate() }
         itemObservations.forEach { $0.invalidate() }
         itemNotifications.forEach { NotificationCenter.default.removeObserver($0) }
@@ -419,6 +429,11 @@ final class AVDeck: DeckDriving {
         }
         intendsToPlay = true
         reachedEnd = false
+        // Voids any pause suspicion armed before this play (see
+        // `checkUncommandedPause`): that stop is superseded by the command.
+        playSeq += 1
+        pauseSuspicion?.cancel()
+        pauseSuspicion = nil
         applyRateAndPlay()
     }
 
@@ -538,6 +553,8 @@ final class AVDeck: DeckDriving {
     private func detachItem() {
         deadline?.cancel()
         deadline = nil
+        pauseSuspicion?.cancel()
+        pauseSuspicion = nil
         itemObservations.forEach { $0.invalidate() }
         itemObservations = []
         itemNotifications.forEach { NotificationCenter.default.removeObserver($0) }
@@ -586,22 +603,47 @@ final class AVDeck: DeckDriving {
         checkUncommandedPause()
     }
 
-    /// Plan §4.3 "observe, don't believe" (Q-9). A rate of 0 while the deck
-    /// intends to play, not at the end, is reported ONCE as the reconcile
-    /// input; the core attributes it (route, interruption, or system pause).
-    /// It reads the player's CURRENT rate rather than the KVO value, so a
-    /// commanded pause followed at once by a commanded play (both before the
-    /// hop lands) is not mistaken for a stop.
+    /// Plan §4.3 "observe, don't believe" (Q-9). A stopped player while the
+    /// deck intends to play, not at the end, is reported ONCE as the
+    /// reconcile input; the core attributes it (route, interruption, or
+    /// system pause).
+    ///
+    /// IT IS A SUSPICION FIRST, CONFIRMED `pauseSettleSec` LATER, and a play
+    /// command in between cancels it. MEASURED on the Simulator (ios-kit run
+    /// 35962750658, `testAnExternalPauseBecomesAReconcileInput`): a play sent
+    /// 13 ms after an external pause was followed by an observation of
+    /// `rate == 0` AFTER the play, and then `.playing`. Reported at once, that
+    /// was a second, false "uncommanded pause" while audio was starting, and
+    /// it cleared `intendsToPlay`, so the NEXT real system pause would have
+    /// gone unreported. The player's state right after a command is not yet
+    /// the truth; a quarter second later it is.
     private func checkUncommandedPause() {
-        guard intendsToPlay, !reachedEnd, stage == .ready, let token, let item, player.rate == 0 else { return }
-        let at = player.currentTime().seconds
-        let duration = item.duration
-        if duration.isNumeric, at >= duration.seconds - Self.endSlackSec {
-            // The end: `didPlayToEndTime` reports it.
-            return
+        guard pauseSuspicion == nil, looksUncommandedPaused() else { return }
+        let gen = generation
+        let seq = playSeq
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pauseSuspicion = nil
+            guard gen == self.generation, seq == self.playSeq, self.looksUncommandedPaused(), let token = self.token
+            else { return }
+            self.intendsToPlay = false
+            self.emit(.pausedUncommanded(token: token, atSec: self.player.currentTime().seconds))
         }
-        intendsToPlay = false
-        emit(.pausedUncommanded(token: token, atSec: at))
+        pauseSuspicion = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.pauseSettleSec, execute: work)
+    }
+
+    /// The player is stopped, the deck meant it to play, and it is not the
+    /// end (with `actionAtItemEnd = .pause` the rate drops to 0 there too;
+    /// `didPlayToEndTime` reports that).
+    private func looksUncommandedPaused() -> Bool {
+        guard intendsToPlay, !reachedEnd, stage == .ready, let item,
+              player.rate == 0, player.timeControlStatus == .paused else { return false }
+        let duration = item.duration
+        if duration.isNumeric, player.currentTime().seconds >= duration.seconds - Self.endSlackSec {
+            return false
+        }
+        return true
     }
 
     private func itemEnded(generation gen: Int) {
