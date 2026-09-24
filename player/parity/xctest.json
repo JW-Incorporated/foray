@@ -1,0 +1,3 @@
+{
+  "//": "Covered-suite tests (coverage.js COVERED_SUITES) that a named XCTest method stands for: suite stem -> test name -> \"xctest:<Class>/<testMethod>\". coverage.test.js greps the Swift test sources under mobile/plugins for every mapping, so a renamed or deleted XCTest turns it red."
+}
