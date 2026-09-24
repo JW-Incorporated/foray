@@ -24,8 +24,6 @@ final class InOutPointMeasurementTests: XCTestCase {
     /// of the request hears that double click within a second. WAV (60 s) uses
     /// the ones that fit.
     static let inPointsSec = [9.65, 19.65, 49.65, 79.65]
-    /// Where the per-file reference offset is read (see `referenceOffset`).
-    static let referenceInPointSec = 9.65
     /// 5 ms after a whole-second click, inside the WAV's 60 s too.
     static let outPointSec = 55.005
     /// Playback starts this long before the out-point: past the watchdog's 1.5 s
@@ -62,24 +60,29 @@ final class InOutPointMeasurementTests: XCTestCase {
         let mode: String
         let requestedSec: Double
         let timing: MeasuredDeck.LoadTiming
-        let believedLandingSec: Double
-        let contentOffsetSec: Double?
-        /// believed - true, from the ruler; nil when no double click was heard.
-        let beliefErrorSec: Double?
-        /// true landing - requested: positive means the listener starts LATE.
+        /// What AVFoundation reports after the seek (it reports the request).
+        let currentTimeAfterSeekSec: Double
+        let delaySec: Double
+        /// The label of the landing run's first buffer: where AVFoundation said
+        /// the first sample the listener hears was.
+        let runLabelSec: Double?
+        /// Where that first sample really was (ClickRuler.runStart).
+        let runStartSec: Double?
+        /// runStart - requested: positive = the listener starts LATE (misses the
+        /// start of the segment), negative = EARLY (hears what precedes it).
         let landingErrorSec: Double?
+        let markSec: Double?
         let ambiguous: Bool
         let residualSec: Double?
         let clicksHeard: Int
         let minPeak: Float?
-        /// The first onsets after the landing, [believed s, peak], so a weak or
-        /// missing click after a seek (an MP3 decoder that was not primed) can
-        /// be read back from the log.
+        /// The landing run's first onsets, [seconds into the run, peak], so a
+        /// weak or missing click after a seek can be read back from the log.
         let firstEvents: [[Double]]
         let discontinuities: Int
         let invalidRanges: Int
         let tapFormat: String
-        let labelRuns: Int
+        let runAnchors: [Double]
         let maxLabelDriftSec: Double
         let state: String
     }
@@ -87,50 +90,40 @@ final class InOutPointMeasurementTests: XCTestCase {
     func testInPointLandingErrorAndTimeToReadyPreciseVsApproximate() throws {
         let descriptor = try ClickTrackDescriptor.load()
         var rows: [[String]] = []
-        var offsets: [String] = []
+        var delays: [String] = []
         var tapFormats: Set<String> = []
         var worstDriftSec = 0.0
         for fixture in descriptor.fixtures {
             let url = try descriptor.url(of: fixture)
-            /* THE REFERENCE (d0). Where this file's content sits on the tap's
-               timeline, read after a PRECISE seek to 9.65 s: the double click
-               authored at 10 s is labelled 10 + d0. For the WAV that is the
-               rig's own bias (detector + resampler); for an MP3 it adds the
-               encoder delay as AVFoundation presents it. Every landing below is
-               measured against it, so "landing error" means "where this seek
-               put the listener, relative to where a precise seek puts them".
-
-               Why not from zero, the obvious choice: the first run (35962279894)
-               measured it both ways, and from zero the WAV (sample-exact PCM)
-               read 11.1 ms against 0.9 ms after any seek. The labels on the
-               first buffers of a stream are not comparable with the labels after
-               a seek, so a from-zero reference would put a ~10 ms error into
-               every row. The from-zero offset is still reported, as a note. */
-            let reference = try measureInPoint(
-                url, fixture: fixture.file, precise: true, requestedSec: Self.referenceInPointSec,
-                contentOffsetSec: 0, descriptor: descriptor)
-            let d0 = reference.beliefErrorSec
-            let fromZero = try contentOffset(url, precise: true, descriptor: descriptor)
-            let refNote: String = d0 == nil ? " (NOT HEARD: \(reference.state))" : ""
-            offsets.append("\(fixture.file): d0 \(ms(d0)) ms after a precise seek to \(Self.referenceInPointSec) s; "
-                + "\(ms(fromZero.value)) ms playing from zero\(refNote)")
-            XCTAssertNotNil(d0, "\(fixture.file): no double click heard after the reference seek: \(reference.state)")
+            /* THE DECODER'S DELAY, counted from the stream's first sample
+               (ClickRuler.swift, step 3). For the WAV it must come out at the
+               detector's one-sample bias (0.125 ms): that is the end-to-end
+               check that counting frames is right. For an MP3 it is the encoder
+               delay as AVFoundation's decoder presents it. */
+            let delay = try streamDelay(url, descriptor: descriptor)
+            delays.append("\(fixture.file): delay \(ms(delay.delaySec)) ms from the stream's first sample "
+                + "(that run's first label: \(ms(delay.runLabelSec)) ms)")
+            guard let delaySec = delay.delaySec else {
+                XCTFail("\(fixture.file): no click heard playing from zero: \(delay.state)")
+                continue
+            }
 
             for precise in [true, false] {
                 for requested in Self.inPointsSec where requested + 2 < fixture.durationSec {
                     let trial = try measureInPoint(
                         url, fixture: fixture.file, precise: precise, requestedSec: requested,
-                        contentOffsetSec: d0, descriptor: descriptor)
+                        delaySec: delaySec, descriptor: descriptor)
                     MeasurementReport.json(trial)
                     tapFormats.insert(trial.tapFormat)
                     worstDriftSec = max(worstDriftSec, trial.maxLabelDriftSec)
                     XCTAssertNotNil(trial.landingErrorSec,
                         "\(fixture.file) \(trial.mode) @\(requested): no landing measured: \(trial.state)")
                     let landing: String = ms(trial.landingErrorSec) + (trial.ambiguous ? " (ambiguous)" : "")
+                    let label: Double? = trial.runLabelSec.map { $0 - requested }
                     let finished: String = "\(trial.timing.seekFinished)/\(trial.timing.prerollFinished)"
                     var row: [String] = [fixture.file, trial.mode, String(format: "%.2f", requested), landing]
-                    row.append(ms(trial.beliefErrorSec))
-                    row.append(ms(trial.believedLandingSec - requested))
+                    row.append(ms(label))
+                    row.append(ms(trial.currentTimeAfterSeekSec - requested))
                     row.append(msValue(trial.timing.totalMs))
                     row.append(msValue(trial.timing.assetMs))
                     row.append(msValue(trial.timing.readyMs))
@@ -144,85 +137,102 @@ final class InOutPointMeasurementTests: XCTestCase {
         }
         MeasurementReport.table(
             title: "NE-25a (1): in-point landing error and time to ready",
-            columns: ["fixture", "timing", "in-point s", "landing error ms (true - requested)",
-                      "belief error ms (believed - true)", "currentTime - requested ms",
+            columns: ["fixture", "timing", "in-point s", "landing error ms (first sample heard - in-point)",
+                      "first buffer's label - in-point ms", "currentTime - in-point ms",
                       "ready total ms", "asset ms", "ready ms", "seek ms", "preroll ms",
                       "seek/preroll finished", "ruler residual ms"],
             rows: rows,
-            notes: offsets + [
+            notes: delays + [
                 "Seeks are zero-tolerance; 'precise' is AVURLAssetPreferPreciseDurationAndTimingKey=true.",
-                "Landing error is read from the click track's content, not from currentTime, relative to d0 (where a precise seek to \(Self.referenceInPointSec) s puts that file's content): positive = the listener starts late, negative = early (they hear audio from before the in-point).",
-                "The precise \(Self.referenceInPointSec) s row is an independent repeat of the reference, so it reads the repeatability, not 0 by construction.",
-                "Tap format: \(tapFormats.sorted().joined(separator: "; ")). Times inside a run are COUNTED from the run's first buffer label (BufferTimeline); the worst label-vs-count drift in any trial was \(ms(worstDriftSec)) ms.",
+                "Landing error: where the first sample the listener hears really is, minus the in-point. It is COUNTED in frames back from the first double click after the landing (a whole ten seconds of content) and the file's decoder delay; no buffer label enters it. Positive = the listener starts late, negative = early (they hear audio from before the in-point).",
+                "Tap format: \(tapFormats.sorted().joined(separator: "; ")). Worst label-vs-count drift in any trial: \(ms(worstDriftSec)) ms.",
                 "Local files on a Simulator: DV-5 repeats this on real CDNs in M2.",
             ])
     }
 
-    /// Plays from zero and reports where the first click lands relative to where
-    /// it was authored. Reported only (see the reference note above).
-    private func contentOffset(_ url: URL, precise: Bool, descriptor: ClickTrackDescriptor) throws -> (value: Double?, state: String) {
+    /// Plays from zero and counts, from the stream's first sample, to the first
+    /// click (authored at `firstClickSec`).
+    private func streamDelay(_ url: URL, descriptor: ClickTrackDescriptor) throws -> (delaySec: Double?, runLabelSec: Double?, state: String) {
         let deck = MeasuredDeck()
         defer { deck.tearDown() }
-        _ = try deck.load(url, precise: precise, seekToSec: nil, rate: 1)
+        _ = try deck.load(url, precise: true, seekToSec: nil, rate: 1)
         deck.player.playImmediately(atRate: 1)
-        let first: () -> ClickEvent? = {
-            deck.recorder.snapshot().events.first { $0.believedSec >= descriptor.firstClickSec - 0.5 }
+        let first: () -> (event: ClickEvent, anchor: Double)? = {
+            let snapshot = deck.recorder.snapshot()
+            for event in snapshot.events where snapshot.runAnchors.indices.contains(event.run) {
+                let anchor = snapshot.runAnchors[event.run]
+                if event.countedSec - anchor >= descriptor.firstClickSec - 0.5 { return (event, anchor) }
+            }
+            return nil
         }
         spin(timeoutSec: descriptor.firstClickSec + 3) { first() != nil }
         deck.player.pause()
-        guard let event = first() else { return (nil, deck.stateDescription()) }
-        let offset = event.believedSec - descriptor.firstClickSec
-        return (abs(offset) < 0.5 ? offset : nil, deck.stateDescription())
+        guard let found = first() else { return (nil, nil, deck.stateDescription()) }
+        let delay = ClickRuler.delay(
+            firstClickCountedSec: found.event.countedSec, runAnchorSec: found.anchor, firstClickSec: descriptor.firstClickSec)
+        return (abs(delay) < 0.5 ? delay : nil, found.anchor, deck.stateDescription())
     }
 
     private func measureInPoint(
         _ url: URL, fixture: String, precise: Bool, requestedSec: Double,
-        contentOffsetSec: Double?, descriptor: ClickTrackDescriptor
+        delaySec: Double, descriptor: ClickTrackDescriptor
     ) throws -> InPointTrial {
         let deck = MeasuredDeck()
         defer { deck.tearDown() }
         let timing = try deck.load(url, precise: precise, seekToSec: requestedSec, rate: 1)
-        let believedLanding = deck.currentSec
-        /* Only what was rendered at or after the landing is evidence about it:
-           a buffer pulled from 0 before the seek has a believed time near 0. */
-        let from = believedLanding - 0.01
-        let d0 = contentOffsetSec ?? 0
-        let reading: () -> (errorSec: Double, doubleBelievedSec: Double, ambiguous: Bool)? = {
-            let clicks = ClickRuler.group(deck.recorder.snapshot().events, doubleGapSec: descriptor.doubleGapSec)
-            return ClickRuler.beliefError(clicks, fromBelievedSec: from, contentOffsetSec: d0,
-                                          doubleEverySec: descriptor.doubleEverySec)
+        let afterSeek = deck.currentSec
+        /* The landing run is one that STARTED near where AVFoundation believes
+           it landed; a run pulled from 0 before the seek is not evidence. */
+        let landingDouble: () -> (click: RulerClick, anchor: Double)? = {
+            let snapshot = deck.recorder.snapshot()
+            let clicks = ClickRuler.group(snapshot.events, doubleGapSec: descriptor.doubleGapSec)
+            for click in clicks where click.isDouble && snapshot.runAnchors.indices.contains(click.run) {
+                let anchor = snapshot.runAnchors[click.run]
+                if abs(anchor - afterSeek) < 1.0 { return (click, anchor) }
+            }
+            return nil
         }
         deck.player.playImmediately(atRate: 1)
-        spin(timeoutSec: descriptor.doubleEverySec + 2) { reading() != nil }
+        spin(timeoutSec: descriptor.doubleEverySec + 2) { landingDouble() != nil }
         /* A little more, so the residual has single clicks after the double. */
         spin(timeoutSec: 1.2) { false }
         deck.player.pause()
 
         let snapshot = deck.recorder.snapshot()
-        let heard = snapshot.events.filter { $0.believedSec >= from }
-        let result: (errorSec: Double, doubleBelievedSec: Double, ambiguous: Bool)? =
-            contentOffsetSec == nil ? nil : reading()
         let clicks = ClickRuler.group(snapshot.events, doubleGapSec: descriptor.doubleGapSec)
+        let found = landingDouble()
+        let start: ClickRuler.RunStart? = found.map {
+            ClickRuler.runStart(doubleCountedSec: $0.click.countedSec, runAnchorSec: $0.anchor,
+                                delaySec: delaySec, doubleEverySec: descriptor.doubleEverySec)
+        }
+        var residual: Double?
+        if let found, let start {
+            residual = ClickRuler.residualSec(clicks, run: found.click.run, runAnchorSec: found.anchor,
+                                              start: start, delaySec: delaySec)
+        }
+        let run: Int? = found?.click.run
+        let heard = snapshot.events.filter { $0.run == run }
+        let anchor: Double = found?.anchor ?? 0
         return InPointTrial(
             fixture: fixture,
             mode: precise ? "precise" : "approximate",
             requestedSec: requestedSec,
             timing: timing,
-            believedLandingSec: believedLanding,
-            contentOffsetSec: contentOffsetSec,
-            beliefErrorSec: result?.errorSec,
-            landingErrorSec: result.map { (believedLanding - $0.errorSec) - requestedSec },
-            ambiguous: result?.ambiguous ?? false,
-            residualSec: result.map {
-                ClickRuler.residualSec(clicks, fromBelievedSec: from, errorSec: $0.errorSec, contentOffsetSec: d0)
-            },
+            currentTimeAfterSeekSec: afterSeek,
+            delaySec: delaySec,
+            runLabelSec: found?.anchor,
+            runStartSec: start?.startSec,
+            landingErrorSec: start.map { $0.startSec - requestedSec },
+            markSec: start?.markSec,
+            ambiguous: start?.ambiguous ?? false,
+            residualSec: residual,
             clicksHeard: heard.count,
             minPeak: heard.map(\.peak).min(),
-            firstEvents: heard.prefix(8).map { [$0.believedSec, Double($0.peak)] },
+            firstEvents: heard.prefix(8).map { [$0.countedSec - anchor, Double($0.peak)] },
             discontinuities: snapshot.discontinuities,
             invalidRanges: snapshot.invalidRanges,
             tapFormat: snapshot.format,
-            labelRuns: snapshot.runs,
+            runAnchors: snapshot.runAnchors,
             maxLabelDriftSec: snapshot.maxLabelDriftSec,
             state: deck.stateDescription())
     }

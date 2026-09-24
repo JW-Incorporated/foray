@@ -27,7 +27,7 @@ final class ClickTapRecorder {
         var pulledEndSec: Double?
         /// Contiguous runs the timeline saw (a seek starts one), and the worst
         /// distance between a buffer's label and where counting put it.
-        var runs: Int
+        var runAnchors: [Double]
         var maxLabelDriftSec: Double
         var format: String
     }
@@ -84,7 +84,7 @@ final class ClickTapRecorder {
         if firstPulledSec == nil { firstPulledSec = start }
         let end = start + Double(frames) / sampleRate
         pulledEndSec = max(pulledEndSec ?? end, end)
-        detector.consume(samples, sampleRate: sampleRate, startSec: start)
+        detector.consume(samples, sampleRate: sampleRate, startSec: start, run: timeline.currentRun)
     }
 
     func snapshot() -> Snapshot {
@@ -98,7 +98,7 @@ final class ClickTapRecorder {
             sampleRate: sampleRate,
             firstPulledSec: firstPulledSec,
             pulledEndSec: pulledEndSec,
-            runs: timeline.runs,
+            runAnchors: timeline.runAnchors,
             maxLabelDriftSec: timeline.maxAbsDriftSec,
             format: format
         )
