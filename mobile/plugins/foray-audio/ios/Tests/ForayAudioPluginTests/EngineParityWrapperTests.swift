@@ -45,6 +45,8 @@ final class EngineParityWrapperTests: XCTestCase {
     func testRowsFamily() { assertParityFamily("rows", requireRunner: true) }
     func testNumberFormatFamily() { assertParityFamily("number-format", requireRunner: true) }
     func testDiagTokensFamily() { assertParityFamily("diag-tokens", requireRunner: true) }
+    /// NE-12s: the lock screen and car rules as the app links them.
+    func testMediaEpisodeFamily() { assertParityFamily("media-episode", requireRunner: true) }
 
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.

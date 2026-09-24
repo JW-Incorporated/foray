@@ -2732,6 +2732,87 @@ test("NE-07s: the queue-state runner is registered and both wrappers require it 
   }
 });
 
+/* ─────────── NE-12s: MediaMapping, the lock screen's rules in Swift ───────────
+ *
+ * docs/native-engine-plan.md §4.5 and card NE-12s. `Policy/MediaMapping.swift`
+ * ports player/media-session.js; the `media-episode` fixtures (NE-12j) are the
+ * contract and run in both XCTest wrappers. What the fixtures cannot see is
+ * where a NUMBER comes from, and the seek pair is the number that has already
+ * been wrong once: the founder's "In the app, I can jump back 15s and forward
+ * 30s. On the lock screen, it's 10s in both directions. Both should be 15/30"
+ * (2026-09-23) was a second copy of the pair drifting from the first. */
+
+/** A Swift numeric literal's value, or NaN for anything that is not a plain
+ *  decimal literal (hex, binary and octal forms are skipped, not guessed). */
+function swiftDecimalLiterals(code) {
+  return [...code.matchAll(/(?<![\w.])\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d[\d_]*)?(?![\w.])/g)]
+    .map((m) => ({ text: m[0], value: Number(m[0].replace(/_/g, "")) }));
+}
+
+test("NE-12s: no literal 15 or 30 (nor 15_000 / 30_000) anywhere in the engine core's Swift but the generated constants", () => {
+  /* The pair lives ONCE, in EngineConstants.swift, which NE-04 generates from
+     media-session.js and gen-constants.test.mjs keeps in step. Every other
+     file reads `EngineConstants.MediaSession.seekBackwardSec` /
+     `seekForwardSec` (MediaMapping re-exports them). A literal anywhere else
+     in the core is a second copy, however innocent its purpose, and the pin
+     does not try to tell a seek step from a coincidence: a real 30 that is
+     not the seek pair belongs in the JS it comes from, and then in the
+     generated file too (plan §6.7). Comments are stripped; a WHY paragraph
+     may say "15/30".
+     MUTATION: `case .seekForward: return .seekBy(30)` in MediaMapping.swift,
+     or `let step = 15_000` in any core source; each fails here. */
+  const sources = swiftFilesUnder(path.join(CORE_DIR, "Sources/ForayEngineCore"))
+    .filter((file) => path.basename(file) !== "EngineConstants.swift");
+  assert.ok(sources.some((f) => f.endsWith(path.join("Policy", "MediaMapping.swift"))), "MediaMapping.swift is missing from the core");
+  const forbidden = new Set([15, 30, 15000, 30000]);
+  const found = [];
+  for (const file of sources) {
+    for (const lit of swiftDecimalLiterals(stripSwiftComments(fs.readFileSync(file, "utf8")))) {
+      if (forbidden.has(lit.value)) found.push(`${path.relative(ROOT, file)}: ${lit.text}`);
+    }
+  }
+  assert.deepEqual(found, [], "a literal seek step in the core; read EngineConstants.MediaSession instead");
+
+  // Not vacuous: the port does read the pair from the generated file.
+  const mapping = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Policy/MediaMapping.swift"), "utf8"));
+  assert.match(mapping, /seekBackwardSec = EngineConstants\.MediaSession\.seekBackwardSec/);
+  assert.match(mapping, /seekForwardSec = EngineConstants\.MediaSession\.seekForwardSec/);
+  // And the scanner itself sees every spelling it claims to.
+  assert.deepEqual(swiftDecimalLiterals("a(15) b = 30.0; c = 15_000; d = 3e1; e = 0x1E; f = x15; g = 1.5")
+    .filter((l) => forbidden.has(l.value)).map((l) => l.text), ["15", "30.0", "15_000", "3e1"]);
+});
+
+test("NE-12s: both wrappers require the media-episode runner, the registry holds it, and nothing in the family is still owed", () => {
+  /* NE-12s burned media-episode out of swift-pending.json, so from here on its
+     cases must EXECUTE in Swift. A wrapper that lost its method, or a
+     `requireRunner: true` quietly dropped, would let a deregistered runner
+     read as "owed" for zero ids and stay green; the registry line is what
+     makes them run at all; and one pending id put back would hand the Swift
+     side a case it may fail without anyone noticing until the capability gate.
+     MUTATION: drop `requireRunner: true` from testMediaEpisodeFamily in either
+     wrapper, MediaEpisodeFamily.runner from ParityFamilies.all, or re-add
+     "media-episode/state-playing": "NE-12s" to swift-pending.json; each fails. */
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    assert.match(src, /func testMediaEpisodeFamily\(\)\s*\{\s*assertParityFamily\("media-episode", requireRunner: true\)/,
+      `${path.relative(ROOT, file)}: testMediaEpisodeFamily must require a media-episode runner`);
+  }
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  assert.ok(all[1].includes("MediaEpisodeFamily.runner"), "ParityFamilies.all has no MediaEpisodeFamily.runner");
+
+  const pending = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/swift-pending.json"), "utf8"));
+  assert.deepEqual(Object.keys(pending).filter((id) => id.startsWith("media-episode/")), [],
+    "media-episode is ported (NE-12s): no id of it may be pending");
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/manifest.json"), "utf8"));
+  assert.ok((manifest.families["media-episode"]?.ids ?? []).length >= 118, "the media-episode family shrank below NE-12j's 118 cases");
+});
+
 /* ─────────── NE-02: the reducer, copied into the core with its tests ───────────
  *
  * docs/native-engine-plan.md §4.1 and card NE-02. PlayerQueueState.swift and
