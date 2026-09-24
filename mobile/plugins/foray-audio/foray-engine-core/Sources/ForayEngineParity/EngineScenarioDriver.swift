@@ -400,7 +400,7 @@ final class ScenarioWorld {
         let entry = core.state.session
         var names: [String] = []
         var output = core.handle(input, now: now)
-        output = mutate(output, entry: entry)
+        output = mutate(output, entry: entry, turnHead: true)
         var rounds = 0
         while true {
             apply(output, names: &names)
@@ -411,6 +411,9 @@ final class ScenarioWorld {
             output = core.handle(.sessionResult(SessionResult(requestId: request, ok: ok,
                                                               error: ok ? nil : "cannot-start-playing", activateMs: 1)),
                                  now: now)
+            // A load usually follows the activation's answer, so a mutation
+            // must reach that part of the turn too.
+            output = mutate(output, entry: entry, turnHead: false)
         }
         for violation in SessionPolicy.audibleStartViolations(sessionAtEntry: entry, turn: names) {
             broke("audible-start:\(violation.cmd)@\(entry.rawValue)")
@@ -422,7 +425,7 @@ final class ScenarioWorld {
         return nil
     }
 
-    private func mutate(_ output: [EngineCommand], entry: SessionPolicy.Phase) -> [EngineCommand] {
+    private func mutate(_ output: [EngineCommand], entry: SessionPolicy.Phase, turnHead: Bool) -> [EngineCommand] {
         switch mutation {
         case .playOnLoad?:
             return output.flatMap { command -> [EngineCommand] in
@@ -430,7 +433,7 @@ final class ScenarioWorld {
                 return [command]
             }
         case .playWhileLost?:
-            return entry == .lostToInterruption ? [EngineCommand.deck(.play)] + output : output
+            return turnHead && entry == .lostToInterruption ? [EngineCommand.deck(.play)] + output : output
         case nil:
             return output
         }
