@@ -219,7 +219,7 @@ const FLOORS = {
      bridge is an item rather than a gap, that no two touching capsules share a
      tone, and that both themes' palettes clear 3:1. Every test names the
      mutation that kills it. */
-  "player/segment-strip.test.js": 49, // audit round 2 (L8, states-11): the resolved Foray carries the strip's estimated answer; 48 -> 49 // 2026-09-22 audit theme L: `stripTally`, the Foray header's counts from the strip's own model — clips are tape, and an unmeasured duration makes the runtime an estimate; 46 -> 48 // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
+  "player/segment-strip.test.js": 52, // audit round 2 (L8, p-foray-7): the page strip fits a 358px phone with floors and seams stepped down together, the metrics pinned to styles.css, a stale plan cleared; 49 -> 52 // audit round 2 (L8, states-11): the resolved Foray carries the strip's estimated answer; 48 -> 49 // 2026-09-22 audit theme L: `stripTally`, the Foray header's counts from the strip's own model — clips are tape, and an unmeasured duration makes the runtime an estimate; 46 -> 48 // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
   /* 41 -> 45 (2026-09-22 audit, theme F): a vertical flick that starts on the
      sticky strip ends as a SCROLL, never a zoom (it used to seek on release);
      a sideways drag and a hold-then-drift still scrub. */

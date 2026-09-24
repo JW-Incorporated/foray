@@ -85,6 +85,66 @@ export const NARRATOR_NAME = "4a's AI narrator";
 /** The three sizes #128 asks for: a list row, a card, the player. */
 export const SIZES = ["sm", "md", "lg"];
 
+/** Each size's bar floor and cross-episode seam, in px — the values
+    styles.css gives `.fy-strip--sm/md/lg` (`--seg-min`, `--seam`), restated
+    here because `stripFloorPlan` has to do arithmetic with them, and PINNED to
+    the stylesheet by segment-strip.test.js so the two cannot drift. The
+    within-episode hairline is `.fy-strip`'s 1px `gap`. */
+export const STRIP_METRICS = {
+  sm: { segMin: 5, seam: 3 },
+  md: { segMin: 6, seam: 4 },
+  lg: { segMin: 7, seam: 5 },
+};
+export const STRIP_HAIRLINE_PX = 1;
+
+/** The share of the strip's width its FLOORS may take before the strip stops
+    being a picture of the runtime. Past it, every bar sits on its floor and a
+    two-minute clip is drawn the width of a ten-second bridge. */
+export const FLOOR_BUDGET = 0.75;
+
+/**
+ * Floors and seams that FIT this strip in this width (audit round 2,
+ * p-foray-7) — or null when the size's own stylesheet values already do.
+ *
+ * THE DEFECT. The Foray page mounts one bar per item (the scrub and the fill
+ * index `strip.children[i]` as item i, see mountStrip), each floored at 7px
+ * with a 5px seam per capsule. A generated Foray — 56 items, 40 of them
+ * narrator bridges, 33 capsules — needs 607px of floors and breaks against a
+ * ~358px strip on a 390px phone: the tail ran off the right edge, and the
+ * page's bar-measured scrub refused the geometry and fell back to a flat map
+ * the page itself measures as up to 120 s wrong.
+ *
+ * THE RULE KEPT. styles.css: no bar may be narrower than the WHOLE break
+ * around it (hairline + seam), or a bridge reads as a gap. So floor and seam
+ * step down TOGETHER, `segMin >= hairline + seam + 1`, from the size's own
+ * values to 3px/1px, and the first step whose floors and breaks take no more
+ * than FLOOR_BUDGET of the width wins. Still one bar per item, so the scrub,
+ * the fill and "the bar under the finger" are untouched. A strip that does not
+ * fit even at 3px/1px (well past 80 items at a phone width) gets that step
+ * anyway: the least overflow there is.
+ *
+ * @param {object} model   from stripModel (flat, not merged)
+ * @param {number} width   the strip's content width, px
+ * @param {string} [size]
+ * @returns {{ segMin: number, seam: number } | null}
+ */
+export function stripFloorPlan(model, width, size = "md") {
+  const bars = Array.isArray(model?.segments) ? model.segments : [];
+  if (!bars.length || !(isNum(width) && width > 0)) return null;
+  const base = STRIP_METRICS[SIZES.includes(size) ? size : "md"];
+  const seams = bars.filter((b, i) => i > 0 && b.runStart).length;
+  const need = (segMin, seam) => bars.length * segMin + (bars.length - 1) * STRIP_HAIRLINE_PX + seams * seam;
+  const budget = width * FLOOR_BUDGET;
+  if (need(base.segMin, base.seam) <= budget) return null;
+  let step = null;
+  for (let seam = base.seam - 1; seam >= 1; seam--) {
+    step = { segMin: seam + STRIP_HAIRLINE_PX + 1, seam };
+    if (step.segMin > base.segMin) continue;
+    if (need(step.segMin, step.seam) <= budget) return step;
+  }
+  return step;
+}
+
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 const clamp01 = (n) => (isNum(n) ? Math.min(1, Math.max(0, n)) : 0);
@@ -567,7 +627,7 @@ function paintSegments(doc, parent, model, playing) {
  * are cards with no gesture. Passing the option here does nothing on purpose.
  * @returns {object} the model that was rendered
  */
-export function mountStrip(el, items, { document: doc, elapsed = null, playing = false, size = "md" } = {}) {
+export function mountStrip(el, items, { document: doc, elapsed = null, playing = false, size = "md", width = null } = {}) {
   const model = stripModel(items, { elapsed });
   if (!el || !doc || typeof doc.createElement !== "function") return model;
 
@@ -577,6 +637,15 @@ export function mountStrip(el, items, { document: doc, elapsed = null, playing =
   el.classList.add("fy-strip", `fy-strip--${chosen}`);
   for (const other of SIZES) if (other !== chosen) el.classList.remove(`fy-strip--${other}`);
   el.classList.toggle("has-position", Boolean(model.positioned));
+
+  /* FIT THE WIDTH IT HAS (p-foray-7): smaller floors and seams, stepped down
+     together, when this many bars cannot fit at the size's own — see
+     stripFloorPlan. Measured from the element (the page mounts into a laid-out
+     `#fy-strip`); an element that reports no width keeps the stylesheet's
+     values. Written through CSSOM, never a style attribute (CSP `style-src
+     'self'`), and cleared when the plan is null so a re-mount with a shorter
+     Foray goes back to the stylesheet. */
+  applyFloorPlan(el, stripFloorPlan(model, isNum(width) ? width : measuredWidth(el), chosen));
 
   /* A labelled graphic, and DELIBERATELY NOT A FOCUS STOP.
      `role="img"` makes the 22 bars presentational and gives a screen reader one
@@ -595,6 +664,26 @@ export function mountStrip(el, items, { document: doc, elapsed = null, playing =
 
   paintSegments(doc, el, model, playing);
   return model;
+}
+
+function measuredWidth(el) {
+  try {
+    const box = typeof el.getBoundingClientRect === "function" ? el.getBoundingClientRect() : null;
+    if (box && isNum(box.width) && box.width > 0) return box.width;
+  } catch (_) { /* not laid out */ }
+  return isNum(el.clientWidth) && el.clientWidth > 0 ? el.clientWidth : null;
+}
+
+function applyFloorPlan(el, plan) {
+  const style = el.style;
+  if (!style) return;
+  const set = (k, v) => {
+    if (typeof style.setProperty === "function") {
+      if (v == null) style.removeProperty(k); else style.setProperty(k, v);
+    } else if (v == null) delete style[k]; else style[k] = v;
+  };
+  set("--seg-min", plan ? `${plan.segMin}px` : null);
+  set("--seam", plan ? `${plan.seam}px` : null);
 }
 
 /**
