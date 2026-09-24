@@ -147,7 +147,7 @@ final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate {
     /// not the same.
     private func deliver(_ end: SpeechEnd, for utterance: AVSpeechUtterance) {
         let hand: () -> Void = { [weak self] in
-            guard let self, utterance === self.current else { return }
+            guard let self else { return }
             self.current = nil
             self.onFinish?(end)
         }
