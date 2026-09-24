@@ -175,7 +175,23 @@ function basenameIndex() {
  * @param {string} [citingDoc]  the repo-relative path of the document that
  *   wrote the citation, required for strategy 1.
  */
+/* Files every deploy SERVES but the tree does not hold: the deploy stamp, written
+   into the built site by tools/ci/generate-manifest.mjs and gitignored since issue
+   #701 (committed, it changed on every merge and conflicted with every open PR).
+   A legal document may name them — the policy names the Foray directory pointer
+   the app fetches — so they resolve to the module that writes them, and
+   `every bare file a legal document names exists` checks that module still names
+   each one, so a rename in the generator is still red here. */
+const BUILD_OUTPUTS = new Map([
+  ["deploy-manifest.json", "tools/ci/generate-manifest.mjs"],
+  ["data/forays-directory.json", "tools/ci/forays-directory.mjs"],
+]);
+
 function resolveFile(cited, citingDoc) {
+  if (BUILD_OUTPUTS.has(cited)) {
+    const writer = BUILD_OUTPUTS.get(cited);
+    return fs.existsSync(path.join(ROOT, writer)) && read(writer).includes(`"${cited}"`) ? writer : null;
+  }
   /* Sibling-relative goes FIRST for Markdown citations, ahead of the exact
      repo-root check: a link written as `./data-safety.md` in
      docs/legal/privacy-policy.md means docs/legal/data-safety.md, full stop,

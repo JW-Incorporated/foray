@@ -1,0 +1,115 @@
+# Deploy GitHub Pages (https://jw-incorporated.github.io/foray/) from `main`,
+# with the deploy stamp generated at build time (issue #701).
+#
+# WHY THIS WORKFLOW EXISTS
+# Pages used to "deploy from a branch": it served `main`'s root verbatim, with no
+# build step, so the service worker's `deploy-manifest.json` and its stamped
+# `sw.js` BUILD_ID (and the Foray directory pointer) had to be COMMITTED. They
+# are content hashes over every shipped file, so every merge to `main` changed
+# them and every other open PR conflicted with `main` at once — PRs merged one at
+# a time, each with a hand resolution (issue #701). They are build outputs now,
+# and this is the build that Pages never had.
+#
+# WHAT IT DEPLOYS: the same tree the branch deploy served, plus the stamp.
+# `actions/checkout` of the pushed commit, then `generate-manifest.mjs --stamp .`
+# on that throwaway checkout (writes deploy-manifest.json and
+# data/forays-directory.json, stamps sw.js's BUILD_ID, re-verifies all three
+# against the bytes), then the whole checkout as the Pages artifact.
+# Deliberately NOT `prepare-dist.mjs`'s `dist/`: Pages serves more than the app
+# (`player/assets/interlude-placeholder.wav` is fetched by absolute URL from
+# player/foray-queue.js; docs pages are linked from outside), and narrowing what
+# Pages serves is a separate decision from #701. `.nojekyll` is in the tree, as
+# before, so nothing is transformed. `upload-pages-artifact` leaves out `.git`
+# and `.github`, as the branch deploy effectively did.
+#
+# ONE-TIME SETTINGS FLIP, OWNED BY A HUMAN (production infra, CLAUDE.md):
+# Settings -> Pages -> Build and deployment -> Source: "GitHub Actions". Until
+# then this workflow stamps and verifies but SKIPS the deploy with a warning
+# (the "Is Pages set to deploy from GitHub Actions?" step) — it must not go red,
+# because a red run on main's head holds every app release (release-trigger's
+# HOLD_MAIN_RED). Meanwhile the branch deploy keeps serving `main` root WITHOUT
+# a manifest, so the service worker's install() finds no deploy-manifest.json,
+# throws, and never installs; existing visitors keep their last worker, which is
+# network-first, so every page still loads current code while online. Degraded
+# offline, not broken. Flip first, then merge, and there is no gap at all; flip
+# later, then re-run this workflow, and the gap closes then.
+
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write # deploy-pages
+  id-token: write # deploy-pages authenticates with an OIDC token
+
+concurrency:
+  # One deploy at a time; a newer push supersedes a queued one but never cancels
+  # a deploy mid-flight (a half-cancelled Pages deploy is the torn state the
+  # stamp exists to prevent).
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        # Full history (blobless: commits and trees only). The stamp's built_at is
+        # the committer date of the newest commit that touched a stamp input
+        # (tools/ci/generate-manifest.mjs, stampTimestamp) — the same date the
+        # Vercel deploy of this content carries. A shallow clone could only
+        # answer later than that.
+        with:
+          fetch-depth: 0
+          filter: blob:none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Stamp the checkout (deploy-manifest.json, the Foray directory pointer, sw.js BUILD_ID)
+        env:
+          CI: "true"
+        run: node tools/ci/generate-manifest.mjs --stamp .
+
+      # Until HUMAN-ACTIONS #110's settings flip, Pages is still "Deploy from a
+      # branch" (build_type "legacy") and deploy-pages would fail. A red `pages`
+      # run on main's head is a RED main to release-trigger
+      # (tools/release/watch-release.mjs, mainState), which then holds every app
+      # release (HOLD_MAIN_RED). So the deploy is SKIPPED, with a warning, while
+      # the source is definitively "legacy"; the stamp above still runs and
+      # verifies. Any other answer — "workflow", or the API not answering —
+      # deploys as normal, and a real deploy failure stays red.
+      - name: Is Pages set to deploy from GitHub Actions?
+        id: mode
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          BUILD_TYPE=$(gh api "repos/$REPO/pages" --jq .build_type 2>/dev/null || echo unknown)
+          echo "Pages build_type: $BUILD_TYPE"
+          if [ "$BUILD_TYPE" = "legacy" ]; then
+            echo "::warning title=Pages not deployed::Settings -> Pages -> Source is still 'Deploy from a branch'. The stamp verified, but this run does not deploy. Switch the source to 'GitHub Actions' (HUMAN-ACTIONS #110), then re-run this workflow."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.mode.outputs.deploy == 'true'
+        uses: actions/configure-pages@v5
+
+      - if: steps.mode.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - if: steps.mode.outputs.deploy == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4
