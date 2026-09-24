@@ -114,10 +114,59 @@ test("a bare http(s) URL becomes a link that opens off-origin safely", () => {
 });
 
 test("a timestamp becomes a button carrying its position in seconds", () => {
-  const out = html("12:34 The interesting bit");
+  /* Mid-sentence: the inline form. (A line that STARTS with a stamp is the
+     chapter-row form — the tests just below.) */
+  const out = html("Skip to 12:34 for the interesting bit");
   assert.match(out, /<button type="button" class="ep-ts" data-ts="754"/);
   assert.match(out, />12:34<\/button>/);
   assert.match(out, /aria-label="Play from 12:34"/, "a bare number read aloud says nothing about what it does");
+});
+
+/* ---------- a stamp-led line is a chapter row (audit round 2, touch-10) ---------- */
+
+test("a line that starts with a timestamp is one 44px chapter row: the stamp and its title are one target", () => {
+  /* Publishers write chapter lists one stamp per line; as inline buttons the
+     stamps' hit boxes met the stamps on the lines above and below, and the
+     later one won. As rows, the line IS the target, the shape the Chapters
+     list already has. MUTATION: make descChapterRowHtml return "" always ->
+     red (every stamp goes back inline). */
+  const out = html("00:00 Intro\n12:34 - Tokamaks\n(1:02:45) Stellarators");
+  const rows = [...out.matchAll(/<button type="button" class="ep-chapter-row" data-ts="(\d+)" aria-label="([^"]*)"><span class="ep-chapter-time">([^<]*)<\/span><span class="ep-chapter-title">([^<]*)<\/span><\/button>/g)]
+    .map((m) => m.slice(1));
+  assert.deepStrictEqual(rows, [
+    ["0", "Play from 00:00, Intro", "00:00", "Intro"],
+    ["754", "Play from 12:34, Tokamaks", "12:34", "Tokamaks"],
+    ["3765", "Play from 1:02:45, Stellarators", "1:02:45", "Stellarators"],
+  ], "each line is one row: its stamp, its title with the separator dropped, and a label that says both");
+  assert.ok(!out.includes('class="ep-ts"'), "no inline stamp is left on a chapter line");
+});
+
+test("a chapter row takes its line's newline with it, so pre-line paints no blank line under every chapter", () => {
+  /* The row is a block; a "\n" opening the next run would be an empty line.
+     MUTATION: keep the newline after a row -> red. Blank lines the publisher
+     wrote survive (their own "\n" stays). */
+  const out = html("Sponsor line\n\n00:00 Intro\n05:00 Next\nAfter the list");
+  assert.match(out, /Sponsor line\n\n<button[^>]*data-ts="0"/, "the publisher's blank line above the list stays");
+  assert.match(out, /<\/button><button[^>]*data-ts="300"/, "consecutive rows sit together");
+  assert.match(out, /data-ts="300"[\s\S]*?<\/button>After the list$/, "and the prose after resumes with no empty line");
+});
+
+test("a stamp-led line with a link or a second stamp on it stays inline — no link inside a button, no two-stamp row", () => {
+  /* MUTATION: drop the `DESC_TOKEN_RE.test(rest)` guard -> red: the URL would
+     be escaped text inside a button, and "2:00 … 59:00" one row seeking to 2:00. */
+  const withUrl = html("03:00 Notes at https://example.com/x");
+  assert.ok(!withUrl.includes("ep-chapter-row"));
+  assert.match(withUrl, /class="ep-ts" data-ts="180"/);
+  assert.match(withUrl, /<a href="https:\/\/example\.com\/x"/);
+  const twoStamps = html("2:00 early and 59:00 late");
+  assert.ok(!twoStamps.includes("ep-chapter-row"));
+  assert.match(twoStamps, /data-ts="120"[\s\S]*data-ts="3540"/);
+});
+
+test("a stamp-led line past the episode's end stays plain text, like any other stamp that far", () => {
+  const out = html("59:00 Credits", 30 * 60);
+  assert.ok(!out.includes("<button"), "no control seeks past the end");
+  assert.strictEqual(out, "59:00 Credits");
 });
 
 test("a full description keeps its other text verbatim and in order", () => {

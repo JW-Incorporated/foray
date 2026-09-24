@@ -36,7 +36,8 @@
   --radius-lg: 16px;     /* cards, rows, inputs, panels inside a sheet            */
   --radius-xl: 22px;     /* the sheets' top corners                               */
   --radius-pill: 999px;  /* chips, capsule CTAs, the search pill, grab handles    */
-  --radius-round: 50%;   /* circular controls: play, thumbs, q-num, companion ✕   */
+  --radius-round: 50%;   /* circular controls: play, thumbs, q-num, companion ✕,
+                            and every control on an Up Next row                  */
 
   /* TYPE. Two faces, used by ROLE (docs: scratchpad design-notes / the audit's
      R12): the display face names things — the wordmark, page/section/card/row
@@ -56,6 +57,12 @@
   --fs-2xl: 1.3rem;      /* page titles, the wordmark, the greeting brand    */
   --fs-glyph: 1.35rem;   /* icon glyphs drawn from text (☰ ↻ ‹ ›)             */
 
+  /* THE GUTTER (audit round 2, visual-13): one inset from the screen edge to
+     content, for every page, Home, the Now Playing sheet and the other
+     sheets. It was 12 on pages, 14 on Home, 16 in Now Playing and 18 in the
+     sheets, so the same episode title started at a different x on its page
+     and in the player. 16 is the iPhone's own content margin. */
+  --gutter: 16px;
   --topbar-h: 44px;
   /* U-12: the drawer is the top-most chrome. Defined here rather than at the
      drawer's own rules so the whole stacking ladder has one authored number;
@@ -65,7 +72,7 @@
   /* ELEVATION. Four levels, each with one job; colour-bearing, so `body.ui-v2`
      restates them below (the v2 page is dark whatever the OS says). */
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);                         /* thumbnails in rows and cards        */
-  --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.28); /* cards, rows, inputs                 */
+  --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.28); /* cards and page fields (rows sit flat) */
   --shadow-lift: 0 8px 24px rgba(0,0,0,0.35);                     /* large artwork, floating pills, the magnifier */
   --shadow-up: 0 -6px 24px rgba(0,0,0,0.35);                      /* everything docked at the bottom edge */
   --serif: Georgia, "Iowan Old Style", "Palatino Linotype", ui-serif, serif;
@@ -343,18 +350,30 @@ html, body {
    `.fy-chip` (visual pass 1, 2026-09-23): the one pill for every tap-a-subject
    is ~35px tall by its own padding, and it is the whole surface of Search's
    browse cloud, Create's suggestions and the reason sheet. The pills sit 8px
-   apart, so the 44px boxes meet with a pixel to spare and never stack. */
+   apart, so the 44px boxes meet with a pixel to spare and never stack.
+
+   ROUND 2 (touch-5): the list had been written from the controls the first
+   audit measured, so every control it had not measured stayed at 26-41px —
+   Follow, every sheet's Cancel and primary, the Interests reset (26px), the
+   version-behind notice's Reload and ✕ (30px), a narration beat's "more".
+   test/tap-targets.test.js now walks every <button> class the app renders
+   and fails on one that is neither here nor ≥44px by its own size, so the
+   next new control cannot be missed the same way. */
 :where(
   .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
-  .voice-row-audition, .fy-chip
+  .voice-row-audition, .fy-chip,
+  button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
+  .fy-script-more
 ) {
   position: relative;
 }
 :where(
   .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
-  .voice-row-audition, .fy-chip
+  .voice-row-audition, .fy-chip,
+  button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
+  .fy-script-more
 )::after {
   content: "";
   position: absolute;
@@ -362,6 +381,30 @@ html, body {
   width: max(100%, 44px);
   height: max(100%, 44px);
   transform: translate(-50%, -50%);
+}
+
+/* AN IN-APP LINK IS NOT A WEB LINK (audit round 2, touch-3). The stretched-
+   link cards (qa row 78: `.mc-link`, `.ep-title-link`, `.hv2-jbi-link`) made
+   a whole card face one `<a href="#/…">`, and in the app shell a long-press on
+   one opened WKWebView's preview of `capacitor://localhost/#/…` with Open /
+   Copy Link — a web affordance with nothing behind it in an app. Two layers:
+   `ios.allowsLinkPreview: false` in mobile/capacitor.config.json (the peek),
+   and this (the callout menu and the text-selection loupe on a held card),
+   by the ROUTE rather than by a class list, so the next card is covered on
+   the day it lands. Links off the app (a publisher's URL in the notes, the
+   ↗ credit) keep the callout: those really are web links. */
+a[href^="#/"] {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* The grey tap flash is WebKit's stand-in for a pressed state. Where a card
+   authors its own press (`:active` on the card), the flash only doubles it —
+   a grey box on the link's text inside a card that is already darkening — so
+   it goes, there and only there; test/tap-targets.test.js holds each of these
+   to an authored press. */
+.mc-link, .ep-row .ep-title-link, .pl-row, .page-link-row, .drawer-item, .drawer-section {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Visually hidden, still read: the one live region app.js's announce() writes
@@ -474,6 +517,13 @@ html, body {
 @media (max-width: 360px) {
   .topbar-tag { display: none; }
 }
+/* ONE WORDMARK ON HOME (audit round 2, p-first-8). Home's greeting draws the
+   brand ("Good morning 4a", the same Fraunces italic at the same size), so the
+   bar's copy stacked ~50px above it read as a mistake, and made the greeting
+   look addressed to "4a". On Home the bar keeps its tagline — the line that
+   says what this app is — and leaves the mark to the greeting; every other
+   page, where there is no greeting, keeps it. */
+body.view-home .topbar h1 .wordmark { display: none; }
 .topbar button {
   /* 42px to look at — the bar's content box is 43px (44 less its hairline),
      which test/home-layout.test.js pins — and 44px to hit, through the
@@ -557,7 +607,7 @@ html, body {
   border-radius: var(--radius-md);
   font-family: var(--font-display);
   font-size: var(--fs-lg);
-  font-weight: 700;
+  font-weight: 600; /* a nav row's title: 600, like every row title (round 2, visual-15) */
   color: var(--text);
   text-decoration: none;
 }
@@ -565,7 +615,10 @@ html, body {
 .drawer-item {
   display: block;
   margin: 1px 0;
-  padding: 10px 14px 10px 22px;
+  /* 44px by its own size (round 2, touch-5): 12 + ~20 + 12. Stacked 1px
+     apart, a hit box grown past the item would overlap its neighbour's. */
+  min-height: 44px;
+  padding: 12px 14px 12px 22px;
   border-radius: var(--radius-md);
   color: var(--text-dim);
   text-decoration: none;
@@ -724,21 +777,15 @@ html, body {
   min-height: 0;
   overflow: hidden;
   transition: transform .12s ease;
-  /* Branch color now lives on the kicker dot (.mc-dot), not a full-height
-     border — a color-coded sidebar reads as a spreadsheet row, not a card. */
-  --branch-color: var(--accent);
+  /* NO BRANCH DOT (audit round 2, visual-3). The kicker used to open with a
+     7px dot meant to encode the subject: ten of 39 branches had a colour (raw
+     v1-era hexes outside the palette) and the other 29 — 42% of the pool — all
+     fell to violet, so the dot said nothing, and on a Stretch card it sat 6px
+     before the violet tag and read as its bullet. The title names the subject
+     and the tag carries Stretch; ui-tokens.test.js keeps the dot gone.
+     (data-branch stays on the card: the first-run tests read it.) */
 }
 .mini-card:active { background: var(--surface-2); transform: scale(0.99); }
-.mini-card[data-branch="engineering"] { --branch-color: #4c9aff; }
-.mini-card[data-branch="science"]     { --branch-color: #b07ce8; }
-.mini-card[data-branch="history"]     { --branch-color: #e8a04c; }
-.mini-card[data-branch="craft"]       { --branch-color: #56c58f; }
-.mini-card[data-branch="business"]    { --branch-color: #4cc9c0; }
-.mini-card[data-branch="comedy"]      { --branch-color: #e87ca0; }
-.mini-card[data-branch="food"]        { --branch-color: #e8734c; }
-.mini-card[data-branch="true-crime"]  { --branch-color: #c85a5a; }
-.mini-card[data-branch="health"]      { --branch-color: #6fbf73; }
-.mini-card[data-branch="culture"]     { --branch-color: #d4a5ff; }
 .mini-card img, .art-ph {
   width: 56px; height: 56px;
   border-radius: var(--radius-sm);
@@ -757,13 +804,6 @@ html, body {
   letter-spacing: 0.05em;
   color: var(--text-dim);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.mc-kicker::before {
-  content: "";
-  flex: none;
-  width: 7px; height: 7px;
-  border-radius: var(--radius-round);
-  background: var(--branch-color);
 }
 .mc-stretch {
   display: inline-block;
@@ -838,6 +878,26 @@ button.show-star {
 }
 button.show-star.on { color: var(--gold); border-color: var(--gold); }
 
+/* THE ONE TEXT FIELD (audit round 2, visual-8). Playlists' and Create's
+   fields were 52px at the card radius, the in-show search 48px, and the three
+   sheet fields (first-run's typed subject, the feedback note, Delete-my-data's
+   confirm) ~40px at the control radius in the body step — three shapes for
+   one object, and the token table below the scale already said "inputs" read
+   `--radius-lg`. One rule for the element, so a new field is right by
+   default: 48px, the card radius, the title step (16px, which is also the
+   size under which iOS zooms the page onto a focused field). A field keeps
+   only its surface (page fields sit on `--surface` and are lifted; sheet
+   fields sit on `--surface-2`). The search capsule is the one exception, by
+   design: its field gives up its own box to the floating pill (`#sh-compose`).
+   test/ui-tokens.test.js fails on a field rule that restates any of these. */
+input[type="text"] {
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: inherit; font-size: var(--fs-lg);
+}
 #pl-form {
   flex: none;
   display: flex; gap: 8px;
@@ -845,14 +905,8 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 }
 #pl-input {
   flex: 1;
-  min-height: 52px;
-  padding: 0 16px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
   background: var(--surface);
   box-shadow: var(--shadow);
-  color: var(--text);
-  font-size: var(--fs-lg);
 }
 #pl-form button {
   flex: none;
@@ -860,8 +914,8 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   min-height: 48px;
   /* A CAPSULE, like every other primary CTA (Get started, Follow) — it sat at
      the card/input radius and read as a lozenge split in two with the field
-     beside it (visual pass 1, 2026-09-23). The field keeps `--radius-lg`, as
-     Search's pill-beside-field already does. */
+     beside it (visual pass 1, 2026-09-23). The field keeps `--radius-lg`,
+     like every text field (`input[type="text"]` above). */
   border-radius: var(--radius-pill);
   border: 1px solid var(--accent);
   background: var(--accent);
@@ -893,14 +947,8 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 }
 #cr-input {
   flex: 1;
-  min-height: 52px;
-  padding: 0 16px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
   background: var(--surface);
   box-shadow: var(--shadow);
-  color: var(--text);
-  font-size: var(--fs-lg);
 }
 #cr-form button {
   flex: none;
@@ -942,6 +990,7 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 }
 .cr-toggle-btn {
   flex: 1;
+  min-height: 44px;
   padding: 10px 8px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--line);
@@ -1036,9 +1085,15 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   gap: 2px;
   min-width: 0;
 }
+/* Two lines at most, like Apple's (round 2, search-11): 152 index titles run
+   past 80 characters and made 3-4 line rows beside 1-line ones. The row sets
+   `title=` to the full name (app.js showResultRow). */
 .show-result-title {
   font-weight: 600;
   font-size: var(--fs-lg);
+  min-width: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere;
 }
 /* One line, ellipsed. The byline explains a row; it never becomes the row. */
 .show-result-by {
@@ -1115,6 +1170,9 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 }
 .shell-notice button:active { background: var(--surface-2); }
 #shell-notice-dismiss {
+  /* 44px wide by its own size, so the tap-target rule's box grows it only
+     vertically and never reaches Reload 10px to its left (round 2, touch-5). */
+  min-width: 44px;
   border: none;
   background: none;
   color: var(--text-dim);
@@ -1127,7 +1185,7 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 .page {
   max-width: 680px;
   margin: 0 auto;
-  padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
+  padding: 12px var(--gutter) calc(24px + env(safe-area-inset-bottom));
 }
 /* Wyatt (2026-09-05): on a long episode list the ‹ bar scrolling off with
    the rest of the page (plain document flow, no special CSS at all before
@@ -1172,6 +1230,18 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 }
 .page-head h2 { margin: 0; font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 700; }
 .page-head .sub { margin: 2px 0 0; color: var(--text-dim); font-size: var(--fs-sm); }
+/* THE EPISODE PAGE'S HEAD IS AT MOST TWO LINES, AT THE PLAYER'S SIZE (audit
+   round 2, visual-4). The whole title rode in the sticky head at the page-title
+   step — three lines of a Lex Fridman title pinned ~125px under the topbar, a
+   fifth of the screen, and back again on every upward scroll — while the same
+   title sat a step smaller in Now Playing. One `.fp-s-title` size on both
+   surfaces (`--fs-xl`), clamped to two lines here; the full title is still
+   the heading a screen reader reads (the clamp hides nothing from it). */
+.page-head .fp-s-title {
+  font-size: var(--fs-xl);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 /* A `.page-head-stacked` modifier briefly lived here, for a variant of this
    header that carried the search field as a full-width second row. The field
@@ -1182,15 +1252,17 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 
 /* ---------- interests page (#/interests, U-07) ---------- */
 .interest-group { margin-bottom: 20px; }
+/* A section title, at the section-title step (round 2, visual-12): it was
+   the row-title size at 700, one of three sizes for "the heading over a group
+   of cards" (Home's are --fs-xl 600, a Foray's running order was --fs-lg). */
 .interest-group-label {
-  font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700;
+  font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600;
   margin: 0 0 8px; color: var(--text);
 }
 .interest-row {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg); /* a row on --surface reads the row radius */
-  box-shadow: var(--shadow);
   padding: 12px;
   margin-bottom: 8px;
 }
@@ -1199,7 +1271,7 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
   margin-bottom: 8px;
 }
-.interest-row-name { font-weight: 700; font-size: var(--fs-lg); }
+.interest-row-name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-lg); }
 .interest-row-controls { display: flex; align-items: center; gap: 10px; }
 /* The old prototype fixed this exact regression twice (docs/ux/foray-m3-prototype.html):
    a slider with no touch-action fights the page's own vertical scroll on a
@@ -1218,6 +1290,14 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 }
 .interest-reset:disabled { opacity: 0.5; }
 
+/* A LIST ROW SITS FLAT; A CARD IS LIFTED (audit round 2, visual-14). The
+   Library column went lifted (Forays), flat (Followed shows), lifted (Saved),
+   and a Foray's clip cards were flat one tap after lifted episode rows — qa 53
+   had left the elevation "as taste" and it then showed on three pages. The
+   decision, Apple's: rows in a list are a grouped surface with a hairline and
+   no shadow (.ep-row, .pl-row, .show-result, .fy-row, .fy-src, .fy-home-row,
+   .interest-row); `--shadow` is for the cards on Home's rails and grid, and
+   for the fields. test/ui-tokens.test.js enumerates the rows. */
 .ep-row, .pl-row {
   display: flex; align-items: center; gap: 10px;
   background: var(--surface);
@@ -1226,7 +1306,6 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
      in the same search results list, and 2px of corner drift between
      neighbouring rows is an accident, not a design (audit 2026-09-22, R12). */
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
   padding: 12px;
   margin-bottom: 8px;
   color: var(--text);
@@ -1242,16 +1321,22 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
 .ep-row .s .ep-progress { color: var(--text); }
 .ep-row .s .ep-progress.is-played { color: inherit; }
 .ep-title-link { color: inherit; text-decoration: none; }
-.ep-title-link:active { text-decoration: underline; }
-/* THE WHOLE TEXT BLOCK OPENS THE EPISODE (audit 2026-09-22). A row carried two
-   bare links ~2px apart — the title (episode page) over the show name (show
-   page) — and nothing else: a tap aimed at the title often landed on the show
-   and left for a different page, and a tap in the empty space right of a short
-   title did nothing although the card looks like one big target. The title
-   link's ::after now covers the whole `.info` block (the "stretched link"
-   pattern — still one real `<a href>`, so long-press and open-in-new-tab keep
-   working), and the show link is the one explicit exception, lifted above it. */
-.ep-row .info { position: relative; }
+/* THE WHOLE ROW OPENS THE EPISODE (audit 2026-09-22, then round 2 touch-9). A
+   row carried two bare links ~2px apart — the title (episode page) over the
+   show name (show page) — and nothing else: a tap aimed at the title often
+   landed on the show and left for a different page, and a tap in the empty
+   space right of a short title did nothing although the card looks like one
+   big target. The title link's ::after became a "stretched link" over the text
+   block; then the controls wrapped to a second tier and half the card went
+   dead again (the space right of ▶ ☆ + Up Next, the padding ring). So the ROW
+   is the containing block now: the ::after covers the whole card, the controls
+   and the show link are lifted above it, and the card answers the press as one
+   surface — it used to underline the title text and nothing else. Long-press
+   is not a feature here: in the app shell it offered a link preview of a
+   `capacitor://` URL (see `a[href^="#/"]` near the top of this file). */
+.ep-row { position: relative; }
+.ep-row:has(.ep-title-link:active) { background: var(--surface-2); }
+.ep-row > :is(.play-btn, button.star, button.up-next) { z-index: 1; }
 /* THE EPISODE ROW HAS TWO TIERS (audit 2026-09-22, persona 40). Number + title
    + ▶ + ☆ + "+ Up Next" on one line left the title ~114px at 390px, so a
    show's list was a column of six-line titles. The number and the text block
@@ -1261,10 +1346,27 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
    AFTER `.ep-row .info`'s `flex: 1` above, which has the same specificity, so
    the full-width basis wins the cascade. */
 .ep-row { flex-wrap: wrap; row-gap: 8px; }
-.ep-row > .info { flex: 1 1 calc(100% - 36px); }
-.ep-row > .info + :is(.play-btn, button.star, button.up-next, .not-playable) { margin-left: 36px; }
+.ep-row > .info { flex: 1 1 100%; }
+/* Only a list whose ORDER is the point carries the number (audit round 2,
+   visual-10; app.js `orderedRowCtx`): a playlist and Up Next. Where it is
+   there, the text block gives it its 36px and the second tier indents to
+   match, so the controls line up under the title, not under the number. */
+.ep-row > .q-num + .info { flex-basis: calc(100% - 36px); }
+.ep-row > .q-num + .info + :is(.play-btn, button.star, button.up-next, .not-playable) { margin-left: 36px; }
 .ep-row .ep-title-link::after { content: ""; position: absolute; inset: 0; }
-.ep-row .info .show-link { position: relative; z-index: 1; }
+/* The one link inside the row that is not the episode. Lifted above the
+   stretched link, and grown past its glyphs (audit round 2, touch-6): as a
+   bare inline box it was a ~13px target with the episode link on every side
+   of it, so a thumb meant for the show name opened the episode. Vertical
+   padding on an inline box grows the hit box without moving the line (and a
+   vertical margin would do nothing, so none is written); 5px makes it ~26px,
+   past WCAG 2.5.8's 24, while reaching only the title line's half-leading
+   above and nothing of the second tier below (8px away). The horizontal
+   margin cancels the horizontal padding so the text stays where it was. */
+.ep-row .info .show-link {
+  position: relative; z-index: 1;
+  padding: 5px 6px; margin: 0 -6px;
+}
 /* Publisher-set explicit-content marker (kanban card t_02c6bb0b), matching the
    small square "E" every mainstream podcast app puts next to a title —
    deliberately not a color-only signal (text label, not a dot) so it still
@@ -1313,10 +1415,7 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
    secondary rather than broken: it is still a real episode, just not one Foray
    can play in the app today. Dashed border rather than a colour, so the
    distinction survives without depending on hue alone. */
-.ep-row.gone {
-  border-style: dashed;
-  box-shadow: none;
-}
+.ep-row.gone { border-style: dashed; }
 .ep-row.gone .t { color: var(--text-dim); font-weight: 600; }
 
 /* ---------- Library (#/library) ---------- */
@@ -1330,12 +1429,16 @@ button.show-star.on { color: var(--gold); border-color: var(--gold); }
   color: var(--text-dim);
 }
 .lib-more {
-  display: block; text-align: center; padding: 10px;
+  /* "Show all" was ~40px of text in a block; 44px by its own size now,
+     centred (round 2, touch-5). */
+  display: flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 0 10px;
   color: var(--text-dim); font-size: var(--fs-sm); text-decoration: none;
 }
 .lib-more:active { color: var(--text); }
 
 button.danger {
+  min-height: 44px;
   margin-top: 12px;
   background: none;
   border: none;
@@ -1386,10 +1489,13 @@ button.up-next.on { color: var(--accent); border-color: var(--accent); }
   margin-left: auto;
   display: flex; flex-direction: row; gap: 8px;
 }
+/* ROUND, like every other control on the row (round 2, visual-11): ▶ and ✕
+   are circles, and the ↑ ↓ pair sat between them as rounded squares — two
+   silhouettes for four 40px buttons on one line. */
 button.reorder {
   flex: none;
   width: 40px; height: 40px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-round);
   border: 1px solid var(--line);
   background: var(--surface-2);
   color: var(--text);
@@ -1769,7 +1875,16 @@ body.sh-searching .tab-bar { display: none; }
   box-shadow: none;
   border-radius: 0;
 }
-#sh-compose #sh-input:focus { outline: none; }
+/* The field gave up its box to the pill, so the PILL carries the ring (audit
+   round 2, a11y-3): `#sh-compose #sh-input:focus { outline: none }` out-ranked
+   the one focus ring and nothing replaced it, so a keyboard or switch user
+   tabbed into the app's primary field and saw only a caret. The ring is the
+   same authored one, drawn on the capsule while anything inside it has focus;
+   the field's own ring would sit inside the capsule as a second outline.
+   test/ui-tokens.test.js refuses an `outline: none` that is neither
+   `:not(:focus-visible)` nor paired with a ring on an ancestor, like this. */
+#sh-compose #sh-form:focus-within { outline: 2px solid var(--amber); outline-offset: 2px; }
+#sh-compose #sh-form #sh-input:focus { outline: none; }
 /* The leading magnifier: what says "search field" rather than "compose box",
    and the one of Apple's two glyphs we can honour — app.js says why their
    trailing microphone is deliberately not copied. */
@@ -1845,7 +1960,7 @@ body.sh-compose #view { padding-bottom: var(--sh-compose-h); }
   background: none; border: 0; color: inherit; text-align: left; cursor: pointer; padding: 0;
 }
 .fp-title, .fp-show, .fp-err { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fp-title { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 700; color: var(--text); }
+.fp-title { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 600; color: var(--text); }
 .fp-show { font-size: var(--fs-xs); color: var(--text-dim); }
 /* A failed play (player/client.js `setPlayFailure`, audit 2026-09-22): the show
    line's slot and size, in the error tone `.fy-error` uses on the Foray page. */
@@ -2014,7 +2129,7 @@ body.fp-expanded { overflow: hidden; }
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+  padding: 0 var(--gutter) calc(24px + env(safe-area-inset-bottom));
   max-width: 680px;          /* same measure .fy-panel keeps, for the same reason */
   width: 100%;
   margin: 0 auto;
@@ -2086,7 +2201,11 @@ body.fp-expanded { overflow: hidden; }
 .ep-description-toggle::-webkit-details-marker { display: none; }
 .ep-description-toggle::marker { content: ""; }
 .ep-description-toggle::after {
-  content: "A";                 /* › — rotated to point down when open */
+  content: "\203A";               /* › — rotated to point down when open. This escape
+                                     once reached disk as the byte U+0083 followed by "A"
+                                     (#725, a writer read "\203" as octal) and every episode
+                                     page drew a sideways letter A; ui-tokens.test.js now
+                                     refuses any C1 control character in the sheet. */
   margin-left: auto;
   font-size: var(--fs-xl); line-height: 1;
   transform: rotate(90deg);
@@ -2131,13 +2250,20 @@ body.fp-expanded { overflow: hidden; }
    to sit in running text without breaking the line box. */
 .ep-ts {
   display: inline; border: 0; background: none;
-  /* HIT AREA INTO THE LEADING (audit 2026-09-22): the stamp was ~13px of
-     underlined text with no padding, so most taps missed and some landed on a
-     publisher link in the same paragraph and left the page. Vertical padding
-     on an INLINE box grows what the finger can hit without touching the line
-     box, and the equal negative margin cancels the horizontal padding's
-     effect on the text around it — the paragraph does not reflow. */
-  padding: 10px 4px; margin: -10px -4px;
+  /* HIT AREA INTO THE LEADING, AND NO FURTHER (audit 2026-09-22, then round
+     2 touch-10). The stamp was ~13px of underlined text with no padding, so
+     most taps missed. The first fix gave it 10px of vertical padding, which an
+     inline box does hit-test — but the matching negative margin does nothing
+     vertically on an inline box, so each stamp's box was ~37px tall inside a
+     21.6px line and overlapped the stamps on the lines above and below, where
+     the LATER one wins: a tap on the bottom of 12:00 seeked to 15:30. Now the
+     padding is the half-leading and no more — (1.5 line-height − DM Sans's
+     1.302em content area) / 2 ≈ 0.099em — so stamps on consecutive lines meet
+     and never overlap; the horizontal margin cancels the horizontal padding so
+     the paragraph does not reflow. A line that STARTS with a stamp — the
+     chapter-list shape, and the case the overlap bit — is not an inline stamp
+     at all any more: app.js renders it as a 44px `.ep-chapter-row`. */
+  padding: 0.09em 4px; margin: 0 -4px;
   font: inherit; color: var(--accent);
   font-variant-numeric: tabular-nums;
   text-decoration: underline; cursor: pointer;
@@ -2182,13 +2308,17 @@ body.fp-expanded { overflow: hidden; }
 .ep-chapter-row:active .ep-chapter-title { color: var(--accent); }
 /* A1.8 "More from this show" — same section-label language as .fy-slot h3. */
 .ep-more { margin: 24px 0 0; }
-.ep-more h3 {
+.ep-more h3, .sh-results-head {
   margin: 0 0 8px;
   font-family: var(--font-body);
   font-size: var(--fs-xs); font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--text-dim);
 }
+/* Search's shows tier wears the same eyebrow as its Episodes and Playlists
+   tiers (round 2, visual-16), and only while the tier has rows: the list is
+   toggled by its `hidden` attribute, so the label follows it from here. */
+.sh-results-head:has(+ #sh-results[hidden]) { display: none; }
 /* "from Apple's index" caption (S-07, kanban t_6baccaa0): sits inside an
    uppercase, letter-spaced h3 — reset both so the caption reads as normal
    prose rather than shouting the provenance note. */
@@ -2208,8 +2338,14 @@ body.fp-expanded { overflow: hidden; }
   font-size: var(--fs-sm);
 }
 
+/* EVERY RANGE INPUT IS THE LISTENER'S OWN MATERIAL (audit round 2, visual-2):
+   the scrubber is their position and the Interests sliders are their weights,
+   so both are amber. One rule for the element rather than one per class — the
+   sliders had none and painted the UA's system blue, the only blue control in
+   the app, on the page that is nothing but sliders. */
+input[type="range"] { accent-color: var(--amber); }
 .fp-scrub {
-  width: 100%; accent-color: var(--accent);
+  width: 100%;
   /* The sheet body is an `overflow-y: auto` scroller, and a range input with
      no touch-action loses every drag to it: trying to move the thumb scrolls
      the description instead. `pan-y` hands vertical pans to the scroller and
@@ -2222,11 +2358,35 @@ body.fp-expanded { overflow: hidden; }
 }
 .fp-times { display: flex; justify-content: space-between; font-size: var(--fs-xs); color: var(--text-dim); }
 .fp-row { display: flex; justify-content: center; align-items: center; gap: 18px; margin: 14px 0 6px; }
-.fp-btn {
-  min-width: 56px; height: 48px; border-radius: var(--radius-md);
-  border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
-  box-shadow: var(--shadow);
-  font-size: var(--fs-sm); cursor: pointer;
+/* ONE TRANSPORT BUTTON (audit round 2, visual-5). The same ↺15 / 30↻ were
+   60x48 bold 0.9rem with a shadow on the Foray page and 56x48 regular 0.82rem
+   flat in the Now Playing sheet, and the speed box was 48px on one and 44px on
+   the other while a comment here claimed they matched. One rule now sizes,
+   sets and elevates the seek pair and the speed/Stop boxes on both surfaces:
+   48px (this is a car product — the note on `.fp-play`), the body step at
+   600, flat (the sheet's look; the primary is marked by its fill, not by a
+   shadow the secondary buttons also wore). Each surface keeps only what is
+   its own: the sheet's round 64px Play, the page's wide Play, the speed's
+   tabular figures. The mini bar's ↺15 is NOT in this family on purpose — it
+   is persona 10's quiet borderless glyph. test/transport-controls.test.js
+   compares the two surfaces declaration by declaration. */
+.fy-btn, .fp-btn, .fp-rate, .fp-stop {
+  min-height: 48px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit; font-size: var(--fs-md); font-weight: 600;
+  cursor: pointer;
+}
+.fy-btn, .fp-btn { min-width: 56px; }
+/* The speed control, on both surfaces: narrower than the seek pair (it is not
+   a peer of Play), tabular so 1× -> 1.25× never jitters the row, muted. */
+.fy-btn.fy-rate, .fp-rate {
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--text-dim);
 }
 /* THE SHEET'S PLAY IS THE BAR'S PLAY, SCALED (visual pass 1, 2026-09-23). It
    was a grey rounded square identical to the ↺15 / 30↻ beside it — the primary
@@ -2271,16 +2431,12 @@ body.fp-expanded { overflow: hidden; }
 .fp-row2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
 /* THE SECOND ROW IS ONE CONTROL TREATMENT (visual pass 1, 2026-09-23). It
    mixed a caption-size grey box, a danger box, a bare underlined link and a
-   second Close beside the grab zone's ✕. Now: the boxed controls share the
-   Foray page's `.fy-btn.fy-rate` metrics (44px, body step, tabular for the
-   speed), "Episode" is the quiet 44px text button the clip row uses, and
-   `.fp-collapse` is gone — the sheet's handle and ✕ are the way out. */
-.fp-rate, .fp-stop {
-  min-height: 44px; padding: 0 14px;
-  border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
-  border-radius: var(--radius-md); font: inherit; font-size: var(--fs-md); font-weight: 600; cursor: pointer;
-}
-.fp-rate { min-width: 52px; font-variant-numeric: tabular-nums; font-weight: 500; }
+   second Close beside the grab zone's ✕. Now: the boxed controls are the
+   transport family above — the same 48px box the Foray page's speed button
+   is (the comment here used to say 44, which neither was) — "Episode" is the
+   quiet 44px text button the clip row uses, and `.fp-collapse` is gone: the
+   sheet's handle and ✕ are the way out. */
+.fp-rate, .fp-stop { padding: 0 14px; }
 /* STOP IS NOT CLOSE (audit 2026-09-22, persona "Stop sits next to Close").
    Stop ends playback and takes the bar away; Close only collapses the sheet.
    They were identical grey pills side by side, the destructive one in the
@@ -2316,7 +2472,6 @@ body.fp-expanded { overflow: hidden; }
   border-radius: var(--radius-lg);
   border: 1px solid var(--accent);
   background: var(--surface);
-  box-shadow: var(--shadow);
   color: var(--text);
   text-decoration: none;
 }
@@ -2336,7 +2491,10 @@ body.fp-expanded { overflow: hidden; }
 /* The Forays index's intro sits a section apart from the first card, not a
    hair above it: `.note` zeroes its margin and `.page` has no gap of its own. */
 .fy-about { margin: 0 0 20px; }
-.fy-home-title { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; }
+/* ROW TITLES ARE 600 (round 2, visual-15): the same Foray's title was 700
+   here and 600 on its Home card. 700 is for page titles and the wordmark;
+   ui-tokens.test.js holds every display-face 700 to that list. */
+.fy-home-title { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
 
 .fy-draft {
   margin: 0 0 12px;
@@ -2468,9 +2626,6 @@ body.fp-expanded { overflow: hidden; }
   transform-origin: var(--zoom-origin, 50%) 50%;
   transition: none;         /* live-tracks the finger; an easing curve would lag it */
 }
-@media (prefers-reduced-motion: reduce) {
-  .fy-strip { transition: none; }
-}
 
 /* Floating magnifier bubble (V2). Position/size are set by app.js's
    bindStripZoomScrub via CSSOM (style-src 'self' — see the V1 zoom rule
@@ -2487,9 +2642,6 @@ body.fp-expanded { overflow: hidden; }
   box-shadow: var(--shadow-lift);
   border: 1px solid rgba(255, 255, 255, 0.12);
   pointer-events: none;    /* never steals the pointer capture the strip holds */
-}
-@media (prefers-reduced-motion: reduce) {
-  .fy-strip-bubble, .fy-strip-bubble__viewport > * { transition: none; }
 }
 .fy-strip-bubble__viewport {
   position: absolute;
@@ -2547,10 +2699,14 @@ body.fp-expanded { overflow: hidden; }
    gesture (`bindStripZoomScrub`, app.js) reaches it, so the base rule's
    `touch-action: none` and `cursor: pointer` would be a promise this markup
    cannot keep — worse, `touch-action: none` on a card would fight the rail's
-   own scroll for every touch that starts on one. */
+   own scroll for every touch that starts on one. So would `pan-y` (the live
+   strip's value, inherited here until audit round 2, touch-11): the rail
+   scrolls SIDEWAYS, and touch-action intersects up the tree, so a flick that
+   started on the strip could not move the rail. This strip has no gesture of
+   its own, so it hands every pan to whatever scrolls around it. */
 .fy-strip--static {
   cursor: default;
-  touch-action: pan-y;
+  touch-action: auto;
   /* ONE ROW, TRIMMED AT THE CARD'S EDGE — and this rule is on the STATIC
      modifier, never on `.fy-strip`, because the player page's strip is the full
      hour and must not lose its tail.
@@ -2664,7 +2820,6 @@ body.fp-expanded { overflow: hidden; }
    — the silence is the message, and a bar flashing over the top of it would be
    competing with the thing it is trying to explain. */
 .fy-strip.is-seam .fy-seg.is-playing { outline-color: var(--text-dim); }
-@media (prefers-reduced-motion: reduce) { .fy-seg { transition: none; } }
 .fy-times {
   display: flex; justify-content: space-between;
   font-size: var(--fs-xs); color: var(--text-dim);
@@ -2695,51 +2850,30 @@ body.fp-expanded { overflow: hidden; }
   touch-action: manipulation;
 }
 
-.fy-btn {
-  min-width: 60px; min-height: 48px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--text);
-  box-shadow: var(--shadow);
-  font-size: var(--fs-md); font-weight: 600;
-  cursor: pointer;
-}
 .fy-btn.fy-main {
   min-width: 128px;
   background: var(--accent); border-color: var(--accent); color: #fff;
 }
 .fy-btn:hover { border-color: var(--accent); }
-.fy-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+.fy-btn:disabled { opacity: 0.5; cursor: default; }
 .fy-btn.fy-main:disabled { background: var(--surface-2); border-color: var(--line); color: var(--text-dim); }
-/* Playback speed (#242). A .fy-btn like its neighbours — this is the existing
-   idiom for this row and the control needs no visual language of its own; the
-   whole point is that it reads as one more transport button.
-
-   Two deliberate differences. It keeps the 48 px touch height (this is still a
-   car product — see the note on .fp-play) but drops the 60 px minimum, because
-   "2×" in a 60 px box next to a 128 px primary reads as an equal peer of Play,
-   which it is not. And it is tabular-nums so the row does not shift by a pixel as
-   the label steps 1× -> 1.25× -> 1.5×; without it the button and everything
-   beside it jitter on every tap. */
-.fy-btn.fy-rate {
-  min-width: 52px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-  color: var(--text-dim);
-}
-.fy-btn.fy-rate:hover { color: var(--text); }
+/* Playback speed (#242) is a .fy-btn like its neighbours, sized by the
+   transport family's speed rule (`.fy-btn.fy-rate, .fp-rate`, near `.fp-btn`):
+   48px tall, narrower than the seek pair, tabular. */
+.fy-btn.fy-rate:hover, .fp-rate:hover { color: var(--text); }
 
 /* the running order */
 .fy-slot { margin: 18px 0 0; }
 /* A running-order group's heading is a section TITLE — it is the Foray's own
    editorial chapter name ("Why venture capital is the wrong default"), not a
    label for a block of chrome — so it takes the display face in sentence case
-   at the section-title step, like "Forays for you" on Home. */
+   at the section-title step, like "Forays for you" on Home. (It said so here
+   and sat at `--fs-lg`, the row-title step, the same size as the clip titles
+   it heads, until round 2, visual-12; ui-tokens.test.js now reads the step.) */
 .fy-slot h3 {
   margin: 0 0 10px;
   font-family: var(--font-display);
-  font-size: var(--fs-lg); font-weight: 600;
+  font-size: var(--fs-xl); font-weight: 600;
   line-height: 1.3;
   color: var(--text);
 }
@@ -2754,7 +2888,6 @@ body.fp-expanded { overflow: hidden; }
   /* A clip card is a ROW (100-130px tall on --surface): the row radius, like
      `.ep-row` one page back and `.fy-home-row` one tap earlier (visual pass 1). */
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
   padding: 11px 12px;
   margin-bottom: 8px;
 }
@@ -2920,7 +3053,7 @@ body.fy-sheet-open { overflow: hidden; }
   position: absolute; left: 0; right: 0; bottom: var(--kb-inset, 0px);
   max-width: 680px; margin: 0 auto;
   max-height: calc(88vh - var(--kb-inset, 0px)); overflow-y: auto;
-  padding: 8px 18px calc(20px + env(safe-area-inset-bottom));
+  padding: 8px var(--gutter) calc(20px + env(safe-area-inset-bottom));
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
@@ -2971,12 +3104,7 @@ body.fy-sheet-open { overflow: hidden; }
 .ft-typed-wrap { margin: 4px 0 14px; }
 .ft-typed-input {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line);
   background: var(--surface-2);
-  color: var(--text);
-  font: inherit; font-size: var(--fs-md);
 }
 
 /* ---------- show page (#/show/:id, Stage 1) ---------- */
@@ -3008,6 +3136,7 @@ body.fy-sheet-open { overflow: hidden; }
 /* ---------- playback speed picker (#349) ---------- */
 .rate-options { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .rate-option {
+  min-height: 44px;
   padding: 12px 14px;
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
@@ -3022,12 +3151,7 @@ body.fy-sheet-open { overflow: hidden; }
 
 #fy-sheet-note {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line);
   background: var(--surface-2);
-  color: var(--text);
-  font: inherit; font-size: var(--fs-md);
 }
 .fy-sheet-actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
 .fy-sheet-cancel {
@@ -3118,11 +3242,16 @@ body.fy-sheet-open { overflow: hidden; }
   border-radius: var(--radius-lg); /* a card on --surface: the card radius */
   background: var(--surface);
 }
+/* The show's name takes the free width and the clip count and ↗ trail it,
+   in that order (round 2, visual-7): with the ↗ in the MIDDLE of a
+   space-between row it sat halfway through whatever width each show name
+   left, at a different x on every card. Now it is the last thing on the row,
+   so the column of ↗ is a straight right edge. */
 .fy-src-head {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  display: flex; align-items: baseline; gap: 10px;
   color: var(--text);
 }
-.fy-src-show { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; }
+.fy-src-show { flex: 1 1 auto; min-width: 0; font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
 .fy-src-out { flex: none; color: var(--text-dim); text-decoration: none; }
 .fy-src-out:hover, .fy-src-out:active { color: var(--accent); }
 .fy-src-meta { flex: none; font-size: var(--fs-xs); color: var(--text-dim); }
@@ -3164,14 +3293,8 @@ body.fy-sheet-open { overflow: hidden; }
 .show-ep-search { margin: 14px 0; }
 .show-ep-search input {
   width: 100%;
-  min-height: 48px;
-  padding: 0 14px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
   background: var(--surface);
   box-shadow: var(--shadow);
-  color: var(--text);
-  font-size: var(--fs-lg);
 }
 .show-ep-search .note { margin-top: 6px; }
 .show-forays-row {
@@ -3184,7 +3307,7 @@ body.fy-sheet-open { overflow: hidden; }
 .show-forays-row:first-of-type { border-top: none; }
 .show-forays-row:hover .show-forays-title,
 .show-forays-row:active .show-forays-title { color: var(--accent); }
-.show-forays-title { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 700; }
+.show-forays-title { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
 .show-forays-draft {
   flex: none; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.04em;
   text-transform: uppercase; color: var(--text-dim);
@@ -3226,6 +3349,7 @@ body.fy-sheet-open { overflow: hidden; }
 }
 .diag-clear {
   display: block; width: 100%;
+  min-height: 44px;
   margin-top: 10px; padding: 9px 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--line);
@@ -3305,17 +3429,14 @@ body.fy-sheet-open { overflow: hidden; }
 .dd-label { display: block; margin-bottom: 6px; font-size: var(--fs-sm); color: var(--text-dim); }
 .dd-input {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line);
   background: var(--surface-2);
-  color: var(--text);
-  font: inherit; font-size: var(--fs-md); letter-spacing: 0.08em;
+  letter-spacing: 0.08em;
 }
 .dd-go { border-color: var(--danger); background: var(--danger); }
 .dd-go:disabled { background: var(--surface-2); border-color: var(--line); color: var(--text-dim); }
 .dd-device-only {
   display: block; width: 100%;
+  min-height: 44px;
   margin-top: 10px; padding: 9px 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--line);
@@ -3571,7 +3692,7 @@ body.ui-v2 .fy-draft { border-color: var(--line); background: var(--surface2); c
    from a published Foray's own page, which renderForays links into. */
 body.ui-v2 .fy-transport { background: var(--bg); border-bottom-color: var(--line); }
 body.ui-v2 .fy-times { color: var(--muted); }
-body.ui-v2 .fy-btn {
+body.ui-v2 .fy-btn, body.ui-v2 .fp-btn, body.ui-v2 .fp-rate, body.ui-v2 .fp-stop {
   border-color: var(--line);
   background: var(--surface2);
   color: var(--text);
@@ -3579,13 +3700,12 @@ body.ui-v2 .fy-btn {
 body.ui-v2 .fy-btn.fy-main { background: var(--violet); border-color: var(--violet); color: var(--bg); }
 body.ui-v2 .fy-btn:hover { border-color: var(--violet); }
 body.ui-v2 .fy-btn.fy-main:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
-body.ui-v2 .fy-btn.fy-rate { color: var(--muted); }
-body.ui-v2 .fy-btn.fy-rate:hover { color: var(--text); }
+body.ui-v2 .fy-btn.fy-rate, body.ui-v2 .fp-rate { color: var(--muted); }
+body.ui-v2 .fy-btn.fy-rate:hover, body.ui-v2 .fp-rate:hover { color: var(--text); }
 body.ui-v2 .fy-slot h3 { color: var(--text); }
 body.ui-v2 .fy-row {
   background: var(--surface);
   border-color: var(--line);
-  box-shadow: none;
 }
 body.ui-v2 .fy-row:has(.fy-jump:hover),
 body.ui-v2 .fy-row:has(.fy-jump:active) { border-color: var(--violet); }
@@ -3713,22 +3833,10 @@ body.ui-v2 .fy-clip:hover:not(:disabled), body.ui-v2 .fy-clip:active:not(:disabl
 body.ui-v2 .fp-sheet { background: var(--surface); border-top-color: var(--line); }
 body.ui-v2 .fp-s-desc { color: var(--text); }
 body.ui-v2 .fp-grab-zone .fy-grab { background: var(--line); }
-body.ui-v2 .fp-scrub { accent-color: var(--amber); }
 body.ui-v2 .fp-times { color: var(--muted); }
-body.ui-v2 .fp-btn {
-  border-color: var(--line);
-  background: var(--surface2);
-  color: var(--text);
-  box-shadow: none;
-}
 body.ui-v2 .fp-btn:hover:not(:disabled) { border-color: var(--violet); }
 /* The sheet's Play is the bar's Play: the same violet fill (`.fp-play`). */
 body.ui-v2 .fp-btn.fp-big { background: var(--violet); border-color: var(--violet); color: var(--bg); }
-body.ui-v2 .fp-rate, body.ui-v2 .fp-stop {
-  border-color: var(--line);
-  background: var(--surface2);
-  color: var(--text);
-}
 /* After the shared rule, so Stop keeps the weight `.fp-stop`'s own comment
    explains (it is not Close). */
 body.ui-v2 .fp-stop { color: var(--danger-text); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
@@ -3771,14 +3879,14 @@ body.ui-v2 .hv2-home {
 }
 body.ui-v2 .hv2-greeting {
   display: flex; align-items: baseline; gap: 8px;
-  padding: 4px 14px 0;
+  padding: 4px var(--gutter) 0;
 }
 body.ui-v2 .hv2-greeting-word { color: var(--muted); font-size: var(--fs-md); font-family: var(--font-body); }
 body.ui-v2 .hv2-greeting-brand {
   font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: var(--fs-2xl); color: var(--text);
 }
 body.ui-v2 .hv2-title {
-  margin: 0; padding: 0 14px;
+  margin: 0; padding: 0 var(--gutter);
   font-family: var(--font-display); font-weight: 600; font-size: var(--fs-xl); color: var(--text);
 }
 body.ui-v2 .hv2-section { display: flex; flex-direction: column; gap: 8px; }
@@ -3787,7 +3895,7 @@ body.ui-v2 .hv2-section { display: flex; flex-direction: column; gap: 8px; }
    instead, since epRow-shaped rows read as a list, not a shelf. */
 body.ui-v2 .hv2-hscroll {
   display: flex; gap: 12px; overflow-x: auto;
-  padding: 0 14px 4px;
+  padding: 0 var(--gutter) 4px;
   scroll-snap-type: x proximity;
   /* The snapport ignores the scroller's own padding, so without this the
      first card's `scroll-snap-align: start` rests at x=0 — flush to the
@@ -3795,9 +3903,9 @@ body.ui-v2 .hv2-hscroll {
      Chrome re-snaps after layout (fonts, cards arriving). Same value as the
      inline padding, so a snapped card lands where an unsnapped one sits
      (visual pass 1, 2026-09-23; test/home-layout.test.js pins the pair). */
-  scroll-padding-inline: 14px;
+  scroll-padding-inline: var(--gutter);
 }
-body.ui-v2 .hv2-cards { display: flex; flex-direction: column; gap: 8px; padding: 0 14px; }
+body.ui-v2 .hv2-cards { display: flex; flex-direction: column; gap: 8px; padding: 0 var(--gutter); }
 
 body.ui-v2 .hv2-jbi-card, body.ui-v2 .hv2-foray-card, body.ui-v2 .hv2-playlist-card {
   flex: none;
@@ -3827,6 +3935,12 @@ body.ui-v2 .hv2-jbi-title, body.ui-v2 .hv2-foray-title, body.ui-v2 .hv2-playlist
 body.ui-v2 .hv2-jbi-sub, body.ui-v2 .hv2-jbi-left, body.ui-v2 .hv2-playlist-sub {
   font-size: var(--fs-sm); color: var(--muted);
 }
+/* "N min left" is the listener's own progress: amber and bold, the way it
+   reads on the Forays index (`.fy-jbi-left`) and a Foray's resume line
+   (`.fy-resume-left`). Home's card was the one place it went grey and
+   regular — the same number for the same Foray in two voices (round 2,
+   honesty-8; qa 55's gold-to-amber remap missed this class). */
+body.ui-v2 .hv2-jbi-left { color: var(--amber); font-weight: 700; }
 body.ui-v2 .hv2-jbi-card .fy-bar { margin-top: 4px; }
 /* The Jump back in card is a <div> whose title is the one real <a>, stretched
    over the card; the play button is a sibling above it (qa row 78 — it was a
@@ -3939,10 +4053,11 @@ body.ui-v2 .hv2-episodes .mini-card > .hv2-bridge { flex-basis: 100%; }
    `display: none` restarts its animation. The .22s must agree with
    `SHEET_MOTION_MS` in app.js, which waits on it.
 
-   Reduced motion: no entrance and no slide, for both sheet kinds. The
-   selectors repeat the `:not(...-dragging)` form so they outrank the rules
-   that switch the transitions on; app.js's `slideIn`/`slideOut` decline under
-   the same query, so nothing waits on a transition that will not run. */
+   Reduced motion: no entrance and no slide, for both sheet kinds — listed in
+   the ONE reduce-motion block below (a11y-9), in the `:not(...-dragging)` form
+   so it outranks the rules that switch the transitions on; app.js's
+   `slideIn`/`slideOut` decline under the same query, so nothing waits on a
+   transition that will not run. */
 body.drawer-open { overflow: hidden; }
 #drawer { overscroll-behavior: contain; }
 #drawer-overlay { touch-action: none; }
@@ -3956,7 +4071,27 @@ body.drawer-open { overflow: hidden; }
   from { transform: translateY(100%); }
   to   { transform: translateY(var(--fy-panel-dy, 0px)); }
 }
+
+/* ---------- REDUCE MOTION: ONE BLOCK, EVERY TRANSITION (audit round 2, a11y-9) ----------
+   Three strip rules honoured the setting and nothing else did: the Now Playing
+   sheet still slid back over 220ms after a partial drag, the notes chevron
+   turned, a pressed card eased, the sticky page head slid in and out. iOS's
+   Reduce Motion replaces those movements with cuts, so this does too — every
+   selector in the sheet that declares a transition is listed here, and
+   test/ui-tokens.test.js fails on a new transition that is not. It sits LAST
+   so it out-ranks every rule it names at equal specificity. (The progress
+   fill's width tween is listed too: under this setting the bar steps with the
+   clock instead of gliding, which reads the same and moves less.) */
 @media (prefers-reduced-motion: reduce) {
-  .fp-sheet:not(.fp-sheet-dragging), .fy-panel:not(.fy-panel-dragging) { transition: none; }
+  .drawer-dev > summary::after,
+  .mini-card,
+  .page-head,
+  .fp-fill,
+  .fp-sheet:not(.fp-sheet-dragging),
+  .fy-panel:not(.fy-panel-dragging),
+  .ep-description-toggle::after,
+  .fy-strip,
+  .fy-strip-bubble, .fy-strip-bubble__viewport > *,
+  .fy-seg { transition: none; }
   .fy-panel { animation: none; }
 }

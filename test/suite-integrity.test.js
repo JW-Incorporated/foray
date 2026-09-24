@@ -362,8 +362,8 @@ const FLOORS = {
      Transport: the mini bar's second control, the seek pair that stays a seek
      pair, the labelled clip rows, one nudge. Zero slack: each is a one-line
      revert from the audit's finding. */
-  "test/card-anatomy.test.js": 10, // review of the pass (2026-09-23): the banner test became "the banner is gone" (its renderer had no caller), the template walker sees nested templates, one tag tint, rows on --radius-lg, the rhythm above the first card; 8 -> 10
-  "test/transport-controls.test.js": 9, // review of the pass (2026-09-23): the sheet's Play is the bar's Play scaled, the second row is one treatment with no second Close, the clip buttons keep their aria-labels; 7 -> 9
+  "test/card-anatomy.test.js": 18, // audit round 2 (2026-09-23): numbers only on ordered lists, tags only off their own section, one Interests name, the credits ↗ column, no ‹ on a tab root, the Shows eyebrow, the two-line show row, one Up Next silhouette; 10 -> 18 | earlier: review of the pass (2026-09-23): the banner test became "the banner is gone" (its renderer had no caller), the template walker sees nested templates, one tag tint, rows on --radius-lg, the rhythm above the first card; 8 -> 10
+  "test/transport-controls.test.js": 10, // audit round 2 (2026-09-23): one transport button on the Foray page and in Now Playing; 9 -> 10 | earlier: review of the pass (2026-09-23): the sheet's Play is the bar's Play scaled, the second row is one treatment with no second Close, the clip buttons keep their aria-labels; 7 -> 9
   /* Review of the pass (2026-09-23): "Vibe Coding &#038; Linux" shipped in
      data/discover.json as text. Entities are decoded where they enter data/
      (tools/refresh/entities.mjs) and this suite fails on any left behind. */
@@ -388,7 +388,7 @@ const FLOORS = {
   /* 2026-09-17, founder: episode descriptions carry clickable links and clickable
      timestamps that seek. This is the one function in app.js that turns untrusted
      publisher text into markup, so about half of it is injection cases. */
-  "test/episode-description-links.test.js": 27, // audit round 2, L2 (2026-09-23): one tokeniser, published for the sheet (p-switcher-2); 25 -> 27 // // +3 (2026-09-18): the notes collapse into a closed <details> so artwork leads the page, the timestamps still bind inside it, and chapters stay out of it
+  "test/episode-description-links.test.js": 31, // round-2 integration (2026-09-23): L2 +1 and L7 +4 on a base of 26 -> 31 // L7: audit round 2 (2026-09-23): a stamp-led line is a 44px chapter row, keeps no stray newline, stays inline beside a link or a second stamp, and stays text past the end; 25 -> 30 // audit round 2, L2 (2026-09-23): one tokeniser, published for the sheet (p-switcher-2); 25 -> 27 // // +3 (2026-09-18): the notes collapse into a closed <details> so artwork leads the page, the timestamps still bind inside it, and chapters stay out of it
   /* Stage 3 of docs/episode-pages-plan.md — epRow/archivedRow/bannerHtml
      title links to #/episode/:id (kanban card t_51e5d7bc). Floored at its
      exact current count: this is a small, deliberately-scoped regression
@@ -489,7 +489,7 @@ const FLOORS = {
      and pins the gesture findings (the strip's vertical flick, the scrubber's
      touch-action, the double home-indicator inset, Stop vs Close, hover vs
      playing). Sixteen tests, each mutation-checked red. */
-  "test/tap-targets.test.js": 18, // visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text buttons join the measured list; 16 -> 18 (two sweep tests had landed unfloored)
+  "test/tap-targets.test.js": 22, // audit round 2 (2026-09-23): the rendered-<button> census, the whole ep-row stretched link, the show-link hit box, the half-leading stamp, the static strip pans, no link preview; 18 -> 22 | earlier: visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text buttons join the measured list; 16 -> 18 (two sweep tests had landed unfloored)
   /* Theme E of the same audit: ONE owner for "a modal is open" — focus in and
      back, `inert`, Tab trap, Escape, one instance, the body lock derived from
      what is open (the back-gesture scroll-lock leak) — plus focus and the
@@ -1053,7 +1053,7 @@ const FLOORS = {
      re-own everything a colour-scheme query can change, check the JS-written
      claim, and resolve the cascade for "Delete everything" to the danger
      token. */
-  "test/ui-tokens.test.js": 22, // review of visual pass 1 (2026-09-23): the resting star is --muted, one colour-scheme + one focus ring, note links are authored, violet primaries are never on the card radius, row/card titles are the display face; 17 -> 22 // visual pass 1 (2026-09-23): the radius, type and elevation families are enforced like the palette; the two heading kinds; one wordmark; 11 -> 17 // 2026-09-23 audit sweep (qa row 79): --faint paints no text or live control; --muted is readable on every surface; the --faint utility has no user; 8 -> 11
+  "test/ui-tokens.test.js": 35, // audit round 2 (2026-09-23): one rule per role — no C1 bytes, amber ranges, one field, one section-title step, row titles 600, one gutter, flat rows, no branch dot, the search ring, one reduce-motion block, amber min-left, one wordmark on Home, the episode head; 22 -> 35 | earlier: review of visual pass 1 (2026-09-23): the resting star is --muted, one colour-scheme + one focus ring, note links are authored, violet primaries are never on the card radius, row/card titles are the display face; 17 -> 22 // visual pass 1 (2026-09-23): the radius, type and elevation families are enforced like the palette; the two heading kinds; one wordmark; 11 -> 17 // 2026-09-23 audit sweep (qa row 79): --faint paints no text or live control; --muted is readable on every surface; the --faint utility has no user; 8 -> 11
   /* 2026-09-23 audit sweep: docs/audit/status.tsv has one row per finding under its own title, refuted/deliberate verdicts are kept, and the README table agrees. */
   "test/audit-status.test.js": 3,
   /* U-02 (docs/ui-transition-plan.md, kanban t_806e5d01): the cp_ui_v2 flag

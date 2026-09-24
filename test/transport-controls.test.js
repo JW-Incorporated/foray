@@ -59,6 +59,51 @@ function valueOf(sel, prop) {
 }
 const px = (v) => { const m = /^(\d+(?:\.\d+)?)px$/.exec(String(v || "")); return m ? Number(m[1]) : null; };
 
+/* ---------- one transport button on every surface (audit round 2, visual-5) ---------- */
+
+test("the seek pair and the speed box are one object on the Foray page and in Now Playing", () => {
+  /* ↺15 / 30↻ were 60x48 bold 0.9rem LIFTED on the page and 56x48 regular
+     0.82rem FLAT in the sheet; speed was 48px on one and 44px on the other
+     under a comment claiming they matched. One rule sizes all of them now,
+     and neither surface restates what it sets.
+     MUTATIONS, each red: `.fp-btn { font-size: var(--fs-sm) }` (the sheet's old
+     step); `.fy-btn { box-shadow: var(--shadow) }` (the page's old lift);
+     `.fp-rate { min-height: 44px }` (the old speed height). */
+  const FAMILY = ".fy-btn, .fp-btn, .fp-rate, .fp-stop";
+  assert.strictEqual(px(valueOf(FAMILY, "min-height")), 48, "48px: a car product (the note on .fp-play)");
+  assert.strictEqual(valueOf(FAMILY, "font-size"), "var(--fs-md)");
+  assert.strictEqual(valueOf(FAMILY, "font-weight"), "600");
+  assert.strictEqual(valueOf(FAMILY, "border-radius"), "var(--radius-md)");
+  assert.strictEqual(valueOf(".fy-btn, .fp-btn", "min-width"), "56px", "the seek pair is one width on both surfaces");
+  /* Nobody restates a family declaration on one surface only — that is how
+     the two drifted. Checked on every rule that names exactly one member. */
+  const SHARED = ["min-height", "height", "font-size", "font-weight", "box-shadow", "min-width"];
+  const restated = [];
+  const re = /([^{}]+)\{([^{}]*)\}/g;
+  let m;
+  while ((m = re.exec(SRC))) {
+    const sels = splitSelectors(m[1]);
+    if ([FAMILY, ".fy-btn, .fp-btn", ".fy-btn.fy-rate, .fp-rate"].includes(sels.join(", "))) continue;
+    for (const sel of sels) {
+      if (!/^(body\.ui-v2 )?\.(fy-btn|fp-btn|fp-rate|fp-stop)$/.test(sel)) continue;
+      for (const d of m[2].split(";")) {
+        const prop = d.slice(0, d.indexOf(":")).trim();
+        if (SHARED.includes(prop) && !/:disabled|:hover/.test(sel)) restated.push(`${sel} { ${d.trim()} }`);
+      }
+    }
+  }
+  assert.deepStrictEqual(restated, [], "a surface restating the family's metrics");
+  /* The speed box: one rule, both surfaces, 48 tall by the family. */
+  assert.strictEqual(valueOf(".fy-btn.fy-rate, .fp-rate", "font-variant-numeric"), "tabular-nums");
+  assert.strictEqual(valueOf(".fy-btn.fy-rate, .fp-rate", "min-width"), "52px");
+  assert.strictEqual(valueOf("body.ui-v2 .fy-btn.fy-rate, body.ui-v2 .fp-rate", "color"), "var(--muted)", "one colour for speed on both");
+  /* The comment that claimed 44 is gone. */
+  assert.doesNotMatch(CSS, /metrics \(44px, body step/, "no comment may promise a height neither surface has");
+  /* And both renderers really do use these classes for the same controls. */
+  assert.match(CLIENT, /el\("button", "fp-btn", `↺ \$\{SEEK_BACK\}`\)/);
+  assert.match(APP, /class="fy-btn"[^>]*>↺/, "the page's ↺ is a .fy-btn");
+});
+
 /* ---------- the mini bar ---------- */
 
 test("the mini bar carries ▶ and a back-15 nudge, in that order, and nothing else", () => {
@@ -176,14 +221,16 @@ test("the sheet's Play is the bar's Play, scaled: one filled round object, not a
   assert.strictEqual(valueOf("body.ui-v2 .fp-btn", "background"), "var(--surface2)");
 });
 
-test("the sheet's second row is one treatment: 44px boxes at the body step, a quiet text link, and no second Close", () => {
+test("the sheet's second row is one treatment: 48px transport boxes, a quiet text link, and no second Close", () => {
   /* It mixed a caption-size grey box, a danger box, a bare underlined link and
      a Close beside the grab zone's ✕. MUTATION: `.fp-rate, .fp-stop { padding:
-     8px 12px; font-size: var(--fs-xs) }` -> red; `el("button", "fp-collapse",
-     "Close")` back in client.js -> red. */
-  assert.ok(px(valueOf(".fp-rate, .fp-stop", "min-height")) >= 44, "the boxed controls are at the tap floor by their own size");
-  assert.strictEqual(valueOf(".fp-rate, .fp-stop", "font-size"), valueOf(".fy-btn", "font-size"),
-    "the speed control reads the same step here as on the Foray page");
+     8px 12px; font-size: var(--fs-xs) }` -> red (the shared rule's size is
+     out-ranked); `el("button", "fp-collapse", "Close")` back in client.js -> red. */
+  const FAMILY = ".fy-btn, .fp-btn, .fp-rate, .fp-stop";
+  assert.ok(px(valueOf(FAMILY, "min-height")) >= 44, "the boxed controls are at the tap floor by their own size");
+  /* No member of the row restates the family's height or type step on its own:
+     "one object on the Foray page and in Now Playing" checks every rule that
+     names one member. */
   assert.strictEqual(valueOf(".fp-rate", "font-variant-numeric"), "tabular-nums", "1× -> 1.25× does not jitter");
   assert.ok(px(valueOf(".fp-openep", "min-height")) >= 44, "'Episode' is a 44px text button");
   assert.strictEqual(valueOf(".fp-openep", "text-decoration"), "none", "…not an underlined inline link");

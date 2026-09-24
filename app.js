@@ -707,13 +707,23 @@ function renderInterests() {
         <a class="back" href="#/">‹</a>
         <div><h2>Interests</h2><p class="sub">Drag a slider to change what 4a suggests.</p></div>
       </div>
-      ${groups.map(g => `
-        <div class="interest-group">
-          <h3 class="interest-group-label">${esc(g.root.label)}</h3>
-          ${g.rows.map(interestSliderRow).join("")}
-        </div>`).join("")}
+      ${groups.map(interestGroupHtml).join("")}
     </div>`;
   bindInterestsControls($("#view"));
+}
+
+/* ONE NAME PER BLOCK (audit round 2, visual-17). Every root is always a row of
+   its own group, and a leaf joins only once the listener has moved it, so for
+   a new listener EVERY group was a heading over one card with the same name —
+   "Adventure" over "Adventure", the page twice as long as its content. The
+   heading is only there to gather a root's sub-topics; with none, the card
+   names itself. */
+function interestGroupHtml(g) {
+  return `
+        <div class="interest-group">
+          ${g.rows.length > 1 ? `<h3 class="interest-group-label">${esc(g.root.label)}</h3>` : ""}
+          ${g.rows.map(interestSliderRow).join("")}
+        </div>`;
 }
 
 function bindInterestsControls(scope) {
@@ -1463,7 +1473,7 @@ function starredShowRow(entry) {
      shows harvested without one. Fall back through the live show record so a
      starred show is never blanker than the same show is on any other surface. */
   const art = entry.artwork_url || showArtworkUrl(showById(entry.show_id));
-  return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}">
+  return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}" title="${esc(entry.title)}">
     ${art ? rowArtImg(art) : `<span class="show-result-art show-result-art-blank"></span>`}
     <span class="show-result-title">${esc(entry.title)}</span>
   </a>`;
@@ -2923,7 +2933,14 @@ function showsForCategory(nodeId) {
    about 4a's catalogue standing in for a failed fetch, on a page whose search
    box could still find shows through the endpoints. The empty-list copy is now
    reachable only when the catalogue answered. */
-function renderShowIndexPage(title, subtitle, shows, above = "") {
+/* NO ‹ ON A TAB ROOT (audit round 2, visual-6). Search, Create and Library are
+   where the tab bar puts you, not a page pushed on top of one, so a back
+   button there only duplicated the Home tab — a boxed ‹ under the borderless
+   ☰ and ↻ that Home, the fourth tab, never had. Apple shows none on a tab's
+   root. The pages you are SENT to (a show, an episode, a Foray, a category,
+   Up Next, a playlist) keep theirs. `tabRoot` because this template is also
+   the category page's, and that one is pushed. */
+function renderShowIndexPage(title, subtitle, shows, above = "", { tabRoot = false } = {}) {
   setBodyClass("view-page");
   const list = shows === null
     ? `<div class="show-index-failed">${failedNoteHtml("Couldn't load the show list.")}</div>`
@@ -2933,7 +2950,7 @@ function renderShowIndexPage(title, subtitle, shows, above = "") {
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
-        <a class="back" href="#/">‹</a>
+        ${tabRoot ? "" : `<a class="back" href="#/">‹</a>`}
         <div>
           <h2>${esc(title)}</h2>
           ${subtitle ? `<p class="sub">${esc(subtitle)}</p>` : ""}
@@ -3343,6 +3360,11 @@ function renderAllShows(initialQuery = "") {
       <div id="sh-empty-offer" hidden></div>
       <p id="sh-offline-note" class="note" hidden>${OFFLINE_SEARCH_NOTE}</p>
       <div id="fy-search-results" hidden></div>
+      <!-- The shows tier's eyebrow (audit round 2, visual-16): Episodes and
+           Playlists label their tiers, and the first one was the only bare
+           list. styles.css hides it whenever #sh-results is hidden, so
+           paintShowResults needs no second switch to keep them in step. -->
+      <h3 class="sh-results-head">Shows</h3>
       <div id="sh-results" class="show-results" hidden></div>
       <div id="ep-search-results" hidden></div>
       <div id="pl-search-results" hidden></div>
@@ -3359,7 +3381,7 @@ function renderAllShows(initialQuery = "") {
         ${Object.keys(starredShowsMap()).length ? `<a class="page-link-row" href="#/starred-shows">Followed shows \u203a</a>` : ""}
         ${browsePillsHtml()}
         ${vouchForHtml()}
-      </div>`);
+      </div>`, { tabRoot: true });
   /* The page reserves room at its bottom edge for a bar that is fixed and so
      occupies none of its own. Added AFTER renderShowIndexPage, which writes
      document.body.className wholesale through setBodyClass() and would
@@ -6288,7 +6310,10 @@ let introParked = false;
 function showResultRow(show) {
   const art = showArtworkUrl(show);
   const by = typeof show?.artist_name === "string" ? show.artist_name.trim() : "";
-  return `<a class="show-result" href="#/show/${encodeURIComponent(show.show_id)}">
+  /* `title=` carries the whole name: styles.css clamps the row's title to two
+     lines (audit round 2, search-11), so a 125-character title is cut on
+     screen, and hover and a long-press tooltip still have all of it. */
+  return `<a class="show-result" href="#/show/${encodeURIComponent(show.show_id)}" title="${esc(show.title)}">
     ${art ? rowArtImg(art) : `<span class="show-result-art show-result-art-blank"></span>`}
     <span class="show-result-text">
       <span class="show-result-title">${esc(show.title)}</span>
@@ -8723,7 +8748,7 @@ function jumpBackInV2Html() {
   if (!cards.length) return "";
   return `<section class="hv2-section hv2-jbi">
     <h2 class="hv2-title">Jump back in</h2>
-    <div class="hv2-hscroll">${cards.map(jumpBackInCardHtml).join("")}</div>
+    <div class="hv2-hscroll">${cards.map(c => jumpBackInCardHtml(c, { inSection: true })).join("")}</div>
   </section>`;
 }
 
@@ -8798,7 +8823,14 @@ function lastEpisodeCard() {
   }
 }
 
-function jumpBackInCardHtml(c) {
+/* A TAG NAMES WHAT ITS SECTION DOES NOT (audit round 2, visual-9). Every card
+   in Home's "Jump back in" rail opened with an amber JUMP BACK IN tag directly
+   under the "Jump back in" heading — the section's name, restated on each card
+   in it. `inSection` is the renderer saying "the heading above already says
+   this"; a card on a MIXED surface (a rail of several kinds, a search result)
+   leaves it off and keeps the tag, which is the one place it tells the
+   listener something. */
+function jumpBackInCardHtml(c, { inSection = false } = {}) {
   const bar = typeof c.percent === "number"
     ? `<span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(c.percent))}"></span></span>`
     : "";
@@ -8849,7 +8881,7 @@ function jumpBackInCardHtml(c) {
      `picked` attributes ride on the link, which is what bindPickLogging binds. */
   return `
     <div class="hv2-jbi-card">
-      <span class="hv2-jbi-kicker">Jump back in</span>
+      ${inSection ? "" : `<span class="hv2-jbi-kicker">Jump back in</span>`}
       <a class="hv2-jbi-title hv2-jbi-link" href="#/${route}/${id}"${ev}>${esc(c.title)}</a>
       ${sub}${bar}${left}${play}
     </div>`;
@@ -9087,7 +9119,7 @@ function renderForays() {
       ${head}
       ${jumpBackInHtml(resume)}
       ${list.length
-        ? forayListHtml()
+        ? forayListHtml({ inSection: true })
         : `<p class="note">No forays right now — 4a puts these together by hand, so they arrive a few at a time.</p>`}
     </div>`;
   sizeProgressBars($("#view"));
@@ -9129,6 +9161,19 @@ function hasOpened(id, history) {
   return !!p && p.state !== "unplayed";
 }
 
+/* NUMBERS MEAN ORDER (audit round 2, visual-10). Every episode list wore the
+   numbered circle Up Next uses — a show's episodes (newest as "1"), search
+   results, Saved, History, "More from this show" — so a Saved list read as a
+   playlist the listener never built. Apple numbers its queue and nothing
+   else; here the number stays where the order IS the content: a playlist's
+   detail page (ctx "playlist-…", "subject-…", "generated-…", where the
+   highlighted number is "start here") and Up Next (upNextRow, which always
+   numbers). styles.css indents the second tier only when a number is there. */
+const ORDERED_ROW_CTX = /^(playlist|subject|generated)-/;
+function orderedRowCtx(ctx) {
+  return ORDERED_ROW_CTX.test(String(ctx || ""));
+}
+
 function epRow(item, idx, ctx, nextIdx) {
   const inApp = playBtn(item, ctx);
   const unavailable = inApp ? "" : notPlayableNote();
@@ -9138,7 +9183,7 @@ function epRow(item, idx, ctx, nextIdx) {
     ? `<span class="ep-progress${prog.state === "played" ? " is-played" : ""}">${esc(prog.label)}</span>`
     : "";
   return `<div class="ep-row">
-    <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
+    ${orderedRowCtx(ctx) ? `<span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>` : ""}
     <div class="info">
       <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
       <div class="s">${joinMeta(showNameLink(item.show, item.show_id), fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</div>
@@ -9196,7 +9241,7 @@ function archivedRow(item, idx, ctx) {
   const unavailable = named ? notPlayableNote() : "";
   const dateStr = named ? fmtDate(item.release_date) : "";
   return `<div class="ep-row gone">
-    <span class="q-num">${idx + 1}</span>
+    ${orderedRowCtx(ctx) ? `<span class="q-num">${idx + 1}</span>` : ""}
     <div class="info">
       <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Episode no longer in the catalogue"}</div>
       <div class="s">${named
@@ -9431,7 +9476,51 @@ const DESC_TOKEN_RE = /(https?:\/\/[^\s<>"']*[^\s<>"'.,;:)\]}])|(\b(?:\d{1,3}:)?
  * on an episode whose length we failed to record would be the wrong default.
  */
 function episodeDescriptionHtml(text, durationSec = null) {
-  return episodeDescriptionTokens(text, durationSec).map((t) => {
+  const src = String(text ?? "");
+  if (!src) return "";
+  /* A LINE THAT STARTS WITH A TIMESTAMP IS A CHAPTER ROW (audit round 2,
+     touch-10). Publishers write chapter lists one stamp per line, and an
+     inline stamp's hit box can only grow into the leading it has (~2px each
+     way at this line height) before it overlaps the stamp on the next line —
+     where the LATER button wins the hit test, so a tap on the bottom of one
+     chapter's stamp seeked to the next. A stamp-led line is the chapter list's
+     own shape, so it renders as the chapter list's own control: the whole line
+     is one 44px `.ep-chapter-row` button. Only when nothing else on the line
+     is a control of its own (a URL or a second stamp) — a link inside a button
+     is invalid, and two stamps on one line are not a chapter. The newline
+     after a row is dropped: the row is a block, and under `pre-line` a newline
+     opening the next run would paint an empty line under every chapter.
+     Every other line goes through the ONE tokeniser below
+     (`episodeDescriptionTokens`), which the Now Playing sheet shares. */
+  const lines = src.split("\n");
+  let out = "";
+  for (let i = 0; i < lines.length; i++) {
+    const row = descChapterRowHtml(lines[i], durationSec);
+    if (row) { out += row; continue; }
+    out += descInlineHtml(lines[i], durationSec) + (i < lines.length - 1 ? "\n" : "");
+  }
+  return out;
+}
+
+/* `01:23 Title`, `(1:02:45) Title`, `- 12:34 - Title`: an optional bullet or
+   bracket, the stamp, an optional closing bracket and separator, the rest. */
+const DESC_STAMP_LINE_RE = /^[ \t]*(?:[-–—•*·][ \t]*)?[([]?((?:\d{1,3}:)?\d{1,2}:[0-5]\d)\b[)\]]?[ \t]*(?:[-–—:|][ \t]*)?(.*?)\r?$/;
+
+function descChapterRowHtml(line, durationSec) {
+  const m = DESC_STAMP_LINE_RE.exec(line);
+  if (!m) return "";
+  const [, stamp, rest] = m;
+  const secs = parseTimestampSeconds(stamp);
+  if (secs === null || (durationSec !== null && secs > durationSec)) return "";
+  DESC_TOKEN_RE.lastIndex = 0;
+  if (DESC_TOKEN_RE.test(rest)) return "";
+  return `<button type="button" class="ep-chapter-row" data-ts="${esc(String(secs))}" aria-label="Play from ${esc(stamp)}${rest.trim() ? `, ${esc(rest.trim())}` : ""}"><span class="ep-chapter-time">${esc(stamp)}</span><span class="ep-chapter-title">${esc(rest.trim())}</span></button>`;
+}
+
+/** One run of description text as safe inline HTML: the tokens rendered —
+    URLs linked, in-range timestamps as inline seek buttons, the rest escaped. */
+function descInlineHtml(src, durationSec) {
+  return episodeDescriptionTokens(src, durationSec).map((t) => {
     if (t.kind === "link") {
       /* `rel="noopener noreferrer"` because these point off our origin. The
          token's href is already through `safeUrl`; it goes through again here
@@ -9946,7 +10035,7 @@ function renderLibrary() {
   // would misname what happened here, so History gets its own honest fallback
   // for that one state rather than reusing archivedRow's wording.
   const historyRowHtml = (r, i) => r.state === "unnamed"
-    ? `<div class="ep-row gone"><span class="q-num">${i + 1}</span><div class="info"><div class="t">No longer available</div><div class="s">Previously played, no longer available</div></div></div>`
+    ? `<div class="ep-row gone"><div class="info"><div class="t">No longer available</div><div class="s">Previously played, no longer available</div></div></div>`
     : rowHtml(r, i, "library-history");
 
   const savedHtml = savedRows.length
@@ -9973,7 +10062,6 @@ function renderLibrary() {
   $("#view").innerHTML = `
     <div class="page">
       <div class="page-head">
-        <a class="back" href="#/">‹</a>
         <div><h2>Library</h2></div>
       </div>
       ${libSection("Forays", libraryForaysHtml())}
@@ -10154,7 +10242,6 @@ function renderCreate() {
   $("#view").innerHTML = `
     <div class="page cr-page">
       <div class="page-head">
-        <a class="back" href="#/">‹</a>
         <div><h2>Create</h2><p class="sub">Name a subject and 4a builds a playlist from across the catalogue.</p></div>
       </div>
       ${createToggleHtml()}
@@ -10855,9 +10942,9 @@ function foraySourcesHtml(r, player) {
     <div class="fy-src">
       <div class="fy-src-head">
         <span class="fy-src-show">${showNameLink(c.show)}</span>
+        <span class="fy-src-meta">${clips(c.clips)} · ${esc(player.fmtSpan(c.seconds))}</span>
         <a class="fy-src-out" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
            data-src-show="${esc(c.show)}" aria-label="Open ${esc(c.show)} on Apple Podcasts">↗</a>
-        <span class="fy-src-meta">${clips(c.clips)} · ${esc(player.fmtSpan(c.seconds))}</span>
       </div>
       <ul class="fy-src-eps">${c.episodes.map(e =>
         `<li>${esc(e.title)} <span>${clips(e.clips)}</span></li>`).join("")}</ul>
@@ -12200,12 +12287,15 @@ function forayCards() {
    The `.fy-home*` class names stay as they are — renaming them would touch
    every foray style for no behaviour, and `.fy-home-row` is still an accurate
    description of the row shape. */
-function forayListHtml() {
+/* `inSection`: the list sits under the page's own "Forays" heading, so a
+   published row's FORAY tag only restated it (audit round 2, visual-9). A
+   draft keeps its tag — "draft" is news the heading does not carry. */
+function forayListHtml({ inSection = false } = {}) {
   const list = forayCards();
   if (!list.length) return "";
   return `<div class="fy-home">${list.map(f => `
     <a class="fy-home-row" href="#/foray/${esc(f.id)}">
-      <span class="fy-home-kicker">foray${f.status === "published" ? "" : " · draft"}</span>
+      ${inSection && f.status === "published" ? "" : `<span class="fy-home-kicker">foray${f.status === "published" ? "" : " · draft"}</span>`}
       <span class="fy-home-title">${esc(f.title)}</span>
     </a>`).join("")}</div>`;
 }

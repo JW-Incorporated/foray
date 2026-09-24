@@ -376,8 +376,12 @@ test("a shard row duplicating an already-painted curated show by title is droppe
   m.type("fridman");
   await sleep(300);
   const html = m.results().innerHTML;
-  const first = html.indexOf("Lex Fridman Podcast");
-  const second = html.indexOf("Lex Fridman Podcast", first + 1);
+  /* Counted as a row's visible title, not as any occurrence: since audit round
+     2 (search-11) each row also carries its full name in `title=`, because the
+     visible title is clamped to two lines. */
+  const TITLE = 'class="show-result-title">Lex Fridman Podcast<';
+  const first = html.indexOf(TITLE);
+  const second = html.indexOf(TITLE, first + 1);
   assert.ok(first >= 0, "the curated show must still appear");
   assert.strictEqual(second, -1, "the shard's duplicate of the same title must not appear a second time");
 });

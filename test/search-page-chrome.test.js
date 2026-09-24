@@ -279,12 +279,13 @@ test("the search form does NOT render inside .page-head any more", () => {
   assert.ok(!head.includes("sh-compose"), "nor the bar that now holds it");
 });
 
-test("the page header keeps its job — the back button and the title — and only one shape of it survives", () => {
-  /* The header was NOT deleted along with the field it briefly carried: the ‹
-     button is how you leave this page and the title is how you know where you
-     are, and both still collapse on scroll exactly as they have since
-     2026-09-05. What is gone is the two-shape branch — `.page-head-stacked`
-     and `.page-head-main` existed only to make room for the field.
+test("the page header keeps its job — the title — and only one shape of it survives", () => {
+  /* The header was NOT deleted along with the field it briefly carried: the
+     title is how you know where you are, and it still collapses on scroll
+     exactly as it has since 2026-09-05. (The ‹ that sat beside it went in
+     audit round 2 — see below.) What is gone is the two-shape branch —
+     `.page-head-stacked` and `.page-head-main` existed only to make room for
+     the field.
 
      MUTATION: re-introduce the stacked variant, i.e. make renderShowIndexPage
      emit `<div class="page-head page-head-stacked">` again. The exact-open-tag
@@ -295,7 +296,12 @@ test("the page header keeps its job — the back button and the title — and on
   const head = elementHtml(m.view(), '<div class="page-head');
   assert.ok(head.startsWith('<div class="page-head">'),
     `one header shape for every page, got: ${head.slice(0, 80)}`);
-  assert.ok(head.includes('class="back"'), "the ‹ button stays");
+  /* NO ‹ HERE ANY MORE (audit round 2, visual-6): Search is a tab's root —
+     the tab bar is how you leave it, and Home is one of its tabs — so the ‹
+     only duplicated the Home tab, which Apple never shows on a tab root. The
+     category page, which shares the template, is pushed and keeps it
+     (test/card-anatomy.test.js pins both halves). */
+  assert.ok(!head.includes('class="back"'), "a tab root has no ‹");
   assert.ok(head.includes("<h2>Search</h2>"), "and the title stays");
   assert.ok(!head.includes("page-head-main"), "the stacked inner row is gone with the modifier");
   assert.ok(!STYLES.includes(".page-head-stacked {"),
