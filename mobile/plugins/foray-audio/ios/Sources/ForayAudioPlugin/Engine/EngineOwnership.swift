@@ -32,47 +32,41 @@ import ForayEngineCore
 // defect this deck removes, so the only move is native -> legacy, once, and
 // the Developer setting "applies after restart".
 
-/// The engine-private `UserDefaults` keys (plan §4.6). OUTSIDE
-/// `CapacitorStorage.` on purpose: DurableStore enumerates that prefix, and a
-/// page that could see the strike count could also clobber it. They are
-/// reachable from the page only through `engineRead` / `engineSend`.
-enum EnginePrivateKey: String, CaseIterable {
-    case modeOverride = "ForayEngine.modeOverride"
-    case strikes = "ForayEngine.strikes"
-    case sentinel = "ForayEngine.sentinel"
-    case stickyLegacyBuild = "ForayEngine.stickyLegacyBuild"
-    /// The cold-path restore record (EngineStore, NE-19). Named here so the
-    /// whole private set lives in one list.
-    case restore = "ForayEngine.restore"
-    /// `pauseHoldPolicy` (AudioSessionOwner, NE-16).
-    case holdPolicy = "ForayEngine.holdPolicy"
+/// The private keys the owner reads and writes (plan §4.6: `ForayEngine.*`,
+/// `EnginePrivateKey` in the core, OUTSIDE `CapacitorStorage.` so DurableStore
+/// never sees them). NE-19's `EngineStore` is the real one: the engine's
+/// storage has one door, synchronous, and "Delete my data" purges through it.
+protocol EnginePrivateKeyStoring: AnyObject {
+    func string(_ key: EnginePrivateKey) -> String?
+    func set(_ value: String?, for key: EnginePrivateKey)
 }
 
-/// The private keys, read and written SYNCHRONOUSLY. `UserDefaults.set` is
-/// in-process and immediate; there is no write-behind queue to lose a strike
-/// or an override to a crash in the next millisecond.
-final class EnginePrivateStore {
-    let defaults: UserDefaults
+extension EngineStore: EnginePrivateKeyStoring {}
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
+/// The four keys the decision reads, typed. Every write lands before the call
+/// returns (EngineStore has no write-behind), so a strike or an override
+/// cannot be lost to a crash in the next millisecond.
+final class EnginePrivateStore {
+    let keys: EnginePrivateKeyStoring
+
+    init(keys: EnginePrivateKeyStoring) {
+        self.keys = keys
     }
 
+    /// An empty string reads as absent, as the JS reads a stored "".
     func string(_ key: EnginePrivateKey) -> String? {
-        defaults.string(forKey: key.rawValue).flatMap { $0.isEmpty ? nil : $0 }
+        keys.string(key).flatMap { $0.isEmpty ? nil : $0 }
     }
 
     func set(_ value: String?, _ key: EnginePrivateKey) {
-        if let value, !value.isEmpty {
-            defaults.set(value, forKey: key.rawValue)
-        } else {
-            defaults.removeObject(forKey: key.rawValue)
-        }
+        keys.set(value.flatMap { $0.isEmpty ? nil : $0 }, for: key)
     }
 
+    /// Stored as a decimal string (the data-deletion test's `"0"`); anything
+    /// unreadable or negative reads as 0.
     var strikes: Int {
-        get { max(0, defaults.integer(forKey: EnginePrivateKey.strikes.rawValue)) }
-        set { defaults.set(max(0, newValue), forKey: EnginePrivateKey.strikes.rawValue) }
+        get { string(.strikes).flatMap { Int($0) }.map { max(0, $0) } ?? 0 }
+        set { set(String(max(0, newValue)), .strikes) }
     }
 
     /// The state `EngineMode.trace` folds, as stored: the same value the
@@ -87,38 +81,18 @@ final class EnginePrivateStore {
 
 /// `sessionOwnedByEngine` (plan §4.4): true while the engine owns the audio
 /// session, so the legacy `setActive` / `setCategory` sites in both plugins
-/// stand down. `decideOnce` sets it for a native boot; the relinquish clears
-/// it, one way.
+/// stand down. A native boot sets it; the relinquish clears it, one way.
 protocol SessionOwnershipFlag: AnyObject {
     var sessionOwnedByEngine: Bool { get set }
 }
 
-/// The flag in the `UserDefaults` VOLATILE domain `ai.jwlabs.foura.engine`:
-/// process-scoped and never persisted, so a process that died owning the
-/// session cannot leave the next one's legacy lane standing down. NE-16's
-/// `EngineModeFlag.swift` (byte-identical in foray-tts) reads the same domain
-/// and key; when it lands, this conformer delegates to it.
-final class VolatileSessionOwnershipFlag: SessionOwnershipFlag {
-    static let domain = "ai.jwlabs.foura.engine"
-    static let key = "sessionOwnedByEngine"
-
-    private let defaults: UserDefaults
-
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-    }
-
+/// The real flag: NE-16's `EngineModeFlag`, the process-scoped volatile
+/// domain `ai.jwlabs.foura.engine` that foray-tts reads through its
+/// byte-identical copy.
+final class ProcessSessionOwnershipFlag: SessionOwnershipFlag {
     var sessionOwnedByEngine: Bool {
-        get {
-            guard defaults.volatileDomainNames.contains(Self.domain) else { return false }
-            return defaults.volatileDomain(forName: Self.domain)[Self.key] as? Bool ?? false
-        }
-        set {
-            var domain = defaults.volatileDomainNames.contains(Self.domain)
-                ? defaults.volatileDomain(forName: Self.domain) : [:]
-            domain[Self.key] = newValue
-            defaults.setVolatileDomain(domain, forName: Self.domain)
-        }
+        get { EngineModeFlag.sessionOwnedByEngine }
+        set { EngineModeFlag.sessionOwnedByEngine = newValue }
     }
 }
 
@@ -196,13 +170,21 @@ final class EngineOwnership {
     /// override says: a binary with no engine cannot be told to run one.
     static var shared: EngineOwnership {
         if let instance { return instance }
+        let timing = MainQueueTiming()
+        let diagnostics = EngineDiagnostics(timing: timing)
         let owner = EngineOwnership(
-            store: EnginePrivateStore(),
+            store: EnginePrivateStore(keys: EngineStore(diagnostics: diagnostics)),
             environment: .from(info: Bundle.main.infoDictionary),
-            flag: VolatileSessionOwnershipFlag(),
-            timing: MainQueueTiming(),
+            flag: ProcessSessionOwnershipFlag(),
+            timing: timing,
             lifecycle: UIKitOwnershipLifecycle(),
-            diag: EngineOwnership.log,
+            // NO ROWS YET, ON PURPOSE. Until the page's "Delete my data"
+            // reaches the engine's purge (NE-22 / NE-27), a row in the ring
+            // would outlive the deletion. A build with no engine therefore
+            // leaves no trace at all: no private key (decideOnce writes only
+            // what changed) and no row. NE-24 routes this sink to
+            // `diagnostics.record` when it supplies the factory.
+            diag: { _ in },
             engineFactory: nil)
         instance = owner
         return owner
@@ -479,11 +461,5 @@ final class EngineOwnership {
 
     private func row(_ kind: String, _ fields: [JSONMember]) {
         diag(DiagEntry(kind: kind, fields: fields))
-    }
-
-    /// Until EngineStore's ring (NE-19) exists, the owner's rows go to the
-    /// unified log, which the ios-build log stream captures.
-    nonisolated private static func log(_ entry: DiagEntry) {
-        EngineOwnershipLog.write(entry)
     }
 }

@@ -91,8 +91,18 @@ final class ForayEngine {
     /// open (`EngineState.grace`), so the host holds at most one task.
     private var graceTask: BackgroundTaskID?
 
+    /// The pause-hold policy the store last heard (NE-16): a turn that leaves
+    /// the core with a different one is persisted, once.
+    private var storedHoldPolicy: SessionPolicy.HoldPolicy
+
+    /// A stored `pauseHoldPolicy` (the Developer row, `engineSend
+    /// setHoldPolicy`) outranks the config's: the config carries the build's
+    /// default, the key carries what the founder chose on this phone.
     init(seams: EngineSeams, config: EngineConfig, positions: [String: ResumeRules.StoredPosition] = [:]) {
         self.seams = seams
+        var config = config
+        if let stored = seams.holdPolicy?.load() { config.holdPolicy = stored }
+        storedHoldPolicy = config.holdPolicy
         core = EngineCore(config: config, positions: positions)
     }
 
@@ -129,7 +139,7 @@ final class ForayEngine {
             MainActor.assumeIsolated { self?.receive(.session(event)) }
         })
         observations.append(seams.background.observeLifecycle { [weak self] event in
-            MainActor.assumeIsolated { self?.receive(.lifecycle(event)) }
+            MainActor.assumeIsolated { self?.lifecycle(event) }
         })
         for command in MediaMapping.RemoteCommand.allCases {
             observations.append(seams.remote.addTarget(command) { [weak self] press in
@@ -203,6 +213,16 @@ final class ForayEngine {
         handle(input)
     }
 
+    /// The app leaving the foreground or being terminated. The core writes the
+    /// playhead (its position flush) and the store has it in `UserDefaults`
+    /// synchronously; `flush()` then makes it durable BEFORE this handler
+    /// returns, because after `didEnterBackground` returns iOS may suspend
+    /// the process at any moment, and after `willTerminate` it will (NE-19).
+    private func lifecycle(_ event: LifecycleEvent) {
+        handle(.lifecycle(event))
+        if event == .background || event == .terminating { seams.output.flush() }
+    }
+
     /// A remote press: the `remote` row, the core's ruling, and its verdict
     /// back to the system, all before the handler returns.
     private func remote(_ press: RemotePress) -> RemoteVerdict {
@@ -230,8 +250,23 @@ final class ForayEngine {
             if isTornDown { break }
             failures += interpret(command)
         }
+        persistHoldPolicyIfChanged()
         if core.state.session == .relinquished { teardown() }
         return failures
+    }
+
+    /// `setHoldPolicy` is the core's to apply (`state.holdPolicy`) and the
+    /// host's to keep: written to the private key the moment a turn changed
+    /// it, with a row, so a Copy after the H-1b drive says which arm ran.
+    private func persistHoldPolicyIfChanged() {
+        let policy = core.state.holdPolicy
+        guard policy != storedHoldPolicy else { return }
+        storedHoldPolicy = policy
+        seams.holdPolicy?.save(policy)
+        seams.output.diag(DiagEntry(kind: "session", fields: [
+            JSONMember("kind", .string("hold-policy")),
+            JSONMember("policy", .string(policy.text))
+        ]))
     }
 
     /// Both clocks and the deck's reading at the moment the input is handled

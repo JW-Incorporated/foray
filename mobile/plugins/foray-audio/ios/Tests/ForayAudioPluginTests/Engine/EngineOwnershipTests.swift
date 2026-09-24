@@ -100,7 +100,7 @@ final class EngineOwnershipTests: XCTestCase {
             self.sink = sink
             legacyRemote = FakeRemote(log: world.log)
             owner = EngineOwnership(
-                store: EnginePrivateStore(defaults: defaults),
+                store: EngineOwnershipTests.store(defaults),
                 environment: EngineOwnership.LaunchEnvironment(buildDefault: buildDefault, currentBuild: build,
                                                               launchId: "launch-\(UUID().uuidString)"),
                 flag: flag, timing: ownerTiming, lifecycle: lifecycle,
@@ -133,6 +133,16 @@ final class EngineOwnershipTests: XCTestCase {
                                   JSONMember("audio_url", .string("https://cdn.example/\(id).mp3"))]))!
     }
 
+    /// The owner's keys through NE-19's real `EngineStore` over a throwaway
+    /// suite: the one door the engine's storage has in the app.
+    @MainActor
+    static func store(_ defaults: UserDefaults) -> EnginePrivateStore {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("EngineOwnershipTests-\(UUID().uuidString)", isDirectory: true)
+        let diagnostics = EngineDiagnostics(directory: directory, clock: { (wallMs: 0, monoMs: 0) })
+        return EnginePrivateStore(keys: EngineStore(defaults: defaults, diagnostics: diagnostics))
+    }
+
     private func trace(_ events: [EngineMode.Event]) -> EngineMode.Stored {
         EngineMode.trace(from: EngineMode.Stored(), events: events).last!.stored
     }
@@ -149,7 +159,7 @@ final class EngineOwnershipTests: XCTestCase {
     func testDecideOnceFromBothEntryPointsCountsOneStrike() throws {
         let (defaults, _) = freshDefaults()
         defaults.set("an-earlier-launch", forKey: EnginePrivateKey.sentinel.rawValue)
-        defaults.set(1, forKey: EnginePrivateKey.strikes.rawValue)
+        defaults.set("1", forKey: EnginePrivateKey.strikes.rawValue)
         let launch = Launch(defaults)
 
         let booted = try XCTUnwrap(launch.owner.bootIfNeeded(), "native boots from the cold path")
@@ -180,7 +190,7 @@ final class EngineOwnershipTests: XCTestCase {
             launch.lifecycle.post()   // didEnterBackground: the healthy marker
             events += [.launch(buildDefault: .native, currentBuild: "b1", built: true), .healthy]
         }
-        let store = EnginePrivateStore(defaults: defaults)
+        let store = Self.store(defaults)
         XCTAssertEqual(store.strikes, 0)
         XCTAssertNil(store.string(.sentinel))
         XCTAssertEqual(store.stored, trace(events))
@@ -211,7 +221,7 @@ final class EngineOwnershipTests: XCTestCase {
         }
         XCTAssertEqual(modes, [.native, .native, .native, .legacy])
         XCTAssertEqual(strikes, [0, 1, 2, 3])
-        let store = EnginePrivateStore(defaults: defaults)
+        let store = Self.store(defaults)
         XCTAssertEqual(store.string(.stickyLegacyBuild), "b1")
         XCTAssertEqual(store.stored, trace(events))
     }
@@ -222,7 +232,7 @@ final class EngineOwnershipTests: XCTestCase {
     @MainActor
     func testStickyLegacySurvivesRelaunchAndClearsOnANewBuild() {
         let (defaults, _) = freshDefaults()
-        defaults.set(3, forKey: EnginePrivateKey.strikes.rawValue)
+        defaults.set("3", forKey: EnginePrivateKey.strikes.rawValue)
 
         let first = Launch(defaults, build: "b1")
         first.load()
@@ -231,7 +241,7 @@ final class EngineOwnershipTests: XCTestCase {
 
         // Even with the count back at zero, the pin holds this build: no
         // oscillation between lanes on one binary.
-        defaults.set(0, forKey: EnginePrivateKey.strikes.rawValue)
+        defaults.set("0", forKey: EnginePrivateKey.strikes.rawValue)
         let again = Launch(defaults, build: "b1")
         again.load()
         XCTAssertEqual(again.owner.mode, .legacy)
@@ -251,14 +261,14 @@ final class EngineOwnershipTests: XCTestCase {
     @MainActor
     func testSetModeOverrideWritesSynchronouslyAndAppliesAfterRestart() {
         let (defaults, _) = freshDefaults()
-        defaults.set(3, forKey: EnginePrivateKey.strikes.rawValue)
+        defaults.set("3", forKey: EnginePrivateKey.strikes.rawValue)
         let pinned = Launch(defaults)
         pinned.load()
         XCTAssertEqual(pinned.owner.mode, .legacy)
 
         pinned.owner.setModeOverride(.native)
         XCTAssertEqual(defaults.string(forKey: "ForayEngine.modeOverride"), "native", "written before the call returns")
-        XCTAssertEqual(defaults.integer(forKey: "ForayEngine.strikes"), 0)
+        XCTAssertEqual(defaults.string(forKey: "ForayEngine.strikes"), "0")
         XCTAssertNil(defaults.string(forKey: "ForayEngine.stickyLegacyBuild"))
         XCTAssertEqual(pinned.owner.mode, .legacy, "applies after restart")
 
@@ -528,7 +538,7 @@ final class EngineOwnershipTests: XCTestCase {
             })
         }
         XCTAssertEqual(launchesUntilLegacy, 4, "three broken pages, then legacy")
-        XCTAssertEqual(EnginePrivateStore(defaults: defaults).stored, trace(events))
+        XCTAssertEqual(Self.store(defaults).stored, trace(events))
     }
 
     /// A healthy marker that arrives AFTER a page-health strike clears the
@@ -613,13 +623,13 @@ final class EngineOwnershipTests: XCTestCase {
     /// different domain.
     func testTheSessionFlagIsVolatileAndSharedInProcess() {
         let defaults = UserDefaults.standard
-        defer { defaults.removeVolatileDomain(forName: VolatileSessionOwnershipFlag.domain) }
-        let writer = VolatileSessionOwnershipFlag()
+        defer { defaults.removeVolatileDomain(forName: EngineModeFlag.domain) }
+        let writer = ProcessSessionOwnershipFlag()
         XCTAssertFalse(writer.sessionOwnedByEngine)
         writer.sessionOwnedByEngine = true
-        XCTAssertTrue(VolatileSessionOwnershipFlag().sessionOwnedByEngine, "a second reader in the process sees it")
+        XCTAssertTrue(ProcessSessionOwnershipFlag().sessionOwnedByEngine, "a second reader in the process sees it")
         XCTAssertEqual(defaults.volatileDomain(forName: "ai.jwlabs.foura.engine")["sessionOwnedByEngine"] as? Bool, true)
         writer.sessionOwnedByEngine = false
-        XCTAssertFalse(VolatileSessionOwnershipFlag().sessionOwnedByEngine)
+        XCTAssertFalse(ProcessSessionOwnershipFlag().sessionOwnedByEngine)
     }
 }

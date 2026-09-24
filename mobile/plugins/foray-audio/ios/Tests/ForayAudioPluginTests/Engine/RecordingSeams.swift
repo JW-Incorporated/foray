@@ -365,11 +365,35 @@ final class FakeOutput: EngineOutput {
     func writeRestore(_ record: RestoreRecord?) { restores.append(record); log.add("output.restore") }
     func appendEvent(_ event: PendingEvent) { events.append(event); log.add("output.event") }
     func emit(_ event: EngineEvent) { emitted.append(event); log.add("output.emit") }
+    func flush() { log.add("output.flush") }
 
     func diag(_ entry: DiagEntry) {
         diags.append(entry)
         log.add("output.diag \(entry.kind)")
         onDiag?(entry)
+    }
+}
+
+// MARK: - HoldPolicyStoring
+
+/// The private `ForayEngine.holdPolicy` key, in memory (NE-16).
+final class FakeHoldPolicyStore: HoldPolicyStoring {
+    let log: SeamLog
+    /// What `load()` answers: what a previous launch left.
+    var stored: SessionPolicy.HoldPolicy?
+    private(set) var saves: [SessionPolicy.HoldPolicy] = []
+
+    init(log: SeamLog, stored: SessionPolicy.HoldPolicy? = nil) {
+        self.log = log
+        self.stored = stored
+    }
+
+    func load() -> SessionPolicy.HoldPolicy? { stored }
+
+    func save(_ policy: SessionPolicy.HoldPolicy) {
+        saves.append(policy)
+        stored = policy
+        log.add("holdPolicy.save \(policy.text)")
     }
 }
 
@@ -386,9 +410,12 @@ final class FakeWorld {
     lazy var speaker = FakeSpeaker(log: log)
     lazy var timing = FakeTiming(log: log)
     lazy var output = FakeOutput(log: log)
+    /// Nil unless a test gives the world one (NE-16): the host then runs
+    /// without persistence, as most tests want.
+    var holdPolicyStore: FakeHoldPolicyStore?
 
     var seams: EngineSeams {
         EngineSeams(session: session, background: background, remote: remote, nowPlaying: nowPlaying,
-                    deck: deck, speaker: speaker, timing: timing, output: output)
+                    deck: deck, speaker: speaker, timing: timing, output: output, holdPolicy: holdPolicyStore)
     }
 }

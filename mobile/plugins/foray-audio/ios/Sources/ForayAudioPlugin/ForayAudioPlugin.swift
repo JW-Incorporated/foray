@@ -300,8 +300,15 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
            that `setActive` lives in `holdSession`/`releaseSession` alone.
            `try?`: a failure here costs the mode, never the launch. DEVICE
            CHECK, open: whether WebKit resets the mode when its element starts
-           (`docs/ios-lock-screen.md` §8.5). */
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
+           (`docs/ios-lock-screen.md` §8.5).
+           GUARDED ON `EngineModeFlag` (NE-16): when the native engine owns
+           the session, its `AudioSessionOwner` set the category at boot and
+           is the only writer; a second writer is the two-owner defect the
+           engine exists to remove. Legacy mode leaves the flag false, so
+           this line runs exactly as it did in build 2026092327. */
+        if !EngineModeFlag.sessionOwnedByEngine {
+            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
+        }
         // NOTHING IS PLAYING AT LOAD, so nothing is enabled -- the same answer
         // `NowPlaying.acceptsTransport()` gives for IDLE on Android. Without
         // this, every command sits at `MPRemoteCommand`'s default (enabled)
@@ -733,6 +740,17 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// so (`sessionActivated` with `failed`), which is the whole point of the
     /// row. The mode is the app's one mode, `.spokenAudio` -- see `load()`.
     private func holdSession(reason: String) {
+        /* NE-16: the native engine's `AudioSessionOwner` is the one owner
+           while `sessionOwnedByEngine` is true, and a legacy hold then would
+           activate behind its back (and, re-held from a route change, over a
+           session the engine deliberately released). Nothing is held, and
+           the log says why; a relinquish flips the flag back to false, after
+           which this runs exactly as before. */
+        guard !EngineModeFlag.sessionOwnedByEngine else {
+            holdsSession = false
+            Self.logger.notice("ForayAudio.session hold skipped: engine-owned reason=\(reason, privacy: .public)")
+            return
+        }
         let session = AVAudioSession.sharedInstance()
         var ok = true
         do {
@@ -757,6 +775,14 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// `notifyOthersOnDeactivation` so the interrupted app may resume -- see
     /// `SessionMove`. Never on the resume transition; that is `supersedeSession`.
     private func releaseSession(reason: String, notifyOthers: Bool) {
+        /* NE-16: never deactivate a session the engine owns. A legacy release
+           with `notifyOthers` would hand the car back to the app 4a
+           interrupted while the engine is mid-episode. */
+        guard !EngineModeFlag.sessionOwnedByEngine else {
+            holdsSession = false
+            Self.logger.notice("ForayAudio.session release skipped: engine-owned reason=\(reason, privacy: .public)")
+            return
+        }
         let session = AVAudioSession.sharedInstance()
         var ok = true
         do {
