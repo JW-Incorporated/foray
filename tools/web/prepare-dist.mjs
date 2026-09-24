@@ -19,15 +19,16 @@
      node tools/web/prepare-dist.mjs --out X    # -> X/
 */
 
-import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, existsSync, statSync, readdirSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { mkdirSync, rmSync, cpSync, existsSync, statSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join, relative, sep } from "node:path";
-import { POINTER_PATH, deployIdFrom } from "../ci/forays-directory.mjs";
+import { dirname, join, relative, sep, isAbsolute } from "node:path";
+import { POINTER_PATH } from "../ci/forays-directory.mjs";
+import { stampBuild, stampedProblems, stampTimestamp } from "../ci/generate-manifest.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = process.argv.slice(2);
-const OUT = join(ROOT, args.includes("--out") ? args[args.indexOf("--out") + 1] : "dist");
+const OUT_ARG = args.includes("--out") ? args[args.indexOf("--out") + 1] : "dist";
+const OUT = isAbsolute(OUT_ARG) ? OUT_ARG : join(ROOT, OUT_ARG);
 
 /** Hard cap. The whole point is to not ship the 12 MB catalogue by accident, so
     failing loudly beats a slow deploy nobody looks at. */
@@ -42,7 +43,6 @@ const SHELL = [
   "styles.css",
   "sw.js",
   "manifest.json",
-  "deploy-manifest.json",
   "icon-180.png",
   "icon-512.png",
 ];
@@ -129,15 +129,6 @@ for (const f of RUNTIME_DATA) {
   const r = copy(join("data", f));
   (r.missing ? missing : copied).push(r);
 }
-/* The Foray directory pointer (FD-02, `tools/ci/forays-directory.mjs`). Not
-   fetched by app.js — the native shell reads it from the live origin — but it
-   is listed in deploy-manifest.json, so a dist without it fails the manifest
-   cross-check below (and sw.js's install, in production). */
-{
-  const r = copy(POINTER_PATH);
-  (r.missing ? missing : copied).push(r);
-}
-
 const totalBytes = copied.reduce((n, r) => n + r.bytes, 0);
 const mb = totalBytes / 1024 / 1024;
 
@@ -165,57 +156,46 @@ if (missing.length) {
   console.warn("WARN not found (skipped): " + missing.map((m) => m.rel).join(", "));
 }
 
-/* Stamp deploy-manifest.json's deploy_id, freshly, against what dist ACTUALLY
-   contains.
+/* THE DEPLOY STAMP (issue #701): deploy-manifest.json, the Foray directory
+   pointer (data/forays-directory.json) and sw.js's BUILD_ID, written INTO dist/
+   from the bytes dist/ actually holds. None of the three is committed any more —
+   they changed on every merge to main and so conflicted with every open PR; see
+   tools/ci/generate-manifest.mjs's header.
 
-   Before M4 (#233 remainder) sw.js's `CACHE` name was hand-bumped and the
-   Vercel build stamped a content hash into it directly, because there was no
-   other place to put a version. sw.js now derives its generation identity
-   entirely from `deploy-manifest.json` (see tools/ci/generate-manifest.mjs and
-   sw.js's header), which is generated from the SOURCE tree and already
-   committed — normally that committed copy is exactly right, since dist is a
-   byte-identical copy of the same files it hashes.
+   Computed from dist rather than the source tree, which is the stronger claim:
+   sw.js verifies every file it fetches against these hashes at install time, so
+   a manifest that described files dist does not contain (this script's
+   allowlist omitting something generate-manifest.mjs lists) would fail in
+   production, not here. `stampBuild` throws on exactly that ("listed file is
+   missing on disk"), and `stampedProblems` then re-derives everything from disk
+   so a torn stamp cannot ship.
 
-   This step exists for the one case where it would not be: this script's own
-   allowlist can omit or rename something relative to what generate-manifest.mjs
-   listed, and a manifest that describes files dist does not actually contain
-   would let sw.js's install-time verification fail against production, not
-   locally. So dist gets its OWN manifest, recomputed from what actually landed
-   in dist, rather than trusting the copy that shipped from the source tree. */
+   `built_at` is the committer date of the newest commit that touched a stamp
+   input (`stampTimestamp`), NOT HEAD's: this build is skipped for commits that
+   touch nothing served, and the phone's bundled seed (built from such a commit)
+   must carry the same date this deploy does. It moves forward with main, a
+   revert included, and two builds of the same content agree. The phones order
+   pointers by it (player/foray-directory.js, STATUS.OLDER). A shallow clone can
+   only make it later, which is the safe direction for a live pointer. */
 {
-  const distManifestPath = join(OUT, "deploy-manifest.json");
-  if (!existsSync(distManifestPath)) {
-    console.error("FATAL: deploy-manifest.json missing from dist — cannot verify deploy identity.");
+  const stamp = stampTimestamp(ROOT);
+  let r;
+  try {
+    r = stampBuild(OUT, { builtAt: stamp.builtAt });
+  } catch (err) {
+    console.error(`FATAL: could not stamp the deploy: ${err.message}`);
     process.exit(1);
   }
-  const sourceManifest = JSON.parse(readFileSync(join(ROOT, "deploy-manifest.json"), "utf8"));
-  const distFiles = {};
-  for (const rel of Object.keys(sourceManifest.files)) {
-    const f = join(OUT, rel);
-    if (!existsSync(f)) {
-      console.error(`FATAL: deploy-manifest.json names ${rel}, which is not in dist. ` +
-        `Add it to prepare-dist.mjs's allowlist or regenerate the manifest.`);
-      process.exit(1);
-    }
-    distFiles[rel] = "sha256:" + createHash("sha256").update(readFileSync(f)).digest("hex");
-  }
-  /* Same derivation as generate-manifest.mjs, including its one exclusion: the
-     Foray directory pointer names the deploy id, so it is listed but never an
-     input to it. Deriving through the shared helper is what keeps this id equal
-     to the committed one when dist is a byte-identical copy. */
-  const distDeployId = deployIdFrom(distFiles);
-  if (distDeployId !== sourceManifest.deploy_id) {
-    /* The copied pointer (and sw.js's BUILD_ID) carry the COMMITTED id. dist
-       is a byte-exact copy of files `--check` already proved the committed
-       manifest describes, so this cannot differ on a healthy tree; if it does,
-       shipping a pointer that names a generation dist is not would send every
-       phone re-fetching a set it can never match. */
-    console.error(`FATAL: dist computes to deploy_id ${distDeployId} but the committed manifest says ${sourceManifest.deploy_id}. ` +
-      `${POINTER_PATH} and sw.js name the committed id; run \`node tools/ci/generate-manifest.mjs --check\` on the source tree.`);
+  const problems = stampedProblems(OUT);
+  if (problems.length) {
+    console.error("FATAL: the stamped dist does not verify — sw.js would refuse this deploy:");
+    for (const p of problems) console.error(`  ${p}`);
     process.exit(1);
   }
-  writeFileSync(distManifestPath, JSON.stringify({ deploy_id: distDeployId, files: distFiles }, null, 2) + "\n");
-  console.log(`deploy manifest: ${distDeployId} (${Object.keys(distFiles).length} files, verified against dist)`);
+  console.log(
+    `deploy stamp: ${r.deployId} (${Object.keys(r.manifest.files).length} files, verified against dist); ` +
+      `${POINTER_PATH} built_at ${r.pointer.built_at} (from ${stamp.source})`
+  );
 }
 
 if (mb > MAX_MB) {

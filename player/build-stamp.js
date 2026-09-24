@@ -12,12 +12,13 @@
 
      - THE WEB DEPLOY ID — which `app.js`/`player/*.js` is running. It is
        `deploy-manifest.json`'s `deploy_id`, the value `tools/ci/generate-
-       manifest.mjs` stamps into `sw.js` as `BUILD_ID` on every commit to main.
+       manifest.mjs` stamps into the deployed `sw.js` as `BUILD_ID` at every
+       deploy build (never committed since issue #701).
        On the website it is read from the manifest (or from the generation the
        service worker pinned this page to — app.js's `pinnedDeployId` — which is
        the more exact answer when there is one). In the shell there is no worker
-       and no manifest, so `prepare-webdir.mjs` writes `build-stamp.json` with
-       the same id into the bundle at package time.
+       and no manifest, so `prepare-webdir.mjs` computes the same id for the
+       commit it packages and writes it into the bundle as `build-stamp.json`.
      - THE NATIVE BUILD NUMBER — which binary (`YYYYMMDDnn`, the number the
        stores show). Only the binary knows it, so it is asked at runtime through
        `@capacitor/app`'s `getInfo`, which is already a dependency of the shell

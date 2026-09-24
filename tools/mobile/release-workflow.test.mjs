@@ -313,3 +313,18 @@ test("NE-06: the summary names a refusal, so a skipped iOS is not mistaken for a
   assert.match(summaryStep, /iOS was refused before building/);
   assert.match(RCODE.slice(RCODE.indexOf("\n  summary:")),/needs: \[version, ios-checks, ios, android\]/);
 });
+
+test("NE-17: the release archive runs the plist injector bare and then --check, which carries ForayEngineDefault", () => {
+  /* The TestFlight build's `ForayEngineDefault` (mobile/ENGINE_DEFAULT.json) is
+     written by the bare run and read back by `--check`: the archive that
+     reaches the founder's phone must say the same engine default as the
+     ios-build that tested it. No .github edit carries it, so these two lines
+     are what does.
+     MUTATION: drop either line from ios-archive/action.yml, or add
+     `--engine-default` to it -> red. */
+  const s = code(actionStep(IOS_ACTION, "Add UIBackgroundModes") ?? "");
+  assert.ok(s, "the ios-archive plist step is gone");
+  assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs mobile\/ios\/App\/App\/Info\.plist\s*$/m, "the bare write is gone");
+  assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs mobile\/ios\/App\/App\/Info\.plist --check\s*$/m, "the read-back is gone");
+  assert.doesNotMatch(code(IOS_ACTION), /--engine-default/, "the archive must read the committed mobile/ENGINE_DEFAULT.json");
+});

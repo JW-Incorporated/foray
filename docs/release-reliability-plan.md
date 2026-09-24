@@ -142,7 +142,8 @@ and this repo's own doctrine is that a flaky alarm is worse than none
 
 Concretely, reusing the Vercel deny-list would fire on `api/`, `vercel.json`,
 `deploy-manifest.json`, `sw.js` and `data/forays-directory.json` — the last three
-of which the manifest-autofix bot rewrites on **nearly every PR**.
+of which the manifest-autofix bot rewrote on **nearly every PR** (until issue #701,
+2026-09-24, made them deploy build outputs and retired the bot).
 
 Ground truth for "what reaches a store build" is executable, not a hand list:
 `node tools/mobile/prepare-webdir.mjs --list` prints the 53-file plan, and

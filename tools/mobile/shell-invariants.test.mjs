@@ -2029,12 +2029,12 @@ test("the seek pair has ONE source — the payload — on both natives, and the 
   const availability = swiftFuncBody(swift, "applyCommandAvailability");
   assert.match(availability, /skipBackwardCommand\.preferredIntervals = Self\.preferredIntervals\(ms: payload\.seekBackMs\)/);
   assert.match(availability, /skipForwardCommand\.preferredIntervals = Self\.preferredIntervals\(ms: payload\.seekForwardMs\)/);
-  assert.doesNotMatch(swiftFuncBody(swift, "load"), /preferredIntervals/, "not once at load — per state change");
+  assert.doesNotMatch(swiftFuncBody(swift, "runLegacyRegistration"), /preferredIntervals/, "not once at load — per state change");
   /* And nothing is ENABLED at load: `.empty` is the payload the page has not
      sent yet, so the first real `setNowPlaying` is a change the command centre
      sees, and no lock screen offers a play button for a player with nothing
      loaded (Android's IDLE). MUTATION: delete the call from `load()`. */
-  assert.match(swiftFuncBody(swift, "load"), /applyCommandAvailability\(\.empty\)/, "load() must start every command disabled");
+  assert.match(swiftFuncBody(swift, "runLegacyRegistration"), /applyCommandAvailability\(\.empty\)/, "load() must start every command disabled");
   const payload = stripSwiftComments(fs.readFileSync(
     path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/NowPlayingPayload.swift"), "utf8"
   ));
@@ -3431,7 +3431,9 @@ const FLAG_TTS_SWIFT = path.join(PLUGIN_DIR, "../foray-tts/ios/Sources/ForayTtsP
 const GUARDED_SESSION_SITES = [
   ["ForayAudioPlugin.swift", "holdSession", "setActive"],
   ["ForayAudioPlugin.swift", "holdSession", "setCategory"],
-  ["ForayAudioPlugin.swift", "load", "setCategory"],
+  /* NE-17: today's load() body is runLegacyRegistration, which load() reaches
+     through EngineOwnership (the NE-17 tests below). */
+  ["ForayAudioPlugin.swift", "runLegacyRegistration", "setCategory"],
   ["ForayAudioPlugin.swift", "releaseSession", "setActive"],
   ["ForayTtsPlugin.swift", "claimSession", "setActive"],
   ["ForayTtsPlugin.swift", "claimSession", "setCategory"],
@@ -3641,7 +3643,7 @@ test("the iOS track pair follows the ROUTE, and the page's track handlers are no
   const route = swiftFuncBody(code, "handleRouteChange");
   assert.match(route, /trackRoutePresent = Self\.trackCommandsAllowed\(portTypes: outputs\)/, "re-read on every route change");
   assert.match(route, /applyCommandAvailability\(self\.lastPayload, force: true\)/, "and re-applied when it moved");
-  assert.match(swiftFuncBody(code, "load"), /trackRoutePresent = Self\.trackCommandsAllowed/, "and read at load");
+  assert.match(swiftFuncBody(code, "runLegacyRegistration"), /trackRoutePresent = Self\.trackCommandsAllowed/, "and read at load");
   assert.ok(UNMIRRORED_ACTIONS.includes("nexttrack") && UNMIRRORED_ACTIONS.includes("previoustrack"), "WebKit's session gets no track handlers");
   assert.ok(!UNMIRRORED_ACTIONS.includes("seekforward") && !UNMIRRORED_ACTIONS.includes("seekbackward"), "the skip pair is still mirrored");
 });
@@ -3656,7 +3658,9 @@ test("one audio-session mode, .spokenAudio, in both iOS plugins; category only a
   assert.doesNotMatch(audio, /mode:\s*\.default/, "the audio plugin holds no second mode");
   assert.doesNotMatch(tts, /mode:\s*\.default/, "nor does the TTS plugin");
   assert.match(swiftFuncBody(audio, "holdSession"), /setCategory\(\.playback, mode: \.spokenAudio/);
-  const load = swiftFuncBody(audio, "load");
+  /* Since NE-17 the legacy lane's load() body is `runLegacyRegistration`, run
+     by EngineOwnership from load() (pinned in the NE-17 test below). */
+  const load = swiftFuncBody(audio, "runLegacyRegistration");
   assert.match(load, /setCategory\(\.playback, mode: \.spokenAudio, options: \[\]\)/, "set once for the tape between narration and holds");
   assert.doesNotMatch(load, /setActive/, "category only: the playing path never activates");
   /* NE-16 moved the TTS pair into `claimSession()` so both callers share one
@@ -3738,4 +3742,68 @@ test("the Android shell starts the service for a narration-first Foray from the 
   assert.match(shellSrc, /return \{ install, uninstall, inspect, refresh, setMediaLoaded, noteTransportPlaying, noteServiceRunning, newDocument \};/);
   const shim = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8"));
   assert.match(shim, /shell\.noteTransportPlaying\(playing\)/, "the shim hands the transition to the shell");
+});
+
+/* ─────────── NE-17: EngineOwnership decides the lane, once ───────────
+ *
+ * docs/native-engine-plan.md §4.6 and card NE-17. The owner's behaviour runs
+ * over the fakes in ForayAudioPluginTests/Engine/EngineOwnershipTests.swift
+ * (ios-kit). Pinned here is what those tests stand on and a refactor could
+ * quietly undo: the plugin's load() goes through the owner and today's
+ * registration is reachable from nowhere else; the owner is Foundation-only;
+ * the private keys are §4.6's six, outside CapacitorStorage.; the session
+ * flag's domain and key are the plan's; and the host hands the owner its two
+ * hooks. */
+
+const OWNERSHIP_SWIFT = path.join(ENGINE_DIR, "EngineOwnership.swift");
+
+test("NE-17: load() asks EngineOwnership, and today's registration runs only through it", () => {
+  /* MUTATION: call registerCommandHandlers() from load() again; call
+     runLegacyRegistration() from anywhere but load()'s closure; drop the
+     legacyLane guard from setNowPlaying. Each fails. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const load = swiftFuncBody(code, "load");
+  assert.match(load, /EngineOwnership\.shared/, "load() must ask the owner");
+  assert.match(load, /pluginDidLoad\(legacyRegistration: register\)/);
+  assert.match(load, /let register: \(\) -> Void = \{ \[weak self\] in self\?\.runLegacyRegistration\(\) \}/);
+  for (const direct of ["registerCommandHandlers", "registerSessionObservers", "setCategory", "applyCommandAvailability"]) {
+    assert.doesNotMatch(load, new RegExp(`\\b${direct}\\(`), `load() must not ${direct}() itself: the owner decides`);
+  }
+  assert.deepEqual(swiftCallersOf(code, "runLegacyRegistration"), ["load"]);
+  assert.deepEqual(swiftCallersOf(code, "registerCommandHandlers"), ["runLegacyRegistration"]);
+  assert.deepEqual(swiftCallersOf(code, "registerSessionObservers"), ["runLegacyRegistration"]);
+  const legacy = swiftFuncBody(code, "runLegacyRegistration");
+  assert.match(legacy, /stateQueue\.sync \{ legacyLane = true \}/);
+  assert.match(swiftFuncBody(code, "setNowPlaying"), /guard let self, self\.legacyLane else \{ return \}\s*self\.apply\(payload\)/,
+    "in the native lane a stale page's payload must not write over the engine's Now Playing");
+  assert.match(swiftFuncBody(code, "engineHello"), /EngineOwnership\.shared\.helloReceived\(\)/, "a hello stands the watchdog down");
+});
+
+test("NE-17: the owner is Foundation-only, keeps its keys through EngineStore and its flag through EngineModeFlag, and the host hands it two hooks", () => {
+  /* MUTATION: import UIKit into EngineOwnership.swift, or name UserDefaults
+     there; declare a second EnginePrivateKey in the plugin; write the flag
+     anywhere but EngineModeFlag; give the shared owner a factory or a row
+     sink before NE-24; drop either host hook. Each fails. */
+  assert.deepEqual(swiftImports(OWNERSHIP_SWIFT).sort(), ["ForayEngineCore", "Foundation"]);
+  const owner = stripSwiftComments(fs.readFileSync(OWNERSHIP_SWIFT, "utf8"));
+  assert.doesNotMatch(owner, /\b(AVAudioSession|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|NotificationCenter|UserDefaults)\b/,
+    "the owner reaches a platform API; that belongs in a conformer (OwnershipLifecycle.swift, EngineStore)");
+  assert.doesNotMatch(owner, /enum EnginePrivateKey\b/, "the private keys are the core's EnginePrivateKey (NE-19), not a second list");
+  assert.match(owner, /extension EngineStore: EnginePrivateKeyStoring \{\}/, "the owner's keys go through EngineStore");
+  const flag = /final class ProcessSessionOwnershipFlag: SessionOwnershipFlag \{([\s\S]*?)\n\}/.exec(owner);
+  assert.ok(flag, "the real session flag is gone");
+  assert.match(flag[1], /get \{ EngineModeFlag\.sessionOwnedByEngine \}/);
+  assert.match(flag[1], /set \{ EngineModeFlag\.sessionOwnedByEngine = newValue \}/);
+  const shared = /static var shared: EngineOwnership \{([\s\S]*?)\n    \}/.exec(owner);
+  assert.ok(shared, "EngineOwnership.shared is gone");
+  assert.match(shared[1], /engineFactory: nil\)/, "the shared owner boots no engine until NE-24 supplies the real seams");
+  assert.match(shared[1], /diag: \{ _ in \}/, "no ring row outlives Delete my data before the engine's purge is reachable");
+  assert.match(shared[1], /flag: ProcessSessionOwnershipFlag\(\)/);
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "handle"), /drain\(\)\s*onTurnCompleted\?\(\)/, "the first handled input is the healthy marker");
+  assert.match(swiftFuncBody(host, "teardown"), /tornDown\?\(\)/, "whatever tears the engine down, the legacy lane takes over");
+  const lifecycle = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "OwnershipLifecycle.swift"), "utf8"));
+  assert.match(lifecycle, /UIApplication\.willResignActiveNotification, UIApplication\.didEnterBackgroundNotification/);
+  assert.match(lifecycle, /queue: \.main/);
 });

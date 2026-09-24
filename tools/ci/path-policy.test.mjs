@@ -199,6 +199,14 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // all today. Revisit and split/deny the signing-gate path specifically the
   // day iOS signing secrets are wired in (kanban t_97e1c5f4).
   "tools/mobile/ios-ci.mjs": "no live signing secret in ios-build.yml today; revisit when iOS signing lands",
+  // Issue #701: ci.yml builds dist/ with prepare-dist.mjs so a PR that would
+  // break the Vercel build is red before merge. The script was ALREADY the
+  // production build (vercel.json's buildCommand) on an allowed path; running it
+  // in CI adds a check, not an exposure. What would make a neutered copy
+  // dangerous — a torn deploy stamp — is re-derived independently by the very
+  // next command in the same step, `tools/ci/generate-manifest.mjs --verify
+  // dist`, which is on a DENIED path.
+  "tools/web/prepare-dist.mjs": "already the Vercel build; the stamp it writes is re-verified by denied tools/ci/generate-manifest.mjs --verify",
   // Diagnostic probes over a live Chrome DevTools socket / device screen —
   // they read app behaviour after the build already happened and can only
   // turn a check red, not change what gets built or signed.

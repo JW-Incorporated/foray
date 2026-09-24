@@ -1,24 +1,22 @@
-/* The LF-checkout guard for `tools/ci/generate-manifest.mjs`.
+/* The LF-checkout guard for `tools/ci/generate-manifest.mjs`'s build stamp.
  *
  * WHY IT IS ITS OWN FILE
- * `generate-manifest.mjs` calls `main()` at module top level — importing it
- * from a test would run the CLI and exit(2) on the usage error. The obvious
- * fix (an `import.meta.url === argv[1]` entrypoint guard) was rejected: that
- * file is the `data-and-site` manifest gate, and an entrypoint check that ever
- * misfires on a runner turns `--check` into a no-op that exits 0 — a gate
- * certifying nothing, which is the exact failure class CLAUDE.md § "A green
- * test is not evidence" is about. A pure module both sides import costs one
- * file and risks nothing.
+ * A pure module that the stamper, `tools/mobile/prepare-webdir.mjs` and the
+ * tests all import, with no CLI attached. It costs one file and risks nothing.
  *
  * THE HAZARD IT GUARDS
  * The manifest hashes the bytes ON DISK. This repo commits LF and is developed
  * on Windows with `core.autocrlf=true`, so every text file in a developer
- * checkout is CRLF while the committed blob — the byte stream GitHub Pages
- * serves and `sw.js` verifies in the browser — is LF. Running `--write` there
- * rewrites all 40 entries to CRLF-derived hashes. The commit looks plausible
- * and `--check` even passes locally, but `data-and-site` fails on CI, and if it
- * somehow did not, every client's install-time hash verification would reject
- * the generation and no deploy would ever promote.
+ * checkout is CRLF while the committed blob — the byte stream the deploys
+ * (Vercel and the Pages workflow, both on Linux) serve and `sw.js` verifies in
+ * the browser — is LF. A stamp computed there carries 40 CRLF-derived hashes
+ * and a deploy id that no live origin will ever serve.
+ *
+ * Since issue #701 (2026-09-24) nothing this guards is committed: the stamp is
+ * written into a BUILT tree at deploy time. The guard still refuses a CRLF
+ * build (`prepare-dist.mjs`, `generate-manifest.mjs --stamp`), and
+ * `prepare-webdir.mjs` leaves the seed's version stamp out rather than bundle a
+ * wrong one.
  *
  * Measured on 2026-09-03 in a `core.autocrlf=true` worktree of `main`: 37 of the 38
  * listed text files differ from their committed blobs, and `--check` reported
@@ -83,11 +81,10 @@ export function crlfFatalMessage(bad) {
     `  offenders (${bad.length}): ${bad.slice(0, 5).join(", ")}${bad.length > 5 ? ", ..." : ""}\n` +
     "\n" +
     "This is the Windows `core.autocrlf=true` checkout, NOT a stale manifest.\n" +
-    "Do NOT 'fix' it by running --write: that is the failure mode this guard exists for.\n" +
+    "Do NOT 'fix' it by running --write or by committing a stamp: nothing here is\n" +
+    "committed any more (issue #701). The deploy builds stamp it on Linux runners.\n" +
     "\n" +
-    "Either let CI regenerate it (tools/refresh/merge.mjs does it on the nightly's Linux\n" +
-    "runner, and .github/workflows/manifest-autofix.yml does it for any other PR), or\n" +
-    "renormalise first: `git config core.autocrlf false`, then re-materialise the tree\n" +
-    "in a fresh clone or worktree."
+    "For a local build, renormalise first: `git config core.autocrlf false`, then\n" +
+    "re-materialise the tree in a fresh clone or worktree."
   );
 }
