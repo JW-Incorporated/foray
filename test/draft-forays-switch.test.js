@@ -5,7 +5,8 @@
  * with `generated: true`, and the visitor rule in player/foray-resolve.js hides
  * a draft from anyone who did not arrive via `?foray=<id>`. Nothing about that
  * rule changed, and no Foray's status changed (tools/foray/check-forays.test.mjs
- * still pins exactly one published). What this suite pins is the SWITCH:
+ * pins the published set by name; a second Foray joined it on 2026-09-24, and
+ * nothing below may assume there is only one). What this suite pins is the SWITCH:
  *
  *   OFF (the default, `cp_show_drafts` absent or false)
  *     - every surface renders byte-for-byte what it rendered before the switch
@@ -70,6 +71,15 @@ const AUTHORED_DRAFT_IDS = DRAFTS.filter((f) => f.generated !== true).map((f) =>
 const titleOf = (id) => FORAYS.find((f) => f.id === id).title;
 /** The published Foray the assertions below name, read off the data (#236). */
 const PUBLISHED_ID = PUBLISHED_IDS[0];
+/** The listed half of #/forays with one draft unlocked by `?foray=`: the
+    published Forays and the unlocked one, in FILE order (forayCards' own
+    comment: "Published + `?foray=`-unlocked first, in file order"). With one
+    published Foray this was "the published one, then the draft"; with two it
+    is not, because a generated draft can sit between them in the file. */
+const listedWith = (unlocked) => FORAYS.filter((f) => f.status === "published" || f.id === unlocked).map((f) => f.id);
+/** Home's "Forays for you" takes up to four listed Forays (foraysForYouPicks,
+    `take: 4`) before the test-track drafts. */
+const HOME_PICKS = Math.min(4, PUBLISHED_IDS.length);
 
 /* ---------- a DOM with a tree, whose innerHTML grows ids ---------- */
 
@@ -399,8 +409,11 @@ test("switch on: Home lists every draft as a badged card after the ordinary pick
   assert.ok(home.includes('class="hv2-test-track note">Showing draft Forays — test track</p>'), "the one-line notice");
   assert.ok(home.indexOf("Showing draft Forays") < home.indexOf("hv2-forays"), "the notice is above the Forays section");
   const cards = home.split('class="hv2-foray-card').slice(1);
-  assert.strictEqual(cards.length, 1 + DRAFTS.length, "the one published pick, then every draft");
-  assert.ok(cards[0].includes(`href="#/foray/${PUBLISHED_ID}"`) && !cards[0].includes("hv2-draft-tag"), "the published card is first and unbadged");
+  assert.strictEqual(cards.length, HOME_PICKS + DRAFTS.length, "the published picks, then every draft");
+  for (const card of cards.slice(0, HOME_PICKS)) {
+    assert.ok(PUBLISHED_IDS.some((id) => card.includes(`href="#/foray/${id}"`)) && !card.includes("hv2-draft-tag"),
+      "the published picks come first and are unbadged");
+  }
   for (const f of DRAFTS) {
     const card = cards.find((c) => c.includes(`href="#/foray/${f.id}"`));
     assert.ok(card, `${f.id} has a card`);
@@ -467,7 +480,7 @@ test("the ?foray=<id> unlock behaves exactly as before, with the switch off and 
   await byName.settle();
   assert.strictEqual(byName.state().foray?.id, draft);
   assert.ok(byName.view().includes("You opened it by name; nobody else sees it."), "today's sentence, exactly");
-  assert.deepStrictEqual(byName.ids(), [...PUBLISHED_IDS, draft], "the unlocked draft is listed, the other draft is not");
+  assert.deepStrictEqual(byName.ids(), listedWith(draft), "the unlocked draft is listed, the other draft is not");
   byName.route(`#/foray/${other}`);
   await byName.settle();
   assert.ok(byName.view().includes("That foray isn't available."), "naming one draft does not unlock another");
@@ -478,7 +491,7 @@ test("the ?foray=<id> unlock behaves exactly as before, with the switch off and 
   await both.settle();
   assert.strictEqual(both.state().foray?.id, draft);
   assert.ok(both.view().includes("You opened it by name; nobody else sees it."), "the URL's door wins the sentence");
-  assert.deepStrictEqual(both.ids(), [...PUBLISHED_IDS, draft, ...GENERATED_NEWEST_FIRST.filter((id) => id !== draft), ...AUTHORED_DRAFT_IDS]);
+  assert.deepStrictEqual(both.ids(), [...listedWith(draft), ...GENERATED_NEWEST_FIRST.filter((id) => id !== draft), ...AUTHORED_DRAFT_IDS]);
 });
 
 /* ==================================================================== */
