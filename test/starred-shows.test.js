@@ -222,7 +222,11 @@ test("REVIEW: the show page says, beside Follow, that following delivers no new 
   const btnAt = html.indexOf('data-show-star="s-2"');
   const noteAt = html.indexOf("show-follow-note");
   assert.ok(btnAt > 0 && noteAt > btnAt, "the note sits right after the Follow button");
-  assert.match(html.slice(noteAt, noteAt + 200), /doesn(&#39;|')t add its new episodes anywhere/);
+  /* Said as what Follow IS (audit round 2, copy-14): new episodes stay on the
+     show's page and nothing is queued. MUTATION: restore "4a doesn't add its
+     new episodes anywhere" — the bug-report wording. */
+  assert.match(html.slice(noteAt, noteAt + 240), /New episodes stay on the show(&#39;|')s page; nothing is queued for you\./);
+  assert.doesNotMatch(html, /doesn(&#39;|')t add its new episodes anywhere/);
   const policy = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "docs/legal/privacy-policy.md"), "utf8");
   const row = policy.split("\n").find((l) => l.startsWith("| `cp_starred_shows`"));
   assert.match(row, /followed from a show page/, "the policy names the control the listener actually taps");

@@ -135,15 +135,29 @@ export function episodePercentDone(record, positionSec) {
   return Math.max(0, Math.min(1, pos / dur));
 }
 
-/** "18 min left", or null when the duration is unknown. Minutes, not seconds: a
-    second-precision countdown on a home card is noise that changes while you
-    read it. */
+/** "18 min", "1 hr 5 min": the one duration dialect every label in 4a uses
+    (audit round 2, copy-2 — a row read "3h 5m" beside "185 min left"). Mirrors
+    app.js's `fmtDur` and foray-resolve's `fmtSpan`; a classic script and an ES
+    module cannot share one function, so the RULE is shared and each file's test
+    pins it. Whole minutes: a fraction is rounded, never printed. */
+export function fmtMinutes(mins) {
+  const n = Math.round(Number(mins));
+  if (!(n > 0)) return "0 min";
+  if (n < 60) return `${n} min`;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return m ? `${h} hr ${m} min` : `${h} hr`;
+}
+
+/** "18 min left" / "1 hr 5 min left", or null when the duration is unknown.
+    Minutes, not seconds: a second-precision countdown on a home card is noise
+    that changes while you read it. */
 export function episodeRemainingLabel(record, positionSec) {
   const pct = episodePercentDone(record, positionSec);
   if (pct === null) return null;
   const dur = Number(record.duration_sec ?? record.duration_min * 60);
   const mins = Math.round(Math.max(0, dur - Number(positionSec)) / 60);
-  return mins <= 0 ? "finished" : `${mins} min left`;
+  return mins <= 0 ? "finished" : `${fmtMinutes(mins)} left`;
 }
 
 /**

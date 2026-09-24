@@ -554,7 +554,11 @@ test("typing a real top-level taxonomy label reaches the same write path a chip 
   assert.ok(m.state.interests["true-crime"] > before, "a typed real subject must be written");
 });
 
-test("a typed subject with no taxonomy match is a no-op, not an invented node", () => {
+test("a typed subject with no taxonomy match writes nothing, SAYS so, and keeps the sheet open", () => {
+  /* Audit round 2, p-first-3: the miss used to close the sheet exactly as a
+     match did — the newcomer's first typed act was a silent no-op.
+     MUTATION: dismiss() unconditionally again -> the sheet is gone and the
+     note never shows; red. */
   const m = mount();
   bootWithTaxonomy(m);
   const before = JSON.stringify(m.state.interests);
@@ -563,7 +567,45 @@ test("a typed subject with no taxonomy match is a no-op, not an invented node", 
   typed.value = "Underwater basket weaving";
   prefsGoBtn(m)._fire("click");
   assert.strictEqual(JSON.stringify(m.state.interests), before, "an unmatched typed subject must change nothing");
-  assert.strictEqual(m.ctx.lsGet("cp_intro_dismissed", false), true, "the screen must still dismiss");
+  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 1, "the sheet stays open");
+  const note = m.body.querySelector("#first-time-sheet-typed-note");
+  assert.strictEqual(note.hidden, false);
+  assert.strictEqual(note.textContent, 'No subject called "Underwater basket weaving" yet. Try one of the chips above.');
+  assert.strictEqual(note.getAttribute("role"), "status", "said, not only shown");
+  typed._fire("input");
+  assert.strictEqual(note.hidden, true, "editing the word takes the note down");
+});
+
+test("a typed word matches a subject's label words and its leaves, not only an exact root label", () => {
+  /* "health" is "Health & Fitness"; "cooking" is Food's "Cooking Science" leaf.
+     MUTATION: restore the exact top-level-label match -> both are misses; red.
+     MUTATION 2: search leaves before roots -> "science" lands on a leaf. */
+  const m = mount();
+  bootWithTaxonomy(m);
+  assert.strictEqual(m.ctx.resolveTypedSubject("health").id, "health");
+  assert.strictEqual(m.ctx.resolveTypedSubject("  News ").id, "news");
+  assert.strictEqual(m.ctx.resolveTypedSubject("cooking").id, "food/cooking-science");
+  assert.strictEqual(m.ctx.resolveTypedSubject("science").id, "science");
+  assert.strictEqual(m.ctx.resolveTypedSubject("true crime").id, "true-crime");
+  assert.strictEqual(m.ctx.resolveTypedSubject("xyzzy"), null);
+
+  /* Through the sheet: a typed leaf lights its root's chip and writes the root. */
+  const before = m.state.interests.food;
+  toStep2(m);
+  m.body.querySelector("#first-time-sheet-typed").value = "cooking";
+  prefsGoBtn(m)._fire("click");
+  assert.ok(m.state.interests.food > before, "the leaf's subject is written");
+  assert.strictEqual(m.body.querySelectorAll("#first-time-sheet").length, 0, "a match closes the sheet");
+});
+
+test("the button that ends onboarding says what it does: 'Show my picks' (founder Q8)", () => {
+  /* "Start listening" started nothing — it closes the sheet onto a re-dealt
+     Home. MUTATION: restore the old label. */
+  const m = mount();
+  bootWithTaxonomy(m);
+  toStep2(m);
+  assert.strictEqual(prefsGoBtn(m).textContent, "Show my picks");
+  assert.ok(!SRC.includes('"Start listening"'), "the old label is gone from the source");
 });
 
 /* ==================================================================== */
@@ -740,4 +782,59 @@ test("a Foray's resume row counts as prior use, under the key player/foray-progr
   assert.strictEqual(seeded.ctx.isGenuineFirstTimeUser(), false, "a Foray row is a trace of use");
   assert.strictEqual(seeded.evalIn("FORAY_PROGRESS_PREFIX"), KEY_PREFIX, "app.js and the progress store spell the key the same way");
   assert.strictEqual(mount().ctx.isGenuineFirstTimeUser(), true, "no rows: still first-time");
+});
+
+/* ==================================================================== */
+/* 6. AN EXPLICIT PICK IS A FACT (audit round 2, p-first-1)              */
+/* ==================================================================== */
+
+/* The acceptance test above runs on eight tied subjects with Math.random pinned
+   to 0.5 — the one world where a +0.20/√n lift always wins. Over the SHIPPED
+   pool with real randomness it did not: Comedy, Food and Sports all reached the
+   first Home 1% of the time and none of them 29%, because the deal's ±0.25
+   jitter and the authored defaults (Engineering 0.9, History 0.8) are bigger
+   than the lift. This runs the real deal, over data/discover.json +
+   data/session.json + data/taxonomy.json, with the real Math.random.
+   MUTATION: drop `reserve` from buildCards (or the `applied` argument from
+   redealAfterOnboardingPicks) -> the rate falls to the finding's numbers; red. */
+test("over the shipped pool, the first Home after picking three subjects shows at least two of them in 95% of deals", () => {
+  const m = mount();
+  bootWithTaxonomy(m);
+  const read = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+  m.state.discover = read("data/discover.json");
+  m.state.session = read("data/session.json");
+  m.state.itemIndex = {}; m.state.semantic = { concepts: {} }; m.state.itemTags = {};
+  const DEALS = 200;
+  for (const picks of [["comedy", "food", "sports"], ["true-crime", "health", "music"]]) {
+    let good = 0;
+    for (let i = 0; i < DEALS; i++) {
+      for (const k of ["cp_interests", "cp_recent_branches", "cp_seen"]) m.store.delete(k);
+      m.ctx.loadInterests();
+      m.ctx.buildCards();                                   // the pre-pick deal under the sheet
+      const applied = m.ctx.applyOnboardingPicks(picks, "");
+      m.ctx.redealAfterOnboardingPicks(applied);
+      const dealt = new Set(m.state.cardSlots.map((s) => s.branch));
+      if (picks.filter((p) => dealt.has(p)).length >= 2) good++;
+    }
+    assert.ok(good / DEALS >= 0.95, `${picks.join(", ")}: at least two picks on Home in ${good} of ${DEALS} deals`);
+  }
+});
+
+test("the reserved subjects never take the stretch slot, and fill the top-tier slots first", () => {
+  /* MUTATION: let a picked subject be the stretch pick -> the subject the deal
+     would have stretched to is picked, and sits in slot 1 as a "stretch"; red. */
+  const m = mount();
+  bootWithTaxonomy(m);
+  seedHomeForRedeal(m);
+  m.ctx.buildCards();
+  const natural = m.state.cardSlots[0];
+  assert.strictEqual(natural.role, "stretch", "fixture: the unpicked deal has a stretch slot");
+  const reserve = [natural.branch, m.state.cardSlots[1].branch];
+  m.store.delete("cp_recent_branches");
+  m.store.delete("cp_seen");
+  m.ctx.buildCards({ reserve });
+  const slots = m.state.cardSlots;
+  assert.ok(!reserve.includes(slots[0].branch) || slots[0].role !== "stretch", `a picked subject took the stretch slot: ${slots[0].branch}`);
+  const top = [...slots.filter((s) => s.role === "top").slice(0, 2).map((s) => s.branch)].sort();
+  assert.deepStrictEqual(top, [...reserve].sort(), "the picks are the first top-tier slots");
 });

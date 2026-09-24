@@ -1009,20 +1009,22 @@ function buildUI() {
 
    An ordinary episode that would not load used to say nothing, anywhere: the
    manager paused, the glyph flipped back to ▶, and the only evidence was a
-   console line. The Foray page already had the standard ("That segment
-   wouldn't load. Check the connection, then press play."), for the surface a
-   newcomer uses least. These are that standard for every episode.
+   console line. The Foray page already had the standard ("That clip couldn't
+   load. Check the connection, then press play."), for the surface a newcomer
+   uses least. These are that standard for every episode.
 
    Two sentences, because only two can be acted on — the same split the Foray
    page makes. A browser holding audio back until it is sure you asked is not a
    fault, and gets an instruction rather than an error.
 
-   NO APOSTROPHES IN THESE LITERALS, on purpose: the source-text suites
-   (now-playing-sheet, episode-link, media-session) strip strings with regexes
-   that read an apostrophe inside any other literal as the start of a
-   single-quoted string, and one stray "wouldn't" blinds every assertion after
-   it in the file. */
-const EP_START_FAILED = "That episode could not load. Check the connection, then press play.";
+   ONE SENTENCE PAIR WITH app.js's FY_START_FAILED (audit round 2, copy-6): the
+   same failure was worded three ways ("wouldn't load" / "could not load" /
+   "Did not load"). The uncontracted form here existed only because the
+   source-text suites' string-strippers misread an apostrophe inside a
+   double-quoted literal as opening a single-quoted one; those strippers now
+   tokenise the three quote kinds in one pass, so listener copy is no longer
+   shaped around a test. */
+const EP_START_FAILED = "That episode couldn't load. Check the connection, then press play.";
 const EP_PLAY_HELD = "Press play again to start it.";
 
 let playFailure = null;
@@ -1990,9 +1992,9 @@ function paintNotes(item) {
    screen, a live region, standing in for the show line while it is up — and
    in the sheet's status line under the transport. INTEGRATION (2026-09-22):
    L2 and L5 each fixed the failure half; this is L5's state and elements with
-   L2's buffering and short bar copy, painted from one place. No apostrophes in
-   these literals (see EP_START_FAILED). */
-const EPISODE_FAILED_LINE = "Did not load — press play to try again";
+   L2's buffering and short bar copy, painted from one place. The bar's short
+   form uses the same verb as the sheet's sentence (see EP_START_FAILED). */
+const EPISODE_FAILED_LINE = "Couldn't load — press play to try again";
 const BUFFERING_LINE = "Buffering…";
 /** Between the tap and the first audio (audit round 2, p-impatient-4). The
     Foray page says the same word from the same state (`snapshot.loading`). */

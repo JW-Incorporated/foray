@@ -152,6 +152,48 @@ mid-sentence, so a nudge that stayed inside the line being spoken did nothing at
 all, silently. A nudge that crosses out of the line seeks as before. The
 alternative — announcing "cannot be scrubbed" and doing nothing — leaves a tap
 with no effect, which is the defect.
+## 2026-09-23 (the app's copy speaks as "4a", never "we"; one duration dialect; round-2 rulings Q8 and Q11)
+
+**The narrator is 4a (audit round 2, copy-11).** Listener copy said "4a picks
+podcast episodes for you" and "we learn either way" on one sheet, "Shows we
+vouch for" under a Search page that says "4a", "Our server… We cannot delete
+that" beside "Some of what 4a saved here". Apple Podcasts never says "we". The
+rule: **in the app's own words the speaker is "4a"** ("4a learns from what you
+play", "Shows 4a vouches for", "4a's server"). "We / us / our" is the company
+talking and belongs only in legal documents (`docs/legal/`), which speak for
+the company on purpose. `test/listener-copy.test.js` holds it as a regex over
+every listener string in `app.js` and `player/client.js`.
+
+**The rest of the copy rules written down with it** (each pinned in the same
+suite or `test/format-helpers.test.js`):
+
+- **One duration dialect** (copy-2): "45 min", "1 hr", "1 hr 5 min", and the
+  same words with "left" — for `fmtDur`, the player's `fmtSpan`, and both
+  remaining labels. The colon clock (`fmtClock`, "1:05:07") is for live
+  playheads and scrubbers only. An episode's length is its `duration_sec` when
+  it has one (honesty-1; `tools/check-durations.mjs` fails the pool when the
+  two fields drift a minute apart).
+- **A date says its year only when it is not this one** (copy-15): "Sep 12",
+  "Nov 3, 2025" — Apple Podcasts' rule.
+- **"Subject", not "topic"** in anything a listener reads (copy-7; the thumbs
+  chip is "Not my subject"). A down-vote moves the subject's weight only when
+  its reason is about the subject (p-foray-6).
+- **No browser words** (copy-1): the same bytes run in a native shell with no
+  browser and no reload button, so no "this browser" and no "Reload and try
+  again"; the remedy is "Close 4a fully and try again". (The shell notice's own
+  Reload button is the exception: it is a button 4a draws.)
+- **A zero is not a fact worth a line** (copy-13, p-first-10): no "0 played",
+  "0 queued" or "0 built" over the empty state that already says so.
+
+**Q8 — the last onboarding button is "Show my picks"** (founder default,
+round 2). "Start listening" started nothing: the button closes the sheet onto a
+Home re-dealt from the picks, and that is what it now says.
+
+**Q11 — the native shell reopens the page the listener left** (founder
+default, round 2; nav-10). Inside the iOS/Android shell every route is filed
+(`cp_last_route`, device-only, never sent) and a bare cold launch reopens it,
+as a cold open (‹ falls back to Home). The web is unchanged: a bare URL means
+Home, on purpose (qa 132).
 
 ## 2026-09-23 (six founder reports from one drive: no zoom at all, the drawer leaves when used, the lock screen's 15/30, the paused app keeps the car, and "4a / unknown / unknown")
 

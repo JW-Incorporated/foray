@@ -1123,9 +1123,29 @@ function poolFiltered() {
    Family Mode's `i.explicit !== true` filter above is untouched, this just
    makes the same field visible when Family Mode is off. Strict `=== true`
    because the field is tri-state (true/false/null) at both the episode and
-   show level; false and null both mean "no badge", not "unknown = flag it". */
+   show level; false and null both mean "no badge", not "unknown = flag it".
+
+   `role="img"`, because `aria-label` on a bare <span> is ignored by most
+   screen readers (ARIA forbids it on the generic role), so VoiceOver read the
+   badge as "E" (audit round 2, a11y-11). No `title=`: a tooltip a phone never
+   shows is not an explanation, and the label already says the word. */
 function explicitBadge(isExplicit) {
-  return isExplicit === true ? `<span class="explicit-badge" title="Explicit content" aria-label="Explicit">E</span>` : "";
+  return isExplicit === true ? `<span class="explicit-badge" role="img" aria-label="Explicit">E</span>` : "";
+}
+
+/** The heading's text as a NAME — the explicit badge's "E" is not part of it
+    (audit round 2, nav-7: the tab read "Some EpisodeE · 4a" and the arrival
+    announcement said the same). The badge is always rendered directly after
+    the title, so its text is stripped from the end; a heading with no badge
+    is returned as it is. */
+function headingName(head) {
+  let text = String(head.textContent || "");
+  const badges = typeof head.querySelectorAll === "function" ? head.querySelectorAll(".explicit-badge") : [];
+  for (const b of badges) {
+    const t = String(b.textContent || "");
+    if (t && text.endsWith(t)) text = text.slice(0, -t.length);
+  }
+  return text.replace(/\s+/g, " ").trim();
 }
 
 /* THE FOUR LISTENER-FACING FORMATTERS (audit 2026-09-22, theme C). Each of these
@@ -1137,14 +1157,37 @@ function explicitBadge(isExplicit) {
    subtitle and date a listener reads goes through one of these now, and
    test/format-helpers.test.js holds the rule, not a list of the sites. */
 
-/* "1h" for an exact hour, never "1h 0m" (49 episodes of the shipped pool are
-   whole hours, and a subject card's summed runtime lands on one often). */
+/* ONE DURATION DIALECT (audit round 2, copy-2): "45 min", "1 hr", "1 hr 5 min"
+   — the words Apple Podcasts uses, and the same words the player's own
+   `fmtSpan` and both "left" labels use, so one row never reads "3h 5m" beside
+   "185 min left". "1 hr" for an exact hour, never "1 hr 0 min" (49 episodes
+   of the shipped pool are whole hours, and a subject card's summed runtime
+   lands on one often). The colon clock (`fmtClock`) is for live playheads and
+   scrubbers only. Whole minutes: a fraction is rounded, not printed. */
 function fmtDur(min) {
   if (!min) return "";
-  if (min < 60) return `${min} min`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m ? `${h}h ${m}m` : `${h}h`;
+  const n = Math.round(Number(min));
+  if (!(n > 0)) return "";
+  if (n < 60) return `${n} min`;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return m ? `${h} hr ${m} min` : `${h} hr`;
+}
+
+/** ONE SOURCE FOR AN EPISODE'S LENGTH (audit round 2, honesty-1). The catalogue
+    carries two: `duration_min`, often Apple's rounded listing length, and
+    `duration_sec`, the seconds the player's clock and every "left" label count
+    against. For 19 shipped items they disagreed by a minute or more (one row
+    read "45 min · 53 min left", because the progress label on the same line
+    counts against duration_sec). The seconds win whenever they are known; the
+    minute count is the fallback for an item that has none (an archived
+    playlist part keeps no duration_sec). tools/check-durations.mjs gates the
+    data so the two cannot drift by a minute again. */
+function episodeMinutes(item) {
+  const sec = Number(item?.duration_sec);
+  if (sec > 0) return Math.round(sec / 60);
+  const min = Number(item?.duration_min);
+  return min > 0 ? min : 0;
 }
 
 /* "1 episode", "2 episodes" — the one plural. `many` is for the irregular
@@ -1195,12 +1238,22 @@ function playedOnLabel(at) {
    `{ local: true }` is for an INSTANT rather than a calendar date — "played
    <date>" is when this listener pressed play, which is a local-day fact; the
    UTC rule above would move an evening play to tomorrow for everyone east of
-   UTC. Same guard, same shape, only the timezone differs. */
-function fmtDate(dateStr, { local = false } = {}) {
+   UTC. Same guard, same shape, only the timezone differs.
+
+   THE YEAR IS SAID ONLY WHEN IT IS NOT THIS ONE (audit round 2, copy-15):
+   "Sep 12" for an episode released this year, "Nov 3, 2025" for an older
+   one — Apple Podcasts' rule, and on a phone the spare ", 2026" was what
+   pushed a row's progress label onto a second line. "This year" is judged in
+   the same zone the date is written in (UTC for a release date, local for a
+   played-on instant), so a New Year's Eve release never reads as next year.
+   `now` is a parameter so the rule can be tested against a fixed clock. */
+function fmtDate(dateStr, { local = false, now = new Date() } = {}) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return "";
-  const opts = { year: "numeric", month: "short", day: "numeric" };
+  const thisYear = local ? d.getFullYear() === now.getFullYear() : d.getUTCFullYear() === now.getUTCFullYear();
+  const opts = { month: "short", day: "numeric" };
+  if (!thisYear) opts.year = "numeric";
   if (!local) opts.timeZone = "UTC";
   return d.toLocaleDateString("en-US", opts);
 }
@@ -1277,8 +1330,12 @@ const FOLLOW_TOGGLE = { offText: "+ Follow", onText: "✓ Followed", offLabel: "
    verdict warned a switcher would wait for episodes that never come. The line
    used to live only on #/starred-shows, a page the tap never shows. Whether the
    word stays "Follow" is a founder noun ruling still open (docs/audit/
-   qa-synthesis.md); this line is right under either word. */
-const FOLLOW_NOTE = "Following keeps a show one tap away in your Library. 4a doesn't add its new episodes anywhere.";
+   qa-synthesis.md); this line is right under either word.
+   SAID AS WHAT FOLLOW IS, NOT AS WHAT IS MISSING (audit round 2, copy-14):
+   "4a doesn't add its new episodes anywhere" read like a bug report. The
+   meaning is unchanged — no feed, nothing queued — and stated the way round
+   a listener can use. */
+const FOLLOW_NOTE = "Following keeps a show one tap away in your Library. New episodes stay on the show's page; nothing is queued for you.";
 const UP_NEXT_TOGGLE = { offText: "+ Up Next", onText: "✓ Up Next", offLabel: "Add to Up Next", onLabel: "In Up Next" };
 
 /* ---------- stars ---------- */
@@ -1488,7 +1545,17 @@ function branchChain(items, history, seen) {
    entirely client-side on data the client actually has — it is not the
    full relevance+freshness+quality-fatigue formula in scoring.ts, which
    needs depth/format/evergreen fields the discover pool doesn't carry. */
-function buildCards() {
+/* `reserve`: subjects the listener NAMED a moment ago (the first-run picks —
+   see redealAfterOnboardingPicks). AN EXPLICIT PICK IS A FACT, NOT A NUDGE
+   (audit round 2, p-first-1): the pick's +0.20/√n lift is smaller than this
+   deal's ±0.25 jitter and than the authored defaults' head start (Engineering
+   0.9, History 0.8), so measured over the shipped pool a newcomer who picked
+   Comedy, Food and Sports saw all three on Home 1% of the time and none of
+   them 29%. The interest weights stay a bounded prior (interest-survey-plan
+   §4.3: unpicked subjects are never pushed down); what changes is THIS deal —
+   the top-tier slots go to the named subjects first, in jittered order, and
+   the stretch slot is never one of them. */
+function buildCards({ reserve = [] } = {}) {
   const pool = poolFiltered();
   const history = new Set(pickedHistory());
   const seen = new Set(lsGet("cp_seen", []));
@@ -1510,16 +1577,18 @@ function buildCards() {
   // Stretch: pick from branches outside the user's top interest tier,
   // preferring one not shown recently, breaking ties toward higher signal
   // among that lower tier (better-than-random exploration, not top-tier).
+  const named = new Set((reserve || []).filter(b => byBranch[b]));
   const stretchCandidates = byInterestDesc
-    .filter(x => !topBranchIds.has(x.b))
+    .filter(x => !topBranchIds.has(x.b) && !named.has(x.b))
     .sort((x, y) => (x.recentlyShown === y.recentlyShown ? y.avgInterest - x.avgInterest : x.recentlyShown ? 1 : -1));
   const stretchBranch = stretchCandidates[0]?.b ?? null;
 
-  const topRanked = byInterestDesc
+  const jittered = byInterestDesc
     .filter(x => x.b !== stretchBranch)
     .map(x => ({ b: x.b, s: x.avgInterest + (Math.random() - 0.5) * 0.5 - (x.recentlyShown ? 0.35 : 0) }))
     .sort((x, y) => y.s - x.s)
     .map(x => x.b);
+  const topRanked = jittered.filter(b => named.has(b)).concat(jittered.filter(b => !named.has(b)));
 
   const chosenBranches = (stretchBranch ? [stretchBranch] : []).concat(topRanked).slice(0, 4);
 
@@ -2883,6 +2952,10 @@ async function retryCatalog() {
   const catalog = await fetchJson("data/catalog-client.json");
   if (catalog) state.catalog = catalog;
   renderCurrentPage();
+  /* The retried page is the page's real paint (audit round 2, nav-3): its name
+     reaches the document, and focus the replaced Retry button took with it
+     lands on the heading. */
+  pageDidPaint();
 }
 
 /** The catalogue's shows, or `null` when the catalogue itself never loaded — the
@@ -5019,6 +5092,12 @@ function startsWithLine(title) {
   return `Starts with ${quoteQuery(esc(t) + (/[.?!…]$/.test(t) ? "" : "."))}`;
 }
 
+/** Why a Stretch card is there, as a sentence the listener can read on a phone
+    (audit round 2, a11y-11 — it was a tooltip). Uppercase "Outside" on purpose:
+    the returning-listener popup's own sentence is the lowercase one, and
+    test/listener-copy.test.js finds that one by its case. */
+const STRETCH_WHY = "Outside your usual subjects, on purpose.";
+
 function miniCard(slot) {
   const item = slot.item;
   /* ONE POPULATION FOR THE COUNT AND THE DURATION (audit 2026-09-22). `|| 0`
@@ -5026,10 +5105,12 @@ function miniCard(slot) {
      count of all of them — "3 episodes · 1h 20m" when one of the three had no
      `duration_min` (8 such items ship in data/discover.json). A total is stated
      only when it is a total; otherwise the line keeps the count alone. */
-  const allTimed = slot.items.length > 0 && slot.items.every(it => Number(it.duration_min) > 0);
-  const totalMin = allTimed ? slot.items.reduce((s, it) => s + Number(it.duration_min), 0) : 0;
-  const stretchTag = slot.role === "stretch"
-    ? `<span class="mc-stretch" title="Outside your usual subjects, on purpose">Stretch</span>` : "";
+  const allTimed = slot.items.length > 0 && slot.items.every(it => episodeMinutes(it) > 0);
+  const totalMin = allTimed ? slot.items.reduce((s, it) => s + episodeMinutes(it), 0) : 0;
+  /* The tag is the word; the reason is visible text in the hook (below), not a
+     `title=` tooltip a phone never shows (audit round 2, a11y-11). */
+  const stretch = slot.role === "stretch";
+  const stretchTag = stretch ? `<span class="mc-stretch">Stretch</span>` : "";
   /* A CARD WITH A STRETCHED LINK (audit 2026-09-22, qa row 78). The card used
      to be the <a>, with the star <button> nested inside it — invalid HTML that a
      screen reader read as one link named "Education … Save", and whose star
@@ -5041,7 +5122,7 @@ function miniCard(slot) {
     <div class="mc-info">
       <p class="mc-kicker">${stretchTag}${joinMeta(countLabel(slot.items.length, "episode"), fmtDur(totalMin))}</p>
       <h3><a class="mc-link" href="#/${esc(playlistRoute({ isSubject: true, branch: slot.branch }))}">${esc(subjectLabel(slot.branch))}</a></h3>
-      <p class="mc-hook">${startsWithLine(item.title)} ${esc(subjectBlurb(slot))}</p>
+      <p class="mc-hook">${startsWithLine(item.title)} ${esc(subjectBlurb(slot))}${stretch ? ` ${STRETCH_WHY}` : ""}</p>
     </div>
     ${starBtn(item.id)}
   </div>`;
@@ -5129,23 +5210,40 @@ function expandTaxonomyPick(rootId) {
    through the same clamp nudgeTopics uses elsewhere. */
 const ONBOARDING_SEED_LIFT = 0.20;
 
+/** THE TYPED SUBJECT, RESOLVED (audit round 2, p-first-3). The field used to
+    accept only an exact top-level label, so "health", "news", "travel" and
+    "cooking" — the words a newcomer types — matched nothing: 24 of the 41
+    roots are not chips and most carry compound labels ("Health & Fitness").
+    Now a typed word matches a label whole (case-insensitive), then any WORD of
+    a root's label, then any word of a leaf's label ("cooking" -> Cooking
+    Science under Food). Roots before leaves, so "science" is the Science root
+    and not Materials science. Returns the node, or null when nothing in the
+    taxonomy answers to the word — never an invented node nothing in the pool
+    carries. */
+function resolveTypedSubject(typed) {
+  const q = String(typed || "").trim().toLowerCase();
+  if (!q) return null;
+  const nodes = taxonomyNodes();
+  const words = (n) => String(n.label || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const exact = nodes.find(n => String(n.label || "").toLowerCase() === q);
+  if (exact) return exact;
+  const roots = nodes.filter(n => n.parent === null);
+  const leaves = nodes.filter(n => n.parent !== null);
+  return roots.find(n => words(n).includes(q)) || leaves.find(n => words(n).includes(q)) || null;
+}
+
 /** Applies a Preferences pick: `pickedRootIds` from the chip grid, plus an
-    optional typed subject matched against a real top-level taxonomy label
-    (case-insensitive) — the mockup's "Or type a subject yourself…" field
-    reaches the same write path a chip tap would when it names a real root,
-    and is otherwise a no-op rather than inventing an untagged node nothing
-    in the pool carries. Returns false (no write, no _interestsGen bump) when
-    nothing was picked and nothing typed matched, so a caller can tell a real
-    Skip from a Continue with an empty/unmatched form. */
+    optional typed subject (see resolveTypedSubject) — the mockup's "Or type
+    a subject yourself…" field reaches the same write path a chip tap would.
+    Returns false (no write, no _interestsGen bump) when nothing was picked
+    and nothing typed matched, so a caller can tell a real Skip from a
+    Continue with an empty/unmatched form; otherwise the ROOT ids the picks
+    resolved to (a typed leaf counts for its root), which the re-deal reserves
+    slots for. */
 function applyOnboardingPicks(pickedRootIds, typedSubject) {
   const ids = [...(pickedRootIds || [])];
-  const typed = (typedSubject || "").trim();
-  if (typed) {
-    const typedNode = taxonomyNodes().find(
-      n => n.parent === null && n.label.toLowerCase() === typed.toLowerCase()
-    );
-    if (typedNode && !ids.includes(typedNode.id)) ids.push(typedNode.id);
-  }
+  const typedNode = resolveTypedSubject(typedSubject);
+  if (typedNode && !ids.includes(typedNode.id)) ids.push(typedNode.id);
   if (!ids.length) return false;
 
   const lift = ONBOARDING_SEED_LIFT / Math.sqrt(ids.length);
@@ -5157,7 +5255,8 @@ function applyOnboardingPicks(pickedRootIds, typedSubject) {
   });
   saveInterests();
   state._interestsGen = (state._interestsGen || 0) + 1;
-  return true;
+  const byId = new Map(taxonomyNodes().map(n => [n.id, n]));
+  return [...new Set(ids.map(id => (byId.get(id)?.parent) || id))];
 }
 
 /** U-09's third acceptance line ("picking three chips changes the FIRST Home
@@ -5186,14 +5285,14 @@ function applyOnboardingPicks(pickedRootIds, typedSubject) {
     rebuilds an empty cardSlots lazily and there is no memory to undo. The
     caller repaints (renderCurrentPage()); this only rebuilds state, the same
     split the family-mode toggle in init() already uses. */
-function redealAfterOnboardingPicks() {
+function redealAfterOnboardingPicks(pickedRoots = []) {
   const dealt = state.cardSlots || [];
   if (!dealt.length) return;
   const dealtIds = new Set(dealt.flatMap(sl => (sl.items || []).map(it => it.id)));
   lsSet("cp_seen", lsGet("cp_seen", []).filter(id => !dealtIds.has(id)));
   const recent = lsGet("cp_recent_branches", []);
   lsSet("cp_recent_branches", recent.slice(0, Math.max(0, recent.length - dealt.length)));
-  buildCards();
+  buildCards({ reserve: Array.isArray(pickedRoots) ? pickedRoots : [] });
 }
 
 /* The 17 top-level nodes with measured pool depth (>= 50 items AND several
@@ -5229,7 +5328,7 @@ const PREFS_CHIP_IDS = [
       nor "Import subscriptions/listening history" are built here —
       connector features, explicitly out of scope per D2/C5. "Skip" dismisses
       with no interest write (Generalist: today's taxonomy defaults stand).
-      "Start listening" applies the picks via applyOnboardingPicks() — the
+      "Show my picks" applies the picks via applyOnboardingPicks() — the
       FIXED U-07 write path (taxonomyNodes() includes roots, so a root-level
       chip actually persists) — then dismisses, and when something was
       written re-deals Home's card slots and repaints, so the FIRST Home the
@@ -6004,7 +6103,7 @@ function showFirstTimeExplainerOnce() {
     const title = ddEl("h3", null, "What are you into?");
     title.id = "first-time-sheet-title";
     panel.setAttribute("aria-labelledby", "first-time-sheet-title");
-    const sub = ddEl("p", "fy-sheet-sub", "This is how we tune your suggestions. Pick a few, or skip — we learn either way, from what you play.");
+    const sub = ddEl("p", "fy-sheet-sub", "This is how 4a tunes your suggestions. Pick a few, or skip — 4a learns either way, from what you play.");
 
     const chips = ddEl("div", "fy-chips");
     chips.id = "first-time-sheet-chips";
@@ -6029,13 +6128,21 @@ function showFirstTimeExplainerOnce() {
     typedInput.className = "ft-typed-input";
     typedInput.placeholder = "Or type a subject yourself…";
     typedInput.setAttribute("aria-label", "Type a subject yourself");
-    typedWrap.append(typedInput);
+    /* A TYPED MISS IS SAID, AND THE SHEET STAYS (audit round 2, p-first-3). A
+       word nothing in the taxonomy answers to used to close the sheet exactly
+       as a match did, so the newcomer's first typed act was a silent no-op. */
+    const typedNote = ddEl("p", "ft-typed-note", "");
+    typedNote.id = "first-time-sheet-typed-note";
+    typedNote.setAttribute("role", "status");
+    typedNote.hidden = true;
+    typedInput.addEventListener("input", () => { typedNote.hidden = true; setStatusText(typedNote, ""); });
+    typedWrap.append(typedInput, typedNote);
 
     const actions = ddEl("div", "fy-sheet-actions");
     const skip = ddEl("button", "fy-sheet-cancel", "Skip");
     skip.type = "button";
     skip.id = "first-time-sheet-prefs-skip";
-    const go = ddEl("button", "fy-sheet-go", "Start listening");
+    const go = ddEl("button", "fy-sheet-go", "Show my picks");
     go.type = "button";
     go.id = "first-time-sheet-prefs-go";
     actions.append(skip, go);
@@ -6044,17 +6151,32 @@ function showFirstTimeExplainerOnce() {
 
     skip.addEventListener("click", dismiss);
     go.addEventListener("click", () => {
-      const applied = applyOnboardingPicks([...picked], typedInput.value);
+      const typed = typedInput.value.trim();
+      if (typed) {
+        const node = resolveTypedSubject(typed);
+        if (!node) {
+          setStatusText(typedNote, `No subject called "${typed}" yet. Try one of the chips above.`);
+          typedNote.hidden = false;
+          return;
+        }
+        /* The word resolved: its subject's chip lights, so the pick is shown
+           as the same thing a tap would have made it. */
+        const rootId = node.parent || node.id;
+        const chip = chips.querySelector(`[data-chip="${rootId}"]`);
+        if (chip && !picked.has(rootId)) { picked.add(rootId); chip.classList.add("on"); chip.setAttribute("aria-pressed", "true"); }
+      }
+      const applied = applyOnboardingPicks([...picked], typed);
       dismiss();
-      /* Only when something was actually written: an empty/unmatched form is
-         a Skip in all but name, and the Home already under the sheet is the
-         right Home for it. Otherwise re-deal and repaint, so the FIRST Home
-         the listener lands on ranks by their picks (U-09's acceptance line;
-         see redealAfterOnboardingPicks). renderCurrentPage(), not route():
-         nothing about the location changed, and route() is the back-stack's
-         entry point (#488). */
+      /* Only when something was actually written: an empty form is a Skip in
+         all but name, and the Home already under the sheet is the right Home
+         for it. Otherwise re-deal and repaint, so the FIRST Home the listener
+         lands on ranks by their picks (U-09's acceptance line; see
+         redealAfterOnboardingPicks), with the picked subjects in the top-tier
+         slots (p-first-1). renderCurrentPage(), not route(): nothing about
+         the location changed, and route() is the back-stack's entry point
+         (#488). */
       if (applied) {
-        redealAfterOnboardingPicks();
+        redealAfterOnboardingPicks(applied);
         renderCurrentPage();
       }
     });
@@ -6233,7 +6355,7 @@ function vouchForHtml() {
   const shows = showsWeVouchFor();
   if (!shows.length) return "";
   return `<section class="ep-more fy-vouch">
-    <h3>Shows we vouch for</h3>
+    <h3>Shows 4a vouches for</h3>
     <div class="show-results">${shows.map(showResultRow).join("")}</div>
   </section>`;
 }
@@ -7394,9 +7516,18 @@ function runShowSearchCostly(query, myToken, local) {
      breadth half alone: `fetchApiJson` swallows errors to `null` but cannot
      invent an answer for a socket that simply hangs. */
   let owed = 5;
+  /* The render that asked, so a search settling after the listener left the
+     page does not report a paint of some other page (see pageDidPaint below). */
+  const onScreen = renderToken();
   const settle = (patch) => {
     Object.assign(record, patch);
-    if (--owed === 0) recordSearchDiagnostic(record);
+    if (--owed !== 0) return;
+    recordSearchDiagnostic(record);
+    /* THE SEARCH PAGE'S TERMINAL PAINT (audit round 2, nav-3): every pass has
+       answered, so the page is as tall as this query will make it. A ‹ back to
+       the results whose scroll restore was clamped by the first, shorter paint
+       re-applies it here, as the show and Foray pages do from theirs. */
+    if (onScreen()) pageDidPaint();
   };
 
   /* THE THREE PASSES THAT CAN ADD A SHOW — catalogue, directory, shard — and
@@ -8616,12 +8747,23 @@ function jumpBackInEntries(limit = 6) {
 
   /* `.filter(p => p.last_played_at)` and not "or created": a playlist you built
      and never played is not something you are jumping BACK into. It has its own
-     home on the playlists page. */
+     home on the playlists page.
+
+     WHERE YOU ARE IN IT, like the Foray and episode cards beside it (audit
+     round 2, honesty-7): the rail mixed three grammars — a bar and "N min
+     left" on those two, a bare "12 episodes" here — though the playlist page
+     itself knew "3 played". Same reading as that page (`hasOpened`: history OR
+     a stored position), so the two cannot disagree. */
+  const history = new Set(pickedHistory());
   for (const p of playlists().filter(p => p.last_played_at)) {
+    const rows = resolveParts(p);
+    const played = rows.filter(r => hasOpened(r.item.id, history)).length;
     entries.push({
       kind: "playlist", id: p.id, at: p.last_played_at,
       title: p.title || p.name || "Playlist",
       sub: playlistLengthLabel(p),
+      percent: rows.length ? Math.round((played / rows.length) * 100) : null,
+      left: rows.length ? `${played} of ${rows.length} played` : "",
     });
   }
 
@@ -8999,7 +9141,7 @@ function epRow(item, idx, ctx, nextIdx) {
     <span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>
     <div class="info">
       <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
-      <div class="s">${joinMeta(showNameLink(item.show, item.show_id), fmtDur(item.duration_min), esc(dateStr), progHtml)}</div>
+      <div class="s">${joinMeta(showNameLink(item.show, item.show_id), fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id)}${unavailable}
   </div>`;
@@ -9016,10 +9158,16 @@ function epRow(item, idx, ctx, nextIdx) {
    tools/refresh/backfill-audio.mjs's UNRESOLVED report: 8 of 1855+27 items,
    0.43%, as of 2026-09-03). Plain text, no href, nothing to click — an
    honest dead end beats a button that does nothing and a link that leaves
-   the app. */
+   the app.
+
+   No `title=` (audit round 2, a11y-11): a tooltip is unreachable on a phone
+   and is not the control's name to a screen reader. The explanation lives as
+   visible text on the episode page (NOT_PLAYABLE_WHY); a row has room for
+   the chip alone, and "Not available to play" explains itself. */
 function notPlayableNote() {
-  return `<span class="not-playable" title="4a could not get a playable audio file for this episode">Not available to play</span>`;
+  return `<span class="not-playable">Not available to play</span>`;
 }
+const NOT_PLAYABLE_WHY = "4a could not get an audio file for this episode, so it cannot play here.";
 
 /* A part the live pool no longer carries, rendered from what the playlist saved
    (#276). It keeps its number and its place, so the count above it stays true.
@@ -9052,7 +9200,7 @@ function archivedRow(item, idx, ctx) {
     <div class="info">
       <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Episode no longer in the catalogue"}</div>
       <div class="s">${named
-        ? joinMeta(showNameLink(item.show, item.show_id), fmtDur(item.duration_min), esc(dateStr))
+        ? joinMeta(showNameLink(item.show, item.show_id), fmtDur(episodeMinutes(item)), esc(dateStr))
         : "Saved before 4a kept episode details"}</div>
     </div>
     ${named ? starBtn(item.id) : ""}${unavailable}
@@ -9069,7 +9217,7 @@ function partsNote(rows) {
   const parts = [];
   if (archived) {
     const one = archived === 1;
-    parts.push(`${archived} episode${one ? " is" : "s are"} not available right now, so ${one ? "it" : "they"} cannot play — ${one ? "it stays listed" : "they stay listed"} so you can see where it fits in the playlist.`);
+    parts.push(`${archived} episode${one ? " is" : "s are"} not available right now, so ${one ? "it" : "they"} cannot play — ${one ? "it stays listed" : "they stay listed"} so you can see where ${one ? "it fits" : "they fit"} in the playlist.`);
   }
   if (unnamed) {
     const one = unnamed === 1;
@@ -9131,11 +9279,11 @@ function renderPlaylistDetail(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2>${esc(p.title)}</h2>
-          <p class="sub">${joinMeta(countLabel(rows.length, "episode"), p.isSubject ? "picked for you" : (p.isGenerated ? "generated for you" : "playlist"), `${played} played`)}</p>
+          <p class="sub">${joinMeta(countLabel(rows.length, "episode"), p.isSubject ? "picked for you" : (p.isGenerated ? "generated for you" : "playlist"), played ? `${played} played` : "")}</p>
         </div>
       </div>
-      ${p.sparse ? `<p class="note">Only found a few on this — here's what we've got.</p>` : ""}
-      ${p.relaxed === "duration" ? `<p class="note">Couldn't match the length you asked for — here's what we found without it.</p>` : ""}
+      ${p.sparse ? `<p class="note">Only found a few on this — here's what 4a has.</p>` : ""}
+      ${p.relaxed === "duration" ? `<p class="note">Couldn't match the length you asked for — here's what 4a found without it.</p>` : ""}
       ${partsNote(rows)}
       ${rows.map((r, i) => r.state === "live" ? epRow(r.item, i, ctx, nextIdx) : archivedRow(r.item, i, ctx)).join("")}
       ${(p.isSubject || p.isGenerated) ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
@@ -9493,12 +9641,13 @@ function renderEpisode(id) {
         <a class="back" href="#/">‹</a>
         <div>
           <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
-          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show, item.show_id) : "", fmtDur(item.duration_min), esc(dateStr), progHtml)}</p>
+          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show, item.show_id) : "", fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</p>
         </div>
       </div>
       ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="" decoding="async" width="600" height="600">` : ""}
       ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
       <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id)}</div>
+      ${item.audio_url ? "" : `<p class="note">${esc(NOT_PLAYABLE_WHY)}</p>`}
       ${episodeDescriptionSectionHtml(item)}
       ${episodeChaptersHtml(item)}
       ${moreFromShow(item)}
@@ -9536,7 +9685,7 @@ function renderQueue() {
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
-        <div><h2>Up Next</h2><p class="sub">${rows.length} queued</p></div>
+        <div><h2>Up Next</h2>${rows.length ? `<p class="sub">${rows.length} queued</p>` : ""}</div>
       </div>
       ${rows.length
         ? rows.map((r, i) => upNextRow(r, i, rows.length)).join("")
@@ -9576,9 +9725,9 @@ function upNextRow(r, idx, total) {
      used to say "Removed from your history", on a page that is not History,
      about an id that is still right there in the list. */
   const sub = state === "live"
-    ? joinMeta(esc(item.show || ""), fmtDur(item.duration_min), progHtml)
+    ? joinMeta(esc(item.show || ""), fmtDur(episodeMinutes(item)), progHtml)
     : state === "archived"
-      ? joinMeta(esc(item.show || ""), fmtDur(item.duration_min), "not available right now")
+      ? joinMeta(esc(item.show || ""), fmtDur(episodeMinutes(item)), "not available right now")
       : "4a no longer has this episode's details";
   /* `.is-current` names the row the bar is on — playing OR paused — which the
      ❚❚ glyph alone signalled before (p-impatient-6). Repainted by
@@ -9825,7 +9974,7 @@ function renderLibrary() {
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
-        <div><h2>Library</h2><p class="sub">forays, shows, saved, playlists, Up Next &amp; history</p></div>
+        <div><h2>Library</h2></div>
       </div>
       ${libSection("Forays", libraryForaysHtml())}
       ${libSection("Followed shows", libraryFollowedHtml())}
@@ -9863,7 +10012,7 @@ function renderPlaylists() {
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
-        <div><h2>Playlists</h2><p class="sub">${all.length} built</p></div>
+        <div><h2>Playlists</h2>${all.length ? `<p class="sub">${all.length} built</p>` : ""}</div>
       </div>
       <a class="page-link-row" href="#/create">Build a playlist ›</a>
       ${all.length ? all.map(p => `
@@ -10006,7 +10155,7 @@ function renderCreate() {
     <div class="page cr-page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
-        <div><h2>Create</h2><p class="sub">Name a subject and we'll build a playlist from across the catalogue.</p></div>
+        <div><h2>Create</h2><p class="sub">Name a subject and 4a builds a playlist from across the catalogue.</p></div>
       </div>
       ${createToggleHtml()}
       <form id="cr-form" autocomplete="off">
@@ -10228,10 +10377,16 @@ function playerModuleFailed() {
    — so it maps straight onto that contract with nothing made up. */
 
 const FB_CHIPS = [
-  "Not into this topic", "Didn't like the voice", "Leans too far left",
+  "Not my subject", "Didn't like the voice", "Leans too far left",
   "Leans too far right", "Too surface-level", "Too in-the-weeds",
   "Bad audio quality", "Heard this already", "Just not this show",
 ];
+
+/** The reasons that are about the SUBJECT, and so may move the interest
+    profile. "Just not this show" is a show-level signal, not a topic one
+    (docs/DECISIONS.md, the learning-job entry); the voice, the audio and
+    "heard this already" say nothing about the subject at all. */
+const TOPIC_REASONS = new Set(["Not my subject", "Too surface-level", "Too in-the-weeds"]);
 
 function forayFeedback() { return lsGet("cp_foray_feedback", {}); }
 
@@ -10257,9 +10412,17 @@ function setFeedback(entry, direction, { reasons = [], note = "" } = {}) {
       reasons,
       note: note.trim() || null,
     });
-    // A thumb is an action the listener took, so it moves the same weights
-    // playing something does — just harder, and in whichever direction.
-    nudgeTopics([entry.topic], direction === "up" ? 0.08 : -0.08);
+    /* A thumb is an action the listener took, so it moves the same weights
+       playing something does — just harder, and in whichever direction.
+       ONLY WHEN THE REASON IS ABOUT THE SUBJECT (audit round 2, p-foray-6): a
+       down-vote for "Bad audio quality" or "Didn't like the voice" used to
+       lower interest in the whole subject exactly like "Not my subject", so
+       complaining about one host's microphone made Home show fewer startup
+       episodes. The sheet promises specificity; the reasons now mean it. A
+       down-vote with no subject-shaped reason is recorded as an event only. */
+    if (direction === "up" || reasons.some(r => TOPIC_REASONS.has(r))) {
+      nudgeTopics([entry.topic], direction === "up" ? 0.08 : -0.08);
+    }
     trySyncEvents();
   }
   paintFeedback(segId);
@@ -10587,7 +10750,7 @@ function feedbackSheetHtml() {
       <p class="fy-sheet-sub" id="fy-sheet-sub"></p>
       <div class="fy-chips">${FB_CHIPS.map(c =>
         `<button type="button" class="fy-chip" data-chip="${esc(c)}" aria-pressed="false">${esc(c)}</button>`).join("")}</div>
-      <input id="fy-sheet-note" type="text" maxlength="200" placeholder="Tell us in your own words…" aria-label="What missed, in your own words">
+      <input id="fy-sheet-note" type="text" maxlength="200" placeholder="In your own words…" aria-label="What missed, in your own words">
       <div class="fy-sheet-actions">
         <button type="button" class="fy-sheet-cancel" id="fy-sheet-cancel">Cancel</button>
         <button type="button" class="fy-sheet-go" id="fy-sheet-go" disabled>Pick at least one</button>
@@ -11415,7 +11578,7 @@ const FORAY_IDLE = { index: -1, playing: false, ended: false, elapsedSec: 0 };
    visible browser and no reload button, so "your browser" and "reload the page"
    were instructions a phone listener could not follow. */
 const FY_AUTOPLAY_HINT = "4a couldn't start the audio on its own — press play again and it will start.";
-const FY_START_FAILED = "That clip wouldn't load. Check the connection, then press play.";
+const FY_START_FAILED = "That clip couldn't load. Check the connection, then press play.";
 /* A control that threw while the Foray was already running is a third thing, and
    it must not claim a segment failed to load: nothing did, the audio is still
    going, and the honest report is that the button did not take. */
@@ -12168,7 +12331,7 @@ function renderDrawer() {
     .slice(0, 5);
   $("#drawer-playlists").innerHTML = recent.map(p =>
     `<a class="drawer-item" href="#/${esc(playlistRoute(p))}">${esc(p.title)}</a>`).join("")
-    || `<p class="drawer-empty">none yet</p>`;
+    || `<p class="drawer-empty">No playlists yet</p>`;
   /* Every switch's label, from the one registry `drawerToggle` fills. This was
      five ad-hoc lines — three unguarded, two guarded, each spelling its own
      on/off — and the sixth switch is what made that a shape rather than a
@@ -12555,6 +12718,13 @@ function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint =
   }
   if (btn._drawerToggleBound) return; // init() runs once, but a re-bind must never stack handlers
   btn._drawerToggleBound = true;
+  /* A SWITCH IS A SWITCH TO A SCREEN READER (audit round 2, a11y-8). These were
+     plain buttons whose only state cue was the word after the colon, so
+     VoiceOver read "Family mode: off, button" and, on activation, nothing —
+     it does not re-read a focused button's changed text. `role="switch"` with
+     `aria-checked` (painted with the label below) is what Settings' own
+     toggles expose — "Family mode, switch, off" — and the flip is said. */
+  btn.setAttribute("role", "switch");
   /* A switch flips IN the drawer and has nowhere to go, so the drawer stays
      (Joey, 2026-08-31). Declared on the control: `onDrawerAction` closes the
      drawer for everything that does not say this. */
@@ -12563,16 +12733,23 @@ function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint =
     write(!read());
     renderDrawer();
     if (repaint) renderCurrentPage();
+    announce(`${label} ${words[read() ? 1 : 0]}`);
   });
 }
 
 /** Every registered switch's label, read fresh. Guarded per element because a
     page can mount without one (a harness with a partial drawer) — the three
-    unguarded lines this replaced threw on exactly that. */
+    unguarded lines this replaced threw on exactly that. The visible text keeps
+    its "Family mode: off"; the NAME is the label alone, because the switch's
+    own checked state already says on or off and "Family mode: off, switch, on"
+    would say both. */
 function paintDrawerToggles() {
   for (const t of drawerToggles) {
     const btn = $("#" + t.id);
-    if (btn) setControlLabel(btn, `${t.label}: ${t.words[t.read() ? 1 : 0]}`, null);
+    if (!btn) continue;
+    const on = !!t.read();
+    setControlLabel(btn, `${t.label}: ${t.words[on ? 1 : 0]}`, t.label);
+    btn.setAttribute("aria-checked", String(on));
   }
 }
 
@@ -13055,13 +13232,13 @@ function deletionMessage(result) {
   if (state === "unconfirmed") return "Type DELETE to confirm.";
   if (state === "busy") return "Deleting…";
   if (state === "remote-failed") {
-    return "Your server rows were NOT deleted. Nothing on this device was touched, so you can try again.";
+    return "What 4a's server kept about you was NOT deleted. Nothing on this device was touched, so you can try again.";
   }
   const server = remote && remote.deviceOnly
-    ? "Your rows on our server were left in place, as you chose."
+    ? "What 4a's server kept about you was left in place, as you chose."
     : !remote || !remote.attempted
-      ? "No account token was on this device, so no server rows were reachable."
-      : "Your rows on our server are deleted.";
+      ? "This device was never signed in, so nothing on 4a's server could be reached."
+      : "What 4a's server kept about you is deleted.";
   if (local && local.ok) return `Done. ${server} This device is clear.`;
   return `${server} This device is NOT fully clear. ${deviceNotClearReason(local)}`;
 }
@@ -13070,19 +13247,19 @@ function deletionMessage(result) {
     applies, and always something to do next where there is one. */
 function deviceNotClearReason(local) {
   const reason = local && local.reason;
-  if (reason === "no-storage") return "This browser has taken storage away.";
-  if (reason === "no-durable-tier") return "Part of this device's storage is out of reach. Reload and try again.";
-  if (reason === "purge-failed") return "Storage refused the delete. Reload and try again.";
+  if (reason === "no-storage") return "This device gives 4a nowhere to store anything.";
+  if (reason === "no-durable-tier") return "Part of this device's storage is out of reach. Close 4a fully and try again.";
+  if (reason === "purge-failed") return "Storage refused the delete. Close 4a fully and try again.";
   if (local && Array.isArray(local.unverified) && local.unverified.length) {
-    return "Storage could not be checked afterwards. Reload and try again.";
+    return "Storage could not be checked afterwards. Close 4a fully and try again.";
   }
   if (local && Array.isArray(local.remaining) && local.remaining.length) {
-    return "Some of what 4a saved here would not clear. Reload and try again.";
+    return "Some of what 4a saved here would not clear. Close 4a fully and try again.";
   }
   if (local && local.events && !local.events.ok) {
-    return "The record of what you played here would not clear. Reload and try again.";
+    return "The record of what you played here would not clear. Close 4a fully and try again.";
   }
-  return "Some of what 4a saved here would not clear. Reload and try again.";
+  return "Some of what 4a saved here would not clear. Close 4a fully and try again.";
 }
 
 /* The sheet and the drawer button are built in JavaScript rather than written
@@ -13105,9 +13282,9 @@ function ddEl(tag, cls, text) {
     so every line is inside the copy budget (CLAUDE.md principle 4). */
 const DD_COVERS = [
   "This device: everything 4a stored here, including the record of what you played.",
-  "Our server: the events this device sent, and its account rows.",
+  "4a's server: the events this device sent, and what it keeps about this device.",
   "Your anonymous account row stays. It holds no name, email or phone number.",
-  "Publisher and ad hosts saw your IP as audio played. We cannot delete that.",
+  "Publisher and ad hosts saw your IP as audio played. 4a cannot delete that.",
 ];
 
 const DD_DEVICE_ONLY_COST = "After this, what 4a's server kept about you can no longer be deleted.";
@@ -13389,25 +13566,28 @@ function paintDeletion(result) {
     iOS 13) AND/OR in two independent third-party listings of the
     Settings → Voices screen (help.scriptation.com "better playback voices",
     thefreereader.app "expressive Apple voices"). A row whose name could not
-    be confirmed says "unverified name" in its own description rather than
-    guessing; if it never shows up as installed after a download, the name is
-    wrong, not the download. Descriptions are accent · gender · tier only:
-    which voices ship compact-by-default on iOS 18 is NOT verified here, so
-    no row claims it. */
+    be confirmed is marked `unverified: true` HERE, not in its description
+    (audit round 2, copy-12: "unverified name" on a row is a note about this
+    allowlist, not about the voice, and a listener cannot act on it); if it
+    never shows up as installed after a download, the name is wrong, not the
+    download. Descriptions are accent · gender ONLY: the tier comes from the
+    plugin's own `quality` field (voiceQualityLabel), so a row does not say
+    "Enhanced" twice, and which voices ship compact-by-default on iOS 18 is
+    NOT verified here, so no row claims it. */
 const VOICE_ALLOWLIST = Object.freeze([
-  { name: "Samantha", about: "American \u00b7 female \u00b7 the default; Enhanced tier is a free download" },
-  { name: "Allison", about: "American \u00b7 female \u00b7 Enhanced (download)" },
-  { name: "Susan", about: "American \u00b7 female \u00b7 Enhanced (download)" },
-  { name: "Joelle", about: "American \u00b7 female \u00b7 Enhanced (download)" },
-  { name: "Tom", about: "American \u00b7 male \u00b7 Enhanced (download)" },
-  { name: "Nicky", about: "American \u00b7 female \u00b7 Enhanced (download) \u00b7 unverified name" },
-  { name: "Aaron", about: "American \u00b7 male \u00b7 Enhanced (download) \u00b7 unverified name" },
-  { name: "Daniel", about: "British \u00b7 male \u00b7 Enhanced (download)" },
-  { name: "Serena", about: "British \u00b7 female \u00b7 Enhanced/Premium (download)" },
-  { name: "Karen", about: "Australian \u00b7 female \u00b7 Enhanced/Premium (download)" },
-  { name: "Moira", about: "Irish \u00b7 female \u00b7 Enhanced (download)" },
-  { name: "Tessa", about: "South African \u00b7 female \u00b7 Enhanced (download)" },
-  { name: "Rishi", about: "Indian \u00b7 male \u00b7 Enhanced (download)" },
+  { name: "Samantha", about: "American · female" },
+  { name: "Allison", about: "American · female" },
+  { name: "Susan", about: "American · female" },
+  { name: "Joelle", about: "American · female" },
+  { name: "Tom", about: "American · male" },
+  { name: "Nicky", about: "American · female", unverified: true },
+  { name: "Aaron", about: "American · male", unverified: true },
+  { name: "Daniel", about: "British · male" },
+  { name: "Serena", about: "British · female" },
+  { name: "Karen", about: "Australian · female" },
+  { name: "Moira", about: "Irish · female" },
+  { name: "Tessa", about: "South African · female" },
+  { name: "Rishi", about: "Indian · male" },
 ]);
 
 /** The `lang` this page asks `listVoices()` for. A bare primary subtag on
@@ -13649,7 +13829,9 @@ function paintVoiceList() {
       rows.push(buildVoiceRow({
         installed: true,
         name: entry.name,
-        sub: `${entry.about} \u00b7 ${voiceQualityLabel(v)} \u00b7 ${v.language || "unknown language"}`,
+        /* No "unknown language" piece: a fact the plugin did not report is
+           left out, not printed as a shrug (audit round 2, copy-12). */
+        sub: [entry.about, voiceQualityLabel(v), v.language].filter(Boolean).join(" \u00b7 "),
         id: v.identifier,
         selected: v.identifier === selected,
         tabStop: v.identifier === stopId,
@@ -13849,7 +14031,7 @@ let diagUi = null;
 const DIAG_SUB =
   "Technical details about how audio played on this device. "
   + "Stored here only, never sent anywhere. "
-  + "Copy this into a bug report if we ask for it.";
+  + "Copy this into a bug report if asked for it.";
 
 function buildDiagSheet() {
   const root = ddEl("div", "fy-sheet");
@@ -14082,6 +14264,10 @@ function renderCurrentPage() {
   resetPageHeadScrollState();
   renderEpoch++;
   const h = currentHash();
+  /* A repaint of the page already on screen keeps its shelves where the
+     listener left them (audit round 2, perf-8) — a settings switch, the late
+     ribbon and ↻ all come through here without a navigation. */
+  const keepRails = paintedHash === h ? railOffsets() : null;
   const forayId = forayRouteId();
   let m;
   /* EVERY PARAM ROUTE DECODES, AND DECODES SAFELY (audit 2026-09-22). The rule
@@ -14142,6 +14328,8 @@ function renderCurrentPage() {
      touch #view's siblings, so ordering here is a belt-and-braces call, not
      a load-bearing one today — but it is the right belt to wear. */
   renderTabBar();
+  paintedHash = h;
+  applyRailOffsets(keepRails);
 }
 
 /* ---------- a new page starts at the top ----------
@@ -14182,12 +14370,16 @@ function route() {
   if (!state.ready) return;
   const h = currentHash();
   const step = noteNavigation(h);
+  rememberRouteForRelaunch(h);
   /* Read BEFORE the render: renderCurrentPage() replaces #view's innerHTML,
      and a shorter page clamps window.scrollY on the spot. */
   const target = step === "back" ? (navScrollY.get(h) || 0) : 0;
   const previousHash = renderedHash;
+  /* The page being left is still in #view: file its shelves (perf-8). */
+  if (paintedHash !== null && paintedHash === previousHash && h !== previousHash) navRailX.set(previousHash, railOffsets());
   renderedHash = h;
   pendingRestore = null;
+  if (h !== previousHash) announceOwedFor = null;
   /* To the top first, THEN render: the new page is laid out with the viewport
      already where it is going rather than painted and yanked. */
   scrollPageTo(0);
@@ -14200,6 +14392,7 @@ function route() {
      deletion re-renders the page UNDER an open sheet on purpose. */
   if (h !== previousHash) closeAllSheets();
   renderCurrentPage();
+  if (step === "back") applyRailOffsets(navRailX.get(h));
   /* A NAVIGATION IS SAID, NOT ONLY DRAWN (audit 2026-09-22, qa row 80). Only a
      real change of page: the first route at boot and a re-render in place (a
      settings toggle, a finished deletion) keep focus exactly where it is. */
@@ -14236,31 +14429,60 @@ function route() {
        focused itself), it is left alone and the page's name is announced in
        the polite status region instead. Never both: focus moving already says
        it.
-   `navigated: false` (a re-render, pageDidPaint) never announces, and moves
-   focus only when it was genuinely lost — an async page's loading paint can
-   take a focused "Loading…" heading away with it. */
+   `navigated: false` (a re-render, pageDidPaint) moves focus only when it was
+   genuinely lost — an async page's loading paint can take a focused
+   "Loading…" heading away with it — and announces only the one name a
+   navigation still owes (`announceOwedFor`, audit round 2). The name is the
+   heading's text WITHOUT its explicit badge (`headingName`). */
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
   const box = view.querySelector(".page-head");
   return (box && box.querySelector("h2")) || null;
 }
 
+/* A NAVIGATION WHOSE NAME HAS NOT BEEN SAID YET (audit round 2, races-6). A
+   Foray page paints "Loading…" first — no heading — so route()'s landing had
+   no name to say and focus fell to #view; the real paint arrives through
+   pageDidPaint(), which is `navigated: false` and so said nothing either. A
+   screen-reader user opening a Foray heard silence. route() files the hash
+   here when its landing could not name the page, and the first paint of THAT
+   page that brings a name says it, once. Any other navigation clears it. */
+let announceOwedFor = null;
+
 function landOnPage({ navigated = false } = {}) {
   const view = $("#view");
-  const head = pageHeading(view);
-  const name = head ? String(head.textContent || "").replace(/\s+/g, " ").trim() : "";
-  try { document.title = name && !isHomeRoute() ? `${name} · 4a` : "4a"; } catch (_) { /* a stub document */ }
+  /* HOME NAMES ITSELF (audit round 2, a11y-10). It has no `.page-head` — its
+     greeting is the top of the page — so both halves of the landing used to
+     no-op there: nothing said on a tab-bar Home, focus on a bare #view from a
+     drawer link. The document stays plain "4a"; what is SAID is the tab's own
+     word, and a lost focus lands on the greeting. */
+  const home = isHomeRoute();
+  const head = home ? null : pageHeading(view);
+  const name = head ? headingName(head) : "";
+  const spoken = home ? "Home" : name;
+  try { document.title = name ? `${name} · 4a` : "4a"; } catch (_) { /* a stub document */ }
+  const owed = navigated || (announceOwedFor !== null && announceOwedFor === renderedHash);
   const active = document.activeElement;
   const lost = !active || active === document.body || active.isConnected === false
     || !!(typeof active.closest === "function" && active.closest("#drawer"));
   if (lost) {
-    const target = head || view;
+    const greeting = home && view && typeof view.querySelector === "function" ? view.querySelector(".hv2-greeting") : null;
+    const target = head || greeting || view;
     if (!target || typeof target.focus !== "function") return;
     if (typeof target.hasAttribute !== "function" || !target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
     try { target.focus({ preventScroll: true }); } catch (_) { /* focus is best-effort */ }
+    /* Focus on a named target says the page; focus on the bare region says
+       nothing, so a navigation that could only reach #view still owes it. */
+    if (target !== view) announceOwedFor = null;
+    else if (owed && !spoken) announceOwedFor = renderedHash;
     return;
   }
-  if (navigated && name) announce(name);
+  if (owed && spoken) {
+    announce(spoken);
+    announceOwedFor = null;
+  } else if (navigated) {
+    announceOwedFor = renderedHash;
+  }
 }
 
 /* The one normalisation of the hash every route decision reads. THREE
@@ -14272,6 +14494,34 @@ function landOnPage({ navigated = false } = {}) {
    place, so the address the history holds agrees with this. */
 function currentHash(hash = location.hash) {
   return !hash || hash === "#" ? "#/" : hash;
+}
+
+/* THE NATIVE SHELL REOPENS WHERE YOU LEFT (audit round 2, nav-10; founder
+   question 11, default ruling). The route lived only in the URL hash, and a
+   cold relaunch after iOS or Android tore the WebView down loads the bundled
+   page with no hash — so a listener who backgrounded 4a on a show page came
+   back to Home. Apple Podcasts reopens on the screen you left.
+
+   The shell ONLY. On the web a bare URL means Home on purpose (qa 132): a
+   shared or typed address is an arrival, not a return, and a reload keeps its
+   hash anyway. So the route is filed only inside the shell, and read back only
+   there, only for a bare arrival — a deep link the shell was opened with
+   (a `?foray=` link, a notification) is where the listener asked to go. It is
+   a cold open all the same: no stamp behind it, so ‹ keeps its href fallback. */
+const LAST_ROUTE_KEY = "cp_last_route";
+
+function rememberRouteForRelaunch(hash) {
+  if (!isNativeShell()) return;
+  if (lsGet(LAST_ROUTE_KEY, null) !== hash) lsSet(LAST_ROUTE_KEY, hash);
+}
+
+/** The route a bare native arrival reopens, or "#/". Only one of this app's
+    own hash routes is accepted — the stored value is ours, but it is read
+    back into the address bar, so it is checked like any input. */
+function relaunchRoute() {
+  if (!isNativeShell()) return "#/";
+  const last = lsGet(LAST_ROUTE_KEY, null);
+  return typeof last === "string" && /^#\/[^\s]*$/.test(last) && last.length <= 2048 ? last : "#/";
 }
 
 /* WHICH RENDER IS ON SCREEN (audit 2026-09-22, theme B). Async work used to ask
@@ -14316,7 +14566,13 @@ function rewriteRouteInPlace(hash) {
   if (!replaceHash(hash)) return;
   if (renderedHash !== null) {
     const y = navScrollY.get(renderedHash);
+    const rails = navRailX.get(renderedHash);
+    /* The same page under a new spelling: a name it still owed is still owed
+       to IT, and one already said is not said again as the query changes. */
+    if (announceOwedFor === renderedHash) announceOwedFor = hash;
+    if (paintedHash === renderedHash) paintedHash = hash;
     renderedHash = hash;
+    if (rails !== undefined) navRailX.set(hash, rails);
     if (y !== undefined) navScrollY.set(hash, y);
   }
   if (navIndex !== null) navHashes[navIndex] = hash;
@@ -14350,12 +14606,13 @@ function refreshCurrentPage() {
    See route(). */
 let pendingRestore = null;
 
-/* HOW LONG A RESTORE MAY BE OWED (review 2026-09-23). Only the show page and
-   the Foray page call pageDidPaint(); the Search page (whose directory results
-   paint later), a "Show not found" page and a failed Foray never do. Their
-   clamped restore stayed owed for the whole visit, so every scroll on it was
-   ignored and the next ‹ went back to the stale offset. A page slow enough to
-   outlive this is one the listener has started using anyway. */
+/* HOW LONG A RESTORE MAY BE OWED (review 2026-09-23). The show page, the Foray
+   page and (audit round 2, nav-3) the Search page once its last pass settles
+   call pageDidPaint(); a "Show not found" page, a failed Foray and a search
+   whose request hangs never do. Their clamped restore stayed owed for the
+   whole visit, so every scroll on it was ignored and the next ‹ went back to
+   the stale offset. A page slow enough to outlive this is one the listener has
+   started using anyway. */
 const PENDING_RESTORE_MS = 4000;
 
 /** Is a clamped restore still waiting for its page? Expires, so memory always
@@ -14412,6 +14669,55 @@ function rememberScrollPosition() {
      ‹ fail too. */
   if (renderedHash === null || restoreStillOwed()) return;
   navScrollY.set(renderedHash, window.scrollY || 0);
+}
+
+/* ---------- ...and where each shelf was left, sideways ----------
+
+   Audit round 2, perf-8: Home's rails (Jump back in, Forays for you,
+   Playlists for you) are each their own horizontal scroll container, and every
+   render rebuilds them at card one. So ‹ back to Home restored the page's
+   height and threw away the shelf the listener had swiped to card four — and
+   a settings switch or the late now-playing ribbon, which repaint Home in
+   place, did the same without any navigation at all. Apple Podcasts keeps a
+   shelf's offset.
+
+   A rail's scroll is not a window scroll (it does not reach the listener
+   above), so it is READ at the two moments it is about to be lost instead:
+   route() files the page being left, and renderCurrentPage() carries the page
+   it is repainting across its own rebuild. Keyed by the rail's section
+   (`hv2-forays`, …), not its position, so a rail that appears above another
+   (Jump back in after a first play) does not hand its offset to the next. */
+const navRailX = new Map();
+/** The hash whose render is in #view right now — which is not `renderedHash`
+    during route(), where that already names the page about to be drawn. */
+let paintedHash = null;
+
+function railKey(rail, i) {
+  const section = typeof rail.closest === "function" ? rail.closest("section") : null;
+  const cls = section ? String(section.className || "").split(/\s+/).find(c => c && c !== "hv2-section") : "";
+  return cls || `rail-${i}`;
+}
+
+/** `{ key: scrollLeft }` for every shelf on screen that is not at its start. */
+function railOffsets() {
+  const view = $("#view");
+  const rails = view && typeof view.querySelectorAll === "function" ? [...view.querySelectorAll(".hv2-hscroll")] : [];
+  const out = {};
+  rails.forEach((rail, i) => {
+    const x = Number(rail.scrollLeft) || 0;
+    if (x > 0) out[railKey(rail, i)] = x;
+  });
+  return out;
+}
+
+function applyRailOffsets(offsets) {
+  if (!offsets) return;
+  const view = $("#view");
+  const rails = view && typeof view.querySelectorAll === "function" ? [...view.querySelectorAll(".hv2-hscroll")] : [];
+  rails.forEach((rail, i) => {
+    const x = offsets[railKey(rail, i)];
+    if (x > 0) rail.scrollLeft = x;
+  });
 }
 
 /* `window.scrollTo` is guarded because this file is also loaded under node:vm
@@ -14556,6 +14862,28 @@ function onBackClick(e) {
   if (backPending) return;               // the previous tap's step has not landed yet
   backPending = true;
   history.back();
+}
+
+/* A STEP BETWEEN TWO ENTRIES WITH THE SAME HASH (audit round 2, nav-1). The
+   browser fires `popstate` for every traversal but `hashchange` only when the
+   fragment differs, and this router listened only for the second. Two
+   neighbouring entries can share a hash — a search retyped after a tab tap is
+   rewritten in place to the entry behind it (rewriteRouteInPlace), and a
+   removed playlist after a reload is rewritten to the list behind it
+   (leaveRemovedPlaylist cannot see behind a reload) — and ‹ onto such an
+   entry never reached route(): `backPending` stayed set and every later ‹
+   was swallowed until some link was tapped.
+
+   So a popstate that lands on the hash already rendered routes itself, and
+   only then: when the hash differs, the hashchange that follows is the one
+   route() call (route() is not made to run twice for one step), and a popstate
+   that did not move between entries this router stamped (a browser's
+   load-time popstate, an unstamped entry) is not a step at all. */
+function onPopState() {
+  if (currentHash() !== renderedHash) return;
+  const stamped = historyIndex();
+  if (stamped === null || stamped === navIndex) return;
+  route();
 }
 
 /* ---------- collapsing page header: show/hide on scroll direction ----------
@@ -15401,8 +15729,10 @@ async function init() {
   state.ready = true;
   enterForayFromQuery();
   /* A bare arrival is Home, and the address says so from the first paint —
-     see currentHash(). In place: no hashchange, no history entry. */
-  if (location.hash === "" || location.hash === "#") replaceHash("#/");
+     see currentHash(). In place: no hashchange, no history entry. Inside the
+     native shell a bare arrival is a relaunch, and reopens the page the
+     listener left (see relaunchRoute). */
+  if (location.hash === "" || location.hash === "#") replaceHash(relaunchRoute());
   /* THE FIRST ROUTE MAY NOT TAKE THE APP DOWN WITH IT (audit 2026-09-22). Every
      listener this function wires — hashchange, the menu, the drawer, the
      keyboard chrome — is bound BELOW this line, so a throw out of the first
@@ -15521,6 +15851,9 @@ async function init() {
      restore is simply the last write instead of the losing one. */
   try { if ("scrollRestoration" in history) history.scrollRestoration = "manual"; } catch (_) {}
   window.addEventListener("hashchange", route);
+  /* ...and the traversal hashchange never reports: onto an entry with the same
+     hash (audit round 2, nav-1 — see onPopState). */
+  window.addEventListener("popstate", onPopState);
   /* Hides #foray-player while a soft keyboard is up (founder report,
      2026-09-13) — see installKeyboardChrome's header. Installed once for the
      life of the document: the keyboard can open on any screen with a text

@@ -926,7 +926,7 @@ test("a subject card states a total duration only when every episode has one", (
   const kicker = (items) => (/<p class="mc-kicker">([\s\S]*?)<\/p>/.exec(
     m.ctx.miniCard({ branch: "history", role: "anchor", item: items[0], items }),
   ) || [])[1];
-  assert.match(kicker([item("a", 40), item("b", 40)]), /^2 episodes · 1h 20m$/);
+  assert.match(kicker([item("a", 40), item("b", 40)]), /^2 episodes · 1 hr 20 min$/);
   assert.strictEqual(kicker([item("a", 40), item("b", 40), item("c", null)]), "3 episodes",
     "an unknown length means no total, not a smaller one");
 });

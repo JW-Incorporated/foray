@@ -973,3 +973,120 @@ test("ROUND 2 touch-8: a close that settles late leaves focus alone when it has 
   m.ctx.closeSheet(again.wrap);
   assert.strictEqual(m.doc.activeElement, opener, "focus the sheet still held goes back to the opener");
 });
+
+/* ==================================================================== */
+/* 7. WHAT A PAGE IS CALLED, AND WHEN IT IS SAID (audit round 2)         */
+/* ==================================================================== */
+
+/* A router whose pages this test describes: `null` paints a loading page (no
+   heading), a string paints a `.page-head` h2, `{ explicit }` adds the badge
+   the show and episode pages put straight after the title, and `home` paints
+   the greeting. */
+function routedPages(m, pages) {
+  vm.runInContext("state.ready = true;", m.ctx);
+  const overlay = m.doc.createElement("div");
+  overlay.id = "drawer-overlay";
+  m.doc.body.appendChild(overlay);
+  const paint = (spec) => {
+    m.view.children.forEach((c) => { c.parentElement = null; });
+    m.view.children = [];
+    if (spec === "home") {
+      const g = m.doc.createElement("div");
+      g.className = "hv2-greeting";
+      m.view.appendChild(g);
+      return;
+    }
+    if (!spec) { m.view.appendChild(m.doc.createElement("p")); return; }
+    const name = typeof spec === "string" ? spec : spec.name;
+    const head = m.doc.createElement("div");
+    head.className = "page-head";
+    const h2 = m.doc.createElement("h2");
+    h2.textContent = name + (spec.explicit ? "E" : "");   // textContent reads the badge's "E" too
+    if (spec.explicit) {
+      const badge = m.doc.createElement("span");
+      badge.className = "explicit-badge";
+      badge.textContent = "E";
+      h2.appendChild(badge);
+    }
+    head.appendChild(h2);
+    m.view.appendChild(head);
+  };
+  m.ctx.renderCurrentPage = () => paint(pages[m.ctx.location.hash]);
+  const go = (hash) => { m.ctx.location.hash = hash; m.ctx.route(); };
+  go("#/library");
+  return { go, paint };
+}
+const said = (m) => { m.flushFrames(); return (m.doc.querySelector("#a11y-status") || { textContent: "" }).textContent; };
+function tabFocus(m) {
+  const tab = m.doc.createElement("a");
+  m.tabBar.appendChild(tab);
+  tab.focus();
+  return tab;
+}
+
+test("an explicit page is named without its badge's 'E', in the title and in what is said (nav-7)", () => {
+  /* MUTATION: read `head.textContent` directly in landOnPage again -> "Some
+     EpisodeE · 4a"; red. */
+  const m = mount();
+  const { go } = routedPages(m, { "#/library": "Library", "#/episode/x": { name: "Some Episode", explicit: true } });
+  tabFocus(m);
+  go("#/episode/x");
+  assert.strictEqual(m.doc.title, "Some Episode · 4a");
+  assert.strictEqual(said(m), "Some Episode");
+});
+
+test("a page that paints 'Loading…' first is announced once, when its real paint brings a name (races-6)", () => {
+  /* The Foray page. MUTATION: drop the `announceOwedFor` branch from
+     landOnPage -> the late paint (navigated:false) says nothing; red.
+     MUTATION 2: never clear it -> a later re-render says the name again; red. */
+  const m = mount();
+  const { go, paint } = routedPages(m, { "#/library": "Library", "#/foray/x": null });
+  tabFocus(m);
+  go("#/foray/x");
+  assert.strictEqual(said(m), "", "the loading paint has no name to say");
+  assert.strictEqual(m.doc.title, "4a");
+  paint("A Foray");
+  m.ctx.pageDidPaint();
+  assert.strictEqual(said(m), "A Foray");
+  assert.strictEqual(m.doc.title, "A Foray · 4a");
+  m.doc.querySelector("#a11y-status").textContent = "";
+  m.ctx.pageDidPaint();                           // a later background repaint
+  assert.strictEqual(said(m), "", "said once, not on every repaint");
+});
+
+test("a late paint for a page the listener already left says nothing (races-6)", () => {
+  /* MUTATION: let every late paint announce (`const owed = true` in
+     landOnPage) -> the page the listener moved on to is said a second time by
+     a paint that was never a navigation; red. */
+  const m = mount();
+  const { go, paint } = routedPages(m, { "#/library": "Library", "#/forays": "Forays", "#/foray/x": null });
+  tabFocus(m);
+  go("#/foray/x");
+  go("#/forays");
+  said(m);
+  m.doc.querySelector("#a11y-status").textContent = "";
+  paint("Forays");
+  m.ctx.pageDidPaint();
+  assert.strictEqual(said(m), "");
+});
+
+test("Home names itself: 'Home' is said when focus survived, and a lost focus lands on the greeting (a11y-10)", () => {
+  /* MUTATION: drop the `home ? "Home"` name -> a tab-bar Home says nothing;
+     red. MUTATION 2: drop the `.hv2-greeting` target -> focus lands on bare
+     #view; red. */
+  const m = mount();
+  const { go } = routedPages(m, { "#/library": "Library", "#/": "home" });
+  tabFocus(m);
+  go("#/");
+  assert.strictEqual(said(m), "Home");
+  assert.strictEqual(m.doc.title, "4a", "the document stays plain 4a");
+
+  go("#/library");
+  const inPage = m.doc.createElement("a");
+  m.view.appendChild(inPage);
+  inPage.focus();
+  go("#/");
+  const greeting = m.view.querySelector(".hv2-greeting");
+  assert.strictEqual(m.doc.activeElement, greeting, "focus lands on the greeting, not the bare region");
+  assert.strictEqual(greeting.getAttribute("tabindex"), "-1");
+});

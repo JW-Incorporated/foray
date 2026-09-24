@@ -1956,8 +1956,8 @@ test("AUDIT: an episode whose audio will not load says so, and play() reports it
   const ok = await client.play(episodeItem());
   await settle();
   assert.equal(ok, false, "a 404 is not a start");
-  assert.match(secondLine(doc), /Did not load/, "the mini bar says it failed");
-  assert.match(statusNote(doc).textContent, /could not load/, "and the sheet's status line says why");
+  assert.match(secondLine(doc), /Couldn.t load/, "the mini bar says it failed");
+  assert.match(statusNote(doc).textContent, /couldn.t load/, "and the sheet's status line says why");
   /* REVIEW 2026-09-23: the live region is NOT inside the bar's <button> (whose
      children are presentational, so VoiceOver never announced it) but its
      sibling, and the button's own name carries the failure. KILLING MUTATION:
@@ -1966,11 +1966,11 @@ test("AUDIT: an episode whose audio will not load says so, and play() reports it
   const hasClass = (c) => (n) => String(n.className || "").split(/\s+/).includes(c);
   const live = findWhere(doc.body, hasClass("fp-announce"));
   assert.equal(live.getAttribute("role"), "status", "the failure is announced");
-  assert.match(live.textContent, /could not load/, "with the full sentence");
+  assert.match(live.textContent, /couldn.t load/, "with the full sentence");
   const info = find(doc.body, "fp-info");
   assert.equal(findWhere(info, hasClass("fp-announce")), null, "and the live region is not inside the named button");
   assert.equal(find(info, "fp-err").getAttribute("role"), null, "the visible line inside the button claims no role");
-  assert.match(info.getAttribute("aria-label"), /Did not load/, "the button's name says what the bar shows");
+  assert.match(info.getAttribute("aria-label"), /Couldn.t load/, "the button's name says what the bar shows");
   assert.doesNotMatch(info.getAttribute("aria-label"), /Show A/, "not the show line hidden behind it");
 
   // The connection comes back and the listener does what the line said.
@@ -1997,7 +1997,7 @@ test("REVIEW: a play the browser held back keeps its 'Press play again' line aft
   assert.match(secondLine(doc), /Press play again/, "precondition: the sink said why");
   client.reportPlayFailure(null);              // what bindPlay does with `!ok`
   assert.match(secondLine(doc), /Press play again/, "the specific line stays");
-  assert.doesNotMatch(statusNote(doc).textContent, /could not load/, "no connection is blamed");
+  assert.doesNotMatch(statusNote(doc).textContent, /couldn.t load/i, "no connection is blamed");
   restore();
 });
 

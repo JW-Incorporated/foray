@@ -737,10 +737,18 @@ export function fmtClock(sec) {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
 }
 
-/** "2 min" / "45 sec". Rounded, because a segment's length is a measurement of
-    somebody else's audio and second-precision would overstate it. */
+/** "45 sec" / "2 min" / "1 hr 35 min". Rounded, because a segment's length is a
+    measurement of somebody else's audio and second-precision would overstate
+    it. Past the hour it rolls over, in the one duration dialect every label in
+    4a uses (audit round 2, copy-2): a Foray's header said "about 95 min" over
+    rows that said "1h 12m". The colon clock (`fmtClock`) is for live playheads
+    and scrubbers only. */
 export function fmtSpan(sec) {
   const total = isNum(sec) && sec > 0 ? Math.round(sec) : 0;
   if (total < 90) return `${total} sec`;
-  return `${Math.round(total / 60)} min`;
+  const mins = Math.round(total / 60);
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h} hr ${m} min` : `${h} hr`;
 }

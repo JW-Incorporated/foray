@@ -397,3 +397,39 @@ test("no builder pairs a ternary text with a hand-written aria-label", () => {
     assert.ok(!/aria-label="[^"$]*"/.test(body), `${name} writes a literal aria-label`);
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* The drawer's switches are switches (audit round 2, a11y-8)          */
+/* ------------------------------------------------------------------ */
+
+/* VoiceOver read "Family mode: off, button" and, on activation, nothing — it
+   does not re-read a focused button's changed text. MUTATION: drop
+   `setAttribute("role", "switch")` from drawerToggle, or the `aria-checked`
+   write from paintDrawerToggles, or the announce() in the click handler. */
+test("a drawer setting is a switch named by its label, its state is aria-checked, and a flip is said", () => {
+  const { ctx } = mountApp();
+  const byId = new Map();
+  const drawer = makeEl("nav");
+  byId.set("drawer", drawer);
+  const btn = makeEl("button");
+  let onClick = null;
+  btn.addEventListener = (type, fn) => { if (type === "click") onClick = fn; };
+  byId.set("family-toggle", btn);
+  const region = makeEl("p");
+  const view = ctx.document.querySelector("#view");
+  ctx.document.querySelector = (sel) => (sel === "#view" ? view : sel === "#a11y-status" ? region : byId.get(String(sel).slice(1)) || null);
+  ctx.requestAnimationFrame = undefined;
+  vm.runInContext("renderDrawer = () => paintDrawerToggles(); renderCurrentPage = () => {}; buildCards = () => {};", ctx);
+
+  ctx.bindDrawerToggles();
+  assert.strictEqual(btn.getAttribute("role"), "switch");
+  ctx.paintDrawerToggles();
+  assert.strictEqual(btn.getAttribute("aria-checked"), "false");
+  assert.strictEqual(btn.textContent, "Family mode: off", "the visible words are unchanged");
+  assert.strictEqual(btn.getAttribute("aria-label"), "Family mode", "the name is the label; the state is the switch's own");
+
+  onClick();
+  assert.strictEqual(btn.getAttribute("aria-checked"), "true");
+  assert.strictEqual(btn.textContent, "Family mode: on");
+  assert.strictEqual(region.textContent, "Family mode on", "the flip is said");
+});

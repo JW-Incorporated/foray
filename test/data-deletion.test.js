@@ -520,11 +520,17 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      with the "Open in" switch that wrote it. Its only reader was `playLink`,
      which nothing had called since the link-out to another podcast app was
      deleted. A copy on an older device is still `cp_`-prefixed, so the
-     enumeration above clears it; policy §2 says so in prose. */
+     enumeration above clears it; policy §2 says so in prose.
+
+     29 -> 30 on 2026-09-23 (audit round 2, nav-10; founder question 11):
+     `cp_last_route`, the page the native shell reopens on a cold relaunch
+     (app.js § relaunchRoute). Written and read only inside the iOS/Android
+     shell, never on the web, never sent. Same mechanism: this count failed
+     first, then the policy check, until privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 29,
-    `expected 29 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 30,
+    `expected 30 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");
@@ -646,7 +652,7 @@ test("with no durable store published, the control says so instead of claiming s
   assert.strictEqual(result.ok, false);
   assert.strictEqual(result.local.reason, "no-durable-tier");
   assert.deepStrictEqual([...local.map.keys()].filter((k) => k.startsWith("cp_")), []);
-  assert.match(ui.status.textContent, /reload and try again/i);
+  assert.match(ui.status.textContent, /close 4a fully and try again/i);
 });
 
 /* ================= 3. the server rows ================= */
@@ -764,7 +770,7 @@ test("deleting never signs up a new anonymous account", async () => {
     "creating an account in order to delete one would leave a fresh row behind"
   );
   assert.strictEqual(result.remote.attempted, false, "no token on the device means no rows to reach");
-  assert.match(ui.status.textContent, /no account token/i);
+  assert.match(ui.status.textContent, /never signed in/i);
   assert.strictEqual(result.ok, true);
 });
 
@@ -1057,7 +1063,7 @@ test("a browser with no storage at all is told so, not told it is clear", async 
   assert.strictEqual(result.ok, false, "there is no storage to have cleared");
   assert.strictEqual(result.local.reason, "no-storage");
   assert.match(ui.status.textContent, /NOT fully clear/);
-  assert.match(ui.status.textContent, /taken storage away/);
+  assert.match(ui.status.textContent, /nowhere to store anything/);
 });
 
 test("a localStorage that throws on READ is handled, not left to throw mid-delete", async () => {

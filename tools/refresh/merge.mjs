@@ -40,6 +40,7 @@ import { resolve as resolvePath } from "node:path";
 import copyRules from "../../backend/src/copy/rules.js";
 import { episodeTopics } from "./topics.mjs";
 import { stampDeployManifest } from "./manifest-step.mjs";
+import { minutesFromSeconds } from "../check-durations.mjs";
 
 const root = new URL("../../", import.meta.url);
 const p = (rel) => new URL(rel, root);
@@ -127,7 +128,9 @@ for (const ep of resolved) {
     apple_track_id: ep.apple_track_id,
     apple_episode_url: ep.apple_episode_url,
     release_date: ep.release_date,
-    duration_min: ep.duration_min,
+    /* The measured length wins when there is one (audit round 2, honesty-1;
+       tools/check-durations.mjs gates the committed pool on exactly this). */
+    duration_min: minutesFromSeconds(ep.duration_sec) ?? ep.duration_min,
     // Audio provenance (issue #21). Nullable by design: an item with no
     // playable URL still belongs in discovery, it just links out to Apple
     // Podcasts instead of playing in-app (see the note on issue #25).

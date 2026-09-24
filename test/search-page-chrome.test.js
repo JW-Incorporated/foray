@@ -342,7 +342,7 @@ test("the browse furniture is visible when the page opens, before anyone touches
      (audit round 2, p-first-12) — test/home-information-architecture.test.js
      pins both halves; this harness follows nothing, so it is absent here. */
   assert.ok(!m.view().includes('href="#/starred-shows"'), "…with nothing followed, no dead-end shortcut");
-  assert.ok(m.view().includes("Shows we vouch for"), "…and the editorial row");
+  assert.ok(m.view().includes("Shows 4a vouches for"), "…and the editorial row");
 });
 
 test("FOCUSING the search box hides the cards and the A-Z list — before a single keystroke", () => {
