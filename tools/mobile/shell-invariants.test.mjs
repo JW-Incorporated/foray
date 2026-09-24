@@ -3243,7 +3243,7 @@ test("NE-15h: the host and its seams touch no platform API, every seam has a rec
   assert.ok(!fs.existsSync(path.join(ENGINE_DIR, "DeckStub.swift")), "NE-15's deck stub must stay deleted: the deck speaks the core's vocabulary");
   const seams = stripSwiftComments(fs.readFileSync(SEAMS_SWIFT, "utf8"));
   const fakes = stripSwiftComments(fs.readFileSync(FAKES_SWIFT, "utf8"));
-  for (const seam of ["SessionControlling", "BackgroundTasking", "RemoteCommandRegistering", "NowPlayingWriting", "DeckDriving", "Speaking", "EngineTiming", "EngineOutput"]) {
+  for (const seam of ["SessionControlling", "BackgroundTasking", "RemoteCommandRegistering", "NowPlayingWriting", "DeckDriving", "Speaking", "EngineTiming", "EngineOutput", "HoldPolicyStoring"]) {
     assert.match(seams, new RegExp(String.raw`protocol ${seam}: AnyObject \{`), `Seams.swift must declare ${seam}`);
     assert.match(fakes, new RegExp(String.raw`final class \w+: ${seam} \{`), `${seam} has no recording fake`);
   }
@@ -3275,6 +3275,149 @@ test("NE-15h: the host and its seams touch no platform API, every seam has a rec
 
   const timing = stripSwiftComments(fs.readFileSync(TIMING_SWIFT, "utf8"));
   assert.match(timing, /DispatchSource\.makeTimerSource\(queue: \.main\)/, "the engine's timers are DispatchSourceTimers on main");
+});
+
+const OWNER_SWIFT = path.join(ENGINE_DIR, "AudioSessionOwner.swift");
+const HOLD_STORE_SWIFT = path.join(ENGINE_DIR, "HoldPolicyStore.swift");
+const TTS_SWIFT = path.join(PLUGIN_DIR, "../foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift");
+const FLAG_AUDIO_SWIFT = path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/EngineModeFlag.swift");
+const FLAG_TTS_SWIFT = path.join(PLUGIN_DIR, "../foray-tts/ios/Sources/ForayTtsPlugin/EngineModeFlag.swift");
+
+/* NE-16's legacy session sites: every `setActive(` / `setCategory(` in the two
+   plugins' Swift outside AudioSessionOwner.swift, as [file, func, call]. The
+   plan counted seven (four setActive, three setCategory) before NE-16 moved
+   ForayTts's two copies of the pair (speak, resume) into one guarded
+   `claimSession()`, and load()'s category write is a fourth setCategory the
+   count missed; the rule is the same, and this table is the whole list. */
+const GUARDED_SESSION_SITES = [
+  ["ForayAudioPlugin.swift", "holdSession", "setActive"],
+  ["ForayAudioPlugin.swift", "holdSession", "setCategory"],
+  ["ForayAudioPlugin.swift", "load", "setCategory"],
+  ["ForayAudioPlugin.swift", "releaseSession", "setActive"],
+  ["ForayTtsPlugin.swift", "claimSession", "setActive"],
+  ["ForayTtsPlugin.swift", "claimSession", "setCategory"],
+];
+
+/** The start offset and name of the Swift func whose body encloses offset `at`. */
+function enclosingSwiftFunc(code, at) {
+  let found = null;
+  for (const m of code.matchAll(/func\s+(\w+)\s*\(/g)) {
+    if (m.index > at) break;
+    const decl = swiftFuncDecl(code.slice(m.index), m[1]);
+    if (decl && m.index + decl.length > at) found = { name: m[1], start: m.index };
+  }
+  return found;
+}
+
+/** Whether the text of a func up to a session call has already been guarded
+    on the engine's ownership: a `guard !EngineModeFlag.sessionOwnedByEngine
+    else { ... return }` before it, or the call still inside an
+    `if !EngineModeFlag.sessionOwnedByEngine {` block. */
+function guardedOnEngineFlag(prefix) {
+  if (/guard !EngineModeFlag\.sessionOwnedByEngine else \{[^{}]*\breturn\b[^{}]*\}/.test(prefix)) return true;
+  const at = prefix.lastIndexOf("if !EngineModeFlag.sessionOwnedByEngine {");
+  return at >= 0 && !prefix.slice(at).includes("}");
+}
+
+test("NE-16: setActive( and setCategory( live only in AudioSessionOwner.swift and the six guarded legacy sites", () => {
+  /* ONE OWNER (plan §4.4). In native mode the engine's AudioSessionOwner is
+     the only code that may touch the session; the legacy hold (ForayAudio)
+     and ForayTts keep their sites for legacy mode and after a relinquish, but
+     each is guarded on `EngineModeFlag.sessionOwnedByEngine`, so with the flag
+     true they touch nothing and with it false they run exactly as build
+     2026092327. A session call anywhere else is a second owner.
+     MUTATION: add `try? AVAudioSession.sharedInstance().setActive(true)` to
+     ForayTtsPlugin's stop() or to AVDeck -> the site list goes red; delete the
+     guard from holdSession, releaseSession or claimSession, or move load()'s
+     setCategory out of its `if` -> the guard assertion goes red. */
+  const roots = [
+    path.join(PLUGIN_DIR, "ios/Sources"),
+    path.join(PLUGIN_DIR, "../foray-tts/ios/Sources"),
+    path.join(CORE_DIR, "Sources"),
+  ];
+  const sites = [];
+  for (const file of roots.flatMap((dir) => swiftFilesUnder(dir))) {
+    if (path.resolve(file) === path.resolve(OWNER_SWIFT)) continue;
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    for (const m of code.matchAll(/\b(setActive|setCategory)\s*\(/g)) {
+      const fn = enclosingSwiftFunc(code, m.index);
+      assert.ok(fn, `${path.relative(ROOT, file)}: a ${m[1]}( outside any func`);
+      sites.push([path.basename(file), fn.name, m[1]]);
+      assert.ok(guardedOnEngineFlag(code.slice(fn.start, m.index)),
+        `${path.basename(file)} ${fn.name}(): ${m[1]}( is not guarded on EngineModeFlag.sessionOwnedByEngine — a second session owner in native mode`);
+    }
+  }
+  const key = (site) => site.join(" ");
+  assert.deepEqual(sites.map(key).sort(), GUARDED_SESSION_SITES.map(key).sort(),
+    "the legacy session sites changed; a new one needs the guard and a line in GUARDED_SESSION_SITES");
+
+  // The owner: category at boot with no activation, notify only when asked.
+  const owner = stripSwiftComments(fs.readFileSync(OWNER_SWIFT, "utf8"));
+  assert.match(owner, /final class AudioSessionOwner: SessionControlling \{/);
+  const init = /init\(api: AudioSessionAPI[\s\S]*?\n    \}/.exec(owner)?.[0] ?? "";
+  assert.match(init, /applyCategory\(why: "boot"\)/, "the category is set at boot");
+  assert.doesNotMatch(init, /setActive|activate\(\)/, "boot never activates (S-3)");
+  assert.match(swiftFuncBody(owner, "applyCategory"),
+    /setCategory\(\.playback, mode: \.spokenAudio,\s*policy: config\.longFormAudio \? \.longFormAudio : \.default, options: \[\]\)/);
+  assert.match(owner, /longFormAudio: Bool = false/, ".longFormAudio stays behind an off flag until DV-8");
+  const calls = [...owner.matchAll(/api\.setActive\((\w+)/g)].map((m) => m[1]);
+  assert.deepEqual(calls, ["true", "false"], "one activation, one deactivation");
+  assert.match(swiftFuncBody(owner, "activate"), /api\.setActive\(true, options: \[\]\)/);
+  assert.match(swiftFuncBody(owner, "deactivate"), /api\.setActive\(false, options: notifyOthers \? \[\.notifyOthersOnDeactivation\] : \[\]\)/,
+    "notify only when the core asks (close, final end, data deletion)");
+  assert.equal((owner.match(/notifyOthersOnDeactivation/g) ?? []).length, 1);
+});
+
+test("NE-16: the owner observes its three notifications on the main queue, reads the interruption reason, and the host persists the hold policy", () => {
+  /* Route changes are posted on a secondary thread, and the core's 500 ms
+     route attribution needs them ordered on main (plan §4.2); the reason key
+     is what separates a stale appWasSuspended and a muted mic from a real
+     interruption.
+     MUTATION: `queue: nil` on any observer; `addObserver(self, selector:`;
+     drop the reason key; drop persistHoldPolicyIfChanged() from runTurn; key
+     the store under `CapacitorStorage.`. */
+  const owner = stripSwiftComments(fs.readFileSync(OWNER_SWIFT, "utf8"));
+  const observe = swiftFuncBody(owner, "observe");
+  for (const name of ["interruptionNotification", "routeChangeNotification", "mediaServicesWereResetNotification"]) {
+    assert.match(observe, new RegExp(String.raw`addObserver\(forName: AVAudioSession\.${name}, object: object, queue: \.main\)`),
+      `${name} is observed on the main queue`);
+  }
+  assert.equal((owner.match(/addObserver\(/g) ?? []).length, 3, "exactly three observers");
+  assert.doesNotMatch(owner, /queue:\s*nil|addObserver\(self/);
+  assert.match(owner, /AVAudioSessionInterruptionReasonKey/, "the interruption reason is read");
+  assert.match(swiftFuncBody(owner, "row"), /secondaryAudioShouldBeSilencedHint/, "every owner row carries the silence hint");
+
+  const store = stripSwiftComments(fs.readFileSync(HOLD_STORE_SWIFT, "utf8"));
+  assert.match(store, /static let key = "ForayEngine\.holdPolicy"/, "the private key the plan names, outside CapacitorStorage.");
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "runTurn"), /persistHoldPolicyIfChanged\(\)/, "every turn that changes the policy persists it");
+  assert.match(swiftFuncBody(host, "persistHoldPolicyIfChanged"), /seams\.holdPolicy\?\.save\(policy\)/);
+  assert.match(host, /if let stored = seams\.holdPolicy\?\.load\(\) \{ config\.holdPolicy = stored \}/, "the stored policy is read at construction");
+});
+
+test("NE-16: EngineModeFlag.swift is byte-identical in foray-audio and foray-tts, volatile, and read by both plugins", () => {
+  /* foray-tts reads the engine's ownership without depending on foray-audio:
+     two copies of one small file, compared here byte for byte (one source of
+     truth, a test instead of a dependency). The VOLATILE domain is
+     process-scoped, so a relaunch always starts legacy until decideOnce()
+     says otherwise (plan §4.4).
+     MUTATION: change the domain in one copy, write with `.set(` (persistent),
+     or delete one plugin's read of the flag. */
+  const audio = fs.readFileSync(FLAG_AUDIO_SWIFT);
+  const tts = fs.readFileSync(FLAG_TTS_SWIFT);
+  assert.ok(audio.equals(tts), "the two EngineModeFlag.swift copies differ");
+  assert.ok(!audio.includes(0x0d), "LF line endings, or the byte comparison is a Windows accident");
+  assert.deepEqual(swiftImports(FLAG_AUDIO_SWIFT), ["Foundation"]);
+  const code = stripSwiftComments(audio.toString("utf8"));
+  assert.match(code, /static let domain = "ai\.jwlabs\.foura\.engine"/);
+  assert.match(code, /static let key = "sessionOwnedByEngine"/);
+  assert.match(code, /volatileDomain\(forName: domain\)/);
+  assert.match(code, /setVolatileDomain\(\[key: newValue\], forName: domain\)/);
+  assert.doesNotMatch(code, /\.set\(|setValue|synchronize|persistentDomain|CapacitorStorage/, "never persisted");
+  const lines = code.split("\n").filter((l) => l.trim()).length;
+  assert.ok(lines <= 12, `EngineModeFlag.swift is meant to stay about ten lines of code, not ${lines}`);
+  assert.match(stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8")), /EngineModeFlag\.sessionOwnedByEngine/);
+  assert.match(stripSwiftComments(fs.readFileSync(TTS_SWIFT, "utf8")), /EngineModeFlag\.sessionOwnedByEngine/);
 });
 
 test("NE-25b: the two-deck spike measures AVDeck's own gate: two real decks, no preroll( of its own, a live status reading, the exempt click tracks", () => {
@@ -3377,7 +3520,13 @@ test("one audio-session mode, .spokenAudio, in both iOS plugins; category only a
   const load = swiftFuncBody(audio, "load");
   assert.match(load, /setCategory\(\.playback, mode: \.spokenAudio, options: \[\]\)/, "set once for the tape between narration and holds");
   assert.doesNotMatch(load, /setActive/, "category only: the playing path never activates");
-  assert.ok((tts.match(/mode:\s*\.spokenAudio/g) ?? []).length >= 2, "speak() and resume() both set the app's one mode");
+  /* NE-16 moved the TTS pair into `claimSession()` so both callers share one
+     guarded site; the rule is unchanged: speak() and resume() each claim the
+     app's one mode before sounding. MUTATION: drop either call -> red. */
+  assert.match(swiftFuncBody(tts, "claimSession"), /setCategory\(\.playback, mode: \.spokenAudio, options: \[\]\)/, "the TTS claim sets the app's one mode");
+  for (const fn of ["speak", "resume"]) {
+    assert.match(swiftFuncBody(tts, fn), /Self\.claimSession\(\)/, `${fn}() claims the app's one mode before sounding`);
+  }
 });
 
 test("the Android notification carries the seek pair and the session its custom buttons (round 2, native-7)", () => {

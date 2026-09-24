@@ -670,9 +670,10 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
            element starts is a device check, `docs/ios-lock-screen.md` §8.5.)
            `try?` matches this plugin's own "every method resolves, none
            reject" rule stated in the class header: a failure to configure the
-           session should not turn into a rejected promise mid-narration. */
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
-        try? AVAudioSession.sharedInstance().setActive(true)
+           session should not turn into a rejected promise mid-narration.
+           The pair itself lives in `claimSession()`, shared with `resume()`,
+           because both are guarded on the native engine's ownership (NE-16). */
+        Self.claimSession()
 
         synthesizer.speak(utterance)
 
@@ -764,6 +765,25 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         call.resolve(result)
     }
 
+    // MARK: - NE-16: the legacy lane's session claim
+
+    /// The `.playback` / `.spokenAudio` category and an activation, before
+    /// `speak()` and `resume()` (their comments say why each needs it). Both
+    /// lines are SKIPPED while the native engine owns the session
+    /// (`EngineModeFlag.sessionOwnedByEngine`, set by foray-audio in the same
+    /// process through the byte-identical `EngineModeFlag.swift`): its
+    /// `AudioSessionOwner` is then the one owner (docs/native-engine-plan.md
+    /// §4.4), and the page sends auditions through the engine instead (OQ-5).
+    /// After a relinquish the flag is false and this behaves exactly as it
+    /// did in build 2026092327. Returns whether it touched the session.
+    @discardableResult
+    static func claimSession(_ session: AVAudioSession = .sharedInstance()) -> Bool {
+        guard !EngineModeFlag.sessionOwnedByEngine else { return false }
+        try? session.setCategory(.playback, mode: .spokenAudio, options: [])
+        try? session.setActive(true)
+        return true
+    }
+
     // MARK: - L-05: pause, resume, stop
 
     /* ── WHY THESE THREE EXIST (L-05, founder feedback F12) ──────────────────
@@ -812,8 +832,7 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
            equivalent call in `ForayAudioPlugin.setNowPlaying` is NOT: that one
            sits on `render()`'s 4 Hz hot path and re-interrupting WebKit there
            was the F11/F13 pause loop. This runs once per listener press. */
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
-        try? AVAudioSession.sharedInstance().setActive(true)
+        Self.claimSession()
         let accepted = synthesizer.isPaused ? synthesizer.continueSpeaking() : false
         resolveTransport(call, accepted: accepted)
     }
