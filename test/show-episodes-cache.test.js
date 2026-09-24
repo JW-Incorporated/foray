@@ -98,7 +98,9 @@ test("fetchShowEpisodes does not pass cache: no-cache", () => {
     .replace(/\/\*[\s\S]*?\*\//g, " ")
     .replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
   assert.ok(!/cache:\s*["']no-cache["']/.test(fn), "the HTTP cache must be allowed to answer");
-  assert.match(fn, /await fetch\(apiUrl\(url\)\)/, "a plain fetch, so Cache-Control applies");
+  /* Since round 2 (states-4) the fetch carries an AbortController signal for its
+     deadline; the only option it may carry is that signal. */
+  assert.match(fn, /fetch\(apiUrl\(url\)(?:, ctl \? \{ signal: ctl\.signal \} : undefined)?\)/, "a plain fetch, so Cache-Control applies");
 });
 
 /* ---------- the cache's own arithmetic ---------------------------------- */

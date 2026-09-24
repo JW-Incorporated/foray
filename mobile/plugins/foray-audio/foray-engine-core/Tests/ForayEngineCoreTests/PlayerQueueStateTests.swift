@@ -1,8 +1,9 @@
 // COPIED (card NE-02, docs/native-engine-plan.md §4.1) from
 //   ios/ForayKit/Tests/ForayKitTests/PlayerQueueStateTests.swift @ adde5e12
-// with ONE line changed: the import names this package's module instead of
-// ForayKit. The ios/ copy is FROZEN REFERENCE; this is the suite that guards
-// the engine's reducer (Sources/ForayEngineCore/Reducer/PlayerQueueState.swift)
+// with the import changed to name this package's module instead of
+// ForayKit, and (since NE-07s) one expectation, explained below.
+// The ios/ copy is FROZEN REFERENCE; this is the suite that guards the
+// engine's reducer (Sources/ForayEngineCore/Reducer/PlayerQueueState.swift)
 // on every host `swift test` of foray-engine-core (ci.yml's ios-kit on macOS,
 // and G-1a's engine-parity on Linux once it exists).
 //
@@ -14,7 +15,9 @@
 // the names against the ios/ original, and test/suite-integrity.test.js
 // floors the count). NE-07s ADDS cases as the reducer reaches JS parity; it
 // never rewrites these, because they are the proof the extension kept the
-// behaviour the scaffold already had.
+// behaviour the scaffold already had. The one exception is a behaviour JS
+// changed ON PURPOSE before the port (testSkipToNextWithNoTargetEndsQueue,
+// #111), whose expectation follows the reference and says so in place.
 
 import XCTest
 import ForayEngineCore
@@ -307,7 +310,14 @@ final class PlayerQueueStateTests: XCTestCase {
         let playing = PlayerQueueState.playing(item: episodeA)
         let (state, effects) = PlayerQueueState.reduce(state: playing, event: .skipToNext(nil))
         XCTAssertEqual(state, .ended)
-        XCTAssertEqual(effects, [.emitTelemetry("skip.next.queueExhausted")])
+        // THE ONE EXPECTATION NE-07s CHANGED, because JS changed it first
+        // (#111, player/queue-state.test.js's test of the same name): the
+        // scaffold ended the queue with telemetry alone and left the audio
+        // playing while the state said the session was over. JS is the
+        // reference (plan §6), and the fixture case covering this test
+        // pins the new effects, so keeping the scaffold's line here would
+        // hold two contradictory answers to one question.
+        XCTAssertEqual(effects, [.savePosition, .pausePlayback, .emitTelemetry("skip.next.queueExhausted")])
     }
 
     func testSkipFromIdleActsLikeFreshPlay() {

@@ -81,26 +81,73 @@ jobs:
       - run: npm install --omit=dev --prefix ../backend
       - run: npm test
 
+  engine-paths:
+    # NE-06 (docs/native-engine-plan.md §6.8, G-1b). ONE place that answers
+    # "did this event touch the native engine's inputs, or any Swift?", read by
+    # the three jobs below that gate on it: `engine-parity` short-circuits
+    # when no engine path changed, `ios-kit` runs on a pr-hygiene dispatch only
+    # when a Swift path changed, and `ios-gate` waits for ios-kit only then.
+    # One classifier, so the three can never disagree about what changed.
+    #
+    # The logic is tools/ci/engine-ci.mjs (a DENIED path, tested in
+    # engine-ci.test.mjs), not inline shell: every "could not tell" answer
+    # there is "everything changed", because a short-circuited required check
+    # reports success.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      engine: ${{ steps.classify.outputs.engine }}
+      swift: ${{ steps.classify.outputs.swift }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # pull_request checks out the merge commit; depth 2 brings its base
+          # parent, and HEAD^1..HEAD is exactly what merging the PR changes.
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Which engine and Swift paths this event changed
+        id: classify
+        # Through env:, never interpolated into the command: a branch name is
+        # author-controlled text.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: node tools/ci/engine-ci.mjs engine-paths
+
   ios-kit:
     # ForayKit is a pure-Swift package (no AVFoundation) precisely so its
     # state machine + intent grammar tests can run on a CI Mac — the only
     # Mac this project currently has.
     #
-    # Skipped on `workflow_dispatch`, which exists solely so pr-hygiene can
-    # re-report the REQUIRED checks (`backend`, `data-and-site`) on a PR head it
-    # just updated. `ios-kit` is not required, and macOS runner minutes bill at
-    # 10x — re-running it on every auto-update would be the largest single cost
-    # of that feature for no gate. A push or PR still runs it normally.
-    if: github.event_name != 'workflow_dispatch'
+    # Skipped on `workflow_dispatch` UNLESS A SWIFT PATH CHANGED. The dispatch
+    # exists so pr-hygiene can re-report the REQUIRED checks on a PR head it
+    # just updated, and macOS runner minutes bill at 10x, so a content PR's
+    # auto-update still costs no Mac. But NE-06's required `ios-gate` reads
+    # this job's verdict on the SAME run, and a Swift PR's updated head would
+    # otherwise have no ios-kit at all: its gate would go red for want of a
+    # run, stranding the PR the dispatch exists to un-strand. A push or PR
+    # runs it normally, whatever changed.
+    #
+    # `!cancelled()` rather than a bare condition: without it a failed
+    # `engine-paths` would skip this job on push and pull_request too, and a
+    # skipped job looks like a pass. Only an explicit "false" skips it.
+    needs: engine-paths
+    if: ${{ !cancelled() && (github.event_name != 'workflow_dispatch' || needs.engine-paths.outputs.swift != 'false') }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - run: swift test --package-path ios/ForayKit
       # NE-01 (docs/native-engine-plan.md §4.1): the native engine's PURE core,
       # Foundation only, so it host-tests here on macOS with no Simulator. This
-      # is also the plan's zero-.github fallback for the parity library until
-      # G-1a's `engine-parity` job adds the Linux run; the Simulator-side
-      # wrapper runs in the foray-audio step below.
+      # was the plan's zero-.github fallback for the parity library before
+      # G-1a; `engine-parity` below now adds the Linux run (NE-06), and this
+      # macOS run stays because the core ships on Apple platforms and Linux
+      # Foundation is not Darwin Foundation. The Simulator-side wrapper runs in
+      # the foray-audio step below.
       - name: swift test (foray-engine-core, macOS host)
         run: swift test --package-path mobile/plugins/foray-audio/foray-engine-core
       # L-01 follow-up (docs/ios-controls-and-voice-plan.md, card L-01): foray-audio
@@ -143,7 +190,16 @@ jobs:
           # (xcodebuild strips the prefix) and turns a pin that compiled out
           # into a failure rather than a skip.
           npm ci --prefix ../.. --no-audit --no-fund --ignore-scripts
+          # NE-25a (docs/native-engine-plan.md): the in-point / out-point
+          # measurement (ClickTrack/InOutPointMeasurementTests.swift) appends
+          # its tables to this job's summary, labelled with the run and the
+          # head SHA. A Simulator test process can write a host path, and the
+          # TEST_RUNNER_ prefix is how a variable reaches it. NE-15's AVDeckTests
+          # append the deck's measurements (landing error, time to ready) through
+          # the same FORAY_MEASURE_SUMMARY: one hand-off, not two.
           FORAY_PREFERENCES_PIN=1 TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN=1 \
+          TEST_RUNNER_FORAY_MEASURE_SUMMARY="$GITHUB_STEP_SUMMARY" \
+          TEST_RUNNER_FORAY_MEASURE_RUN="${{ github.run_id }} @ ${{ github.event.pull_request.head.sha || github.sha }}" \
           xcodebuild test \
             -scheme ForayAudio \
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \
@@ -208,6 +264,115 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             | tee xcodebuild-test.log
           grep -E "^\*\* TEST (SUCCEEDED|FAILED)" xcodebuild-test.log | tail -1 || true
+
+  ios-gate:
+    # NE-06, G-1b (docs/native-engine-plan.md §6.8). The check `protect-main`
+    # is meant to REQUIRE in place of ios-kit itself, once G-1b's founder
+    # sitting adds it (branch protection lives in GitHub's settings; nothing
+    # in this file can make a check required).
+    #
+    # WHY NOT REQUIRE ios-kit DIRECTLY: it is a ~10-minute macOS job behind a
+    # macOS runner queue (5 minutes of queue measured on run 35963024160).
+    # Required as-is, every content PR — most of this repo's traffic, all of
+    # it auto-merged — would wait a quarter of an hour on a Swift build its
+    # change cannot affect. This job is green in seconds when no Swift path
+    # changed, and when one did it waits for THIS run's ios-kit and takes its
+    # verdict. A skipped ios-kit is a failure then, not a pass.
+    #
+    # Runs on EVERY event (no event-based `if`), so the required context
+    # reports on a pr-hygiene dispatch's head SHA too. It does not `needs:`
+    # ios-kit, deliberately: that would make content PRs wait for it anyway.
+    # It reads the job through the Actions API instead.
+    needs: engine-paths
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: ios-kit green on this run, or no Swift path changed
+        env:
+          # Only an explicit "false" skips the wait. An empty output (the
+          # engine-paths job failed) is "unknown", and unknown waits.
+          SWIFT_CHANGED: ${{ needs.engine-paths.outputs.swift }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/ci/engine-ci.mjs ios-gate
+
+  engine-parity:
+    # NE-06, G-1a (docs/native-engine-plan.md §6.8). The native engine's
+    # parity run on LINUX, in the `swift:5.10` image: the only fast Swift loop
+    # the Windows agents that write this engine have (ios-kit is macOS, ~15
+    # minutes with its queue). `swift test` on foray-engine-core runs the XCTest
+    # wrappers over ForayEngineParity, which reads player/parity/fixtures in
+    # place, keeps the swift-pending books and writes parity-report.json; the
+    # family table goes to the job summary.
+    #
+    # ON push, pull_request AND workflow_dispatch, and it must never copy
+    # ios-kit's dispatch skip: at G-1b this becomes a REQUIRED check, and a
+    # required check that does not report on a pr-hygiene-updated head strands
+    # the PR at "Expected — waiting for status to be reported".
+    #
+    # THE SHORT-CIRCUIT IS STEP-LEVEL (G-1b): the job always runs and always
+    # reports, and when `engine-paths` says no engine input changed every step
+    # after the notice is skipped, so the job is green in the time it takes to
+    # pull the image. Only an explicit "false" short-circuits; if engine-paths
+    # failed, the output is empty and the parity run happens.
+    #
+    # ADVISORY until G-1b's founder sitting marks it required (a branch
+    # protection setting, not something this file can express).
+    #
+    # THE IMAGE IS NOT CACHED, and that is a stated deviation from the plan's
+    # "image cached": GitHub has no cache for a job `container:` — it is pulled
+    # before the first step runs, so no actions/cache step can reach it. The
+    # pull is measured in docs/ios-native-engine-measurements.md §9.
+    needs: engine-paths
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container: swift:5.10
+    env:
+      RUN_PARITY: ${{ needs.engine-paths.outputs.engine == 'false' && 'false' || 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Short-circuit — no engine input changed
+        if: env.RUN_PARITY != 'true'
+        run: |
+          echo "engine-parity: no path under player/parity/, foray-engine-core/ or tools/parity/ changed; nothing to run."
+          echo "**engine-parity short-circuited:** no engine input changed in this event, so the parity verdict cannot have moved." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        if: env.RUN_PARITY == 'true'
+        with:
+          node-version: 22
+      - name: swift test (foray-engine-core, Linux) — the parity run
+        if: env.RUN_PARITY == 'true'
+        shell: bash
+        # $GITHUB_WORKSPACE, not ${{ github.workspace }}: in a container job the
+        # expression is the HOST path, and the runner mounts the checkout
+        # somewhere else inside the container. The report is written into the
+        # workspace for the same reason: the upload step below runs inside the
+        # container too, and a relative path is the one both agree on.
+        run: |
+          set -euo pipefail
+          swift --version
+          export FORAY_PARITY_DIR="$GITHUB_WORKSPACE/player/parity"
+          export PARITY_REPORT="$GITHUB_WORKSPACE/parity-report.json"
+          swift test --package-path mobile/plugins/foray-audio/foray-engine-core
+      - name: Parity family table (job summary)
+        if: ${{ !cancelled() && env.RUN_PARITY == 'true' }}
+        shell: bash
+        run: node tools/ci/engine-ci.mjs summary parity-report.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep parity-report.json
+        if: ${{ !cancelled() && env.RUN_PARITY == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-report
+          path: parity-report.json
+          if-no-files-found: ignore
 
   data-and-site:
     runs-on: ubuntu-latest

@@ -1,0 +1,22 @@
+{
+  "name": "foray-vault",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Foray's own Capacitor plugin: a device-only store for the one row that must never be in a phone backup, the anonymous-account token cp_sb_session. iOS: a Keychain generic-password item with kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly, never synchronizable. Android: a file in Context.getNoBackupFilesDir(), which Auto Backup and device-to-device transfer always skip. Round-2 audit persist-6; founder ruling 2026-09-24, 'Option A' (docs/DECISIONS.md). NOT published, NOT a third-party dependency -- this repo's own hand-written native code, same pattern as foray-audio and foray-tts (docs/android-native-code.md).",
+  "//no-js-entry": "No main/module/types on purpose, matching foray-audio and foray-tts. The web half is player/durable-store.js's vaultTier(), which talks to this plugin through window.Capacitor.nativePromise('ForayVault', ...) with the same four calls the Preferences plugin answers (keys/get/set/remove). There is no bundler in this repo.",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    },
+    "android": {
+      "src": "android"
+    }
+  },
+  "files": [
+    "ios/Sources/",
+    "ios/Package.swift",
+    "android/src/main/",
+    "android/build.gradle"
+  ]
+}

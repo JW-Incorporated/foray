@@ -2094,8 +2094,12 @@ test("REAL REPO: nothing in the app browses the segment pool — the slice's pre
        this test exists to raise. */
     const isDirectorySwap = /^\s*state\.(segments|segmentSources)\s*=\s*set\.(segments|sources)\b/.test(line);
     const isDirectorySeed = /seed\s*=\s*\{\s*forays:\s*state\.forays,\s*segments:\s*state\.segments,\s*sources:\s*state\.segmentSources\s*\}/.test(line);
+    /* The boot's all-or-nothing check (round-2 audit, states-3): the three
+       documents are one artifact, so any one missing drops all three. It asks
+       whether each document ARRIVED, and enumerates nothing. */
+    const isArtifactCheck = /!state\.forays\s*\|\|\s*!state\.segments\s*\|\|\s*!state\.segmentSources\b/.test(line);
     assert.ok(
-      isFetchAssignment || isResolveArgument || isDirectorySwap || isDirectorySeed,
+      isFetchAssignment || isResolveArgument || isDirectorySwap || isDirectorySeed || isArtifactCheck,
       `app.js:${n} reads the segment pool somewhere new — ${line.trim()}\n` +
         `The mobile bundle ships ONLY the segments the bundled Forays reference ` +
         `(tools/mobile/prepare-webdir.mjs, #327), so any surface that enumerates the pool ` +

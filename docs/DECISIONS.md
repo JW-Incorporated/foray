@@ -2,6 +2,276 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-24 (founder rulings on the round-2 decision list, PR #749)
+
+Wyatt answered the orchestrator's thirteen-item decision list for round 2 of
+the audit on 2026-09-24. His words are quoted verbatim. Where the ruling is
+applied in PR #749 the entry says so; the rest are follow-up PRs or issues.
+Items this PR does not apply are recorded by their words and their follow-up
+only; each follow-up carries its own context.
+
+1. **Auth token and backups (Q6, `persist-6`):** "Option A". The auth token
+   (`cp_sb_session`) stays on the device and out of platform backups.
+   Follow-up PR.
+2. **Privacy-policy wording (Q7, `persist-3`):** "Approved". Applied in PR #749.
+   `docs/legal/privacy-policy.md` §5 now says `connect-src` names three
+   origins: the app's own, Supabase, and our API on Vercel, which receives the
+   Shows search text with the IP address and user-agent. §4.3 names Vercel as
+   the processor that answers Shows searches and says 4a does not log the
+   query. The `cp_diag` row lists the search, now-playing, remote-command and
+   native-session rows. `docs/legal/data-safety.md`'s two search-history rows
+   drop "miss-only". `test/legal-citations.test.js` now holds the policy's
+   stated origin count to `index.html`'s. HUMAN-ACTIONS #109 asks Wyatt to
+   mirror the changed sentences in the store listings, which he updates himself.
+3. "1x for now, but maybe we change later. I recall
+   1x felt like 0.6x or so, it was very slow." Follow-up PR.
+4. **The nightly content routine (`foray-nightly-enrich`, HUMAN-ACTIONS #46):**
+   "Leave them off but create a GH issue for Joey to get these to run on the rig
+   he's building." Issue #760.
+5. "Publish any foray so that the statement is correct;
+   this is a temporary issue while we are spinning up and will soon be
+   irrelevant." Follow-up PR.
+6. **The verb for shows:** "Follow and let's add notifications to the roadmap."
+   Issue #761 (new-episode notifications for followed shows).
+7. **Home's "Episodes for you" section:** "Rename it 'Suggested'". Applied in
+   PR #749. Wyatt named the section verbatim in the ui-transition brief
+   (`docs/ui-transition-plan.md` §0, which keeps his original words with a
+   note). The heading, `suggestedHtml()`, the `.hv2-suggested` class, the
+   tests and the docs that describe the section now say "Suggested". Audit
+   persona 56/82 are fixed by it.
+8. **A play button on Home:** "Add a play button at the Home Screen level and
+   start playing whatever is first in that list (whether it be Suggested or a
+   Playlist or whatever)". Applied in PR #749. One control sits under the
+   greeting. It plays the first playable thing on Home, walking the rails in
+   render order (Jump back in, Forays for you, Playlists for you, Suggested),
+   and passes over a rail with nothing playable. Each kind starts through its
+   own page's path: a Foray through `playForay`, resuming where it was left; an
+   episode, a playlist or a Suggested queue through the rows' shared
+   `startEpisodePlay`, with the playlist's rows as the continuous-playback
+   list. The button's name is "Play <title>". It shows the loading mark, and it
+   reports a failed start but not a superseded one. It never restarts what the
+   player already holds: a paused item resumes and a playing one is left
+   alone. It is hidden only when nothing on Home can play. Pinned by
+   `test/home-play.test.js`.
+9. "Accept the ones that are currently there; update our foray generation scripting to avoid making more
+   in the future." Follow-up PR.
+10. **HUMAN-ACTIONS #2 (listen to Foray #1):** "Drop it". Closed as `skip` in
+    `HUMAN-ACTIONS-DONE.md`.
+11. **House style for Foray titles and summaries:** "Sentence case, no period,
+    though ? And ! Are allowed". Follow-up PR.
+12. **Up Next drag-to-reorder, Play next, swipe-to-remove and Clear
+    (`p-impatient-8`):** "Build it after native engine". Issue #762.
+13. **The Up Next model, reversing the round-2 default for question 9:**
+    "Playing something from up next removes the items above it - disagree,
+    reverse this. That item in the queue jumps to the top." Applied in PR #749.
+    Playing row k from the Up Next page moves that row to the top, where it is
+    what is playing. Every other row keeps its place and its order, and
+    nothing is removed: with [a, b, c, d] queued, playing c gives [c, a, b, d].
+    When c ends it leaves Up Next and a plays. ⏭ follows the same rule as the
+    natural end, reached early: the skipped episode leaves Up Next as it would
+    at its end, Up Next's head plays, and no other row is dropped. (The
+    round-2 default removed rows 1..k-1 on both paths.) Pinned by
+    `test/up-next-autoadvance.test.js`. `p-impatient-7`'s ledger note is
+    updated to match.
+
+## 2026-09-23 (audit round 2, lane L3: the platform contract for the lock screen, the car and the Android shade; the Up Next model; the sheet's staples; Dynamic Type)
+
+Round 2 of the 4a audit (`docs/audit/round-2/`, synthesis themes R2-M and R2-N)
+found that the lock screen, the car and the Android notification were "a surface
+nobody designed": each fix had been made on one surface with the others inherited.
+The founder answered the round's questions 1, 2, 3, 5, 9 and 10 by default
+(orchestrator, 2026-09-23); this entry writes the contract ONCE, before the code,
+and the code cites it. Held for the founder, not implemented: question 6 (backups
+of the native Preferences suite) and question 7 (privacy-policy wording).
+
+**1. The platform contract — per kind, which commands exist and what they mean.**
+
+| | ordinary episode | Foray (tape) | Foray (narration line) |
+|---|---|---|---|
+| play / pause / toggle | always | always | always (`ForayTtsPlugin` pause/resume) |
+| ↺15 / 30↻ (`seekbackward`/`seekforward`) | always, the page's own ±15/30 (one source, `player/media-session.js`; the natives never hold a literal for the DISTANCE — Android's label and glyph are the one exception, pinned below) | always, on the Foray's clock | always |
+| `previoustrack` | **always installed**: restart, unless within `RESTART_WINDOW_SEC` of the start AND the chosen list has a playable row before this one — then that row (p-car-5; the Foray's own rule, `forayPrevious`) | the previous clip / restart, same window | same |
+| `nexttrack` | only when `planAfterEnded` has something: Up Next first, then the chosen list | the next clip | the next item |
+| end of the last item | nothing plays; the bar stays with ▶ and the seek pair; the entry is kept (L1's `p-car-6`) | the Foray reports `ended`: every transport command off, the entry kept, Android's Stop stays | — |
+| `stop` | a PAUSE from any remote; only the Android notification's own Stop/swipe (`close`) tears down | same | same |
+
+**Which pair the lock screen draws (founder question 1): the SKIP pair, always.**
+iOS draws one control per side and prefers ⏮/⏭ whenever the track commands are
+enabled; with anything in Up Next the 2026-09-23 steering-wheel fix enabled
+`nextTrackCommand` and the founder's 30↻ became ⏭, flipping back as Up Next
+drained (p-impatient-3). Ruling: the track pair is offered ONLY where a track
+button exists without looking — a headset, a Bluetooth stack, a car (`carAudio`,
+A2DP/HFP, USB, AirPlay): `ForayAudioPlugin.trackCommandsAllowed(portTypes:)`, read
+at load and on every route change. On the built-in speaker, where the lock screen
+is the only surface, next/previous stay off whatever Up Next holds. The page's
+`nexttrack`/`previoustrack` handlers are no longer mirrored onto WebKit's own
+session (`UNMIRRORED_ACTIONS`), so WebKit's client cannot enable them either;
+the seek pair still is. **Device check (Wyatt, next build), added to
+`docs/ios-lock-screen.md` §8.5:** with two episodes in Up Next, lock the phone —
+the right-hand button must be 30↻; with AirPods in, double-tap must skip to the
+next queued episode; in the car, the wheel's next/previous must work during tape.
+If the wheel's next is dead during tape, WebKit's later command write is winning
+and the plugin must re-assert availability on WebKit's play/pause — that is the
+one branch this ruling could not settle read-only.
+
+**One session mode, `.spokenAudio`, everywhere (native-10).** Set at
+`ForayAudioPlugin.load()` (category only, no `setActive` — the F11/F13 rule
+stands), on every paused hold, and by `ForayTtsPlugin` on every utterance as
+before. A navigation prompt pauses-and-resumes a podcast rather than talking
+over it; a clip and a narration line now get the same treatment instead of
+whichever the prompt's second landed in. Device check: whether WebKit resets the
+mode when its element starts (a Maps prompt that ducks tape but pauses narration
+says it did).
+
+**Auto-resume after a call or Siri (founder question 2): yes, when iOS says
+`shouldResume`, and only for an interruption that began while PLAYING.** A
+`.spokenAudio` session is interrupted by a navigation prompt too, and the plugin
+holds one while paused — so a prompt during a listener's pause ends with
+`shouldResume` and must NOT start the podcast. The guard is the state at
+`interruptionBegan` (the plugin's `interrupted` flag and the record's
+`began-while-held`), not the state at `.ended`; a resume the listener already
+made is a no-op (`setRunning(true)` on a playing transport). The page-side
+resume is lane L1's (`p-car-3`); its entry below records the same ruling from
+the page's side (the manager's `_pausedByListener` guard and the 30 s lag bound).
+
+**Android's notification carries the seek pair (native-7)** as its own actions
+(API 24–32) and as Media3 custom command buttons on the session (API 33+, where
+the system draws controls from the session and never renders rewind/fast-forward);
+the compact view shows ↺15 / play / 30↻ for a single episode and ⏮ / play / ⏭
+when there is a next. **A press on a running service is dispatched and not
+re-posted (native-8)**; a close removes the notification at once and the service
+follows the page's `stop`. **A narration-first Foray gets its service (native-2)**
+from the transport's first `playing` payload (`noteTransportPlaying`), not only
+from an element's `play()`.
+
+**2. The Up Next model (founder question 9): a list you move down, never
+around.** *(Reversed by the founder on 2026-09-24: the row you play jumps to the
+top and nothing is removed. See the 2026-09-24 entry; this paragraph is kept as
+the record of the default.)* Playing row k — from the page's ▶ or by ⏭ — removes rows 1..k-1. The
+first version kept them and re-served an abandoned row after the last one
+(p-impatient-7). A row moved ABOVE the playing one while it plays is what plays
+next at the natural end (nobody skipped it). The page is a live view of
+`cp_queue`: every write repaints it in place, the current row is marked
+(p-impatient-6). Only what 4a can play can be queued (p-impatient-10); the
+snapshot cap never prunes a queued episode (p-impatient-11). Drag-reorder, Play
+next and Clear Up Next stay a follow-up card (question 9's second half); the
+arrows remain.
+
+**3. The sheet's staples (founder question 10): ⏭, Up Next (N) and Save now;
+the sleep timer parked.** ⏭ is the steering wheel's next, so the skipped episode
+leaves Up Next the same way. History is last-played order (honesty-3); "played"
+means finished on the playlist header as on the rows (honesty-6); the Up Next
+row and the episode page carry the row mark (honesty-5). Finished items keep
+their rows' "Played" and leave Jump back in per question 3 (L1/L8's surfaces).
+
+**4. Dynamic Type (founder question 5): build the bridge; correct the sentence.**
+`mobile/web/foray-type-scale.js` measures a `-apple-system-body` probe and sets
+the root's `font-size` (16px × body/17, clamped 1–2×) plus `--type-scale` for
+the fixed-px chrome; iOS shell only. The 2026-09-23 §1 sentence is corrected in
+place. Device check: Settings › Accessibility › Larger Text at xxxLarge — rows,
+the tab labels and the sheet must grow; the top bar must not clip its title
+(the px chrome's `calc(… * var(--type-scale))` is lane L7's).
+
+## 2026-09-23 (audit round 2, player transport: resume after a call, a finished episode on the car, finished things leave Jump back in, a nudge inside a spoken line)
+
+Four rulings the round-2 lane L1 (`docs/audit/round-2/`) needed, applied as the
+orchestrator's defaults for the founder's questions and recorded here so the
+next reader finds a decision rather than a default.
+
+**1. After a phone call or Siri, 4a resumes on its own when iOS says
+`shouldResume` (founder question 2; `p-car-3`, `native-3`).** Apple Podcasts and
+Spotify come back after a call; 4a stayed silent, for two reasons the round found.
+The page's own reconcile of the interruption issued `el.pause()` to an element the
+OS had already paused, and in WebKit a script pause during an interruption records
+"paused" as the state to restore, so the OS resumed nothing
+(`html-audio-backend.js` `pause()` no longer re-pauses a paused element). And
+`interruptionEnded` was dropped on the page with a comment calling the resume "a
+product decision (docs/DECISIONS.md)" that this file never contained. **Ruling:
+resume, with three guards, because audio with no press is what the old code
+refused outright.** The event must be fresh (`INTERRUPTION_RESUME_MAX_LAG_MS`,
+30 s — a page that handles it minutes later was woken by the listener opening the
+app, and starting audio under their thumb is founder report 1 in the other
+direction); the manager resumes only an interruption the OS caused, never a pause
+the listener made before the call (`_pausedByListener` — iOS sends `shouldResume`
+for both, since the paused app holds its session since this morning); and a resume
+the listener or WebKit already made is a no-op in the reducer. A spoken narration
+line is asked of the synthesiser (`foray-tts.js` `state()`) rather than the
+element, and a line the synthesiser has gone silent on is paused through the same
+reducer path, so it resumes the same way; a line that never reports `finished` is
+given up on past 1.5x its runtime plus 10 s. **Device check (Wyatt, next build):**
+a 20 s call mid-episode and one mid-narration — 4a should come back both times;
+the record's `interruptionEnded should-resume` row should be followed by a
+`interruption.ended.resumed` note. The lag bound is a heuristic and is the number
+to tune if a resume ever lands late.
+
+**2. A finished ordinary episode stays on the lock screen and the car,
+paused (`p-car-6`).** The 2026-08 rule "a finished Foray reports none — a play
+button that cannot do anything is worse than none" had been silently extended to
+episodes, for which it was never true: play from `ended` reloads the episode from
+the top, and `none` at the end of the last episode blanked the head unit and every
+wheel button. Apple keeps the finished episode on the lock screen, paused; so does
+4a. The Foray rule is unchanged (`docs/ios-lock-screen.md` §2). The iOS plugin's
+session hold is taken on playing → paused only, so whether the car actually keeps
+4a through the end of a list is part of the device check above.
+
+**3. Finished things leave Jump back in (founder question 3; `player-8`).** A
+finished episode kept a "Played, 100%" card for thirty days while the ribbon
+restored the same episode at 0:00 with an empty bar. Neither surface offers a
+finished episode now; a finished Foray already had no row. "Played — play again"
+on the item's own rows and pages is the copy lane's half.
+
+**4. A nudge inside a spoken narration line restarts it (↺15) or skips it (30↻),
+and the live region says which (`player-11`).** The synthesiser cannot start
+mid-sentence, so a nudge that stayed inside the line being spoken did nothing at
+all, silently. A nudge that crosses out of the line seeks as before. The
+alternative — announcing "cannot be scrubbed" and doing nothing — leaves a tap
+with no effect, which is the defect.
+## 2026-09-23 (the app's copy speaks as "4a", never "we"; one duration dialect; round-2 rulings Q8 and Q11)
+
+**The narrator is 4a (audit round 2, copy-11).** Listener copy said "4a picks
+podcast episodes for you" and "we learn either way" on one sheet, "Shows we
+vouch for" under a Search page that says "4a", "Our server… We cannot delete
+that" beside "Some of what 4a saved here". Apple Podcasts never says "we". The
+rule: **in the app's own words the speaker is "4a"** ("4a learns from what you
+play", "Shows 4a vouches for", "4a's server"). "We / us / our" is the company
+talking and belongs only in legal documents (`docs/legal/`), which speak for
+the company on purpose. `test/listener-copy.test.js` holds it as a regex over
+every listener string in `app.js` and `player/client.js`.
+
+**The rest of the copy rules written down with it** (each pinned in the same
+suite or `test/format-helpers.test.js`):
+
+- **One duration dialect** (copy-2): "45 min", "1 hr", "1 hr 5 min", and the
+  same words with "left" — for `fmtDur`, the player's `fmtSpan`, and both
+  remaining labels. The colon clock (`fmtClock`, "1:05:07") is for live
+  playheads and scrubbers only. An episode's length is its `duration_sec` when
+  it has one (honesty-1; `tools/check-durations.mjs` fails the pool when the
+  two fields drift a minute apart).
+- **A date says its year only when it is not this one** (copy-15): "Sep 12",
+  "Nov 3, 2025" — Apple Podcasts' rule.
+- **"Subject", not "topic"** in anything a listener reads (copy-7; the thumbs
+  chip is "Not my subject"). A down-vote moves the subject's weight only when
+  its reason is about the subject (p-foray-6) — on the device (`TOPIC_REASONS`)
+  AND in the server's learning job (`TOPIC_DOWNVOTE_REASONS`,
+  backend/src/curation/interestLearning.ts; round-2 review), the one set pinned
+  in both by test/listener-copy.test.js.
+- **No browser words** (copy-1): the same bytes run in a native shell with no
+  browser and no reload button, so no "this browser" and no "Reload and try
+  again"; the remedy is "Close 4a fully and try again". (The shell notice's own
+  Reload button is the exception: it is a button 4a draws.)
+- **A zero is not a fact worth a line** (copy-13, p-first-10): no "0 played",
+  "0 queued" or "0 built" over the empty state that already says so.
+
+**Q8 — the last onboarding button is "Show my picks"** (founder default,
+round 2). "Start listening" started nothing: the button closes the sheet onto a
+Home re-dealt from the picks, and that is what it now says.
+
+**Q11 — the native shell reopens the page the listener left** (founder
+default, round 2; nav-10). Inside the iOS/Android shell every route is filed
+(`cp_last_route`, device-only, never sent) and a bare cold launch reopens it,
+as a cold open (‹ falls back to Home). The web is unchanged: a bare URL means
+Home, on purpose (qa 132).
+
 ## 2026-09-23 (iOS playback: the full native engine, iOS first)
 
 **The decision (Wyatt, 2026-09-23), verbatim as relayed:** *"Full native engine"*.
@@ -61,7 +331,12 @@ and `zoomEnabled: false` stated in `mobile/capacitor.config.json` (Android's
 native WebView zoom; Capacitor's default, now a decision rather than a default).
 The 09-17 per-control rule stays as the belt. **Cost, named:** a listener who
 relied on pinch to read small text has lost it; the answer to that is type size,
-not zoom, and Dynamic Type already scales the page.
+not zoom. **Corrected 2026-09-23 (audit round 2, a11y-1):** this sentence used to
+end "and Dynamic Type already scales the page", which was false — WKWebView scales
+only `-apple-system-*` text and styles.css set none, so the page ignored iOS Text
+Size and the pinch had no replacement. The bridge that makes the compensation true
+is `mobile/web/foray-type-scale.js` (the round-2 entry below); until a device
+confirms it, the cost stands as a cost.
 
 **2 + 3. The drawer closes when it is used — a rule, not a patch on one item.**
 It closed for links only (`route()` closes it on navigation; the click handler
@@ -108,7 +383,12 @@ this entry records the rulings that picked it.
   §8.2, "Review, same day".)
 - **15/30 has one source** (`player/media-session.js`): the page ignores any
   `seekOffset` a platform sends back, the natives read the pair from the payload, and
-  the Swift holds no literal. **Ruling: a press is applied exactly once** even though
+  the Swift holds no literal. Android's label and glyph are the one exception (round-2
+  review, 2026-09-23): Media3's `CommandButton` icons are fixed constants
+  (`ICON_SKIP_BACK_15`, `ICON_SKIP_FORWARD_30`) and the TalkBack words are string
+  resources, so they are literals; the distance still comes from the payload, and
+  `tools/mobile/shell-invariants.test.mjs` pins both literals to
+  `SEEK_BACKWARD_SEC`/`SEEK_FORWARD_SEC`, so changing the pair is red until they follow. **Ruling: a press is applied exactly once** even though
   two clients may deliver it — the shim's `deliver()` drops the second copy of the
   same action from the other origin inside 500 ms and records it (`remote … dup=y`).
 - **Deleted, and why:** `fix/fr-ui`'s `CommandSnapshot`/`publishCommands` republish
@@ -120,6 +400,75 @@ this entry records the rulings that picked it.
   fields for a plain episode, a Foray clip and a narration line; skip 15 / 30 once
   each; pause, lock, wait two minutes, connect the car, press play → 4a resumes; then
   Copy diagnostics.
+
+## 2026-09-23 (audit round 2, lane L2: every overlay gets the one contract — the drawer, hardware back, gestures that commit on release, sheets that move)
+
+Round 2 of the audit (`docs/audit/round-2/`, theme R2-C and the gesture half of
+R2-D) found that the modal owner built on 2026-09-22 (`openSheet`) gave its
+whole contract to the sheets and none of it to the drawer, and that the two
+gestures were designed with a mouse. What is now a rule, and where it is pinned:
+
+- **The drawer is a modal, with the sheets' contract.** `body.drawer-open`
+  locks the page, the panel does not chain its scroll, the scrim takes no pan;
+  the page, the tab bar and the player go `inert` (the topbar, the scrim and
+  the live region stay reachable — the ☰ works at every moment, F17); focus
+  moves to the first link, Escape closes it and returns focus to the ☰; the ☰
+  carries `aria-expanded` / `aria-controls`. A link that navigates and a
+  button that opens a sheet hand focus on through their own rules
+  (`landOnPage`, `openSheet`'s drawer case), so a dismissal is the only close
+  that returns it to the ☰. Not on the sheet stack: the drawer sits OVER
+  sheets, never under them, and `onSheetKeydown` yields while it is open.
+  `test/drawer-ownership.test.js`.
+- **Hardware back, in this order — the drawer, then the top sheet through
+  its own close (a sheet may decline), then one step of the app's history,
+  else leave the app.** `ForayNav.handleBack()` in app.js is the ordering;
+  `init()` registers it with `@capacitor/app`'s `backButton`, which on Android
+  replaces the WebView's own back (it closed the overlay AND stepped the page
+  under it) and on iOS registers harmlessly. Recorded here, beside the drawer
+  entry above, because it is that ownership model applied to the platform's
+  one dismiss gesture. **Device check (Android):** drawer open → back closes
+  only the drawer; Now Playing open → back collapses only the sheet, page
+  unchanged; Home with nothing behind → back leaves the app.
+- **A gesture commits on `pointerup`, never on the click that may follow.** The
+  Foray strip's hold-and-drag delegated its seek to a `click` that WebKit and
+  Chrome on Android withhold once a touch has moved — so the headline gesture
+  worked with a mouse and did nothing on a phone (`touch-1`, the round's one
+  high on the app's main platform). The release commits through the same
+  `commitStripSeek` a tap's click uses, reading the position against the
+  PRE-zoom rect and bar boxes mapped through the zoom origin
+  (`unzoomedStripX`), never a rect measured at release. The sheet's pull-down
+  from its body now cancels the non-passive `touchmove` (`claimsTouch`);
+  `preventDefault` on `pointermove`, which it used to do, stops no pan.
+  `test/modal-and-focus.test.js`, `player/strip-scrub-gesture.test.js`,
+  `player/sheet-drag-dismiss.test.js`, `player/now-playing-sheet.test.js`.
+- **Every panel that paints a handle answers a drag, and sheets move both
+  ways.** `openSheet` binds the same pure gesture module to every `.fy-panel`
+  it opens; Now Playing and the panels slide in, and a dismiss finishes the
+  slide instead of cutting from mid-screen. `ForaySheets.slideIn`/`slideOut`
+  are the one implementation; `prefers-reduced-motion` means no motion, in
+  CSS and in the owner alike.
+- **First run: only a considered press ends onboarding.** The scrim, Escape, a
+  navigation, hardware back and the handle's drag park the sheet for the
+  visit; `cp_intro_dismissed` is written by the Skip buttons and the
+  Preferences primary alone. A step swap lands focus on the new step's title.
+  The onboarding sheets keep `#foray-player` reachable, and a Foray play
+  counts as prior use (`hasForayTrace`, the resume row `cp_foray:` that
+  player/foray-progress.js writes) — a newcomer who arrived by a shared Foray
+  link is not met by Welcome over their own playing Foray.
+- **The sheet's notes are the episode page's notes.** One tokeniser
+  (`episodeDescriptionTokens`, published as `window.ForayNotes`) feeds the
+  page's HTML and the sheet's DOM; the sheet gets the same `<details>`, the
+  same links and the same seek stamps. client.js still builds nothing from an
+  HTML string.
+- **The player's live region is a sibling of the bar and the sheet**, kept
+  reachable when Now Playing expands, so "Buffering…" and a failed load are
+  spoken from the screen the listener is on. Stop hides the player BEFORE the
+  owner lets go, lands focus through `landOnPage` and says "Stopped" from
+  app.js's region.
+
+**Held for the founder, not done here:** excluding the auth token / the
+Preferences suite from platform backups (Q6) and the privacy-policy wording
+(Q7) — credentials and legal text.
 
 ## 2026-09-23 (the visual pass the audit held back — R12, persona 10 and 58 — ships on the founder's word)
 
@@ -2808,3 +3157,43 @@ look like the end of the list.
 
 **Tracked in issue #691**, whose scope this ruling widens from "walk the chosen
 list" to "keep playing".
+
+## 2026-09-23 (audit round 2, lane L4: one playlist builder, on Create; the Search CTA offers only what it can build)
+
+**Founder question 4 (round-2 synthesis §3), default taken:** `#/playlists` is
+the list only — the listener's own playlists, "N built", one `Build a playlist ›`
+link to `#/create` — and the one builder lives on Create. The drawer keeps its
+five entries in the founder's 2026-09-03 order (Home, Search, Playlists, Forays,
+Up Next); only the page behind "Playlists" changed. If the founder answers the
+question the other way, restore `bindPlaylistFormSubmit` and the `#pl-form`
+block from git history (PR for this lane) rather than re-deriving them.
+
+**Why the 2026-09-03 order does not pin the second builder.** "Keep all that only
+on the Playlists page" was about taking the builder OFF HOME, and it predates the
+Create tab (U-06, 2026-09-06), which D7 calls "today's builder restyled" — a
+replacement. Two builders with two vocabularies ("build me a playlist…" / Go
+versus "e.g. the semiconductor supply chain" / Build) met the newcomer in their
+first minutes, Library's empty state pointed at one while the Search CTA pointed
+at the other, and the founder had already deleted a "Go" button on Search on
+sight (2026-09-14). `test/home-information-architecture.test.js` pins the new
+shape in both directions.
+
+**The Search page's "Create a playlist about X" CTA is gated the other way
+round.** U-05 carried the mockup's condition — offer the CTA when the query has no
+strong result — from a Foray, which can be made about anything, to a Playlist,
+which is built by the very scorer that just said "empty". So the page's one
+primary button appeared exactly when the build was certain to fail on the next
+page ("Not much on … yet"), and never when one tap would have built a real
+playlist. It now appears when `topicSearchStatus` is `ok` or `sparse` and no own
+or generated playlist already matches; on `empty` it shows nothing. It hands off
+to Create's form (the one creation path; D8 unchanged).
+
+**Also recorded from the same lane, because each changes a listener-visible rule:**
+the Search tab, tapped while lit from a pushed page, returns to the search that
+was left (`#/shows/q/<q>`), and pops to the root only when the search was cleared;
+the offline note reads "You're offline — these are show names 4a already knows.
+Episodes need a connection." (nothing is available offline; persona 71); every
+quoted query uses the typographic pair through one `quoteQuery` helper; and the
+on-device show index sorts and searches on the diacritic-folded title
+(`foldDiacritics` is the builder's sort key and the client's lookup key — the two
+must stay one function).

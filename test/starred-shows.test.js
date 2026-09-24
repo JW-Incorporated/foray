@@ -222,7 +222,11 @@ test("REVIEW: the show page says, beside Follow, that following delivers no new 
   const btnAt = html.indexOf('data-show-star="s-2"');
   const noteAt = html.indexOf("show-follow-note");
   assert.ok(btnAt > 0 && noteAt > btnAt, "the note sits right after the Follow button");
-  assert.match(html.slice(noteAt, noteAt + 200), /doesn(&#39;|')t add its new episodes anywhere/);
+  /* Said as what Follow IS (audit round 2, copy-14): new episodes stay on the
+     show's page and nothing is queued. MUTATION: restore "4a doesn't add its
+     new episodes anywhere" — the bug-report wording. */
+  assert.match(html.slice(noteAt, noteAt + 240), /New episodes stay on the show(&#39;|')s page; nothing is queued for you\./);
+  assert.doesNotMatch(html, /doesn(&#39;|')t add its new episodes anywhere/);
   const policy = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "docs/legal/privacy-policy.md"), "utf8");
   const row = policy.split("\n").find((l) => l.startsWith("| `cp_starred_shows`"));
   assert.match(row, /followed from a show page/, "the policy names the control the listener actually taps");
@@ -355,8 +359,12 @@ test("#/starred-shows is reachable from the Shows page and is no longer a drawer
      `above` block. The first assertion fails and #/starred-shows becomes
      reachable only by typing the URL. MUTATION 2: put the
      `<a class="drawer-section" href="#/starred-shows">` line back in
-     index.html. The second assertion fails. */
-  const m = mount();
+     index.html. The second assertion fails.
+
+     WITH A SHOW FOLLOWED: since audit round 2 (p-first-12) the Shows page draws
+     the shortcut only when there is something behind it — the empty half is
+     pinned in test/home-information-architecture.test.js. */
+  const m = mount({ seed: { cp_starred_shows: JSON.stringify({ "show-a": { show_id: "show-a", title: "Show A", starred_at: "2026-09-01T00:00:00Z" } }) } });
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };

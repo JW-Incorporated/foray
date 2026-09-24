@@ -116,9 +116,9 @@ test("epRow renders a plain-English publish date when release_date is present", 
   /* MUTATION: drop the `${dateStr ? ...}` branch from epRow's template.
      This assertion fails because no date text appears in the row. */
   const m = mount();
-  const item = { id: "e1", title: "Ep One", show: "Some Show", duration_min: 10, release_date: "2026-01-15", audio_url: "https://example.com/a.mp3" };
+  const item = { id: "e1", title: "Ep One", show: "Some Show", duration_min: 10, release_date: "2019-01-15", audio_url: "https://example.com/a.mp3" };
   const html = m.ctx.epRow(item, 0, "ctx", -1);
-  assert.match(html, /Jan 15, 2026/, `expected a formatted publish date, got: ${html}`);
+  assert.match(html, /Jan 15, 2019/, `expected a formatted publish date, got: ${html}`);
 });
 
 test("epRow renders nothing extra (no 'Invalid Date') when release_date is absent", () => {
@@ -286,9 +286,9 @@ test("fullCatalogueRowToEpRowItem renders a real epRow with the publish date onc
   const ep = {
     guid: "g1", title: "Full Ep", description_text: "desc",
     audio_url: "https://cdn.example.com/full1.mp3", duration_seconds: 600,
-    published_at: "2026-02-03T00:00:00.000Z",
+    published_at: "2019-02-03T00:00:00.000Z",
   };
   const item = m.ctx.fullCatalogueRowToEpRowItem(show, ep);
   const html = m.ctx.epRow(item, 0, "ctx", -1);
-  assert.match(html, /Feb 3, 2026/, `expected the full-catalogue row to show its publish date, got: ${html}`);
+  assert.match(html, /Feb 3, 2019/, `expected the full-catalogue row to show its publish date, got: ${html}`);
 });

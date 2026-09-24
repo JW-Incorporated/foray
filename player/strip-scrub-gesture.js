@@ -18,16 +18,22 @@
  * arithmetic and the DOM that reads it.
  *
  * WHY THE SEEK IS NOT HERE
- * `#fy-strip`'s existing `click` handler in app.js already computes the drop
- * position via `stripElapsedAt` and commits through `foraySeek`/`startAt` --
- * UNCHANGED by this feature. A `click` still fires, at the release
- * coordinate, after a `pointerup`/`touchend` that never left the element --
- * so "commit wherever the finger ended" falls out of the platform for free,
- * for a plain tap AND for a held-and-dragged gesture alike. This module only
- * ever decides whether to show the zoomed preview while the pointer is
- * down; it never seeks, so there is no second implementation of "where did
- * they drop it" to drift from the first (the task's own constraint: "do not
- * fork the seek logic, only the input/preview gesture is new").
+ * app.js owns the commit. A plain tap commits through `#fy-strip`'s `click`
+ * handler, which reads the drop position with `stripElapsedAt`; a held or
+ * dragged gesture commits on `pointerup` in `bindStripZoomScrub`, through the
+ * SAME `commitStripSeek` the click handler uses, so there is still one
+ * implementation of "where did they drop it". This module only decides
+ * whether the gesture is a tap or a zoom, and — `unzoomedStripX` below —
+ * where a finger in zoomed space sits on the un-zoomed strip. It never seeks.
+ *
+ * THE PREMISE THIS FILE SHIPPED WITH WAS WRONG (audit round 2, touch-1). It
+ * said a `click` "falls out of the platform for free … for a held-and-dragged
+ * gesture alike". It does for a mouse. WebKit and Chrome on Android both drop
+ * the synthetic click once a touch has moved past tap slop, and the strip's own
+ * cancelled `touchmove` (needed so the page does not pan under a zoomed thumb)
+ * is a second reason WebKit withholds it. So on a phone every visible part of
+ * the gesture worked — zoom, bubble, marker — and lifting the finger did
+ * nothing. Gestures commit on `pointerup`; a click only ever commits a tap.
  */
 
 /** How long a STATIONARY press must be held before it becomes a zoom, in ms.
@@ -149,6 +155,42 @@ export function zoomOriginPercent(x, rect) {
   if (!rect || !(rect.width > 0) || typeof x !== "number" || !Number.isFinite(x)) return null;
   const frac = (x - rect.left) / rect.width;
   return Math.max(0, Math.min(100, frac * 100));
+}
+
+/**
+ * Where a finger at screen `x`, over a strip scaled by `scale` about
+ * `originPct` of its own width, sits on the UN-ZOOMED strip — as a clientX
+ * in the same space `rect` was measured in.
+ *
+ * WHY THIS IS NOT `getBoundingClientRect` AT RELEASE (audit round 2, touch-1).
+ * By the time `pointerup` runs the caller has already dropped `.is-zooming`
+ * (or is about to), so a fresh rect is the un-zoomed box while the finger is
+ * still in zoomed space; and under `prefers-reduced-motion` styles.css turns
+ * the strip's transition off, so the two never even briefly agree. Mapping
+ * through the origin the zoom was drawn with is the only answer that does not
+ * depend on which frame the browser happened to paint.
+ *
+ * A point at the transform origin is a fixed point of `scale()`: `x0 + (x - x0)
+ * / scale`. The caller re-anchors the origin under the finger on every move,
+ * so in practice `x` IS `x0` and this returns `x` — which is the whole reason
+ * the zoom reads as a magnifier rather than a moving target. The general form
+ * is kept so a hold whose origin was set at pointerdown and never moved (the
+ * finger drifts a pixel or two) still lands where the magnified bar was drawn.
+ *
+ * MUTATION TO BREAK THIS: return `x` unconditionally and `a finger away from
+ * the origin maps through the scale` fails.
+ *
+ * @param {number} x           pointer clientX at release
+ * @param {{left:number,width:number}} rect  the strip's box, measured pre-zoom
+ * @param {number} originPct   the `--zoom-origin` percent the zoom was drawn with
+ * @param {number} scale       the `--zoom-scale` it was drawn with
+ * @returns {number|null}      an un-zoomed clientX, or null when unmeasurable
+ */
+export function unzoomedStripX(x, rect, originPct, scale) {
+  if (!rect || !(rect.width > 0) || typeof x !== "number" || !Number.isFinite(x)) return null;
+  if (typeof originPct !== "number" || !Number.isFinite(originPct) || !(scale > 0)) return null;
+  const x0 = rect.left + (originPct / 100) * rect.width;
+  return x0 + (x - x0) / scale;
 }
 
 /* ---------- floating magnifier bubble (V2) ----------

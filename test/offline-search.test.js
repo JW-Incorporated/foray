@@ -61,7 +61,7 @@ const PAGE_IDS = [
   "view", "drawer", "drawer-overlay", "drawer-playlists", "family-toggle",
   "player-toggle", "menu-btn", "refresh-btn", "banner-slot", "pl-form",
   "pl-input", "pl-note", "sh-form", "sh-input", "sh-note", "sh-offline-note",
-  "sh-results", "ep-search-results", "pl-search-results",
+  "sh-partial-note", "sh-results", "ep-search-results", "pl-search-results",
 ];
 
 const SHOWS = [
@@ -199,15 +199,37 @@ test('offline: the results header note becomes visible (the static copy is "Show
   assert.strictEqual(m.offlineNote().hidden, false, "the offline note must be visible");
 });
 
-test('the offline note\'s static copy is exactly "Showing shows available offline"', () => {
-  /* Pinned against the real markup app.js writes into #sh-compose's
-     innerHTML — the one place the actual sentence lives — rather than
-     against the stub, which cannot parse HTML. MUTATION: reword the copy
-     in app.js without updating this pin. */
-  assert.match(
-    APP_SRC,
-    /<p id="sh-offline-note" class="note" hidden>Showing shows available offline<\/p>/
-  );
+test("the offline note's static copy says what an offline search can honestly say", () => {
+  /* Pinned against the one place the sentence lives (`OFFLINE_SEARCH_NOTE`,
+     written into #sh-compose's innerHTML) rather than against the stub, which
+     cannot parse HTML. It read "Showing shows available offline" until audit
+     round 2 (states-9): nothing is available offline — the rows are names 4a
+     already knows and every tap on one needs the network — so the sentence was
+     a promise the app could not keep. MUTATION: reword the copy in app.js
+     without updating this pin, or put "available offline" back. */
+  assert.match(APP_SRC, /<p id="sh-offline-note" class="note" hidden>\$\{OFFLINE_SEARCH_NOTE\}<\/p>/);
+  const note = /const OFFLINE_SEARCH_NOTE = "([^"]+)";/.exec(APP_SRC);
+  assert.ok(note, "the sentence is one named constant");
+  assert.strictEqual(note[1], "You're offline — these are show names 4a already knows. Episodes need a connection.");
+  assert.doesNotMatch(note[1], /available offline/, "it must not promise offline availability");
+});
+
+test("an EMPTY offline search says so in one line — no 'No shows found' over 'available offline' over 'Try again'", async () => {
+  /* Audit round 2, search-12: offline, a query outside the curated 220 stacked
+     three notes under the pill, each true and together contradictory. Now the
+     empty note itself says "You're offline", the offline note (which explains
+     ROWS) stays hidden with none to explain, and the failure line with its
+     useless-offline Try again is not painted. MUTATION: drop the
+     `isOfflineForShardSearch()` clause from paintShowSearchPartialNote, or the
+     `shows.length > 0` clause from the offline note's hidden test. */
+  const m = mount({ onLine: false });
+  m.type("zzqx-nothing");
+  await sleep(300);
+  assert.match(m.note().textContent, /^You're offline — no shows found for “zzqx-nothing”\.$/, m.note().textContent);
+  assert.strictEqual(m.offlineNote().hidden, true, "no rows, so nothing for the offline note to explain");
+  const partial = m.byId.get("sh-partial-note");
+  assert.strictEqual(partial.hidden, true, `the failure line is not painted offline: ${partial.innerHTML}`);
+  assert.doesNotMatch(partial.innerHTML, /data-retry/);
 });
 
 test("online: the offline header stays hidden", async () => {
@@ -354,8 +376,12 @@ test("a shard row duplicating an already-painted curated show by title is droppe
   m.type("fridman");
   await sleep(300);
   const html = m.results().innerHTML;
-  const first = html.indexOf("Lex Fridman Podcast");
-  const second = html.indexOf("Lex Fridman Podcast", first + 1);
+  /* Counted as a row's visible title, not as any occurrence: since audit round
+     2 (search-11) each row also carries its full name in `title=`, because the
+     visible title is clamped to two lines. */
+  const TITLE = 'class="show-result-title">Lex Fridman Podcast<';
+  const first = html.indexOf(TITLE);
+  const second = html.indexOf(TITLE, first + 1);
   assert.ok(first >= 0, "the curated show must still appear");
   assert.strictEqual(second, -1, "the shard's duplicate of the same title must not appear a second time");
 });

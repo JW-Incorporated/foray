@@ -78,11 +78,34 @@ public struct PureFamilyRunner: FamilyRunner {
     }
 }
 
+/// A family whose fixture files target more than one JS module (NE-09's
+/// `resume-rules`: position-store.js, queue-manager.js and foray-progress.js,
+/// because a fixture file names ONE module and the rules live in three). Each
+/// file is run by the part that ports its module; a file naming any other
+/// module is refused, for the reason `PureFamilyRunner` refuses one.
+public struct MultiModuleFamilyRunner: FamilyRunner {
+    public let family: String
+    public let parts: [PureFamilyRunner]
+
+    public init(family: String, parts: [PureFamilyRunner]) {
+        self.family = family
+        self.parts = parts
+    }
+
+    public func run(_ testCase: FixtureCase, in file: FixtureFile, context: Codec.Context) throws -> JSONValue {
+        guard let part = parts.first(where: { $0.module == file.module }) else {
+            throw HarnessError("E_BAD_CASE", "\(file.path) targets \(file.module ?? "no module"); the Swift \(family) runner ports "
+                + parts.map(\.module).joined(separator: ", "))
+        }
+        return try part.run(testCase, in: file, context: context)
+    }
+}
+
 /// The registry: every family Swift can run today. A new port adds its
 /// runner here and deletes its ids from `swift-pending.json` in the same PR.
 public enum ParityFamilies {
     public static var all: [FamilyRunner] {
-        [CompareFamily.runner, SeamGapFamily.runner, RowsFamily.runner, NumberFormatFamily.runner,
-         DiagTokensFamily.runner]
+        [CompareFamily.runner, SeamGapFamily.runner, QueueStateFamily.runner, RateFamily.runner, ResumeRulesFamily.runner, TransportFamily.runner,
+         RowsFamily.runner, NumberFormatFamily.runner, DiagTokensFamily.runner]
     }
 }
