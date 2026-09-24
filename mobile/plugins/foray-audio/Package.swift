@@ -32,12 +32,14 @@ import PackageDescription
  * links `ForayEngineParity` so the existing `xcodebuild test -scheme
  * ForayAudio` step in `ci.yml`'s `ios-kit` runs the parity library too.
  *
- * It resolves in the APP BUILD because Capacitor's generated CapApp-SPM
- * reaches this directory through npm's `file:` symlink
- * (`mobile/node_modules/foray-audio`), and a relative `.package(path:)` is
- * resolved against the directory this manifest sits in. The first ios-build
- * run after NE-01 recorded the resolution line
- * (docs/ios-native-engine-measurements.md).
+ * It resolves in the APP BUILD with nothing added to the app: Capacitor's CLI
+ * finds this plugin through npm's `file:` link (`mobile/node_modules/foray-audio`),
+ * writes CapApp-SPM's `.package(path:)` at the plugin's REAL path
+ * (`mobile/plugins/foray-audio`), and a relative `.package(path:)` here is
+ * resolved against the directory this manifest sits in. ios-build run
+ * 35952197034 recorded it: the app's resolved graph is the previous one plus
+ * exactly `ForayEngineCore: .../foray-audio/foray-engine-core @ local`
+ * (docs/ios-native-engine-measurements.md §2).
  */
 
 /* THE PREFERENCES PIN, AND WHY IT IS BEHIND AN ENVIRONMENT VARIABLE.
