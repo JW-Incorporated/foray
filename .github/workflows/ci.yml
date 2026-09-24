@@ -120,6 +120,11 @@ jobs:
                 console.log(iphone.udid);
               ')
           echo "Using simulator: $DEVICE_ID"
+          # NE-01 (docs/native-engine-plan.md): the scheme list, printed on every
+          # run. The native engine's core is a nested path dependency of this
+          # package, and Xcode derives scheme names from the package graph; the
+          # `-scheme ForayAudio` below is only as stable as this list.
+          xcodebuild -list
           xcodebuild test \
             -scheme ForayAudio \
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \
@@ -137,6 +142,9 @@ jobs:
                 console.log(iphone.udid);
               ')
           echo "Using simulator: $DEVICE_ID"
+          # NE-01: printed beside foray-audio's, so a change to either list is
+          # visible in the same log.
+          xcodebuild -list
           xcodebuild test \
             -scheme ForayTts \
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \
