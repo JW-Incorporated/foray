@@ -3,6 +3,7 @@ import AVFAudio
 import MediaPlayer
 import UIKit
 import Capacitor
+import ForayEngineCore
 import os
 
 /// The iOS half of `foray-audio`'s Now Playing / remote-command story (L-01).
@@ -125,7 +126,11 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "ForayAudioPlugin"
     public let jsName = "ForayAudio"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "setNowPlaying", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "setNowPlaying", returnType: CAPPluginReturnPromise),
+        /* NE-01: the native engine's handshake, STUBBED. iOS only: Android's
+           `ForayAudioPlugin.java` never gains it (docs/native-engine-plan.md
+           §4.1, "three bridge methods on the existing plugin"). */
+        CAPPluginMethod(name: "engineHello", returnType: CAPPluginReturnPromise)
     ]
 
     /// The event this plugin raises when the OS, a Bluetooth button or a car
@@ -443,6 +448,26 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         event["producer"] = "audio"
         event["at"] = Int(at.rounded())
         return event
+    }
+
+    // MARK: - engineHello (NE-01 stub)
+
+    /// The page's first question to the native engine (docs/native-engine-plan.md
+    /// §5.1). NE-01 builds no engine, so the answer is always
+    /// `{mode: "legacy", reason: "not-built"}`: keep playing the way the app
+    /// plays today. The dictionary comes from `ForayEngineCore` rather than
+    /// being written here, which is also what proves the plugin links the
+    /// nested core package in the app build. NE-20 replaces this body.
+    ///
+    /// RESOLVES ALWAYS, like every method on this plugin (class header). No
+    /// page calls it yet; one that did before NE-21 would read "legacy" and
+    /// carry on unchanged.
+    @objc func engineHello(_ call: CAPPluginCall) {
+        var result = JSObject()
+        for (key, value) in EngineHandshake.notBuiltHello() {
+            result[key] = value
+        }
+        call.resolve(result)
     }
 
     // MARK: - setNowPlaying
