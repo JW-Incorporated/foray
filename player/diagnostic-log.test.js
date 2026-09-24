@@ -288,7 +288,7 @@ test("stageOf keeps a dotted stage name and drops every word, reason and value a
      contributes NO stage at all — the third assertion fails.
      MUTATION 2: drop `=` from the separator class. `rate.set=1.5` is dropped the
      same way and the fourth fails. */
-  assert.equal(stageOf("seam.gap.armed 2.0s beat: sa -> sb"), "seam.gap.armed");
+  assert.equal(stageOf("seam.gap.armed 0.5s beat: sa -> sb"), "seam.gap.armed");
   assert.equal(stageOf("foray.segment.skipped.atLoad seg-x: no audio_url"), "foray.segment.skipped.atLoad");
   assert.equal(stageOf("player.error: media error 4"), "player.error");
   assert.equal(stageOf("rate.set=1.5 (was 1)"), "rate.set");
@@ -341,8 +341,8 @@ test("a telemetry line's TEXT never reaches the record — only numbers, ids and
 const REAL = {
   outPoint: "outPoint.reached target=200.00 at=200.02 overshoot=0.021s",
   itemEnded: "item.ended.outPoint sa@200s",
-  armed: "seam.gap.armed 2.0s beat: sa -> sb",
-  hold: "seam.gap.hold 1998ms",
+  armed: "seam.gap.armed 0.5s beat: sa -> sb",
+  hold: "seam.gap.hold 498ms",
   deadlineFresh: "load.deadline 20000ms (hidden) for sb",
   deadlineSeek: "load.deadline 10000ms (visible) for seek->520s",
   sameSource: "load.sameSource sb -> 520s",
@@ -388,7 +388,7 @@ test("the seam row carries observedGapMs, the deadline in force, and both ids", 
   assert.equal(seam.observedGapMs, 14_024);
   assert.equal(seam.deadlineMs, 20_000);
   assert.equal(seam.deadlineFor, "hidden");
-  assert.equal(seam.askedGapMs, 2000);
+  assert.equal(seam.askedGapMs, 500);
   assert.equal(seam.fromId, "sa");
   assert.equal(seam.toId, "sb");
   assert.equal(seam.lastStage, "playing");
@@ -483,7 +483,7 @@ test("a stop landing inside an open seam does not hide how far the load got", ()
 test("A CUT BEAT CLOSES THE SEAM, so a listener's pause is never measured as a gap", () => {
   /* THE WORST BUG REVIEW FOUND IN THIS CHANGE. `_cutSeamGap` fires from `_transport`
      for pause, next, previous, reconcile and dispose, so pressing pause inside the
-     2.0 s beat used to leave the seam row OPEN — and then the `playing` that came ten
+     seam beat used to leave the seam row OPEN — and then the `playing` that came ten
      minutes later measured the listener's own pause as `observedGapMs: 600000`. That
      number became the report's `worst` and dragged its median, which are the two
      headline numbers this whole change exists to produce.
@@ -524,7 +524,7 @@ test("a cut beat does not swallow the NEXT boundary's row", () => {
   c.tick(5000);
   // The skip's own load and boundary, later in the Foray.
   diag.note("outPoint.reached target=300.00 at=300.01 overshoot=0.010s");
-  diag.note("seam.gap.armed 2.0s beat: sb -> sc");
+  diag.note("seam.gap.armed 0.5s beat: sb -> sc");
   c.tick(2100);
   diag.mediaEvent("playing");
 
@@ -624,7 +624,7 @@ test("reset() drops the seam in flight, so a Clear mid-playback loses nothing af
 
   // The seam that follows must land in the record like any other.
   diag.note("outPoint.reached target=300.00 at=300.01 overshoot=0.010s");
-  diag.note("seam.gap.armed 2.0s beat: sb -> sc");
+  diag.note("seam.gap.armed 0.5s beat: sb -> sc");
   c.tick(2100);
   diag.mediaEvent("playing");
   const seams = log.entries.filter((e) => e.type === "seam");

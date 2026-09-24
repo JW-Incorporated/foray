@@ -4,19 +4,19 @@
   "note": "The seam beat's decision table (player/seam-gap.js), one case per assertion of seam-gap.test.js. describeSeam's two tests are excluded as text-pin: they pin telemetry wording, and the engine's rows are the diag-tokens family's, not these sentences.",
   "cases": [
     {
-      "id": "seam-gap/rule-is-2.0s",
-      "covers": ["seam-gap::the merged rule is 2.0 s, not 04_VOICE_AUDIO_SPEC's 0.5 s"],
+      "id": "seam-gap/rule-is-0.5s",
+      "covers": ["seam-gap::the seam silence is the founder's 0.5 s — one number in both specs"],
       "authored": true,
-      "note": "docs/curation/segment-length-rules.md §0 and §6b. Authored: this is the spec's number, and a JS change that moves it is refused rather than re-recorded.",
+      "note": "The founder's ruling of 2026-09-24 (\"0.5s\", docs/DECISIONS.md), now in both docs/brief/04_VOICE_AUDIO_SPEC.md line 12 and docs/curation/segment-length-rules.md §0 and §6b. Authored: this is the spec's number, and a JS change that moves it is refused rather than re-recorded.",
       "read": "SEAM_GAP_SEC",
-      "expect": { "value": 2 }
+      "expect": { "value": 0.5 }
     },
     {
       "id": "seam-gap/unbridged-auto-advance-full-beat",
       "covers": ["seam-gap::an unbridged segment-to-segment auto-advance gets the full beat"],
       "call": "seamGapSec",
       "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] } }],
-      "expect": { "return": 2 }
+      "expect": { "return": 0.5 }
     },
     {
       "id": "seam-gap/length-overridable",
@@ -231,7 +231,7 @@
       ],
       "call": "seamGapSec",
       "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] }, "cause": "auto" }],
-      "expect": { "return": 2 }
+      "expect": { "return": 0.5 }
     }
   ]
 }

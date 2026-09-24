@@ -570,7 +570,7 @@ jobs:
         # answered it: yes, 4 ms late over a 15.056 s hidden window. Pass 2 answers
         # the question that result does NOT settle — "does the TRANSITION survive
         # backgrounding" — and it is a different mechanism: a `setTimeout` for the
-        # 2.0 s beat, then a fresh media load of a DIFFERENT file, then a seek, then
+        # seam beat (SEAM_GAP_SEC, 0.5 s), then a fresh media load of a DIFFERENT file, then a seek, then
         # play. Pass 1's own numbers are why it is worth asking separately: the same
         # page measured hidden DOM timers aligned to a median of 1000 ms, so the beat
         # is scheduled on the one clock that IS throttled.

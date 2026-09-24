@@ -147,7 +147,7 @@ function positions(r) {
 }
 
 /** The premise the seam-beat assertions rest on: every transition in Foray #1 is
-    unbridged, so every one of them gets the full 2.0 s. `seam-gap.js` spends 0 s
+    unbridged, so every one of them gets the full `SEAM_GAP_SEC`. `seam-gap.js` spends 0 s
     at a bridged seam on purpose ("narration is a better marker than silence"), so
     a bridge makes "one beat per transition" false rather than merely untested. */
 function assertNoBridges() {
@@ -214,7 +214,7 @@ class FakeStorage {
 }
 
 /* The seam beat's clock, driven by hand. Foray #1 is unbridged end to end, so
-   EVERY one of its transitions holds 2.0 s — and a suite that ran an hour of
+   EVERY one of its transitions holds a beat — and a suite that ran an hour of
    real beats would sit here for a minute and be at the mercy of a busy box
    (#195). INSTANT arms, holds and releases the beat exactly as production does,
    in zero wall clock; `manualScheduler` is for the two tests that are about the
@@ -421,7 +421,7 @@ test("every segment is loaded at its own in-point, never at 0:00", async () => {
 test("every one of Foray #1's seams holds a beat, and neither end of it does", async () => {
   /* This is the founder-facing claim, measured against the shipped document:
      Foray #1 has no narration, so every transition is unbridged and every one of
-     them gets 2.0 s of silence. Pressing play does not, and the end of the Foray
+     them gets `SEAM_GAP_SEC` (0.5 s) of silence. Pressing play does not, and the end of the Foray
      does not. The clock is driven by hand — no sleeping, so this costs nothing on
      a busy box.
 
@@ -446,10 +446,10 @@ test("every one of Foray #1's seams holds a beat, and neither end of it does", a
     assert.equal(m.inSeamGap, !last, `seam after segment ${i + 1}`);
     if (!last) {
       beats += 1;
-      assert.equal(m.seamGapRemainingMs, 2000, `seam ${i + 1} is not 2.0 s`);
+      assert.equal(m.seamGapRemainingMs, SEAM_GAP_SEC * 1000, `seam ${i + 1} is not the shipped beat`);
       // Loaded and positioned already: the beat is absorbing the fetch.
       assert.ok(backend.loads().includes(r.playable[i + 1].id), "the next segment loads inside the beat");
-      await scheduler.advance(2000);
+      await scheduler.advance(SEAM_GAP_SEC * 1000);
     }
     await settled;
   }
@@ -461,7 +461,7 @@ test("every one of Foray #1's seams holds a beat, and neither end of it does", a
   assert.equal(scheduler.live, 0, "no beat timer outlived the Foray");
 });
 
-test("the beats cost about a minute of the Foray, and cost no audio at all", async () => {
+test("the beats cost a bounded share of the Foray, and cost no audio at all", async () => {
   /* A number a founder can weigh, computed from the SHIPPED constant rather
      than from a copy of it — hard-coding 2.0 here made this assertion unable
      to fail if the beat were shortened, lengthened or removed, which is the
@@ -478,8 +478,9 @@ test("the beats cost about a minute of the Foray, and cost no audio at all", asy
   /* Bounded by the RULE, not by Foray #1's segment lengths. The share is
      approximately SEAM_GAP_SEC / mean segment duration, so a flat 2 % was a claim
      that Foray #1's mean stays near 100 s — while segment-length-rules.md §5c's
-     D3 floor permits a mean of 90 s, at which the beats legally cost 2.2 %. The
-     old bound had 1.69 % against 2 % of margin, so a legal re-curation toward
+     D3 floor permits a mean of 90 s, at which 2.0 s beats legally cost 2.2 % of
+     the runtime (today's 0.5 s beats: 0.56 %). The old bound, set when the beat was
+     2.0 s, had 1.69 % against 2 % of margin, so a legal re-curation toward
      shorter segments turned it red with no rule broken (#236 review).
      D3_MEAN_FLOOR_SEC is written out rather than imported: tools/ importing
      player/ is the direction this repo allows, not the reverse. */
@@ -2465,19 +2466,22 @@ test("a speed chosen mid-Foray survives every seam after it, at the top of the l
   assert.equal(after.length, r.playable.length - 3, "one restore per remaining load");
 });
 
-test("the seam beat stays 2.0 s of WALL clock at 2x — it does not scale with speed", async () => {
-  /* THE DECISION, PINNED. `seam-gap.js`'s 2.0 s is an editorial pause between two
-     voices, taken from the audiobook mid-chapter section-break convention
-     (2-3.5 s). Three reasons it is wall clock and does not divide by rate:
+test("the seam beat stays SEAM_GAP_SEC of WALL clock at 2x — it does not scale with speed", async () => {
+  /* THE DECISION, PINNED. `seam-gap.js`'s 0.5 s is an editorial pause between two
+     voices — the founder's number (2026-09-24, "0.5s"; until then 2.0 s, the
+     audiobook section-break convention). Three reasons it is wall clock and does
+     not divide by rate:
 
        1. THERE IS NO CONTENT IN IT. The beat is not audio — nothing is appended,
           padded or re-encoded (product principle 3); it is the silence between the
           out-point pausing the element and `startPlayback` running. "Two seconds
           of content at 2x" is not a quantity that exists.
-       2. THE CONVENTION IS PERCEPTUAL. What tells a listener they have moved is a
+       2. THE PAUSE IS PERCEPTUAL. What tells a listener they have moved is a
           duration of silence in their own world. Scaling it would make the beat
-          1.0 s at 2x, under the published floor the number came from, for a
-          setting the listener changed for an unrelated reason.
+          0.25 s at 2x — half the number the founder chose — for a setting the
+          listener changed for an unrelated reason. (The founder's companion
+          ruling the same day, "assume 1x speed", is about the synthesized
+          narrator's rate, not this; the beat is 0.5 s at every speed.)
        3. IT IS ALSO THE WINDOW THAT HIDES THE LOAD. The manager spends the beat
           and the next segment's load in parallel, so the silence is
           `max(gap, load)` and the load takes WALL clock. Dividing the beat by rate
@@ -2486,7 +2490,7 @@ test("the seam beat stays 2.0 s of WALL clock at 2x — it does not scale with s
           segment.
 
      MUTATION THAT KILLS THIS: divide the deadline by the rate in `_armSeamGap`
-     (`nowMs() + sec * 1000 / this._rate`). The remaining beat becomes 1,000 ms. */
+     (`nowMs() + sec * 1000 / this._rate`). The remaining beat becomes 250 ms. */
   const r = shortResolve();
   const scheduler = manualScheduler();
   const { m, backend } = make({ scheduler });
@@ -2498,13 +2502,13 @@ test("the seam beat stays 2.0 s of WALL clock at 2x — it does not scale with s
   assert.equal(m.inSeamGap, true, "a segment-to-segment seam gets a beat");
   assert.equal(
     m.seamGapRemainingMs, SEAM_GAP_SEC * 1000,
-    "the beat owes a full 2.0 s of wall clock at 2x, exactly as it does at 1x"
+    "the beat owes its full 0.5 s of wall clock at 2x, exactly as it does at 1x"
   );
 
-  // Not yet: at 1.0 s the beat still has a second to run, whatever the speed.
-  await scheduler.advance(1000);
+  // Not yet: halfway through, the beat still has half to run, whatever the speed.
+  await scheduler.advance(SEAM_GAP_SEC * 500);
   assert.equal(m.inSeamGap, true, "half the beat is not the whole beat");
-  await scheduler.advance(1000);
+  await scheduler.advance(SEAM_GAP_SEC * 500);
   await ended;
   assert.equal(m.inSeamGap, false);
   assert.equal(m.currentIndex, 1, "and only then does the next segment start");

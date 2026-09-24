@@ -799,7 +799,7 @@ export function outPointVerdict(probe) {
  * CI tool and `player/` is browser code, but pinned by `ios-ci.test.mjs` against
  * that file so the two cannot drift.
  */
-export const SEAM_ASKED_MS = 2000;
+export const SEAM_ASKED_MS = 500;
 
 /**
  * How long an observed beat may run before it counts as audible dead air.
@@ -807,11 +807,12 @@ export const SEAM_ASKED_MS = 2000;
  * DERIVED FROM A MEASUREMENT, NOT PICKED. Run 32026332637 measured hidden-page
  * DOM timers on iOS aligned to a median of **1000 ms** (`timerIntervalsMs`:
  * 253, 925, 1000, 1000, 1001, 998, …, 25 samples), which settles MP1 §7.5's
- * previously-unverified 1 s claim. A `setTimeout(2000)` on a 1 s-aligned clock can
- * therefore land anywhere up to ~3000 ms, and the cross-file load runs inside the
- * beat. 5000 ms leaves headroom above that without waving through a stall — and it
- * is close to MP1 §4's Chromium observation that the same beat stretched to
- * 2.8–4.6 s in a hidden page.
+ * previously-unverified 1 s claim. A `setTimeout(500)` on a 1 s-aligned clock can
+ * therefore land anywhere up to ~1500 ms, and the cross-file load runs inside the
+ * beat. 5000 ms leaves headroom above that without waving through a stall. (It was
+ * sized when the beat was 2.0 s — a `setTimeout(2000)` landing up to ~3000 ms, and
+ * MP1 §4's Chromium observation of that beat stretching to 2.8–4.6 s hidden; the
+ * founder cut the beat to 0.5 s on 2026-09-24 and the tolerance only gained headroom.)
  *
  * Note which way the uncertainty runs: this is OUR tolerance, not a number any
  * source document contains. Saying otherwise is the specific mistake
@@ -841,8 +842,8 @@ export const MIN_HIDDEN_TRANSITIONS = 2;
  * A beat observed below this did not happen.
  *
  * ADDED AFTER A REVIEW DEFEATED THIS SUITE IN ONE EDIT. Passing
- * `seamGapSec: 0.05` to the `PlayerQueueManager` in the probe collapsed the 2.0 s
- * beat — the throttled `setTimeout` that is the entire stated reason this phase
+ * `seamGapSec: 0.05` to the `PlayerQueueManager` in the probe collapsed the beat (2.0 s
+ * at the time) — the throttled `setTimeout` that is the entire stated reason this phase
  * exists — to 50 ms, and every test stayed green while the verdict still printed
  * "the beat ran". That is the same shape as a guard suite in this repo that passed
  * with the stopping mechanism removed.
@@ -851,9 +852,14 @@ export const MIN_HIDDEN_TRANSITIONS = 2;
  * makes the class of edit visible. It also catches a real bug with no edit at all:
  * if `seamGapSec()` decides a transition is not a seam (an unbounded item on either
  * side, a user-driven advance) the gap is 0 by design, and a 0 ms "beat" must not be
- * reported as the 2.0 s one surviving backgrounding.
+ * reported as the shipped one surviving backgrounding.
+ *
+ * Half the shipped beat. It was 500 ms against a 2.0 s beat; when the founder cut
+ * the beat to 0.5 s (2026-09-24) the floor had to drop below it, or a real beat
+ * that fired on time would be refused as "did not happen". 250 ms still refuses the
+ * 50 ms override and a 0 ms non-seam.
  */
-export const SEAM_MIN_PLAUSIBLE_MS = 500;
+export const SEAM_MIN_PLAUSIBLE_MS = SEAM_ASKED_MS / 2;
 
 /**
  * The least backgrounded time either direction of this verdict needs.
@@ -927,7 +933,7 @@ export function pickSeam(records) {
  *
  * That says nothing about the ADVANCE, and the advance is a different mechanism on
  * a different clock. Each of Foray #1's 31 seams is: stop at `end_sec`, wait a
- * JavaScript-scheduled 2.0 s beat (`player/seam-gap.js`), load a DIFFERENT
+ * JavaScript-scheduled 0.5 s beat (`player/seam-gap.js`), load a DIFFERENT
  * episode, seek to its `start_sec`, play. The beat is a `setTimeout`, and the same
  * probe that proved the stop also measured hidden-page DOM timers aligned to a
  * median of 1000 ms — so the beat runs on the one clock that IS throttled, and the
@@ -952,7 +958,7 @@ export function seamTransitionVerdict(probe) {
       verdict: "inconclusive",
       headline: "No seam data came back — whether the TRANSITION survives backgrounding is UNKNOWN.",
       detail:
-        "Nothing was measured, so the 2.0 s beat and the cross-episode load remain untested while " +
+        "Nothing was measured, so the seam beat and the cross-episode load remain untested while " +
         "hidden. The out-point result from run 32026332637 does not cover them: it proves one " +
         "segment STOPS on time, not that the next one starts.",
     };
@@ -1209,7 +1215,7 @@ export function seamTransitionVerdict(probe) {
       verdict: "inconclusive",
       headline:
         `A transition completed in ${Math.round(bestGap)} ms against a ${asked} ms beat — that is ` +
-        `not the 2.0 s beat running, it is the beat not happening.`,
+        `not the ${SEAM_ASKED_MS / 1000} s beat running, it is the beat not happening.`,
       detail:
         `${base} Either the manager was handed a shorter \`seamGapSec\` than ` +
         `\`player/seam-gap.js\` defines, or \`seamGapSec()\` ruled this transition not a seam at all ` +
@@ -1279,7 +1285,7 @@ export function seamTransitionVerdict(probe) {
       `beat ran, a different episode loaded, it seeked and it played, worst beat ` +
       `${worstGap == null ? "n/a" : Math.round(worstGap) + " ms"} against ${asked} ms asked.`,
     detail:
-      `${base} So the 2.0 s beat's ${"`setTimeout`"} and the cross-episode media load both survive ` +
+      `${base} So the seam beat's ${"`setTimeout`"} and the cross-episode media load both survive ` +
       `backgrounding on iOS, which together with run 32026332637's out-point result means the whole ` +
       `segment-to-segment chain runs with the app in the background and never resumed. #28's iOS ` +
       `half needs nothing native for this.`,

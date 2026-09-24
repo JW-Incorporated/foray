@@ -105,6 +105,12 @@ now wired:
   — so the "0.6x" is Apple's default pace as heard, not a mapping that lands
   below it. `tools/mobile/foray-tts.test.mjs` pins all three; the XCTest pins
   the iOS value.
+- **iOS 1x stays Apple's default rate (founder, 2026-09-24).** Asked whether iOS
+  1x should stay at `AVSpeechUtteranceDefaultSpeechRate` (0.5) or move to an
+  estimated ~0.58 so it stops sounding like "0.6x", the founder answered,
+  verbatim: *"assume 1x speed"*. So nothing moved: 1x is
+  `AVSpeechUtteranceDefaultSpeechRate`, the ~0.58 is an estimate that is not in
+  effect, and changing it needs a new ruling (`docs/DECISIONS.md`, 2026-09-24).
 
 - **Then a voice correction fell out of the device test itself.** See the next
   section — this is the reason the on-device narration sounded worse than the

@@ -24,6 +24,8 @@ That is Tier 2. On iOS the native plugin owns playback: the queue, Foray segment
 
 ## 1. Why: the field record
 
+> **Addendum 2026-09-24 — the HA #108 baseline (`docs/field-records/2026-09-24-car-baseline.md`).** On build 2026092429 the app-process `.playback` hold SUCCEEDED (activated in the foreground) and was held and re-asserted for 8 minutes while paused and locked — and the car still chose Spotify on connect. A held session is not sufficient; iOS returns the car to the app whose audio last PLAYED, which for 4a was WebKit's media process. So NE-16's hold must be the session the engine's own playback ran through, and NE-27's car test is judged against this record: (1) paused in the app, locked, car connects → 4a resumes; (2) paused from the car, long pause, play → 4a resumes and stays.
+
 Source: the founder's diagnostics, build 2026092327, iPhone, in the car, 2026-09-23/24 (**Measured**).
 
 | # | What the record shows | Mechanism | Fixed in |
@@ -421,7 +423,7 @@ Reason tokens: `not-loaded`, `no-next`, `no-previous`, `ended`, `refused-structu
 2. **Case format.** Pure calls `{id, covers[], call, args, expect}`. Scenarios `{setup, steps[], expect}`, with the closed verbs `call`, `settle`, `clock`, `deck`, `tts`, `interlude`, `session`, `lifecycle`, `remote` and `checkpoint`. Macros `$seg`, `$ep`, `$tts`, `$foray`. The op-log grammar is unchanged. Native-only `n.*` tokens are stripped, **except in the `prepare` family, which asserts them**.
 3. **JS runner and recorder.**
    - `record.mjs --check` runs in `npm test`.
-   - `authored: true` cases are never overwritten. They cover 2.0 s, 15/30, 0.25 s inside-end, never-early, "4a is never the artist", `INTERRUPTION_REWIND_SEC`, and the prepare timing.
+   - `authored: true` cases are never overwritten. They cover the seam beat (0.5 s since the founder's 2026-09-24 ruling; `engine/m1`'s `seam-gap/rule-is-2.0s` still pins 2.0 s until the merge that brings the ruling in renames it, see `docs/DECISIONS.md` 2026-09-24), 15/30, 0.25 s inside-end, never-early, "4a is never the artist", `INTERRUPTION_REWIND_SEC`, and the prepare timing.
    - **Mutation smoke:** for a named set of rules (seam gap, never-early, 15/30, pause-silence), `record.mjs --mutate` flips the rule, and both the original JS test and its fixture must fail.
    - New suites (`position-store`, `transport-policy`, `continuation`) **read their fixtures**, so one file is both the JS assertion and the Swift case. Existing suites are not rewritten, because that would put hundreds of passing tests at risk.
 4. **Swift runner.**
@@ -633,7 +635,7 @@ The founder's standing instruction is to route only true product/spend/legal cal
 |---|---|---|
 | OQ-1 placement | The pure core lives under `mobile/plugins/` (a new SwiftPM package beside `foray-audio`), not in `ios/`. | `ios/` is reference material and outside auto-merge; the shipping plugins already live here. `PlayerQueueState.swift` is copied (NE-02), `ios/` untouched. |
 | OQ-2 required parity check | Yes, after G-1a's week green (G-1b). | The repo is public, so macOS runner minutes cost nothing; drift between JS and Swift is the failure this deck exists to prevent. |
-| OQ-3 synthesized narration speed | 1x (founder, 2026-09-24). | *"1x for now, but maybe we change later. I recall 1x felt like 0.6x or so, it was very slow."* Round-1 qa 28 is fixed by `fix/narration-1x`; the switch defaults to false. |
+| OQ-3 synthesized narration speed | 1x (founder, 2026-09-24), and on iOS 1x **stays `AVSpeechUtteranceDefaultSpeechRate` (0.5)** — not the ~0.58 estimate (founder, 2026-09-24: *"assume 1x speed"*). | *"1x for now, but maybe we change later. I recall 1x felt like 0.6x or so, it was very slow."* Round-1 qa 28 is fixed by `fix/narration-1x`; the switch defaults to false. Asked the same day whether iOS 1x should move to ~0.58 to make up that feel, he answered *"assume 1x speed"*, so the XCTest's 1x anchor stays Apple's default (`docs/DECISIONS.md`, 2026-09-24). |
 | OQ-4 provisional values | Ship M1 with provisional deadlines + diagnostics; NE-38 replaces them from field rows. | Measurements need a native build to exist first. |
 | OQ-5 audition | Through the engine (single session owner, S-1). | Two owners is the defect this deck removes. |
 | OQ-6 jingle clock | Count an authored JINGLE at the asset's measured duration (3.0 s), fixed JS-first before fixtures freeze (NE-29j). | The clock and the audio must agree; 1.5 s vs 3.0 s is a latent drift. |
@@ -1518,7 +1520,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 
   Packed seam rows. Precise timing per NE-25a. Simulator XCTests on click tracks: seam silence on a hit and a miss; never early at 1x and 2x; rate held across 3 swaps; audible count ≤ 1; no watchdog wakeups outside the window (timer fake). Opens with `hold`.
 
-- **Acceptance:** Simulator tests are green: seam silence on a prepare hit ≤ 2.0 s + 250 ms on local files; overshoot at 1x and 2x reported against the WebView baseline; never-early green; the watchdog fires only in the last-1.5 s window. The deck and prepare families' Swift runners pass through DeckPolicy.
+- **Acceptance:** Simulator tests are green: seam silence on a prepare hit ≤ `SEAM_GAP_SEC` (0.5 s since the founder's 2026-09-24 ruling) + 250 ms on local files; overshoot at 1x and 2x reported against the WebView baseline; never-early green; the watchdog fires only in the last-1.5 s window. The deck and prepare families' Swift runners pass through DeckPolicy.
 - **Device check:** DV-4/H-2 in NE-37.
 
 #### NE-33 · SpeechNarrator on the path DV-9 chose, SpeechRules with pickDefaultVoice, audition moved onto it — **L**

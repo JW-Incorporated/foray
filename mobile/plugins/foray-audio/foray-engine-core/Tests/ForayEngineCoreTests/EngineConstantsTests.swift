@@ -23,7 +23,8 @@ final class EngineConstantsTests: XCTestCase {
     }
 
     /// Every JS number is a Double, whatever its literal looked like:
-    /// `SEAM_GAP_SEC = 2.0` must not become an Int that truncates a later 2.5.
+    /// `SEAM_GAP_SEC = 0.5` must stay a Double, and a whole-number literal must
+    /// not become an Int that truncates a later 2.5.
     func testNumbersAreDoublesAndLaddersKeepTheirOrder() {
         let gap: Double = EngineConstants.SeamGap.seamGapSec
         XCTAssertGreaterThan(gap, 0)

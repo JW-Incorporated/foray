@@ -40,6 +40,10 @@ final class ParityFamilyTests: XCTestCase {
     func testNumberFormatFamily() { assertParityFamily("number-format", requireRunner: true) }
     func testDiagTokensFamily() { assertParityFamily("diag-tokens", requireRunner: true) }
 
+    /// NE-12s's port, which must RUN: `MediaMapping` against
+    /// player/media-session.js and the media-actions adapter (NE-12j).
+    func testMediaEpisodeFamily() { assertParityFamily("media-episode", requireRunner: true) }
+
     /// Recorded by NE-11j, ported by NE-11s: the audio session's policy and
     /// its audible-start invariant (`SessionPolicy`), the lane decision and
     /// its strike rules (`EngineMode`), and the web <-> native contract

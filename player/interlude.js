@@ -30,7 +30,7 @@
    `sourceKeyOf`). A sting there is the ear hearing a channel change the eye
    says did not happen — on capital-types-1 it was 11 of 21 seams, one guest
    interrupted by the app's logo every couple of minutes. The jump cut keeps
-   `seam-gap.js`'s 2.0 s beat, which is exactly the mark
+   `seam-gap.js`'s 0.5 s beat, which is exactly the mark
    `docs/curation/segment-length-rules.md` §6b asks for inside one episode.
 
    ── Why it is NOT a queue item, and what that buys ────────────────────────
@@ -46,7 +46,7 @@
    Because it is not a queue item it is NOT part of the Foray's runtime.
    `forayRuntimeSec`, `progressSegments`, `forayElapsed`, position persistence
    and `check-forays`' D1 budget are untouched: the jingle is wall clock the
-   manager spends at a seam, exactly as the 2.0 s beat is (`seam-gap.js`
+   manager spends at a seam, exactly as the 0.5 s beat is (`seam-gap.js`
    § "THE GAP IS NOT AUDIO"). It REPLACES that beat rather than adding to it —
    generation-architecture.md §4.8: "a bridge and a gap are alternatives,
    never both" — and the manager's seam deadline becomes the jingle's own
@@ -165,7 +165,7 @@ export function describeInterlude({ from, to, cause = AUTO_ADVANCE } = {}) {
   if (!to) return "no jingle: nothing follows this item";
   if (!isSegment(to)) return `no jingle: ${to.id} is not a tape segment`;
   if (from.kind === JINGLE) return `no jingle: ${from.id} is already a jingle`;
-  return `no jingle: ${from.id} -> ${to.id} is one episode (the 2.0 s beat marks the cut)`;
+  return `no jingle: ${from.id} -> ${to.id} is one episode (the seam beat marks the cut)`;
 }
 
 /* ---------- the setting ---------- */
@@ -303,7 +303,7 @@ export function createInterludePlayer({ url = INTERLUDE_ASSET_URL, element, tele
     /* Not buffered means not ready to be a 3 s mark: a `play()` on an element
        still fetching starts whenever the bytes land, which on a bad connection
        is a seam WORSE than the beat it replaces. Refuse, let the manager keep
-       the 2.0 s beat, and let the element go on loading for the next seam. */
+       the seam beat, and let the element go on loading for the next seam. */
     const ready = typeof el.readyState === "number" ? el.readyState : HAVE_FUTURE_DATA;
     if (ready < HAVE_FUTURE_DATA) {
       emit(`notReady readyState=${ready}`);
