@@ -5,9 +5,9 @@
   "jsOnly": true,
   "cases": [
     {
-      "id": "continuation/plan-queue-row-after-finished",
+      "id": "continuation/plan-queue-head-not-row-after-finished",
       "covers": [
-        "continuation::Up Next first: the row after the finished one, then the rows above it, and the finished one leaves"
+        "continuation::Up Next first: its head, once the finished one has left (the played row sits at the top)"
       ],
       "call": "planAfterEnded",
       "args": [
@@ -20,12 +20,12 @@
         },
         "b"
       ],
-      "expect": { "return": { "fromList": false, "nextId": "c", "rest": ["a", "c"] } }
+      "expect": { "return": { "fromList": false, "nextId": "a", "rest": ["a", "c"] } }
     },
     {
-      "id": "continuation/plan-queue-wraps-to-skipped-rows",
+      "id": "continuation/plan-queue-last-row-finished-plays-head",
       "covers": [
-        "continuation::Up Next first: the row after the finished one, then the rows above it, and the finished one leaves"
+        "continuation::Up Next first: its head, once the finished one has left (the played row sits at the top)"
       ],
       "call": "planAfterEnded",
       "args": [
@@ -41,9 +41,28 @@
       "expect": { "return": { "fromList": false, "nextId": "a", "rest": ["a", "b"] } }
     },
     {
+      "id": "continuation/plan-queue-finished-head-leaves-for-the-next-row",
+      "covers": [
+        "continuation::Up Next first: its head, once the finished one has left (the played row sits at the top)"
+      ],
+      "note": "The row a play from Up Next moved to the top ends: the head is looked for in what is LEFT, so it is not played again.",
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": ["a", "b", "c"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a", "b", "c"]
+        },
+        "a"
+      ],
+      "expect": { "return": { "fromList": false, "nextId": "b", "rest": ["b", "c"] } }
+    },
+    {
       "id": "continuation/plan-finish-elsewhere-plays-queue-head",
       "covers": [
-        "continuation::Up Next first: the row after the finished one, then the rows above it, and the finished one leaves"
+        "continuation::Up Next first: its head, once the finished one has left (the played row sits at the top)"
       ],
       "call": "planAfterEnded",
       "args": [
@@ -61,7 +80,7 @@
     {
       "id": "continuation/plan-queue-removed-while-playing",
       "covers": [
-        "continuation::Up Next first: the row after the finished one, then the rows above it, and the finished one leaves"
+        "continuation::Up Next first: its head, once the finished one has left (the played row sits at the top)"
       ],
       "call": "planAfterEnded",
       "args": [
@@ -637,30 +656,6 @@
             "fromList": false,
             "hopSeq": 1,
             "item": {
-              "artwork_url": "https://img.test/c.jpg",
-              "audio_url": "https://audio.test/c.mp3",
-              "duration_min": 42,
-              "id": "c",
-              "show": "A Show",
-              "title": "Episode c",
-              "topics": ["history"]
-            },
-            "lastEpisodeRow": {
-              "artwork_url": "https://img.test/c.jpg",
-              "audio_url": "https://audio.test/c.mp3",
-              "duration_min": 42,
-              "id": "c",
-              "show": "A Show",
-              "title": "Episode c"
-            },
-            "nextId": "c",
-            "queueAfter": ["a", "c"]
-          },
-          {
-            "finishedId": "c",
-            "fromList": false,
-            "hopSeq": 2,
-            "item": {
               "artwork_url": "https://img.test/a.jpg",
               "audio_url": "https://audio.test/a.mp3",
               "duration_min": 42,
@@ -678,7 +673,31 @@
               "title": "Episode a"
             },
             "nextId": "a",
-            "queueAfter": ["a"]
+            "queueAfter": ["a", "c"]
+          },
+          {
+            "finishedId": "a",
+            "fromList": false,
+            "hopSeq": 2,
+            "item": {
+              "artwork_url": "https://img.test/c.jpg",
+              "audio_url": "https://audio.test/c.mp3",
+              "duration_min": 42,
+              "id": "c",
+              "show": "A Show",
+              "title": "Episode c",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/c.jpg",
+              "audio_url": "https://audio.test/c.mp3",
+              "duration_min": 42,
+              "id": "c",
+              "show": "A Show",
+              "title": "Episode c"
+            },
+            "nextId": "c",
+            "queueAfter": ["c"]
           }
         ]
       }

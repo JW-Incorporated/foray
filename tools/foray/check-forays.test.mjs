@@ -57,10 +57,12 @@ import {
   M4_LONG_CLIP_SEC,
   M4_SHARE_MAX,
   phonemeProblems,
+  captionProblems,
   scriptMentions,
   lexiconEntries,
   TTS_ENGINES,
   LEXICON_PATH,
+  NARRATION_VOICE_FIELDS,
 } from "./check-forays.mjs";
 
 const { BANNED, INTERNAL_VOCABULARY, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
@@ -198,7 +200,61 @@ test("a superseded Foray names a current successor and says why — as a rule fo
   }
 });
 
-test("exactly one committed Foray is published, and it is the one that was named", () => {
+test("captionProblems: a bare leading name must be introduced by the show or episode title; a gendered pronoun needs a name (p-foray-5)", () => {
+  /* MUTATION (killed): drop the anchor test (flag every leading name) — the
+     "with Tyler Tringas" row flips. MUTATION (killed): drop the pronoun rule —
+     the "shares stay his" row flips. */
+  const tbf = { show: "The Bootstrapped Founder", episodeTitle: "309: Funded!" };
+  const rows = [
+    ["Kahl names the power imbalance that makes venture money wrong", tbf, 1, "a bare surname nobody introduced"],
+    ["Roizen's three tests for any seed cheque", tbf, 1, "a bare possessive"],
+    ["Tringas explains why a fund wrote its own instrument", { show: "The Bootstrapped Founder", episodeTitle: "328: Negotiating Bootstrapper Funding with Tyler Tringas" }, 0, "the episode title introduces him"],
+    ["The terms: shares stay his until he sells", tbf, 1, "whose shares?"],
+    ["The host names the power imbalance that makes venture money wrong", tbf, 0, "listener voice"],
+    ["Survivorship bias hides the number: 50 to 75 percent of seed companies fail", tbf, 0, "a capitalised word that is not a name"],
+    ["Stewart says her simulations produced a synestia", { show: "X", episodeTitle: "Sarah Stewart on moons" }, 0, "an introduced name anchors the pronoun"],
+    ["", tbf, 0, "nothing to caption"],
+  ];
+  for (const [why, src, n, what] of rows) assert.equal(captionProblems(why, src).length, n, `${what}: "${why}"`);
+});
+
+/** The frozen fixture with capital-types-1's two captions put back as the audit
+    found them. The fixture itself carries the rewritten lines, because it must
+    pass the real checker with zero errors (frozen-fixture.test.mjs): every
+    suite that reads it reads a Foray the publish gate would accept. */
+function frozenAsAudited() {
+  const f = structuredClone(frozen);
+  const back = {
+    "The host names the power imbalance that makes venture money wrong for a small SaaS":
+      "Kahl names the power imbalance that makes venture money wrong for a small SaaS",
+    "The terms: the founder keeps the shares until a sale, plus dividends above a salary floor":
+      "The terms: shares stay his until he sells, and a dividend share above a salary floor",
+  };
+  let n = 0;
+  for (const seg of f.segments.segments) if (back[seg.why]) { seg.why = back[seg.why]; n++; }
+  assert.equal(n, 2, "fixture: both rewritten captions are in the frozen pool");
+  return f;
+}
+
+test("the published Foray's captions: the audited copy carries the two curator's notes, the committed data none (p-foray-5)", () => {
+  /* capital-types-1 as the audit found it is the standing proof the gate
+     catches what it was built for; `data/` and the frozen fixture carry the
+     rewritten lines. MUTATION (killed): drop the published-status call to
+     captionProblems from checkForays — the audited list is empty, red. */
+  const notes = (f) => errorsFor(f).filter((e) => /p-foray-5/.test(e));
+  const audited = frozenAsAudited();
+  const auditedNotes = notes(audited);
+  assert.equal(auditedNotes.length, 2, auditedNotes.join("\n"));
+  assert.match(auditedNotes.join("\n"), /bare name "Kahl"/);
+  assert.match(auditedNotes.join("\n"), /"his" has no one in the line/);
+  assert.deepEqual(notes(live), [], "the committed captions are listener copy");
+  assert.deepEqual(notes(frozen), [], "and so are the frozen fixture's");
+  /* Drafts are not gated: the same line on a draft is a curation note until it is promoted. */
+  forayBy(audited, "capital-types-1").status = "draft";
+  assert.deepEqual(notes(audited), []);
+});
+
+test("exactly the named Forays are published, and no other", () => {
   /* THIS IS THE OLD "every committed Foray is still a draft" VALVE, NARROWED BY
      ONE NAMED FORAY RATHER THAN REMOVED.
 
@@ -238,12 +294,60 @@ test("exactly one committed Foray is published, and it is the one that was named
      always carries narration" — is unmet at all 10 of its cross-episode seams,
      because no narration audio exists anywhere in the repo. Neither fact is
      checkable here; both are recorded so a reader of a green suite does not
-     infer them. */
+     infer them.
+
+     THE SECOND LINE (2026-09-24). The founder, answering the round-2 decision
+     list: "Publish any foray so that the statement is correct; this is a
+     temporary issue while we are spinning up and will soon be irrelevant." The
+     statement is the first-run sheet's narrator clause (app.js forayAbout(),
+     round-1 audit persona 14): capital-types-1 carries no narration, so while it
+     was the only published Foray a newcomer never saw a narrated one.
+     `how-ai-actually-gets-built-3b83e1` is the one chosen, on measurements: of
+     the four generated drafts it is one of two that pass check-forays with ZERO
+     errors once promoted (the two others fail p-foray-5's published-caption
+     rule — "Chidgey", "London", "Reflecting" open why-lines no title
+     introduces), and of those two it is the one whose run record
+     (docs/curation/generation-run-2026-09-09.md, run 6) reads purposeFidelity
+     1.0 and 0 pages dropped against run 8's 0.83 and 1, and whose narrator says
+     "act" aloud once rather than eight times (persona 65). The same doubt this
+     comment already records for capital-types-1 holds here: nobody has
+     listened to it, and it was published past the veracity gate with --force
+     for four unverified Hinge pages (run 6's own line). The test below pins
+     the property the founder asked for rather than this id. */
   assert.ok(live.forays.forays.length > 0, "no Forays — this proved nothing");
   assert.deepEqual(
     live.forays.forays.filter((f) => f.status === "published").map((f) => f.id),
-    ["capital-types-1"]
+    ["capital-types-1", "how-ai-actually-gets-built-3b83e1"]
   );
+});
+
+test("a published Foray has a narrator between its clips, so the first-run sheet's narrator clause is true for a newcomer (persona 14)", () => {
+  /* The founder, 2026-09-24: "Publish any foray so that the statement is
+     correct". app.js forayAbout() adds ", with a narrator between them" only
+     while a Foray the listener can see carries narration, and a newcomer (no
+     `?foray=` unlock, the draft switch off by default) sees PUBLISHED Forays
+     only. So the statement shows, and is true, exactly when some published
+     Foray carries narration — and "between them" means a bridge, not the
+     disclosure alone: a narration item with a clip somewhere before it and a
+     clip somewhere after it, carrying something a voice can speak (a script,
+     an audio_url or an asset — NARRATION_VOICE_FIELDS).
+
+     Pinned as the property, not as an id, so any published narrated Foray
+     satisfies it and the day a better one replaces this one needs no edit
+     here. MUTATION (run 2026-09-24): set how-ai-actually-gets-built-3b83e1 back
+     to "draft" in data/forays.json -> red here (and in the exact-set test
+     above). */
+  const bridges = (foray) => {
+    const items = foray.items || [];
+    const firstClip = items.findIndex((i) => i.type === "segment");
+    const lastClip = items.map((i) => i.type).lastIndexOf("segment");
+    return items.filter((i, at) =>
+      i.type === "narration" && at > firstClip && at < lastClip && firstClip >= 0 &&
+      NARRATION_VOICE_FIELDS.some((k) => typeof i[k] === "string" && i[k].trim()));
+  };
+  const narrated = live.forays.forays.filter((f) => f.status === "published" && bridges(f).length > 0);
+  assert.ok(narrated.length > 0,
+    "no PUBLISHED Foray has a narration bridge between two clips, so a newcomer's first-run sheet cannot truthfully say \"with a narrator between them\" (persona 14)");
 });
 
 test("`status` is an enum of exactly two values, and a third is an error", () => {

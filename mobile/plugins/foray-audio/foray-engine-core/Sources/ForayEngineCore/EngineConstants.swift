@@ -61,6 +61,8 @@ public enum EngineConstants {
         public static let minResumeSec: Double = 20
         /// `NEAR_END_SEC`
         public static let nearEndSec: Double = 45
+        /// `PLAYED_LABEL`
+        public static let playedLabel: String = "Played"
         /// `SAVE_EVERY_SEC`
         public static let saveEverySec: Double = 5
     }
@@ -159,6 +161,8 @@ public enum EngineConstants {
 
     /// `player/queue-manager.js`
     public enum QueueManager {
+        /// `NARRATION_RATE`
+        public static let narrationRate: Double = 1
         /// `POSITION_INTERVAL_MS`
         public static let positionIntervalMs: Double = 15000
     }
@@ -205,6 +209,17 @@ public enum EngineConstants {
 
     /// `player/transport-policy.js`
     public enum Transport {
+        /// `NUDGE`
+        public enum Nudge {
+            /// `NUDGE.SEEK`
+            public static let seek: String = "seek"
+            /// `NUDGE.RESTART_LINE`
+            public static let restartLine: String = "restart-line"
+            /// `NUDGE.SKIP_LINE`
+            public static let skipLine: String = "skip-line"
+            /// `NUDGE.NONE`
+            public static let none: String = "none"
+        }
         /// `PREVIOUS`
         public enum Previous {
             /// `PREVIOUS.ITEM_BEFORE`

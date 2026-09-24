@@ -14,7 +14,7 @@
  * site would draw today. NO DATA IS FAKED OR ADDED.
  *
  * WHAT THIS PROVES, in order:
- *  1. The greeting, Forays for you, Playlists for you and Episodes for you all
+ *  1. The greeting, Forays for you, Playlists for you and Suggested all
  *     render over the real data, in the card's order. "Jump back in" is the
  *     one section that does NOT render here, by design: a fresh profile has
  *     nothing to resume and the section omits itself rather than showing an
@@ -25,7 +25,7 @@
  *     least the tab bar's own height at that inset, evaluated numerically
  *     (var() and env() substituted, calc() summed), so the last section is
  *     never under the bar. Not a grep for "env(": a bare px value fails at 59.
- *  3. THE FLOOR over real data, "Episodes for you": a visible Stretch tag and
+ *  3. THE FLOOR over real data, "Suggested": a visible Stretch tag and
  *     its bridge line on 20 consecutive renders of a fresh profile (real
  *     Math.random, real pool, real default weights).
  *  4. THE FLOOR over real data, "Forays for you", on whichever side of it the
@@ -185,14 +185,14 @@ async function mountReal(bridge) {
   return m;
 }
 
-const SECTIONS = ["hv2-greeting", "hv2-forays", "hv2-playlists", "hv2-episodes"];
+const SECTIONS = ["hv2-greeting", "hv2-forays", "hv2-playlists", "hv2-suggested"];
 const forayRoot = (f) => (f.topic || "other").split("/")[0];
 
 /* ==================================================================== */
 /* 1. ALL SECTIONS RENDER OVER THE REAL DATA, IN ORDER                   */
 /* ==================================================================== */
 
-test("over the real data files the greeting, Forays for you, Playlists for you and Episodes for you render in order; Jump back in omits itself on a fresh profile", async () => {
+test("over the real data files the greeting, Forays for you, Playlists for you and Suggested render in order; Jump back in omits itself on a fresh profile", async () => {
   /* MUTATION: return "" from foraysForYouHtml() (or any other section) ->
      that section's index is -1 and the failure names it. MUTATION 2: make
      jumpBackInV2Html() emit its <section> with nothing to resume -> the
@@ -203,7 +203,7 @@ test("over the real data files the greeting, Forays for you, Playlists for you a
   const at = Object.fromEntries(SECTIONS.map((cls) => [cls, html.indexOf(cls)]));
   for (const cls of SECTIONS) assert.ok(at[cls] !== -1, `${cls} did not render over the real data`);
   assert.ok(
-    at["hv2-greeting"] < at["hv2-forays"] && at["hv2-forays"] < at["hv2-playlists"] && at["hv2-playlists"] < at["hv2-episodes"],
+    at["hv2-greeting"] < at["hv2-forays"] && at["hv2-forays"] < at["hv2-playlists"] && at["hv2-playlists"] < at["hv2-suggested"],
     `sections out of order: ${JSON.stringify(at)}`
   );
   assert.strictEqual(html.indexOf("hv2-jbi"), -1,
@@ -272,10 +272,10 @@ test("at inset 0 and at inset 59 px the same sections render, and the stylesheet
 });
 
 /* ==================================================================== */
-/* 3. THE FLOOR OVER REAL DATA — EPISODES FOR YOU, 20 RENDERS            */
+/* 3. THE FLOOR OVER REAL DATA — SUGGESTED, 20 RENDERS            */
 /* ==================================================================== */
 
-test("THE FLOOR over real data: Episodes for you carries a visible Stretch tag with its bridge line on 20 consecutive renders of a fresh profile", async () => {
+test("THE FLOOR over real data: Suggested carries a visible Stretch tag with its bridge line on 20 consecutive renders of a fresh profile", async () => {
   /* MUTATION: in buildCards(), set `stretchBranch` to null -> no slot has
      role "stretch", miniCardV2 appends no bridge line, and run 0 fails.
      Real Math.random throughout: the stretch slot is structural (a branch
@@ -287,8 +287,8 @@ test("THE FLOOR over real data: Episodes for you carries a visible Stretch tag w
     const m = await mountReal(bridge);
     m.ctx.renderHome();
     const html = m.view();
-    const episodes = html.slice(html.indexOf("hv2-episodes"));
-    assert.ok(/class="mc-stretch"[^>]*>Stretch</.test(episodes), `run ${i}: Episodes for you must carry a visible Stretch tag over the real pool`);
+    const episodes = html.slice(html.indexOf("hv2-suggested"));
+    assert.ok(/class="mc-stretch"[^>]*>Stretch</.test(episodes), `run ${i}: Suggested must carry a visible Stretch tag over the real pool`);
     assert.ok(episodes.includes('class="hv2-bridge">'), `run ${i}: the stretch pick must carry its bridge line`);
     const stretchSlots = m.state.cardSlots.filter((sl) => sl.role === "stretch");
     assert.strictEqual(stretchSlots.length, 1, `run ${i}: exactly one of the four slots is the stretch pick`);

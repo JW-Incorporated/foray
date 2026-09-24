@@ -155,7 +155,11 @@ advances *on its own* into a tape segment — segment → segment and
 narration → segment. Never before the first item, never after the last, never
 into narration (so never between two narration items, and never
 segment → narration, where the narration is the marker), never on a skip, tap,
-scrub or resume, and never straight after an authored `jingle` item. It is a
+scrub or resume, never straight after an authored `jingle` item, and never
+between two cuts of the **same episode** (`sameSourceEpisode`, the key the
+strip draws capsules by: "an interlude between podcasts", not between two
+minutes of one guest; audit round 2, p-foray-1). A same-episode jump cut keeps
+the plain 2.0 s beat (`segment-length-rules.md` §6b). It is a
 **player-side** mark: no field in `data/forays.json`, no change to
 `check-forays.mjs`, and it is **not part of `runtime_sec`** — like the 2.0 s
 seam beat it replaces at an unbridged seam (`player/seam-gap.js`), it is wall
@@ -163,7 +167,7 @@ clock the player spends at the seam, not authored content. The beat and the
 jingle are alternatives, never both (§4.8); the beat remains the floor if the
 jingle stops short, and a jingle that never reports ending is cut at
 `INTERLUDE_CEILING_SEC` so the tape always starts. Always 1.0x. Pause and next
-cut it like any item. Off switch: **Settings -> "Jingle between segments"** in
+cut it like any item. Off switch: **Settings -> "Jingle between clips"** in
 the drawer, which writes `localStorage` `cp_interlude = "off"`
 (`PlayerQueueManager.setInterludeEnabled` live).
 

@@ -96,15 +96,38 @@ function mount(seed = {}) {
 /* fmtDur                                                              */
 /* ------------------------------------------------------------------ */
 
-/* MUTATION: restore `${Math.floor(min / 60)}h ${min % 60}m` for every
-   min >= 60. The exact-hour assertions fail ("1h 0m"). */
-test("fmtDur: an exact hour is '1h', never '1h 0m'", () => {
+/* ONE DIALECT (audit round 2, copy-2): "45 min", "1 hr", "1 hr 5 min" — a row
+   used to read "3h 5m" beside "185 min left". MUTATION: restore
+   `${h}h ${m}m` above the hour; MUTATION 2: print "1 hr 0 min" for an exact
+   hour (the round-1 "1h 0m" defect). */
+test("fmtDur: '45 min', '1 hr', '1 hr 5 min' — one dialect, never '1 hr 0 min'", () => {
   const { ctx } = mount();
-  assert.strictEqual(ctx.fmtDur(60), "1h");
-  assert.strictEqual(ctx.fmtDur(120), "2h");
-  assert.strictEqual(ctx.fmtDur(61), "1h 1m");
-  assert.strictEqual(ctx.fmtDur(95), "1h 35m");
+  assert.strictEqual(ctx.fmtDur(60), "1 hr");
+  assert.strictEqual(ctx.fmtDur(120), "2 hr");
+  assert.strictEqual(ctx.fmtDur(61), "1 hr 1 min");
+  assert.strictEqual(ctx.fmtDur(95), "1 hr 35 min");
   assert.strictEqual(ctx.fmtDur(59), "59 min");
+  assert.strictEqual(ctx.fmtDur(44.6), "45 min", "a fraction is rounded, never printed");
+});
+
+/* THE RULE ACROSS FILES (copy-2). A classic script and three ES modules cannot
+   share one function, so the rule is pinned across all four: for every length,
+   the player's span, both "left" labels and app.js's fmtDur say the same words.
+   MUTATION: drop the hour branch from any one of fmtSpan, remainingLabel or
+   episodeRemainingLabel ("185 min left" comes back) and its row fails. */
+test("fmtDur, fmtSpan and both remaining labels speak one dialect at every length", async () => {
+  const { ctx } = mount();
+  const url = (rel) => require("node:url").pathToFileURL(path.join(ROOT, rel)).href;
+  const { fmtSpan } = await import(url("player/foray-resolve.js"));
+  const { remainingLabel } = await import(url("player/foray-progress.js"));
+  const { episodeRemainingLabel, fmtMinutes } = await import(url("player/episode-progress.js"));
+  for (const min of [2, 45, 59, 60, 65, 95, 120, 185]) {
+    const words = ctx.fmtDur(min);
+    assert.strictEqual(fmtSpan(min * 60), words, `fmtSpan(${min} min)`);
+    assert.strictEqual(fmtMinutes(min), words, `fmtMinutes(${min})`);
+    assert.strictEqual(remainingLabel(min * 60), `${words} left`, `remainingLabel(${min} min)`);
+    assert.strictEqual(episodeRemainingLabel({ duration_sec: min * 60 + 600 }, 600), `${words} left`, `episodeRemainingLabel(${min} min)`);
+  }
 });
 
 /* A missing duration is absence, not zero. MUTATION: drop the `!min` guard
@@ -128,13 +151,15 @@ test("countLabel: singular at exactly one, plural otherwise, irregular plural ho
   assert.strictEqual(ctx.countLabel(3, "match", "matches"), "3 matches");
 });
 
+/* Dated in a past year on purpose: a date in the current year omits its year
+   (copy-15), so a fixture in "this" year would read differently next January. */
 function onePartPlaylist(m) {
   const item = { id: "ep-1", title: "Only episode", show: "Show", audio_url: "https://a.test/1.mp3", topics: [] };
   m.state.discover = { items: [item] };
   m.ctx.fullPool && m.ctx.fullPool();
   m.ctx.savePlaylists([{
     id: "q1", title: "Solo", items: [m.ctx.playlistPart(item)],
-    created: "2026-09-20T00:00:00.000Z", last_played_at: "2026-09-21T18:00:00.000Z",
+    created: "2019-09-20T00:00:00.000Z", last_played_at: "2019-09-21T18:00:00.000Z",
   }]);
 }
 
@@ -187,9 +212,9 @@ test("joinMeta drops empty pieces instead of leaving a separator around nothing"
    in epRow — the double separator comes back and this fails. */
 test("an episode row with no duration has no empty field between separators", () => {
   const { ctx } = mount();
-  const html = ctx.epRow({ id: "e", title: "T", show: "Lex", duration_min: null, release_date: "2026-09-12", audio_url: "https://a.test/x.mp3" }, 0, "", -1);
+  const html = ctx.epRow({ id: "e", title: "T", show: "Lex", duration_min: null, release_date: "2019-09-12", audio_url: "https://a.test/x.mp3" }, 0, "", -1);
   assert.ok(!/·\s*·/.test(html), `double separator: ${html}`);
-  assert.match(html, /Lex · Sep 12, 2026/);
+  assert.match(html, /Lex · Sep 12, 2019/);
   const noDate = ctx.epRow({ id: "e", title: "T", show: "Lex", duration_min: null, release_date: null, audio_url: "https://a.test/x.mp3" }, 0, "", -1);
   assert.ok(!/·\s*<\/div>/.test(noDate), `trailing separator: ${noDate}`);
 });
@@ -206,10 +231,10 @@ test("a live Up Next row with no duration ends at the show name", () => {
    MUTATION: put the caption back into archivedRow. */
 test("an aged-out playlist row states its unavailability once", () => {
   const { ctx } = mount();
-  const html = ctx.archivedRow({ id: "e", title: "T", show: "Lex", duration_min: 60, release_date: "2026-09-12" }, 0, "");
+  const html = ctx.archivedRow({ id: "e", title: "T", show: "Lex", duration_min: 60, release_date: "2019-09-12" }, 0, "");
   assert.ok(html.includes("Not available to play"), "the chip is the one statement");
   assert.ok(!html.includes("not available right now"), `said twice: ${html}`);
-  assert.match(html, /Lex · 1h · Sep 12, 2026/);
+  assert.match(html, /Lex · 1 hr · Sep 12, 2019/);
 });
 
 /* ------------------------------------------------------------------ */
@@ -231,9 +256,27 @@ test("fmtDate never says 'Invalid Date', in either timezone mode", () => {
     assert.strictEqual(ctx.fmtDate("", opts), "");
     assert.strictEqual(ctx.fmtDate(null, opts), "");
   }
-  assert.strictEqual(ctx.fmtDate("2026-09-21"), "Sep 21, 2026");
-  assert.strictEqual(ctx.fmtDate("2026-09-21T12:00:00.000Z", { local: true }), localDay("2026-09-21T12:00:00.000Z"));
-  assert.match(localDay("2026-09-21T12:00:00.000Z"), /^Sep 2\d, 2026$/, "fixture: the expected form is the short month");
+  assert.strictEqual(ctx.fmtDate("2019-09-21"), "Sep 21, 2019");
+  assert.strictEqual(ctx.fmtDate("2019-09-21T12:00:00.000Z", { local: true }), localDay("2019-09-21T12:00:00.000Z"));
+  assert.match(localDay("2019-09-21T12:00:00.000Z"), /^Sep 2\d, 2019$/, "fixture: the expected form is the short month");
+});
+
+/* THE YEAR ONLY WHEN IT IS NOT THIS ONE (audit round 2, copy-15), Apple
+   Podcasts' rule — judged in the zone the date is written in, so a New Year's
+   Eve release is not "this year" anywhere it is already January in UTC.
+   `now` is fixed so the test does not depend on the machine's calendar.
+   MUTATION: always set `opts.year` (every row says ", 2026" again);
+   MUTATION 2: judge "this year" in local time for a UTC release date. */
+test("fmtDate drops the year for a date in the current year and keeps it otherwise", () => {
+  const { ctx } = mount();
+  const now = new Date("2026-09-23T12:00:00.000Z");
+  assert.strictEqual(ctx.fmtDate("2026-09-12", { now }), "Sep 12");
+  assert.strictEqual(ctx.fmtDate("2025-11-03", { now }), "Nov 3, 2025");
+  assert.strictEqual(ctx.fmtDate("2025-12-31", { now: new Date("2026-01-01T02:00:00.000Z") }), "Dec 31, 2025",
+    "a UTC release date is judged in UTC");
+  const localNow = new Date(2026, 8, 23, 12);
+  assert.strictEqual(ctx.fmtDate(new Date(2026, 8, 21, 18).toISOString(), { local: true, now: localNow }), "Sep 21");
+  assert.strictEqual(ctx.fmtDate(new Date(2025, 8, 21, 18).toISOString(), { local: true, now: localNow }), "Sep 21, 2025");
 });
 
 /* The Playlists page was the one raw toLocaleDateString() in the app: "played
@@ -244,7 +287,7 @@ test("the Playlists page formats 'played' through fmtDate and says nothing for a
   const m = mount();
   onePartPlaylist(m);
   m.ctx.renderPlaylists();
-  assert.ok(m.view().includes(`played ${localDay("2026-09-21T18:00:00.000Z")}`), m.view());
+  assert.ok(m.view().includes(`played ${localDay("2019-09-21T18:00:00.000Z")}`), m.view());
 
   const raw = JSON.parse(m.ctx.localStorage.getItem("cp_playlists"));
   raw[0].last_played_at = "garbage";
@@ -253,4 +296,81 @@ test("the Playlists page formats 'played' through fmtDate and says nothing for a
   assert.ok(!m.view().includes("Invalid Date"), m.view());
   assert.ok(!m.view().includes("played"), "no date, no 'played' clause");
   assert.ok(!/\.toLocaleDateString\(\)/.test(APP_SRC), "no bare toLocaleDateString() may remain in app.js");
+});
+
+/* ------------------------------------------------------------------ */
+/* One length per episode (audit round 2, honesty-1)                   */
+/* ------------------------------------------------------------------ */
+
+/* in-the-dark--blood-relatives-ep1 carried duration_min 45 and duration_sec
+   3581: the row read "45 min" and, seven minutes in, "45 min · 53 min left".
+   MUTATION: return `item.duration_min` first in episodeMinutes — the row says
+   45 min again; MUTATION 2: revert epRow to `fmtDur(item.duration_min)`. */
+test("an episode's length is its seconds when it has them, on the row beside its own 'left' label", () => {
+  const m = mount();
+  assert.strictEqual(m.ctx.episodeMinutes({ duration_min: 45, duration_sec: 3581 }), 60);
+  assert.strictEqual(m.ctx.episodeMinutes({ duration_min: 45 }), 45, "no seconds: the minute count stands");
+  assert.strictEqual(m.ctx.episodeMinutes({}), 0);
+  const item = { id: "drift", title: "T", show: "S", duration_min: 45, duration_sec: 3581, release_date: "2019-01-01", audio_url: "https://a.test/x.mp3" };
+  const html = m.ctx.epRow(item, 0, "", -1);
+  assert.match(html, /S<\/a> · 1 hr · |S · 1 hr · /, html);
+  assert.ok(!/45 min/.test(html), `the minute count reached the row: ${html}`);
+});
+
+/* The data half: the two fields may not drift a minute apart anywhere in the
+   committed pool. MUTATION: put `"duration_min": 45` back on
+   in-the-dark--blood-relatives-ep1 in data/discover.json. */
+test("the committed pool carries no episode whose minutes and seconds disagree by a minute", async () => {
+  const url = require("node:url").pathToFileURL(path.join(ROOT, "tools/check-durations.mjs")).href;
+  const { durationDrift, committedItems, minutesFromSeconds } = await import(url);
+  assert.deepStrictEqual(durationDrift([{ id: "x", duration_min: 45, duration_sec: 3581 }]).map((d) => d.id), ["x"], "the gate can see");
+  assert.strictEqual(minutesFromSeconds(3581), 60);
+  assert.strictEqual(minutesFromSeconds(null), null);
+  const items = committedItems();
+  assert.ok(items.length > 2000, `fixture: the pool loaded (${items.length})`);
+  assert.deepStrictEqual(durationDrift(items), []);
+});
+
+/* ------------------------------------------------------------------ */
+/* A zero is not a fact worth a line (copy-13, p-first-10, copy-10)    */
+/* ------------------------------------------------------------------ */
+
+/* MUTATION: restore `${played} played` unconditionally — every list a
+   newcomer opens reads "0 played". */
+test("a playlist page says how many were played only when some were", () => {
+  const m = mount();
+  onePartPlaylist(m);
+  m.ctx.renderPlaylistDetail("q1");
+  assert.ok(!/0 played/.test(m.view()), m.view());
+  /* "Played" is the player's FINISHED verdict (honesty-6, test/playlist-
+     durability.test.js), not a history entry — so the fixture finishes one. */
+  m.ctx.window.ForayPlayer = { episodeProgress: (id) => (id === "ep-1"
+    ? { state: "played", percent: 100, label: "Played" }
+    : { state: "unplayed", percent: null, label: null }) };
+  m.ctx.renderPlaylistDetail("q1");
+  assert.match(m.view(), /1 played/);
+});
+
+/* MUTATION: restore either count subtitle unguarded ("0 queued" over "Nothing
+   in Up Next yet", "0 built" over "No playlists yet"), the drawer's lowercase
+   fragment, or the Library's lowercase subtitle. */
+test("empty Up Next and Playlists pages carry no zero count, and the drawer's empty line is a sentence", () => {
+  const m = mount();
+  m.ctx.renderQueue();
+  assert.ok(!/0 queued/.test(m.view()), m.view());
+  m.ctx.renderPlaylists();
+  assert.ok(!/0 built/.test(m.view()), m.view());
+  m.ctx.renderLibrary();
+  assert.ok(!/forays, shows, saved/.test(m.view()), "the Library subtitle is gone");
+  assert.ok(APP_SRC.includes('<p class="drawer-empty">No playlists yet</p>'), "the drawer's empty playlists line");
+  assert.ok(!APP_SRC.includes(">none yet<"), "the lowercase fragment is gone");
+});
+
+/* MUTATION: put back "where it fits" for the plural case. */
+test("an aged-out note's plural agrees to the end of the sentence", () => {
+  const m = mount();
+  const rows = [{ state: "archived", item: { id: "a" } }, { state: "archived", item: { id: "b" } }];
+  const html = m.ctx.partsNote(rows);
+  assert.match(html, /they stay listed so you can see where they fit in the playlist\./, html);
+  assert.match(m.ctx.partsNote(rows.slice(0, 1)), /it stays listed so you can see where it fits in the playlist\./);
 });

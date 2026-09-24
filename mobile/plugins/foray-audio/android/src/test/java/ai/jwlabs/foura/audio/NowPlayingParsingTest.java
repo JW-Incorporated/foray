@@ -125,4 +125,24 @@ public class NowPlayingParsingTest {
         // commandsFor() would then declare no COMMAND_PLAY_PAUSE either.
         assertEquals(NowPlaying.PAUSED, np.state);
     }
+
+    /** Audit round 2, p-car-8: a stall is PLAYING with the clock stopped. The flag
+     *  survives only on a playing payload (a paused player waits for nothing), and a
+     *  payload that never mentions it is not stalled. */
+    @Test
+    public void stalledFlag_isCarriedOnlyWhilePlaying() throws JSONException {
+        NowPlaying stalled = NowPlaying.from(payload(
+            "{\"state\":\"playing\",\"title\":\"x\",\"playbackRate\":1.5,\"stalled\":true}"));
+        assertTrue(stalled.stalled);
+        assertEquals(1.5f, stalled.playbackRate, 0.0001f);
+        assertTrue(stalled.acceptsTransport());
+
+        NowPlaying pausedStalled = NowPlaying.from(payload(
+            "{\"state\":\"paused\",\"title\":\"x\",\"stalled\":true}"));
+        assertFalse(pausedStalled.stalled);
+
+        NowPlaying plain = NowPlaying.from(payload("{\"state\":\"playing\",\"title\":\"x\"}"));
+        assertFalse(plain.stalled);
+        assertFalse(NowPlaying.EMPTY.stalled);
+    }
 }

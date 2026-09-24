@@ -261,7 +261,10 @@ test("the mini bar's title button is named by what is playing and says whether t
 
 /* MUTATION: remove the aria-valuetext write in render(). */
 test("the scrub slider announces a time, not a 0-1000 fraction", () => {
-  assert.match(clientFn("render"), /ui\.scrub\.setAttribute\("aria-valuetext"/);
+  /* Audit round 2 (player-6): the clocks and the spoken value are painted by
+     `paintClocks`, from the audio in `paintPage` and from the thumb mid-drag. */
+  assert.match(clientFn("paintClocks"), /ui\.scrub\.setAttribute\("aria-valuetext"/);
+  assert.match(clientFn("paintPage"), /paintClocks\(pos, dur/);
 });
 
 /* ------------------------------------------------------------------ */
@@ -347,6 +350,7 @@ const NOT_CONTROLS = {
   ]),
   "player/client.js": new Set([
     "n", "ui.tNow", "ui.tLeft", "ui.title", "ui.show", "ui.sTitle", "ui.sShow", "ui.sWhy", "ui.sDesc", "ui.note",
+    "ui.sDescText", // the sheet's episode-notes paragraph inside its <details> (audit round 2, p-switcher-2)
     "ui.err", "ui.sErr", // the bar's and the sheet's status lines (L5 + L2, painted by paintStatus)
     "ui.announce", // the bar's sr-only live region, a sibling of its button (review 2026-09-23)
   ]),
@@ -392,4 +396,45 @@ test("no builder pairs a ternary text with a hand-written aria-label", () => {
     const body = APP_SRC.slice(start, APP_SRC.indexOf("\n}\n", start));
     assert.ok(!/aria-label="[^"$]*"/.test(body), `${name} writes a literal aria-label`);
   }
+});
+
+/* ------------------------------------------------------------------ */
+/* The drawer's switches are switches (audit round 2, a11y-8)          */
+/* ------------------------------------------------------------------ */
+
+/* VoiceOver read "Family mode: off, button" and, on activation, nothing — it
+   does not re-read a focused button's changed text. MUTATION: drop
+   `setAttribute("role", "switch")` from drawerToggle, or the `aria-checked`
+   write from paintDrawerToggles. (The announce() the handler also made was
+   the flip said twice; round-2 review removed it and the end of this test
+   pins its absence.) */
+test("a drawer setting is a switch named by its label, its state is aria-checked, and a flip is said", () => {
+  const { ctx } = mountApp();
+  const byId = new Map();
+  const drawer = makeEl("nav");
+  byId.set("drawer", drawer);
+  const btn = makeEl("button");
+  let onClick = null;
+  btn.addEventListener = (type, fn) => { if (type === "click") onClick = fn; };
+  byId.set("family-toggle", btn);
+  const region = makeEl("p");
+  const view = ctx.document.querySelector("#view");
+  ctx.document.querySelector = (sel) => (sel === "#view" ? view : sel === "#a11y-status" ? region : byId.get(String(sel).slice(1)) || null);
+  ctx.requestAnimationFrame = undefined;
+  vm.runInContext("renderDrawer = () => paintDrawerToggles(); renderCurrentPage = () => {}; buildCards = () => {};", ctx);
+
+  ctx.bindDrawerToggles();
+  assert.strictEqual(btn.getAttribute("role"), "switch");
+  ctx.paintDrawerToggles();
+  assert.strictEqual(btn.getAttribute("aria-checked"), "false");
+  assert.strictEqual(btn.textContent, "Family mode: off", "the visible words are unchanged");
+  assert.strictEqual(btn.getAttribute("aria-label"), "Family mode", "the name is the label; the state is the switch's own");
+
+  onClick();
+  assert.strictEqual(btn.getAttribute("aria-checked"), "true");
+  assert.strictEqual(btn.textContent, "Family mode: on");
+  /* Round-2 review: the focused switch's aria-checked flip is what a screen
+     reader speaks; a live-region line as well said every tap twice.
+     MUTATION: put the announce() back in drawerToggle's handler -> red. */
+  assert.strictEqual(region.textContent, "", "the flip is said once, by the switch, not again by the live region");
 });

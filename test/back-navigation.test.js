@@ -405,3 +405,67 @@ test("a deep link straight into a tab-owned route has no in-app step behind it, 
   m.go("#/library"); // arriving here first, e.g. from a bookmark
   assert.strictEqual(m.canGoBack(), false, "a deep link into a tab-owned route is still a cold open with no step behind it");
 });
+
+/* ==================================================================== */
+/* 9. A TRAVERSAL THAT KEEPS THE HASH (audit round 2, nav-1)             */
+/* ==================================================================== */
+
+/* The browser fires `popstate` for every traversal and `hashchange` only when
+   the fragment changes. The harness's `back()` above routes unconditionally,
+   which is exactly why the suite could not see this; `browserBack` below is
+   the browser's real contract: popstate always, hashchange only on a change. */
+function browserBack(m) {
+  const before = m.ctx.location.hash;
+  m.nav.history.back();
+  m.ctx.onPopState();
+  if (m.ctx.location.hash !== before) m.evalIn("route()");
+}
+
+test("‹ onto a neighbouring entry with the SAME hash lands, and the next ‹ still works", () => {
+  /* Search tab, "foo", Search tab again (a new entry), "foo" again: the second
+     entry is rewritten in place to the hash of the one behind it.
+     MUTATION: delete the `window.addEventListener("popstate", onPopState)`
+     behaviour (make onPopState return immediately) -> backPending never clears
+     and the second tap calls history.back() zero more times; red. */
+  const m = mount();
+  m.go("#/");
+  m.go("#/shows/q/foo");
+  m.go("#/shows");
+  m.evalIn('rewriteRouteInPlace("#/shows/q/foo")');
+  assert.deepStrictEqual(m.nav.hashes(), ["#/", "#/shows/q/foo", "#/shows/q/foo"], "fixture: two neighbours share a hash");
+
+  m.click();
+  assert.strictEqual(m.calls.back, 1);
+  m.ctx.onPopState();                     // the browser's only event for this step
+  m.click();
+  assert.strictEqual(m.calls.back, 2, "the second ‹ must not be swallowed by a step that never 'landed'");
+});
+
+test("a popstate that changes the hash leaves the routing to hashchange: one render per step", () => {
+  /* MUTATION: make onPopState route unconditionally -> a normal ‹ renders the
+     page twice (popstate, then hashchange); red. */
+  const m = mount();
+  m.evalIn("var __renders = 0; renderCurrentPage = () => { __renders++; };");
+  m.go("#/");
+  m.go("#/shows");
+  const before = m.evalIn("__renders");
+  browserBack(m);
+  assert.strictEqual(m.evalIn("__renders") - before, 1);
+  assert.strictEqual(m.ctx.location.hash, "#/");
+});
+
+test("a popstate that is not a step between stamped entries (a load-time popstate) renders nothing", () => {
+  /* MUTATION: drop the `stamped === navIndex` guard -> WebKit's load-time
+     popstate re-renders the page on screen; red. */
+  const m = mount();
+  m.evalIn("var __renders = 0; renderCurrentPage = () => { __renders++; };");
+  m.go("#/shows");
+  const before = m.evalIn("__renders");
+  m.ctx.onPopState();
+  assert.strictEqual(m.evalIn("__renders"), before);
+});
+
+test("init binds the popstate listener beside hashchange", () => {
+  /* MUTATION: delete the addEventListener("popstate", …) line. */
+  assert.match(APP_SRC, /window\.addEventListener\("hashchange", route\);[\s\S]{0,400}window\.addEventListener\("popstate", onPopState\);/);
+});

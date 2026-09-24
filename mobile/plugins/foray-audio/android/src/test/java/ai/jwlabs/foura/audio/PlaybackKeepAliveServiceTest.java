@@ -161,4 +161,33 @@ public class PlaybackKeepAliveServiceTest {
             PlaybackKeepAliveService.isRunning());
         assertTrue(PlaybackKeepAliveService.isSessionActive());
     }
+
+    /* ---- audit round 2 (native-7, native-8): the two pure rules ---- */
+
+    @Test
+    public void aTransportPressOnARunningServiceDoesNotRepostTheNotification() {
+        // native-8: a press used to re-post the pre-press notification through
+        // startForeground, and a swipe on Android 14+ put it straight back.
+        // MUTATION: return true unconditionally.
+        assertTrue("a bare start always starts foreground",
+            PlaybackKeepAliveService.foregroundStartNeeded(false, false));
+        assertTrue("the first transport intent, before any start, still starts foreground",
+            PlaybackKeepAliveService.foregroundStartNeeded(false, true));
+        assertTrue("a bare start on a running service re-asserts foreground (ForayAudioPlugin#start)",
+            PlaybackKeepAliveService.foregroundStartNeeded(true, false));
+        assertFalse("a press on a running service dispatches and returns",
+            PlaybackKeepAliveService.foregroundStartNeeded(true, true));
+    }
+
+    @Test
+    public void compactViewShowsTheSeekPairForASingleEpisodeAndTheTrackPairForAForay() {
+        // native-7: with nothing queued the lock screen showed play/pause and Stop
+        // only. MUTATION: ignore hasNext and always pick prev/next.
+        assertEquals("[3, 1, 4]", java.util.Arrays.toString(
+            PlaybackKeepAliveService.compactActions(0, 1, 2, 3, 4, false)));
+        assertEquals("[0, 1, 2]", java.util.Arrays.toString(
+            PlaybackKeepAliveService.compactActions(0, 1, 2, 3, 4, true)));
+        assertEquals("a missing slot is skipped, not drawn as -1", "[1, 4]", java.util.Arrays.toString(
+            PlaybackKeepAliveService.compactActions(-1, 1, -1, -1, 4, false)));
+    }
 }

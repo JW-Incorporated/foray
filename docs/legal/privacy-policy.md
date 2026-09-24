@@ -4,7 +4,7 @@
 Every `TODO(founder)` below is a fact only a founder can supply. Do not publish
 this to a store listing with any of them unresolved.
 
-Last updated: 2026-08-19 · Applies to: the **4a** web app
+Last updated: 2026-09-24 · Applies to: the **4a** web app
 (https://jw-incorporated.github.io/foray/) and the iOS/Android app built from the
 same code. The app was formerly Foray. That is why the word is still in this URL
 and in the names of the local database and the cache bucket §1 describes:
@@ -29,7 +29,10 @@ an ordered run of segments drawn from real podcast episodes.
 
 - **Most of what 4a knows about you never leaves your device.** Your topic
   interests, your play positions, your history, your playlists and your settings
-  are stored locally and are not transmitted.
+  are stored locally and are not transmitted to us. In the iOS and Android app
+  they are included in your phone's own backups (iCloud, or your Google
+  account), like any app's data. **Your account token is not**: it is kept on
+  the phone only (§1).
 - **Five kinds of event are sent to our database**: which episode you picked,
   which you finished, which you saved, your thumbs up/down feedback (including
   any note you type), and the fact that a session was shown to you. They are
@@ -65,7 +68,31 @@ migrate it. (`player/durable-store.js`, `player/idb-tier.js`.) **In the iOS and
 Android app there is a third copy**, in the app's own preferences store (iOS
 `UserDefaults`, Android `SharedPreferences`), because the system can clear a
 web view's storage and does not clear that one. It holds the same `cp_` rows
-and never leaves the device (`player/durable-store.js:preferencesTier()`).
+(`player/durable-store.js:preferencesTier()`).
+
+**Phone backups.** In the iOS and Android app, all three of those places are
+part of the app's data, which your phone includes in its own backups — iCloud
+Backup or a computer backup on an iPhone, Android's backup to your Google
+account — the same as any app's. So your interests, positions, history,
+playlists and settings travel with a backup to a new phone. That is
+deliberate: it is how a new phone keeps your place. Those backups are yours and
+held by Apple or Google under your account; 4a never receives them.
+
+**One key is the exception: your account token, `cp_sb_session`.** In the iOS
+and Android app it is kept **on the phone only and out of its backups**, and it
+is not written to any of the three places above
+(`player/durable-store.js:vaultTier()`, `mobile/plugins/foray-vault/`). On an
+iPhone it is a Keychain item marked for **this device only**
+(`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`), so it is not in iCloud
+Keychain and cannot be restored onto another phone; Apple can put it back only
+when an iPhone's own backup is restored onto that same iPhone. On Android it is
+a file in the app's no-backup directory, which Android's backup and
+phone-to-phone transfer always leave out. Restoring a backup onto a new phone
+therefore brings back your settings but not your account: the app starts a new
+anonymous account, as §3 describes. An app installed before this change moves
+the token there on its next launch, and removes the old copies only once the
+move has succeeded. In the web app, which has no phone backup, the token is
+stored like every other key.
 
 Two honest qualifications to "two places". The diagnostic record
 `cp_storage_health` is deliberately **never** written to IndexedDB — a failing
@@ -112,12 +139,13 @@ The app also asks the browser to mark its storage as persistent
 | `cp_autoadvance` | Continuous playback on/off — a local per-device preference for whether finishing an episode starts the next one: your Up Next list first, then the rest of the list you started from. On by default | **No** (but see `autoadvance_pref` in §2) |
 | `cp_engine_applied` | Bookkeeping for the iOS app's native audio player: the sequence numbers of the last automatic "next episode" and the last playback position that the player recorded while the app was in the background and that the app has since added to your on-device listening record, so reopening the app never adds one twice. No episode ids; one of the numbers is the time the app last planned what plays next. Written only when that player hands such records over | **No** |
 | `cp_intro_dismissed` | Whether you dismissed the intro card | **No** |
+| `cp_last_route` | In the iOS and Android app only: which screen of 4a you were last on (for example a show's page), so the app reopens there after your phone closes it in the background. Never written in a web browser | **No** |
 | `cp_foray_feedback` | Your per-segment thumbs: direction, reason codes, any note you typed, timestamp | **Yes, via `thumbs`** — see §2 |
 | `cp_profile_id` | A random local id (e.g. `p-a1b2c3d4...`) generated on this device | **No** — it is stamped on local events but is **not** included in anything sent |
-| `cp_sb_session` | The access and refresh token for your anonymous account, and its user id | It **is** your credential for our database — see §3 |
+| `cp_sb_session` | The access and refresh token for your anonymous account, and its user id. In the iOS and Android app it is kept on the phone only and is **not** in the phone's backups — see "One key is the exception" above | It **is** your credential for our database — see §3 |
 | `cp_storage_health` | A diagnostic record of storage failures, for troubleshooting | **No** |
 | `cp_storage_stale` | The names (never the values) of any of the keys above that this device's `localStorage` refused to update while a durable copy accepted the change, so the next launch reads the newer durable copy instead of the stale one. Usually absent; kept only in the durable copies — IndexedDB, and in the iOS and Android app its preferences store too — never in `localStorage` | **No** |
-| `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the menu's **Developer** → **Playback diagnostics** shows it and lets you copy or clear it |
+| `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It also keeps search rows (query length, local hit counts, timings), now-playing, remote-command and native-session rows. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the menu's **Developer** → **Playback diagnostics** shows it and lets you copy or clear it |
 
 **The event queue is not a `cp_` key.** Until 2026-09, the buffer of events
 waiting to be sent lived at `cp_events` (with a `cp_synced_ts` bookmark) inside
@@ -233,7 +261,11 @@ read and write your own rows (`backend/migrations/supabase/0001_auth_and_rls.sql
 That account contains **no name, no email address, no phone number and no
 password**. It is an opaque identifier. If you clear the app's storage, the token
 is gone and the app creates a new anonymous account the next time it needs one —
-the old rows remain but nothing on your device points to them any more.
+the old rows remain but nothing on your device points to them any more. The same
+is true of deleting the iOS or Android app, and of restoring a phone backup onto
+a new phone: the token is never in the backup (§1). (iOS keeps an app's Keychain
+items after the app is deleted, so the app empties its own the first time a
+fresh install opens.)
 
 **That is exactly why the delete control in §7 deletes the rows first and the
 token second.** It also cuts the link deliberately: after a deletion the app
@@ -347,14 +379,21 @@ Finally, the web app is served from **GitHub Pages**, so GitHub serves the page
 and the catalogue files and sees those requests. In the native app the shell and
 catalogue are bundled, so this does not apply there.
 
+Shows searches are answered by 4a's API, hosted on **Vercel**, which acts as our
+processor: it sees the query text and the request metadata of each search, and
+4a does not log the query.
+
 ## 5. What 4a does not do
 
 Verified by reading the client, not by assertion. The app's Content Security
 Policy (`index.html`) is the structural reason most of this list is not merely
-a promise: **`connect-src` names only two origins** — the app's own, and our
-Supabase project — so any data-sending request of the kind an API call, an
-analytics beacon or a crash report needs is blocked by the browser unless the
-policy is changed in code.
+a promise: **`connect-src` names three origins**: the app's own; our Supabase
+project; and our API on Vercel (`https://foray-web-seven.vercel.app`), which
+receives the text of a Shows search, with your IP address and browser
+user-agent, to look it up in the wider podcast directory. Any other
+data-sending request of the kind an API call to someone else, an analytics
+beacon or a crash report needs is blocked by the browser unless the policy is
+changed in code.
 
 To be precise rather than flattering: the same policy also allows `img-src https:`
 and `media-src https:`, which is *any* HTTPS host. That is exactly how §4's audio
@@ -407,7 +446,8 @@ optional) — one stray tap cannot trigger it.
 
 - **Everything on this device.** Every `cp_` key in §1, in **every** place they
   are kept: `localStorage`, the IndexedDB database `foray`, and in the iOS and
-  Android app the app's preferences store. The control
+  Android app the app's preferences store and the phone-only store that holds
+  your token. The control
   enumerates the stores and then re-reads them to check they are empty, so a
   key added to the app in future is covered without anyone updating a list. If
   either store refuses, or cannot be read to confirm, **the app tells you the

@@ -2180,3 +2180,80 @@ test("a newDocument that FAILS does not clear the start gate", async () => {
   await flush();
   assert.deepEqual(methods(capacitor), ["newDocument", "start"], "a failed reset caused a redundant start");
 });
+
+/* ------------------------------ the narration-first start (audit round 2, native-2) */
+
+test("a transport that starts SOUNDING with no element playing starts the service — once", async () => {
+  /* Four of the seven shipped Forays open with narration spoken by ForayTtsPlugin:
+     no <audio> element, so the play patch never ran, and the first tape segment's
+     background start was refused on Android 12+ — the whole Foray unprotected.
+     MUTATION: drop `ensureStarted()` from noteTransportPlaying -> nothing is
+     dispatched. MUTATION 2: drop the `wanted` guard -> a second transition
+     re-asks. */
+  const { shell, capacitor } = setup();
+  shell.install();
+  shell.setMediaLoaded(true);
+  shell.noteTransportPlaying(true);
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"], "the first playing payload starts the service");
+  assert.equal(shell.inspect().wanted, true);
+
+  shell.noteTransportPlaying(false);
+  shell.noteTransportPlaying(true);
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"], "a pause and resume of narration re-asks nothing: the service is up");
+});
+
+test("the narration start defers to the element path, to a refused start, and to an uninstalled shell", async () => {
+  /* MUTATION: drop the `activeCount() > 0` guard -> the element case dispatches
+     a second start. */
+  {
+    const { shell, proto, capacitor } = setup();
+    shell.install();
+    const el = makeElement(proto);
+    el.play();
+    await flush();
+    shell.noteTransportPlaying(true);
+    await flush();
+    assert.deepEqual(methods(capacitor), ["start"], "an element already asked; this must not ask again");
+  }
+  {
+    /* Refused (the phone was pocketed): the element path retries on its next
+       play(); this path does not, or a refused Foray would hammer the bridge on
+       every pause/resume. */
+    const { shell, capacitor } = setup({ bridge: { results: { start: { started: false, reason: "background" } } } });
+    shell.install();
+    shell.noteTransportPlaying(true);
+    await flush();
+    shell.noteTransportPlaying(false);
+    shell.noteTransportPlaying(true);
+    await flush();
+    assert.deepEqual(methods(capacitor), ["start"], "one refused start, not two");
+  }
+  {
+    const { shell, capacitor } = setup();
+    shell.noteTransportPlaying(true);
+    await flush();
+    assert.deepEqual(methods(capacitor), [], "not installed: never calls native");
+  }
+});
+
+test("after a close, the next narration start asks again", async () => {
+  /* `requestStop` clears `wanted` at dispatch, so the guard reopens. A Foray
+     closed and then another narration-first one started must get a service.
+     MUTATION: guard on `startAccepted` instead of `wanted` -> the second start
+     is skipped. */
+  const { shell, capacitor } = setup();
+  shell.install();
+  shell.setMediaLoaded(true);
+  shell.noteTransportPlaying(true);
+  await flush();
+  shell.noteTransportPlaying(false);
+  shell.setMediaLoaded(false);           // stopAndClose: nothing active, stops at once
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop"]);
+  shell.setMediaLoaded(true);
+  shell.noteTransportPlaying(true);
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop", "start"]);
+});

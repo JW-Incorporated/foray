@@ -63,6 +63,17 @@ const SKIP_WEAK_TOPIC = 0.01; // the topic-level component of "skip 2-20min" (fo
 const MORE_LIKE_THIS = 0.1;
 const LESS_X = 0.15;
 const THUMBS_DOWN = 0.1;
+/**
+ * The down-vote reasons that are ABOUT THE SUBJECT (audit round 2, p-foray-6,
+ * and its review; docs/DECISIONS.md 2026-09-23: "A down-vote moves the
+ * subject's weight only when its reason is about the subject"). app.js's
+ * `TOPIC_REASONS` is the same set, character for character —
+ * test/listener-copy.test.js reads both files and pins them together. A
+ * down-vote for "Bad audio quality" or "Didn't like the voice" is audited with
+ * no weight change; the client's fix alone left the learning job lowering the
+ * subject for a complaint about one host's microphone.
+ */
+export const TOPIC_DOWNVOTE_REASONS: readonly string[] = ["Not my subject", "Too surface-level", "Too in-the-weeds"];
 const THUMBS_UP = 0.1; // reuses the 'more_like_this' reason code (approved 2026-07-24 — no enum migration for this)
 const SAVED_FOR_LATER = 0.04;
 const CARD_IGNORED = 0.01;
@@ -147,6 +158,10 @@ export function deriveInterestDeltas(event: PersistedEvent, ctx: DeriveContext =
     case "thumbs": {
       const p = event.payload;
       if (p.direction === "down") {
+        const reasons = Array.isArray(p.reasons) ? p.reasons : [];
+        if (!reasons.some((r) => TOPIC_DOWNVOTE_REASONS.includes(r))) {
+          return [{ nodeId: p.node_id, reason: "thumbs_down_named_node" as const, delta: 0, durable: false, archetypeSlot: slot }];
+        }
         return [{ nodeId: p.node_id, reason: "thumbs_down_named_node" as const, delta: -THUMBS_DOWN, durable: true, archetypeSlot: slot }];
       }
       return [{ nodeId: p.node_id, reason: "more_like_this" as const, delta: THUMBS_UP, durable: true, archetypeSlot: slot }];

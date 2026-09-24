@@ -39,6 +39,14 @@ struct NowPlayingPayload: Equatable {
     let durationMs: Int64
     let positionMs: Int64
     let playbackRate: Double
+    /// PLAYING, but the audio is waiting for the network (audit round 2,
+    /// p-car-8). `media-session.js` reports a stall as rate 0 with the state
+    /// still playing -- Apple's own rule: the clock stops, the transport still
+    /// says play is on. `playbackRate` stays the listener's speed (a zero is
+    /// never believed, see `rateValue`); this flag is what writes the 0 into
+    /// `MPNowPlayingInfoPropertyPlaybackRate`. Only ever true in `.playing`,
+    /// same rule as Android's `NowPlaying.stalled`.
+    let stalled: Bool
 
     let canPlay: Bool
     let canPause: Bool
@@ -59,7 +67,7 @@ struct NowPlayingPayload: Equatable {
 
     static let empty = NowPlayingPayload(
         state: .none, title: "", artist: "", album: "", artworkUri: "",
-        durationMs: 0, positionMs: 0, playbackRate: 1,
+        durationMs: 0, positionMs: 0, playbackRate: 1, stalled: false,
         canPlay: false, canPause: false, canStop: false,
         hasNext: false, hasPrevious: false,
         canSeekBack: false, canSeekForward: false, canSeekTo: false,
@@ -93,6 +101,7 @@ struct NowPlayingPayload: Equatable {
             durationMs: clampMs(longValue(data, "durationMs")),
             positionMs: clampMs(longValue(data, "positionMs")),
             playbackRate: rateValue(data),
+            stalled: state == .playing && boolValue(data, "stalled"),
             canPlay: boolValue(data, "canPlay"),
             canPause: boolValue(data, "canPause"),
             canStop: boolValue(data, "canStop"),

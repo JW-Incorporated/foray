@@ -469,3 +469,101 @@ test("REVIEW: repeated pill taps while a build is pending build ONE playlist", a
   await new Promise((r) => setTimeout(r, 5));
   assert.strictEqual(asked.length, 2, "and the next tap works once the first build has finished");
 });
+
+/* ==================================================================== */
+/* ROUND 2 (2026-09-23), races-3: a build that outlives the page          */
+/* ==================================================================== */
+
+/* Holds the search documents back so `whenSearchDataReady` waits, the way a
+   cold start on a poor network does (up to SEARCH_DATA_DEADLINE_MS). Returns
+   the function that lets them arrive. */
+function holdSearchData(m) {
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  m.ctx.loadSearchData = () => gate;
+  m.evalIn("searchDataWanted = true; state.semantic = null;");
+  return () => { release(); return new Promise((r) => setTimeout(r, 5)); };
+}
+
+test("races-3: a build that finishes after the listener left Create does not yank them to the playlist — it is saved, and that is all", async () => {
+  /* whenSearchDataReady turned a one-tick defer into a possibly 30 s wait, and
+     the callback navigated from wherever the listener now was. MUTATION: drop
+     the `onCreate` test around `location.hash = ...` in bindCreateFormSubmit
+     — the hash becomes the playlist's from Home, red. */
+  const m = mount();
+  seedPool(m);
+  const arrive = holdSearchData(m);
+  m.ctx.location.hash = "#/create";
+  m.evalIn("route()");
+  const form = m.viewEl.querySelector("#cr-form");
+  form.querySelector("input").value = "physics";
+  form._fire("submit", { preventDefault() {}, currentTarget: form });
+
+  m.ctx.location.hash = "#/";                      // the listener gave up waiting and went Home
+  m.evalIn("route()");
+  await arrive();
+
+  const saved = JSON.parse(m.ctx.localStorage.getItem("cp_playlists") || "[]");
+  assert.strictEqual(saved.length, 1, "the playlist is still built and saved");
+  assert.strictEqual(m.ctx.location.hash, "#/", "but nobody is moved off the page they chose");
+  assert.strictEqual(m.evalIn("createBuildPending"), false, "and the flag clears, so Create is usable again");
+});
+
+test("races-3: returning to Create while a build is waiting shows 'Building…' with the pills disabled — and the build then lands on the page that is there", async () => {
+  /* renderCreate painted fresh, enabled pills whose taps returned silently
+     while `createBuildPending` was set, and the build's end restored the
+     DETACHED button it started from. MUTATION: drop the
+     `paintCreatePending(createBuildPending)` call in renderCreate — the
+     re-rendered page says Build with live pills, red. Or restore the captured
+     `btn` in `finally` instead of calling paintCreatePending(false) — the
+     new page's button stays "Building…", red. */
+  const m = mount();
+  seedPool(m);
+  const arrive = holdSearchData(m);
+  m.ctx.location.hash = "#/create";
+  m.evalIn("route()");
+  let form = m.viewEl.querySelector("#cr-form");
+  form.querySelector("input").value = "physics";
+  form._fire("submit", { preventDefault() {}, currentTarget: form });
+
+  m.ctx.location.hash = "#/";
+  m.evalIn("route()");
+  m.ctx.location.hash = "#/create";                // …and came back
+  m.evalIn("route()");
+  form = m.viewEl.querySelector("#cr-form");
+  const btn = form.querySelector("button");
+  assert.strictEqual(btn.disabled, true, "the re-rendered Build button is disabled while the build waits");
+  assert.strictEqual(btn.textContent, "Building…", "and says why");
+  const pills = m.viewEl.children.filter((c) => c.className === "fy-chip");
+  assert.ok(pills.length >= 2 && pills.every((p) => p.disabled), "the pills say so too");
+
+  await arrive();
+  const saved = JSON.parse(m.ctx.localStorage.getItem("cp_playlists") || "[]");
+  assert.strictEqual(m.ctx.location.hash, "#/playlist/" + saved[0].id, "Create is the page on screen, so the build lands");
+  assert.strictEqual(btn.disabled, false, "the LIVE page's button is restored, not the one the build started from");
+  assert.strictEqual(btn.textContent, "Build");
+  assert.ok(pills.every((p) => !p.disabled));
+});
+
+test("races-3: an empty result after a wait writes the note on the LIVE Create page, not the one captured before the wait", async () => {
+  /* The #/playlists twin threw on a null note; this one wrote to a detached
+     one where nobody could read it. MUTATION: capture `$("#cr-note")` before
+     whenSearchDataReady and write to that — the live note stays hidden. */
+  const m = mount();
+  seedPool(m);
+  m.ctx.buildPlaylist = () => ({ status: "empty", suggestions: [] });
+  const arrive = holdSearchData(m);
+  m.ctx.location.hash = "#/create";
+  m.evalIn("route()");
+  let form = m.viewEl.querySelector("#cr-form");
+  form.querySelector("input").value = "zzz-nothing";
+  form._fire("submit", { preventDefault() {}, currentTarget: form });
+  m.ctx.location.hash = "#/";
+  m.evalIn("route()");
+  m.ctx.location.hash = "#/create";
+  m.evalIn("route()");
+  await arrive();
+  const note = m.viewEl.querySelector("#cr-note");
+  assert.strictEqual(note.hidden, false, "the live page's note is shown");
+  assert.match(note.textContent, /Not much on \u201czzz-nothing\u201d yet/, "with the typographic quotes (copy-8)");
+});
