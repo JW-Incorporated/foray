@@ -754,7 +754,7 @@ test("a 401 is a refusal, not a success", async () => {
 test("a 404 means the table is not in this project — no rows of ours, not a failure", async () => {
   const { arm, ctx, cpKeys } = await mount({
     seed: { cp_sb_session: sessionRow(), cp_interests: "{}" },
-    reply: () => ({ status: 404 }),
+    reply: (url) => (url.includes("/rest/v1/") ? { status: 404 } : { status: 204 }),
   });
   await arm();
   const result = await ctx.deleteMyData();
@@ -1193,6 +1193,7 @@ test("EVERY status message the control can show is inside the copy budget", asyn
     { state: "unconfirmed", remote: null, local: null },
     { state: "busy", remote: null, local: null },
     { state: "remote-failed", remote: { ok: false, attempted: true, failed: [{}], deleted: 0 }, local: null },
+    { state: "remote-failed", remote: { ok: false, attempted: true, failed: [], revoked: { ok: false, status: 0 }, deleted: 8 }, local: null },
     { state: "done", remote: { ok: true, attempted: true, deleted: 8 }, local: { ok: true } },
     { state: "done", remote: { ok: true, attempted: false, deleted: 0 }, local: { ok: true } },
     { state: "done", remote: { ok: true, attempted: false, deviceOnly: true, deleted: 0 }, local: { ok: true } },
@@ -1216,6 +1217,7 @@ test("a failure never borrows the wording of a success", async () => {
   const { ctx } = await mount();
   const failures = [
     { state: "remote-failed", remote: { ok: false, attempted: true, failed: [{}], deleted: 0 }, local: null },
+    { state: "remote-failed", remote: { ok: false, attempted: true, failed: [], revoked: { ok: false, status: 0 }, deleted: 8 }, local: null },
     { state: "local-incomplete", remote: { ok: true, attempted: true, deleted: 8 }, local: { ok: false, reason: "no-storage" } },
   ];
   for (const result of failures) {
@@ -1850,4 +1852,66 @@ test("VAULT: a vault that could not be read is never answered with a refresh or 
   assert.strictEqual(s, null);
   assert.ok(!log.some((e) => e.kind === "fetch" && /\/auth\/v1\//.test(e.url)), JSON.stringify(log.filter((e) => e.kind === "fetch")));
   assert.match(vault.data.get("cp_sb_session"), /"at-1"/, "the unread account was left alone");
+});
+
+/* ---------- follow-up review of #773 (2026-09-24): revoke the sign-in ----------
+
+   Clearing the device destroys this copy of the token and no other. A phone
+   backup made by a build before the vault holds `cp_sb_session` in three
+   backed-up places, and restoring it put the deleted account's live refresh
+   token back in the app. So a deletion now revokes every session of the
+   account on the server, last, with the account's own token. */
+
+test("Delete my data revokes the account's sign-in on the server — every session, after the rows, with its own token", async () => {
+  /* MUTATION (f33caadf): no revocation -> an older backup's refresh token still
+     re-attaches to the "deleted" account, contradicting policy §1/§3. */
+  const { arm, ctx, log, cpKeys } = await mount({ seed: { cp_sb_session: sessionRow(), cp_interests: "{}" } });
+  await arm();
+  const result = await ctx.deleteMyData();
+  assert.strictEqual(result.state, "done", JSON.stringify(result.remote));
+  const fetches = log.filter((e) => e.kind === "fetch");
+  const logout = fetches.findIndex((e) => e.method === "POST" && e.url === `${SB_URL}/auth/v1/logout?scope=global`);
+  assert.ok(logout >= 0, "the server-side session was never revoked");
+  assert.strictEqual(fetches[logout].headers.Authorization, "Bearer at-1", "revoked with the account's own token");
+  assert.ok(fetches[logout].headers.apikey);
+  const lastDelete = fetches.map((e) => e.method).lastIndexOf("DELETE");
+  assert.ok(lastDelete >= 0 && logout > lastDelete, "revoked before the rows it guards were deleted");
+  assert.strictEqual(result.remote.revoked.ok, true);
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] });
+});
+
+test("a revocation that fails is a failure: the device keeps its token for the retry, and the message says what is true", async () => {
+  /* MUTATION: ignore the revocation's answer -> the device is cleared while
+     the old token is still live on the server, and with it the only way to
+     revoke it. */
+  const { arm, ctx, cpKeys, ui } = await mount({
+    seed: { cp_sb_session: sessionRow(), cp_interests: "{}" },
+    reply: (url) => (url.includes("/auth/v1/logout") ? new Error("Failed to fetch") : { status: 204 }),
+  });
+  await arm();
+  const result = await ctx.deleteMyData();
+  assert.strictEqual(result.state, "remote-failed");
+  assert.ok(cpKeys().local.includes("cp_sb_session"), "the token must survive so a retry can revoke it");
+  assert.match(ui.status.textContent, /deleted, but its sign-in is NOT switched off/);
+});
+
+test("a table that refuses is not followed by a revocation, so the retry still has a live token", async () => {
+  const { arm, ctx, log } = await mount({
+    seed: { cp_sb_session: sessionRow() },
+    reply: (url) => (url.includes("/saved_items") ? { status: 500 } : { status: 204 }),
+  });
+  await arm();
+  assert.strictEqual((await ctx.deleteMyData()).state, "remote-failed");
+  assert.ok(!log.some((e) => e.kind === "fetch" && /\/auth\/v1\/logout/.test(e.url)), "revoked the token the retry needs");
+});
+
+test("VAULT: the privacy policy does not promise more about backups than the code keeps", () => {
+  /* §1 and §3 used to say a restored backup never brings the account back,
+     unqualified. That is true of backups made once the token is in the vault;
+     a backup from an earlier version holds the token, and what makes it dead
+     after a deletion is the revocation above. */
+  const policy = fs.readFileSync(path.join(ROOT, "docs", "legal", "privacy-policy.md"), "utf8").replace(/\r\n/g, "\n");
+  assert.doesNotMatch(policy, /the token is never in the backup/, "unqualified: older backups do hold it");
+  assert.match(policy, /backup made by an earlier version/i);
+  assert.match(policy, /`app\.js:sbRevokeSessions\(\)`/, "the revocation claim must cite the code that makes it");
 });

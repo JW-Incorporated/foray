@@ -1576,7 +1576,7 @@ test("VAULT: a vault the circuit breaker dropped cannot keep the token, and setI
   assert.equal(store.health().tiers.vault.disabled, true);
 });
 
-test("VAULT: an earlier build's stale-mirror ledger entry for the token is dropped, not obeyed", async () => {
+test("VAULT: a ledger entry for the token with no localStorage copy left to overrule is simply dropped", async () => {
   const bridge = shellBridge();
   bridge.vault.set("cp_sb_session", TOKEN_2);
   const idb = fakeDurable({ rows: { [LOCAL_STALE_KEY]: '["cp_sb_session"]', cp_sb_session: TOKEN } });
@@ -1619,4 +1619,168 @@ test("VAULT: a new token the vault refuses does not take the old copies with it"
   assert.equal(bridge.vault.has("cp_sb_session"), false);
   assert.equal(local.map.get("cp_sb_session"), TOKEN);
   assert.equal(store.getItem("cp_sb_session"), TOKEN_2, "the session still has the new one in memory");
+});
+
+/* ---------- follow-up review of #773 (2026-09-24) ----------
+
+   Four findings against the merged vault change, each pinned by a test that
+   fails on f33caadf. */
+
+/** The build BEFORE the vault: the same three backed-up tiers, no vault, so
+    `cp_sb_session` is an ordinary key and the stale-mirror ledger covers it. */
+function preVaultStore(bridge, local, idb) {
+  return createDurableStore({ localStorage: local, idbTier: idb, nativeTier: preferencesTier(bridge) });
+}
+
+test("VAULT MIGRATION: an old build's ledger is OBEYED — the newer durable token is moved into the vault, not localStorage's spent one", async () => {
+  /* The pre-vault build refreshed the token (Supabase spent rt), localStorage
+     refused the write, Preferences and IndexedDB took it, and the ledger says
+     so. MUTATION (f33caadf): drop the ledger entry for a confined key instead
+     of obeying it -> localStorage's spent TOKEN is written into the vault and
+     the good TOKEN_2 is evicted from every tier: the next refresh fails and the
+     app signs up a new account. */
+  const bridge = shellBridge();
+  bridge.prefs.set("cp_sb_session", TOKEN);
+  const local = new FakeLocal({ cp_sb_session: TOKEN });
+  const idb = fakeDurable({ rows: { cp_sb_session: TOKEN } });
+  const old = preVaultStore(bridge, local, idb);
+  await old.hydrate();
+  local.refuse = (k) => k === "cp_sb_session";
+  old.setItem("cp_sb_session", TOKEN_2);
+  await old.flush();
+  assert.equal(local.map.get("cp_sb_session"), TOKEN, "premise: localStorage kept the spent token");
+  assert.equal(idb.store.get("cp_sb_session"), TOKEN_2, "premise: IndexedDB took the new one");
+  assert.match(idb.store.get(LOCAL_STALE_KEY) || "", /cp_sb_session/, "premise: the ledger names it");
+  local.refuse = null;
+
+  const { store } = shellStore(bridge, { local, idb });
+  await store.hydrate();
+  await store.flush();
+  assert.equal(store.getItem("cp_sb_session"), TOKEN_2, "the session reads the spent token");
+  assert.equal(bridge.vault.get("cp_sb_session"), TOKEN_2, "the vault took the spent token");
+  assert.equal(local.map.has("cp_sb_session"), false);
+  assert.equal(idb.store.has("cp_sb_session"), false);
+  assert.equal(bridge.prefs.has("cp_sb_session"), false);
+  assert.equal(idb.store.has(LOCAL_STALE_KEY), false, "the entry leaves once the localStorage copy has gone");
+  assert.equal(bridge.prefs.has(LOCAL_STALE_KEY), false);
+});
+
+test("VAULT MIGRATION: an old build's ledger ghost — a token removed durably while localStorage refused — never reaches the vault", async () => {
+  /* The durable half of Delete my data removed the token; localStorage refused
+     the removal. MUTATION (f33caadf): drop the ledger entry -> the deleted
+     account's token is read from localStorage and migrated into the vault,
+     the resurrection persist-6 exists to prevent. */
+  const bridge = shellBridge();
+  bridge.prefs.set("cp_sb_session", TOKEN);
+  const local = new FakeLocal({ cp_sb_session: TOKEN });
+  const idb = fakeDurable({ rows: { cp_sb_session: TOKEN } });
+  const old = preVaultStore(bridge, local, idb);
+  await old.hydrate();
+  local.refuseRemove = (k) => k === "cp_sb_session";
+  old.removeItem("cp_sb_session");
+  await old.flush();
+  assert.equal(local.map.get("cp_sb_session"), TOKEN, "premise: the ghost is in localStorage");
+  assert.equal(idb.store.has("cp_sb_session"), false, "premise: durably removed");
+  assert.match(idb.store.get(LOCAL_STALE_KEY) || "", /cp_sb_session/, "premise: the ledger names it");
+  local.refuseRemove = null;
+
+  const { store } = shellStore(bridge, { local, idb });
+  await store.hydrate();
+  await store.flush();
+  assert.equal(store.getItem("cp_sb_session"), null, "the deleted account came back");
+  assert.equal(bridge.vault.has("cp_sb_session"), false, "the deleted account's token was moved into the vault");
+  assert.equal(local.map.has("cp_sb_session"), false, "the ghost is removed, not left for the next launch");
+  assert.equal(idb.store.has(LOCAL_STALE_KEY), false);
+  assert.equal(bridge.prefs.has(LOCAL_STALE_KEY), false);
+});
+
+test("VAULT MIGRATION: a vault that refuses the ledger-directed move keeps the ledger, so the next launch still gets it right", async () => {
+  /* MUTATION: drop the entry at hydration rather than once the localStorage
+     copy is gone -> the refused move leaves no ledger, and the next launch
+     moves the spent token. */
+  const bridge = shellBridge({ failVaultWrite: true });
+  const local = new FakeLocal({ cp_sb_session: TOKEN });
+  const idb = fakeDurable({ rows: { cp_sb_session: TOKEN_2, [LOCAL_STALE_KEY]: '["cp_sb_session"]' } });
+  bridge.prefs.set("cp_sb_session", TOKEN_2);
+  bridge.prefs.set(LOCAL_STALE_KEY, '["cp_sb_session"]');
+  const first = shellStore(bridge, { local, idb });
+  await first.store.hydrate();
+  await first.store.flush();
+  assert.equal(first.store.getItem("cp_sb_session"), TOKEN_2);
+  assert.equal(bridge.vault.has("cp_sb_session"), false, "premise: the vault refused");
+  assert.match(idb.store.get(LOCAL_STALE_KEY) || "", /cp_sb_session/, "the ledger entry was dropped too early");
+
+  bridge.failVaultWrite = false;
+  const second = shellStore(bridge, { local, idb });
+  await second.store.hydrate();
+  await second.store.flush();
+  assert.equal(bridge.vault.get("cp_sb_session"), TOKEN_2);
+  assert.equal(local.map.has("cp_sb_session"), false);
+  assert.equal(idb.store.has(LOCAL_STALE_KEY), false);
+});
+
+test("VAULT: a refreshed token the vault refuses once is retried, and canKeep says no until it lands", async () => {
+  /* The token's only durable home is the vault now. MUTATION (f33caadf): no
+     retry -> after one refused write the refreshed session lives in memory
+     only, the vault still holds the spent token, canKeep says yes, and the
+     next launch signs up a new account. */
+  const bridge = shellBridge();
+  const { store } = shellStore(bridge);
+  await store.hydrate();
+  store.setItem("cp_sb_session", TOKEN);
+  await store.flush();
+  bridge.failVaultWrite = true;
+  store.setItem("cp_sb_session", TOKEN_2);           // the refresh
+  await store.flush();
+  assert.equal(bridge.vault.get("cp_sb_session"), TOKEN, "premise: the vault refused the refresh");
+  assert.equal(store.canKeep("cp_sb_session"), false, "a second refresh now would spend the token the vault holds");
+
+  bridge.failVaultWrite = false;
+  await store.flush();                               // pagehide / visibilitychange
+  assert.equal(bridge.vault.get("cp_sb_session"), TOKEN_2, "the refreshed token was never retried");
+  assert.equal(store.canKeep("cp_sb_session"), true);
+});
+
+test("VAULT: canKeep itself retries a refused write, so the next sync's check is the retry", async () => {
+  const bridge = shellBridge();
+  const { store } = shellStore(bridge);
+  await store.hydrate();
+  bridge.failVaultWrite = true;
+  store.setItem("cp_sb_session", TOKEN_2);
+  await store.flush();
+  bridge.failVaultWrite = false;
+  assert.equal(store.canKeep("cp_sb_session"), false, "still unsaved at the moment of asking");
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(bridge.vault.get("cp_sb_session"), TOKEN_2, "asking did not retry");
+  assert.equal(store.canKeep("cp_sb_session"), true);
+});
+
+test("VAULT: a vault error that quotes the vault's contents never reaches the health record, the backed-up mirror or the fault sink", async () => {
+  /* Android's org.json ends a parse error with the whole input, i.e. the token
+     file. MUTATION: keep the vault's error text as-is in `_fault` -> the
+     refresh token is written to cp_storage_health in localStorage (backed up)
+     and handed to the app's logger. */
+  const SECRET = "rt-SECRET-4e1f";
+  const bridge = shellBridge();
+  const real = bridge.nativePromise;
+  bridge.nativePromise = async (name, method, opts) => {
+    if (name === VAULT_PLUGIN && method === "keys") {
+      throw new Error('ForayVault.keys failed: Unterminated string at character 90 of {"cp_sb_session":"{\\"refresh_token\\":\\"' + SECRET);
+    }
+    return real(name, method, opts);
+  };
+  const seen = [];
+  const local = new FakeLocal();
+  const store = createDurableStore({
+    localStorage: local, idbTier: fakeDurable(),
+    nativeTier: preferencesTier(bridge), vault: vaultTier(bridge),
+    onFault: (fault) => seen.push(JSON.stringify(fault)),
+  });
+  await store.hydrate();
+  assert.equal(store.health().ok, false, "premise: the vault read faulted");
+  assert.match(store.health().tiers.vault.lastError, /ForayVault\.keys failed/, "the call is still named");
+  assert.doesNotMatch(JSON.stringify(store.health()), new RegExp(SECRET));
+  assert.doesNotMatch(local.map.get(HEALTH_KEY) || "", new RegExp(SECRET), "the token was mirrored into a backed-up tier");
+  assert.ok(seen.length > 0);
+  for (const f of seen) assert.doesNotMatch(f, new RegExp(SECRET), "the token reached the fault sink");
 });
