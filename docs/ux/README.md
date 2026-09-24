@@ -74,7 +74,7 @@ can tell "not built yet" from "built, differently". Rows tagged U-xx are the
 | `ShowScreen` | NOT built. Its honest subset is: a "Where this came from" credit block per Foray — shows, episodes, clip counts, and a link out | `player/foray-sources.js` |
 | `LibraryScreen` (U-10) | Built as one AGGREGATE view (no new per-item UI): Saved and History render as full rows (`epRow`/`archivedRow`) since Library is their only page; Playlists and Up Next render as short linked summaries (title/count, capped at 5) into their own existing pages (`#/playlists`, `#/queue`), since those already own their controls. The tab bar's Library tab points here | `app.js` (`#/library`, `renderLibrary()`) (Joey's #374, wired by PR #505) |
 | Narrator bridges, generated cover art | NOT built, deliberately. See the scope notes above and in `STATE.md`. Custom Foray generation from Create is D8's "not yet". | — |
-| `PlayerBridge` (m3 prototype) — the handoff screen between two sources | NOT built. What exists instead is the seam itself: 2.0 s of silence at every unbridged transition, which is the beat the bridge screen was drawn around | `player/seam-gap.js` |
+| `PlayerBridge` (m3 prototype) — the handoff screen between two sources | NOT built. What exists instead is the seam itself: the seam beat (`SEAM_GAP_SEC`, 0.5 s) of silence at every unbridged transition, which is the beat the bridge screen was drawn around | `player/seam-gap.js` |
 
 Two deviations worth knowing:
 

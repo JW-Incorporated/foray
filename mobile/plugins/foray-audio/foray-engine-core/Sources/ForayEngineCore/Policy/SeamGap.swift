@@ -49,16 +49,17 @@ public struct SeamItem: Equatable {
 /// port of `player/seam-gap.js`, which is the reference; the `seam-gap` parity
 /// family (player/parity/fixtures/seam-gap) is the contract between them, and
 /// the header of seam-gap.js is where the rule's reasons live (docs/curation/
-/// segment-length-rules.md §0 and §6b: >= 2.0 s at an unbridged seam).
+/// segment-length-rules.md §0 and §6b: 0.5 s at an unbridged seam, the
+/// founder's ruling of 2026-09-24 in docs/DECISIONS.md).
 ///
 /// NE-05 ports it as the parity runner's proof family, so the whole Swift
 /// harness is exercised by a real rule from day one. The engine's use of it
 /// (the beat between segments on the native decks) is NE-28s/NE-30s.
 public enum SeamGap {
-    /// `SEAM_GAP_SEC`. Pinned by the AUTHORED case `seam-gap/rule-is-2.0s`:
+    /// `SEAM_GAP_SEC`. Pinned by the AUTHORED case `seam-gap/rule-is-0.5s`:
     /// a port that hard-codes another number fails a parity case, not only
     /// NE-04's generated-constants check.
-    public static let defaultGapSec: Double = 2.0
+    public static let defaultGapSec: Double = 0.5
 
     /// `AUTO_ADVANCE` and `USER_ACTION`: why the player moved on. Only an
     /// auto-advance gets a beat.

@@ -129,7 +129,7 @@ const READY_ENOUGH = 3; // HAVE_FUTURE_DATA
 
    Two consequences, and the second one is worse than the first:
 
-     1. The seam a listener hears is `max(SEAM_GAP_SEC, load)`, not 2.0 s.
+     1. The seam a listener hears is `max(SEAM_GAP_SEC, load)`, not the beat.
         16 of Foray #1's 31 seams cross to a different episode (the other 15
         are same-source and take the seek shortcut below), so that is ~2.5
         minutes of dead air in a one-hour Foray, on a locked screen.
@@ -251,10 +251,11 @@ const READY_ENOUGH = 3; // HAVE_FUTURE_DATA
    afford. Not another inference from the timer numbers.
 
    WHAT THIS DOES NOT DO. It does not make the beat shorter, and it must not:
-   2.0 s of silence between two different voices is authored (`seam-gap.js`,
-   `segment-length-rules.md` §6b), and the beat still runs — the manager waits
+   the silence between two different voices is authored (`seam-gap.js`,
+   `segment-length-rules.md` §6b — 0.5 s since the founder's 2026-09-24 ruling,
+   2.0 s when this was measured), and the beat still runs — the manager waits
    out its remainder after the handover. The point is that the listener finally
-   hears the 2.0 s the product documents instead of 9.2 s of nothing.
+   hears the beat the product documents instead of 9.2 s of nothing.
 
    AND IT NEVER DELAYS OR MOVES THE BOUNDARY. If the warm element is not ready
    when the out-point fires, `load()` takes exactly the path it takes today.

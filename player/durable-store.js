@@ -98,6 +98,21 @@
       row for it instead. The mark clears the moment the sync tier accepts the
       key again. 2026-09-22 audit; the "localStorage refused" tests pin it.
 
+   5. ON THE iOS SHELL, THE ENGINE'S ROWS HAVE ONE WRITER (NE-23, native-engine
+      plan §4.6). The native engine writes `cp_pos:*`, `cp_foray:*` and
+      `cp_last_episode` straight into UserDefaults — the same rows the
+      Preferences tier holds — and a page is the one writer that can be STALE:
+      loaded an hour ago, reloaded from an evicted mirror, or a service-worker
+      generation behind the binary. Most of these rows carry no timestamp
+      `isNewer` could compare on (and those that do are compared against a
+      mirror nobody refreshed), so hydration's "local wins" used to push the
+      page's stale localStorage copy down over the engine's newer row, and
+      re-push a row the engine had deleted. So those prefixes are DEFERRED from
+      the moment the store is constructed — see "single writer" below: read,
+      never written down, until the page knows which lane plays. Only the iOS
+      shell passes them (`deferredPrefixesFor`); the web and Android build the
+      store exactly as before.
+
    ── What this does NOT fix, stated rather than assumed ─────────────────────
    IndexedDB is not immune to eviction. Safari's ~7-day sweep covers ALL
    script-writable storage for the origin, IndexedDB included, and Chromium
@@ -369,6 +384,100 @@ export function vaultTier(bridge, { name = "vault" } = {}) {
   return tier;
 }
 
+/* ---------- single writer: the native engine's rows (NE-23, plan §4.6) ----------
+
+   Three states, one way only:
+
+     deferred  from construction, on the iOS shell. The rows are READ — the
+               first paint and hydration still know every position — but
+               nothing is written anywhere for them: not down into Preferences
+               or IndexedDB (`_migrateUp`), not up into localStorage (`_adopt`),
+               and a page write lands in memory only. Nothing is decided yet,
+               so nothing is committed.
+     external  hello said the native engine plays (`externallyOwned`). The
+               engine is the only writer for the rest of the process: a page
+               write is REFUSED with a `fault externally-owned` row and never
+               throws (a throw would take `writeProgress`'s caller down over a
+               row the page should not have been writing). `adoptOwnedSet`
+               replaces the page's copy with the engine's rows on every attach.
+     released  hello said legacy/js, or the engine relinquished
+               (`releaseOwnership`). The page is the writer again, and the
+               migration deferral held back runs — once — so the tiers end up
+               exactly where they would have been with no deferral at all.
+
+   WHY REPLACE-SET AND NOT TOMBSTONES (plan §13, item 15). A row the engine
+   deleted is simply absent from what `engineRead("rows")` returns, and the
+   page's copy of it is dropped from memory — and, on release, from every tier
+   that still holds it. Tombstones would change row formats the web, Android
+   and the JS lane all read; replace-set gives the same "never resurrected"
+   guarantee without touching a single row.
+
+   `cp_engine_applied` is NOT one of these: it is the page's own watermark
+   (NE-13), written by the page in every mode. */
+
+/** The states above, as `ownership().state` reports them. */
+export const OWNERSHIP_DEFERRED = "deferred";
+export const OWNERSHIP_EXTERNAL = "external";
+export const OWNERSHIP_RELEASED = "released";
+
+/** The `tier` of a refused write's fault, and its `error`: the page tried to
+    write a row the engine owns. The token is `FAULT_KINDS`'s own spelling
+    (engine-vocabulary.js), so the Copy report counts it as the engine's
+    `fault externally-owned` (NE-26r); durable-store.test.js pins the two
+    spellings together rather than importing the vocabulary into the store. */
+export const OWNER_TIER = "engine";
+export const EXTERNALLY_OWNED = "externally-owned";
+
+/**
+ * The prefixes a store should defer from construction: `prefixes` inside the
+ * iOS Capacitor shell, where the native engine exists, and none anywhere else.
+ *
+ * The web has no engine, and Android never gains one (plan §11): deferring
+ * there would hold back a migration nothing will ever release. `getPlatform()`
+ * is Capacitor's own answer ("ios" | "android" | "web"); a bridge without it is
+ * an older shell that predates the engine, and defers nothing.
+ *
+ * @param {object|null} bridge  `window.Capacitor`, or a fake
+ * @param {readonly string[]} prefixes  engine-contract.js's OWNED_PREFIXES
+ */
+export function deferredPrefixesFor(bridge, prefixes) {
+  if (!bridge || typeof bridge.getPlatform !== "function") return [];
+  if (typeof bridge.isNativePlatform === "function" && !bridge.isNativePlatform()) return [];
+  let platform = null;
+  try { platform = bridge.getPlatform(); } catch (_) { return []; }
+  return platform === "ios" && Array.isArray(prefixes) ? [...prefixes] : [];
+}
+
+/**
+ * The engine's half of "Delete my data" in native mode (NE-23): stop without
+ * persisting, THEN purge, and only then the page's own purge
+ * (`DurableStore.purge`, which calls this first).
+ *
+ * The stop comes first for the reason `stopForDataDeletion` exists on the web:
+ * a playing engine writes a position every few seconds, and one landing after
+ * the purge is a row the listener just asked to be gone. The engine's purge is
+ * what reaches what the page cannot see at all — its private keys
+ * (`ForayEngine.*` in UserDefaults, outside `CapacitorStorage.`) and its
+ * diagnostics file — as well as the shared rows it wrote.
+ *
+ * A stop the engine answers "not-loaded" (nothing playing) is not a failure;
+ * only the purge's answer decides `ok`. `send` is the engine client's
+ * `(cmd, args) => Promise<{ok, reason?}>`, which never rejects by contract
+ * (§5.1) — and is wrapped anyway, because a delete control must finish.
+ *
+ * @param {(cmd: string, args: object) => Promise<{ok: boolean, reason?: string}>} send
+ */
+export function engineDataDeletion(send) {
+  return async () => {
+    let stopped = null;
+    try { stopped = await send("stop", { persist: false }); } catch (_) { stopped = null; }
+    const purged = await send("purge", {});
+    const out = { ok: Boolean(purged && purged.ok === true), stopped: Boolean(stopped && stopped.ok === true) };
+    if (purged && typeof purged.reason === "string") out.reason = purged.reason;
+    return out;
+  };
+}
+
 /* ---------- the store ---------- */
 
 export class DurableStore {
@@ -380,8 +489,15 @@ export class DurableStore {
    * @param {string} [opts.prefix]
    * @param {Function} [opts.onFault]  (fault, health) — the app logs an event
    * @param {Function} [opts.now]      injected clock, so a fault has a testable ts
+   * @param {string[]} [opts.deferredPrefixes]  the native engine's rows, deferred
+   *   from construction (NE-23; `deferredPrefixesFor`). Empty — the default —
+   *   is the store as it was before the engine, and is what the web and
+   *   Android get.
    */
-  constructor({ tiers = [], prefix = DEFAULT_PREFIX, onFault = null, now = null, deviceOnlyKeys = DEVICE_ONLY_KEYS } = {}) {
+  constructor({
+    tiers = [], prefix = DEFAULT_PREFIX, onFault = null, now = null, deviceOnlyKeys = DEVICE_ONLY_KEYS,
+    deferredPrefixes = [],
+  } = {}) {
     this.prefix = typeof prefix === "string" && prefix ? prefix : DEFAULT_PREFIX;
     this._now = typeof now === "function" ? now : () => Date.now();
     this._onFault = typeof onFault === "function" ? onFault : null;
@@ -455,6 +571,35 @@ export class DurableStore {
         Persisted as `LOCAL_STALE_KEY`. */
     this._stale = new Set();
 
+    /* Single writer (NE-23; see the block above the class). `_owner` is null
+       for a store nobody defers, which is every store off the iOS shell. */
+    const deferred = this._ownPrefixes(deferredPrefixes);
+    this._owner = deferred.length ? { prefixes: deferred, state: OWNERSHIP_DEFERRED } : null;
+    /* Keys the page wrote or removed while its rows were deferred: memory only,
+       committed through the ordinary path on release. */
+    this._heldOps = new Set();
+    /* Keys `adoptOwnedSet` set or dropped: the engine's word, committed on
+       release the same way. */
+    this._adopted = new Set();
+    /* True once the engine's set has replaced the page's. From then on "absent"
+       means "the engine deleted it", so hydration may not add a row back. */
+    this._replaced = false;
+    /* What hydration would have written for a deferred row and did not: a
+       durable row to mirror up into localStorage, a ledger ghost to remove
+       from it, and a row a durable tier lacks (`_migrateUp`). */
+    this._heldMirror = new Set();
+    this._heldGhost = new Set();
+    this._heldMigration = new Set();
+    /* Hydration's own `_migrateUp` has finished, so a release after this point
+       must run the held part of it itself (`releaseOwnership`). */
+    this._hydrationMigrated = false;
+    /* Set only around `_purge`'s removal loop: "Delete my data" reaches a
+       deferred or engine-owned row like any other (see `purge`). */
+    this._purgeBypass = false;
+    /** The engine's half of a purge (`engineDataDeletion`), or null. */
+    this._ownerPurge = null;
+    this._releasing = null;
+
     this._loadSync();
   }
 
@@ -501,6 +646,9 @@ export class DurableStore {
     const k = String(key);
     const v = String(value);
     if (!this.owns(k)) { this._passSet(k, v); return; }
+    /* The engine's rows on the iOS shell (NE-23): held, or refused. Neither
+       throws — nothing failed to store; the store declined to be the writer. */
+    if (this._withheld(k)) { this._holdWrite(k, v); return; }
     this._mem.set(k, v);
     this._dirty.add(k);
     if (this._confined(k)) {
@@ -540,6 +688,7 @@ export class DurableStore {
   removeItem(key) {
     const k = String(key);
     if (!this.owns(k)) { this._passRemove(k); return; }
+    if (this._withheld(k)) { this._holdWrite(k, null); return; }
     this._mem.delete(k);
     this._dirty.add(k);
     if (this._confined(k)) { this._queueConfined(k, null); return; }
@@ -575,6 +724,102 @@ export class DurableStore {
        spend, so refreshing now could leave the next launch with a dead one. */
     if (this._unsaved.has(k)) { this._retryUnsaved(); return false; }
     return this._vaultRead && !this._disabled.has(this._vault.name);
+  }
+
+  /* ---------- single writer (NE-23) ---------- */
+
+  /** `{state, prefixes}`, or null on a store that never deferred anything. */
+  ownership() {
+    return this._owner ? { state: this._owner.state, prefixes: [...this._owner.prefixes] } : null;
+  }
+
+  /**
+   * hello said the native engine plays: it is the only writer of these rows
+   * for the rest of the process.
+   *
+   * The owned set is the UNION of what was deferred and what hello names. The
+   * contract pins both to OWNED_PREFIXES (the schema's enum), so they agree;
+   * if a future engine named fewer, a key the page deferred would otherwise sit
+   * in memory, never written by anyone, which is the silent kind of lost write.
+   * Refused writes are faults, so the union's cost is visible.
+   *
+   * @param {string[]} prefixes  hello's `ownedKeyPrefixes`
+   * @param {{purge?: Function}} [opts]  the engine's half of Delete my data
+   *   (`engineDataDeletion(send)`), run first by `purge()`
+   * @returns {boolean} false after a release: relinquish is one way per process
+   */
+  externallyOwned(prefixes, { purge = null } = {}) {
+    if (this._owner && this._owner.state === OWNERSHIP_RELEASED) return false;
+    const merged = this._ownPrefixes([...(this._owner ? this._owner.prefixes : []), ...(Array.isArray(prefixes) ? prefixes : [])]);
+    if (!merged.length) return false;
+    this._owner = { prefixes: merged, state: OWNERSHIP_EXTERNAL };
+    if (typeof purge === "function") this._ownerPurge = purge;
+    return true;
+  }
+
+  /**
+   * Replace the page's copy of the engine's rows with the engine's own
+   * (`engineRead("rows")` on attach, and once more before a relinquish).
+   *
+   * REPLACE, not merge: a row the page holds and the engine does not is a row
+   * the engine deleted, and it is dropped from memory. No tier is written here —
+   * the engine already wrote UserDefaults, and the page's mirrors are brought
+   * into line on release (`releaseOwnership`), if the page ever becomes the
+   * writer again.
+   *
+   * @param {Map<string,string>|Record<string,string>} rows
+   * @returns {boolean} false when nothing is withheld (no deferral, or released)
+   */
+  adoptOwnedSet(rows) {
+    if (!this._owner || this._owner.state === OWNERSHIP_RELEASED) return false;
+    const incoming = new Map();
+    const entries = rows instanceof Map ? rows : Object.entries(rows && typeof rows === "object" ? rows : {});
+    for (const [k, v] of entries) {
+      if (typeof k === "string" && typeof v === "string" && this.owns(k) && this._ownerKey(k)) incoming.set(k, v);
+    }
+    for (const k of [...this._mem.keys()]) {
+      if (!this._ownerKey(k) || incoming.has(k)) continue;
+      this._mem.delete(k);
+      this._dirty.add(k);
+      this._adopted.add(k);
+    }
+    for (const [k, v] of incoming) {
+      this._mem.set(k, v);
+      this._dirty.add(k);
+      this._adopted.add(k);
+    }
+    this._replaced = true;
+    return true;
+  }
+
+  /**
+   * The page is the writer again: hello said legacy/js, or the engine
+   * relinquished. From this call on every write is ordinary, and what the
+   * deferral held back is committed ONCE (a second call returns the first
+   * call's promise):
+   *
+   *   1. every row the page wrote while it was held, and every row the engine's
+   *      set decided, goes through the ordinary write path;
+   *   2. what hydration would have written — a durable row mirrored up, a
+   *      ledger ghost removed — is written now;
+   *   3. after a replace-set, a row any tier still holds that the engine's set
+   *      does not is removed from it, so a later JS-mode launch cannot read an
+   *      engine-deleted row back out of a stale mirror;
+   *   4. the rows a durable tier was missing are migrated down, now if
+   *      hydration has finished, or by hydration itself when it does.
+   *
+   * It does not wait for hydration: a WKWebView IndexedDB can leave a read
+   * unsettled for good (idb-tier.js, hazard 1), and a page that relinquished
+   * must be able to write positions whatever that read is doing.
+   *
+   * @returns {Promise<boolean>} true when this call released something
+   */
+  releaseOwnership() {
+    if (this._releasing) return this._releasing;
+    if (!this._owner) return Promise.resolve(false);
+    this._owner = { prefixes: this._owner.prefixes, state: OWNERSHIP_RELEASED };
+    this._releasing = this._commitHeld();
+    return this._releasing;
   }
 
   /* ---------- lifecycle ---------- */
@@ -634,6 +879,29 @@ export class DurableStore {
    *   unverified: {tier: string, reason: string}[], faults: number}>}
    */
   async purge() {
+    /* THE ENGINE FIRST, in native mode (NE-23): stop without persisting, then
+       its purge (`engineDataDeletion`), then everything below. The engine holds
+       what no tier here can enumerate — its private keys and its diagnostics
+       file — and a playing engine would write a position back after the page's
+       purge. Its answer rides along in `engine`, and a failed one makes the
+       whole purge not ok: "your data is gone" must include the engine's. */
+    const engine = this._ownerPurge ? await this._runOwnerPurge() : null;
+    const out = await this._purgeTiers();
+    if (!engine) return out;
+    return { ...out, ok: out.ok && engine.ok, engine };
+  }
+
+  async _runOwnerPurge() {
+    try {
+      const r = await this._ownerPurge();
+      if (!r || typeof r !== "object") return { ok: false, reason: "no-answer" };
+      return r.ok === true ? { ok: true } : { ok: false, reason: typeof r.reason === "string" ? r.reason : "refused" };
+    } catch (err) {
+      return { ok: false, reason: "engine-purge-failed", error: errText(err) };
+    }
+  }
+
+  async _purgeTiers() {
     const faultsBefore = this._faults.length;
     const unverified = [];
     /* THE DIAGNOSTIC MIRROR IS OFF FOR THE DURATION, and this is a correctness
@@ -666,7 +934,16 @@ export class DurableStore {
     for (const k of await this._readTiers(unverified, "before", vaultHeld)) targets.add(k);
 
     const keys = [...targets].sort();
-    for (const k of keys) this.removeItem(k);
+    /* A listener's instruction outranks the single-writer rule (NE-23): a
+       deferred or engine-owned row is removed from every tier like any other,
+       or its stale mirrors would outlive "Delete my data". Synchronous, so the
+       bypass covers these removals and no page write can slip under it. */
+    this._purgeBypass = true;
+    try {
+      for (const k of keys) this.removeItem(k);
+    } finally {
+      this._purgeBypass = false;
+    }
     /* A device-only key's removal already reached the vault. Anything else the
        vault admits to holding (nothing this app writes, but a purge answers for
        what is there, not for what should be) is removed from it here. */
@@ -844,6 +1121,128 @@ export class DurableStore {
 
   _liveVault() {
     return this._vault && !this._disabled.has(this._vault.name) ? this._vault : null;
+  }
+
+  /* ---------- single writer: internals (NE-23) ---------- */
+
+  /** Distinct, non-empty prefixes inside this store's namespace. A prefix
+      outside `cp_` names rows this store does not hold, so it defers nothing. */
+  _ownPrefixes(list) {
+    const out = [];
+    for (const p of Array.isArray(list) ? list : []) {
+      if (typeof p === "string" && p && this.owns(p) && !out.includes(p)) out.push(p);
+    }
+    return out;
+  }
+
+  /** Is `key` one of the engine's rows (whatever the state)? */
+  _ownerKey(key) {
+    return this._owner !== null && this._owner.prefixes.some((p) => key.startsWith(p));
+  }
+
+  /** Is `key` an engine row the page may not write through right now? */
+  _withheld(key) {
+    return this._owner !== null && this._owner.state !== OWNERSHIP_RELEASED
+      && !this._purgeBypass && this._ownerKey(key);
+  }
+
+  /** A page write (`value` a string) or removal (null) of a withheld row. */
+  _holdWrite(key, value) {
+    if (this._owner.state === OWNERSHIP_EXTERNAL) {
+      /* REFUSED, and said so: memory and every tier stay as the engine left
+         them. The string, not an Error, so the fault's `error` is the bare
+         vocabulary token rather than "Error: externally-owned". */
+      this._fault(OWNER_TIER, value === null ? "remove" : "write", EXTERNALLY_OWNED, key);
+      return;
+    }
+    /* Deferred: nothing is decided, so nothing is committed. Memory keeps the
+       session coherent; release commits it, and a native hello replaces it. */
+    if (value === null) this._mem.delete(key); else this._mem.set(key, value);
+    this._dirty.add(key);
+    this._heldOps.add(key);
+  }
+
+  /** `releaseOwnership`'s body; see there for the four steps. */
+  async _commitHeld() {
+    const decided = [...new Set([...this._heldOps, ...this._adopted])].sort();
+    this._heldOps.clear();
+    this._adopted.clear();
+    // 1. Through the ordinary path, now that the page is the writer.
+    for (const k of decided) {
+      try {
+        if (this._mem.has(k)) this.setItem(k, this._mem.get(k)); else this.removeItem(k);
+      } catch (_) { /* no tier took it: `setItem` already faulted, and memory still has it */ }
+    }
+    // 2. What hydration held back.
+    for (const k of this._heldMirror) {
+      if (!this._dirty.has(k) && this._mem.has(k)) this._adopt(k, this._mem.get(k));
+    }
+    this._heldMirror.clear();
+    let ledgerChanged = false;
+    for (const k of this._heldGhost) {
+      if (this._dirty.has(k) || this._mem.has(k)) continue;
+      let removed = this._sync.length > 0;
+      for (const t of this._sync) {
+        try { t.remove(k); } catch (err) { removed = false; this._fault(t.name, "remove", err, k); }
+      }
+      if (removed && this._stale.delete(k)) ledgerChanged = true;
+    }
+    this._heldGhost.clear();
+    if (ledgerChanged) this._persistStale();
+    // 3. Replace-set reaches the tiers.
+    if (this._replaced) this._sweepOwnerRows();
+    // 4. The migration down, if hydration already ran its own.
+    if (this._hydrationMigrated) await this._runHeldMigration();
+    await this._queue;
+    return true;
+  }
+
+  /**
+   * After a replace-set, remove every engine row a tier holds that memory does
+   * not: localStorage now, the durable tiers on the queue (they must be read
+   * first, and a tier that cannot be read keeps what it has — "could not look"
+   * is not "has none", and removing blind is not needed to be correct).
+   * Re-checked against memory when each removal's turn comes, so a row the
+   * page writes after the release is never swept.
+   */
+  _sweepOwnerRows() {
+    for (const t of this._sync) {
+      let snap = null;
+      try { snap = typeof t.snapshot === "function" ? t.snapshot(this.prefix) : null; }
+      catch (err) { this._fault(t.name, "read", err); continue; }
+      if (!snap) continue;
+      for (const k of snap.keys()) {
+        if (!this._ownerKey(k) || this._mem.has(k)) continue;
+        try { t.remove(k); } catch (err) { this._fault(t.name, "remove", err, k); }
+      }
+    }
+    const tiers = this._liveAsync();
+    if (!tiers.length) return;
+    this._pending += 1;
+    const done = () => { this._pending -= 1; };
+    this._queue = this._queue.then(async () => {
+      for (const t of tiers) {
+        let rows = null;
+        try { rows = typeof t.readAll === "function" ? await t.readAll(this.prefix) : null; }
+        catch (err) { this._fault(t.name, "read", err); continue; }
+        if (!rows) continue;
+        for (const k of rows.keys()) {
+          if (typeof k !== "string" || !this._ownerKey(k) || this._mem.has(k)) continue;
+          try { await t.remove(k); this._ok(t.name); }
+          catch (err) { this._fault(t.name, "remove", err, k); }
+        }
+      }
+    }).then(done, done);
+  }
+
+  /** The part of `_migrateUp` deferral skipped, for rows nobody has written
+      since (a written row already went down on the ordinary path). Clears as
+      it starts, so it runs once whichever of release and hydration gets here
+      second. */
+  async _runHeldMigration() {
+    const only = new Set([...this._heldMigration].filter((k) => !this._dirty.has(k)));
+    this._heldMigration.clear();
+    if (only.size) await this._migrateUp(only);
   }
 
   /** One queued operation on one tier, on the same serial queue as every other
@@ -1119,6 +1518,11 @@ export class DurableStore {
         if (k === HEALTH_KEY) continue;          // diagnostics, never authoritative
         if (k === LOCAL_STALE_KEY) continue;     // bookkeeping, read above
         if (this._dirty.has(k)) continue;        // property 2: this session wins
+        /* After a replace-set the engine's set is the truth, including about
+           what it deleted — and it stays the truth for a read that lands after
+           a release, too: a durable row read late is not adopted (NE-23). */
+        if (this._replaced && this._ownerKey(k)) continue;
+        if (this._withheld(k)) { this._hydrateHeld(k, v, staleHere, seen); continue; }
         const mine = this._mem.has(k) ? this._mem.get(k) : null;
         if (mine === null) { this._adopt(k, v); continue; }   // localStorage lost it
         if (mine === v) { this._stale.delete(k); continue; }  // the mirror caught up
@@ -1136,6 +1540,12 @@ export class DurableStore {
          while the mirror refused the removal: the mirror's row is the ghost. */
       for (const k of staleHere) {
         if (rows.has(k) || this._dirty.has(k)) continue;
+        if (this._withheld(k)) {
+          /* Read as a ghost, removed from localStorage only once the page is
+             the writer. After a replace-set the engine's set already decided. */
+          if (!this._replaced) { this._mem.delete(k); this._heldGhost.add(k); }
+          continue;
+        }
         this._mem.delete(k);
         let removed = this._sync.length > 0;
         for (const t of this._sync) {
@@ -1147,8 +1557,30 @@ export class DurableStore {
     }
     this._moveLegacyIntoVault(vaultRows);
     await this._migrateUp();
+    /* Synchronous from here to the check: a release before this line leaves
+       the held migration to us, one after it runs it itself (NE-23). */
+    this._hydrationMigrated = true;
+    if (this._owner && this._owner.state === OWNERSHIP_RELEASED) await this._runHeldMigration();
     this._hydrated = true;
     return this;
+  }
+
+  /**
+   * Hydration's merge for an engine row the page is holding (NE-23): the same
+   * choice of value the ordinary path makes — so the first paint and a later
+   * release see what they always would have — with every write held back.
+   */
+  _hydrateHeld(k, v, staleHere, seen) {
+    const mine = this._mem.has(k) ? this._mem.get(k) : null;
+    if (mine === v) { this._stale.delete(k); return; }
+    if (mine === null || staleHere.has(k) || isNewer(v, mine)) {
+      this._mem.set(k, v);
+      this._heldMirror.add(k);
+      return;
+    }
+    /* Local won, so on release this tier needs the local row — exactly the
+       ordinary path's `seen.delete`, without the push that follows it now. */
+    seen.delete(k);
   }
 
   /**
@@ -1279,7 +1711,7 @@ export class DurableStore {
    * `migrated` is counted per tier so the migration is visible in `health()`
    * rather than being something you have to take on trust.
    */
-  async _migrateUp() {
+  async _migrateUp(only = null) {
     if (!this._liveAsync().length) return;
     /* Drain first. `removeItem` rides `_queue` and these writes do not, so the
        two chains are otherwise unordered — and an unordered remove is a row that
@@ -1291,6 +1723,7 @@ export class DurableStore {
       const seen = this._seen.get(t.name) ?? new Set();
       const unread = this._unread.has(t.name);
       for (const k of keys) {
+        if (only && !only.has(k)) continue;
         /* Re-checked here, not read from a snapshot: a key removed since this
            hydration started must not be written back down. `app.js` races
            hydration against a timeout and proceeds while it is still running, so
@@ -1300,6 +1733,12 @@ export class DurableStore {
         /* A device-only key never goes into a backed-up tier (persist-6);
            `_moveLegacyIntoVault` is its migration. */
         if (this._confined(k)) continue;
+        /* THE CLOBBER NE-23 CLOSES. An engine row the page is holding is never
+           pushed down: the durable copy may be the engine's own, newer than a
+           mirror nobody refreshed (and undated, so `isNewer` cannot tell), or
+           the engine may have deleted it. Remembered, and migrated on release
+           if the page turns out to be the writer after all. */
+        if (this._withheld(k)) { this._heldMigration.add(k); continue; }
         /* A tier we could not read gets only the keys this session wrote, which
            are the only ones we know to be newer than whatever is down there. */
         if (unread && !this._dirty.has(k)) continue;
@@ -1456,6 +1895,7 @@ export function createDurableStore({
   prefix = DEFAULT_PREFIX,
   onFault = null,
   now = null,
+  deferredPrefixes = [],
 } = {}) {
   return new DurableStore({
     /* The native tier goes BEFORE IndexedDB. Hydration reads the async tiers in
@@ -1467,5 +1907,8 @@ export function createDurableStore({
     prefix,
     onFault,
     now,
+    /* The native engine's rows, on the iOS shell only (NE-23): see
+       `deferredPrefixesFor`, and property 5 in the header. */
+    deferredPrefixes,
   });
 }

@@ -11,6 +11,11 @@ import { SINGLE_ITEM, PICKED_FIRST, CONTINUE_TAIL } from "./queue-strategy.js";
 import { forayRuntimeSec } from "./foray-queue.js";
 import { INTERLUDE_CEILING_SEC } from "./interlude.js";
 import { INTERRUPTION_REWIND_SEC } from "./transport-policy.js";
+import { SEAM_GAP_SEC } from "./seam-gap.js";
+
+/** The shipped beat in ms — the founder's 0.5 s (2026-09-24). Read from the
+    module rather than typed, so a future ruling moves one number. */
+const BEAT_MS = SEAM_GAP_SEC * 1000;
 
 const ep = (id, extra = {}) => ({ id, kind: "episode", rate: 1.0, ...extra });
 const tts = (id) => ({ id, kind: "tts" });
@@ -58,14 +63,14 @@ class OutPointBlindBackend extends FakeBackend {
 
 /* ---------- the seam beat's clock ----------
 
-   NEVER let a test wait out a real 2.0 s beat, and never assert on wall clock:
+   NEVER let a test wait out a real beat, and never assert on wall clock:
    #195 already cost this repo a flaky suite that went red whenever the box was
    busy, and a transcription run pins this laptop for tens of minutes at a time.
    Both schedulers below are deterministic and complete in zero real time.
 
    INSTANT is the default for every pre-existing test: the beat is armed, held
    and released exactly as it is in production, just on the next microtask
-   instead of in two seconds, so those tests keep asserting on call ORDER and
+   instead of after the beat, so those tests keep asserting on call ORDER and
    are untouched by this feature. `manual` is for the tests that are about the
    beat itself — nothing fires until the test says so, which is the only way to
    observe "the load happened INSIDE the gap" rather than hoping a sleep was
@@ -1373,7 +1378,7 @@ test("changing speed does NOT cut a running seam beat", async () => {
      listener did not ask for and touching the transport means they have named a
      destination. Changing speed names no destination — it is a preference about
      how the rest of the hour sounds — so routing `setRate` through `_transport`
-     would swallow the authored 2.0 s for a tap that was not about going
+     would swallow the authored beat for a tap that was not about going
      anywhere, and start the next segment early.
 
      MUTATION THAT KILLS THIS: wrap `setRate`'s body in
@@ -1389,9 +1394,9 @@ test("changing speed does NOT cut a running seam beat", async () => {
 
   m.setRate(1.25);
   assert.equal(m.inSeamGap, true, "and a speed change must leave it running");
-  assert.equal(m.seamGapRemainingMs, 2000, "with its full remainder still owed");
+  assert.equal(m.seamGapRemainingMs, BEAT_MS, "with its full remainder still owed");
 
-  await scheduler.advance(2000);
+  await scheduler.advance(BEAT_MS);
   await ended;
   assert.equal(m.currentIndex, 1, "the beat was spent, then the next segment started");
   assert.ok(backend.calls.includes("rate:1.25"), "at the speed the listener chose mid-beat");
@@ -1524,7 +1529,7 @@ test("a Foray with nothing playable makes no noise", async () => {
 /* ---------- the seam beat (docs/curation/segment-length-rules.md §6b) -------
 
    Foray #1 carries no narration, so all 31 of its transitions are unbridged
-   and each one gets 2.0 s of silence. Every test below drives the beat's clock
+   and each one gets `SEAM_GAP_SEC` (0.5 s) of silence. Every test below drives the beat's clock
    by hand (`manualScheduler`) — there is no sleeping here and no assertion on
    elapsed wall clock, deliberately: #195 already de-flaked this suite once and
    a transcription queue is on this box.
@@ -1550,13 +1555,13 @@ async function seam(opts = {}) {
   return { ...h, scheduler, settled };
 }
 
-test("an unbridged segment-to-segment seam holds 2.0 s before the next segment is audible", async () => {
+test("an unbridged segment-to-segment seam holds the full beat before the next segment is audible", async () => {
   const { m, backend, scheduler, settled } = await seam();
   assert.equal(m.inSeamGap, true, "a beat should be running");
-  assert.equal(m.seamGapRemainingMs, 2000);
+  assert.equal(m.seamGapRemainingMs, BEAT_MS);
   assert.equal(plays(backend), 1, "the second segment must not be audible yet");
 
-  await scheduler.advance(1999);
+  await scheduler.advance(BEAT_MS - 1);
   assert.equal(plays(backend), 1, "still inside the beat");
 
   await scheduler.advance(1);
@@ -1573,7 +1578,7 @@ test("THE GAP ABSORBS THE LOAD: the next segment is fetched and positioned insid
   assert.ok(backend.loads().includes("load:foray-1#1"), `not loaded yet: ${backend.calls}`);
   assert.ok(backend.calls.includes("load:foray-1#1@400"), "and positioned at its in-point");
   assert.equal(plays(backend), 1, "loaded, positioned, and still silent");
-  await scheduler.advance(2000);
+  await scheduler.advance(BEAT_MS);
   await settled;
   assert.equal(plays(backend), 2);
 });
@@ -1599,7 +1604,7 @@ test("a load slower than the beat costs max(gap, load), never gap + load", async
   const settled = backend.onItemEnded("outPoint");
   await tick();
 
-  // Three seconds of load against a two-second beat. The beat is already spent
+  // Three seconds of load against a half-second beat. The beat is already spent
   // by the time the bytes land, so nothing may be added on top of the load.
   await scheduler.advance(3000);
   assert.equal(plays(backend), 1, "still loading");
@@ -1614,7 +1619,7 @@ test("a load slower than the beat costs max(gap, load), never gap + load", async
 test("the out-point still stops the outgoing segment first; the beat is silence, not overlap", async () => {
   const { backend, scheduler, settled } = await seam();
   assert.equal(plays(backend), 1);
-  await scheduler.advance(2000);
+  await scheduler.advance(BEAT_MS);
   await settled;
   const order = backend.calls;
   assert.ok(order.lastIndexOf("load:foray-1#1@400") < order.lastIndexOf("play"));
@@ -1767,8 +1772,8 @@ test("a segment the ADR-0007 ladder refuses consumes the remaining beat, it does
   // The refused segment was loaded and rejected inside the beat; the third is
   // now loading against the SAME deadline, not a second one.
   assert.ok(h.log.some((t) => /skipped\.atLoad/.test(t)), `ladder did not fire: ${h.log}`);
-  assert.equal(h.m.seamGapRemainingMs, 2000, "one deadline, not two");
-  await scheduler.advance(2000);
+  assert.equal(h.m.seamGapRemainingMs, BEAT_MS, "one deadline, not two");
+  await scheduler.advance(BEAT_MS);
   await settled;
   assert.equal(plays(h.backend), 2);
   assert.ok(h.backend.calls.includes("load:foray-1#2@700"), `got ${h.backend.calls}`);
@@ -1914,7 +1919,7 @@ test("onSeamGapChange fires true when a beat starts and false when it ends", asy
   const settled = h.backend.onItemEnded("outPoint");
   await tick();
   assert.deepStrictEqual(seen, [true], "armed");
-  await scheduler.advance(2000);
+  await scheduler.advance(BEAT_MS);
   await settled;
   assert.deepStrictEqual(seen, [true, false], "and released, exactly once each");
 });
@@ -1945,7 +1950,7 @@ test("a surface that throws in onSeamGapChange cannot break playback", async () 
   h.backend.currentTime = 210;
   const settled = h.backend.onItemEnded("outPoint");
   await tick();
-  await scheduler.advance(2000);
+  await scheduler.advance(BEAT_MS);
   await settled;
   assert.equal(plays(h.backend), 2);
 });
@@ -1966,7 +1971,7 @@ test("inSeamGap is true from the moment the seam is armed, not only once loaded"
   assert.equal(h.m.inSeamGap, true);
   assert.ok(!h.backend.loads().includes("load:foray-1#1"), "the fixture premise — still loading");
   await tick();
-  await h.scheduler.advance(2000);
+  await h.scheduler.advance(BEAT_MS);
   await settled;
   assert.equal(h.m.inSeamGap, false);
 });
@@ -2006,12 +2011,12 @@ test("disposing during a beat leaves no timer alive", async () => {
 
 test("the beat is observable in telemetry, both when it fires and when it is cut", async () => {
   const { m, log, scheduler, settled } = await seam();
-  assert.ok(log.some((t) => /seam\.gap\.armed 2\.0s beat: foray-1#0 -> foray-1#1/.test(t)), `got ${log}`);
-  assert.ok(log.some((t) => /seam\.gap\.hold 2000ms/.test(t)));
+  assert.ok(log.some((t) => /seam\.gap\.armed 0\.5s beat: foray-1#0 -> foray-1#1/.test(t)), `got ${log}`);
+  assert.ok(log.some((t) => /seam\.gap\.hold 500ms/.test(t)));
   await m.pause();
   await settled;
   assert.ok(log.some((t) => /seam\.gap\.cut\.pause/.test(t)), `got ${log}`);
-  await scheduler.advance(2000);
+  await scheduler.advance(BEAT_MS);
 });
 
 test("seamGapSec: 0 turns the beat off entirely, and nothing else changes", async () => {
@@ -2267,21 +2272,21 @@ async function seamCostMs({ warm }) {
   return audibleAt - boundaryAt;
 }
 
-test("a warmed seam is the 2.0 s beat; an unwarmed one is the load — measured on the virtual clock", async () => {
+test("a warmed seam is the beat; an unwarmed one is the load — measured on the virtual clock", async () => {
   /* THE BEFORE AND AFTER, in one test, with no wall clock anywhere: the seam is
      `max(beat, load)` and the only way to shorten it is to move the load out
      from under the boundary.
 
      COLD_LOAD_MS is the load measured on the device (9,153 ms). The beat is the
-     authored 2.0 s. So the same seam costs 9,153 ms cold and 2,000 ms warmed —
-     and 2,000 ms is not an accident of the fix, it is the beat still being
+     authored 0.5 s. So the same seam costs 9,153 ms cold and 500 ms warmed —
+     and 500 ms is not an accident of the fix, it is the beat still being
      honoured, which is the point. */
   const coldSeamMs = await seamCostMs({ warm: false });
   assert.equal(coldSeamMs, COLD_LOAD_MS,
     `an unwarmed seam is the load and nothing else, got ${coldSeamMs}`);
 
   const warmSeamMs = await seamCostMs({ warm: true });
-  assert.equal(warmSeamMs, 2000,
+  assert.equal(warmSeamMs, BEAT_MS,
     `a warmed seam is exactly the authored beat, got ${warmSeamMs}`);
   assert.ok(warmSeamMs < coldSeamMs, "and that is the whole fix");
 });
@@ -2370,7 +2375,7 @@ async function jingleSeam(opts = {}) {
 test("segment -> segment: the jingle starts at the boundary, the next load runs under it, and playback waits for it", async () => {
   /* MUTATION: delete the `_armInterlude` call in `_handleBackendItemEnded`'s
      `playing` branch — `starts` stays 0 and segment 2 starts after the plain
-     2.0 s beat. */
+     beat. */
   const { m, backend, interlude, scheduler, settled } = await jingleSeam();
   assert.equal(interlude.starts, 1, "the jingle starts the instant the out-point fires");
   assert.equal(m.inInterlude, true);
@@ -2378,8 +2383,8 @@ test("segment -> segment: the jingle starts at the boundary, the next load runs 
   assert.ok(backend.calls.includes("load:foray-1#1@400"), `the next segment loads UNDER the jingle: ${backend.calls}`);
   assert.equal(plays(backend), 1, "and is not audible yet");
 
-  await scheduler.advance(2000);
-  assert.equal(plays(backend), 1, "the 2.0 s beat alone does not release it: the jingle is still sounding");
+  await scheduler.advance(BEAT_MS);
+  assert.equal(plays(backend), 1, "the beat alone does not release it: the jingle is still sounding");
 
   interlude.finish();
   await tick();
@@ -2502,16 +2507,16 @@ test("next during the jingle silences it, and a skip gets no jingle of its own (
   assert.ok(backend.calls.includes("load:foray-1#2@900"), `got ${backend.calls}`);
 });
 
-test("a jingle that cannot start leaves the seam its ordinary 2.0 s beat", async () => {
+test("a jingle that cannot start leaves the seam its ordinary beat", async () => {
   /* The element was not buffered, or the host has none. MUTATION: ignore
      `start()`'s return in `_armInterlude` — the deadline stretches to the
-     ceiling and the second segment waits 4.5 s instead of 2.0 s. */
+     ceiling and the second segment waits 4.5 s instead of 0.5 s. */
   const interlude = fakeInterlude({ refuse: true });
   const { m, backend, scheduler, settled, log } = await jingleSeam({ interlude });
   assert.equal(m.inInterlude, false);
-  assert.equal(m.seamGapRemainingMs, 2000, "the beat, and only the beat");
+  assert.equal(m.seamGapRemainingMs, BEAT_MS, "the beat, and only the beat");
   assert.ok(log.some((l) => l.startsWith("interlude.notStarted")), `got ${log.filter((l) => l.startsWith("interlude"))}`);
-  await scheduler.advance(1999);
+  await scheduler.advance(BEAT_MS - 1);
   assert.equal(plays(backend), 1);
   await scheduler.advance(1);
   await settled;
@@ -2519,15 +2524,17 @@ test("a jingle that cannot start leaves the seam its ordinary 2.0 s beat", async
 });
 
 test("a jingle that ends early still spends the beat", async () => {
-  /* The beat is authored (seam-gap.js §6b); a jingle that fails half a second
-     in must not turn it into a butt-cut. MUTATION: in `_onInterludeEnded`,
-     call `_gapFinish()` unconditionally — segment 2 starts at 0.5 s. */
+  /* The beat is authored (seam-gap.js); a jingle that fails a fifth of a
+     second in must not turn it into a butt-cut. MUTATION: in `_onInterludeEnded`,
+     call `_gapFinish()` unconditionally — segment 2 starts at 0.2 s. */
   const { backend, interlude, scheduler, settled } = await jingleSeam();
-  await scheduler.advance(500);
+  const early = 200;
+  assert.ok(early < BEAT_MS, "the fixture premise: the jingle dies inside the beat");
+  await scheduler.advance(early);
   interlude.finish("error");
   await tick();
-  assert.equal(plays(backend), 1, "the beat still owes 1.5 s");
-  await scheduler.advance(1499);
+  assert.equal(plays(backend), 1, `the beat still owes ${BEAT_MS - early} ms`);
+  await scheduler.advance(BEAT_MS - early - 1);
   assert.equal(plays(backend), 1);
   await scheduler.advance(1);
   await settled;
@@ -2537,14 +2544,14 @@ test("a jingle that ends early still spends the beat", async () => {
 test("a jingle that never reports ending is cut at the ceiling and the tape starts", async () => {
   /* A stalled element must not hold the Foray. MUTATION: make `_armInterlude`
      leave the deadline alone (drop the `_setGapDeadline(max(...))` line) —
-     segment 2 starts at 2.0 s with the jingle still sounding under it,
+     segment 2 starts at 0.5 s with the jingle still sounding under it,
      which is the two-audible-things bug this ceiling exists to prevent. */
   const { m, backend, interlude, scheduler, settled, log } = await jingleSeam();
   const ceilingMs = INTERLUDE_CEILING_SEC * 1000;
   assert.equal(m.seamGapRemainingMs, ceilingMs);
-  await scheduler.advance(2000);
+  await scheduler.advance(BEAT_MS);
   assert.equal(plays(backend), 1, "past the beat, the jingle still holds the seam");
-  await scheduler.advance(ceilingMs - 2000 - 1);
+  await scheduler.advance(ceilingMs - BEAT_MS - 1);
   assert.equal(plays(backend), 1);
   await scheduler.advance(1);
   await settled;
@@ -2575,8 +2582,8 @@ test("with no interlude wired, every seam is exactly what it was", async () => {
      `this._interlude.start()` without the null guard — this throws. */
   const { m, backend, scheduler, settled } = await seam();
   assert.equal(m.inInterlude, false);
-  assert.equal(m.seamGapRemainingMs, 2000);
-  await scheduler.advance(2000);
+  assert.equal(m.seamGapRemainingMs, BEAT_MS);
+  await scheduler.advance(BEAT_MS);
   await settled;
   assert.equal(plays(backend), 2);
 });

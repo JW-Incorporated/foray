@@ -289,10 +289,16 @@ test("EngineMode: no plist key is legacy/no-plist-key; strikes come only from a 
   assert.equal(broken.at(-1).reason, "crash-loop");
 });
 
-test("the six NE-11j families are recorded, charged to the episode capability, and owed to NE-11s", () => {
-  // Acceptance: they pass in JS (record.mjs --check, in npm test) and sit in
-  // swift-pending tagged NE-11s, so the Swift runner owes them rather than
-  // silently dropping them. MUTATION: delete one pending entry -> red.
+test("the six NE-11j families are recorded, charged to the episode capability, and burned down by NE-11s", () => {
+  // NE-11j recorded them owed to NE-11s; NE-11s ported SessionPolicy,
+  // EngineMode and the contract's decoding and burned every id out of
+  // swift-pending, so the Swift runners (registered and REQUIRED by both XCTest
+  // wrappers, tools/mobile/shell-invariants.test.mjs) must now execute them.
+  // The episode capability requires zero pending in these families, so an id
+  // that drifted back to "owed" is a gate problem, not a bookkeeping one.
+  // A later JS rule change re-adds its ids here through record.mjs
+  // --port-card; this test then names the card that must burn them down.
+  // MUTATION: re-add one of these ids to swift-pending.json -> red.
   const pending = readParity("swift-pending.json");
   const manifest = readParity("manifest.json");
   const episode = readParity("capabilities.json").episode;
@@ -300,7 +306,7 @@ test("the six NE-11j families are recorded, charged to the episode capability, a
     assert.ok(episode.includes(fam), `${fam} is gated by the episode capability`);
     const ids = manifest.families[fam]?.ids ?? [];
     assert.ok(ids.length > 0, `${fam} is recorded`);
-    for (const id of ids) assert.equal(pending[id], "NE-11s", `${id} is owed to NE-11s`);
+    for (const id of ids) assert.equal(pending[id], undefined, `${id} is owed to ${pending[id]}; NE-11s burned this family down, so the Swift port must pass it`);
   }
   const invariant = loadFixtures(ROOT, { family: "session-invariant" }).flatMap((f) => f.doc.cases);
   assert.ok(invariant.every((c) => c.authored === true), "session-invariant is authored end to end: the rule is the spec's, not the recorder's");

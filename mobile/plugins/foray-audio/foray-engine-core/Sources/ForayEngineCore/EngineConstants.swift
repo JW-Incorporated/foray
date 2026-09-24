@@ -278,7 +278,7 @@ public enum EngineConstants {
         /// `AUTO_ADVANCE`
         public static let autoAdvance: String = "auto"
         /// `SEAM_GAP_SEC`
-        public static let seamGapSec: Double = 2
+        public static let seamGapSec: Double = 0.5
         /// `USER_ACTION`
         public static let userAction: String = "user"
     }

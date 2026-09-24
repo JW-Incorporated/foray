@@ -5,7 +5,7 @@
  *
  * `player/media-session.js` (600 lines) already decides everything #27 asks: what
  * the three metadata fields say and why, that previous/next are SEGMENTS, that the
- * position is the FORAY's clock rather than the episode's, that the 2.0 s seam beat
+ * position is the FORAY's clock rather than the episode's, that the 0.5 s seam beat
  * reports "playing", and how artwork degrades. Every one of those decisions is
  * argued in that file's header and pinned by `player/media-session.test.js`.
  *
@@ -309,9 +309,11 @@ export const SEEK_FORWARD_SEC = 30;
 /** Position-only writes are rate-limited to this. See decision 1 in the header.
  *  1 s is chosen against the thing that consumes it: Media3 extrapolates between
  *  reports, and `media-session.js` §4 already documents a bounded drift of
- *  `SEAM_GAP_SEC x rate` (up to 4.0 s) from the seam beat — so a report interval an
- *  order of magnitude under that adds nothing measurable to the error and takes
- *  three quarters of the bridge traffic away. */
+ *  `SEAM_GAP_SEC x rate` from the seam beat — up to 4.0 s when this interval was
+ *  chosen, up to 1.0 s since the founder cut the beat to 0.5 s (2026-09-24). The
+ *  interval is no longer an order of magnitude under that bound, but the drift it
+ *  adds is still bounded by the beat and self-corrects on the next report, and it
+ *  takes three quarters of the bridge traffic away. */
 export const POSITION_MIN_INTERVAL_MS = 1000;
 
 /** Where `cap copy` puts `mobile/www/` inside the APK. `AssetDataSource` resolves

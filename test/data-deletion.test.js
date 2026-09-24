@@ -263,15 +263,20 @@ function sessionRow({ expired = false, refresh = "rt-1" } = {}) {
 async function mount({
   seed = {}, localOnly = {}, idbOnly = {}, reply = null, tier = {},
   noStore = false, player = undefined, boot = false, noLocalStorage = false,
-  events = [], eventLog = undefined, vault = null,
+  events = [], eventLog = undefined, vault = null, engine = null,
 } = {}) {
-  const { createDurableStore } = await import("../player/durable-store.js");
+  const { createDurableStore, engineDataDeletion } = await import("../player/durable-store.js");
+  const { OWNED_PREFIXES } = await import("../player/engine-contract.js");
   const { createEventLog } = await import("../player/event-log.js");
   const log = [];
 
   const local = fakeLocal({ ...seed, ...localOnly });
   const idb = fakeIdb({ ...seed, ...idbOnly }, { ...tier, log });
-  const store = noStore ? null : createDurableStore({ localStorage: local, idbTier: idb, vault });
+  /* `engine`: the iOS shell in native mode (NE-23) — the store defers the
+     engine's rows from construction, and hello's answer hands them over below. */
+  const store = noStore ? null : createDurableStore({
+    localStorage: local, idbTier: idb, vault, deferredPrefixes: engine ? OWNED_PREFIXES : [],
+  });
   /* Published with the store or not at all, the way client.js does it. */
   let queue = null;
   if (eventLog !== undefined) queue = eventLog || null;
@@ -384,6 +389,11 @@ async function mount({
   // Hydration is what pulls the durable-only rows into memory; app.js awaits it
   // in init(), which is parked on its never-settling fetch here.
   if (store) await store.hydrate();
+  if (store && engine) {
+    const send = async (cmd, args) => { log.push({ kind: "engine", cmd, args }); return engine.send(cmd, args); };
+    store.externallyOwned(OWNED_PREFIXES, { purge: engineDataDeletion(send) });
+    store.adoptOwnedSet(Object.fromEntries(engine.rows));
+  }
 
   if (boot) {
     /* `init()` does the binding in a browser, so under `boot` the harness must
@@ -1923,4 +1933,79 @@ test("VAULT: the privacy policy does not promise more about backups than the cod
   assert.doesNotMatch(policy, /the token is never in the backup/, "unqualified: older backups do hold it");
   assert.match(policy, /backup made by an earlier version/i);
   assert.match(policy, /`app\.js:sbRevokeSessions\(\)`/, "the revocation claim must cite the code that makes it");
+});
+
+/* ================= the native iOS engine (NE-23, docs/native-engine-plan.md §4.6) =================
+
+   In native mode the engine owns `cp_pos:`, `cp_foray:` and `cp_last_episode`
+   and holds state no page tier can enumerate: its private UserDefaults keys
+   (`ForayEngine.*`, deliberately outside `CapacitorStorage.`) and its
+   diagnostics file. So the deletion is stop{persist:false} -> the engine's
+   purge -> the page's own purge. NE-27 lists the private keys in the privacy
+   text; this is the behaviour that text will describe. */
+
+/** The engine's state, as its purge must leave it: every row and every private
+    key gone. The private names are §4.6's list. */
+function fakeEngine({ rows = {}, purgeOk = true } = {}) {
+  const engine = {
+    rows: new Map(Object.entries(rows)),
+    private: new Map([
+      ["ForayEngine.modeOverride", "native"], ["ForayEngine.strikes", "0"],
+      ["ForayEngine.sentinel", "launch-1"], ["ForayEngine.stickyLegacyBuild", ""],
+      ["ForayEngine.restore", '{"v":1,"mode":"episode"}'], ["ForayEngine.holdPolicy", "forever"],
+      ["Application Support/foray-engine/diag.jsonl", "remote route=carAudio"],
+    ]),
+    async send(cmd) {
+      if (cmd === "purge") {
+        if (!purgeOk) return { ok: false, reason: "relinquished" };
+        engine.rows.clear();
+        engine.private.clear();
+        return { ok: true };
+      }
+      return { ok: true };
+    },
+  };
+  return engine;
+}
+
+test("NATIVE ENGINE: Delete my data stops and purges the engine BEFORE the page's own purge — its private keys go, and so does the page-owned cp_engine_applied", async () => {
+  /* MUTATIONS: purge the page's tiers before the engine -> the order fails; drop
+     the engine purge -> its private keys survive; subject the purge's removals
+     to the engine's ownership -> the page's stale copies of cp_pos survive. */
+  const { OWNED_PREFIXES } = await import("../player/engine-contract.js");
+  assert.ok(!OWNED_PREFIXES.some((p) => "cp_engine_applied".startsWith(p)), "premise: the watermark is the page's, not the engine's");
+  const engine = fakeEngine({ rows: { "cp_pos:ep-1": '{"seconds":900}', cp_last_episode: '{"id":"ep-1"}' } });
+  const { arm, ui, log, cpKeys, store } = await mount({
+    seed: { cp_engine_applied: '{"advances":4,"events":2}', "cp_pos:ep-1": '{"seconds":10}', cp_interests: "{}" },
+    engine,
+  });
+  assert.strictEqual(store.getItem("cp_pos:ep-1"), '{"seconds":900}', "premise: the page adopted the engine's rows");
+  await arm();
+  await ui.go.click();
+
+  const at = (pred) => log.findIndex(pred);
+  const stop = at((e) => e.kind === "engine" && e.cmd === "stop");
+  const purge = at((e) => e.kind === "engine" && e.cmd === "purge");
+  const firstTier = at((e) => e.kind === "idb-remove");
+  assert.ok(at((e) => e.kind === "player-stop") >= 0);
+  assert.ok(stop >= 0 && purge > stop, "stop, then purge");
+  assert.deepStrictEqual(log[stop].args, { persist: false }, "a stop that persists would write a position back");
+  assert.ok(firstTier > purge, "the engine purges before the page empties its own tiers");
+  assert.deepStrictEqual([...engine.private.keys()], [], "the engine's private keys survived Delete my data");
+  assert.deepStrictEqual([...engine.rows.keys()], []);
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "cp_engine_applied and the page's copies of the engine's rows are the page's to clear");
+  assert.match(ui.status.textContent, /^Done\./);
+});
+
+test("NATIVE ENGINE: an engine that refuses its purge makes the device NOT clear, said plainly", async () => {
+  /* MUTATION: ignore the engine's answer in `purge()` -> "Done." over an engine
+     still holding its restore record and diagnostics. */
+  const engine = fakeEngine({ rows: { "cp_pos:ep-1": "1" }, purgeOk: false });
+  const { arm, ui, cpKeys } = await mount({ seed: { cp_interests: "{}" }, engine });
+  await arm();
+  await ui.go.click();
+  assert.ok(engine.private.size > 0, "premise: the engine kept its state");
+  assert.doesNotMatch(ui.status.textContent, /^Done/);
+  assert.match(ui.status.textContent, /NOT/);
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "the page's own purge still ran");
 });

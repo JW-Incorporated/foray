@@ -11,7 +11,7 @@
  *      (`docs/research/mp1-background-audio.md` §8, its own "single most
  *      load-bearing untested claim".) — ANSWERED, run 32026332637: yes, 4 ms
  *      late over a 15.056 s hidden window, with the app never resumed.
- *   3. Does the SEAM TRANSITION survive backgrounding — the 2.0 s beat's
+ *   3. Does the SEAM TRANSITION survive backgrounding — the seam beat's
  *      `setTimeout`, then a fresh load of a DIFFERENT episode, then a seek, then
  *      play? (#28's iOS half.) That is a different mechanism from (2) on a
  *      different clock: the same run measured hidden DOM timers aligned to a

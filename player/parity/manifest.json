@@ -372,7 +372,7 @@
     "media-episode": {
       "files": {
         "player/parity/fixtures/media-episode/media-actions.json": "334f3d62f2e5f8f67f87d3f6c0915e512e6bce29baf07261f0e5295b1836967b",
-        "player/parity/fixtures/media-episode/media-mapping.json": "55e94cdaa23668f8cee4702ee5293e5bfe337b6a0a1191bd3e62e8d9a1161b1a"
+        "player/parity/fixtures/media-episode/media-mapping.json": "b4af7d2bd34911c8240ac2f3b5ceaf53fb94c46304b643f9fe1ce64547d977e9"
       },
       "ids": [
         "media-episode/actions-complete-surface",
@@ -845,10 +845,10 @@
     },
     "seam-gap": {
       "files": {
-        "player/parity/fixtures/seam-gap/seam-gap.json": "a922c454138b25db506a390a6e5304715612382298e6e03996eab1221c5f2ae3"
+        "player/parity/fixtures/seam-gap/seam-gap.json": "7ab0bd00a4ef78c5061ff0d2228d0382ba884cffd7eb81b9fa4151d3943e540c"
       },
       "ids": [
-        "seam-gap/rule-is-2.0s",
+        "seam-gap/rule-is-0.5s",
         "seam-gap/unbridged-auto-advance-full-beat",
         "seam-gap/length-overridable",
         "seam-gap/nonsense-length-nan",
