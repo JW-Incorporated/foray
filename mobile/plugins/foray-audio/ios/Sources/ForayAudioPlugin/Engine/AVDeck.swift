@@ -351,11 +351,7 @@ final class AVDeck: DeckDriving {
         gateAttempts += 1
         emit(.notReady(token: token, attempt: gateAttempts, cause: cause))
         guard gen == generation, stage == .gating else { return }
-        if gateAttempts < 2 {
-            gateSeek()
-        } else {
-            ordinaryLoad()
-        }
+        ordinaryLoad()
     }
 
     /// The fallback after a second "not ready": land the start with the same
