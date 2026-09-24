@@ -32,7 +32,7 @@
 */
 
 import {
-  buildForayQueue, forayRuntimeSec, itemRuntimeSec, narrationDuration, SEGMENT,
+  buildForayQueue, forayRuntimeSec, itemRuntimeSec, narrationDuration, runtimeIsEstimated, SEGMENT,
 } from "./foray-queue.js";
 
 /** The one status that may be shown to a visitor who did not ask by id. */
@@ -422,6 +422,7 @@ export function foraysReferencingShow(foraysDoc, showNames, { segments, sources,
  *                                  narration. They are not the sum of the tape.
  *   tapeSec: number,               seconds of somebody else's audio — what
  *                                  attribution is owed against, not a runtime
+ *   estimated: boolean,            totalSec is partly a script-length estimate
  *   shows: string[],
  *   unplayable: object[],          every item that will not play, with a reason
  *   warnings: string[],
@@ -493,6 +494,10 @@ export function resolveForay(foray, opts = {}) {
        than left to each caller to re-derive, which is how the tape clock and the
        listener's clock got conflated in the first place. */
     tapeSec: forayRuntimeSec(report.items.filter((i) => i?.kind !== "tts")),
+    /* Whether `totalSec` is partly a script-length estimate (states-11). On the
+       resolved Foray, not left to each surface, so the header, Jump back in,
+       the resume line and the Now Playing sheet all hedge the same number. */
+    estimated: runtimeIsEstimated(report.items),
     shows: [...new Set(entries.map((e) => e.show).filter(nonEmpty))],
     unplayable,
     warnings: report.warnings,
@@ -737,10 +742,18 @@ export function fmtClock(sec) {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
 }
 
-/** "2 min" / "45 sec". Rounded, because a segment's length is a measurement of
-    somebody else's audio and second-precision would overstate it. */
+/** "45 sec" / "2 min" / "1 hr 35 min". Rounded, because a segment's length is a
+    measurement of somebody else's audio and second-precision would overstate
+    it. Past the hour it rolls over, in the one duration dialect every label in
+    4a uses (audit round 2, copy-2): a Foray's header said "about 95 min" over
+    rows that said "1h 12m". The colon clock (`fmtClock`) is for live playheads
+    and scrubbers only. */
 export function fmtSpan(sec) {
   const total = isNum(sec) && sec > 0 ? Math.round(sec) : 0;
   if (total < 90) return `${total} sec`;
-  return `${Math.round(total / 60)} min`;
+  const mins = Math.round(total / 60);
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h} hr ${m} min` : `${h} hr`;
 }

@@ -364,8 +364,15 @@ will re-ask on its first `play()`, from the foreground, which Android cannot ref
 ### 5.2 The notification is now built from what the page reported
 
 It says the source episode, the source show and the Foray plus "part N of M", and
-carries previous, play/pause, next and stop — each declared only when the page
-installed the matching handler, so a single episode gets no dead skip buttons. It is
+carries previous, play/pause, next, ↺15, 30↻ and stop — each declared only when the
+page installed the matching handler, so a single episode gets no dead skip buttons.
+The seek pair arrived with audit round 2 (native-7): as the notification's own
+actions for API 24–32, and as Media3 custom command buttons on the session
+(`setMediaButtonPreferences`, `onCustomCommand`) for API 33+, where the system draws
+its controls from the session and never renders rewind/fast-forward. The compact view
+shows ↺15 / play / 30↻ for a single episode and ⏮ / play / ⏭ when there is a next. A
+press on a running service is dispatched and not re-posted; a close removes the
+notification at once (native-8). It is
 `VISIBILITY_PUBLIC`, which is load-bearing rather than cosmetic: with the default
 `PRIVATE` and a lock screen set to hide sensitive content, the whole point of this
 notification is replaced by "Contents hidden".

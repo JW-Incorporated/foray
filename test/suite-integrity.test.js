@@ -128,12 +128,12 @@ const FLOORS = {
      record — the web deploy id on both hosts and the native build number in the
      shell, each from where only it is known. New suite. */
   "player/build-stamp.test.js": 7, // 2026-09-23: each half of the stamp is bounded, so a bridge or a bundle read that never answers still yields a row; 5 -> 7
-  "player/foray-progress.test.js": 59, // FD-05 (2026-09-10): a Foray gone from the directory reads `dropped`; 58 -> 59
+  "player/foray-progress.test.js": 62, // audit round 2 (L8): an estimated runtime says about, progressLabel says Played, markFinished writes a finished row; 59 -> 62 // FD-05 (2026-09-10): a Foray gone from the directory reads `dropped`; 58 -> 59
   "player/foray-queue.test.js": 38, // F-90 (2026-09-11): the jingle item asset is the interlude asset; 37 -> 38
   /* The interlude jingle (queue-manager.js §13): the rule, the element wrapper
      and the committed placeholder asset's measured properties. The seam CLOCK
      it rides is floored under queue-manager.test.js. */
-  "player/interlude.test.js": 16,
+  "player/interlude.test.js": 18, // audit round 2 (L8, p-foray-1): no jingle between two cuts of one episode; the frozen capital-types-1 sounds exactly 10 for 21 seams; 16 -> 18
   /* 54 -> 59 with #29's `withDiagnosticUnlock`, then 59 -> 54 with D-01
      (2026-09-06): the one-id shell-unlock exception and its five tests were
      deleted with the diagnostic Foray once V-01 shipped an in-app Audition
@@ -179,7 +179,7 @@ const FLOORS = {
      the only test here constructed with `prefetch: true`, i.e. the only one that can
      see a code path nothing in production enables. That is precisely what makes it
      easy to delete as "testing a dead feature", and precisely why it is floored. */
-  "player/transport-reconcile.test.js": 80, // review 2026-09-23: the rate restore waits for REAL hydration, not the record's 5 s bound (mocked timers, store released after the bound); 79 -> 80 // visual pass 1 (2026-09-23): ↺15 nudges inside a clip (sheet and mini bar), the clip row shows only for a Foray; 76 -> 79 // 2026-09-23 audit sweep: part 10 — an id-less play keeps the pointer, the lock screen shows a restored bar's position, a late-hydrated speed reaches a booted player (and does not overrule a choice), Jump back in's Foray rows read the live runtime; 71 -> 76 (L2's later cells had taken it to 71 unfloored) // 2026-09-22 audit (L2): part 9 — a Foray played last takes the bar and one press resumes it; an episode played after keeps it; 64 -> 66 // 2026-09-22 audit (L2): part 8 — a booted shell writes both halves of the build stamp (founder report 3); 63 -> 64 // 2026-09-22 audit (L2): part 7 — the backend writes the element's state onto an unexplained pause (founder report 2); 62 -> 63 // 2026-09-22 audit (L2): part 6 — founder report 1: the element drives the position writer, the reconcile corrects towards playing, and the native background/route/interruption events flush and pause/reconcile; 57 -> 62 // 2026-09-22 audit (L2): part 5 — the head unit's stop pauses without unregistering anything; next/previous appear when the page offers them; 55 -> 57 // 2026-09-22 audit (L2): part 5 — a failed episode load says so and play() returns false; `waiting` paints Buffering; 53 -> 55 // 2026-09-22 audit (L2): part 5 — a superseded load neither moves its successor's playhead, claims `playheadItemId`, nor stops the newer load when it fails; 50 -> 53 // 2026-09-22 audit (L2): part 5 — Foray-clock seeks land inside the item (out-point stays armed, a bridge has no start_sec), "››" is disabled at the end, a finished Foray can be scrubbed; 46 -> 50 // 2026-09-22 audit (L2): part 5 — a cold start reads `resumeOffset`, play after the end starts over, and the Jump back in card shows the raw row; 43 -> 46 // 2026-09-22 audit (L2): part 5 — one episode seek for every surface (restored bar, ended episode, both clamps, empty bar on an unknown duration); 39 -> 43 // 2026-09-22 audit (L2): part 5 — the card, the lock screen and the Foray page read `transportIsRunning()`; a finished Foray starts over; 35 -> 39 // #689 (2026-09-14): part 4 — the four founder reports from one car session, as episode tests rather than Foray ones; 27 -> 34
+  "player/transport-reconcile.test.js": 113, // round-2 integration (2026-09-23): L8 added on top; 111 -> 113 // audit round 2 (L8): a Foray played to the end is marked Played, not wiped; an estimated Foray is hedged in the sheet and the resume row; 80 -> 82 // round-2 integration (2026-09-23): L1 and L3 both appended; 109 + 2 -> 111 // audit round 2, lane L3 (2026-09-23): the sheet's ⏭ / Up Next (N) / Save read the page's episode surface; previousMeansRestart is the player's window; +2 // audit round 2 (2026-09-23, L1): part 11 — the settled-state hook repaints the natural end (screen on and off), loads carry their own start (races-1, p-impatient-1/2/4), leaving is a flush (player-3), the clocks (player-6, a11y-7, honesty-13), honesty-4, player-9, one Foray second line (copy-5/player-10), the Foray controls (player-4/5/7/11), after a call (p-car-3 x4, native-3), the car (p-car-8, p-car-6) and perf-7; 80 -> 109 // review 2026-09-23: the rate restore waits for REAL hydration, not the record's 5 s bound (mocked timers, store released after the bound); 79 -> 80 // visual pass 1 (2026-09-23): ↺15 nudges inside a clip (sheet and mini bar), the clip row shows only for a Foray; 76 -> 79 // 2026-09-23 audit sweep: part 10 — an id-less play keeps the pointer, the lock screen shows a restored bar's position, a late-hydrated speed reaches a booted player (and does not overrule a choice), Jump back in's Foray rows read the live runtime; 71 -> 76 (L2's later cells had taken it to 71 unfloored) // 2026-09-22 audit (L2): part 9 — a Foray played last takes the bar and one press resumes it; an episode played after keeps it; 64 -> 66 // 2026-09-22 audit (L2): part 8 — a booted shell writes both halves of the build stamp (founder report 3); 63 -> 64 // 2026-09-22 audit (L2): part 7 — the backend writes the element's state onto an unexplained pause (founder report 2); 62 -> 63 // 2026-09-22 audit (L2): part 6 — founder report 1: the element drives the position writer, the reconcile corrects towards playing, and the native background/route/interruption events flush and pause/reconcile; 57 -> 62 // 2026-09-22 audit (L2): part 5 — the head unit's stop pauses without unregistering anything; next/previous appear when the page offers them; 55 -> 57 // 2026-09-22 audit (L2): part 5 — a failed episode load says so and play() returns false; `waiting` paints Buffering; 53 -> 55 // 2026-09-22 audit (L2): part 5 — a superseded load neither moves its successor's playhead, claims `playheadItemId`, nor stops the newer load when it fails; 50 -> 53 // 2026-09-22 audit (L2): part 5 — Foray-clock seeks land inside the item (out-point stays armed, a bridge has no start_sec), "››" is disabled at the end, a finished Foray can be scrubbed; 46 -> 50 // 2026-09-22 audit (L2): part 5 — a cold start reads `resumeOffset`, play after the end starts over, and the Jump back in card shows the raw row; 43 -> 46 // 2026-09-22 audit (L2): part 5 — one episode seek for every surface (restored bar, ended episode, both clamps, empty bar on an unknown duration); 39 -> 43 // 2026-09-22 audit (L2): part 5 — the card, the lock screen and the Foray page read `transportIsRunning()`; a finished Foray starts over; 35 -> 39 // #689 (2026-09-14): part 4 — the four founder reports from one car session, as episode tests rather than Foray ones; 27 -> 34
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that
@@ -190,7 +190,7 @@ const FLOORS = {
      actual, and the pre-push review proved what that bought: all four pins could
      be deleted and the floor stayed green — the exact failure this file exists to
      make loud. Raise it when the suite grows. */
-  "player/media-session.test.js": 152, // founder 2026-09-23 (fix/founder-reports-2026-09-23): the merge of fr-media (the pause and the clear are reported writes; client.js records foray:remote) and fr-lockscreen-skip (any seekOffset lands as our step) — the suite stood at 152; 148 -> 152 // 2026-09-23 founder report: the platform's seekOffset is IGNORED — the lock screen steps ±15/30 like the in-page buttons (the inverse pin was the defect). The suite already stood at 148 against 147; 147 -> 148 // 2026-09-22 audit (L2): a remote stop pauses and keeps the session; an episode's next/previous are the page's (the no-next pin was rewritten, R2); 146 -> 147 // 2026-09-22: client.js defers the shim-counter read past the shim's own flush (the founder's sent=0). The suite was already at 145 against a floor of 143 -- two cells had landed without a bump, so this closes that slack too; 143 -> 146 // 2026-09-21: the write and the report agree — a throwing metadata assignment is reported as failed and does not poison the dedupe; 140 -> 143 // client audit (2026-09-12): no raw NUL byte in player/*.js — a binary file is invisible to every search; 139 -> 140 // L-06 (2026-09-12): the Apple Podcasts parity rule + the onWrite hook; 132 -> 139 // F-89 (2026-09-11): a jingle item is credited to 4a; 131 -> 132
+  "player/media-session.test.js": 156, // audit round 2 (2026-09-23, L1): a finished EPISODE reports paused (p-car-6), a stall reports rate 0 (p-car-8), the restored Foray is described as a Foray and both branches hand the stall over (source scans); 152 -> 156 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the merge of fr-media (the pause and the clear are reported writes; client.js records foray:remote) and fr-lockscreen-skip (any seekOffset lands as our step) — the suite stood at 152; 148 -> 152 // 2026-09-23 founder report: the platform's seekOffset is IGNORED — the lock screen steps ±15/30 like the in-page buttons (the inverse pin was the defect). The suite already stood at 148 against 147; 147 -> 148 // 2026-09-22 audit (L2): a remote stop pauses and keeps the session; an episode's next/previous are the page's (the no-next pin was rewritten, R2); 146 -> 147 // 2026-09-22: client.js defers the shim-counter read past the shim's own flush (the founder's sent=0). The suite was already at 145 against a floor of 143 -- two cells had landed without a bump, so this closes that slack too; 143 -> 146 // 2026-09-21: the write and the report agree — a throwing metadata assignment is reported as failed and does not poison the dedupe; 140 -> 143 // client audit (2026-09-12): no raw NUL byte in player/*.js — a binary file is invisible to every search; 139 -> 140 // L-06 (2026-09-12): the Apple Podcasts parity rule + the onWrite hook; 132 -> 139 // F-89 (2026-09-11): a jingle item is credited to 4a; 131 -> 132
   /* Playback speed (#242). Floored with ZERO SLACK, like media-session and
      data-deletion above and for the same reason: what this suite guards is a set of
      PRODUCT decisions, each one edit from its opposite and none of them visible in
@@ -214,7 +214,7 @@ const FLOORS = {
      whose case count is floored in player/parity/floors.json), so a deleted test
      here is a rule nothing asserts any more. */
   "player/continuation.test.js": 11,
-  "player/queue-manager.test.js": 144, // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
+  "player/queue-manager.test.js": 159, // fix/narration-1x (2026-09-24, founder: "1x for now"): synthesized narration speaks at NARRATION_RATE whatever the listener's rate, on both call paths, and its deadline follows; 147 -> 159 // audit round 2 (2026-09-23, L1): onStateSettled fires after every handled event, a spoken line past its deadline is treated as finished, should-resume never resumes a listener's pause; 144 -> 147 // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 58, // 2026-09-22 audit (L2): `elementResumed` — interrupted -> playing with no audio effect, and nothing from any other state; 56 -> 58
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
@@ -226,18 +226,18 @@ const FLOORS = {
      bridge is an item rather than a gap, that no two touching capsules share a
      tone, and that both themes' palettes clear 3:1. Every test names the
      mutation that kills it. */
-  "player/segment-strip.test.js": 48, // 2026-09-22 audit theme L: `stripTally`, the Foray header's counts from the strip's own model — clips are tape, and an unmeasured duration makes the runtime an estimate; 46 -> 48 // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
+  "player/segment-strip.test.js": 52, // audit round 2 (L8, p-foray-7): the page strip fits a 358px phone with floors and seams stepped down together, the metrics pinned to styles.css, a stale plan cleared; 49 -> 52 // audit round 2 (L8, states-11): the resolved Foray carries the strip's estimated answer; 48 -> 49 // 2026-09-22 audit theme L: `stripTally`, the Foray header's counts from the strip's own model — clips are tape, and an unmeasured duration makes the runtime an estimate; 46 -> 48 // the card strip (founder report, 2026-09-12): back-to-back bridges merge into one bar, and `.fy-strip--static` clips to one line; 27 -> 49
   /* 41 -> 45 (2026-09-22 audit, theme F): a vertical flick that starts on the
      sticky strip ends as a SCROLL, never a zoom (it used to seek on release);
      a sideways drag and a hold-then-drift still scrub. */
-  "player/strip-scrub-gesture.test.js": 45,
+  "player/strip-scrub-gesture.test.js": 48, // audit round 2, L2 (2026-09-23): unzoomedStripX, the release mapping through the zoom origin (touch-1); 45 -> 48 //
   /* Drag the Now Playing sheet down to dismiss it (founder report,
      2026-09-13). Same pure-state-machine shape as the scrub gesture above and
      floored for the same reason: the numbers ARE the product decision — how
      far a thumb must travel, what counts as a flick, and the eligibility rule
      that keeps a scroll through a long episode description from throwing the
      sheet away. Every test names the mutation that kills it, and each was run. */
-  "player/sheet-drag-dismiss.test.js": 15,
+  "player/sheet-drag-dismiss.test.js": 17, // audit round 2, L2 (2026-09-23): claimsTouch, who owns the finger (touch-2); 15 -> 17 //
   /* The other half of the same report: the sheet is WIRED, opens at the top,
      scrolls inside itself, and is a full-height overlay whose `[hidden]`
      attribute still hides it. A source-text suite (client.js builds DOM at
@@ -250,7 +250,7 @@ const FLOORS = {
      opened through app.js's sheet owner with the topbar kept reachable, Stop
      releases the owner, the artwork opens the player, Stop and Close sit at
      opposite ends of their row, and one finger drives the drag (+6). */
-  "player/now-playing-sheet.test.js": 24,
+  "player/now-playing-sheet.test.js": 30, // audit round 2, L2 (2026-09-23): the touchmove claim, the live region as a sibling, Stop order, sheet motion, panel motion, the drawer lock in CSS; 24 -> 30 //
   "player/seek-policy.test.js": 33,
   /* The wire between the page and on-device speech (#29). Floored with no
      slack, because what it holds down is a connection that was ABSENT for
@@ -292,13 +292,18 @@ const FLOORS = {
      a missed row is a clobber, an extra one is a store that stops saving. */
   "player/parity/rows.test.js": 4,
   "player/engine-contract.test.js": 3,
+  /* NE-04: the engine's closed vocabularies. The diag-tokens family records
+     the sets for Swift; this suite holds what is about the sets themselves —
+     the plan's named tokens, every page transport source admissible, the NE-01
+     stub's reason admissible, and exact admission for every token. Zero slack. */
+  "player/engine-vocabulary.test.js": 4,
   /* NE-08: the suites that READ their fixtures (plan §6.3). Each test runs the
      `transport` / `resume-rules` cases that name it, so the one file is the JS
      assertion and the Swift port's case list (NE-09). Zero slack: a deleted
      test here is a rule whose cases no JS test asserts any more, and the
      coverage guard would still count those cases as fixtured. The families'
      case counts are floored separately in player/parity/floors.json. */
-  "player/transport-policy.test.js": 16,
+  "player/transport-policy.test.js": 19, // merge of main into engine/m1 (2026-09-24): audit round 2's rule changes reached the policy module — the Foray nudge's end guard (player-5), a nudge inside a spoken line (player-11), an episode's previous (p-car-5); 16 -> 19
   "player/position-store.test.js": 10,
   "player/tts-bridge.test.js": 29, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 25 -> 29 // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
@@ -317,7 +322,8 @@ const FLOORS = {
      needing a special case, and a deep link into a tab-owned route is a
      cold open like any other -- two more journeys added to the list this
      suite already existed to protect. */
-  "test/back-navigation.test.js": 13, // 2026-09-22: the step comes from the real history entry (a forward tap onto the page two back; a reload keeps ‹) and a removed playlist is not one ‹ away; 11 -> 13
+  "test/back-navigation.test.js": 17, // audit round 2 (L6): nav-1 — a traversal onto a same-hash neighbour routes from popstate, once per step, and never on a load-time popstate; init binds it; 13 -> 17 // 2026-09-22: the step comes from the real history entry (a forward tap onto the page two back; a reload keeps ‹) and a removed playlist is not one ‹ away; 11 -> 13
+  "test/boot-path.test.js": 18, // round-2 sweep (2026-09-23): every <img> below hero size asks for its drawn size, Home's card too (perf-2); 17 -> 18 | audit round 2 (2026-09-23, lane L5): new suite — boot documents before storage (perf-1), no boot write shadows a late hydration (races-4), ☰/↻ disabled until bound (nav-9), ui-v2 from the first byte (p-first-2), row art at drawn size (perf-2), priming waits for a still listener (perf-3), SW registers after the first page (perf-4), fonts in every generation (perf-5)
   /* Collapsing page header reappears on scroll-up (kanban t_0faae03f, same
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
@@ -338,6 +344,7 @@ const FLOORS = {
      reproduces the reported bug, and losing the back-step restore quietly
      ruins every deep browse instead — the failure mode that has no bug report
      because it feels like the app forgetting rather than like a defect. */
+  "test/navigation-memory.test.js": 10, // audit round 2 (L6): new — nav-3 (the Search page and a retried catalogue report their real paint), perf-8 (a shelf keeps its place across ‹ and an in-place repaint), nav-10 (the native shell reopens the page left; the web keeps a bare URL as Home)
   "test/route-scroll-position.test.js": 14, // 2026-09-22: a tab tap onto the page two back starts at the top, and an async page's clamped restore lands at its terminal paint without filing the clamp; 11 -> 14
   /* 2026-09-22, audit: the router's own rules — safe decoding on every param
      route, one playlist-route spelling, a first route that throws cannot skip
@@ -369,24 +376,25 @@ const FLOORS = {
      `player/client.js`, where a rename would otherwise make the card silently go
      back to restarting episodes rather than throwing. */
   "test/card-play-pause.test.js": 7, // 2026-09-22: new -- a card showing the pause glyph must pause, and the paused current item must resume rather than restart
+  "test/foray-surfaces.test.js": 10, // audit round 2 (L8, p-foray-2): every credited show of the published Foray links in-app or its arrow says search; the index join is exact and unique and relinks in place; 7 -> 10 // audit round 2 (L8, p-first-11): the Foray explanation and the intro popup say only what the listed Forays do; 5 -> 7 // audit round 2 (L8): new -- Library labels every part-played Foray and keeps draft beside progress, a finished Foray says Played and leaves Jump back in, every list row and card states its length
   "test/foray-ribbon-restore.test.js": 5, // 2026-09-23 audit sweep: the Jump back in rows are read through a live resolver behind forayViewOpts(); 4 -> 5 // 2026-09-22 audit (L2): new -- the ribbon asks for the Foray played last first, through the forayViewOpts() gate, and falls back to the episode pointer
   /* 2026-09-22, audit theme A: "playable" means a snapshot with audio, not
      curated-pool membership. ZERO SLACK: most cells reboot app.js over the same
      storage to model a reload, which is the only place the defect lived. */
   "test/playable-episodes.test.js": 12, // 2026-09-22: new -- Up Next, History, Saved, continuous playback, Open episode and #/show/pi: all survive a reload
-  "test/jump-back-in-kinds.test.js": 19, // 2026-09-22 audit: the card reads the RAW stored position, never the collapsed resume offset (a finished episode said "180 min left"); 18 -> 19 // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
+  "test/jump-back-in-kinds.test.js": 20, // audit round 2 (L6): honesty-7 — a playlist card carries its bar and 'N of M played'; 19 -> 20 // 2026-09-22 audit: the card reads the RAW stored position, never the collapsed resume offset (a finished episode said "180 min left"); 18 -> 19 // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
   /* Audit 2026-09-22, theme C: the four listener-facing formatters (fmtDur,
      countLabel/playlistLengthLabel, joinMeta, fmtDate) and the surfaces that
      used to do each by hand — "1h 0m", "1 parts", "Show ·  · date", "Invalid
      Date". ZERO SLACK: every cell is the only one pinning its surface. */
-  "test/format-helpers.test.js": 11, // 2026-09-22: new
+  "test/format-helpers.test.js": 18, // audit round 2 (L6): copy-2/15, honesty-1, copy-13, p-first-10, copy-10 — one duration dialect across four files, the year only when not this one, an episode's length is its seconds (and the pool is gated), no zero counts, plural agreement; 11 -> 18 // 2026-09-22: new
   /* Audit 2026-09-22, theme D: a control's text and its accessible name move
      together — the Save/Follow toggles, the play buttons and their player-side
      repaint, the Foray main button's four states, the running order's
      playing/played rows, the down-vote chips, the 4 Hz notice line — plus the
      standing rule that no control's text in app.js or player/client.js is
      written except through the label helpers. ZERO SLACK. */
-  "test/toggle-labels.test.js": 12, // 2026-09-22: new
+  "test/toggle-labels.test.js": 13, // audit round 2 (L6): a11y-8 — a drawer setting is a role=switch named by its label, aria-checked, and a flip is said; 12 -> 13 // 2026-09-22: new
   /* Visual pass 1 (2026-09-23, docs/audit/status.tsv qa 43/54/59/78, persona
      10/40/58 — the founder-approved visual changes). Card anatomy: no <button>
      inside an <a> (three cards restructured as stretched-link cards), the
@@ -394,8 +402,8 @@ const FLOORS = {
      Transport: the mini bar's second control, the seek pair that stays a seek
      pair, the labelled clip rows, one nudge. Zero slack: each is a one-line
      revert from the audit's finding. */
-  "test/card-anatomy.test.js": 10, // review of the pass (2026-09-23): the banner test became "the banner is gone" (its renderer had no caller), the template walker sees nested templates, one tag tint, rows on --radius-lg, the rhythm above the first card; 8 -> 10
-  "test/transport-controls.test.js": 9, // review of the pass (2026-09-23): the sheet's Play is the bar's Play scaled, the second row is one treatment with no second Close, the clip buttons keep their aria-labels; 7 -> 9
+  "test/card-anatomy.test.js": 18, // audit round 2 (2026-09-23): numbers only on ordered lists, tags only off their own section, one Interests name, the credits ↗ column, no ‹ on a tab root, the Shows eyebrow, the two-line show row, one Up Next silhouette; 10 -> 18 | earlier: review of the pass (2026-09-23): the banner test became "the banner is gone" (its renderer had no caller), the template walker sees nested templates, one tag tint, rows on --radius-lg, the rhythm above the first card; 8 -> 10
+  "test/transport-controls.test.js": 11, // round-2 sweep (2026-09-23): the Foray page's speed button says it opens a menu (player-9); 10 -> 11 | audit round 2 (2026-09-23): one transport button on the Foray page and in Now Playing; 9 -> 10 | earlier: review of the pass (2026-09-23): the sheet's Play is the bar's Play scaled, the second row is one treatment with no second Close, the clip buttons keep their aria-labels; 7 -> 9
   /* Review of the pass (2026-09-23): "Vibe Coding &#038; Linux" shipped in
      data/discover.json as text. Entities are decoded where they enter data/
      (tools/refresh/entities.mjs) and this suite fails on any left behind. */
@@ -407,7 +415,7 @@ const FLOORS = {
      its cause (pull to refresh, the home-screen builder, browser copy in the
      shell, the four-queue popup, raw resolver reasons) stays gone, with the
      behaviour behind the copy. ZERO SLACK. */
-  "test/listener-copy.test.js": 13, // 2026-09-22: new
+  "test/listener-copy.test.js": 20, // round-2 integration (2026-09-23): the counts of both lanes; -> 20 // audit round 2 (L6): copy-11/7/1/6, a11y-11, p-foray-6 — 4a never 'we', 'subject' not 'topic', no browser words, one failure sentence pair, no tooltip-only explanation, and a down-vote moves the subject only for a subject reason; 13 -> 20 // audit round 2 (2026-09-23, lane L4): no new test; the 'Starts with' pin reads the typographic pair (copy-8) and the stale-note pin follows the builder to Create (p-first-6) — the count was already 14, the floor said 13; 13 -> 14 // // 2026-09-22: new
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
   "test/show-episodes-cache.test.js": 10,
@@ -420,7 +428,7 @@ const FLOORS = {
   /* 2026-09-17, founder: episode descriptions carry clickable links and clickable
      timestamps that seek. This is the one function in app.js that turns untrusted
      publisher text into markup, so about half of it is injection cases. */
-  "test/episode-description-links.test.js": 25, // +3 (2026-09-18): the notes collapse into a closed <details> so artwork leads the page, the timestamps still bind inside it, and chapters stay out of it
+  "test/episode-description-links.test.js": 31, // round-2 integration (2026-09-23): L2 +1 and L7 +4 on a base of 26 -> 31 // L7: audit round 2 (2026-09-23): a stamp-led line is a 44px chapter row, keeps no stray newline, stays inline beside a link or a second stamp, and stays text past the end; 25 -> 30 // audit round 2, L2 (2026-09-23): one tokeniser, published for the sheet (p-switcher-2); 25 -> 27 // // +3 (2026-09-18): the notes collapse into a closed <details> so artwork leads the page, the timestamps still bind inside it, and chapters stay out of it
   /* Stage 3 of docs/episode-pages-plan.md — epRow/archivedRow/bannerHtml
      title links to #/episode/:id (kanban card t_51e5d7bc). Floored at its
      exact current count: this is a small, deliberately-scoped regression
@@ -435,14 +443,14 @@ const FLOORS = {
      with no cites draws no Sources block", "no committed Foray renders a
      curation code" — and a degrade test is the kind that looks redundant to a
      reader who does not know what it is holding down. */
-  "test/foray-row-links.test.js": 18,
+  "test/foray-row-links.test.js": 20, // audit round 2 (L8, p-foray-5): a clip row names its episode beside the show; 19 -> 20 // audit round 2 (L8, p-foray-12): the narrator has one name on the row, in the accessible name and in the strip; 18 -> 19
   /* Visible explicit-content ("E") badge (kanban card t_02c6bb0b):
      explicitBadge() itself, its four call sites (epRow, archivedRow,
      renderEpisode, renderShow at both episode- and show-level), and a check
      that Family Mode's pre-existing poolFiltered() filter still fires
      unchanged — the badge is additive, not a replacement for that filter. */
   "test/explicit-badge.test.js": 9,
-  "test/first-time-onboarding.test.js": 28, // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
+  "test/first-time-onboarding.test.js": 33, // round-2 integration (2026-09-23): the counts of both lanes; -> 33 // audit round 2 (L6): p-first-1/3/7 — picks fill the first Home's top tier over the shipped pool with real randomness, never the stretch slot; a typed word matches label words and leaves, and a miss is said with the sheet kept open; 'Show my picks'; 28 -> 32 // audit round 2, L2 (2026-09-23): a Foray resume row is prior use (p-first-5); 28 -> 29 // // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
      and no numeric ID repeats. */
@@ -453,7 +461,7 @@ const FLOORS = {
      stray tap cannot satisfy. Every one of those is one edit from its opposite,
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
-  "test/data-deletion.test.js": 58, // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
+  "test/data-deletion.test.js": 68, // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
   "test/diagnostics-surface.test.js": 19,
@@ -493,7 +501,7 @@ const FLOORS = {
      also the suite most tempting to delete, because it is the only one that goes
      red for a reason in a `.md` file — the 27 line numbers it replaced went stale
      precisely because correcting them was somebody's optional courtesy. */
-  "test/legal-citations.test.js": 12,
+  "test/legal-citations.test.js": 17, // founder-approved persist-3 wording (2026-09-24): the policy's stated connect-src count is the CSP's, Vercel named, no "miss-only"; 15 -> 17
   /* FD-06 (docs/foray-directory-plan.md): `vercel.json`'s `headers` block. The
      phone path lives or dies on one line of it — `Access-Control-Allow-Origin: *`
      on `/data/` — and a missing header fails SILENTLY on a phone (the shell's
@@ -514,21 +522,21 @@ const FLOORS = {
      a nineteen-test suite; L4 added the one-radio-group cell (qa row 81) and L3
      the two "a rebuild must not throw focus out of the sheet" cells. Set to the
      post-merge count. */
-  "test/voice-settings.test.js": 22,
+  "test/voice-settings.test.js": 24, // fix/narration-1x (2026-09-24): the Preview speaks at NARRATION_RATE, never the listener's speed; 22 -> 24
   /* Theme F of the 2026-09-22 audit: tap targets sized by a RULE. Enumerates
      every control the audit measured below 44px and requires a 44px hit area
      by size or by the one `:where(...)::after` rule, checks that rule's shape,
      and pins the gesture findings (the strip's vertical flick, the scrubber's
      touch-action, the double home-indicator inset, Stop vs Close, hover vs
      playing). Sixteen tests, each mutation-checked red. */
-  "test/tap-targets.test.js": 18, // visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text buttons join the measured list; 16 -> 18 (two sweep tests had landed unfloored)
+  "test/tap-targets.test.js": 22, // audit round 2 (2026-09-23): the rendered-<button> census, the whole ep-row stretched link, the show-link hit box, the half-leading stamp, the static strip pans, no link preview; 18 -> 22 | earlier: visual pass 1 (2026-09-23): the mini bar's ↺15 and the clip rows' text buttons join the measured list; 16 -> 18 (two sweep tests had landed unfloored)
   /* Theme E of the same audit: ONE owner for "a modal is open" — focus in and
      back, `inert`, Tab trap, Escape, one instance, the body lock derived from
      what is open (the back-gesture scroll-lock leak) — plus focus and the
      thumb surviving Up Next's rebuild, and the strip's click suppression.
      Seventeen tests over a small DOM with real parent links and focus, each
      mutation-checked red. */
-  "test/modal-and-focus.test.js": 26, // 2026-09-23 audit sweep (qa row 80): part 5 — a route lands lost focus on the page heading (or #view), names the document, leaves surviving focus and announces instead, is silent on a same-page re-render, and pageDidPaint renames an async page; 21 -> 26 (L3 took it to 21 unfloored)
+  "test/modal-and-focus.test.js": 38, // round-2 integration (2026-09-23): the counts of both lanes; -> 38 // audit round 2 (L6): nav-7/races-6/a11y-10 — a page is named without its explicit badge, a Loading-first page is said once on its real paint, Home says 'Home' and lands a lost focus on the greeting; 26 -> 30 // audit round 2, L2 (2026-09-23): a late close leaves moved-on focus alone (touch-8), the zoomed release seeks (touch-1), the step-swap focus (a11y-5), the parked scrim (p-first-4), the reachable player (p-first-5), Stop order owner-side (a11y-6), panel drag (touch-4), slideOut (touch-8); 26 -> 34 // // 2026-09-23 audit sweep (qa row 80): part 5 — a route lands lost focus on the page heading (or #view), names the document, leaves surviving focus and announces instead, is silent on a same-page re-render, and pageDidPaint renames an async page; 21 -> 26 (L3 took it to 21 unfloored)
   /* S-08's mechanical privacy tripwire: SHOWS_SEARCH_OFF_DEVICE flag detection
      (source and env), the pinned current-sentence check, the core AND-gate
      that fails release builds only when the flag is on AND the old sentence
@@ -595,7 +603,7 @@ const FLOORS = {
      playlist play (two tests — the positive case and that a non-playlist
      play never fabricates one), and searchWithRelaxation's `relaxed` signal
      being discarded by buildPlaylist instead of disclosed on the page. */
-  "test/playlist-durability.test.js": 38,
+  "test/playlist-durability.test.js": 39, // audit round 2, lane L3 (2026-09-23): 'N played' counts finished episodes only (honesty-6); 38 -> 39 //
   /* #/show/:id, Stage 1 of docs/show-pages-plan.md. Floored because the join it
      guards (show_id first, title-alias fallback for Lingthusiasm) fails
      silently in exactly the way #276's playlist decay did: a dropped fallback
@@ -639,7 +647,7 @@ const FLOORS = {
      scoped search results, which is the case the pagination suite could not
      see because none of its tests ever typed a query. */
   "test/show-page-pagination.test.js": 5,
-  "test/show-page-search.test.js": 8,
+  "test/show-page-search.test.js": 10, // audit round 2 (2026-09-23, lane L4): the in-show fallback is painted as a failed state — no '(N loaded so far)' over a list nothing will grow — with Try again wired to runSearch (states-10); 8 -> 10 //
 
   /* The third founder report of 2026-09-13: the now-playing bar must be off
      the screen while a soft keyboard is up (it used to ride up onto the top of
@@ -707,7 +715,7 @@ const FLOORS = {
      mutations named and killed in the file's own header — rendering,
      Apple-vs-live captioning, empty-result absence, offline skip, stale
      response drop, and in-app playability of a result. */
-  "test/episode-search.test.js": 18, // adversarial review (2026-09-12): the three defects the P-05 episode tier shipped with — a search paint writing the endpoint's thinner row shape back over a REAL stored episode's snapshot, a show-page save that could never dedup against its own endpoint copy, and the show index landing mid-query clearing an answered episode section; 14 -> 18 // P-05 piece 2 (docs/search-parity-plan.md, 2026-09-12): the INSTANT EPISODE TIER — the first half of the two-pass shape, over the listener's own cp_saved/cp_queue. Paints on the keystroke before any network call, matches the show name as well as the title, merges the endpoint's copy of a saved episode instead of duplicating it, never lets the Apple caption label a local row, survives a dead endpoint, answers offline, refuses state.itemIndex as a source, and clears a previous query's rows; 6 -> 14
+  "test/episode-search.test.js": 22, // audit round 2 (2026-09-23, lane L4): a remote row carries show_id, release_date and artwork and links its show by id (search-8, p-switcher-7), the cached show record backs a row with no artwork, the section says how many were held back (honesty-11), and a degraded reply is neither cached nor silent (states-7); 18 -> 22 // // adversarial review (2026-09-12): the three defects the P-05 episode tier shipped with — a search paint writing the endpoint's thinner row shape back over a REAL stored episode's snapshot, a show-page save that could never dedup against its own endpoint copy, and the show index landing mid-query clearing an answered episode section; 14 -> 18 // P-05 piece 2 (docs/search-parity-plan.md, 2026-09-12): the INSTANT EPISODE TIER — the first half of the two-pass shape, over the listener's own cp_saved/cp_queue. Paints on the keystroke before any network call, matches the show name as well as the title, merges the endpoint's copy of a saved episode instead of duplicating it, never lets the Apple caption label a local row, survives a dead endpoint, answers offline, refuses state.itemIndex as a source, and clears a previous query's rows; 6 -> 14
 
 
   /* The home screen's geometry under DEVICE conditions. Floored because every
@@ -767,7 +775,7 @@ const FLOORS = {
      Forays": it is the one a "simplify renderForays back to synchronous" edit
      would silently undo, because every existing harness mounts with the bridge
      already present. */
-  "test/load-states.test.js": 29, // 2026-09-22 persona #28: while the playlist scan behind the Shows search results is owed the section says "Still looking for playlists…", and a scan that throws still ends it; 27 -> 29 // 2026-09-22 persona #43, cold boot: "Loading 4a…" before the first await, a boot failure with Try again, the first route() not waiting on the search-only documents, their arrival replacing the scorer's ctx, and a playlist build waiting for them while they are in flight; 22 -> 27 // 2026-09-22 persona #4: a play button whose play() throws or refuses reports it to the player bar instead of swallowing the tap; 21 -> 22 // 2026-09-22 theme L: rows say "Played"/"NN min left", "played" survives the history ring rotating, a subject card totals only a fully-timed list; 18 -> 21 // 2026-09-22 theme L: the Foray header counts the strip's clips and heard shows, says "about" over an estimated runtime, and never promises "listed below" for a clip the page cannot list; 14 -> 18 // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
+  "test/load-states.test.js": 37, // round-2 integration (2026-09-23): L8 added on top; 32 -> 37 // audit round 2 (L8, honesty-2): a finished Foray's page says Played with Play again; 29 -> 33 // audit round 2 (2026-09-23, lane L4): no new test; the failure line moved from the empty offer to #sh-partial-note and the notes quote with the typographic pair — the count was already 32, the floor said 29; 29 -> 32 // // 2026-09-22 persona #28: while the playlist scan behind the Shows search results is owed the section says "Still looking for playlists…", and a scan that throws still ends it; 27 -> 29 // 2026-09-22 persona #43, cold boot: "Loading 4a…" before the first await, a boot failure with Try again, the first route() not waiting on the search-only documents, their arrival replacing the scorer's ctx, and a playlist build waiting for them while they are in flight; 22 -> 27 // 2026-09-22 persona #4: a play button whose play() throws or refuses reports it to the player bar instead of swallowing the tap; 21 -> 22 // 2026-09-22 theme L: rows say "Played"/"NN min left", "played" survives the history ring rotating, a subject card totals only a fully-timed list; 18 -> 21 // 2026-09-22 theme L: the Foray header counts the strip's clips and heard shows, says "about" over an estimated runtime, and never promises "listed below" for a clip the page cannot list; 14 -> 18 // 2026-09-22: the Shows search says "Searching for …" until the catalogue, directory and shard passes have all answered, scopes its empty note to shows, and offers Try again (a failed pass) or the subject's categories (a label query) instead of a dead end; 10 -> 14 // 2026-09-22: new
 
   /* Requirements A3.2/A3.3 — category browse + all-shows index (kanban card
      "Build: category browse — linkify taxonomy chips + all-shows index"):
@@ -908,11 +916,11 @@ const FLOORS = {
      its subject is the OFFLINE/network-skip contract and the new id space,
      neither of which show-search-shard.test.js's pure-function tests touch
      (those never construct a DOM or a fetch at all). */
-  "test/offline-search.test.js": 13,
+  "test/offline-search.test.js": 14, // audit round 2 (2026-09-23, lane L4): an empty offline search is one line, not three (search-12), and the offline note no longer promises 'available offline' (states-9); 13 -> 14 //
   /* S-06 (2026-09-12): the Apple fall-through is asked for only on a genuine local miss,
      its rows render and cache like any other breadth row, and a breadth show page survives
      a cold open. Restored with the card after a merge took main's side on app.js. */
-  "test/show-search-fallthrough.test.js": 27, // #684 report 2: the list only ever grows DOWNWARD — a later pass appends beneath what is painted instead of re-ranking the whole list under the listener, and its additions are still ranked among themselves; plus the empty-state note naming no catalogue of ours (founder, 2026-09-13: "don't blame it on 4a"). 24 -> 27 // adversarial review (2026-09-12): a degraded/rate-limited directory answer is HTTP 200 and was cached as an answer for the session (with the fixture that could not model it, and the telemetry that hid it), the title dedup missed the subtitle divergence the committed catalogue already carries, and the show index landing mid-query replaced the painted list instead of merging into it; 19 -> 24 // P-03 (docs/search-parity-plan.md, 2026-09-12): the BYLINE — the half of "index the author" that survived measurement. A directory row renders its author, a row without one renders no byline element (the shared curated callers stay byte-identical), and the string is escaped rather than trusted; 16 -> 19 // P-02 (docs/search-parity-plan.md, 2026-09-12): the directory became a SECOND PASS instead of a last resort — the reversal itself, the `tim` case that kills every count threshold, the 3-character floor in both directions, Apple's duplicate-title collapse and its catalogue-row boundary, "a failed directory pass leaves the local list exactly as it was", the directory's own hot-query cache, and the two-language pin on the normalised-title rule; 10 -> 16 // client audit (2026-09-12): Apple's ranking survives the merge instead of being re-sorted A-Z; 7 -> 10
+  "test/show-search-fallthrough.test.js": 47, // audit round 2 (2026-09-23, lane L4): the painted row is the truth — a painted index row is upgraded in place with the catalogue's art (search-1), a query arrival loads the index (search-6), the same query never shrinks the list or doubles the requests (search-7), ✕ supersedes the in-flight search (races-2), a degraded catalogue reply is a failure (search-4), a dead episode endpoint or breadth pass says so over a FULL list and Try again re-runs it (states-7), offline is one honest note (search-12/states-9), the lit Search tab returns to the search (search-5), return blurs the field and both fields ask for the search keyboard (search-3), a Foray is findable (p-foray-4), one typographic quote pair (copy-8), and the local passes fold diacritics (search-9); zero slack; 27 -> 47 // // #684 report 2: the list only ever grows DOWNWARD — a later pass appends beneath what is painted instead of re-ranking the whole list under the listener, and its additions are still ranked among themselves; plus the empty-state note naming no catalogue of ours (founder, 2026-09-13: "don't blame it on 4a"). 24 -> 27 // adversarial review (2026-09-12): a degraded/rate-limited directory answer is HTTP 200 and was cached as an answer for the session (with the fixture that could not model it, and the telemetry that hid it), the title dedup missed the subtitle divergence the committed catalogue already carries, and the show index landing mid-query replaced the painted list instead of merging into it; 19 -> 24 // P-03 (docs/search-parity-plan.md, 2026-09-12): the BYLINE — the half of "index the author" that survived measurement. A directory row renders its author, a row without one renders no byline element (the shared curated callers stay byte-identical), and the string is escaped rather than trusted; 16 -> 19 // P-02 (docs/search-parity-plan.md, 2026-09-12): the directory became a SECOND PASS instead of a last resort — the reversal itself, the `tim` case that kills every count threshold, the 3-character floor in both directions, Apple's duplicate-title collapse and its catalogue-row boundary, "a failed directory pass leaves the local list exactly as it was", the directory's own hot-query cache, and the two-language pin on the normalised-title rule; 10 -> 16 // client audit (2026-09-12): Apple's ranking survives the merge instead of being re-sorted A-Z; 7 -> 10
   /* REACH (defect 1, 2026-09-13): can the app answer with a row the device is
      already holding? Floored new rather than folded into show-search*.test.js
      because it is the only suite that runs the app over the COMMITTED
@@ -938,7 +946,7 @@ const FLOORS = {
      proofs that neither SearchEngine's exports nor its scoring output moved
      (2, mirroring show-search.test.js's own such test). Every test names its
      mutation; see the suite header for the full list of what each pins. */
-  "test/search-playlists.test.js": 19, // client audit (2026-09-12): topicSearchStatus and buildPlaylist score a query once, through one extracted pass; 17 -> 19 // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the v1/flag-off "no Playlists section, no pill row, no CTA" test was retired along with cp_ui_v2 — ui2On() always returns true now, so that off-state is unreachable. 18 -> 17
+  "test/search-playlists.test.js": 18, // audit round 2 (2026-09-23, lane L4): the Create-CTA gate is inverted — offered when the scorer CAN build, withheld when it says empty (search-2) — and hands off to Create; the two old gate tests asserted each other's opposite outcome and became one pair plus the hand-off, so four tests are three; 19 -> 18 // // client audit (2026-09-12): topicSearchStatus and buildPlaylist score a query once, through one extracted pass; 17 -> 19 // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the v1/flag-off "no Playlists section, no pill row, no CTA" test was retired along with cp_ui_v2 — ui2On() always returns true now, so that off-state is unreachable. 18 -> 17
   /* Home information architecture (founder instruction, 2026-09-03: "the
      home page has so much clutter. Menu should have the following pages:
      Home, Shows, Playlists, Forays, Up Next."). The move matrix: each of
@@ -951,18 +959,19 @@ const FLOORS = {
      clutter one "just one more row" at a time, and a suite that can be
      deleted in an auto-merged PR guards nothing. Every test names its
      mutation; see the suite header. */
-  "test/home-information-architecture.test.js": 10, // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the v1/flag-off "foray list renders on #/forays and not on Home" + "Jump back in moved" tests were retired — Home always renders Home v2 now, which intentionally DOES show a "Jump back in" row (covered by test/home-v2.test.js); the ".home renders banner+cards4 and nothing else" test was rewritten to pin Home v2's shape instead. 12 -> 10
+  "test/home-information-architecture.test.js": 11, // audit round 2 (2026-09-23, lane L4): #/playlists is the list with one door to Create's builder (p-first-6, founder question 4 default), and 'Followed shows ›' is drawn only when a show is followed (p-first-12); 10 -> 11 // // U-11 cutover (2026-09-06, kanban t_a3f01c8a): the v1/flag-off "foray list renders on #/forays and not on Home" + "Jump back in moved" tests were retired — Home always renders Home v2 now, which intentionally DOES show a "Jump back in" row (covered by test/home-v2.test.js); the ".home renders banner+cards4 and nothing else" test was rewritten to pin Home v2's shape instead. 12 -> 10
 
   /* U-03 (docs/ui-transition-plan.md, kanban t_6e8343b6): Home v2's four
      sections plus the greeting, behind cp_ui_v2, with the exploration floor
      (D1/#123). Floored for the same reason as the suite above: the floor
-     itself ("Forays for you"/"Episodes for you" always reserve a visibly-
+     itself ("Forays for you"/"Suggested" always reserve a visibly-
      labelled stretch slot with its bridge line) is a product decision Wyatt
      made explicitly to resolve a founder gate, and it is exactly the kind
      of thing that regresses silently — nobody notices a personalization
      feed slowly stopped surprising anyone. Every test names its mutation;
      see the suite header. */
-  "test/home-v2.test.js": 9, // F14 (2026-09-08): generated playlists are interest leaves, not card slots
+  "test/home-v2.test.js": 10, // founder, 2026-09-24: "Rename it 'Suggested'" — the card-slot heading; 9 -> 10 // F14 (2026-09-08): generated playlists are interest leaves, not card slots // F14 (2026-09-08): generated playlists are interest leaves, not card slots
+  "test/home-play.test.js": 14, // founder, 2026-09-24: Home's one play button — each first-rail kind, passed-over rails, the empty case, loading / failure / superseded / isCurrent; new suite
   "test/home-v2-real-data.test.js": 5, // U-03 audit fix (2026-09-10): Home v2 over the committed data/*.json at insets 0/59; the Forays-for-you floor's documented fallback with one published Foray
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
      Kanban card "Build: starred shows (follow-lite) + dedicated Starred
@@ -985,7 +994,7 @@ const FLOORS = {
      #276/show-pages shape: silently wrong is the failure mode, not a crash.
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
-  "test/up-next-queue.test.js": 13,
+  "test/up-next-queue.test.js": 20, // audit round 2, lane L3 (2026-09-23): the page is a live view of cp_queue, .is-current, the row mark, one unnamed sentence, no + Up Next on an archived part, addToQueue refuses the unplayable, the cap never prunes a queued key, fullPool memoised; 13 -> 20 //
   /* Library screen (#/library, `docs/ux/foray-mockup.jsx`'s LibraryScreen,
      kanban card t_a1e7a69c). Floored for the same reason up-next-queue is:
      the four sections' decay path (an aged-out saved/history id, an empty
@@ -993,7 +1002,7 @@ const FLOORS = {
      Also pins that Playlists/Up Next stay LINKED summaries rather than
      embedded row lists, and that no interpolated href on the page bypasses
      the in-app hash-route/safeUrl composition every other page uses. */
-  "test/library-screen.test.js": 17, // 2026-09-22: Forays and Followed shows are Library sections, one name for #/shows, the ↻ refreshes in place; 11 -> 17 (L1's in-place Up Next reorder cell went at integration: L3's afterQueueMove fixes the same finding and is pinned in test/modal-and-focus.test.js)
+  "test/library-screen.test.js": 20, // audit round 2, lane L3 (2026-09-23): History is last-played order (honesty-3); 17 -> 20 // // 2026-09-22: Forays and Followed shows are Library sections, one name for #/shows, the ↻ refreshes in place; 11 -> 17 (L1's in-place Up Next reorder cell went at integration: L3's afterQueueMove fixes the same finding and is pinned in test/modal-and-focus.test.js)
   /* Settings drawer stays open on toggle (Joey, 2026-08-31, t_0c09d83a): the
      three toggles' click handlers, plus the two real-navigation regression
      guards. */
@@ -1002,7 +1011,7 @@ const FLOORS = {
      declared stays (toggles, the Developer summary), the overlay and scrim
      each closing only their own thing, focus back to the ☰, and the founder's
      exact tap sequence. Floored at its count: every cell is one mutation. */
-  "test/drawer-ownership.test.js": 11,
+  "test/drawer-ownership.test.js": 19, // audit round 2, L2 (2026-09-23): the drawer modal contract x3 (nav-5), same-hash x2 (nav-8), hardware back x3 (nav-2); 11 -> 19 //
   "test/drawer-settings-toggle.test.js": 13, // 2026-09-22 audit (R7, R8): "Open in" and its dead code are gone (replacing the test of its switch), and the founder tools sit in one collapsed Developer group above Delete my data; 12 -> 13 // client audit (2026-09-12): the sixth switch (cp_interlude, disclosed since FD-06 with no control), the one `drawerToggle` shape, and the retired ui-v2 debris; 6 -> 12
   /* "Up Next" auto-advance (docs/listening-queue-plan.md §8 addendum, kanban
      card t_b9880844). Floored for the same reason as up-next-queue.test.js
@@ -1017,7 +1026,7 @@ const FLOORS = {
      position. Each is one deleted line from a car that plays the wrong thing,
      or a history that counts a drive twice. */
   "test/engine-continuation.test.js": 6,
-  "test/up-next-autoadvance.test.js": 11, // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
+  "test/up-next-autoadvance.test.js": 20, // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
      t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
      wrong row set, a wrong slider range, or a drag that silently fails to
@@ -1078,7 +1087,7 @@ const FLOORS = {
      evidence that THIS suite pins its behaviour; with a floor 19 below the real
      count, an auto-merged `test/` change could thin it while the claim stayed
      green. Zero slack from here on, for the reason media-session has none. */
-  "test/sw-generation.test.js": 52, // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
+  "test/sw-generation.test.js": 57, // audit round 2 (L5): no self-rewrite of a tracked file, validators for untracked (perf-6 x2), unchanged files copied not fetched + no-cache, bad copy refused (perf-4 x2), fonts cache-first (perf-5); 52 -> 57 // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
   /* U-01 (docs/ui-transition-plan.md): the ui-v2 token scope. Four tests --
      the nine tokens' names+values, the "no raw hex leaks outside the block"
      mutation guard, the amber/violet consumption check, and the self-hosted
@@ -1091,9 +1100,9 @@ const FLOORS = {
      re-own everything a colour-scheme query can change, check the JS-written
      claim, and resolve the cascade for "Delete everything" to the danger
      token. */
-  "test/ui-tokens.test.js": 22, // review of visual pass 1 (2026-09-23): the resting star is --muted, one colour-scheme + one focus ring, note links are authored, violet primaries are never on the card radius, row/card titles are the display face; 17 -> 22 // visual pass 1 (2026-09-23): the radius, type and elevation families are enforced like the palette; the two heading kinds; one wordmark; 11 -> 17 // 2026-09-23 audit sweep (qa row 79): --faint paints no text or live control; --muted is readable on every surface; the --faint utility has no user; 8 -> 11
+  "test/ui-tokens.test.js": 37, // round-2 sweep (2026-09-23): a control marked loading has a look and Reduce Motion stills it (p-impatient-4); the current Up Next row is drawn (p-impatient-6); 35 -> 37 | audit round 2 (2026-09-23): one rule per role — no C1 bytes, amber ranges, one field, one section-title step, row titles 600, one gutter, flat rows, no branch dot, the search ring, one reduce-motion block, amber min-left, one wordmark on Home, the episode head; 22 -> 35 | earlier: review of visual pass 1 (2026-09-23): the resting star is --muted, one colour-scheme + one focus ring, note links are authored, violet primaries are never on the card radius, row/card titles are the display face; 17 -> 22 // visual pass 1 (2026-09-23): the radius, type and elevation families are enforced like the palette; the two heading kinds; one wordmark; 11 -> 17 // 2026-09-23 audit sweep (qa row 79): --faint paints no text or live control; --muted is readable on every surface; the --faint utility has no user; 8 -> 11
   /* 2026-09-23 audit sweep: docs/audit/status.tsv has one row per finding under its own title, refuted/deliberate verdicts are kept, and the README table agrees. */
-  "test/audit-status.test.js": 3,
+  "test/audit-status.test.js": 6, // round-2 sweep (2026-09-23): the round-2 ledger gets the same three promises (one row per finding, verdicts kept, README counts agree); 3 -> 6
   /* U-02 (docs/ui-transition-plan.md, kanban t_806e5d01): the cp_ui_v2 flag
      and the four-tab bar shell. Eleven tests -- off by default, all four
      tabs in order when on, removed (not hidden) when turned back off, the
@@ -1119,7 +1128,7 @@ const FLOORS = {
      disabled-Foray control is a product promise (D8 — the pipeline exists,
      its key/segment pool don't) and each test is one line from silently
      no longer holding it. Every test names the mutation that kills it. */
-  "test/create-page.test.js": 9, // 2026-09-22: a suggestion pill builds from one tap (persona 26); 8 -> 9
+  "test/create-page.test.js": 13, // audit round 2 (2026-09-23, lane L4): a build that outlives the page does not navigate from wherever the listener is, a return to Create shows Building… with the pills disabled and the build lands on the live page, and an empty result writes the live note (races-3); 9 -> 13 // // 2026-09-22: a suggestion pill builds from one tap (persona 26); 8 -> 9
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   /* The icons are generated from tools/brand/4a-logo.png, and this suite is the
@@ -1192,6 +1201,12 @@ const FLOORS = {
      its port card, and --mutate's kill/survive/pending verdicts with a no-op
      control. Zero slack. */
   "tools/parity/record.test.mjs": 17, // NE-13: a jsOnly family (the continuation hops, plan C-2) records with no port card and owes swift-pending nothing; 16 -> 17 // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
+  /* NE-04: EngineConstants.swift, Diag/Vocabulary.swift and vocabulary.json
+     are GENERATED from the JS, and this is what makes them unable to drift:
+     stale on disk, a duplicate export name, both DRIFT_TOLERANCE_SEC values in
+     distinct namespaces, every export emitted or omitted with a reason, the
+     Swift escaping rules, and the CLI. Zero slack. */
+  "tools/parity/gen-constants.test.mjs": 9,
   /* THE TYPE GATE, and the reason it is floored at all. Until 2026-09-12 no CI
      job in this repo had ever run `tsc` or `eslint`: `backend/package.json`
      defined `typecheck` and nothing called it, so the TypeScript backend was
@@ -1286,7 +1301,7 @@ const FLOORS = {
      D3's (1) went with their rules; the pair clause gained six (reported on
      pre-Q-01 tape, gated on a Q-01 Foray, the CLI exit, the row fields, the
      IQR still reported, the helper) and M4's restatement three. */
-  "tools/foray/check-forays.test.mjs": 161, // L8 review (2026-09-23): §0 and slot headers declared again, by doc path, so a doc cannot lose them silently; 160 -> 161. L8 (2026-09-22): the pipeline's own words (beat, segment, act, running order) refused in Foray copy — the audit found "eight beats of a forty-beat history" as a title; 159 -> 160. // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
+  "tools/foray/check-forays.test.mjs": 163, // audit round 2 (L8, p-foray-5): a published Foray's why-lines are captions -- no bare leading name the titles do not introduce, no gendered pronoun with no one to point at; 161 -> 163 // L8 review (2026-09-23): §0 and slot headers declared again, by doc path, so a doc cannot lose them silently; 160 -> 161. L8 (2026-09-22): the pipeline's own words (beat, segment, act, running order) refused in Foray copy — the audit found "eight beats of a forty-beat history" as a title; 159 -> 160. // K-02 (2026-09-12): the phoneme rules — inert on every legacy item, red when one lexicon override is dropped; 129 -> 140. F-103 (2026-09-12): `cites` — the shape, the two resolvability rules (in the pool, AND played by this Foray), the internal-page-record refusal, the dedup and the url rule, each with its own mutation; 140 -> 154. L4-on-roleless (2026-09-15): L4 left the L2/L3 loop, whose `if (!p.role) continue` it had been inheriting — no generated Foray records a role, so the rule had never run on generated tape; 158 -> 159
   /* G-21c fixture-before-emit (F-89). Seven DECLARATIONS, not seven tests: two
      of them sit inside a loop over `ACCEPTED_SHAPES` and expand to one test per
      accepted value (~30 today), so the floor is the count of `test(` lines this
@@ -1424,7 +1439,7 @@ const FLOORS = {
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
   "tools/mobile/prepare-webdir.test.mjs": 84, // 2026-09-22 audit (L2), founder report 3: the bundle carries build-stamp.json with the committed deploy_id; 83 -> 84 // +1 audit finding E (2026-09-12): seedCarries is exactly the negation of the one `isGeneratedDraft`; 82 -> 83 // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
-  "tools/mobile/shell-invariants.test.mjs": 75, // NE-05 (docs/native-engine-plan.md): the Swift parity library imports no XCTest, reads player/parity in place (no .json copy under the core) and keeps the FORAY_PARITY_DIR / PARITY_REPORT / family-line interface; both XCTest wrappers run the compare and seam-gap families and the whole manifest, and the registry holds both runners; 73 -> 75 // NE-02 (docs/native-engine-plan.md): the core's reducer and its tests are copies whose headers name the ios/ source @ adde5e12 and say ios/ is frozen reference; every one of the 34 original reducer tests survives in the copy, by name; 71 -> 73 // NE-01 (docs/native-engine-plan.md): foray-engine-core is pure (no deps, Foundation-only sources, no XCTest in the parity library); foray-audio links it by path and keeps one product (the scheme list); engineHello is an iOS-only stub that answers from the core; the Preferences pin is test-only and cannot compile out; the page never configures a Preferences group; 66 -> 71 // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
+  "tools/mobile/shell-invariants.test.mjs": 81, // merge of main into engine/m1 (2026-09-24): both sides grew the file off 66 — engine/m1 by nine (NE-01/02/05, 66 -> 75), main by six (audit round 2, 66 -> 72) — so 75 + 6 = 81 // main: round-2 sweep (2026-09-23): a stall stops the lock-screen clock on both natives (p-car-8); 71 -> 72 | audit round 2, lane L3 (2026-09-23): the route-gated track pair and the unmirrored track handlers, one .spokenAudio mode, the Android seek pair + custom buttons, no re-post on a press, the narration-first start; 66 -> 71 // NE-05 (docs/native-engine-plan.md): the Swift parity library imports no XCTest, reads player/parity in place (no .json copy under the core) and keeps the FORAY_PARITY_DIR / PARITY_REPORT / family-line interface; both XCTest wrappers run the compare and seam-gap families and the whole manifest, and the registry holds both runners; 73 -> 75 // NE-02 (docs/native-engine-plan.md): the core's reducer and its tests are copies whose headers name the ios/ source @ adde5e12 and say ios/ is frozen reference; every one of the 34 original reducer tests survives in the copy, by name; 71 -> 73 // NE-01 (docs/native-engine-plan.md): foray-engine-core is pure (no deps, Foundation-only sources, no XCTest in the parity library); foray-audio links it by path and keeps one product (the scheme list); engineHello is an iOS-only stub that answers from the core; the Preferences pin is test-only and cannot compile out; the page never configures a Preferences group; 66 -> 71 // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only
@@ -1468,7 +1483,7 @@ const FLOORS = {
      neither Python nor misaki, which is the point: it re-checks on every CI run
      a file that CI could not have produced. */
   "tools/mobile/kokoro-vocab.test.mjs": 7,
-  "tools/mobile/foray-tts.test.mjs": 62, // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
+  "tools/mobile/foray-tts.test.mjs": 66, // fix/narration-1x (2026-09-24): rate 1 is each platform's normal rate — passed through, Web Speech 1, Android setSpeechRate(1.0f), iOS AVSpeechUtteranceDefaultSpeechRate; 62 -> 66 // #685 (2026-09-13): a refusal carries the numbers the phone did produce, and a native payload cannot spread its way into a success; 60 -> 62 // K-01 (2026-09-12): the probe is a SEPARATE call with no Web Speech ladder under it; 53 -> 60 // L-05 (2026-09-12): pause/resume/stop/state on all three paths; 45 -> 53
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody
@@ -1483,7 +1498,12 @@ const FLOORS = {
      RELEASE_EVENTS and ACQUIRE_EVENTS lists, so they expand into six runs. The floor is
      the static count, because a regex over source is what this file measures. Raise it
      when the suite grows. */
-  "tools/mobile/foray-audio-shell.test.mjs": 83,
+  /* The iOS shell's Dynamic Type bridge (audit round 2, a11y-1): the arithmetic,
+     the iOS-only gating, the CSSOM-only probe, both re-measure hooks, and the pin
+     that the path SHIPS (SHELL_ONLY_FILES) and that the DECISIONS sentence it
+     corrects stays corrected. */
+  "tools/mobile/foray-type-scale.test.mjs": 8, // round-2 sweep (2026-09-23): the px chrome grows with text size, keyed on the bridge's root mark (a11y-1 part b); 7 -> 8
+  "tools/mobile/foray-audio-shell.test.mjs": 88, // audit round 2, lane L3 (2026-09-23): noteTransportPlaying starts the service for a narration-first Foray, once, deferring to the element path and a refused start (native-2); 83 -> 88 //
   /* #27's Android half: the `navigator.mediaSession` polyfill that feeds a native
      Media3 session and routes transport presses back into the page
      (docs/android-lock-screen.md). The floor matters here for the reason that doc's
@@ -1499,7 +1519,7 @@ const FLOORS = {
      would read as coverage of a list that had quietly stopped discriminating. */
   "tools/release/upload-retry.test.mjs": 14, // 2026-09-22: new -- which store-upload failures are worth trying again
   "tools/release/watch-release.test.mjs": 38, // 2026-09-22: new -- the release watchdog + trigger (reliability plan pieces 2 and 3), replayed against the real 00:28 partial failure; 2026-09-23: +2, G2 replays the real 09-06 summary log ("not reached" is unknown, the job decides); +1, the Fetch step executed against an expired (404) summary log
-  "tools/mobile/foray-media-session.test.mjs": 98, // review 2026-09-23: a WebKit-door press and an Android Media3 action are recorded under the record's dashed command (remoteCommandFor at the one seam); 95 -> 98 // founder 2026-09-23 (fix/founder-reports-2026-09-23): a BEHAVING fake WebKit reads what its own Now Playing entry would show (the "4a / unknown / unknown" state on main); the severing mutation test inverted; one press through two doors is applied once (both orders, the third copy, the window's end, a same-surface double tap, Android untouched); a WebKit-delivered press is a foray:remote row; inspect().tee; 88 -> 95 // 2026-09-23 founder report ("On the lock screen, it's 10s in both directions"): the iOS takeover mirrors the page's handlers, metadata and playbackState onto WebKit's own session — never seekto — so a press on WebKit's client reaches the page; wrap-mode reaches the prototype without looping; a refused mirror costs nothing; uninstall takes it all back. The suite stood at 81 against 80; 80 -> 88 // 2026-09-22: `sends` cannot be read in the turn of the write, against the REAL default scheduler; 79 -> 80 // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
+  "tools/mobile/foray-media-session.test.mjs": 102, // round-2 sweep (2026-09-23): a network stall reaches native as `stalled` (p-car-8), a finished ordinary episode keeps the service (native-1); 100 -> 102 audit round 2, lane L3 (2026-09-23): onPlayingChange on the transition only, wired to the shell; the track pair is not mirrored (p-impatient-3); 98 -> 100 // // review 2026-09-23: a WebKit-door press and an Android Media3 action are recorded under the record's dashed command (remoteCommandFor at the one seam); 95 -> 98 // founder 2026-09-23 (fix/founder-reports-2026-09-23): a BEHAVING fake WebKit reads what its own Now Playing entry would show (the "4a / unknown / unknown" state on main); the severing mutation test inverted; one press through two doors is applied once (both orders, the third copy, the window's end, a same-surface double tap, Android untouched); a WebKit-delivered press is a foray:remote row; inspect().tee; 88 -> 95 // 2026-09-23 founder report ("On the lock screen, it's 10s in both directions"): the iOS takeover mirrors the page's handlers, metadata and playbackState onto WebKit's own session — never seekto — so a press on WebKit's client reaches the page; wrap-mode reaches the prototype without looping; a refused mirror costs nothing; uninstall takes it all back. The suite stood at 81 against 80; 80 -> 88 // 2026-09-22: `sends` cannot be read in the turn of the write, against the REAL default scheduler; 79 -> 80 // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
      deletion unusually attractive to a future session that finds them
@@ -1760,7 +1780,7 @@ const FLOORS = {
      All 19 mutations run against it were killed, and two false-alarm probes
      (a comment-only edit to scan.mjs; one new nightly episode) were confirmed to
      stay green. Each test names its own mutation. */
-  "tools/refresh/merge-topics.test.mjs": 16,
+  "tools/refresh/merge-topics.test.mjs": 18, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18
   /* The nightly's deploy-manifest step (HUMAN-ACTIONS #37). Floored because its
      failure mode is silence: if merge.mjs stops restamping the manifest,
      nothing goes red — `manifest-autofix.yml` pushes the `github-actions[bot]`
@@ -2791,6 +2811,9 @@ const SWIFT_FLOORS = {
      frozen ios/ original, which a count cannot do. */
   "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/PlayerQueueStateTests.swift": 34,
   "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/ParityStubTests.swift": 6,
+  /* NE-04: the generated constants and vocabularies compile, and mean what
+     the generator says (distinct drift tolerances, keyword-named tokens). */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/EngineConstantsTests.swift": 6,
 };
 
 for (const [rel, floor] of Object.entries(SWIFT_FLOORS)) {

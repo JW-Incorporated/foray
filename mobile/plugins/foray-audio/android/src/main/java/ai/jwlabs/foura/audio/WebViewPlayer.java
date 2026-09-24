@@ -166,13 +166,17 @@ final class WebViewPlayer extends SimpleBasePlayer {
                 .build();
         }
         return state
-            /* READY for both playing and paused. There is no BUFFERING state reported,
-               deliberately: the page's own "loading" is a seam, and `media-session.js`
-               §4 argues at length that a seam must read as PLAYING because a transport
-               state that blinks 31 times an hour is how an app stops feeling native. A
-               BUFFERING spinner on a car display is the same defect wearing a different
-               icon. */
-            .setPlaybackState(Player.STATE_READY)
+            /* READY for both playing and paused — EXCEPT a real network stall. The
+               page's seam is not a stall: `media-session.js` §4 reports the authored
+               2.0 s beat as PLAYING because a transport state that blinks 31 times an
+               hour is how an app stops feeling native, and nothing here changes that
+               (a seam never sets `stalled`). A stall is different (audit round 2,
+               p-car-8): the element is waiting for data, the mini bar says
+               "Buffering…", and READY + playWhenReady made Media3 extrapolate the
+               playhead over silence, so the car's clock ran on and snapped back when
+               audio returned. BUFFERING is the one Media3 state that keeps
+               playWhenReady (the controls still say pause) and stops the clock. */
+            .setPlaybackState(np.stalled ? Player.STATE_BUFFERING : Player.STATE_READY)
             .setPlayWhenReady(
                 np.state == NowPlaying.PLAYING,
                 Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST

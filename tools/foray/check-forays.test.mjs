@@ -57,6 +57,7 @@ import {
   M4_LONG_CLIP_SEC,
   M4_SHARE_MAX,
   phonemeProblems,
+  captionProblems,
   scriptMentions,
   lexiconEntries,
   TTS_ENGINES,
@@ -196,6 +197,60 @@ test("a superseded Foray names a current successor and says why — as a rule fo
     mutate(f);
     assert.match(supersession(f).join("\n"), rx, `${what} must be refused`);
   }
+});
+
+test("captionProblems: a bare leading name must be introduced by the show or episode title; a gendered pronoun needs a name (p-foray-5)", () => {
+  /* MUTATION (killed): drop the anchor test (flag every leading name) — the
+     "with Tyler Tringas" row flips. MUTATION (killed): drop the pronoun rule —
+     the "shares stay his" row flips. */
+  const tbf = { show: "The Bootstrapped Founder", episodeTitle: "309: Funded!" };
+  const rows = [
+    ["Kahl names the power imbalance that makes venture money wrong", tbf, 1, "a bare surname nobody introduced"],
+    ["Roizen's three tests for any seed cheque", tbf, 1, "a bare possessive"],
+    ["Tringas explains why a fund wrote its own instrument", { show: "The Bootstrapped Founder", episodeTitle: "328: Negotiating Bootstrapper Funding with Tyler Tringas" }, 0, "the episode title introduces him"],
+    ["The terms: shares stay his until he sells", tbf, 1, "whose shares?"],
+    ["The host names the power imbalance that makes venture money wrong", tbf, 0, "listener voice"],
+    ["Survivorship bias hides the number: 50 to 75 percent of seed companies fail", tbf, 0, "a capitalised word that is not a name"],
+    ["Stewart says her simulations produced a synestia", { show: "X", episodeTitle: "Sarah Stewart on moons" }, 0, "an introduced name anchors the pronoun"],
+    ["", tbf, 0, "nothing to caption"],
+  ];
+  for (const [why, src, n, what] of rows) assert.equal(captionProblems(why, src).length, n, `${what}: "${why}"`);
+});
+
+/** The frozen fixture with capital-types-1's two captions put back as the audit
+    found them. The fixture itself carries the rewritten lines, because it must
+    pass the real checker with zero errors (frozen-fixture.test.mjs): every
+    suite that reads it reads a Foray the publish gate would accept. */
+function frozenAsAudited() {
+  const f = structuredClone(frozen);
+  const back = {
+    "The host names the power imbalance that makes venture money wrong for a small SaaS":
+      "Kahl names the power imbalance that makes venture money wrong for a small SaaS",
+    "The terms: the founder keeps the shares until a sale, plus dividends above a salary floor":
+      "The terms: shares stay his until he sells, and a dividend share above a salary floor",
+  };
+  let n = 0;
+  for (const seg of f.segments.segments) if (back[seg.why]) { seg.why = back[seg.why]; n++; }
+  assert.equal(n, 2, "fixture: both rewritten captions are in the frozen pool");
+  return f;
+}
+
+test("the published Foray's captions: the audited copy carries the two curator's notes, the committed data none (p-foray-5)", () => {
+  /* capital-types-1 as the audit found it is the standing proof the gate
+     catches what it was built for; `data/` and the frozen fixture carry the
+     rewritten lines. MUTATION (killed): drop the published-status call to
+     captionProblems from checkForays — the audited list is empty, red. */
+  const notes = (f) => errorsFor(f).filter((e) => /p-foray-5/.test(e));
+  const audited = frozenAsAudited();
+  const auditedNotes = notes(audited);
+  assert.equal(auditedNotes.length, 2, auditedNotes.join("\n"));
+  assert.match(auditedNotes.join("\n"), /bare name "Kahl"/);
+  assert.match(auditedNotes.join("\n"), /"his" has no one in the line/);
+  assert.deepEqual(notes(live), [], "the committed captions are listener copy");
+  assert.deepEqual(notes(frozen), [], "and so are the frozen fixture's");
+  /* Drafts are not gated: the same line on a draft is a curation note until it is promoted. */
+  forayBy(audited, "capital-types-1").status = "draft";
+  assert.deepEqual(notes(audited), []);
 });
 
 test("exactly one committed Foray is published, and it is the one that was named", () => {

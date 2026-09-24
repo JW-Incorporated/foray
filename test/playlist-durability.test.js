@@ -869,11 +869,18 @@ test("the 'next' marker never lands on a part that cannot be opened in the app",
 
 test("an archived part that was already played still counts as played", () => {
   /* `played` is read off the rows now rather than off the pool, so a part that
-     left the catalogue after being played must not un-play itself.
+     left the catalogue after being played must not un-play itself. "Played"
+     means FINISHED since audit round 2 (honesty-6): the player's own reading
+     of the stored position, the same one the row label uses — not history
+     membership, which only says "opened".
 
      MUTATION: count only live rows as played. This fails. */
   const m = mount();
-  m.ctx.lsSet("cp_history", ["show-2--episode-2"]);
+  m.ctx.window.ForayPlayer = {
+    episodeProgress: (id) => (id === "show-2--episode-2"
+      ? { state: "played", percent: 100, label: "Played" }
+      : { state: "unplayed", percent: null, label: null }),
+  };
   const html = withArchivedPart(m);
   assert.ok(html.includes("· 1 played"), `played count was wrong: ${/· \d+ played/.exec(html)}`);
 });
@@ -1356,4 +1363,34 @@ test("buildPlaylist: a duration filter dropped by relaxation is disclosed on the
   m.ctx.renderPlaylistDetail(built.playlist.id);
   assert.ok(m.view().includes("Couldn't match the length you asked for"),
     "the detail page must disclose the relaxed duration filter in one plain sentence");
+});
+
+test("a playlist's 'N played' counts FINISHED episodes only — the rows' own word (audit round 2, honesty-6)", () => {
+  /* The header counted `hasOpened` (history OR any position) while the rows
+     under it said "31 min left" for those same episodes: "2 played" over zero
+     rows that said Played. One definition now, the player's.
+     MUTATION: put `hasOpened(r.item.id, history)` back in the count -> the
+     sampled and half-way episodes count and this goes red. */
+  const m = mount();
+  const items = setPool(m, [poolItem(1), poolItem(2), poolItem(3), poolItem(4)]);
+  m.ctx.fullPool();
+  const by = {
+    "show-1--episode-1": { state: "played", percent: 100, label: "Played" },
+    "show-2--episode-2": { state: "in-progress", percent: 50, label: "21 min left" },
+    "show-3--episode-3": { state: "sampled", percent: null, label: null },
+  };
+  m.ctx.window.ForayPlayer = { episodeProgress: (id) => by[id] || { state: "unplayed", percent: null, label: null } };
+  m.ctx.lsSet("cp_history", ["show-1--episode-1", "show-2--episode-2", "show-3--episode-3"]);
+  m.ctx.savePlaylists([{
+    id: "q1", title: "T", items: items.map((it) => m.ctx.playlistPart(it)),
+    created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
+  }]);
+  m.ctx.renderPlaylistDetail("q1");
+  const html = m.view();
+  assert.ok(html.includes("· 1 played"), `expected exactly the finished episode counted, got: ${/· \d+ played/.exec(html)}`);
+  assert.ok(html.includes("21 min left"), "the half-way row still says how far in it is");
+  /* The next-up marker still reads "opened": it skips everything the listener
+     has touched, so it lands on episode 4. */
+  const marked = [...html.matchAll(/<span class="q-num ([^"]*)">(\d+)<\/span>/g)].filter(([, cls]) => cls.includes("next")).map(([, , n]) => n);
+  assert.deepStrictEqual(marked, ["4"]);
 });

@@ -114,10 +114,59 @@ test("a bare http(s) URL becomes a link that opens off-origin safely", () => {
 });
 
 test("a timestamp becomes a button carrying its position in seconds", () => {
-  const out = html("12:34 The interesting bit");
+  /* Mid-sentence: the inline form. (A line that STARTS with a stamp is the
+     chapter-row form — the tests just below.) */
+  const out = html("Skip to 12:34 for the interesting bit");
   assert.match(out, /<button type="button" class="ep-ts" data-ts="754"/);
   assert.match(out, />12:34<\/button>/);
   assert.match(out, /aria-label="Play from 12:34"/, "a bare number read aloud says nothing about what it does");
+});
+
+/* ---------- a stamp-led line is a chapter row (audit round 2, touch-10) ---------- */
+
+test("a line that starts with a timestamp is one 44px chapter row: the stamp and its title are one target", () => {
+  /* Publishers write chapter lists one stamp per line; as inline buttons the
+     stamps' hit boxes met the stamps on the lines above and below, and the
+     later one won. As rows, the line IS the target, the shape the Chapters
+     list already has. MUTATION: make descChapterToken return null always ->
+     red (every stamp goes back inline). */
+  const out = html("00:00 Intro\n12:34 - Tokamaks\n(1:02:45) Stellarators");
+  const rows = [...out.matchAll(/<button type="button" class="ep-chapter-row" data-ts="(\d+)" aria-label="([^"]*)"><span class="ep-chapter-time">([^<]*)<\/span><span class="ep-chapter-title">([^<]*)<\/span><\/button>/g)]
+    .map((m) => m.slice(1));
+  assert.deepStrictEqual(rows, [
+    ["0", "Play from 00:00, Intro", "00:00", "Intro"],
+    ["754", "Play from 12:34, Tokamaks", "12:34", "Tokamaks"],
+    ["3765", "Play from 1:02:45, Stellarators", "1:02:45", "Stellarators"],
+  ], "each line is one row: its stamp, its title with the separator dropped, and a label that says both");
+  assert.ok(!out.includes('class="ep-ts"'), "no inline stamp is left on a chapter line");
+});
+
+test("a chapter row takes its line's newline with it, so pre-line paints no blank line under every chapter", () => {
+  /* The row is a block; a "\n" opening the next run would be an empty line.
+     MUTATION: keep the newline after a row -> red. Blank lines the publisher
+     wrote survive (their own "\n" stays). */
+  const out = html("Sponsor line\n\n00:00 Intro\n05:00 Next\nAfter the list");
+  assert.match(out, /Sponsor line\n\n<button[^>]*data-ts="0"/, "the publisher's blank line above the list stays");
+  assert.match(out, /<\/button><button[^>]*data-ts="300"/, "consecutive rows sit together");
+  assert.match(out, /data-ts="300"[\s\S]*?<\/button>After the list$/, "and the prose after resumes with no empty line");
+});
+
+test("a stamp-led line with a link or a second stamp on it stays inline — no link inside a button, no two-stamp row", () => {
+  /* MUTATION: drop the `DESC_TOKEN_RE.test(rest)` guard -> red: the URL would
+     be escaped text inside a button, and "2:00 … 59:00" one row seeking to 2:00. */
+  const withUrl = html("03:00 Notes at https://example.com/x");
+  assert.ok(!withUrl.includes("ep-chapter-row"));
+  assert.match(withUrl, /class="ep-ts" data-ts="180"/);
+  assert.match(withUrl, /<a href="https:\/\/example\.com\/x"/);
+  const twoStamps = html("2:00 early and 59:00 late");
+  assert.ok(!twoStamps.includes("ep-chapter-row"));
+  assert.match(twoStamps, /data-ts="120"[\s\S]*data-ts="3540"/);
+});
+
+test("a stamp-led line past the episode's end stays plain text, like any other stamp that far", () => {
+  const out = html("59:00 Credits", 30 * 60);
+  assert.ok(!out.includes("<button"), "no control seeks past the end");
+  assert.strictEqual(out, "59:00 Credits");
 });
 
 test("a full description keeps its other text verbatim and in order", () => {
@@ -347,4 +396,94 @@ test("REVIEW: a timestamp tap whose play() throws reports it to the bar, as bind
   assert.strictEqual(reported.length, 1, "the bar is told");
   assert.strictEqual(reported[0].name, "TypeError");
   assert.deepStrictEqual(noted, [["start", "TypeError"]], "and the diagnostic record gets its row");
+});
+
+test("ROUND 2 review: a timestamp tap STARTS at the stamp (no play-then-seek), and a superseded start is not reported", async () => {
+  /* The control was the last two-step (play, then seekTo) races-1 replaced
+     with `startOffset` everywhere else, and a start a later tap superseded
+     painted "couldn't load" over the episode that was loading. MUTATIONS:
+     drop `startOffset: secs`; or drop the `isCurrent` return before the report. */
+  let handler = null;
+  const btn = { dataset: { ts: "754" }, addEventListener: (_t, fn) => { handler = fn; } };
+  const plays = [];
+  const seeks = [];
+  const reported = [];
+  let answer = true;
+  let currentId = null;
+  vm.runInContext("state.session = state.session || { cards: [] }", app);
+  app.window.ForayPlayer = {
+    canPlay: () => true,
+    isPlaying: () => false,
+    isCurrent: (id) => id === currentId,
+    play: async (item, opts) => { plays.push(opts); return answer; },
+    seekTo: async (s) => { seeks.push(s); },
+    reportPlayFailure: (err) => { reported.push(err); },
+  };
+  try {
+    app.bindEpisodeSeeks({ querySelectorAll: () => [btn] }, { id: "ep-1", audio_url: "https://x.test/a.mp3" });
+    currentId = "ep-1";
+    await handler({ preventDefault() {}, stopPropagation() {} });
+    assert.strictEqual(plays.length, 1);
+    assert.strictEqual(plays[0].startOffset, 754, "the load begins at the stamp");
+    assert.deepStrictEqual(seeks, [], "and no second step follows it");
+
+    answer = false;
+    currentId = "ep-2"; // a later tap took the player
+    await handler({ preventDefault() {}, stopPropagation() {} });
+    assert.deepStrictEqual(reported, [], "superseded is not a failure");
+
+    currentId = "ep-1"; // still ours, and refused: that IS a failure
+    await handler({ preventDefault() {}, stopPropagation() {} });
+    assert.strictEqual(reported.length, 1);
+  } finally {
+    delete app.window.ForayPlayer;
+  }
+});
+
+test("ROUND 2 review (touch-10): the sheet's tokens carry the chapter row, so a chapter list is 44px rows there too — one splitter for both surfaces", () => {
+  /* The promotion lived only in the HTML renderer; the sheet read inline
+     tokens and drew each chapter stamp as a ~21px inline .ep-ts. MUTATION:
+     have episodeNotesTokens push the line's inline tokens for a stamp-led line
+     -> no chapter token; red (and the page's HTML, now rendered from the same
+     tokens, loses its rows too). */
+  const text = "00:00 Intro\n12:34 Tokamaks and you\nsee https://x.test/a at 5:00";
+  const toks = JSON.parse(JSON.stringify(app.episodeNotesTokens(text, 3600)));
+  const chapters = toks.filter((t) => t.kind === "chapter");
+  assert.deepStrictEqual(chapters, [
+    { kind: "chapter", secs: 0, stamp: "00:00", title: "Intro", label: "Play from 00:00, Intro" },
+    { kind: "chapter", secs: 754, stamp: "12:34", title: "Tokamaks and you", label: "Play from 12:34, Tokamaks and you" },
+  ]);
+  assert.ok(toks.some((t) => t.kind === "stamp" && t.secs === 300), "a stamp inside prose stays inline");
+  assert.ok(html(text, 3600).includes('<button type="button" class="ep-chapter-row" data-ts="754" aria-label="Play from 12:34, Tokamaks and you">'),
+    "and the page's HTML is those same tokens rendered");
+});
+
+/* ---------- ROUND 2 (p-switcher-2): one tokeniser, two renderers ---------- */
+
+test("episodeDescriptionTokens is the pass the HTML is rendered from, and is published for the Now Playing sheet", () => {
+  /* The sheet builds the same notes as DOM nodes from these tokens (client.js
+     `paintNotes`), so a URL or a stamp is recognised in one place.
+     MUTATION 1: let episodeDescriptionHtml keep its own regex loop -> the
+     equality below can drift silently; the ForayNotes assertion is what makes
+     the sheet's reader the same function. MUTATION 2: drop `label` from the
+     stamp token -> the sheet's stamps lose their accessible name; red. */
+  // Through JSON: the tokens are built inside the vm realm, whose Object
+  // prototype is not this realm's, and deepStrictEqual compares prototypes.
+  const tokens = JSON.parse(JSON.stringify(app.episodeDescriptionTokens("see https://x.test/a at 12:34 and 2:00:00", 3600)));
+  assert.deepStrictEqual(tokens, [
+    { kind: "text", text: "see " },
+    { kind: "link", text: "https://x.test/a", href: "https://x.test/a" },
+    { kind: "text", text: " at " },
+    { kind: "stamp", text: "12:34", secs: 754, label: "Play from 12:34" },
+    { kind: "text", text: " and " },
+    { kind: "text", text: "2:00:00" },
+  ]);
+  assert.strictEqual(app.ForayNotes.tokens, app.episodeDescriptionTokens, "published for client.js under window.ForayNotes");
+  assert.strictEqual(app.ForayNotes.lines, app.episodeNotesTokens, "and the line-aware pass the sheet reads (round-2 review)");
+  assert.strictEqual(app.episodeDescriptionTokens("").length, 0);
+  assert.strictEqual(
+    html("see https://x.test/a at 12:34", 3600),
+    'see <a href="https://x.test/a" target="_blank" rel="noopener noreferrer">https://x.test/a</a> at <button type="button" class="ep-ts" data-ts="754" aria-label="Play from 12:34">12:34</button>',
+    "the page's HTML is those tokens rendered",
+  );
 });

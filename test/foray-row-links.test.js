@@ -24,7 +24,8 @@
  *     invalid-HTML rule that put the thumbs outside it.
  *  4. The curation code (`ORI-1`, `GRID-1`) is gone from the row and from the
  *     accessible names, and `.fy-label` is gone from the stylesheet.
- *  5. A narration beat is credited "AI Narrator" in the slot a show credit
+ *  5. A narration beat is credited by the narrator's one name (NARRATOR_NAME,
+ *     p-foray-12) in the slot a show credit
  *     occupies, is never a link, and carries its transcript with a collapse
  *     that expands in place.
  *  6. Citations (F-103) render when an item carries them and are INVISIBLE when
@@ -45,6 +46,11 @@ const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
 const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+/* The narrator's one name, read from the module that owns it (p-foray-12).
+   Read as text because this CommonJS harness loads app.js, not the ES module;
+   the bridge stub below hands it over the way player/client.js does. */
+const NARRATOR = /export const NARRATOR_NAME = "([^"]+)";/.exec(
+  fs.readFileSync(path.join(ROOT, "player/segment-strip.js"), "utf8"))[1];
 const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 const STYLES = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
@@ -136,7 +142,7 @@ function mount() {
   /* The clock comes from the ES-module bridge, which this harness does not
      load. Stubbed so the meta line has a duration beside the credit — the
      separator between them is part of what these tests read. */
-  ctx.ForayPlayer = { fmtSpan: (s) => `${Math.round(Number(s) || 0)}s` };
+  ctx.ForayPlayer = { fmtSpan: (s) => `${Math.round(Number(s) || 0)}s`, narratorName: NARRATOR };
   const state = vm.runInContext("state", ctx);
   state.catalog = {
     shows: [
@@ -249,7 +255,9 @@ test("a beat whose show joins neither way degrades to exactly plain text, never 
   }));
   assert.ok(!html.includes("<a "), `an unjoinable show must not be a link, got: ${html}`);
   assert.ok(html.includes("Satay? Okay!"), "the show name must still be printed as plain text");
-  assert.ok(html.includes("<span class=\"fy-credit\">Satay? Okay!</span>"),
+  /* `data-credit-show` (audit round 2, p-foray-2) is what lets the page relink
+     it in place if the show index, loaded after paint, knows the show. */
+  assert.ok(html.includes("<span class=\"fy-credit\" data-credit-show=\"Satay? Okay!\">Satay? Okay!</span>"),
     "plain text lives in the same slot the link would have, so the line does not move");
 });
 
@@ -363,7 +371,7 @@ test("the thumbs are named by the show too, so one beat is never called two thin
 /* 3. THE NARRATION ROW: "AI NARRATOR" AND THE TRANSCRIPT                */
 /* ==================================================================== */
 
-test("a narration beat is credited AI Narrator in the slot a show credit occupies, and is not a link", () => {
+test("a narration beat is credited by the narrator's one name in the slot a show credit occupies, and is not a link", () => {
   /* The founder asked for this "instead of the show name for that beat", in
      the same slot and the same visual weight, so the two row kinds read as
      siblings: one credits a podcast, one credits us.
@@ -374,15 +382,43 @@ test("a narration beat is credited AI Narrator in the slot a show credit occupie
 
      MUTATION: drop the isForayNarration branch of forayCreditHtml so narration
      falls through. The credit disappears (a narration entry has no `show`) and
-     the row reads as a bare duration again. MUTATION 2: wrap "AI Narrator" in
+     the row reads as a bare duration again. MUTATION 2: wrap the credit in
      an <a>. The "not a link" assertion fails. */
   const { ctx } = mount();
   const html = ctx.forayRow(narration("Short bridge."));
-  assert.ok(html.includes('<span class="fy-credit is-narrator">AI Narrator</span>'),
-    `the narration credit is missing, got: ${html}`);
-  assert.ok(!html.includes("<a "), `AI Narrator must not be a link, got: ${html}`);
-  assert.ok(html.indexOf("AI Narrator") < html.indexOf("<button"),
+  const credit = `<span class="fy-credit is-narrator">${NARRATOR.replace("'", "&#39;")}</span>`;
+  assert.ok(html.includes(credit), `the narration credit is missing, got: ${html}`);
+  assert.ok(!html.includes("<a "), `the narrator credit must not be a link, got: ${html}`);
+  assert.ok(html.indexOf(credit) < html.indexOf("<button"),
     "it must sit where a show credit sits — above the play row, not inside it");
+});
+
+test("the narrator has ONE name on the row, in the accessible name, and in the player's own strip (p-foray-12)", () => {
+  /* The page said "AI Narrator" on the row, "4a's AI Narrator" to a screen
+     reader and "4a's narrator" in the header and the strip. MUTATION (killed):
+     put the literal "narration by 4a's AI Narrator" back in forayBeatName —
+     the accessible-name assertion is red. MUTATION 2 (killed): put "AI
+     Narrator" back in forayCreditHtml — the row assertion is red. */
+  assert.equal(NARRATOR, "4a's AI narrator", "keeps the AI disclosure");
+  const { ctx } = mount();
+  assert.equal(ctx.forayBeatName(narration("Short bridge.")), `narration by ${NARRATOR}`);
+  const html = ctx.forayRow(narration("Short bridge."));
+  assert.ok(!/AI Narrator/.test(html), `no second spelling on the row: ${html}`);
+  const strip = fs.readFileSync(path.join(ROOT, "player/segment-strip.js"), "utf8");
+  assert.ok(!/4a's narrator/.test(strip), "the strip speaks the constant, not a literal of its own");
+});
+
+test("a clip row names the EPISODE it came from, beside the show; a narration row names none (p-foray-5)", () => {
+  /* The episode lived only in the credits block at the foot of the page, so a
+     caption leaning on it had nothing on the row. MUTATION (killed): drop
+     `episode` from forayRow's meta line — red. */
+  const { ctx } = mount();
+  const html = ctx.forayRow(beat());
+  const meta = /<div class="fy-meta">([\s\S]*?)<\/div>/.exec(html)[1];
+  assert.match(meta, /Being an Engineer<\/a> · <span class="fy-ep">S7E17<\/span> · 240s$/, `the meta line: ${meta}`);
+  assert.ok(!insideButton(html).includes("S7E17"), "on the meta line, not inside the play button");
+  const nar = ctx.forayRow(narration("Short bridge.", { episode_title: "never shown" }));
+  assert.ok(!nar.includes("fy-ep"), "a narration beat has no episode");
 });
 
 test("a long transcript renders clamped with an expander wired to it by id; a short one renders whole", () => {

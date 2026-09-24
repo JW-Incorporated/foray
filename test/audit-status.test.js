@@ -86,3 +86,68 @@ test("the README's STATUS table agrees with the ledger", () => {
     assert.deepEqual([num(cells[1]), num(cells[2]), num(cells[3])], [qa, pe, qa + pe], `README row "${label}"`);
   }
 });
+
+/* ---------- round 2 (docs/audit/round-2/, 2026-09-23) ----------
+   The same three promises for the re-run's ledger, which round 1's tests could
+   not see (they read only docs/audit/*.tsv). One difference: round 2 kept two
+   UNCERTAIN verdicts, and an uncertain row may move once it is re-verified
+   (native-1 became reachable, then closed, during the round) — so "uncertain"
+   is a disposition here, and the verdict test lets an uncertain row become
+   refuted-now, fixed or deferred-device, but never simply vanish into "open".
+   MUTATION: delete a row from round-2/status.tsv -> the first test goes red;
+   mark a deliberate row "fixed" -> the second; edit a README count -> the third. */
+const R2 = (f) => fs.readFileSync(path.join(DIR, "round-2", f), "utf8").replace(/\r\n/g, "\n");
+const R2_FINDINGS = R2("findings.tsv").trimEnd().split("\n").slice(1).map((l) => {
+  const c = l.split("\t");
+  return { id: c[0], verdict: c[2], title: c[5] };
+});
+const [R2_HEAD, ...R2_ROWS] = R2("status.tsv").trimEnd().split("\n").map((l) => l.split("\t"));
+const R2_STATUS = R2_ROWS.map(([id, title, disposition, where, note]) => ({ id, title, disposition, where, note }));
+const R2_DISPOSITIONS = new Set([...DISPOSITIONS, "uncertain"]);
+
+test("round 2: every finding has exactly one status row, under its own title", () => {
+  assert.deepEqual(R2_HEAD, ["id", "title", "disposition", "where", "note"]);
+  const seen = new Map();
+  for (const s of R2_STATUS) {
+    assert.ok(!seen.has(s.id), `${s.id} has two status rows`);
+    seen.set(s.id, s);
+    assert.ok(R2_DISPOSITIONS.has(s.disposition), `${s.id}: "${s.disposition}" is not a disposition`);
+    assert.ok(s.where && s.note, `${s.id} says neither where nor why`);
+  }
+  for (const f of R2_FINDINGS) {
+    const s = seen.get(f.id);
+    assert.ok(s, `${f.id} ("${f.title.slice(0, 60)}") has no status row`);
+    assert.equal(s.title, f.title.trim(), `${f.id}: the status row names a different finding`);
+  }
+  assert.equal(R2_STATUS.length, R2_FINDINGS.length, "the ledger has rows for findings that do not exist");
+});
+
+test("round 2: a refuted or deliberate verdict is kept, and an uncertain one is kept or re-verified", () => {
+  const byId = new Map(R2_STATUS.map((s) => [s.id, s]));
+  for (const f of R2_FINDINGS) {
+    const d = byId.get(f.id).disposition;
+    if (f.verdict === "refuted") assert.equal(d, "refuted", f.id);
+    else if (f.verdict === "deliberate") assert.equal(d, "deliberate", f.id);
+    else if (f.verdict === "uncertain") {
+      assert.ok(["uncertain", "refuted-now", "fixed", "deferred-device"].includes(d), `${f.id}: an uncertain verdict became "${d}"`);
+    } else {
+      assert.equal(f.verdict, "confirmed", `${f.id}: an unknown verdict "${f.verdict}"`);
+      assert.ok(!["refuted", "deliberate", "uncertain"].includes(d), `${f.id}: a confirmed finding cannot take the verifier's "${d}"`);
+    }
+  }
+});
+
+test("round 2: the README's STATUS table agrees with the ledger", () => {
+  const readme = R2("README.md");
+  const status = readme.slice(readme.indexOf("## STATUS"));
+  assert.ok(status.length > 20, "round-2 README has no STATUS section");
+  for (const d of R2_DISPOSITIONS) {
+    const line = status.split("\n").find((l) => l.startsWith(`| ${d} `));
+    assert.ok(line, `round-2 README's STATUS table has no "${d}" row`);
+    const cells = line.split("|").map((c) => c.trim()).filter(Boolean);
+    assert.equal(Number(cells[1]), R2_STATUS.filter((s) => s.disposition === d).length, `README row "${d}"`);
+  }
+  const all = status.split("\n").find((l) => /^\| \*\*all rows\*\*/.test(l));
+  assert.ok(all, "round-2 README's STATUS table has no all-rows line");
+  assert.equal(Number(all.split("|").map((c) => c.trim()).filter(Boolean)[1].replace(/\*/g, "")), R2_STATUS.length);
+});
