@@ -2840,7 +2840,32 @@ function showIdForShowName(showName) {
     const aliasedTitle = Object.keys(TITLE_ALIASES).find(k => TITLE_ALIASES[k] === showName);
     if (aliasedTitle) s = shows.find(sh => sh.title === aliasedTitle);
   }
-  return s ? s.show_id : null;
+  /* THEN THE SHOW INDEX (audit round 2, p-foray-2): the curated 220 is not the
+     set of shows this app can open. Every show in the published Foray was a
+     plain name with no page, while `data/show-index.tsv` — the 10,113 rows the
+     Shows search already links through — carries some of them. Consulted only
+     once it has loaded (it is never fetched for this); see showIndexIdForTitle
+     for why the match is exact and unique. */
+  return s ? s.show_id : showIndexIdForTitle(showName);
+}
+
+/* The show index as an EXACT, UNIQUE title -> id join. Exact because a fuzzy
+   title would attach one publisher's page to another's credit (the rule
+   player/foray-sources.js keeps for Apple ids); unique because two rows with
+   one title are two shows, and guessing between them is the same error. Built
+   once per decoded index: the Foray page asks for ~30 names. */
+let showIndexTitles = null;
+let showIndexTitlesFor = null;
+function showIndexIdForTitle(title) {
+  if (!title || !showIndex) return null;
+  if (showIndexTitlesFor !== showIndex) {
+    showIndexTitles = new Map();
+    for (const r of showIndex.rows) {
+      showIndexTitles.set(r.title, showIndexTitles.has(r.title) ? null : r.show_id);
+    }
+    showIndexTitlesFor = showIndex;
+  }
+  return showIndexTitles.get(title) || null;
 }
 
 /* The show-name text as a link to its show page, or plain escaped text when
@@ -5162,8 +5187,19 @@ function miniCard(slot) {
    playback ruling rejects by name — it reads as the Stitcher/Luminary
    behaviour: "Copy must follow the mechanism: no user-facing language implying
    we produce a new audio file." A foray plays each moment from the show's own
-   feed, in turn. test/listener-copy.test.js now fails on the old verbs. */
-const FORAY_ABOUT = "One subject, heard across several podcasts: the best moment of each episode, played in turn from the show's own feed, with a narrator between them.";
+   feed, in turn. test/listener-copy.test.js now fails on the old verbs.
+
+   ONLY WHAT THE LISTED FORAYS DO (audit round 2, p-first-11 / p-foray-11). It
+   promised "the best moment of each episode ... with a narrator between them"
+   directly above the one Foray a newcomer can play, which has no narration and
+   plays four moments from one episode. So it says "moments", and the narrator
+   clause appears only while a Foray this listener can see actually carries
+   narration. A function, not a constant, for that one clause; still ONE
+   sentence for the Forays page and the first-run sheet. */
+function forayAbout() {
+  const narrated = forayCards().some(f => Array.isArray(f?.items) && f.items.some(i => i?.type === "narration"));
+  return `One subject, heard across several podcasts: moments from their episodes, played in turn from each show's own feed${narrated ? ", with a narrator between them" : ""}.`;
+}
 
 /* First-time explanation/consent screen (docs/ux/foray-m3-prototype.html +
    docs/ux/README.md § "First-time vs. returning user"). Ports the INTENT of
@@ -6030,10 +6066,7 @@ function showFirstTimeExplainerOnce() {
     const first = forayCards()[0];
     if (!first) return "";
     try {
-      const r = player.resolve(state.forays, {
-        id: first.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
-        ...forayViewOpts(),
-      });
+      const r = resolveListedForay(first.id);
       if (!r) return "";
       /* mergeNarration: a card is 210px of content box and a generated Foray
          is now ~56 items, 40 of them bridges — one bar each overflows the card
@@ -6067,7 +6100,7 @@ function showFirstTimeExplainerOnce() {
     const propForay = ddEl("div", "ft-value-prop");
     propForay.append(
       ddEl("h4", null, "Forays: one subject, many shows"),
-      ddEl("p", "fy-sheet-sub", FORAY_ABOUT)
+      ddEl("p", "fy-sheet-sub", forayAbout())
     );
     const stripHtml = welcomeStripHtml();
     if (stripHtml) {
@@ -6250,10 +6283,14 @@ function showIntroPopupOnce() {
        describes the Home that ships, and it is where a listener who skipped
        the first-run sheet learns what a foray is.
        Review 2026-09-23: no "stitch clips" (the 2026-08-11 playback ruling —
-       see FORAY_ABOUT), and only what Home renders: the stretch pick is in
+       see forayAbout), and only what Home renders: the stretch pick is in
        Forays for you and Episodes for you (pickWithStretchFloor, the cardSlots
-       stretch role), not in Playlists, which are mostly the listener's own. */
-    "A foray plays moments from several shows, straight from each show's own feed, one after another. Below them are your playlists and episodes picked for you. The forays and the episodes each include one pick outside your usual subjects, on purpose.");
+       stretch role), not in Playlists, which are mostly the listener's own.
+       Audit round 2 (p-first-11): the Forays row has a stretch pick only when
+       the listed Forays span more than one subject, and with one published
+       Foray it cannot. The sentence asks the SAME pick Home renders
+       (foraysForYouPicks) instead of assuming. */
+    `A foray plays moments from several shows, straight from each show's own feed, one after another. Below them are your playlists and episodes picked for you. The episodes ${foraysForYouPicks()?.stretchIndex >= 0 ? "and the forays each " : ""}include one pick outside your usual subjects, on purpose.`);
 
   const actions = ddEl("div", "fy-sheet-actions");
   const ok = ddEl("button", "fy-sheet-go", "Got it");
@@ -6546,7 +6583,9 @@ function nowMs() {
 
    1. LAZY, ON FIRST FOCUS OF `#sh-input`. Never at `init()`. The decode is
       ~113 ms measured; on the boot path that is a visible stall for a listener
-      who came to press play.
+      who came to press play. The one other asker is a Foray page whose
+      credited shows the catalogue cannot link (audit round 2, p-foray-2), and
+      it asks only AFTER that page has painted (joinForayCreditsToShowIndex).
    2. UNPINNED — a bare `fetch`, not `fetchJson`, and the parentheses are
       left off that name ON PURPOSE: tools/mobile/prepare-webdir.mjs derives
       the native bundle's data list by counting literal CALL SITES of that
@@ -8897,25 +8936,26 @@ function jumpBackInCardHtml(c, { inSection = false } = {}) {
     subject; a non-stretch card gets neither. */
 function forayCardV2Html(foray, { stretch = false, draft = false } = {}) {
   const player = window.ForayPlayer;
+  const r = resolveListedForay(foray.id);
   let stripHtml = "";
-  if (player && state.forays && typeof player.resolve === "function" && typeof player.segmentStripHtml === "function") {
+  if (r && typeof player?.segmentStripHtml === "function") {
     try {
-      const r = player.resolve(state.forays, {
-        id: foray.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
-        ...forayViewOpts(),
-      });
       /* mergeNarration — same reason as welcomeStripHtml() above: a card is not
          a scrub target, so a run of bridges may be one bar. */
-      if (r) stripHtml = player.segmentStripHtml(r.playable, { size: "sm", mergeNarration: true }) || "";
+      stripHtml = player.segmentStripHtml(r.playable, { size: "sm", mergeNarration: true }) || "";
     } catch (_) {
       stripHtml = ""; // malformed segments/sources must not break Home
     }
   }
+  /* How long, and what it is made of (audit round 2, p-foray-8): the card was
+     a title and a strip, and the strip's length is only in its aria-label. */
+  const facts = forayFactsLabel(r, player);
   const subject = subjectLabel((foray.topic || "").split("/")[0]);
   return `<a class="hv2-foray-card${stretch ? " hv2-stretch" : ""}" href="#/foray/${esc(foray.id)}">
     ${stretch ? `<span class="hv2-stretch-tag">Stretch</span>` : ""}
     ${draft ? `<span class="hv2-draft-tag">draft</span>` : ""}
     <span class="hv2-foray-title">${esc(foray.title)}</span>
+    ${facts ? `<span class="hv2-foray-sub">${esc(facts)}</span>` : ""}
     ${stripHtml}
     ${stretch ? `<p class="hv2-bridge">${stretchBridgeLine(subject)}</p>` : ""}
   </a>`;
@@ -8933,15 +8973,27 @@ function forayCardV2Html(foray, { stretch = false, draft = false } = {}) {
     every one, badged "draft", in draftTrackOrder. Appended rather than pooled
     because the founder turned this on to find a specific generated Foray, and
     a four-card pick over six candidates would hide two of them. */
-function foraysForYouHtml() {
-  if (!state.forays || !window.ForayPlayer) return "";
+/** The "Forays for you" pick: the four cards, which one is the stretch (-1 for
+    none), and the test-track drafts appended after them — or null when there
+    is nothing to list. One function, so the row Home renders and any sentence
+    ABOUT that row (the intro popup's stretch claim, p-first-11) read the same
+    answer. */
+function foraysForYouPicks() {
+  if (!state.forays || !window.ForayPlayer) return null;
   const { listed, drafts } = splitTestTrackDrafts(opts => window.ForayPlayer.listForays(state.forays, opts));
-  if (!listed.length && !drafts.length) return "";
+  if (!listed.length && !drafts.length) return null;
   const { picks, stretchIndex } = pickWithStretchFloor(listed, {
     branchFn: f => (f.topic || "other").split("/")[0],
     scoreFn: f => interestScore({ topics: [(f.topic || "other").split("/")[0]] }),
     take: 4,
   });
+  return { picks, stretchIndex, drafts };
+}
+
+function foraysForYouHtml() {
+  const pick = foraysForYouPicks();
+  if (!pick) return "";
+  const { picks, stretchIndex, drafts } = pick;
   return `<section class="hv2-section hv2-forays">
     <h2 class="hv2-title">Forays for you</h2>
     <div class="hv2-hscroll">${picks.map((f, i) => forayCardV2Html(f, { stretch: i === stretchIndex })).join("")}${drafts.map(f => forayCardV2Html(f, { draft: true })).join("")}</div>
@@ -9086,7 +9138,7 @@ function renderForays() {
           <h2>Forays</h2>
         </div>
       </div>
-      <p class="note fy-about">${esc(FORAY_ABOUT)}</p>`;
+      <p class="note fy-about">${esc(forayAbout())}</p>`;
   const paintStatus = (body) => { $("#view").innerHTML = `<div class="page">${head}${body}</div>`; };
 
   if (!window.ForayPlayer) {
@@ -10002,10 +10054,10 @@ function libraryForaysHtml() {
   if (!state.forays || !window.ForayPlayer) return libSummaryRow("/forays", "All forays", "");
   const list = forayCards();
   if (!list.length) return `<p class="note">No forays to show yet.</p>`;
-  const progress = new Map(forayResumeRows().map(p => [p.id, p.label]));
+  const progress = forayProgressLabels();
   return list.slice(0, LIBRARY_SECTION_CAP).map(f =>
     libSummaryRow(`/foray/${encodeURIComponent(f.id)}`, f.title || f.id,
-      progress.get(f.id) || (f.status === "published" ? "" : "draft"))).join("")
+      forayListSubLabel(f, progress))).join("")
     + (list.length > LIBRARY_SECTION_CAP ? `<a class="lib-more" href="#/forays">All ${list.length} forays ›</a>` : "");
 }
 
@@ -10583,24 +10635,35 @@ function isForayNarration(entry) {
 
    Narration is excluded rather than falling through: a narration entry has no
    `show`, so the title join would return null anyway, but saying so here is
-   what keeps "AI Narrator" from ever being asked to be a link. */
+   what keeps the narrator's credit from ever being asked to be a link. */
 function forayShowId(entry) {
   if (!entry || isForayNarration(entry)) return null;
   if (entry.show_id && showById(entry.show_id)) return entry.show_id;
   return showIdForShowName(entry.show);
 }
 
-/* The credit that leads a row's meta line: a link to the show, the show's name
-   as plain text when it does not join, or "AI Narrator" for a beat we wrote.
+/* ONE NAME FOR THE NARRATOR (audit round 2, p-foray-12): the credit, the
+   header and the accessible name each spelled it differently ("AI Narrator",
+   "4a's narrator", "4a's AI Narrator"). The player owns the name
+   (`segment-strip.js` NARRATOR_NAME, which its own summary speaks); this page
+   reads it through the bridge. The Foray page never renders without the
+   bridge, so the fallback is a plain noun, not a second spelling. */
+function narratorName() {
+  return window.ForayPlayer?.narratorName || "the narrator";
+}
 
-   "AI Narrator" is deliberately NOT a link. There is no 4a show page to send
+/* The credit that leads a row's meta line: a link to the show, the show's name
+   as plain text when it does not join, or the narrator's name for a beat we
+   wrote.
+
+   The narrator's credit is deliberately NOT a link. There is no 4a show page to send
    anyone to, and a control that navigates nowhere is worse than a label — the
    same rule `thumbsHtml` keeps. It carries the same class and sits in the same
    slot as a show credit so the two row kinds read as siblings: one credits a
    podcast, one credits us. */
 function forayCreditHtml(entry) {
   if (isForayNarration(entry)) {
-    return `<span class="fy-credit is-narrator">AI Narrator</span>`;
+    return `<span class="fy-credit is-narrator">${esc(narratorName())}</span>`;
   }
   if (!entry.show) return "";
   const showId = forayShowId(entry);
@@ -10612,7 +10675,7 @@ function forayCreditHtml(entry) {
      survives the parent's handler. */
   return showId
     ? `<a class="fy-credit show-link" href="#/show/${esc(showId)}">${esc(entry.show)}</a>`
-    : `<span class="fy-credit">${esc(entry.show)}</span>`;
+    : `<span class="fy-credit" data-credit-show="${esc(entry.show)}">${esc(entry.show)}</span>`;
 }
 
 /** What a beat is called when it is spoken aloud — for the play button's
@@ -10620,7 +10683,7 @@ function forayCreditHtml(entry) {
     a listener would use to tell two rows apart; the curation code
     (`entry.label`) never was, and is no longer rendered anywhere on this page. */
 function forayBeatName(entry) {
-  if (isForayNarration(entry)) return "narration by 4a's AI Narrator";
+  if (isForayNarration(entry)) return `narration by ${narratorName()}`;
   return [entry.show, entry.why].filter(Boolean).join(", ") || "this clip";
 }
 
@@ -10751,7 +10814,13 @@ function forayRow(entry) {
      that comes back empty (a beat with no show at all) does not leave a
      dangling separator. */
   const credit = forayCreditHtml(entry);
-  const metaHtml = [credit, dur ? esc(dur) : ""].filter(Boolean).join(" · ");
+  /* WHICH EPISODE (audit round 2, p-foray-5). The row said the show and the
+     length, and the episode a clip came from lived only in the credits block
+     at the foot of the page, so a caption about "his" shares or "Kahl" had
+     nothing on the row to hang on. A narration beat has no episode. */
+  const episode = !isForayNarration(entry) && entry.episode_title
+    ? `<span class="fy-ep">${esc(entry.episode_title)}</span>` : "";
+  const metaHtml = [credit, episode, dur ? esc(dur) : ""].filter(Boolean).join(" · ");
   /* The credit line is hoisted OUT of the play button, because a link inside a
      button is invalid HTML whose click never survives the parent's handler —
      the same rule that put the thumbs outside it. It reads in the same place it
@@ -10935,16 +11004,23 @@ function foraySourcesHtml(r, player) {
   // returning visitor can briefly hold a new app.js against an older module.
   // Losing the credit block is a missing section; throwing here is a blank page.
   if (typeof player.forayCredits !== "function") return "";
-  const { credits, summary } = player.forayCredits(r, { discoverDoc: state.discover });
+  const { credits, summary } = player.forayCredits(r, { discoverDoc: state.discover, collectionIds: showIndexCollectionIds(r) });
   if (!credits.length) return "";
   const clips = (n) => esc(countLabel(n, "clip"));
+  /* THE ARROW SAYS WHERE IT GOES (audit round 2, p-foray-2). It was labelled
+     "Open X on Apple Podcasts" for every show, while for a show with no known
+     Apple id it opens a SEARCH results page. `linkKind` exists in
+     player/foray-sources.js "so a surface can be honest about it". */
+  const outLabel = (c) => c.linkKind === "apple-show"
+    ? `Open ${c.show} on Apple Podcasts`
+    : `Search Apple Podcasts for ${c.show}`;
   const rows = credits.map(c => `
     <div class="fy-src">
       <div class="fy-src-head">
         <span class="fy-src-show">${showNameLink(c.show)}</span>
         <span class="fy-src-meta">${clips(c.clips)} · ${esc(player.fmtSpan(c.seconds))}</span>
         <a class="fy-src-out" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
-           data-src-show="${esc(c.show)}" aria-label="Open ${esc(c.show)} on Apple Podcasts">↗</a>
+           data-src-show="${esc(c.show)}" data-link-kind="${esc(c.linkKind || "")}" aria-label="${esc(outLabel(c))}">↗</a>
       </div>
       <ul class="fy-src-eps">${c.episodes.map(e =>
         `<li>${esc(e.title)} <span>${clips(e.clips)}</span></li>`).join("")}</ul>
@@ -10954,6 +11030,50 @@ function foraySourcesHtml(r, player) {
     <p class="fy-src-note">${esc(summary)}. Every clip plays from the show's own feed.</p>
     ${rows}
   </section>`;
+}
+
+/** Show -> Apple collection id for this Foray's shows, from the show index's
+    breadth rows (whose id IS the collection id; a curated row's id is a slug
+    and is skipped). Upgrades the ↗ from a search to the show's own Apple page
+    wherever the index knows the show — the same exact, unique title join. */
+function showIndexCollectionIds(r) {
+  const out = {};
+  for (const show of new Set((r?.entries || []).map(e => e?.show).filter(Boolean))) {
+    const id = showIndexIdForTitle(show);
+    if (id && /^\d+$/.test(id)) out[show] = id;
+  }
+  return out;
+}
+
+/* THE JOIN THAT NEEDS THE INDEX, AFTER THE PAGE IS UP (p-foray-2). The index is
+   ~200 KB and never on the boot path (the S-03 rules above loadShowIndex), so
+   the page paints with what the catalogue knows and, only when some credited
+   show has no page of its own, asks for the index once and relinks in place:
+   the row credits, then the "Where this came from" block. Nothing is re-rendered
+   that the transport owns. */
+function joinForayCreditsToShowIndex(r, player) {
+  if (showIndex) return;
+  const unlinked = (r?.entries || []).some(e => e?.playable && e.show && !isForayNarration(e) && !forayShowId(e));
+  if (!unlinked) return;
+  loadShowIndex().then((idx) => {
+    if (!idx || state.foray !== r) return;   // failed, or the listener has moved on
+    relinkForayCredits(r, player);
+  });
+}
+
+function relinkForayCredits(r, player) {
+  const view = $("#view");
+  if (!view) return;
+  view.querySelectorAll(".fy-credit[data-credit-show]").forEach((span) => {
+    const show = span.dataset.creditShow;
+    const id = showIdForShowName(show);
+    if (id) span.outerHTML = `<a class="fy-credit show-link" href="#/show/${esc(id)}">${esc(show)}</a>`;
+  });
+  const src = view.querySelector(".fy-sources");
+  if (src) {
+    src.outerHTML = foraySourcesHtml(r, player);
+    bindSourceLinks(r);
+  }
 }
 
 function bindSourceLinks(r) {
@@ -10979,9 +11099,28 @@ function bindSourceLinks(r) {
    An older cached module with no `stripTally` gets the runtime alone rather
    than counts from a second definition — a missing number is not a wrong
    one. */
+/* ONE DIALECT FOR A FORAY'S LENGTH (audit round 2, p-foray-8): the header
+   printed a measured runtime as a clock ("51:22") and an estimated one as
+   "about 43 min", so one page wrote a length two ways, and no list said it at
+   all. Minutes everywhere now, "about" when estimated; the ticking clock
+   beside the scrubber keeps its clock shape. */
 function forayRuntimeLabel(player, tally, totalSec) {
-  if (tally && tally.estimated) return `about ${player.fmtSpan(totalSec)}`;
-  return player.fmtClock(totalSec);
+  if (typeof player?.fmtSpan !== "function") return "";
+  return `${tally && tally.estimated ? "about " : ""}${player.fmtSpan(totalSec)}`;
+}
+
+/** "51 min · 22 clips · 7 shows": how long a Foray is and what it is made of,
+    for every row and card that lists one (p-foray-8). The counts are the
+    strip's own (`stripTally`), the narrator's clips counted as clips the way
+    the strip counts them; "" when there is nothing resolved to read. */
+function forayFactsLabel(r, player) {
+  if (!r) return "";
+  const tally = typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
+  return joinMeta(
+    forayRuntimeLabel(player, tally, r.totalSec),
+    tally ? countLabel(tally.clips + tally.bridges, "clip") : "",
+    tally && tally.shows ? countLabel(tally.shows, "show") : "",
+  );
 }
 
 function forayHeadSub(r, player) {
@@ -10996,11 +11135,11 @@ function forayHeadSub(r, player) {
        count now: the same total, split the same way the strip splits it. */
     const from = tally.shows ? ` from ${countLabel(tally.shows, "show")}` : "";
     parts.push(tally.bridges
-      ? `${countLabel(tally.clips + tally.bridges, "clip")}: ${tally.clips}${from} and ${tally.bridges} from 4a's narrator`
+      ? `${countLabel(tally.clips + tally.bridges, "clip")}: ${tally.clips}${from} and ${tally.bridges} from ${narratorName()}`
       : `${countLabel(tally.clips, "clip")}${from}`);
   }
   parts.push(forayRuntimeLabel(player, tally, r.totalSec));
-  return parts.join(" · ");
+  return joinMeta(...parts);
 }
 
 /* The back link on this page goes to `#/forays`, not `#/`. enterForayFromQuery's
@@ -11094,9 +11233,16 @@ async function renderForay(id) {
      segment that moved resumes to the same audio, and one that is gone degrades
      to a clamped clock with no row marked current, rather than seeking somewhere
      wrong. */
-  const resume = typeof player.forayResume === "function"
-    ? player.forayResume(r.id, { totalSec: r.totalSec, itemCount: r.playable.length, resolved: r })
+  /* `includeFinished` (audit round 2, honesty-2): a finished Foray used to open
+     exactly like one never touched, no banner, no mark. It now says "Played"
+     with a "Play again" beside it, the finished episode's word. Split here so
+     `resume` keeps meaning "a place to start from", which a finished Foray is
+     not: its main button starts from the top, as before. */
+  const point = typeof player.forayResume === "function"
+    ? player.forayResume(r.id, { totalSec: r.totalSec, itemCount: r.playable.length, resolved: r, includeFinished: true })
     : null;
+  const played = point && point.finished ? point : null;
+  const resume = played ? null : point;
   state.forayResume = resume;
   /* The document changed under a stored position. Nothing user-facing — the
      resume already degraded correctly — but it is the one signal that says how
@@ -11129,6 +11275,13 @@ async function renderForay(id) {
             <span class="fy-resume-left">${esc(resume.label)}</span>
           </p>
           <button type="button" class="fy-restart" id="fy-restart">Start over</button>
+        </div>` : ""}
+        ${played ? `<div class="fy-resume fy-played" id="fy-resume">
+          <div class="fy-bar"><span class="fy-bar-fill" data-pct="100"></span></div>
+          <p class="fy-resume-line">
+            <span class="fy-resume-left">${esc(played.label)}</span>
+          </p>
+          <button type="button" class="fy-restart" id="fy-restart">Play again</button>
         </div>` : ""}
         <!-- Plain bars, replaced wholesale by the SegmentStrip component in
              mountForayStrip below (#128). They stay in the markup as the
@@ -11186,10 +11339,12 @@ async function renderForay(id) {
   // down with it — an unfilled progress bar is a far better failure. CI catches
   // the disagreement itself: the hook is pinned in player/foray-playback.test.js.
   if (resume) { const fill = $("#fy-bar-fill"); if (fill) fill.style.width = `${resume.percent}%`; }
+  if (played) sizeProgressBars($("#view"));
   bindFeedback(r);
   bindSourceLinks(r);
   bindForayTransport(r, player, resume);
   pageDidPaint();   // the real page is up: a clamped back-step restore can land now
+  joinForayCreditsToShowIndex(r, player);
 }
 
 /* The strip is the signature element (#128) and it is BUILT IN THE PLAYER
@@ -12276,6 +12431,24 @@ function paintForay(s) {
     `renderForays` awaits the bridge before it will say "No forays right now",
     and `restoreNowPlayingRibbon` repaints Home once when the module arrives
     after Home's first paint. Recorded in docs/curation/foray2-capital.md §11c. */
+/** One listed Foray, resolved through the same `forayViewOpts()` gate every
+    Foray this page opens goes through, or null (no module, no documents, a
+    draft the viewer may not see, or data the resolver threw on). The one way a
+    LIST surface (Home's cards, the Forays list, Library, Jump back in, the
+    welcome strip) reads a Foray's running order, so none of them can resolve
+    it by a rule of its own. */
+function resolveListedForay(id) {
+  const player = window.ForayPlayer;
+  if (!id || !state.forays || typeof player?.resolve !== "function") return null;
+  try {
+    return player.resolve(state.forays, {
+      id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
+    }) || null;
+  } catch (_) {
+    return null;   // malformed segments/sources must not break a list
+  }
+}
+
 function forayCards() {
   if (!state.forays || !window.ForayPlayer) return [];
   /* Published + `?foray=`-unlocked first, in file order, exactly as before;
@@ -12293,11 +12466,38 @@ function forayCards() {
 function forayListHtml({ inSection = false } = {}) {
   const list = forayCards();
   if (!list.length) return "";
-  return `<div class="fy-home">${list.map(f => `
+  const progress = forayProgressLabels();
+  /* HOW LONG, AND HOW FAR (audit round 2, p-foray-8 / honesty-2): a row was a
+     tag and a title, so nothing before a Foray's own page said how long it
+     was, and a finished Foray looked never opened. The kicker already says
+     "draft", so the sub line leaves it out. */
+  return `<div class="fy-home">${list.map(f => {
+    const sub = forayListSubLabel(f, progress, { draftTag: false });
+    return `
     <a class="fy-home-row" href="#/foray/${esc(f.id)}">
       ${inSection && f.status === "published" ? "" : `<span class="fy-home-kicker">foray${f.status === "published" ? "" : " · draft"}</span>`}
       <span class="fy-home-title">${esc(f.title)}</span>
-    </a>`).join("")}</div>`;
+      ${sub ? `<span class="fy-home-sub">${esc(sub)}</span>` : ""}
+    </a>`;
+  }).join("")}</div>`;
+}
+
+/** Every listed Foray's progress label by id: "Played" for a finished one,
+    "N min left" for a part-played one. NO cap, because this is data, not the
+    rail (honesty-12). */
+function forayProgressLabels() {
+  return new Map(forayResumeRows({ limit: Infinity, includeFinished: true }).map(p => [p.id, p.label]));
+}
+
+/** A list row's second line: draft tag, progress, then length and makeup,
+    JOINED, never one in place of another (honesty-12: a part-played draft's
+    "20 min left" used to replace its "draft"). */
+function forayListSubLabel(f, progress, { draftTag = true } = {}) {
+  return joinMeta(
+    draftTag && f.status !== "published" ? "draft" : "",
+    progress.get(f.id) || "",
+    forayFactsLabel(resolveListedForay(f.id), window.ForayPlayer),
+  );
 }
 
 /* "Jump back in" — the mockup's own heading for a part-played Foray, and the
@@ -12366,7 +12566,13 @@ function isHomeRoute() {
   return currentHash() === "#/";
 }
 
-function forayResumeRows() {
+/* `limit` and `includeFinished` belong to the CALLER (audit round 2,
+   honesty-12 / honesty-2). The 3-row cap is the Home rail's layout; Library
+   reused this helper as its data source and inherited the cap, so a fourth
+   part-played Foray there showed an empty subtitle. A finished Foray is left
+   off Jump back in (founder question 3: finished things leave the rail,
+   episodes and Forays alike), but its own rows say "Played". */
+function forayResumeRows({ limit = 3, includeFinished = false } = {}) {
   if (typeof window.ForayPlayer?.forayResumeList !== "function") return [];
   const visible = new Set(forayCards().map(f => f.id));
   /* `foraysDoc` is FD-05: a row whose Foray is no longer in the directory reads
@@ -12377,14 +12583,10 @@ function forayResumeRows() {
      `forayViewOpts()` gate every other Foray this page opens goes through —
      not against the runtime stored when the row was written. */
   const player = window.ForayPlayer;
-  const resolveFor = typeof player.resolve === "function" && state.forays
-    ? (id) => player.resolve(state.forays, {
-        id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
-      })
-    : null;
+  const resolveFor = typeof player.resolve === "function" && state.forays ? resolveListedForay : null;
   return player.forayResumeList({ foraysDoc: state.forays, resolveFor })
-    .filter(p => visible.has(p.id) && p.drift !== "dropped" && !p.finished && p.label)
-    .slice(0, 3);
+    .filter(p => visible.has(p.id) && p.drift !== "dropped" && (includeFinished || !p.finished) && p.label)
+    .slice(0, limit);
 }
 
 function jumpBackInHtml(rows) {

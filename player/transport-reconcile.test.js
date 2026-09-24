@@ -1018,6 +1018,59 @@ test("a finished Foray does not come back looking mid-listen", async (t) => {
   restore();
 });
 
+test("a Foray played to the end is MARKED 'Played', not wiped back to unplayed (honesty-2)", async (t) => {
+  /* Reaching the end used to CLEAR the row, so the Forays list, Library and the
+     Foray page showed a finished Foray exactly as one never opened, while a
+     finished episode said "Played" on every row.
+     KILLING MUTATION: put `forayProgress.clear(id)` back in
+     `persistForayProgress`'s ended branch — the list has no row, red. */
+  const { client, audio, restore } = await bootClient(t);
+  await client.playForay(synthetic(), { startIndex: 1 });   // the last segment
+  await settle();
+  await settle();
+  audio.runOut();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().ended, true, "precondition: the Foray is over");
+  /* The listener moves on to an episode: `play()` flushes the Foray's row on
+     its way out, which is the write that used to erase a finished one. */
+  await client.play(audioItem("ep-after"));
+  await settle();
+  const row = client.forayResumeList().find((p) => p.id === "f263");
+  assert.ok(row, "the finished Foray still has a row");
+  assert.equal(row.finished, true);
+  assert.equal(row.percent, 100);
+  assert.equal(row.label, "Played", "the finished episode's word");
+  assert.equal(client.forayResume("f263"), null, "and it is never a place to RESUME to");
+  assert.equal(client.forayResume("f263", { includeFinished: true })?.label, "Played", "the Foray page asks for it by name");
+  assert.equal(client.lastPlayedForay(), null, "nor does it take the ribbon");
+  restore();
+});
+
+test("an ESTIMATED Foray runtime is hedged in the Now Playing countdown and the slider's 'of' (states-11)", async (t) => {
+  /* The page header said "about 41 min" and its clock "~41:00", while the
+     sheet printed "-32:00" / "of 41:00" from the same script-length estimate.
+     KILLING MUTATION: drop the `about` prefix from `remainingClock` — the first
+     assertion is red. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  const resolved = { ...synthetic(), estimated: true };
+  await client.playForay(resolved, { startIndex: 0 });
+  await settle();
+  await settle();
+  const left = find(doc.body, "fp-left").textContent;
+  assert.match(left, /^~-\d+:\d{2}$/, `the countdown says it is an estimate: "${left}"`);
+  const scrub = find(doc.body, "fp-scrub");
+  assert.match(scrub.getAttribute("aria-valuetext"), / of about \d+:\d{2}$/);
+  /* And the row Jump back in reads. KILLING MUTATION: drop `estimated` from
+     forayResumeList's `progressLabel` call — "1 min left", red. */
+  audio.currentTime = 160;
+  await client.forayToggle();   // pause: the forced write
+  await settle();
+  const row = client.forayResumeList({ resolveFor: () => resolved }).find((p) => p.id === "f263");
+  assert.match(row?.label ?? "", /^about \d+ min left$/, `the resume row hedges too: ${JSON.stringify(row)}`);
+  restore();
+});
+
 test("A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH THE FAILED SEGMENT'S IN-POINT", async (t) => {
   /* Report 2, reproduced end to end. Segment A plays to its out-point and the
      cross-episode load of B fails — #224 owns WHY it fails; here it simply does.
