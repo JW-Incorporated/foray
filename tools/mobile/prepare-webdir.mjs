@@ -583,11 +583,16 @@ export function buildPlan(root = REPO_ROOT) {
  *  GENERATED, NOT COPIED (issue #701, 2026-09-24). It used to be a committed file
  *  read off disk here; it is a deploy build output now, so `prepare` gets it from
  *  `sourceStamp(root)` (`tools/ci/generate-manifest.mjs`) — the same deploy id and
- *  the same `built_at` (the commit's committer date) the Vercel build of this
- *  commit serves. OPTIONAL, as before: a tree the stamp cannot describe (a test
- *  fixture missing a listed file; a Windows CRLF checkout, whose hashes are not
- *  the bytes any origin serves) still builds a correct bundle, with an unversioned
- *  seed — `prepare` reports why in its result, and the CLI prints it.
+ *  the same `built_at` the Vercel deploy of this content serves: the date of the
+ *  newest commit to touch a stamp input, NOT this commit's own (a release usually
+ *  builds from a `mobile/` commit Vercel skipped, and a later seed would make the
+ *  phone refuse the live pointer as OLDER — PR #795 review, finding 1). OPTIONAL,
+ *  as before: a tree the stamp cannot describe (a test fixture missing a listed
+ *  file; a Windows CRLF checkout, whose hashes are not the bytes any origin
+ *  serves) still builds a correct bundle, with an unversioned seed; and a tree
+ *  whose history cannot date the seed (a shallow clone, no git) keeps its deploy
+ *  id but ships no seed pointer. `prepare` reports why in its result, and the
+ *  CLI prints it.
  *  `prepare-webdir.test.mjs` pins both branches. */
 export const SEED_POINTER = "data/forays-directory.json";
 
@@ -1933,6 +1938,7 @@ export function prepare({
     out, absOut, files, total, maxBytes,
     deployId: stampDoc ? stampDoc.deploy_id : null,
     unstampedReason: stampDoc ? null : (webStamp && webStamp.reason) || "no stamp was supplied",
+    seedPointerReason: webStamp && webStamp.pointer ? null : (webStamp && (webStamp.pointerReason || webStamp.reason)) || "no stamp was supplied",
   };
 }
 
@@ -1989,7 +1995,8 @@ if (isMain) {
     } else {
       const r = prepare({ out });
       console.log(`webDir ready: ${r.out}  (${r.files.length} files, ${fmt(r.total)} of ${fmt(r.maxBytes)})`);
-      if (r.deployId) console.log(`  web deploy id: ${r.deployId} (build-stamp.json and the seed's pointer)`);
+      if (r.deployId && !r.seedPointerReason) console.log(`  web deploy id: ${r.deployId} (build-stamp.json and the seed's pointer)`);
+      else if (r.deployId) console.warn(`  web deploy id: ${r.deployId} (build-stamp.json). WARNING: no seed pointer — ${r.seedPointerReason}`);
       else console.warn(`  WARNING: no build stamp and an unversioned seed pointer — ${r.unstampedReason}`);
       for (const spec of PROJECTED_DATA) {
         const f = r.files.find((x) => x.rel === spec.rel);

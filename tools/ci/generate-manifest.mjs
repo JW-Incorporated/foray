@@ -71,7 +71,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { crlfOffenders, crlfFatalMessage } from "./crlf-guard.mjs";
-import { POINTER_PATH, deployIdFrom, buildPointer, pointerText, pointerProblems, buildTimestamp } from "./forays-directory.mjs";
+import { POINTER_PATH, DIRECTORY_FILES, deployIdFrom, buildPointer, pointerText, pointerProblems, buildTimestamp } from "./forays-directory.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -84,6 +84,15 @@ export const GENERATED = [MANIFEST_FILE, POINTER_PATH];
 export const UNSTAMPED_BUILD_ID = "unstamped";
 
 const BUILD_ID_RE = /const BUILD_ID = "([^"]*)";/;
+
+/* The modules that compute the stamp. `tools/web/vercel-should-build.mjs`'s
+   STAMP_MODULES is the same list (a test pins the two equal); it is not
+   imported from there because this module runs standalone in a scratch tree. */
+export const STAMP_MODULE_FILES = [
+  "tools/ci/generate-manifest.mjs",
+  "tools/ci/forays-directory.mjs",
+  "tools/ci/crlf-guard.mjs",
+];
 
 /* The app shell sw.js precaches on install. Kept explicit, same reasoning as
    prepare-dist.mjs's SHELL: a new root-level file must be added here
@@ -151,6 +160,33 @@ function listedFiles(root = ROOT) {
 
 const posix = (rel) => rel.split(path.sep).join("/");
 
+/**
+ * The git pathspecs whose history dates a stamp (`buildTimestamp`'s `paths`):
+ * every file the deploy id hashes, the directory files the pointer describes,
+ * and the modules that compute both. The two derived directories are globbed
+ * too, so a commit that DELETES a player module or a font face (and so changes
+ * the deploy id) still dates the stamp. Test files are excluded: Vercel does not
+ * build on them, and an input Vercel does not build on is exactly a date the
+ * live pointer would not carry (PR #795 review, finding 1).
+ */
+function stampInputs(root = ROOT) {
+  return [
+    ...new Set([
+      ...listedFiles(root).map(posix),
+      ...Object.values(DIRECTORY_FILES),
+      ...STAMP_MODULE_FILES,
+      ":(glob)player/*.js",
+      ":(glob)fonts/*.woff2",
+    ]),
+    ":(exclude,glob)player/*.test.js",
+  ];
+}
+
+/** `buildTimestamp` over this tree's stamp inputs — what every stamper calls. */
+function stampTimestamp(root = ROOT, opts = {}) {
+  return buildTimestamp(root, { ...opts, paths: stampInputs(root) });
+}
+
 function sha256File(root, relPath) {
   const abs = path.join(root, relPath);
   if (!existsSync(abs)) {
@@ -209,8 +245,9 @@ function stampBuildId(root, deployId) {
  * bytes `dir` actually holds. `dir` is `dist/` (prepare-dist) or a throwaway
  * checkout (the Pages workflow); never the working tree anybody commits from.
  *
- * `builtAt` is the pointer's `built_at` — pass `buildTimestamp(repoRoot).builtAt`
- * (the built commit's committer date). Throws on a CRLF tree or a missing file.
+ * `builtAt` is the pointer's `built_at` — pass `stampTimestamp(repoRoot).builtAt`
+ * (the committer date of the newest commit to touch a stamp input). Throws on a
+ * CRLF tree or a missing file.
  *
  * -> { deployId, manifest, pointer }
  */
@@ -333,9 +370,20 @@ function sourceProblems(root = ROOT) {
  * build stamp. The deploy id equals the one the deploys compute for the same
  * commit, because they hash byte-identical copies of the same files.
  *
- * -> { deployId, pointer, builtAt } or { deployId: null, reason } when a stamp
- *    for this tree would be wrong or impossible: a CRLF checkout (the id would
- *    name bytes no origin serves) or a tree missing a listed file (a fixture).
+ * THE SEED'S `built_at` MUST NEVER BE LATER THAN THE LIVE POINTER'S for the same
+ * content, or a phone reads the live pointer as OLDER than its own partial seed
+ * and never fetches the whole set (PR #795 review, finding 1). `stampTimestamp`
+ * gives every stamper the same date for the same content; the two cases where
+ * this tree cannot know that date — a shallow clone whose depth does not reach
+ * the newest input commit (`git-shallow`, which answers LATE) and no git at all
+ * (`clock`) — return the deploy id with `pointer: null` and a `pointerReason`.
+ * The bundle then carries no seed pointer, which the shell treats as unversioned
+ * and re-fetches from (safe), rather than one that outranks the live deploy.
+ *
+ * -> { deployId, pointer, builtAt, pointerReason } or { deployId: null, reason }
+ *    when a stamp for this tree would be wrong or impossible: a CRLF checkout
+ *    (the id would name bytes no origin serves) or a tree missing a listed file
+ *    (a fixture).
  */
 function sourceStamp(root = ROOT, { env = process.env } = {}) {
   let base;
@@ -348,8 +396,19 @@ function sourceStamp(root = ROOT, { env = process.env } = {}) {
   if (bad.length) {
     return { deployId: null, reason: `CRLF checkout (${bad.length} listed files) — its hashes are not the bytes the deploys serve` };
   }
-  const { builtAt } = buildTimestamp(root, { env });
-  return { deployId: base.deploy_id, pointer: buildPointer(root, base.deploy_id, new Date(builtAt)), builtAt };
+  const { builtAt, source } = stampTimestamp(root, { env });
+  if (source === "git-shallow" || source === "clock") {
+    return {
+      deployId: base.deploy_id,
+      pointer: null,
+      builtAt: null,
+      pointerReason:
+        source === "clock"
+          ? "no git history, so the seed's built_at could be later than the live pointer's"
+          : "shallow clone: the newest stamp-input commit is below its depth, so the seed's built_at could be later than the live pointer's — check out with fetch-depth: 0",
+    };
+  }
+  return { deployId: base.deploy_id, pointer: buildPointer(root, base.deploy_id, new Date(builtAt)), builtAt, pointerReason: null };
 }
 
 function argAfter(argv, flag) {
@@ -402,7 +461,7 @@ function main(argv = process.argv.slice(2)) {
     }
     let r;
     try {
-      r = stampBuild(dir, { builtAt: buildTimestamp(dir).builtAt });
+      r = stampBuild(dir, { builtAt: stampTimestamp(dir).builtAt });
     } catch (err) {
       console.error(err.message);
       process.exit(1);
@@ -472,6 +531,8 @@ export {
   stampedProblems,
   sourceProblems,
   sourceStamp,
+  stampInputs,
+  stampTimestamp,
   SHELL,
   RUNTIME_DATA,
 };

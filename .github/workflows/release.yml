@@ -191,6 +191,13 @@ jobs:
       uploaded: ${{ steps.ios.outputs.uploaded }}
     steps:
       - uses: actions/checkout@v4
+        # Full history (blobless: commits and trees only, cheap). The bundle's seed
+        # pointer is dated by the newest commit that touched a stamp input
+        # (tools/ci/generate-manifest.mjs, stampTimestamp); a shallow clone cannot
+        # see it, and the seed then ships without a pointer (PR #795 review).
+        with:
+          fetch-depth: 0
+          filter: blob:none
 
       - name: Release gate — the privacy tripwire (S-08)
         # Same gate ios-build.yml and android-release.yml both run first —
@@ -220,6 +227,13 @@ jobs:
       signed: ${{ steps.android.outputs.signed }}
     steps:
       - uses: actions/checkout@v4
+        # Full history (blobless: commits and trees only, cheap). The bundle's seed
+        # pointer is dated by the newest commit that touched a stamp input
+        # (tools/ci/generate-manifest.mjs, stampTimestamp); a shallow clone cannot
+        # see it, and the seed then ships without a pointer (PR #795 review).
+        with:
+          fetch-depth: 0
+          filter: blob:none
 
       - name: Release gate — the privacy tripwire (S-08)
         run: node --test test/release-gates.test.js

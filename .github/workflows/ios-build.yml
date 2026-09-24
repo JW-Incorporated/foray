@@ -154,6 +154,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        # Full history (blobless: commits and trees only, cheap). The bundle's seed
+        # pointer is dated by the newest commit that touched a stamp input
+        # (tools/ci/generate-manifest.mjs, stampTimestamp); a shallow clone cannot
+        # see it, and the seed then ships without a pointer (PR #795 review).
+        with:
+          fetch-depth: 0
+          filter: blob:none
 
       - uses: actions/setup-node@v4
         with:

@@ -13,7 +13,8 @@
  * WHAT CHANGED WITH #701. The stamp used to be committed, regenerated on every
  * PR by manifest-autofix.yml, and so every merge conflicted with every open PR.
  * It is written into a BUILT tree now (`dist/`, the Pages checkout), `built_at`
- * is the built commit's committer date, and `--check` only asserts that nothing
+ * is the committer date of the newest commit to touch a stamp input (PR #795
+ * review: never HEAD's, which Vercel may not have built), and `--check` only asserts that nothing
  * generated is committed. The old idempotence tests (so the bot would not push
  * a built_at-only commit) and the merge-base "floor" tests (so a revert's
  * restored old stamp was restamped) are gone with the committed file; the revert
@@ -48,7 +49,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   POINTER_PATH,
@@ -59,7 +60,8 @@ import {
   pointerProblems,
   buildTimestamp,
 } from "./forays-directory.mjs";
-import { listedFiles } from "./generate-manifest.mjs";
+import { listedFiles, sourceStamp, stampInputs, stampTimestamp, STAMP_MODULE_FILES } from "./generate-manifest.mjs";
+import { pathMatters, STAMP_MODULES } from "../web/vercel-should-build.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -625,4 +627,118 @@ test("CLI: --check is red when .gitignore stops covering a generated file", () =
     assert.equal(c.status, 1);
     assert.match(c.stderr, /data\/forays-directory\.json is not in \.gitignore/);
   });
+});
+
+// ------------------- built_at across stampers: the seed never outranks the live pointer --
+
+/* PR #795 review, finding 1. Vercel's ignoreCommand skips a commit that touches
+   nothing it serves, and release-trigger ships exactly those commits (a
+   `mobile/` change). A HEAD-dated seed was therefore LATER than the pointer
+   Vercel was serving for the same content, and the phone refused the live
+   pointer as OLDER than its own partial seed. */
+
+/** A clone the way a build host takes one: its own LF checkout of `src`. */
+function cloneOf(src, extra = []) {
+  const dir = mkdtempSync(path.join(tmpdir(), "forays-directory-clone-"));
+  rmSync(dir, { recursive: true, force: true });
+  git(tmpdir(), ["clone", "-q", "--config", "core.autocrlf=false", ...extra, pathToFileURL(src).href, dir]);
+  return dir;
+}
+
+test("END TO END (#795 finding 1): a mobile-only HEAD after the last served commit — the seed's built_at equals the live pointer's, so a fresh install is not OLDER", async () => {
+  /* KILLED BY: `stampTimestamp` passing no `paths` (HEAD's date — the regression),
+     or dropping the `:(exclude,glob)player/*.test.js` input (the player TEST
+     commit below would then move the seed past the live pointer). */
+  const { isOlderThan } = await import("../../player/foray-directory.js");
+  withTree(gitCliTree, (dir) => {
+    commitAt(dir, "served: v1", "2026-09-20T12:00:00Z");
+
+    /* Vercel builds that commit: the real CLI on its own clone, no epoch pin. */
+    const vercel = cloneOf(dir);
+    let live;
+    try {
+      const w = run(vercel, ["--stamp", "."], { SOURCE_DATE_EPOCH: "" });
+      assert.equal(w.status, 0, w.stderr);
+      live = readJson(vercel, POINTER_PATH);
+    } finally {
+      rmSync(vercel, { recursive: true, force: true });
+    }
+    assert.equal(live.built_at, "2026-09-20T12:00:00.000Z");
+
+    /* Three commits Vercel skips (pathMatters is false for each), then the release. */
+    put(dir, "mobile/VERSION", "1.2.3\n");
+    commitAt(dir, "mobile: bump", "2026-09-21T12:00:00Z");
+    put(dir, "player/foray-directory.test.js", "// a test, never served\n");
+    commitAt(dir, "test only", "2026-09-22T12:00:00Z");
+    put(dir, "docs/note.md", "notes\n");
+    commitAt(dir, "docs only", "2026-09-23T12:00:00Z");
+    for (const p of ["mobile/VERSION", "player/foray-directory.test.js", "docs/note.md"]) {
+      assert.equal(pathMatters(p), false, `${p} must be a commit Vercel skips, or this test proves nothing`);
+    }
+
+    const seed = sourceStamp(dir, NO_EPOCH);
+    assert.equal(seed.pointerReason, null);
+    assert.equal(seed.pointer.version, live.version, "same content, same deploy id");
+    assert.equal(seed.pointer.built_at, live.built_at, "and the same built_at Vercel is serving");
+    assert.equal(isOlderThan(live.built_at, seed.pointer.built_at), false, "so the live pointer is not OLDER than the seed");
+
+    /* Not vacuous: HEAD's own date is exactly the regression. */
+    const headDated = buildTimestamp(dir, NO_EPOCH).builtAt;
+    assert.equal(headDated, "2026-09-23T12:00:00.000Z");
+    assert.equal(isOlderThan(live.built_at, headDated), true, "a HEAD-dated seed would outrank the live pointer");
+
+    /* And the stamp still moves when served content does. */
+    put(dir, DIRECTORY_FILES.forays, FORAYS.replace("f1", "f2"));
+    commitAt(dir, "served: v2", "2026-09-24T12:00:00Z");
+    assert.equal(sourceStamp(dir, NO_EPOCH).pointer.built_at, "2026-09-24T12:00:00.000Z");
+  });
+});
+
+test("a shallow clone that cannot reach the newest input commit ships no seed pointer, and dates a live stamp LATE, never early", () => {
+  /* In a shallow clone the boundary commit looks as if it added every file, so
+     the path-limited answer is the boundary's date: later than the truth. Safe
+     for a live pointer, the defect itself for a seed. KILLED BY: dropping the
+     `git-shallow` branch in sourceStamp, or `isShallowBoundary` returning false. */
+  withTree(gitCliTree, (dir) => {
+    commitAt(dir, "served: v1", "2026-09-20T12:00:00Z");
+    put(dir, "mobile/VERSION", "1.2.3\n");
+    commitAt(dir, "mobile: bump", "2026-09-21T12:00:00Z");
+
+    const shallow = cloneOf(dir, ["--depth", "1"]);
+    try {
+      const t = stampTimestamp(shallow, NO_EPOCH);
+      assert.deepEqual(t, { builtAt: "2026-09-21T12:00:00.000Z", source: "git-shallow" });
+      const s = sourceStamp(shallow, NO_EPOCH);
+      assert.match(s.deployId, /^[0-9a-f]{16}$/, "the build stamp keeps its deploy id");
+      assert.equal(s.pointer, null, "but the seed carries no pointer that could outrank the live one");
+      assert.match(s.pointerReason, /shallow clone.*fetch-depth: 0/);
+    } finally {
+      rmSync(shallow, { recursive: true, force: true });
+    }
+
+    /* A full clone of the same commit answers exactly. */
+    const full = cloneOf(dir);
+    try {
+      assert.deepEqual(stampTimestamp(full, NO_EPOCH), { builtAt: "2026-09-20T12:00:00.000Z", source: "git" });
+    } finally {
+      rmSync(full, { recursive: true, force: true });
+    }
+  });
+});
+
+test("REAL REPO: every stamp input is a path Vercel builds on, and the stamp modules are one list", () => {
+  /* The seed and the live pointer agree only if the newest commit touching an
+     input is a commit Vercel built. KILLED BY: adding an input under an ignored
+     prefix (a test file, tools/ outside the stamp modules), or the two
+     STAMP_MODULES lists drifting apart. */
+  assert.deepEqual(STAMP_MODULE_FILES, STAMP_MODULES);
+  const inputs = stampInputs();
+  assert.ok(inputs.length > 20, `only ${inputs.length} stamp inputs`);
+  for (const p of inputs) {
+    if (p.startsWith(":(exclude")) continue;
+    const sample = p.replace(":(glob)", "").replace("*", "new-module");
+    assert.equal(pathMatters(sample), true, `stamp input ${p} (${sample}) is a path Vercel skips`);
+  }
+  assert.ok(inputs.includes(":(exclude,glob)player/*.test.js"), "player tests are excluded from the inputs");
+  assert.equal(pathMatters("player/new-module.test.js"), false);
 });

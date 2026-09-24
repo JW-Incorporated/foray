@@ -14,7 +14,7 @@
  *
  *   {
  *     "version":  "<deploy_id>",             // the generation these files shipped in
- *     "built_at": "2026-09-10T12:34:56.000Z",// the built commit's committer date (`buildTimestamp`)
+ *     "built_at": "2026-09-10T12:34:56.000Z",// the newest stamp-input commit's committer date (`buildTimestamp`)
  *     "files":    { "forays": "data/forays.json", "segments": "data/segments.json",
  *                   "sources": "data/segment-sources.json" },
  *     "bytes":    { "forays": 54997, "segments": 177321, "sources": 59553 },
@@ -144,36 +144,73 @@ function readPointer(root) {
  * `built_at` is the ONLY order a phone has (`player/foray-directory.js` refuses
  * a live pointer whose `built_at` is behind the set it holds, `STATUS.OLDER`,
  * and re-decides that from the same two stamps on every refresh — forever). So
- * the one property this has to have is that it MOVES FORWARD with `main`.
+ * it has two jobs: MOVE FORWARD with `main`, and be the SAME for every stamper
+ * that ships the same content — the Vercel deploy the phones read, the Pages
+ * deploy, and the native bundle's seed.
  *
- * THE COMMIT'S OWN COMMITTER DATE, not the wall clock and not a committed value.
+ * THE COMMITTER DATE OF THE NEWEST FIRST-PARENT COMMIT THAT TOUCHED A STAMP
+ * INPUT (`paths`: every file the deploy id hashes, the directory files, and the
+ * stamp modules — `generate-manifest.mjs`'s `stampInputs`). Not HEAD's date:
+ * Vercel's `ignoreCommand` (`tools/web/vercel-should-build.mjs`) SKIPS a commit
+ * that changes nothing it serves — a `mobile/`-only commit, typically the very
+ * commit a release builds from — so the pointer Vercel serves carries the date
+ * of the last commit it BUILT, while a HEAD-dated seed would be later. The phone
+ * then read the live pointer as OLDER than its own partial seed and never
+ * fetched the whole set (PR #795 review, finding 1). Every stamp input is a path
+ * Vercel builds on (pinned by a test), so the newest commit touching one is a
+ * commit Vercel built, and every stamper of the same `main` computes the same
+ * date for the same content.
  *   - Not committed (issue #701): a committed stamp is exactly what a `git
- *     revert` walks backwards (audit finding C, 2026-09-12 — the revert restored
- *     the old pointer bytes, old `built_at` and all, and every phone holding the
- *     reverted version refused the rollback for good). A revert is a NEW commit
- *     with a NEW committer date, so a stamp derived from HEAD's date carries a
- *     rollback forward on its own; the merge-base "floor" machinery that used to
- *     patch this over is gone with the committed file.
- *   - Not the wall clock: two builds of the same commit (a Vercel redeploy, the
- *     Pages workflow and the Vercel build of one merge) then agree byte for byte,
- *     and the stamp means "when this version reached `main`", which is what the
- *     phone is ordering by. The clock is the last-resort fallback only.
+ *     revert` walks backwards (audit finding C, 2026-09-12). A revert is a NEW
+ *     commit that touches the inputs, so it carries its own, newer date.
+ *   - Not the wall clock: two builds of the same content then agree byte for
+ *     byte. The clock is the last-resort fallback only.
+ *   - `--first-parent`: a merge commit counts as "when this reached main", never
+ *     the older date of a commit on the merged branch.
+ *
+ * A SHALLOW CLONE can only answer LATE: when the newest input commit is below
+ * the clone's depth, the boundary commit looks as if it added every file. That
+ * is reported as `source: "git-shallow"` — safe for a LIVE pointer (later than
+ * the truth never makes a phone refuse it), wrong for a SEED (a seed later than
+ * the live pointer is the defect above), so `sourceStamp` leaves such a seed
+ * unversioned. Builders that bundle a seed check out with full history.
+ *
+ * With no `paths`, HEAD's own committer date (every file is an input).
  *
  * `SOURCE_DATE_EPOCH` (the reproducible-builds convention, integer seconds)
  * wins when set, so a test or a rebuild can pin the stamp without git.
  *
- * -> { builtAt: ISO-8601 string, source: "SOURCE_DATE_EPOCH" | "git" | "clock" }
+ * -> { builtAt: ISO-8601 string, source: "SOURCE_DATE_EPOCH" | "git" | "git-shallow" | "clock" }
  */
-export function buildTimestamp(root, { env = process.env, now = () => new Date() } = {}) {
+export function buildTimestamp(root, { env = process.env, now = () => new Date(), paths = null } = {}) {
   const epoch = env && env.SOURCE_DATE_EPOCH;
   if (epoch != null && /^\d+$/.test(String(epoch).trim())) {
     return { builtAt: new Date(Number(String(epoch).trim()) * 1000).toISOString(), source: "SOURCE_DATE_EPOCH" };
   }
-  const committed = gitOut(root, ["log", "-1", "--format=%cI", "HEAD"]);
-  if (committed && Number.isFinite(Date.parse(committed))) {
-    return { builtAt: new Date(Date.parse(committed)).toISOString(), source: "git" };
+  const limited = Array.isArray(paths) && paths.length > 0;
+  const args = ["log", "-1", "--first-parent", "--format=%H %cI", "HEAD"];
+  let line = limited ? gitOut(root, [...args, "--", ...paths.map((p) => String(p).split(path.sep).join("/"))]) : null;
+  /* No commit touched any input (inputs untracked — a fixture): HEAD's date. */
+  if (!line) line = gitOut(root, args);
+  const m = line && /^([0-9a-f]{40,64}) (\S+)$/.exec(line);
+  if (m && Number.isFinite(Date.parse(m[2]))) {
+    const builtAt = new Date(Date.parse(m[2])).toISOString();
+    return { builtAt, source: limited && isShallowBoundary(root, m[1]) ? "git-shallow" : "git" };
   }
   return { builtAt: now().toISOString(), source: "clock" };
+}
+
+/** Is `sha` a shallow clone's boundary commit — one whose parents were not
+ *  fetched, so a path-limited log sees it as adding every file? */
+function isShallowBoundary(root, sha) {
+  if (gitOut(root, ["rev-parse", "--is-shallow-repository"]) !== "true") return false;
+  const shallowFile = gitOut(root, ["rev-parse", "--path-format=absolute", "--git-path", "shallow"]);
+  if (!shallowFile) return true; // shallow but unreadable: assume the worst
+  try {
+    return readFileSync(shallowFile, "utf8").split(/\s+/).includes(sha);
+  } catch (_) {
+    return true;
+  }
 }
 
 /**

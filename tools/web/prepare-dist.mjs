@@ -22,8 +22,8 @@
 import { mkdirSync, rmSync, cpSync, existsSync, statSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative, sep, isAbsolute } from "node:path";
-import { POINTER_PATH, buildTimestamp } from "../ci/forays-directory.mjs";
-import { stampBuild, stampedProblems } from "../ci/generate-manifest.mjs";
+import { POINTER_PATH } from "../ci/forays-directory.mjs";
+import { stampBuild, stampedProblems, stampTimestamp } from "../ci/generate-manifest.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = process.argv.slice(2);
@@ -170,11 +170,15 @@ if (missing.length) {
    missing on disk"), and `stampedProblems` then re-derives everything from disk
    so a torn stamp cannot ship.
 
-   `built_at` is the built commit's committer date (`buildTimestamp`): it moves
-   forward with main, a revert included, and two builds of one commit agree. The
-   phones order pointers by it (player/foray-directory.js, STATUS.OLDER). */
+   `built_at` is the committer date of the newest commit that touched a stamp
+   input (`stampTimestamp`), NOT HEAD's: this build is skipped for commits that
+   touch nothing served, and the phone's bundled seed (built from such a commit)
+   must carry the same date this deploy does. It moves forward with main, a
+   revert included, and two builds of the same content agree. The phones order
+   pointers by it (player/foray-directory.js, STATUS.OLDER). A shallow clone can
+   only make it later, which is the safe direction for a live pointer. */
 {
-  const stamp = buildTimestamp(ROOT);
+  const stamp = stampTimestamp(ROOT);
   let r;
   try {
     r = stampBuild(OUT, { builtAt: stamp.builtAt });

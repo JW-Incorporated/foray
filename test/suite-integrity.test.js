@@ -1146,7 +1146,7 @@ const FLOORS = {
      --check's no-committed-stamp rule (tracked file, stamped sw.js, missing
      .gitignore). The committed-file and committer-date mutations were run and
      killed; 29 -> 32. */
-  "tools/ci/forays-directory.test.mjs": 32,
+  "tools/ci/forays-directory.test.mjs": 35, // PR #795 review finding 1 (2026-09-24): the seed never outranks the live pointer (mobile-only HEAD, shallow clone, every input is a Vercel path); 32 -> 35
   /* +12 (machinery audit, 2026-09-12): the checks-missing self-heal had three
      holes — sweep-only, keyed on `pr.updatedAt` (which this workflow's own label
      writes reset), and firing only when ALL required checks were missing — plus

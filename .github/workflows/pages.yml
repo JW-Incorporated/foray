@@ -24,12 +24,15 @@
 #
 # ONE-TIME SETTINGS FLIP, OWNED BY A HUMAN (production infra, CLAUDE.md):
 # Settings -> Pages -> Build and deployment -> Source: "GitHub Actions". Until
-# then this workflow's deploy step fails ("Pages is not configured for Actions")
-# and the branch deploy keeps serving `main` root — WITHOUT a manifest, so the
-# service worker's install() finds no deploy-manifest.json, throws, and never
-# installs; existing visitors keep their last worker, which is network-first, so
-# every page still loads current code while online. Degraded offline, not broken.
-# Flip first, then merge, and there is no gap at all.
+# then this workflow stamps and verifies but SKIPS the deploy with a warning
+# (the "Is Pages set to deploy from GitHub Actions?" step) — it must not go red,
+# because a red run on main's head holds every app release (release-trigger's
+# HOLD_MAIN_RED). Meanwhile the branch deploy keeps serving `main` root WITHOUT
+# a manifest, so the service worker's install() finds no deploy-manifest.json,
+# throws, and never installs; existing visitors keep their last worker, which is
+# network-first, so every page still loads current code while online. Degraded
+# offline, not broken. Flip first, then merge, and there is no gap at all; flip
+# later, then re-run this workflow, and the gap closes then.
 
 name: pages
 
@@ -58,8 +61,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-        # Depth 1 is enough: the stamp's built_at is HEAD's committer date
-        # (tools/ci/forays-directory.mjs, buildTimestamp), and HEAD is present.
+        # Full history (blobless: commits and trees only). The stamp's built_at is
+        # the committer date of the newest commit that touched a stamp input
+        # (tools/ci/generate-manifest.mjs, stampTimestamp) — the same date the
+        # Vercel deploy of this content carries. A shallow clone could only
+        # answer later than that.
+        with:
+          fetch-depth: 0
+          filter: blob:none
 
       - uses: actions/setup-node@v4
         with:
@@ -70,11 +79,37 @@ jobs:
           CI: "true"
         run: node tools/ci/generate-manifest.mjs --stamp .
 
-      - uses: actions/configure-pages@v5
+      # Until HUMAN-ACTIONS #110's settings flip, Pages is still "Deploy from a
+      # branch" (build_type "legacy") and deploy-pages would fail. A red `pages`
+      # run on main's head is a RED main to release-trigger
+      # (tools/release/watch-release.mjs, mainState), which then holds every app
+      # release (HOLD_MAIN_RED). So the deploy is SKIPPED, with a warning, while
+      # the source is definitively "legacy"; the stamp above still runs and
+      # verifies. Any other answer — "workflow", or the API not answering —
+      # deploys as normal, and a real deploy failure stays red.
+      - name: Is Pages set to deploy from GitHub Actions?
+        id: mode
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          BUILD_TYPE=$(gh api "repos/$REPO/pages" --jq .build_type 2>/dev/null || echo unknown)
+          echo "Pages build_type: $BUILD_TYPE"
+          if [ "$BUILD_TYPE" = "legacy" ]; then
+            echo "::warning title=Pages not deployed::Settings -> Pages -> Source is still 'Deploy from a branch'. The stamp verified, but this run does not deploy. Switch the source to 'GitHub Actions' (HUMAN-ACTIONS #110), then re-run this workflow."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - uses: actions/upload-pages-artifact@v3
+      - if: steps.mode.outputs.deploy == 'true'
+        uses: actions/configure-pages@v5
+
+      - if: steps.mode.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
-      - id: deployment
+      - if: steps.mode.outputs.deploy == 'true'
+        id: deployment
         uses: actions/deploy-pages@v4
