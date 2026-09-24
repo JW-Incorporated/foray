@@ -263,12 +263,25 @@ jobs:
             console.log('transcript availability:', ta.summary.episodes_with_transcript + '/' + ta.summary.episodes_total, '(' + ta.summary.transcript_coverage_pct + '%,', ta.summary.episodes_with_timed_transcript, 'anchorable)');
             console.log('data invariants ok');
           "
-      - name: Verify deploy manifest is current
-        # M4 (#233 remainder): deploy-manifest.json is generated, never
-        # hand-edited. --check regenerates it in memory and fails loudly if the
-        # committed copy has drifted from the tree — a stale manifest is
-        # exactly what would let sw.js promote a torn deploy.
+      - name: No deploy stamp is committed
+        # Issue #701: deploy-manifest.json, data/forays-directory.json and
+        # sw.js's BUILD_ID are BUILD OUTPUTS. Committed, they changed on every
+        # merge to main and conflicted with every open PR. --check fails if
+        # either file is tracked or not gitignored, if sw.js carries a stamp,
+        # or if a file the stamp hashes is missing.
         run: node tools/ci/generate-manifest.mjs --check
+      - name: Build and verify the deploy bundle (what Vercel ships)
+        # The same command as vercel.json's buildCommand, so a PR that would
+        # break the production build (a listed file prepare-dist does not
+        # copy, a torn stamp, the 8 MB cap) is red here rather than on deploy.
+        # prepare-dist stamps the bundle and re-verifies it; --verify re-derives
+        # the stamp once more from the bytes on disk, independently. Built in
+        # $RUNNER_TEMP, OUTSIDE the checkout: suites that index the tree by
+        # basename (test/legal-citations.test.js) would otherwise see every
+        # shipped file twice.
+        run: |
+          node tools/web/prepare-dist.mjs --out "$RUNNER_TEMP/dist"
+          node tools/ci/generate-manifest.mjs --verify "$RUNNER_TEMP/dist"
       - name: Syntax-check site JS
         run: |
           node --check app.js

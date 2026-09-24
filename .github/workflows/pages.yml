@@ -1,0 +1,80 @@
+# Deploy GitHub Pages (https://jw-incorporated.github.io/foray/) from `main`,
+# with the deploy stamp generated at build time (issue #701).
+#
+# WHY THIS WORKFLOW EXISTS
+# Pages used to "deploy from a branch": it served `main`'s root verbatim, with no
+# build step, so the service worker's `deploy-manifest.json` and its stamped
+# `sw.js` BUILD_ID (and the Foray directory pointer) had to be COMMITTED. They
+# are content hashes over every shipped file, so every merge to `main` changed
+# them and every other open PR conflicted with `main` at once — PRs merged one at
+# a time, each with a hand resolution (issue #701). They are build outputs now,
+# and this is the build that Pages never had.
+#
+# WHAT IT DEPLOYS: the same tree the branch deploy served, plus the stamp.
+# `actions/checkout` of the pushed commit, then `generate-manifest.mjs --stamp .`
+# on that throwaway checkout (writes deploy-manifest.json and
+# data/forays-directory.json, stamps sw.js's BUILD_ID, re-verifies all three
+# against the bytes), then the whole checkout as the Pages artifact.
+# Deliberately NOT `prepare-dist.mjs`'s `dist/`: Pages serves more than the app
+# (`player/assets/interlude-placeholder.wav` is fetched by absolute URL from
+# player/foray-queue.js; docs pages are linked from outside), and narrowing what
+# Pages serves is a separate decision from #701. `.nojekyll` is in the tree, as
+# before, so nothing is transformed. `upload-pages-artifact` leaves out `.git`
+# and `.github`, as the branch deploy effectively did.
+#
+# ONE-TIME SETTINGS FLIP, OWNED BY A HUMAN (production infra, CLAUDE.md):
+# Settings -> Pages -> Build and deployment -> Source: "GitHub Actions". Until
+# then this workflow's deploy step fails ("Pages is not configured for Actions")
+# and the branch deploy keeps serving `main` root — WITHOUT a manifest, so the
+# service worker's install() finds no deploy-manifest.json, throws, and never
+# installs; existing visitors keep their last worker, which is network-first, so
+# every page still loads current code while online. Degraded offline, not broken.
+# Flip first, then merge, and there is no gap at all.
+
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write # deploy-pages
+  id-token: write # deploy-pages authenticates with an OIDC token
+
+concurrency:
+  # One deploy at a time; a newer push supersedes a queued one but never cancels
+  # a deploy mid-flight (a half-cancelled Pages deploy is the torn state the
+  # stamp exists to prevent).
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        # Depth 1 is enough: the stamp's built_at is HEAD's committer date
+        # (tools/ci/forays-directory.mjs, buildTimestamp), and HEAD is present.
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Stamp the checkout (deploy-manifest.json, the Foray directory pointer, sw.js BUILD_ID)
+        env:
+          CI: "true"
+        run: node tools/ci/generate-manifest.mjs --stamp .
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

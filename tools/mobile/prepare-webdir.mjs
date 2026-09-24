@@ -216,6 +216,11 @@ import {
 } from "../../player/foray-resolve.js";
 import { SEGMENT } from "../../player/foray-queue.js";
 import { BUILD_STAMP_FILE, buildStampDoc } from "../../player/build-stamp.js";
+/* The web's deploy stamp for this tree, computed in memory (issue #701): the
+   deploy id the live site ships this commit under, and the Foray directory
+   pointer it serves. Neither is a committed file any more — see
+   `tools/ci/generate-manifest.mjs`'s header. */
+import { sourceStamp } from "../ci/generate-manifest.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -529,7 +534,7 @@ export function buildPlan(root = REPO_ROOT) {
     );
   }
 
-  const plan = [...SHELL_FILES, ...playerFiles(root), ...data, ...seedPointerPlan(root), ...unpinnedDataPlan(root)];
+  const plan = [...SHELL_FILES, ...playerFiles(root), ...data, ...unpinnedDataPlan(root)];
 
   const missing = plan.filter((rel) => !fs.existsSync(path.join(root, rel)));
   if (missing.length) {
@@ -565,27 +570,26 @@ export function buildPlan(root = REPO_ROOT) {
 
 /* --------------------------------------------- the seed's own pointer (FD-04) */
 
-/** The directory pointer, `{ version, built_at, files, bytes, sha256 }`, written
- *  beside `deploy-manifest.json` by `tools/ci/generate-manifest.mjs` (FD-02). When
- *  it is on disk the bundle carries it — plus one field, `partial: true`
- *  (`seedPointerDoc`) — so a fresh install knows WHICH deploy its seed came from
- *  (the diagnostics row, and the "never walk a phone backwards" guard) and knows
- *  that what it holds at that version is a SUBSET, to be fetched whole once. The
- *  app reads it for `version`/`built_at`/`partial` ONLY: its byte sizes and
- *  sha256s describe the site's whole files, and all three of the seed's are
- *  slices, so they would not match — `player/foray-directory.js`'s header says so.
+/** The directory pointer, `{ version, built_at, files, bytes, sha256 }`, as the
+ *  live site serves it for THIS tree (FD-02). The bundle carries it — plus one
+ *  field, `partial: true` (`seedPointerDoc`) — so a fresh install knows WHICH
+ *  deploy its seed came from (the diagnostics row, and the "never walk a phone
+ *  backwards" guard) and knows that what it holds at that version is a SUBSET, to
+ *  be fetched whole once. The app reads it for `version`/`built_at`/`partial`
+ *  ONLY: its byte sizes and sha256s describe the site's whole files, and all three
+ *  of the seed's are slices, so they would not match — `player/foray-directory.js`'s
+ *  header says so.
  *
- *  OPTIONAL, AND NAMED AS THE ONE OPTIONAL FILE, rather than derived from a
- *  `fetchJson` call: `app.js` does not read it through `fetchJson` (the module
- *  fetches it), so the derivation cannot see it — and it must not be a hard
- *  "not on disk" error, because a checkout from before FD-02 landed has no such
- *  file and its bundle is still a correct bundle, with an unversioned seed.
+ *  GENERATED, NOT COPIED (issue #701, 2026-09-24). It used to be a committed file
+ *  read off disk here; it is a deploy build output now, so `prepare` gets it from
+ *  `sourceStamp(root)` (`tools/ci/generate-manifest.mjs`) — the same deploy id and
+ *  the same `built_at` (the commit's committer date) the Vercel build of this
+ *  commit serves. OPTIONAL, as before: a tree the stamp cannot describe (a test
+ *  fixture missing a listed file; a Windows CRLF checkout, whose hashes are not
+ *  the bytes any origin serves) still builds a correct bundle, with an unversioned
+ *  seed — `prepare` reports why in its result, and the CLI prints it.
  *  `prepare-webdir.test.mjs` pins both branches. */
 export const SEED_POINTER = "data/forays-directory.json";
-
-export function seedPointerPlan(root = REPO_ROOT) {
-  return fs.existsSync(path.join(root, SEED_POINTER)) ? [SEED_POINTER] : [];
-}
 
 /* ------------------------------------------------- the unpinned data (S-03) */
 
@@ -1693,7 +1697,7 @@ export function projectData(root = REPO_ROOT, { perShow = BUNDLED_ITEMS_PER_SHOW
  * exactly the case an in-memory assertion cannot see. It is also where the per-file
  * budget is enforced, so the budget is measured on the bytes that ship.
  */
-export function assertSlicesOnDisk(absOut, root = REPO_ROOT) {
+export function assertSlicesOnDisk(absOut, root = REPO_ROOT, { seedPointer = null } = {}) {
   const source = docReader(root);
   const bundled = docReader(absOut);
   for (const spec of PROJECTED_DATA) {
@@ -1733,11 +1737,14 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT) {
   for (const rel of bundledDataFiles(absOut)) {
     if (PROJECTED_DATA.some((p) => p.rel === rel) || COPIED_WHOLE.includes(rel)) continue;
     /* The one data file that is neither a slice nor a copy: the seed's pointer, which
-       must arrive as the repo's pointer PLUS `partial: true` — see `seedPointerDoc`.
-       Without the flag a fresh install built from the live deploy holds a subset it
-       believes is whole, and no draft ever reaches it. */
+       must arrive as the web's pointer for this tree PLUS `partial: true` — see
+       `seedPointerDoc`. Without the flag a fresh install built from the live deploy
+       holds a subset it believes is whole, and no draft ever reaches it. There is
+       no source file to compare against (it is generated, #701), so the pointer
+       `prepare` computed is handed in; with none handed in, the bundle must not
+       carry one at all. */
     if (rel === SEED_POINTER) {
-      if (!isDeepStrictEqual(seedPointerDoc(source(rel)), bundled(rel))) {
+      if (!seedPointer || !isDeepStrictEqual(seedPointerDoc(seedPointer), bundled(rel))) {
         throw new Error(
           `the bundled ${rel} is not the repo's pointer marked partial. The seed leaves ` +
             `generated drafts to the directory (F-92), so its pointer must say "partial: true" ` +
@@ -1800,6 +1807,9 @@ export function prepare({
   out = DEFAULT_OUT,
   maxBytes = MAX_BYTES,
   perShow = BUNDLED_ITEMS_PER_SHOW,
+  /* `{ deployId, pointer }` from `sourceStamp`, or `{ deployId: null, reason }`.
+     Injectable so a test can hand a fixture a stamp; defaults to the real one. */
+  stamp = undefined,
 } = {}) {
   const absOut = path.resolve(root, out);
   assertSafeOut(absOut, root);
@@ -1810,6 +1820,10 @@ export function prepare({
      key, a lost show — must leave the last good bundle on disk rather than an empty
      `www/` that a later `cap sync` would happily package. */
   const slices = projectData(root, { perShow, plan });
+  /* Before the rmSync too: a stamp that throws (a bad deploy id) must leave the
+     last good bundle on disk, for the same reason as the slices above. */
+  const webStamp = stamp === undefined ? sourceStamp(root) : stamp;
+  const stampDoc = webStamp && webStamp.deployId != null ? buildStampDoc({ deploy_id: webStamp.deployId }) : null;
 
   fs.rmSync(absOut, { recursive: true, force: true });
 
@@ -1835,7 +1849,6 @@ export function prepare({
   for (const rel of plan) {
     const src = path.join(root, rel);
     if (slices.has(rel)) reserialize(src, rel, slices.get(rel));
-    else if (rel === SEED_POINTER) reserialize(src, rel, seedPointerDoc(JSON.parse(fs.readFileSync(src, "utf8"))));
     else if (isBundledData(rel)) reserialize(src, rel);
     else if (isMinified(rel)) minify(src, rel);
     else copy(src, rel);
@@ -1846,22 +1859,28 @@ export function prepare({
     else copy(src, f.dest);
   }
 
+  /* THE GENERATED FILES — nothing on disk to copy them from (issue #701). */
+  const putGenerated = (destRel, text) => {
+    const dest = path.join(absOut, destRel);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, text);
+    written.push({ rel: destRel, sourceBytes: Buffer.byteLength(text) });
+  };
+  /* The seed's pointer (FD-04), marked partial (F-92). */
+  if (webStamp && webStamp.pointer) putGenerated(SEED_POINTER, serializeSlice(seedPointerDoc(webStamp.pointer)));
+
   /* THE BUILD STAMP (founder report 3, 2026-09-22). `sw.js` — the web's only
      statement of which deploy it is — is excluded from this bundle above, so a
      diagnostics record copied out of the shell could not say which web code
-     wrote it. The committed manifest's `deploy_id` is that statement, and it is
+     wrote it. The web's `deploy_id` for this tree is that statement, and it is
      carried in as the one field `player/build-stamp.js` reads. NOT the manifest
      itself: its per-file hashes describe the web's commented files, and the
      bundle's are minified, so shipping it would put a document in the shell that
-     disagrees with every file beside it. `buildStampDoc` throws on a manifest
-     with no usable id: a bundle that silently stamps nothing is the defect.
-     Optional on the manifest's EXISTENCE only, like `SEED_POINTER`, so a fixture
-     root without one still builds. */
-  const manifestAbs = path.join(root, "deploy-manifest.json");
-  if (fs.existsSync(manifestAbs)) {
-    const stamp = buildStampDoc(JSON.parse(fs.readFileSync(manifestAbs, "utf8")));
-    put(BUILD_STAMP_FILE, manifestAbs, (dest) => fs.writeFileSync(dest, JSON.stringify(stamp)));
-  }
+     disagrees with every file beside it. `buildStampDoc` throws on an id that is
+     not one (checked above, before anything was deleted): a bundle that silently
+     stamps garbage is the defect. Absent when the tree cannot be stamped (see
+     SEED_POINTER's header), so a fixture root still builds. */
+  if (stampDoc) putGenerated(BUILD_STAMP_FILE, JSON.stringify(stampDoc));
 
   /* THE INJECTION, and then the re-read. Done before anything is measured so the
      reported size is the size that ships, and asserted against the bytes on disk
@@ -1873,7 +1892,7 @@ export function prepare({
   assertShellScriptsPresent(fs.readFileSync(indexAbs, "utf8"), shellOnly);
 
   /* THE SLICES, RE-READ, for the same reason and in the same place. */
-  assertSlicesOnDisk(absOut, root);
+  assertSlicesOnDisk(absOut, root, { seedPointer: webStamp && webStamp.pointer ? webStamp.pointer : null });
 
   const files = [];
   let total = 0;
@@ -1910,7 +1929,11 @@ export function prepare({
      the number. */
   assertNoModelWeights(files);
 
-  return { out, absOut, files, total, maxBytes };
+  return {
+    out, absOut, files, total, maxBytes,
+    deployId: stampDoc ? stampDoc.deploy_id : null,
+    unstampedReason: stampDoc ? null : (webStamp && webStamp.reason) || "no stamp was supplied",
+  };
 }
 
 function fmt(bytes) {
@@ -1966,6 +1989,8 @@ if (isMain) {
     } else {
       const r = prepare({ out });
       console.log(`webDir ready: ${r.out}  (${r.files.length} files, ${fmt(r.total)} of ${fmt(r.maxBytes)})`);
+      if (r.deployId) console.log(`  web deploy id: ${r.deployId} (build-stamp.json and the seed's pointer)`);
+      else console.warn(`  WARNING: no build stamp and an unversioned seed pointer — ${r.unstampedReason}`);
       for (const spec of PROJECTED_DATA) {
         const f = r.files.find((x) => x.rel === spec.rel);
         console.log(`  sliced: ${spec.rel}  ${fmt(f.bytes)} of ${fmt(spec.maxBytes)}`);

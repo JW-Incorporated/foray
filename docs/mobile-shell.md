@@ -664,12 +664,12 @@ today's `app.js` esbuild keeps every string literal, so both texts happen to der
 the same ten files; the test does not rely on that.)
 
 **The service worker and its manifest are unaffected, verified rather than
-assumed.** `deploy-manifest.json` hashes the *root* files for the *web* deploy
-(`tools/ci/generate-manifest.mjs` reads `ROOT`); `sw.js` verifies those hashes on
+assumed.** `deploy-manifest.json` hashes the unminified files the *web* deploy
+serves (it is written into the built site by `tools/ci/generate-manifest.mjs` at
+deploy time and never committed — issue #701); `sw.js` verifies those hashes on
 the web and is excluded from the bundle by two independent mechanisms (§2.2). The
 minified copies exist only under `mobile/www`, are never served with the worker, and
-have no manifest to disagree with. Never run `generate-manifest.mjs --write` on a
-CRLF checkout for any reason — that is a separate, older rule.
+have no manifest to disagree with.
 
 **What was verified, and how.** Beyond the suites (`node --check` on all 25 shipped
 scripts, modules as `.mjs`; every one of `app.js`'s 190+ top-level `function`
@@ -706,7 +706,9 @@ deploy id).
 Now the app reads the **Foray directory**: the live site's same three files,
 versioned by the deploy id they shipped with, reached through a small pointer
 (`data/forays-directory.json` — `{ version, built_at, files, bytes, sha256 }`,
-written beside `deploy-manifest.json` by `tools/ci/generate-manifest.mjs`, FD-02).
+written beside `deploy-manifest.json` by every deploy build through
+`tools/ci/generate-manifest.mjs`, FD-02 — a build output, never committed, since
+issue #701; `built_at` is the built commit's committer date).
 The mechanism is `player/foray-directory.js`, driven from `app.js`'s `init()`:
 
 - **Boot:** paint from the last set cached in IndexedDB (its own database,
@@ -731,8 +733,10 @@ one reason: **a fresh install must play offline.** They are the set the app hold
 before it has ever reached the network. That also closes #327's unbounded-pool
 worry for good — the bundle carries a *capped* slice (the per-file budgets above
 are the cap) while the directory carries everything, and `test/foray-directory.test.js`
-proves the shell boots with an *empty* seed too. When `data/forays-directory.json`
-is on disk the bundle carries it (`SEED_POINTER`), so a fresh install knows which
+proves the shell boots with an *empty* seed too. The bundle carries the web's
+pointer for the commit it packages (`SEED_POINTER`, computed by
+`generate-manifest.mjs`'s `sourceStamp` — omitted, with a printed reason, only on a
+tree it cannot describe, such as a Windows CRLF checkout), so a fresh install knows which
 deploy its seed came from and skips fetching a directory it already holds; the app
 reads it for `version`/`built_at` only, since its byte sizes describe the site's
 whole files rather than the slices. Playback state survives a swap: resume rows

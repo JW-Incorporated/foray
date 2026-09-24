@@ -1137,7 +1137,16 @@ const FLOORS = {
      `isOlderThan` verdict), byte-idempotence under every floor shape, the
      --check message, the best-effort degrade with no git, and the stale-branch
      case the merge-base floor must NOT restamp; 24 -> 29. */
-  "tools/ci/forays-directory.test.mjs": 29,
+  /* Issue #701 (2026-09-24): the stamp stopped being committed. The idempotence
+     tests (so manifest-autofix would not push a built_at-only commit) and the
+     merge-base floor tests went with the committed file; in their place: the
+     commit-date clock (committer not author date, SOURCE_DATE_EPOCH, the no-git
+     fallback), the revert end to end against that clock, the build-time CLI
+     (--stamp, --verify, the CRLF and own-checkout refusals, --write gone) and
+     --check's no-committed-stamp rule (tracked file, stamped sw.js, missing
+     .gitignore). The committed-file and committer-date mutations were run and
+     killed; 29 -> 32. */
+  "tools/ci/forays-directory.test.mjs": 32,
   /* +12 (machinery audit, 2026-09-12): the checks-missing self-heal had three
      holes — sweep-only, keyed on `pr.updatedAt` (which this workflow's own label
      writes reset), and firing only when ALL required checks were missing — plus
@@ -1376,7 +1385,7 @@ const FLOORS = {
 
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
-  "tools/mobile/prepare-webdir.test.mjs": 84, // 2026-09-22 audit (L2), founder report 3: the bundle carries build-stamp.json with the committed deploy_id; 83 -> 84 // +1 audit finding E (2026-09-12): seedCarries is exactly the negation of the one `isGeneratedDraft`; 82 -> 83 // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
+  "tools/mobile/prepare-webdir.test.mjs": 85, // issue #701 (2026-09-24): the seed's pointer and build stamp are the web's stamp for this tree, computed rather than read off disk; 84 -> 85 // 2026-09-22 audit (L2), founder report 3: the bundle carries build-stamp.json with the committed deploy_id; 83 -> 84 // +1 audit finding E (2026-09-12): seedCarries is exactly the negation of the one `isGeneratedDraft`; 82 -> 83 // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
   "tools/mobile/shell-invariants.test.mjs": 72, // round-2 sweep (2026-09-23): a stall stops the lock-screen clock on both natives (p-car-8); 71 -> 72 | audit round 2, lane L3 (2026-09-23): the route-gated track pair and the unmirrored track handlers, one .spokenAudio mode, the Android seek pair + custom buttons, no re-post on a press, the narration-first start; 66 -> 71 // // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
@@ -1725,15 +1734,14 @@ const FLOORS = {
      (a comment-only edit to scan.mjs; one new nightly episode) were confirmed to
      stay green. Each test names its own mutation. */
   "tools/refresh/merge-topics.test.mjs": 18, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18
-  /* The nightly's deploy-manifest step (HUMAN-ACTIONS #37). Floored because its
-     failure mode is silence: if merge.mjs stops restamping the manifest,
-     nothing goes red — `manifest-autofix.yml` pushes the `github-actions[bot]`
-     fixup commit again, and `protect-main`'s
-     `require_extra_approval_for_unattributed_changes` then makes the nightly PR
-     need an approval its own author is forbidden by GitHub to give. That is
-     PR #443 and PR #456 on 2026-09-03, both green and both stuck. All 9
-     mutations were run and killed; each test names its own. */
-  "tools/refresh/manifest-step.test.mjs": 9,
+  /* REMOVED 2026-09-24 (issue #701): `tools/refresh/manifest-step.test.mjs`,
+     floored at 9 here, and the module it tested. The nightly's deploy-manifest
+     step existed only because the stamp was committed (HUMAN-ACTIONS #37); the
+     stamp is a deploy build output now, so merge.mjs writes the two data files
+     and nothing else. What the step guarded is re-pinned, not dropped:
+     `tools/refresh/merge-topics.test.mjs` asserts the real merge writes no stamp
+     and never rewrites sw.js, and `tools/ci/forays-directory.test.mjs` asserts
+     `--check` refuses a committed one. */
   /* The nightly watchdog (#290). ZERO SLACK, for the reason media-session and
      data-deletion are floored that way: what this suite holds down is a set of
      decisions each one line from its opposite, on a check nobody watches run.

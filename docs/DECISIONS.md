@@ -2,6 +2,44 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-24 (the deploy stamp is a build output: nothing generated is committed — issue #701)
+
+**Decision.** `deploy-manifest.json`, `data/forays-directory.json` and `sw.js`'s
+`BUILD_ID` are no longer committed. They are written into the BUILT site at deploy
+time by `tools/ci/generate-manifest.mjs`: `tools/web/prepare-dist.mjs` stamps `dist/`
+for Vercel (vercel.json's `buildCommand`, unchanged), the new
+`.github/workflows/pages.yml` stamps a throwaway checkout of `main` for GitHub Pages,
+and `tools/mobile/prepare-webdir.mjs` computes the same stamp in memory for the
+bundle's `build-stamp.json` and seed pointer. The committed `sw.js` says
+`BUILD_ID = "unstamped"`; `.gitignore` names the other two; `generate-manifest.mjs
+--check` (the required `data-and-site` check) fails if either is tracked, not
+ignored, or `sw.js` carries a stamp. `manifest-autofix.yml` and the nightly's
+manifest step (`tools/refresh/manifest-step.mjs`, 2026-09-03 below) are deleted.
+Founder go-ahead: Wyatt, 2026-09-24, "Yes, do that" (fix #701 because it was
+breaking native-engine PRs).
+
+**Why not keep them committed but merge-neutral.** Evaluated and impossible: the
+deploy id is a hash over every shipped file, so ANY two branches that change any
+shipped file disagree on the manifest's `deploy_id`, the `BUILD_ID` line and the
+pointer's `version`. No committed encoding of a content hash avoids that, and
+GitHub's merge does not run custom `.gitattributes` merge drivers.
+
+**`built_at` is the built commit's committer date** (`buildTimestamp`;
+`SOURCE_DATE_EPOCH` overrides; the clock is the last resort). It moves forward with
+`main`, two builds of one commit agree byte for byte, and a revert — a new commit —
+is newer by construction, which retires the merge-base floor added for audit
+finding C (2026-09-12).
+
+**What it costs, stated.** (1) Pages needs its source switched to "GitHub Actions"
+(HUMAN-ACTIONS #110; production infra, so a human flips it). Until then Pages serves
+`main` without a manifest: the worker never installs a new generation, pages still
+load current code online. (2) A local site build is `node tools/web/prepare-dist.mjs`,
+and a plain static server on the repo root no longer gets a working service worker.
+(3) A Windows CRLF checkout builds a mobile bundle with no build stamp and an
+unversioned seed pointer (a printed warning), rather than a wrong one; CI and
+release runners are LF. (4) `data-and-site` now also runs `prepare-dist.mjs` so a PR
+that would break the Vercel build is red before merge.
+
 ## 2026-09-24 (founder rulings on the round-2 decision list, PR #749)
 
 Wyatt answered the orchestrator's thirteen-item decision list for round 2 of

@@ -28,7 +28,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -422,37 +422,29 @@ test("the backfill path and the nightly path reach the SAME topic seam, by writi
   assert.deepEqual(overridden.items.map((i) => i.topics), [["nature/earth-science"], ["nature/earth-science"]]);
 });
 
-// ------------------------------------------- the deploy-manifest step, run --
+// ------------------------------------- no deploy stamp in the working tree --
 
-test("the real merge.mjs reaches the deploy-manifest step, and a redirected run leaves the real manifest alone", () => {
-  /* TWO THINGS AT ONCE, both of which fail silently if they break.
-     (1) merge.mjs must actually call stampDeployManifest. If it stops, nothing
-         goes red: manifest-autofix.yml pushes the `github-actions[bot]` fixup
-         commit again, and `protect-main`'s
-         `require_extra_approval_for_unattributed_changes` makes the nightly PR
-         need an approval its own author is forbidden to give (PR #443, #456,
-         2026-09-03). The skip line on stdout is the proof it got there.
-     (2) EVERY OTHER TEST IN THIS SUITE DEPENDS ON THE SKIP. runMerge redirects
-         the outputs to a temp dir; without the guard, each of the 16 runs above
-         would fire `generate-manifest.mjs --write` against the REAL checkout —
-         which on the Windows development checkout is exactly the 40-wrong-hashes
-         corruption tools/ci/crlf-guard.mjs exists to refuse. So this asserts the
-         real deploy-manifest.json and sw.js come out byte-identical.
-     KILLED BY: deleting the `if (reason) { ... return ... }` early return in
-     manifest-step.mjs's stampDeployManifest — the skip line disappears, and on
-     a CRLF checkout the byte comparison fails too. */
-  const manifestPath = join(ROOT, "deploy-manifest.json");
+test("the real merge.mjs writes only its data files — no deploy stamp, no sw.js rewrite (issue #701)", () => {
+  /* Until #701 merge.mjs restamped deploy-manifest.json and sw.js's BUILD_ID
+     after writing the catalogue, because the stamp was committed. It is a build
+     output now (tools/web/prepare-dist.mjs, .github/workflows/pages.yml), and a
+     nightly that wrote it into the tree again would put the merge-conflict
+     magnet back — every nightly PR conflicting with every other open PR — and
+     turn `generate-manifest.mjs --check` red on its own commit.
+     KILLED BY: re-adding a `generate-manifest` call to merge.mjs (sw.js is then
+     rewritten, or a MANIFEST line appears), or any write to the repo root's
+     deploy-manifest.json / data/forays-directory.json. */
   const swPath = join(ROOT, "sw.js");
-  const before = [readFileSync(manifestPath), readFileSync(swPath)];
+  const generated = ["deploy-manifest.json", "data/forays-directory.json"].map((rel) => join(ROOT, rel));
+  const before = { sw: readFileSync(swPath), present: generated.map((p) => existsSync(p)) };
 
   const { status, stdout } = runMerge({ resolved: [resolvedFromBackfill()], edits: { "sysk--kola": EDIT } });
   assert.equal(status, 0);
-  assert.match(stdout, /MANIFEST: skipped/);
-  assert.match(stdout, /MERGE_DISCOVER_PATH/);
+  assert.doesNotMatch(stdout, /MANIFEST:/);
 
-  const after = [readFileSync(manifestPath), readFileSync(swPath)];
-  assert.ok(before[0].equals(after[0]), "deploy-manifest.json was rewritten by a redirected merge run");
-  assert.ok(before[1].equals(after[1]), "sw.js was rewritten by a redirected merge run");
+  assert.ok(readFileSync(swPath).equals(before.sw), "sw.js was rewritten by a merge run");
+  assert.deepEqual(generated.map((p) => existsSync(p)), before.present, "a merge run created a generated deploy artefact in the tree");
+  assert.doesNotMatch(readFileSync(join(ROOT, "tools", "refresh", "merge.mjs"), "utf8"), /generate-manifest|stampDeployManifest/);
 });
 
 // ------------------------------------------------ one length per episode --

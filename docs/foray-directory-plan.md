@@ -94,6 +94,17 @@ the bundle, the cache, or the network, with the deploy id it carries; the web's
 ### FD-02 · The pointer and the versioned files — **S** — agent (tools/ci lane → founder label)
 **DONE** — #606, merged 2026-09-11 (`data/forays-directory.json` written and `--check`ed;
 bare paths always-revalidate, `?v=` copies immutable).
+**AMENDED 2026-09-24 (issue #701): the pointer is a deploy BUILD OUTPUT, not a committed
+file.** Committed, it (with `deploy-manifest.json` and `sw.js`'s `BUILD_ID`) changed on every
+merge to `main` and made every open PR conflict. It is now written into the built site
+by `tools/web/prepare-dist.mjs` (Vercel — the origin the phones read, `app.js:API_ORIGIN`)
+and `.github/workflows/pages.yml` (Pages), and computed in memory for the bundle's seed
+by `tools/mobile/prepare-webdir.mjs`. `built_at` is the built commit's committer date
+(`tools/ci/forays-directory.mjs:buildTimestamp`), which also retires audit finding C's
+merge-base floor: a revert is a new commit, so its pointer is newer by construction.
+The phone contract below — shape, URL, headers, ordering by `built_at` — is unchanged.
+`--check` now asserts that nothing generated is committed; `--verify <dir>` checks a built
+tree the way `--check` used to check the repo.
 **Ask.** `tools/ci/generate-manifest.mjs` (which already stamps `deploy_id` into
 `deploy-manifest.json` and `sw.js`) also writes `data/forays-directory.json`:
 `{ version: <deploy_id>, built_at, files: { forays, segments, sources }, bytes,

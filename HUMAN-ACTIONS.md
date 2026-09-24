@@ -2,9 +2,20 @@
 
 <!-- ha-format: 2 -->
 
-> **34 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **35 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #110 🔴 [BLOCKING] Switch GitHub Pages to "GitHub Actions" — before the #701 PR merges (~1 min)
+<!-- ha filed=2026-09-24 kind=default -->
+
+**Why:** Issue #701's fix stops committing `deploy-manifest.json`, `data/forays-directory.json` and `sw.js`'s stamped `BUILD_ID` — they changed on every merge and made every open PR conflict (the native-engine PRs into `engine/m1` included). Vercel already has a build step and stamps them itself. GitHub Pages does not: it serves `main`'s root as-is, so it needs the new `.github/workflows/pages.yml` to build and stamp the site, and a workflow can only publish to Pages when the Pages source is set to "GitHub Actions". That is a production-hosting setting, so it is yours to flip. The phones are unaffected either way: they read the Foray directory from Vercel.
+
+**Steps:**
+1. GitHub → JW-Incorporated/foray → **Settings** → **Pages** → **Build and deployment** → **Source**: choose **GitHub Actions**. (The site keeps serving its last deploy until the next one.)
+2. Then merge the #701 PR (or tell Claude it is flipped). Its merge runs `pages`, which deploys the stamped site.
+
+**Worked if:** the `pages` workflow run on `main` is green and https://jw-incorporated.github.io/foray/deploy-manifest.json loads. If the PR merges first, nothing breaks: Pages keeps serving `main` without a manifest, so the service worker simply does not update (pages still load current code while online) until the switch is made and `pages` is re-run.
 
 ## #108 🔴 [BLOCKING] One more car trip — the record can finally answer the question (~3 min)
 <!-- ha filed=2026-09-21 kind=default -->

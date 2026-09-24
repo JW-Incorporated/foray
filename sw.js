@@ -41,11 +41,12 @@
         and recoverably; rendering it silently is the bug being fixed.
 
    THE DEPLOY MANIFEST (#233 remainder, closed here)
-   GitHub Pages serves `main` root with no build step and no server-side hook,
-   so there was no artifact-level place to stamp a deploy id — until now.
-   `deploy-manifest.json` is a committed, generated file (see
-   `tools/ci/generate-manifest.mjs`, and NOT the pre-existing `manifest.json`,
-   which stays the PWA web-app manifest `index.html` links) naming a
+   `deploy-manifest.json` is a generated file written by the deploy build (see
+   `tools/ci/generate-manifest.mjs`; it was committed until issue #701 made it a
+   build output — Vercel's build stamps `dist/` and GitHub Pages deploys through
+   `.github/workflows/pages.yml`, which stamps its checkout. It is NOT the
+   pre-existing `manifest.json`, which stays the PWA web-app manifest
+   `index.html` links). It names a
    content-derived `deploy_id` and a sha256 for every shell/module/data file
    that ships. Two holes this closes, and one it narrows but does not close —
    named honestly rather than overclaimed, because a review asked the question
@@ -118,11 +119,20 @@ const CACHE_PREFIX = "foray-gen-";
    `precache()` depends on can change on a deploy — `index.html`, `app.js`,
    `player/*.js`, every `data/*.json` — while `sw.js` itself stays
    byte-identical, and a browser that sees identical bytes skips `install()`
-   entirely and never notices the new manifest exists. `tools/ci/generate-
-   manifest.mjs --write` stamps this string to the freshly computed
-   `deploy_id` on every run, so a real content change always changes sw.js's
-   own bytes too, and `--check` fails if the two ever drift apart. */
-const BUILD_ID = "8319327039d3563f";
+   entirely and never notices the new manifest exists. The DEPLOY BUILD stamps
+   this string to the freshly computed `deploy_id` (`tools/ci/generate-
+   manifest.mjs`'s `stampBuild`, run by `tools/web/prepare-dist.mjs` for Vercel
+   and by `.github/workflows/pages.yml` for Pages), so a real content change
+   always changes the served sw.js's bytes too, and the build re-verifies the
+   two agree before it ships.
+
+   The COMMITTED value is "unstamped", always (issue #701). A committed stamp
+   changed on every merge to main and so conflicted with every open PR; the
+   `data-and-site` gate (`generate-manifest.mjs --check`) now fails if this line
+   carries anything else. Served unstamped (a checkout run with no build) there
+   is no deploy-manifest.json beside it either, so `precache()` throws and the
+   worker simply never installs — the page runs from the network. */
+const BUILD_ID = "unstamped";
 const POINTER_CACHE = "foray-pointer";
 const PENDING_CACHE = "foray-pending";
 /* Cache keys are Requests/URLs, so a plain string needs a URL of its own to be

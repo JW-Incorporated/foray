@@ -48,13 +48,14 @@ import {
   BUNDLED_ITEMS_PER_SHOW, PROJECTED_DATA, COPIED_WHOLE, discoverSlice,
   assertDiscoverSliceComplete, serializeSlice, sliceBytes, assertSlicesOnDisk, projectData,
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
-  WHY_COPIED_WHOLE, isBundledData, SEED_POINTER, seedPointerPlan,
+  WHY_COPIED_WHOLE, isBundledData, SEED_POINTER,
   UNPINNED_DATA, unpinnedDataPlan, unpinnedDataOverBudget,
   seedCarries, seedForays, assertSeedForaysComplete, seedPointerDoc,
   MODEL_EXTENSIONS, assertNoModelWeights,
 } from "./prepare-webdir.mjs";
 import { isMinified, minifySource } from "./minify.mjs";
 import { isGeneratedDraft } from "../../player/foray-resolve.js";
+import { sourceStamp, computeManifest } from "../ci/generate-manifest.mjs";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -197,22 +198,28 @@ test("prepare copies the plan and reports its size", () => {
   assert.equal(r.total, r.files.reduce((n, f) => n + f.bytes, 0));
 });
 
-test("the bundle carries build-stamp.json with the committed deploy_id (founder report 3, 2026-09-22)", () => {
+test("the bundle carries build-stamp.json with the web's deploy_id (founder report 3, 2026-09-22)", () => {
   /* `sw.js` is the web's only statement of which deploy it is, and it is
      excluded from this bundle, so a diagnostics record copied out of the shell
-     could not say which web code wrote it. KILLING MUTATION: delete the stamp
-     block in `prepare()` — no file, and `player/build-stamp.js` reads null. */
+     could not say which web code wrote it. Since issue #701 the id is not read
+     from a committed manifest — `prepare` takes it from `sourceStamp` (or, here,
+     from an injected stamp). KILLING MUTATION: delete the `putGenerated(
+     BUILD_STAMP_FILE, ...)` line in `prepare()` — no file, and
+     `player/build-stamp.js` reads null. */
   const fake = makeFakeRepo();
-  fs.writeFileSync(path.join(fake, "deploy-manifest.json"),
-    JSON.stringify({ deploy_id: "2B808EC9D50C5B98", files: { "app.js": "sha256:00" } }));
-  prepare({ root: fake, out: "www" });
+  prepare({ root: fake, out: "www", stamp: { deployId: "2B808EC9D50C5B98", pointer: null } });
   const stamp = JSON.parse(fs.readFileSync(path.join(fake, "www", "build-stamp.json"), "utf8"));
   assert.deepEqual(stamp, { deploy_id: "2b808ec9d50c5b98" }, "the id alone, never the per-file hashes");
   assert.equal(fs.existsSync(path.join(fake, "www", "deploy-manifest.json")), false,
     "the manifest itself stays out: its hashes describe the unminified files");
-  // A manifest with no usable id stops the build rather than stamping nothing.
-  fs.writeFileSync(path.join(fake, "deploy-manifest.json"), JSON.stringify({ files: {} }));
-  assert.throws(() => prepare({ root: fake, out: "www" }), /no usable deploy_id/);
+  // A stamp whose id is not an id stops the build rather than stamping garbage...
+  assert.throws(() => prepare({ root: fake, out: "www", stamp: { deployId: "not a deploy id" } }), /no usable deploy_id/);
+  // ...while a tree the stamp cannot describe (this fixture lacks the icons, fonts
+  // and data the web stamp hashes) builds, unstamped, and says why.
+  const r = prepare({ root: fake, out: "www" });
+  assert.equal(r.deployId, null);
+  assert.match(r.unstampedReason, /listed file is missing on disk/);
+  assert.equal(fs.existsSync(path.join(fake, "www", "build-stamp.json")), false);
 });
 
 test("prepare rebuilds from scratch, so a removed file does not linger", () => {
@@ -1980,7 +1987,9 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
     );
 
     /* And the re-read guard really ran against the bytes on disk. */
-    assert.equal(assertSlicesOnDisk(absOut, ROOT), true);
+    const seedPointer = sourceStamp(ROOT).pointer ?? null;
+    if (seedPointer) seedPointer.built_at = JSON.parse(fs.readFileSync(path.join(absOut, SEED_POINTER), "utf8")).built_at;
+    assert.equal(assertSlicesOnDisk(absOut, ROOT, { seedPointer }), true);
   });
 });
 
@@ -2048,9 +2057,11 @@ test("REAL REPO: a generated draft exists today, the seed leaves it to the direc
        (unless a curated Foray shares one). */
     assert.deepEqual(new Set(bundled.segments.segments.map((s) => s.id)), referencedSegmentIds(seed));
 
-    /* The pointer, as the shell reads it: the repo's, marked partial (F-92). */
-    if (fs.existsSync(path.join(ROOT, SEED_POINTER))) {
-      assert.deepEqual(read(absOut, SEED_POINTER), seedPointerDoc(read(ROOT, SEED_POINTER)));
+    /* The pointer, as the shell reads it: the web's for this tree, marked partial
+       (F-92). Generated since #701; absent only on a CRLF checkout. */
+    const webPointer = sourceStamp(ROOT).pointer;
+    if (webPointer) {
+      assert.deepEqual({ ...read(absOut, SEED_POINTER), built_at: null }, { ...seedPointerDoc(webPointer), built_at: null });
       assert.equal(read(absOut, SEED_POINTER).partial, true);
     }
 
@@ -2579,42 +2590,73 @@ test("FD-04: the seed is a SUBSET of the directory's files, row for row, under t
   assert.equal(PROJECTED_DATA.find((p) => p.rel === "data/segment-sources.json").maxBytes, 40 * 1024);
 });
 
-test("FD-04: the seed's pointer rides along when it exists, and its absence is not an error", () => {
-  /* `data/forays-directory.json` is written by tools/ci/generate-manifest.mjs
-     (FD-02). Bundled, it tells a fresh install which deploy its seed came from;
-     absent (a checkout from before FD-02), the bundle is still a correct bundle.
-     MUTATION 1: make `seedPointerPlan` return `[SEED_POINTER]` unconditionally.
-     `buildPlan` on the bare repo fails "not on disk"; red.
-     MUTATION 2: drop `...seedPointerPlan(root)` from `buildPlan`. The pointer is
-     on disk and never bundled; the third assertion is red. */
+test("FD-04: the seed's pointer rides along when the tree can be stamped, and its absence is not an error", () => {
+  /* `data/forays-directory.json` is a deploy build output since issue #701 —
+     `prepare` gets it from `sourceStamp(root)` (injected here). Bundled, it tells a
+     fresh install which deploy its seed came from; absent (a tree the stamp cannot
+     describe), the bundle is still a correct bundle.
+     MUTATION 1: drop the `putGenerated(SEED_POINTER, ...)` line. The pointer is
+     never bundled; the second block is red.
+     MUTATION 2: write it without `seedPointerDoc`. The flag is gone; red on the
+     `partial` assertion and in the re-read guard. */
   const bare = makeFakeRepo();
-  assert.deepEqual(seedPointerPlan(bare), []);
-  assert.ok(!buildPlan(bare).includes(SEED_POINTER));
+  prepare({ root: bare, out: "www", stamp: { deployId: null, reason: "fixture" } });
+  assert.equal(fs.existsSync(path.join(bare, "www", SEED_POINTER)), false, "no stamp, no pointer");
+  assert.ok(!buildPlan(bare).includes(SEED_POINTER), "and the pointer is never a source file in the plan");
 
   const withPointer = makeFakeRepo();
   const pointer = {
     version: "9fc92a61a8896278", built_at: "2026-09-10T00:00:00.000Z",
     files: { forays: "data/forays.json", segments: "data/segments.json", sources: "data/segment-sources.json" },
     bytes: { forays: 1, segments: 2, sources: 3 },
-    sha256: { forays: "sha256:" + "a".repeat(64), segments: "sha256:" + "b".repeat(64), sources: "sha256:" + "c".repeat(64) },
+    sha256: { forays: "a".repeat(64), segments: "b".repeat(64), sources: "c".repeat(64) },
   };
-  fs.writeFileSync(path.join(withPointer, SEED_POINTER), JSON.stringify(pointer, null, 2) + "\n");
-  assert.deepEqual(seedPointerPlan(withPointer), [SEED_POINTER]);
-  assert.ok(buildPlan(withPointer).includes(SEED_POINTER));
-  prepare({ root: withPointer, out: "www" });
+  prepare({ root: withPointer, out: "www", stamp: { deployId: pointer.version, pointer } });
   const bundled = fs.readFileSync(path.join(withPointer, "www", SEED_POINTER), "utf8");
-  assert.deepEqual(JSON.parse(bundled), { ...pointer, partial: true }, "the pointer parses to the repo's document plus the partial flag (F-92)");
+  assert.deepEqual(JSON.parse(bundled), { ...pointer, partial: true }, "the pointer parses to the web's document plus the partial flag (F-92)");
   assert.deepEqual(JSON.parse(bundled), seedPointerDoc(pointer));
   assert.ok(!bundled.includes("\n  "), "and is compact, like every other bundled data file");
-  /* MUTATION 3 (F-92): write the pointer through the plain `isBundledData` branch
-     instead of `seedPointerDoc`. The flag is gone, a fresh install built from the
-     live deploy answers `current` and never fetches the drafts — and the on-disk
-     re-read is what notices. */
+  /* MUTATION 3 (F-92): a pointer written without the flag. A fresh install built
+     from the live deploy answers `current` and never fetches the drafts — and the
+     on-disk re-read is what notices. So does a pointer with no stamp to vouch for it. */
   fs.writeFileSync(path.join(withPointer, "www", SEED_POINTER), JSON.stringify(pointer));
   assert.throws(
-    () => assertSlicesOnDisk(path.join(withPointer, "www"), withPointer),
+    () => assertSlicesOnDisk(path.join(withPointer, "www"), withPointer, { seedPointer: pointer }),
     /not the repo's pointer marked partial/
   );
+  fs.writeFileSync(path.join(withPointer, "www", SEED_POINTER), JSON.stringify(seedPointerDoc(pointer)));
+  assert.throws(
+    () => assertSlicesOnDisk(path.join(withPointer, "www"), withPointer),
+    /not the repo's pointer marked partial/,
+    "a bundled pointer nobody computed is refused too"
+  );
+});
+
+test("#701: the seed's pointer and build stamp are the web's stamp for THIS tree, computed, not read off disk", () => {
+  /* The real repo, in the LF checkout CI (and every agent worktree) uses. The id
+     must be the one the Vercel build of this commit serves — prepare-dist hashes
+     byte-identical copies of the same files — and a stale generated file lying in
+     the working tree must not be able to override it.
+     KILLED BY: reading `data/forays-directory.json` off `root` again in `prepare`
+     (the planted stale pointer then ships), or computing the id over anything but
+     `computeManifest`'s listed files. */
+  const stamp = sourceStamp(ROOT);
+  if (stamp.deployId === null) {
+    /* A Windows autocrlf checkout: refused on purpose (its hashes are not the
+       bytes any origin serves). The branch is still pinned — it must say why. */
+    assert.match(stamp.reason, /CRLF/);
+    return;
+  }
+  assert.equal(stamp.deployId, computeManifest(ROOT).deploy_id);
+  assert.equal(stamp.pointer.version, stamp.deployId);
+  assert.ok(Number.isFinite(Date.parse(stamp.pointer.built_at)));
+  withRealBundle((r, absOut) => {
+    assert.equal(r.deployId, stamp.deployId);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(absOut, "build-stamp.json"), "utf8")), { deploy_id: stamp.deployId });
+    const bundled = JSON.parse(fs.readFileSync(path.join(absOut, SEED_POINTER), "utf8"));
+    assert.equal(bundled.version, stamp.deployId);
+    assert.equal(bundled.partial, true);
+  });
 });
 
 test("S-03: the unpinned show index is named explicitly, bundled, and held to its own budget", () => {

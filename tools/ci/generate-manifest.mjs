@@ -1,86 +1,89 @@
 #!/usr/bin/env node
-/* Generates / verifies deploy-manifest.json — the deploy manifest sw.js uses
- * to stage and atomically promote one content-addressed generation (#233
- * remainder, M4 in the 2026-08-31 repo review).
+/* The deploy stamp: `deploy-manifest.json`, `data/forays-directory.json` and
+ * `sw.js`'s `BUILD_ID` — generated INTO A BUILT TREE, never committed.
  *
- * WHY THIS EXISTS
- * GitHub Pages serves `main` root with no build step and no server-side hook,
- * so there was nowhere to stamp a deploy id into the artifact sw.js fetches.
- * This script generates that stamp as a committed file: sha256 per shipped
- * file, and a `deploy_id` derived from all of them together.
+ * WHAT THE STAMP IS (#233 remainder, M4; FD-02)
+ * `sw.js` stages and atomically promotes one content-addressed generation per
+ * deploy. It needs three things that are pure functions of the shipped bytes:
+ *   - `deploy-manifest.json` — sha256 per shipped file and a `deploy_id` derived
+ *     from all of them together (first 16 hex of sha256 over the sorted
+ *     "path:filehash\n" lines — `deployIdFrom` in `forays-directory.mjs`).
+ *     Content-derived, so it changes iff a listed file's CONTENT changes.
+ *   - `sw.js`'s `BUILD_ID` set to that id, because a browser only re-runs a
+ *     worker's `install()` (and so only re-reads the manifest) when the fetched
+ *     `sw.js` bytes differ from the registered copy. An `app.js`-only deploy
+ *     would otherwise leave every returning visitor on the old generation.
+ *   - `data/forays-directory.json`, the Foray directory pointer the native shell
+ *     reads from the live origin (`forays-directory.mjs`). It names the deploy id
+ *     and is listed in the manifest, so it cannot feed the id itself.
  *
- * `deploy_id` = first 16 hex chars of sha256(sorted "path:filehash\n" lines).
- * Content-derived, not git-SHA-based, so it is reproducible from the tree
- * alone with no dependency on commit history, and it changes iff a listed
- * file's CONTENT changes — not on unrelated file additions elsewhere in the
- * repo, and not on mtime or listing order. The manifest's own hash is never
- * part of its own input set, so there is no chicken-and-egg problem committing
- * a file that describes itself.
+ * WHY IT IS NO LONGER COMMITTED (issue #701, 2026-09-24)
+ * These three used to be committed, generated on every PR by
+ * `manifest-autofix.yml`, and checked by `--check`. Because the deploy id is a
+ * hash over every shipped file, ANY two PRs that change any shipped file
+ * disagree on the manifest's `deploy_id`, on `sw.js`'s `BUILD_ID` line and on the
+ * pointer's `version` — so every merge to `main` made every other open PR
+ * conflict, and PRs merged one at a time with a hand resolution each (six for
+ * four PRs on 2026-09-14; native-engine PRs into `engine/m1` on 2026-09-24).
+ * No committed form can avoid that: a content hash over files two branches both
+ * change is a conflict by construction, and GitHub's merge does not run custom
+ * merge drivers. So the stamp is computed where the bytes are actually shipped:
+ *
+ *   - Vercel (the origin the phones read the pointer from, `app.js`'s
+ *     `API_ORIGIN`): `vercel.json`'s `buildCommand`, `tools/web/prepare-dist.mjs`,
+ *     copies the allowlist into `dist/` and calls `stampBuild(dist)`.
+ *   - GitHub Pages: `.github/workflows/pages.yml` checks out `main`, runs
+ *     `--stamp .` on that throwaway checkout and deploys it — the same tree the
+ *     legacy "deploy from branch" build served, plus the stamp.
+ *   - The native bundle (`tools/mobile/prepare-webdir.mjs`): no worker and no
+ *     manifest, but it carries the deploy id (`build-stamp.json`) and the seed's
+ *     pointer, both computed in memory by `sourceStamp(root)`.
+ *
+ * The committed `sw.js` carries `BUILD_ID = "unstamped"` forever, and
+ * `.gitignore` names the other two. `--check` (the required `data-and-site`
+ * gate) fails if either generated file is tracked or `sw.js` carries a stamp,
+ * so the conflict magnet cannot come back through a stray `git add`.
  *
  * WHY NOT `manifest.json` — THAT NAME IS TAKEN
- * `manifest.json` is already the PWA web-app manifest `index.html` links
- * (`name`, `icons`, `display`, ...). This file is `deploy-manifest.json`
- * specifically to avoid clobbering it — it happened once during manual
- * testing of this script and is exactly the mistake this comment exists to
- * stop a future session from repeating.
+ * `manifest.json` is the PWA web-app manifest `index.html` links. This file is
+ * `deploy-manifest.json` specifically to avoid clobbering it.
  *
  * WHICH FILES ARE LISTED
- * Exactly what sw.js needs for one complete generation: the app shell
- * (also `tools/web/prepare-dist.mjs`'s SHELL — this file's SHELL additionally
- * covers `manifest.json`, the PWA manifest, since it too is a shell file
- * `sw.js` precaches), every player module the client actually loads, and the
- * runtime `data/*.json` app.js's `init()` fetches (kept in sync with
- * `tools/web/prepare-dist.mjs`'s RUNTIME_DATA by design — same derivation
- * concern that file's header names: a list nobody remembers to extend rots).
- *
- * `deploy-manifest.json` names every OTHER shipped file's hash, so including
- * its own hash in that set is circular; it is precisely the one file sw.js's
- * `isCode()`/pin logic does not need to gate on anyway (it is fetched with
- * `cache: "reload"` directly, never through the generation cache's pin path).
- *
- * THE FORAY DIRECTORY POINTER (FD-02)
- * `--write` also writes `data/forays-directory.json` — `{ version: <deploy_id>,
- * built_at, files, bytes, sha256 }` for the three Foray data files — and lists
- * it in the manifest so sw.js verifies and caches it like any other shipped
- * file. It CONTAINS the deploy id, so it is the second file (after the
- * manifest itself) that cannot feed `deploy_id`: `deployIdFrom()` excludes it.
- * `--check` fails if the pointer is missing, names a different version than
- * the tree computes to, or carries a byte count or sha256 that does not match
- * the file on disk. Shape, header choice and rationale live in
- * `tools/ci/forays-directory.mjs`.
+ * Exactly what sw.js needs for one complete generation: the app shell (also
+ * `tools/web/prepare-dist.mjs`'s SHELL — this SHELL additionally covers
+ * `manifest.json`), the brand faces, every player module the client loads, and
+ * the runtime `data/*.json` app.js's `init()` fetches (kept in sync with
+ * prepare-dist's RUNTIME_DATA by design), plus the pointer. The manifest never
+ * lists itself (circular) and never feeds the pointer into `deploy_id`.
  *
  * USAGE
- *   node tools/ci/generate-manifest.mjs --write   # regenerate deploy-manifest.json
- *   node tools/ci/generate-manifest.mjs --check   # verify it is up to date (CI)
+ *   node tools/ci/generate-manifest.mjs --check        # CI: nothing generated is committed
+ *   node tools/ci/generate-manifest.mjs --stamp <dir>  # stamp a built tree in place (Pages)
+ *   node tools/ci/generate-manifest.mjs --verify <dir> # re-derive a built tree's stamp and diff it
  *
- * `--check` regenerates the manifest in memory and diffs it against the
- * committed copy — including deploy_id — so a hand-edited deploy-manifest.json
- * or one that fell behind a real file change fails loudly rather than silently
- * shipping a torn deploy.
- *
- * BOTH MODES REFUSE TO RUN IN A CRLF CHECKOUT (`tools/ci/crlf-guard.mjs`).
- * These hashes describe bytes on disk, and a Windows `core.autocrlf=true`
- * checkout has CRLF where the committed blob — and the byte stream Pages
- * serves — has LF. Read that file's header before touching the guard.
- *
- * WHO CALLS `--write`
- *   - tools/refresh/merge.mjs, so the nightly's FIRST commit already carries a
- *     correct manifest and no bot fixup commit is needed (docs/DECISIONS.md,
- *     2026-09-03).
- *   - .github/workflows/manifest-autofix.yml, the safety net for every other PR.
+ * `--stamp` and `prepare-dist.mjs` both REFUSE A CRLF TREE (`crlf-guard.mjs`):
+ * the hashes must describe the LF bytes the deploys serve.
  */
 
 import { readFileSync, writeFileSync, readdirSync, existsSync, realpathSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { crlfOffenders, crlfFatalMessage } from "./crlf-guard.mjs";
-import { POINTER_PATH, deployIdFrom, writePointer, pointerProblems, builtAtFloorFrom } from "./forays-directory.mjs";
+import { POINTER_PATH, deployIdFrom, buildPointer, pointerText, pointerProblems, buildTimestamp } from "./forays-directory.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const MANIFEST_PATH = path.join(ROOT, "deploy-manifest.json");
-const SW_PATH = path.join(ROOT, "sw.js");
-const BUILD_ID_RE = /const BUILD_ID = "[^"]*";/;
+
+export const MANIFEST_FILE = "deploy-manifest.json";
+export const SW_FILE = "sw.js";
+/** The two files a build writes and the tree must never track. */
+export const GENERATED = [MANIFEST_FILE, POINTER_PATH];
+/** What the committed `sw.js` says. Never a hex id, so it can never be mistaken
+    for a stamp (`player/build-stamp.js`'s `deployIdOf` refuses it by shape). */
+export const UNSTAMPED_BUILD_ID = "unstamped";
+
+const BUILD_ID_RE = /const BUILD_ID = "([^"]*)";/;
 
 /* The app shell sw.js precaches on install. Kept explicit, same reasoning as
    prepare-dist.mjs's SHELL: a new root-level file must be added here
@@ -116,20 +119,18 @@ const RUNTIME_DATA = [
 
 /* The player modules the client actually loads (#23/#24/#33). Test files are
    deliberately excluded — they never ship. */
-function playerSources() {
-  return readdirSync(path.join(ROOT, "player"))
+function playerSources(root = ROOT) {
+  return readdirSync(path.join(root, "player"))
     .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
     .sort()
     .map((f) => path.join("player", f));
 }
 
 /* The self-hosted brand faces styles.css's @font-face rules load (round-2
-   audit, perf-5). They were in no generation, so sw.js never precached them:
-   every launch revalidated each face before it could paint, and a new
-   deploy's generation started without them. Derived from the directory, like
-   playerSources(), so a new face cannot be forgotten here. */
-function fontSources() {
-  const dir = path.join(ROOT, "fonts");
+   audit, perf-5). Derived from the directory, like playerSources(), so a new
+   face cannot be forgotten here. */
+function fontSources(root = ROOT) {
+  const dir = path.join(root, "fonts");
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
     .filter((f) => f.endsWith(".woff2"))
@@ -137,198 +138,340 @@ function fontSources() {
     .map((f) => path.join("fonts", f));
 }
 
-function listedFiles() {
+/** Every file whose hash feeds `deploy_id`, OS-separated, relative to `root`. */
+function listedFiles(root = ROOT) {
   const files = [
     ...SHELL,
-    ...fontSources(),
-    ...playerSources(),
+    ...fontSources(root),
+    ...playerSources(root),
     ...RUNTIME_DATA.map((f) => path.join("data", f)),
   ];
   return [...new Set(files)].sort();
 }
 
-function sha256File(relPath) {
-  const abs = path.join(ROOT, relPath);
+const posix = (rel) => rel.split(path.sep).join("/");
+
+function sha256File(root, relPath) {
+  const abs = path.join(root, relPath);
   if (!existsSync(abs)) {
-    throw new Error(`generate-manifest: listed file is missing on disk: ${relPath}`);
+    throw new Error(`generate-manifest: listed file is missing on disk: ${posix(relPath)}`);
   }
   return createHash("sha256").update(readFileSync(abs)).digest("hex");
 }
 
-/* Aborts before any hash is computed or written. Called by BOTH modes: on a
-   CRLF checkout `--check` used to report "deploy-manifest.json is stale", which
-   sends the reader to run the very command that breaks it. Full rationale and
-   the measurement behind it live in tools/ci/crlf-guard.mjs. */
-function assertLfCheckout() {
-  /* The pointer is guarded too: it is listed in the manifest, so a CRLF copy
-     of it would be hashed into a manifest entry sw.js can never verify. */
-  const bad = crlfOffenders(ROOT, [...listedFiles(), POINTER_PATH]);
-  if (!bad.length) return;
-  console.error(crlfFatalMessage(bad));
-  process.exit(1);
+/** The CRLF offenders among the files a stamp of `root` would hash. */
+function crlfIn(root) {
+  return crlfOffenders(root, listedFiles(root));
 }
 
 /* The manifest WITHOUT the pointer's entry: `deploy_id` over `listedFiles()`,
-   which is the input set the pointer is derived from and must not join. The
-   pointer's own entry is added by `withPointerEntry` once the pointer on disk
-   is known to be the one this id describes. */
-function computeManifest() {
+   which is the input set the pointer is derived from and must not join. */
+function computeManifest(root = ROOT) {
   const files = {};
-  for (const rel of listedFiles()) {
+  for (const rel of listedFiles(root)) {
     /* Cache keys and sw.js fetches use forward slashes regardless of OS. */
-    files[rel.split(path.sep).join("/")] = "sha256:" + sha256File(rel);
+    files[posix(rel)] = "sha256:" + sha256File(root, rel);
   }
   return { deploy_id: deployIdFrom(files), files };
 }
 
 /* Adds the pointer's hash as a manifest entry, keeping the listing sorted so a
-   committed manifest and a freshly computed one compare key-for-key. */
-function withPointerEntry(manifest) {
-  const files = { ...manifest.files, [POINTER_PATH]: "sha256:" + sha256File(POINTER_PATH) };
+   written manifest and a freshly computed one compare key-for-key. */
+function withPointerEntry(root, manifest) {
+  const files = { ...manifest.files, [POINTER_PATH]: "sha256:" + sha256File(root, POINTER_PATH) };
   const sorted = {};
   for (const k of Object.keys(files).sort()) sorted[k] = files[k];
   return { deploy_id: manifest.deploy_id, files: sorted };
 }
 
-function main() {
-  const mode = process.argv.includes("--check")
-    ? "check"
-    : process.argv.includes("--write")
-    ? "write"
-    : null;
-  if (!mode) {
-    console.error("usage: generate-manifest.mjs --write | --check");
+function readBuildId(root) {
+  const abs = path.join(root, SW_FILE);
+  if (!existsSync(abs)) return { id: null, error: `${SW_FILE} is missing` };
+  const m = BUILD_ID_RE.exec(readFileSync(abs, "utf8"));
+  if (!m) return { id: null, error: `${SW_FILE}'s BUILD_ID constant could not be located` };
+  return { id: m[1], error: null };
+}
+
+/* Stamps sw.js's BUILD_ID in `root` with the deploy id — the half of the stamp
+   that makes a manifest-only content change still change sw.js's own bytes. */
+function stampBuildId(root, deployId) {
+  const abs = path.join(root, SW_FILE);
+  const src = readFileSync(abs, "utf8");
+  if (!BUILD_ID_RE.test(src)) {
+    throw new Error(`${SW_FILE}'s BUILD_ID constant could not be located — cannot stamp the deploy id.`);
+  }
+  writeFileSync(abs, src.replace(BUILD_ID_RE, `const BUILD_ID = "${deployId}";`));
+}
+
+/**
+ * Stamp a BUILT tree in place: write the pointer, then the manifest that lists
+ * it, then `sw.js`'s BUILD_ID — all three naming one deploy id computed from the
+ * bytes `dir` actually holds. `dir` is `dist/` (prepare-dist) or a throwaway
+ * checkout (the Pages workflow); never the working tree anybody commits from.
+ *
+ * `builtAt` is the pointer's `built_at` — pass `buildTimestamp(repoRoot).builtAt`
+ * (the built commit's committer date). Throws on a CRLF tree or a missing file.
+ *
+ * -> { deployId, manifest, pointer }
+ */
+function stampBuild(dir, { builtAt } = {}) {
+  if (typeof builtAt !== "string" || !Number.isFinite(Date.parse(builtAt))) {
+    throw new Error(`stampBuild needs an ISO-8601 builtAt, got ${JSON.stringify(builtAt)}`);
+  }
+  const bad = crlfIn(dir);
+  if (bad.length) throw new Error(crlfFatalMessage(bad));
+  const base = computeManifest(dir);
+  /* Pointer first — its bytes are a manifest entry, so it has to be on disk in
+     its final form before the manifest that names it is written. */
+  const pointer = buildPointer(dir, base.deploy_id, new Date(builtAt));
+  writeFileSync(path.join(dir, POINTER_PATH), pointerText(pointer));
+  const manifest = withPointerEntry(dir, base);
+  writeFileSync(path.join(dir, MANIFEST_FILE), JSON.stringify(manifest, null, 2) + "\n");
+  stampBuildId(dir, manifest.deploy_id);
+  return { deployId: manifest.deploy_id, manifest, pointer };
+}
+
+/**
+ * Everything wrong with the stamp in a BUILT tree: the manifest must be exactly
+ * what the tree's bytes compute to (deploy id and every entry, the pointer's
+ * included), the pointer must describe the tree under that id, and `sw.js` must
+ * carry that id. Empty means the tree is safe to ship. A fresh re-derivation,
+ * not a trust of what `stampBuild` returned: a build step that copied one more
+ * file after stamping is exactly the torn deploy sw.js would refuse in production.
+ */
+function stampedProblems(dir) {
+  const problems = [];
+  const manifestAbs = path.join(dir, MANIFEST_FILE);
+  if (!existsSync(manifestAbs)) return [`${MANIFEST_FILE} is missing`];
+  let written;
+  try {
+    written = JSON.parse(readFileSync(manifestAbs, "utf8"));
+  } catch (err) {
+    return [`${MANIFEST_FILE} is not valid JSON: ${err.message}`];
+  }
+  let base;
+  try {
+    base = computeManifest(dir);
+  } catch (err) {
+    return [err.message];
+  }
+  problems.push(...pointerProblems(dir, base.deploy_id).map((p) => `${POINTER_PATH}: ${p}`));
+  if (existsSync(path.join(dir, POINTER_PATH))) {
+    const expected = withPointerEntry(dir, base);
+    if (written.deploy_id !== expected.deploy_id) {
+      problems.push(`${MANIFEST_FILE} says deploy_id ${written.deploy_id} but the tree computes to ${expected.deploy_id}`);
+    }
+    const have = written.files || {};
+    for (const k of Object.keys(expected.files)) {
+      if (have[k] !== expected.files[k]) problems.push(`${MANIFEST_FILE} entry ${k} does not match the bytes on disk`);
+    }
+    for (const k of Object.keys(have)) {
+      if (!(k in expected.files)) problems.push(`${MANIFEST_FILE} lists ${k}, which is not a shipped file`);
+    }
+  }
+  const { id, error } = readBuildId(dir);
+  if (error) problems.push(error);
+  else if (id !== base.deploy_id) problems.push(`${SW_FILE}'s BUILD_ID is ${JSON.stringify(id)} but the tree computes to ${base.deploy_id}`);
+  return problems;
+}
+
+/** `git <args>` in `root` -> stdout, or null on any failure. */
+function gitOut(root, args) {
+  try {
+    return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Everything wrong with the SOURCE tree for the no-committed-stamp rule (#701):
+ * a generated file tracked by git, a generated file git would not ignore, an
+ * `sw.js` that carries a stamp, or a listed file missing (a stamp could not be
+ * built at all). Empty means the tree is right. Fails CLOSED when git cannot
+ * be read: this is the gate that keeps the conflict magnet out.
+ */
+function sourceProblems(root = ROOT) {
+  const problems = [];
+  const tracked = gitOut(root, ["ls-files", "--", ...GENERATED]);
+  if (tracked === null) {
+    problems.push("git ls-files could not be run, so whether a generated file is committed is unknown");
+  } else {
+    for (const rel of tracked.split("\n").map((l) => l.trim()).filter(Boolean)) {
+      problems.push(`${rel} is committed. It is a build output (issue #701): \`git rm --cached ${rel}\``);
+    }
+  }
+  /* `check-ignore` exits 1 when a path is NOT ignored, which execFileSync
+     surfaces as a throw -> null. So null here means "not ignored" (or no git,
+     already reported above). --no-index: answer from .gitignore alone, even for
+     a path that happens to be tracked. */
+  for (const rel of GENERATED) {
+    const ignored = gitOut(root, ["check-ignore", "-q", "--no-index", "--", rel]);
+    if (ignored === null && tracked !== null) {
+      problems.push(`${rel} is not in .gitignore, so the next \`git add -A\` after a local build commits it`);
+    }
+  }
+  const { id, error } = readBuildId(root);
+  if (error) problems.push(error);
+  else if (id !== UNSTAMPED_BUILD_ID) {
+    problems.push(
+      `${SW_FILE} carries BUILD_ID ${JSON.stringify(id)}; the committed file must say ${JSON.stringify(UNSTAMPED_BUILD_ID)}. ` +
+        "The deploy builds stamp it (issue #701); a committed stamp is a merge conflict with every open PR."
+    );
+  }
+  try {
+    computeManifest(root);
+  } catch (err) {
+    problems.push(err.message);
+  }
+  return problems;
+}
+
+/**
+ * The web's stamp for a SOURCE tree, computed in memory and written nowhere —
+ * what `tools/mobile/prepare-webdir.mjs` bundles as the seed's pointer and the
+ * build stamp. The deploy id equals the one the deploys compute for the same
+ * commit, because they hash byte-identical copies of the same files.
+ *
+ * -> { deployId, pointer, builtAt } or { deployId: null, reason } when a stamp
+ *    for this tree would be wrong or impossible: a CRLF checkout (the id would
+ *    name bytes no origin serves) or a tree missing a listed file (a fixture).
+ */
+function sourceStamp(root = ROOT, { env = process.env } = {}) {
+  let base;
+  try {
+    base = computeManifest(root);
+  } catch (err) {
+    return { deployId: null, reason: err.message };
+  }
+  const bad = crlfIn(root);
+  if (bad.length) {
+    return { deployId: null, reason: `CRLF checkout (${bad.length} listed files) — its hashes are not the bytes the deploys serve` };
+  }
+  const { builtAt } = buildTimestamp(root, { env });
+  return { deployId: base.deploy_id, pointer: buildPointer(root, base.deploy_id, new Date(builtAt)), builtAt };
+}
+
+function argAfter(argv, flag) {
+  const i = argv.indexOf(flag);
+  return i >= 0 ? argv[i + 1] : undefined;
+}
+
+function main(argv = process.argv.slice(2)) {
+  if (argv.includes("--write")) {
+    console.error(
+      "generate-manifest.mjs --write no longer exists (issue #701). deploy-manifest.json, " +
+        "data/forays-directory.json and sw.js's BUILD_ID are build outputs now, never committed:\n" +
+        "  - for a local site build:   node tools/web/prepare-dist.mjs   (stamps dist/)\n" +
+        "  - to stamp a throwaway tree: node tools/ci/generate-manifest.mjs --stamp <dir>\n" +
+        "There is nothing to regenerate in the working tree and nothing to commit."
+    );
     process.exit(2);
   }
 
-  assertLfCheckout();
-
-  const base = computeManifest();
-
-  if (mode === "write") {
-    /* Pointer first — its bytes are a manifest entry, so it has to be on disk
-       in its final form before the manifest that names it is written. */
-    /* The rollback clause (audit finding C, 2026-09-12): this branch may never
-       move the pointer's `built_at` BACKWARDS from the stamp it started at, or
-       a `git revert` — which restores the pointer's old bytes along with the
-       three data files, since manifest-autofix commits it onto the data PR's
-       own head — ships a pointer every phone holding the reverted version
-       refuses forever (`player/foray-directory.js`, STATUS.OLDER). The floor is
-       the pointer at the MERGE BASE with main, read from git, best-effort: no
-       git, no ref, no merge base -> null -> the behaviour this had before the
-       floor existed. See `writePointer` and `builtAtFloorFrom`. */
-    const builtAtFloor = builtAtFloorFrom(ROOT);
-    const pointer = writePointer(ROOT, base.deploy_id, new Date(), { builtAtFloor });
-    const computed = withPointerEntry(base);
-    writeFileSync(MANIFEST_PATH, JSON.stringify(computed, null, 2) + "\n");
-    stampBuildId(computed.deploy_id);
-    console.log(`deploy-manifest.json written — deploy_id ${computed.deploy_id}, ${Object.keys(computed.files).length} files`);
+  if (argv.includes("--check")) {
+    const problems = sourceProblems(ROOT);
+    if (problems.length) {
+      console.error("FATAL: the source tree carries a deploy stamp. These files are build outputs (issue #701):");
+      for (const p of problems) console.error(`  ${p}`);
+      process.exit(1);
+    }
+    const { deploy_id } = computeManifest(ROOT);
     console.log(
-      `${POINTER_PATH} ${pointer.changed ? "written" : "unchanged"} — version ${pointer.pointer.version}` +
-        (pointer.restamped
-          ? ` (built_at RESTAMPED: the committed pointer was behind the ${builtAtFloor} this branch started from — a rollback must move forward)`
-          : "")
+      `ok — no generated deploy artefact is committed, sw.js is unstamped, ` +
+        `and the ${listedFiles(ROOT).length} listed files are all present (this tree would ship as ${deploy_id})`
     );
     return;
   }
 
-  // --check
-  if (!existsSync(MANIFEST_PATH)) {
-    console.error("FATAL: deploy-manifest.json does not exist — run with --write first");
-    process.exit(1);
-  }
-  /* The pointer before the manifest diff: a stale pointer also changes the
-     pointer's manifest entry, and "deploy-manifest.json is stale" would send
-     the reader looking at the wrong file. */
-  const problems = pointerProblems(ROOT, base.deploy_id, { builtAtFloor: builtAtFloorFrom(ROOT) });
-  if (problems.length) {
-    console.error(`FATAL: ${POINTER_PATH} is stale or malformed. Run \`node tools/ci/generate-manifest.mjs --write\` and commit the result.`);
-    for (const p of problems) console.error(`  ${p}`);
-    process.exit(1);
-  }
-  const computed = withPointerEntry(base);
-  const committed = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
-  const committedFiles = Object.keys(committed.files || {}).sort();
-  const computedFiles = Object.keys(computed.files).sort();
-  const sameFiles =
-    committedFiles.length === computedFiles.length &&
-    committedFiles.every((f, i) => f === computedFiles[i] && committed.files[f] === computed.files[f]);
-  const same = committed.deploy_id === computed.deploy_id && sameFiles;
-
-  if (!same) {
-    console.error("FATAL: deploy-manifest.json is stale. Run `node tools/ci/generate-manifest.mjs --write` and commit the result.");
-    console.error(`  committed deploy_id: ${committed.deploy_id}`);
-    console.error(`  computed  deploy_id: ${computed.deploy_id}`);
-    const added = computedFiles.filter((f) => !committedFiles.includes(f));
-    const removed = committedFiles.filter((f) => !computedFiles.includes(f));
-    if (added.length) console.error(`  files added:   ${added.join(", ")}`);
-    if (removed.length) console.error(`  files removed: ${removed.join(", ")}`);
-    process.exit(1);
-  }
-
-  const stampedId = readStampedBuildId();
-  if (stampedId !== committed.deploy_id) {
-    console.error(
-      "FATAL: sw.js's BUILD_ID does not match deploy-manifest.json's deploy_id — " +
-        "a manifest-only content change would ship with byte-identical sw.js bytes, " +
-        "so browsers would never notice the new generation exists. Run " +
-        "`node tools/ci/generate-manifest.mjs --write` and commit both files."
+  const stampDir = argAfter(argv, "--stamp");
+  if (argv.includes("--stamp")) {
+    if (!stampDir) {
+      console.error("usage: generate-manifest.mjs --stamp <dir>");
+      process.exit(2);
+    }
+    const dir = path.resolve(stampDir);
+    /* Stamping the working tree you commit from rewrites a tracked sw.js — the
+       exact change `--check` then refuses. CI checkouts are throwaway. */
+    if (!process.env.CI && realOrSelf(dir) === realOrSelf(ROOT)) {
+      console.error(
+        "FATAL: --stamp would rewrite this checkout's tracked sw.js. Stamp a copy " +
+          "(node tools/web/prepare-dist.mjs builds and stamps dist/), or run it where CI=true on a throwaway checkout."
+      );
+      process.exit(1);
+    }
+    let r;
+    try {
+      r = stampBuild(dir, { builtAt: buildTimestamp(dir).builtAt });
+    } catch (err) {
+      console.error(err.message);
+      process.exit(1);
+    }
+    const problems = stampedProblems(dir);
+    if (problems.length) {
+      console.error("FATAL: the freshly stamped tree does not verify:");
+      for (const p of problems) console.error(`  ${p}`);
+      process.exit(1);
+    }
+    console.log(
+      `stamped ${path.relative(process.cwd(), dir) || "."} — deploy_id ${r.deployId}, ` +
+        `${Object.keys(r.manifest.files).length} files, pointer built_at ${r.pointer.built_at}`
     );
-    console.error(`  sw.js BUILD_ID:      ${stampedId}`);
-    console.error(`  deploy-manifest.json: ${committed.deploy_id}`);
-    process.exit(1);
+    return;
   }
 
-  console.log(`deploy-manifest.json is up to date — deploy_id ${committed.deploy_id}, ${committedFiles.length} files`);
-}
-
-/* Stamps sw.js's BUILD_ID with the freshly computed deploy_id. This is the
-   half of the fix that makes a manifest-only content change (a data file, a
-   player module, app.js — none of which are sw.js itself) still change
-   sw.js's OWN bytes: browsers compare a service worker's fetched script
-   byte-for-byte against the previously registered copy and skip `install()`
-   (and therefore skip ever reading the new manifest) when nothing differs.
-   Without this stamp, an app.js-only deploy would leave every existing
-   client's pointer on the old generation indefinitely. */
-function stampBuildId(deployId) {
-  const src = readFileSync(SW_PATH, "utf8");
-  if (!BUILD_ID_RE.test(src)) {
-    console.error("FATAL: sw.js's BUILD_ID constant could not be located — cannot stamp the deploy id.");
-    process.exit(1);
+  const verifyDir = argAfter(argv, "--verify");
+  if (argv.includes("--verify")) {
+    if (!verifyDir) {
+      console.error("usage: generate-manifest.mjs --verify <dir>");
+      process.exit(2);
+    }
+    const problems = stampedProblems(path.resolve(verifyDir));
+    if (problems.length) {
+      console.error(`FATAL: ${verifyDir} is not a consistently stamped build:`);
+      for (const p of problems) console.error(`  ${p}`);
+      process.exit(1);
+    }
+    console.log(`${verifyDir} verifies — manifest, pointer and sw.js BUILD_ID agree with its bytes`);
+    return;
   }
-  const stamped = src.replace(BUILD_ID_RE, `const BUILD_ID = "${deployId}";`);
-  writeFileSync(SW_PATH, stamped);
+
+  console.error("usage: generate-manifest.mjs --check | --stamp <dir> | --verify <dir>");
+  process.exit(2);
 }
 
-function readStampedBuildId() {
-  const src = readFileSync(SW_PATH, "utf8");
-  const m = BUILD_ID_RE.exec(src);
-  if (!m) {
-    console.error("FATAL: sw.js's BUILD_ID constant could not be located.");
-    process.exit(1);
-  }
-  return /const BUILD_ID = "([^"]*)";/.exec(m[0])[1];
+function realOrSelf(p) {
+  let r;
+  try { r = realpathSync(p); } catch (_) { r = path.resolve(p); }
+  return process.platform === "win32" ? r.toLowerCase() : r;
 }
 
-/* Run only as a script, so a suite can import `listedFiles` and
-   `playerSources` without triggering a --write/--check.
+/* Run only as a script, so a suite can import the helpers without triggering
+   the CLI.
 
    REALPATH ON BOTH SIDES, CASE-FOLDED ON WINDOWS (round-2 review). Node
    realpaths the main module before it builds `import.meta.url`, but
    `process.argv[1]` is only made absolute — so from a symlinked checkout, a
    Windows junction, or a shell whose drive letter is cased differently, the
-   two never matched and `--check` exited 0 WITHOUT CHECKING (and `--write`
-   wrote nothing), letting a stale manifest pass a local gate. */
+   two never matched and `--check` exited 0 WITHOUT CHECKING, letting a bad
+   tree pass a local gate. */
 function isEntryScript(argv1 = process.argv[1], metaUrl = import.meta.url) {
   if (!argv1) return false;
-  const canon = (p) => {
-    let r;
-    try { r = realpathSync(p); } catch (_) { r = path.resolve(p); }
-    return process.platform === "win32" ? r.toLowerCase() : r;
-  };
-  return canon(argv1) === canon(fileURLToPath(metaUrl));
+  return realOrSelf(argv1) === realOrSelf(fileURLToPath(metaUrl));
 }
 
 if (isEntryScript()) main();
 
-export { computeManifest, listedFiles, playerSources, fontSources, isEntryScript };
+export {
+  computeManifest,
+  listedFiles,
+  playerSources,
+  fontSources,
+  isEntryScript,
+  stampBuild,
+  stampedProblems,
+  sourceProblems,
+  sourceStamp,
+  SHELL,
+  RUNTIME_DATA,
+};
