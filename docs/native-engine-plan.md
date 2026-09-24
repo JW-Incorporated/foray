@@ -89,7 +89,7 @@ Source: the founder's diagnostics, build 2026092327, iPhone, in the car, 2026-09
 | Parity (V-1..V-3) | JS is the reference. A rule change is JS, then re-record, then Swift. A JS PR adds new case ids to `swift-pending.json` automatically, and the Swift PR burns them down. Fixtures are read in place. |
 | Continuation (C-2) | `planAfterEnded` is extracted into `player/continuation.js` but not ported to Swift. JS precomputes K = 8 hops plus `autoAdvance`, and the engine walks them. |
 | De-dup (T-8) | Record `dupCandidate` without dropping anything; DV-6 decides. |
-| Narration rate (R-4 / OQ-3) | Today's behaviour, behind `narrationFollowsListenerRate = true`. |
+| Narration rate (R-4 / OQ-3) | 1x (founder, 2026-09-24): synthesized narration speaks at 1x whatever the listener's rate, as the JS reference does since `fix/narration-1x` (`NARRATION_RATE`). `narrationFollowsListenerRate = false`; the switch stays so "maybe we change later" is one flag. |
 | Audition (OQ-5) | Always routed through the engine in native mode. Refused with `engine-busy` while running. While paused or idle, the engine's synthesizer speaks it after a `SessionPolicy` activation (a tap is user-caused). |
 
 ## 4. Architecture
@@ -633,7 +633,7 @@ The founder's standing instruction is to route only true product/spend/legal cal
 |---|---|---|
 | OQ-1 placement | The pure core lives under `mobile/plugins/` (a new SwiftPM package beside `foray-audio`), not in `ios/`. | `ios/` is reference material and outside auto-merge; the shipping plugins already live here. `PlayerQueueState.swift` is copied (NE-02), `ios/` untouched. |
 | OQ-2 required parity check | Yes, after G-1a's week green (G-1b). | The repo is public, so macOS runner minutes cost nothing; drift between JS and Swift is the failure this deck exists to prevent. |
-| OQ-3 synthesized narration speed | Keep today's behaviour (the listener's rate) behind the switch; still a founder question (round-1 qa 28). | No behaviour change without his ruling. |
+| OQ-3 synthesized narration speed | 1x (founder, 2026-09-24). | *"1x for now, but maybe we change later. I recall 1x felt like 0.6x or so, it was very slow."* Round-1 qa 28 is fixed by `fix/narration-1x`; the switch defaults to false. |
 | OQ-4 provisional values | Ship M1 with provisional deadlines + diagnostics; NE-38 replaces them from field rows. | Measurements need a native build to exist first. |
 | OQ-5 audition | Through the engine (single session owner, S-1). | Two owners is the defect this deck removes. |
 | OQ-6 jingle clock | Count an authored JINGLE at the asset's measured duration (3.0 s), fixed JS-first before fixtures freeze (NE-29j). | The clock and the audio must agree; 1.5 s vs 3.0 s is a latent drift. |
@@ -1483,7 +1483,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 - **Ask:**
 
   Extend EngineCore:
-  - the narrating overlay (speak(seq, script, voice, utteranceRate) behind narrationFollowsListenerRate; pause at a word; resume the same utterance; stop immediate; finished exactly once by seq; failed skips)
+  - the narrating overlay (speak(seq, script, voice, utteranceRate) at 1x — OQ-3, founder 2026-09-24 — behind narrationFollowsListenerRate = false; pause at a word; resume the same utterance; stop immediate; finished exactly once by seq; failed skips)
   - the wall-time narration clock
   - voice and fallback; the voiceId in the restore record
   - rendered narration at 1.0x

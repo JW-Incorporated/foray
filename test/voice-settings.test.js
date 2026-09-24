@@ -574,7 +574,7 @@ test("the voices are one named radio group: one tab stop, arrows move the choice
 });
 
 /* ==================================================================== */
-/* 7. Audition: exactly a count to ten, at the current rate              */
+/* 7. Audition: exactly a count to ten, at 1x (founder, 2026-09-24)     */
 /* ==================================================================== */
 
 test("MUTATION GUARD: Audition speaks exactly 'one' through 'ten' — no markers, nothing past ten", async () => {
@@ -590,6 +590,24 @@ test("MUTATION GUARD: Audition speaks exactly 'one' through 'ten' — no markers
   assert.strictEqual(auditionCalls.length, 1);
   assert.strictEqual(auditionCalls[0].id, "com.apple.voice.enhanced.en-US.Samantha");
   assert.strictEqual(auditionCalls[0].text, "one, two, three, four, five, six, seven, eight, nine, ten.");
+});
+
+test("MUTATION GUARD: Audition speaks at NARRATION_RATE (1x), never the listener's playback speed", () => {
+  /* Founder, 2026-09-24: "1x for now, but maybe we change later." Narration is
+     spoken at 1x whatever the listener's speed, so a Preview at 2x would sample
+     a pace the narrator never uses. The speed is chosen in `player/client.js`'s
+     `auditionVoice`, which the harness above replaces with a spy, so this reads
+     that one method's source: `client.js` is the page's player module and
+     cannot be loaded in Node. The value of NARRATION_RATE itself is pinned in
+     `player/queue-manager.test.js`.
+     MUTATION: put `rate: currentRate()` back into `auditionVoice`. */
+  const src = fs.readFileSync(path.join(ROOT, "player", "client.js"), "utf8");
+  assert.match(src, /import \{[^}]*\bNARRATION_RATE\b[^}]*\} from "\.\/queue-manager\.js";/,
+    "client.js takes the narration speed from the one constant, not a copy");
+  const body = src.match(/\n  auditionVoice\(text, voiceId\) \{\n([\s\S]*?)\n  \},/);
+  assert.ok(body, "auditionVoice(text, voiceId) is still where this test looks for it");
+  assert.match(body[1], /ttsBridge\.speak\(text, \{ rate: NARRATION_RATE, voice: voiceId \}\)/);
+  assert.ok(!/currentRate\(/.test(body[1]), "the listener's speed plays no part in a Preview");
 });
 
 test("the sheet's own copy describes the count to ten", () => {

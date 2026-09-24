@@ -6,7 +6,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
+import { PlayerQueueManager, NARRATION_RATE, __resetInstanceForTests } from "./queue-manager.js";
 import { SINGLE_ITEM, PICKED_FIRST, CONTINUE_TAIL } from "./queue-strategy.js";
 import { forayRuntimeSec } from "./foray-queue.js";
 import { INTERLUDE_CEILING_SEC } from "./interlude.js";
@@ -768,18 +768,73 @@ test("a script-only narration item is not dropped and never reaches backend.load
   assert.ok(backend.calls.includes("load:foray-1#1@100"), `got ${backend.calls}`);
 });
 
-test("a script-only narration item speaks at the LISTENER'S current rate, not a hardcoded 1.0x", async () => {
-  // §7 item 2: rate is a property of the utterance for a synthesizer, so the
-  // stored/chosen speed rides into speak() itself rather than being forced to
-  // 1.0x and deferred the way a rendered bridge's rate is.
+/* FOUNDER RULING, 2026-09-24 (round-1 qa 28, native-engine-plan OQ-3): "1x for
+   now, but maybe we change later." Synthesized narration speaks at 1x whatever
+   speed the listener chose for the podcasts. It used to ride the listener's
+   `this._rate` into speak(), so at 2x a spoken bridge was rushed while a
+   rendered one was forced back to 1.0x.
+   TO SEE IT FAIL: put `rate: this._rate` back into `_speakNarration`'s speak()
+   call — every rate but 1 goes red. */
+test("NARRATION_RATE is 1x — the founder's 2026-09-24 ruling, stated as a number", () => {
+  assert.equal(NARRATION_RATE, 1);
+});
+
+/** Speak one script-only line with the listener at `rate`; the spoken rate and
+    the listener's speed afterwards. Unrolled into one `test()` per speed below
+    so each is counted by suite-integrity's floor. */
+async function spokenRateAt(rate) {
   const tts = fakeTts();
-  const { m } = make({ tts, rate: 1.5 });
+  const { m } = make({ tts, rate });
+  assert.equal(m.rate, rate, "precondition: the listener's speed is what they chose");
   await m.playForay(foray([
-    { type: "narration", id: "nar-1", script: "a script spoken at the chosen speed" },
+    { type: "narration", id: "nar-1", script: "a script spoken at the narrator's own pace" },
     fseg(),
   ]), { resolveItem });
+  assert.equal(tts.calls[0].rate, 1, "the utterance is 1x, not the listener's speed");
+  assert.equal(m.rate, rate, "and the listener's speed is untouched, not reset to match");
+}
 
-  assert.equal(tts.calls[0].rate, 1.5);
+test("a script-only narration item speaks at 1x when the listener is at 0.75x (founder, 2026-09-24)", () => spokenRateAt(0.75));
+test("a script-only narration item speaks at 1x when the listener is at 1.5x (founder, 2026-09-24)", () => spokenRateAt(1.5));
+test("a script-only narration item speaks at 1x when the listener is at 2x (founder, 2026-09-24)", () => spokenRateAt(2));
+
+test("a SYNTH bridge mid-Foray at 2x speaks at 1x, and the segment after it comes back at 2x", async () => {
+  /* The transition path (`_playTransitionBridge`), which is the other caller of
+     `_speakNarration` — the one a listener at 2x hears between two podcasts. */
+  const tts = fakeTts();
+  const { m, backend } = make({ tts, rate: 2 });
+  await m.playForay(foray([
+    fseg(),
+    { type: "narration", id: "nar-1", asset: undefined, script: "a bridge line" },
+    fseg({ start_sec: 400, end_sec: 500 }),
+  ]), { resolveItem });
+  await m._handleBackendItemEnded(END_OUT_POINT); // segment 1 ends, the bridge speaks
+  assert.equal(m.state.type, "transitioning", "precondition: the bridge is what is audible");
+  assert.equal(tts.calls.length, 1);
+  assert.equal(tts.calls[0].rate, 1, "the bridge is spoken at 1x");
+
+  tts.finish();
+  await tick();
+  await tick();
+  assert.equal(m.state.type, "playing", "precondition: the next segment loaded");
+  const rates = backend.calls.filter((c) => c.startsWith("rate:"));
+  assert.equal(rates[rates.length - 1], "rate:2", `the podcast after the line is back at the listener's 2x: ${rates}`);
+});
+
+test("a speed tap WHILE a synth line is audible is stored, and the next line is still 1x", async () => {
+  const tts = fakeTts();
+  const { m } = make({ tts, rate: 1 });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "first line" },
+    fseg(),
+  ]), { resolveItem });
+  m.setRate(2);
+  assert.equal(m.rate, 2, "the tap is kept");
+  await m.playForay(foray([
+    { type: "narration", id: "nar-2", script: "second line" },
+    fseg(),
+  ]), { resolveItem, allowMultiple: true });
+  assert.deepEqual(tts.calls.map((c) => c.rate), [1, 1], "neither line follows the listener's speed");
 });
 
 test("resetRateForTTS/restoreRate never touch backend.setRate for a synth item", async () => {
@@ -1038,7 +1093,7 @@ test("setVoice(null) clears the choice — the plugin picks its own best tier", 
 });
 
 // MUTATION: drop `voice: this._voice` from the `speak()` call in
-// `_speakNarration` (leave only `{ rate: this._rate }`) — this test goes red.
+// `_speakNarration` (leave only `{ rate: NARRATION_RATE }`) — this test goes red.
 test("MUTATION GUARD: the voice option reaches speak() alongside rate", async () => {
   const tts = fakeTts();
   const { m } = make({ tts, voice: "the-chosen-voice", rate: 1.5 });
@@ -1048,7 +1103,7 @@ test("MUTATION GUARD: the voice option reaches speak() alongside rate", async ()
   ]), { resolveItem });
 
   assert.equal(tts.calls[0].voice, "the-chosen-voice");
-  assert.equal(tts.calls[0].rate, 1.5);
+  assert.equal(tts.calls[0].rate, 1, "1x, not the listener's 1.5x (founder, 2026-09-24)");
 });
 
 test("lastVoiceFallback reports the plugin's own voiceFallback flag", async () => {
@@ -2838,6 +2893,27 @@ test("ROUND 2 native-3: a spoken line that never says finished is treated as fin
   await tick();
   assert.equal(m.currentIndex, 1, "past it the Foray moves on");
   assert.equal(m.state.type, "playing");
+});
+
+test("FOUNDER 2026-09-24: the narration deadline is the line's 1x runtime even when the listener is at 0.75x", async () => {
+  /* The line is spoken at 1x now, so the deadline must not stretch by the
+     listener's slower speed: 4 s x 1.5 + 10 s = 16 s, not 4/0.75 x 1.5 + 10 = 18 s.
+     KILLING MUTATION: pass `this._rate` to `narrationDeadlineSec` again — the
+     line is still "speaking" at 17 s. */
+  const tts = fakeTts();
+  const scheduler = manualScheduler();
+  const { m } = make({ tts, scheduler, rate: 0.75, onNarrationTick: () => {} });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "four seconds of narration", duration_sec: 4 },
+    fseg(),
+  ]), { resolveItem });
+  assert.equal(m.rate, 0.75, "precondition: a slow listener");
+  const awake = async (ms) => { for (let t = 0; t < ms; t += 250) await scheduler.advance(250); };
+  await awake(15_000);
+  assert.equal(m.currentIndex, 0, "inside the 1x deadline nothing is assumed");
+  await awake(2_000);
+  await tick();
+  assert.equal(m.currentIndex, 1, "past the 1x deadline (16 s) the Foray moves on");
 });
 
 test("ROUND 2 review: a narration line whose page was SUSPENDED through a call is interrupted, never advanced by the deadline", async () => {
