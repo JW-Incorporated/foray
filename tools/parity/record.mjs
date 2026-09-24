@@ -276,9 +276,9 @@ export async function record({ root = REPO_ROOT, family = null, portCard = null,
 }
 
 export function formatCounts(c) {
-  const lines = ["suite                 tests  fixtured  xctest  excluded  unported"];
+  const lines = ["suite                 tests  fixtured  xctest  facade  excluded  unported"];
   for (const [stem, s] of Object.entries(c.suites)) {
-    lines.push(`${stem.padEnd(20)} ${String(s.tests).padStart(6)} ${String(s.fixtured).padStart(9)} ${String(s.xctest).padStart(7)} ${String(s.excluded).padStart(9)} ${String(s.unported).padStart(9)}`);
+    lines.push(`${stem.padEnd(20)} ${String(s.tests).padStart(6)} ${String(s.fixtured).padStart(9)} ${String(s.xctest).padStart(7)} ${String(s.facade ?? 0).padStart(7)} ${String(s.excluded).padStart(9)} ${String(s.unported).padStart(9)}`);
   }
   lines.push("", "family                cases");
   for (const [f, n] of Object.entries(c.families)) lines.push(`${f.padEnd(20)} ${String(n).padStart(6)}`);
@@ -296,7 +296,7 @@ export function classifyNew({ root = REPO_ROOT } = {}) {
   const unported = structuredClone(data.unported);
   for (const [stem, names] of Object.entries(status)) {
     for (const [name, st] of Object.entries(names)) {
-      if (st.covered.length || st.xctest || st.excluded || st.unported) continue;
+      if (st.covered.length || st.xctest || st.facade || st.excluded || st.unported) continue;
       const cfg = COVERED_SUITES[stem];
       (unported[stem] ??= {})[name] = { card: cfg.card, family: cfg.family };
       added.push(`${stem}::${name}`);

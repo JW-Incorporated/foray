@@ -283,7 +283,7 @@ const FLOORS = {
      enforced by "parity fixture families hold their floors" below, so deleting
      fixture cases is loud here too, not only in the suite that reads them. */
   "player/parity/run.test.js": 36, // NE-14j: the session and lifecycle drivers (interruption, route, cold launch, foreground), their refusals, held loads that land late, and positionEvents over the real PositionStore; 32 -> 36 // NE-12j: the media-actions adapter records real arity and refuses a press the OS could never deliver; 31 -> 32
-  "player/parity/coverage.test.js": 25, // NE-14j: queue-manager and html-audio-backend are wholly classified — manager-episode / deck-episode, an exclusion, an XCTest, or owed to NE-30j/NE-31j/NE-39j outside the episode capability; 24 -> 25 // NE-13: the continuation capability owes nothing, because its family is JS-only (plan C-2); 23 -> 24 // NE-12j: media-session is wholly classified — media-episode, an exclusion, or NE-29j's Foray half in the foray capability's family; 22 -> 23 // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
+  "player/parity/coverage.test.js": 28, // NE-21: transport-reconcile is wholly classified (a facade test, an exclusion, or owed to the engine's own cards), every facades.json mapping names a native-facades test that exists, and a mapping that could hide a Swift rule is refused; 25 -> 28 // NE-14j: queue-manager and html-audio-backend are wholly classified — manager-episode / deck-episode, an exclusion, an XCTest, or owed to NE-30j/NE-31j/NE-39j outside the episode capability; 24 -> 25 // NE-13: the continuation capability owes nothing, because its family is JS-only (plan C-2); 23 -> 24 // NE-12j: media-session is wholly classified — media-episode, an exclusion, or NE-29j's Foray half in the foray capability's family; 22 -> 23 // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
   /* NE-10j: the rows and number-format families. rows.test.js is what makes
      them a RECORDING — every recorded row is rebuilt from the real builders,
      and the page's own PositionStore, on the wall clock, writes the recorded
@@ -305,6 +305,17 @@ const FLOORS = {
      the plan's named tokens, every page transport source admissible, the NE-01
      stub's reason admissible, and exact admission for every token. Zero slack. */
   "player/engine-vocabulary.test.js": 4,
+  /* NE-21: the page side of the native engine. native-engine.test.js is the
+     client — the bounded handshake that relinquishes before the page may build
+     audio, snapshot ordering and coalescing, validation, extrapolation.
+     native-facades.test.js is the surface client.js reads, over the reference
+     engine, and it is what facades.json maps 22 transport-reconcile tests to,
+     so a deleted test there is a reconcile rule the guard still counts as
+     ported. reference-engine.test.js is protocol v1 over the real manager: the
+     contract family, the 1 Hz / hidden event rule, the warm handover. Zero slack. */
+  "player/native-engine.test.js": 18,
+  "player/native-facades.test.js": 16,
+  "player/parity/reference-engine.test.js": 14,
   /* NE-08: the suites that READ their fixtures (plan §6.3). Each test runs the
      `transport` / `resume-rules` cases that name it, so the one file is the JS
      assertion and the Swift port's case list (NE-09). Zero slack: a deleted

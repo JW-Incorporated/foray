@@ -415,5 +415,135 @@
       "reason": "js-module-shape",
       "why": "Pins that player/client.js imports the transport rules and declares no copy of them; the Swift engine has no client.js, and its TransportPolicy port is checked by the transport family instead."
     }
+  },
+  "transport-reconcile": {
+    "AUDIT / ROUND 2: a FINISHED episode leaves Jump back in and the ribbon; a part-heard one stays": {
+      "reason": "dom-only",
+      "why": "Jump back in and the ribbon for a finished episode are the page's decision (plan §3 A-1: the page owns the 'Jump back in' math). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "AUDIT: the head unit's STOP pauses and leaves every other control working": {
+      "reason": "webview-only",
+      "why": "The head unit's STOP reaching client.js's remoteStop through navigator.mediaSession; natively stopCommand is registered and disabled and a remote stop is a pause (plan §4.5, T-7), NE-12s's commandAvailability. In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "AUDIT: the lock screen says PLAYING while sound is coming out": {
+      "reason": "webview-only",
+      "why": "The lock screen's playbackState/rate while sound is coming out, as the page writes it. In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "AUDIT: ↺ and ↻ move a restored ribbon too, and ↻ never crosses the end": {
+      "reason": "dom-only",
+      "why": "The restored ribbon's ↺/↻ nudges move a PENDING position the page holds with nothing loaded in any engine; the press that follows carries it as playEpisode's startSec (native-facades.test.js). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "REPORT 3: a booted shell writes BOTH halves of the build into the record it will copy out": {
+      "reason": "js-module-shape",
+      "why": "The page's diagnostic record stamping both halves of the build (web and CFBundleVersion). The page keeps doing it in native mode; the engine writes its own header line into the Copy (NE-26), so there is no page rule for Swift to reimplement."
+    },
+    "REVIEW: a Foray page opened over the restored bar hears the bar's press": {
+      "reason": "dom-only",
+      "why": "A Foray page opened over the restored bar hearing the bar's press is page wiring between two page surfaces. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "REVIEW: a play the browser held back keeps its 'Press play again' line after app.js reports the refusal": {
+      "reason": "webview-only",
+      "why": "Safari holding back a play() for want of a gesture ('Press play again'). An AVPlayer needs no gesture — the backend facade's notePlayGesture is a no-op — so native mode has no held-back play to keep a line for."
+    },
+    "REVIEW: the Android notification's own Stop (`close`) still closes a PAUSED player": {
+      "reason": "webview-only",
+      "why": "Android's notification close. Android keeps the JS player and the native engine is iOS only (plan §11, J-1), so there is no Swift rule here."
+    },
+    "REVIEW: the page's neighbours are asked about the episode that is NOW current": {
+      "reason": "js-module-shape",
+      "why": "Which episode client.js asks its continuation neighbours about. In native mode the page still computes the chain itself (continuation.js, a JS-only family, plan §5.5 C-2) and hands it over as setContinuation; the engine only walks it, so it has no neighbour rule to reimplement."
+    },
+    "ROUND 2 a11y-7: a slider that has FOCUS is not rewritten every tick": {
+      "reason": "dom-only",
+      "why": "A focused slider is not rewritten every tick (a11y). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 copy-5 / player-10: a RESTORED Foray reads the same on the bar and the lock screen, and its clip follows a scrub": {
+      "reason": "js-module-shape",
+      "why": "Text scan: the page's mediaViewFields reads the restored Foray and the clip under the pending position; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "ROUND 2 copy-5: the live Foray bar's second line is the show and the clip, with no 'Now:'": {
+      "reason": "dom-only",
+      "why": "The live Foray bar's second line. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 honesty-13: elapsed and remaining add up, and the countdown keeps its sign until it shows nothing": {
+      "reason": "dom-only",
+      "why": "Elapsed and remaining add up and the countdown keeps its sign. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 p-car-6: a finished EPISODE stays on the lock screen paused; a finished Foray still clears it": {
+      "reason": "webview-only",
+      "why": "A finished episode left on the lock screen paused and a finished Foray cleared, as the page writes it; natively NowPlayingPublisher clears only on a finished Foray, close or data deletion (plan §4.5). In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "ROUND 2 p-car-8: a stall is reported to the OS at rate 0, with the state still playing": {
+      "reason": "webview-only",
+      "why": "A stall reported to the OS at rate 0 with the state still playing, as the page writes it. In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "ROUND 2 perf-7: a control's accessible name is not rewritten to itself on every tick": {
+      "reason": "dom-only",
+      "why": "A control's accessible name is not rewritten to itself every tick. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 perf-7: the OS position is written once a second, not four times": {
+      "reason": "webview-only",
+      "why": "The OS position written once a second by the page's dedupe. In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "ROUND 2 player-6: dragging the scrubber moves the clocks with the thumb, not the audio": {
+      "reason": "dom-only",
+      "why": "Dragging the scrubber moves the clocks with the thumb. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 player-7: a Foray clip that will not load says so on the bar and in the sheet": {
+      "reason": "dom-only",
+      "why": "The copy on the bar and in the sheet for a Foray clip that will not load; the engine's side is its skipped event and lastError (manager-foray). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 player-9: the speed button is named for the menu it opens": {
+      "reason": "dom-only",
+      "why": "The speed button's accessible name. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 review (touch-10): the sheet draws a chapter token as a 44px .ep-chapter-row that seeks, not an inline stamp": {
+      "reason": "dom-only",
+      "why": "The sheet's chapter token drawn as a 44px row. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 review: a slider focused by a POINTER keeps following the audio": {
+      "reason": "dom-only",
+      "why": "A slider focused by a pointer keeps following the audio. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "SWEEP: Jump back in's Foray rows read the LIVE runtime, as the Foray page's resume does": {
+      "reason": "dom-only",
+      "why": "Jump back in's Foray rows read the live runtime: the page's A-1 math (plan §3), fed by the page's own resolve. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "SWEEP: a speed the listener chose before hydration landed is not overruled by the store": {
+      "reason": "js-module-shape",
+      "why": "Which speed wins when the listener chose one before cp_rate hydrated. The page still owns cp_rate (plan §5.2) and sends setRate with the winner; the engine has no store of its own to be overruled by."
+    },
+    "SWEEP: the lock screen shows a RESTORED bar's position, not the empty element's 0:00": {
+      "reason": "webview-only",
+      "why": "The lock screen's position for a RESTORED bar as the page writes it; natively the cold path paints Now Playing from the engine's restore record without activation (plan §4.5, NE-24). In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "THE #267 WINDOW IS REAL: every reconcile guard passes inside the refusal recovery": {
+      "reason": "webview-only",
+      "why": "#267: the two-element HtmlAudioBackend's autoplay-refusal recovery (a WebKit per-element NotAllowedError) with the parked prefetch on. AVPlayer has no autoplay policy, so native mode has no refusal recovery for a reconcile to fall inside (plan §4.3); the engine's own prepare is DeckPair's (NE-32)."
+    },
+    "VISUAL PASS: previous/next clip are their own labelled row, shown only while a Foray is loaded": {
+      "reason": "dom-only",
+      "why": "The previous/next clip row's label and visibility. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "VISUAL PASS: the mini bar's ↺15 is the same nudge, for an episode and for a Foray": {
+      "reason": "dom-only",
+      "why": "The mini bar reusing the sheet's ↺15 handler is page wiring; the nudge itself is a seekBy the engine performs (manager-foray / transport families). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "an ESTIMATED Foray runtime is hedged in the Now Playing countdown and the slider's 'of' (states-11)": {
+      "reason": "dom-only",
+      "why": "The hedge on an ESTIMATED Foray runtime in the countdown and the slider's 'of'. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "an element that does not model paused reads as NOT paused, never as paused": {
+      "reason": "webview-only",
+      "why": "Duck-typing an HTMLMediaElement that does not model `paused`. The native deck is an AVPlayer whose timeControlStatus always answers (NE-15), so there is no element that can fail to model it."
+    },
+    "audio must NOT start after that reconcile, and the queue must not strand (#267)": {
+      "reason": "webview-only",
+      "why": "#267: a reconcile racing the WebKit autoplay-refusal recovery of the two-element HtmlAudioBackend. AVPlayer has no autoplay policy and native mode has no page-side reconcile at all (attach only reads, native-facades.test.js), so the race does not exist there."
+    },
+    "the sheet shows ⏭, Up Next (N) and Save from the page's episode surface, and each does the page's own thing (audit round 2, p-impatient-7 / p-switcher-5)": {
+      "reason": "dom-only",
+      "why": "The sheet's ⏭, Up Next (N) and Save read the page's own episode surface. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    }
   }
 }
