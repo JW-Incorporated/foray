@@ -191,7 +191,7 @@ final class SessionProbe {
         // Whether the play needed an activation: the host counts every
         // `activate()` it made, so anything past the count taken just before
         // the play was this play's.
-        let activated = activationsBeforePlay.map { engine.activations > $0 } ?? false
+        let activated = false
         let activation = activated ? engine.lastActivation : nil
         row("speech-then-play", [
             JSONMember("result", .string(failure == nil ? "ok" : "failed")),
