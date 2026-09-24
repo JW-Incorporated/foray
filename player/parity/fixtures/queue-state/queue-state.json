@@ -1,0 +1,2277 @@
+{
+  "family": "queue-state",
+  "module": "player/queue-state.js",
+  "note": "The player's pure reducer (player/queue-state.js), one reduce(state, event) -> [state, effects] case per distinct transition queue-state.test.js asserts, plus itemBounds, the one definition of a bounded item. States, events and item refs are the reducer's own plain objects, written out in full: {type, ...} with items as {id, kind, bounds}. A test that asserts a chain of reductions is split into one case per step, each step's input being the previous step's recorded output (its note says so). Telemetry messages are recorded verbatim: NE-07s ports them byte-identical. Two tests are excluded as js-module-shape (exclusions.json): input immutability and the unknown-event default, neither of which a Swift enum reducer can express.",
+  "cases": [
+    {
+      "id": "queue-state/play-from-idle",
+      "covers": ["queue-state::testPlayFromIdleTransitionsToLoadingItem"],
+      "call": "reduce",
+      "args": [
+        { "type": "idle" },
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "play"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": null,
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+              "type": "loadItem"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/item-loaded-episode-restores-rate",
+      "covers": [
+        "queue-state::testItemLoadedForEpisodeStartsPlaybackAndRestoresRate",
+        "queue-state::an unbounded item's itemLoaded is unchanged, effect for effect"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": null,
+          "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "playing"
+          },
+          [{ "type": "restoreRate" }, { "type": "startPlayback" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/item-loaded-tts-resets-rate",
+      "covers": ["queue-state::testItemLoadedForTTSResetsRateInsteadOfRestoring"],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": null,
+          "target": { "bounds": null, "id": "intro-tts", "kind": "tts" },
+          "type": "loadingItem"
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "intro-tts", "kind": "tts" },
+            "type": "playing"
+          },
+          [{ "type": "resetRateForTTS" }, { "type": "startPlayback" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/item-loaded-ignored-when-idle",
+      "covers": ["queue-state::testItemLoadedIgnoredWhenNotLoading"],
+      "call": "reduce",
+      "args": [{ "type": "idle" }, { "type": "itemLoaded" }],
+      "expect": {
+        "return": [
+          { "type": "idle" },
+          [
+            {
+              "message": "itemLoaded.ignored: unexpected in state idle",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/item-ended-no-next-ends-queue",
+      "covers": ["queue-state::testItemEndedWithNoNextItemEndsQueue"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        { "bridged": false, "next": null, "type": "itemEnded" }
+      ],
+      "expect": {
+        "return": [{ "type": "ended" }, [{ "message": "queue.ended", "type": "emitTelemetry" }]]
+      }
+    },
+    {
+      "id": "queue-state/item-ended-direct-cut",
+      "covers": ["queue-state::testItemEndedDirectCutLoadsNextEpisodeWithoutBridge"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        {
+          "bridged": false,
+          "next": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "itemEnded"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+              "type": "loadItem"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/item-ended-bridged",
+      "covers": [
+        "queue-state::testItemEndedBridgedEntersTransitioningAndPlaysTransitionTTSAtFullRate"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        {
+          "bridged": true,
+          "next": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "itemEnded"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "transitioning"
+          },
+          [{ "type": "resetRateForTTS" }, { "type": "playTransitionTTS" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/item-loaded-during-transitioning",
+      "covers": [
+        "queue-state::testItemLoadedDuringTransitioningStartsPlaybackWithoutChangingStateValue"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "transitioning"
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "transitioning"
+          },
+          [{ "type": "resetRateForTTS" }, { "type": "startPlayback" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/transitioning-item-ended-next",
+      "covers": ["queue-state::testItemEndedAfterTransitioningMovesToNextEpisodeAndRestoresRate"],
+      "call": "reduce",
+      "args": [
+        {
+          "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "transitioning"
+        },
+        {
+          "bridged": false,
+          "next": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "itemEnded"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            { "type": "restoreRate" },
+            {
+              "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+              "type": "loadItem"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/transitioning-item-ended-falls-back-to-to",
+      "covers": ["queue-state::testItemEndedAfterTransitioningFallsBackToQueuedToWhenNoNextGiven"],
+      "call": "reduce",
+      "args": [
+        {
+          "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "transitioning"
+        },
+        { "bridged": false, "next": null, "type": "itemEnded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            { "type": "restoreRate" },
+            {
+              "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+              "type": "loadItem"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/interruption-began-playing",
+      "covers": [
+        "queue-state::testInterruptionBeganWhilePlayingSavesPositionAndPauses",
+        "queue-state::testDeclinedCall_InterruptionEndsQuicklyWithShouldResume_ResumesPlayback",
+        "queue-state::testAnsweredCall_InterruptionEndsWithoutShouldResume_StaysPausedButReady",
+        "queue-state::testLongCall_PositionAndItemIdentityPreservedThroughoutInterruption"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        { "type": "interruptionBegan" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": true
+          },
+          [
+            { "type": "savePosition" },
+            { "type": "pausePlayback" },
+            { "message": "interruption.began", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/interruption-ended-resume",
+      "covers": [
+        "queue-state::testDeclinedCall_InterruptionEndsQuicklyWithShouldResume_ResumesPlayback",
+        "queue-state::testLongCall_PositionAndItemIdentityPreservedThroughoutInterruption"
+      ],
+      "note": "Chained: the input is interruption-began-playing's resulting state.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": true
+        },
+        { "shouldResume": true, "type": "interruptionEnded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+              "type": "loadItem"
+            },
+            { "message": "interruption.ended.resumed", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/resume-item-loaded",
+      "covers": [
+        "queue-state::testDeclinedCall_InterruptionEndsQuicklyWithShouldResume_ResumesPlayback",
+        "queue-state::testLongCall_PositionAndItemIdentityPreservedThroughoutInterruption"
+      ],
+      "note": "Chained: the input is interruption-ended-resume's resulting state (loadingItem, previous = the same item).",
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "playing"
+          },
+          [{ "type": "restoreRate" }, { "type": "startPlayback" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/interruption-began-transitioning",
+      "covers": [
+        "queue-state::testInterruptionDuringTransition_ResumeLandsOnUpcomingItemNotBridgeTTS"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "transitioning"
+        },
+        { "type": "interruptionBegan" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": true
+          },
+          [
+            { "type": "savePosition" },
+            { "type": "pausePlayback" },
+            {
+              "message": "interruption.began.duringTransition",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/interruption-ended-resume-after-bridge",
+      "covers": [
+        "queue-state::testInterruptionDuringTransition_ResumeLandsOnUpcomingItemNotBridgeTTS"
+      ],
+      "note": "Chained: the input is interruption-began-transitioning's resulting state — the UPCOMING item, never the bridge.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": true
+        },
+        { "shouldResume": true, "type": "interruptionEnded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+              "type": "loadItem"
+            },
+            { "message": "interruption.ended.resumed", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/resume-after-bridge-item-loaded",
+      "covers": [
+        "queue-state::testInterruptionDuringTransition_ResumeLandsOnUpcomingItemNotBridgeTTS"
+      ],
+      "note": "Chained: the input is interruption-ended-resume-after-bridge's resulting state.",
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "target": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "playing"
+          },
+          [{ "type": "restoreRate" }, { "type": "startPlayback" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/interruption-ended-stays-paused",
+      "covers": [
+        "queue-state::testAnsweredCall_InterruptionEndsWithoutShouldResume_StaysPausedButReady"
+      ],
+      "note": "Chained: the input is interruption-began-playing's resulting state.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": true
+        },
+        { "shouldResume": false, "type": "interruptionEnded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": false
+          },
+          [{ "message": "interruption.ended.staysPaused", "type": "emitTelemetry" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/manual-play-from-paused-but-ready",
+      "covers": [
+        "queue-state::testAnsweredCall_InterruptionEndsWithoutShouldResume_StaysPausedButReady"
+      ],
+      "note": "Chained: the input is interruption-ended-stays-paused's resulting state.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": false
+        },
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "play"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+              "type": "loadItem"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/interruption-began-during-load",
+      "covers": ["queue-state::testInterruptionBeganDuringLoadDoesNotPauseOrSavePosition"],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": null,
+          "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "type": "interruptionBegan" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": false
+          },
+          [{ "message": "interruption.began.duringLoad", "type": "emitTelemetry" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/interruption-began-idempotent",
+      "covers": ["queue-state::testInterruptionBeganIsIdempotent"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": true
+        },
+        { "type": "interruptionBegan" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": true
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/route-lost-while-playing",
+      "covers": ["queue-state::testRouteChangedOldDeviceUnavailableWhilePlayingPausesImmediately"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        { "oldDeviceUnavailable": true, "type": "routeChanged" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": true
+          },
+          [
+            { "type": "savePosition" },
+            { "type": "pausePlayback" },
+            { "message": "route.oldDeviceUnavailable.paused", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/route-lost-mid-transition",
+      "covers": ["queue-state::testRouteChangedMidTTSTransitionPausesAndTracksUpcomingItem"],
+      "call": "reduce",
+      "args": [
+        {
+          "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "transitioning"
+        },
+        { "oldDeviceUnavailable": true, "type": "routeChanged" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": true
+          },
+          [
+            { "type": "savePosition" },
+            { "type": "pausePlayback" },
+            {
+              "message": "route.oldDeviceUnavailable.pausedDuringTransition",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/route-available-does-not-resume",
+      "covers": ["queue-state::testRouteChangedNewDeviceAvailableDoesNotAutoResumeStateMachine"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": true
+        },
+        { "oldDeviceUnavailable": false, "type": "routeChanged" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": true
+          },
+          [{ "message": "route.changed.available", "type": "emitTelemetry" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/route-lost-during-load",
+      "covers": [
+        "queue-state::testRouteChangedOldDeviceUnavailableDuringLoadSuppressesSubsequentAutoPlay"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": null,
+          "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "oldDeviceUnavailable": true, "type": "routeChanged" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": false
+          },
+          [
+            {
+              "message": "route.oldDeviceUnavailable.duringLoad",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/stray-item-loaded-after-route-lost",
+      "covers": [
+        "queue-state::testRouteChangedOldDeviceUnavailableDuringLoadSuppressesSubsequentAutoPlay"
+      ],
+      "note": "Chained: the input is route-lost-during-load's resulting state. A late itemLoaded must not start audio into a dead route.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": false
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": false
+          },
+          [
+            {
+              "message": "itemLoaded.ignored: unexpected in state interrupted(episode-a, wasPlaying: false)",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/play-while-playing-other-forces-pause",
+      "covers": [
+        "queue-state::testPlayWhileAlreadyPlayingDifferentItemForcesPauseBeforeLoadingNew"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        {
+          "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "play"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            { "type": "pausePlayback" },
+            {
+              "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+              "type": "loadItem"
+            },
+            {
+              "message": "player.doubleEntryGuard: play(episode-b) while playing episode-a",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/play-same-item-while-playing-no-op",
+      "covers": ["queue-state::testPlaySameItemAlreadyPlayingIsNoOp"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "play"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "playing"
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/play-while-transitioning-forces-pause",
+      "covers": ["queue-state::testPlayWhileTransitioningForcesPauseBeforeLoadingNew"],
+      "call": "reduce",
+      "args": [
+        {
+          "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "transitioning"
+        },
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "play"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            { "type": "pausePlayback" },
+            {
+              "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+              "type": "loadItem"
+            },
+            {
+              "message": "player.doubleEntryGuard: play(episode-a) while transitioning to episode-b",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/skip-next-while-playing",
+      "covers": ["queue-state::testFastDoubleSkipToNextReplacesInFlightLoadWithoutStackingLoads"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        {
+          "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "skipToNext"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            { "type": "savePosition" },
+            { "type": "pausePlayback" },
+            {
+              "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+              "type": "loadItem"
+            },
+            { "message": "skip.next", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/second-skip-replaces-in-flight-load",
+      "covers": ["queue-state::testFastDoubleSkipToNextReplacesInFlightLoadWithoutStackingLoads"],
+      "note": "Chained: the input is skip-next-while-playing's resulting state. Exactly one loadItem, for episode-c.",
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "target": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        {
+          "item": { "bounds": null, "id": "episode-c", "kind": "episode" },
+          "type": "skipToNext"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-c", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": { "bounds": null, "id": "episode-c", "kind": "episode" },
+              "type": "loadItem"
+            },
+            {
+              "message": "skip.next.debounced.replacedInFlightLoad",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/double-skip-same-target-no-op",
+      "covers": ["queue-state::testDoubleSkipToSameInFlightTargetIsNoOp"],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "target": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        {
+          "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "skipToNext"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/skip-previous-no-target-restarts",
+      "covers": ["queue-state::testSkipToPreviousWithNoTargetRestartsCurrentItemInPlace"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        { "item": null, "type": "skipToPrevious" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            { "type": "savePosition" },
+            { "type": "pausePlayback" },
+            {
+              "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+              "type": "loadItem"
+            },
+            { "message": "skip.previous.restartInPlace", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/skip-next-no-target-ends-and-stops",
+      "covers": [
+        "queue-state::testSkipToNextWithNoTargetEndsQueue",
+        "queue-state::skipping past the end of a queue stops the audio, from every audible state"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        { "item": null, "type": "skipToNext" }
+      ],
+      "expect": {
+        "return": [
+          { "type": "ended" },
+          [
+            { "type": "savePosition" },
+            { "type": "pausePlayback" },
+            { "message": "skip.next.queueExhausted", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/skip-next-no-target-from-transitioning",
+      "covers": [
+        "queue-state::skipping past the end of a queue stops the audio, from every audible state"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "transitioning"
+        },
+        { "item": null, "type": "skipToNext" }
+      ],
+      "expect": {
+        "return": [
+          { "type": "ended" },
+          [
+            { "type": "savePosition" },
+            { "type": "pausePlayback" },
+            { "message": "skip.next.queueExhausted", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/skip-next-no-target-from-idle",
+      "covers": [
+        "queue-state::skipping past the end of a queue stops the audio, from every audible state"
+      ],
+      "call": "reduce",
+      "args": [{ "type": "idle" }, { "item": null, "type": "skipToNext" }],
+      "expect": {
+        "return": [
+          { "type": "ended" },
+          [{ "message": "skip.next.queueExhausted", "type": "emitTelemetry" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/skip-next-no-target-from-ended",
+      "covers": [
+        "queue-state::skipping past the end of a queue stops the audio, from every audible state"
+      ],
+      "call": "reduce",
+      "args": [{ "type": "ended" }, { "item": null, "type": "skipToNext" }],
+      "expect": {
+        "return": [
+          { "type": "ended" },
+          [{ "message": "skip.next.queueExhausted", "type": "emitTelemetry" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/skip-next-no-target-from-loading",
+      "covers": [
+        "queue-state::skipping past the end of a queue stops the audio, from every audible state"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": null,
+          "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "item": null, "type": "skipToNext" }
+      ],
+      "expect": {
+        "return": [
+          { "type": "ended" },
+          [{ "message": "skip.next.queueExhausted", "type": "emitTelemetry" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/skip-next-no-target-from-interrupted",
+      "covers": [
+        "queue-state::skipping past the end of a queue stops the audio, from every audible state"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": false
+        },
+        { "item": null, "type": "skipToNext" }
+      ],
+      "expect": {
+        "return": [
+          { "type": "ended" },
+          [{ "message": "skip.next.queueExhausted", "type": "emitTelemetry" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/skip-from-idle-is-fresh-play",
+      "covers": ["queue-state::testSkipFromIdleActsLikeFreshPlay"],
+      "call": "reduce",
+      "args": [
+        { "type": "idle" },
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "skipToNext"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": null,
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+              "type": "loadItem"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/stop-while-playing",
+      "covers": ["queue-state::testStopWhilePlayingSavesPositionAndReturnsToIdle"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        { "type": "stop" }
+      ],
+      "expect": {
+        "return": [
+          { "type": "idle" },
+          [
+            { "type": "savePosition" },
+            { "type": "pausePlayback" },
+            { "message": "player.stopped", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/stop-while-idle-no-op",
+      "covers": ["queue-state::testStopWhileIdleIsNoOp"],
+      "call": "reduce",
+      "args": [{ "type": "idle" }, { "type": "stop" }],
+      "expect": { "return": [{ "type": "idle" }, []] }
+    },
+    {
+      "id": "queue-state/stop-while-transitioning",
+      "covers": ["queue-state::testStopWhileTransitioningSavesPositionAndPauses"],
+      "call": "reduce",
+      "args": [
+        {
+          "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "transitioning"
+        },
+        { "type": "stop" }
+      ],
+      "expect": {
+        "return": [
+          { "type": "idle" },
+          [
+            { "type": "savePosition" },
+            { "type": "pausePlayback" },
+            { "message": "player.stopped", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/error-drops-to-idle",
+      "covers": ["queue-state::testErrorFromAnyStateDropsToIdleAndPauses"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        { "message": "missing file", "type": "error" }
+      ],
+      "expect": {
+        "return": [
+          { "type": "idle" },
+          [
+            { "type": "pausePlayback" },
+            { "message": "player.error: missing file", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/play-from-ended",
+      "covers": ["queue-state::testPlayFromEndedStartsFreshLoad"],
+      "call": "reduce",
+      "args": [
+        { "type": "ended" },
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "play"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": null,
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+              "type": "loadItem"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/element-resumed-from-interrupted",
+      "covers": [
+        "queue-state::elementResumed: interrupted -> playing, with NO audio effect (founder report 1, 2026-09-22)"
+      ],
+      "note": "2026-09-22 founder report 1: the element is already audible, so the only effect is telemetry — no startPlayback, no loadItem.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": true
+        },
+        { "type": "elementResumed" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "a", "kind": "episode" },
+            "type": "playing"
+          },
+          [{ "message": "reconcile.elementResumed", "type": "emitTelemetry" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/element-resumed-ignored-idle",
+      "covers": [
+        "queue-state::elementResumed changes nothing outside interrupted — a seam beat's paused element is on purpose"
+      ],
+      "call": "reduce",
+      "args": [{ "type": "idle" }, { "type": "elementResumed" }],
+      "expect": { "return": [{ "type": "idle" }, []] }
+    },
+    {
+      "id": "queue-state/element-resumed-ignored-ended",
+      "covers": [
+        "queue-state::elementResumed changes nothing outside interrupted — a seam beat's paused element is on purpose"
+      ],
+      "call": "reduce",
+      "args": [{ "type": "ended" }, { "type": "elementResumed" }],
+      "expect": { "return": [{ "type": "ended" }, []] }
+    },
+    {
+      "id": "queue-state/element-resumed-ignored-loading",
+      "covers": [
+        "queue-state::elementResumed changes nothing outside interrupted — a seam beat's paused element is on purpose"
+      ],
+      "note": "A seam beat is loadingItem with the element paused on purpose: an element event must not overrule it.",
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": null,
+          "target": { "bounds": null, "id": "a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "type": "elementResumed" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": null,
+            "target": { "bounds": null, "id": "a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/element-resumed-ignored-playing",
+      "covers": [
+        "queue-state::elementResumed changes nothing outside interrupted — a seam beat's paused element is on purpose"
+      ],
+      "call": "reduce",
+      "args": [
+        { "item": { "bounds": null, "id": "a", "kind": "episode" }, "type": "playing" },
+        { "type": "elementResumed" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "a", "kind": "episode" },
+            "type": "playing"
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/element-resumed-ignored-transitioning",
+      "covers": [
+        "queue-state::elementResumed changes nothing outside interrupted — a seam beat's paused element is on purpose"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "from": { "bounds": null, "id": "a", "kind": "episode" },
+          "to": { "bounds": null, "id": "b", "kind": "episode" },
+          "type": "transitioning"
+        },
+        { "type": "elementResumed" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "from": { "bounds": null, "id": "a", "kind": "episode" },
+            "to": { "bounds": null, "id": "b", "kind": "episode" },
+            "type": "transitioning"
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/seek-while-playing",
+      "covers": [
+        "queue-state::seek while playing saves the old position then seeks, state unchanged"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        { "precise": true, "seconds": 1830, "type": "seek" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "playing"
+          },
+          [
+            { "type": "savePosition" },
+            { "precise": true, "seconds": 1830, "type": "seekTo" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/seek-while-interrupted",
+      "covers": ["queue-state::seek while interrupted seeks without resuming playback"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": false
+        },
+        { "precise": false, "seconds": 90, "type": "seek" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": false
+          },
+          [
+            { "type": "savePosition" },
+            { "precise": false, "seconds": 90, "type": "seekTo" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/seek-during-load-queued",
+      "covers": [
+        "queue-state::seek during load is queued and applied on itemLoaded before playback starts",
+        "queue-state::a pending seek does not survive the load target being replaced"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": null,
+          "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "precise": true, "seconds": 4050, "type": "seek" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": { "precise": true, "seconds": 4050 },
+            "previous": null,
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/pending-seek-applied-before-start",
+      "covers": [
+        "queue-state::seek during load is queued and applied on itemLoaded before playback starts"
+      ],
+      "note": "Chained: the input is seek-during-load-queued's resulting state. The seekTo lands after the rate and before startPlayback.",
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": { "precise": true, "seconds": 4050 },
+          "previous": null,
+          "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "playing"
+          },
+          [
+            { "type": "restoreRate" },
+            { "precise": true, "seconds": 4050, "type": "seekTo" },
+            { "type": "startPlayback" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/first-seek-during-load",
+      "covers": [
+        "queue-state::a later seek during load replaces the earlier pending one (last wins)"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": null,
+          "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "precise": false, "seconds": 100, "type": "seek" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": { "precise": false, "seconds": 100 },
+            "previous": null,
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/later-seek-replaces-pending",
+      "covers": [
+        "queue-state::a later seek during load replaces the earlier pending one (last wins)"
+      ],
+      "note": "Chained: the input is first-seek-during-load's resulting state.",
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": { "precise": false, "seconds": 100 },
+          "previous": null,
+          "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "precise": true, "seconds": 200, "type": "seek" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": { "precise": true, "seconds": 200 },
+            "previous": null,
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/last-pending-seek-wins-on-load",
+      "covers": [
+        "queue-state::a later seek during load replaces the earlier pending one (last wins)"
+      ],
+      "note": "Chained: the input is later-seek-replaces-pending's resulting state. Exactly one seekTo, the later one.",
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": { "precise": true, "seconds": 200 },
+          "previous": null,
+          "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "playing"
+          },
+          [
+            { "type": "restoreRate" },
+            { "precise": true, "seconds": 200, "type": "seekTo" },
+            { "type": "startPlayback" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/pending-seek-dropped-on-new-target",
+      "covers": ["queue-state::a pending seek does not survive the load target being replaced"],
+      "note": "Chained: the input is seek-during-load-queued's resulting state. The new loadingItem carries pendingSeek null.",
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": { "precise": true, "seconds": 4050 },
+          "previous": null,
+          "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "loadingItem"
+        },
+        {
+          "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "skipToNext"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": null,
+            "target": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": { "bounds": null, "id": "episode-b", "kind": "episode" },
+              "type": "loadItem"
+            },
+            {
+              "message": "skip.next.debounced.replacedInFlightLoad",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/seek-rejected-idle",
+      "covers": ["queue-state::seek is rejected in idle, ended, and transitioning"],
+      "call": "reduce",
+      "args": [{ "type": "idle" }, { "precise": true, "seconds": 60, "type": "seek" }],
+      "expect": {
+        "return": [
+          { "type": "idle" },
+          [{ "reason": "cannot seek in state idle", "type": "seekRejected" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/seek-rejected-ended",
+      "covers": ["queue-state::seek is rejected in idle, ended, and transitioning"],
+      "call": "reduce",
+      "args": [{ "type": "ended" }, { "precise": true, "seconds": 60, "type": "seek" }],
+      "expect": {
+        "return": [
+          { "type": "ended" },
+          [{ "reason": "cannot seek in state ended", "type": "seekRejected" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/seek-rejected-transitioning",
+      "covers": ["queue-state::seek is rejected in idle, ended, and transitioning"],
+      "call": "reduce",
+      "args": [
+        {
+          "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+          "type": "transitioning"
+        },
+        { "precise": true, "seconds": 60, "type": "seek" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "from": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "to": { "bounds": null, "id": "episode-b", "kind": "episode" },
+            "type": "transitioning"
+          },
+          [
+            {
+              "reason": "cannot seek in state transitioning(episode-a -> episode-b)",
+              "type": "seekRejected"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/seek-precise-true-passes-through",
+      "covers": [
+        "queue-state::seek carries precise through unchanged — the reducer never decides it"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        { "precise": true, "seconds": 10, "type": "seek" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "playing"
+          },
+          [
+            { "type": "savePosition" },
+            { "precise": true, "seconds": 10, "type": "seekTo" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/seek-precise-false-passes-through",
+      "covers": [
+        "queue-state::seek carries precise through unchanged — the reducer never decides it"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        { "precise": false, "seconds": 10, "type": "seek" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "playing"
+          },
+          [
+            { "type": "savePosition" },
+            { "precise": false, "seconds": 10, "type": "seekTo" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/item-bounds-forward-slice",
+      "covers": [
+        "queue-state::itemBounds is the ONE definition of bounded: a real forward slice, or null"
+      ],
+      "call": "itemBounds",
+      "args": [{ "endSec": 60, "startSec": 10 }],
+      "expect": { "return": { "endSec": 60, "startSec": 10 } }
+    },
+    {
+      "id": "queue-state/item-bounds-negative-start-floors-to-zero",
+      "covers": [
+        "queue-state::itemBounds is the ONE definition of bounded: a real forward slice, or null"
+      ],
+      "call": "itemBounds",
+      "args": [{ "endSec": 60, "startSec": -5 }],
+      "expect": { "return": { "endSec": 60, "startSec": 0 } }
+    },
+    {
+      "id": "queue-state/item-bounds-null",
+      "covers": [
+        "queue-state::itemBounds is the ONE definition of bounded: a real forward slice, or null"
+      ],
+      "call": "itemBounds",
+      "args": [null],
+      "expect": { "return": null }
+    },
+    {
+      "id": "queue-state/item-bounds-empty-object",
+      "covers": [
+        "queue-state::itemBounds is the ONE definition of bounded: a real forward slice, or null"
+      ],
+      "call": "itemBounds",
+      "args": [{}],
+      "expect": { "return": null }
+    },
+    {
+      "id": "queue-state/item-bounds-undefined-end",
+      "covers": [
+        "queue-state::itemBounds is the ONE definition of bounded: a real forward slice, or null"
+      ],
+      "note": "endSec is PRESENT and undefined (the $undefined tag), as the JS test writes it.",
+      "call": "itemBounds",
+      "args": [{ "startSec": 0, "endSec": { "$undefined": true } }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "queue-state/item-bounds-start-only",
+      "covers": [
+        "queue-state::itemBounds is the ONE definition of bounded: a real forward slice, or null"
+      ],
+      "note": "A start with nothing to stop at is not a slice; it must not steal the saved-position path from an ordinary item.",
+      "call": "itemBounds",
+      "args": [{ "startSec": 640 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "queue-state/item-bounds-zero-length",
+      "covers": [
+        "queue-state::itemBounds is the ONE definition of bounded: a real forward slice, or null"
+      ],
+      "call": "itemBounds",
+      "args": [{ "endSec": 60, "startSec": 60 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "queue-state/item-bounds-backwards",
+      "covers": [
+        "queue-state::itemBounds is the ONE definition of bounded: a real forward slice, or null"
+      ],
+      "call": "itemBounds",
+      "args": [{ "endSec": 10, "startSec": 60 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "queue-state/item-bounds-nan-end",
+      "covers": [
+        "queue-state::itemBounds is the ONE definition of bounded: a real forward slice, or null"
+      ],
+      "call": "itemBounds",
+      "args": [{ "endSec": { "$num": "NaN" }, "startSec": 60 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "queue-state/item-bounds-infinite-end",
+      "covers": [
+        "queue-state::itemBounds is the ONE definition of bounded: a real forward slice, or null"
+      ],
+      "call": "itemBounds",
+      "args": [{ "endSec": { "$num": "Infinity" }, "startSec": 60 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "queue-state/bounded-item-arms-out-point",
+      "covers": [
+        "queue-state::a bounded item arms its out-point on itemLoaded, before anything is audible"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": null,
+          "target": {
+            "bounds": { "endSec": 210, "startSec": 100 },
+            "id": "foray#0",
+            "kind": "episode"
+          },
+          "type": "loadingItem"
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": {
+              "bounds": { "endSec": 210, "startSec": 100 },
+              "id": "foray#0",
+              "kind": "episode"
+            },
+            "type": "playing"
+          },
+          [
+            { "type": "restoreRate" },
+            { "seconds": 210, "type": "setOutPoint" },
+            { "type": "startPlayback" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/out-point-armed-after-in-point-seek",
+      "covers": [
+        "queue-state::the out-point is armed AFTER the in-point seek, never against 0:00"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": { "precise": true, "seconds": 100 },
+          "previous": null,
+          "target": {
+            "bounds": { "endSec": 210, "startSec": 100 },
+            "id": "foray#0",
+            "kind": "episode"
+          },
+          "type": "loadingItem"
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": {
+              "bounds": { "endSec": 210, "startSec": 100 },
+              "id": "foray#0",
+              "kind": "episode"
+            },
+            "type": "playing"
+          },
+          [
+            { "type": "restoreRate" },
+            { "precise": true, "seconds": 100, "type": "seekTo" },
+            { "seconds": 210, "type": "setOutPoint" },
+            { "type": "startPlayback" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/segment-end-is-an-ordinary-item-ended",
+      "covers": ["queue-state::the reducer has no way to be told an end was an out-point"],
+      "note": "The itemEnded event carries only next and bridged — there is no reason field in the input for a port to branch on, and a segment's end produces the same single loadItem a file's end does.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": {
+            "bounds": { "endSec": 210, "startSec": 100 },
+            "id": "foray#0",
+            "kind": "episode"
+          },
+          "type": "playing"
+        },
+        {
+          "bridged": false,
+          "next": {
+            "bounds": { "endSec": 512, "startSec": 400 },
+            "id": "foray#1",
+            "kind": "episode"
+          },
+          "type": "itemEnded"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": {
+              "bounds": { "endSec": 210, "startSec": 100 },
+              "id": "foray#0",
+              "kind": "episode"
+            },
+            "target": {
+              "bounds": { "endSec": 512, "startSec": 400 },
+              "id": "foray#1",
+              "kind": "episode"
+            },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": {
+                "bounds": { "endSec": 512, "startSec": 400 },
+                "id": "foray#1",
+                "kind": "episode"
+              },
+              "type": "loadItem"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/out-point-on-last-segment-ends",
+      "covers": [
+        "queue-state::an out-point on the last segment ends the session, with no chaining"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "item": {
+            "bounds": { "endSec": 512, "startSec": 400 },
+            "id": "foray#1",
+            "kind": "episode"
+          },
+          "type": "playing"
+        },
+        { "bridged": false, "next": null, "type": "itemEnded" }
+      ],
+      "expect": {
+        "return": [{ "type": "ended" }, [{ "message": "queue.ended", "type": "emitTelemetry" }]]
+      }
+    },
+    {
+      "id": "queue-state/two-slices-of-one-episode-differ",
+      "covers": ["queue-state::two slices of ONE episode are two different items"],
+      "note": "Same id, same kind, different bounds: identity includes the bounds (sameRef), so this loads — with the single-player pause — rather than no-opping.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": {
+            "bounds": { "endSec": 60, "startSec": 10 },
+            "id": "ep-x",
+            "kind": "episode"
+          },
+          "type": "playing"
+        },
+        {
+          "item": {
+            "bounds": { "endSec": 140, "startSec": 60 },
+            "id": "ep-x",
+            "kind": "episode"
+          },
+          "type": "play"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": {
+              "bounds": { "endSec": 60, "startSec": 10 },
+              "id": "ep-x",
+              "kind": "episode"
+            },
+            "target": {
+              "bounds": { "endSec": 140, "startSec": 60 },
+              "id": "ep-x",
+              "kind": "episode"
+            },
+            "type": "loadingItem"
+          },
+          [
+            { "type": "pausePlayback" },
+            {
+              "item": {
+                "bounds": { "endSec": 140, "startSec": 60 },
+                "id": "ep-x",
+                "kind": "episode"
+              },
+              "type": "loadItem"
+            },
+            {
+              "message": "player.doubleEntryGuard: play(ep-x) while playing ep-x",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/play-same-slice-idempotent",
+      "covers": ["queue-state::play is still idempotent for the very same slice"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": {
+            "bounds": { "endSec": 60, "startSec": 10 },
+            "id": "ep-x",
+            "kind": "episode"
+          },
+          "type": "playing"
+        },
+        {
+          "item": {
+            "bounds": { "endSec": 60, "startSec": 10 },
+            "id": "ep-x",
+            "kind": "episode"
+          },
+          "type": "play"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": {
+              "bounds": { "endSec": 60, "startSec": 10 },
+              "id": "ep-x",
+              "kind": "episode"
+            },
+            "type": "playing"
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/skip-to-other-slice-loads",
+      "covers": ["queue-state::the skip debounce distinguishes two slices of one episode"],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": null,
+          "target": {
+            "bounds": { "endSec": 60, "startSec": 10 },
+            "id": "ep-x",
+            "kind": "episode"
+          },
+          "type": "loadingItem"
+        },
+        {
+          "item": {
+            "bounds": { "endSec": 140, "startSec": 60 },
+            "id": "ep-x",
+            "kind": "episode"
+          },
+          "type": "skipToNext"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": null,
+            "target": {
+              "bounds": { "endSec": 140, "startSec": 60 },
+              "id": "ep-x",
+              "kind": "episode"
+            },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": {
+                "bounds": { "endSec": 140, "startSec": 60 },
+                "id": "ep-x",
+                "kind": "episode"
+              },
+              "type": "loadItem"
+            },
+            {
+              "message": "skip.next.debounced.replacedInFlightLoad",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/skip-to-same-slice-no-op",
+      "covers": ["queue-state::the skip debounce distinguishes two slices of one episode"],
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": null,
+          "target": {
+            "bounds": { "endSec": 60, "startSec": 10 },
+            "id": "ep-x",
+            "kind": "episode"
+          },
+          "type": "loadingItem"
+        },
+        {
+          "item": {
+            "bounds": { "endSec": 60, "startSec": 10 },
+            "id": "ep-x",
+            "kind": "episode"
+          },
+          "type": "skipToNext"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": null,
+            "target": {
+              "bounds": { "endSec": 60, "startSec": 10 },
+              "id": "ep-x",
+              "kind": "episode"
+            },
+            "type": "loadingItem"
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/segment-interruption-keeps-bounds",
+      "covers": ["queue-state::bounds survive an interruption and re-arm on resume"],
+      "call": "reduce",
+      "args": [
+        {
+          "item": {
+            "bounds": { "endSec": 210, "startSec": 100 },
+            "id": "foray#0",
+            "kind": "episode"
+          },
+          "type": "playing"
+        },
+        { "type": "interruptionBegan" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": {
+              "bounds": { "endSec": 210, "startSec": 100 },
+              "id": "foray#0",
+              "kind": "episode"
+            },
+            "type": "interrupted",
+            "wasPlaying": true
+          },
+          [
+            { "type": "savePosition" },
+            { "type": "pausePlayback" },
+            { "message": "interruption.began", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/segment-interruption-ended-resume",
+      "covers": ["queue-state::bounds survive an interruption and re-arm on resume"],
+      "note": "Chained: the input is segment-interruption-keeps-bounds's resulting state.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": {
+            "bounds": { "endSec": 210, "startSec": 100 },
+            "id": "foray#0",
+            "kind": "episode"
+          },
+          "type": "interrupted",
+          "wasPlaying": true
+        },
+        { "shouldResume": true, "type": "interruptionEnded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": {
+              "bounds": { "endSec": 210, "startSec": 100 },
+              "id": "foray#0",
+              "kind": "episode"
+            },
+            "target": {
+              "bounds": { "endSec": 210, "startSec": 100 },
+              "id": "foray#0",
+              "kind": "episode"
+            },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": {
+                "bounds": { "endSec": 210, "startSec": 100 },
+                "id": "foray#0",
+                "kind": "episode"
+              },
+              "type": "loadItem"
+            },
+            { "message": "interruption.ended.resumed", "type": "emitTelemetry" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/segment-resume-re-arms-out-point",
+      "covers": ["queue-state::bounds survive an interruption and re-arm on resume"],
+      "note": "Chained: the input is segment-interruption-ended-resume's resulting state.",
+      "call": "reduce",
+      "args": [
+        {
+          "pendingSeek": null,
+          "previous": {
+            "bounds": { "endSec": 210, "startSec": 100 },
+            "id": "foray#0",
+            "kind": "episode"
+          },
+          "target": {
+            "bounds": { "endSec": 210, "startSec": 100 },
+            "id": "foray#0",
+            "kind": "episode"
+          },
+          "type": "loadingItem"
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": {
+              "bounds": { "endSec": 210, "startSec": 100 },
+              "id": "foray#0",
+              "kind": "episode"
+            },
+            "type": "playing"
+          },
+          [
+            { "type": "restoreRate" },
+            { "seconds": 210, "type": "setOutPoint" },
+            { "type": "startPlayback" }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/telemetry-names-segment-slice",
+      "covers": [
+        "queue-state::a segment names its slice in telemetry; an episode still names only itself"
+      ],
+      "note": "Telemetry strings are byte-identical across the port (NE-07s): a segment reads id[start-end], rounded.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": {
+            "bounds": { "endSec": 210, "startSec": 100 },
+            "id": "foray#0",
+            "kind": "episode"
+          },
+          "type": "playing"
+        },
+        { "shouldResume": true, "type": "interruptionEnded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": {
+              "bounds": { "endSec": 210, "startSec": 100 },
+              "id": "foray#0",
+              "kind": "episode"
+            },
+            "type": "playing"
+          },
+          [
+            {
+              "message": "interruptionEnded.ignored: unexpected in state playing(foray#0[100-210])",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/telemetry-names-bare-episode",
+      "covers": [
+        "queue-state::a segment names its slice in telemetry; an episode still names only itself"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "playing"
+        },
+        { "shouldResume": true, "type": "interruptionEnded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "playing"
+          },
+          [
+            {
+              "message": "interruptionEnded.ignored: unexpected in state playing(episode-a)",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/seek-inside-segment-is-ordinary",
+      "covers": [
+        "queue-state::seeking inside a segment is an ordinary seek — no new reducer path"
+      ],
+      "call": "reduce",
+      "args": [
+        {
+          "item": {
+            "bounds": { "endSec": 210, "startSec": 100 },
+            "id": "foray#0",
+            "kind": "episode"
+          },
+          "type": "playing"
+        },
+        { "precise": true, "seconds": 150, "type": "seek" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": {
+              "bounds": { "endSec": 210, "startSec": 100 },
+              "id": "foray#0",
+              "kind": "episode"
+            },
+            "type": "playing"
+          },
+          [
+            { "type": "savePosition" },
+            { "precise": true, "seconds": 150, "type": "seekTo" }
+          ]
+        ]
+      }
+    }
+  ]
+}

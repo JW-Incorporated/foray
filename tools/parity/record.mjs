@@ -225,6 +225,21 @@ export async function record({ root = REPO_ROOT, family = null, portCard = null,
   const pending = { ...data.pending };
   for (const id of affected) pending[id] = portCard;
   const manifest = computeManifest(root);
+  // A --family run records ONE family, so it may only vouch for that one. The
+  // manifest is what the next run reads as "already recorded" (knownIds above),
+  // and an authored case is only handed to swift-pending the first time it is
+  // NOT known — so writing another family's unrecorded ids in here made them
+  // look recorded, and that family's own run then left its authored cases out
+  // of swift-pending (found by NE-07j: recording queue-state first dropped the
+  // four authored rate cases). Every other family keeps the entry it had, or
+  // stays absent, and --check keeps saying "record it" until someone does.
+  if (family) {
+    for (const f of Object.keys(manifest.families)) {
+      if (f === family) continue;
+      if (data.manifest.families?.[f]) manifest.families[f] = data.manifest.families[f];
+      else delete manifest.families[f];
+    }
+  }
   const liveIds = new Set(Object.values(manifest.families).flatMap((f) => f.ids));
   for (const id of Object.keys(pending)) {
     if (!id.startsWith("//") && !liveIds.has(id)) {

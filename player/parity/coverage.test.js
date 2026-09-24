@@ -45,14 +45,17 @@ test("a new, unmapped test() in a covered suite turns the guard red and names it
     fs.mkdirSync(path.join(root, "player"), { recursive: true });
     const src = fs.readFileSync(path.join(REPO_ROOT, "player", "seam-gap.test.js"), "utf8");
     fs.writeFileSync(path.join(root, "player", "seam-gap.test.js"), src);
-    // Only seam-gap is on the scratch disk, so only seam-gap's entries are read.
-    const seamOnly = { ...DATA, unported: {}, xctest: {} };
+    // Only seam-gap is on the scratch disk, so only seam-gap's entries are read:
+    // its exclusions and its family's cases. Every other family's covers[] would
+    // name a suite this disk does not hold (NE-07j added the first two).
+    const seamOnly = { ...DATA, unported: {}, xctest: {}, exclusions: { "seam-gap": DATA.exclusions["seam-gap"] } };
+    const seamFixtures = FIXTURES.filter((f) => f.family === "seam-gap");
     const suites = { "seam-gap": readCoveredSuites(root)["seam-gap"] };
-    const before = classify(root, seamOnly, FIXTURES, suites).problems;
+    const before = classify(root, seamOnly, seamFixtures, suites).problems;
     assert.deepStrictEqual(before, [], "the scratch copy starts clean");
 
     fs.writeFileSync(path.join(root, "player", "seam-gap.test.js"), src + '\ntest("a brand-new seam rule", () => {});\n');
-    const after = classify(root, seamOnly, FIXTURES, { "seam-gap": readCoveredSuites(root)["seam-gap"] }).problems;
+    const after = classify(root, seamOnly, seamFixtures, { "seam-gap": readCoveredSuites(root)["seam-gap"] }).problems;
     assert.equal(after.length, 1, after.join("\n"));
     assert.match(after[0], /"a brand-new seam rule" is in no case's covers\[\]/);
   } finally {
@@ -100,6 +103,36 @@ test("the fifteen covered suites are the plan's fifteen, and each not-yet-writte
   for (const [stem, cfg] of Object.entries(COVERED_SUITES)) {
     assert.match(cfg.card, CARD_RE, stem);
     if (cfg.awaiting) assert.match(cfg.awaiting, CARD_RE, stem);
+  }
+});
+
+/** Suites whose recording card has landed: stem -> the family its tests were
+    recorded into, and the card that did it. Such a suite is DONE on the JS
+    side, so from then on it owes nothing — a new test() in it is fixtured (or
+    excluded) in the same PR, which is plan §6's rule-change discipline (JS,
+    re-record, then Swift), not parked in unported.json where the port card
+    has already been and gone. Each j card appends its suites here. */
+const RECORDED_SUITES = Object.freeze({
+  "queue-state": { family: "queue-state", card: "NE-07j" },
+  "playback-rate": { family: "rate", card: "NE-07j" },
+});
+
+test("a suite whose recording card has landed owes nothing, and is fixtured into its own family only", () => {
+  // NE-07j's acceptance: zero unported entries for queue-state and
+  // playback-rate. MUTATION: move one queue-state test from its case's covers[]
+  // back into unported.json -> red; add a covers[] entry for a queue-state test
+  // to a seam-gap case -> red (a reducer rule the rate or seam port would
+  // silently own instead of NE-07s).
+  const { status } = classify(REPO_ROOT, DATA, FIXTURES);
+  for (const [stem, { family, card }] of Object.entries(RECORDED_SUITES)) {
+    assert.ok(stem in COVERED_SUITES, `${stem} is not a covered suite`);
+    assert.deepStrictEqual(Object.keys(DATA.unported[stem] ?? {}), [], `${stem} was recorded by ${card} and may owe nothing`);
+    const names = Object.entries(status[stem]);
+    assert.ok(names.length > 0, `${stem} has no tests on disk`);
+    for (const [name, st] of names) {
+      assert.ok(st.covered.length > 0 || st.excluded, `${stem} :: ${JSON.stringify(name)} is neither fixtured nor excluded`);
+      for (const id of st.covered) assert.ok(id.startsWith(`${family}/`), `${stem} :: ${JSON.stringify(name)} is covered by ${id}, outside the ${family} family`);
+    }
   }
 });
 
