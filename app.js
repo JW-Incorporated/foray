@@ -12259,7 +12259,7 @@ function bindStripZoomScrub(r, player, commit = null) {
    this page that has to move continuously, and the reason it is painted above
    `paintForay`'s segment-change guard.
 
-   It also makes the seam beat visible: for the 2.0 s between two segments the
+   It also makes the seam beat visible: for the 0.5 s between two segments the
    fill sits still at a boundary, so the pause you hear is a pause you can see.
 
    Which bar to fill comes from the CLOCK, not from the caller's index: the two
@@ -12787,7 +12787,7 @@ function paintForay(s) {
     //
     // A seam beat is a FOURTH, and it reads as playing: the Foray is running,
     // it is between two segments on purpose, and the button has to mean "stop"
-    // for the two seconds the silence lasts. Labelling those two seconds
+    // for the half second the silence lasts. Labelling that half second
     // "Loading…" would be the app apologising for its own edit.
     //
     // `s.running` FIRST (audit 2026-09-22): it is the player's
@@ -12813,7 +12813,7 @@ function paintForay(s) {
       : ["▶ Play", "Play"];
     setControlLabel(playBtn, text, name);
   }
-  // The beat, for CSS: the strip holds still at a boundary for 2.0 s and this
+  // The beat, for CSS: the strip holds still at a boundary for 0.5 s and this
   // is how a stylesheet can say so without the page inventing new copy.
   $("#fy-strip")?.classList.toggle("is-seam", Boolean(s.gap));
   /* Whether anybody is IN this Foray, for CSS. Without it the strip has no way

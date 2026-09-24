@@ -3,6 +3,7 @@
 <!-- ha-format: 2. Machine record: nothing here needs you. One line per item, newest first.
      Full bodies are in git history. Numbers here are never reused. -->
 
+- #3 · 2026-09-24 · done · Reconcile the two silence numbers: 0.5 s in the brief, 2.0 s in the rules — "Wyatt, 2026-09-24: '0.5s and assume 1x speed'. The silence at an unbridged seam is 0.5 s, one number in both specs: player/seam-gap.js SEAM_GAP_SEC 2.0 -> 0.5, 04_VOICE_AUDIO_SPEC.md line 12 and segment-length-rules.md §0/§6b agree. Recorded in docs/DECISIONS.md 2026-09-24." · by founder
 - #108 · 2026-09-24 · done · One more car trip — the record can finally answer the question — "Taken 2026-09-24 on build 2026092429: both car tests failed (Spotify on connect; Spotify after a long pause). Record and analysis in docs/field-records/2026-09-24-car-baseline.md; it is the baseline NE-27 is judged against." · by founder
 - #2 · 2026-09-24 · skip · Listen to Foray #1 end to end, then decide whether to publish it — "Wyatt, 2026-09-24, answering the round-2 decision list: 'Drop it'. Foray #1 was retired in PR #741 and the ask is dropped for its successor too. Recorded in docs/DECISIONS.md 2026-09-24." · by founder
 - #107 · 2026-09-21 · done · Cut a release build, or the merged fixes never reach your phone — "Claude cut it: run 35616351870, v1.0.0 build 2026092121, uploaded to both App Store and Play. The founder deleted the approval rule that had made this a human action." · by founder

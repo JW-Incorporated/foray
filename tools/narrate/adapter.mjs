@@ -54,8 +54,9 @@ export const DEFAULT_OUTPUT_FORMAT = "mp3_44100_64";
  *  it without an import cycle back from `projection.mjs`, which already
  *  imports `costOf` from this file) and re-exported here for callers that
  *  only import from `adapter.mjs`. Mirrors `projection.mjs`'s
- *  `BUDGETS.padSecPerItem`. `HUMAN-ACTIONS.md` #3 still has the actual value
- *  as an open founder decision — this is only the fallback used when no
+ *  `BUDGETS.padSecPerItem`: 0.5 s each side, the brief's ~0.5 s, which the
+ *  founder's 2026-09-24 ruling (*"0.5s"*, closing `HUMAN-ACTIONS.md` #3)
+ *  confirmed as the one silence number — this is the fallback used when no
  *  caller overrides it (and, per the guard in `createAdapter()` below, no
  *  caller may override it with anything else until padding synthesis
  *  exists). */
@@ -146,8 +147,8 @@ export function createAdapter(opts = {}) {
 
   /* Padding is NOT YET baked into any returned audio anywhere in this module —
      `docs/narrator-pipeline.md` §1 item 4 records that as still unimplemented,
-     with the actual value itself still an open founder decision
-     (`HUMAN-ACTIONS.md` #3). Until that synthesis step exists, a caller
+     (the value is settled: 0.5 s each side, founder 2026-09-24, closing
+     `HUMAN-ACTIONS.md` #3). Until that synthesis step exists, a caller
      passing anything other than the default would force a cache miss (and a
      real, billed re-generation) for audio bytes that are IDENTICAL to what is
      already cached — the exact waste `cache.mjs`'s header calls Leak 2 in

@@ -24,14 +24,20 @@ shipped file disagree on the manifest's `deploy_id`, the `BUILD_ID` line and the
 pointer's `version`. No committed encoding of a content hash avoids that, and
 GitHub's merge does not run custom `.gitattributes` merge drivers.
 
-**`built_at` is the built commit's committer date** (`buildTimestamp`;
-`SOURCE_DATE_EPOCH` overrides; the clock is the last resort). It moves forward with
-`main`, two builds of one commit agree byte for byte, and a revert — a new commit —
-is newer by construction, which retires the merge-base floor added for audit
-finding C (2026-09-12).
+**`built_at` is the committer date of the newest first-parent commit that touched a
+stamp input** (`stampTimestamp`: every hashed file, the directory files, the stamp
+modules; `SOURCE_DATE_EPOCH` overrides; the clock is the last resort). It is not
+HEAD's date. Vercel skips commits that touch nothing it serves, and releases build
+from exactly those commits, so a HEAD-dated seed would outrank the live pointer and
+phones would refuse it as OLDER (PR #795 review, finding 1). It moves forward with
+`main`, every stamper of the same content agrees byte for byte, and a revert (a new
+commit that touches the inputs) is newer by construction. That retires the
+merge-base floor added for audit finding C (2026-09-12). A shallow clone can only
+answer late, so a seed built from one ships without a pointer. The mobile-build and
+Pages checkouts fetch full blobless history.
 
 **What it costs, stated.** (1) Pages needs its source switched to "GitHub Actions"
-(HUMAN-ACTIONS #110; production infra, so a human flips it). Until then Pages serves
+(HUMAN-ACTIONS #110; production infra, so a human flips it). Until then the `pages` run skips its deploy with a warning (a red run would hold every app release) and Pages serves
 `main` without a manifest: the worker never installs a new generation, pages still
 load current code online. (2) A local site build is `node tools/web/prepare-dist.mjs`,
 and a plain static server on the repo root no longer gets a working service worker.
@@ -39,6 +45,86 @@ and a plain static server on the repo root no longer gets a working service work
 unversioned seed pointer (a printed warning), rather than a wrong one; CI and
 release runners are LF. (4) `data-and-site` now also runs `prepare-dist.mjs` so a PR
 that would break the Vercel build is red before merge.
+
+## 2026-09-24 (seam silence is 0.5 s; iOS narration 1x stays Apple's default rate)
+
+Wyatt, verbatim: **"0.5s and assume 1x speed"**. It answers two questions put
+to him the same day.
+
+1. **"0.5s": the silence at an unbridged seam is 0.5 s.** This closes
+   `HUMAN-ACTIONS.md` #3 ("Reconcile the two silence numbers: 0.5 s in the
+   brief, 2.0 s in the rules"). `docs/brief/04_VOICE_AUDIO_SPEC.md` line 12
+   gave ~0.5 s of padding around TTS items, and
+   `docs/curation/segment-length-rules.md` §6b asked for ≥ 2.0 s at an
+   unbridged seam (the audiobook section-break convention), which is what the
+   player shipped. The founder chose one number, 0.5 s. No separate
+   "authored 2.0 s between two voices" rule survives: that 2.0 s was this rule.
+   - `player/seam-gap.js` `SEAM_GAP_SEC` goes from 2.0 to 0.5. It is still wall
+     clock between two loads, never silence added to an episode file (product
+     principle 3), and still does not scale with playback speed.
+   - Both specs now give the same answer. `04_VOICE_AUDIO_SPEC.md` line 12 says
+     an unbridged seam gets 0.5 s. `segment-length-rules.md` §0, §2e, §6b and
+     M5 say 0.5 s, and the "does not decide" bullet in §10 is deleted.
+   - The TTS padding was already ~0.5 s each side and does not change
+     (`tools/narrate` `padSecPerItem` = 1.0 per item).
+   - **What a listener hears is `max(0.5 s, load)`, and today it is usually
+     the load.** The manager spends the beat and the next segment's load in
+     parallel. The warm path that was meant to take the load off the boundary
+     (`html-audio-backend.js` §"prefetch") is parked: `prefetch` defaults to
+     false and `player/client.js` does not turn it on. At 2.0 s the beat hid a
+     typical foreground cross-episode load (~0.5-2 s), so the pause was a steady
+     2 s. At 0.5 s the load is longer at most cross-episode seams, so the pause
+     there is load-length and varies with the network. Only a same-file seam
+     or a fast load sounds like 0.5 s. That stays true until the warm path is
+     re-enabled.
+   - JS is the reference for the native engine (`docs/native-engine-plan.md`
+     §6). No parity fixture on `main` records the beat. **`engine/m1` still pins
+     2.0 s and needs a companion change in the merge that brings this in**; it
+     does not pick the value up by itself:
+     - `player/parity/fixtures/seam-gap/seam-gap.json`: the authored case
+       `seam-gap/rule-is-2.0s` expects `SEAM_GAP_SEC` 2 and is never
+       overwritten by the recorder. Rename it `seam-gap/rule-is-0.5s` and
+       expect 0.5.
+     - Swift: `SeamGap.defaultGapSec` (`Policy/SeamGap.swift`) and
+       `EngineConstants.SeamGap.seamGapSec` go to 0.5, and
+       `ParityHarnessTests.swift`'s `XCTAssertEqual(SeamGap.defaultGapSec, 2.0)`
+       follows.
+     - Parity coverage is keyed on JS test names, and this change renamed
+       seven of them. Rename the keys in `covers[]` and `unported.json`:
+       - seam-gap: "the merged rule is 2.0 s, not 04_VOICE_AUDIO_SPEC's 0.5 s"
+         -> "the seam silence is the founder's 0.5 s — one number in both specs"
+       - media-session: "THE SEAM BEAT REPORTS PLAYING — 2.0 s of authored
+         silence is not a pause" -> "… — 0.5 s of authored silence is not a
+         pause"
+       - "the beats cost about a minute of the Foray, and cost no audio at all"
+         -> "the beats cost a bounded share of the Foray, and cost no audio at
+         all"
+       - "the seam beat stays 2.0 s of WALL clock at 2x — it does not scale
+         with speed" -> "the seam beat stays SEAM_GAP_SEC of WALL clock at 2x —
+         it does not scale with speed"
+       - "a jingle that cannot start leaves the seam its ordinary 2.0 s beat"
+         -> "a jingle that cannot start leaves the seam its ordinary beat"
+       - "a warmed seam is the 2.0 s beat; an unwarmed one is the load —
+         measured on the virtual clock" -> "a warmed seam is the beat; an
+         unwarmed one is the load — measured on the virtual clock"
+       - "an unbridged segment-to-segment seam holds 2.0 s before the next
+         segment is audible" -> "an unbridged segment-to-segment seam holds the
+         full beat before the next segment is audible"
+       Without these, `record.mjs --check` fails on the authored case and
+       `coverage.js` reports the new names as uncovered and the old keys as
+       unknown.
+   - The iOS CI probe's `SEAM_ASKED_MS` follows the constant to 500 ms. Its
+     "a beat observed below this did not happen" floor
+     (`SEAM_MIN_PLAUSIBLE_MS`) drops from 500 ms to 250 ms, half the beat.
+     Otherwise a beat that fires on time would be read as one that never ran.
+2. **"assume 1x speed": on iOS, synthesized narration at 1x stays at
+   `AVSpeechUtteranceDefaultSpeechRate` (0.5).** The question was whether to
+   move it to an estimated ~0.58, to make up for the earlier "1x felt like 0.6x"
+   report. It does not move, and no code changes. This is recorded in
+   `mobile/plugins/foray-tts/README.md`, in the `utteranceRate` doc comment in
+   `ForayTtsPlugin.swift` (anchor 1), and in `docs/native-engine-plan.md`'s OQ-3
+   row. The ~0.58 is an unmeasured estimate that is not in effect. Moving it
+   needs a new ruling.
 
 ## 2026-09-24 (founder rulings on the round-2 decision list, PR #749)
 

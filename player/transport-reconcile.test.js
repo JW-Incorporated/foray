@@ -484,7 +484,7 @@ test("a transition in flight is not a lie: reconciling mid-effect cannot stop a 
 
 test("A LOAD IN FLIGHT IS NOT AN EXTERNAL STOP: a seam must survive being reconciled", async () => {
   /* `loadingItem` with a paused element is the ordinary shape of every seam in
-     the hour — including the 2.0 s authored beat, where the silence IS the
+     the hour — including the 0.5 s authored beat, where the silence IS the
      product — so a reconcile that fired on it would turn each of the 21 seams in
      `capital-types-1` into an interruption. And this is exactly when it would
      fire: bringing the app back to the foreground mid-seam is a listener
