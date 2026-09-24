@@ -131,8 +131,28 @@ test("Android: writes are atomic and a storage error rejects the call", () => {
   assert.match(vault, /file\.startWrite\(\)/);
   assert.match(vault, /file\.finishWrite\(out\)/);
   assert.match(vault, /file\.failWrite\(out\)/);
-  const rejects = (javaPlugin().match(/call\.reject\("ForayVault\.[a-z]+ failed: "/g) || []).length;
+  const plugin = javaPlugin();
+  const rejects = (plugin.match(/call\.reject\(failure\("(keys|get|set|remove)", e\)\);/g) || []).length;
   assert.equal(rejects, 4);
+  assert.match(plugin, /return "ForayVault\." \+ method \+ " failed: " \+ e\.getClass\(\)\.getSimpleName\(\);/);
+});
+
+test("Android: a storage error's MESSAGE never leaves the plugin (it can quote the token file)", () => {
+  /* org.json's JSONException ends with " at character N of <entire input>",
+     and the input is foray-vault.json. The web half keeps a rejection's text in
+     cp_storage_health (backed up) and logs it. MUTATION: reject with
+     `"..." + e.getMessage()`, or pass `e` to reject (Capacitor logs it) -> the
+     token can reach a backup or logcat. Review, 2026-09-24. */
+  const plugin = javaPlugin();
+  assert.doesNotMatch(plugin, /getMessage\(\)|getLocalizedMessage\(\)|toString\(\)|printStackTrace/);
+  /* Every rejection is a fixed literal or `failure(method, e)`: nothing else
+     reaches `reject`, so neither the message nor the exception can. */
+  const calls = [...plugin.matchAll(/call\.reject\(([^;]*)\);/g)].map((m) => m[1]);
+  assert.equal(calls.length, 7, "four storage errors and three missing-argument refusals");
+  for (const args of calls) {
+    assert.match(args, /^(failure\("(keys|get|set|remove)", e\)|"[^"+]*")$/, `reject(${args}) can carry the exception`);
+  }
+  assert.doesNotMatch(javaVault(), /getMessage\(\)|Log\.[a-z]\(/);
 });
 
 test("Android: the module depends on capacitor-android and nothing else", () => {

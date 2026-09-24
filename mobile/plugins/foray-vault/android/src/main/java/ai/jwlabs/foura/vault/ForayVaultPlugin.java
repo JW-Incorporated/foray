@@ -40,6 +40,18 @@ public class ForayVaultPlugin extends Plugin {
         vault = new DeviceOnlyVault(new File(getContext().getNoBackupFilesDir(), FILE_NAME));
     }
 
+    /**
+     * The rejection text for a storage error: the call and the exception's
+     * CLASS, never its message, and the exception itself is not handed to
+     * {@code reject} (which would log it). {@code org.json}'s parse error ends
+     * with the whole input it failed on, which here is the token file, and the
+     * web half keeps this text in {@code cp_storage_health} (a backed-up tier)
+     * and logs it. Review, 2026-09-24.
+     */
+    static String failure(String method, Exception e) {
+        return "ForayVault." + method + " failed: " + e.getClass().getSimpleName();
+    }
+
     @PluginMethod
     public void keys(PluginCall call) {
         try {
@@ -49,7 +61,7 @@ public class ForayVaultPlugin extends Plugin {
             ret.put("keys", keys);
             call.resolve(ret);
         } catch (Exception e) {
-            call.reject("ForayVault.keys failed: " + e.getMessage(), e);
+            call.reject(failure("keys", e));
         }
     }
 
@@ -66,7 +78,7 @@ public class ForayVaultPlugin extends Plugin {
             ret.put("value", value == null ? JSONObject.NULL : value);
             call.resolve(ret);
         } catch (Exception e) {
-            call.reject("ForayVault.get failed: " + e.getMessage(), e);
+            call.reject(failure("get", e));
         }
     }
 
@@ -82,7 +94,7 @@ public class ForayVaultPlugin extends Plugin {
             vault.set(key, value);
             call.resolve();
         } catch (Exception e) {
-            call.reject("ForayVault.set failed: " + e.getMessage(), e);
+            call.reject(failure("set", e));
         }
     }
 
@@ -97,7 +109,7 @@ public class ForayVaultPlugin extends Plugin {
             vault.remove(key);
             call.resolve();
         } catch (Exception e) {
-            call.reject("ForayVault.remove failed: " + e.getMessage(), e);
+            call.reject(failure("remove", e));
         }
     }
 }
