@@ -1110,7 +1110,7 @@ test("identityKey ignores the playhead and nothing else", () => {
     ["canPlay", false], ["canPause", false], ["canStop", false],
     ["hasNext", false], ["hasPrevious", false],
     ["canSeekBack", false], ["canSeekForward", false], ["canSeekTo", false],
-    ["seekBackMs", 1], ["seekForwardMs", 1],
+    ["seekBackMs", 1], ["seekForwardMs", 1], ["stalled", true],
   ]) {
     assert.notEqual(
       identityKey({ ...base, [field]: value }), identityKey(base),
@@ -1457,6 +1457,78 @@ test("A SINGLE EPISODE GETS NO SKIP BUTTONS, THROUGH THE REAL PLAYER", async () 
   assert.equal(last().hasNext, false);
   assert.equal(last().hasPrevious, false);
   assert.equal(last().canPlay, true);
+});
+
+test("A NETWORK STALL REACHES NATIVE AS A STALL, THROUGH THE REAL PLAYER (p-car-8)", async () => {
+  /* Audit round 2, p-car-8, the native half. `media-session.js` reports a stall as
+     rate 0 with the state still playing, and this file's clamp turned the 0 into 1 —
+     so the car counted on over silence. The stall now travels as `stalled` (iOS
+     writes rate 0, Android reports BUFFERING), is part of the identity so it is sent
+     at once, and a seam — the authored beat — is never one.
+     MUTATION: `const stalled = false` in `nowPlayingPayload` -> red. */
+  const { session, nav, last, turn } = setup();
+  session.install();
+  const media = createMediaSession({ nav, MediaMetadata: null });
+  const view = {
+    item: { title: "One episode", show: "A show" }, forayTitle: "", index: 0, total: 0,
+    durationSec: 1800, positionSec: 600, playbackRate: 1.5, playing: true,
+  };
+  media.update(mediaSessionView(view));
+  await turn();
+  assert.equal(last().state, "playing");
+  assert.equal(last().stalled, false);
+  assert.equal(last().playbackRate, 1.5);
+
+  media.update(mediaSessionView({ ...view, buffering: true }));
+  await turn();
+  assert.equal(last().state, "playing", "a stall is not a pause: the controls still say pause");
+  assert.equal(last().stalled, true, "the stall never reached native, so the car's clock ran on");
+  assert.ok(last().playbackRate > 0, "no zero speed reaches Media3");
+
+  media.update(mediaSessionView(view));
+  await turn();
+  assert.equal(last().stalled, false, "the clock runs again when the audio does");
+
+  media.update(mediaSessionView({ ...view, playing: false, inSeamGap: true }));
+  await turn();
+  assert.equal(last().state, "playing");
+  assert.equal(last().stalled, false, "the seam beat is authored silence, not a stall");
+});
+
+test("A FINISHED ORDINARY EPISODE KEEPS THE SHELL'S SERVICE; A FINISHED FORAY DOES NOT (native-1)", async () => {
+  /* native-1 (round-2 verdict: uncertain, latent) said continuous playback on
+     Android tore the foreground service down at every episode boundary: the
+     `ended` report arrived before the next episode's play, `ended` is not
+     transportable, and `setMediaLoaded(false)` stops at once, with no settle
+     window. It was latent only because nothing repainted at a natural end —
+     and player-1 (this round) made that repaint happen. What keeps it closed
+     is p-car-6: a finished ORDINARY episode reports PAUSED, so the service's
+     loaded flag never drops between one episode and the next, and the chain's
+     play finds the service up. A finished Foray (which chains nothing) still
+     reports none and still releases it. This pins the two rules together.
+     MUTATION: make `mediaPlaybackState` return NONE for any `ended` -> red. */
+  const { session, nav, loaded, last, turn } = setup();
+  session.install();
+  const media = createMediaSession({ nav, MediaMetadata: null });
+  const episode = {
+    item: { title: "Episode one", show: "A show" }, forayTitle: "", index: 0, total: 0,
+    durationSec: 1800, positionSec: 1799, playbackRate: 1, playing: true,
+  };
+  media.update(mediaSessionView(episode));
+  await turn();
+  assert.deepEqual(loaded, [true]);
+  media.update(mediaSessionView({ ...episode, playing: false, ended: true, positionSec: 1800 }));
+  await turn();
+  assert.equal(last().state, "paused", "a finished episode is described as paused");
+  assert.deepEqual(loaded, [true], "the episode's end released the service before continuous playback's next play");
+
+  const foray = { ...episode, forayTitle: "A Foray", index: 1, total: 2, foray: true };
+  media.update(mediaSessionView(foray));
+  await turn();
+  media.update(mediaSessionView({ ...foray, playing: false, ended: true }));
+  await turn();
+  assert.equal(last().state, "ended");
+  assert.deepEqual(loaded, [true, false], "a finished Foray still lets the service go");
 });
 
 test("THE SEAM BEAT REPORTS PLAYING, THROUGH THE REAL PLAYER", async () => {

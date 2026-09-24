@@ -460,7 +460,9 @@ export function mediaPositionState({
      rate — so the lock screen and the car counted on over silence and snapped
      back when the audio returned. Rate 0 is what Apple reports for exactly this
      (`MPNowPlayingInfoPropertyPlaybackRate`), and it reaches the native plugin
-     through the shim's `setPositionState`. On the WEB the same write is the
+     through the shim's `setPositionState`, which sends it on as `stalled` (the
+     round-2 sweep: the shim used to clamp the 0 back to 1) — iOS writes rate 0,
+     Android reports Media3's BUFFERING. On the WEB the same write is the
      spec's TypeError; `createMediaSession` swallows it, which leaves the last
      good report standing — the honest alternative there does not exist, and a
      report with a rate the element is not running at would be the old lie. The

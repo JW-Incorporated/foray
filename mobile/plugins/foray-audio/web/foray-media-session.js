@@ -448,6 +448,16 @@ export function nowPlayingPayload({
   const rate = isNum(positionState?.playbackRate) && positionState.playbackRate > 0
     ? positionState.playbackRate
     : 1;
+  /* A STALL IS PLAYING WITH THE CLOCK STOPPED (audit round 2, p-car-8).
+     `media-session.js` reports a network stall as `playbackRate: 0` with the state
+     still playing — Apple's rule — and until now this clamp turned that 0 into 1, so
+     the lock screen and the car counted on over silence and snapped back when the
+     audio returned. Neither native side can take a zero SPEED (Media3's
+     `PlaybackParameters` throws; iOS's default rate must be positive), so the speed
+     keeps the clamp and the stall travels as its own flag: iOS writes rate 0,
+     Android reports `STATE_BUFFERING`. Only an explicit 0 on a playing transport is
+     a stall — a missing rate is not. */
+  const stalled = state === "playing" && positionState?.playbackRate === 0;
 
   return {
     state,
@@ -458,6 +468,7 @@ export function nowPlayingPayload({
     durationMs,
     positionMs,
     playbackRate: rate,
+    stalled,
     canPlay: installed.has("play"),
     canPause: installed.has("pause"),
     canStop: installed.has("stop"),
@@ -519,7 +530,7 @@ const KEY_SEPARATOR = String.fromCharCode(31);
 export function identityKey(payload) {
   return [
     payload.state, payload.title, payload.artist, payload.album, payload.artworkUri,
-    payload.durationMs, payload.playbackRate,
+    payload.durationMs, payload.playbackRate, payload.stalled,
     payload.canPlay, payload.canPause, payload.canStop,
     payload.hasNext, payload.hasPrevious,
     payload.canSeekBack, payload.canSeekForward, payload.canSeekTo,

@@ -445,6 +445,29 @@ test("perf-2: a list row asks Apple's CDN for a small image, lazily, with its bo
   assert.strictEqual((APP_SRC.match(/<img class="show-result-art"/g) || []).length, 1, "one row-image builder");
 });
 
+test("perf-2 (sweep): EVERY image app.js draws below hero size asks for its drawn size — Home's 56 px card too", () => {
+  /* The lane fixed the two row builders; the finding also named miniCard, which
+     still fetched and decoded the 600 px original for a 56 px box on every Home
+     paint. The rule is promoted here from "the row builder" to "every <img> in
+     app.js": each one goes through artUrl, or is one of the two heroes whose art
+     IS the page (the show page's and the episode page's, drawn up to ~220-390 px).
+     MUTATION: put miniCard back to `safeUrl(item.artwork_url)` -> red, naming it. */
+  const HERO = new Set(["show-art", "ep-art"]);
+  const imgs = [...APP_SRC.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
+  assert.ok(imgs.length >= 4, `fixture assumption: app.js draws its images from templates (${imgs.length})`);
+  const unsized = imgs.filter((tag) => {
+    const cls = (/class="([^"]+)"/.exec(tag) || [])[1] || "";
+    if (cls.split(/\s+/).some((c) => HERO.has(c))) return false;
+    return !/artUrl\(/.test(tag);
+  });
+  assert.deepStrictEqual(unsized, [], "an image drawn small fetches Apple's 600 px original");
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  const ep = { id: "e1", title: "T", show: "S", artwork_url: "https://is1-ssl.mzstatic.com/image/thumb/P/v4/mza_1.jpg/600x600bb.jpg", duration_min: 30 };
+  const card = m.ctx.miniCard({ branch: "science", role: "core", item: ep, items: [ep] });
+  assert.match(card, /\/168x168bb\.jpg"/, "Home's card fetched the 600 px image for a 56 px box");
+  assert.match(card, /decoding="async" width="56" height="56"/);
+});
+
 /* ==================================================================== */
 /* perf-3: priming waits for a still listener                             */
 /* ==================================================================== */

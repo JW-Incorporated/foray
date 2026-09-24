@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   createTypeScale, typeScaleApplies, scaleFor, rootFontSize,
-  PROBE_FONT, BASE_ROOT_PX, DEFAULT_BODY_PX, MIN_SCALE, MAX_SCALE, SCALE_PROPERTY,
+  PROBE_FONT, BASE_ROOT_PX, DEFAULT_BODY_PX, MIN_SCALE, MAX_SCALE, SCALE_PROPERTY, SCALED_ATTRIBUTE,
 } from "../../mobile/web/foray-type-scale.js";
 import { SHELL_ONLY_FILES, shellScriptTags } from "./prepare-webdir.mjs";
 
@@ -41,7 +41,11 @@ function fakeDoc({ bodyPx = 17 } = {}) {
   const doc = {
     bodyPx,
     body: { children: [], appendChild(el) { this.children.push(el); el.parent = this; } },
-    documentElement: { style: rootStyle },
+    documentElement: {
+      style: rootStyle, attrs: {},
+      setAttribute(k, v) { this.attrs[k] = String(v); },
+      removeAttribute(k) { delete this.attrs[k]; },
+    },
     visibilityState: "visible",
     createElement: (tag) => ({
       tag, attrs: {}, style: {}, textContent: "",
@@ -207,4 +211,40 @@ test("the bridge ships in the shell bundle, as a module tag, and the DECISIONS s
   const decisions = fs.readFileSync(path.join(ROOT, "docs/DECISIONS.md"), "utf8");
   assert.doesNotMatch(decisions, /Dynamic Type already scales the page\./, "the ruling's false sentence is corrected");
   assert.match(decisions, /foray-type-scale\.js/, "and names the bridge that makes it true");
+});
+
+test("the px chrome grows with the text: the root is marked while scaled, and styles.css's one rule reads the mark", () => {
+  /* Round-2 sweep, a11y-1 part (b): the bridge scaled every rem, but the top
+     bar (44px, its title nowrap + overflow hidden) and the tab bar (56px) are
+     px boxes, so at xxxLarge the title clipped. MUTATION: drop the
+     setAttribute in `apply` -> red on the mark. MUTATION 2: change 44px in the
+     `:root[data-type-scale]` rule without the token -> red on the agreement. */
+  const { doc, ts } = setup({ bodyPx: 21 });
+  ts.install();
+  assert.ok(SCALED_ATTRIBUTE in doc.documentElement.attrs, "a scaled root is not marked");
+  doc.bodyPx = 17;
+  ts.refresh();
+  assert.ok(!(SCALED_ATTRIBUTE in doc.documentElement.attrs), "a 1x root is still marked");
+  doc.bodyPx = 21;
+  ts.refresh();
+  ts.uninstall();
+  assert.ok(!(SCALED_ATTRIBUTE in doc.documentElement.attrs), "uninstall leaves the mark behind");
+
+  const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
+  const base = (name) => {
+    let v = null;
+    for (const m of css.matchAll(/:root\s*\{([^}]*)\}/g)) {
+      const d = new RegExp(`${name}:\\s*([\\d.]+)px;`).exec(m[1]);
+      if (d) v = Number(d[1]);
+    }
+    return v;
+  };
+  const rule = new RegExp(`:root\\[${SCALED_ATTRIBUTE}\\]\\s*\\{([^}]*)\\}`).exec(css);
+  assert.ok(rule, "styles.css has no :root[data-type-scale] rule");
+  for (const name of ["--topbar-h", "--tab-bar-h"]) {
+    const grown = new RegExp(`${name}:\\s*calc\\(([\\d.]+)px \\* min\\(var\\(${SCALE_PROPERTY}, 1\\), ([\\d.]+)\\)\\);`).exec(rule[1]);
+    assert.ok(grown, `${name} does not grow with ${SCALE_PROPERTY}`);
+    assert.equal(Number(grown[1]), base(name), `${name}'s scaled base is not the token's own default`);
+    assert.ok(Number(grown[2]) > 1 && Number(grown[2]) <= MAX_SCALE, "the chrome's cap sits inside the bridge's clamp");
+  }
 });

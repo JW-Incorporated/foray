@@ -2791,6 +2791,10 @@ let _artIndexPool = null;
    because a rewrite it does not understand is a broken image. The episode page
    and Now Playing keep 600: that art IS the page. */
 const ROW_ART_PX = 132;   // a 44 px row at the 3x density of a current iPhone
+/* Home's subject card draws its artwork at 56 px (styles.css `.mini-card img`),
+   so 168 at 3x. It was the one list image left at 600 after the row fix — the
+   finding named it and the lane's img sites stopped short of it (round-2 sweep). */
+const CARD_ART_PX = 168;
 
 function artUrl(url, px) {
   const u = String(url || "");
@@ -5165,7 +5169,7 @@ function miniCard(slot) {
      subject title is now the one real <a>; styles.css stretches its ::after
      over the card, and the star is a sibling lifted above it. */
   return `<div class="mini-card" data-branch="${esc(slot.branch)}">
-    ${item.artwork_url ? `<img src="${esc(safeUrl(item.artwork_url))}" alt="" loading="lazy">` : `<div class="art-ph"></div>`}
+    ${item.artwork_url ? `<img src="${esc(safeUrl(artUrl(item.artwork_url, CARD_ART_PX)))}" alt="" loading="lazy" decoding="async" width="56" height="56">` : `<div class="art-ph"></div>`}
     <div class="mc-info">
       <p class="mc-kicker">${stretchTag}${joinMeta(countLabel(slot.items.length, "episode"), fmtDur(totalMin))}</p>
       <h3><a class="mc-link" href="#/${esc(playlistRoute({ isSubject: true, branch: slot.branch }))}">${esc(subjectLabel(slot.branch))}</a></h3>
@@ -11307,8 +11311,11 @@ async function renderForay(id) {
                they decide a segment is slow — and its current value is the label,
                so it is legible without opening anything. The label and the
                accessible name both come from the player bridge, so this button and
-               the mini-player's cannot word the same speed two ways. -->
-          <button type="button" class="fy-btn fy-rate" id="fy-rate" aria-label="Playback speed">1×</button>
+               the mini-player's cannot word the same speed two ways. It opens the
+               speed menu (a dialog, openRateMenu), and says so the way the
+               sheet's button does (audit round 2, player-9): VoiceOver reads
+               "pop-up button" before the tap, not a surprise after it. -->
+          <button type="button" class="fy-btn fy-rate" id="fy-rate" aria-label="Playback speed" aria-haspopup="dialog">1×</button>
         </div>
         <!-- The guillemets are decoration: the accessible name is the words
              alone, or VoiceOver opens with "single left-pointing angle

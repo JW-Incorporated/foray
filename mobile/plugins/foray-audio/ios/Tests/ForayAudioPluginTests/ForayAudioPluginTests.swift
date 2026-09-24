@@ -97,6 +97,22 @@ final class ForayAudioPluginTests: XCTestCase {
         XCTAssertEqual(negative.playbackRate, 1.0, accuracy: 0.0001)
     }
 
+    /// Audit round 2, p-car-8: a network stall is PLAYING with the clock
+    /// stopped. The flag is what `applyNowPlayingInfo` turns into a 0
+    /// `MPNowPlayingInfoPropertyPlaybackRate`; the speed itself is kept.
+    /// TO SEE IT FAIL: parse `stalled` as `false` always.
+    func testStalledIsCarriedOnlyWhilePlaying() {
+        let stalled = NowPlayingPayload.from(["state": "playing", "playbackRate": 1.5, "stalled": true])
+        XCTAssertTrue(stalled.stalled)
+        XCTAssertEqual(stalled.playbackRate, 1.5, accuracy: 0.0001)
+
+        let paused = NowPlayingPayload.from(["state": "paused", "stalled": true])
+        XCTAssertFalse(paused.stalled, "a paused player is not waiting for anything")
+
+        XCTAssertFalse(NowPlayingPayload.from(["state": "playing"]).stalled)
+        XCTAssertFalse(NowPlayingPayload.empty.stalled)
+    }
+
     func testMissingBooleans_defaultToFalse() {
         let payload = NowPlayingPayload.from(["state": "paused"])
         XCTAssertFalse(payload.canPlay)

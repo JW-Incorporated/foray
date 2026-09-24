@@ -243,3 +243,17 @@ test("the sheet's second row is one treatment: 48px transport boxes, a quiet tex
   assert.match(CODE, /ui\.closeBtn\.addEventListener\("click", \(\) => setExpanded\(false\)\);/, "the ✕ is the way out");
   assert.strictEqual(valueOf(".fp-collapse", "color"), null, "and its rule is gone");
 });
+
+test("both speed buttons say they open a menu — the Foray page's as well as the sheet's", () => {
+  /* Audit round 2, player-9, completed in the sweep: the sheet's rate button
+     gained `aria-haspopup="dialog"` and the Foray page's `#fy-rate`, which opens
+     the same `openRateMenu` dialog, did not — VoiceOver read one "pop-up button"
+     and one plain button for the one control. MUTATION: drop the attribute
+     from the `#fy-rate` markup -> red. */
+  const tag = /<button[^>]*\bid="fy-rate"[^>]*>/.exec(APP);
+  assert.ok(tag, "fixture assumption: the Foray page draws #fy-rate");
+  assert.match(tag[0], /\baria-haspopup="dialog"/, "the Foray page's speed button does not say it opens a menu");
+  assert.match(CODE, /rateBtn\.setAttribute\("aria-haspopup", "dialog"\);/, "the sheet's, for comparison");
+  const menu = APP.slice(APP.indexOf("function openRateMenu("), APP.indexOf("function openRateMenu(") + 800);
+  assert.match(menu, /panel\.setAttribute\("role", "dialog"\);/, "fixture assumption: what it opens is a dialog");
+});

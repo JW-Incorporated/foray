@@ -16,9 +16,11 @@
  * the accessibility sizes -- and WebKit re-resolves it when the setting changes,
  * because the keyword IS Dynamic Type. The probe's computed `font-size` divided
  * by the default is the factor; the root's `font-size` is set to 16px times it,
- * and every rem in styles.css follows. `--type-scale` is set beside it so a rule
- * for fixed-px chrome can grow with `calc(44px * var(--type-scale, 1))`
- * (styles.css is another lane's; the token is the hook).
+ * and every rem in styles.css follows. `--type-scale` is set beside it, and the
+ * root carries `data-type-scale` while the factor is not 1, so styles.css can grow
+ * the two px-sized chrome bars (`--topbar-h`, `--tab-bar-h`) in ONE rule keyed on
+ * the attribute (`:root[data-type-scale]`), leaving the default declarations —
+ * and every suite that evaluates them — exactly as they are at 1x.
  *
  * THE CLAMP. Apple's accessibility sizes reach 3.1x, and a 44px top bar cannot
  * hold that; 2x is where every row still fits its controls at phone width. Below
@@ -63,6 +65,11 @@ export const MAX_SCALE = 2;
 
 /** The root's `--type-scale` custom property. */
 export const SCALE_PROPERTY = "--type-scale";
+/** Present on the root while the factor is not 1: the hook styles.css's
+ *  `:root[data-type-scale]` rule grows the px chrome on (round-2 sweep, a11y-1's
+ *  part (b) — the top bar's title clipped at xxxLarge inside a 44px bar). An
+ *  attribute and not a class because it is state the bridge owns, like `hidden`. */
+export const SCALED_ATTRIBUTE = "data-type-scale";
 
 /** Only the iOS shell. Pure, so the suite tables it. */
 export function typeScaleApplies(capacitor) {
@@ -134,9 +141,11 @@ export function createTypeScale(env) {
       if (scale === 1) {
         root.style.fontSize = "";
         if (typeof root.style.removeProperty === "function") root.style.removeProperty(SCALE_PROPERTY);
+        if (typeof root.removeAttribute === "function") root.removeAttribute(SCALED_ATTRIBUTE);
       } else {
         root.style.fontSize = rootFontSize(scale);
         if (typeof root.style.setProperty === "function") root.style.setProperty(SCALE_PROPERTY, String(scale));
+        if (typeof root.setAttribute === "function") root.setAttribute(SCALED_ATTRIBUTE, "");
       }
     } catch (e) {
       log("foray-type-scale: could not write the root font size", e);

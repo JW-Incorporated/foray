@@ -717,8 +717,11 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // floor (see that file's header, and NowPlayingPayload's doc comment
         // below). ZERO while paused is half of Apple's "stay the Now Playing
         // app across a pause" rule; the other half is `playbackState` below.
+        // ZERO while STALLED too (audit round 2, p-car-8): the state stays
+        // playing but the clock stops, so a car in a dead zone does not count
+        // on over silence and snap back when the audio returns.
         info[MPNowPlayingInfoPropertyPlaybackRate] = Double(
-            payload.state == .playing ? payload.playbackRate : 0
+            payload.state == .playing && !payload.stalled ? payload.playbackRate : 0
         )
         info[MPNowPlayingInfoPropertyDefaultPlaybackRate] = Double(payload.playbackRate)
 

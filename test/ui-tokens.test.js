@@ -849,3 +849,31 @@ test("the episode page's head is two lines at most, at the size Now Playing give
   assert.match(APP_JS, /<div class="page-head">\s*<a class="back" href="#\/">‹<\/a>\s*<div>\s*<h2 class="fp-s-title">\$\{esc\(item\.title\)\}/,
     "fixture assumption: renderEpisode's head is an h2.fp-s-title inside .page-head");
 });
+
+test("a control marked loading has a look, and Reduce Motion stills it", () => {
+  /* Round-2 sweep, finishing p-impatient-4: player/client.js marks the bar's ▶,
+     the sheet's big ▶ and the tapped row's ▶ `data-loading="1"` "so styles.css
+     can spin them", and no rule read the mark — the load was said only in the
+     status line, not on the button the thumb was on. MUTATION: delete the
+     `[data-loading="1"]` animation rule -> red; delete its line from the
+     reduce-motion block -> red. */
+  assert.match(PLAYER_JS, /btn\.dataset\.loading = "1"/, "fixture assumption: the player marks the bar's buttons");
+  assert.match(PLAYER_JS, /b\.dataset\.loading = "1"/, "fixture assumption: and the row's");
+  for (const sel of ['.play-btn[data-loading="1"]', '.fp-play[data-loading="1"]', '.fp-btn[data-loading="1"]']) {
+    assert.match(String(lastOn(sel, "animation")), /^fy-loading-breathe /, `${sel} has no look`);
+    const still = RULES.filter((r) => r.atRules.some((a) => /prefers-reduced-motion:\s*reduce/.test(a)) && r.selectors.includes(sel));
+    assert.ok(still.some((r) => r.decls.some((d) => d.prop === "animation" && d.value === "none")), `${sel} keeps moving under Reduce Motion`);
+  }
+  assert.ok(/@keyframes fy-loading-breathe/.test(CSS), "the animation it names exists");
+});
+
+test("the Up Next row the bar is on is drawn as the one that is on", () => {
+  /* Round-2 sweep, finishing p-impatient-6: upNextRow marks the row
+     `.is-current` + aria-current and left the look to this file; nothing drew
+     it. MUTATION: delete `body.ui-v2 .up-next-row.is-current` -> red. */
+  assert.match(APP_JS, /isCurrent \? " is-current" : ""/, "fixture assumption: app.js marks the row");
+  assert.strictEqual(lastOn("body.ui-v2 .up-next-row.is-current", "border-color"), "var(--violet)",
+    "the same mark a Foray's sounding clip row wears");
+  assert.strictEqual(lastOn("body.ui-v2 .fy-row:has(.fy-jump.is-playing)", "border-color"), "var(--violet)", "for comparison");
+  assert.strictEqual(lastOn("body.ui-v2 .up-next-row.is-current", "background"), "var(--surface2)");
+});

@@ -1996,7 +1996,8 @@ test("the iOS ForayAudioPlugin keeps a paused transport ON the lock screen: rate
   const info = swiftFuncBody(code, "applyNowPlayingInfo");
   assert.match(info, /guard payload\.state != \.none else \{[\s\S]*?nowPlayingInfo = nil/);
   assert.equal((code.match(/nowPlayingInfo = nil/g) ?? []).length, 1, "nowPlayingInfo is cleared in exactly one place, for .none");
-  assert.match(info, /payload\.state == \.playing \? payload\.playbackRate : 0/);
+  // `&& !payload.stalled`: a network stall also writes 0 (audit round 2, p-car-8).
+  assert.match(info, /payload\.state == \.playing && !payload\.stalled \? payload\.playbackRate : 0/);
   assert.match(info, /center\.playbackState = Self\.playbackState\(for: payload\.state\)/);
   assert.match(swiftFuncBody(code, "handleDidEnterBackground"), /reassertNowPlaying\(reason: "background"\)/);
   assert.match(swiftFuncBody(code, "handleRouteChange"), /reason == "new-device"[\s\S]*?reassertNowPlaying\(reason: "route"\)/);
@@ -2047,6 +2048,37 @@ test("the seek pair has ONE source — the payload — on both natives, and the 
   const shim = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8"));
   assert.match(shim, /seekBackMs: SEEK_BACKWARD_SEC \* 1000/);
   assert.match(shim, /seekForwardMs: SEEK_FORWARD_SEC \* 1000/);
+});
+
+test("a network stall stops the lock screen's clock on BOTH natives, and the seam beat does not (audit round 2, p-car-8)", () => {
+  /* In a dead zone the mini bar said "Buffering…" and the car said PLAYING at
+     full rate, counting on over silence and snapping back when audio returned.
+     The page reports the stall (rate 0, state playing); the shim sends it as
+     `stalled`; iOS writes rate 0 and Android reports BUFFERING. The Swift and the
+     Java compile only in CI, so the lines are pinned here as well as by their own
+     unit tests (ForayAudioPluginTests.testStalledIsCarriedOnlyWhilePlaying,
+     NowPlayingParsingTest.stalledFlag_isCarriedOnlyWhilePlaying).
+     MUTATION: drop `&& !payload.stalled` from applyNowPlayingInfo, or put
+     `Player.STATE_READY` back unconditionally -> red. */
+  const swift = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(swift, "applyNowPlayingInfo"),
+    /MPNowPlayingInfoPropertyPlaybackRate\] = Double\(\s*payload\.state == \.playing && !payload\.stalled \? payload\.playbackRate : 0\s*\)/,
+    "iOS keeps counting through a stall");
+  const payload = stripSwiftComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/NowPlayingPayload.swift"), "utf8"
+  ));
+  assert.match(payload, /stalled: state == \.playing && boolValue\(data, "stalled"\)/);
+  const java = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/WebViewPlayer.java"), "utf8"
+  ));
+  assert.match(java, /\.setPlaybackState\(np\.stalled \? Player\.STATE_BUFFERING : Player\.STATE_READY\)/,
+    "Android keeps extrapolating the playhead through a stall");
+  const np = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/NowPlaying.java"), "utf8"
+  ));
+  assert.match(np, /state == PLAYING && bool\(data, "stalled"\)/);
+  const shim = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8"));
+  assert.match(shim, /const stalled = state === "playing" && positionState\?\.playbackRate === 0;/);
 });
 
 test("a one-button remote press resolves from the last reported state on iOS (2026-09-23)", () => {
@@ -2175,7 +2207,11 @@ test("Android's session stays READY while paused, so a head unit's play reaches 
   const player = stripJavaComments(fs.readFileSync(path.join(dir, "WebViewPlayer.java"), "utf8"));
   const state = /protected State getState\(\)\s*\{([\s\S]*?)\n    \}/.exec(player);
   assert.ok(state, "WebViewPlayer must override getState");
-  assert.match(state[1], /setPlaybackState\(Player\.STATE_READY\)\s*\.setPlayWhenReady\(\s*np\.state == NowPlaying\.PLAYING/);
+  /* READY unless STALLED (audit round 2, p-car-8), and `stalled` is only ever
+     parsed on a PLAYING payload — so a paused transport is still READY. */
+  assert.match(state[1], /setPlaybackState\(np\.stalled \? Player\.STATE_BUFFERING : Player\.STATE_READY\)\s*\.setPlayWhenReady\(\s*np\.state == NowPlaying\.PLAYING/);
+  assert.match(stripJavaComments(fs.readFileSync(path.join(dir, "NowPlaying.java"), "utf8")),
+    /state == PLAYING && bool\(data, "stalled"\)/, "a paused payload can never be stalled, so paused stays READY");
   assert.match(state[1], /if \(!np\.isLoaded\(\)\)[\s\S]*?STATE_IDLE/, "only an unloaded transport is IDLE");
   const now = stripJavaComments(fs.readFileSync(path.join(dir, "NowPlaying.java"), "utf8"));
   assert.match(now, /boolean acceptsTransport\(\)\s*\{\s*return state == PLAYING \|\| state == PAUSED;/);
