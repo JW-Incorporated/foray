@@ -231,16 +231,25 @@ final class AVDeckTests: XCTestCase {
         XCTAssertEqual(deck.player.rate, 0)
     }
 
-    /// A superseded load reports nothing after it is superseded: every late
-    /// callback carries the old generation. TO SEE IT FAIL: drop the
-    /// `gen == generation` guard in `gateSeekCompleted` or `becomeReady`'s
-    /// callers.
+    /// A superseded load reports nothing after it is superseded. Two
+    /// defences stand in the way: `load(...)` detaches (and cancels) the old
+    /// asset, and every callback carries the generation it was issued under.
+    /// A late callback would be reported under the CURRENT token, so the test
+    /// counts events rather than trusting their tokens: exactly one duration
+    /// and one ready, both the second load's.
+    /// TO SEE IT FAIL: drop BOTH the `detachItem()` in `load(...)` and the
+    /// `gen == generation` guard in `durationLoaded` (either one alone still
+    /// holds; that is what having two is for).
     func testASupersededLoadIsSilent() throws {
         deck.send(.load(token: 1, url: try fixture("click-cbr-64k", "mp3"), startSec: 5, preciseTiming: true))
         deck.send(.load(token: 2, url: try fixture("click-11k", "wav"), startSec: 6, preciseTiming: true))
         guard let ready = readyEvent(2) else { return }
         XCTAssertEqual(ready.landedSec, 6, accuracy: 0.1)
-        spin(0.5)
+        spin(1.0)
+        let durations = events.filter { if case .durationLoaded = $0 { return true }; return false }
+        let readies = events.filter { if case .ready = $0 { return true }; return false }
+        XCTAssertEqual(durations.count, 1, "the superseded load still reported its duration: \(events)")
+        XCTAssertEqual(readies.count, 1, "the superseded load still reported ready: \(events)")
         let late = events.filter {
             switch $0 {
             case .ready(1, _, _, _), .durationLoaded(1, _), .notReady(1, _, _), .failed(1, _), .deadlineExceeded(1, _):
@@ -324,8 +333,8 @@ final class AVDeckTests: XCTestCase {
     /// A pause the deck did not command (the system's, stood in for by
     /// pausing the real player behind the deck's back) becomes ONE reconcile
     /// input; a commanded pause does not.
-    /// TO SEE IT FAIL: remove the `rate` KVO in `observePlayer`, or drop the
-    /// `intendsToPlay = false` in `pause()`.
+    /// TO SEE IT FAIL: make `checkUncommandedPause` return at once, or drop
+    /// the `intendsToPlay = false` in `pause()`.
     func testAnExternalPauseBecomesAReconcileInput() throws {
         guard loadAndWaitReady(try fixture("click-cbr-64k", "mp3"), token: 3, startSec: 2) != nil else { return }
         deck.send(.play)
