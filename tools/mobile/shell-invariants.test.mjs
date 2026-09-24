@@ -2863,6 +2863,61 @@ test("NE-10s: the shared rows are written by JSWriter only, and both wrappers re
   assert.doesNotMatch(vocabulary, /func admit\(/, "admission belongs in VocabularyAdmission.swift, not the generated file");
 });
 
+/* ─────────── NE-11s: SessionPolicy, EngineMode and the contract's decoding ───────────
+ *
+ * docs/native-engine-plan.md §4.4, §4.6, §5 and card NE-11s. The session
+ * policy, the lane decision and the contract's decoding are ported to Swift and
+ * the six NE-11j families burned out of swift-pending.json; from here on their
+ * cases must EXECUTE in both XCTest wrappers (ios-kit, and G-1a's Linux job). */
+
+test("NE-11s: both wrappers require the six contract families, the registry holds their runners, and the contract is decoded without Foundation's JSON", () => {
+  /* A family whose runner is merely "optional" turns "owed" the moment the
+     runner is unregistered, and a re-record with --port-card would then hide
+     the whole session table in swift-pending with every step green;
+     requireRunner makes that red instead.
+     The decoding reads JSONNode (JSON.parse semantics) ON PURPOSE: JSONDecoder
+     cannot tell a required-but-null key from a missing one, and reads `1` /
+     `true` through NSNumber differently on Linux, where engine-parity runs. A
+     "simpler" Codable decoder would accept or refuse payloads the page does
+     not, which only a case nobody wrote would see.
+     MUTATION: drop SessionFamily.runner from ParityFamilies.all; drop
+     `requireRunner: true` from either wrapper's testContractFamily; or use
+     JSONDecoder in ContractDecoding.swift; each fails here. */
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  const families = {
+    session: ["SessionFamily.runner", "testSessionFamily"],
+    "session-invariant": ["SessionInvariantFamily.runner", "testSessionInvariantFamily"],
+    "engine-mode": ["EngineModeFamily.runner", "testEngineModeFamily"],
+    contract: ["ContractFamily.runner", "testContractFamily"],
+    snapshot: ["SnapshotFamily.runner", "testSnapshotFamily"],
+    handshake: ["HandshakeFamily.runner", "testHandshakeFamily"],
+  };
+  for (const [family, [runner]] of Object.entries(families)) {
+    assert.ok(all[1].includes(runner), `ParityFamilies.all no longer registers ${runner} (the ${family} family)`);
+  }
+  for (const file of [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ]) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    for (const [family, [, method]] of Object.entries(families)) {
+      assert.match(src, new RegExp(String.raw`func ${method}\(\)\s*\{\s*assertParityFamily\("${family}", requireRunner: true\)`),
+        `${where}: ${method} must require a ${family} runner (NE-11s ported it)`);
+    }
+  }
+  for (const rel of ["Policy/SessionPolicy.swift", "Policy/EngineMode.swift", "Contract/EngineContract.swift", "Contract/ContractDecoding.swift"]) {
+    assert.ok(fs.existsSync(path.join(CORE_DIR, "Sources/ForayEngineCore", rel)), `foray-engine-core ${rel} is missing (plan §4.1)`);
+  }
+  for (const file of swiftFilesUnder(path.join(CORE_DIR, "Sources/ForayEngineCore/Contract"))) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    assert.doesNotMatch(code, /(JSONSerialization|JSONEncoder|JSONDecoder|Codable|Decodable)/,
+      `${path.relative(ROOT, file)} decodes the contract with Foundation's JSON; it reads JSONNode (NE-11s)`);
+  }
+});
+
 /* ─────────── NE-15: AVDeck, the readiness-gated deck adapter ───────────
  *
  * docs/native-engine-plan.md §4.3 and card NE-15. AVDeck wraps one AVPlayer

@@ -40,6 +40,18 @@ final class ParityFamilyTests: XCTestCase {
     func testNumberFormatFamily() { assertParityFamily("number-format", requireRunner: true) }
     func testDiagTokensFamily() { assertParityFamily("diag-tokens", requireRunner: true) }
 
+    /// Recorded by NE-11j, ported by NE-11s: the audio session's policy and
+    /// its audible-start invariant (`SessionPolicy`), the lane decision and
+    /// its strike rules (`EngineMode`), and the web <-> native contract
+    /// (`EngineContract`: the names, the decoding of every schema example,
+    /// the page's handshake and extrapolation). Each must RUN here.
+    func testSessionFamily() { assertParityFamily("session", requireRunner: true) }
+    func testSessionInvariantFamily() { assertParityFamily("session-invariant", requireRunner: true) }
+    func testEngineModeFamily() { assertParityFamily("engine-mode", requireRunner: true) }
+    func testContractFamily() { assertParityFamily("contract", requireRunner: true) }
+    func testSnapshotFamily() { assertParityFamily("snapshot", requireRunner: true) }
+    func testHandshakeFamily() { assertParityFamily("handshake", requireRunner: true) }
+
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree
     /// problem. And something must have RUN: zero failures from a runner that
