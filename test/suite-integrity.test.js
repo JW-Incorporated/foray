@@ -1039,7 +1039,7 @@ const FLOORS = {
      evidence that THIS suite pins its behaviour; with a floor 19 below the real
      count, an auto-merged `test/` change could thin it while the claim stayed
      green. Zero slack from here on, for the reason media-session has none. */
-  "test/sw-generation.test.js": 52, // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
+  "test/sw-generation.test.js": 57, // audit round 2 (L5): no self-rewrite of a tracked file, validators for untracked (perf-6 x2), unchanged files copied not fetched + no-cache, bad copy refused (perf-4 x2), fonts cache-first (perf-5); 52 -> 57 // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
   /* U-01 (docs/ui-transition-plan.md): the ui-v2 token scope. Four tests --
      the nine tokens' names+values, the "no raw hex leaks outside the block"
      mutation guard, the amber/violet consumption check, and the self-hosted
