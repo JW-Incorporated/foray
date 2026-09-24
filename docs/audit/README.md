@@ -157,7 +157,7 @@ note says so: the notched-inset change (qa 13), the native Preferences tier
   narrated Foray (question 19). qa 146 and persona 65 were answered the same day
   ("Sentence case, no period, though ? And ! Are allowed"; "Accept the ones that
   are currently there; update our foray generation scripting to avoid making more
-  in the future") and fixed on `fix/generator-vocabulary-title-style`. Questions 5, 6 and 16–18 were answered on 2026-09-23
+  in the future") and fixed on `fix/generator-vocabulary-title-style` (PR #785). Questions 5, 6 and 16–18 were answered on 2026-09-23
   (`docs/DECISIONS.md`, "the visual changes - have at them"): qa 43, 47, 51,
   54, 59, 60 and persona 10, 40, 58 are fixed in visual pass 1 (PR #744).
 
