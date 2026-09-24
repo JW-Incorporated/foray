@@ -2813,6 +2813,64 @@ test("NE-12s: both wrappers require the media-episode runner, the registry holds
   assert.ok((manifest.families["media-episode"]?.ids ?? []).length >= 118, "the media-episode family shrank below NE-12j's 118 cases");
 });
 
+/* ─────────── NE-14s: EngineCore for episodes, and the audible-start invariant ───────────
+ *
+ * docs/native-engine-plan.md §4.2/§4.4 and card NE-14s. The manager-episode
+ * scenarios run through `EngineCore` in both XCTest wrappers, and the scenario
+ * driver checks the audible-start rule on every turn. What neither can see is
+ * the SHAPE that makes the rule structural: one place in the core commands the
+ * deck to play, and that place refuses without an active session. */
+
+test("NE-14s: both wrappers require the deck-episode and manager-episode runners, nothing in the episode families is owed, and the core plays from one guarded place", () => {
+  /* The two families NE-14s burned down must EXECUTE in Swift from here on:
+     a wrapper that lost its method or its `requireRunner: true`, or a runner
+     dropped from the registry, would let them read as "owed" for zero ids and
+     stay green; one pending id put back would hand the Swift side a case it
+     may fail unseen until the episode capability's gate.
+     And `deckCommand(.play)` appears ONCE in EngineCore.swift, inside
+     `startPlayback`, after its `state.session == .active` guard: a second
+     call site is a second way to be audible that the session guard does not
+     cover, which is the bug the invariant exists to make impossible.
+     MUTATION: drop `requireRunner: true` from testManagerEpisodeFamily in
+     either wrapper; drop ManagerEpisodeFamily.runner from ParityFamilies.all;
+     re-add "manager-episode/play-loads-then-starts": "NE-14s" to
+     swift-pending.json; or add `deckCommand(.play)` to `run`; each fails here. */
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  const families = { "deck-episode": "testDeckEpisodeFamily", "manager-episode": "testManagerEpisodeFamily" };
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    for (const [family, method] of Object.entries(families)) {
+      assert.match(src, new RegExp(String.raw`func ${method}\(\)\s*\{\s*assertParityFamily\("${family}", requireRunner: true\)`),
+        `${path.relative(ROOT, file)}: ${method} must require a ${family} runner`);
+    }
+  }
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  for (const runner of ["DeckEpisodeFamily.runner", "ManagerEpisodeFamily.runner"]) {
+    assert.ok(all[1].includes(runner), `ParityFamilies.all has no ${runner}`);
+  }
+
+  const pending = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/swift-pending.json"), "utf8"));
+  const owed = Object.keys(pending).filter((id) =>
+    ["manager-episode/", "deck-episode/", "session-invariant/", "transport/"].some((prefix) => id.startsWith(prefix)));
+  assert.deepEqual(owed, [], "manager-episode, deck-episode, session-invariant and transport are ported (NE-14s): none may be pending");
+
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  const plays = core.match(/deckCommand\(\.play\)/g) ?? [];
+  assert.equal(plays.length, 1, "EngineCore commands the deck to play in exactly one place");
+  const start = core.indexOf("func startPlayback()");
+  assert.ok(start >= 0, "EngineCore has no startPlayback()");
+  const body = core.slice(start, core.indexOf("\n    }\n", start));
+  const guardAt = body.indexOf("guard state.session == .active else");
+  const playAt = body.indexOf("deckCommand(.play)");
+  assert.ok(guardAt >= 0 && playAt > guardAt, "startPlayback plays only after its active-session guard");
+  assert.doesNotMatch(core, /\.deck\(\.play\)/, "the core emits a play only through deckCommand(.play)");
+});
+
 /* ─────────── NE-02: the reducer, copied into the core with its tests ───────────
  *
  * docs/native-engine-plan.md §4.1 and card NE-02. PlayerQueueState.swift and

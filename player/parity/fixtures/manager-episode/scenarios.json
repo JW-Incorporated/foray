@@ -213,8 +213,11 @@
     },
     {
       "id": "manager-episode/concurrent-double-skip-starts-one-item",
-      "covers": ["queue-manager::a fast double-skip loads only the final target"],
-      "note": "Corner case #19: two skips in flight at once load the final target (c) and start exactly one item. RECORDED AS THE JS REFERENCE DOES IT, which lands on b, not c: the first skip awaits its savePosition/pause effects, so the second skip's load(c) is issued first and the first skip's load(b) then supersedes it. Flagged in NE-14j's PR; a fix is a JS change and a re-record, never a Swift-only difference.",
+      "covers": [
+        "queue-manager::a fast double-skip loads only the final target",
+        "queue-manager::a concurrent double-skip lands on the final target and starts it once"
+      ],
+      "note": "Corner case #19: two skips in flight at once load the final target (c) and start exactly one item. NE-14j recorded the JS landing on b (each effect was awaited, so the second skip's load(c) went out while the first skip was parked after its save, and the first skip's load(b) then superseded it). NE-14s fixed it JS first: the manager awaits only effects that are really asynchronous, so the first skip's save, pause and load(b) are one step, the second skip replaces the in-flight load, and c plays. That is also the native engine's order: one handle() turn per skip.",
       "setup": { "target": "manager" },
       "steps": [
         {
@@ -243,20 +246,20 @@
           {
             "inInterlude": false,
             "inSeamGap": false,
-            "index": 1,
+            "index": 2,
             "name": "skipped",
-            "ops": ["store.save:a@0", "load:c@0", "pause", "load:b@0", "rate:1", "play"],
-            "playhead": "b",
+            "ops": ["store.save:a@0", "pause", "load:b@0", "load:c@0", "rate:1", "play"],
+            "playhead": "c",
             "rate": 1,
             "state": "playing"
           },
           {
             "inInterlude": false,
             "inSeamGap": false,
-            "index": 1,
+            "index": 2,
             "name": "end",
             "ops": [],
-            "playhead": "b",
+            "playhead": "c",
             "rate": 1,
             "state": "playing"
           }
@@ -266,9 +269,9 @@
           "rate:1",
           "play",
           "store.save:a@0",
-          "load:c@0",
           "pause",
           "load:b@0",
+          "load:c@0",
           "rate:1",
           "play"
         ]
@@ -277,7 +280,7 @@
     {
       "id": "manager-episode/double-skip-with-slow-loads-plays-once",
       "covers": ["queue-manager::a fast double-skip loads only the final target"],
-      "note": "Corner case #19, single audible: with both skips' loads in flight, only the load that owns the deck starts audio; the other lands and plays nothing. As in the concurrent case above, the JS reference issues c's load before b's, so b is the owner and c's late landing is the silent one (flagged in NE-14j's PR).",
+      "note": "Corner case #19, single audible: with both skips' loads in flight, only the load that owns the deck starts audio; the other lands and plays nothing. Since NE-14s's JS fix (see the concurrent case above) b's load goes out first and c's replaces it, so c owns the deck: b landing is the silent one, and c's landing starts the one item.",
       "setup": { "target": "manager", "backend": { "holdLoads": true } },
       "steps": [
         {
@@ -292,7 +295,7 @@
         { "settle": 2 },
         { "checkpoint": "both-in-flight" },
         { "deck": "loaded", "id": "b" },
-        { "checkpoint": "b-landed-late" },
+        { "checkpoint": "b-landed-superseded" },
         { "deck": "loaded", "id": "c" },
         { "checkpoint": "c-landed" }
       ],
@@ -311,9 +314,9 @@
           {
             "inInterlude": false,
             "inSeamGap": false,
-            "index": 1,
+            "index": 2,
             "name": "both-in-flight",
-            "ops": ["store.save:a@0", "load:c@0", "pause", "load:b@0"],
+            "ops": ["store.save:a@0", "pause", "load:b@0", "load:c@0"],
             "playhead": "a",
             "rate": 1,
             "state": "loadingItem"
@@ -321,30 +324,30 @@
           {
             "inInterlude": false,
             "inSeamGap": false,
-            "index": 1,
-            "name": "b-landed-late",
-            "ops": ["rate:1", "play"],
-            "playhead": "b",
-            "rate": 1,
-            "state": "playing"
-          },
-          {
-            "inInterlude": false,
-            "inSeamGap": false,
-            "index": 1,
-            "name": "c-landed",
+            "index": 2,
+            "name": "b-landed-superseded",
             "ops": [],
-            "playhead": "b",
+            "playhead": "a",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "c-landed",
+            "ops": ["rate:1", "play"],
+            "playhead": "c",
             "rate": 1,
             "state": "playing"
           },
           {
             "inInterlude": false,
             "inSeamGap": false,
-            "index": 1,
+            "index": 2,
             "name": "end",
             "ops": [],
-            "playhead": "b",
+            "playhead": "c",
             "rate": 1,
             "state": "playing"
           }
@@ -354,9 +357,9 @@
           "rate:1",
           "play",
           "store.save:a@0",
-          "load:c@0",
           "pause",
           "load:b@0",
+          "load:c@0",
           "rate:1",
           "play"
         ]
