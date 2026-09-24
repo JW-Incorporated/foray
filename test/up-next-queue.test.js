@@ -229,6 +229,38 @@ test("archivedRow offers no '+ Up Next': the row already says it cannot play (au
   assert.ok(!unnamedHtml.includes("data-upnext"), "an unnamed archived part gets no Up Next control either");
 });
 
+test("ROUND 2 review (p-impatient-10): no '+ Up Next' beside 'Not available to play', and a refused add never paints '✓ Up Next'", () => {
+  /* epRow and the episode page still drew the button for an item with no
+     audio, and bindUpNext painted "✓ Up Next" whatever addToQueue did.
+     MUTATIONS: drop the `liveEpisode` gate from upNextBtn -> the silent row
+     offers the button; paint `true` in bindUpNext -> the label lies. */
+  const m = mount();
+  m.state.poolIds = new Set();
+  const silent = { id: "silent-2", title: "No audio", show: "S", audio_url: null };
+  const live = { id: "live-2", title: "Has audio", show: "S", audio_url: "https://x.test/b.mp3" };
+  m.state.itemIndex["silent-2"] = silent;
+  m.state.itemIndex["live-2"] = live;
+  const silentRow = m.ctx.epRow(silent, 0, "show-x");
+  assert.ok(silentRow.includes("Not available to play"), "precondition: the row says it cannot play");
+  assert.ok(!silentRow.includes("data-upnext"), "and offers no Up Next control");
+  assert.ok(m.ctx.epRow(live, 0, "show-x").includes('data-upnext="live-2"'), "a playable row keeps it");
+
+  // A stale button (drawn before the item aged out) is tapped: nothing is claimed.
+  let onClick = null;
+  const labels = [];
+  const btn = {
+    dataset: { upnext: "silent-2" }, _bound: false,
+    addEventListener: (_t, fn) => { onClick = fn; },
+    setAttribute: () => {}, removeAttribute: () => {}, getAttribute: () => null,
+    classList: { add: (c) => labels.push(`+${c}`), remove: () => {}, toggle: (c, on) => labels.push(on ? `+${c}` : `-${c}`) },
+    set textContent(v) { labels.push(v); }, get textContent() { return ""; },
+  };
+  m.ctx.bindUpNext({ querySelectorAll: () => [btn] });
+  onClick({ preventDefault() {}, stopPropagation() {} });
+  assert.strictEqual(m.queueRaw(), null, "precondition: the add was refused");
+  assert.ok(!labels.includes("✓ Up Next") && !labels.includes("+on"), `no false success: ${labels.join(" ")}`);
+});
+
 test("addToQueue refuses an episode 4a cannot play (audit round 2, p-impatient-10)", () => {
   /* The button turned "✓ Up Next" for an id with no playable snapshot, and the
      Up Next page then listed it as "not available right now". `liveEpisode` is

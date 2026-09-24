@@ -1365,10 +1365,13 @@ function toggleStar(id) {
     boostTopics(snap.topics, 0.05);
     logEvent("saved", { episode_id: id, topics: snap.topics });
   }
-  /* The Now Playing sheet's Save reads `EPISODE_NAVIGATION.isSaved`; a star
-     pressed on a row while the sheet is open has to reach it too. */
-  refreshEpisodeNavigation();
   lsSet("cp_saved", saved);
+  /* The Now Playing sheet's Save reads `EPISODE_NAVIGATION.isSaved`; a star
+     pressed on a row while the sheet is open has to reach it too — AFTER the
+     write (audit round 2 review): the sheet paints synchronously from storage,
+     and refreshed first it painted the pre-toggle state, which stayed wrong
+     while paused (no render ticks to correct it). */
+  refreshEpisodeNavigation();
   document.querySelectorAll(`[data-star="${CSS.escape(id)}"]`).forEach(b => {
     setToggleLabel(b, isSaved(id), SAVE_TOGGLE);
     b.classList.toggle("on", isSaved(id));
@@ -1397,6 +1400,12 @@ function starBtn(id) {
 function upNextBtn(id) {
   if (!id) return "";
   const on = isQueued(id);
+  /* NO BUTTON FOR WHAT addToQueue REFUSES (audit round 2 review of
+     p-impatient-10). The refusal moved into addToQueue, but epRow and the
+     episode page still drew "+ Up Next" beside "Not available to play", and a
+     tap turned it "✓ Up Next" while nothing was added. `liveEpisode` is the
+     same definition addToQueue checks, so the button and the refusal agree. */
+  if (!on && !liveEpisode(id)) return "";
   const { text, attr } = toggleMarkup(on, UP_NEXT_TOGGLE);
   return `<button class="up-next ${on ? "on" : ""}" data-upnext="${esc(id)}"${attr}>${text}</button>`;
 }
@@ -2131,8 +2140,48 @@ function saveQueueIds(ids) {
 function repaintQueuePage() {
   if (currentHash() !== "#/queue") return;
   const y = typeof window.scrollY === "number" ? window.scrollY : null;
+  const held = queueFocusBefore();
   renderQueue();
   if (y != null && typeof window.scrollTo === "function") window.scrollTo(0, y);
+  queueFocusAfter(held);
+}
+
+/* THE REPAINT KEEPS THE LISTENER'S PLACE (audit round 2 review). A live view
+   replaces #view's content, so the control a keyboard or VoiceOver user had
+   just pressed — ▶ on an Up Next row, the playing row's ❚❚ when an episode
+   ends and the next one chains — was destroyed and focus fell to <body>, the
+   top of the page. Only ↑/↓/✕ restored it (afterQueueMove/afterQueueRemove,
+   which still run after this and still win). The same control on the same
+   episode gets focus back; if that row has left, the control at the same
+   position in the list, else the page heading. */
+const QUEUE_FOCUS_ATTRS = ["data-play", "data-reorder-up", "data-reorder-down", "data-dequeue"];
+
+function queueFocusBefore() {
+  const view = $("#view");
+  const active = document.activeElement;
+  if (!view || !active || active === view || typeof active.getAttribute !== "function") return null;
+  let inView = false;
+  for (let n = active; n; n = n.parentElement) if (n === view) { inView = true; break; }
+  if (!inView) return null;
+  for (const attr of QUEUE_FOCUS_ATTRS) {
+    const id = active.getAttribute(attr);
+    if (id == null) continue;
+    const peers = typeof view.querySelectorAll === "function" ? [...view.querySelectorAll(`[${attr}]`)] : [];
+    return { attr, id, index: Math.max(0, peers.indexOf(active)) };
+  }
+  return null;
+}
+
+function queueFocusAfter(held) {
+  if (!held) return;
+  const view = $("#view");
+  if (!view) return;
+  let target = queueButtonFor(held.attr, held.id);
+  if (!target) {
+    const peers = typeof view.querySelectorAll === "function" ? [...view.querySelectorAll(`[${held.attr}]`)] : [];
+    target = peers[Math.min(held.index, peers.length - 1)] || (typeof view.querySelector === "function" ? view.querySelector("h2") : null);
+  }
+  if (target && target !== document.activeElement) focusQuietly(target);
 }
 
 /** Playback moved (a chained play, a tap on an Up Next row): the row that is
@@ -5115,9 +5164,12 @@ function bindUpNext(scope) {
       e.stopPropagation();
       const id = btn.dataset.upnext;
       addToQueue(id);
+      /* Painted from the QUEUE, not from the tap: addToQueue can refuse, and
+         "✓ Up Next" over an unchanged cp_queue was a false success. */
+      const on = isQueued(id);
       scope.querySelectorAll(`[data-upnext="${CSS.escape(id)}"]`).forEach(b => {
-        setToggleLabel(b, true, UP_NEXT_TOGGLE);
-        b.classList.add("on");
+        setToggleLabel(b, on, UP_NEXT_TOGGLE);
+        b.classList.toggle("on", on);
       });
     });
   });

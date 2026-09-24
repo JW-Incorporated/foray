@@ -233,6 +233,22 @@ test("ROUND 2 review: a ▶ on Up Next does not snapshot the queue as a second p
   assert.deepStrictEqual(JSON.parse(JSON.stringify(m.state.playList)), [eps[0].id], "the list is the one episode; Up Next is the continuation");
 });
 
+test("ROUND 2 review: a row star reaches the Now Playing sheet with the NEW saved state", () => {
+  /* toggleStar refreshed the sheet before writing cp_saved, and the sheet
+     paints synchronously from storage, so it showed the pre-toggle Save.
+     MUTATION: move refreshEpisodeNavigation() back above lsSet -> red. */
+  const m = boot(new Map());
+  const ep = showPageEpisode(m, 41);
+  const painted = [];
+  m.ctx.window.ForayPlayer = {
+    setEpisodeNavigation: (nav) => painted.push(nav.isSaved(ep.id)),
+  };
+  m.ctx.toggleStar(ep.id);
+  assert.strictEqual(painted[painted.length - 1], true, "the sheet paints Saved");
+  m.ctx.toggleStar(ep.id);
+  assert.strictEqual(painted[painted.length - 1], false, "and Save again after un-saving");
+});
+
 test("a starred show-page episode is PLAYABLE in Library → Saved after a reload, not greyed", () => {
   /* qa 97. The snapshot toggleStar writes has always carried audio_url; the old
      rule sent every non-pool id to `archived` anyway. MUTATION: drop the

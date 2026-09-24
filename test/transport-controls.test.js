@@ -237,11 +237,26 @@ test("the sheet's second row is one treatment: 48px transport boxes, a quiet tex
   assert.doesNotMatch(CODE, /"fp-collapse"/, "no Close button is built");
   assert.doesNotMatch(CODE, /ui\.collapse/, "…and nothing is wired to one");
   /* Stop first; the round-2 staples (⏭, Save, Up Next) sit between the speed
-     and the two navigation links, borrowing `.fp-rate`'s box so they are at
-     the same tap floor. */
+     and the two navigation links, ⏭ and Save in the transport family's plain
+     `.fp-btn` box so they are at the same tap floor. */
   assert.match(CODE, /row2\.append\(stopBtn, rateBtn, nextBtn, saveBtn, queueLink, openLink, forayLink\);/, "Stop leads the row, alone at the danger end");
   assert.match(CODE, /ui\.closeBtn\.addEventListener\("click", \(\) => setExpanded\(false\)\);/, "the ✕ is the way out");
   assert.strictEqual(valueOf(".fp-collapse", "color"), null, "and its rule is gone");
+});
+
+test("ROUND 2 review: the sheet's six-control second row wraps, and ⏭/Save are actions, not the muted speed readout", () => {
+  /* Stop, 1×, ⏭, Save, "Up Next (N)" and "Episode" need ~380px against a
+     375px phone's 343px content box, and the row did not wrap; ⏭ and Save
+     borrowed `.fp-rate`, whose colour and weight are the speed readout's.
+     MUTATIONS: drop `flex-wrap: wrap` from .fp-row2; build ⏭ or Save with
+     "fp-rate" again; delete the pressed-state rule. */
+  assert.strictEqual(valueOf(".fp-row2", "flex-wrap"), "wrap", "the row wraps at phone width");
+  assert.doesNotMatch(CODE, /el\("button", "fp-rate fp-(next|save)"/, "⏭ and Save do not wear the speed readout's box");
+  assert.match(CODE, /el\("button", "fp-btn fp-next", "⏭"\)/);
+  assert.match(CODE, /el\("button", "fp-btn fp-save", "Save"\)/);
+  for (const sel of [".fp-next, .fp-save", ".fp-upnext"]) assert.ok(SRC.includes(`${sel} {`), `${sel} has its own rule`);
+  assert.ok(valueOf('.fp-save[aria-pressed="true"]', "color"), "Save shows its pressed state");
+  assert.ok(valueOf('body.ui-v2 .fp-save[aria-pressed="true"]', "color"), "…in the v2 theme too");
 });
 
 test("both speed buttons say they open a menu — the Foray page's as well as the sheet's", () => {

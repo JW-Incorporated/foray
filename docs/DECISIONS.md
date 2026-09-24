@@ -17,7 +17,7 @@ of the native Preferences suite) and question 7 (privacy-policy wording).
 | | ordinary episode | Foray (tape) | Foray (narration line) |
 |---|---|---|---|
 | play / pause / toggle | always | always | always (`ForayTtsPlugin` pause/resume) |
-| ↺15 / 30↻ (`seekbackward`/`seekforward`) | always, the page's own ±15/30 (one source, `player/media-session.js`; the natives never hold a literal) | always, on the Foray's clock | always |
+| ↺15 / 30↻ (`seekbackward`/`seekforward`) | always, the page's own ±15/30 (one source, `player/media-session.js`; the natives never hold a literal for the DISTANCE — Android's label and glyph are the one exception, pinned below) | always, on the Foray's clock | always |
 | `previoustrack` | **always installed**: restart, unless within `RESTART_WINDOW_SEC` of the start AND the chosen list has a playable row before this one — then that row (p-car-5; the Foray's own rule, `forayPrevious`) | the previous clip / restart, same window | same |
 | `nexttrack` | only when `planAfterEnded` has something: Up Next first, then the chosen list | the next clip | the next item |
 | end of the last item | nothing plays; the bar stays with ▶ and the seek pair; the entry is kept (L1's `p-car-6`) | the Foray reports `ended`: every transport command off, the entry kept, Android's Stop stays | — |
@@ -283,7 +283,12 @@ this entry records the rulings that picked it.
   §8.2, "Review, same day".)
 - **15/30 has one source** (`player/media-session.js`): the page ignores any
   `seekOffset` a platform sends back, the natives read the pair from the payload, and
-  the Swift holds no literal. **Ruling: a press is applied exactly once** even though
+  the Swift holds no literal. Android's label and glyph are the one exception (round-2
+  review, 2026-09-23): Media3's `CommandButton` icons are fixed constants
+  (`ICON_SKIP_BACK_15`, `ICON_SKIP_FORWARD_30`) and the TalkBack words are string
+  resources, so they are literals; the distance still comes from the payload, and
+  `tools/mobile/shell-invariants.test.mjs` pins both literals to
+  `SEEK_BACKWARD_SEC`/`SEEK_FORWARD_SEC`, so changing the pair is red until they follow. **Ruling: a press is applied exactly once** even though
   two clients may deliver it — the shim's `deliver()` drops the second copy of the
   same action from the other origin inside 500 ms and records it (`remote … dup=y`).
 - **Deleted, and why:** `fix/fr-ui`'s `CommandSnapshot`/`publishCommands` republish

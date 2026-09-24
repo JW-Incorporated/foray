@@ -536,6 +536,35 @@ test("at the top of the list, focus goes to the other arrow (its own is disabled
   assert.strictEqual(m.doc.activeElement.getAttribute("data-reorder-down"), "c");
 });
 
+test("ROUND 2 review: the live Up Next repaint (a ▶ tap, an episode chaining) keeps focus on the same control", () => {
+  /* repaintQueuePage replaced #view and focus fell to <body>. MUTATION: drop
+     `queueFocusAfter(held)` from repaintQueuePage -> red. */
+  const m = mount();
+  m.ctx.location.hash = "#/queue";
+  let rows = ["a", "b", "c"];
+  const paint = () => {
+    queueView(m, rows, rows.map((_, i) => 100 + i * 80));
+    for (const id of rows) {
+      const play = m.doc.createElement("button");
+      play.setAttribute("data-play", id);
+      m.view.appendChild(play);
+    }
+  };
+  m.ctx.renderQueue = paint;   // what renderQueue does to #view, as nodes
+  paint();
+  const playB = m.view.querySelectorAll("[data-play]").find((b) => b.getAttribute("data-play") === "b");
+  playB.focus();
+  m.ctx.repaintQueuePage();
+  const now = m.doc.activeElement;
+  assert.notStrictEqual(now, playB, "precondition: the old node was replaced");
+  assert.strictEqual(now && now.getAttribute("data-play"), "b", "focus is on b's ▶ again");
+
+  rows = ["a", "c"];            // b left (played from Up Next, then chained on)
+  m.ctx.repaintQueuePage();
+  assert.strictEqual(m.doc.activeElement && m.doc.activeElement.getAttribute("data-play"), "c",
+    "the row that took its place");
+});
+
 test("after ✕, focus is on the ✕ of the row that took its place, and the removal is said", () => {
   const m = mount();
   m.store.set("cp_queue", JSON.stringify(["a", "c"]));

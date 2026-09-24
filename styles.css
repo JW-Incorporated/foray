@@ -2460,7 +2460,16 @@ input[type="range"] { accent-color: var(--amber); }
 /* Text starts at the transport's edge, not 8px in: the padding is hit area. */
 .fp-clip:first-child, .fy-clip:first-child { margin-left: -8px; }
 .fp-clip:last-child, .fy-clip:last-child { margin-right: -8px; }
-.fp-row2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+.fp-row2 { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px; margin-top: 8px; }
+/* THE ROW GREW TO SIX (audit round 2, L3: ⏭, Save, "Up Next (N)" joined Stop,
+   speed and "Episode") and did not wrap: on a 375px phone it needed ~380px of
+   a 343px content box, so "Episode" ran into a sideways scroll inside the sheet
+   (review). It wraps now, onto a second line of the same row. ⏭ and Save are
+   actions in the transport family's plain box (client.js); Save says its
+   pressed state in colour as well as in its "Saved ✓" text. */
+.fp-next, .fp-save { min-width: 52px; padding: 0 14px; }
+.fp-save[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.fp-upnext { white-space: nowrap; }
 /* THE SECOND ROW IS ONE CONTROL TREATMENT (visual pass 1, 2026-09-23). It
    mixed a caption-size grey box, a danger box, a bare underlined link and a
    second Close beside the grab zone's ✕. Now: the boxed controls are the
@@ -3753,6 +3762,8 @@ body.ui-v2 .fy-btn.fy-main { background: var(--violet); border-color: var(--viol
 body.ui-v2 .fy-btn:hover { border-color: var(--violet); }
 body.ui-v2 .fy-btn.fy-main:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
 body.ui-v2 .fy-btn.fy-rate, body.ui-v2 .fp-rate { color: var(--muted); }
+/* After the family's ui-v2 colour, which would otherwise out-rank it. */
+body.ui-v2 .fp-save[aria-pressed="true"] { color: var(--violet); border-color: var(--violet); }
 body.ui-v2 .fy-btn.fy-rate:hover, body.ui-v2 .fp-rate:hover { color: var(--text); }
 body.ui-v2 .fy-slot h3 { color: var(--text); }
 body.ui-v2 .fy-row {

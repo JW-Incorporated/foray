@@ -943,17 +943,20 @@ function buildUI() {
      All three read `episodeNavigation` — the object the page hands
      `setEpisodeNavigation` — and are painted by `paintEpisodeSurface` from
      `render()` and from every `setEpisodeNavigation`. The page owns Up Next and
-     the stars; the sheet only shows them. `.fp-rate` is borrowed for the two
-     buttons' box so they sit at the row's tap floor; `.fp-next` / `.fp-save` /
-     `.fp-upnext` are the hooks for their own rules. */
-  const nextBtn = el("button", "fp-rate fp-next", "⏭");
+     the stars; the sheet only shows them. The two buttons are the transport
+     family's plain box (`.fp-btn`, the seek pair's), NOT `.fp-rate`'s: that
+     box is the speed readout's, muted and light on purpose, and borrowing it
+     painted two actions as a de-emphasised readout (audit round 2 review of
+     visual-5). `.fp-next` / `.fp-save` / `.fp-upnext` carry their own rules
+     in styles.css, and `.fp-row2` wraps, so six controls fit a 320px phone. */
+  const nextBtn = el("button", "fp-btn fp-next", "⏭");
   nextBtn.type = "button";
   nextBtn.setAttribute("aria-label", "Next episode");
   nextBtn.hidden = true;
   const queueLink = el("a", "fp-openep fp-upnext", "Up Next");
   queueLink.href = "#/queue";
   queueLink.hidden = true;
-  const saveBtn = el("button", "fp-rate fp-save", "Save");
+  const saveBtn = el("button", "fp-btn fp-save", "Save");
   saveBtn.type = "button";
   saveBtn.setAttribute("aria-pressed", "false");
   saveBtn.hidden = true;

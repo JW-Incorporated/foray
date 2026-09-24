@@ -92,6 +92,7 @@ import {
   seedForays, seedCarries,
 } from "./prepare-webdir.mjs";
 import { artworkUrlsByShow, collectionIdsByShow } from "../../player/foray-sources.js";
+import { SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC } from "../../player/media-session.js";
 import { hydrateForayItems, indexSegments, indexSources } from "../../player/foray-resolve.js";
 import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
 import {
@@ -2427,6 +2428,28 @@ test("the Android notification carries the seek pair and the session its custom 
   const strings = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/res/values/strings.xml"), "utf8");
   assert.match(strings, /name="foray_action_seek_back">Back 15 seconds</);
   assert.match(strings, /name="foray_action_seek_forward">Forward 30 seconds</);
+});
+
+test("THE ONE ANDROID EXCEPTION to 'the natives never hold a literal': the label and glyph are pinned to media-session.js's pair (round 2 review)", () => {
+  /* The seek itself reads np.seekBackMs/seekForwardMs from the payload, but
+     Media3's CommandButton icons are fixed constants (ICON_SKIP_BACK_15, …) and
+     the strings are resources, so the Android label and glyph are literals. A
+     change to the pair in player/media-session.js would then seek one distance
+     while the notification and TalkBack said another. This test is what ties
+     them: change the pair and it is red until the icon constants and the
+     strings follow. MUTATION: set SEEK_FORWARD_SEC = 45 -> red. */
+  const service = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/PlaybackKeepAliveService.java"), "utf8"
+  ));
+  const strings = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/res/values/strings.xml"), "utf8");
+  const icon = (dir) => Number((new RegExp(`CommandButton\\.ICON_SKIP_${dir}_(\\d+)`).exec(service) || [])[1]);
+  const said = (name) => Number((new RegExp(`name="${name}">[^<]*?(\\d+) seconds<`).exec(strings) || [])[1]);
+  assert.strictEqual(icon("BACK"), SEEK_BACKWARD_SEC, "the back glyph's number is the page's");
+  assert.strictEqual(icon("FORWARD"), SEEK_FORWARD_SEC, "the forward glyph's number is the page's");
+  assert.strictEqual(said("foray_action_seek_back"), SEEK_BACKWARD_SEC, "the back label's number is the page's");
+  assert.strictEqual(said("foray_action_seek_forward"), SEEK_FORWARD_SEC, "the forward label's number is the page's");
+  const decisions = fs.readFileSync(path.join(ROOT, "docs/DECISIONS.md"), "utf8");
+  assert.match(decisions, /Android's label and glyph are the one exception/, "the contract names the exception");
 });
 
 test("a transport press on a running Android service is dispatched and NOT re-posted; a close removes the notification at once (round 2, native-8)", () => {
