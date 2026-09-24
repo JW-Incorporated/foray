@@ -815,8 +815,8 @@ test("both legal documents name the cache bucket FAMILY sw.js actually ships", (
 test("connect-src names exactly the app's own origin, Supabase, and the API", () => {
   /* This replaces a pointer with an assertion, deliberately. The documents used
      to cite `index.html:13` for the CSP; they now cite `index.html`, and the
-     claim they rest on — "`connect-src` names only two origins" — is checked
-     here instead. A store reviewer needs the claim to be true, not the line
+     claim they rest on — at the time, "`connect-src` names only two origins" — is
+     checked here instead (the next test holds the policy's number to it). A store reviewer needs the claim to be true, not the line
      number to be current.
 
      MUTATION THAT KILLS THIS: add any origin to `connect-src` in index.html.
@@ -848,6 +848,49 @@ test("connect-src names exactly the app's own origin, Supabase, and the API", ()
       "app's own origin, our Supabase project and our API. It now names: " +
       sources.join(" ")
   );
+});
+
+/* THE POLICY'S NUMBER IS THE CSP'S NUMBER (audit round 2, persist-3; the
+   wording the founder approved on 2026-09-24: "Approved"). The test above pins
+   the CSP; nothing pinned the SENTENCE, and §5 said "only two origins" for as
+   long as the CSP named three. This reads the count the policy states, in
+   words, and holds it to the count index.html declares — the way
+   test/data-deletion.test.js holds the cp_ keys to the policy's inventory.
+   MUTATION THAT KILLS THIS: restore "names only two origins" in §5, or add a
+   fourth origin to connect-src without touching the policy. */
+test("privacy policy §5 states the same number of connect-src origins index.html declares", () => {
+  const csp = /http-equiv="Content-Security-Policy"\s+content="([^"]*)"/.exec(read("index.html"));
+  assert.ok(csp, "index.html's CSP meta tag could not be located");
+  const sources = /connect-src ([^;"]*)/.exec(csp[1])[1].trim().split(/\s+/);
+  const policy = read("docs/legal/privacy-policy.md");
+  const stated = [...policy.matchAll(/`connect-src` names (?:only )?(\w+) origins?/g)].map((m) => m[1]);
+  assert.ok(stated.length >= 1, "policy §5 no longer states how many origins connect-src names");
+  const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+  for (const w of stated) {
+    const n = WORDS[w.toLowerCase()] ?? Number(w);
+    assert.equal(n, sources.length,
+      `the policy says connect-src names "${w}" origins; index.html names ${sources.length}: ${sources.join(" ")}`);
+  }
+});
+
+/* WHO SEES A SHOWS SEARCH, AND WHEN (persist-3, founder-approved 2026-09-24).
+   The API that answers a Shows search is a third party the policy has to name
+   (Vercel, as our processor), and the search goes there every time — the
+   policy's own §2 says there is no "only if we cannot find it locally"
+   condition, and data-safety.md said the opposite ("miss-only") in two rows.
+   MUTATION THAT KILLS THIS: drop the Vercel paragraph from §4.3, or restore
+   either data-safety row's "that miss-only lookup" wording. */
+test("the policy names Vercel as the processor for Shows search, and neither legal file calls the upload miss-only", () => {
+  const policy = read("docs/legal/privacy-policy.md");
+  const s43 = policy.slice(policy.indexOf("### 4.3"), policy.indexOf("## 5."));
+  assert.match(s43, /\*\*Vercel\*\*, which acts as our\s+processor/, "§4.3 must name Vercel as the processor that answers Shows searches");
+  for (const rel of DOCS) {
+    const doc = read(rel);
+    assert.ok(!/miss-only|misses the local catalogue/.test(doc), `${rel} still says the Shows search upload happens only on a local miss`);
+  }
+  const safety = read("docs/legal/data-safety.md");
+  assert.ok((safety.match(/every settled Shows search is sent to 4a's API \(Vercel\)/g) || []).length >= 2,
+    "data-safety.md's two search-history rows must both say every settled Shows search is sent to 4a's API (Vercel)");
 });
 
 /* U-01 (docs/ui-transition-plan.md, issue #127): self-hosted fonts need

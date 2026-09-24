@@ -462,7 +462,7 @@ const FLOORS = {
      also the suite most tempting to delete, because it is the only one that goes
      red for a reason in a `.md` file — the 27 line numbers it replaced went stale
      precisely because correcting them was somebody's optional courtesy. */
-  "test/legal-citations.test.js": 12,
+  "test/legal-citations.test.js": 17, // founder-approved persist-3 wording (2026-09-24): the policy's stated connect-src count is the CSP's, Vercel named, no "miss-only"; 15 -> 17
   /* FD-06 (docs/foray-directory-plan.md): `vercel.json`'s `headers` block. The
      phone path lives or dies on one line of it — `Access-Control-Allow-Origin: *`
      on `/data/` — and a missing header fails SILENTLY on a phone (the shell's
