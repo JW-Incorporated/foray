@@ -198,8 +198,8 @@ function makeDocument() {
   doc.addEventListener = (t, fn) => { if (!doc._listeners.has(t)) doc._listeners.set(t, []); doc._listeners.get(t).push(fn); };
   doc.removeEventListener = () => {};
   doc.readyState = "complete";
-  doc.key = (key) => {
-    const ev = { key, preventDefault() {} };
+  doc.key = (key, extra = {}) => {
+    const ev = { key, preventDefault() {}, ...extra };
     (doc._listeners.get("keydown") || []).forEach((fn) => fn(ev));
   };
   return { doc, El };
@@ -212,7 +212,7 @@ function makeDocument() {
  * committed data/*.json off disk; otherwise the harness calls the binders init
  * would, which is faster and is what every test but one uses.
  */
-function mount({ boot = false } = {}) {
+function mount({ boot = false, capacitor = null } = {}) {
   const { doc } = makeDocument();
   const add = (tag, id, cls, into = doc.body) => {
     const el = doc.createElement(tag);
@@ -274,6 +274,9 @@ function mount({ boot = false } = {}) {
   };
   ctx.window = ctx;
   ctx.globalThis = ctx;
+  /* The shell's bridge, when a test stands in for the native app: only the
+     App plugin's back button is modelled. */
+  if (capacitor) ctx.Capacitor = capacitor;
   vm.createContext(ctx);
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
   ctx.window.forayDiagnosticReport = () => "4a playback diagnostics — v1";
@@ -295,8 +298,8 @@ function mount({ boot = false } = {}) {
   return { ctx, doc, $, menu, drawer, overlay, view, store };
 }
 
-async function mountBooted() {
-  const m = mount({ boot: true });
+async function mountBooted(opts = {}) {
+  const m = mount({ boot: true, ...opts });
   for (let i = 0; i < 60 && !m.$("#diag-open"); i++) await new Promise((r) => setTimeout(r, 0));
   assert.ok(m.$("#diag-open"), "the real init() never wired the drawer");
   return m;
@@ -511,4 +514,175 @@ test("THE REAL init() binds the rule (a booted page closes the drawer on Playbac
   m.$("#diag-open").click();
   assert.strictEqual(m.drawer.hidden, true, "init() wired the leave rule");
   assert.strictEqual(m.$("#diag-sheet").hidden, false);
+});
+
+/* ==================================================================== */
+/* 5. AUDIT ROUND 2 (2026-09-23): the drawer is a modal, the same link   */
+/*    again, and hardware back                                           */
+/* ==================================================================== */
+
+/** A `.fy-sheet` with a dialog panel, opened the way Now Playing opens: the
+    topbar and the drawer kept reachable (F17), so "drawer over a sheet" is
+    the state under test. */
+function sheetUnderDrawer(m) {
+  const wrap = m.doc.createElement("div");
+  wrap.className = "fy-sheet";
+  const panel = m.doc.createElement("div");
+  panel.className = "fy-panel";
+  panel.setAttribute("role", "dialog");
+  wrap.appendChild(panel);
+  m.ctx.openSheet(wrap, { keepReachable: [".topbar", "#drawer", "#drawer-overlay"] });
+  return wrap;
+}
+
+test("ROUND 2 nav-5: opening the drawer locks the page, takes it out of reach, names itself on the menu button and moves focus to the first link", () => {
+  /* MUTATION 1: drop `document.body.classList.toggle("drawer-open", ...)` ->
+     the lock assertion is red (styles.css hangs `overflow: hidden` on it).
+     MUTATION 2: drop `inertOutside(drawer, ...)` -> the page stays reachable
+     under the scrim; red. MUTATION 3: drop `focusQuietly(first || drawer)` ->
+     focus stays on the menu button; red. */
+  const m = mount();
+  const player = m.doc.createElement("div");
+  player.id = "foray-player";
+  m.doc.body.appendChild(player);
+  m.menu.click();
+  assert.ok(m.doc.body.classList.contains("drawer-open"), "body.drawer-open is the page's scroll lock");
+  assert.ok(isInert(m.view) && isInert(player), "the page and the player are out of reach");
+  assert.ok(!isInert(m.menu.parentElement) && !isInert(m.overlay) && !isInert(m.drawer), "the topbar, the scrim and the drawer are not");
+  assert.strictEqual(m.doc.activeElement, m.$(".drawer-section"), "focus is on the first link");
+  assert.strictEqual(m.menu.getAttribute("aria-expanded"), "true");
+  assert.strictEqual(m.menu.getAttribute("aria-controls"), "drawer");
+  m.overlay.click();
+  assert.ok(!m.doc.body.classList.contains("drawer-open"), "closing drops the lock");
+  assert.ok(!isInert(m.view) && !isInert(player), "and releases exactly what opening took");
+  assert.strictEqual(m.menu.getAttribute("aria-expanded"), "false");
+  assert.strictEqual(m.doc.activeElement, m.menu, "a dismissal hands focus back to the menu button");
+});
+
+test("ROUND 2 nav-5: Escape closes the drawer, and only the drawer when it is open over a sheet; the next Escape reaches the sheet", () => {
+  /* MUTATION 1: drop the Escape branch from onDrawerKeydown -> red.
+     MUTATION 2: drop the `if (drawerIsOpen()) { onDrawerKeydown(e); return; }`
+     dispatch from onSheetKeydown -> Escape collapses the SHEET under a drawer
+     that stays; the "not the sheet" assertion is red. */
+  const m = mount();
+  const wrap = sheetUnderDrawer(m);
+  m.menu.click();
+  assert.strictEqual(m.drawer.hidden, false);
+  m.doc.key("Escape");
+  assert.strictEqual(m.drawer.hidden, true, "Escape closes the drawer");
+  assert.strictEqual(wrap.hidden, false, "and not the sheet under it");
+  assert.strictEqual(m.doc.activeElement, m.menu, "focus returns to the menu button");
+  m.doc.key("Escape");
+  assert.strictEqual(wrap.hidden, true, "the next Escape is the sheet's");
+});
+
+test("ROUND 2 nav-5: while the drawer is open, Tab cycles the topbar and the drawer and nothing behind them", () => {
+  /* The belt behind `inert` for a WebView without it, and what makes a Tab
+     from the menu button walk INTO the open drawer rather than back into a
+     covered sheet. MUTATION: drop the Tab branch from onDrawerKeydown -> Tab
+     does nothing here and the cycle assertions are red. */
+  const m = mount();
+  sheetUnderDrawer(m);
+  m.menu.click();
+  const first = m.$(".drawer-section");
+  assert.strictEqual(m.doc.activeElement, first);
+  m.doc.key("Tab", { shiftKey: true });
+  assert.ok(m.menu.parentElement.contains(m.doc.activeElement), "Shift+Tab from the first link goes up into the topbar");
+  m.menu.focus();
+  m.doc.key("Tab", { shiftKey: true });
+  assert.ok(m.drawer.contains(m.doc.activeElement), "Shift+Tab from the menu button wraps to the drawer's last control");
+  m.menu.focus();
+  m.doc.key("Tab");
+  m.doc.key("Tab");
+  assert.strictEqual(m.doc.activeElement, first, "from the menu button, Tab walks through the topbar into the open drawer");
+});
+
+test("ROUND 2 nav-8: a drawer link to the page already on screen closes the sheets and scrolls to the top", () => {
+  /* The same hash fires no hashchange, so route() never ran and the tap did
+     nothing; under Now Playing it left the sheet covering the page asked for.
+     MUTATION: drop `sameHashTap(item, e)` from onDrawerAction -> red. */
+  const m = mount();
+  const scrolled = [];
+  m.ctx.scrollTo = (_x, y) => scrolled.push(y);
+  const wrap = sheetUnderDrawer(m);
+  m.menu.click();
+  const home = m.$(".drawer-section");   // href="#/", and the page is "#/"
+  const { ev } = home.dispatch("click");
+  assert.strictEqual(ev.defaultPrevented, true, "handled here, since the router will not see it");
+  assert.strictEqual(m.drawer.hidden, true, "the drawer leaves, as for any destination");
+  assert.strictEqual(wrap.hidden, true, "the sheet covering the page the listener asked for is gone");
+  assert.deepStrictEqual(scrolled, [0], "and the page is at its top");
+});
+
+test("ROUND 2 nav-8: a drawer link to a DIFFERENT page is ordinary navigation, and the wordmark follows the same-hash rule", () => {
+  /* MUTATION: drop the `currentHash(href) !== currentHash()` guard in
+     sameHashTap -> every drawer link would close the sheets and scroll before
+     the router ran; the first assertion is red. */
+  const m = mount();
+  const wrap = sheetUnderDrawer(m);
+  m.ctx.location.hash = "#/library";
+  m.menu.click();
+  const { ev } = m.$(".drawer-section").dispatch("click");
+  assert.strictEqual(ev.defaultPrevented, false, "a different page: left to the router");
+  assert.strictEqual(wrap.hidden, false, "which closes the sheets itself on the hashchange");
+  m.ctx.location.hash = "#/";
+  const mark = m.doc.createElement("a");
+  mark.className = "wordmark";
+  mark.setAttribute("href", "#/");
+  assert.strictEqual(m.ctx.sameHashTap(mark, { preventDefault() {} }), true, "the wordmark to Home, on Home");
+  assert.strictEqual(wrap.hidden, true);
+  assert.match(APP_SRC, /const mark = \$\("\.wordmark"\);\s*if \(mark\) mark\.addEventListener\("click", \(e\) => sameHashTap\(mark, e\)\);/,
+    "bindDrawerChrome binds the wordmark to the same rule");
+});
+
+test("ROUND 2 nav-2: hardware back dismisses the top-most thing: the drawer, then the sheet, then a step back, then the app", () => {
+  /* MUTATION 1: swap the drawer and sheet branches -> back with both open
+     collapses the sheet under a drawer that stays; red. MUTATION 2: drop the
+     `canGoBackInApp()` branch -> a page with history exits the app; red.
+     MUTATION 3: drop the `backPending` guard -> two presses inside one beat
+     step twice; the last assertion is red. */
+  const m = mount();
+  const backs = [];
+  m.ctx.history.back = () => backs.push(1);
+  const wrap = sheetUnderDrawer(m);
+  m.menu.click();
+  assert.strictEqual(m.ctx.handleBack(), "drawer");
+  assert.strictEqual(m.drawer.hidden, true);
+  assert.strictEqual(wrap.hidden, false, "the drawer only");
+  assert.strictEqual(m.ctx.handleBack(), "sheet");
+  assert.strictEqual(wrap.hidden, true);
+  assert.deepStrictEqual(backs, [], "no page step under an overlay");
+  assert.strictEqual(m.ctx.handleBack(), "exit", "nothing open and nothing behind: leave the app");
+  vm.runInContext("navIndex = 1;", m.ctx);
+  assert.strictEqual(m.ctx.handleBack(), "history");
+  assert.deepStrictEqual(backs, [1]);
+  assert.strictEqual(m.ctx.handleBack(), "history");
+  assert.deepStrictEqual(backs, [1], "one step per press until the step has landed");
+});
+
+test("ROUND 2 nav-2: the shell's back button is wired to that order and leaves the app only from the bottom", () => {
+  /* MUTATION: drop the `exitApp` call from the listener -> Android's back on a
+     first page does nothing at all; red. */
+  const m = mount();
+  const app = {
+    listeners: {}, exits: 0,
+    addListener(name, fn) { this.listeners[name] = fn; return Promise.resolve({ remove() {} }); },
+    exitApp() { this.exits++; },
+  };
+  assert.strictEqual(m.ctx.bindHardwareBack({ Capacitor: { Plugins: { App: app } } }), true);
+  assert.strictEqual(m.ctx.bindHardwareBack({}), false, "no shell, no listener: the browser's own back stands");
+  assert.strictEqual(typeof app.listeners.backButton, "function");
+  m.menu.click();
+  app.listeners.backButton({ canGoBack: true });
+  assert.strictEqual(m.drawer.hidden, true, "back closed the drawer");
+  assert.strictEqual(app.exits, 0, "and did not leave");
+  app.listeners.backButton({ canGoBack: false });
+  assert.strictEqual(app.exits, 1, "with nothing open and nothing behind, back leaves the app");
+});
+
+test("THE REAL init() registers the back handler with the shell", async () => {
+  /* MUTATION: remove `bindHardwareBack()` from init(). Red. */
+  const app = { listeners: {}, addListener(name, fn) { this.listeners[name] = fn; return Promise.resolve({ remove() {} }); }, exitApp() {} };
+  await mountBooted({ capacitor: { Plugins: { App: app } } });
+  assert.strictEqual(typeof app.listeners.backButton, "function", "init() wired the shell's back button");
 });

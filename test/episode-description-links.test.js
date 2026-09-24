@@ -348,3 +348,32 @@ test("REVIEW: a timestamp tap whose play() throws reports it to the bar, as bind
   assert.strictEqual(reported[0].name, "TypeError");
   assert.deepStrictEqual(noted, [["start", "TypeError"]], "and the diagnostic record gets its row");
 });
+
+/* ---------- ROUND 2 (p-switcher-2): one tokeniser, two renderers ---------- */
+
+test("episodeDescriptionTokens is the pass the HTML is rendered from, and is published for the Now Playing sheet", () => {
+  /* The sheet builds the same notes as DOM nodes from these tokens (client.js
+     `paintNotes`), so a URL or a stamp is recognised in one place.
+     MUTATION 1: let episodeDescriptionHtml keep its own regex loop -> the
+     equality below can drift silently; the ForayNotes assertion is what makes
+     the sheet's reader the same function. MUTATION 2: drop `label` from the
+     stamp token -> the sheet's stamps lose their accessible name; red. */
+  // Through JSON: the tokens are built inside the vm realm, whose Object
+  // prototype is not this realm's, and deepStrictEqual compares prototypes.
+  const tokens = JSON.parse(JSON.stringify(app.episodeDescriptionTokens("see https://x.test/a at 12:34 and 2:00:00", 3600)));
+  assert.deepStrictEqual(tokens, [
+    { kind: "text", text: "see " },
+    { kind: "link", text: "https://x.test/a", href: "https://x.test/a" },
+    { kind: "text", text: " at " },
+    { kind: "stamp", text: "12:34", secs: 754, label: "Play from 12:34" },
+    { kind: "text", text: " and " },
+    { kind: "text", text: "2:00:00" },
+  ]);
+  assert.strictEqual(app.ForayNotes.tokens, app.episodeDescriptionTokens, "published for client.js under window.ForayNotes");
+  assert.strictEqual(app.episodeDescriptionTokens("").length, 0);
+  assert.strictEqual(
+    html("see https://x.test/a at 12:34", 3600),
+    'see <a href="https://x.test/a" target="_blank" rel="noopener noreferrer">https://x.test/a</a> at <button type="button" class="ep-ts" data-ts="754" aria-label="Play from 12:34">12:34</button>',
+    "the page's HTML is those tokens rendered",
+  );
+});

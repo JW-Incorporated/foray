@@ -115,11 +115,11 @@ import { createForayDirectory, DIRECTORY_DB_NAME } from "./foray-directory.js";
 import { mountStrip, stripModel, stripSummary, stripTally, segmentStripHtml, applyStripGrow } from "./segment-strip.js";
 import {
   HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
-  startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent,
+  startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent, unzoomedStripX,
   BUBBLE_SCALE, BUBBLE_WIDTH, BUBBLE_HEIGHT, BUBBLE_GAP_PX,
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
-import { startDrag, moveDrag, endDrag, dragOffset } from "./sheet-drag-dismiss.js";
+import { startDrag, moveDrag, endDrag, dragOffset, claimsTouch } from "./sheet-drag-dismiss.js";
 import { createDurableStore, preferencesTier } from "./durable-store.js";
 import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
@@ -718,8 +718,16 @@ function buildUI() {
      <button> named by its aria-label, and a button's children are
      presentational — WebKit leaves them out of the accessibility tree, so a
      status role here was never announced under VoiceOver. The announcement is
-     `announce` below, a visually hidden sibling of the button, and the
-     button's own name carries the line too (`paintInfoLabel`). */
+     `announce` below, a visually hidden element, and the button's own name
+     carries the line too (`paintInfoLabel`).
+     AND NOT INSIDE THE BAR EITHER (audit round 2, a11y-2). The review put the
+     region beside the button, inside `bar` — and expanding Now Playing makes
+     the bar `inert` (the owner takes every sibling of the sheet out of reach),
+     so "Buffering…" and a failed load were announced from the collapsed bar
+     and silent from the one screen a listener stops to look at. It is
+     appended to `root` as a sibling of BOTH the bar and the sheet, and
+     `setExpanded` names it in `keepReachable`, so it is live in either
+     state. */
   const err = el("span", "fp-err");
   err.hidden = true;
   info.append(title, show, err);
@@ -771,7 +779,7 @@ function buildUI() {
      own comment set out to remove. It moves into the sheet's grab row below,
      which is the only place it can be both visible and hit-testable, and is
      also where the sheet's other dismiss affordances now are. */
-  bar.append(art, info, skipBtn, playBtn, announce);
+  bar.append(art, info, skipBtn, playBtn);
   root.append(progress, bar);
 
   /* ---------- the Now Playing sheet ----------
@@ -931,18 +939,30 @@ function buildUI() {
      transport is what keeps play/pause and the scrub bar reachable without
      scrolling — the same order the `#/episode/:id` page uses, and the same
      order Apple Podcasts uses. Empty-and-hidden when the item carries no
-     description, because a heading over nothing is worse than an absence. */
-  const sDesc = el("p", "fp-s-desc");
+     description, because a heading over nothing is worse than an absence.
+
+     THE SAME NOTES THE EPISODE PAGE SHOWS (audit round 2, p-switcher-2). The
+     founder's 2026-09-17 ruling — links you can tap, timestamps that seek,
+     collapsed under "Episode notes" — reached `#/episode/:id` and not this
+     sheet, which painted the same text dead and fully expanded. Same
+     `<details>` shell and the same classes as that page, so styles.css has one
+     rule for them; the content is built in `paintNotes` from the tokens app.js
+     publishes (`window.ForayNotes`), node by node, never from an HTML string —
+     the rule this whole file is built on, kept even here. */
+  const sDesc = el("details", "fp-s-desc ep-description");
   sDesc.hidden = true;
+  const sDescToggle = el("summary", "ep-description-toggle", "Episode notes");
+  const sDescText = el("p", "ep-description-text");
+  sDesc.append(sDescToggle, sDescText);
 
   scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, clips, row2, sErr, note, sDesc);
   sheet.append(grabZone, scroll);
-  root.append(sheet);
+  root.append(sheet, announce);
   document.body.append(root);
 
   return {
     root, bar, art, title, show, playBtn, skipBtn, closeBtn, fill, sheet,
-    grabZone, scroll, sArt, sDesc, clips, clipPrev, clipNext,
+    grabZone, scroll, sArt, sDesc, sDescText, clips, clipPrev, clipNext,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
     rateBtn, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
   };
@@ -1819,10 +1839,7 @@ function setNowPlaying(item, why) {
     ui.sArt.hidden = true;
     ui.sArt.removeAttribute("src");
   }
-  /* `textContent`, so an RSS description's own markup is text and not DOM —
-     the rule this whole file is built on (see the header). */
-  ui.sDesc.textContent = item.description || "";
-  ui.sDesc.hidden = !item.description;
+  paintNotes(item);
   /* A RESTORED FORAY (`restoreForay`) is a bar with a Foray behind it and no
      `foray` loaded yet: it links to its Foray page, never to an episode page
      that does not exist. */
@@ -1858,6 +1875,66 @@ function setNowPlaying(item, why) {
   render();
 }
 
+/* ---------- the notes in the sheet (audit round 2, p-switcher-2) ----------
+
+   Built from `window.ForayNotes.tokens`, app.js's one tokeniser — the same
+   pass `episodeDescriptionHtml` feeds the episode page — so a URL or a
+   timestamp is recognised in exactly one place. Each token becomes a NODE:
+   `textContent` for prose, `href` on an <a> for a link (the scheme re-checked
+   here, though app.js's `safeUrl` already refused anything but http(s)), and
+   a `data-ts` button for a stamp that seeks through `seekEpisodeTo` — the
+   same seek the scrubber and the page's own stamps take. `innerHTML` never
+   appears: an RSS description is third-party text, and the file's header rule
+   does not bend for a feature.
+
+   PLAIN TEXT FOR A FORAY (`foray` set). A clip's notes belong to its source
+   episode, and a stamp in them would seek the Foray's clock somewhere the
+   episode meant; `seekEpisodeTo` refuses inside a Foray anyway, so the honest
+   paint is text with nothing to press. Also plain when app.js has not
+   published the tokeniser (a harness, or a page paired with an older
+   cached app.js): the sheet degrades to what it showed before, never to
+   nothing. */
+function paintNotes(item) {
+  const text = item?.description || "";
+  ui.sDesc.hidden = !text;
+  /* A `textContent` write: the paragraph is prose, not a control, and
+     test/toggle-labels.test.js lists it as one (NOT_CONTROLS). Not
+     `replaceChildren`/`createTextNode` — the real-client harnesses
+     (transport-reconcile, diagnostic-record) drive this path over a DOM stub
+     that has neither, and a paint helper must not be the reason a seam test
+     dies. Token text goes in through `append(string)`, which the DOM turns
+     into a text node itself. */
+  ui.sDescText.textContent = "";
+  if (!text) return;
+  const notes = typeof window !== "undefined" ? window.ForayNotes : null;
+  const tokens = !foray && notes && typeof notes.tokens === "function"
+    ? notes.tokens(text, episodeDurationSec())
+    : null;
+  if (!Array.isArray(tokens)) { ui.sDescText.textContent = text; return; }
+  for (const t of tokens) {
+    if (t.kind === "link" && /^https?:\/\//i.test(String(t.href || ""))) {
+      const a = el("a", null, t.text);
+      a.href = t.href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      ui.sDescText.append(a);
+    } else if (t.kind === "stamp" && Number.isFinite(t.secs)) {
+      const b = el("button", "ep-ts", t.text);
+      b.type = "button";
+      b.dataset.ts = String(t.secs);
+      if (t.label) b.setAttribute("aria-label", t.label);
+      b.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        seekEpisodeTo(t.secs).catch(() => {});
+      });
+      ui.sDescText.append(b);
+    } else {
+      ui.sDescText.append(String(t.text ?? ""));
+    }
+  }
+}
+
 /* ---------- what the bar says when there is no sound ----------
 
    Audit 2026-09-22, two silences the transport did not explain:
@@ -1882,6 +1959,8 @@ const BUFFERING_LINE = "Buffering…";
 /** Between the tap and the first audio (audit round 2, p-impatient-4). The
     Foray page says the same word from the same state (`snapshot.loading`). */
 const LOADING_LINE = "Loading…";
+/** What a screen reader hears when Stop takes the player away (a11y-6). */
+const STOPPED_LINE = "Stopped";
 /** The element is waiting for data while the transport is running. */
 let buffering = false;
 /** The last STATUS the live region was given — see `paintStatus`. */
@@ -2355,14 +2434,28 @@ async function stopAndClose({ persist = true } = {}) {
   await manager.stop();
   if (media) media.release();
   lastMediaPositionKey = null;
-  /* Stop is pressed from INSIDE the open sheet, so the owner has to let go of
-     it first — otherwise the page behind would stay `inert` with no sheet on
-     screen to account for it. */
-  const owner = sheetOwner();
-  if (owner) owner.closeSheet(ui.sheet);
+  /* THE ROOT HIDES FIRST, THEN THE OWNER LETS GO (audit round 2, a11y-6).
+     Stop is pressed from inside the open sheet, so the owner has to release
+     the page — otherwise it would stay `inert` with no sheet on screen. But
+     `closeSheet` hands focus back to the bar's title button, and the very next
+     line used to hide the whole player: focus died on a hidden element and a
+     screen-reader user was left nowhere, with nothing said. Hidden BEFORE the
+     release, the owner's own hidden-subtree check skips that button; focus
+     that was on Stop itself is blurred for the same reason; and the page's
+     one landing rule (`landOnPage` — the heading, or #view) takes over, then
+     the stop is announced from app.js's region, which the hidden root cannot
+     silence. */
   ui.root.hidden = true;
   ui.sheet.hidden = true;
+  const active = document.activeElement;
+  if (active && active !== document.body && typeof ui.root.contains === "function"
+      && ui.root.contains(active) && typeof active.blur === "function") active.blur();
+  const owner = sheetOwner();
+  if (owner) owner.closeSheet(ui.sheet);
   document.body.classList.remove("fp-open", "fp-expanded");
+  const nav = typeof window !== "undefined" ? window.ForayNav : null;
+  if (nav && typeof nav.landOnPage === "function") nav.landOnPage({ navigated: false });
+  if (nav && typeof nav.announce === "function") nav.announce(STOPPED_LINE);
   current = null;
   /* The bar is gone, so there is nothing armed to resume into. The stored
      POINTER stays: closing the bar is "get this off my screen", not "forget
@@ -2794,7 +2887,61 @@ function bind() {
      description, close, reopen — `scrollTop` read back 400, which is the
      founder's exact "opens on the bottom part of the transcript", now caused
      by the fix for it. Moving the line below `hidden = false` makes it 0. */
+  /* ---------- the sheet MOVES (audit round 2, touch-8) ----------
+
+     It used to appear with a hard cut and, after a pull past the dismiss
+     distance, vanish from wherever the thumb left it — `hidden` went to
+     `display: none` in the same frame the offset was reset, so the one
+     transition styles.css gives it (`.fp-sheet:not(.fp-sheet-dragging)`)
+     never painted. Only the spring-back of a SHORT pull animated, which made
+     the successful outcome the one broken motion in the sequence. Apple's
+     sheet slides both ways.
+
+     The motion itself is the owner's (`ForaySheets.slideIn` / `slideOut`):
+     one implementation of "move a panel by its own custom property and say
+     when it has settled", shared with every `.fy-panel`, honouring
+     `prefers-reduced-motion` in one place. Here: on open the sheet is unhidden
+     at its full height and released to 0; on close it is sent to its full
+     height FIRST — from wherever the finger left it, so a dismiss finishes
+     the slide — and only when it has settled does `setExpanded(false)` run
+     for real. `sheetExitPending` swallows a second close asked for mid-slide
+     (Escape pressed twice, a bar tap during the exit); the first one's
+     settle hides it. A sheet the owner cannot move (no owner, a zero-height
+     harness, reduced motion) closes as it always did, at once. */
+  let sheetExitPending = false;
+  const sheetHeightPx = () => {
+    try {
+      const h = typeof ui.sheet.getBoundingClientRect === "function" ? ui.sheet.getBoundingClientRect().height : 0;
+      return Number.isFinite(h) && h > 0 ? h : 0;
+    } catch (_) { return 0; }
+  };
+  const slideSheetOut = (done) => {
+    if (ui.sheet.hidden) return false;
+    if (sheetExitPending) return true;
+    const owner = sheetOwner();
+    const h = sheetHeightPx();
+    if (!owner || typeof owner.slideOut !== "function" || !h) return false;
+    /* The release transition applies from wherever the drag left it: the
+       dragging class is what switches it off. */
+    ui.sheet.classList.remove("fp-sheet-dragging");
+    const started = owner.slideOut(ui.sheet, "--fp-sheet-dy", h, () => { sheetExitPending = false; done(); });
+    if (started) sheetExitPending = true;
+    return !!started;
+  };
+  const slideSheetIn = () => {
+    const owner = sheetOwner();
+    const h = sheetHeightPx();
+    if (!owner || typeof owner.slideIn !== "function" || !h) return;
+    owner.slideIn(ui.sheet, "--fp-sheet-dy", h, "fp-sheet-dragging");
+  };
+  /* True only inside a slide-out's settle: the close below is due NOW, not
+     another slide. */
+  let sheetSettled = false;
   const setExpanded = (open) => {
+    if (!open && !sheetSettled && slideSheetOut(() => {
+      sheetSettled = true;
+      try { setExpanded(false); } finally { sheetSettled = false; }
+    })) return;
     setSheetDragOffset(0);
     const owner = sheetOwner();
     /* Closing: the owner first, while the sheet is still shown — it lifts
@@ -2806,18 +2953,21 @@ function bind() {
     paintInfoLabel();
     /* Opening: the page behind (and the mini bar under the sheet) goes inert
        and focus moves into the dialog. The topbar and the drawer stay
-       reachable (U-12/F17 above). Escape, and a navigation, collapse it
-       through this same function. */
+       reachable (U-12/F17 above), and so does the player's live region — it
+       is a sibling of the bar, not inside it, for exactly this reason (see
+       buildUI). Escape, and a navigation, collapse it through this same
+       function. */
     if (open && owner) {
       owner.openSheet(ui.sheet, {
         panel: ui.sheet,
         bodyClass: "fp-expanded",
-        keepReachable: [".topbar", "#drawer", "#drawer-overlay"],
+        keepReachable: [".topbar", "#drawer", "#drawer-overlay", ".fp-announce"],
         onRequestClose: () => setExpanded(false),
         returnFocus: ui.info,
       });
     }
     if (open) ui.scroll.scrollTop = 0;
+    if (open) slideSheetIn();
   };
   ui.info.addEventListener("click", () => setExpanded(ui.sheet.hidden));
   /* The artwork too — the biggest thing on the bar, and where every podcast
@@ -2884,14 +3034,24 @@ function bind() {
     if (!drag || e.pointerId !== dragPointer) return;
     const next = moveDrag(drag, e.clientY, e.timeStamp);
     drag = next;
-    const offset = dragOffset(next);
-    setSheetDragOffset(offset);
-    /* Once the sheet is actually moving, the scroller must stop competing for
-       the same finger. `touch-action: none` on the grab zone covers a drag
-       that STARTED there; this covers one that started on the body at
-       scrollTop 0, which the scroller would otherwise rubber-band. */
-    if (offset > 0 && e.cancelable) e.preventDefault();
+    setSheetDragOffset(dragOffset(next));
   });
+  /* THE SCROLLER MUST NOT GET THE PAN (audit round 2, touch-2). `touch-action:
+     none` on the grab zone covers a drag that STARTED there; a pull that
+     starts on the artwork or the title at scrollTop 0 — where a thumb
+     actually goes — has no such rule, because the body is the scroller and
+     must keep scrolling. This file used to `preventDefault()` the pointermove
+     for that case, which stops nothing: per the Pointer Events spec only
+     `touch-action` or a cancelled, NON-passive `touchmove` keeps the browser
+     from panning, so on a phone the first ten pixels twitched, the scroller
+     rubber-banded, the browser fired `pointercancel` and the sheet sprang
+     back. Same pattern as the strip's own guard in app.js. The decision —
+     "does the sheet own this finger" — is the module's (`claimsTouch`): an
+     eligible pull moving DOWN claims every move from the first pixel, an
+     upward move claims none and scrolls. */
+  ui.sheet.addEventListener("touchmove", (e) => {
+    if (drag && claimsTouch(drag) && e.cancelable !== false && typeof e.preventDefault === "function") e.preventDefault();
+  }, { passive: false });
   const endSheetDrag = (e) => {
     if (!drag || e.pointerId !== dragPointer) return;
     const { dismiss } = endDrag(drag);
@@ -3676,6 +3836,24 @@ const ForayPlayer = {
     BUBBLE_SCALE, BUBBLE_WIDTH, BUBBLE_HEIGHT, BUBBLE_GAP_PX,
     bubblePosition,
     bubbleContentOffset,
+    /* Where a finger in zoomed space sits on the un-zoomed strip — the one
+       piece of arithmetic the release commit needs (touch-1). */
+    unzoomedX: unzoomedStripX,
+  },
+
+  /* ---------- drag-to-dismiss, for the sheets app.js owns (touch-4) ----------
+     Every `.fy-panel` paints the same grab handle the Now Playing sheet does
+     and, until round 2, only Now Playing answered a drag — eight false
+     affordances. The owner (`openSheet`) now binds the gesture to each panel
+     it opens, reading the decision from this same pure module, so a fifth
+     sheet cannot drag by a different rule. Bridged for the reason everything
+     else here is: app.js is a classic script and cannot import it. */
+  sheetDrag: {
+    start: startDrag,
+    move: moveDrag,
+    end: endDrag,
+    offset: dragOffset,
+    claimsTouch,
   },
 
   /* ---------- the seek nudge (persona 58) ----------

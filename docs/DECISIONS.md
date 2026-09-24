@@ -153,6 +153,75 @@ this entry records the rulings that picked it.
   each; pause, lock, wait two minutes, connect the car, press play → 4a resumes; then
   Copy diagnostics.
 
+## 2026-09-23 (audit round 2, lane L2: every overlay gets the one contract — the drawer, hardware back, gestures that commit on release, sheets that move)
+
+Round 2 of the audit (`docs/audit/round-2/`, theme R2-C and the gesture half of
+R2-D) found that the modal owner built on 2026-09-22 (`openSheet`) gave its
+whole contract to the sheets and none of it to the drawer, and that the two
+gestures were designed with a mouse. What is now a rule, and where it is pinned:
+
+- **The drawer is a modal, with the sheets' contract.** `body.drawer-open`
+  locks the page, the panel does not chain its scroll, the scrim takes no pan;
+  the page, the tab bar and the player go `inert` (the topbar, the scrim and
+  the live region stay reachable — the ☰ works at every moment, F17); focus
+  moves to the first link, Escape closes it and returns focus to the ☰; the ☰
+  carries `aria-expanded` / `aria-controls`. A link that navigates and a
+  button that opens a sheet hand focus on through their own rules
+  (`landOnPage`, `openSheet`'s drawer case), so a dismissal is the only close
+  that returns it to the ☰. Not on the sheet stack: the drawer sits OVER
+  sheets, never under them, and `onSheetKeydown` yields while it is open.
+  `test/drawer-ownership.test.js`.
+- **Hardware back, in this order — the drawer, then the top sheet through
+  its own close (a sheet may decline), then one step of the app's history,
+  else leave the app.** `ForayNav.handleBack()` in app.js is the ordering;
+  `init()` registers it with `@capacitor/app`'s `backButton`, which on Android
+  replaces the WebView's own back (it closed the overlay AND stepped the page
+  under it) and on iOS registers harmlessly. Recorded here, beside the drawer
+  entry above, because it is that ownership model applied to the platform's
+  one dismiss gesture. **Device check (Android):** drawer open → back closes
+  only the drawer; Now Playing open → back collapses only the sheet, page
+  unchanged; Home with nothing behind → back leaves the app.
+- **A gesture commits on `pointerup`, never on the click that may follow.** The
+  Foray strip's hold-and-drag delegated its seek to a `click` that WebKit and
+  Chrome on Android withhold once a touch has moved — so the headline gesture
+  worked with a mouse and did nothing on a phone (`touch-1`, the round's one
+  high on the app's main platform). The release commits through the same
+  `commitStripSeek` a tap's click uses, reading the position against the
+  PRE-zoom rect and bar boxes mapped through the zoom origin
+  (`unzoomedStripX`), never a rect measured at release. The sheet's pull-down
+  from its body now cancels the non-passive `touchmove` (`claimsTouch`);
+  `preventDefault` on `pointermove`, which it used to do, stops no pan.
+  `test/modal-and-focus.test.js`, `player/strip-scrub-gesture.test.js`,
+  `player/sheet-drag-dismiss.test.js`, `player/now-playing-sheet.test.js`.
+- **Every panel that paints a handle answers a drag, and sheets move both
+  ways.** `openSheet` binds the same pure gesture module to every `.fy-panel`
+  it opens; Now Playing and the panels slide in, and a dismiss finishes the
+  slide instead of cutting from mid-screen. `ForaySheets.slideIn`/`slideOut`
+  are the one implementation; `prefers-reduced-motion` means no motion, in
+  CSS and in the owner alike.
+- **First run: only a considered press ends onboarding.** The scrim, Escape, a
+  navigation, hardware back and the handle's drag park the sheet for the
+  visit; `cp_intro_dismissed` is written by the Skip buttons and the
+  Preferences primary alone. A step swap lands focus on the new step's title.
+  The onboarding sheets keep `#foray-player` reachable, and a Foray play
+  counts as prior use (`hasForayTrace`, the resume row `cp_foray:` that
+  player/foray-progress.js writes) — a newcomer who arrived by a shared Foray
+  link is not met by Welcome over their own playing Foray.
+- **The sheet's notes are the episode page's notes.** One tokeniser
+  (`episodeDescriptionTokens`, published as `window.ForayNotes`) feeds the
+  page's HTML and the sheet's DOM; the sheet gets the same `<details>`, the
+  same links and the same seek stamps. client.js still builds nothing from an
+  HTML string.
+- **The player's live region is a sibling of the bar and the sheet**, kept
+  reachable when Now Playing expands, so "Buffering…" and a failed load are
+  spoken from the screen the listener is on. Stop hides the player BEFORE the
+  owner lets go, lands focus through `landOnPage` and says "Stopped" from
+  app.js's region.
+
+**Held for the founder, not done here:** excluding the auth token / the
+Preferences suite from platform backups (Q6) and the privacy-policy wording
+(Q7) — credentials and legal text.
+
 ## 2026-09-23 (the visual pass the audit held back — R12, persona 10 and 58 — ships on the founder's word)
 
 - **The ruling.** The 2026-09-22 audit parked every visible look-and-feel

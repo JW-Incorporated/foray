@@ -132,18 +132,26 @@ test("a genuine first-ever visit shows the explainer; once dismissed it never sh
   assert.strictEqual(shownAgain, false, "must not show a second time once dismissed");
 });
 
-test("skipping/completing the explainer both set cp_intro_dismissed (single flag, either action)", () => {
+test("skipping/completing the explainer both set cp_intro_dismissed (single flag, either action); the scrim only parks it", () => {
   const app = loadApp();
   app.showFirstTimeExplainerOnce();
-  // both dismiss paths (scrim/skip/go) call the same dismiss() closure —
-  // proven structurally since there is only one dismiss() defined in the
-  // function body and all three listeners are bound to it.
+  // both Skip buttons call the same dismiss() closure — proven structurally
+  // since there is only one dismiss() defined in the function body — and the
+  // Preferences primary calls it from its own handler. ROUND 2 (p-first-4):
+  // the SCRIM is bound to `park`, which writes no flag, and Escape /
+  // navigation route through `park` too. MUTATION: bind the scrim to
+  // `dismiss` again -> the count is 3 and the park assertion is red.
   const body = require("node:fs").readFileSync(APP_PATH, "utf8");
   const start = body.indexOf("function showFirstTimeExplainerOnce(");
   const end = body.indexOf("\nfunction ", start + 10);
   const fn = body.slice(start, end);
   const dismissBindings = (fn.match(/addEventListener\("click", dismiss\)/g) || []).length;
-  assert.strictEqual(dismissBindings, 3, "scrim, skip and go must all bind to the same dismiss() function");
+  assert.strictEqual(dismissBindings, 2, "the two Skip buttons bind to the same dismiss() function");
+  assert.match(fn, /scrim\.addEventListener\("click", park\)/, "the scrim parks");
+  assert.match(fn, /onRequestClose: park/, "so do Escape and a navigation");
+  const park = /const park = \(\) => \{[\s\S]*?\};/.exec(fn);
+  assert.ok(park, "park() exists");
+  assert.doesNotMatch(park[0], /cp_intro_dismissed/, "and park() never writes the never-again flag");
 });
 
 /* ---------- no interview/quiz step ---------- */
@@ -712,4 +720,20 @@ test("subjects the pre-pick deal happened to show are not penalised as 'recently
   }
   assert.deepStrictEqual(m.ctx.lsGet("cp_recent_branches", []), after,
     "after the re-deal, recent-branch memory holds exactly the re-dealt subjects, not the pre-pick deal's too");
+});
+
+/* ---------- ROUND 2 (p-first-5): a Foray play is prior use ---------- */
+
+test("a Foray's resume row counts as prior use, under the key player/foray-progress.js writes", async () => {
+  /* Foray playback never touches cp_history, so a newcomer whose whole use of
+     4a was a shared Foray link met the Welcome sheet over their own playing
+     Foray. MUTATION 1: drop `!hasForayTrace()` from isGenuineFirstTimeUser ->
+     red. MUTATION 2: misspell FORAY_PROGRESS_PREFIX -> the agreement assertion
+     is red. */
+  const { pathToFileURL } = require("node:url");
+  const { KEY_PREFIX } = await import(pathToFileURL(path.join(__dirname, "..", "player", "foray-progress.js")).href);
+  const seeded = mount({ seed: { [`${KEY_PREFIX}some-foray`]: JSON.stringify({ foray_id: "some-foray" }) } });
+  assert.strictEqual(seeded.ctx.isGenuineFirstTimeUser(), false, "a Foray row is a trace of use");
+  assert.strictEqual(seeded.evalIn("FORAY_PROGRESS_PREFIX"), KEY_PREFIX, "app.js and the progress store spell the key the same way");
+  assert.strictEqual(mount().ctx.isGenuineFirstTimeUser(), true, "no rows: still first-time");
 });

@@ -223,14 +223,14 @@ const FLOORS = {
   /* 41 -> 45 (2026-09-22 audit, theme F): a vertical flick that starts on the
      sticky strip ends as a SCROLL, never a zoom (it used to seek on release);
      a sideways drag and a hold-then-drift still scrub. */
-  "player/strip-scrub-gesture.test.js": 45,
+  "player/strip-scrub-gesture.test.js": 48, // audit round 2, L2 (2026-09-23): unzoomedStripX, the release mapping through the zoom origin (touch-1); 45 -> 48 //
   /* Drag the Now Playing sheet down to dismiss it (founder report,
      2026-09-13). Same pure-state-machine shape as the scrub gesture above and
      floored for the same reason: the numbers ARE the product decision — how
      far a thumb must travel, what counts as a flick, and the eligibility rule
      that keeps a scroll through a long episode description from throwing the
      sheet away. Every test names the mutation that kills it, and each was run. */
-  "player/sheet-drag-dismiss.test.js": 15,
+  "player/sheet-drag-dismiss.test.js": 17, // audit round 2, L2 (2026-09-23): claimsTouch, who owns the finger (touch-2); 15 -> 17 //
   /* The other half of the same report: the sheet is WIRED, opens at the top,
      scrolls inside itself, and is a full-height overlay whose `[hidden]`
      attribute still hides it. A source-text suite (client.js builds DOM at
@@ -243,7 +243,7 @@ const FLOORS = {
      opened through app.js's sheet owner with the topbar kept reachable, Stop
      releases the owner, the artwork opens the player, Stop and Close sit at
      opposite ends of their row, and one finger drives the drag (+6). */
-  "player/now-playing-sheet.test.js": 24,
+  "player/now-playing-sheet.test.js": 30, // audit round 2, L2 (2026-09-23): the touchmove claim, the live region as a sibling, Stop order, sheet motion, panel motion, the drawer lock in CSS; 24 -> 30 //
   "player/seek-policy.test.js": 33,
   /* The wire between the page and on-device speech (#29). Floored with no
      slack, because what it holds down is a connection that was ABSENT for
@@ -386,7 +386,7 @@ const FLOORS = {
   /* 2026-09-17, founder: episode descriptions carry clickable links and clickable
      timestamps that seek. This is the one function in app.js that turns untrusted
      publisher text into markup, so about half of it is injection cases. */
-  "test/episode-description-links.test.js": 25, // +3 (2026-09-18): the notes collapse into a closed <details> so artwork leads the page, the timestamps still bind inside it, and chapters stay out of it
+  "test/episode-description-links.test.js": 27, // audit round 2, L2 (2026-09-23): one tokeniser, published for the sheet (p-switcher-2); 25 -> 27 // // +3 (2026-09-18): the notes collapse into a closed <details> so artwork leads the page, the timestamps still bind inside it, and chapters stay out of it
   /* Stage 3 of docs/episode-pages-plan.md — epRow/archivedRow/bannerHtml
      title links to #/episode/:id (kanban card t_51e5d7bc). Floored at its
      exact current count: this is a small, deliberately-scoped regression
@@ -408,7 +408,7 @@ const FLOORS = {
      that Family Mode's pre-existing poolFiltered() filter still fires
      unchanged — the badge is additive, not a replacement for that filter. */
   "test/explicit-badge.test.js": 9,
-  "test/first-time-onboarding.test.js": 28, // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
+  "test/first-time-onboarding.test.js": 29, // audit round 2, L2 (2026-09-23): a Foray resume row is prior use (p-first-5); 28 -> 29 // // U-09 audit fix (2026-09-10): +2 — the picks re-deal and repaint the FIRST Home, and the pre-pick deal's memory is undone
   /* Duplicate-ID guard for HUMAN-ACTIONS.md's own numbering rule (full-repo
      review finding L3, 2026-08-31). Two tests: the file has numbered items,
      and no numeric ID repeats. */
@@ -494,7 +494,7 @@ const FLOORS = {
      thumb surviving Up Next's rebuild, and the strip's click suppression.
      Seventeen tests over a small DOM with real parent links and focus, each
      mutation-checked red. */
-  "test/modal-and-focus.test.js": 26, // 2026-09-23 audit sweep (qa row 80): part 5 — a route lands lost focus on the page heading (or #view), names the document, leaves surviving focus and announces instead, is silent on a same-page re-render, and pageDidPaint renames an async page; 21 -> 26 (L3 took it to 21 unfloored)
+  "test/modal-and-focus.test.js": 34, // audit round 2, L2 (2026-09-23): a late close leaves moved-on focus alone (touch-8), the zoomed release seeks (touch-1), the step-swap focus (a11y-5), the parked scrim (p-first-4), the reachable player (p-first-5), Stop order owner-side (a11y-6), panel drag (touch-4), slideOut (touch-8); 26 -> 34 // // 2026-09-23 audit sweep (qa row 80): part 5 — a route lands lost focus on the page heading (or #view), names the document, leaves surviving focus and announces instead, is silent on a same-page re-render, and pageDidPaint renames an async page; 21 -> 26 (L3 took it to 21 unfloored)
   /* S-08's mechanical privacy tripwire: SHOWS_SEARCH_OFF_DEVICE flag detection
      (source and env), the pinned current-sentence check, the core AND-gate
      that fails release builds only when the flag is on AND the old sentence
@@ -968,7 +968,7 @@ const FLOORS = {
      declared stays (toggles, the Developer summary), the overlay and scrim
      each closing only their own thing, focus back to the ☰, and the founder's
      exact tap sequence. Floored at its count: every cell is one mutation. */
-  "test/drawer-ownership.test.js": 11,
+  "test/drawer-ownership.test.js": 19, // audit round 2, L2 (2026-09-23): the drawer modal contract x3 (nav-5), same-hash x2 (nav-8), hardware back x3 (nav-2); 11 -> 19 //
   "test/drawer-settings-toggle.test.js": 13, // 2026-09-22 audit (R7, R8): "Open in" and its dead code are gone (replacing the test of its switch), and the founder tools sit in one collapsed Developer group above Delete my data; 12 -> 13 // client audit (2026-09-12): the sixth switch (cp_interlude, disclosed since FD-06 with no control), the one `drawerToggle` shape, and the retired ui-v2 debris; 6 -> 12
   /* "Up Next" auto-advance (docs/listening-queue-plan.md §8 addendum, kanban
      card t_b9880844). Floored for the same reason as up-next-queue.test.js

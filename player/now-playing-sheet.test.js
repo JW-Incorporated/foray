@@ -126,13 +126,33 @@ test("the sheet's scroller starts with the artwork, then the title", () => {
   assert.match(CODE, /ui\.sArt\.src = item\.artwork_url;/, "and fill it from the item's artwork");
 });
 
-test("the sheet shows the publisher's description as text, never as markup", () => {
-  /* The long body that makes the sheet worth scrolling. `textContent` because
-     it is third-party RSS — the rule the whole client file is built on.
-     MUTATION: change it to `ui.sDesc.innerHTML = item.description`. This
-     fails, and third-party markup would be parsed into our DOM. */
-  assert.match(CODE, /ui\.sDesc\.textContent = item\.description \|\| "";/);
-  assert.doesNotMatch(CODE, /sDesc\.innerHTML/);
+test("the sheet's notes are the episode page's notes, built as nodes from the one tokeniser — never from an HTML string", () => {
+  /* The long body that makes the sheet worth scrolling. It is third-party RSS,
+     so nothing here may be `innerHTML` — the rule the whole client file is
+     built on. ROUND 2 (p-switcher-2): it used to be one `textContent` write,
+     dead text with no links, no timestamps and no collapse, while the episode
+     page had all three from the founder's 2026-09-17 ruling. The sheet now
+     renders app.js's tokens (`window.ForayNotes`) node by node inside the same
+     `<details>` the page uses.
+     MUTATION 1: `ui.sDescText.innerHTML = …` -> red, and third-party markup
+     would be parsed into our DOM. MUTATION 2: drop the `seekEpisodeTo(t.secs)`
+     from the stamp's click -> the timestamps are dead again; red. */
+  assert.doesNotMatch(CODE, /sDesc\.innerHTML|sDescText\.innerHTML/);
+  assert.match(FLAT_TEXT, /const sDesc = el\("details", "fp-s-desc ep-description"\);/);
+  assert.match(FLAT_TEXT, /el\("summary", "ep-description-toggle", "Episode notes"\)/, "collapsed under the page's own toggle");
+  assert.match(FLAT_TEXT, /el\("p", "ep-description-text"\)/);
+  const fn = /function paintNotes\(item\) \{[\s\S]*?\n\}/.exec(TEXT);
+  assert.ok(fn, "paintNotes must exist");
+  assert.match(fn[0], /window\.ForayNotes/);
+  assert.match(fn[0], /notes\.tokens\(text, episodeDurationSec\(\)\)/, "the one tokeniser, with the honesty guard's duration");
+  assert.match(fn[0], /ui\.sDescText\.textContent = text; return;/, "no tokeniser, or a Foray: plain text, as before");
+  assert.match(fn[0], /ui\.sDescText\.append\(String\(t\.text \?\? ""\)\);/, "prose tokens go in as strings, never as markup");
+  assert.doesNotMatch(fn[0], /replaceChildren|createTextNode/, "nothing the real-client harnesses' DOM stubs lack");
+  assert.match(fn[0], /b\.dataset\.ts = String\(t\.secs\)/);
+  assert.match(fn[0], /seekEpisodeTo\(t\.secs\)/, "a stamp seeks through the one seek path");
+  assert.match(fn[0], /a\.rel = "noopener noreferrer"/);
+  assert.match(fn[0], /\^https\?:/, "the scheme is re-checked here, behind app.js's safeUrl");
+  assert.match(CODE, /paintNotes\(item\);/, "setNowPlaying paints through it");
 });
 
 /* ==================================================================== */
@@ -217,7 +237,7 @@ test("the drag gesture is imported from the shared module, not re-implemented he
      client.js and compare against it. The second assertion fails. */
   assert.match(
     TEXT,
-    /import \{ startDrag, moveDrag, endDrag, dragOffset \} from "\.\/sheet-drag-dismiss\.js";/,
+    /import \{ startDrag, moveDrag, endDrag, dragOffset, claimsTouch \} from "\.\/sheet-drag-dismiss\.js";/,
   );
   assert.doesNotMatch(TEXT, /DISMISS_DISTANCE_PX\s*=/, "client.js must not declare its own threshold");
 });
@@ -287,7 +307,7 @@ test("the ✕ lives in the sheet's grab row, not on the mini bar it would now hi
      assertion fails. (The bar's back-15 `skipBtn` sits between the title and
      ▶ since visual pass 1, persona 10 — test/transport-controls.test.js.) */
   assert.match(FLAT_TEXT, /grabZone\.append\(el\("div", "fy-grab"\), closeBtn\);/);
-  assert.match(FLAT_TEXT, /bar\.append\(art, info, skipBtn, playBtn, announce\);/);
+  assert.match(FLAT_TEXT, /bar\.append\(art, info, skipBtn, playBtn\);/);
   assert.doesNotMatch(FLAT_TEXT, /bar\.append\([^)]*closeBtn/);
   /* Unchanged from U-13, and asserted here because this is the change that
      could have quietly dropped it: the control still only COLLAPSES. */
@@ -422,4 +442,97 @@ test("one finger drives the drag-to-dismiss; a second finger cannot restart or e
   assert.match(FLAT_TEXT, /const endSheetDrag = \(e\) => \{ if \(!drag \|\| e\.pointerId !== dragPointer\) return;/);
   const cancel = /addEventListener\("pointercancel", \(e\) => \{[\s\S]{0,120}?\}\);/.exec(FLAT_TEXT);
   assert.ok(cancel && /e\.pointerId !== dragPointer/.test(cancel[0]), "pointercancel filters on the same finger");
+});
+
+/* ==================================================================== */
+/* AUDIT ROUND 2 (2026-09-23): the pull-down from the body, the live     */
+/* region, Stop's order, the sheet's motion, and every panel's drag      */
+/* ==================================================================== */
+
+const setExpandedBody = () => {
+  const fn = /const setExpanded = \(open\) => \{[\s\S]*?\n  \};/.exec(TEXT);
+  assert.ok(fn, "setExpanded must exist");
+  return fn[0];
+};
+
+test("ROUND 2 touch-2: the sheet cancels the touchmove it claims, non-passively — and no longer pretends pointermove can", () => {
+  /* `preventDefault` on pointermove stops no pan; only a cancelled non-passive
+     touchmove does, and the decision is the module's `claimsTouch`.
+     MUTATION 1: drop the touchmove listener -> red. MUTATION 2: make it
+     `{ passive: true }` -> the browser ignores the cancel; red. MUTATION 3: put
+     the `e.preventDefault()` back in pointermove -> the superseded path is
+     back; red. */
+  assert.match(
+    FLAT_TEXT,
+    /ui\.sheet\.addEventListener\("touchmove", \(e\) => \{ if \(drag && claimsTouch\(drag\)[^}]*e\.preventDefault\(\); \}, \{ passive: false \}\);/,
+  );
+  const move = /ui\.sheet\.addEventListener\("pointermove", \(e\) => \{[\s\S]*?\}\);/.exec(FLAT_TEXT);
+  assert.ok(move, "the pointermove listener exists");
+  assert.doesNotMatch(move[0], /preventDefault/, "pointermove no longer carries the cancel that did nothing");
+});
+
+test("ROUND 2 a11y-2: the live region is a sibling of the bar AND the sheet, and stays reachable when the sheet expands", () => {
+  /* Inside the bar it went inert with the bar the moment Now Playing opened,
+     so "Buffering…" and a failed load were silent on the one screen the
+     listener was looking at. MUTATION 1: `bar.append(…, announce)` -> red.
+     MUTATION 2: drop `".fp-announce"` from keepReachable -> red. */
+  assert.match(FLAT_TEXT, /root\.append\(sheet, announce\);/);
+  assert.doesNotMatch(FLAT_TEXT, /bar\.append\([^)]*announce/);
+  assert.match(setExpandedBody(), /keepReachable: \[[^\]]*"\.fp-announce"/);
+});
+
+test("ROUND 2 a11y-6: Stop hides the player BEFORE the owner lets go, lands focus on the page and says so from outside the root", () => {
+  /* closeSheet handed focus to the bar's title button and the next line hid
+     the root under it. MUTATION 1: move `ui.root.hidden = true` back below
+     `owner.closeSheet(ui.sheet)` -> the order assertion is red. MUTATION 2:
+     drop the `nav.landOnPage` call -> red. MUTATION 3: drop `nav.announce` ->
+     the stop is silent again; red. */
+  const fn = /async function stopAndClose\([^)]*\) \{[\s\S]*?\n\}/.exec(TEXT);
+  assert.ok(fn);
+  const body = fn[0];
+  const hide = body.indexOf("ui.root.hidden = true;");
+  const release = body.indexOf("owner.closeSheet(ui.sheet)");
+  assert.ok(hide > 0 && release > 0 && hide < release, "the root hides first, so the owner skips the button about to vanish");
+  assert.match(body, /active\.blur\(\)/, "focus on Stop itself is let go, not left on a hidden control");
+  assert.match(body, /nav\.landOnPage\(\{ navigated: false \}\)/, "the page's one landing rule takes over");
+  assert.match(body, /nav\.announce\(STOPPED_LINE\)/, "and the stop is announced from app.js's region");
+  assert.match(CLIENT, /const STOPPED_LINE = "Stopped";/);
+});
+
+test("ROUND 2 touch-8: the sheet slides in on open and finishes its slide on close; reduced motion switches both off", () => {
+  /* `hidden` went to display:none in the frame the offset was reset, so a
+     dismiss cut from mid-screen and an open was a hard cut. MUTATION 1: drop
+     the `slideSheetOut(` guard at the top of setExpanded -> red. MUTATION 2:
+     drop `if (open) slideSheetIn();` -> red. MUTATION 3: delete the
+     reduced-motion rule for `.fp-sheet` in styles.css -> red. */
+  const body = setExpandedBody();
+  assert.match(body, /if \(!open && !sheetSettled && slideSheetOut\(/);
+  assert.ok(body.indexOf("slideSheetOut(") < body.indexOf("owner.closeSheet(ui.sheet)"),
+    "the slide runs before the owner lets go, so the page under it stays inert until the sheet has left");
+  assert.match(body, /if \(open\) slideSheetIn\(\);/);
+  assert.ok(body.indexOf("ui.scroll.scrollTop = 0;") < body.indexOf("slideSheetIn()"), "after the scroller reset");
+  assert.match(FLAT_TEXT, /owner\.slideOut\(ui\.sheet, "--fp-sheet-dy", h, /, "the owner's one slide, on the sheet's own property");
+  assert.match(FLAT_TEXT, /owner\.slideIn\(ui\.sheet, "--fp-sheet-dy", h, "fp-sheet-dragging"\)/);
+  assert.match(FLAT_TEXT, /ui\.sheet\.classList\.remove\("fp-sheet-dragging"\); const started = owner\.slideOut/,
+    "the release transition applies from wherever the drag left it");
+  assert.match(CSS_RULES, /@media \(prefers-reduced-motion: reduce\) \{[^}]*\.fp-sheet:not\(\.fp-sheet-dragging\)[^}]*transition:\s*none/);
+});
+
+test("ROUND 2 touch-4: every .fy-panel can move — the transform, the release transition, the entrance — and the gesture is bridged for the owner", () => {
+  /* MUTATION 1: drop the `.fy-panel { transform: translateY(var(--fy-panel-dy…`
+     rule -> app.js's drag writes a property nothing reads; red. MUTATION 2:
+     drop `sheetDrag` from the bridge -> the owner finds no gesture and every
+     handle is decoration again; red. */
+  assert.match(CSS_RULES, /\.fy-panel \{[^}]*transform:\s*translateY\(var\(--fy-panel-dy, 0px\)\)/);
+  assert.match(CSS_RULES, /\.fy-panel:not\(\.fy-panel-dragging\) \{\s*transition: transform \.22s ease;?\s*\}/);
+  assert.match(CSS_RULES, /@keyframes fy-panel-in/);
+  assert.match(CSS_RULES, /@media \(prefers-reduced-motion: reduce\) \{[^}]*\.fy-panel:not\(\.fy-panel-dragging\)[^}]*transition:\s*none/);
+  assert.match(FLAT_TEXT, /sheetDrag: \{ start: startDrag, move: moveDrag, end: endDrag, offset: dragOffset, claimsTouch, \}/);
+});
+
+test("ROUND 2 nav-5: the drawer's lock and its scrim's touch-action live beside the sheet's in styles.css", () => {
+  /* MUTATION: delete `body.drawer-open { overflow: hidden; }` -> red. */
+  assert.match(CSS_RULES, /body\.drawer-open \{\s*overflow:\s*hidden;?\s*\}/);
+  assert.match(CSS_RULES, /#drawer \{[^}]*overscroll-behavior:\s*contain/);
+  assert.match(CSS_RULES, /#drawer-overlay \{[^}]*touch-action:\s*none/);
 });
