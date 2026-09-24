@@ -2223,12 +2223,23 @@ export function engineHeaderLine(engine, running = null) {
   const rows = Array.isArray(e.rows) ? e.rows : [];
   const decision = e.decision && typeof e.decision === "object" ? e.decision : null;
   const mode = decision?.mode === "native" ? "native" : "js";
-  const reason = decision?.reason ?? "undecided";
   const hello = decision?.hello && typeof decision.hello === "object" ? decision.hello : null;
   const buildRow = newestEngineRow(rows, "build");
+  /* The engine's own decideOnce row (NE-17): `mode kind` carries mode, reason,
+     strikes and the CFBundleVersion it decided for. */
+  const decidedRow = newestEngineRow(rows, "mode", (r) => typeof r.mode === "string" && typeof r.reason === "string");
+  /* No page verdict yet (before NE-22 the page never asks): when the engine
+     itself chose its legacy lane — a crash-loop, a sticky legacy build, an
+     override — that reason IS why this page plays JS, so it is printed rather
+     than `undecided`. An engine that chose native says nothing about a page
+     that is not listening to it, so that case stays `undecided`. */
+  const pageReason = decision?.reason ?? "undecided";
+  const reason = mode === "js" && pageReason === "undecided" && decidedRow?.mode === "legacy"
+    ? decidedRow.reason
+    : pageReason;
   const strikesRow = newestEngineRow(rows, "mode", (r) => Number.isInteger(r.strikes));
   const strikes = Number.isInteger(hello?.strikes) ? hello.strikes : strikesRow ? strikesRow.strikes : null;
-  const bundle = buildRow?.bundleVersion ?? running?.native ?? "?";
+  const bundle = buildRow?.bundleVersion ?? decidedRow?.build ?? running?.native ?? "?";
   const web = `web=${running?.web ?? "?"}`;
   if (mode === "js") {
     return `engine=js reason=${reason}${strikes == null ? "" : ` strikes=${strikes}`} build=${bundle} | ${web}`;

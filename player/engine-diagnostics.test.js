@@ -169,6 +169,23 @@ test("JS mode: the header reads engine=js with the reason, and keeps strikes whe
     "engine=js reason=engine-legacy strikes=3 build=2026092401 | web=2b808ec9d50c5b98");
 });
 
+test("no page verdict yet: the engine's own legacy decision supplies the reason, a native one does not", () => {
+  /* NE-17's decideOnce row is `mode` with mode, reason, strikes and build.
+     MUTATION 1: ignore the row (always `undecided`). The first assertion fails.
+     MUTATION 2: take the row's reason whatever its mode. The second fails.
+     MUTATION 3: drop the row's build fallback. The third fails. */
+  const record = pageRecord(1, () => T0);
+  const legacy = [erow(1, T0, "mode", { mode: "legacy", reason: "crash-loop", strikes: 3, build: "2026092401" }),
+    erow(2, T0 + 1, "mode", { event: "healthy", marker: "page-alive", strikes: 3 })];
+  assert.equal(formatDiagnosticReport(record, { decision: { mode: "js", reason: "undecided" }, rows: legacy }).split("\n")[2],
+    "engine=js reason=crash-loop strikes=3 build=2026092401 | web=2b808ec9d50c5b98");
+  const native = [erow(1, T0, "mode", { mode: "native", reason: "build-default", strikes: 0, build: "2026092401" })];
+  assert.equal(formatDiagnosticReport(record, { decision: { mode: "js", reason: "undecided" }, rows: native }).split("\n")[2],
+    "engine=js reason=undecided strikes=0 build=2026092401 | web=2b808ec9d50c5b98");
+  assert.equal(engineHeaderLine({ decision: { mode: "js", reason: "undecided" }, rows: legacy }, { web: "w" }),
+    "engine=js reason=crash-loop strikes=3 build=2026092401 | web=w");
+});
+
 test("a report built with no engine view at all still carries the line, as undecided", () => {
   /* Every caller of formatDiagnosticReport(record) — the older one-argument
      shape — gets the line, because which engine played is the first question.

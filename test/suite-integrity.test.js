@@ -322,7 +322,7 @@ const FLOORS = {
      rows, evicted and missing seqs, rows from before a Clear), the one bounded
      engineRead through the real client, and the pin of ENGINE_ROW_KINDS to the
      Swift emitters. Zero slack. */
-  "player/engine-diagnostics.test.js": 19,
+  "player/engine-diagnostics.test.js": 20,
   /* NE-08: the suites that READ their fixtures (plan §6.3). Each test runs the
      `transport` / `resume-rules` cases that name it, so the one file is the JS
      assertion and the Swift port's case list (NE-09). Zero slack: a deleted
