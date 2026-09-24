@@ -194,6 +194,25 @@ test("an unknown export is a harness error, never a recorded expect", async () =
   await assert.rejects(runCase({ id: "seam-gap/x", covers: [], call: "SEAM_GAP_SEC", args: [] }, SEAM), /E_NOT_A_FUNCTION/);
 });
 
+/* NE-12j's adapter (media-actions.js) turns mediaSessionActions' list of
+   handlers into data. What it records is only as good as what it refuses: a
+   press of a button the surface never installed would otherwise record "no
+   calls" — indistinguishable from seekto's real "no usable time does nothing"
+   rule — and a misspelt surface method would quietly test a smaller surface.
+   MUTATION: drop the `if (!handler)` refusal -> the first rejection becomes a
+   TypeError recorded as `throws`, and this goes red. */
+const MEDIA_ACTIONS_FX = { family: "media-episode", doc: { module: "player/parity/media-actions.js" } };
+const pressCase = (input) => runCase({ id: "media-episode/x", covers: [], call: "mediaActions", args: [input] }, MEDIA_ACTIONS_FX);
+
+test("the media-actions adapter records real arity, and refuses a press the OS could never deliver", async () => {
+  assert.deepStrictEqual(await pressCase({ surface: ["next", "stop"], presses: [["nexttrack", { action: "nexttrack" }], ["stop", { $undefined: true }]] }), {
+    return: { calls: [["next"], ["stop", { $undefined: true }]], installed: ["stop", "nexttrack"] },
+  });
+  await assert.rejects(pressCase({ surface: ["play"], presses: [["nexttrack"]] }), /E_BAD_CASE.*nexttrack.*not installed/);
+  await assert.rejects(pressCase({ surface: ["play", "skip"] }), /E_BAD_CASE.*"skip"/);
+  await assert.rejects(pressCase({ surface: ["play"], presses: [["play", {}, "extra"]] }), /E_BAD_CASE/);
+});
+
 /* ---------- scenarios over the real manager ---------- */
 
 const scenario = (steps, setup = {}) => runCase({ id: "f/s", covers: [], setup: { target: "manager", ...setup }, steps }, { family: "f", doc: {} });
@@ -255,7 +274,7 @@ test("scenario: on a manual clock the seam beat holds the next play until the cl
 
 test("scenario: a verb with no JS driver fails loudly with its card, never silently skips", async () => {
   await assert.rejects(scenario([{ session: "interruption" }]), /E_NO_JS_DRIVER.*NE-11j/);
-  await assert.rejects(scenario([{ remote: "next" }]), /E_NO_JS_DRIVER.*NE-12j/);
+  await assert.rejects(scenario([{ remote: "next" }]), /E_NO_JS_DRIVER.*NE-29j/);
 });
 
 test("scenario: only the manager's public surface is callable", async () => {

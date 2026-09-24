@@ -1,5 +1,263 @@
 {
   "//": "Covered-suite tests with no Swift meaning. Each has one closed reason (webview-only, dom-only, text-pin, js-module-shape) and a sentence of why. An entry claims the engine need never reimplement this rule; a reviewer should be able to check that claim from the sentence alone.",
+  "media-session": {
+    "EVERY playForay call site in app.js passes the artwork document": {
+      "reason": "js-module-shape",
+      "why": "Text scan: every app.js playForay call site passes discoverDoc; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "MediaMetadata is used when the engine provides it": {
+      "reason": "webview-only",
+      "why": "The WebView's MediaMetadata constructor. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a MediaMetadata constructor that throws does not take the page with it": {
+      "reason": "webview-only",
+      "why": "A throwing MediaMetadata constructor in a WebKit build. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a REMOTE stop pauses and keeps the session; only the in-page Stop and the notification's close tear it down": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js's remoteStop pauses and only a close tears down; the engine's stop is registered-and-disabled with a remote stop as a pause (plan §4.5, T-7), which is NE-12s's commandAvailability and NE-18's XCTest; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "a handler installed BY THE BRIDGE actually calls the surface — all eight of them": {
+      "reason": "webview-only",
+      "why": "The WebView bridge's installed handler really calls the surface; the press-to-intent table it exercises is fixtured in media-episode through media-actions. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a handler installed by the bridge reaches a REAL manager": {
+      "reason": "webview-only",
+      "why": "The WebView bridge end to end into a manager; a remote press into the engine is NE-14j/NE-29j's manager scenarios. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a lock-screen press is recorded as `remote` and an in-page tap as `tap`": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js passes source \"remote\" from the lock-screen surfaces; the engine records `source` on every command itself (plan §5.2, D-4); native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "a metadata setter that throws is swallowed": {
+      "reason": "webview-only",
+      "why": "A throwing metadata setter in a WebKit build. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a metadata write that SUCCEEDS reports writeOk true": {
+      "reason": "webview-only",
+      "why": "writeOk for a successful navigator.mediaSession.metadata assignment. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a metadata write that THROWS is reported as failed, not as written": {
+      "reason": "webview-only",
+      "why": "writeOk for a throwing navigator.mediaSession.metadata assignment (founder record 2026-09-21). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a moving playhead writes position, a still one stops writing": {
+      "reason": "webview-only",
+      "why": "The bridge's tenth-of-a-second setPositionState dedupe. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a navigator with no mediaSession — desktop Safari, older browsers — never throws": {
+      "reason": "webview-only",
+      "why": "Desktop Safari and older browsers with no navigator.mediaSession. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a new segment DOES rewrite metadata": {
+      "reason": "webview-only",
+      "why": "The WebView bridge's dedupe letting a changed segment through. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a play RE-ASSERTS the metadata even when it has not changed": {
+      "reason": "webview-only",
+      "why": "invalidate() re-asserting the WebView metadata on play (founder record 2026-09-21); native NowPlayingPublisher writes at every transition, so there is no dedupe to invalidate (plan §4.5). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a playbackState setter that throws is swallowed": {
+      "reason": "webview-only",
+      "why": "A throwing playbackState setter in a WebKit build; native mode never uses playbackState (plan §4.5, OQ-8). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a real mediaSession is detected and reports itself supported": {
+      "reason": "webview-only",
+      "why": "Feature detection of navigator.mediaSession. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a setPositionState that throws is swallowed, and the render loop survives": {
+      "reason": "webview-only",
+      "why": "A throwing setPositionState in a WebKit build. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a throw does not poison the dedupe — the next identical render retries": {
+      "reason": "webview-only",
+      "why": "The WebView bridge's dedupe key stamped only on a successful write. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a throwing onWrite cannot stop the lock screen from being written": {
+      "reason": "webview-only",
+      "why": "A throwing diagnostics sink inside the WebView bridge. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a throwing onWrite on the state row still writes the state": {
+      "reason": "webview-only",
+      "why": "A throwing diagnostics sink inside the WebView bridge. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "after clear(), the next identical update writes again rather than being deduped away": {
+      "reason": "webview-only",
+      "why": "The WebView bridge's dedupe reset after clear(). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "an action whose surface rejects does not become an unhandled rejection": {
+      "reason": "webview-only",
+      "why": "A rejecting surface must not become an unhandled promise rejection in the WebView. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "an action whose surface throws does not propagate into the platform": {
+      "reason": "webview-only",
+      "why": "A throwing surface must not reject into the WebView's action dispatch. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "an engine that throws on one unsupported action still gets the other seven": {
+      "reason": "webview-only",
+      "why": "Chromium throws from setActionHandler for an unsupported action; MPRemoteCommandCenter has no such failure mode. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "an engine with no setPositionState is not a failure — older Safari": {
+      "reason": "webview-only",
+      "why": "Older Safari with no setPositionState. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "an episode's next/previous are the PAGE's, and absent until the page offers them": {
+      "reason": "js-module-shape",
+      "why": "Text scan of client.js's episodeMediaSurface getters, plus a mediaSessionActions call whose null-neighbour rule is fixtured in media-episode (actions-absent-next-previous); native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "an unchanged view does NOT rewrite metadata — a 4 Hz redraw flickers the notification": {
+      "reason": "webview-only",
+      "why": "The bridge's 4 Hz redraw dedupe against Android notification flicker; native NowPlayingPublisher writes on transitions and seeks, not from a render loop (plan §4.5). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "app.js hands over the discover pool it already fetched, not a new request": {
+      "reason": "js-module-shape",
+      "why": "Text scan: app.js reuses the discover pool it already fetched; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "clear() empties the OS slot and reports none": {
+      "reason": "webview-only",
+      "why": "clear() emptying the WebView session; native nil-on-finish is NowPlayingPublisher's (NE-18). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "clearing the session is reported as a write, via=clear, state none": {
+      "reason": "webview-only",
+      "why": "Pins the bridge's via=clear diagnostics row. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "client.js declares no second copy of the ±15/30 numbers": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js imports the ±15/30 pair rather than restating it; the Swift side is pinned by NE-04's generated EngineConstants and NE-12s's no-literal-15/30 grep; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "client.js hands the real navigator over at exactly one place": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js hands the real navigator over at exactly one call site; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "client.js reads the shim's counter AFTER its flush, not in the turn of the write": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js reads the Capacitor shim's counter after the shim's flush; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "client.js records what the NATIVE side received: foray:remote -> diag.remoteCommand": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js listens for foray:remote from the native shim; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "codeOnly does not blind itself on a regex literal — it is the scanner's own guard": {
+      "reason": "js-module-shape",
+      "why": "Self-test of codeOnly, this suite's own comment and string stripper. native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "createMediaSession with no arguments at all is inert, not an exception": {
+      "reason": "webview-only",
+      "why": "createMediaSession's no-argument default. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "handlers keep their surface as `this`, so a method form works too": {
+      "reason": "js-module-shape",
+      "why": "Pins that a surface method keeps its object as `this` (Function.prototype.bind); a Swift closure has no receiver to lose, and the remote table itself is fixtured in media-episode."
+    },
+    "index.html's CSP already permits https artwork, so nothing here widened it": {
+      "reason": "webview-only",
+      "why": "index.html's Content-Security-Policy governs what the WebView may fetch for artwork; the native ArtworkCache fetches https itself, off-main (plan §4.5), under no CSP."
+    },
+    "liveLines ignores a commented-out call, which is the whole reason it exists": {
+      "reason": "js-module-shape",
+      "why": "Self-test of liveLines, this suite's own commented-out-line scanner. native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "no file under player/ touches navigator.mediaSession in code": {
+      "reason": "js-module-shape",
+      "why": "Text scan: no player/*.js touches navigator.mediaSession except through the bridge; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "no navigator at all yields an inert bridge that answers every call": {
+      "reason": "webview-only",
+      "why": "The inert stand-in for a browser with no navigator at all. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "onWrite fires exactly when metadata is really written, and not on an unchanged view": {
+      "reason": "webview-only",
+      "why": "The bridge's onWrite diagnostics hook fires on a navigator.mediaSession assignment. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "play() calls invalidate before setNowPlaying": {
+      "reason": "js-module-shape",
+      "why": "Text scan: ForayPlayer.play calls media.invalidate() before setNowPlaying; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "player/client.js drives the lock screen through this module and nothing else": {
+      "reason": "js-module-shape",
+      "why": "Text scan: player/client.js imports createMediaSession and calls mediaSessionView; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "release() removes every handler it installed": {
+      "reason": "webview-only",
+      "why": "release() unregistering WebView action handlers; native relinquish tears down its own targets (NE-17's XCTest). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "switching from a Foray to one episode REMOVES nexttrack instead of leaving it stale": {
+      "reason": "webview-only",
+      "why": "A stale setActionHandler left bound to a Foray. The native command set is recomputed from the snapshot (commandAvailability, NE-12s), so there is no installed-handler set to go stale. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the FORAY's clock is what client.js reports — the whole thing, not the segment": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js's syncMediaSession reports the Foray clock; the mapping's own clock rule is NE-29j's (media family); native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the Foray surface is installed INSIDE playForay, not merely defined somewhere": {
+      "reason": "js-module-shape",
+      "why": "Text scan: the Foray surface is installed inside ForayPlayer.playForay; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the PAUSE is reported as a write, marked via=state, with the strings as they were": {
+      "reason": "webview-only",
+      "why": "Pins the bridge's via=state diagnostics row for a playbackState write, a property native mode never writes (plan §4.5). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the PUBLISHER's name is what actually reaches the platform, not ours": {
+      "reason": "webview-only",
+      "why": "Asserts on the object the WebView bridge assigned to navigator.mediaSession.metadata; what the mapping produces is fixtured in media-episode, and what NowPlayingPublisher writes is NE-18's XCTest. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the artwork really reaches the platform, and falls back to ours when it must": {
+      "reason": "webview-only",
+      "why": "Asserts on the artwork the WebView bridge assigned; the artwork choice itself is fixtured in media-episode. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the backend really does read the element for `rate` — the other half of #242's honesty": {
+      "reason": "js-module-shape",
+      "why": "Text scan of html-audio-backend.js's `get rate()` reading the HTMLAudioElement; AVDeck has no element (NE-15); native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the bridge forwards the platform's details, it does not swallow them": {
+      "reason": "webview-only",
+      "why": "The WebView bridge forwards MediaSession action details; the details' meaning is fixtured in media-episode through media-actions. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the bridge installs handlers and reports which ones landed": {
+      "reason": "webview-only",
+      "why": "setActionHandler registration on the WebView session; the native command set is commandAvailability (NE-12s), fixtured through media-actions. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the episode surface is installed INSIDE play(), for the same reason": {
+      "reason": "js-module-shape",
+      "why": "Text scan: the episode surface is installed inside ForayPlayer.play; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the finished state reaches the bridge too, so a done Foray clears the slot": {
+      "reason": "js-module-shape",
+      "why": "Text scan: both syncMediaSession branches pass `ended`; the mapping's ended rule is fixtured in media-episode; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the lock screen is repainted from the same render tick the page is": {
+      "reason": "js-module-shape",
+      "why": "Text scan: syncMediaSession runs on the page's render tick; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the lock screen's play/pause is the same call the in-page button makes": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js's lock-screen play/pause call the same setRunning the in-page button does; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the lock screen's previous/next are the page's own segment controls": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js's forayMediaSurface calls forayNext/forayPrevious/foraySeek; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the module itself never reads a global — it is pure, and that is what makes it testable": {
+      "reason": "js-module-shape",
+      "why": "Text scan: media-session.js reads no browser global; the Swift core's purity is pinned by shell-invariants (NE-01), not by this; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the rate client.js reports is the ELEMENT's, not the speed the listener chose": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js reports the element's rate, not the chosen one; the engine reports its true rate (plan §4.5) through the snapshot the media-episode cases take as input; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the seam-beat state reaches the bridge from the manager, not from a guess": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js reads inSeamGap from the manager; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "this module is TEXT to every search tool: no raw NUL byte anywhere in it": {
+      "reason": "js-module-shape",
+      "why": "Byte scan: no player/*.js carries a raw NUL, which makes grep treat a source file as binary; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "update writes metadata, playback state and position": {
+      "reason": "webview-only",
+      "why": "The bridge's write of metadata, playbackState and setPositionState to navigator.mediaSession. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    }
+  },
   "playback-rate": {
     "the label is written the way podcast apps write it": {
       "reason": "dom-only",
