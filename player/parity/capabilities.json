@@ -1,6 +1,7 @@
 {
-  "//": "Plan §6.6. A capability the engine advertises (mobile/ENGINE_DEFAULT.json, or the Swift `advertisedCapabilities` literal) requires zero swift-pending cases and zero unported tests in every family listed under it; coverage.test.js enforces that. Every family a fixture or an unported entry uses must appear under some capability, so no family can hold owed work that no gate reads.",
+  "//": "Plan §6.6. A capability the engine advertises (mobile/ENGINE_DEFAULT.json, or the Swift `advertisedCapabilities` literal) requires zero swift-pending cases and zero unported tests in every family listed under it; coverage.test.js enforces that. Every family a fixture or an unported entry uses must appear under some capability, so no family can hold owed work that no gate reads. `compare` (NE-05) is the comparator's own table, not a rule of the product: it sits under EVERY capability because each one's verdicts are only as good as the Swift comparator that produced them.",
   "episode": [
+    "compare",
     "queue-state",
     "rate",
     "resume-rules",
@@ -18,9 +19,10 @@
     "manager-episode",
     "deck-episode"
   ],
-  "continuation": ["continuation"],
-  "restore": ["rows", "resume-rules", "engine-mode"],
+  "continuation": ["compare", "continuation"],
+  "restore": ["compare", "rows", "resume-rules", "engine-mode"],
   "foray": [
+    "compare",
     "seam-gap",
     "interlude",
     "seek-policy",

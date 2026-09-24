@@ -1,6 +1,50 @@
 {
   "version": 1,
   "families": {
+    "compare": {
+      "files": {
+        "player/parity/fixtures/compare/compare.json": "ff4f61e99859b3b1b1d09ae752d63cc10927a7d6ff62a9ab530859cc3cc83bd7"
+      },
+      "ids": [
+        "compare/equal-return",
+        "compare/nested-array-element-differs",
+        "compare/no-silent-tolerance",
+        "compare/tolerance-forgives-within",
+        "compare/tolerance-exceeded-names-the-tolerance",
+        "compare/integer-tolerance-is-inclusive",
+        "compare/integer-tolerance-spelled-as-js",
+        "compare/zero-tolerance-is-exact",
+        "compare/negative-tolerance-is-ignored",
+        "compare/non-number-tolerance-is-ignored",
+        "compare/tolerance-never-forgives-negative-zero",
+        "compare/negative-zero-equals-its-tag",
+        "compare/nan-equals-a-nan-tag",
+        "compare/nan-is-not-a-number",
+        "compare/infinity-is-not-negative-infinity",
+        "compare/infinity-inside-an-object",
+        "compare/key-order-never-matters",
+        "compare/array-order-always-matters",
+        "compare/unexpected-key",
+        "compare/missing-key",
+        "compare/differences-in-sorted-key-order",
+        "compare/native-tokens-stripped-from-ops",
+        "compare/native-tokens-kept-in-prepare",
+        "compare/native-tokens-stripped-in-a-nested-op-log",
+        "compare/only-an-ops-key-strips",
+        "compare/without-options-ops-strip",
+        "compare/array-against-object",
+        "compare/object-against-null",
+        "compare/number-against-string",
+        "compare/null-against-undefined",
+        "compare/undefined-equals-undefined",
+        "compare/undefined-in-an-array",
+        "compare/booleans",
+        "compare/length-mismatch-reports-once",
+        "compare/empty-containers",
+        "compare/strings-exact",
+        "compare/thrown-class"
+      ]
+    },
     "number-format": {
       "files": {
         "player/parity/fixtures/number-format/number-format.json": "d8a4518002e1bd4d87001b9aea26a7b59328cccdf85d5d32f157ee2c1676c4d3"
