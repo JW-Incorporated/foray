@@ -57,7 +57,7 @@
        narration was worth 0 s in all of them.
 */
 
-import { itemRuntimeSec, DURATION_MEASURED } from "./foray-queue.js";
+import { itemRuntimeSec, runtimeIsEstimated } from "./foray-queue.js";
 import { segmentStarts, segmentAtElapsed, fmtClock, fmtSpan } from "./foray-resolve.js";
 
 /** How many show tones the palette holds. `styles.css` defines `--seg-c0` …
@@ -468,7 +468,7 @@ export function stripTally(items) {
     bridges: m.narrationCount,
     shows: m.shows.length,
     totalSec: m.totalSec,
-    estimated: list.some((i) => nonEmpty(i.duration_source) && i.duration_source !== DURATION_MEASURED),
+    estimated: runtimeIsEstimated(list),
   };
 }
 

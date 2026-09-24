@@ -1518,3 +1518,14 @@ test("stripTally says a runtime is an estimate when any item's duration was not 
   assert.equal(tapeOnly.estimated, false, "a Foray of measured tape is a measurement");
   assert.equal(tapeOnly.bridges, 0);
 });
+
+test("the resolved Foray carries the same `estimated` answer, so every surface can hedge (states-11)", () => {
+  /* Only the strip's tally knew, so the header said "about 41 min" while Jump
+     back in and the Now Playing sheet printed the same total unmarked.
+     MUTATION (killed): drop `estimated` from resolveForay's return — the first
+     assertion is red (undefined). */
+  const narrated = resolveDoc(realDoc(NARRATED_ID));
+  assert.equal(narrated.estimated, true);
+  assert.equal(narrated.estimated, stripTally(narrated.playable).estimated, "one rule, two readers");
+  assert.equal(real("capital-types-1").estimated, false);
+});

@@ -104,7 +104,7 @@ import {
   foraysReferencingShow,
 } from "./foray-resolve.js";
 import {
-  ForayProgressStore, resumePoint, remainingLabel, percentDone,
+  ForayProgressStore, resumePoint, progressLabel, percentDone,
   DRIFT_EXACT, DRIFT_UNVERIFIED, DRIFT_UNANCHORED, DRIFT_DROPPED,
 } from "./foray-progress.js";
 import {
@@ -1240,9 +1240,11 @@ function notifyForay() {
  * seconds of movement. `force` is for the moments where the next tick may never
  * arrive: pause, page-hide, and closing the bar.
  *
- * Reaching the end CLEARS the row rather than storing "100%". A finished Foray
- * that keeps offering "0 min left" on the home screen is worse than one that
- * quietly goes back to being unplayed.
+ * Reaching the end MARKS the row finished (audit round 2, honesty-2). It used
+ * to clear it, so a finished Foray went back to looking never opened — no
+ * "Played" anywhere — while a finished episode said "Played" on every row.
+ * `progressLabel` says "Played" for it, Jump back in leaves it out, and
+ * `lastPlayedForay` / `forayResume` skip it, so it never offers "0 min left".
  */
 function persistForayProgress({ force = false } = {}) {
   if (!foray || foray.index < 0) return;
@@ -1262,8 +1264,21 @@ function persistForayProgress({ force = false } = {}) {
      noise, which is the other reason this is gated on `force`. */
   const note = (fields) => { if (force) diag.resumeWrite({ forayId: id, index: foray.index, ...fields }); };
   if (manager?.state?.type === "ended") {
-    forayProgress.clear(id);
-    note({ wrote: false, why: "finished-cleared" });
+    /* Once. `render()` can run again while the queue sits ended, and a forced
+       write per repaint would churn the durable tier for a row that says the
+       same thing. */
+    if (resumePoint(forayProgress.get(id), {})?.finished) return;
+    const segs = forayProgressSegments();
+    const last = segs[segs.length - 1] ?? null;
+    const wrote = forayProgress.markFinished({
+      forayId: id,
+      title: foray.resolved.title,
+      totalSec: foray.resolved.totalSec,
+      index: segs.length - 1,
+      segmentId: last ? last.id : null,
+      intoSec: last ? last.durationSec : 0,
+    });
+    note({ wrote, why: wrote ? "finished-marked" : "store-refused" });
     return;
   }
   /* A resume is TWO steps — load the segment at its in-point, then seek into it
@@ -1337,7 +1352,11 @@ function forayProgressSegments() {
 function remainingClock(leftSec) {
   const left = Math.max(0, Number.isFinite(leftSec) ? leftSec : 0);
   const clock = foray ? fmtClock(left) : formatTimestamp(left, EXACT);
-  return left >= 1 ? `-${clock}` : clock;
+  /* A FORAY WHOSE TOTAL IS PARTLY AN ESTIMATE SAYS SO (audit round 2,
+     states-11): the "~" the Foray page's own total carries, so this countdown
+     cannot present a script-length projection as a stopwatch. */
+  const about = foray?.resolved?.estimated === true ? "~" : "";
+  return left >= 1 ? `${about}-${clock}` : clock;
 }
 
 /* ---------- the ordinary episode's clock, in one place ----------
@@ -1486,7 +1505,7 @@ function render() {
      read out ("Seek, 437"). The clock beside it is the listener's unit, so the
      slider says that instead. */
   ui.scrub.setAttribute("aria-valuetext", dur
-    ? `${ui.tNow.textContent} of ${foray ? fmtClock(dur) : formatTimestamp(dur, EXACT)}`
+    ? `${ui.tNow.textContent} of ${foray ? `${foray.resolved.estimated === true ? "about " : ""}${fmtClock(dur)}` : formatTimestamp(dur, EXACT)}`
     : ui.tNow.textContent);
   ui.tLeft.textContent = dur ? remainingClock(dur - pos) : "--:--";
   syncCardButtons();
@@ -3008,8 +3027,8 @@ const ForayPlayer = {
    * stamps and names the Foray when it wins. The page resolves it (only the page
    * holds the three documents) and hands it to `restoreForay`.
    *
-   * Finished Forays have no row (reaching the end clears it), so a finished
-   * Foray never wins over the episode played after it.
+   * A finished Foray's row is skipped (it is marked finished, not offered), so
+   * a finished Foray never wins over the episode played after it.
    */
   lastPlayedForay() {
     const rows = forayProgress.list();
@@ -3633,7 +3652,7 @@ const ForayPlayer = {
    * @returns {{ elapsedSec, index, remainingSec, percent, finished, drift,
    *             label, clock, title } | null}
    */
-  forayResume(forayId, { totalSec = null, itemCount = null, resolved = null, present = true } = {}) {
+  forayResume(forayId, { totalSec = null, itemCount = null, resolved = null, present = true, includeFinished = false } = {}) {
     const record = forayProgress.get(forayId);
     const segments = resolved ? progressSegments(resolved) : null;
     const total = isFiniteNum(totalSec) ? totalSec : (resolved ? resolved.totalSec : null);
@@ -3642,12 +3661,16 @@ const ForayPlayer = {
     /* `present: false` is FD-05's "the Foray itself is gone from the directory":
        the point degrades to `dropped` with no row painted, never a throw. */
     const point = resumePoint(record, { totalSec: total, maxIndex, segments, present });
-    if (!point || point.finished) return null;
+    /* A finished Foray is not a place to resume to — the ribbon restore and the
+       main button must never start one at its last second — so it is null here
+       unless the caller asks for it by name: the Foray page does, to say
+       "Played" with a "Play again" beside it (honesty-2). */
+    if (!point || (point.finished && !includeFinished)) return null;
     return {
       ...point,
       title: record.title || "",
       clock: fmtClock(point.elapsedSec),
-      label: remainingLabel(point.remainingSec),
+      label: progressLabel(point, { estimated: resolved?.estimated === true }),
     };
   },
 
@@ -3707,7 +3730,12 @@ const ForayPlayer = {
         index: point && point.index >= 0 ? point.index : r.index,
         percent: point ? point.percent : percentDone(r.elapsed_sec, totalSec),
         finished: Boolean(point?.finished),
-        label: point && !point.finished ? remainingLabel(point.remainingSec) : "",
+        /* "Played" for a finished row, "about N min left" for an estimated
+           runtime (honesty-2, states-11). Whether a finished row is SHOWN is
+           each caller's rule: Jump back in leaves it out, Library and the
+           Forays list say "Played". */
+        estimated: resolved?.estimated === true,
+        label: progressLabel(point, { estimated: resolved?.estimated === true }),
         drift: present ? (point?.drift ?? DRIFT_UNVERIFIED) : DRIFT_DROPPED,
       };
     });

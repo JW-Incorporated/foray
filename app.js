@@ -5306,10 +5306,7 @@ function showFirstTimeExplainerOnce() {
     const first = forayCards()[0];
     if (!first) return "";
     try {
-      const r = player.resolve(state.forays, {
-        id: first.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
-        ...forayViewOpts(),
-      });
+      const r = resolveListedForay(first.id);
       if (!r) return "";
       /* mergeNarration: a card is 210px of content box and a generated Foray
          is now ~56 items, 40 of them bridges — one bar each overflows the card
@@ -7765,25 +7762,26 @@ function jumpBackInCardHtml(c) {
     subject; a non-stretch card gets neither. */
 function forayCardV2Html(foray, { stretch = false, draft = false } = {}) {
   const player = window.ForayPlayer;
+  const r = resolveListedForay(foray.id);
   let stripHtml = "";
-  if (player && state.forays && typeof player.resolve === "function" && typeof player.segmentStripHtml === "function") {
+  if (r && typeof player?.segmentStripHtml === "function") {
     try {
-      const r = player.resolve(state.forays, {
-        id: foray.id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources,
-        ...forayViewOpts(),
-      });
       /* mergeNarration — same reason as welcomeStripHtml() above: a card is not
          a scrub target, so a run of bridges may be one bar. */
-      if (r) stripHtml = player.segmentStripHtml(r.playable, { size: "sm", mergeNarration: true }) || "";
+      stripHtml = player.segmentStripHtml(r.playable, { size: "sm", mergeNarration: true }) || "";
     } catch (_) {
       stripHtml = ""; // malformed segments/sources must not break Home
     }
   }
+  /* How long, and what it is made of (audit round 2, p-foray-8): the card was
+     a title and a strip, and the strip's length is only in its aria-label. */
+  const facts = forayFactsLabel(r, player);
   const subject = subjectLabel((foray.topic || "").split("/")[0]);
   return `<a class="hv2-foray-card${stretch ? " hv2-stretch" : ""}" href="#/foray/${esc(foray.id)}">
     ${stretch ? `<span class="hv2-stretch-tag">Stretch</span>` : ""}
     ${draft ? `<span class="hv2-draft-tag">draft</span>` : ""}
     <span class="hv2-foray-title">${esc(foray.title)}</span>
+    ${facts ? `<span class="hv2-foray-sub">${esc(facts)}</span>` : ""}
     ${stripHtml}
     ${stretch ? `<p class="hv2-bridge">${stretchBridgeLine(subject)}</p>` : ""}
   </a>`;
@@ -8735,10 +8733,10 @@ function libraryForaysHtml() {
   if (!state.forays || !window.ForayPlayer) return libSummaryRow("/forays", "All forays", "");
   const list = forayCards();
   if (!list.length) return `<p class="note">No forays to show yet.</p>`;
-  const progress = new Map(forayResumeRows().map(p => [p.id, p.label]));
+  const progress = forayProgressLabels();
   return list.slice(0, LIBRARY_SECTION_CAP).map(f =>
     libSummaryRow(`/foray/${encodeURIComponent(f.id)}`, f.title || f.id,
-      progress.get(f.id) || (f.status === "published" ? "" : "draft"))).join("")
+      forayListSubLabel(f, progress))).join("")
     + (list.length > LIBRARY_SECTION_CAP ? `<a class="lib-more" href="#/forays">All ${list.length} forays ›</a>` : "");
 }
 
@@ -9667,9 +9665,28 @@ function bindSourceLinks(r) {
    An older cached module with no `stripTally` gets the runtime alone rather
    than counts from a second definition — a missing number is not a wrong
    one. */
+/* ONE DIALECT FOR A FORAY'S LENGTH (audit round 2, p-foray-8): the header
+   printed a measured runtime as a clock ("51:22") and an estimated one as
+   "about 43 min", so one page wrote a length two ways, and no list said it at
+   all. Minutes everywhere now, "about" when estimated; the ticking clock
+   beside the scrubber keeps its clock shape. */
 function forayRuntimeLabel(player, tally, totalSec) {
-  if (tally && tally.estimated) return `about ${player.fmtSpan(totalSec)}`;
-  return player.fmtClock(totalSec);
+  if (typeof player?.fmtSpan !== "function") return "";
+  return `${tally && tally.estimated ? "about " : ""}${player.fmtSpan(totalSec)}`;
+}
+
+/** "51 min · 22 clips · 7 shows": how long a Foray is and what it is made of,
+    for every row and card that lists one (p-foray-8). The counts are the
+    strip's own (`stripTally`), the narrator's clips counted as clips the way
+    the strip counts them; "" when there is nothing resolved to read. */
+function forayFactsLabel(r, player) {
+  if (!r) return "";
+  const tally = typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
+  return joinMeta(
+    forayRuntimeLabel(player, tally, r.totalSec),
+    tally ? countLabel(tally.clips + tally.bridges, "clip") : "",
+    tally && tally.shows ? countLabel(tally.shows, "show") : "",
+  );
 }
 
 function forayHeadSub(r, player) {
@@ -9688,7 +9705,7 @@ function forayHeadSub(r, player) {
       : `${countLabel(tally.clips, "clip")}${from}`);
   }
   parts.push(forayRuntimeLabel(player, tally, r.totalSec));
-  return parts.join(" · ");
+  return joinMeta(...parts);
 }
 
 /* The back link on this page goes to `#/forays`, not `#/`. enterForayFromQuery's
@@ -9776,9 +9793,16 @@ async function renderForay(id) {
      segment that moved resumes to the same audio, and one that is gone degrades
      to a clamped clock with no row marked current, rather than seeking somewhere
      wrong. */
-  const resume = typeof player.forayResume === "function"
-    ? player.forayResume(r.id, { totalSec: r.totalSec, itemCount: r.playable.length, resolved: r })
+  /* `includeFinished` (audit round 2, honesty-2): a finished Foray used to open
+     exactly like one never touched, no banner, no mark. It now says "Played"
+     with a "Play again" beside it, the finished episode's word. Split here so
+     `resume` keeps meaning "a place to start from", which a finished Foray is
+     not: its main button starts from the top, as before. */
+  const point = typeof player.forayResume === "function"
+    ? player.forayResume(r.id, { totalSec: r.totalSec, itemCount: r.playable.length, resolved: r, includeFinished: true })
     : null;
+  const played = point && point.finished ? point : null;
+  const resume = played ? null : point;
   state.forayResume = resume;
   /* The document changed under a stored position. Nothing user-facing — the
      resume already degraded correctly — but it is the one signal that says how
@@ -9811,6 +9835,13 @@ async function renderForay(id) {
             <span class="fy-resume-left">${esc(resume.label)}</span>
           </p>
           <button type="button" class="fy-restart" id="fy-restart">Start over</button>
+        </div>` : ""}
+        ${played ? `<div class="fy-resume fy-played" id="fy-resume">
+          <div class="fy-bar"><span class="fy-bar-fill" data-pct="100"></span></div>
+          <p class="fy-resume-line">
+            <span class="fy-resume-left">${esc(played.label)}</span>
+          </p>
+          <button type="button" class="fy-restart" id="fy-restart">Play again</button>
         </div>` : ""}
         <!-- Plain bars, replaced wholesale by the SegmentStrip component in
              mountForayStrip below (#128). They stay in the markup as the
@@ -9868,6 +9899,7 @@ async function renderForay(id) {
   // down with it — an unfilled progress bar is a far better failure. CI catches
   // the disagreement itself: the hook is pinned in player/foray-playback.test.js.
   if (resume) { const fill = $("#fy-bar-fill"); if (fill) fill.style.width = `${resume.percent}%`; }
+  if (played) sizeProgressBars($("#view"));
   bindFeedback(r);
   bindSourceLinks(r);
   bindForayTransport(r, player, resume);
@@ -10898,6 +10930,24 @@ function paintForay(s) {
     `renderForays` awaits the bridge before it will say "No forays right now",
     and `restoreNowPlayingRibbon` repaints Home once when the module arrives
     after Home's first paint. Recorded in docs/curation/foray2-capital.md §11c. */
+/** One listed Foray, resolved through the same `forayViewOpts()` gate every
+    Foray this page opens goes through, or null (no module, no documents, a
+    draft the viewer may not see, or data the resolver threw on). The one way a
+    LIST surface (Home's cards, the Forays list, Library, Jump back in, the
+    welcome strip) reads a Foray's running order, so none of them can resolve
+    it by a rule of its own. */
+function resolveListedForay(id) {
+  const player = window.ForayPlayer;
+  if (!id || !state.forays || typeof player?.resolve !== "function") return null;
+  try {
+    return player.resolve(state.forays, {
+      id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
+    }) || null;
+  } catch (_) {
+    return null;   // malformed segments/sources must not break a list
+  }
+}
+
 function forayCards() {
   if (!state.forays || !window.ForayPlayer) return [];
   /* Published + `?foray=`-unlocked first, in file order, exactly as before;
@@ -10912,11 +10962,38 @@ function forayCards() {
 function forayListHtml() {
   const list = forayCards();
   if (!list.length) return "";
-  return `<div class="fy-home">${list.map(f => `
+  const progress = forayProgressLabels();
+  /* HOW LONG, AND HOW FAR (audit round 2, p-foray-8 / honesty-2): a row was a
+     tag and a title, so nothing before a Foray's own page said how long it
+     was, and a finished Foray looked never opened. The kicker already says
+     "draft", so the sub line leaves it out. */
+  return `<div class="fy-home">${list.map(f => {
+    const sub = forayListSubLabel(f, progress, { draftTag: false });
+    return `
     <a class="fy-home-row" href="#/foray/${esc(f.id)}">
       <span class="fy-home-kicker">foray${f.status === "published" ? "" : " · draft"}</span>
       <span class="fy-home-title">${esc(f.title)}</span>
-    </a>`).join("")}</div>`;
+      ${sub ? `<span class="fy-home-sub">${esc(sub)}</span>` : ""}
+    </a>`;
+  }).join("")}</div>`;
+}
+
+/** Every listed Foray's progress label by id: "Played" for a finished one,
+    "N min left" for a part-played one. NO cap, because this is data, not the
+    rail (honesty-12). */
+function forayProgressLabels() {
+  return new Map(forayResumeRows({ limit: Infinity, includeFinished: true }).map(p => [p.id, p.label]));
+}
+
+/** A list row's second line: draft tag, progress, then length and makeup,
+    JOINED, never one in place of another (honesty-12: a part-played draft's
+    "20 min left" used to replace its "draft"). */
+function forayListSubLabel(f, progress, { draftTag = true } = {}) {
+  return joinMeta(
+    draftTag && f.status !== "published" ? "draft" : "",
+    progress.get(f.id) || "",
+    forayFactsLabel(resolveListedForay(f.id), window.ForayPlayer),
+  );
 }
 
 /* "Jump back in" — the mockup's own heading for a part-played Foray, and the
@@ -10985,7 +11062,13 @@ function isHomeRoute() {
   return currentHash() === "#/";
 }
 
-function forayResumeRows() {
+/* `limit` and `includeFinished` belong to the CALLER (audit round 2,
+   honesty-12 / honesty-2). The 3-row cap is the Home rail's layout; Library
+   reused this helper as its data source and inherited the cap, so a fourth
+   part-played Foray there showed an empty subtitle. A finished Foray is left
+   off Jump back in (founder question 3: finished things leave the rail,
+   episodes and Forays alike), but its own rows say "Played". */
+function forayResumeRows({ limit = 3, includeFinished = false } = {}) {
   if (typeof window.ForayPlayer?.forayResumeList !== "function") return [];
   const visible = new Set(forayCards().map(f => f.id));
   /* `foraysDoc` is FD-05: a row whose Foray is no longer in the directory reads
@@ -10996,14 +11079,10 @@ function forayResumeRows() {
      `forayViewOpts()` gate every other Foray this page opens goes through —
      not against the runtime stored when the row was written. */
   const player = window.ForayPlayer;
-  const resolveFor = typeof player.resolve === "function" && state.forays
-    ? (id) => player.resolve(state.forays, {
-        id, segmentsDoc: state.segments, sourcesDoc: state.segmentSources, ...forayViewOpts(),
-      })
-    : null;
+  const resolveFor = typeof player.resolve === "function" && state.forays ? resolveListedForay : null;
   return player.forayResumeList({ foraysDoc: state.forays, resolveFor })
-    .filter(p => visible.has(p.id) && p.drift !== "dropped" && !p.finished && p.label)
-    .slice(0, 3);
+    .filter(p => visible.has(p.id) && p.drift !== "dropped" && (includeFinished || !p.finished) && p.label)
+    .slice(0, limit);
 }
 
 function jumpBackInHtml(rows) {

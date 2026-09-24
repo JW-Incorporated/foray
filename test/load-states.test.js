@@ -677,13 +677,39 @@ test("a narrated Foray's header counts the strip's clips, not every queue item, 
   assert.match(m.view.querySelector("#fy-total").textContent, /^~\d/, "the clock beside the scrubber carries the same hedge");
 });
 
-test("a Foray of measured tape keeps its clock", async () => {
+test("a Foray of measured tape states its length in minutes, unhedged", async () => {
   /* The other side of the estimate rule: a runtime that IS measured is not
-     hedged. MUTATION: make forayRuntimeLabel always return "about …". Red. */
+     hedged. MUTATION: make forayRuntimeLabel always return "about …". Red.
+     And one dialect (audit round 2, p-foray-8): the header used to print a
+     measured runtime as a clock ("51:22") and an estimated one in minutes.
+     MUTATION 2: return `player.fmtClock(totalSec)` for a measured runtime. Red. */
   const m = await mountForay("capital-types-1");
   const sub = headSub(m.html());
-  assert.match(sub, /^\d+ clips from \d+ shows · \d+:\d{2}(:\d{2})?$/, `header: "${sub}"`);
+  assert.match(sub, /^\d+ clips from \d+ shows · \d+ min$/, `header: "${sub}"`);
   assert.doesNotMatch(sub, /about|narration/);
+});
+
+test("a finished Foray's page says 'Played' with 'Play again', not the page of one never opened (honesty-2)", async () => {
+  /* Frozen fixture (never a live id). The player answers a FINISHED point only
+     when asked with `includeFinished`, which is how the page tells "Played"
+     from "never opened". KILLING MUTATION: drop `includeFinished: true` from
+     renderForay's forayResume call (the fake below then answers null, as the
+     real one does) — no banner, red. */
+  const FZ = "tools/foray/fixtures/frozen/data";
+  const b = await forayBridge();
+  b.forayResume = (_id, opts = {}) => opts.includeFinished
+    ? { finished: true, percent: 100, elapsedSec: 3000, index: 21, remainingSec: 0, label: "Played", drift: "unverified" }
+    : null;
+  const m = mount({ hash: "#/foray/capital-types-1", bridge: b });
+  m.state.forays = readData(`${FZ}/forays.json`);
+  m.state.segments = readData(`${FZ}/segments.json`);
+  m.state.segmentSources = readData(`${FZ}/segment-sources.json`);
+  m.ctx.renderCurrentPage();
+  await settle(10);
+  const html = m.html();
+  assert.match(html, /class="fy-resume fy-played" id="fy-resume"[\s\S]*?>Played<\/span>[\s\S]*?id="fy-restart">Play again<\/button>/, html.slice(0, 1500));
+  assert.doesNotMatch(html, /Jump back in at/, "a finished Foray is not offered as a place to resume");
+  assert.equal(m.state.forayResume, null, "and the main button starts from the top, as before");
 });
 
 test("a clip missing from the segment pool is not promised as 'listed below'", async () => {
