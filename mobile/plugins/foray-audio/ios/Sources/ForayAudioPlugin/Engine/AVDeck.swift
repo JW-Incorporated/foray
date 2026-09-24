@@ -452,7 +452,7 @@ final class AVDeck: DeckDriving {
     }
 
     private func pause() {
-        intendsToPlay = false
+        // MUTANT L
         record("pause")
         player.pause()
     }
