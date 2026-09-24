@@ -1797,7 +1797,18 @@ export class HtmlAudioBackend {
     // pausing an already-paused element is still an instruction not to be
     // audible, and the reconcile of a lost route does exactly that (#263).
     this._stopEpoch++;
-    this.el.pause();
+    /* BUT THE ELEMENT IS NOT TOLD TWICE (audit round 2, p-car-3). By the spec
+       `pause()` on a paused element is a no-op — no event, no promise rejected
+       — so nothing above changes by skipping it. What DOES change is WebKit's
+       own bookkeeping: a script `pause()` while the audio session is
+       interrupted (a call, Siri) runs `clientWillPausePlayback`, which records
+       "paused" as the state to restore, so `endInterruption(MayResumePlaying)`
+       resumes nothing. The reconcile of an OS interruption reaches this method
+       with the element already paused BY that interruption, and was cancelling
+       the OS's own resume on the way to correcting the reducer. The instruction
+       above still stands — the epoch, the recovery window — only the redundant
+       call to the element is dropped. Device check: a 20 s call mid-episode. */
+    if (this.el.paused !== true) this.el.pause();
   }
 
   seek(seconds, { precise = false } = {}) {

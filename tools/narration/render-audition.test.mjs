@@ -24,6 +24,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { exemptClickTrackPaths } from "../audio/click-tracks.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -196,14 +197,9 @@ test("no audition audio is committed to the repository", () => {
   /* Clips are a build artefact and a release asset (K-03), never a tracked
      file. Twelve ~90-second 24 kHz WAVs are ~130 MB.
      MUTATION: commit one — this goes red.
-     The ONE exception is by exact path, not by directory, so a clip dropped
-     beside them is still caught: AVDeck's two synthetic click tracks (NE-15,
-     docs/native-engine-plan.md §14), bundled into foray-audio's TEST target
-     only and capped at < 1 MB together by shell-invariants.test.mjs. */
-  const DECK_TEST_CLICKS = new Set([
-    "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/click-11k.wav",
-    "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/click-cbr-64k.mp3",
-  ]);
+     The one exemption is NE-25a's click tracks: named by their descriptor,
+     matching its hashes, under 1 MB (tools/audio/click-tracks.mjs). */
+  const clickTracks = exemptClickTrackPaths(ROOT);
   const offenders = [];
   const walk = (rel) => {
     const abs = path.join(ROOT, rel);
@@ -212,7 +208,7 @@ test("no audition audio is committed to the repository", () => {
       if (e.name === "node_modules" || e.name.startsWith(".")) continue;
       const next = `${rel}/${e.name}`;
       if (e.isDirectory()) walk(next);
-      else if (/\.(wav|mp3|m4a|flac|ogg)$/i.test(e.name) && !DECK_TEST_CLICKS.has(next)) offenders.push(next);
+      else if (/\.(wav|mp3|m4a|flac|ogg)$/i.test(e.name) && !clickTracks.has(next)) offenders.push(next);
     }
   };
   walk("mobile");

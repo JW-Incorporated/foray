@@ -87,7 +87,7 @@
        no URLs, no identity. `diagnostic-log.js`'s header holds the full rule.
 */
 
-import { PlayerQueueManager } from "./queue-manager.js";
+import { PlayerQueueManager, NARRATION_RATE } from "./queue-manager.js";
 import { HtmlAudioBackend } from "./html-audio-backend.js";
 import { PositionStore } from "./position-store.js";
 import {
@@ -97,13 +97,14 @@ import {
 import { SINGLE_ITEM } from "./queue-strategy.js";
 import { seekPrecision, formatTimestamp, EXACT, OWN } from "./seek-policy.js";
 import { itemRuntimeSec } from "./foray-queue.js";
+import { TTS } from "./queue-state.js";
 import {
   resolveForay, indexSegments, indexSources, findForay, listableForays, allForays,
-  forayElapsed, segmentAtElapsed, fmtClock, fmtSpan, progressSegments,
+  forayElapsed, segmentAtElapsed, segmentStarts, fmtClock, fmtSpan, progressSegments,
   foraysReferencingShow,
 } from "./foray-resolve.js";
 import {
-  ForayProgressStore, resumePoint, remainingLabel, percentDone,
+  ForayProgressStore, resumePoint, progressLabel, percentDone,
   DRIFT_EXACT, DRIFT_UNVERIFIED, DRIFT_UNANCHORED, DRIFT_DROPPED,
 } from "./foray-progress.js";
 import {
@@ -111,14 +112,14 @@ import {
 } from "./diagnostic-log.js";
 import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
 import { createForayDirectory, DIRECTORY_DB_NAME } from "./foray-directory.js";
-import { mountStrip, stripModel, stripSummary, stripTally, segmentStripHtml, applyStripGrow } from "./segment-strip.js";
+import { mountStrip, stripModel, stripSummary, stripTally, segmentStripHtml, applyStripGrow, NARRATOR_NAME } from "./segment-strip.js";
 import {
   HOLD_MS, MOVE_TOLERANCE_PX, ZOOM_SCALE,
-  startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent,
+  startGesture, moveGesture, holdTimeoutGesture, endGesture, zoomOriginPercent, unzoomedStripX,
   BUBBLE_SCALE, BUBBLE_WIDTH, BUBBLE_HEIGHT, BUBBLE_GAP_PX,
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
-import { startDrag, moveDrag, endDrag, dragOffset } from "./sheet-drag-dismiss.js";
+import { startDrag, moveDrag, endDrag, dragOffset, claimsTouch } from "./sheet-drag-dismiss.js";
 import { createDurableStore, preferencesTier } from "./durable-store.js";
 import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
@@ -133,12 +134,20 @@ import {
   readRate, writeRate, nextRate, normalizeRate, rateLabel, rateAriaLabel, RATES,
 } from "./playback-rate.js";
 import { pickDefaultVoice, VOICE_LIST_LANG } from "./default-voice.js";
+import * as continuation from "./continuation.js";
+
+/* Continuous playback's rules (NE-13), for app.js: it decides what plays after
+   an episode, and it is a classic script that cannot import them. Published at
+   module evaluation, before `window.ForayPlayer` exists, so every caller that
+   reaches app.js through the player finds the rules already there. */
+window.forayContinuation = continuation;
 /* The transport's DECISIONS live in transport-policy.js as pure functions
    (NE-08), so the native engine can port them and be checked against them.
    This file gathers the state, asks, and acts; it keeps no copy of a rule. */
 import {
-  resolveToggle, previousAction, skipTarget, scrubTarget, seekAction, remoteStopAction,
-  clampEpisodeTarget, sourceOffsetFor, TOGGLE, PREVIOUS, SEEK, REMOTE_STOP,
+  resolveToggle, previousAction, episodePreviousRestarts, skipTarget, nudgeAction, scrubTarget,
+  seekAction, remoteStopAction, clampEpisodeTarget, sourceOffsetFor,
+  TOGGLE, PREVIOUS, NUDGE, SEEK, REMOTE_STOP,
 } from "./transport-policy.js";
 
 /* The in-page buttons and the lock screen use ONE pair of numbers, imported
@@ -447,10 +456,20 @@ storageReady.then((hydrated) => {
  *     handles them when it wakes (`lagMs` in the record measures it) — and an
  *     interruption acted on as a command after the listener had already
  *     resumed from the lock screen would pause audio they were hearing. The
- *     element is the authority; the event is only the reason to ask it.
- *   - `interruptionEnded` changes nothing. `shouldResume` would start audio
- *     with no press, which is a product decision (docs/DECISIONS.md), not a
- *     wiring one; the record keeps it so the decision can be made on data.
+ *     element is the authority; the event is only the reason to ask it. A
+ *     spoken narration line has no element to ask, so `interruptionBegan` asks
+ *     the synthesiser instead (audit round 2, native-3; the manager's
+ *     `_reconcileNarrationInterrupted`) — and only for an interruption, never
+ *     for a return to the foreground.
+ *   - `interruptionEnded` with `should-resume` RESUMES (founder question 2,
+ *     ruled 2026-09-23 in docs/DECISIONS.md; audit round 2, p-car-3). Apple
+ *     Podcasts and Spotify come back after a call; 4a stayed silent. Two
+ *     guards, because audio with no press is the thing this used to refuse
+ *     outright: the event must be fresh (`INTERRUPTION_RESUME_MAX_LAG_MS` — a
+ *     page that handles it minutes later is a listener who has since opened the
+ *     app, not one mid-call), and the manager resumes only an interruption the
+ *     OS caused, never a pause the listener made before it. A resume the
+ *     listener already did, or WebKit already did, is a no-op in the reducer.
  */
 function onNativeSession(detail) {
   if (!manager || !detail || typeof detail !== "object") return;
@@ -464,8 +483,35 @@ function onNativeSession(detail) {
     return;
   }
   if (kind === "interruptionBegan" || kind === "foreground" || kind === "mediaServicesReset") {
-    reconcileOnReturn(`session:${kind}`).catch((err) => console.warn("[player] reconcile failed", err));
+    /* The narration reconcile is the one place a stale event could STOP a
+       voice, so it alone reads the lag; the element path asks the element. */
+    const interruption = kind === "interruptionBegan" && sessionLagMs(detail) <= INTERRUPTION_RESUME_MAX_LAG_MS;
+    reconcileOnReturn(`session:${kind}`, { interruption })
+      .catch((err) => console.warn("[player] reconcile failed", err));
+    return;
   }
+  if (kind === "interruptionEnded") {
+    const fresh = sessionLagMs(detail) <= INTERRUPTION_RESUME_MAX_LAG_MS;
+    const shouldResume = detail.reason === "should-resume" && fresh;
+    manager.interruptionEnded(shouldResume)
+      .then(() => { render(); persistForayProgress({ force: true }); })
+      .catch((err) => console.warn("[player] interruption end failed", err));
+  }
+}
+
+/** How old an interruption's end may be and still start audio on its own.
+    A page suspended for the whole call handles the event when it wakes, which
+    is normally within a second of the OS delivering it; one handled later than
+    this was woken by the listener, and starting audio under their thumb is the
+    complaint founder report 1 made about a stale event in the other direction. */
+const INTERRUPTION_RESUME_MAX_LAG_MS = 30_000;
+
+/** Page clock minus the plugin's own stamp — the same pair `diag.sessionEvent`
+    records as `lagMs`. Infinity when the stamp is missing, so an unstamped
+    event can only ever be treated as stale, never as fresh. */
+function sessionLagMs(detail) {
+  const at = Number(detail?.at);
+  return Number.isFinite(at) && at > 0 ? Date.now() - at : Infinity;
 }
 
 /** Ask for both halves of the build stamp and write the row. The pinned id is
@@ -529,8 +575,12 @@ window.forayDiagnosticClear = () => { diagLog.clear(); diag.reset(); return true
  * under a key a listener has just asked to be emptied. `app.js` calls it from the
  * LOCAL clear, not from `stopForDataDeletion`: a run that fails at the server step
  * leaves the device untouched on purpose, and that has to include this record.
+ *
+ * `forget()`, NOT `clear()` (round-2 audit, persist-5): the founder's Clear keeps
+ * the running count and a "cleared at #N, hh:mm:ss" mark, and after a deletion
+ * that mark is a record of how much the listener did and when they deleted it.
  */
-window.forayForgetDiagnostics = () => { diagLog.clear(); diag.reset(); return true; };
+window.forayForgetDiagnostics = () => { diagLog.forget(); diag.reset(); return true; };
 /**
  * A tap the PAGE saw fail, into the record (#225).
  *
@@ -651,8 +701,15 @@ function el(tag, cls, text) {
 function paintControl(btn, text, label) {
   if (!btn) return;
   if (text != null && btn.textContent !== text) btn.textContent = text;
-  if (label && label !== text) btn.setAttribute("aria-label", label);
-  else btn.removeAttribute("aria-label");
+  /* Compared before it is written, like the text (audit round 2, perf-7): this
+     runs for every `[data-play]` button on the page at 4 Hz, and an attribute
+     rewritten to its own value is still a mutation some screen readers
+     re-announce. */
+  if (label && label !== text) {
+    if (btn.getAttribute("aria-label") !== label) btn.setAttribute("aria-label", label);
+  } else if (btn.getAttribute("aria-label") != null) {
+    btn.removeAttribute("aria-label");
+  }
 }
 
 function buildUI() {
@@ -680,8 +737,16 @@ function buildUI() {
      <button> named by its aria-label, and a button's children are
      presentational — WebKit leaves them out of the accessibility tree, so a
      status role here was never announced under VoiceOver. The announcement is
-     `announce` below, a visually hidden sibling of the button, and the
-     button's own name carries the line too (`paintInfoLabel`). */
+     `announce` below, a visually hidden element, and the button's own name
+     carries the line too (`paintInfoLabel`).
+     AND NOT INSIDE THE BAR EITHER (audit round 2, a11y-2). The review put the
+     region beside the button, inside `bar` — and expanding Now Playing makes
+     the bar `inert` (the owner takes every sibling of the sheet out of reach),
+     so "Buffering…" and a failed load were announced from the collapsed bar
+     and silent from the one screen a listener stops to look at. It is
+     appended to `root` as a sibling of BOTH the bar and the sheet, and
+     `setExpanded` names it in `keepReachable`, so it is live in either
+     state. */
   const err = el("span", "fp-err");
   err.hidden = true;
   info.append(title, show, err);
@@ -733,7 +798,7 @@ function buildUI() {
      own comment set out to remove. It moves into the sheet's grab row below,
      which is the only place it can be both visible and hit-testable, and is
      also where the sheet's other dismiss affordances now are. */
-  bar.append(art, info, skipBtn, playBtn, announce);
+  bar.append(art, info, skipBtn, playBtn);
   root.append(progress, bar);
 
   /* ---------- the Now Playing sheet ----------
@@ -847,6 +912,10 @@ function buildUI() {
   const rateBtn = el("button", "fp-rate", "1×");
   rateBtn.type = "button";
   rateBtn.setAttribute("aria-label", "Playback speed");
+  /* It opens the speed picker, a dialog (#349) — say so, or a voice-control
+     user told "next speed" expects a cycle (audit round 2, player-9). The
+     Foray page's `#fy-rate` is the same control and needs the same attribute. */
+  rateBtn.setAttribute("aria-haspopup", "dialog");
   const openLink = el("a", "fp-openep", "Episode");
   /* The bar already survives navigation — it lives on <body>, not inside
      #view — but until now there was no way BACK. Leaving the foray page to look
@@ -870,12 +939,48 @@ function buildUI() {
   const stopBtn = el("button", "fp-stop", "Stop");
   stopBtn.type = "button";
   stopBtn.setAttribute("aria-label", "Stop");
+  /* THE THREE STAPLES AN APPLE USER REACHES FOR FROM THE PLAYER (audit round 2,
+     p-impatient-7 / p-switcher-5; founder question 10: the link and Save now,
+     the sleep timer parked). The sheet had Stop, speed and "Episode": with five
+     episodes queued there was no in-app way to move to the next one — ⏭ existed
+     only on the lock screen and the car — and no way to see what was queued or
+     to save what was playing without leaving the sheet.
+
+       ⏭        `Next episode`: the SAME action the steering wheel's next is
+                (`episodeNavigation.next`, app.js's `playNextAfter(cur, "skip")`),
+                so the skipped episode leaves Up Next the same way. Hidden when
+                the page offers no next, and inside a Foray (its clip row is the
+                next there).
+       Up Next  a link to `#/queue` carrying the count, hidden at zero.
+       Save     the page's own star for the current episode (`toggleSaved`), so
+                the sheet and the rows cannot disagree about what is saved.
+
+     All three read `episodeNavigation` — the object the page hands
+     `setEpisodeNavigation` — and are painted by `paintEpisodeSurface` from
+     `render()` and from every `setEpisodeNavigation`. The page owns Up Next and
+     the stars; the sheet only shows them. The two buttons are the transport
+     family's plain box (`.fp-btn`, the seek pair's), NOT `.fp-rate`'s: that
+     box is the speed readout's, muted and light on purpose, and borrowing it
+     painted two actions as a de-emphasised readout (audit round 2 review of
+     visual-5). `.fp-next` / `.fp-save` / `.fp-upnext` carry their own rules
+     in styles.css, and `.fp-row2` wraps, so six controls fit a 320px phone. */
+  const nextBtn = el("button", "fp-btn fp-next", "⏭");
+  nextBtn.type = "button";
+  nextBtn.setAttribute("aria-label", "Next episode");
+  nextBtn.hidden = true;
+  const queueLink = el("a", "fp-openep fp-upnext", "Up Next");
+  queueLink.href = "#/queue";
+  queueLink.hidden = true;
+  const saveBtn = el("button", "fp-btn fp-save", "Save");
+  saveBtn.type = "button";
+  saveBtn.setAttribute("aria-pressed", "false");
+  saveBtn.hidden = true;
   /* STOP FIRST, ALONE AT THE DANGER END (audit 2026-09-22, persona "Stop sits
      next to Close"; visual pass 1). It used to sit in the middle of the row
      beside an identical grey Close. The row is `justify-content: space-between`,
      so Stop leads and the navigation links trail; styles.css gives `.fp-stop`
      the danger colour. No confirmation (a stop is undone by pressing play). */
-  row2.append(stopBtn, rateBtn, openLink, forayLink);
+  row2.append(stopBtn, rateBtn, nextBtn, saveBtn, queueLink, openLink, forayLink);
 
   const note = el("p", "fp-note");
   note.hidden = true;
@@ -889,20 +994,32 @@ function buildUI() {
      transport is what keeps play/pause and the scrub bar reachable without
      scrolling — the same order the `#/episode/:id` page uses, and the same
      order Apple Podcasts uses. Empty-and-hidden when the item carries no
-     description, because a heading over nothing is worse than an absence. */
-  const sDesc = el("p", "fp-s-desc");
+     description, because a heading over nothing is worse than an absence.
+
+     THE SAME NOTES THE EPISODE PAGE SHOWS (audit round 2, p-switcher-2). The
+     founder's 2026-09-17 ruling — links you can tap, timestamps that seek,
+     collapsed under "Episode notes" — reached `#/episode/:id` and not this
+     sheet, which painted the same text dead and fully expanded. Same
+     `<details>` shell and the same classes as that page, so styles.css has one
+     rule for them; the content is built in `paintNotes` from the tokens app.js
+     publishes (`window.ForayNotes`), node by node, never from an HTML string —
+     the rule this whole file is built on, kept even here. */
+  const sDesc = el("details", "fp-s-desc ep-description");
   sDesc.hidden = true;
+  const sDescToggle = el("summary", "ep-description-toggle", "Episode notes");
+  const sDescText = el("p", "ep-description-text");
+  sDesc.append(sDescToggle, sDescText);
 
   scroll.append(sArt, sTitle, sShow, sWhy, scrub, times, row, clips, row2, sErr, note, sDesc);
   sheet.append(grabZone, scroll);
-  root.append(sheet);
+  root.append(sheet, announce);
   document.body.append(root);
 
   return {
     root, bar, art, title, show, playBtn, skipBtn, closeBtn, fill, sheet,
-    grabZone, scroll, sArt, sDesc, clips, clipPrev, clipNext,
+    grabZone, scroll, sArt, sDesc, sDescText, clips, clipPrev, clipNext,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
-    rateBtn, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
+    rateBtn, nextBtn, saveBtn, queueLink, openLink, forayLink, stopBtn, info, note, err, sErr, announce,
   };
 }
 
@@ -910,20 +1027,22 @@ function buildUI() {
 
    An ordinary episode that would not load used to say nothing, anywhere: the
    manager paused, the glyph flipped back to ▶, and the only evidence was a
-   console line. The Foray page already had the standard ("That segment
-   wouldn't load. Check the connection, then press play."), for the surface a
-   newcomer uses least. These are that standard for every episode.
+   console line. The Foray page already had the standard ("That clip couldn't
+   load. Check the connection, then press play."), for the surface a newcomer
+   uses least. These are that standard for every episode.
 
    Two sentences, because only two can be acted on — the same split the Foray
    page makes. A browser holding audio back until it is sure you asked is not a
    fault, and gets an instruction rather than an error.
 
-   NO APOSTROPHES IN THESE LITERALS, on purpose: the source-text suites
-   (now-playing-sheet, episode-link, media-session) strip strings with regexes
-   that read an apostrophe inside any other literal as the start of a
-   single-quoted string, and one stray "wouldn't" blinds every assertion after
-   it in the file. */
-const EP_START_FAILED = "That episode could not load. Check the connection, then press play.";
+   ONE SENTENCE PAIR WITH app.js's FY_START_FAILED (audit round 2, copy-6): the
+   same failure was worded three ways ("wouldn't load" / "could not load" /
+   "Did not load"). The uncontracted form here existed only because the
+   source-text suites' string-strippers misread an apostrophe inside a
+   double-quoted literal as opening a single-quoted one; those strippers now
+   tokenise the three quote kinds in one pass, so listener copy is no longer
+   shaped around a test. */
+const EP_START_FAILED = "That episode couldn't load. Check the connection, then press play.";
 const EP_PLAY_HELD = "Press play again to start it.";
 
 let playFailure = null;
@@ -968,6 +1087,24 @@ function setSheetDragOffset(px) {
 
 let current = null;
 let scrubbing = false;
+/* A FOCUSED SLIDER IS FROZEN, BUT ITS NEXT STEP IS TAKEN FROM THE AUDIO (audit
+   round 2 review of a11y-7). `paintPage` stops writing the value while the
+   slider is a keyboard or screen-reader user's, so VoiceOver does not narrate a
+   running clock; the native step (an arrow key, a VoiceOver swipe) then moves
+   from that frozen value, and a listener parked on Seek for five minutes
+   jumped five minutes BACK on a Right Arrow. `scrubShownValue` is the value the
+   slider holds as far as paint knows, `scrubLiveValue` where the audio is: a
+   discrete step is re-based onto the live value before it seeks. A slider
+   focused by a POINTER is not frozen at all — a mouse user's thumb follows the
+   audio after a click, as the fill beside it does. */
+let scrubShownValue = null;
+let scrubLiveValue = null;
+let scrubByPointer = false;
+/** `{ id, sec }` — the position the load in flight was asked to start at, so
+    the bar can show it before the element holds the item (`episodePositionSec`).
+    Set by `play()`, meaningful only while `manager.playheadItemId` is not yet
+    this id. */
+let loadingStart = null;
 
 /* ---------- episode-ended notification (Up Next auto-advance, #369) ----------
 
@@ -1178,15 +1315,28 @@ function syncForaySegment() {
     "Clip", not "part": a part is one of a Foray's titled sections, and a clip is
     the listener's word for the pieces inside them (audit 2026-09-22). */
 function forayNowPlaying(item, index) {
-  const total = foray.resolved.playable.length;
-  const show = item.show ? `Now: ${item.show}` : "Now playing";
   return {
     id: item.id,
     title: foray.resolved.title || item.title || "",
-    show: `${show} · clip ${index + 1} of ${total}`,
+    show: foraySecondLine(foray.resolved.playable, index),
     duration_sec: null,
     dai_suspected: Boolean(item.dai_suspected),
   };
+}
+
+/** THE ONE BUILDER of a Foray's second line (audit round 2, copy-5): the
+    clip's show and its number, for the live bar and the restored one alike.
+    The live line used to open with "Now: " — the mockup's second line — and
+    the restored line with "Foray · ", so the same Foray read two ways five
+    seconds apart, and no other surface prefixes anything with "Now:" (the bar
+    IS the now-playing bar). A narration line has no show; it is credited as
+    what it is. */
+function foraySecondLine(playable, index) {
+  const total = playable.length;
+  const item = playable[index];
+  const show = item?.show || (item?.kind === TTS ? "Narration" : "");
+  const clip = `clip ${Math.min(index, total - 1) + 1} of ${total}`;
+  return show ? `${show} · ${clip}` : clip.charAt(0).toUpperCase() + clip.slice(1);
 }
 
 /** Everything a page needs to paint itself, in Foray terms. */
@@ -1246,9 +1396,11 @@ function notifyForay() {
  * seconds of movement. `force` is for the moments where the next tick may never
  * arrive: pause, page-hide, and closing the bar.
  *
- * Reaching the end CLEARS the row rather than storing "100%". A finished Foray
- * that keeps offering "0 min left" on the home screen is worse than one that
- * quietly goes back to being unplayed.
+ * Reaching the end MARKS the row finished (audit round 2, honesty-2). It used
+ * to clear it, so a finished Foray went back to looking never opened — no
+ * "Played" anywhere — while a finished episode said "Played" on every row.
+ * `progressLabel` says "Played" for it, Jump back in leaves it out, and
+ * `lastPlayedForay` / `forayResume` skip it, so it never offers "0 min left".
  */
 function persistForayProgress({ force = false } = {}) {
   if (!foray || foray.index < 0) return;
@@ -1268,8 +1420,21 @@ function persistForayProgress({ force = false } = {}) {
      noise, which is the other reason this is gated on `force`. */
   const note = (fields) => { if (force) diag.resumeWrite({ forayId: id, index: foray.index, ...fields }); };
   if (manager?.state?.type === "ended") {
-    forayProgress.clear(id);
-    note({ wrote: false, why: "finished-cleared" });
+    /* Once. `render()` can run again while the queue sits ended, and a forced
+       write per repaint would churn the durable tier for a row that says the
+       same thing. */
+    if (resumePoint(forayProgress.get(id), {})?.finished) return;
+    const segs = forayProgressSegments();
+    const last = segs[segs.length - 1] ?? null;
+    const wrote = forayProgress.markFinished({
+      forayId: id,
+      title: foray.resolved.title,
+      totalSec: foray.resolved.totalSec,
+      index: segs.length - 1,
+      segmentId: last ? last.id : null,
+      intoSec: last ? last.durationSec : 0,
+    });
+    note({ wrote, why: wrote ? "finished-marked" : "store-refused" });
     return;
   }
   /* A resume is TWO steps — load the segment at its in-point, then seek into it
@@ -1339,11 +1504,19 @@ function forayProgressSegments() {
 /** The countdown on the right of the bar. NO SIGN ON A ZERO (audit
     2026-09-22): the minus is a promise that there is time left to count, and at
     the exact end — and for the whole of a scrub past a Foray's end — this read
-    "-0:00". Both clocks floor, so anything under a second left is zero. */
+    "-0:00". THE SIGN FOLLOWS THE CLOCK, NOT THE RAW SECONDS (audit round 2,
+    honesty-13): the Foray clock floors and the episode clock rounds
+    (`formatTimestamp` → `hms`), so a rule written as `left >= 1` dropped the
+    sign for the last half-second of an episode — "-0:01", "0:01", "0:00". A
+    minus goes on whatever the formatter shows as more than nothing. */
 function remainingClock(leftSec) {
   const left = Math.max(0, Number.isFinite(leftSec) ? leftSec : 0);
   const clock = foray ? fmtClock(left) : formatTimestamp(left, EXACT);
-  return left >= 1 ? `-${clock}` : clock;
+  /* A FORAY WHOSE TOTAL IS PARTLY AN ESTIMATE SAYS SO (audit round 2,
+     states-11): the "~" the Foray page's own total carries, so this countdown
+     cannot present a script-length projection as a stopwatch. */
+  const about = foray?.resolved?.estimated === true ? "~" : "";
+  return /^0:00$/.test(clock) ? clock : `${about}-${clock}`;
 }
 
 /* ---------- the ordinary episode's clock, in one place ----------
@@ -1361,22 +1534,52 @@ function remainingClock(leftSec) {
     finished bar's PENDING position when there is one, else the element's clock. */
 function episodePositionSec() {
   if (restoredPending) return restoredPending.positionSec;
+  /* WHILE THE LOAD IS IN FLIGHT THE ELEMENT'S CLOCK IS NOT ABOUT THIS EPISODE
+     (audit round 2, p-impatient-4 / p-impatient-1). Assigning `src` resets
+     `currentTime` to 0 and the resume offset is only written at
+     `loadedmetadata`, so for the whole cold load the bar read 0:00 with the
+     full runtime left on an episode the listener was 38 minutes into — and a
+     ↺15 tapped in that window was computed from that 0, which sent the resume
+     point to the store as 0:00 or 0:30. The position the load was ASKED for
+     is known here (`loadingStart`), so it is what the bar shows and what a
+     nudge steps from until the element holds the item. */
+  if (current && loadingStart?.id === current.id
+      && manager?.state?.type === "loadingItem" && manager.playheadItemId !== current.id) {
+    return loadingStart.sec;
+  }
   const t = backend?.currentTime;
   return typeof t === "number" && Number.isFinite(t) ? t : 0;
 }
 
+/** The duration the player MEASURED off the media element the last time this
+    episode played (`PositionStore` records it beside every position), or null.
+    Preferred over the catalogue's `duration_sec` wherever the element itself
+    cannot answer (audit round 2, honesty-4): the feed's number is what the
+    publisher declared, the measured one is the file that actually played, and
+    on an ad-stitched feed they differ by minutes — "Played" or "15 min left"
+    computed against the wrong one is a row that lies about the file it names. */
+function measuredDurationSec(id) {
+  const stored = Number(positionReader().load(id)?.duration);
+  return Number.isFinite(stored) && stored > 0 ? stored : null;
+}
+
+/** One rule for "how long is this episode" without the element: measured
+    first, the catalogue's row second, null when neither knows. */
+function knownEpisodeDurationSec(id, catalogueSec) {
+  const measured = id ? measuredDurationSec(id) : null;
+  if (measured) return measured;
+  const cat = Number(catalogueSec);
+  return catalogueSec != null && Number.isFinite(cat) && cat > 0 ? cat : null;
+}
+
 /** How long the ordinary episode is, or null when nobody knows: the element's
-    own answer once it holds this episode, the catalogue's before that, and the
-    duration the player measured last time (`PositionStore` records it beside
-    every position) when the feed carries none. */
+    own answer once it holds this episode, and `knownEpisodeDurationSec`'s
+    before that. */
 function episodeDurationSec() {
   if (!current) return null;
   const el = backend?.duration;
   if (manager?.playheadItemId === current.id && typeof el === "number" && Number.isFinite(el) && el > 0) return el;
-  const cat = Number(current.duration_sec);
-  if (current.duration_sec != null && Number.isFinite(cat) && cat > 0) return cat;
-  const stored = Number(positionReader().load(current.id)?.duration);
-  return Number.isFinite(stored) && stored > 0 ? stored : null;
+  return knownEpisodeDurationSec(current.id, current.duration_sec);
 }
 
 /**
@@ -1432,19 +1635,52 @@ async function landEpisodeSeek(target) {
     Where the step lands is `skipTarget`'s (transport-policy.js). */
 function nudgeBy(offsetSec) {
   const offset = Number(offsetSec || 0);
-  if (foray) return ForayPlayer.foraySeek(skipTarget({ foray: true, positionSec: forayPosition(), offsetSec: offset }));
-  return seekEpisodeBy(offset);
+  if (!foray) return seekEpisodeBy(offset);
+  /* Where the step lands is `skipTarget`'s, given the Foray's total so the
+     nudge stops short of the end the way the episode's does (audit round 2,
+     player-5; the scrubber's path is untouched). What a nudge INSIDE a spoken
+     line does instead is `nudgeAction`'s (player-11): the synthesiser has no
+     offset to seek to, so back re-speaks the line, forward skips it, and the
+     live region says which. */
+  const playable = foray.resolved.playable;
+  const target = skipTarget({
+    foray: true, positionSec: forayPosition(), offsetSec: offset, durationSec: foray.resolved.totalSec,
+  });
+  const at = segmentAtElapsed(playable, target);
+  const action = nudgeAction({
+    offsetSec: offset,
+    landsInCurrentItem: Boolean(at) && at.index === manager?.currentIndex,
+    narrationPlayhead: manager?.isNarrationPlayhead === true,
+    onLastItem: manager?.currentIndex >= playable.length - 1,
+  });
+  if (action === NUDGE.RESTART_LINE) {
+    announce(NARRATION_RESTARTED_LINE);
+    return manager.skipToPrevious().then(() => render());
+  }
+  if (action === NUDGE.SKIP_LINE) {
+    announce(NARRATION_SKIPPED_LINE);
+    return ForayPlayer.forayNext();
+  }
+  if (action === NUDGE.NONE) return undefined;
+  return ForayPlayer.foraySeek(target);
+}
+
+/* The live region's two words for a nudge inside a spoken line. No
+   apostrophes (see EP_START_FAILED). */
+const NARRATION_RESTARTED_LINE = "Narration restarted";
+const NARRATION_SKIPPED_LINE = "Narration skipped";
+
+/** Say something once through the bar's live region, outside the status
+    line's own writes: `paintStatus` re-writes the region only when the STATUS
+    changes, so a word said here stands until there is a new status to say. */
+function announce(text) {
+  if (!ui?.announce) return;
+  ui.announce.textContent = text;
 }
 
 function render() {
   if (!ui || !current) return;
   syncForaySegment();
-  paintStatus();
-  /* "››" ON THE LAST SEGMENT IS DISABLED, not silently dead (audit 2026-09-22).
-     `forayNext` returns early there, so the button looked live and read "Next
-     segment" to a screen reader while doing nothing at all. The listener's
-     INTENT index, like the running order's highlight. */
-  ui.clipNext.disabled = Boolean(foray) && foray.index >= foray.resolved.playable.length - 1;
   /* A seam beat reads as playing everywhere, or the mini bar shows "▶" while
      the Foray page shows "❚❚ Pause" for the same two seconds.
      `transportIsRunning()` rather than `isRunning()` since #689: the founder's
@@ -1457,43 +1693,22 @@ function render() {
   const running = transportIsRunning();
   // Sound is coming out: whatever failed before has recovered.
   if (playFailure && running) setPlayFailure(null);
-  const glyph = running ? "❚❚" : "▶";
-  paintControl(ui.playBtn, glyph, running ? "Pause" : "Play");
-  paintControl(ui.bigPlay, glyph, running ? "Pause" : "Play");
-
-  // In a Foray the clock is the Foray's, not the source episode's: 31 minutes
-  // into somebody else's podcast is not a position this listener recognises.
-  /* A restored bar paints its STORED position, not the element's zero. The
-     element has no src yet — that is what makes the restore cheap — so reading
-     `backend.currentTime` would show a day-old half-listened episode sitting at
-     0:00 with an empty progress bar, which is a quieter version of the bug this
-     restore exists to fix. */
-  const pos = foray ? forayPosition() : episodePositionSec();
-  const dur = foray ? foray.resolved.totalSec : episodeDurationSec();
-
-  /* AN UNKNOWN DURATION PAINTS AN EMPTY BAR, not the last one (audit
-     2026-09-22). The reset used to live inside a `dur &&` guard with no else,
-     so an episode from a feed with no duration — or any episode for the moment
-     before its metadata lands — inherited the PREVIOUS episode's fill and
-     thumb: 80% across for something that had not started. `tLeft` below
-     already said "--:--"; the bar now agrees with it. */
-  if (!scrubbing) {
-    const frac = dur ? Math.min(1, Math.max(0, pos / dur)) : 0;
-    ui.scrub.value = String(Math.round(frac * 1000));
-    ui.fill.style.width = `${frac * 100}%`;
-  }
-  ui.tNow.textContent = foray ? fmtClock(pos) : formatTimestamp(pos, EXACT);
-  /* The slider's value is a 0-1000 fraction, which is what a screen reader
-     read out ("Seek, 437"). The clock beside it is the listener's unit, so the
-     slider says that instead. */
-  ui.scrub.setAttribute("aria-valuetext", dur
-    ? `${ui.tNow.textContent} of ${foray ? fmtClock(dur) : formatTimestamp(dur, EXACT)}`
-    : ui.tNow.textContent);
-  ui.tLeft.textContent = dur ? remainingClock(dur - pos) : "--:--";
-  syncCardButtons();
-  // The lock screen is repainted from the same tick the page is, so the two can
-  // never show different states (corner case #11's "lock screen shows correct
-  // state"). It writes only when something actually changed.
+  /* NOTHING ON THE PAGE IS PAINTED WHILE IT IS HIDDEN (audit round 2, perf-7):
+     with the screen off in a car this ran every play button on the page, both
+     clocks and the scrubber four times a second for a three-hour episode that
+     nobody could see. Everything that is NOT the page still runs below — the
+     lock screen and the car ARE what is visible then, a Foray's resume row is
+     written from here, and the end-of-episode signal that starts the next one
+     (`_announceEpisodeEndedIfNeeded`) is the founder's headline case and fires
+     with the screen off or not at all. `reconcileOnReturn` repaints in full on
+     the way back. */
+  if (!(typeof document !== "undefined" && document.hidden === true)) paintPage(running);
+  /* The lock screen is repainted from the same tick the page is, so the two can
+     never show different states (corner case 11, "lock screen shows correct
+     state"). It writes only when something actually changed. A BLOCK comment:
+     `media-session.test.js`'s stripper removes line comments last, and an
+     apostrophe in one swallows the code after it up to the next apostrophe —
+     which, after paintPage moved out of this function, was this very call. */
   syncMediaSession();
   if (foray) {
     persistForayProgress();
@@ -1501,6 +1716,154 @@ function render() {
   } else {
     _announceEpisodeEndedIfNeeded();
   }
+}
+
+/** Is the ordinary episode, or the Foray clip, still being fetched? The
+    reducer's `loadingItem` minus the two loads that are not "loading" to a
+    listener: the seam beat (an authored silence, `isRunning()` already says so)
+    and a restored bar, which loads nothing until pressed. */
+function isLoading() {
+  return manager?.state?.type === "loadingItem" && manager.inSeamGap !== true && !restoredPending;
+}
+
+/** The page's own half of a repaint: transport, clocks, scrubber, status line,
+    card buttons. Skipped while the document is hidden — see `render()`. */
+function paintPage(running) {
+  paintStatus();
+  /* "››" ON THE LAST SEGMENT IS DISABLED, not silently dead (audit 2026-09-22).
+     `forayNext` returns early there, so the button looked live and read "Next
+     segment" to a screen reader while doing nothing at all. The listener's
+     INTENT index, like the running order's highlight. */
+  ui.clipNext.disabled = Boolean(foray) && foray.index >= foray.resolved.playable.length - 1;
+  const glyph = running ? "❚❚" : "▶";
+  paintControl(ui.playBtn, glyph, running ? "Pause" : "Play");
+  paintControl(ui.bigPlay, glyph, running ? "Pause" : "Play");
+  /* THE LOAD IS A STATE, and it is shown (audit round 2, p-impatient-4). Between
+     the tap and the first audio the glyph honestly says ▶ (persona 15: never
+     say playing before audio exists), and until now that was ALL it said — on a
+     cold connection the bar slid up reading ▶, 0:00 and the whole runtime, and
+     the impatient thumb tapped again. `paintStatus` writes "Loading…" into the
+     status line; this marks the controls so styles.css can spin them, and the
+     bar as busy for a screen reader. */
+  const loading = isLoading();
+  for (const btn of [ui.playBtn, ui.bigPlay]) {
+    if (loading) { if (btn.dataset.loading !== "1") btn.dataset.loading = "1"; }
+    else if (btn.dataset.loading) delete btn.dataset.loading;
+  }
+  const busy = loading ? "true" : null;
+  if (ui.bar.getAttribute("aria-busy") !== busy) {
+    if (busy) ui.bar.setAttribute("aria-busy", busy); else ui.bar.removeAttribute("aria-busy");
+  }
+
+  /* In a Foray the clock is the Foray's, not the source episode's: 31 minutes
+     into somebody else's podcast is not a position this listener recognises. */
+  /* A restored bar paints its STORED position, not the element's zero. The
+     element has no src yet — that is what makes the restore cheap — so reading
+     `backend.currentTime` would show a day-old half-listened episode sitting at
+     0:00 with an empty progress bar, which is a quieter version of the bug this
+     restore exists to fix. */
+  const pos = foray ? forayPosition() : episodePositionSec();
+  const dur = foray ? foray.resolved.totalSec : episodeDurationSec();
+  /* A RESTORED FORAY'S SECOND LINE FOLLOWS THE THUMB (audit round 2,
+     player-10): the clip number was computed once at restore time, so a scrub
+     to 45:00 left the bar saying "clip 3 of 32". Recomputed from the same
+     `segmentAtElapsed` the seek will use. */
+  const pendingForay = restoredPending?.foray?.resolved ?? null;
+  if (pendingForay) {
+    const at = segmentAtElapsed(pendingForay.playable, pos);
+    const line = at ? foraySecondLine(pendingForay.playable, at.index) : ui.show.textContent;
+    if (ui.show.textContent !== line) {
+      ui.show.textContent = line;
+      ui.sShow.textContent = line;
+      current.show = line;
+      paintInfoLabel();
+    }
+  }
+
+  /* AN UNKNOWN DURATION PAINTS AN EMPTY BAR, not the last one (audit
+     2026-09-22). The reset used to live inside a `dur &&` guard with no else,
+     so an episode from a feed with no duration — or any episode for the moment
+     before its metadata lands — inherited the PREVIOUS episode's fill and
+     thumb: 80% across for something that had not started. `tLeft` below
+     already said "--:--"; the bar now agrees with it. */
+  /* THE SLIDER IS LEFT ALONE WHILE IT IS THE LISTENER'S: mid-drag
+     (`scrubbing`, the thumb and the clocks follow the finger — `paintScrubPreview`)
+     and while it has FOCUS (audit round 2, a11y-7: WebKit posts a value-changed
+     notification on a focused slider whenever its value or text moves, so a
+     VoiceOver user parked on "Seek" heard a running clock talk over their own
+     swipes — the same rule the status line already keeps, written only when it
+     is theirs to hear). */
+  if (!scrubbing) {
+    const frac = dur ? Math.min(1, Math.max(0, pos / dur)) : 0;
+    ui.fill.style.width = `${frac * 100}%`;
+    const live = Math.round(frac * 1000);
+    scrubLiveValue = live;
+    const held = scrubIsHeld();
+    if (!held) {
+      ui.scrub.value = String(live);
+      scrubShownValue = live;
+    }
+    paintClocks(pos, dur, !held);
+  }
+  syncCardButtons(loading);
+  paintEpisodeSurface();
+}
+
+/**
+ * The two clocks and the slider's spoken value, from ONE position (audit round
+ * 2, player-6 / honesty-13). `pos` and `dur` are the same seconds `render()`
+ * paints from, or the thumb's while a drag is in progress.
+ *
+ * THE COUNTDOWN IS DERIVED FROM THE CLOCK THE LISTENER SEES, not from the raw
+ * difference: elapsed rounds (episode) or floors (Foray) on its own, and a
+ * countdown rounded separately made 13 + 48 = 61 out of 12.5 s into 60. Both
+ * clocks go through the same formatter's rule first, so they add up.
+ */
+function paintClocks(pos, dur, valuetext = true) {
+  const whole = foray ? Math.floor : Math.round;
+  const now = foray ? fmtClock(pos) : formatTimestamp(pos, EXACT);
+  if (ui.tNow.textContent !== now) ui.tNow.textContent = now;
+  const left = dur ? remainingClock(whole(dur) - whole(pos)) : "--:--";
+  if (ui.tLeft.textContent !== left) ui.tLeft.textContent = left;
+  if (!valuetext) return;
+  /* The slider's value is a 0-1000 fraction, which is what a screen reader
+     read out ("Seek, 437"). The clock beside it is the listener's unit, so the
+     slider says that instead. */
+  const text = dur
+    ? `${now} of ${foray ? `${foray.resolved.estimated === true ? "about " : ""}${fmtClock(dur)}` : formatTimestamp(dur, EXACT)}`
+    : now;
+  if (ui.scrub.getAttribute("aria-valuetext") !== text) ui.scrub.setAttribute("aria-valuetext", text);
+}
+
+/** Is the slider a keyboard or screen-reader user's right now — focused, and
+    not by the pointer that is dragging it? See `scrubShownValue`. */
+function scrubIsHeld() {
+  return typeof document !== "undefined" && document.activeElement === ui.scrub && !scrubByPointer;
+}
+
+/** A discrete step on a frozen slider (the first `input` of a key press or a
+    VoiceOver swipe — never mid-drag, where the thumb's value is absolute) moves
+    from where the AUDIO is, not from where the value froze. */
+function rebaseHeldScrubStep() {
+  if (scrubbing || !scrubIsHeld()) return;
+  if (scrubShownValue == null || scrubLiveValue == null) return;
+  const step = Number(ui.scrub.value) - scrubShownValue;
+  if (!Number.isFinite(step)) return;
+  const next = Math.min(1000, Math.max(0, scrubLiveValue + step));
+  ui.scrub.value = String(next);
+}
+
+/** Mid-drag: the clocks follow the THUMB, not the audio (audit round 2,
+    player-6). The seek itself happens on `change`; this is only the readout the
+    listener aims with — Apple Podcasts shows the target time as you drag, and
+    ours kept counting the audio that was still playing until release. */
+function paintScrubPreview() {
+  if (!ui || !current) return;
+  rebaseHeldScrubStep();
+  scrubbing = true;
+  const dur = foray ? foray.resolved.totalSec : episodeDurationSec();
+  const at = (Number(ui.scrub.value) / 1000) * (dur || 0);
+  paintClocks(at, dur);
 }
 
 /** The mini bar's title button: named by what is playing, and telling a screen
@@ -1517,7 +1880,9 @@ function paintInfoLabel() {
   ui.info.setAttribute("aria-expanded", ui.sheet && !ui.sheet.hidden ? "true" : "false");
 }
 
-function syncCardButtons() {
+/** `loading` is the caller's word on whether the current item's load is still
+    in flight (`paintPage` passes `isLoading()`; a stop passes nothing). */
+function syncCardButtons(loading = false) {
   /* Reflect play state on the originating card so the page and the bar agree.
      `transportIsRunning()`, the same authority `render()` paints the bar from
      two calls up (audit 2026-09-22). This read `isPlaying()` under a comment
@@ -1527,9 +1892,19 @@ function syncCardButtons() {
      delegates to the bar's toggle, so its glyph has to come from the same
      answer that toggle decides by. */
   const running = transportIsRunning();
+  /* EVERY WRITE BELOW IS COMPARED FIRST (audit round 2, perf-7): this walks
+     every row on a show page four times a second, and the DOM was being told
+     the same thing each time. The walk itself stays — app.js re-renders rows
+     without telling the player, and a diff on the player's own state alone
+     would leave a fresh row saying ▶ beside a bar saying ❚❚. */
   document.querySelectorAll("[data-play]").forEach((b) => {
-    const on = current && b.dataset.play === current.id && running;
-    if (on) b.dataset.playing = "1"; else delete b.dataset.playing;
+    const mine = current && b.dataset.play === current.id;
+    const on = mine && running;
+    if (on) { if (b.dataset.playing !== "1") b.dataset.playing = "1"; }
+    else if (b.dataset.playing) delete b.dataset.playing;
+    /* The row's button spins with the bar's (p-impatient-4). */
+    if (mine && loading) { if (b.dataset.loading !== "1") b.dataset.loading = "1"; }
+    else if (b.dataset.loading) delete b.dataset.loading;
     /* The row's own title, stamped by app.js's playBtn: `current` is a
        different episode on every row but one. */
     const title = b.dataset.title || "this episode";
@@ -1574,10 +1949,7 @@ function setNowPlaying(item, why) {
     ui.sArt.hidden = true;
     ui.sArt.removeAttribute("src");
   }
-  /* `textContent`, so an RSS description's own markup is text and not DOM —
-     the rule this whole file is built on (see the header). */
-  ui.sDesc.textContent = item.description || "";
-  ui.sDesc.hidden = !item.description;
+  paintNotes(item);
   /* A RESTORED FORAY (`restoreForay`) is a bar with a Foray behind it and no
      `foray` loaded yet: it links to its Foray page, never to an episode page
      that does not exist. */
@@ -1613,6 +1985,85 @@ function setNowPlaying(item, why) {
   render();
 }
 
+/* ---------- the notes in the sheet (audit round 2, p-switcher-2) ----------
+
+   Built from `window.ForayNotes.tokens`, app.js's one tokeniser — the same
+   pass `episodeDescriptionHtml` feeds the episode page — so a URL or a
+   timestamp is recognised in exactly one place. Each token becomes a NODE:
+   `textContent` for prose, `href` on an <a> for a link (the scheme re-checked
+   here, though app.js's `safeUrl` already refused anything but http(s)), and
+   a `data-ts` button for a stamp that seeks through `seekEpisodeTo` — the
+   same seek the scrubber and the page's own stamps take. `innerHTML` never
+   appears: an RSS description is third-party text, and the file's header rule
+   does not bend for a feature.
+
+   PLAIN TEXT FOR A FORAY (`foray` set). A clip's notes belong to its source
+   episode, and a stamp in them would seek the Foray's clock somewhere the
+   episode meant; `seekEpisodeTo` refuses inside a Foray anyway, so the honest
+   paint is text with nothing to press. Also plain when app.js has not
+   published the tokeniser (a harness, or a page paired with an older
+   cached app.js): the sheet degrades to what it showed before, never to
+   nothing. */
+function paintNotes(item) {
+  const text = item?.description || "";
+  ui.sDesc.hidden = !text;
+  /* A `textContent` write: the paragraph is prose, not a control, and
+     test/toggle-labels.test.js lists it as one (NOT_CONTROLS). Not
+     `replaceChildren`/`createTextNode` — the real-client harnesses
+     (transport-reconcile, diagnostic-record) drive this path over a DOM stub
+     that has neither, and a paint helper must not be the reason a seam test
+     dies. Token text goes in through `append(string)`, which the DOM turns
+     into a text node itself. */
+  ui.sDescText.textContent = "";
+  if (!text) return;
+  const notes = typeof window !== "undefined" ? window.ForayNotes : null;
+  /* `lines` (the line-aware pass, with chapter rows) when the page offers it;
+     `tokens` from a page of the vintage before it (audit round 2 review). */
+  const read = notes && typeof notes.lines === "function" ? notes.lines
+    : notes && typeof notes.tokens === "function" ? notes.tokens : null;
+  const tokens = !foray && read ? read(text, episodeDurationSec()) : null;
+  if (!Array.isArray(tokens)) { ui.sDescText.textContent = text; return; }
+  for (const t of tokens) {
+    /* A STAMP-LED LINE IS A 44px CHAPTER ROW HERE TOO (audit round 2 review
+       of touch-10): the whole line is one button, the episode page's own
+       `.ep-chapter-row`, not a ~21px inline stamp. */
+    if (t.kind === "chapter" && Number.isFinite(t.secs)) {
+      const row = el("button", "ep-chapter-row");
+      row.type = "button";
+      row.dataset.ts = String(t.secs);
+      if (t.label) row.setAttribute("aria-label", t.label);
+      row.append(el("span", "ep-chapter-time", String(t.stamp ?? "")), el("span", "ep-chapter-title", String(t.title ?? "")));
+      row.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        seekEpisodeTo(t.secs).catch(() => {});
+      });
+      ui.sDescText.append(row);
+      continue;
+    }
+    if (t.kind === "link" && /^https?:\/\//i.test(String(t.href || ""))) {
+      const a = el("a", null, t.text);
+      a.href = t.href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      ui.sDescText.append(a);
+    } else if (t.kind === "stamp" && Number.isFinite(t.secs)) {
+      const b = el("button", "ep-ts", t.text);
+      b.type = "button";
+      b.dataset.ts = String(t.secs);
+      if (t.label) b.setAttribute("aria-label", t.label);
+      b.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        seekEpisodeTo(t.secs).catch(() => {});
+      });
+      ui.sDescText.append(b);
+    } else {
+      ui.sDescText.append(String(t.text ?? ""));
+    }
+  }
+}
+
 /* ---------- what the bar says when there is no sound ----------
 
    Audit 2026-09-22, two silences the transport did not explain:
@@ -1630,12 +2081,19 @@ function setNowPlaying(item, why) {
    screen, a live region, standing in for the show line while it is up — and
    in the sheet's status line under the transport. INTEGRATION (2026-09-22):
    L2 and L5 each fixed the failure half; this is L5's state and elements with
-   L2's buffering and short bar copy, painted from one place. No apostrophes in
-   these literals (see EP_START_FAILED). */
-const EPISODE_FAILED_LINE = "Did not load — press play to try again";
+   L2's buffering and short bar copy, painted from one place. The bar's short
+   form uses the same verb as the sheet's sentence (see EP_START_FAILED). */
+const EPISODE_FAILED_LINE = "Couldn't load — press play to try again";
 const BUFFERING_LINE = "Buffering…";
+/** Between the tap and the first audio (audit round 2, p-impatient-4). The
+    Foray page says the same word from the same state (`snapshot.loading`). */
+const LOADING_LINE = "Loading…";
+/** What a screen reader hears when Stop takes the player away (a11y-6). */
+const STOPPED_LINE = "Stopped";
 /** The element is waiting for data while the transport is running. */
 let buffering = false;
+/** The last STATUS the live region was given — see `paintStatus`. */
+let lastAnnouncedStatus = "";
 
 /** Only `waiting` starts it, deliberately not `stalled`: `stalled` means the
     FETCH has stopped delivering, which a well-buffered element plays straight
@@ -1648,22 +2106,35 @@ function setBuffering(on) {
   render();
 }
 
-/** The one painter for the bar's and the sheet's status lines. A Foray keeps
-    its own failure line on its page (`foray.error`), so only buffering shows
-    here for one. */
+/** The one painter for the bar's and the sheet's status lines: a failure,
+    else the load, else a stall, else nothing.
+
+    A FORAY'S FAILURE SHOWS HERE TOO (audit round 2, player-7). It used to be
+    dropped — "a Foray keeps its own failure line on its page" — which assumed
+    the page was on screen, and it is not for a Foray started from the restored
+    ribbon, Jump back in, the lock screen or the car: a clip that 404'd there
+    paused into a bar reading ▶ over the Foray's title and nothing anywhere said
+    why. The page keeps its richer line; the bar and the sheet get the same
+    short sentence an episode gets. `syncForaySegment` clears `foray.error` the
+    moment audio flows. */
 function paintStatus() {
-  const failure = foray ? null : playFailure;
+  const failure = foray ? (foray.error ? EPISODE_FAILED_LINE : null) : playFailure;
   const barLine = failure
     ? (failure === EP_PLAY_HELD ? EP_PLAY_HELD : EPISODE_FAILED_LINE)
-    : (buffering ? BUFFERING_LINE : "");
-  const sheetLine = failure || (buffering ? BUFFERING_LINE : "");
-  ui.err.textContent = barLine;
+    : (isLoading() ? LOADING_LINE : (buffering ? BUFFERING_LINE : ""));
+  const sheetLine = failure || (isLoading() ? LOADING_LINE : (buffering ? BUFFERING_LINE : ""));
+  if (ui.err.textContent !== barLine) ui.err.textContent = barLine;
   ui.err.hidden = !barLine;
   ui.show.hidden = Boolean(barLine);
-  ui.sErr.textContent = sheetLine;
+  if (ui.sErr.textContent !== sheetLine) ui.sErr.textContent = sheetLine;
   ui.sErr.hidden = !sheetLine;
-  /* Written only when it changes, so a repaint does not re-announce it. */
-  if (ui.announce && ui.announce.textContent !== sheetLine) ui.announce.textContent = sheetLine;
+  /* Written only when the STATUS changes, so a repaint does not re-announce
+     it — and so a one-off word said through `announce()` is not wiped by the
+     very next tick. */
+  if (ui.announce && lastAnnouncedStatus !== sheetLine) {
+    lastAnnouncedStatus = sheetLine;
+    ui.announce.textContent = sheetLine;
+  }
   paintInfoLabel();
 }
 
@@ -2003,21 +2474,19 @@ async function setRunning(want, source = "tap") {
        `resume.ignored.noCurrentItem` and repaints. Hence four `play from tap`
        rows in the founder's record and no audio. The fallback below is what
        makes that second half impossible regardless of this line. */
-    const started = await ForayPlayer.play(item);
-    /* Seek AFTER the start, not by handing `play` an offset: `play` sets the
-       queue and begins at 0, and the two-step is the same shape a Foray resume
-       already uses (`foray.resumeSeekPending`). A start that failed leaves the
-       position alone rather than seeking a dead element.
-       A SCRUB TO 0:00 IS STILL A SCRUB (review 2026-09-23). This was
-       `positionSec > 0`, and `play` does not begin at 0 for a part-heard
-       episode — it begins at the stored resume point — so a restored bar
-       dragged back to the start showed 0:00 and played from 23:14. A position
-       the listener set (`moved`) is always sought; the stored one only when
-       it is past the start, as before. */
-    if (started && (moved || positionSec > 0)) {
-      await manager.seek(positionSec, { precise: true });
-      render();
-    }
+    /* THE START POSITION RIDES ON THE LOAD (audit round 2, races-1). This used
+       to be `play(item)` then `manager.seek(positionSec)`, and a second press
+       inside the load window — a different row's ▶ on Home — let the seek land
+       on whatever loaded next: the new episode started at yesterday's position
+       in the old one. `manager.play(index, { startOffset })` carries it into
+       `_loadItem`, where a superseded load spends it and its successor never
+       sees it, so there is no second step to race.
+       A SCRUB TO 0:00 IS STILL A SCRUB (review 2026-09-23): a position the
+       listener set (`moved`) is always the start, even 0; the stored one only
+       when it is past the start, as before — otherwise the load resumes as a
+       cold start does, from the store. */
+    await ForayPlayer.play(item, (moved || positionSec > 0) ? { startOffset: positionSec } : undefined);
+    render();
     return;
   }
   /* M-03(b). RECORDED BEFORE THE EARLY RETURN, and that is the interesting
@@ -2075,17 +2544,14 @@ async function setRunning(want, source = "tap") {
        WHY the queue is empty — which is the difference between fixing one bug
        and closing the shape of it. */
     if (action === TOGGLE.LOAD) {
-      const started = await ForayPlayer.play(current);
-      /* Seek after the start, exactly as the restored branch does and for the
-         same reason: `play` sets the queue and begins at 0. `resumeOffset` is
-         the one owner of "where did the listener get to" (#26), so this cannot
-         disagree with the ribbon that is already on screen. */
-      if (started) {
-        const at = positionReader().resumeOffset(current.id, {
-          duration: current.duration_sec ?? null,
-        });
-        if (at > 0) await manager.seek(at, { precise: true });
-      }
+      /* The start rides on the load, exactly as the restored branch does and
+         for the same reason (races-1). `resumeOffset` is the one owner of
+         "where did the listener get to" (#26), so this cannot disagree with
+         the ribbon that is already on screen. */
+      const at = positionReader().resumeOffset(current.id, {
+        duration: current.duration_sec ?? null,
+      });
+      await ForayPlayer.play(current, at > 0 ? { startOffset: at } : undefined);
       render();
       return;
     }
@@ -2106,19 +2572,39 @@ async function setRunning(want, source = "tap") {
  * in the hour sat in both tiers.
  */
 async function stopAndClose({ persist = true } = {}) {
-  // Closing the bar is not "I am done with this Foray", it is "get this off my
-  // screen". Keep the resume point; the only thing that clears it is finishing.
-  if (persist) persistForayProgress({ force: true });
+  /* Closing the bar is not "I am done with this Foray", it is "get this off my
+     screen". Keep the resume point; the only thing that clears it is finishing.
+     BOTH STORES (audit round 2, player-3): this flushed the Foray row and let
+     the episode row stand at whatever was last written — a scrub made while
+     paused is never written by the reducer (`handleSeek` saves the position
+     being LEFT, and nothing writes while paused), so Stop after pause-and-scrub
+     lost the scrub. Leaving is a flush, whichever store. */
+  if (persist) flushPositions();
   await manager.stop();
   if (media) media.release();
-  /* Stop is pressed from INSIDE the open sheet, so the owner has to let go of
-     it first — otherwise the page behind would stay `inert` with no sheet on
-     screen to account for it. */
-  const owner = sheetOwner();
-  if (owner) owner.closeSheet(ui.sheet);
+  lastMediaPositionKey = null;
+  /* THE ROOT HIDES FIRST, THEN THE OWNER LETS GO (audit round 2, a11y-6).
+     Stop is pressed from inside the open sheet, so the owner has to release
+     the page — otherwise it would stay `inert` with no sheet on screen. But
+     `closeSheet` hands focus back to the bar's title button, and the very next
+     line used to hide the whole player: focus died on a hidden element and a
+     screen-reader user was left nowhere, with nothing said. Hidden BEFORE the
+     release, the owner's own hidden-subtree check skips that button; focus
+     that was on Stop itself is blurred for the same reason; and the page's
+     one landing rule (`landOnPage` — the heading, or #view) takes over, then
+     the stop is announced from app.js's region, which the hidden root cannot
+     silence. */
   ui.root.hidden = true;
   ui.sheet.hidden = true;
+  const active = document.activeElement;
+  if (active && active !== document.body && typeof ui.root.contains === "function"
+      && ui.root.contains(active) && typeof active.blur === "function") active.blur();
+  const owner = sheetOwner();
+  if (owner) owner.closeSheet(ui.sheet);
   document.body.classList.remove("fp-open", "fp-expanded");
+  const nav = typeof window !== "undefined" ? window.ForayNav : null;
+  if (nav && typeof nav.landOnPage === "function") nav.landOnPage({ navigated: false });
+  if (nav && typeof nav.announce === "function") nav.announce(STOPPED_LINE);
   current = null;
   /* The bar is gone, so there is nothing armed to resume into. The stored
      POINTER stays: closing the bar is "get this off my screen", not "forget
@@ -2219,6 +2705,37 @@ function episodeNeighbour(which) {
     at all, so a page without Up Next costs nothing. */
 function reaskEpisodeNeighbours() {
   if (episodeNavigation && media && current && !foray) media.setActions(episodeMediaSurface);
+  paintEpisodeSurface();
+}
+
+/** The sheet's ⏭, Up Next link and Save, from the page's episode surface (see
+    `buildUI`'s row2). Every reading is a getter on the page's object, taken now,
+    so the count and the saved state are the list's and the stars' as they are
+    at this paint. A Foray hides all three: its next is a clip, its Up Next is
+    not consulted, and its "current" is not an episode a star can name. */
+function paintEpisodeSurface() {
+  if (!ui) return;
+  const nav = episodeNavigation;
+  /* `current`/`foray` directly rather than `ForayPlayer.currentEpisodeId()`:
+     the same answer, without a read of a `const` this render may reach
+     before the object is built. */
+  const id = !foray && current?.id && !current.forayId ? current.id : null;
+  const showEpisode = Boolean(nav && id);
+  let hasNext = false;
+  let count = 0;
+  let saved = false;
+  if (showEpisode) {
+    try { hasNext = typeof nav.next === "function"; } catch (_) { hasNext = false; }
+    try { count = Number(nav.upNextCount) || 0; } catch (_) { count = 0; }
+    try { saved = typeof nav.isSaved === "function" && nav.isSaved(id) === true; } catch (_) { saved = false; }
+  }
+  ui.nextBtn.hidden = !(showEpisode && hasNext);
+  ui.queueLink.hidden = !(showEpisode && count > 0);
+  paintControl(ui.queueLink, `Up Next (${count})`, null);
+  ui.saveBtn.hidden = !(showEpisode && typeof nav.toggleSaved === "function");
+  paintControl(ui.saveBtn, saved ? "Saved ✓" : "Save", saved ? "Saved — tap to unsave" : "Save this episode");
+  ui.saveBtn.setAttribute("aria-pressed", saved ? "true" : "false");
+  ui.saveBtn.classList.toggle("on", saved);
 }
 
 /** Previous/next are the page's (see `episodeNavigation`), read at the moment
@@ -2313,19 +2830,38 @@ function syncMediaSession() {
   // would drop the metadata and LEAVE the handlers installed, which is the
   // stale-handler bug wearing a tidier face.
   if (!current) return;
+  publishMediaView(mediaSessionView(mediaViewFields()));
+}
 
-  if (foray) {
-    const items = foray.resolved.playable;
-    const index = foray.index >= 0 ? foray.index : 0;
-    media.update(mediaSessionView({
+/** The live values the OS view is built from. One function for the three
+    shapes the bar can be in — a Foray, a RESTORED Foray, an episode — so no
+    field is gathered twice. */
+function mediaViewFields() {
+  /* A RESTORED FORAY IS DESCRIBED AS A FORAY (audit round 2, player-10). The
+     bar's placeholder item is shaped like an episode for convenience, and the
+     lock screen took it at its word: title = the Foray, artist = "Foray · clip
+     3 of 32", album blank — and then, on the first press, the proper clip /
+     show / "<Foray> · clip 3 of 32" layout, the same Foray two ways five
+     seconds apart. The resolved Foray is in hand (`restoredPending.foray`),
+     so the view is built from it and the clip follows the thumb. */
+  const pending = !foray && restoredPending?.foray?.resolved ? restoredPending.foray.resolved : null;
+  const live = foray ? foray.resolved : pending;
+  if (live) {
+    const items = live.playable;
+    const position = foray ? forayPosition() : episodePositionSec();
+    const index = foray
+      ? (foray.index >= 0 ? foray.index : 0)
+      : (segmentAtElapsed(items, position)?.index ?? 0);
+    return {
       item: items[index] ?? null,
       nextItem: items[index + 1] ?? null,
-      forayTitle: foray.resolved.title,
+      forayTitle: live.title,
+      foray: true,
       index,
       total: items.length,
       showArtworkUrl: artworkByShow.get(items[index]?.show ?? "") ?? null,
-      durationSec: foray.resolved.totalSec,
-      positionSec: forayPosition(),
+      durationSec: live.totalSec,
+      positionSec: position,
       /* THE ELEMENT'S REAL RATE, not the chosen one, and the distinction is the
          whole honesty requirement. The OS extrapolates the playhead forward as
          `position + rate x wall` between our reports, so a rate the element is not
@@ -2337,6 +2873,9 @@ function syncMediaSession() {
          extrapolation is dimensionally right: position and duration are content
          seconds and the rate is content-per-wall. */
       playbackRate: backend?.rate ?? 1,
+      /* A stall stops the OS clock too (audit round 2, p-car-8): the bar says
+         "Buffering…" and the car said PLAYING at full rate over silence. */
+      buffering,
       /* `transportIsRunning()`, not `isPlaying()` (audit 2026-09-22). The OS
          surface is a transport like any other and must be painted from the
          answer the press is decided by: in the #689 drift the element is audible
@@ -2347,14 +2886,14 @@ function syncMediaSession() {
       // The 2.0 s authored beat reads as playing, exactly as `isRunning()` has
       // it for the in-page buttons. `media-session.js` §4 is the argument.
       inSeamGap: manager?.inSeamGap === true,
-      ended: manager?.state?.type === "ended",
-    }));
-    return;
+      ended: Boolean(foray) && manager?.state?.type === "ended",
+    };
   }
 
-  media.update(mediaSessionView({
+  return {
     item: current,
     forayTitle: "",
+    foray: false,
     index: 0,
     total: 0,
     showArtworkUrl: current.artwork_url ?? null,
@@ -2374,10 +2913,33 @@ function syncMediaSession() {
        four of that suite's wiring assertions red. Block comments go first and are
        safe. */
     playbackRate: backend?.rate ?? 1,
+    buffering,
     /* The same authority as the Foray branch above, for the same reason. */
     playing: transportIsRunning(),
     ended: manager?.state?.type === "ended",
-  }));
+  };
+}
+
+/** The last position the OS was given, as whole seconds plus duration and
+    rate — see `publishMediaView`. */
+let lastMediaPositionKey = null;
+
+/** Hand the view to the bridge, the position ONCE A SECOND (audit round 2,
+    perf-7). `render()` runs on every `timeupdate`, four times a second, and the
+    bridge's own dedupe is to a tenth of a second, so the OS was written four
+    positions a second for a playhead it extrapolates itself. Metadata and the
+    transport state go through unthrottled — those are the writes that decide
+    what the car shows — and a seek or a rate change is a new whole second or a
+    new rate, so it lands on its own tick. */
+function publishMediaView(view) {
+  const p = view.positionState;
+  const key = p ? `${Math.floor(p.position)}/${p.duration}/${p.playbackRate}` : null;
+  if (key !== null && key === lastMediaPositionKey) {
+    media.update({ metadata: view.metadata, playbackState: view.playbackState });
+    return;
+  }
+  lastMediaPositionKey = key;
+  media.update(view);
 }
 
 /* ---------- the two boundaries: going away, and coming back ----------
@@ -2438,9 +3000,9 @@ function flushPositions() {
  * to fire on every return; `render()` afterwards only because the correction
  * happened outside the media events that normally drive it.
  */
-async function reconcileOnReturn(why = "visible") {
+async function reconcileOnReturn(why = "visible", { interruption = false } = {}) {
   if (!manager) return;
-  const corrected = await manager.reconcileWithBackend(why);
+  const corrected = await manager.reconcileWithBackend(why, { interruption });
   /* REPAINTED WHETHER OR NOT ANYTHING WAS CORRECTED, and that is not belt and
      braces. Every repaint in this file is driven by a media event, and the last
      thing that happens at the end of a Foray is `pausePlayback` against an
@@ -2505,7 +3067,61 @@ function bind() {
      description, close, reopen — `scrollTop` read back 400, which is the
      founder's exact "opens on the bottom part of the transcript", now caused
      by the fix for it. Moving the line below `hidden = false` makes it 0. */
+  /* ---------- the sheet MOVES (audit round 2, touch-8) ----------
+
+     It used to appear with a hard cut and, after a pull past the dismiss
+     distance, vanish from wherever the thumb left it — `hidden` went to
+     `display: none` in the same frame the offset was reset, so the one
+     transition styles.css gives it (`.fp-sheet:not(.fp-sheet-dragging)`)
+     never painted. Only the spring-back of a SHORT pull animated, which made
+     the successful outcome the one broken motion in the sequence. Apple's
+     sheet slides both ways.
+
+     The motion itself is the owner's (`ForaySheets.slideIn` / `slideOut`):
+     one implementation of "move a panel by its own custom property and say
+     when it has settled", shared with every `.fy-panel`, honouring
+     `prefers-reduced-motion` in one place. Here: on open the sheet is unhidden
+     at its full height and released to 0; on close it is sent to its full
+     height FIRST — from wherever the finger left it, so a dismiss finishes
+     the slide — and only when it has settled does `setExpanded(false)` run
+     for real. `sheetExitPending` swallows a second close asked for mid-slide
+     (Escape pressed twice, a bar tap during the exit); the first one's
+     settle hides it. A sheet the owner cannot move (no owner, a zero-height
+     harness, reduced motion) closes as it always did, at once. */
+  let sheetExitPending = false;
+  const sheetHeightPx = () => {
+    try {
+      const h = typeof ui.sheet.getBoundingClientRect === "function" ? ui.sheet.getBoundingClientRect().height : 0;
+      return Number.isFinite(h) && h > 0 ? h : 0;
+    } catch (_) { return 0; }
+  };
+  const slideSheetOut = (done) => {
+    if (ui.sheet.hidden) return false;
+    if (sheetExitPending) return true;
+    const owner = sheetOwner();
+    const h = sheetHeightPx();
+    if (!owner || typeof owner.slideOut !== "function" || !h) return false;
+    /* The release transition applies from wherever the drag left it: the
+       dragging class is what switches it off. */
+    ui.sheet.classList.remove("fp-sheet-dragging");
+    const started = owner.slideOut(ui.sheet, "--fp-sheet-dy", h, () => { sheetExitPending = false; done(); });
+    if (started) sheetExitPending = true;
+    return !!started;
+  };
+  const slideSheetIn = () => {
+    const owner = sheetOwner();
+    const h = sheetHeightPx();
+    if (!owner || typeof owner.slideIn !== "function" || !h) return;
+    owner.slideIn(ui.sheet, "--fp-sheet-dy", h, "fp-sheet-dragging");
+  };
+  /* True only inside a slide-out's settle: the close below is due NOW, not
+     another slide. */
+  let sheetSettled = false;
   const setExpanded = (open) => {
+    if (!open && !sheetSettled && slideSheetOut(() => {
+      sheetSettled = true;
+      try { setExpanded(false); } finally { sheetSettled = false; }
+    })) return;
     setSheetDragOffset(0);
     const owner = sheetOwner();
     /* Closing: the owner first, while the sheet is still shown — it lifts
@@ -2517,18 +3133,21 @@ function bind() {
     paintInfoLabel();
     /* Opening: the page behind (and the mini bar under the sheet) goes inert
        and focus moves into the dialog. The topbar and the drawer stay
-       reachable (U-12/F17 above). Escape, and a navigation, collapse it
-       through this same function. */
+       reachable (U-12/F17 above), and so does the player's live region — it
+       is a sibling of the bar, not inside it, for exactly this reason (see
+       buildUI). Escape, and a navigation, collapse it through this same
+       function. */
     if (open && owner) {
       owner.openSheet(ui.sheet, {
         panel: ui.sheet,
         bodyClass: "fp-expanded",
-        keepReachable: [".topbar", "#drawer", "#drawer-overlay"],
+        keepReachable: [".topbar", "#drawer", "#drawer-overlay", ".fp-announce"],
         onRequestClose: () => setExpanded(false),
         returnFocus: ui.info,
       });
     }
     if (open) ui.scroll.scrollTop = 0;
+    if (open) slideSheetIn();
   };
   ui.info.addEventListener("click", () => setExpanded(ui.sheet.hidden));
   /* The artwork too — the biggest thing on the bar, and where every podcast
@@ -2547,6 +3166,20 @@ function bind() {
   // hash route too, not target="_blank", the sheet must not linger open
   // over the page it navigates to.
   ui.openLink.addEventListener("click", () => setExpanded(false));
+  ui.queueLink.addEventListener("click", () => setExpanded(false));
+  /* ⏭ IS THE STEERING WHEEL'S NEXT, not a second opinion: `episodeNeighbour`
+     is the same wrapper `episodeMediaSurface.next` hands the lock screen. */
+  ui.nextBtn.addEventListener("click", () => {
+    const next = episodeNeighbour("next");
+    if (next) next();
+  });
+  ui.saveBtn.addEventListener("click", () => {
+    const id = !foray && current?.id && !current.forayId ? current.id : null;
+    const nav = episodeNavigation;
+    if (!id || typeof nav?.toggleSaved !== "function") return;
+    try { nav.toggleSaved(id); } catch (_) { /* the page's own star failed; the paint below says so */ }
+    paintEpisodeSurface();
+  });
 
   /* ---------- drag the sheet down to dismiss it ----------
 
@@ -2595,14 +3228,24 @@ function bind() {
     if (!drag || e.pointerId !== dragPointer) return;
     const next = moveDrag(drag, e.clientY, e.timeStamp);
     drag = next;
-    const offset = dragOffset(next);
-    setSheetDragOffset(offset);
-    /* Once the sheet is actually moving, the scroller must stop competing for
-       the same finger. `touch-action: none` on the grab zone covers a drag
-       that STARTED there; this covers one that started on the body at
-       scrollTop 0, which the scroller would otherwise rubber-band. */
-    if (offset > 0 && e.cancelable) e.preventDefault();
+    setSheetDragOffset(dragOffset(next));
   });
+  /* THE SCROLLER MUST NOT GET THE PAN (audit round 2, touch-2). `touch-action:
+     none` on the grab zone covers a drag that STARTED there; a pull that
+     starts on the artwork or the title at scrollTop 0 — where a thumb
+     actually goes — has no such rule, because the body is the scroller and
+     must keep scrolling. This file used to `preventDefault()` the pointermove
+     for that case, which stops nothing: per the Pointer Events spec only
+     `touch-action` or a cancelled, NON-passive `touchmove` keeps the browser
+     from panning, so on a phone the first ten pixels twitched, the scroller
+     rubber-banded, the browser fired `pointercancel` and the sheet sprang
+     back. Same pattern as the strip's own guard in app.js. The decision —
+     "does the sheet own this finger" — is the module's (`claimsTouch`): an
+     eligible pull moving DOWN claims every move from the first pixel, an
+     upward move claims none and scrolls. */
+  ui.sheet.addEventListener("touchmove", (e) => {
+    if (drag && claimsTouch(drag) && e.cancelable !== false && typeof e.preventDefault === "function") e.preventDefault();
+  }, { passive: false });
   const endSheetDrag = (e) => {
     if (!drag || e.pointerId !== dragPointer) return;
     const { dismiss } = endDrag(drag);
@@ -2633,9 +3276,17 @@ function bind() {
   ui.clipPrev.addEventListener("click", () => ForayPlayer.forayPrevious());
   ui.clipNext.addEventListener("click", () => ForayPlayer.forayNext());
 
-  ui.scrub.addEventListener("input", () => { scrubbing = true; });
+  /* The clocks follow the thumb while it moves (audit round 2, player-6). */
+  ui.scrub.addEventListener("pointerdown", () => { scrubByPointer = true; });
+  ui.scrub.addEventListener("keydown", () => { scrubByPointer = false; });
+  ui.scrub.addEventListener("blur", () => { scrubByPointer = false; });
+  ui.scrub.addEventListener("input", () => paintScrubPreview());
   ui.scrub.addEventListener("change", async () => {
+    /* A change with no `input` before it (some assistive paths) is still a
+       step from the frozen value. */
+    if (!scrubbing) rebaseHeldScrubStep();
     const frac = Number(ui.scrub.value) / 1000;
+    scrubShownValue = Number(ui.scrub.value);
     scrubbing = false;
     if (foray) {
       await ForayPlayer.foraySeek(frac * foray.resolved.totalSec);
@@ -2729,6 +3380,18 @@ function ensureBooted() {
        the same reason: the manager knows exactly when there is nothing else
        to trigger a repaint, and the surface only needs to be told. */
     onNarrationTick: () => render(),
+    /* THE THIRD HOOK OF THE SAME FAMILY (audit round 2, player-1). An ordinary
+       episode's natural end produces `timeupdate`, `pause`, `ended` — in that
+       order, and the reducer moves to `ended` only INSIDE the `ended` listener,
+       after every media-event repaint has already run against `playing`. So the
+       bar kept saying Pause with the thumb at 100%, the car kept saying PLAYING,
+       and continuous playback — which `_announceEpisodeEndedIfNeeded` fires
+       from `render()` — waited for an unrelated event: unlocking the phone. In a
+       car with the screen off that is never. The manager now says when a state
+       has settled, and this repaints from it. NEVER `render()` from the
+       backend's own `ended` listener instead: the reducer moves a microtask
+       after it, so that repaint would still see `playing`. */
+    onStateSettled: () => render(),
     /* THE WIRE (generation-architecture.md §7 items 1-2). `_speakNarration` and
        the whole script-only-narration branch of `_loadItem` have been complete
        since #382 and were unreachable, because this argument was never passed:
@@ -2899,15 +3562,24 @@ const ForayPlayer = {
        The why line is listener copy and only `opts.why` supplies it; anything
        else is no reason at all, and the sheet falls back to the item's hook. */
     const why = typeof opts?.why === "string" ? opts.why : "";
+    /* Where to begin, in the episode's own seconds — a restored bar's position,
+       the scrub made on it (audit round 2, races-1). Internal: app.js never
+       passes it. Omitted, the load resumes from the store as it always has. */
+    const startAt = Number(opts?.startOffset);
+    const startOffset = Number.isFinite(startAt) && startAt >= 0 ? startAt : null;
     if (!this.canPlay(item)) return false;
     ensureBooted();
     // BEFORE the first await, always. See `notePlayGesture` (#225).
     backend.notePlayGesture();
     // The jingle's element needs the same tap, for the same reason (§13).
     if (interlude) interlude.prime();
-    // Leaving a Foray for a single episode must not cost the last few seconds
-    // of it — this is the only place `foray` is dropped without a flush.
-    persistForayProgress({ force: true });
+    /* LEAVING IS A FLUSH, BOTH STORES (audit round 2, player-3). This flushed
+       the Foray row only, so an episode left for another one kept whatever its
+       row last said — up to ten seconds stale while playing, and a whole scrub
+       stale after pause-then-scrub, which the reducer never writes. The outgoing
+       item is still `_currentItem()` here, and `setQueueFromPick` below is the
+       moment it stops being; `flushPositions` is the same call pagehide makes. */
+    flushPositions();
     foray = null;
     setSkipButtonMode(false);
     // A new item starting makes its own eventual "ended" reportable again —
@@ -2927,7 +3599,15 @@ const ForayPlayer = {
        moment the OS most needs telling — audio is starting now — was the one
        moment it was never told. */
     media.invalidate();
+    lastMediaPositionKey = null;
     setNowPlaying(item, why);
+    /* What the bar shows while the element does not yet hold this episode
+       (`episodePositionSec`): the explicit start, else the same resume point
+       `_loadItem` will read from the store. */
+    loadingStart = {
+      id: item.id,
+      sec: startOffset ?? positionReader().resumeOffset(item.id, { duration: item.duration_sec ?? null }),
+    };
     reaskEpisodeNeighbours();
     /* THE POINTER, written here and nowhere else (founder, 2026-09-18: "the
        podcast I was listening to should still be in the now playing ribbon").
@@ -2950,14 +3630,22 @@ const ForayPlayer = {
     const lastRec = makeLastEpisode(item);
     if (lastRec) writeLastEpisode(storage, lastRec);
     manager.setQueueFromPick(item);
-    await manager.play(0);
+    await manager.play(0, startOffset != null ? { startOffset } : undefined);
     render();
     /* THE ANSWER, NOT THE ATTEMPT (audit 2026-09-22). This returned `true`
        whatever happened, so every caller's `if (!ok)` was dead code and a 404
        counted as a start — including for Up Next's advance. A load that failed
        lands the manager in `idle` (`E.error`); anything else is a start that is
-       running or on its way. */
-    return manager.state?.type !== "idle";
+       running or on its way.
+       AND THE ANSWER IS FOR THIS ITEM (audit round 2, p-impatient-2). The
+       manager's state is the state of whoever owns the player NOW: tap ▶ on
+       row A, then ▶ on row B half a second later, and A's load is superseded
+       quietly while the manager is in B's `loadingItem` — not idle — so A's
+       caller was told true, and A entered History, counted as played on its
+       playlist and moved the next-up marker, for an episode that never made a
+       sound. `current` moved to B in this very function, so the question is
+       whether it is still this item. */
+    return manager.state?.type !== "idle" && current?.id === item.id;
   },
 
   /**
@@ -2989,15 +3677,13 @@ const ForayPlayer = {
     const rec = readLastEpisode(storage);
     if (!rec) return null;
     const store = positionReader();
-    /* THE DURATION THE PLAYER MEASURED, when the catalogue row has none.
+    /* THE DURATION THE PLAYER MEASURED, first (honesty-4; `knownEpisodeDurationSec`).
        `PositionStore` records `duration` beside every position, read off the
        media element itself, so it is both more available and more accurate than
        a feed's `itunes:duration` -- some feeds carry none at all, and an episode
        whose duration we never learned produced `percent: undefined` and no bar. */
     const stored = store.load(rec.id);
-    const durationSec = Number.isFinite(Number(rec.duration_sec))
-      ? Number(rec.duration_sec)
-      : (Number.isFinite(Number(stored?.duration)) ? Number(stored.duration) : null);
+    const durationSec = knownEpisodeDurationSec(rec.id, rec.duration_sec);
     const offset = store.resumeOffset(rec.id, { duration: durationSec });
     if (lastEpisodeState(rec, { positionSec: offset }).state !== "resume") return null;
     /* THE BAR AND THE LABEL READ THE RAW STORED POSITION, not `offset` (audit
@@ -3008,6 +3694,13 @@ const ForayPlayer = {
        surface shares; `position_sec` stays `offset`, because that IS where the
        press will start. */
     const progress = episodeProgress({ ...rec, duration_sec: durationSec }, stored?.seconds ?? null);
+    /* A FINISHED EPISODE LEAVES JUMP BACK IN (founder question 3, ruled
+       2026-09-23: finished things leave the rail and say "Played" on their own
+       rows and pages; audit round 2, player-8). The card said "Played, 100%"
+       while the ribbon restored the same episode at 0:00 with an empty bar —
+       two truths for one episode. Neither surface offers it now; a Foray's row
+       is already cleared at its end, so the rail keeps one rule. */
+    if (progress.state === "played") return null;
     return {
       ...rec,
       position_sec: offset,
@@ -3029,8 +3722,8 @@ const ForayPlayer = {
    * stamps and names the Foray when it wins. The page resolves it (only the page
    * holds the three documents) and hands it to `restoreForay`.
    *
-   * Finished Forays have no row (reaching the end clears it), so a finished
-   * Foray never wins over the episode played after it.
+   * A finished Foray's row is skipped (it is marked finished, not offered), so
+   * a finished Foray never wins over the episode played after it.
    */
   lastPlayedForay() {
     const rows = forayProgress.list();
@@ -3067,7 +3760,10 @@ const ForayPlayer = {
       id: `foray:${resolved.id}`,
       forayId: resolved.id,
       title: resolved.title || "",
-      show: at ? `Foray · clip ${at.index + 1} of ${total}` : "Foray", // "clip": the word L4 gave the pieces of a Foray (integration)
+      /* The same builder the live bar uses (copy-5), so the restored bar and
+         the bar after the first press say the same thing. `render()` keeps it
+         following the thumb (player-10). */
+      show: foraySecondLine(resolved.playable, at ? at.index : 0),
       duration_sec: resolved.totalSec,
     }, null);
     const positionSec = Number.isFinite(startElapsedSec) && startElapsedSec > 0 ? startElapsedSec : 0;
@@ -3107,10 +3803,12 @@ const ForayPlayer = {
    */
   episodeProgress(id, durationSec = null) {
     const stored = positionReader().load(id);
-    const dur = Number.isFinite(Number(durationSec)) && Number(durationSec) > 0
-      ? Number(durationSec)
-      : (Number.isFinite(Number(stored?.duration)) ? Number(stored.duration) : null);
-    return episodeProgress({ duration_sec: dur }, stored?.seconds ?? null);
+    /* MEASURED FIRST, the row's number second (audit round 2, honesty-4): this
+       preferred the catalogue's duration over the one the same module calls
+       more accurate two hundred lines up, so a row's "Played" / "min left" was
+       computed against a number the file did not have. One rule for every
+       surface: `knownEpisodeDurationSec`. */
+    return episodeProgress({ duration_sec: knownEpisodeDurationSec(id, durationSec) }, stored?.seconds ?? null);
   },
 
   restoreLastEpisode() {
@@ -3121,9 +3819,16 @@ const ForayPlayer = {
     /* The position comes from `PositionStore`, which has owned it since #26 —
        this module stores no positions of its own, so the bar and the home rail
        cannot disagree about where the listener got to. */
-    const offset = positions.resumeOffset(rec.id, { duration: rec.duration_sec ?? null });
+    const durationSec = knownEpisodeDurationSec(rec.id, rec.duration_sec);
+    const offset = positions.resumeOffset(rec.id, { duration: durationSec });
     const verdict = lastEpisodeState(rec, { positionSec: offset });
     if (verdict.state !== "resume") return null;
+    /* A FINISHED EPISODE IS NOT RESTORED (founder question 3; player-8). The
+       ribbon read `resumeOffset`, which collapses a finished episode to 0, and
+       painted it at 0:00 with an empty bar and the whole runtime left beside a
+       Home card saying "Played". Same rule as `lastEpisodeCard`: finished things
+       leave both surfaces. */
+    if (episodeProgress({ ...rec, duration_sec: durationSec }, positions.load(rec.id)?.seconds ?? null).state === "played") return null;
     /* THE HANDLERS, NOT JUST THE METADATA (both audit fleets, 2026-09-22).
 
        `setNowPlaying` -> `render()` publishes title, artist and artwork to
@@ -3165,7 +3870,22 @@ const ForayPlayer = {
   setEpisodeNavigation(nav) {
     episodeNavigation = nav && typeof nav === "object" ? nav : null;
     if (media && current && !foray) media.setActions(episodeMediaSurface);
+    paintEpisodeSurface();
     return true;
+  },
+
+  /**
+   * Does "previous" mean RESTART right now? `episodePreviousRestarts`'
+   * answer (transport-policy.js): past the restart window — the same window
+   * `forayPrevious` measures a clip against — and for a restored bar (whose
+   * position is the stored one). The page's `EPISODE_NAVIGATION.previous`
+   * asks this so an ordinary episode's ◀◀ has the meaning every podcast
+   * player gives it (audit round 2, p-car-5) without a second copy of the
+   * window. Null when no episode is current.
+   */
+  previousMeansRestart() {
+    if (!current || foray) return null;
+    return episodePreviousRestarts({ positionSec: episodePositionSec() });
   },
 
   /**
@@ -3280,6 +4000,9 @@ const ForayPlayer = {
   fmtClock,
   fmtSpan,
 
+  /** The narrator's one name (p-foray-12) — see `segment-strip.js`. */
+  narratorName: NARRATOR_NAME,
+
   /* ---------- the SegmentStrip (#128) ----------
 
      The strip is DOM, and app.js is a classic browser script that cannot import
@@ -3332,6 +4055,24 @@ const ForayPlayer = {
     BUBBLE_SCALE, BUBBLE_WIDTH, BUBBLE_HEIGHT, BUBBLE_GAP_PX,
     bubblePosition,
     bubbleContentOffset,
+    /* Where a finger in zoomed space sits on the un-zoomed strip — the one
+       piece of arithmetic the release commit needs (touch-1). */
+    unzoomedX: unzoomedStripX,
+  },
+
+  /* ---------- drag-to-dismiss, for the sheets app.js owns (touch-4) ----------
+     Every `.fy-panel` paints the same grab handle the Now Playing sheet does
+     and, until round 2, only Now Playing answered a drag — eight false
+     affordances. The owner (`openSheet`) now binds the gesture to each panel
+     it opens, reading the decision from this same pure module, so a fifth
+     sheet cannot drag by a different rule. Bridged for the reason everything
+     else here is: app.js is a classic script and cannot import it. */
+  sheetDrag: {
+    start: startDrag,
+    move: moveDrag,
+    end: endDrag,
+    offset: dragOffset,
+    claimsTouch,
   },
 
   /* ---------- the seek nudge (persona 58) ----------
@@ -3374,7 +4115,9 @@ const ForayPlayer = {
   },
 
   /**
-   * Advance to the next speed and return it. The whole of what a button needs.
+   * Advance to the next speed and return it. Kept for a caller that wants a
+   * cycle; NO SHIPPED CONTROL CYCLES ANY MORE (#349 — both speed buttons open
+   * the picker, `openRatePicker` here and `openRateMenu` in app.js).
    *
    * Works with nothing playing: the value is stored and applied at the next boot,
    * so a listener can set the speed before pressing play. Not `async`, and that
@@ -3386,8 +4129,8 @@ const ForayPlayer = {
     return applyRate(nextRate(currentRate()));
   },
 
-  /** Set a specific speed, snapped onto the ladder. For a settings row or a
-      console; the shipped controls all cycle. */
+  /** Set a specific speed, snapped onto the ladder. What the picker's stops
+      call, and what a settings row or a console would. */
   setPlaybackRate(rate) {
     return applyRate(rate);
   },
@@ -3469,18 +4212,23 @@ const ForayPlayer = {
   },
 
   /**
-   * Speak the fixed audition line through a SPECIFIC voice, at the listener's
-   * CURRENT playback speed — V-01's stopwatch test for H3 (#490's rate
-   * curve). Deliberately independent of `manager`/a live Foray: auditioning a
+   * Speak the fixed audition line through a SPECIFIC voice, at
+   * `NARRATION_RATE` — the 1x every synthesized narration line is spoken at
+   * since the founder's 2026-09-24 ruling (*"1x for now, but maybe we change
+   * later"*). It used to speak at the listener's CURRENT playback speed, as
+   * V-01's stopwatch test for H3 (#490's rate curve); once narration stopped
+   * following that speed, a Preview at 2x would have been a sample of a pace
+   * the narrator never uses, so a preview now sounds like what it previews.
+   * Deliberately independent of `manager`/a live Foray: auditioning a
    * voice from the picker must work whether or not anything is playing, and
    * must never touch the queue (an audition mid-Foray is not "the next
    * narration item" — it is a one-off the listener asked for by name).
    *
    * Goes straight to the shared `ttsBridge`, not through `_speakNarration` —
-   * that method reads `this._voice`/`this._rate` off the LIVE manager, which
-   * is exactly the wrong source here: the picker is choosing a DIFFERENT
-   * voice than whatever is currently selected, possibly before any manager
-   * exists at all.
+   * that method reads `this._voice` off the LIVE manager, which is exactly
+   * the wrong source here: the picker is choosing a DIFFERENT voice than
+   * whatever is currently selected, possibly before any manager exists at
+   * all. The speed is the same constant `_speakNarration` passes.
    *
    * @param {string} text  the fixed line the caller supplies (app.js owns the
    *   copy; this file has no business authoring narration text)
@@ -3489,7 +4237,7 @@ const ForayPlayer = {
    *   `voiceFallback`, etc. — unchanged, so the caller can show V-01's notice.
    */
   auditionVoice(text, voiceId) {
-    return ttsBridge.speak(text, { rate: currentRate(), voice: voiceId });
+    return ttsBridge.speak(text, { rate: NARRATION_RATE, voice: voiceId });
   },
 
   /* ---------- K-01: the bundled-voice measurement ----------
@@ -3624,8 +4372,14 @@ const ForayPlayer = {
         intoSec: at ? Math.round(at.into) : 0,
         resolvedBy: at ? "elapsed" : "index",
       });
-      await manager.play(foray.index);
-      if (offsetAt != null) await manager.seek(offsetAt, { precise: true });
+      /* THE OFFSET RIDES ON THE LOAD (audit round 2, races-1). This was
+         `play()` then `seek(offsetAt)`, and a Next clip, a row tap or the lock
+         screen inside the load window let the seek land on the NEW clip — at
+         the old clip's absolute second, past its out-point, which disarmed the
+         boundary and free-played a stranger's episode. `_loadItem` spends the
+         offset with the load it was armed for; a superseded load takes it with
+         it. */
+      await manager.play(foray.index, offsetAt != null ? { startOffset: offsetAt } : undefined);
     } finally {
       // Even if the load threw, the window has to close or this Foray would
       // never write a position again.
@@ -3654,7 +4408,7 @@ const ForayPlayer = {
    * @returns {{ elapsedSec, index, remainingSec, percent, finished, drift,
    *             label, clock, title } | null}
    */
-  forayResume(forayId, { totalSec = null, itemCount = null, resolved = null, present = true } = {}) {
+  forayResume(forayId, { totalSec = null, itemCount = null, resolved = null, present = true, includeFinished = false } = {}) {
     const record = forayProgress.get(forayId);
     const segments = resolved ? progressSegments(resolved) : null;
     const total = isFiniteNum(totalSec) ? totalSec : (resolved ? resolved.totalSec : null);
@@ -3663,12 +4417,16 @@ const ForayPlayer = {
     /* `present: false` is FD-05's "the Foray itself is gone from the directory":
        the point degrades to `dropped` with no row painted, never a throw. */
     const point = resumePoint(record, { totalSec: total, maxIndex, segments, present });
-    if (!point || point.finished) return null;
+    /* A finished Foray is not a place to resume to — the ribbon restore and the
+       main button must never start one at its last second — so it is null here
+       unless the caller asks for it by name: the Foray page does, to say
+       "Played" with a "Play again" beside it (honesty-2). */
+    if (!point || (point.finished && !includeFinished)) return null;
     return {
       ...point,
       title: record.title || "",
       clock: fmtClock(point.elapsedSec),
-      label: remainingLabel(point.remainingSec),
+      label: progressLabel(point, { estimated: resolved?.estimated === true }),
     };
   },
 
@@ -3728,7 +4486,12 @@ const ForayPlayer = {
         index: point && point.index >= 0 ? point.index : r.index,
         percent: point ? point.percent : percentDone(r.elapsed_sec, totalSec),
         finished: Boolean(point?.finished),
-        label: point && !point.finished ? remainingLabel(point.remainingSec) : "",
+        /* "Played" for a finished row, "about N min left" for an estimated
+           runtime (honesty-2, states-11). Whether a finished row is SHOWN is
+           each caller's rule: Jump back in leaves it out, Library and the
+           Forays list say "Played". */
+        estimated: resolved?.estimated === true,
+        label: progressLabel(point, { estimated: resolved?.estimated === true }),
         drift: present ? (point?.drift ?? DRIFT_UNVERIFIED) : DRIFT_DROPPED,
       };
     });
@@ -3745,9 +4508,13 @@ const ForayPlayer = {
   /** The publisher credit block for a resolved Foray: which shows and episodes
       it draws on, how much of the runtime each carries, and where to go and
       subscribe. `discoverDoc` is optional and only ever upgrades a link from an
-      Apple search to the show's real page. */
-  forayCredits(resolved, { discoverDoc = null } = {}) {
-    const credits = forayCredits(resolved, { collectionIds: collectionIdsByShow(discoverDoc) });
+      Apple search to the show's real page. `collectionIds` (show -> id, from
+      the page's show index, p-foray-2) does the same for a show discover.json
+      does not carry; discover's own id wins where both know the show. */
+  forayCredits(resolved, { discoverDoc = null, collectionIds = null } = {}) {
+    const ids = new Map(Object.entries(collectionIds && typeof collectionIds === "object" ? collectionIds : {}));
+    for (const [show, id] of collectionIdsByShow(discoverDoc)) ids.set(show, id);
+    const credits = forayCredits(resolved, { collectionIds: ids });
     return { credits, summary: creditsSummary(credits) };
   },
 
@@ -3844,8 +4611,16 @@ const ForayPlayer = {
     if (!foray) return;
     foray.error = null;
     const index = manager.currentIndex;
-    const item = foray.resolved.playable[index];
-    if (previousAction({ index, item, currentTime: backend.currentTime }) === PREVIOUS.ITEM_BEFORE) {
+    /* Measured on the Foray's clock, not the element's (audit round 2,
+       player-4): `previousAction` says why. `forayPlayhead` knows which clock
+       each kind of item runs on; the clip's start on that clock is
+       `segmentStarts`. */
+    const choice = previousAction({
+      index,
+      positionSec: forayPlayhead(),
+      segmentStartSec: segmentStarts(foray.resolved.playable)[index],
+    });
+    if (choice === PREVIOUS.ITEM_BEFORE) {
       setForayIndex(index - 1);
       await manager.play(foray.index);
     } else {
@@ -3870,9 +4645,11 @@ const ForayPlayer = {
     if (scrub.reload) {
       foray.error = null;
       setForayIndex(scrub.index);
-      await manager.play(scrub.index);
+      /* The offset rides on the load (races-1) — see `playForay`. */
+      await manager.play(scrub.index, scrub.offset != null ? { startOffset: scrub.offset } : undefined);
+    } else if (scrub.offset != null) {
+      await manager.seek(scrub.offset, { precise: true });
     }
-    if (scrub.offset != null) await manager.seek(scrub.offset, { precise: true });
     render();
   },
 };

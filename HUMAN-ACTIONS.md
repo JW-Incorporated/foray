@@ -32,6 +32,18 @@
 
 **Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
 
+## #109 🟡 [DECIDE] Mirror the approved privacy wording in the store listings, if they carry it (~10 min)
+<!-- ha filed=2026-09-24 kind=default -->
+
+**Why:** You approved the privacy-policy reconciliation on 2026-09-24 ("Approved", round-2 finding `persist-3`), and PR #749 applies it to `docs/legal/privacy-policy.md` and `docs/legal/data-safety.md`. You update the store listings yourself, so any copy of these sentences in App Store Connect or the Play Console is still the old wording. None of the form ANSWERS changed; Search history is still "No" on both. Only the wording changed.
+
+**Steps:**
+1. Wherever the privacy policy is published or pasted for either store, use the new text. Three changes, all in `docs/legal/privacy-policy.md`: §5 now says `connect-src` names **three** origins (the app, Supabase, and our API on Vercel, which receives the Shows search text with your IP address and user-agent); §4.3 gains the paragraph naming **Vercel** as the processor that answers Shows searches ("4a does not log the query"); the `cp_diag` row lists the search, now-playing, remote-command and native-session rows.
+2. If the Play Data safety form or App Store Connect's App Privacy notes repeat the old "miss-only" sentence (a search that misses the local catalogue is looked up off-device), replace it with the sentence in `docs/legal/data-safety.md`'s two search-history rows: every settled Shows search is sent to 4a's API (Vercel) and is not logged as a search-history event.
+3. If neither store carries these sentences, reply `skip none carried`.
+
+**Worked if:** no store-facing text says "two origins" or "miss-only", and the published policy names Vercel.
+
 ## #45 🟡 [DECIDE] Run the voice-engine probe on your phone — the one measurement no machine here can take (K-01)
 <!-- ha filed=2026-09-12 kind=default -->
 
@@ -579,7 +591,7 @@ the other is now wrong in a way a reader cannot detect:
   fine; add ~0.5 s of silence pa
 
 **Steps:**
-1. Listen first (item #2). This is a judgement about a sound.
+1. Listen first, to any Foray (item #2, the listen to Foray #1, was dropped on 2026-09-24). This is a judgement about a sound.
 2. Pick one of three:
 3. 0 s…", "an unbridged segment-to-segment auto-advance…"),
 4. Whichever you pick, delete the "does not decide" bullet in
@@ -587,30 +599,6 @@ the other is now wrong in a way a reader cannot detect:
 **Worked if:** `04_VOICE_AUDIO_SPEC.md` and `segment-length-rules.md` can both
 be read start to finish without coming away with two different answers to "how
 much silence goes at a seam".
-
-## #2 🟡 [DECIDE] Listen to Foray #1 end to end, then decide whether to publish it
-<!-- ha filed=2026-09-11 kind=keyword -->
-
-**Why:** Foray #1 — the 61-minute history of grilling — is now real
-data (`data/forays.json`, issue #182), and every number about it is a property
-of timestamps and transcripts. **Nobody has heard it.** It is committed as
-`"status": "draft"`, which by the same rule that governs ladders means no client
-may ev
-
-**Note 2026-09-23:** the 61-minute Foray #1 this item was filed about was retired
-from `data/forays.json` in PR #741 (#236); it had been superseded since 2026-08-17
-by its 10-clip successor, `grilling-history-2`. The decision now applies to that
-Foray. If you would rather not hear it, reply `skip`.
-
-**Steps:**
-1. Read the running order: `docs/curation/grilling-history-assembly.md` §2.
-2. Listen. **There is a player now** — #111 / #128 / #133 landed. Open
-   `https://jw-incorporated.github.io/foray/?foray=grilling-history-2`.
-3. Decide. If it holds together, change **one word** in `data/forays.json`:
-
-**Worked if:** either `data/forays.json` says `"status": "published"` on
-`grilling-history-2`, or there is a written note saying what a listener heard
-that the rules did not catch.
 
 ## #1 🟡 [DECIDE] Make `path-policy` a required check on `main`
 <!-- ha filed=2026-09-11 kind=default -->

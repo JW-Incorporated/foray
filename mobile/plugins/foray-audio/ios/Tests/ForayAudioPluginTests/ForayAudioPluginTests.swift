@@ -97,6 +97,22 @@ final class ForayAudioPluginTests: XCTestCase {
         XCTAssertEqual(negative.playbackRate, 1.0, accuracy: 0.0001)
     }
 
+    /// Audit round 2, p-car-8: a network stall is PLAYING with the clock
+    /// stopped. The flag is what `applyNowPlayingInfo` turns into a 0
+    /// `MPNowPlayingInfoPropertyPlaybackRate`; the speed itself is kept.
+    /// TO SEE IT FAIL: parse `stalled` as `false` always.
+    func testStalledIsCarriedOnlyWhilePlaying() {
+        let stalled = NowPlayingPayload.from(["state": "playing", "playbackRate": 1.5, "stalled": true])
+        XCTAssertTrue(stalled.stalled)
+        XCTAssertEqual(stalled.playbackRate, 1.5, accuracy: 0.0001)
+
+        let paused = NowPlayingPayload.from(["state": "paused", "stalled": true])
+        XCTAssertFalse(paused.stalled, "a paused player is not waiting for anything")
+
+        XCTAssertFalse(NowPlayingPayload.from(["state": "playing"]).stalled)
+        XCTAssertFalse(NowPlayingPayload.empty.stalled)
+    }
+
     func testMissingBooleans_defaultToFalse() {
         let payload = NowPlayingPayload.from(["state": "paused"])
         XCTAssertFalse(payload.canPlay)
@@ -122,12 +138,39 @@ final class ForayAudioPluginTests: XCTestCase {
     }
 
     /// MUTATION: enable `nextTrack` when `hasNext` is false -> this goes red.
+    /// Since audit round 2 (p-impatient-3) the pair ALSO needs a track route:
+    /// `applyCommandAvailability` ANDs `trackCommandsAllowed(portTypes:)` in,
+    /// mirrored here as the third term.
     func testNextTrackEnabledExactlyWhenHasNextAndTransportable() {
         let withNext = NowPlayingPayload.from(["state": "playing", "hasNext": true])
         XCTAssertTrue(transportable(withNext) && withNext.hasNext)
 
         let withoutNext = NowPlayingPayload.from(["state": "playing", "hasNext": false])
         XCTAssertFalse(transportable(withoutNext) && withoutNext.hasNext)
+
+        let headset = ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.bluetoothA2DP.rawValue])
+        let speaker = ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue])
+        XCTAssertTrue(transportable(withNext) && withNext.hasNext && headset, "a headset route gets ⏭")
+        XCTAssertFalse(transportable(withNext) && withNext.hasNext && speaker, "the speaker route -- the lock screen alone -- keeps the skip pair")
+    }
+
+    /// The track pair follows the ROUTE, not Up Next (founder question 1, audit
+    /// round 2): the lock screen draws ⏮/⏭ over ↺15/30↻ whenever the pair is
+    /// enabled, so it is enabled only where a track button exists without
+    /// looking -- a headset, a Bluetooth stack, a car. TO SEE IT FAIL: return
+    /// true for an empty route, or drop `carAudio` from the set (CarPlay's
+    /// steering wheel goes dead).
+    func testTrackCommandsAllowedOnlyOnARouteWithATrackButton() {
+        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: []))
+        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue]))
+        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInReceiver.rawValue]))
+        for port in [AVAudioSession.Port.headphones, .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .carAudio, .usbAudio, .airPlay] {
+            XCTAssertTrue(ForayAudioPlugin.trackCommandsAllowed(portTypes: [port.rawValue]), "\(port.rawValue) has a track button")
+        }
+        XCTAssertTrue(
+            ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue, AVAudioSession.Port.carAudio.rawValue]),
+            "any one track route is enough"
+        )
     }
 
     /// "none" disables all transport, regardless of what flags were sent --
@@ -266,17 +309,18 @@ final class ForayAudioPluginTests: XCTestCase {
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .none, to: .paused, holding: false), .none)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .paused, holding: true), .none)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .playing, holding: false), .none)
-        /* A hold still standing while the transport plays (a remote play took it
-           and the page was already playing) is FORGOTTEN: `.supersede`, which
-           calls no `setActive` at all (shell-invariants pins
-           `supersedeSession`'s body and this row of the table). This line
-           expected `.none` when #746 merged, against a table that has always
-           said `(_, .playing) -> holding ? .supersede : .none`, and turned
-           ios-kit red on main from 9730b5b8; corrected by NE-01, which needs
-           this step green. Neither answer touches the session; `.supersede`
-           also stops the plugin claiming a hold it no longer has. */
-        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .playing, holding: true), .supersede,
-                       "a stale hold while playing is forgotten, never re-activated or released")
+        /* PLAYING -> PLAYING is a position write, not a resume: `.none`, even
+           holding. This row turned ios-kit red on main from 9730b5b8 (#746),
+           and it was fixed twice, in opposite directions: NE-01 on engine/m1
+           changed this assertion to the table's `.supersede`, and main's audit
+           round 2 (#749) gave the table its own `(.playing, .playing)` case
+           returning `.none` — nothing started sounding, so there is no new
+           activation for a hold to be superseded by. The merge of main into
+           engine/m1 took each side's untouched half, and ios-kit went red
+           again; main's reading is the shipping one, so it is the one pinned.
+           Neither answer calls `setActive`. */
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .playing, holding: true), .none,
+                       "a position write while playing never touches the session")
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .playing, holding: true), .supersede)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .playing, holding: false), .none)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .none, holding: true), .releaseAndNotify)

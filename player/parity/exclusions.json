@@ -17,6 +17,10 @@
       "reason": "js-module-shape",
       "why": "Text scan: client.js's remoteStop pauses and only a close tears down; the engine's stop is registered-and-disabled with a remote stop as a pause (plan §4.5, T-7), which is NE-12s's commandAvailability and NE-18's XCTest; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
     },
+    "a RESTORED Foray is described to the OS as a Foray, and its clip follows the thumb (player-10)": {
+      "reason": "js-module-shape",
+      "why": "Text scan: mediaViewFields reads the restored Foray and the clip under the pending position; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
     "a handler installed BY THE BRIDGE actually calls the surface — all eight of them": {
       "reason": "webview-only",
       "why": "The WebView bridge's installed handler really calls the surface; the press-to-intent table it exercises is fixtured in media-episode through media-actions. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
@@ -68,6 +72,10 @@
     "a setPositionState that throws is swallowed, and the render loop survives": {
       "reason": "webview-only",
       "why": "A throwing setPositionState in a WebKit build. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a stall reaches the OS view from both branches (p-car-8)": {
+      "reason": "js-module-shape",
+      "why": "Text scan: both mediaViewFields branches pass `buffering`; the mapping's stall rule is fixtured in media-episode (position-stall-reports-rate-zero); native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
     },
     "a throw does not poison the dedupe — the next identical render retries": {
       "reason": "webview-only",

@@ -3,13 +3,19 @@ import AVFoundation
 @testable import ForayAudioPlugin
 
 /// AVDeck against a REAL AVPlayer in the iOS Simulator (card NE-15,
-/// docs/native-engine-plan.md §14), on the two bundled click tracks in
-/// `Fixtures/` (20 s mono; `tools/mobile/click-tracks/make-click-tracks.mjs`
-/// is the recipe):
+/// docs/native-engine-plan.md §14), on two of NE-25a's click tracks in
+/// `Fixtures/ClickTracks/` (`tools/audio/make-click-tracks.py` is the
+/// recipe, `click-tracks.json` the descriptor):
 ///
-///   - `click-cbr-64k.mp3`: CBR MP3 with no Xing/LAME tag, the encoding whose
-///     seek table is pure byte arithmetic;
-///   - `click-11k.wav`: PCM, where a seek is exact by construction.
+///   - `click-cbr.mp3`: 90 s CBR MP3 with no Xing/LAME header frame, the
+///     encoding whose seek table is pure byte arithmetic;
+///   - `click.wav`: 60 s PCM, where a seek is exact by construction.
+///
+/// WHY NOT A SET OF ITS OWN. NE-15 first bundled two 20 s tracks of its own
+/// (601 KB). NE-25a landed a set of the same shape first, and the repo's two
+/// audio guards exempt exactly one descriptor-named, hash-checked set under
+/// 1 MB (`tools/audio/click-tracks.mjs`); a second set would have broken that
+/// cap or needed a second exemption. So the deck plays NE-25a's files.
 ///
 /// RUN ON CI ONLY: `ci.yml`'s ios-kit runs `xcodebuild test -scheme
 /// ForayAudio` on an iOS Simulator. Nothing here runs on the Windows machine
@@ -74,8 +80,8 @@ final class AVDeckTests: XCTestCase {
 
     private func fixture(_ name: String, _ ext: String) throws -> URL {
         try XCTUnwrap(
-            Bundle.module.url(forResource: name, withExtension: ext, subdirectory: "Fixtures"),
-            "missing bundled fixture Fixtures/\(name).\(ext)"
+            Bundle.module.url(forResource: name, withExtension: ext, subdirectory: "ClickTracks"),
+            "missing bundled fixture ClickTracks/\(name).\(ext)"
         )
     }
 
@@ -143,7 +149,7 @@ final class AVDeckTests: XCTestCase {
     func testDeckSettingsAreThePlans() throws {
         XCTAssertEqual(deck.player.actionAtItemEnd, .pause)
         XCTAssertTrue(deck.player.automaticallyWaitsToMinimizeStalling)
-        deck.send(.load(token: 1, url: try fixture("click-11k", "wav"), startSec: 0, preciseTiming: true))
+        deck.send(.load(token: 1, url: try fixture("click", "wav"), startSec: 0, preciseTiming: true))
         XCTAssertEqual(deck.player.currentItem?.audioTimePitchAlgorithm, .timeDomain)
     }
 
@@ -163,9 +169,9 @@ final class AVDeckTests: XCTestCase {
     func testOffsetLandsOnTheCbrMp3AndTheWav() throws {
         let start = 7.3
         let cases: [(name: String, ext: String, precise: Bool, label: String)] = [
-            ("click-cbr-64k", "mp3", true, "CBR MP3, precise"),
-            ("click-cbr-64k", "mp3", false, "CBR MP3, approximate"),
-            ("click-11k", "wav", true, "WAV, precise")
+            ("click-cbr", "mp3", true, "CBR MP3, precise"),
+            ("click-cbr", "mp3", false, "CBR MP3, approximate"),
+            ("click", "wav", true, "WAV, precise")
         ]
         for (index, item) in cases.enumerated() {
             events.removeAll()
@@ -202,7 +208,7 @@ final class AVDeckTests: XCTestCase {
     /// there rather than at the load's original offset.
     /// TO SEE IT FAIL: make `seek(to:)` ignore `.loading`/`.gating`.
     func testASeekBeforeReadyMovesTheStart() throws {
-        deck.send(.load(token: 1, url: try fixture("click-11k", "wav"), startSec: 2, preciseTiming: true))
+        deck.send(.load(token: 1, url: try fixture("click", "wav"), startSec: 2, preciseTiming: true))
         deck.send(.seek(toSec: 11))
         guard let ready = readyEvent(1) else { return }
         XCTAssertEqual(ready.landedSec, 11, accuracy: 0.1)
@@ -215,7 +221,7 @@ final class AVDeckTests: XCTestCase {
     /// play primitive is issued; the same play after `.ready` runs.
     /// TO SEE IT FAIL: drop the `stage == .ready` guard in `play()`.
     func testNothingIsAudibleBeforeReady() throws {
-        deck.send(.load(token: 1, url: try fixture("click-cbr-64k", "mp3"), startSec: 3, preciseTiming: true))
+        deck.send(.load(token: 1, url: try fixture("click-cbr", "mp3"), startSec: 3, preciseTiming: true))
         deck.send(.play)
         XCTAssertTrue(events.contains(.refused(command: "play", reason: "not-ready")), "\(events)")
         XCTAssertEqual(deck.player.rate, 0)
@@ -231,10 +237,10 @@ final class AVDeckTests: XCTestCase {
     /// ahead of its gate. TO SEE IT FAIL: remove the pause at the top of
     /// `load(...)`.
     func testALoadSilencesTheDeckBeforeTheNextItemAttaches() throws {
-        guard loadAndWaitReady(try fixture("click-11k", "wav"), token: 1, startSec: 0) != nil else { return }
+        guard loadAndWaitReady(try fixture("click", "wav"), token: 1, startSec: 0) != nil else { return }
         deck.send(.play)
         XCTAssertEqual(deck.player.rate, 1)
-        deck.send(.load(token: 2, url: try fixture("click-cbr-64k", "mp3"), startSec: 4, preciseTiming: true))
+        deck.send(.load(token: 2, url: try fixture("click-cbr", "mp3"), startSec: 4, preciseTiming: true))
         XCTAssertEqual(deck.player.rate, 0, "the next item attached to a playing player")
         guard readyEvent(2) != nil else { return }
         XCTAssertEqual(deck.player.rate, 0)
@@ -250,8 +256,8 @@ final class AVDeckTests: XCTestCase {
     /// `gen == generation` guard in `durationLoaded` (either one alone still
     /// holds; that is what having two is for).
     func testASupersededLoadIsSilent() throws {
-        deck.send(.load(token: 1, url: try fixture("click-cbr-64k", "mp3"), startSec: 5, preciseTiming: true))
-        deck.send(.load(token: 2, url: try fixture("click-11k", "wav"), startSec: 6, preciseTiming: true))
+        deck.send(.load(token: 1, url: try fixture("click-cbr", "mp3"), startSec: 5, preciseTiming: true))
+        deck.send(.load(token: 2, url: try fixture("click", "wav"), startSec: 6, preciseTiming: true))
         guard let ready = readyEvent(2) else { return }
         XCTAssertEqual(ready.landedSec, 6, accuracy: 0.1)
         spin(1.0)
@@ -278,7 +284,7 @@ final class AVDeckTests: XCTestCase {
     /// `applyRateAndPlay`), or reset it in `load(...)`.
     func testRateIsHeldAcrossThreeLoads() throws {
         deck.send(.setRate(1.5))
-        let files = [("click-cbr-64k", "mp3"), ("click-11k", "wav"), ("click-cbr-64k", "mp3")]
+        let files = [("click-cbr", "mp3"), ("click", "wav"), ("click-cbr", "mp3")]
         for (index, file) in files.enumerated() {
             events.removeAll()
             let token = index + 1
@@ -351,7 +357,7 @@ final class AVDeckTests: XCTestCase {
     /// the `intendsToPlay = false` in `pause()`.
     func testAnExternalPauseBecomesAReconcileInput() throws {
         let uncommanded: (DeckEvent) -> Bool = { if case .pausedUncommanded = $0 { return true }; return false }
-        guard loadAndWaitReady(try fixture("click-cbr-64k", "mp3"), token: 3, startSec: 2) != nil else { return }
+        guard loadAndWaitReady(try fixture("click-cbr", "mp3"), token: 3, startSec: 2) != nil else { return }
         deck.send(.play)
         spin(0.3)
         events.removeAll()
@@ -393,7 +399,7 @@ final class AVDeckTests: XCTestCase {
     /// `work.perform()` instead of scheduling it), or drop the `playSeq` bump
     /// and the cancel in `play()`.
     func testAPlayInsideTheSettleWindowVoidsTheStop() throws {
-        guard loadAndWaitReady(try fixture("click-cbr-64k", "mp3"), token: 6, startSec: 3) != nil else { return }
+        guard loadAndWaitReady(try fixture("click-cbr", "mp3"), token: 6, startSec: 3) != nil else { return }
         deck.send(.play)
         spin(0.3)
         events.removeAll()
@@ -442,7 +448,10 @@ final class AVDeckTests: XCTestCase {
     /// 35965798877, because there `.paused` arrived after `didPlayToEndTime`;
     /// `testTheUncommandedPauseRule` pins those branches deterministically.
     func testTheEndIsEndedNotAnUncommandedPause() throws {
-        guard loadAndWaitReady(try fixture("click-11k", "wav"), token: 4, startSec: 19.2) != nil else { return }
+        // 0.8 s before the WAV's end, read from the descriptor rather than
+        // restated, so a regenerated fixture cannot strand the start past it.
+        let wav = try XCTUnwrap(ClickTrackDescriptor.load().fixtures.first { $0.file == "click.wav" })
+        guard loadAndWaitReady(try fixture("click", "wav"), token: 4, startSec: wav.durationSec - 0.8) != nil else { return }
         deck.send(.play)
         waitFor("ended(token: 4)", timeout: 10) { $0 == .ended(token: 4) }
         spin(0.3)
@@ -459,7 +468,7 @@ final class AVDeckTests: XCTestCase {
     /// and trips the DEBUG fault (injected here so the test process survives).
     /// TO SEE IT FAIL: remove the `sessionIsActive()` check in `play()`.
     func testAPlayWithoutAnActiveSessionWritesTheFaultRow() throws {
-        guard loadAndWaitReady(try fixture("click-11k", "wav"), token: 5, startSec: 1) != nil else { return }
+        guard loadAndWaitReady(try fixture("click", "wav"), token: 5, startSec: 1) != nil else { return }
         sessionActive = true
         deck.send(.play)
         deck.send(.pause)
@@ -499,9 +508,10 @@ final class NeverAnsweringLoader: NSObject, AVAssetResourceLoaderDelegate {
 }
 
 /// The card's measurement sink: every line goes to the test log with a
-/// greppable prefix and, when ios-kit passes `TEST_RUNNER_GITHUB_STEP_SUMMARY`
+/// greppable prefix and, when ios-kit passes `TEST_RUNNER_FORAY_MEASURE_SUMMARY`
 /// (xcodebuild strips the prefix before the test process sees it), into the
-/// job summary under one heading.
+/// job summary under one heading. It is the variable NE-25a's
+/// `MeasurementReport` writes through: ci.yml has one hand-off, not two.
 enum DeckMeasurements {
     private static var wroteHeading = false
     private static var warmed = false
@@ -510,7 +520,7 @@ enum DeckMeasurements {
     static func warmUpOnce() {
         guard !warmed else { return }
         warmed = true
-        guard let url = Bundle.module.url(forResource: "click-11k", withExtension: "wav", subdirectory: "Fixtures") else { return }
+        guard let url = Bundle.module.url(forResource: "click", withExtension: "wav", subdirectory: "ClickTracks") else { return }
         let started = Date()
         let player = AVPlayer(playerItem: AVPlayerItem(url: url))
         let until = started.addingTimeInterval(60)
@@ -525,7 +535,7 @@ enum DeckMeasurements {
 
     static func record(_ line: String) {
         print("AVDECK-MEASURE \(line)")
-        guard let path = ProcessInfo.processInfo.environment["GITHUB_STEP_SUMMARY"], !path.isEmpty else { return }
+        guard let path = ProcessInfo.processInfo.environment["FORAY_MEASURE_SUMMARY"], !path.isEmpty else { return }
         var text = ""
         if !wroteHeading {
             wroteHeading = true

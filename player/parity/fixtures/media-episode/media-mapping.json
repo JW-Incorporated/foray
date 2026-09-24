@@ -938,6 +938,38 @@
       "expect": { "return": { "duration": 10, "playbackRate": 1.75, "position": 0 } }
     },
     {
+      "id": "media-episode/position-stall-reports-rate-zero",
+      "covers": [
+        "media-session::a stall reports rate 0, so the OS clock stops counting over silence (p-car-8)"
+      ],
+      "call": "mediaPositionState",
+      "args": [
+        {
+          "durationSec": 100,
+          "positionSec": 10,
+          "playbackRate": 1.5,
+          "buffering": true
+        }
+      ],
+      "expect": { "return": { "duration": 100, "playbackRate": 0, "position": 10 } }
+    },
+    {
+      "id": "media-episode/position-no-stall-keeps-the-rate",
+      "covers": [
+        "media-session::a stall reports rate 0, so the OS clock stops counting over silence (p-car-8)"
+      ],
+      "call": "mediaPositionState",
+      "args": [
+        {
+          "durationSec": 100,
+          "positionSec": 10,
+          "playbackRate": 1.5,
+          "buffering": false
+        }
+      ],
+      "expect": { "return": { "duration": 100, "playbackRate": 1.5, "position": 10 } }
+    },
+    {
       "id": "media-episode/state-nothing-loaded-playing",
       "covers": ["media-session::nothing loaded reports no transport state at all"],
       "call": "mediaPlaybackState",
@@ -1005,7 +1037,7 @@
         "media-session::a FINISHED Foray reports none, not paused — a dead play button is worse than no button"
       ],
       "call": "mediaPlaybackState",
-      "args": [{ "hasItem": true, "playing": true, "ended": true }],
+      "args": [{ "hasItem": true, "playing": true, "ended": true, "foray": true }],
       "expect": { "return": "none" }
     },
     {
@@ -1014,8 +1046,26 @@
         "media-session::a FINISHED Foray reports none, not paused — a dead play button is worse than no button"
       ],
       "call": "mediaPlaybackState",
-      "args": [{ "hasItem": true, "inSeamGap": true, "ended": true }],
+      "args": [{ "hasItem": true, "inSeamGap": true, "ended": true, "foray": true }],
       "expect": { "return": "none" }
+    },
+    {
+      "id": "media-episode/state-finished-episode-is-paused",
+      "covers": [
+        "media-session::a FINISHED ordinary episode reports PAUSED, not none — its play button starts it over (p-car-6)"
+      ],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": true, "playing": false, "ended": true }],
+      "expect": { "return": "paused" }
+    },
+    {
+      "id": "media-episode/state-finished-episode-while-playing-is-paused",
+      "covers": [
+        "media-session::a FINISHED ordinary episode reports PAUSED, not none — its play button starts it over (p-car-6)"
+      ],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": true, "playing": true, "ended": true, "foray": false }],
+      "expect": { "return": "paused" }
     },
     {
       "id": "media-episode/read-state-none",
@@ -1115,7 +1165,8 @@
             "end_sec": 120
           },
           "playing": true,
-          "ended": true
+          "ended": true,
+          "foray": true
         }
       ],
       "expect": {
@@ -1128,6 +1179,73 @@
           },
           "playbackState": "none",
           "positionState": null
+        }
+      }
+    },
+    {
+      "id": "media-episode/view-carries-ended-episode-is-paused",
+      "covers": [
+        "media-session::a FINISHED ordinary episode reports PAUSED, not none — its play button starts it over (p-car-6)"
+      ],
+      "call": "mediaSessionView",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "playing": false,
+          "ended": true,
+          "foray": false
+        }
+      ],
+      "expect": {
+        "return": {
+          "metadata": {
+            "album": "",
+            "artist": "Origin Stories",
+            "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+            "title": "Episode 09: Did Cooking Make Us Human?"
+          },
+          "playbackState": "paused",
+          "positionState": null
+        }
+      }
+    },
+    {
+      "id": "media-episode/view-stall-stays-playing-at-rate-zero",
+      "covers": [
+        "media-session::a stall reports rate 0, so the OS clock stops counting over silence (p-car-8)"
+      ],
+      "call": "mediaSessionView",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "playing": true,
+          "durationSec": 100,
+          "positionSec": 10,
+          "buffering": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "metadata": {
+            "album": "",
+            "artist": "Origin Stories",
+            "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+            "title": "Episode 09: Did Cooking Make Us Human?"
+          },
+          "playbackState": "playing",
+          "positionState": { "duration": 100, "playbackRate": 0, "position": 10 }
         }
       }
     },

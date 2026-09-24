@@ -142,12 +142,17 @@ jobs:
           # TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN reaches the test process
           # (xcodebuild strips the prefix) and turns a pin that compiled out
           # into a failure rather than a skip.
-          # NE-15: TEST_RUNNER_GITHUB_STEP_SUMMARY hands the job summary's path
-          # to AVDeckTests (same prefix stripping), which append the deck's
-          # Simulator measurements (landing error, time to ready) to it.
           npm ci --prefix ../.. --no-audit --no-fund --ignore-scripts
+          # NE-25a (docs/native-engine-plan.md): the in-point / out-point
+          # measurement (ClickTrack/InOutPointMeasurementTests.swift) appends
+          # its tables to this job's summary, labelled with the run and the
+          # head SHA. A Simulator test process can write a host path, and the
+          # TEST_RUNNER_ prefix is how a variable reaches it. NE-15's AVDeckTests
+          # append the deck's measurements (landing error, time to ready) through
+          # the same FORAY_MEASURE_SUMMARY: one hand-off, not two.
           FORAY_PREFERENCES_PIN=1 TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN=1 \
-          TEST_RUNNER_GITHUB_STEP_SUMMARY="$GITHUB_STEP_SUMMARY" \
+          TEST_RUNNER_FORAY_MEASURE_SUMMARY="$GITHUB_STEP_SUMMARY" \
+          TEST_RUNNER_FORAY_MEASURE_RUN="${{ github.run_id }} @ ${{ github.event.pull_request.head.sha || github.sha }}" \
           xcodebuild test \
             -scheme ForayAudio \
             -destination "platform=iOS Simulator,id=$DEVICE_ID" \

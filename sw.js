@@ -122,7 +122,7 @@ const CACHE_PREFIX = "foray-gen-";
    manifest.mjs --write` stamps this string to the freshly computed
    `deploy_id` on every run, so a real content change always changes sw.js's
    own bytes too, and `--check` fails if the two ever drift apart. */
-const BUILD_ID = "82c4b929d637f1ef";
+const BUILD_ID = "5a64d99de4bbf92b";
 const POINTER_CACHE = "foray-pointer";
 const PENDING_CACHE = "foray-pending";
 /* Cache keys are Requests/URLs, so a plain string needs a URL of its own to be
@@ -195,13 +195,26 @@ async function precache() {
     throw new TypeError("precache failed: manifest.json is missing deploy_id or files");
   }
 
+  /* A DEPLOY DOWNLOADS WHAT CHANGED, ONCE (round-2 audit, perf-4). Every file
+     used to be fetched with `cache: "reload"`, which skips the HTTP cache, so
+     each deploy day's first open downloaded the whole ~1.5 MB bundle — while
+     the page, still served by the old worker, was downloading the changed
+     files itself. Two changes, and the sha256 check below is untouched, so a
+     torn deploy still aborts the install exactly as before:
+       - a file whose manifest hash is the SAME as in the current generation is
+         copied from that generation (re-verified here), not fetched at all;
+       - the rest are fetched with `no-cache`: an unchanged file revalidates to
+         a 304, and one the page just fetched comes from the HTTP cache. */
+  const previous = await currentGenerationHashes();
   const verified = await Promise.all(
     paths.map(async (path) => {
-      const res = await fetch(path, { cache: "reload" });
+      const expected = String(files[path]).replace(/^sha256:/, "");
+      const reused = await reuseVerified(previous, path, expected);
+      if (reused) return [path, reused];
+      const res = await fetch(path, { cache: "no-cache" });
       if (!res || !res.ok) throw new TypeError(`precache failed for ${path}`);
       const buf = await res.clone().arrayBuffer();
       const digest = await sha256Hex(buf);
-      const expected = String(files[path]).replace(/^sha256:/, "");
       if (digest !== expected) {
         throw new TypeError(`precache failed: ${path} does not match the manifest (torn deploy)`);
       }
@@ -248,6 +261,37 @@ async function precache() {
      verified AND staged, so a crash here still leaves nothing pending. */
   const pending = await caches.open(PENDING_CACHE);
   await pending.put(PENDING_KEY, new Response(deployId));
+}
+
+/** The current generation's cache and its recorded hashes, or null. */
+async function currentGenerationHashes() {
+  try {
+    const current = await currentDeployId();
+    if (!current || !(await hasGeneration(current))) return null;
+    const cache = await caches.open(CACHE_PREFIX + current);
+    const manifestRes = await cache.match(GEN_MANIFEST_KEY);
+    if (!manifestRes) return null;
+    return { cache, hashes: await manifestRes.json() };
+  } catch (_) {
+    return null;   // nothing to reuse is an ordinary install
+  }
+}
+
+/** The current generation's copy of `path` when the new manifest records the
+    same hash for it AND its bytes still hash to it; otherwise null (fetch it). */
+async function reuseVerified(previous, path, expected) {
+  if (!previous) return null;
+  try {
+    const u = new URL(path, self.location.href);
+    const had = previous.hashes[u.origin + u.pathname];
+    if (!had || String(had).replace(/^sha256:/, "") !== expected) return null;
+    const hit = await previous.cache.match(path);
+    if (!hit || !hit.ok) return null;
+    const digest = await sha256Hex(await hit.clone().arrayBuffer());
+    return digest === expected ? hit : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 async function sha256Hex(buffer) {
@@ -319,6 +363,23 @@ function isData(url) {
    anyone remembering to add it. */
 function isCode(request, url) {
   return isNavigation(request) || /\.(?:js|html)$/.test(url.pathname);
+}
+
+/* FONTS AND ICONS ARE READ FROM THE GENERATION FIRST (round-2 audit, perf-5).
+   They change only with a deploy, and a deploy's manifest pins their bytes, so
+   the current generation's copy IS the file. Sending them origin-first cost a
+   revalidation on every launch — long enough for `font-display: swap` to paint
+   the fallback face and swap — and in a dead zone the full NET_TIMEOUT_MS with
+   the wrong typeface on screen. The network is asked only on a miss. */
+function isImmutableAsset(url) {
+  return /\.(?:woff2|png)$/.test(url.pathname);
+}
+
+async function handleImmutable(request, env) {
+  const current = await currentDeployId();
+  const hit = current ? await matchGeneration(current, request) : undefined;
+  if (hit) return hit;
+  return handleShell(request, env, false);
 }
 
 /* ---------- generation lookup ---------- */
@@ -463,13 +524,36 @@ async function cachePut(request, response) {
     const cache = await caches.open(CACHE_PREFIX + current);
     const key = stripQuery(request);
     const expected = await trackedHash(cache, key.url);
+    /* NOTHING IS REWRITTEN WITH ITSELF (round-2 audit, perf-6). A revalidation
+       that answers 304 reaches this function as a 200 with the same bytes, on
+       every launch, and every tracked file was re-hashed and re-put — megabytes
+       of CacheStorage writes for no change. A tracked file whose verified copy
+       is present has nothing to gain from a write: matching bytes are that
+       copy, and different bytes are dropped anyway. An untracked file is
+       skipped when its validators say it is the same response. */
+    const have = await cache.match(key);
     if (expected) {
+      if (have) return;
       const buf = await response.clone().arrayBuffer();
       const digest = await sha256Hex(buf);
       if (digest !== expected) return; // does not match this generation; drop it, keep the verified copy
+    } else if (have && sameValidators(have, response)) {
+      return;
     }
     await cache.put(key, response);
   } catch (_) { /* a full or evicted cache is a slower page, not a broken one */ }
+}
+
+/** Two responses are the same file when a strong validator says so: an equal
+    ETag, or an equal Last-Modified with an equal length. No validator, no
+    claim — the write goes ahead. */
+function sameValidators(a, b) {
+  const h = (r, n) => (r && r.headers && typeof r.headers.get === "function" ? r.headers.get(n) : null);
+  const etag = h(a, "ETag");
+  if (etag && etag === h(b, "ETag")) return true;
+  const lm = h(a, "Last-Modified");
+  const len = h(a, "Content-Length");
+  return Boolean(lm && len && lm === h(b, "Last-Modified") && len === h(b, "Content-Length"));
 }
 
 /** The manifest-recorded sha256 for `url` inside `cache`, or null if this
@@ -685,5 +769,6 @@ self.addEventListener("fetch", (e) => {
   };
 
   if (isData(url)) e.respondWith(handleData(request, env));
+  else if (isImmutableAsset(url)) e.respondWith(handleImmutable(request, env));
   else e.respondWith(handleShell(request, env, isCode(request, url)));
 });

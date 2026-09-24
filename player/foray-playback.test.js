@@ -1867,7 +1867,10 @@ test("the tap reaches playForay with nothing awaited in front of it", async () =
   const bodies = APP_SRC.split("\n")
     .filter((l) => l.includes("playForay("))
     .filter((l) => !/^\s*(\/\/|\/\*|\*)/.test(l));
-  assert.equal(bodies.length, 2, `expected two call sites, found:\n${bodies.join("\n")}`);
+  /* THREE since 2026-09-24: Home's one play button (founder: "Add a play button
+     at the Home Screen level…") starts a Foray from its own tap through
+     `startHomeForay`, which calls the player first as well. */
+  assert.equal(bodies.length, 3, `expected three call sites, found:\n${bodies.join("\n")}`);
   for (const line of bodies) {
     assert.ok(!/await/.test(line), `a start must not await anything before playForay: ${line}`);
   }

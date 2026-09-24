@@ -68,6 +68,56 @@ final class ParityHarnessTests: XCTestCase {
         XCTAssertEqual(outcome("seam-gap/not-in-any-file", in: report), .unaccounted)
     }
 
+    // MARK: jsOnly families (plan §5.5 C-2, card NE-13)
+
+    private var continuationId: String { "continuation/plan-empty-state" }
+
+    /// The continuation hops are the page's rule by design: the engine walks
+    /// what JS computed and never ports it, and record.mjs refuses to put the
+    /// ids in swift-pending.json. So they must be neither run nor owed, and
+    /// the real tree stays green. TO SEE IT FAIL: drop the `jsOnly` branch in
+    /// ParitySuite.run, and every continuation id is `unaccounted`.
+    func testAJsOnlyFamilyIsNeitherRunNorOwed() throws {
+        let report = ParitySuite(data: try realData()).run()
+        XCTAssertEqual(outcome(continuationId, in: report), .jsOnly)
+        let family = try XCTUnwrap(report.summary(for: "continuation"))
+        XCTAssertTrue(family.jsOnly)
+        XCTAssertGreaterThan(family.cases, 0)
+        XCTAssertEqual(family.executed, 0)
+        XCTAssertEqual(family.owed, 0)
+        XCTAssertEqual(family.failed, 0)
+        XCTAssertTrue(family.logLine.hasSuffix(" js-only"), family.logLine)
+        XCTAssertTrue(report.problems(for: "continuation").isEmpty, report.problems.joined(separator: "\n"))
+    }
+
+    /// The FLAG decides, not the family's name: the same files without it are
+    /// a dropped rule. TO SEE IT FAIL: stop reading `jsOnly` in FixtureFile.
+    func testWithoutTheFlagTheSameFamilyIsUnaccounted() throws {
+        var data = try realData()
+        data.fixtures["continuation"] = try XCTUnwrap(data.fixtures["continuation"]).map {
+            FixtureFile(path: $0.path, family: $0.family, module: $0.module, cases: $0.cases, jsOnly: false)
+        }
+        let report = ParitySuite(data: data).run()
+        XCTAssertEqual(outcome(continuationId, in: report), .unaccounted)
+        XCTAssertFalse(report.ok)
+    }
+
+    /// Owing a jsOnly id, or registering a runner for its family, says the rule
+    /// is being ported after all; the books must not hold both answers.
+    /// TO SEE IT FAIL: drop either problem in the `jsOnly` branch.
+    func testAPendingEntryOrARunnerForAJsOnlyFamilyIsAProblem() throws {
+        var data = try realData()
+        data.pending[continuationId] = "NE-99s"
+        let owed = ParitySuite(data: data).run()
+        XCTAssertFalse(owed.ok)
+        XCTAssertTrue(owed.problems(for: "continuation").contains { $0.contains(continuationId) && $0.contains("NE-99s") })
+
+        let stray = PureFamilyRunner(family: "continuation", module: "player/continuation.js", reads: [:], calls: [:])
+        let ported = ParitySuite(data: try realData(), runners: ParityFamilies.all + [stray as FamilyRunner]).run()
+        XCTAssertFalse(ported.ok)
+        XCTAssertTrue(ported.problems(for: "continuation").contains { $0.contains("runner is registered") })
+    }
+
     /// TO SEE IT FAIL: compare with `==` on anything, or skip the compare.
     func testAWrongExpectFailsAndAnOwedOneDoesNot() throws {
         var data = try realData()

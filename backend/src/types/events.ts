@@ -97,7 +97,11 @@ export type VoiceCommandPayload = z.infer<typeof VoiceCommandPayloadSchema>;
 export const ThumbsPayloadSchema = z.object({
   direction: z.enum(["up", "down"]),
   node_id: z.string().min(1),
-  episode_slug: z.string().optional()
+  episode_slug: z.string().optional(),
+  /** The listener's chips on a down-vote (app.js setFeedback). Kept, not
+      stripped, because the learning job moves the subject only for a reason
+      about the subject (interestLearning.ts TOPIC_DOWNVOTE_REASONS). */
+  reasons: z.array(z.string()).optional()
 });
 export type ThumbsPayload = z.infer<typeof ThumbsPayloadSchema>;
 

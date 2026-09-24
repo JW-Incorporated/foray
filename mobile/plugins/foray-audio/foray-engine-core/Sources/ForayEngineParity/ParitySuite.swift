@@ -23,6 +23,13 @@ import Foundation
 ///        the Swift side neither ran nor owes, i.e. a rule it silently
 ///        dropped (plan §8 R6, the failure this deck exists to prevent).
 ///
+///   a jsOnly family (every file says `"jsOnly": true`, plan §5.5 C-2)
+///                                     -> js-only: never run and never owed,
+///        because the rule is the page's by design. A pending entry for one of
+///        its ids, or a Swift runner registered for it, is a PROBLEM: either
+///        means someone believes the rule is being ported, and the books must
+///        not hold both answers.
+///
 /// Plus, per family a runner exists for: the executed count must reach the
 /// family's floor in `floors.json`, so a runner that decodes nothing cannot
 /// report "zero failures" as a pass.
@@ -58,8 +65,29 @@ public struct ParitySuite {
                 problems.append("\(stray) is in a \(family) fixture file but not in manifest.json (re-record)")
             }
 
+            /* Whole families only, as runner.js validates: half a family marked
+               jsOnly would hide its ported half from these books. A family whose
+               files disagree is kept on the normal books AND reported. */
+            let files = data.fixtures[family] ?? []
+            let jsOnly = !files.isEmpty && files.allSatisfy(\.jsOnly)
+            if files.contains(where: \.jsOnly) && !jsOnly {
+                problems.append("family \(family) has files that disagree on jsOnly (every file of a family must agree)")
+            }
+
             var familyResults: [CaseResult] = []
-            for id in ids {
+            if jsOnly {
+                if runner != nil {
+                    problems.append("family \(family) is jsOnly, but a Swift runner is registered for it")
+                }
+                for id in ids {
+                    if let card = data.pending[id] {
+                        problems.append("family \(family) is jsOnly, but swift-pending.json says \(card) owes \(id): delete the entry")
+                    }
+                    familyResults.append(CaseResult(id: id, family: family, outcome: .jsOnly,
+                                                    detail: "JS only (plan §5.5 C-2): the page computes this rule"))
+                }
+            }
+            for id in ids where !jsOnly {
                 let owedBy = data.pending[id]
                 guard let runner, let entry = index[id] else {
                     let why = runner == nil ? "no Swift runner for family \(family)" : "not in the fixture files manifest.json lists"
@@ -127,6 +155,8 @@ public struct CaseResult: Codable, Equatable {
         case stalePending = "stale-pending"
         case notPorted = "not-ported"
         case unaccounted
+        /// A case of a jsOnly family: never run, never owed (see the books above).
+        case jsOnly = "js-only"
 
         /// The outcomes that fail the run.
         public var isFailure: Bool { self == .failed || self == .stalePending || self == .unaccounted }
@@ -151,6 +181,8 @@ public struct FamilySummary: Codable, Equatable {
     /// Owed: pending (ran, differs) plus not-ported (not run).
     public let owed: Int
     public let failed: Int
+    /// The family is JS only (plan §5.5 C-2): its cases are neither run nor owed.
+    public let jsOnly: Bool
 
     init(family: String, results: [CaseResult], hasRunner: Bool, floor: Int?) {
         self.family = family
@@ -161,13 +193,14 @@ public struct FamilySummary: Codable, Equatable {
         passed = results.filter { $0.outcome == .passed }.count
         owed = results.filter { $0.outcome == .pending || $0.outcome == .notPorted }.count
         failed = results.filter { $0.outcome.isFailure }.count
+        jsOnly = !results.isEmpty && results.allSatisfy { $0.outcome == .jsOnly }
     }
 
     /// The log line the plan names (`parity family=<f> cases=<n>`), with the
     /// books after it so a CI log alone says what ran.
     public var logLine: String {
         "parity family=\(family) cases=\(cases) executed=\(executed) passed=\(passed) owed=\(owed) failed=\(failed)"
-            + (hasRunner ? "" : " runner=none")
+            + (hasRunner ? "" : " runner=none") + (jsOnly ? " js-only" : "")
     }
 }
 

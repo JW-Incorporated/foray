@@ -12,12 +12,15 @@
   worded. These two strings are what it says in the gap between the service starting
   and the page's first report — and if the page never reports, they are still true.
 
-  THE FOUR ACTION LABELS ARE READ ALOUD, WHICH IS WHY THEY ARE NOT "NEXT" AND "BACK".
+  THE ACTION LABELS ARE READ ALOUD, WHICH IS WHY THEY ARE NOT "NEXT" AND "BACK".
   A notification action's title is its accessibility label and its text on a car head
   unit that renders labels rather than glyphs. "Next segment" says what a Foray's
   next actually is — an authored running order's next item, not a chapter and not a
-  30-second nudge, which is the ± pair and has no button here. Sentence case, matching
-  the repo's prose convention and Android's own.
+  30-second nudge, which is the ± pair — and since audit round 2 (native-7) that
+  pair HAS buttons here: "Back 15 seconds" / "Forward 30 seconds", the numbers
+  `player/media-session.js` owns (the label says what the icon shows; the offset the
+  press carries is the payload's). Sentence case, matching the repo's prose
+  convention and Android's own.
 -->
 <resources>
     <string name="foray_playback_service_description">Keeps a foray playing while the app is in the background.</string>
@@ -30,4 +33,6 @@
     <string name="foray_action_previous">Previous segment</string>
     <string name="foray_action_next">Next segment</string>
     <string name="foray_action_stop">Stop</string>
+    <string name="foray_action_seek_back">Back 15 seconds</string>
+    <string name="foray_action_seek_forward">Forward 30 seconds</string>
 </resources>

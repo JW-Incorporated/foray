@@ -31,11 +31,17 @@ Interests page. Both predate the rename to **4a**; every brand string follows
 > how to add that in. I also really like the look and feel of the latest UI
 > mockup.
 
+**Renamed 2026-09-24.** The brief above is kept verbatim, so it still says
+"Episodes for you". Wyatt renamed that section on 2026-09-24, answering the
+round-2 decision list: "Rename it 'Suggested'" (`docs/DECISIONS.md`,
+2026-09-24; the cards are subject queues, not episodes, per audit persona
+56/82). Everywhere else in this plan the section is called **Suggested**.
+
 ## 1. Decisions (Wyatt, 2026-09-06)
 
 | # | Decision | Resolves |
 |---|---|---|
-| D1 | **The "for you" sections include stretch recommendations.** Product principle #1's ~30% exploration floor stays: "Forays for you" and "Episodes for you" each reserve at least one *visibly labelled* stretch pick. | gate **#123** (C3) — keep the floor |
+| D1 | **The "for you" sections include stretch recommendations.** Product principle #1's ~30% exploration floor stays: "Forays for you" and "Suggested" each reserve at least one *visibly labelled* stretch pick. | gate **#123** (C3) — keep the floor |
 | D2 | **No login wall.** Anonymous-first per ADR-0005 stands. Welcome + Preferences run as a skippable first-run flow; account linking is not in scope. | gate **#125** (C6) — anonymous |
 | D3 | **Adopt the mockup's four-tab bar**: Home · Search · Create · Library. This reverses #467's menu-page Home, deliberately. | new |
 | D4 | **Fonts: self-host** Fraunces + DM Sans as woff2 with `font-src 'self'`. No Google Fonts origin. | **#127** (C1) option 1 |
@@ -97,7 +103,7 @@ Read first: `CLAUDE.md`; this file; `docs/ux/README.md`; issues #102, #123,
 - **Acceptance:** all 13 existing routes still resolve with the flag on and off; ‹ behaviour from #488 unchanged; the bar and mini-player never overlap content (the N1 feedback bug, measured at inset 59 px like `test/home-layout.test.js` does).
 
 #### U-03 · Home: four sections, with the floor (C3 / #123 resolved by D1) — **L** — *design comment first; DECISIONS entry* — **DONE 2026-09-06, PRs #509/#510/#535; real-data acceptance DONE after PR #603 (the Forays-for-you floor is unsatisfiable with one published Foray — the documented fallback is asserted instead, see test/home-v2-real-data.test.js)**
-- **Ask:** replace the four cards (flag on) with, top to bottom: greeting; **Jump back in** (`forayResumeRows()` + episode resume, horizontal scroller); **Forays for you** (`data/forays.json` published Forays as cards carrying a `SegmentStrip` — see U-04); **Playlists for you** (D5: own recent from `cp_playlists`, then 2–3 generated from `state.interests` against the subject queues, badged *Generated for you*); **Episodes for you** (`buildCards()`'s ranked discover-pool picks). **The floor:** "Forays for you" and "Episodes for you" each reserve ≥1 slot for a stretch pick, rendered with a visible *Stretch* label and its bridge line (copy rule: stretch picks must state their bridge). Row reasons ("Because you finish every Odd Lots") are allowed but never on the stretch slot. "Shared with you" and "Build your own" are not built.
+- **Ask:** replace the four cards (flag on) with, top to bottom: greeting; **Jump back in** (`forayResumeRows()` + episode resume, horizontal scroller); **Forays for you** (`data/forays.json` published Forays as cards carrying a `SegmentStrip` — see U-04); **Playlists for you** (D5: own recent from `cp_playlists`, then 2–3 generated from `state.interests` against the subject queues, badged *Generated for you*); **Suggested** (`buildCards()`'s ranked discover-pool picks). **The floor:** "Forays for you" and "Suggested" each reserve ≥1 slot for a stretch pick, rendered with a visible *Stretch* label and its bridge line (copy rule: stretch picks must state their bridge). Row reasons ("Because you finish every Odd Lots") are allowed but never on the stretch slot. "Shared with you" and "Build your own" are not built.
 - **Owned:** `app.js` (`renderHome` v2), `styles.css`, `test/home-v2.test.js` (floored; pins section order, the stretch slot's presence and label, the generated-playlist badge — MUTATION each), rewrite `test/home-layout.test.js`/`home-information-architecture.test.js` for the flag-on shape rather than deleting them.
 - **Dependencies:** U-01, U-02, U-04 (strip).
 - **Acceptance:** at inset 0 and 59 px, all four sections render with real data; the stretch slot is present in both "for you" sections on 20 consecutive seeded renders; DECISIONS records #123 as resolved "floor kept, sections adopted".

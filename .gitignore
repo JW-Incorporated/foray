@@ -23,13 +23,13 @@ data/*.json.tmp
 # under here is tracked.
 audio-cache/
 *.mp3
-# NE-15: AVDeck's Simulator-test click tracks are ours and tiny (< 1 MB with
-# the WAV beside them, pinned by shell-invariants.test.mjs and capped again by
-# fetch-audio.test.mjs, which lists every place committed audio may live).
-!mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/*.mp3
 *.m4a
 *.opus
 *.flac
+# ...except NE-25a's click tracks: synthesised test fixtures (a click every
+# second, 964 KB for the whole set), not episode audio. Their exact bytes are
+# pinned by tools/audio/click-tracks.test.mjs.
+!mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/ClickTracks/*.mp3
 
 # Vercel build output (tools/web/prepare-dist.mjs)
 dist/
