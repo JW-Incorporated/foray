@@ -319,6 +319,28 @@ test("--mutate on the 15/30 rule fails both the original JS test and the media-e
   assert.equal(r.killed, true);
 });
 
+test("--mutate on the never-early rule fails both the original JS test and the deck-episode family", () => {
+  /* NE-14j recorded deck-episode, so the fixture half stopped reporting
+     PENDING: a fine wake that stops half a second short turns the authored
+     wake cases red as well as html-audio-backend.test.js. MUTATION: drop the
+     authored fineWakeAction cases from deck-episode -> "fixture: ... still pass". */
+  const r = runMutation("never-early", loadMutations()["never-early"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the pause-silence rule fails both the original JS test and the manager-episode family", () => {
+  /* NE-14j recorded manager-episode. The mutant trusts the reducer and leaves
+     an audible element playing behind a paused machine; the
+     pause-silences-an-audible-element scenario loses its `pause`. MUTATION:
+     delete that scenario -> "fixture: ... still pass". */
+  const r = runMutation("pause-silence", loadMutations()["pause-silence"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
 test("a no-op mutant SURVIVES both halves, so 'killed' is not the harness's constant answer", () => {
   const rule = structuredClone(loadMutations()["seam-gap"]);
   rule.patch.replace = rule.patch.find + " /* same rule */";

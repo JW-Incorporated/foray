@@ -1,5 +1,5 @@
 {
-  "//": "Plan §6.6. A capability the engine advertises (mobile/ENGINE_DEFAULT.json, or the Swift `advertisedCapabilities` literal) requires zero swift-pending cases and zero unported tests in every family listed under it; coverage.test.js enforces that. Every family a fixture or an unported entry uses must appear under some capability, so no family can hold owed work that no gate reads. `compare` (NE-05) is the comparator's own table, not a rule of the product: it sits under EVERY capability because each one's verdicts are only as good as the Swift comparator that produced them.",
+  "//": "Plan §6.6. A capability the engine advertises (mobile/ENGINE_DEFAULT.json, or the Swift `advertisedCapabilities` literal) requires zero swift-pending cases and zero unported tests in every family listed under it; coverage.test.js enforces that. Every family a fixture or an unported entry uses must appear under some capability, so no family can hold owed work that no gate reads. `compare` (NE-05) is the comparator's own table, not a rule of the product: it sits under EVERY capability because each one's verdicts are only as good as the Swift comparator that produced them. `remainder` (NE-14j) is the M3 manager remainder NE-39j records (plan §6 families table: about 70 queue-manager scenarios, milestone M3): it is charged here, not to episode or foray, because those capabilities ship in M1 and M2 and must not wait on M3 work. No build advertises it — engine-contract.js CAPABILITIES does not even allow it in a hello — and NE-39s empties it and deletes the lists.",
   "episode": [
     "compare",
     "queue-state",
@@ -37,5 +37,6 @@
     "speech-rate",
     "lexicon",
     "default-voice"
-  ]
+  ],
+  "remainder": ["compare", "manager-remainder"]
 }

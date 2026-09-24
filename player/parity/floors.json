@@ -4,9 +4,11 @@
     "compare": 37,
     "continuation": 49,
     "contract": 56,
+    "deck-episode": 58,
     "diag-tokens": 30,
     "engine-mode": 31,
     "handshake": 17,
+    "manager-episode": 33,
     "media-episode": 124,
     "number-format": 25,
     "queue-state": 87,
@@ -17,7 +19,7 @@
     "session": 166,
     "session-invariant": 21,
     "snapshot": 24,
-    "transport": 104
+    "transport": 111
   },
   "suites": {
     "continuation": 11,
@@ -28,11 +30,11 @@
     "media-session": 156,
     "playback-rate": 24,
     "position-store": 12,
-    "queue-manager": 159,
+    "queue-manager": 162,
     "queue-state": 58,
     "seam-gap": 17,
     "seek-policy": 33,
-    "transport-policy": 19,
+    "transport-policy": 20,
     "transport-reconcile": 117,
     "tts-bridge": 29
   }

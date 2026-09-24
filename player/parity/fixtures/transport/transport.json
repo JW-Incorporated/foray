@@ -1211,6 +1211,82 @@
       "call": "remoteStopAction",
       "args": [{ "close": false }],
       "expect": { "return": "pause" }
+    },
+    {
+      "id": "transport/interruption-rewind-1.5s",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "Plan §4.4 (NE-14j): an OS interruption's should-resume picks the audio up 1.5 s back. Authored: the number is the rule.",
+      "read": "INTERRUPTION_REWIND_SEC",
+      "expect": { "value": 1.5 }
+    },
+    {
+      "id": "transport/interruption-resume-episode-steps-back",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "An unbounded episode parked at 42.5 s resumes at 41 s.",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": 42.5 }],
+      "expect": { "return": 41 }
+    },
+    {
+      "id": "transport/interruption-resume-episode-floor-is-zero",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "Inside the first 1.5 s of an episode the step back stops at 0:00.",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": 1, "startSec": null }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "transport/interruption-resume-segment-steps-back-inside",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "A segment [100, 210] parked at 172.5 s resumes at 171 s, inside its slice.",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": 172.5, "startSec": 100 }],
+      "expect": { "return": 171 }
+    },
+    {
+      "id": "transport/interruption-resume-segment-never-before-in-point",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "Never before the slice's own start_sec: 100.75 s back 1.5 s would be the stranger's episode before the slice (#65 §4).",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": 100.75, "startSec": 100 }],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "transport/interruption-resume-unknown-playhead",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "A playhead that is not a finite number gives no offset; the caller keeps its own.",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": null, "startSec": 100 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "transport/interruption-resume-nan-playhead",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "NaN (an element mid-load) is not a playhead either.",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": { "$num": "NaN" } }],
+      "expect": { "return": null }
     }
   ]
 }

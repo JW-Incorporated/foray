@@ -79,6 +79,25 @@ export function cpLastEpisodeRow(item, nowMs) {
 }
 
 /**
+ * `cp_last_episode` the way the ENGINE writes it (plan §5.2, NE-14j). The page
+ * sends `playEpisode` a `lastEpisodeRow` — continuation.js's
+ * `makeLastEpisode(item)` without `updated_at` — and the engine stores it
+ * VERBATIM, stamping `updated_at` itself when the item actually plays. So this
+ * is the page's own writer handed `{...row, updated_at}`: every field the page
+ * sent, in the page's order, with the play's time (replacing a stale stamp in
+ * place, should a row ever carry one). A row with no id is not a pointer and
+ * writes nothing, as `cpLastEpisodeRow` refuses an id-less item.
+ * @returns {{key: string, value: string}[]}
+ */
+export function engineLastEpisodeRow(lastEpisodeRow, nowMs) {
+  const storage = recordingStorage();
+  if (lastEpisodeRow && typeof lastEpisodeRow === "object" && typeof lastEpisodeRow.id === "string" && lastEpisodeRow.id) {
+    writeLastEpisode(storage, { ...lastEpisodeRow, updated_at: new Date(nowMs).toISOString() });
+  }
+  return storage.writes;
+}
+
+/**
  * How a number inside any row is printed: `JSON.stringify`, which is
  * ECMAScript Number::toString (the shortest string that round-trips, the
  * exponent form from 1e21 up and below 1e-6, `-0` as `0`) — and `null` for

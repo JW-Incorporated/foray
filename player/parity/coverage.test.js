@@ -267,6 +267,51 @@ test("every swift-pending id names a recorded case and is tagged with a card", (
   }
 });
 
+/* queue-manager and html-audio-backend were classified whole by NE-14j (plan
+   §14): the episode rules fixtured into manager-episode and deck-episode (the
+   episode capability's families), the WebView- and Node-only tests excluded
+   with a reason, a few mapped to the AVDeck and click-track XCTests, and the
+   rest OWED to the cards that record them — NE-30j and NE-31j into the foray
+   capability's families (M2), NE-39j into manager-remainder (M3). So neither
+   suite is a RECORDED_SUITE — they still owe — but what they owe is fixed, and
+   none of it is charged to the episode capability, which ships in M1. */
+const MANAGER_DECK_OWED = Object.freeze({
+  "queue-manager": { fixtured: "manager-episode", owed: [
+    { card: "NE-30j", family: "manager-foray" },
+    { card: "NE-31j", family: "manager-foray" },
+    { card: "NE-39j", family: "manager-remainder" },
+  ] },
+  "html-audio-backend": { fixtured: "deck-episode", owed: [{ card: "NE-30j", family: "deck" }] },
+});
+
+test("queue-manager and html-audio-backend are wholly classified, and owe the episode capability nothing", () => {
+  // NE-14j's acceptance. MUTATION: re-tag one unported queue-manager entry to
+  // NE-14j / manager-episode (what `record.mjs --classify` gives a new test) ->
+  // red; add a queue-manager covers[] entry to a deck-episode case -> red.
+  const { status } = classify(REPO_ROOT, DATA, FIXTURES);
+  for (const [stem, { fixtured, owed }] of Object.entries(MANAGER_DECK_OWED)) {
+    const names = Object.entries(status[stem]);
+    assert.ok(names.length > 0, `${stem} has no tests on disk`);
+    const tally = { fixtured: 0, excluded: 0, xctest: 0, owed: 0 };
+    for (const [name, st] of names) {
+      const label = `${stem} :: ${JSON.stringify(name)}`;
+      if (st.covered.length) {
+        tally.fixtured++;
+        for (const id of st.covered) assert.ok(id.startsWith(`${fixtured}/`), `${label} is covered by ${id}, outside ${fixtured}`);
+      } else if (st.excluded) tally.excluded++;
+      else if (st.xctest) tally.xctest++;
+      else {
+        assert.ok(owed.some((o) => o.card === st.unported?.card && o.family === st.unported?.family),
+          `${label} is owed as ${JSON.stringify(st.unported)}; it must be fixtured, excluded, mapped, or one of ${JSON.stringify(owed)}`);
+        assert.ok(!DATA.capabilities.episode.includes(st.unported.family), `${label} is owed to the episode capability`);
+        tally.owed++;
+      }
+    }
+    assert.ok(tally.fixtured > 0 && tally.excluded > 0 && tally.owed > 0, `${stem}: ${JSON.stringify(tally)}`);
+  }
+  assert.ok(DATA.capabilities.episode.includes("manager-episode") && DATA.capabilities.episode.includes("deck-episode"));
+});
+
 /* ---------- families and capabilities ---------- */
 
 test("every family a fixture, an unported entry or a pending id uses is charged to a capability", () => {
@@ -282,9 +327,15 @@ test("every family a fixture, an unported entry or a pending id uses is charged 
 });
 
 test("capabilities.json holds the plan §6.6 map", () => {
-  assert.deepStrictEqual(Object.keys(DATA.capabilities).filter((k) => !k.startsWith("//")), ["episode", "continuation", "restore", "foray"]);
+  assert.deepStrictEqual(Object.keys(DATA.capabilities).filter((k) => !k.startsWith("//")), ["episode", "continuation", "restore", "foray", "remainder"]);
   assert.ok(DATA.capabilities.foray.includes("seam-gap"));
   assert.ok(DATA.capabilities.episode.includes("manager-episode"));
+  /* `remainder` (NE-14j) holds only the M3 manager remainder NE-39j owes, so the
+     episode and foray capabilities never wait on it; nothing may ever advertise
+     it. MUTATION: add "remainder" to the advertised list -> the next test's
+     gate is red for as long as NE-39j owes anything. */
+  assert.deepStrictEqual(DATA.capabilities.remainder, ["compare", "manager-remainder"]);
+  assert.ok(!advertisedCapabilities(REPO_ROOT).has("remainder"), "the remainder is a bookkeeping gate, never a capability a build ships");
 });
 
 test("every capability the engine advertises has zero pending and zero unported entries", () => {

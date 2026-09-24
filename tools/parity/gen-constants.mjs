@@ -70,6 +70,9 @@ export const VOCABULARY_MODULE = "player/engine-vocabulary.js";
     constant the engine can use, with the reason, so the omission is reviewed
     rather than silent. */
 export const SOURCES = Object.freeze([
+  // NE-14j: the deck's numbers and closed tokens (the arm lead, the timer floor,
+  // both load deadlines, FINE_WAKE, RECOVERY), for NE-14s's DeckPolicy port.
+  { module: "player/deck-policy.js", namespace: "DeckPolicy" },
   { module: "player/default-voice.js", namespace: "DefaultVoice" },
   { module: "player/engine-contract.js", namespace: "EngineContract" },
   { module: "player/episode-progress.js", namespace: "EpisodeProgress" },

@@ -60,6 +60,13 @@ test("a spoken narration item has nothing to seek; a rendered one seeks in its o
 
 test("a remote stop pauses unless it is the notification's close", (t) => cases(t));
 
+/* ---------- an OS interruption's resume: interruptionResumeOffset ----------
+
+   NE-14j (plan §4.4), JS-first: the manager's interruption-resume path asks this
+   (queue-manager.test.js pins that it does, and only there). TO SEE IT FAIL:
+   set INTERRUPTION_REWIND_SEC to 2, or drop the `startSec` floor. */
+test("an OS interruption's should-resume steps back 1.5 s, never before the item's own start", (t) => cases(t));
+
 /* ---------- client.js asks; it keeps no copy ---------- */
 
 /* JS-only (exclusions.json, js-module-shape): the Swift engine has no client.js.

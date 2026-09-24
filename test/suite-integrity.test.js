@@ -214,7 +214,7 @@ const FLOORS = {
      whose case count is floored in player/parity/floors.json), so a deleted test
      here is a rule nothing asserts any more. */
   "player/continuation.test.js": 11,
-  "player/queue-manager.test.js": 159, // fix/narration-1x (2026-09-24, founder: "1x for now"): synthesized narration speaks at NARRATION_RATE whatever the listener's rate, on both call paths, and its deadline follows; 147 -> 159 // audit round 2 (2026-09-23, L1): onStateSettled fires after every handled event, a spoken line past its deadline is treated as finished, should-resume never resumes a listener's pause; 144 -> 147 // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
+  "player/queue-manager.test.js": 162, // NE-14j: an OS should-resume steps back INTERRUPTION_REWIND_SEC in place, a listener's own resume does not, and the step back never crosses a segment's in-point; 159 -> 162 // fix/narration-1x (2026-09-24, founder: "1x for now"): synthesized narration speaks at NARRATION_RATE whatever the listener's rate, on both call paths, and its deadline follows; 147 -> 159 // audit round 2 (2026-09-23, L1): onStateSettled fires after every handled event, a spoken line past its deadline is treated as finished, should-resume never resumes a listener's pause; 144 -> 147 // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 58, // 2026-09-22 audit (L2): `elementResumed` — interrupted -> playing with no audio effect, and nothing from any other state; 56 -> 58
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
@@ -282,15 +282,15 @@ const FLOORS = {
      families' own case counts are floored in player/parity/floors.json and
      enforced by "parity fixture families hold their floors" below, so deleting
      fixture cases is loud here too, not only in the suite that reads them. */
-  "player/parity/run.test.js": 32, // NE-12j: the media-actions adapter records real arity and refuses a press the OS could never deliver; 31 -> 32
-  "player/parity/coverage.test.js": 24, // NE-13: the continuation capability owes nothing, because its family is JS-only (plan C-2); 23 -> 24 // NE-12j: media-session is wholly classified — media-episode, an exclusion, or NE-29j's Foray half in the foray capability's family; 22 -> 23 // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
+  "player/parity/run.test.js": 36, // NE-14j: the session and lifecycle drivers (interruption, route, cold launch, foreground), their refusals, held loads that land late, and positionEvents over the real PositionStore; 32 -> 36 // NE-12j: the media-actions adapter records real arity and refuses a press the OS could never deliver; 31 -> 32
+  "player/parity/coverage.test.js": 25, // NE-14j: queue-manager and html-audio-backend are wholly classified — manager-episode / deck-episode, an exclusion, an XCTest, or owed to NE-30j/NE-31j/NE-39j outside the episode capability; 24 -> 25 // NE-13: the continuation capability owes nothing, because its family is JS-only (plan C-2); 23 -> 24 // NE-12j: media-session is wholly classified — media-episode, an exclusion, or NE-29j's Foray half in the foray capability's family; 22 -> 23 // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
   /* NE-10j: the rows and number-format families. rows.test.js is what makes
      them a RECORDING — every recorded row is rebuilt from the real builders,
      and the page's own PositionStore, on the wall clock, writes the recorded
      bytes. engine-contract.test.js pins OWNED_PREFIXES against both the rows
      the family records and every cp_ key the app spells, in both directions:
      a missed row is a clobber, an extra one is a store that stops saving. */
-  "player/parity/rows.test.js": 6, // NE-10s: the page's own readers accept every recorded row (the bytes the Swift engine must write) and re-save it unchanged, and the page's isNewer orders them by updated_at; 4 -> 6
+  "player/parity/rows.test.js": 7, // NE-14j: the engine's lastEpisodeRow pass-through writes the page's own cp_last_episode bytes for every recorded row; 6 -> 7 // NE-10s: the page's own readers accept every recorded row (the bytes the Swift engine must write) and re-save it unchanged, and the page's isNewer orders them by updated_at; 4 -> 6
   /* NE-11j: the rest of the contract. Beside the recorded families (checked
      case by case by record.mjs --check), this suite states each RULE across
      every case at once: the schema file is current and its examples are the
@@ -311,7 +311,7 @@ const FLOORS = {
      test here is a rule whose cases no JS test asserts any more, and the
      coverage guard would still count those cases as fixtured. The families'
      case counts are floored separately in player/parity/floors.json. */
-  "player/transport-policy.test.js": 19, // merge of main into engine/m1 (2026-09-24): audit round 2's rule changes reached the policy module — the Foray nudge's end guard (player-5), a nudge inside a spoken line (player-11), an episode's previous (p-car-5); 16 -> 19
+  "player/transport-policy.test.js": 20, // NE-14j: interruptionResumeOffset, the authored 1.5 s step back and its in-point floor, read from the transport fixtures; 19 -> 20 // merge of main into engine/m1 (2026-09-24): audit round 2's rule changes reached the policy module — the Foray nudge's end guard (player-5), a nudge inside a spoken line (player-11), an episode's previous (p-car-5); 16 -> 19
   "player/position-store.test.js": 12, // NE-09: the write cadence read from the resume-rules fixtures (the 10-media-second tick, the Foray's 5 s throttle; an unknown position never writes); 10 -> 12
   "player/tts-bridge.test.js": 29, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 25 -> 29 // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
@@ -1208,7 +1208,7 @@ const FLOORS = {
      overwritten, every new or changed case handed to swift-pending.json with
      its port card, and --mutate's kill/survive/pending verdicts with a no-op
      control. Zero slack. */
-  "tools/parity/record.test.mjs": 17, // NE-13: a jsOnly family (the continuation hops, plan C-2) records with no port card and owes swift-pending nothing; 16 -> 17 // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
+  "tools/parity/record.test.mjs": 19, // NE-14j: --mutate on never-early and on pause-silence is killed by the deck-episode and manager-episode fixtures as well as the JS tests, now that both families are recorded; 17 -> 19 // NE-13: a jsOnly family (the continuation hops, plan C-2) records with no port card and owes swift-pending nothing; 16 -> 17 // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
   /* NE-04: EngineConstants.swift, Diag/Vocabulary.swift and vocabulary.json
      are GENERATED from the JS, and this is what makes them unable to drift:
      stale on disk, a duplicate export name, both DRIFT_TOLERANCE_SEC values in
