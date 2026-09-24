@@ -7,6 +7,30 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-23 — `r2fix/integration`: audit round 2, the 163 confirmed findings, lanes L1-L8 in ONE PR
+
+Owned: nothing held. One branch off `main` adde5e12 with the eight round-2 lane
+branches (`r2fix/l1-player-transport` … `r2fix/l8-foray-surfaces`) merged
+`--no-ff` in order L1→L8, resolved hunk by hunk; none has a PR of its own —
+**this PR supersedes them.** `index.html`, `sw.js` (L5's perf-4/5/6 logic, one
+separable commit, 4ca86bf1) and `docs/legal/privacy-policy.md` (L6's one
+`cp_last_route` inventory row) changed, so it needs a human merge. Never
+labelled, never merged by an agent.
+
+**What the integration itself changed** (three commits after the merges): the
+semantic conflicts git could not see — L1's failure-line pin after L6's copy,
+the drawer harness after L5's nav-9 disabled chrome, the "played" count after
+L3's finished-only rule, the onboarding miss line through `quoteQuery` (L4's
+copy-8), L8's credit parser after L7's reorder, L7's census after L4 took
+`#pl-input` away, the shell SW harness after perf-4, the frozen fixture's two
+captions after L8's p-foray-5 gate. Two rulings merged by promoting one rule:
+the description renderer is L7's chapter rows over L2's one tokeniser, and
+reduced motion is L7's one block with L2's panel rules folded in.
+
+**Held for the founder:** Q6 (native Preferences backups, persist-6) and Q7
+(privacy-policy wording, persist-3) — drafted text in the PR body. Device
+checks are listed there and in `docs/DECISIONS.md` 2026-09-23.
+
 ### 2026-09-23 — `fix/founder-reports-2026-09-23`: six founder reports from one drive + the empty diagnostics log, in ONE PR
 
 Owned: nothing held. One branch, cut from the visual pass (now `main` 92001af),
