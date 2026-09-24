@@ -2097,8 +2097,9 @@ The degraded page (`handOffPage`) is:
 }
 ```
 
-`HANDOFF_SCRIPT` is *"Where does this part of the story go next? Keep listening —
-the thread picks it up on the other side."* That shape is not decorative: it is the
+`HANDOFF_SCRIPT` is *"Where does the story go from here? Keep listening —
+the thread picks it up on the other side."* (It said "this part of the story" until
+2026-09-24, when the narrator stopped pointing at the Foray's pieces by any name.) That shape is not decorative: it is the
 **only** shape `validateNarratedBeat` permits with zero sources (F-36/F-37/F-44's
 rule), because every sentence is a question or opens with a listener imperative, so
 `hasDeclarativeSentence` finds nothing to demand a source for. A test pins that the

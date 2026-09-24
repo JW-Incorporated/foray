@@ -10,6 +10,7 @@ import { DURATION_SHAPE_BUDGETS, SPINE_MIN_SEEDED_BEATS_PER_ACT, type DurationTi
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
 import { SPINE_SEED_REPEAT_MIN, SPINE_SEED_THIRD_MIN } from "./spineSeeding";
 import { recordUsage } from "./usageTracking";
+import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
  * Real §4.3 spine construction via the Anthropic API, mirroring
@@ -392,6 +393,7 @@ export function buildSpinePrompt(intent: IntentUnderstanding, researchShape: Res
     "you would tell a friend before pressing play. NEVER say how many acts or parts there are, never say",
     "\"this Foray has\", and never mention acts, beats or segments at all: the listener cannot see a",
     "running order and does not need one. A machine checks that after you answer.",
+    `The overview is SPOKEN. ${NARRATOR_STRUCTURE_RULE}`,
     "",
     "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
     '{"overview": string, "voice": {"style": string, "register": string, "sentenceRhythm": string, "narratorPresence": string}, ' +

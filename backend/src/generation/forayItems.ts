@@ -2,6 +2,7 @@ import { z } from "zod";
 import { NARRATION_CHARS_PER_SEC, isTapeSource } from "../types/narration";
 import type { Source } from "../types/narration";
 import type { StitchedItem, StitchedNarrationItem } from "../types/stitching";
+import { toNarrationWords } from "../copy/narratorStructure";
 
 /**
  * §4.8's final mapping step (docs/curation/generation-architecture.md
@@ -315,6 +316,31 @@ export function estimateScriptSeconds(chars: number): number {
   return Math.round((chars / NARRATION_CHARS_PER_SEC) * 1000) / 1000;
 }
 
+/**
+ * Q-08, THE LAST LINE IN CODE: the script as the listener will hear it, with
+ * the pipeline's own words for its pieces rewritten out of it
+ * (`copy/narratorStructure.js` `toNarrationWords`).
+ *
+ * Every narration item a generated Foray carries leaves the pipeline through
+ * this function — seam pages, the act introductions and exits §4.4 wrote,
+ * the introductions §4.8 smoothed, the hand-off a seam falls back to — so
+ * this is the one place the rule can be made true of all of them at once.
+ * Each stage upstream is TOLD the rule and REFUSES a violation first, so the
+ * model rewrites the sentence with content; what reaches here is what no
+ * retry fixed (a seam kept unverified after its last round, most often),
+ * and `check-forays.mjs` would otherwise refuse the whole Foray for it at
+ * the publish gate, after the spend. Wyatt, 2026-09-24, on the audit's
+ * persona 65: "update our foray generation scripting to avoid making more
+ * in the future." A rewrite is reported: it means the prompt was ignored.
+ */
+function spokenScript(item: StitchedNarrationItem): string {
+  const spoken = toNarrationWords(item.script);
+  if (spoken.changed) {
+    console.warn(`forayItems: narration ${item.id} named the Foray's own structure after every retry; rewritten in code — "${item.script.slice(0, 160)}" -> "${spoken.text.slice(0, 160)}"`);
+  }
+  return spoken.text;
+}
+
 /** Maps ONE `StitchedItem` to its `data/forays.json`-shaped equivalent.
  * Every internal-only field (`beatIndex`, `itemId`, `startSec`/`endSec`
  * on a tape item, `narrationKind`, and everything `NarratedBeat` itself
@@ -337,7 +363,7 @@ export function toForayItem(item: StitchedItem): ForayItem {
     const narration: ForayNarrationItem = {
       type: "narration",
       id: item.id,
-      script: item.script,
+      script: spokenScript(item),
       mode: lowercaseMode(item.mode)
     };
     if (item.slotTitle !== undefined) narration.slot = slugifySlotTitle(item.slotTitle);

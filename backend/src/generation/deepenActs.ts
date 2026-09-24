@@ -1,6 +1,7 @@
 import type { Act, DeepenedAct, Slot, Spine } from "../types/spine";
 import { DeepenedActSchema, validateDeepenedAct } from "../types/spine";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
+import { toNarrationWords } from "../copy/narratorStructure";
 
 /**
  * THE ARGUMENT CAP (finding F-49).
@@ -220,6 +221,32 @@ export class InvalidDeepenedActError extends Error {
   }
 }
 
+/** How many times §4.4 asks for one act before the stage gives up on it. */
+const DEEPEN_ATTEMPTS = 2;
+
+/**
+ * Q-08 on the LAST attempt: the act's introduction and exit with the
+ * pipeline's words for its own pieces rewritten out of them
+ * (`copy/narratorStructure.js` `toNarrationWords`).
+ *
+ * The first attempt is refused for a structural aside like any other
+ * validation failure (`validateDeepenedAct`), so the model gets the chance to
+ * say it with content. The last attempt has nothing after it but
+ * `ActDeepeningError` — the whole run lost for "This act follows that
+ * assumption" — so there the words are rewritten in code instead ("This story
+ * follows that assumption") and the act is validated as rewritten. Every
+ * committed violation was in one of these two strings (spine.ts, Q-08).
+ * Wyatt, 2026-09-24: "update our foray generation scripting to avoid making
+ * more in the future."
+ */
+function spokenIntroductionAndExit(deepened: DeepenedAct, actTitle: string): DeepenedAct {
+  const introduction = toNarrationWords(deepened.introduction);
+  const exit = toNarrationWords(deepened.exit);
+  if (!introduction.changed && !exit.changed) return deepened;
+  console.warn(`deepenActs: act "${actTitle}" named the Foray's own structure on its last attempt; its introduction/exit were rewritten in code`);
+  return { ...deepened, introduction: introduction.text, exit: exit.text };
+}
+
 async function deepenOneActWithRetry(
   spine: Spine,
   act: Act,
@@ -228,10 +255,11 @@ async function deepenOneActWithRetry(
   ctx: DeepenActContext
 ): Promise<DeepenedAct> {
   let lastError: unknown;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < DEEPEN_ATTEMPTS; attempt++) {
     try {
       const raw = await builder.deepenAct(spine, act, index, ctx);
-      const deepened = DeepenedActSchema.parse(raw);
+      const parsed = DeepenedActSchema.parse(raw);
+      const deepened = attempt === DEEPEN_ATTEMPTS - 1 ? spokenIntroductionAndExit(parsed, act.title) : parsed;
 
       const validation = validateDeepenedAct(act, deepened);
       if (!validation.valid) {

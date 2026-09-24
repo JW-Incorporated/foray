@@ -13,13 +13,13 @@ import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult } from "../src/generation/finalizeForay";
 import { stitchForay } from "../src/generation/stitchForay";
 import { checkpointFingerprint } from "../src/generation/checkpoint";
-import { resetTaxonomyCache } from "../src/generation/resolveTopic";
+import { forayIdFor, resetTaxonomyCache } from "../src/generation/resolveTopic";
 import { resetTaxonomyFamilyCache, taxonomyRoot } from "../src/generation/taxonomyFamily";
 import type { TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
 import type { GenerationRequest } from "../src/types/generation";
 import { slugifySlotTitle } from "../src/generation/forayItems";
-import { INTERNAL_VOCABULARY } from "../src/copy/rules";
+import { INTERNAL_VOCABULARY, titleStyleProblems } from "../src/copy/rules";
 import type { DeepenedAct, Spine } from "../src/types/spine";
 import type { WrittenAct } from "../src/generation/writeNarration";
 import type { EvidenceBeat, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
@@ -248,6 +248,22 @@ describe("runForayPipeline", () => {
     );
   });
 
+  it("gives the Foray a house-style title and mints its id from the title as the understander left it (qa 146)", async () => {
+    /* The stub understander gives no title, so the Foray is titled from the
+       lower-case prompt: the listener gets "The history of ...", the id is
+       the one the pre-style title always minted. MUTATION THAT KILLS THIS:
+       seed `forayIdFor` with `title` instead of `mintedFrom` in
+       runForayPipeline -> the id expectation goes red. */
+    const out = await runForayPipeline(request, options, stubDeps());
+    if (out.outcome !== "generated") throw new Error("expected the stub run to generate");
+    const intent = await new StubPromptUnderstander().extractIntent(request.prompt, { userId: options.userId });
+    const copy = forayCopy(intent);
+    expect(out.input.title).toBe(copy.title);
+    expect(out.input.title.charAt(0)).toBe("T");
+    expect(titleStyleProblems(out.input.title)).toEqual([]);
+    expect(out.input.id).toBe(forayIdFor(copy.mintedFrom, options.now().toISOString()));
+  });
+
   it("is deterministic: the same request and clock produce the same Foray id", async () => {
     /* A batch driver that retries a failed prompt must not create a second,
        differently-identified Foray for the same work.
@@ -446,10 +462,31 @@ describe("runForayPipeline — the record's own copy cannot fail the copy rule (
   });
 
   it("keeps the pre-F-64 title shape when the understander gives no title, so minted ids do not move", () => {
+    /* The id is minted from `mintedFrom`, the title BEFORE the house style
+       (2026-09-24), so raising the first letter for the listener does not move
+       an id. The pipeline test below pins that the id really is minted from it. */
     const copy = forayCopy({ subject: "grilling", angle: "the surprising origin story" });
-    expect(copy.title).toBe("grilling: the surprising origin story");
+    expect(copy.mintedFrom).toBe("grilling: the surprising origin story");
+    expect(copy.title).toBe("Grilling: the surprising origin story");
     expect(copy.summary).toBe("grilling");
     expect(copy.clamped).toEqual([]);
+  });
+
+  it("puts the title in the house style — no closing period, a capital first letter — lowercases nothing, and reports what it could not fix", () => {
+    /* Wyatt, 2026-09-24, qa 146: "Sentence case, no period, though ? And !
+       Are allowed". Code does the safe half (rules.js houseStyleTitle); a
+       Title Case title the understander wrote anyway is REPORTED, because code
+       cannot tell "Venus" from "Actually". MUTATION THAT KILLS THIS: return
+       `mintedFrom` as the title from forayCopy -> the first two cases go red;
+       drop the `unstyled` report -> the last goes red. */
+    const period = forayCopy({ subject: "s", title: "How Earth got plate tectonics and Venus never did." });
+    expect(period.title).toBe("How Earth got plate tectonics and Venus never did");
+    expect(period.styled).toHaveLength(1);
+    expect(period.unstyled).toEqual([]);
+    expect(forayCopy({ subject: "s", title: "Was it worth it?" }).title).toBe("Was it worth it?");
+    const titleCase = forayCopy({ subject: "s", title: "How AI Actually Gets Built" });
+    expect(titleCase.title).toBe("How AI Actually Gets Built");
+    expect(titleCase.unstyled.join(" ")).toMatch(/Title Case/);
   });
 
   it("prefers the understander's own bounded title and summary when it gave them", () => {
@@ -486,7 +523,7 @@ describe("runForayPipeline — the record's own copy cannot fail the copy rule (
 
   it("leaves plain-English uses of beat and act alone (no false positives)", () => {
     const copy = forayCopy({ subject: "the Beat Generation poets", angle: "how underdogs beat incumbents", summary: "When regulators failed to act, poets did." });
-    expect(copy.title).toBe("the Beat Generation poets: how underdogs beat incumbents");
+    expect(copy.title).toBe("The Beat Generation poets: how underdogs beat incumbents");
     expect(copy.summary).toBe("When regulators failed to act, poets did.");
     expect(copy.rewritten).toEqual([]);
   });
