@@ -355,3 +355,23 @@ test("a playlist card says how far in you are, in the same reading as the playli
   assert.match(html, /class="fy-bar"/, "the card draws the same bar the other kinds do");
   assert.match(html, /1 of 4 played/);
 });
+
+test("ROUND 2 review (honesty-7 x copy-13): a playlist card never says '0 of N played'", () => {
+  /* A played playlist whose ids aged out of the history ring counted 0 and the
+     card read "0 of 12 played" over an empty bar. MUTATION: drop the
+     `&& played` guards from the playlist entry -> red. */
+  const app = loadApp();
+  const item = (id) => ({ id, title: `T ${id}`, show: "S", audio_url: `https://a.test/${id}.mp3`, topics: [] });
+  app._state("state.discover = { items: [] }; state.session = { session_id: 's', builder: 't', episodes: {}, cards: [] }; state.itemIndex = {};");
+  app._state("state.discover.items = " + JSON.stringify(["a", "b", "c"].map(item)) + "; fullPool();");
+  app.savePlaylists([{
+    id: "pl-0", title: "Three", items: ["a", "b", "c"].map((id) => app.playlistPart(item(id))),
+    created: "2026-09-18T07:00:00.000Z", last_played_at: "2026-09-18T08:00:00.000Z",
+  }]);
+  app.lsSet("cp_history", []);
+  const pl = app.jumpBackInEntries().find((e) => e.kind === "playlist");
+  assert.ok(pl, "premise: the played playlist is on the rail");
+  assert.strictEqual(pl.left, "", "no zero line");
+  assert.strictEqual(pl.percent, null, "and no empty bar");
+  assert.doesNotMatch(app.jumpBackInCardHtml(pl), /0 of 3 played/);
+});

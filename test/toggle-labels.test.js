@@ -405,7 +405,9 @@ test("no builder pairs a ternary text with a hand-written aria-label", () => {
 /* VoiceOver read "Family mode: off, button" and, on activation, nothing — it
    does not re-read a focused button's changed text. MUTATION: drop
    `setAttribute("role", "switch")` from drawerToggle, or the `aria-checked`
-   write from paintDrawerToggles, or the announce() in the click handler. */
+   write from paintDrawerToggles. (The announce() the handler also made was
+   the flip said twice; round-2 review removed it and the end of this test
+   pins its absence.) */
 test("a drawer setting is a switch named by its label, its state is aria-checked, and a flip is said", () => {
   const { ctx } = mountApp();
   const byId = new Map();
@@ -431,5 +433,8 @@ test("a drawer setting is a switch named by its label, its state is aria-checked
   onClick();
   assert.strictEqual(btn.getAttribute("aria-checked"), "true");
   assert.strictEqual(btn.textContent, "Family mode: on");
-  assert.strictEqual(region.textContent, "Family mode on", "the flip is said");
+  /* Round-2 review: the focused switch's aria-checked flip is what a screen
+     reader speaks; a live-region line as well said every tap twice.
+     MUTATION: put the announce() back in drawerToggle's handler -> red. */
+  assert.strictEqual(region.textContent, "", "the flip is said once, by the switch, not again by the live region");
 });

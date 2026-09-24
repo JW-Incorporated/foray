@@ -177,7 +177,10 @@ suite or `test/format-helpers.test.js`):
   "Nov 3, 2025" — Apple Podcasts' rule.
 - **"Subject", not "topic"** in anything a listener reads (copy-7; the thumbs
   chip is "Not my subject"). A down-vote moves the subject's weight only when
-  its reason is about the subject (p-foray-6).
+  its reason is about the subject (p-foray-6) — on the device (`TOPIC_REASONS`)
+  AND in the server's learning job (`TOPIC_DOWNVOTE_REASONS`,
+  backend/src/curation/interestLearning.ts; round-2 review), the one set pinned
+  in both by test/listener-copy.test.js.
 - **No browser words** (copy-1): the same bytes run in a native shell with no
   browser and no reload button, so no "this browser" and no "Reload and try
   again"; the remedy is "Close 4a fully and try again". (The shell notice's own

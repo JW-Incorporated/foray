@@ -496,6 +496,22 @@ test("the explicit badge is a named image, and no explanation lives only in a to
   assert.match(page, /<p class="note">4a could not get an audio file for this episode, so it cannot play here\.<\/p>/, page.slice(0, 400));
 });
 
+/* ROUND 2 review (p-foray-6): the client stopped lowering the subject for a
+   microphone complaint, but the event it syncs still reached the server's
+   learning job, which lowered it durably for every down-vote. The two halves
+   read ONE set. MUTATION: add or drop a reason in either copy -> red. */
+test("the server's learning job and the device agree on which down-vote reasons are about the subject", () => {
+  const backend = fs.readFileSync(path.join(__dirname, "..", "backend", "src", "curation", "interestLearning.ts"), "utf8");
+  const server = /export const TOPIC_DOWNVOTE_REASONS[^=]*=\s*\[([^\]]*)\]/.exec(backend);
+  assert.ok(server, "interestLearning.ts declares TOPIC_DOWNVOTE_REASONS");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const client = /const TOPIC_REASONS = new Set\(\[([^\]]*)\]\)/.exec(app);
+  assert.ok(client, "app.js declares TOPIC_REASONS");
+  const list = (src) => [...src.matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();
+  assert.deepStrictEqual(list(server[1]), list(client[1]));
+  assert.match(backend, /TOPIC_DOWNVOTE_REASONS\.includes\(/, "and the learning job reads it");
+});
+
 /* p-foray-6: a down-vote for the microphone lowered the whole subject exactly
    like "Not my subject". MUTATION: nudge on every down-vote again. */
 test("a down-vote moves the subject's weight only when its reason is about the subject", () => {

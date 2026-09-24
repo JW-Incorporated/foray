@@ -573,7 +573,30 @@ test("a typed subject with no taxonomy match writes nothing, SAYS so, and keeps 
   assert.strictEqual(note.textContent, 'No subject called “Underwater basket weaving” yet. Try one of the chips above.');
   assert.strictEqual(note.getAttribute("role"), "status", "said, not only shown");
   typed._fire("input");
-  assert.strictEqual(note.hidden, true, "editing the word takes the note down");
+  assert.strictEqual(note.textContent, "", "editing the word takes the note down");
+});
+
+test("ROUND 2 review (p-first-3): the typed-miss live region is never hidden, and a repeated miss is said again", () => {
+  /* The note was `hidden` while its text changed and shown with the text
+     already in place — usually not read — and a second identical miss changed
+     nothing at all. MUTATIONS: put `typedNote.hidden = true` back at build;
+     drop the clear before the re-set -> no write on the repeat; red. */
+  const m = mount();
+  bootWithTaxonomy(m);
+  toStep2(m);
+  const note = m.body.querySelector("#first-time-sheet-typed-note");
+  assert.strictEqual(note.hidden, false, "in the accessibility tree from the start");
+  assert.strictEqual(note.textContent, "", "and empty until there is something to say");
+  const typed = m.body.querySelector("#first-time-sheet-typed");
+  typed.value = "Underwater basket weaving";
+  prefsGoBtn(m)._fire("click");
+  const writes = [];
+  let text = note.textContent;
+  Object.defineProperty(note, "textContent", { get: () => text, set: (v) => { writes.push(v); text = v; }, configurable: true });
+  prefsGoBtn(m)._fire("click");                       // the same word, pressed again
+  assert.ok(writes.length >= 2 && writes[0] === "" && writes[writes.length - 1] === text && text.startsWith("No subject called"),
+    `cleared, then said again: ${JSON.stringify(writes)}`);
+  assert.strictEqual(note.hidden, false);
 });
 
 test("a typed word matches a subject's label words and its leaves, not only an exact root label", () => {

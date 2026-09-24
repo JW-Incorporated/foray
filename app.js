@@ -6381,8 +6381,12 @@ function showFirstTimeExplainerOnce() {
     const typedNote = ddEl("p", "ft-typed-note", "");
     typedNote.id = "first-time-sheet-typed-note";
     typedNote.setAttribute("role", "status");
-    typedNote.hidden = true;
-    typedInput.addEventListener("input", () => { typedNote.hidden = true; setStatusText(typedNote, ""); });
+    /* NEVER `hidden` (audit round 2 review): a live region outside the
+       accessibility tree when its text changes, which then appears with the
+       text already in place, is usually not read (VoiceOver in WKWebView in
+       particular), so a VoiceOver newcomer pressing "Show my picks" heard
+       nothing. It stays in the tree, empty when there is nothing to say. */
+    typedInput.addEventListener("input", () => { setStatusText(typedNote, ""); });
     typedWrap.append(typedInput, typedNote);
 
     const actions = ddEl("div", "fy-sheet-actions");
@@ -6402,8 +6406,13 @@ function showFirstTimeExplainerOnce() {
       if (typed) {
         const node = resolveTypedSubject(typed);
         if (!node) {
-          setStatusText(typedNote, `No subject called ${quoteQuery(typed)} yet. Try one of the chips above.`);
-          typedNote.hidden = false;
+          /* Cleared, then said on the next frame — announce()'s idiom — so the
+             region sees a change even when the same word misses twice (the
+             helper skips identical text, and an unchanged node says nothing). */
+          const said = `No subject called ${quoteQuery(typed)} yet. Try one of the chips above.`;
+          setStatusText(typedNote, "");
+          const say = () => setStatusText(typedNote, said);
+          if (typeof requestAnimationFrame === "function") requestAnimationFrame(say); else say();
           return;
         }
         /* The word resolved: its subject's chip lights, so the pick is shown
@@ -9024,8 +9033,13 @@ function jumpBackInEntries(limit = 6) {
      WHERE YOU ARE IN IT, like the Foray and episode cards beside it (audit
      round 2, honesty-7): the rail mixed three grammars — a bar and "N min
      left" on those two, a bare "12 episodes" here — though the playlist page
-     itself knew "3 played". Same reading as that page (`hasOpened`: history OR
-     a stored position), so the two cannot disagree. */
+     itself knew "3 played". The card reads `hasOpened` (history OR a stored
+     position) — the page's next-up marker's reading; the page's own header
+     count moved to the player's "played" verdict in honesty-6.
+     NO ZERO (round-2 review; copy-13, "a zero is not a fact worth a line"): a
+     played playlist can reach 0 here once its ids age out of the 200-entry
+     history ring, and the card then said "0 of 12 played" over an empty bar
+     beside "12 episodes" — the page drops its "0 played" the same way. */
   const history = new Set(pickedHistory());
   for (const p of playlists().filter(p => p.last_played_at)) {
     const rows = resolveParts(p);
@@ -9034,8 +9048,8 @@ function jumpBackInEntries(limit = 6) {
       kind: "playlist", id: p.id, at: p.last_played_at,
       title: p.title || p.name || "Playlist",
       sub: playlistLengthLabel(p),
-      percent: rows.length ? Math.round((played / rows.length) * 100) : null,
-      left: rows.length ? `${played} of ${rows.length} played` : "",
+      percent: rows.length && played ? Math.round((played / rows.length) * 100) : null,
+      left: rows.length && played ? `${played} of ${rows.length} played` : "",
     });
   }
 
@@ -13005,6 +13019,15 @@ function handleBack() {
     if (!backPending) { backPending = true; history.back(); }   // one step per press, as ‹ does
     return "history";
   }
+  /* HOME BEFORE THE DOOR (audit round 2 review of nav-10). A native relaunch
+     reopens the page the listener left (or a deep link opens one) with nothing
+     behind it, and back used to leave the app from there — the ‹ on the same
+     page falls back to Home (DECISIONS Q11). Back does what ‹ does: Home, in
+     place (no entry pushed, so the next back from Home leaves). */
+  if (!isHomeRoute()) {
+    if (replaceHash("#/")) route();
+    return "home";
+  }
   return "exit";
 }
 
@@ -13259,7 +13282,11 @@ function drawerToggle(id, label, read, write, { words = ["off", "on"], repaint =
     write(!read());
     renderDrawer();
     if (repaint) renderCurrentPage();
-    announce(`${label} ${words[read() ? 1 : 0]}`);
+    /* NO announce() HERE (audit round 2 review). The switch stays focused and
+       `paintDrawerToggles` flips its aria-checked in place, which VoiceOver and
+       TalkBack already speak ("on"); a live-region line on top made every tap
+       say it twice ("on", then "Family mode on"). Family mode's repaint
+       redraws #view, not the drawer, so the focused switch survives it. */
   });
 }
 
@@ -15046,6 +15073,12 @@ const LAST_ROUTE_KEY = "cp_last_route";
 
 function rememberRouteForRelaunch(hash) {
   if (!isNativeShell()) return;
+  /* NOT DURING A DELETION (audit round 2 review). deleteMyData repaints the
+     page under its sheet with route() straight after reporting "This device is
+     clear", and the purge had just emptied this key — so in the shell every
+     successful deletion put a cp_ key back, the exact thing it already avoids
+     buildCards() for. The next real navigation records the route again. */
+  if (ddBusy || dataDeletionInProgress) return;
   if (lsGet(LAST_ROUTE_KEY, null) !== hash) lsSet(LAST_ROUTE_KEY, hash);
 }
 

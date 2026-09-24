@@ -3088,6 +3088,11 @@ body.fy-sheet-open { overflow: hidden; }
 /* Above #foray-player (60): the sheet is modal, and a mini bar poking through
    its scrim reads as a stuck overlay. */
 .fy-sheet { position: fixed; inset: 0; z-index: 70; }
+/* The first-run sheet's typed-subject miss (app.js, p-first-3). A live region
+   that is always in the tree and simply empty when there is nothing to say —
+   never `display: none`, which would take it out of the tree again. */
+.ft-typed-note { margin: 8px 0 0; font-size: var(--fs-sm); color: var(--text-dim); }
+.ft-typed-note:empty { margin: 0; }
 /* A SHEET THAT KEEPS THE PLAYER REACHABLE (the onboarding pair, app.js
    ONBOARDING_KEEPS_REACHABLE; audit round 2 review of p-first-5) lifts it
    over the scrim, and lifts its own panel off the docked bar, so a tap on the

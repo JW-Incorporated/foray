@@ -680,6 +680,18 @@ test("ROUND 2 nav-2: hardware back dismisses the top-most thing: the drawer, the
   assert.deepStrictEqual(backs, [1], "one step per press until the step has landed");
 });
 
+test("ROUND 2 review (nav-10): hardware back on a relaunched page with nothing behind it goes Home, and leaves the app only from Home", () => {
+  /* A native cold relaunch reopens the page the listener left with navIndex 0,
+     so back returned "exit" on a show page — before nav-10 every cold launch
+     started on Home. MUTATION: drop the `!isHomeRoute()` branch -> "exit"; red. */
+  const m = mount();
+  m.ctx.location.hash = "#/show/lex-fridman-podcast";
+  vm.runInContext("navIndex = 0;", m.ctx);
+  assert.strictEqual(m.ctx.handleBack(), "home", "back does what the ‹ fallback does");
+  assert.strictEqual(m.ctx.location.hash, "#/", "…Home");
+  assert.strictEqual(m.ctx.handleBack(), "exit", "and from Home, with nothing behind, it leaves");
+});
+
 test("ROUND 2 nav-2: the shell's back button is wired to that order and leaves the app only from the bottom", () => {
   /* MUTATION: drop the `exitApp` call from the listener -> Android's back on a
      first page does nothing at all; red. */

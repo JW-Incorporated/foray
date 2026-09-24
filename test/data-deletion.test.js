@@ -1686,6 +1686,28 @@ test("persist-2: a finished deletion on Home writes no cp_playlists and opens no
   assert.match(ui.status.textContent, /This device is clear/);
 });
 
+test("ROUND 2 review (nav-10 x persist-2): in the NATIVE shell, the repaint after a deletion does not write cp_last_route back", async () => {
+  /* route() records the relaunch route inside the shell, and deleteMyData calls
+     route() to repaint under the sheet right after "This device is clear".
+     The suites mounted with a web protocol, where isNativeShell() is false.
+     MUTATION: drop the `ddBusy || dataDeletionInProgress` return from
+     rememberRouteForRelaunch -> cp_last_route comes back; red. */
+  const { ui, ctx, store, cpKeys } = await mount({
+    boot: true,
+    seed: { cp_intro_dismissed: "true", cp_interests: "{}" },
+  });
+  assert.ok(ui.openBtn, "premise: the page booted");
+  ctx.location.protocol = "capacitor:";
+  assert.strictEqual(ctx.isNativeShell(), true, "premise: the shell");
+  await ui.openBtn.click();
+  await ui.input.enter("DELETE");
+  const out = await ctx.deleteMyData();
+  assert.strictEqual(out.ok, true, JSON.stringify(out.local));
+  await store.flush();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "a key came back after the device was reported clear");
+});
+
 test("persist-4: Delete my data drops the Shows-search shard cache, whose entries trace what was searched", async () => {
   /* MUTATION THAT KILLS THIS: remove `clearShardCache()` from clearLocalData. */
   const { arm, ctx } = await mount({ seed: { cp_interests: "{}" } });
