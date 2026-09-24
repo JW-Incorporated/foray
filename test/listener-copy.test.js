@@ -394,7 +394,7 @@ test("REVIEW: the returning-listener popup claims a stretch pick only where Home
   const hasStretch = {
     forays: /pickWithStretchFloor/.test(body("foraysForYouPicks")),
     playlists: /pickWithStretchFloor|stretch/.test(body("playlistsForYouHtml")),
-    episodes: /miniCardV2/.test(body("episodesForYouHtml")) && /role !== "stretch"/.test(body("miniCardV2")),
+    episodes: /miniCardV2/.test(body("suggestedHtml")) && /role !== "stretch"/.test(body("miniCardV2")),
   };
   assert.deepStrictEqual(hasStretch, { forays: true, playlists: false, episodes: true }, "fixture: where the stretch picks live");
   const popup = literals(APP_SRC).map((l) => l.text).find((t) => /outside your usual subjects/.test(t));

@@ -230,46 +230,67 @@ test("a finished Up Next episode plays the next queued one, and leaves Up Next",
   assert.deepStrictEqual([...m.queueRaw()], [c.id]);
 });
 
-test("REVIEW: ⏭ from row k drops row k AND the rows above it — Up Next moves down, never around (founder question 9)", async () => {
-  /* Apple's model. With [a, b, c] queued and b playing, a skip lands on c and
-     leaves [c]: a was gone past. MUTATION: make the skip's `rest`
-     `queued.filter(x => x !== finishedId)` (the natural-end shape) -> a plays
-     instead of c and stays queued. */
+test("⏭ is the natural end reached early: the skipped episode leaves, every other row stays, and the head plays (founder, 2026-09-24)", async () => {
+  /* FOUNDER, 2026-09-24, reversing the round-2 default: "Playing something
+     from up next removes the items above it - disagree, reverse this. That
+     item in the queue jumps to the top." With [a, b, c, d] queued and c
+     playing (started from elsewhere, so it has not jumped), a skip drops c
+     alone and plays a — Up Next's head — leaving [a, b, d] in order.
+     MUTATION: restore the round-2 skip (`rest = queued.slice(at + 1)`) -> d
+     plays and a and b leave Up Next. */
   const m = mount();
-  const [a, b, c] = m.playable;
-  seedLivePool(m, [a, b, c]);
-  m.ctx.addToQueue(a.id);
-  m.ctx.addToQueue(b.id);
-  m.ctx.addToQueue(c.id);
+  const [a, b, c, d] = m.playable;
+  seedLivePool(m, [a, b, c, d]);
+  for (const it of [a, b, c, d]) m.ctx.addToQueue(it.id);
   const fake = makeFakePlayer();
   m.ctx.window.ForayPlayer = fake;
-  await fake.play(b, {});
+  await fake.play(c, {});
   m.ctx.refreshEpisodeNavigation();
 
   const { next } = fake.offered();
-  assert.strictEqual(typeof next, "function", "b has something after it");
+  assert.strictEqual(typeof next, "function", "c has something after it");
   await next();
-  assert.strictEqual(fake.calls[1]?.item.id, c.id, "the skip lands on the row below");
-  assert.deepStrictEqual([...m.queueRaw()], [c.id], "b and the row above it left Up Next");
+  assert.strictEqual(fake.calls[1]?.item.id, a.id, "the skip plays Up Next's head");
+  assert.deepStrictEqual([...m.queueRaw()], [a.id, b.id, d.id], "only the skipped episode left; the rest kept their order");
 });
 
-test("REVIEW: playing row k from the Up Next page drops the rows above it (founder question 9)", async () => {
-  /* The page's ▶ carries `data-ctx="upnext"`; a play accepted from it is a
-     move down the list. MUTATION: drop the `playedFromUpNext` call from
-     bindPlay -> [a, b, c] survives with b playing. */
+test("playing row k from the Up Next page moves THAT row to the top and keeps every other row, in order (founder, 2026-09-24)", async () => {
+  /* "That item in the queue jumps to the top." The page's ▶ carries
+     `data-ctx="upnext"`; a play accepted from it moves row k to the top.
+     MUTATION: drop the `playedFromUpNext` call from bindPlay -> [a, b, c, d]
+     survives unmoved. MUTATION 2: restore the round-2 body
+     (`ids.slice(at)`) -> a and b leave. */
+  const m = mount();
+  const [a, b, c, d] = m.playable;
+  seedLivePool(m, [a, b, c, d]);
+  for (const it of [a, b, c, d]) m.ctx.addToQueue(it.id);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+  const rows = [a, b, c, d].map((it) => ({ id: it.id, ctx: "upnext" }));   // the literal upNextRow stamps (pinned below)
+  await clickRow(m, rows, 2);
+  assert.strictEqual(fake.calls[0]?.item.id, c.id);
+  assert.deepStrictEqual([...m.queueRaw()], [c.id, a.id, b.id, d.id], "c jumped to the top; nothing left, nothing else moved");
+  assert.match(m.ctx.upNextRow({ item: c, id: c.id, state: "live" }, 0, 1), /data-ctx="upnext"/, "the page's ▶ names its list");
+
+  /* And when c ends, it leaves and the row that was first plays: nothing the
+     listener passed over is lost. */
+  m.ctx.advanceQueueOnEnded(c.id);
+  assert.strictEqual(fake.calls[1]?.item.id, a.id, "the old head plays after the jumped row");
+  assert.deepStrictEqual([...m.queueRaw()], [a.id, b.id, d.id]);
+});
+
+test("a refused play from the Up Next page moves nothing (founder, 2026-09-24)", async () => {
+  /* The move is applied only once the play is accepted. MUTATION: call
+     playedFromUpNext before the `ok` check in bindPlay -> c jumps anyway. */
   const m = mount();
   const [a, b, c] = m.playable;
   seedLivePool(m, [a, b, c]);
-  m.ctx.addToQueue(a.id);
-  m.ctx.addToQueue(b.id);
-  m.ctx.addToQueue(c.id);
+  for (const it of [a, b, c]) m.ctx.addToQueue(it.id);
   const fake = makeFakePlayer();
+  fake.play = async function (item, opts) { this.calls.push({ item, opts }); return false; };
   m.ctx.window.ForayPlayer = fake;
-  const rows = [a, b, c].map((it) => ({ id: it.id, ctx: "upnext" }));   // the literal upNextRow stamps (pinned below)
-  await clickRow(m, rows, 1);
-  assert.strictEqual(fake.calls[0]?.item.id, b.id);
-  assert.deepStrictEqual([...m.queueRaw()], [b.id, c.id], "a left; b stays until it ends");
-  assert.match(m.ctx.upNextRow({ item: b, id: b.id, state: "live" }, 0, 1), /data-ctx="upnext"/, "the page's ▶ names its list");
+  await clickRow(m, [a, b, c].map((it) => ({ id: it.id, ctx: "upnext" })), 2);
+  assert.deepStrictEqual([...m.queueRaw()], [a.id, b.id, c.id]);
 });
 
 /* ==================================================================== */

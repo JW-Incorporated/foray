@@ -687,18 +687,18 @@ test("a stretch card's bridge line is a row of its own under the card, not a fou
      a narrow italic column to the right of the star, clipping the title. The
      Foray card's identical line only worked because that card is a column.
 
-     MUTATION: drop `flex-wrap: wrap` from `body.ui-v2 .hv2-episodes
+     MUTATION: drop `flex-wrap: wrap` from `body.ui-v2 .hv2-suggested
      .mini-card` -> the first assertion fails. Drop the `.mc-info` zero basis
      -> the third fails (and on a device the title jumps to a line of its own,
      because its max-content width is the whole unclamped title). */
   const APP = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
   assert.ok(APP.includes('</p></div>`;') && APP.includes("return card.replace("),
     "fixture assumption: the bridge is still injected inside the card's anchor — if it moved outside, this rule is moot");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-episodes .mini-card", "flex-wrap"), "wrap",
-    "the Episodes-for-you card row must wrap so the bridge can take a line of its own");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-episodes .mini-card > .hv2-bridge", "flex-basis"), "100%",
+  assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card", "flex-wrap"), "wrap",
+    "the Suggested card row must wrap so the bridge can take a line of its own");
+  assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card > .hv2-bridge", "flex-basis"), "100%",
     "the bridge line must span the card's full width");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-episodes .mini-card > .mc-info", "flex-basis"), "0",
+  assert.strictEqual(valueOf("body.ui-v2 .hv2-suggested .mini-card > .mc-info", "flex-basis"), "0",
     "the title block needs a zero basis or wrapping pushes IT onto its own line instead");
 });
 

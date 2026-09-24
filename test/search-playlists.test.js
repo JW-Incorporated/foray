@@ -234,7 +234,7 @@ test("playlistMatchesQuery returns false for an empty or whitespace-only query",
 
 test("generatedPlaylistCandidatesForQuery reads the generated interest playlists, not the card slots (F14)", () => {
   /* MUTATION: have this function read state.cardSlots again — the F14
-     regression (Playlists for you == Episodes for you). A card slot on
+     regression (Playlists for you == Suggested). A card slot on
      "tech" must NOT surface as a generated candidate; the interest leaf
      "history/rome" filled from the discover pool must. */
   const m = mount();

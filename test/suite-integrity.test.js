@@ -925,13 +925,14 @@ const FLOORS = {
   /* U-03 (docs/ui-transition-plan.md, kanban t_6e8343b6): Home v2's four
      sections plus the greeting, behind cp_ui_v2, with the exploration floor
      (D1/#123). Floored for the same reason as the suite above: the floor
-     itself ("Forays for you"/"Episodes for you" always reserve a visibly-
+     itself ("Forays for you"/"Suggested" always reserve a visibly-
      labelled stretch slot with its bridge line) is a product decision Wyatt
      made explicitly to resolve a founder gate, and it is exactly the kind
      of thing that regresses silently — nobody notices a personalization
      feed slowly stopped surprising anyone. Every test names its mutation;
      see the suite header. */
-  "test/home-v2.test.js": 9, // F14 (2026-09-08): generated playlists are interest leaves, not card slots
+  "test/home-v2.test.js": 10, // founder, 2026-09-24: "Rename it 'Suggested'" — the card-slot heading; 9 -> 10 // F14 (2026-09-08): generated playlists are interest leaves, not card slots // F14 (2026-09-08): generated playlists are interest leaves, not card slots
+  "test/home-play.test.js": 14, // founder, 2026-09-24: Home's one play button — each first-rail kind, passed-over rails, the empty case, loading / failure / superseded / isCurrent; new suite
   "test/home-v2-real-data.test.js": 5, // U-03 audit fix (2026-09-10): Home v2 over the committed data/*.json at insets 0/59; the Forays-for-you floor's documented fallback with one published Foray
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
      Kanban card "Build: starred shows (follow-lite) + dedicated Starred
@@ -980,7 +981,7 @@ const FLOORS = {
      of silent-wrong-behavior this repo's floors exist to catch, not a crash
      path any other suite would notice going missing. Every test names its
      mutation; see the suite header for the full list of what each pins. */
-  "test/up-next-autoadvance.test.js": 19, // audit round 2, lane L3 (2026-09-23): ⏭ and a play from the page drop the rows above (founder question 9), no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
+  "test/up-next-autoadvance.test.js": 20, // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
      t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
      wrong row set, a wrong slider range, or a drag that silently fails to

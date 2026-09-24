@@ -1556,7 +1556,7 @@ button.up-next-remove {
    the impatient thumb tapped again. The glyph stays ▶
    (persona 15: never say playing before audio exists); the button breathes
    instead. Under Reduce Motion it holds still, dimmed (the block at the end). */
-.play-btn[data-loading="1"], .fp-play[data-loading="1"], .fp-btn[data-loading="1"] {
+.play-btn[data-loading="1"], .fp-play[data-loading="1"], .fp-btn[data-loading="1"], .hv2-play[data-loading="1"] {
   animation: fy-loading-breathe .9s ease-in-out infinite alternate;
 }
 @keyframes fy-loading-breathe {
@@ -3967,13 +3967,32 @@ body.ui-v2 .hv2-greeting-word { color: var(--muted); font-size: var(--fs-md); fo
 body.ui-v2 .hv2-greeting-brand {
   font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: var(--fs-2xl); color: var(--text);
 }
+/* HOME'S ONE PLAY BUTTON (founder, 2026-09-24): under the greeting, a capsule
+   that names what it plays. The title truncates to one line so a long Foray
+   name never pushes the button to two rows; the full name is the button's
+   accessible name. 48px tall: above the 44px floor every button meets. */
+body.ui-v2 .hv2-play-row { padding: 0 var(--gutter); }
+body.ui-v2 .hv2-play {
+  display: inline-flex; align-items: center; gap: 8px;
+  max-width: 100%; min-height: 48px; padding: 0 20px 0 16px;
+  border: 0; border-radius: var(--radius-pill);
+  background: var(--accent); color: #fff;
+  font: inherit; font-size: var(--fs-md); font-weight: 600;
+  cursor: pointer;
+}
+body.ui-v2 .hv2-play-glyph { flex: none; font-size: var(--fs-md); line-height: 1; }
+body.ui-v2 .hv2-play-text { flex: none; }
+body.ui-v2 .hv2-play-title {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 400; opacity: .9;
+}
 body.ui-v2 .hv2-title {
   margin: 0; padding: 0 var(--gutter);
   font-family: var(--font-display); font-weight: 600; font-size: var(--fs-xl); color: var(--text);
 }
 body.ui-v2 .hv2-section { display: flex; flex-direction: column; gap: 8px; }
 /* Horizontal rails (Jump back in, Forays for you, Playlists for you) share one
-   scroller pattern; Episodes for you uses `.hv2-cards` (a vertical stack)
+   scroller pattern; Suggested uses `.hv2-cards` (a vertical stack)
    instead, since epRow-shaped rows read as a list, not a shelf. */
 body.ui-v2 .hv2-hscroll {
   display: flex; gap: 12px; overflow-x: auto;
@@ -4085,7 +4104,7 @@ body.ui-v2 .hv2-test-track {
   font-size: var(--fs-sm); font-weight: 600; color: var(--violet);
 }
 
-/* Episodes for you reuses miniCard()'s own `.mini-card` markup and rules
+/* Suggested reuses miniCard()'s own `.mini-card` markup and rules
    unchanged (miniCardV2() wraps it rather than forking it) — only the
    section container and the appended `.hv2-bridge` line are new here.
 
@@ -4098,9 +4117,9 @@ body.ui-v2 .hv2-test-track {
    `.mc-info` gets a zero basis so wrapping can never push IT onto a line of its
    own (its max-content width is the whole unclamped title). Cards without a
    bridge are three items that always fit, so for them nothing changes. */
-body.ui-v2 .hv2-episodes .mini-card { min-height: 0; flex-wrap: wrap; row-gap: 4px; }
-body.ui-v2 .hv2-episodes .mini-card > .mc-info { flex-basis: 0; }
-body.ui-v2 .hv2-episodes .mini-card > .hv2-bridge { flex-basis: 100%; }
+body.ui-v2 .hv2-suggested .mini-card { min-height: 0; flex-wrap: wrap; row-gap: 4px; }
+body.ui-v2 .hv2-suggested .mini-card > .mc-info { flex-basis: 0; }
+body.ui-v2 .hv2-suggested .mini-card > .hv2-bridge { flex-basis: 100%; }
 
 /* The publisher's own show description (founder, 2026-09-21). Body copy, not a
    `.note`: it is the show speaking for itself and should read like prose.
@@ -4176,5 +4195,5 @@ body.drawer-open { overflow: hidden; }
   .fy-strip-bubble, .fy-strip-bubble__viewport > *,
   .fy-seg { transition: none; }
   .fy-panel { animation: none; }
-  .play-btn[data-loading="1"], .fp-play[data-loading="1"], .fp-btn[data-loading="1"] { animation: none; opacity: .6; }
+  .play-btn[data-loading="1"], .fp-play[data-loading="1"], .fp-btn[data-loading="1"], .hv2-play[data-loading="1"] { animation: none; opacity: .6; }
 }

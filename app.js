@@ -1,5 +1,5 @@
 /* Foray web client v4 — app shell.
-   Views: home (rails: Jump back in, Forays / Playlists / Episodes for you),
+   Views: home (rails: Jump back in, Forays / Playlists / Suggested),
    playlists list, playlist detail, shows, Forays, Library. Hash routing.
    The semantic layer (compiled concepts + tags) powers playlist building. */
 
@@ -1789,7 +1789,8 @@ function subjectQueueById(id) {
 /* Generated playlists (D5, and founder feedback F14, 2026-09-08: "playlists are
    now the same as Episodes for you, which is not the intent"). The first
    implementation projected the day's card slots (state.cardSlots) into
-   playlist cards, so "Playlists for you" was "Episodes for you" regrouped.
+   playlist cards, so "Playlists for you" was "Episodes for you" (now
+   "Suggested") regrouped.
    A generated playlist is a THEMED LIST: the listener's strongest interest
    LEAVES (never the roots the card slots already cover), each filled from the
    discover pool with the newest episodes on that leaf, excluding any episode a
@@ -2555,33 +2556,36 @@ function isPlayableId(id) { return Boolean(liveEpisode(id)?.audio_url); }
 
 /* ---------- the Up Next model (founder question 9, audit round 2) ----------
 
-   UP NEXT IS A LIST YOU MOVE DOWN, NEVER AROUND (Apple's model). Playing row k
-   — from the page's ▶, or by skipping ⏭ to it — removes rows 1..k-1: the
-   listener went past them, and they do not come back. The first version kept
-   them ("still unheard, or it would have left") and re-served them after the
-   last row: with five queued, abandoning row 1 for row 2 meant row 1 played
-   AGAIN when row 5 ended (p-impatient-7), and the queue page could not say so.
-   A row reordered ABOVE the playing one while it plays is different: nobody
-   skipped it, they put it there, so at the natural end it is what plays next.
-   `docs/DECISIONS.md` (2026-09-23, the Up Next model) records the ruling. */
+   THE ROW YOU PLAY JUMPS TO THE TOP; NOTHING ELSE MOVES OR LEAVES.
+   FOUNDER, 2026-09-24, reversing the round-2 default: "Playing something from
+   up next removes the items above it - disagree, reverse this. That item in
+   the queue jumps to the top." Playing row k from the page's ▶ moves row k to
+   the top (it is what is playing) and leaves every other row where it was, in
+   its order: with [a, b, c, d] queued, playing c gives [c, a, b, d]. When c
+   ends it leaves, and a — Up Next's head — plays next. ⏭ is that same end
+   reached early: the episode skipped leaves Up Next exactly as it would have
+   at its end, and Up Next's head plays; no other row is dropped. (The round-2
+   default dropped rows 1..k-1 on either path; the version before that re-served
+   an abandoned row after the last one, p-impatient-7. With the played row at
+   the top, "next" is always the head, so neither can happen.)
+   `docs/DECISIONS.md` (2026-09-24, founder rulings) records the ruling. */
 
 /**
  * What plays after `finishedId`, with no writes: `{ nextId, rest, fromList }`.
  * `rest` is Up Next with the finished episode removed (or null when it was not
  * queued) — the caller saves it. Shared by the end of an episode and by the
- * steering wheel's skip, which must agree on what "next" is; `skipped` is the
- * one place they differ (the model above: a skip also drops the rows above).
+ * steering wheel's and the sheet's ⏭, which mean the same thing: a skip is the
+ * end reached early (the model above), so it drops the skipped episode and
+ * nothing else.
  *
  * UP NEXT FIRST, THEN THE LIST. The list continues only when the episode that
  * ended belongs to this chain (`state.playChainId`: started by bindPlay from the
  * list, or by an advance), so an episode started from somewhere with no list
  * (a timestamp, the restored bar) does not resume a list from an earlier visit.
  */
-function planAfterEnded(finishedId, { skipped = false } = {}) {
+function planAfterEnded(finishedId) {
   const queued = queueIds();
-  const at = queued.indexOf(finishedId);
-  let rest = null;
-  if (at >= 0) rest = skipped ? queued.slice(at + 1) : queued.filter(x => x !== finishedId);
+  const rest = queued.includes(finishedId) ? queued.filter(x => x !== finishedId) : null;
   const queuedNext = (rest || queued).find(isPlayableId);
   if (queuedNext) return { nextId: queuedNext, rest, fromList: false };
   const list = state.playList || [];
@@ -2594,8 +2598,8 @@ function planAfterEnded(finishedId, { skipped = false } = {}) {
 
 /** What plays after `finishedId`, or null. Applies the plan's one write (the
     finished episode leaves Up Next) and moves the chain on to the pick. */
-function nextAfterEnded(finishedId, opts) {
-  const plan = planAfterEnded(finishedId, opts);
+function nextAfterEnded(finishedId) {
+  const plan = planAfterEnded(finishedId);
   if (plan.rest) saveQueueIds(plan.rest);
   if (plan.nextId) {
     state.playChainId = plan.nextId;
@@ -2604,14 +2608,16 @@ function nextAfterEnded(finishedId, opts) {
   return plan.nextId;
 }
 
-/** A tap on row k of the Up Next page started playing: rows 1..k-1 leave (the
-    model above). Called from bindPlay once the play has been accepted, so a
-    refused play removes nothing. The played row stays until it ends — that is
-    what "the finished episode leaves Up Next" has always meant. */
+/** A tap on row k of the Up Next page started playing: row k jumps to the
+    top and every other row keeps its place and its order (the model above;
+    founder, 2026-09-24). Called from bindPlay once the play has been
+    accepted, so a refused play moves nothing. The played row stays until it
+    ends — that is what "the finished episode leaves Up Next" has always
+    meant. */
 function playedFromUpNext(id) {
   const ids = queueIds();
   const at = ids.indexOf(id);
-  if (at > 0) saveQueueIds(ids.slice(at));
+  if (at > 0) saveQueueIds([id, ...ids.filter(x => x !== id)]);
   else noteQueuePlaybackMoved();
 }
 
@@ -2641,7 +2647,7 @@ const UP_NEXT_CTX = "upnext";
 const EPISODE_NAVIGATION = {
   get next() {
     const cur = window.ForayPlayer?.currentEpisodeId?.();
-    if (!cur || !planAfterEnded(cur, { skipped: true }).nextId) return null;
+    if (!cur || !planAfterEnded(cur).nextId) return null;
     return () => playNextAfter(cur, "skip");
   },
   get previous() {
@@ -2689,9 +2695,9 @@ function advanceQueueOnEnded(id) {
 /** Play whatever follows `id` — the end of an episode, or the car's skip. */
 function playNextAfter(id, ctx) {
   if (!window.ForayPlayer) return;
-  /* A skip drops the rows above the current one too (the Up Next model); the
-     natural end of an episode drops only the episode. */
-  const nextId = nextAfterEnded(id, { skipped: ctx === "skip" });
+  /* A skip and the natural end are one rule (the Up Next model): the episode
+     leaves Up Next, nothing else does, and the head plays. */
+  const nextId = nextAfterEnded(id);
   refreshEpisodeNavigation();
   if (!nextId) return;
   return startChained(nextId, ctx);
@@ -2770,6 +2776,14 @@ function resolveParts(p) {
 }
 
 function playlistById(id) { return playlists().find(p => p.id === id); }
+
+/** The `data-ctx` a playlist's rows carry ("playlist-…", "subject-…",
+    "generated-…") — what bindPickLogging and startEpisodePlay read, and what
+    stamps a real playlist's `last_played_at`. The detail page and Home's play
+    button both start a playlist, so both name it through this. */
+function playlistCtx(p) {
+  return (p.isSubject ? "subject-" : (p.isGenerated ? "generated-" : "playlist-")) + p.id;
+}
 
 /* ONE SPELLING OF A PLAYLIST'S ROUTE (audit 2026-09-22). Jump back in's card
    percent-encoded the id and every other producer did not, while the router
@@ -5192,60 +5206,77 @@ function bindPlay(scope) {
         await window.ForayPlayer.togglePlayback();
         return;
       }
-      const listCtx = btn.dataset.ctx || null;
-      /* UP NEXT IS ITS OWN CONTINUATION (audit round 2 review). Its ▶ carries
-         `data-ctx="upnext"` only as the mark that triggers `playedFromUpNext`;
-         snapshotting the rows as a play list froze a second, stale copy of the
-         queue, so a row the listener then removed with ✕ — or one a play from
-         row 3 dropped — still played next, or came back on ⏮. `planAfterEnded`
-         reads the live queue first; the list is only this one episode. */
-      setPlayList(listCtx && listCtx !== UP_NEXT_CTX
-        ? [...scope.querySelectorAll("[data-play]")].filter(b => b.dataset.ctx === listCtx).map(b => b.dataset.play)
-        : [id], id);
-      /* A PLAY THAT FAILS SAYS SO (persona audit #4, 2026-09-22). It used to be
-         `if (!ok) return;` with no try at all: a refused play said nothing, and a
-         throw out of `play()` was an unhandled rejection in an async listener —
-         a tap that did nothing and said nothing, which is founder report #225,
-         already fixed for the Foray page by guardForayStart. The line itself
-         lives on the player bar (`reportPlayFailure`), because the bar is on
-         screen whichever page this button was on. */
-      let ok = false;
-      try {
-        ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });
-      } catch (err) {
-        console.warn("[4a] play failed", err);
-        try { window.ForayPlayer.reportPlayFailure?.(err); } catch (_) { /* the bar is best-effort */ }
-        noteTapFailure("start", err);
-        return;
-      }
-      if (!ok) {
-        /* SUPERSEDED IS NOT FAILED (audit round 2 review). `play()` answers
-           false for a row a later tap replaced mid-load; reporting that painted
-           "That episode couldn't load" over the episode that IS loading. Only
-           a play that is still the player's own item failed. */
-        if (typeof window.ForayPlayer.isCurrent === "function" && !window.ForayPlayer.isCurrent(id)) return;
-        try { window.ForayPlayer.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
-        return;
-      }
-      /* A ROW SUPERSEDED MID-LOAD IS NOT PLAYED (audit round 2, p-impatient-2): `play()` now answers for its own item; this is the belt for a module of that vintage, and a module with no `isCurrent` is trusted on its `ok`. */
-      if (typeof window.ForayPlayer.isCurrent === "function" && !window.ForayPlayer.isCurrent(id)) return;
-      logEvent("play_started", { episode_id: id, topics: item.topics || [] });
-      recordHistory(id);
-      /* A play from the Up Next page moves down the list (the Up Next model,
-         § continuous playback): the rows above the tapped one leave. */
-      if (btn.dataset.ctx === UP_NEXT_CTX) playedFromUpNext(id);
-      /* Same "playlist-<id>" convention and the same regex bindPickLogging
-         already applies to a picked link's data-ctx — bindPlay is the in-app
-         play button, the PRIMARY control on every live playlist row, and it
-         was the only path that never stamped `last_played_at` (#558 item 2):
-         a playlist played entirely in-app kept `last_played_at: null`
-         forever, which is the sort key both Home's own-playlist rail and the
-         drawer use. */
-      const m = /^playlist-(.+)$/.exec(btn.dataset.ctx || "");
-      if (m) touchPlaylistPlayed(m[1]);
-      trySyncEvents();
+      await startEpisodePlay(id, item, {
+        ctx: btn.dataset.ctx || null,
+        list: [...scope.querySelectorAll("[data-play]")].map(b => ({ id: b.dataset.play, ctx: b.dataset.ctx })),
+      });
     });
   });
+}
+
+/* THE START OF AN ORDINARY EPISODE, from any in-app control — every row's ▶
+   (bindPlay above) and Home's one play button (bindHomePlay). One function, so
+   Home's button inherits every rule a row's ▶ learned the hard way: the list it
+   records for continuous playback, a play that fails says so, a play superseded
+   mid-load is not reported or counted, and a playlist's `last_played_at`.
+   `list` is the on-screen rows `{ id, ctx }` the press sat among; the ones
+   sharing `ctx` are the play list. Answers whether the play was accepted and is
+   still the player's own. The caller decides the isCurrent toggle first: a row
+   showing ❚❚ pauses, Home's "Play …" never does. */
+async function startEpisodePlay(id, item, { ctx = null, list = [] } = {}) {
+  const listCtx = ctx || null;
+  /* UP NEXT IS ITS OWN CONTINUATION (audit round 2 review). Its ▶ carries
+     `data-ctx="upnext"` only as the mark that triggers `playedFromUpNext`;
+     snapshotting the rows as a play list froze a second, stale copy of the
+     queue, so a row the listener then removed with ✕ — or one a play from
+     row 3 moved — still played next, or came back on ⏮. `planAfterEnded`
+     reads the live queue first; the list is only this one episode. */
+  setPlayList(listCtx && listCtx !== UP_NEXT_CTX
+    ? list.filter(b => b.ctx === listCtx).map(b => b.id)
+    : [id], id);
+  /* A PLAY THAT FAILS SAYS SO (persona audit #4, 2026-09-22). It used to be
+     `if (!ok) return;` with no try at all: a refused play said nothing, and a
+     throw out of `play()` was an unhandled rejection in an async listener —
+     a tap that did nothing and said nothing, which is founder report #225,
+     already fixed for the Foray page by guardForayStart. The line itself
+     lives on the player bar (`reportPlayFailure`), because the bar is on
+     screen whichever page this button was on. */
+  let ok = false;
+  try {
+    ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });
+  } catch (err) {
+    console.warn("[4a] play failed", err);
+    try { window.ForayPlayer.reportPlayFailure?.(err); } catch (_) { /* the bar is best-effort */ }
+    noteTapFailure("start", err);
+    return false;
+  }
+  if (!ok) {
+    /* SUPERSEDED IS NOT FAILED (audit round 2 review). `play()` answers
+       false for a row a later tap replaced mid-load; reporting that painted
+       "That episode couldn't load" over the episode that IS loading. Only
+       a play that is still the player's own item failed. */
+    if (typeof window.ForayPlayer.isCurrent === "function" && !window.ForayPlayer.isCurrent(id)) return false;
+    try { window.ForayPlayer.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
+    return false;
+  }
+  /* A ROW SUPERSEDED MID-LOAD IS NOT PLAYED (audit round 2, p-impatient-2): `play()` now answers for its own item; this is the belt for a module of that vintage, and a module with no `isCurrent` is trusted on its `ok`. */
+  if (typeof window.ForayPlayer.isCurrent === "function" && !window.ForayPlayer.isCurrent(id)) return false;
+  logEvent("play_started", { episode_id: id, topics: item.topics || [] });
+  recordHistory(id);
+  /* A play from the Up Next page moves that row to the top (the Up Next
+     model, § continuous playback); every other row stays put. */
+  if (listCtx === UP_NEXT_CTX) playedFromUpNext(id);
+  /* Same "playlist-<id>" convention and the same regex bindPickLogging
+     already applies to a picked link's data-ctx — bindPlay is the in-app
+     play button, the PRIMARY control on every live playlist row, and it
+     was the only path that never stamped `last_played_at` (#558 item 2):
+     a playlist played entirely in-app kept `last_played_at: null`
+     forever, which is the sort key both Home's own-playlist rail and the
+     drawer use. */
+  const m = /^playlist-(.+)$/.exec(listCtx || "");
+  if (m) touchPlaylistPlayed(m[1]);
+  trySyncEvents();
+  return true;
 }
 
 function bindStars(scope) {
@@ -5500,7 +5531,7 @@ function applyOnboardingPicks(pickedRootIds, typedSubject) {
 
 /** U-09's third acceptance line ("picking three chips changes the FIRST Home
     render's ranking"), which shipped unmet in PR #503 (audit, 2026-09-10):
-    Home's "Episodes for you" is `state.cardSlots`, dealt once per session by
+    Home's "Suggested" is `state.cardSlots`, dealt once per session by
     `buildCards()` in init() — BEFORE this sheet opens over Home, from the
     pre-pick default weights — and renderHomeV2() only rebuilds an EMPTY
     cardSlots. applyOnboardingPicks() changed the inputs of that deal without
@@ -6489,7 +6520,7 @@ function showIntroPopupOnce() {
        the first-run sheet learns what a foray is.
        Review 2026-09-23: no "stitch clips" (the 2026-08-11 playback ruling —
        see forayAbout), and only what Home renders: the stretch pick is in
-       Forays for you and Episodes for you (pickWithStretchFloor, the cardSlots
+       Forays for you and Suggested (pickWithStretchFloor, the cardSlots
        stretch role), not in Playlists, which are mostly the listener's own.
        Audit round 2 (p-first-11): the Forays row has a stretch pick only when
        the listed Forays span more than one subject, and with one published
@@ -8866,19 +8897,19 @@ function renderHome() {
 /* ==================================================================== */
 
 /* Top to bottom, per the card: greeting; Jump back in; Forays for you;
-   Playlists for you; Episodes for you. "Shared with you" and "Build your
+   Playlists for you; Suggested. "Shared with you" and "Build your
    own" are explicitly out of scope (D10/D8) — not stubbed, not commented
    out, simply never written.
 
    THE FLOOR (Wyatt's decision, resolves #123): "Forays for you" and
-   "Episodes for you" EACH reserve at least one slot for a STRETCH pick —
+   "Suggested" EACH reserve at least one slot for a STRETCH pick —
    something outside the listener's top interest tier, on purpose, visibly
    labelled "Stretch" with a bridge line stating why it's being suggested.
    A row reason ("Because you finish every Odd Lots") is allowed elsewhere
    but never on the stretch slot itself — that is the whole point of a
    stretch: it is not being justified by what the listener already likes.
 
-   Episodes for you REUSES buildCards()'s existing tiering (top 60% of
+   Suggested REUSES buildCards()'s existing tiering (top 60% of
    branches by average interest vs. the rest) rather than re-implementing
    it — that function already computes exactly this split for the
    flag-off four-card Home, and a second copy is a second place for the
@@ -8961,6 +8992,179 @@ function homeGreeting() {
     <span class="hv2-greeting-word">${word}</span>
     <span class="hv2-greeting-brand">4a</span>
   </div>`;
+}
+
+/* ---------- Home's one play button ----------
+
+   FOUNDER, 2026-09-24: "Add a play button at the Home Screen level and start
+   playing whatever is first in that list (whether it be Suggested or a
+   Playlist or whatever)".
+
+   ONE control under the greeting. It plays the first PLAYABLE thing on Home,
+   walking the rails in the order Home draws them — Jump back in, Forays for
+   you, Playlists for you, Suggested — and within a rail, its cards in order. A
+   rail whose cards cannot play (a Foray that does not resolve, a playlist whose
+   episodes have all left the catalogue) is passed over rather than stopped at:
+   a button that names a thing and then fails is worse than one that names the
+   next thing. It is not rendered at all only when nothing on Home can play.
+
+   Each kind starts the way its own page starts it, through the same code:
+     foray     the Foray page's main button — `playForay`, resuming where the
+               listener left it (`forayResume`), else from the top;
+     episode   a row's ▶ (`startEpisodePlay`);
+     playlist  its first playable row, with the playlist's rows as the list
+               continuous playback goes on through — a saved playlist, a
+               generated one, or a Suggested subject queue alike (the detail
+               page's `playlistCtx`, so a real playlist's `last_played_at` is
+               stamped exactly as a row's ▶ stamps it).
+
+   Its name says what it will play ("Play <title>"), because "Play" alone on a
+   screen of twenty things answers nothing. */
+
+/** Home's rails as candidate lists, in render order. Each rail is the data the
+    rail itself draws from, so the order cannot drift from what is on screen. */
+function homePlayRails() {
+  const rails = [];
+  rails.push(jumpBackInEntries().map(c =>
+    c.kind === "foray" ? { kind: "foray", id: c.id, title: c.title }
+      : c.kind === "episode" ? { kind: "episode", item: c.item, title: c.title }
+        : { kind: "playlist", playlist: playlistById(c.id) }));
+  const forays = foraysForYouPicks();
+  rails.push(forays ? forays.picks.concat(forays.drafts).map(f => ({ kind: "foray", id: f.id, title: f.title })) : []);
+  const { own, generated } = playlistsForYouPicks();
+  rails.push(own.concat(generated).map(p => ({ kind: "playlist", playlist: p })));
+  rails.push((state.cardSlots || []).map(slot => ({ kind: "playlist", playlist: subjectQueueById("subject-" + slot.branch) })));
+  return rails;
+}
+
+/** A candidate made concrete, or null when it cannot play right now. */
+function homePlayable(c) {
+  if (c.kind === "foray") {
+    const r = resolveListedForay(c.id);
+    if (!r || !Array.isArray(r.playable) || !r.playable.length) return null;
+    return { kind: "foray", r, title: c.title || r.title || c.id };
+  }
+  if (c.kind === "episode") {
+    const item = c.item && c.item.id ? (liveEpisode(c.item.id) || c.item) : null;
+    if (!item || !item.audio_url) return null;
+    return { kind: "episode", item, title: c.title || item.title || "this episode", list: [], ctx: null };
+  }
+  const p = c.playlist;
+  if (!p) return null;
+  const rows = resolveParts(p).filter(r => r.state === "live" && isPlayableId(r.item.id));
+  if (!rows.length) return null;
+  const ctx = playlistCtx(p);
+  return {
+    kind: "playlist", title: p.title || "this playlist", ctx,
+    item: liveEpisode(rows[0].item.id),
+    list: rows.map(r => ({ id: r.item.id, ctx })),
+  };
+}
+
+/** What Home's play button will play, or null (nothing on Home can). */
+function homePlayTarget() {
+  for (const rail of homePlayRails()) {
+    for (const c of rail) {
+      const t = homePlayable(c);
+      if (t) return t;
+    }
+  }
+  return null;
+}
+
+/* The target the rendered button names. Set at render time and read at the
+   press, so the press plays exactly what the label promised. */
+let homePlayPending = null;
+
+function homePlayHtml() {
+  const t = homePlayTarget();
+  homePlayPending = t;
+  if (!t) return "";
+  return `<div class="hv2-play-row">
+    <button type="button" class="hv2-play" data-home-play aria-label="${esc(`Play ${t.title}`)}">
+      <span class="hv2-play-glyph" aria-hidden="true">▶</span>
+      <span class="hv2-play-text">Play</span>
+      <span class="hv2-play-title">${esc(t.title)}</span>
+    </button>
+  </div>`;
+}
+
+function bindHomePlay(scope) {
+  const btn = scope && typeof scope.querySelector === "function" ? scope.querySelector("[data-home-play]") : null;
+  if (!btn || btn._bound) return;
+  btn._bound = true;
+  btn.addEventListener("click", () => playHomeTarget(homePlayPending, btn));
+}
+
+/** The press. The loading mark is the row ▶'s (`data-loading`, which
+    styles.css breathes and holds still under Reduce Motion), and a second
+    press while it is set does nothing: the impatient thumb is not a second
+    start. */
+async function playHomeTarget(t, btn = null) {
+  const player = window.ForayPlayer;
+  if (!t || !player) return false;
+  if (btn && btn.dataset.loading === "1") return false;
+  if (btn) { btn.dataset.loading = "1"; btn.setAttribute("aria-busy", "true"); }
+  try {
+    return t.kind === "foray" ? await startHomeForay(player, t.r) : await startHomeEpisode(player, t);
+  } finally {
+    if (btn) { delete btn.dataset.loading; btn.removeAttribute("aria-busy"); }
+  }
+}
+
+async function startHomeEpisode(player, t) {
+  const item = t.item;
+  if (!item || !item.audio_url) return false;
+  /* IS IT ALREADY THE PLAYER'S? A paused one resumes where it is; a playing
+     one is left alone — this button says "Play", so it never pauses. */
+  if (player.isCurrent?.(item.id)) {
+    if (!player.isPlaying?.(item.id)) await player.togglePlayback?.();
+    return true;
+  }
+  return startEpisodePlay(item.id, item, { ctx: t.ctx, list: t.list });
+}
+
+async function startHomeForay(player, r) {
+  const live = player.forayStatus?.();
+  if (live && live.forayId === r.id) {
+    if (!live.running) await player.forayToggle?.();
+    return true;
+  }
+  let resume = null;
+  try { resume = player.forayResume?.(r.id, { resolved: r }) || null; } catch (_) { resume = null; }
+  /* The call into the player comes before any await: the tap is the gesture
+     Safari lets audio start inside (#225, the Foray page's own rule). */
+  let started;
+  try {
+    started = Promise.resolve(player.playForay(r, {
+      ...(resume ? { startElapsedSec: resume.elapsedSec } : { startIndex: 0 }),
+      discoverDoc: state.discover,
+    }));
+  } catch (err) {
+    started = Promise.reject(err);
+  }
+  logEvent("foray_play", {
+    foray_id: r.id, segments: r.playable.length,
+    resumed_from_sec: resume ? Math.round(resume.elapsedSec) : null,
+  });
+  let report = null;
+  try {
+    report = await started;
+  } catch (err) {
+    console.warn("[4a] Foray start failed", err);
+    try { player.reportPlayFailure?.(err); } catch (_) { /* the bar is best-effort */ }
+    noteTapFailure("start", err);
+    return false;
+  }
+  if (!report) {
+    /* Superseded (another start took the player mid-load) is not failed. */
+    const now = player.forayStatus?.();
+    if (now && now.forayId !== r.id) return false;
+    try { player.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
+    return false;
+  }
+  trySyncEvents();
+  return true;
 }
 
 /** "Jump back in": forayResumeRows() plus the ordinary-episode continue
@@ -9249,12 +9453,20 @@ function playlistCardV2Html(p, { generated = false } = {}) {
 /** "Playlists for you" (D5): the listener's own recent playlists first,
     then up to three generated from state.interests (generatedPlaylists():
     the strongest interest leaves, filled from the discover pool). NOT the
-    card slots — F14: that made this section "Episodes for you" regrouped. */
-function playlistsForYouHtml() {
+    card slots — F14: that made this section "Episodes for you" (now "Suggested")
+    regrouped. */
+/** The rail's playlists, in the order it draws them: own recent first, then
+    generated. One function, so the rail and Home's play button (homePlayTarget)
+    cannot disagree about which playlist is first. */
+function playlistsForYouPicks() {
   const own = [...playlists()]
     .sort((a, b) => (b.last_played_at || b.created || "").localeCompare(a.last_played_at || a.created || ""))
     .slice(0, 3);
-  const generated = generatedPlaylists();
+  return { own, generated: generatedPlaylists() };
+}
+
+function playlistsForYouHtml() {
+  const { own, generated } = playlistsForYouPicks();
   if (!own.length && !generated.length) return "";
   const cards = own.map(p => playlistCardV2Html(p, { generated: false }))
     .concat(generated.map(p => playlistCardV2Html(p, { generated: true })));
@@ -9264,7 +9476,7 @@ function playlistsForYouHtml() {
   </section>`;
 }
 
-/** One episode card for "Episodes for you" — miniCard()'s existing markup
+/** One episode card for "Suggested" — miniCard()'s existing markup
     plus the visible bridge line D1's copy rule requires on a stretch
     slot, which miniCard() itself does not render (its "Stretch" tag is a
     hover-only `title`, pinned as-is elsewhere and left untouched here).
@@ -9278,17 +9490,17 @@ function miniCardV2(slot) {
   return card.replace(/<\/div>$/, bridge);
 }
 
-/** "Episodes for you": buildCards()'s ranked discover-pool picks, i.e.
+/** "Suggested": buildCards()'s ranked discover-pool picks, i.e.
     state.cardSlots verbatim — the SAME floor buildCards() already
     computes for the flag-off four-card Home, so this section and that
     one can never disagree about which slot is the stretch. renderHomeV2()
     guarantees state.cardSlots is already built before this runs (same as
     v1's own renderHome()), so this only guards a caller that invokes this
     function directly (e.g. a future test). */
-function episodesForYouHtml() {
+function suggestedHtml() {
   if (!state.cardSlots.length) return "";
-  return `<section class="hv2-section hv2-episodes">
-    <h2 class="hv2-title">Episodes for you</h2>
+  return `<section class="hv2-section hv2-suggested">
+    <h2 class="hv2-title">Suggested</h2>
     <div class="hv2-cards">${state.cardSlots.map(miniCardV2).join("")}</div>
   </section>`;
 }
@@ -9299,11 +9511,12 @@ function renderHomeV2() {
   $("#view").innerHTML = `
     <div class="home hv2-home">
       ${homeGreeting()}
+      ${homePlayHtml()}
       ${testTrackNoticeHtml()}
       ${jumpBackInV2Html()}
       ${foraysForYouHtml()}
       ${playlistsForYouHtml()}
-      ${episodesForYouHtml()}
+      ${suggestedHtml()}
     </div>`;
 
   offerHomeOnboarding();
@@ -9317,6 +9530,7 @@ function renderHomeV2() {
   bindStars($("#view"));
   bindUpNext($("#view"));
   bindPlay($("#view"));
+  bindHomePlay($("#view"));
 }
 
 /* ---------- Forays page (#/forays) ----------
@@ -9593,7 +9807,7 @@ function renderPlaylistDetail(id) {
      verdict (`rowProgress`, state "played") per row, so the header and the row
      labels cannot disagree; `hasOpened` stays what the next-up marker asks. */
   const played = rows.filter(r => rowProgress(r.item)?.state === "played").length;
-  const ctx = (p.isSubject ? "subject-" : (p.isGenerated ? "generated-" : "playlist-")) + p.id;
+  const ctx = playlistCtx(p);
 
   $("#view").innerHTML = `
     <div class="page">
@@ -10108,8 +10322,8 @@ function upNextRow(r, idx, total) {
   const { item, id, state } = r;
   const named = state !== "unnamed";
   const playable = state === "live";
-  /* `UP_NEXT_CTX` on the ▶, so bindPlay knows a play from THIS page drops the
-     rows above it (the Up Next model, § continuous playback). */
+  /* `UP_NEXT_CTX` on the ▶, so bindPlay knows a play from THIS page moves its
+     row to the top (the Up Next model, § continuous playback). */
   const inApp = playable ? playBtn(item, UP_NEXT_CTX) : "";
   const title = named ? esc(item.title) : "Episode no longer available";
   /* The same "Played" / "NN min left" mark every other episode row carries
@@ -10595,7 +10809,8 @@ function renderCreate() {
    surface: it renders what that returns and drives the transport.
 
    ── The draft rule ────────────────────────────────────────────────────────
-   Only a founder may publish a Foray (HUMAN-ACTIONS.md #2). As of 2026-08-30
+   Only a founder may publish a Foray (a founder action; HUMAN-ACTIONS.md #2 asked
+   for it until it was dropped on 2026-09-24). As of 2026-08-30
    ONE is published — `capital-types-1` — so exactly one is listed for an
    ordinary visitor and the other three are not. The rule has not changed; the
    data has. (It used to read "every Foray is a draft, so none is listed", which
@@ -10636,7 +10851,7 @@ function unlockedForays() {
    Wyatt, 2026-09-11: "I can't see these forays in the app, please fix that."
    "These" are the GENERATED Forays — `data/forays.json` rows carrying
    `generated: true` — which land as `status: "draft"` because publishing is a
-   founder action (HUMAN-ACTIONS.md #2) and the generator is not a founder.
+   founder action and the generator is not a founder.
    The visitor rule above is untouched, and so is every Foray's status: this
    is a per-device switch in the drawer, OFF by default, that lets the person
    who owns the device ask for every draft at once, the way `?foray=` asks for

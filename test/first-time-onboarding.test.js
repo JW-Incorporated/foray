@@ -690,7 +690,7 @@ test("neither step renders an account-connector or import-history control", () =
 /* 5. THE PICKS CHANGE THE FIRST HOME RENDER (the card's third acceptance) */
 /* ==================================================================== */
 
-/* Home's "Episodes for you" is state.cardSlots, dealt by buildCards() BEFORE
+/* Home's "Suggested" is state.cardSlots, dealt by buildCards() BEFORE
    the sheet opens over Home, from the pre-pick default weights, and never
    rebuilt for the rest of the session. The two "changes the ranking" tests
    in section 2 only proved interestScore() moved — the audit (2026-09-10)
