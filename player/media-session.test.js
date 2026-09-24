@@ -1635,7 +1635,8 @@ test("EVERY playForay call site in app.js passes the artwork document", () => {
      has exactly one funnel per option shape — `start` for an index, `startAt`
      for an elapsed — and every control routes through one of them. */
   const calls = liveLines(APP, "playForay(");
-  assert.equal(calls.length, 2, `the known call sites are two; found ${calls.length} — check the new one`);
+  /* Three since 2026-09-24: Home's play button (startHomeForay, the founder's "play button at the Home Screen level") is a third, and passes it too. */
+  assert.equal(calls.length, 3, `the known call sites are three; found ${calls.length} — check the new one`);
   const missing = calls.filter((c) => !/forayOpts|discoverDoc/.test(c));
   assert.deepEqual(missing, [], "a Foray started without discoverDoc loses the publisher's artwork");
 });

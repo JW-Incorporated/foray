@@ -9134,12 +9134,10 @@ async function startHomeForay(player, r) {
   try { resume = player.forayResume?.(r.id, { resolved: r }) || null; } catch (_) { resume = null; }
   /* The call into the player comes before any await: the tap is the gesture
      Safari lets audio start inside (#225, the Foray page's own rule). */
+  const at = resume ? { startElapsedSec: resume.elapsedSec } : { startIndex: 0 };
   let started;
   try {
-    started = Promise.resolve(player.playForay(r, {
-      ...(resume ? { startElapsedSec: resume.elapsedSec } : { startIndex: 0 }),
-      discoverDoc: state.discover,
-    }));
+    started = Promise.resolve(player.playForay(r, { ...at, discoverDoc: state.discover }));
   } catch (err) {
     started = Promise.reject(err);
   }
