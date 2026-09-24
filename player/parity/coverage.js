@@ -44,8 +44,11 @@ export const COVERED_SUITES = Object.freeze({
   "playback-rate": { card: "NE-07j", family: "rate" },
   "foray-progress": { card: "NE-29j", family: "foray-progress" },
   "media-session": { card: "NE-12j", family: "media-episode" },
-  "transport-policy": { card: "NE-08", family: "transport", awaiting: "NE-08" },
-  "position-store": { card: "NE-08", family: "resume-rules", awaiting: "NE-08" },
+  /* Written by NE-08, fixture-first: every test reads its cases, so nothing is
+     unported today. A test added later without a case is owed to the Swift
+     port that burns these families down. */
+  "transport-policy": { card: "NE-09", family: "transport" },
+  "position-store": { card: "NE-09", family: "resume-rules" },
   "continuation": { card: "NE-13", family: "continuation", awaiting: "NE-13" },
   "queue-manager": { card: "NE-14j", family: "manager-episode" },
   "html-audio-backend": { card: "NE-14j", family: "deck-episode" },

@@ -1,6 +1,6 @@
 {
   "//": "Written by tools/parity/record.mjs; no card types a count. families: the minimum case count of each fixture family (raise-only; --lower-floors lowers it, visibly). suites: the top-level test count of each covered suite when last recorded. test/suite-integrity.test.js enforces both against the tree.",
-  "families": { "queue-state": 87, "rate": 61, "seam-gap": 30 },
+  "families": { "queue-state": 87, "rate": 61, "resume-rules": 42, "seam-gap": 30, "transport": 90 },
   "suites": {
     "foray-playback": 91,
     "foray-progress": 59,
@@ -8,10 +8,12 @@
     "interlude": 16,
     "media-session": 152,
     "playback-rate": 22,
+    "position-store": 10,
     "queue-manager": 144,
     "queue-state": 58,
     "seam-gap": 17,
     "seek-policy": 33,
+    "transport-policy": 16,
     "transport-reconcile": 80,
     "tts-bridge": 29
   }

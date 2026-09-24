@@ -28,19 +28,20 @@ import { loadFixtures } from "../../player/parity/runner.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-/** A scratch repo holding what the recorded families need: every fixture
-    file's module (read from the fixtures, so a new family cannot make a
-    whole-tree record in here fail on a module nobody copied), seam-gap.js's
-    one import, the ESM marker, the seam-gap suite, and the whole parity
-    directory. */
+/** A scratch repo holding what the recorded families need: every player
+    module (NE-08's transport and resume-rules families read three more of
+    them, and their imports), the ESM marker, the seam-gap suite, and the whole
+    parity directory. Suites other than seam-gap are left out on purpose. */
 function scratch() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "parity-rec-"));
   const copy = (rel) => {
     fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
     fs.copyFileSync(path.join(ROOT, rel), path.join(root, rel));
   };
-  const modules = new Set(loadFixtures(ROOT).map((fx) => fx.doc.module).filter(Boolean));
-  for (const rel of ["player/package.json", "player/queue-state.js", "player/seam-gap.test.js", ...modules]) copy(rel);
+  const modules = fs.readdirSync(path.join(ROOT, "player"))
+    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
+    .map((f) => `player/${f}`);
+  for (const rel of ["player/package.json", "player/seam-gap.test.js", ...modules]) copy(rel);
   fs.cpSync(path.join(ROOT, "player", "parity"), path.join(root, "player", "parity"), {
     recursive: true,
     filter: (src) => !/\.test\.js$/.test(src),

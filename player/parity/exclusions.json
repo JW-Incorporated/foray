@@ -38,6 +38,12 @@
       "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
     }
   },
+  "position-store": {
+    "PositionStore writes positionRow, emits by positionEvent per item, and resumes by resumeOffsetFor": {
+      "reason": "js-module-shape",
+      "why": "Pins that the JS PositionStore class routes its storage writes, per-item event marks and resume reads through the pure rules; the Swift engine has its own store (EngineStore, NE-19) and shares only the rules, which the resume-rules family carries."
+    }
+  },
   "queue-state": {
     "reduce never mutates the state it is given": {
       "reason": "js-module-shape",
@@ -56,6 +62,12 @@
     "the beat's log line names both sides and the length": {
       "reason": "text-pin",
       "why": "Pins describeSeam's English telemetry sentence. The engine writes packed seam rows from the diag-tokens vocabulary, not this string."
+    }
+  },
+  "transport-policy": {
+    "client.js asks these rules and keeps no private copy of one": {
+      "reason": "js-module-shape",
+      "why": "Pins that player/client.js imports the transport rules and declares no copy of them; the Swift engine has no client.js, and its TransportPolicy port is checked by the transport family instead."
     }
   }
 }
