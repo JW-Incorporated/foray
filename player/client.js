@@ -120,7 +120,8 @@ import {
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
 import { startDrag, moveDrag, endDrag, dragOffset, claimsTouch } from "./sheet-drag-dismiss.js";
-import { createDurableStore, preferencesTier, vaultTier } from "./durable-store.js";
+import { createDurableStore, preferencesTier, vaultTier, deferredPrefixesFor } from "./durable-store.js";
+import { OWNED_PREFIXES } from "./engine-contract.js";
 import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
@@ -252,6 +253,12 @@ const storage = createDurableStore({
      2026-09-24 "Option A"). Null on the web, and on a shell build without the
      plugin — where the token stays in the tiers above, as before. */
   vault: vaultTier(typeof window !== "undefined" ? window.Capacitor : null),
+  /* Inside the iOS shell only: the native engine's rows (`cp_pos:`,
+     `cp_foray:`, `cp_last_episode`) are DEFERRED from this line on — read,
+     never written down — until the page knows which lane plays (NE-23,
+     native-engine plan §4.6). A stale page must not be able to push its
+     mirror over a row the engine wrote. Empty on the web and on Android. */
+  deferredPrefixes: deferredPrefixesFor(typeof window !== "undefined" ? window.Capacitor : null, OWNED_PREFIXES),
   onFault: (fault, health) => {
     // The player cannot fix a dead tier. What it must not do is hide one.
     console.warn("[storage]", fault.tier, fault.op, fault.key ?? "", fault.error);
@@ -263,6 +270,17 @@ const storage = createDurableStore({
     }
   },
 });
+
+/* THE LANE IS KNOWN ALREADY, IN THIS BUILD OF THE PAGE: it has no native
+   engine client yet (NE-21, NE-22), so it plays with the JS player whatever the
+   binary is, and the page is the writer of every row. Released BEFORE
+   hydration, so hydration runs exactly as it did before the deferral existed —
+   the web and Android never deferred, and on iOS this makes the deferral a
+   no-op rather than a change. NE-22 moves this call behind `engineModeReady`
+   (hello = legacy/js, or after a relinquish), and a native hello calls
+   `storage.externallyOwned` + `adoptOwnedSet` instead. Harmless where nothing
+   was deferred: it answers false. */
+storage.releaseOwnership().catch(() => {});
 
 /* Started immediately, awaited by app.js before its first write. Rejection is
    impossible by construction (every tier failure is caught into `health()`), but
