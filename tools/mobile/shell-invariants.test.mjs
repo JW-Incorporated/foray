@@ -2678,6 +2678,31 @@ test("NE-05: both wrappers run the seam-gap and compare families and the whole m
   assert.match(all[1], /CompareFamily\.runner/);
 });
 
+test("NE-07s: the queue-state runner is registered and both wrappers require it to have run", () => {
+  /* NE-07s burned the queue-state family out of swift-pending.json. From then
+     on the ids are owed by nobody, so if the runner fell out of the registry
+     the Swift books would call each id "unaccounted" and go red, which is
+     right; but a wrapper that only says assertParityFamily("queue-state")
+     would also accept a family that is ENTIRELY pending again (a re-record
+     with --port-card), and the reducer would stop being checked with every
+     step green. requireRunner makes "it ran" part of the assertion.
+     MUTATION: drop QueueStateFamily.runner from ParityFamilies.all, or
+     `requireRunner: true` from either wrapper's testQueueStateFamily; each
+     fails here. */
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  assert.match(all[1], /QueueStateFamily\.runner/, "ParityFamilies.all must hold the queue-state runner (NE-07s)");
+  for (const file of [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ]) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    assert.match(src, /assertParityFamily\("queue-state", requireRunner: true\)/,
+      `${path.relative(ROOT, file)} must require the queue-state runner to have run`);
+  }
+});
+
 /* ─────────── NE-02: the reducer, copied into the core with its tests ───────────
  *
  * docs/native-engine-plan.md §4.1 and card NE-02. PlayerQueueState.swift and
