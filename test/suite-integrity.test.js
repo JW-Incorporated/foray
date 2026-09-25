@@ -2140,7 +2140,7 @@ const BACKEND_FLOORS = {
      and the parser accepts one, while a reply that omits it still parses. */
   "test/AnthropicDeepenActBuilder.test.ts": 9,
   "test/AnthropicEnricher.test.ts": 10,
-  "test/AnthropicExternalResearcher.test.ts": 9,
+  "test/AnthropicExternalResearcher.test.ts": 13, // round-3 audit (L5-generation): gen-1 web-search answers read after the tool result, split answers joined, pause_turn continued, retrieval never re-asks; 9 -> 13
   "test/AnthropicPromptUnderstander.test.ts": 13, // generator title style (2026-09-24, qa 146): the prompt asks for sentence case; one case-only re-ask for a Title Case title; no re-ask for a period; 10 -> 13 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 9 -> 10
   /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
      transcript windows and the one seed rule when the research map has them,
@@ -2179,7 +2179,7 @@ const BACKEND_FLOORS = {
      is mutations of exactly that: a throwing subprocess, a half-answer with no
      vocab, a missing interpreter. Delete those and a missing system package
      takes down a written Foray after the writer has spent its tokens. */
-  "test/phonemize.test.ts": 12,
+  "test/phonemize.test.ts": 15, // round-3 audit (L5-generation): gen-16 the phonemizer says why it produced nothing (ENOENT, exit+stderr), 64 MB buffer, phonemizedSummary; 12 -> 15
   "test/parseWithRetry.test.ts": 17,
   "test/parser.test.ts": 29,
   "test/personas.test.ts": 6,
@@ -2214,7 +2214,7 @@ const BACKEND_FLOORS = {
   /* Generation pipeline §4.1's safety-first module: forbidden-topics
      checker, unit-tested and committed rather than a system prompt, per
      the doc's own explicit requirement. */
-  "test/safetyCheck.test.ts": 11,
+  "test/safetyCheck.test.ts": 12, // round-3 audit (L5-generation): gen-9 today's rejection of the four documentary prompts pinned pending founder Q4 (their must-pass cases are skipped, not counted); 11 -> 12
   /* Generation pipeline §4.1 end to end: safety, then clarity, then intent,
      in that order, with no retry loop on rejection and never more than one
      clarify round. */
@@ -2282,7 +2282,7 @@ const BACKEND_FLOORS = {
      kept by the stub, restored in code when a builder drops it, never re-pointed
      when the builder changed a slot's beat count, and restored on a resumed act
      checkpointed before seeds existed. */
-  "test/deepenActs.test.ts": 25,
+  "test/deepenActs.test.ts": 34, // round-3 audit (L5-generation): gen-3 a retitled deepened slot is restored to the spine's title; 25 -> 34
   /* §4.5-4.6 end to end (kanban card t_648fbae7): sourceBeats() resolves
      every beat to a tier-1 segments.json hit, a tier-2 transcript-archive
      extraction, a tier-3 transcription-queue-candidate narration fallback,
@@ -2558,7 +2558,7 @@ const BACKEND_FLOORS = {
   "test/generateForaysHandsFree.test.ts": 20,
   /* +1 audit finding E (2026-09-12): this package's `isGeneratedDraft` agrees
      with player/foray-resolve.js over the whole truth table; 8 -> 9. */
-  "test/finalizeForay.test.ts": 9,
+  "test/finalizeForay.test.ts": 10, // round-3 audit (L5-generation): gen-12 a duplicate id is a validation error, not a throw; 9 -> 10
   /* The `data/segment-sources.json` row a minted tier-2 segment needs, and the
      refusals that stop this pipeline writing one it cannot vouch for — an
      unknown DAI verdict above all, which ADR-0007 gates seek precision on. */
@@ -2662,7 +2662,7 @@ const BACKEND_FLOORS = {
   /* RAISED 43 -> 47 by F-101: `computeFirstAttemptPassRates` emits the pages
      and beats units separately and declares which the legacy scalar carries;
      `computeListeningShares` says its denominator in the field name. */
-  "test/veracityMetrics.test.ts": 47,
+  "test/veracityMetrics.test.ts": 48, // round-3 audit (L5-generation): arch-drift-2 the publish gate grounds print quotes with findHoldingDoc; 47 -> 48
   /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
      per-beat evidence pack (tape cue window + up to three retrieved print
      passages, cached by claim hash) and the mechanical narration rules run 1's
@@ -2675,11 +2675,11 @@ const BACKEND_FLOORS = {
      queries now run concurrently (latched retriever proves the overlap, first
      non-empty answer wins) and F-77 says what emptiness may be cached — only a
      confirmed "two queries, nothing", for EVIDENCE_EMPTY_TTL_MS. */
-  "test/gatherEvidence.test.ts": 37,
+  "test/gatherEvidence.test.ts": 45, // round-3 audit (L5-generation): gen-2 the clip is kept whole in the tape window; gen-5 a failed retrieval is flagged and a budget stop propagates; 37 -> 45
   /* G-35's prefetch stage (evidencePrefetch.ts): every page's evidence in one
      bounded fan-out after `source`, memoised so writeNarration makes zero
      retrieval calls; the concurrency cap is proven with latches. */
-  "test/evidencePrefetch.test.ts": 7,
+  "test/evidencePrefetch.test.ts": 10, // round-3 audit (L5-generation): gen-5 a retrievalFailed pack is not memoised and a budget stop ends the fan-out; 7 -> 10
   "test/narrationRules.test.ts": 21,
   /* F-81 (generation run 5): a Frame's source is the tape it introduces.
      The `{kind: "tape", segmentId, quote?}` source shape, the mechanical
@@ -2769,7 +2769,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 52,
+  "test/actNarration.test.ts": 54, // round-3 audit (L5-generation): gen-8 Q-09's show memory is computed across acts and reaches every act; 52 -> 54
   /* Generator vocabulary (2026-09-24). Wyatt, on the audit's persona 65 (the
      narrator says "this act", "Act one", "two acts back" aloud): "Accept the
      ones that are currently there; update our foray generation scripting to
@@ -2781,6 +2781,21 @@ const BACKEND_FLOORS = {
      §4.8, forayItems.ts, the prelude overview, the hand-off). One named
      mutation per test. */
   "test/narratorStructure.test.ts": 13,
+  /* Round-3 code audit, lane L5-generation (2026-09-25). One suite per fix
+     where the fix had no natural home: the shared Anthropic call helper
+     (gen-10/gen-14, and gen-1's answer assembly), finalize refusals and the
+     stale-sourcing drop (gen-12), bounded and root-keyed caches (gen-15),
+     unique item ids and the mint guard (gen-6), the banked Foray identity
+     (gen-13), declared slot ids on items (gen-4), control bytes in backend
+     source (gen-11), and the transcript body lookup (gen-7). */
+  "test/anthropicCall.test.ts": 9,
+  "test/finalizeRefusal.test.ts": 6,
+  "test/generationCaches.test.ts": 5,
+  "test/itemIdCollision.test.ts": 6,
+  "test/resumeIdentity.test.ts": 1,
+  "test/slotIds.test.ts": 2,
+  "test/sourceControlChars.test.ts": 1,
+  "test/transcriptLocate.test.ts": 4,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
