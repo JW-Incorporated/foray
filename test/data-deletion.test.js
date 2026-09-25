@@ -733,6 +733,38 @@ test("one authenticated DELETE per table, filtered to this account's own uid", a
   assert.ok(calls[0].url.includes("/events?"), "events is the table the promise rests on — delete it first");
 });
 
+/* Round-3 review (L6): learning_cursor joined SB_USER_TABLES while the policy
+   that lets a listener delete its row (supabase/0003) is not applied to
+   production. Under 0002 it is deny-all, the DELETE is a 204 that removes
+   nothing, and it was counted and worded as deleted.
+   MUTATION: drop learning_cursor from SB_DELETE_UNVERIFIED (or treat any 2xx
+   as deleted) -- the table reads "deleted" and the sheet says everything is. */
+test("a table whose delete policy may not be live is 'unconfirmed' unless the server shows the removed row", async () => {
+  const { arm, ui, ctx, deletes } = await mount({ seed: { cp_sb_session: sessionRow() } });
+  await arm();
+  const result = await ctx.deleteMyData();
+  const cursor = result.remote.tables.find((t) => t.table === "learning_cursor");
+  assert.strictEqual(cursor.state, "unconfirmed", "a 204 with no rows shown is not a deletion we saw");
+  assert.deepStrictEqual([...result.remote.unconfirmed], ["learning_cursor"]);
+  assert.strictEqual(result.remote.deleted, 8, "not counted among the deleted tables");
+  assert.strictEqual(result.remote.ok, true, "it does not block the rest of the deletion");
+  const call = deletes().find((c) => c.url.includes("/learning_cursor?"));
+  assert.strictEqual(call.headers.Prefer, "return=representation", "it asks for the removed rows back");
+  assert.match(ui.status.textContent, /except possibly one bookkeeping record/);
+  assert.doesNotMatch(ui.status.textContent, /kept about you is deleted\./);
+
+  // With the policy live, the server returns the row it removed: deleted, and said plainly.
+  const live = await mount({
+    seed: { cp_sb_session: sessionRow() },
+    reply: (url) => (url.includes("/learning_cursor?") ? { status: 200, json: [{ user_id: "uid-abc" }] } : { status: 204 }),
+  });
+  await live.arm();
+  const ok = await live.ctx.deleteMyData();
+  assert.strictEqual(ok.remote.tables.find((t) => t.table === "learning_cursor").state, "deleted");
+  assert.deepStrictEqual([...ok.remote.unconfirmed], []);
+  assert.match(live.ui.status.textContent, /What 4a's server kept about you is deleted\./);
+});
+
 test("the events rows are deleted before the local token that reaches them", async () => {
   const { arm, ui, log } = await mount({ seed: { cp_sb_session: sessionRow() } });
   await arm();
@@ -1234,6 +1266,7 @@ test("EVERY status message the control can show is inside the copy budget", asyn
     { state: "remote-failed", remote: { ok: false, attempted: true, failed: [{}], deleted: 0 }, local: null },
     { state: "remote-failed", remote: { ok: false, attempted: true, failed: [], revoked: { ok: false, status: 0 }, deleted: 8 }, local: null },
     { state: "done", remote: { ok: true, attempted: true, deleted: 8 }, local: { ok: true } },
+    { state: "done", remote: { ok: true, attempted: true, deleted: 8, unconfirmed: ["learning_cursor"] }, local: { ok: true } },
     { state: "done", remote: { ok: true, attempted: false, deleted: 0 }, local: { ok: true } },
     { state: "done", remote: { ok: true, attempted: false, deviceOnly: true, deleted: 0 }, local: { ok: true } },
     { state: "local-incomplete", remote: { ok: true, attempted: true, deleted: 8 }, local: { ok: false, reason: "no-durable-tier" } },
@@ -2173,7 +2206,7 @@ test("app-3-6: a retry after the server step succeeded says the server copy is d
   await arm();
   const retry = await ctx.deleteMyData();
   assert.strictEqual(retry.state, "local-incomplete");
-  assert.match(ui.status.textContent, /What 4a's server kept about you is deleted\./);
+  assert.match(ui.status.textContent, /What 4a's server kept about you is deleted[.,]/);
   assert.doesNotMatch(ui.status.textContent, /never signed in|NOT deleted/);
   assert.strictEqual(log.filter((e) => e.kind === "fetch").length, requestsAfterRun1, "the retry asked the server again");
 });

@@ -14827,6 +14827,18 @@ const SB_USER_TABLES = [
 const DEL_DELETED = "deleted";
 const DEL_ABSENT = "absent";
 const DEL_FAILED = "failed";
+/* A fourth, for a table whose delete policy this build cannot rely on: the
+   DELETE was accepted and no row came back, so we cannot say one was removed. */
+const DEL_UNCONFIRMED = "unconfirmed";
+
+/* Tables whose own-rows DELETE policy is not known to be live (round-3 review,
+   L6). `learning_cursor` gets `own_delete_learning_cursor` from
+   supabase/0003, which is NOT applied to production (founder Q3); under 0002
+   the table is deny-all, and a DELETE there is a 204 that removes nothing. So
+   for these the request asks for the deleted rows back, and only rows it SAW
+   removed count as deleted. An empty answer is "unconfirmed", never "deleted",
+   and the sheet says so. Take a table off this list once its policy is live. */
+const SB_DELETE_UNVERIFIED = new Set(["learning_cursor"]);
 
 /**
  * The account this device already has — never a new one.
@@ -14883,16 +14895,23 @@ async function existingAnonSession() {
 
 /** One authenticated DELETE, filtered to this account's own rows. */
 async function sbDeleteOwnRows(table, session) {
-  const url = `${SB_URL}/rest/v1/${table}?user_id=eq.${encodeURIComponent(session.user_id)}`;
+  const verify = SB_DELETE_UNVERIFIED.has(table);
+  const url = `${SB_URL}/rest/v1/${table}?user_id=eq.${encodeURIComponent(session.user_id)}${verify ? "&select=user_id" : ""}`;
   try {
     const res = await fetch(url, {
       method: "DELETE",
       headers: {
         apikey: SB_KEY,
         Authorization: "Bearer " + session.access_token,
-        Prefer: "return=minimal",
+        Prefer: verify ? "return=representation" : "return=minimal",
       },
     });
+    if (res.ok && verify) {
+      let rows = null;
+      try { rows = await res.json(); } catch (_) { rows = null; }
+      const removed = Array.isArray(rows) ? rows.length : 0;
+      return { table, state: removed > 0 ? DEL_DELETED : DEL_UNCONFIRMED, status: res.status };
+    }
     if (res.ok) return { table, state: DEL_DELETED, status: res.status };
     // Not in the API schema => no rows of ours are in it. Anything else — 401,
     // 403, 409, 500 — is a refusal we must not round down to success.
@@ -14955,7 +14974,7 @@ async function deleteRemoteData() {
   if (ddRemoteDone) {
     const stored = lsGet("cp_sb_session", null);
     if (!stored || !stored.user_id || stored.user_id === ddRemoteDone.userId) {
-      return { ok: true, attempted: true, alreadyDeleted: true, tables: [], failed: [], deleted: 0, userId: ddRemoteDone.userId };
+      return { ok: true, attempted: true, alreadyDeleted: true, tables: [], failed: [], unconfirmed: ddRemoteDone.unconfirmed || [], deleted: 0, userId: ddRemoteDone.userId };
     }
   }
   const session = await existingAnonSession();
@@ -14969,6 +14988,8 @@ async function deleteRemoteData() {
     attempted: true,
     tables,
     failed,
+    // Accepted, but no row seen removed: not counted, and not called deleted.
+    unconfirmed: tables.filter(r => r.state === DEL_UNCONFIRMED).map(r => r.table),
     revoked,
     deleted: tables.filter(r => r.state === DEL_DELETED).length,
     userId: session.user_id,
@@ -15135,7 +15156,11 @@ function deletionMessage(result) {
     ? "What 4a's server kept about you was left in place, as you chose."
     : !remote || !remote.attempted
       ? "No sign-in remains on this device, so nothing on 4a's server is reachable from it."
-      : "What 4a's server kept about you is deleted.";
+      /* A table the server accepted the DELETE for but showed no removed row
+         (SB_DELETE_UNVERIFIED): claiming it is gone would be a false success. */
+      : Array.isArray(remote.unconfirmed) && remote.unconfirmed.length
+        ? "What 4a's server kept about you is deleted, except possibly one bookkeeping record."
+        : "What 4a's server kept about you is deleted.";
   if (local && local.ok) return `Done. ${server} This device is clear.`;
   return `${server} This device is NOT fully clear. ${deviceNotClearReason(local)}`;
 }
@@ -15363,7 +15388,7 @@ async function deleteMyData({ deviceOnly = false } = {}) {
        retry, and drop the now-dead token FIRST and on its own, so a purge
        that fails part-way can never leave a retry holding it (app-3-6). */
     if (remote && remote.attempted && remote.ok && !remote.deviceOnly) {
-      ddRemoteDone = { userId: remote.userId || null };
+      ddRemoteDone = { userId: remote.userId || null, unconfirmed: remote.unconfirmed || [] };
       rotatedSession = null;
       try { const st = storageBackend(); if (st) st.removeItem("cp_sb_session"); } catch (_) { /* the purge below tries again */ }
     }
