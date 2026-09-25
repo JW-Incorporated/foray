@@ -619,32 +619,43 @@ async function syncEventsOnce(epoch) {
     if (!unsynced.length) return;
     const s = await ensureAnonSession(epoch);
     if (!s) return; // offline / auth unavailable — buffer persists, retry next time
-    const rows = unsynced.map(e => toEventRow(e, s.user_id)).filter(Boolean);
-    const syncedIds = unsynced.map(e => e.id);
-    if (!rows.length) {
-      await window.forayEventLog.markSynced(syncedIds); // all local-only
-      await window.forayEventLog.pruneToRetention(5000);
-      return;
+    /* CHUNKS, EACH MARKED AS IT LANDS (audit round 3, app-1-10). Rows go up
+       500 at a time, and ids used to be marked synced only after the LAST
+       chunk: chunk 1 accepted, chunk 2 a 5xx, and the next sync POSTed chunk 1
+       again -- stored twice, since the table has no client id. Each chunk now
+       carries the ids it covers, the local-only rows between its rows
+       included, and they are marked the moment its POST succeeds. */
+    const chunks = [];
+    let cur = { rows: [], ids: [] };
+    for (const e of unsynced) {
+      const row = toEventRow(e, s.user_id);
+      if (row && cur.rows.length === 500) { chunks.push(cur); cur = { rows: [], ids: [] }; }
+      if (row) cur.rows.push(row);
+      cur.ids.push(e.id);
     }
-    for (let i = 0; i < rows.length; i += 500) {
-      if (syncOutlived(epoch)) return;
-      const res = await fetch(SB_URL + "/rest/v1/events", {
-        method: "POST",
-        headers: {
-          apikey: SB_KEY,
-          Authorization: "Bearer " + s.access_token,
-          "Content-Type": "application/json",
-          Prefer: "return=minimal",
-        },
-        body: JSON.stringify(rows.slice(i, i + 500)),
-      });
-      if (!res.ok) return; // don't advance the cursor — retry the whole batch next time
+    chunks.push(cur);
+    for (const chunk of chunks) {
+      if (chunk.rows.length) {
+        if (syncOutlived(epoch)) return;
+        const res = await fetch(SB_URL + "/rest/v1/events", {
+          method: "POST",
+          headers: {
+            apikey: SB_KEY,
+            Authorization: "Bearer " + s.access_token,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify(chunk.rows),
+        });
+        if (!res.ok) return; // this chunk and the rest retry next time; the ones before are marked
+      }
+      /* This chunk landed (or was all local-only). Only a purge that reached
+         the queue (or is reaching it now) makes these ids meaningless; a
+         deletion merely started — which may yet fail remotely and leave the
+         device as it is — does not. */
+      if (dataDeletionInProgress || localClears !== clearsAtStart) return;
+      await window.forayEventLog.markSynced(chunk.ids);
     }
-    /* Every batch landed. Only a purge that reached the queue (or is reaching
-       it now) makes these ids meaningless; a deletion merely started — which
-       may yet fail remotely and leave the device as it is — does not. */
-    if (dataDeletionInProgress || localClears !== clearsAtStart) return;
-    await window.forayEventLog.markSynced(syncedIds);
     await window.forayEventLog.pruneToRetention(5000);
   } catch (_) { /* buffer persists, retry next time */ }
 }

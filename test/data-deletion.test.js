@@ -2056,3 +2056,40 @@ test("app-1-2: two syncs on a fresh device create ONE anonymous account, not two
   assert.strictEqual(s1.user_id, s2.user_id);
   assert.strictEqual(JSON.parse(ctx.localStorage.getItem("cp_sb_session")).user_id, s1.user_id);
 });
+
+test("app-1-10: a backlog over 500 rows whose second chunk fails re-sends only what was not accepted", async () => {
+  /* Ids were marked synced only after the LAST chunk, so chunk 1 accepted and
+     chunk 2 refused meant chunk 1 went up again next time. MUTATION: mark all
+     ids once after the loop again -> 500 rows are POSTed twice; red. */
+  const backlog = [];
+  for (let i = 0; i < 1001; i++) {
+    backlog.push({ type: "picked", payload: { episode_id: `ep-${i}`, topics: [] } });
+    if (i === 499 || i === 700) backlog.push({ type: "position", payload: { episode_id: `ep-${i}`, seconds: 1, duration: 10 } });
+  }
+  let posts = 0;
+  let failSecond = true;
+  const { ctx, log, queue } = await mount({
+    seed: { cp_sb_session: sessionRow(), cp_interests: "{}" },
+    events: backlog,
+    reply: (url, method) => {
+      if (method === "POST" && url.includes("/rest/v1/events")) {
+        posts += 1;
+        return posts === 2 && failSecond ? { status: 503 } : { status: 201 };
+      }
+      return { status: 204 };
+    },
+  });
+  await ctx.trySyncEvents();
+  const left = await queue.unsynced();
+  assert.strictEqual(left.filter((e) => e.type === "picked").length, 501, "the accepted first chunk is marked synced");
+  assert.ok(left.some((e) => e.type === "position" && e.payload.episode_id === "ep-700"), "a local-only row inside the refused chunk stays with it");
+  assert.ok(!left.some((e) => e.type === "position" && e.payload.episode_id === "ep-499"), "a local-only row inside the accepted chunk is marked with it");
+  failSecond = false;
+  await ctx.trySyncEvents();
+  const sent = eventPosts(log).flatMap((p) => JSON.parse(p.body).map((r) => r.payload.episode_slug));
+  const accepted = sent.length - 500;   // the refused chunk (500 rows) was POSTed once and refused
+  assert.strictEqual(accepted, 1001, `rows stored: ${accepted}`);
+  assert.strictEqual(new Set(sent.slice(0, 500)).size, 500);
+  assert.ok(!sent.slice(1000).includes("ep-0"), "chunk 1 was sent again");
+  assert.deepStrictEqual(await queue.unsynced(), []);
+});
