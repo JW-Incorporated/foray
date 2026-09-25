@@ -5198,7 +5198,13 @@ const ForayPlayer = {
     if (manager.currentIndex >= last) return;
     foray.error = null;
     setForayIndex(manager.currentIndex + 1);
-    await manager.skipToNext();
+    /* THE NEXT CLIP, NOT THE NEXT NON-NARRATION ITEM (audit round 3,
+       player-core-6). `skipToNext` steps over every `kind: "tts"` item — the
+       Swift transition-bridge rule — and in a Foray a narration line is
+       authored content: Next used to jump past it while the page highlighted
+       it, and from the clip before a closing line it ended the Foray unheard.
+       `play(index)`, the way `forayPrevious` already moves. */
+    await manager.play(foray.index);
     render();
   },
 

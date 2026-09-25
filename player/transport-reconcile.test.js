@@ -3530,3 +3530,34 @@ test("‹‹ after a failed Foray load retries the clip; it never marks the Fora
   assert.notEqual(row?.finished, true, `the resume row is not Played: ${JSON.stringify(row)}`);
   restore();
 });
+
+test("Next clip onto a narration line plays the line, not the clip after it (audit round 3, player-core-6)", async (t) => {
+  /* `skipToNext` steps over `kind: "tts"` items (the Swift bridge rule); a
+     Foray's narration is authored content. MUTATION: put
+     `await manager.skipToNext()` back in `forayNext` and the index lands on 2. */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = forayWithLine({ rendered: true });
+  await client.playForay(resolved, { startIndex: 0 });
+  await settle();
+  await client.forayNext();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1, "the narration line is the next clip");
+  assert.match(audio.src, /n1\.mp3$/, `and it is what plays: ${audio.src}`);
+  restore();
+});
+
+test("Next clip from the penultimate clip onto a closing line does not end the Foray (audit round 3, player-core-6)", async (t) => {
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = forayWithLine({ rendered: true, lineLast: true });
+  await client.playForay(resolved, { startIndex: 0 });
+  await settle();
+  await client.forayNext();
+  await settle();
+  await settle();
+  const status = client.forayStatus();
+  assert.equal(status.ended, false, "the closing line is still to be heard");
+  assert.equal(status.index, 1);
+  assert.match(audio.src, /n1\.mp3$/);
+  restore();
+});
