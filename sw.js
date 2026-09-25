@@ -861,6 +861,17 @@ async function handleData(request, env) {
   if (res && res.ok) return res;
   const current = await currentDeployId();
   const cached = current ? await matchGeneration(current, request) : undefined;
+  /* A DATA FALLBACK PINS THE PAGE AND SAYS SO (round-3 audit, perf-2). An
+     untagged request comes from a page whose code answered live, possibly
+     from a deploy newer than the pointer (the new worker has not installed
+     yet). Handing it the pointer generation's copy as a plain 200, with no
+     pin and no notice, was the #233 pairing in silence. Now the page is told
+     which generation it was handed (`stale-shell`, pin: true): it tags its
+     later data requests with it, so its data at least stays one generation,
+     and the "showing its last saved copy" bar with its reload control goes up. */
+  if (cached && env.clientId) {
+    env.waitUntil(tellClient(env.clientId, "stale-shell", { deployId: current, pin: true }));
+  }
   return cached || res || unavailable(request);
 }
 

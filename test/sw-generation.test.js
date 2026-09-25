@@ -486,6 +486,40 @@ test("a data file that answers 404 falls back to the cached copy", async () => {
   assert.equal(await res.text(), '{"session_id":"cached"}');
 });
 
+test("perf-2: an untagged data file that falls back pins the page to that generation and says so", async () => {
+  /* Deploy day on a slow link: app.js answered live (a newer deploy than the
+     pointer), then a changed data/discover.json crawls past NET_TIMEOUT_MS and
+     is served from the pointer generation. That used to be a silent 200 with no
+     pin and no notice. MUTATION: drop the tellClient in handleData's fallback
+     — the page is never told, and h.posted stays empty. */
+  const h = loadWorker({
+    generations: { "1": { "data/discover.json": '{"items":["from-generation-1"]}' } },
+    pointer: "1",
+    windows: ["page-1"],
+    network: (url) => (url.endsWith("app.js") ? ok("APP@2") : new Promise(() => {})),
+  });
+  assert.equal(await (await h.fetch(sub("app.js"), { clientId: "page-1" })).text(), "APP@2");
+  const pending = h.fire(sub("data/discover.json"), { clientId: "page-1" });
+  h.fireTimers();
+  assert.equal(await (await pending).text(), '{"items":["from-generation-1"]}');
+  await h.settle();
+  assert.deepEqual(h.posted, [
+    { id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: true } },
+  ]);
+});
+
+test("perf-2: a data file that answers live pins nothing and says nothing", async () => {
+  const h = loadWorker({
+    generations: { "1": { [FORAYS]: '{"forays":["old"]}' } },
+    pointer: "1",
+    windows: ["page-1"],
+    network: () => ok('{"forays":["live"]}'),
+  });
+  assert.equal(await (await h.fetch(sub(FORAYS), { clientId: "page-1" })).text(), '{"forays":["live"]}');
+  await h.settle();
+  assert.deepEqual(h.posted, []);
+});
+
 test("a data file that is genuinely gone still reads as absent", async () => {
   const h = loadWorker({
     network: (url) => (url.endsWith("app.js") ? ok("APP@2") : new Response("", { status: 404 })),
