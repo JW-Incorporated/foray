@@ -124,7 +124,7 @@ export function isGzippedAsset(requestPath: string): boolean {
  *  request). */
 export function shardKeyFromRequestPath(requestPath: string): string | null {
   const m = SHARD_FILE_RE.exec(String(requestPath || ""));
-  return m ? m[1] : null;
+  return m?.[1] ?? null;
 }
 
 /** S-04c: resolves which of `pointer.shard_releases` (an ordered list of

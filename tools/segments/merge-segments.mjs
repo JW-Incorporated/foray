@@ -107,8 +107,15 @@ export const SEGMENTS_VERSION = 1;
 
 /** Which transcript the anchors were authored against. It is provenance, not
     an agent choice: an anchor is only verbatim with respect to one transcript,
-    and A13 needs to know which one before it re-resolves anything. */
-export const TRANSCRIPT_SOURCES = new Set(["publisher", "asr-local"]);
+    and A13 needs to know which one before it re-resolves anything.
+
+    THE ONE LIST. `check-forays.mjs` and `prepare-segment-batch.mjs` import it;
+    the backend's `TranscriptSourceSchema` mirrors it and a backend test pins
+    the two equal. `publisher` is the publisher's own transcript file,
+    `asr-local` a body this machine transcribed, `apple-podcasts` a transcript
+    Apple Podcasts publishes for the episode (foray-db's engine writes it into
+    the normalized JSON as `transcript_source`). */
+export const TRANSCRIPT_SOURCES = new Set(["publisher", "asr-local", "apple-podcasts"]);
 
 export const CONFIDENCE_LEVELS = new Set(["high", "medium", "low"]);
 

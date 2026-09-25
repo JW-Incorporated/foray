@@ -275,9 +275,22 @@ export function planSuiteRuns(root = REPO_ROOT) {
  * `cmd` is always the logical name ("node"/"npm"); the platform-specific
  * executable is resolved at spawn time so plans stay comparable in tests.
  */
+/* tests-4 (round-3 audit): node:test's default per-test timeout is Infinity,
+ * so one test awaiting a promise that never settles held the data-and-site
+ * runner for GitHub's 360-minute default. Two minutes is ~50x the slowest test
+ * measured on 2026-09-25 (the whole root group runs in ~4 minutes), so this
+ * only ever fires on a hang. A test that genuinely needs longer says so with
+ * its own `{ timeout }`, which wins over this flag. The job-level
+ * `timeout-minutes` in ci.yml is the backstop for what this cannot see (a
+ * suite file that never exits after its tests finish). */
+export const ROOT_TEST_TIMEOUT_MS = 120000;
+
 export function commandsFor(group) {
   if (group.kind === "root") {
-    return { cwd: ".", steps: [{ cmd: "node", args: ["--test", ...group.suites] }] };
+    return {
+      cwd: ".",
+      steps: [{ cmd: "node", args: ["--test", `--test-timeout=${ROOT_TEST_TIMEOUT_MS}`, ...group.suites] }],
+    };
   }
   const local = group.suites.map((s) => path.posix.relative(group.dir, s));
   const steps = [];

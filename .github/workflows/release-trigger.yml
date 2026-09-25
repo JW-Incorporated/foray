@@ -46,9 +46,11 @@ on:
     - cron: "47 */2 * * *"
   workflow_dispatch: {}
 
-# Shared with release-watch.yml so the sticky issue has one writer at a time.
+# ci-release-9: its own group, not shared with release-watch.yml — see that
+# file's note. A shared group dropped runs, and release.yml's own `release`
+# group already stops two releases running at once.
 concurrency:
-  group: release-alarm
+  group: release-trigger
   cancel-in-progress: false
 
 permissions:
@@ -101,6 +103,10 @@ jobs:
           HEAD_SHA=$(git rev-parse origin/main)
           fetch "repos/$REPO/actions/runs?head_sha=$HEAD_SHA&per_page=50" main-runs.json
           fetch "repos/$REPO/commits/$HEAD_SHA/status" main-status.json
+          # ci-release-6: ci.yml is judged by protect-main's REQUIRED checks on
+          # this SHA, not by its whole-run conclusion (an advisory ios-kit or
+          # playwright failure turns the run red and used to hold every release).
+          fetch "repos/$REPO/commits/$HEAD_SHA/check-runs?per_page=100" main-checks.json
 
           fetch "repos/$REPO/actions/workflows/release-watch.yml" peer-workflow.json
           fetch "repos/$REPO/actions/workflows/release-watch.yml/runs?event=schedule&status=success&per_page=5" peer-runs.json
@@ -113,6 +119,7 @@ jobs:
             --commits commits.txt \
             --main-runs main-runs.json \
             --main-status main-status.json \
+            --main-checks main-checks.json \
             --peer-workflow peer-workflow.json \
             --peer-runs peer-runs.json \
             --verdict-out verdict.json

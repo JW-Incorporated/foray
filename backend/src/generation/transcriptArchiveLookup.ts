@@ -4,7 +4,7 @@ import * as path from "path";
 import { tokenizeForSourcing } from "./catalogueLookup";
 import { canonicalizeForAnchorMatch } from "../types/anchorText";
 import { corpusSafeKey, isLetterSpacedCue } from "./transcriptCorpus";
-import type { TapeBoundary, TranscriptSource } from "../types/tapeSourcing";
+import { TranscriptSourceSchema, type TapeBoundary, type TranscriptSource } from "../types/tapeSourcing";
 
 /**
  * §4.5 tier-2 lookup: the transcript archive — "episodes we hold
@@ -255,8 +255,9 @@ export interface TranscriptCueProvider {
    * `{ getCues }`) hand back the archive's own body, which is by construction
    * the publisher's: `tools/segments/fetch-transcripts.mjs` only ever fetches
    * a digest row's `transcript_url`. A provider that reads a body this machine
-   * transcribed itself answers `"asr-local"`; `null` means "no body", the same
-   * answer as `getCues` returning `null`.
+   * transcribed itself answers `"asr-local"`, and one whose body states
+   * `transcript_source: "apple-podcasts"` answers that; `null` means "no body",
+   * the same answer as `getCues` returning `null`.
    */
   transcriptSource?(entry: TranscriptDigestEntry): TranscriptSource | null;
 }
@@ -366,20 +367,37 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
    * exactly what the pool calls `asr-local`. Never guesses from the digest row:
    * the row says a publisher transcript EXISTS, the body says which one was
    * actually read.
+   *
+   * AN EXPLICIT FIELD WINS OVER THE INFERENCE. A body that states its own
+   * `transcript_source` (foray-db's engine writes `"apple-podcasts"` on an
+   * Apple Podcasts transcript, and such a body can carry a `source_url` too,
+   * which the inference alone would call `publisher`) is taken at its word when
+   * the word is in the vocabulary. One that is NOT is a writer bug and THROWS
+   * rather than falling back to the inference: a coerced provenance lands on a
+   * minted segment and no later gate can tell it was wrong.
    */
   transcriptSource(entry: TranscriptDigestEntry): TranscriptSource | null {
+    let j: { source_url?: unknown; regenerated_from?: unknown; transcript_source?: unknown };
     try {
       const file = this.locate(String(entry.show_id), String(entry.guid));
       if (!file) return null;
       // eslint-disable-next-line security/detect-non-literal-fs-filename -- path came from this provider's own directory walk.
-      const j = JSON.parse(fs.readFileSync(file, "utf8")) as { source_url?: unknown; regenerated_from?: unknown };
-      const fetchedFromPublisher =
-        (typeof j.source_url === "string" && j.source_url.trim().length > 0) ||
-        (typeof j.regenerated_from === "string" && /^raw[\\/]/.test(j.regenerated_from));
-      return fetchedFromPublisher ? "publisher" : "asr-local";
+      j = JSON.parse(fs.readFileSync(file, "utf8")) as typeof j;
     } catch {
       return null;
     }
+    if (j.transcript_source !== undefined && j.transcript_source !== null) {
+      const stated = TranscriptSourceSchema.safeParse(j.transcript_source);
+      if (stated.success) return stated.data;
+      throw new Error(
+        `transcript body for ${String(entry.show_id)}/${String(entry.guid)} states transcript_source ` +
+          `${JSON.stringify(j.transcript_source)}, which is not one of ${TranscriptSourceSchema.options.join("/")}`
+      );
+    }
+    const fetchedFromPublisher =
+      (typeof j.source_url === "string" && j.source_url.trim().length > 0) ||
+      (typeof j.regenerated_from === "string" && /^raw[\\/]/.test(j.regenerated_from));
+    return fetchedFromPublisher ? "publisher" : "asr-local";
   }
 
   /**

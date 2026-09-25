@@ -209,13 +209,13 @@ jobs:
 
       - name: Install the shell's dependencies
         # `mobile/` carries its own package.json precisely so the repo root stays
-        # dependency-free (#209 §2.4). There is no committed lockfile, so this is
-        # `npm install`, not `npm ci` — and that is the first thing that would
-        # make this job non-reproducible, so it prints the resolved versions.
+        # dependency-free (#209 §2.4), and mobile/package-lock.json IS committed,
+        # so this is `npm ci` (ci-release-12), as on every Android path. It still
+        # prints the resolved versions.
         working-directory: mobile
         run: |
           set -euo pipefail
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm ls --depth=0 | tee "$ART/mobile-deps.txt"
 
       - name: Build the webDir and generate the iOS project

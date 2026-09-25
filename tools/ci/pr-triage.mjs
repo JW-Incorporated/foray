@@ -65,7 +65,7 @@
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { APPROVAL_LABEL, automergeDecision, FOUNDER_QUEUE_LABEL } from "./path-policy.mjs";
+import { APPROVAL_LABEL, automergeDecision, disarmDecision, FOUNDER_QUEUE_LABEL } from "./path-policy.mjs";
 
 export const CONFLICT_LABEL = "merge-conflict";
 export const CONFLICT_MARKER = "<!-- foray:pr-triage:merge-conflict -->";
@@ -106,6 +106,21 @@ const MERGEABLE_FROM_BOOL = { true: "MERGEABLE", false: "CONFLICTING" };
  * rejected outright if they ever arrive in the merge-state slot. */
 const ISSUE_STATES = new Set(["open", "closed"]);
 
+/* A changed-file entry is a path string, or the files API's object. The object
+ * is expanded to BOTH sides of a rename (ci-release-2): the API reports
+ * `git mv CLAUDE.md docs/old.md` as one entry whose `filename` is the
+ * allowlisted destination and whose `previous_filename` is the governed
+ * source, and a policy shown only `filename` let a governed file leave its
+ * path unread. A missing `filename` stays in as a non-string so pathPolicy
+ * rejects it as malformed — fail-safe, never silently dropped. */
+function expandFileEntry(entry) {
+  if (typeof entry === "string") return [entry];
+  if (!entry || typeof entry !== "object") return [entry];
+  const out = [entry.filename];
+  if (typeof entry.previous_filename === "string" && entry.previous_filename !== "") out.push(entry.previous_filename);
+  return out;
+}
+
 /** One PR, from either API shape, as the flat record every planner takes. */
 export function normalizePr(raw = {}) {
   const labels = (raw.labels ?? []).map((l) => (typeof l === "string" ? l : l?.name)).filter(Boolean);
@@ -120,6 +135,15 @@ export function normalizePr(raw = {}) {
   ).toLowerCase();
   if (ISSUE_STATES.has(state)) state = "unknown";
 
+  const fileEntries = Array.isArray(raw.files) ? raw.files : [];
+  // ci-release-7: the REST PR object carries the TRUE count. The files list
+  // caps at 3000 (pagination included) and truncates silently, so a list
+  // shorter than `changed_files` is a diff the policy cannot see all of.
+  // Counted in ENTRIES — a rename is one entry and two paths.
+  const changedFiles = Number(raw.changed_files ?? raw.changedFiles);
+  const truncated =
+    Boolean(raw.truncated) || (Number.isFinite(changedFiles) && changedFiles !== fileEntries.length);
+
   return {
     number: Number(raw.number),
     title: raw.title ?? "",
@@ -127,9 +151,11 @@ export function normalizePr(raw = {}) {
     headRefName: raw.headRefName ?? raw.head?.ref ?? "",
     baseRefName: raw.baseRefName ?? raw.base?.ref ?? "",
     draft: Boolean(raw.draft ?? raw.isDraft),
+    // A fork whose repository was deleted reports `head.repo: null`; that is
+    // still not our branch, so it reads as cross-repo (security-1).
     crossRepo: Boolean(
-      raw.crossRepo ?? raw.isCrossRepository ?? (raw.head?.repo?.full_name && raw.base?.repo?.full_name
-        ? raw.head.repo.full_name !== raw.base.repo.full_name
+      raw.crossRepo ?? raw.isCrossRepository ?? (raw.base?.repo?.full_name && raw.head
+        ? raw.head.repo?.full_name !== raw.base.repo.full_name
         : false)
     ),
     mergeable,
@@ -141,11 +167,16 @@ export function normalizePr(raw = {}) {
     autoMergeEnabled: Boolean(
       raw.autoMergeEnabled ?? raw.auto_merge ?? raw.autoMergeRequest ?? false
     ),
+    // WHO armed it: REST `auto_merge.enabled_by.login`, GraphQL
+    // `autoMergeRequest.enabledBy.login`. A founder's arming of an outside PR
+    // they have read is kept (disarmDecision in path-policy.mjs).
+    armedBy: String(raw.armedBy ?? raw.auto_merge?.enabled_by?.login ?? raw.autoMergeRequest?.enabledBy?.login ?? ""),
     // Names of the check runs already reported on the current head SHA. Used
     // only to notice a head that never got any (a lost CI dispatch).
     checkNames: raw.checkNames ?? [],
     headSha: raw.headSha ?? raw.head?.sha ?? "",
-    files: raw.files ?? [],
+    files: fileEntries.flatMap(expandFileEntry),
+    truncated,
     comments: raw.comments ?? [],
     author: raw.author?.login ?? raw.user?.login ?? "",
     createdAt: raw.createdAt ?? raw.created_at ?? null,
@@ -188,10 +219,23 @@ export function normalizePr(raw = {}) {
  * passing `skipped` one and let a red PR merge. Not dispatching costs nothing
  * and cannot do that.
  */
+/* ci-release-10 (round-3 audit): a run COUNTS as coverage only while it is in
+ * flight or once it has finished with a verdict. A `pull_request` run that was
+ * cancelled, never started its jobs (startup_failure) or was skipped reported
+ * no required check at all — and the old guard, which looked only at `event`,
+ * treated it as coverage forever, so the self-heal's re-dispatch was refused
+ * on every sweep and the PR sat at "Expected — waiting for status to be
+ * reported" permanently. A bare event string (the older input shape) carries
+ * no status and still counts, as before. */
+const NO_COVERAGE = new Set(["cancelled", "startup_failure", "skipped", "stale"]);
+
 export function ciDispatchIsRedundant(runs = []) {
   return (runs ?? []).some((r) => {
     const event = String((typeof r === "string" ? r : r?.event) ?? "");
-    return event !== "" && event !== "workflow_dispatch";
+    if (event === "" || event === "workflow_dispatch") return false;
+    if (typeof r === "string") return true;
+    if (r?.status && r.status !== "completed") return true; // queued / in progress: it WILL report
+    return !NO_COVERAGE.has(String(r?.conclusion ?? ""));
   });
 }
 
@@ -226,6 +270,51 @@ export function conflictComment(pr) {
 }
 
 /* ---------------------------------------------------------------- planning */
+
+/* THE decision for one normalised PR, with everything the policy needs: the
+ * author and fork-ness (security-1) and whether the file list is complete
+ * (ci-release-7). Arm, disarm and the founder queue all call this, so they
+ * cannot disagree — and none of them can forget an input again, which is how
+ * the sweep came to arm fork PRs and truncated diffs that automerge-nightly
+ * refused. */
+function decisionInput(pr, freeze) {
+  return {
+    files: pr.files,
+    labels: pr.labels,
+    freeze,
+    baseRef: pr.baseRefName || "main",
+    truncated: pr.truncated,
+    author: pr.author,
+    crossRepo: pr.crossRepo,
+    armedBy: pr.armedBy,
+  };
+}
+function decide(pr, freeze) {
+  return automergeDecision(decisionInput(pr, freeze));
+}
+
+/**
+ * Is it still right to ARM this PR, on facts read just now? -> { arm, reason }
+ *
+ * The sweep plans from a snapshot it gathered PR by PR, which on a busy repo is
+ * minutes old by the time the executor reaches the last PR. A `hold` added, or
+ * AUTOMERGE_FREEZE set, in that window used to be overridden: automerge-nightly
+ * disarmed on the label event and the sweep then re-armed (or, on a CLEAN PR,
+ * merged outright) from its stale plan. pr-hygiene's executor now re-reads the
+ * PR and its files immediately before every `enable-auto` and asks this.
+ * `headSha` is the SHA the plan judged: a head that moved since is a different
+ * diff and is left for the next run.
+ */
+export function recheckArm(raw, opts = {}) {
+  const { freeze = "", headSha = "" } = opts;
+  const pr = normalizePr(raw);
+  if (headSha && pr.headSha !== headSha) {
+    return { arm: false, reason: `head moved from ${headSha.slice(0, 7)} to ${pr.headSha.slice(0, 7) || "?"} since the plan` };
+  }
+  if (pr.draft) return { arm: false, reason: "PR is a draft now" };
+  const d = decide(pr, freeze);
+  return d.armed ? { arm: true, reason: d.reason } : { arm: false, reason: `${d.code}: ${d.reason}` };
+}
 
 /**
  * Actions to keep PRs mergeable, and to alert on the ones that are not.
@@ -277,14 +366,14 @@ export function planMergeability(prs, opts = {}) {
     // repo variable fires no PR event at all, so the 6-hourly sweep is the only
     // thing that can reach an already-armed PR.
     if (pr.autoMergeEnabled) {
-      const decision = automergeDecision({
-        files: pr.files,
-        labels: pr.labels,
-        freeze,
-        baseRef: pr.baseRefName || "main",
-      });
-      if (!decision.armed) {
+      // disarmDecision, not `!decide().armed`: a founder who read an outside
+      // contributor's PR and armed it has answered FOREIGN_AUTHOR, and the
+      // sweep must not take that back (round-3 review of security-1).
+      const { disarm, code, decision } = disarmDecision(decisionInput(pr, freeze));
+      if (disarm) {
         actions.push({ kind: "disable-auto", pr: pr.number, reason: decision.reason });
+      } else if (code === "FOUNDER_ARMED") {
+        notes.push(`#${pr.number}: outside PR armed by founder \`${pr.armedBy}\` — left armed`);
       }
     } else if (pr.state === "clean") {
       // ARM — the symmetric half that was missing (t_a25ea475). A PR can reach
@@ -301,12 +390,12 @@ export function planMergeability(prs, opts = {}) {
       // plain mergeable flag), and arming either of those would race the
       // update-branch/conflict-label handling below. Only a settled CLEAN read
       // arms; UNKNOWN means "ask again next sweep", never "assume fine".
-      const decision = automergeDecision({
-        files: pr.files,
-        labels: pr.labels,
-        freeze,
-        baseRef: pr.baseRefName || "main",
-      });
+      //
+      // security-1: `decide` refuses a fork PR or an author not on
+      // AUTOMERGE_AUTHORS. This branch is what armed outside contributors'
+      // green fork PRs every hour; automerge-nightly skips forks, the sweep
+      // did not.
+      const decision = decide(pr, freeze);
       if (decision.armed) {
         actions.push({ kind: "enable-auto", pr: pr.number, headSha: pr.headSha, reason: decision.reason });
       }
@@ -448,12 +537,7 @@ export function planFounderQueue(prs, opts = {}) {
     if (pr.draft) continue;
     if (pr.baseRefName && pr.baseRefName !== "main") continue;
 
-    const decision = automergeDecision({
-      files: pr.files,
-      labels: pr.labels,
-      freeze,
-      baseRef: pr.baseRefName || "main",
-    });
+    const decision = decide(pr, freeze);
 
     // A conflicting PR needs its AUTHOR, not a founder: the label and the one
     // comment are the whole alert, and putting it in the founder queue would
@@ -617,7 +701,10 @@ export function gatherPrs(opts = {}) {
   const owner = repo || exec(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]).trim();
   if (!owner) throw new Error("could not determine the repository — pass --repo owner/name");
 
-  const numbers = exec(["pr", "list", "--repo", owner, "--state", "open", "--limit", "100", "--json", "number", "--jq", ".[].number"])
+  // Every open PR, paginated (ci-release-17). `gh pr list --limit 100` stopped
+  // at the newest hundred, so an armed PR past it was never disarmed by
+  // AUTOMERGE_FREEZE — the one path a kill switch has to already-armed PRs.
+  const numbers = exec(["api", "--paginate", `repos/${owner}/pulls?state=open&per_page=100`, "--jq", ".[].number"])
     .split(/\r?\n/)
     .map((s) => s.trim())
     .filter(Boolean);
@@ -631,7 +718,11 @@ export function gatherPrs(opts = {}) {
         .split(/\r?\n/)
         .filter((l) => l.trim())
         .flatMap((l) => JSON.parse(l));
-    pr.files = pages(exec(["api", "--paginate", `repos/${owner}/pulls/${n}/files`, "--jq", "[.[].filename]"]));
+    // Entries, not bare names: normalizePr expands a rename to both of its
+    // paths and counts entries against `changed_files` (ci-release-2/-7).
+    pr.files = pages(
+      exec(["api", "--paginate", `repos/${owner}/pulls/${n}/files`, "--jq", "[.[] | {filename, previous_filename}]"])
+    );
     pr.comments = pages(exec(["api", "--paginate", `repos/${owner}/issues/${n}/comments`, "--jq", "[.[].body]"]));
     return pr;
   });
@@ -652,6 +743,11 @@ function defaultExec(args) {
 const USAGE = `usage:
   node tools/ci/pr-triage.mjs plan    --from <prs.json> [options]
   node tools/ci/pr-triage.mjs waiting --from <prs.json> [--write|--print]
+  node tools/ci/pr-triage.mjs recheck --from <pr.json> [--freeze <v>] [--head-sha <sha>]
+                        exit 0 = still arm it, exit 1 = do not (a label, the
+                        freeze, the head moved, or anything else the policy now
+                        refuses). --from is ONE REST PR object with \`files\`
+                        attached, read immediately before arming.
   node tools/ci/pr-triage.mjs dispatch-needed --from <runs.json>
                         exit 0 = send the workflow_dispatch, exit 1 = a run
                         already exists for that head SHA, so do not.
@@ -688,12 +784,13 @@ const VALUE_FLAGS = new Set([
   "--summary",
   "--file",
   "--repo",
+  "--head-sha",
 ]);
 const BOOL_FLAGS = new Set(["--no-auto-update", "--write", "--print", "--check", "--partial", "--sweep"]);
 
 export function parseArgs(argv) {
   const [command, ...rest] = argv;
-  if (!["plan", "waiting", "dispatch-needed"].includes(command)) {
+  if (!["plan", "waiting", "dispatch-needed", "recheck"].includes(command)) {
     throw new Error(`unknown command: ${command ?? "(none)"}`);
   }
   const opts = {};
@@ -760,6 +857,28 @@ export function runCli(argv, io = {}) {
     }
     $.log(`no non-dispatch ci.yml run for this head SHA (${runs.length} run(s)) — dispatching`);
     return 0;
+  }
+
+  if (command === "recheck") {
+    if (!opts.from) {
+      $.err("recheck needs --from <pr.json|->");
+      return 2;
+    }
+    let pr;
+    try {
+      const parsed = JSON.parse(opts.from === "-" ? $.readStdin() : $.readFile(opts.from));
+      pr = Array.isArray(parsed) ? (parsed.length === 1 ? parsed[0] : null) : parsed;
+    } catch (err) {
+      $.err(`--from is not valid JSON: ${err.message}`);
+      return 2;
+    }
+    if (!pr || typeof pr !== "object" || !Array.isArray(pr.files)) {
+      $.err("--from must be ONE pull request object with its `files` attached");
+      return 2;
+    }
+    const r = recheckArm(pr, { freeze: opts.freeze, headSha: opts.headSha });
+    $.log(`#${pr.number}: ${r.arm ? "still armable" : "NOT armable now"} — ${r.reason}`);
+    return r.arm ? 0 : 1;
   }
 
   let prs = [];

@@ -40,7 +40,7 @@ export class SlidingWindowBucket {
   private prune(now: number): void {
     const cutoff = now - this.windowMs;
     let i = 0;
-    while (i < this.timestamps.length && this.timestamps[i] <= cutoff) i++;
+    while (i < this.timestamps.length && (this.timestamps[i] ?? Infinity) <= cutoff) i++;
     if (i > 0) this.timestamps = this.timestamps.slice(i);
   }
 
