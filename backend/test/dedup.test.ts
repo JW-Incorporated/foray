@@ -15,6 +15,18 @@ describe("normalizeTitle", () => {
     expect(normalizeTitle("Café Society")).toBe(normalizeTitle("Cafe Society"));
   });
 
+  /* Round-3 review (L6): lowercasing ran before NFKD, so a compatibility
+     letter decomposed to an uppercase one that survived, and "™" became the
+     letters "TM".
+     MUTATION: lowercase first again -- "ℌello" keeps its capital H; drop the
+     symbol strip -- "Hard Fork™" gains "tm". */
+  it("folds letterlike symbols and compatibility letters the way plain titles fold", () => {
+    expect(normalizeTitle("Hard Fork™")).toBe(normalizeTitle("Hard Fork"));
+    expect(normalizeTitle("Brand® Talk")).toBe("brand talk");
+    expect(normalizeTitle("ℌello")).toBe("hello");
+    expect(normalizeTitle("Ｆｕｌｌ Ｗｉｄｔｈ")).toBe("full width");
+  });
+
   it("collapses internal whitespace", () => {
     expect(normalizeTitle("Too    many     spaces")).toBe("too many spaces");
   });
