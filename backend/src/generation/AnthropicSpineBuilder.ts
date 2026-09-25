@@ -9,7 +9,7 @@ import type { ResearchShape } from "../types/research";
 import { DURATION_SHAPE_BUDGETS, SPINE_MIN_SEEDED_BEATS_PER_ACT, type DurationTier, type Spine } from "../types/spine";
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
 import { SPINE_SEED_REPEAT_MIN, SPINE_SEED_THIRD_MIN } from "./spineSeeding";
-import { recordUsage } from "./usageTracking";
+import { createMessage } from "./anthropicCall";
 import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
@@ -117,13 +117,12 @@ export class AnthropicSpineBuilder implements SpineBuilder {
       sessionId: ctx.sessionId
     });
 
-    const response = await this.client.messages.create({
+    const response = await createMessage(this.client, {
       model: MODEL,
       max_tokens: MAX_OUTPUT_TOKENS,
       messages
-    });
+    }, "spine");
 
-    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic spine response had no text block");
 
@@ -142,11 +141,11 @@ export class AnthropicSpineBuilder implements SpineBuilder {
         sessionId: ctx.sessionId
       });
 
-      const retryResponse = await this.client.messages.create({
+      const retryResponse = await createMessage(this.client, {
         model: MODEL,
         max_tokens: MAX_OUTPUT_TOKENS,
         messages: [...messages, { role: "assistant", content: textBlock.text }, { role: "user", content: reaskLine }]
-      });
+      }, "spine");
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic spine re-ask response had no text block");
       return retryTextBlock.text;

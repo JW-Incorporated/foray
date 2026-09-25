@@ -11,7 +11,7 @@ import type {
   PassageRetrievalRequest,
   RetrievedPassage
 } from "./ExternalResearcher";
-import { recordUsage } from "./usageTracking";
+import { createMessage } from "./anthropicCall";
 
 /**
  * Real §4.2 external research via the Anthropic API's server-side web
@@ -94,7 +94,7 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
       sessionId: ctx.sessionId
     });
 
-    const response = await this.client.messages.create({
+    const response = await createMessage(this.client, {
       model: MODEL,
       max_tokens: 800,
       messages: [{ role: "user", content: promptText }],
@@ -105,9 +105,8 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
           max_uses: MAX_SEARCHES_PER_TOPIC
         } satisfies Anthropic.WebSearchTool20250305
       ]
-    });
+    }, "external-research");
 
-    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic external-research response had no text block");
 
@@ -129,7 +128,7 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
         sessionId: ctx.sessionId
       });
 
-      const retryResponse = await this.client.messages.create({
+      const retryResponse = await createMessage(this.client, {
         model: MODEL,
         max_tokens: 800,
         messages: [
@@ -137,7 +136,7 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
           { role: "assistant", content: textBlock.text },
           { role: "user", content: reaskLine }
         ]
-      });
+      }, "external-research");
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic external-research re-ask response had no text block");
       return retryTextBlock.text;
@@ -189,7 +188,7 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
       sessionId: ctx.sessionId
     });
 
-    const response = await this.client.messages.create({
+    const response = await createMessage(this.client, {
       model: MODEL,
       max_tokens: RETRIEVAL_MAX_OUTPUT_TOKENS,
       messages: [{ role: "user", content: promptText }],
@@ -200,9 +199,8 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
           max_uses: MAX_SEARCHES_PER_TOPIC
         } satisfies Anthropic.WebSearchTool20250305
       ]
-    });
+    }, "external-research");
 
-    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic evidence-retrieval response had no text block");
 
@@ -223,7 +221,7 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
         sessionId: ctx.sessionId
       });
 
-      const retryResponse = await this.client.messages.create({
+      const retryResponse = await createMessage(this.client, {
         model: MODEL,
         max_tokens: RETRIEVAL_MAX_OUTPUT_TOKENS,
         messages: [
@@ -231,7 +229,7 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
           { role: "assistant", content: textBlock.text },
           { role: "user", content: reaskLine }
         ]
-      });
+      }, "external-research");
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic evidence-retrieval re-ask response had no text block");
       return retryTextBlock.text;
