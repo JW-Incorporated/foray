@@ -1,0 +1,11 @@
+{
+  "//": "Type-check only (arch-drift-12). Deliberately NOT named tsconfig.json: @vercel/node compiles each function with the tsconfig.json nearest to it, and this file must not change how production builds. It extends backend's so api/ is held to the same strictness, and typeRoots lets the backend/src files api/ imports resolve their @types (backend is installed --omit=dev, exactly as vercel.json installs it).",
+  "extends": "../backend/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "typeRoots": ["./node_modules/@types"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

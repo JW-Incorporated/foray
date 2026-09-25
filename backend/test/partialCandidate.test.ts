@@ -66,11 +66,30 @@ describe("buildPartialCandidate", () => {
     expect(last.status).toBe("complete");
   });
 
-  it("is always visibility: private, regardless of the request's own visibility field", () => {
+  it("is always visibility: private, regardless of the request's own visibility field", async () => {
     /* Fix plan, D2: "the streaming path is for the requesting listener only,
        marked visibility: 'private'." Not configurable — there is no input
-       that can produce anything else. */
-    expect(true).toBe(true); // documented by the type itself (`visibility: "private"` is a literal)
+       that can produce anything else.
+
+       tests-7 (round-3 audit): this used to be `expect(true).toBe(true)`,
+       leaning on the literal type — which proves nothing about the VALUE a
+       future `...meta` spread would put there. So build from a request that
+       says "public" on both inputs and read the result.
+       MUTATION: spread `...meta` (or `...info`) after `visibility: "private"`
+       in buildPartialCandidate -> "public" leaks through and this is red. */
+    const publicMeta = { ...meta, visibility: "public" };
+    const publicInfo = {
+      actIndex: 0,
+      totalActs: 1,
+      allActTitles: ["Act 1"],
+      items,
+      slots: [{ id: "s1", title: "Slot" }],
+      runtimeSec: 10,
+      ttlA1Ms: 5,
+      visibility: "public"
+    };
+    const candidate = await buildPartialCandidate(publicInfo, publicMeta, fakeFinalize([]));
+    expect(candidate.visibility).toBe("private");
   });
 
   it("carries authorId and ttlA1Ms straight through, and stamps a fresh updatedAt", async () => {

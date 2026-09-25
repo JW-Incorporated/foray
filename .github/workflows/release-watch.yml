@@ -47,9 +47,15 @@ on:
     - cron: "23 * * * *"
   workflow_dispatch: {}
 
-# Shared with release-trigger.yml so the sticky issue has one writer at a time.
+# ci-release-9 (round-3 audit): its OWN group. It used to share `release-alarm`
+# with release-trigger.yml, but GitHub keeps one RUNNING and one PENDING run per
+# group and cancels the older pending one when a third arrives — so a sharing
+# group silently dropped whole watchdog or trigger runs, cancel-in-progress:
+# false notwithstanding. The sticky issue needs no lock: planIssue always
+# picks the OLDEST marked issue, so even a simultaneous double-create converges
+# on one alarm the next hour (the stray duplicate is closed by hand, if ever).
 concurrency:
-  group: release-alarm
+  group: release-watch
   cancel-in-progress: false
 
 permissions:
