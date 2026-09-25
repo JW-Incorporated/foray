@@ -419,6 +419,9 @@ const FLOORS = {
   /* 2026-09-22, audit theme A: "playable" means a snapshot with audio, not
      curated-pool membership. ZERO SLACK: most cells reboot app.js over the same
      storage to model a reload, which is the only place the defect lived. */
+  "test/deploy-id-meta.test.js": 6, // round-3 audit, L4 (app-3-3): new -- index.html's foray-deploy-id meta is stamped with the build's id without moving it, listed by its stamped bytes, verified, refused when committed
+  "test/playwright-fixture-server.test.js": 3,
+  "test/prepare-dist-out.test.js": 5, // round-3 audit, L4: the dist ships nothing from docs/ (security-11); 4 -> 5 | (ci-release-15): new -- prepare-dist refuses --out at the checkout, an ancestor, a .git dir or a bare --out, and deletes nothing // round-3 audit, L4 (tests-1): new -- the Playwright fixture serves sw.js stamped with the served deploy id, so a 'new deploy' really re-installs
   "test/playable-episodes.test.js": 12, // 2026-09-22: new -- Up Next, History, Saved, continuous playback, Open episode and #/show/pi: all survive a reload
   "test/jump-back-in-kinds.test.js": 20, // audit round 2 (L6): honesty-7 — a playlist card carries its bar and 'N of M played'; 19 -> 20 // 2026-09-22 audit: the card reads the RAW stored position, never the collapsed resume offset (a finished episode said "180 min left"); 18 -> 19 // 2026-09-21: episodes get a progress bar too — the reader no longer needs the player booted, and a duration the feed omitted comes from the position store; 14 -> 18
   /* Audit 2026-09-22, theme C: the four listener-facing formatters (fmtDur,
@@ -548,7 +551,8 @@ const FLOORS = {
      `headers`). Four tests: CORS present on every rule that serves the
      directory, CORS scoped to `/data/`, #606's Cache-Control split intact, rule
      order. Zero slack. */
-  "test/vercel-headers.test.js": 4,
+  "test/vercel-functions.test.js": 3, // round-3 audit, L4 (search-api-css-5): new -- every file Vercel would deploy under api/ is a handler; helpers live in api/_lib, suites in api/_test
+  "test/vercel-headers.test.js": 5, // round-3 audit, L4: every path is sent frame-ancestors none, nosniff and a Referrer-Policy (security-12); 4 -> 5
   /* V-01: the narration voice picker's drawer surface — reachable in the
      drawer, the acceptance fixture's 2 installed + N greyed rows, Web
      Speech's no-install-state case, selecting a row, Audition's exact
@@ -592,7 +596,7 @@ const FLOORS = {
      drift that produced THREE copies of hitText/hitTag, two of them looser than
      the ranker they claimed to describe. Every test in there was
      mutation-checked — see the suite header. */
-  "test/search-matcher.test.js": 22,
+  "test/search-matcher.test.js": 31, // round-3 audit, L4: an unparseable date is never recent (search-api-css-11); 30 -> 31 | accented queries tokenize whole and match either spelling (search-api-css-6 x2); 28 -> 30 | deep learning / story / marathon are content, funny history keeps its filter, deep sea + speed of light are not confident filler (search-api-css-1 x4); 24 -> 28 | constructor is a word and a typeless filter never throws (search-api-css-2 x2); 22 -> 24
   /* The rich/sparse/empty tiering and the ranking prefix the narrow branch shows
      (#216). Floored because the battery cannot stand in for it: the disagreement
      it pins only reaches the page on a sparse or single-show query, and no query
@@ -1126,7 +1130,7 @@ const FLOORS = {
      evidence that THIS suite pins its behaviour; with a floor 19 below the real
      count, an auto-merged `test/` change could thin it while the claim stayed
      green. Zero slack from here on, for the reason media-session has none. */
-  "test/sw-generation.test.js": 57, // audit round 2 (L5): no self-rewrite of a tracked file, validators for untracked (perf-6 x2), unchanged files copied not fetched + no-cache, bad copy refused (perf-4 x2), fonts cache-first (perf-5); 52 -> 57 // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
+  "test/sw-generation.test.js": 71, // round-3 audit, L4: generation-changed is not shown to a page already running that deploy, and still is to an older, pinned or unstamped one (app-3-3 x2); 69 -> 71 | an untagged data fallback pins the page and says so, a live one says nothing (perf-2 x2); 67 -> 69 | a fallback document tags its code, tagged code is served from its generation (or 504), only app.js carries the pin, pin:false is not adopted (app-3-5 x5); 62 -> 67 | ranged/media requests go straight to the network (app-3-7); 61 -> 62 | activate deletes only its own caches (app-3-4); 60 -> 61 | api/ is never intercepted, and activate scrubs old API bodies (app-3-2 x2); 58 -> 60 | a late answer keeps a TRACKED file verified and writes an UNTRACKED one, awaited not ticked (app-3-14); 57 -> 58 // audit round 2 (L5): no self-rewrite of a tracked file, validators for untracked (perf-6 x2), unchanged files copied not fetched + no-cache, bad copy refused (perf-4 x2), fonts cache-first (perf-5); 52 -> 57 // S-03 (2026-09-12): +1 — cachePut's untracked-path branch is load-bearing now that data/show-index.tsv uses it; 51 -> 52
   /* U-01 (docs/ui-transition-plan.md): the ui-v2 token scope. Four tests --
      the nine tokens' names+values, the "no raw hex leaks outside the block"
      mutation guard, the amber/violet consumption check, and the self-hosted
@@ -1925,7 +1929,7 @@ const FLOORS = {
      than asserting a score. */
   "tools/segments/transcript-coverage.test.mjs": 12,
   "tools/segments/fetch-transcripts.test.mjs": 11,
-  "tools/segments/politeness.test.mjs": 7,
+  "tools/segments/politeness.test.mjs": 8, // round-3 audit, L4: the User-Agent scan covers api/ too (arch-drift-14); 7 -> 8
   /* S-04a: the PodcastIndex dump import/shard-build pipeline (kanban
      t_835d1a3c). Six suites because the pipeline is deliberately split into
      independently-testable stages (config, filter, dedupe, shard-build,

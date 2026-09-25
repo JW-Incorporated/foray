@@ -11,6 +11,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
+import { sharedFeedReader } from "../_lib/feedCache.ts";
 
 // tsx's ESM/CJS interop for a `export default` TS file can present the
 // default export nested (`{ default: handler }`) depending on the loader
@@ -71,6 +72,9 @@ function mockRes() {
 function withMockedFetch(impl, run) {
   const original = globalThis.fetch;
   globalThis.fetch = impl;
+  /* The parsed feed is kept per show (search-api-css-3); each test brings its
+     own feed, so none may answer from another test's copy. */
+  sharedFeedReader.clear();
   return Promise.resolve(run()).finally(() => {
     globalThis.fetch = original;
   });

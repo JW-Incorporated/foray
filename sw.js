@@ -28,12 +28,15 @@
         repeat visit costs one round trip and no bytes.
 
      2. A PAGE THAT FELL BACK IS PINNED TO ITS FALLBACK. When the origin does
-        not answer for a page's CODE, that page is running last-known code from
-        a specific retained generation, and it is told which one
-        (`stale-shell`, carrying that generation's `deployId`). The PAGE keeps
-        that id in its own memory — not the worker's — and tags its `data/`
-        requests with it (`?_fdid=`), so they keep reading the SAME generation
-        the code came from, never today's. This is the one rule that keeps
+        not answer for a page's document or app.js, that page is running
+        last-known code from a specific retained generation, and it is told
+        which one (`stale-shell`, carrying that generation's `deployId`). The
+        PAGE keeps that id in its own memory — not the worker's — and tags its
+        `data/` requests with it (`?_fdid=`), so they keep reading the SAME
+        generation the code came from, never today's. A fallback DOCUMENT
+        also tags its own script and module URLs, so the whole page load is
+        one generation (round-3 audit, app-3-5), and a data file that falls
+        back tells the page too (perf-2). This is the one rule that keeps
         offline from becoming a new way to build a mismatched pair.
 
      3. A REFUSAL IS VISIBLE. The worker tells the page (`stale-shell`), and
@@ -73,10 +76,12 @@
        for a load where `index.html` and `app.js` both answer live (untagged,
        no pin — this page IS current) while `client.js`'s OWN request, fired
        in parallel, independently fails and falls back to an OLDER retained
-       generation's cached copy. `handleShell` pins THAT ONE REQUEST'S
-       fallback correctly, but by the time it resolves, `app.js`'s `init()`
-       has already sent its untagged `data/*.json` fetches — there is nothing
-       left to retroactively re-tag. A review asked directly whether this is
+       generation's cached copy. Since round 3 (app-3-5) that fallback no
+       longer pins the page at all (`stale-shell` with `pin: false`): the
+       page's app.js is live and its data must match IT, and by the time the
+       module resolves `init()` has already sent its untagged `data/*.json`
+       fetches anyway. The module's own imports are tagged, so the stale
+       player is at least one generation. A review asked directly whether this is
        closed; it is not, and closing it fully would mean blocking every page
        load on `player/client.js` before starting any data fetch, which
        contradicts the founding "survive a dead zone" constraint the same way
@@ -135,6 +140,10 @@ const CACHE_PREFIX = "foray-gen-";
 const BUILD_ID = "unstamped";
 const POINTER_CACHE = "foray-pointer";
 const PENDING_CACHE = "foray-pending";
+/* The single-bucket caches of this worker's v1-v5 (cache-first) era, by name.
+   activate deletes these and older `foray-gen-*` generations, and nothing
+   else — see activate. */
+const LEGACY_CACHES = ["foray-v1", "foray-v2", "foray-v3", "foray-v4", "foray-v5"];
 /* Cache keys are Requests/URLs, so a plain string needs a URL of its own to be
    stored under. Neither of these is ever fetched — they exist only as cache
    keys for a one-line Response body. */
@@ -162,9 +171,11 @@ const DATA_PREFIX = "data/";
    CHANGED file is crawling. Much lower and a slow-but-working connection is
    told it is offline; much higher and a black-holed connection (a captive
    portal, a dead zone that accepts the SYN) hangs the page instead of falling
-   back. A fetch that times out is not abandoned — it still writes to the cache
-   when it lands, so the next load's revalidation is a cheap 304 rather than the
-   same timeout again. */
+   back. A fetch that times out is not abandoned: it still completes, which
+   fills the browser's HTTP cache, so the next load's revalidation is a cheap
+   304 rather than the same timeout again. It reaches the GENERATION cache only
+   for an untracked path; a manifest-tracked file keeps the copy install
+   verified (see cachePut). */
 const NET_TIMEOUT_MS = 6000;
 
 self.addEventListener("install", (e) => {
@@ -175,7 +186,9 @@ self.addEventListener("install", (e) => {
      not save that load — it only delays the fix by one more visit. Given that
      this file exists to stop a stale-code load, taking effect a visit later is
      the wrong trade. The straddle it does create is handled: `activate` claims
-     the open pages and then tells them they are a version behind. */
+     the open pages and announces the new deploy id to them; each page compares
+     it with the deploy id its own index.html was stamped with, and only a page
+     that is really behind (or pinned) says so (round-3 audit, app-3-3). */
   e.waitUntil(precache().then(() => self.skipWaiting()));
 });
 
@@ -334,16 +347,21 @@ self.addEventListener("activate", (e) => {
        promotion retryable on the next activate instead of silently stuck. */
     await pendingCache.delete(PENDING_KEY);
 
-    /* Bounded retention: current + previous. Anything older, and any
-       non-generation cache name (a prior architecture's leftovers), is
-       deleted. */
+    /* Bounded retention: current + previous. Older generations, and the
+       caches this worker's own earlier architectures left (LEGACY_CACHES), are
+       deleted. NOTHING ELSE IS (round-3 audit, app-3-4): CacheStorage is
+       per-origin, not per-scope, so a name this worker does not own may be the
+       app's own Shows-search shard cache (`foray-shows-index-v1`, app.js) or
+       another site's on the same github.io origin. */
     const keep = new Set([CACHE_PREFIX + newDeployId]);
     if (previousDeployId && previousDeployId !== newDeployId) {
       keep.add(CACHE_PREFIX + previousDeployId);
     }
     const keys = await caches.keys();
-    const stale = keys.filter((k) => k !== POINTER_CACHE && k !== PENDING_CACHE && !keep.has(k));
+    const stale = keys.filter((k) =>
+      (k.startsWith(CACHE_PREFIX) && !keep.has(k)) || LEGACY_CACHES.includes(k));
     await Promise.all(stale.map((k) => caches.delete(k)));
+    await purgeApiEntries([...keep]);
 
     await self.clients.claim();
 
@@ -364,6 +382,37 @@ function isNavigation(request) {
 
 function isData(url) {
   return url.pathname.includes("/" + DATA_PREFIX);
+}
+
+/* The serverless API, resolved against this worker's own URL (the scope root:
+   `/foray/api/` on Pages, `/api/` on Vercel). Never a generation file — see
+   the fetch listener and `purgeApiEntries`. */
+const API_PATH = new URL("api/", self.location.href).pathname;
+
+function isApi(url) {
+  return url.pathname.startsWith(API_PATH);
+}
+
+function isRangeOrMedia(request) {
+  if (request.destination === "audio" || request.destination === "video") return true;
+  const headers = request.headers;
+  return Boolean(headers && typeof headers.has === "function" && headers.has("range"));
+}
+
+/* Workers before round 3 cached API answers into the generation caches. The
+   ones still retained are scrubbed on activate, so a listener who searched
+   before this deploy does not keep that trace (the Delete my data promise,
+   persist-4) and never gets one of those bodies back. */
+async function purgeApiEntries(cacheNames) {
+  await Promise.all(cacheNames.map(async (name) => {
+    try {
+      const cache = await caches.open(name);
+      const keys = await cache.keys();
+      await Promise.all(keys.filter((req) => {
+        try { return isApi(new URL(req.url)); } catch (_) { return false; }
+      }).map((req) => cache.delete(req)));
+    } catch (_) { /* a cache we cannot read has nothing we can scrub */ }
+  }));
 }
 
 /* Which files decide a page's generation. Only CODE can misread data, so
@@ -469,13 +518,16 @@ function networkFetch(request) {
 function fromOrigin(request, env) {
   const live = networkFetch(request).then(
     (res) => {
-      /* Written to the cache whenever it lands, including after this call has
-         already given up on it. That is what keeps a slow connection from being
-         stuck on the same timeout every load. Handed to `waitUntil` rather than
-         left floating: the response has already gone back to the page by then,
-         and a worker the browser is free to terminate would otherwise drop the
-         write — the failure being "the cache never fills, and nobody notices
-         until the next dead zone". */
+      /* Offered to the cache whenever it lands, including after this call has
+         already given up on it. What that warms depends on the path: the
+         fetch itself fills the browser's HTTP cache (the next load's
+         revalidation is a cheap 304), an UNTRACKED path is written into the
+         current generation, and a manifest-tracked file is left alone, because
+         cachePut keeps the copy install verified (round-3 audit, app-3-14:
+         this comment used to claim every late answer "writes to the cache").
+         Handed to `waitUntil` rather than left floating: the response has
+         already gone back to the page by then, and a worker the browser is
+         free to terminate would otherwise drop the write. */
       if (res && res.ok) env.waitUntil(cachePut(request, res.clone()));
       return res;
     },
@@ -620,6 +672,22 @@ function unavailable(request) {
  * `pin` is true for the files that decide the generation — see isCode().
  */
 async function handleShell(request, env, pin) {
+  /* A CODE REQUEST THAT CARRIES `_fdid` BELONGS TO THAT GENERATION (round-3
+     audit, app-3-5). A page served a fallback index.html asks for its scripts
+     and modules with the fallback's `_fdid` (stampPin rewrites the URLs), so
+     the whole page load is one generation: the tagged generation's copy is
+     authoritative, exactly as handleData treats a tagged data request, and the
+     origin is never asked. Before this, only the HTML fell back: app.js then
+     loaded live from the NEWER deploy, read the meta pin, and paired new code
+     with the previous generation's data, the #233 mismatch. A tagged file the
+     generation does not hold fails visibly (504) rather than going live. */
+  if (pin && !isNavigation(request)) {
+    const taggedId = new URL(request.url).searchParams.get("_fdid");
+    if (taggedId) {
+      const hit = await matchGeneration(taggedId, request);
+      return hit ? stampPin(request, hit, taggedId) : unavailable(request);
+    }
+  }
   const res = await fromOrigin(request, env);
   /* `opaqueredirect` is a real answer from the origin even though `ok` is false:
      a navigation's redirect mode is "manual", so a redirect arrives as an opaque
@@ -633,51 +701,102 @@ async function handleShell(request, env, pin) {
   /* No answer, or an answer that is not the file — a 404 mid-deploy reads the
      same way here. Serve the last-known copy from whichever generation still
      has it, and if this was code, tell the page which generation it is now
-     running: from here on, ITS data requests must carry that generation's id,
-     never today's.
+     running.
 
      THE PIN MUST NOT DEPEND ON THE `stale-shell` MESSAGE ARRIVING IN TIME. A
      review caught this: `handleShell`'s decision for app.js's OWN fetch is
      made and returned before app.js has executed a single line, so a
      `postMessage` sent from here can race app.js's `addEventListener` and be
      lost — events do not queue for a listener that attaches after they fire.
-     So for a CODE fallback the pin is instead baked directly into the
-     response BYTES the browser is about to execute/parse, synchronously,
-     before any of that file's own code runs: a `self.__forayPinnedDeployId =
-     "<id>";` statement prepended to a `.js` fallback (valid as a top-level
-     statement in both classic scripts and ES modules), or a
-     `<meta name="foray-pin-deploy-id" content="<id>">` tag inserted into a
-     navigation's `<head>` (parsed before any script tag runs). app.js reads
-     `self.__forayPinnedDeployId` — falling back to the meta tag when it is a
-     fresh navigation load — as the FIRST thing it does, before `init()`. The
-     `stale-shell` postMessage is sent too, unchanged, purely for the reload
-     notice; it is no longer what establishes the pin. */
+     So the pin is baked into the response BYTES instead (stampPin): a
+     `<meta name="foray-pin-deploy-id">` in a navigation's `<head>`, with
+     every script and modulepreload URL tagged `_fdid` so the page's code comes
+     from the same generation (see the tagged branch above), or a
+     `self.__forayPinnedDeployId = "<id>";` statement prepended to app.js
+     itself.
+
+     ONLY THE FILES THAT READ DATA DECIDE THE PAGE'S GENERATION (round-3 audit,
+     app-3-5). That is the navigation and app.js. A fallen-back
+     search-engine.js or player module used to pin the page too, so a LIVE,
+     newer app.js was pinned to the previous generation's data. Their
+     `stale-shell` still puts the notice up, but says `pin: false`, and their
+     bytes carry no pin statement. A stale player module is a stale PLAYER,
+     not a stale reader of data/*.json (the residual gap the header names). */
+  const decides = pin && decidesGeneration(request);
   const fallback = await cachedShellFallback(request);
-  if (pin && env.clientId && fallback) {
-    env.waitUntil(tellClient(env.clientId, "stale-shell", { deployId: fallback.deployId }));
-  } else if (pin && env.clientId) {
-    env.waitUntil(tellClient(env.clientId, "stale-shell", { deployId: null }));
+  if (pin && env.clientId) {
+    env.waitUntil(tellClient(env.clientId, "stale-shell", {
+      deployId: fallback ? fallback.deployId : null,
+      pin: decides,
+    }));
   }
   if (!fallback) return res || unavailable(request);
   if (!pin) return fallback.response;
   return stampPin(request, fallback.response, fallback.deployId);
 }
 
+/* The page's own document and app.js: the two files whose generation the
+   page's data must match. */
+const APP_PATH = new URL("app.js", self.location.href).pathname;
+
+function decidesGeneration(request) {
+  if (isNavigation(request)) return true;
+  try { return new URL(request.url).pathname === APP_PATH; } catch (_) { return false; }
+}
+
+/* `u` with `_fdid=<deployId>` added, when it is a same-origin relative URL
+   that does not carry one yet. Absolute and protocol-relative URLs are not
+   this worker's to tag. */
+function tagUrl(u, deployId) {
+  if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(u) || /[?&]_fdid=/.test(u)) return u;
+  return `${u}${u.includes("?") ? "&" : "?"}_fdid=${encodeURIComponent(deployId)}`;
+}
+
+/* Every `<script src>` and `<link rel="modulepreload" href>` in a fallback
+   document, tagged with its generation, so the page's code is requested from
+   that generation and the module map holds one copy of each module. */
+function tagDocumentCode(html, deployId) {
+  return html
+    .replace(/(<script\b[^>]*?\bsrc=")([^"]*)(")/gi, (m, a, u, b) => a + tagUrl(u, deployId) + b)
+    .replace(/<link\b[^>]*>/gi, (tag) =>
+      /\brel="modulepreload"/i.test(tag)
+        ? tag.replace(/(\bhref=")([^"]*)(")/i, (m, a, u, b) => a + tagUrl(u, deployId) + b)
+        : tag);
+}
+
+/* A module's relative imports, tagged with its generation: the module graph
+   under a tagged player/client.js stays in that generation, and each URL
+   matches the tagged modulepreload the document already asked for. */
+function tagModuleImports(js, deployId) {
+  return js.replace(
+    /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(["'])(\.\.?\/[^"'?#\s]+\.js)\2/g,
+    (m, pre, q, spec) => `${pre}${q}${tagUrl(spec, deployId)}${q}`
+  );
+}
+
 /**
  * Bakes `deployId` into a CODE fallback response's own bytes, synchronously
- * readable by that file's very first statement — see `handleShell`'s header
- * for why this exists instead of relying solely on postMessage timing.
+ * readable before that file's own code runs — see `handleShell`'s header for
+ * why this exists instead of relying solely on postMessage timing.
+ *   - a document: the pin meta right after `<head>`, and every script and
+ *     modulepreload URL tagged with the generation (app-3-5);
+ *   - app.js: `self.__forayPinnedDeployId = "<id>";` as its first statement;
+ *   - any script: its relative module imports tagged with the generation.
  */
 async function stampPin(request, response, deployId) {
   const url = new URL(request.url);
   const isHtml = isNavigation(request) || /\.html$/.test(url.pathname);
   const body = await response.text();
-  const stamped = isHtml
-    ? body.replace(
-        /<head(\s[^>]*)?>/i,
-        (m) => `${m}\n<meta name="foray-pin-deploy-id" content="${escapeHtmlAttr(deployId)}">`
-      )
-    : `self.__forayPinnedDeployId=${JSON.stringify(deployId)};\n${body}`;
+  let stamped;
+  if (isHtml) {
+    stamped = tagDocumentCode(body, deployId).replace(
+      /<head(\s[^>]*)?>/i,
+      (m) => `${m}\n<meta name="foray-pin-deploy-id" content="${escapeHtmlAttr(deployId)}">`
+    );
+  } else {
+    stamped = tagModuleImports(body, deployId);
+    if (url.pathname === APP_PATH) stamped = `self.__forayPinnedDeployId=${JSON.stringify(deployId)};\n${stamped}`;
+  }
   /* Fresh headers, NOT `response.headers` reused verbatim — a review caught
      this: a static host commonly sends `Content-Length` on the cached
      origin response this came from, and prepending/inserting bytes without
@@ -744,6 +863,17 @@ async function handleData(request, env) {
   if (res && res.ok) return res;
   const current = await currentDeployId();
   const cached = current ? await matchGeneration(current, request) : undefined;
+  /* A DATA FALLBACK PINS THE PAGE AND SAYS SO (round-3 audit, perf-2). An
+     untagged request comes from a page whose code answered live, possibly
+     from a deploy newer than the pointer (the new worker has not installed
+     yet). Handing it the pointer generation's copy as a plain 200, with no
+     pin and no notice, was the #233 pairing in silence. Now the page is told
+     which generation it was handed (`stale-shell`, pin: true): it tags its
+     later data requests with it, so its data at least stays one generation,
+     and the "showing its last saved copy" bar with its reload control goes up. */
+  if (cached && env.clientId) {
+    env.waitUntil(tellClient(env.clientId, "stale-shell", { deployId: current, pin: true }));
+  }
   return cached || res || unavailable(request);
 }
 
@@ -753,6 +883,20 @@ self.addEventListener("fetch", (e) => {
   let url;
   try { url = new URL(request.url); } catch (_) { return; }
   if (url.origin !== location.origin) return;
+  /* THE API IS NOT PART OF A GENERATION (round-3 audit, app-3-2). On the
+     Vercel origin the page and `api/*` share an origin, and this handler used
+     to cache every answer under its query-stripped URL, so `?q=a` and `?q=b`
+     shared one key: a slow or failing second search was answered with the
+     first one's body, and the cached searches outlived Delete my data. The
+     page owns its API deadlines and its own shard cache; the worker stays out. */
+  if (isApi(url)) return;
+  /* MEDIA GOES STRAIGHT TO THE NETWORK (round-3 audit, app-3-7). networkFetch
+     re-issues a subresource as `fetch(request.url, ...)`, which drops every
+     request header, Range included: the page's <audio> (the interlude jingle
+     is same-origin on Pages) asked for bytes and got a 200 full body, which
+     WebKit's media loader does not expect through a worker. A ranged or
+     media request is left to the browser. */
+  if (isRangeOrMedia(request)) return;
 
   /* Which page asked, and how to keep the worker alive for the writes that
      outlive the response.

@@ -103,8 +103,10 @@ test("no ui-v2 palette hex literal appears outside the token definition block", 
   );
 });
 
-/* KILLED BY: deleting the only consumer of --amber (`.ui-v2-mine`) or
-   --violet (`.ui-v2-authored`) so the declared token becomes orphaned --
+/* KILLED BY: deleting every consumer of --amber or --violet (dozens of
+   component rules read each; the unused `.ui-v2-mine`/`.ui-v2-authored`
+   utilities this used to name were deleted in round 3, search-api-css-10)
+   so the declared token becomes orphaned --
    defined but never read via var(). NOT killed by renaming the DECLARATION
    alone (e.g. `--amber:` -> `--amber-x:`): that leaves `var(--amber)` in the
    consuming rule intact, so this test stays green on that mutation -- but
@@ -391,11 +393,11 @@ function contrast(a, b) {
 }
 
 const FAINT_TEXT_EXCEPTIONS = {
-  /* A utility with no user: the census below keeps it that way. (The resting
-     ☆ was the other exception, at 3.08:1 as a non-text glyph; visual pass 1's
-     review moved it to --muted — a live control at the secondary-label weight,
-     not a hair over the floor with a 1px stroke.) */
-  "body.ui-v2 .ui-v2-text-faint": () => true,
+  /* Empty. The last entry, the unused `.ui-v2-text-faint` utility, was deleted
+     with the other dead ui-v2 utilities (round-3 audit, search-api-css-10); the
+     census below still refuses any markup that brings the class name back.
+     (The resting ☆ was the other exception, at 3.08:1 as a non-text glyph;
+     visual pass 1's review moved it to --muted.) */
 };
 
 test("no text or live control is painted in --faint", () => {
@@ -426,7 +428,7 @@ test("the --faint text utility has no user in the shipped markup", () => {
   const sources = ["app.js", "index.html", ...fs.readdirSync(path.join(ROOT, "player"))
     .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js")).map((f) => `player/${f}`)];
   const users = sources.filter((f) => fs.readFileSync(path.join(ROOT, f), "utf8").includes("ui-v2-text-faint"));
-  assert.deepEqual(users, [], "a new user of .ui-v2-text-faint paints text at 3:1 — use .ui-v2-text-muted");
+  assert.deepEqual(users, [], "a new user of .ui-v2-text-faint would paint text at 3:1 — color: var(--muted) instead");
 });
 
 /* ======================================================================
@@ -612,8 +614,10 @@ test("every editorial link inside a note is authored: violet, underlined, never 
 
 test("every violet primary button is a capsule, a control (md) or a circle — never the card/input radius", () => {
   /* Go / Build were 52px primaries at `--radius-lg`, the CARD radius, beside
-     capsule Follow / Get started and the md Play. MUTATION: `#pl-form button
-     { border-radius: var(--radius-lg) }` -> red, naming it. */
+     capsule Follow / Get started and the md Play. Go (#pl-form) is gone with
+     the #/playlists builder (round-3 audit, search-api-css-10); Build is the
+     primary left. MUTATION: `#cr-form button { border-radius:
+     var(--radius-lg) }` -> red, naming it. */
   const bad = [];
   const seen = [];
   for (const r of RULES) {
@@ -630,10 +634,12 @@ test("every violet primary button is a capsule, a control (md) or a circle — n
       if (!/^var\(--radius-(pill|md|round)\)$/.test(radius || "")) bad.push(`${sel} -> ${radius}`);
     }
   }
-  assert.ok(seen.includes("body.ui-v2 #pl-form button") && seen.includes("body.ui-v2 #cr-form button"), "the census reaches Go and Build");
+  assert.ok(seen.includes("body.ui-v2 #cr-form button"), "the census reaches Build");
   assert.deepStrictEqual(bad, [], "violet primaries on the wrong radius");
-  assert.strictEqual(lastOn("#pl-form button", "border-radius"), "var(--radius-pill)");
   assert.strictEqual(lastOn("#cr-form button", "border-radius"), "var(--radius-pill)");
+  /* And the dead #pl-form rules stay dead: no markup renders them. */
+  assert.strictEqual(RULES.some((r) => r.selectors.some((sel) => /#pl-(form|input)\b/.test(sel))), false,
+    "a #pl-form/#pl-input rule is back, and nothing renders #pl-form");
 });
 
 test("every row and card title is the display face: a show's name in a search row included", () => {

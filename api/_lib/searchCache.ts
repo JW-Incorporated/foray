@@ -8,12 +8,22 @@
  * refetches.
  */
 
+import { normalizeSearchText } from "./clientLimit";
+
 export interface Clock {
   now(): number;
 }
 export const realClock: Clock = { now: () => Date.now() };
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
+
+/* BOUNDED (round-3 audit, search-api-css-4). An expired entry used to be
+   deleted only when its own key was read again, and there was no size cap, so
+   every distinct (show, limit, q), every typeahead prefix, stayed in a warm
+   instance's memory for its whole life. Now `set` sweeps expired entries off
+   the front (every entry shares one TTL, so insertion order is expiry order)
+   and evicts the oldest past `maxEntries`. */
+export const DEFAULT_MAX_ENTRIES = 500;
 
 interface CacheEntry<T> {
   value: T;
@@ -23,11 +33,13 @@ interface CacheEntry<T> {
 export class TtlCache<T> {
   private readonly ttlMs: number;
   private readonly clock: Clock;
+  private readonly maxEntries: number;
   private store = new Map<string, CacheEntry<T>>();
 
-  constructor(ttlMs: number = ONE_HOUR_MS, clock: Clock = realClock) {
+  constructor(ttlMs: number = ONE_HOUR_MS, clock: Clock = realClock, maxEntries: number = DEFAULT_MAX_ENTRIES) {
     this.ttlMs = ttlMs;
     this.clock = clock;
+    this.maxEntries = Math.max(1, Math.floor(maxEntries));
   }
 
   get(key: string): T | undefined {
@@ -41,7 +53,23 @@ export class TtlCache<T> {
   }
 
   set(key: string, value: T): void {
-    this.store.set(key, { value, expiresAt: this.clock.now() + this.ttlMs });
+    const now = this.clock.now();
+    /* Re-inserted, not updated in place, so insertion order stays expiry order. */
+    this.store.delete(key);
+    this.sweepExpired(now);
+    while (this.store.size >= this.maxEntries) {
+      const oldest = this.store.keys().next().value as string;
+      this.store.delete(oldest);
+    }
+    this.store.set(key, { value, expiresAt: now + this.ttlMs });
+  }
+
+  /** Drops expired entries from the oldest end, stopping at the first live one. */
+  private sweepExpired(now: number): void {
+    for (const [key, entry] of this.store) {
+      if (now < entry.expiresAt) break;
+      this.store.delete(key);
+    }
   }
 
   /** Test-only observability. */
@@ -57,8 +85,10 @@ export class TtlCache<T> {
   }
 }
 
+/** Trivial variants of one query share one key (security-10): case, width,
+    punctuation and spacing are folded (clientLimit.ts normalizeSearchText). */
 export function normalizeQueryKey(q: string, show: string | null, limit: number): string {
-  return `${show ?? ""}::${limit}::${q.trim().toLowerCase()}`;
+  return `${show ?? ""}::${limit}::${normalizeSearchText(q)}`;
 }
 
 export const episodeSearchCache = new TtlCache<unknown>();

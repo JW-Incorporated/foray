@@ -44,6 +44,35 @@ const ALIASES = {
   car: ["automotive"], cars: ["automotive"], ocean: ["sea", "marine"],
 };
 
+/* OWN PROPERTIES ONLY (round-3 audit, search-api-css-2). A query token is
+   typed text, and the three maps it is looked up in (ALIASES, the semantic
+   index's modifiers and concepts) are plain objects: `mods["constructor"]`
+   answered with the Object function, which was pushed as a filter, dropped
+   the word, and threw in searchWithRelaxation on `f.type.startsWith`. */
+const hasOwn = (obj, key) => obj != null && Object.prototype.hasOwnProperty.call(obj, key);
+const aliasesFor = (tok) => (hasOwn(ALIASES, tok) ? ALIASES[tok] : []);
+const conceptById = (concepts, id) => (hasOwn(concepts, id) ? concepts[id] : undefined);
+/** A modifier is a filter only when it is an own entry shaped like one. */
+function modifierFor(mods, tok) {
+  const m = hasOwn(mods, tok) ? mods[tok] : undefined;
+  return m && typeof m === "object" && typeof m.type === "string" ? m : undefined;
+}
+const isDurationFilter = (f) => typeof f?.type === "string" && f.type.startsWith("duration");
+
+/* GENERIC_WORDS that still name a SUBJECT (round-3 audit, search-api-css-1):
+   "deep learning" is about learning, not about "something 60 minutes long".
+   When tokenize stripped one of these and every word left is a modifier, the
+   modifiers are the query's content, never a pure filter over the whole pool.
+   Question words and praise ("how", "best", "good") are not here: "best new"
+   and "how long" still read as filters. */
+const SUBJECT_GENERIC_WORDS = new Set([
+  "learn", "learning", "learns", "guide", "guides", "tutorial", "tutorials",
+  "intro", "introduction", "basics", "basic", "beginner", "beginners",
+  "overview", "primer", "talk", "talks", "chat", "chats", "discussion", "discussions",
+  "interview", "interviews", "dive", "dives", "works", "work", "working",
+  "explain", "explains", "explained", "understand", "understanding",
+]);
+
 /* A content token whose corpus document-frequency (title+hook+topics+tags,
    see corpusDF) is at/above this fraction of the catalog is a "broad" word
    -- a real topic/genre marker (history, science, comedy) too common to
@@ -229,8 +258,14 @@ function expansionBucket(df) {
    maxlength="120" convention (see H-severity red-team finding, 2026-09-02). */
 const MAX_TOKEN_LENGTH = 64;
 
+/* FOLDED, LIKE SHOW SEARCH (round-3 audit, search-api-css-6). The split keeps
+   [a-z0-9] only, so an unfolded "pokémon" became the thin fragments "pok" and
+   "mon", "naïve bayes" became "na", "ve", "bayes", and "pokemon" never matched a
+   catalogue "Pokémon". The query (here) and the corpus (itemWordSet,
+   scoreMatch) now fold diacritics the same way foldDiacritics does for show
+   search, so the two search modes treat the same input alike. */
 function tokenize(q) {
-  return q.toLowerCase().split(/[^a-z0-9]+/)
+  return foldText(q).split(/[^a-z0-9]+/)
     .filter(w => w.length > 1 && w.length <= MAX_TOKEN_LENGTH && !STOPWORDS.has(w) && !GENERIC_WORDS.has(w));
 }
 
@@ -435,7 +470,7 @@ function tagDF(term, ctx) {
 }
 
 function itemWordSet(item, tagsMap) {
-  const text = [item.title || "", item.hook || "", (item.topics || []).join(" ")].join(" ").toLowerCase();
+  const text = foldText([item.title || "", item.hook || "", (item.topics || []).join(" ")].join(" "));
   const words = new Set(text.split(/[^a-z0-9]+/).filter(Boolean));
   (tagsMap?.[item.id] || []).forEach(tag => tag.split("-").forEach(p => words.add(p)));
   return words;
@@ -518,7 +553,7 @@ function primeVocabulary(ctx) {
   for (const c of Object.values(concepts)) {
     (c.terms || []).forEach(t => terms.add(t));
     (c.related || []).forEach(rid => {
-      (concepts[rid]?.terms || []).forEach(t => terms.add(t));
+      (conceptById(concepts, rid)?.terms || []).forEach(t => terms.add(t));
     });
   }
   for (const t of terms) {
@@ -719,13 +754,37 @@ function interpretQuery(q, ctx) {
   const mods = ctx.semantic?.modifiers || {};
   const concepts = ctx.semantic?.concepts || {};
 
+  /* A MODIFIER WORD IS A FILTER ONLY WHEN IT MEANS NOTHING ELSE (round-3
+     audit, search-api-css-1). It used to be consumed unconditionally:
+     "story" (a storytelling concept term) became the history branch filter,
+     so the concept could never be reached; "deep learning" (with "learning"
+     stripped as generic) became "every episode over an hour", 805 of them,
+     presented as a confident "ok". Two rules, checked before the filter:
+       1. a token that is also a term of a concept with ANOTHER meaning is
+          content (concept wins): "story" belongs to storytelling, "marathon"
+          to endurance, "epic" to storytelling. Where the concept IS the
+          filter's own branch ("funny"/"comedy" -> the comedy concept and the
+          comedy branch) the filter stands, so "funny history" still means
+          comedy about history;
+       2. when tokenize stripped a subject word and only modifiers are left,
+          every one of them is content. */
+  const conceptOverrides = (tok, mod) => {
+    const sameSense = mod.type === "branch" && Array.isArray(mod.value) ? mod.value : [];
+    return Object.entries(concepts).some(([cid, c]) =>
+      Array.isArray(c?.terms) && c.terms.includes(tok) && !sameSense.includes(cid));
+  };
+  const subjectStripped = foldText(q).split(/[^a-z0-9]+/).some(w => SUBJECT_GENERIC_WORDS.has(w));
+  const onlyModifiers = tokens.length > 0 && tokens.every(tok => modifierFor(mods, tok));
+  const modifiersAreContent = subjectStripped && onlyModifiers;
   const contentTokens = tokens.filter(tok => {
-    if (mods[tok]) { filters.push(mods[tok]); return false; }
+    if (modifiersAreContent) return true;
+    const mod = modifierFor(mods, tok);
+    if (mod && !conceptOverrides(tok, mod)) { filters.push(mod); return false; }
     return true;
   });
 
   const groups = contentTokens.map(tok => {
-    const aliasesOf = ALIASES[tok] || [];
+    const aliasesOf = aliasesFor(tok);
     const exactKeys = new Set([tok, ...aliasesOf]);
     /* See lemmaVariants above -- bridges a query token to a concept that
        only lists the OTHER inflection (singular/plural) of the same
@@ -814,7 +873,7 @@ function interpretQuery(q, ctx) {
     }
 
     const others = contentTokens.filter(o => o !== tok);
-    const otherKeys = others.map(o => new Set([o, ...(ALIASES[o] || [])]));
+    const otherKeys = others.map(o => new Set([o, ...aliasesFor(o)]));
 
     let hasConceptExpansion = false;
     for (const [cid, c] of Object.entries(concepts)) {
@@ -831,7 +890,7 @@ function interpretQuery(q, ctx) {
       c.terms.forEach(t => addTerm(t, wTerm, "own"));
       if (supported) (c.topics || []).forEach(t => topicBoosts.add(t));
       (c.related || []).forEach(rid => {
-        const rc = concepts[rid];
+        const rc = conceptById(concepts, rid);
         if (rc) rc.terms?.forEach(t => addTerm(t, wRelated, "related"));
       });
     }
@@ -958,10 +1017,13 @@ function passesFilters(item, filters) {
   for (const f of filters) {
     if (f.type === "duration_max" && !(item.duration_min && item.duration_min <= f.value)) return false;
     if (f.type === "duration_min" && !(item.duration_min && item.duration_min >= f.value)) return false;
-    if (f.type === "branch" && !f.value.includes(branchOf(item))) return false;
+    if (f.type === "branch" && !(Array.isArray(f.value) && f.value.includes(branchOf(item)))) return false;
     if (f.type === "recency_days") {
-      const d = new Date(item.release_date || 0);
-      if ((Date.now() - d.getTime()) / 86400000 > f.value) return false;
+      /* An unknown date is never "new" (round-3 audit, search-api-css-11). A
+         missing one read as the epoch and failed, but an UNPARSEABLE one gave
+         NaN, `NaN > value` is false, and the item passed "new"/"today". */
+      const t = Date.parse(item.release_date);
+      if (!Number.isFinite(t) || (Date.now() - t) / 86400000 > f.value) return false;
     }
   }
   return true;
@@ -1228,10 +1290,9 @@ const hitTag = (tag, t) => {
 };
 
 function scoreMatch(item, interp, itemTags) {
-  const title = item.title.toLowerCase();
-  const hook = (item.hook || "").toLowerCase();
-  const show = item.show.toLowerCase();
-  const topics = (item.topics || []).join(" ").toLowerCase();
+  /* Folded like the query (search-api-css-6; see tokenize), once per item
+     object and not once per query: see foldedItemText. */
+  const { title, hook, show, topics } = foldedItemText(item);
   const tags = itemTags?.tags?.[item.id] || [];
 
   let sum = 0;
@@ -1359,8 +1420,8 @@ function searchWithRelaxation(pool, interp, minScore, itemTags, rankFallback) {
   };
   let results = attempt(interp.filters);
   let relaxed = null;
-  if (!results.length && interp.filters.some(f => f.type.startsWith("duration"))) {
-    results = attempt(interp.filters.filter(f => !f.type.startsWith("duration")));
+  if (!results.length && interp.filters.some(isDurationFilter)) {
+    results = attempt(interp.filters.filter(f => !isDurationFilter(f)));
     if (results.length) relaxed = "duration";
   }
   if (!results.length && interp.filters.length) {
@@ -1729,7 +1790,7 @@ function suggestAdjacentTopics(interp, ctx) {
       for (const rid of c.related || []) {
         if (seen.has(rid) || rid === cid) continue;
         seen.add(rid);
-        const rc = concepts[rid];
+        const rc = conceptById(concepts, rid);
         if (!rc) continue;
         const coverage = (rc.terms || []).reduce((n, t) => n + tagCount(t, ctx), 0);
         if (coverage > 0) suggestions.push({ id: rid, label: prettyConceptLabel(rid), coverage });
@@ -1830,6 +1891,30 @@ const SHOW_MATCH_UNMATCHED = SHOW_MATCH_SUBSTRING + 1;
     behaves identically everywhere `showMatchBucket` decides a bucket —
     folding is the identity transform for plain ASCII, so this is a pure
     widening with no effect on any existing unaccented title. */
+/* foldDiacritics with an ASCII fast path: for pure ASCII the fold IS
+   toLowerCase, and nearly every catalogue string is ASCII, so the NFKD pass
+   is paid only where it changes something (search-api-css-6 made topic
+   search fold, and scoreMatch runs per item per query). */
+function foldText(s) {
+  const str = String(s || "");
+  return /[^ -]/.test(str) ? foldDiacritics(str) : str.toLowerCase();
+}
+
+/* An item's folded title/hook/show/topics, remembered per item OBJECT and
+   reused while the raw strings are unchanged. The pool's items are stable
+   objects across queries, so the second query of a session pays one string
+   compare per field here; an item whose text changed, or a rebuilt item,
+   recomputes. */
+const FOLDED_ITEM_TEXT = typeof WeakMap === "function" ? new WeakMap() : null;
+function foldedItemText(item) {
+  const raw = [String(item.title || ""), String(item.hook || ""), String(item.show || ""), (item.topics || []).join(" ")];
+  const hit = FOLDED_ITEM_TEXT && FOLDED_ITEM_TEXT.get(item);
+  if (hit && hit.raw[0] === raw[0] && hit.raw[1] === raw[1] && hit.raw[2] === raw[2] && hit.raw[3] === raw[3]) return hit;
+  const next = { raw, title: foldText(raw[0]), hook: foldText(raw[1]), show: foldText(raw[2]), topics: foldText(raw[3]) };
+  if (FOLDED_ITEM_TEXT) FOLDED_ITEM_TEXT.set(item, next);
+  return next;
+}
+
 function foldDiacritics(s) {
   /* NORMALISE FIRST, LOWERCASE LAST (audit round 2, search-9). NFKD maps the
      compatibility letters some titles are typed in \u2014 "\ud835\udc01\ud835\udfd1\ud835\udfd2\ud835\udc27\u2019\ud835\udc2c \ud835\udc2d\ud835\udc1e\ud835\udc2b\ud835\udc2b\ud835\udc22\ud835\udc2d\ud835\udc28\ud835\udc2b\ud835\udc22\ud835\udc2e\ud835\udc26" \u2014 to

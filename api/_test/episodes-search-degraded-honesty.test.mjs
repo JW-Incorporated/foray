@@ -4,7 +4,7 @@
 // WHY THIS EXISTS
 // `searchWithinShow()` resolves a show_id to a feed URL via `loadShowMeta()`,
 // which reads `data/catalog.json` + `data/catalog-breadth.json` off disk —
-// the same two files `api/test/vercel-bundle.test.mjs` guards the Vercel
+// the same two files `api/_test/vercel-bundle.test.mjs` guards the Vercel
 // bundling of. Before this test, `loadShowMeta()` treated "both catalog
 // files failed to read" (a bundling/deploy gap) identically to "the files
 // read fine, this show_id just isn't in them" (a normal bad-input case): both
@@ -34,7 +34,7 @@ import os from "node:os";
 import path from "node:path";
 import * as searchModule from "../episodes/search.ts";
 import { _setShowMetaRootForTests } from "../episodes/search.ts";
-import { _resetShowIdMapCacheForTests } from "../episodes/showIdMap.ts";
+import { _resetShowIdMapCacheForTests } from "../_lib/showIdMap.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 

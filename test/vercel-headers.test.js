@@ -13,7 +13,7 @@
  * inert on a phone while every test stays green. `api/**` handlers set the
  * header in code (`api/_lib/cors.ts`); static files get it ONLY from
  * `vercel.json`, and until this suite existed nothing read that file's
- * `headers` at all (`api/test/vercel-bundle.test.mjs` pins `functions`, not
+ * `headers` at all (`api/_test/vercel-bundle.test.mjs` pins `functions`, not
  * `headers`).
  *
  * WHAT IS PINNED
@@ -104,8 +104,10 @@ test("every rule that serves the Foray directory sends Access-Control-Allow-Orig
   const missing = [];
   for (const rel of await directoryPaths()) {
     const pathname = `/${rel}`;
-    const matching = rules.filter((r) => sourceMatches(r.source, pathname));
-    assert.ok(matching.length > 0, `no vercel.json header rule matches ${pathname}`);
+    /* The /data/ rules. The site-wide security rule (security-12) matches every
+       path too, and adds headers without dropping any. */
+    const matching = rules.filter((r) => r.source.startsWith("/data/") && sourceMatches(r.source, pathname));
+    assert.ok(matching.length > 0, `no vercel.json /data/ header rule matches ${pathname}`);
     for (const r of matching) {
       if (headerValue(r, CORS_KEY) !== "*") missing.push(`${pathname} ← source "${r.source}"`);
     }
@@ -141,9 +143,12 @@ test("#606's Cache-Control split is intact: bare data paths revalidate, only ?v=
   const [, ...directoryFiles] = await directoryPaths();
   for (const rel of await directoryPaths()) {
     const pathname = `/${rel}`;
-    for (const r of rules.filter((x) => sourceMatches(x.source, pathname))) {
+    /* Only the rules that set Cache-Control decide caching; the site-wide
+       security rule (security-12) matches every path and sets none. */
+    const caching = rules.filter((x) => sourceMatches(x.source, pathname) && headerValue(x, CACHE_KEY));
+    assert.ok(caching.length > 0, `no rule sets Cache-Control for ${pathname}`);
+    for (const r of caching) {
       const cc = headerValue(r, CACHE_KEY);
-      assert.ok(cc, `rule "${r.source}" matches ${pathname} but sets no Cache-Control`);
       if (/immutable/.test(cc)) {
         assert.ok(
           hasQuery(r, "v"),
@@ -168,6 +173,25 @@ test("#606's Cache-Control split is intact: bare data paths revalidate, only ?v=
     );
     assert.ok(versioned, `/${rel}?v=<version> has no immutable rule — #606's long-lived copy is gone`);
   }
+});
+
+test("security-12: every path is sent frame-ancestors 'none', nosniff and a Referrer-Policy", () => {
+  /* index.html's CSP is a <meta>, and browsers ignore frame-ancestors there, so
+     any site could frame the app and clickjack Delete my data or a thumbs vote.
+     Only a response header can refuse framing (round-3 audit, security-12).
+     MUTATION: drop the "/(.*)" rule, or any one of its three headers. */
+  const rules = headerRules();
+  for (const pathname of ["/", "/index.html", "/app.js", "/sw.js", "/player/client.js", "/data/forays.json", "/api/shows/search"]) {
+    const matching = rules.filter((r) => sourceMatches(r.source, pathname));
+    const value = (key) => matching.map((r) => headerValue(r, key)).filter(Boolean).pop() || null;
+    assert.match(value("content-security-policy") || "", /frame-ancestors 'none'/, `${pathname} can be framed`);
+    assert.equal(value("x-content-type-options"), "nosniff", `${pathname} is not sent nosniff`);
+    assert.equal(value("referrer-policy"), "strict-origin-when-cross-origin", `${pathname} has no Referrer-Policy`);
+  }
+  /* The header CSP carries ONLY frame-ancestors: two CSPs are intersected, and
+     a second full policy here would silently tighten (or fight) index.html's. */
+  const csp = rules.flatMap((r) => (r.headers || []).filter((h) => String(h.key).toLowerCase() === "content-security-policy"));
+  assert.deepEqual(csp.map((h) => h.value), ["frame-ancestors 'none'"]);
 });
 
 test("the ?v= (immutable) rule is listed after the bare /data/ rule, so it wins for the same key", () => {

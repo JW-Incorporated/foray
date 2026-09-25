@@ -1,9 +1,9 @@
-// Token bucket unit tests for api/episodes/appleBucket.ts (S-07, kanban
+// Token bucket unit tests for api/_lib/appleBucket.ts (S-07, kanban
 // t_6baccaa0). Acceptance: "the bucket never exceeds 20/min under a
 // synthetic burst (fake clock)".
 import { test } from "node:test";
 import assert from "node:assert";
-import { SlidingWindowBucket } from "../episodes/appleBucket.ts";
+import { SlidingWindowBucket } from "../_lib/appleBucket.ts";
 
 class FakeClock {
   constructor(t = 0) {

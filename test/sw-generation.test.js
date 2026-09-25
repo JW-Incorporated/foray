@@ -102,12 +102,16 @@ function manifestFor(deployId, filesMap) {
  * retained generation caches (as if an earlier install/activate already ran);
  * `pointer` pre-populates which of them is current.
  */
-function loadWorker({ network, generations = {}, pointer = null, windows = [] } = {}) {
+function loadWorker({ network, generations = {}, pointer = null, windows = [], otherCaches = {} } = {}) {
   const listeners = {};
   const timers = [];
   const posted = [];
   const store = new Map();
   const waits = [];
+  /* Resolvers for `nextWaitUntil()`: woken by the next waitUntil() call, so a
+     test can await a write the worker registers LATER (a response that lands
+     after the timeout) instead of guessing a number of ticks (app-3-14). */
+  const waitHooks = [];
   const puts = [];
   let claims = 0;
   let skipped = 0;
@@ -122,6 +126,10 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
     for (const [url, body] of Object.entries(files)) {
       bucket(name).set(abs(url), { body, status: 200 });
     }
+  }
+  /* Caches this worker does not own, by exact name (app-3-4). */
+  for (const [name, files] of Object.entries(otherCaches)) {
+    for (const [url, body] of Object.entries(files)) bucket(name).set(abs(url), { body, status: 200 });
   }
   const POINTER_KEY = "https://foray.invalid/__generation-pointer__";
   if (pointer) {
@@ -172,6 +180,9 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
     async delete(request) {
       return bucket(name).delete(keyFor(name, request));
     },
+    async keys() {
+      return [...bucket(name).keys()].map((url) => new Request(url));
+    },
   });
   const POINTER_CACHE_NAME = "foray-pointer";
   const breakPointerPutOnce = { armed: false };
@@ -217,7 +228,13 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
   vm.runInContext(SW_SRC, ctx, { filename: "sw.js" });
 
   const event = (extra) => {
-    const e = { waitUntil: (p) => waits.push(p), ...extra };
+    const e = {
+      waitUntil: (p) => {
+        waits.push(p);
+        for (const wake of waitHooks.splice(0)) wake();
+      },
+      ...extra,
+    };
     return e;
   };
 
@@ -249,6 +266,11 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
         the postMessages, which by design outlive the response. */
     async settle() {
       while (waits.length) await Promise.all(waits.splice(0));
+    },
+    /** Resolves the next time the worker calls waitUntil(). Arm it BEFORE the
+        action that makes the worker register the work. */
+    nextWaitUntil() {
+      return new Promise((resolve) => waitHooks.push(resolve));
     },
     /** Run every timer the worker is waiting on. */
     fireTimers() {
@@ -346,7 +368,7 @@ test("THE #233 REPRODUCTION: a page served cached code is not handed fresh data"
   const code = await h.fetch(sub("app.js"), { clientId: "page-1" });
   assert.equal(unstampPin(await code.text()), "APP@1", "the page is running last-known code");
   await h.settle();
-  assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1" } }]);
+  assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: true } }]);
 
   /* The page, told it is on generation "1", tags its own data request. */
   const data = await h.fetch(sub(`${FORAYS}?_fdid=1`), { clientId: "page-1" });
@@ -374,14 +396,23 @@ test("a page whose code came from the origin gets today's data", async () => {
   assert.equal(await data.text(), '{"forays":["grilling-history-2"]}');
 });
 
-test("one code file that does not answer pins the whole page, not just itself", async () => {
-  /* app.js and player/client.js are both CODE, both part of the same
-     manifest-verified generation. Here the module fetch fails on this load, so
-     the WHOLE page is pinned to the current generation — its data comes from
-     there too, once the page tags its own request with the id it was told. */
+test("app-3-5: a module that does not answer puts the notice up but does not pin a live app.js", async () => {
+  /* This test used to say the opposite: any code file falling back pinned the
+     whole page. But app.js here answered LIVE (APP@2) and is the reader of
+     data/*.json; pinning it to generation 1 paired new code with old data, the
+     #233 mismatch (round-3 audit, app-3-5). A stale player/client.js is a stale
+     PLAYER (the residual gap sw.js's header names), so the worker says so with
+     `pin: false`: the notice goes up, the pin does not, and the module's bytes
+     carry no pin statement. Its own imports are tagged, so the stale player's
+     module graph at least stays in one generation.
+     MUTATION: send `pin: true` for every code fallback (drop decidesGeneration)
+     — the message assertion goes red. */
   const h = loadWorker({
     generations: {
-      "1": { "player/client.js": "MODULE@1", [FORAYS]: '{"forays":["grilling-history-1"]}' },
+      "1": {
+        "player/client.js": 'import { Q } from "./queue-manager.js";\nexport const V = Q;',
+        [FORAYS]: '{"forays":["grilling-history-1"]}',
+      },
     },
     pointer: "1",
     windows: ["page-1"],
@@ -393,12 +424,17 @@ test("one code file that does not answer pins the whole page, not just itself", 
 
   assert.equal(await (await h.fetch(sub("app.js"), { clientId: "page-1" })).text(), "APP@2");
   const moduleRes = await h.fetch(sub("player/client.js"), { clientId: "page-1" });
-  assert.equal(unstampPin(await moduleRes.text()), "MODULE@1");
+  const moduleText = await moduleRes.text();
+  assert.doesNotMatch(moduleText, /__forayPinnedDeployId/, "only app.js's bytes carry the pin");
+  assert.match(moduleText, /from "\.\/queue-manager\.js\?_fdid=1"/, "the stale module's imports stay in its generation");
   await h.settle();
-  assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1" } }]);
+  assert.deepEqual(h.posted, [
+    { id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: false } },
+  ]);
 
-  const data = await h.fetch(sub(`${FORAYS}?_fdid=1`), { clientId: "page-1" });
-  assert.equal(await data.text(), '{"forays":["grilling-history-1"]}');
+  /* The page stays unpinned, so its data reads live, matching its live app.js. */
+  const data = await h.fetch(sub(FORAYS), { clientId: "page-1" });
+  assert.equal(await data.text(), '{"forays":["grilling-history-2"]}');
 });
 
 test("a navigation pins the page it creates, not the page that started it", async () => {
@@ -423,7 +459,7 @@ test("a navigation pins the page it creates, not the page that started it", asyn
 
   assert.deepEqual(
     h.posted,
-    [{ id: "new-page", message: { source: "foray-sw", reason: "stale-shell", deployId: "1" } }],
+    [{ id: "new-page", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: true } }],
     "the page that is about to exist is the one told"
   );
   assert.equal(
@@ -448,6 +484,40 @@ test("a data file that answers 404 falls back to the cached copy", async () => {
   const res = await h.fetch(sub("data/session.json"), { clientId: "page-1" });
   assert.equal(res.status, 200);
   assert.equal(await res.text(), '{"session_id":"cached"}');
+});
+
+test("perf-2: an untagged data file that falls back pins the page to that generation and says so", async () => {
+  /* Deploy day on a slow link: app.js answered live (a newer deploy than the
+     pointer), then a changed data/discover.json crawls past NET_TIMEOUT_MS and
+     is served from the pointer generation. That used to be a silent 200 with no
+     pin and no notice. MUTATION: drop the tellClient in handleData's fallback
+     — the page is never told, and h.posted stays empty. */
+  const h = loadWorker({
+    generations: { "1": { "data/discover.json": '{"items":["from-generation-1"]}' } },
+    pointer: "1",
+    windows: ["page-1"],
+    network: (url) => (url.endsWith("app.js") ? ok("APP@2") : new Promise(() => {})),
+  });
+  assert.equal(await (await h.fetch(sub("app.js"), { clientId: "page-1" })).text(), "APP@2");
+  const pending = h.fire(sub("data/discover.json"), { clientId: "page-1" });
+  h.fireTimers();
+  assert.equal(await (await pending).text(), '{"items":["from-generation-1"]}');
+  await h.settle();
+  assert.deepEqual(h.posted, [
+    { id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: true } },
+  ]);
+});
+
+test("perf-2: a data file that answers live pins nothing and says nothing", async () => {
+  const h = loadWorker({
+    generations: { "1": { [FORAYS]: '{"forays":["old"]}' } },
+    pointer: "1",
+    windows: ["page-1"],
+    network: () => ok('{"forays":["live"]}'),
+  });
+  assert.equal(await (await h.fetch(sub(FORAYS), { clientId: "page-1" })).text(), '{"forays":["live"]}');
+  await h.settle();
+  assert.deepEqual(h.posted, []);
 });
 
 test("a data file that is genuinely gone still reads as absent", async () => {
@@ -507,7 +577,7 @@ test("falling back to cached code tells the page it is a version behind, and whi
   });
   await h.fetch(sub("app.js"), { clientId: "page-1" });
   await h.settle();
-  assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1" } }]);
+  assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: true } }]);
 });
 
 test("refusing data with nothing cached in any retained generation answers 504 and says why", async () => {
@@ -586,6 +656,34 @@ test("PROMOTION ORDERING: the pending marker survives a failed pointer write, so
 });
 
 /* --------------------------------------------------- retention and rollback */
+
+test("app-3-4: activate deletes only this worker's own caches, never the app's shard cache or a neighbour's", async () => {
+  /* CacheStorage is per-origin, not per-scope. activate used to delete every
+     name that was not the pointer, the pending marker or a kept generation,
+     which wiped app.js's own Shows-search shard tier (foray-shows-index-v1) on
+     every deploy, and any other site's caches on the same github.io origin.
+     MUTATION: go back to `k !== POINTER_CACHE && k !== PENDING_CACHE &&
+     !keep.has(k)` — both foreign caches are deleted. */
+  const filesB = { "app.js": "APP@B" };
+  const h = loadWorker({
+    generations: { "A": { "app.js": "APP@A" }, "older": { "app.js": "APP@older" } },
+    pointer: "A",
+    otherCaches: {
+      "foray-shows-index-v1": { "api/shows/index/shards/ab.json": "[]" },
+      "someone-else": { "https://jw-incorporated.github.io/other-site/x": "theirs" },
+      "foray-v4": { "app.js": "APP@v4" },
+    },
+    network: networkFor(manifestFor("B", filesB), filesB),
+  });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+  const names = h.cacheNames();
+  assert.ok(names.includes("foray-shows-index-v1"), "the app's own shard cache survives a deploy");
+  assert.ok(names.includes("someone-else"), "a cache this worker never made is not its to delete");
+  assert.ok(!names.includes("foray-v4"), "a named legacy cache of this worker's own is still cleaned up");
+  assert.ok(!names.includes("foray-gen-older"), "an aged-out generation is still deleted");
+  assert.deepEqual(names.filter((k) => k.startsWith("foray-gen-")).sort(), ["foray-gen-A", "foray-gen-B"]);
+});
 
 test("retention keeps exactly the current and previous generation, deletes older", async () => {
   const filesB = { "app.js": "APP@B" };
@@ -890,26 +988,67 @@ test("a hanging origin is bounded: the last-known copy is served instead", async
   assert.equal(await data.text(), '{"forays":["grilling-history-1"]}');
 });
 
-test("a response that lands after the timeout still warms the CURRENT generation's cache", async () => {
+/* A RESPONSE THAT LANDS AFTER THE TIMEOUT (round-3 audit, app-3-14). This used
+   to be one test, "still warms the CURRENT generation's cache", proved with a
+   generation that had no __manifest__ entry, so every path was untracked. In
+   production every generation carries its manifest and app.js is tracked, and
+   cachePut keeps the verified copy (`if (have) return;`): the late write is a
+   no-op there, and the only warm-up is the browser's HTTP cache. The two tests
+   below pin what really happens for each kind of path, and they await the
+   worker's own waitUntil() instead of a fixed number of ticks. */
+const GEN_MANIFEST = "https://foray.invalid/__manifest__";
+
+test("a TRACKED file that lands after the timeout keeps the generation's verified bytes", async () => {
+  /* MUTATION: drop `if (have) return;` in cachePut, or the whole tracked
+     branch — the late, unverified APP@2 replaces the verified APP@1. */
   let release;
   const h = loadWorker({
-    generations: { "1": { "app.js": "APP@1" } },
+    generations: {
+      "1": {
+        "app.js": "APP@1",
+        [GEN_MANIFEST]: JSON.stringify({ [`${BASE}app.js`]: "sha256:" + sha256Hex("APP@1") }),
+      },
+    },
     pointer: "1",
     network: () => new Promise((resolve) => { release = () => resolve(ok("APP@2")); }),
   });
   const pending = h.fire(sub("app.js"), { clientId: "page-1" });
   h.fireTimers();
-  const served = await Promise.race([
-    pending.then((r) => r.text()),
-    new Promise((r) => setTimeout(() => r("never answered"), 500)),
-  ]);
-  assert.equal(unstampPin(served), "APP@1");
+  assert.equal(unstampPin(await (await pending).text()), "APP@1", "the timeout served the verified copy");
 
+  const landed = h.nextWaitUntil();
   release();
-  await new Promise((r) => setTimeout(r, 0));
-  await new Promise((r) => setTimeout(r, 0));
-  await new Promise((r) => setTimeout(r, 0));
-  assert.equal(h.cachedBody("app.js", "foray-gen-1"), "APP@2");
+  await landed;
+  await h.settle();
+  assert.equal(h.cachedBody("app.js", "foray-gen-1"), "APP@1", "a late answer never replaces a verified file");
+  assert.equal(h.puts.filter((p) => p.url.endsWith("app.js")).length, 0, "and nothing was written at all");
+});
+
+test("an UNTRACKED file that lands after the timeout is written into the current generation", async () => {
+  /* The path cachePut's untracked branch exists for (data/show-index.tsv).
+     MUTATION: make the untracked branch `return` instead of `cache.put` — the
+     late answer never reaches the generation. */
+  const INDEX = "data/show-index.tsv";
+  let release;
+  const h = loadWorker({
+    generations: {
+      "1": {
+        [INDEX]: "rows@1",
+        [GEN_MANIFEST]: JSON.stringify({ [`${BASE}app.js`]: "sha256:" + sha256Hex("APP@1") }),
+      },
+    },
+    pointer: "1",
+    network: () => new Promise((resolve) => { release = () => resolve(ok("rows@2")); }),
+  });
+  const pending = h.fire(sub(INDEX), { clientId: "page-1" });
+  h.fireTimers();
+  assert.equal(await (await pending).text(), "rows@1", "the timeout served the last-known copy");
+
+  const landed = h.nextWaitUntil();
+  release();
+  await landed;
+  await h.settle();
+  assert.equal(h.cachedBody(INDEX, "foray-gen-1"), "rows@2");
 });
 
 test("RUNTIME WRITE INTEGRITY: a live origin answer for a manifest-tracked file cannot silently overwrite it with different bytes", async () => {
@@ -1069,6 +1208,153 @@ test("a cross-origin request is left alone", async () => {
   assert.equal(res, undefined, "episode audio comes from ~41 CDNs and is none of our business");
 });
 
+/* ---------------------- app-3-5: a fallen-back page is ONE generation */
+
+const PAGE_HTML =
+  '<!doctype html><html><head><title>4a</title>\n' +
+  '<link rel="modulepreload" href="player/client.js">\n' +
+  '<link rel="modulepreload" href="player/queue-manager.js">\n' +
+  '<link rel="stylesheet" href="styles.css">\n' +
+  '</head><body>\n' +
+  '<script src="search-engine.js"></script>\n' +
+  '<script src="app.js"></script>\n' +
+  '<script type="module" src="player/client.js"></script>\n' +
+  '<script src="https://cdn.example.com/x.js"></script>\n' +
+  '</body></html>';
+
+test("app-3-5: a fallback document asks for its code from its own generation", async () => {
+  /* The worker's pointer names generation 1 and the origin is on a newer
+     deploy. The navigation falls back, so the document is generation 1's; its
+     script and modulepreload URLs now carry `_fdid=1`, so app.js cannot load
+     live from the newer deploy and then pin itself to generation 1's data.
+     MUTATION: drop tagDocumentCode from stampPin — the URLs stay untagged. */
+  const h = loadWorker({
+    generations: { "1": { "./": PAGE_HTML } },
+    pointer: "1",
+    network: offline,
+  });
+  const html = await (await h.fetch(nav("./"), { resultingClientId: "page-1" })).text();
+  assert.match(html, /<meta name="foray-pin-deploy-id" content="1">/);
+  assert.match(html, /<script src="search-engine\.js\?_fdid=1"><\/script>/);
+  assert.match(html, /<script src="app\.js\?_fdid=1"><\/script>/);
+  assert.match(html, /<script type="module" src="player\/client\.js\?_fdid=1"><\/script>/);
+  assert.match(html, /<link rel="modulepreload" href="player\/client\.js\?_fdid=1">/);
+  assert.match(html, /<link rel="modulepreload" href="player\/queue-manager\.js\?_fdid=1">/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css">/, "styles do not decide a generation and stay untagged");
+  assert.match(html, /src="https:\/\/cdn\.example\.com\/x\.js"/, "a cross-origin URL is not the worker's to tag");
+});
+
+test("app-3-5: tagged code is served from its generation even when the origin answers with a newer deploy", async () => {
+  /* MUTATION: delete the tagged branch at the top of handleShell — app.js
+     comes back live as APP@2, the exact new-code/old-data pairing. */
+  const h = loadWorker({
+    generations: {
+      "1": {
+        "app.js": "APP@1",
+        "player/client.js": 'import { Q } from "./queue-manager.js";\nexport { R } from "../player/x.js";\nimport "./side.js";\nexport const V = Q;',
+        "player/queue-manager.js": "export const Q = 1;",
+      },
+    },
+    pointer: "1",
+    network: (url) => ok(url.endsWith("app.js") ? "APP@2" : "LIVE@2"),
+  });
+  h.inits.length = 0;
+  const app = await (await h.fetch(sub("app.js?_fdid=1"), { clientId: "page-1" })).text();
+  assert.equal(app, 'self.__forayPinnedDeployId="1";\nAPP@1', "app.js is generation 1's, pinned in its own bytes");
+  const client = await (await h.fetch(sub("player/client.js?_fdid=1"), { clientId: "page-1" })).text();
+  assert.match(client, /from "\.\/queue-manager\.js\?_fdid=1"/);
+  assert.match(client, /from "\.\.\/player\/x\.js\?_fdid=1"/);
+  assert.match(client, /import "\.\/side\.js\?_fdid=1"/);
+  const qm = await (await h.fetch(sub("player/queue-manager.js?_fdid=1"), { clientId: "page-1" })).text();
+  assert.equal(qm, "export const Q = 1;");
+  assert.deepEqual(h.inits, [], "a tagged code request never asks the origin");
+});
+
+test("app-3-5: tagged code whose generation is gone fails visibly, never live", async () => {
+  const h = loadWorker({
+    generations: { "1": { "app.js": "APP@1" } },
+    pointer: "1",
+    network: () => ok("APP@LIVE"),
+  });
+  const res = await h.fetch(sub("app.js?_fdid=aged-out"), { clientId: "page-1" });
+  assert.equal(res.status, 504);
+});
+
+test("app-3-5: a fallen-back search-engine.js does not carry a pin a live app.js would adopt", async () => {
+  /* search-engine.js runs before app.js. Its fallback used to be prepended with
+     `self.__forayPinnedDeployId = "1"`, which a LIVE, newer app.js then read
+     as its own pin. MUTATION: prepend the pin statement to every .js again. */
+  const h = loadWorker({
+    generations: { "1": { "search-engine.js": "ENGINE@1" } },
+    pointer: "1",
+    network: offline,
+    windows: ["page-1"],
+  });
+  const text = await (await h.fetch(sub("search-engine.js"), { clientId: "page-1" })).text();
+  assert.equal(text, "ENGINE@1");
+  await h.settle();
+  assert.deepEqual(h.posted, [
+    { id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: false } },
+  ]);
+});
+
+test("app-3-2: an API request is left to the page, so a slow second search never gets the first search's body", async () => {
+  /* On the Vercel origin the page and api/* share an origin. The worker used to
+     cache every API answer under its query-stripped URL, so `?q=a` and `?q=b`
+     shared one key, and a second search that timed out was answered with the
+     first one's results. The worker now declines to intercept at all; the
+     page's own API deadline (and its "couldn't search" copy) answers instead.
+     MUTATION: delete the `isApi(url)` return in the fetch listener — the
+     request is intercepted and, after the timeout, served q=a's body. */
+  const h = loadWorker({
+    generations: { "1": { "api/shows/search": '{"shows":["answer-for-a"]}' } },
+    pointer: "1",
+    network: () => new Promise(() => {}),
+  });
+  const res = h.fire(sub("api/shows/search?q=b"), { clientId: "page-1" });
+  h.fireTimers();
+  assert.equal(res, undefined, "the worker must not answer an API request from any cache");
+  assert.equal(h.fire(sub("api/episodes/search?show=x&q=y"), { clientId: "page-1" }), undefined);
+  assert.equal(h.fire(sub("api/shows/index/manifest.json"), { clientId: "page-1" }), undefined);
+  /* And the rule is scope-relative, not a substring match: a data file whose
+     name merely contains "api" is still the worker's. */
+  assert.notEqual(h.fire(sub("data/api-notes.json"), { clientId: "page-1" }), undefined);
+});
+
+test("app-3-2: activate scrubs API answers an older worker left in the retained generations", async () => {
+  /* Those bodies are the listener's searches, and Delete my data only clears
+     the app's own shard cache. MUTATION: drop the purgeApiEntries call in
+     activate — the old search body survives the deploy. */
+  const h = loadWorker({
+    generations: {
+      "old": { "app.js": "APP@old", "api/shows/search": '{"shows":["a-search-someone-made"]}' },
+    },
+    pointer: "old",
+    network: networkFor(manifestFor("new", { "app.js": "APP@new" }), { "app.js": "APP@new" }),
+  });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+  assert.equal(h.pointerDeployId(), "new");
+  assert.equal(h.cachedBody("api/shows/search", "foray-gen-old"), null, "the search trace is gone");
+  assert.equal(h.cachedBody("app.js", "foray-gen-old"), "APP@old", "the retained generation's own files stay");
+});
+
+test("app-3-7: a ranged or media request is left to the browser, so its Range header reaches the origin", async () => {
+  /* networkFetch re-issues a subresource by URL alone, which drops Range: the
+     same-origin interlude jingle got a 200 full body where Safari expects a
+     206. MUTATION: delete the isRangeOrMedia return — all three are
+     intercepted. */
+  const h = loadWorker({ network: () => ok("RIFF....") });
+  const JINGLE = "player/assets/interlude-placeholder.wav";
+  const ranged = { ...sub(JINGLE), headers: new Headers({ Range: "bytes=0-" }) };
+  assert.equal(h.fire(ranged, { clientId: "page-1" }), undefined, "a Range request is not intercepted");
+  assert.equal(h.fire({ ...sub(JINGLE), destination: "audio" }, { clientId: "page-1" }), undefined);
+  assert.equal(h.fire({ ...sub("player/assets/clip.mp4"), destination: "video" }, { clientId: "page-1" }), undefined);
+  /* An ordinary script request, headers and all, is still the worker's. */
+  const script = { ...sub("app.js"), destination: "script", headers: new Headers({ Accept: "*/*" }) };
+  assert.notEqual(h.fire(script, { clientId: "page-1" }), undefined);
+});
+
 test("a non-GET request is left alone", async () => {
   const h = loadWorker({ network: () => ok("nope") });
   const res = h.fire({ url: `${ORIGIN}/rest/v1/events`, method: "POST", mode: "cors" });
@@ -1080,7 +1366,7 @@ test("a non-GET request is left alone", async () => {
 /** Minimal DOM: enough for showShellNotice and nothing more. Honest about it —
     `innerHTML` is scanned for `id="…"` rather than parsed, which is why the
     assertions below check the markup string as well as the elements. */
-function makeDocument() {
+function makeDocument(metas = {}) {
   const mk = (tagName) => {
     const el = {
       tagName, id: "", className: "", textContent: "", hidden: false,
@@ -1137,7 +1423,15 @@ function makeDocument() {
     documentElement: mk("html"),
     addEventListener() {},
     createElement: mk,
-    querySelector: (sel) => (sel.startsWith("#") ? walk(body, sel.slice(1)) : null),
+    /* `metas` maps a meta selector to its content, for the two meta tags
+       app.js reads at the top (the pin, and the page's own deploy id). */
+    querySelector: (sel) => {
+      if (sel.startsWith("#")) return walk(body, sel.slice(1));
+      if (Object.prototype.hasOwnProperty.call(metas, sel)) {
+        return { getAttribute: (name) => (name === "content" ? metas[sel] : null) };
+      }
+      return null;
+    },
     querySelectorAll: () => [],
     _view: view,
   };
@@ -1148,8 +1442,9 @@ function makeDocument() {
     `self.__forayPinnedDeployId = "<id>";` to this file's own bytes before the
     browser ran it — set BEFORE `vm.runInContext` executes APP_SRC, exactly as
     a real prepended statement would run before anything below it. */
-function loadPage({ stampedDeployId = null } = {}) {
-  const document = makeDocument();
+function loadPage({ stampedDeployId = null, metas = {} } = {}) {
+  const document = makeDocument(metas);
+  const dataSourceNotes = [];
   const store = new Map();
   const messages = [];
   let reloads = 0;
@@ -1185,6 +1480,9 @@ function loadPage({ stampedDeployId = null } = {}) {
     encodeURIComponent, decodeURIComponent,
   };
   if (stampedDeployId) ctx.__forayPinnedDeployId = stampedDeployId;
+  /* app.js's noteDataSource hands its row here; the stale-shell handler writes
+     one only when it adopts the pin, which makes the pin observable. */
+  ctx.forayNoteDataSource = (fields) => { dataSourceNotes.push(fields); return true; };
   ctx.window = ctx;
   ctx.globalThis = ctx;
   ctx.self = ctx;
@@ -1199,6 +1497,7 @@ function loadPage({ stampedDeployId = null } = {}) {
     dismissButton: () => document.querySelector("#shell-notice-dismiss"),
     reloads: () => reloads,
     fetchedUrls,
+    dataSourceNotes,
     view: document._view,
     body: document.body,
   };
@@ -1262,6 +1561,50 @@ test("a stale-shell message pins the page's later data fetches to that generatio
      (see the sw-generation tests above) and here only the PIN STATE is
      asserted through the notice contract, which is the page-visible half. */
   assert.ok(page.notice(), "the page acknowledged the pin by showing the notice");
+});
+
+test("app-3-5: a stale-shell that says pin:false shows the notice but does not pin the page", async () => {
+  /* The worker sends `pin: false` when a file that does not read data fell
+     back while app.js may be live. MUTATION: adopt the pin whatever `pin`
+     says — the data-source row for g1 is written. */
+  const page = loadPage();
+  page.send({ source: "foray-sw", reason: "stale-shell", deployId: "g1", pin: false });
+  assert.ok(page.notice(), "the listener is still told something is stale");
+  assert.deepEqual(page.dataSourceNotes, [], "but the page did not adopt generation g1");
+
+  /* A worker from before the field (no `pin`) keeps the old meaning. */
+  page.send({ source: "foray-sw", reason: "stale-shell", deployId: "g1" });
+  assert.equal(page.dataSourceNotes.length, 1);
+  assert.equal(page.dataSourceNotes[0].version, "g1");
+});
+
+const DEPLOY_META = 'meta[name="foray-deploy-id"]';
+
+test("app-3-3: a page that already runs the announced deploy is not told it is a version behind", async () => {
+  /* The worker broadcasts generation-changed to every window on promotion. A
+     returning visitor's page usually loaded the new deploy live (network
+     first), so "one version behind" was false after every deploy, and the bar
+     covered the Foray transport. MUTATION: drop the generation-changed
+     early return in the message handler — the bar appears. */
+  const page = loadPage({ metas: { [DEPLOY_META]: "d2" } });
+  page.send({ source: "foray-sw", reason: "generation-changed", deployId: "d2" });
+  assert.equal(page.notice(), null);
+});
+
+test("app-3-3: a page on an older deploy, a pinned page, or one that cannot name its deploy is still told", async () => {
+  const older = loadPage({ metas: { [DEPLOY_META]: "d1" } });
+  older.send({ source: "foray-sw", reason: "generation-changed", deployId: "d2" });
+  assert.match(older.notice().innerHTML, /updated in the background/);
+
+  /* Pinned: its code is a retained generation's, whatever its document says. */
+  const pinned = loadPage({ stampedDeployId: "d1", metas: { [DEPLOY_META]: "d2" } });
+  pinned.send({ source: "foray-sw", reason: "generation-changed", deployId: "d2" });
+  assert.ok(pinned.notice(), "a pinned page is behind the announced deploy");
+
+  /* An unstamped checkout (or a document with no meta) keeps the old behaviour. */
+  const unstamped = loadPage({ metas: { [DEPLOY_META]: "unstamped" } });
+  unstamped.send({ source: "foray-sw", reason: "generation-changed", deployId: "unstamped" });
+  assert.ok(unstamped.notice());
 });
 
 test("the generation-changed message says something different and still offers the reload", async () => {
