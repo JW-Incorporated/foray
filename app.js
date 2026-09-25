@@ -11017,7 +11017,15 @@ function bindEpisodeSeeks(scope, item) {
         const current = typeof window.ForayPlayer.isCurrent === "function"
           ? window.ForayPlayer.isCurrent(item.id)
           : window.ForayPlayer.isPlaying(item.id);
-        if (!current) {
+        /* CURRENT BUT NOTHING LOADED IS A START (round-3 review, L2): a bar
+           restored after a relaunch, or an episode that has ended, is current
+           and not playing, and the toggle below started it outside
+           startEpisodePlay, so no play_started, no History, and the old chain
+           and engine plan stayed. Only a loaded (paused) episode is resumed. */
+        const loaded = current && (typeof window.ForayPlayer.isLoadedCurrent === "function"
+          ? window.ForayPlayer.isLoadedCurrent(item.id)
+          : true);
+        if (!current || !loaded) {
           /* THE ONE START PATH (audit round 3, app-2-4). This called
              ForayPlayer.play() directly, so an episode started from a chapter
              or a timestamp never reached History, never logged play_started

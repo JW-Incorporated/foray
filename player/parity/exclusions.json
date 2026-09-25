@@ -425,6 +425,10 @@
     }
   },
   "transport-reconcile": {
+    "a RESTORED ribbon is current but not loaded, so a caller's own start path takes a press on it (round-3 review, L2)": {
+      "reason": "webview-only",
+      "why": "A page-side predicate app.js reads before a stamp tap (restoredPending plus the manager's state type). In native mode client.js answers it from the same restoredPending and the facades' snapshot state; the engine has no rule here, it only plays what the page's start path sends."
+    },
     "a voice Preview never cuts off the narrator's line, playing or paused (round-3 review, L3)": {
       "reason": "webview-only",
       "why": "The web player's own guard in client.js auditionVoice: with no engine, a preview and narration share the page's one synthesiser, so the page refuses a preview while a line is loaded. In native mode the preview is an audition command and the engine already refuses it while it plays (NE-22, engine-busy), so this page branch never runs there."

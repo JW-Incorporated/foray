@@ -4573,6 +4573,21 @@ const ForayPlayer = {
     return Boolean(id) && current?.id === id;
   },
 
+  /**
+   * `id` is current AND its media is loaded (playing or paused), so resuming
+   * it continues what the listener was hearing. False for a RESTORED bar
+   * (nothing loaded until the first press), an episode that has ENDED, and a
+   * failed load: those still show on the bar, but a press on them is a START,
+   * and a caller with its own start path (app.js's startEpisodePlay: History,
+   * play_started, the play list, the engine plan) must take it rather than
+   * toggling (round-3 review, L2).
+   */
+  isLoadedCurrent(id) {
+    if (!id || current?.id !== id || restoredPending) return false;
+    const t = manager?.state?.type;
+    return typeof t === "string" && t !== "idle" && t !== "ended";
+  },
+
   /** The id of the ORDINARY episode on the bar, or null — null during a Foray,
       whose next/previous are segments and never the page's. What app.js's
       `setEpisodeNavigation` getters ask "next after what?". */

@@ -331,7 +331,8 @@ test("a seek does not restart an episode that is already the current one", () =>
      restarted), and a start goes through the one start path, startEpisodePlay.
      MUTATION: drop the `if (!current)` guard and always start. */
   const fn = /function bindEpisodeSeeks\(scope, item\) \{([\s\S]*?)\n\}/.exec(SRC);
-  assert.match(fn[1], /if \(!current\) \{[\s\S]*?await startEpisodePlay\(item\.id, item, \{ ctx: null, list: \[\], startOffset: secs \}\);\s*return;\s*\}/);
+  // Round-3 review (L2): a current episode with nothing loaded (restored, ended) is a start too.
+  assert.match(fn[1], /if \(!current \|\| !loaded\) \{[\s\S]*?await startEpisodePlay\(item\.id, item, \{ ctx: null, list: \[\], startOffset: secs \}\);\s*return;\s*\}/);
   assert.match(fn[1], /await window\.ForayPlayer\.seekTo\(secs\)/, "…and the current episode is seeked instead");
 });
 
@@ -490,6 +491,46 @@ test("ROUND 3 (app-2-4): a stamp tap starts through startEpisodePlay — History
     assert.strictEqual(plays.length, 1, "a paused current episode is not restarted");
     assert.deepStrictEqual(seeks, [90], "it is seeked");
     assert.strictEqual(toggles, 1, "and resumed");
+  } finally {
+    app.logEvent = logEvent;
+    delete app.window.ForayPlayer;
+  }
+});
+
+test("round-3 review (L2): a stamp on a RESTORED or ENDED current episode starts it through startEpisodePlay, not the toggle", async () => {
+  /* After a relaunch the bar is restored with the episode (isCurrent true,
+     nothing loaded), and the tap sought and then toggled, which started it
+     through the restored-play branch: no play_started, no History, the old
+     chain kept. MUTATION: drop the isLoadedCurrent check (treat every current
+     episode as loaded) -- the toggle runs and play() is never called. */
+  let handler = null;
+  const btn = { dataset: { ts: "300" }, addEventListener: (_t, fn) => { handler = fn; } };
+  const plays = [];
+  let toggles = 0;
+  vm.runInContext("state.session = state.session || { cards: [] }; state.playList = ['old-a', 'old-b']; state.playChainId = 'old-a';", app);
+  const events = [];
+  const logEvent = app.logEvent;
+  app.logEvent = (type, payload) => { events.push([type, payload]); };
+  app.window.ForayPlayer = {
+    canPlay: () => true,
+    isPlaying: () => false,
+    isCurrent: (id) => id === "ep-restored",
+    isLoadedCurrent: () => false,         // restored (or ended): current, nothing loaded
+    play: async (item, opts) => { plays.push(opts); return true; },
+    seekTo: async () => {},
+    togglePlayback: async () => { toggles += 1; },
+    reportPlayFailure: () => {},
+  };
+  try {
+    const item = { id: "ep-restored", title: "Restored", audio_url: "https://x.test/r.mp3", topics: ["history"] };
+    app.bindEpisodeSeeks({ querySelectorAll: () => [btn] }, item);
+    await handler({ preventDefault() {}, stopPropagation() {} });
+    assert.strictEqual(toggles, 0, "the toggle is not the start path");
+    assert.strictEqual(plays.length, 1, "the episode is started");
+    assert.strictEqual(plays[0].startOffset, 300, "at the stamp");
+    assert.ok(events.some(([t, p]) => t === "play_started" && p.episode_id === "ep-restored"), "play_started is logged");
+    assert.ok(vm.runInContext("pickedHistory()", app).includes("ep-restored"), "it reaches History");
+    assert.deepStrictEqual(Array.from(vm.runInContext("state.playList", app)), ["ep-restored"], "the old chain is replaced");
   } finally {
     app.logEvent = logEvent;
     delete app.window.ForayPlayer;

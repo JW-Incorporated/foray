@@ -1676,6 +1676,25 @@ async function aRestoredRibbon(t, seconds = 1800, opts = {}) {
   return booted;
 }
 
+test("a RESTORED ribbon is current but not loaded, so a caller's own start path takes a press on it (round-3 review, L2)", async (t) => {
+  /* app.js's stamp tap asks isLoadedCurrent to tell a paused episode (resume
+     it) from a restored bar (start it through startEpisodePlay). MUTATION:
+     make isLoadedCurrent answer isCurrent (drop its state checks) -- the
+     restored bar reads as loaded. */
+  const { client, restore } = await aRestoredRibbon(t, 1800);
+  const id = client.currentEpisodeId();
+  assert.ok(id && client.isCurrent(id), "precondition: the restored episode is current");
+  assert.equal(client.isLoadedCurrent(id), false, "a restored bar has nothing loaded");
+  assert.equal(client.isLoadedCurrent("some-other-id"), false);
+  await client.togglePlayback();
+  await settle();
+  assert.equal(client.isLoadedCurrent(id), true, "once it plays, it is loaded");
+  await client.togglePlayback();
+  await settle();
+  assert.equal(client.isLoadedCurrent(id), true, "and paused, it is still loaded");
+  restore();
+});
+
 test("AUDIT: a scrub on a RESTORED ribbon is where the next press starts", async (t) => {
   /* The restored bar holds no audio, so `manager.seek` hit an empty queue, the
      reducer refused it silently, the thumb snapped back and play started from
