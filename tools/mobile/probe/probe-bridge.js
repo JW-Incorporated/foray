@@ -17,6 +17,65 @@
  * proves nothing on its own.
  */
 (function () {
+  /* NE-36: THE NATIVE PHASE'S LAST PAGE IS THE REAL APP. `probe-native.js` ends
+     by pausing the engine, reading its rows and loading index.html again, and
+     marks its record `reload-requested` first. That boot is the reload clobber
+     check (W-8): the REAL page — DurableStore, the engine client, all of it —
+     must come up and leave the engine's rows alone. So on that boot this file
+     does nothing but count media elements and stamp the record: no navigation,
+     no mediaSession writes, no setNowPlaying round trip, nothing the native
+     assertions would then find in the log. Read synchronously, at document
+     parse, before any module script has run. */
+  var NATIVE_KEY = "foray_probe_native";
+  var nrec = null;
+  try { nrec = JSON.parse(localStorage.getItem(NATIVE_KEY) || "null"); } catch (e) { nrec = null; }
+  if (nrec && nrec.phase === "native" && nrec.stage === "reload-requested") {
+    realAppAfterReload(nrec);
+    return;
+  }
+
+  function saveNative(r) {
+    var text = "";
+    try { text = JSON.stringify(r); localStorage.setItem(NATIVE_KEY, text); } catch (e) {}
+    try {
+      var cap = window.Capacitor;
+      if (cap && typeof cap.nativePromise === "function") {
+        var p = cap.nativePromise("Preferences", "set", { key: NATIVE_KEY, value: text });
+        if (p && typeof p.then === "function") p.then(null, function () {});
+      }
+    } catch (e) {}
+  }
+
+  function realAppAfterReload(r) {
+    /* Counted, never prevented: a real page that builds an <audio> in the
+       native lane is exactly what `no-html-media` exists to catch. */
+    var built = 0;
+    try {
+      var NativeAudio = window.Audio;
+      if (typeof NativeAudio === "function") {
+        var Counted = function (a) { built++; return a === undefined ? new NativeAudio() : new NativeAudio(a); };
+        Counted.prototype = NativeAudio.prototype;
+        window.Audio = Counted;
+      }
+      var create = Document.prototype.createElement;
+      Document.prototype.createElement = function (name) {
+        if (/^(audio|video)$/i.test(String(name))) built++;
+        return create.apply(this, arguments);
+      };
+    } catch (e) { built = null; }
+    r.stage = "real-app-booted";
+    r.realAppBootedAt = Date.now();
+    saveNative(r);
+    setTimeout(function () {
+      var inDom = 0;
+      try { inDom = document.querySelectorAll("audio,video").length; } catch (e) {}
+      r.mediaElementsRealApp = built == null ? null : built + inDom;
+      r.stage = "done";
+      r.doneAt = Date.now();
+      saveNative(r);
+    }, 15000);
+  }
+
   var KEY = "foray_probe_bridge";
   var out = {
     phase: "bridge",
@@ -49,7 +108,8 @@
     });
   } catch (e) {}
 
-  function snapshot() {
+  function snapshot(opts) {
+    var touchMediaSession = !(opts && opts.touchMediaSession === false);
     try { out.capacitorType = typeof window.Capacitor; } catch (e) { out.capacitorType = "threw"; }
     out.isNativePlatform = null;
     out.platform = null;
@@ -70,7 +130,12 @@
       }
     } catch (e) {}
     out.hasServiceWorkerApi = !!navigator.serviceWorker;
-    snapshotMediaSession();
+    /* M-01 WRITES to navigator.mediaSession. In the native phase the recheck
+       skips them: once the polyfill has taken over, a write reaches
+       `ForayAudio.setNowPlaying`, and "no setNowPlaying reached" is one of the
+       native lane's assertions. The t=0 reading is before any module script,
+       on WebKit's own object, with no media element to publish from. */
+    if (touchMediaSession) snapshotMediaSession();
     snapshotMediaSessionTakeover();
   }
 
@@ -297,7 +362,7 @@
      The default is the ORIGINAL phase, so a missing or blocked phase file degrades
      to the behaviour this file has always had rather than to no navigation at all —
      a probe that lands nowhere is a green run that measured nothing. */
-  var PHASES = { outpoint: "probe-outpoint.html", seam: "probe-seam.html" };
+  var PHASES = { outpoint: "probe-outpoint.html", seam: "probe-seam.html", native: "probe-native.html" };
   var DEFAULT_PHASE = "outpoint";
 
   function phaseTarget() {
@@ -338,21 +403,73 @@
   /* One late re-check, because a bridge could in principle be injected after
      document start, and then hand over to the measurement phase. 3 s is long
      enough for app.js's own service-worker registration to have happened. */
+  /* NE-36: THE LEGACY-MODE SMOKE, in every JS-lane phase. The workflow seeds
+     `ForayEngine.modeOverride=web` before the out-point and seam passes, so the
+     engine must answer `legacy` / `override` here: those passes measure the JS
+     player, and a native engine holding the session under them would make both
+     measurements about the wrong lane. RECORDED, NOT DECIDED: `ios-ci.mjs`'s
+     `legacySmokeVerdict` reads it. In the legacy lane the handshake is a read
+     (the engine never booted). Its own 3 s deadline, like the round trip above,
+     so it can never strand the hand-over. */
+  function checkEngineHello(done) {
+    var h = { attempted: false, mode: null, reason: null, protocol: null, error: null, phase: out.phaseChosen || null };
+    out.engineHello = h;
+    var cap = null;
+    try { cap = window.Capacitor; } catch (e) {}
+    if (!cap || typeof cap.nativePromise !== "function") {
+      h.error = "no Capacitor.nativePromise on this page";
+      return done();
+    }
+    var settled = false;
+    var timer = null;
+    function finish() {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      done();
+    }
+    timer = setTimeout(function () { h.error = "timeout after 3000 ms"; finish(); }, 3000);
+    try {
+      h.attempted = true;
+      // engine-contract.js PROTOCOL, pinned by install-probe.test.mjs.
+      var p = cap.nativePromise("ForayAudio", "engineHello", { pageBuild: "probe-bridge", protocol: 1 });
+      if (!p || typeof p.then !== "function") { h.error = "nativePromise returned no promise"; return finish(); }
+      p.then(function (a) {
+        h.mode = a && typeof a.mode === "string" ? a.mode : null;
+        h.reason = a && typeof a.reason === "string" ? a.reason : null;
+        h.protocol = a && typeof a.protocol === "number" ? a.protocol : null;
+        finish();
+      }, function (e) { h.error = String((e && (e.message || e.code)) || e); finish(); });
+    } catch (e) { h.error = "threw: " + String(e && e.message); finish(); }
+  }
+
+  /* The phase file loads FIRST (NE-36), because what the recheck may do depends
+     on it: the native phase must not write to navigator.mediaSession, call
+     setNowPlaying, or say hello ahead of the engine client it is about to load.
+     For the two JS-lane phases the checks are the ones they always were. */
   setTimeout(function () {
-    snapshot();
-    out.recheckedAfterMs = 3000;
-    checkWorkers(function () {
-      /* L-02's round trip sits between the worker count and the phase hand-over:
-         it has its own 3 s deadline (see the function), so it can delay the
-         phase page by at most that, and never strand it. */
-      checkNowPlayingRoundTrip(function () {
-        loadPhaseFile(function () {
-          var target = phaseTarget();
-          out.finishedAtWall = Date.now();
-          save();
-          try {
-            if (location.pathname.indexOf(target) < 0) location.replace(target);
-          } catch (e) {}
+    loadPhaseFile(function () {
+      var target = phaseTarget();
+      var native = out.phaseChosen === "native";
+      snapshot({ touchMediaSession: !native });
+      out.recheckedAfterMs = 3000;
+      function handOver() {
+        out.finishedAtWall = Date.now();
+        save();
+        try {
+          if (location.pathname.indexOf(target) < 0) location.replace(target);
+        } catch (e) {}
+      }
+      checkWorkers(function () {
+        if (native) {
+          out.setNowPlayingRoundTrip = { attempted: false, skipped: "native phase: the engine owns Now Playing" };
+          return handOver();
+        }
+        /* L-02's round trip sits between the worker count and the phase hand-over:
+           it has its own 3 s deadline (see the function), so it can delay the
+           phase page by at most that, and never strand it. */
+        checkNowPlayingRoundTrip(function () {
+          checkEngineHello(handOver);
         });
       });
     });

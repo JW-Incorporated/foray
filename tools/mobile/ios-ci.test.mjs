@@ -2179,3 +2179,300 @@ test("a run with no probe record still reports what the native side saw", () => 
   assert.equal(v.session.verdict, "found");
   assert.deepEqual(v.session.kinds, { mediaServicesReset: 1 });
 });
+
+/* ─────────── NE-36: the lanes, the seeding, and the native probe ─────────── */
+
+import * as NE36 from "./ios-ci.mjs";
+import { code as yamlCode, step as yamlStep } from "./workflow-yaml.mjs";
+import { pathToFileURL } from "node:url";
+
+const REPO = path.resolve(HERE, "..", "..");
+const NATIVE_PASS = fs.readFileSync(path.join(HERE, "probe", "ios-build-native-pass.yml"), "utf8");
+const UDID = "0A1B2C3D-4E5F-6789-ABCD-EF0123456789";
+
+test("NE-36 seeding: the exact simctl defaults write, pinned (no launch-argument form exists)", () => {
+  assert.deepEqual(NE36.seedModeArgv(UDID, "ai.jwlabs.foura", "native"), [
+    "xcrun", "simctl", "spawn", UDID, "defaults", "write", "ai.jwlabs.foura", "ForayEngine.modeOverride", "native",
+  ]);
+  assert.deepEqual(NE36.seedModeArgv(UDID, "ai.jwlabs.foura", "web").slice(-2), ["ForayEngine.modeOverride", "web"]);
+  assert.deepEqual(NE36.readModeArgv(UDID, "ai.jwlabs.foura"), [
+    "xcrun", "simctl", "spawn", UDID, "defaults", "read", "ai.jwlabs.foura", "ForayEngine.modeOverride",
+  ]);
+  for (const [u, b, m] of [
+    [UDID, "ai.jwlabs.foura", "js"], // not a stored override value
+    [UDID, "ai.jwlabs.foura", "Native"],
+    ["booted; rm -rf /", "ai.jwlabs.foura", "web"],
+    [UDID, "ai.jwlabs.foura com.other", "web"],
+    [undefined, "ai.jwlabs.foura", "web"],
+  ]) {
+    assert.throws(() => NE36.seedModeArgv(u, b, m), /seed-mode/);
+  }
+});
+
+test("NE-36 seeding: the key and the values are the engine's own, read from the Swift source", () => {
+  const keys = fs.readFileSync(path.join(REPO, "mobile/plugins/foray-audio/foray-engine-core/Sources/ForayEngineCore/Persist/EngineKeys.swift"), "utf8");
+  assert.match(keys, new RegExp(`case modeOverride = "${NE36.MODE_OVERRIDE_KEY.replace(".", "[.]")}"`));
+  const consts = fs.readFileSync(path.join(REPO, "mobile/plugins/foray-audio/foray-engine-core/Sources/ForayEngineCore/EngineConstants.swift"), "utf8");
+  const m = /modeOverrides: \[String\] = \[([^\]]*)\]/.exec(consts);
+  assert.ok(m, "EngineConstants.modeOverrides moved");
+  assert.deepEqual(JSON.parse(`[${m[1]}]`), NE36.MODE_OVERRIDES);
+});
+
+test("NE-36 staged step: pinned to the legacy lane with web, the native pass seeded native BEFORE its launch", () => {
+  assert.match(NATIVE_PASS, /seed_js_lane: \|\n\s+node tools\/mobile\/ios-ci\.mjs seed-mode "\$UDID" "\$APP_ID" web >> "\$ART\/lane-seeds\.txt"/);
+  const run = yamlCode(yamlStep(NATIVE_PASS, "Run the native-engine probe"));
+  assert.ok(run.length > 0, "the staged native step is missing");
+  const at = (needle) => {
+    const i = run.indexOf(needle);
+    assert.ok(i >= 0, `the staged step no longer does: ${needle}`);
+    return i;
+  };
+  const terminate = at('xcrun simctl terminate "$UDID" "$APP_ID"');
+  const install = at('install-probe.mjs "$APPDIR/public" --phase native --audio-base "file://$APPDIR/public/"');
+  const seed = at('ios-ci.mjs seed-mode "$UDID" "$APP_ID" native');
+  const launch = at('echo "launch=$(xcrun simctl launch "$UDID" "$APP_ID")"');
+  const background = at("xcrun simctl launch \"$UDID\" com.apple.Preferences");
+  const kill = at("webcontent_killed=");
+  const foreground = at('echo "foreground=$(xcrun simctl launch "$UDID" "$APP_ID")"');
+  /* The app's OWN plist, from its data container: `simctl spawn defaults export`
+     reads the device-wide domain (trial run 36176555294 got only the seed back). */
+  const exported = at('cp "$DATA/Library/Preferences/$APP_ID.plist" "$WORK/defaults.plist"');
+  assert.ok(at('DATA=$(xcrun simctl get_app_container "$UDID" "$APP_ID" data)') < exported);
+  const rows = at('native-rows "$WORK/defaults.plist" > "$ART/native-rows.json"');
+  assert.ok(terminate < install && install < seed && seed < launch, "terminate -> install -> seed -> launch");
+  assert.ok(launch < background && background < kill && kill < foreground && foreground < exported && exported < rows);
+  /* The raw export never lands in $ART: it holds every CapacitorStorage value. */
+  assert.doesNotMatch(run, /(defaults export|Preferences\/\$APP_ID\.plist)[^\n]*\$ART\//);
+  assert.match(run, /WORK="\$RUNNER_TEMP\/ios-ci-native-work"/);
+  /* The kill is the Simulator's WebContent, not anything on the host. */
+  assert.match(run, /awk '\/com\\\.apple\\\.WebKit\\\.WebContent\/ && \/CoreSimulator\/ \{print \$1\}'/);
+  assert.match(run, /simulator-log-native\.txt/);
+});
+
+test("NE-36 staged step: more than 90 s backgrounded, the kill mid-Foray, the finale before the Foray ends", async () => {
+  const run = yamlCode(yamlStep(NATIVE_PASS, "Run the native-engine probe"));
+  const sleeps = [...run.matchAll(/^\s*sleep (\d+)/gm)].map((m) => Number(m[1]));
+  assert.deepEqual(sleeps.length, 4, `expected four sleeps (play, background, kill, reload), got ${sleeps}`);
+  const [beforeBg, hidden, afterKill] = sleeps;
+  /* Settings has taken up to ~35 s to come forward on a cold Simulator: the hidden
+     window must still clear 90 s after that lag. */
+  assert.ok(hidden + afterKill - 35 > NE36.NATIVE_MIN_HIDDEN_SEC, `hidden window ${hidden + afterKill}s leaves no margin`);
+  const { PROBE_FORAY_SEGMENTS } = await import(pathToFileURL(path.join(HERE, "probe", "probe-native-foray.js")).href);
+  const lengths = PROBE_FORAY_SEGMENTS.map((s) => s.end_sec - s.start_sec);
+  const total = lengths.reduce((a, b) => a + b, 0);
+  const PLAY_STARTS_BY = 8; // bridge 3 s + phase load + hello + playForay
+  const killAt = beforeBg + hidden;
+  const finaleAt = killAt + afterKill + 4 + 2; // SETTLE_MS + PAUSE_SETTLE_MS in probe-native.js
+  assert.ok(PLAY_STARTS_BY + lengths[0] + lengths[1] < killAt, "the kill must land in the last segment, after both seams");
+  assert.ok(PLAY_STARTS_BY + total > finaleAt + 10, `the Foray (${total}s) ends before the finale pauses it (${finaleAt}s)`);
+  const js = fs.readFileSync(path.join(HERE, "probe", "probe-native.js"), "utf8");
+  assert.match(js, /const SETTLE_MS = 4000;/);
+  assert.match(js, /const PAUSE_SETTLE_MS = 2000;/);
+});
+
+const engineLine = (seq, rest) =>
+  `2026-09-25 10:00:${String(seq).padStart(2, "0")}.000 Df App[1234:5678] [ai.jwlabs.foura:engine] #${seq} ${rest}`;
+
+function nativeLog({ seams = 2, nowplaying = true, extra = [] } = {}) {
+  const lines = [engineLine(1, "build engineVersion=1 bundleVersion=42 launch=foreground")];
+  for (let i = 0; i < seams; i++) {
+    lines.push(engineLine(10 + i, `seam observedGapMs=${510 + i} askedGapMs=500 prepared=false grace=true bgRemainingMs=${i ? 25000 : "null"} stages=load,ready`));
+  }
+  lines.push(engineLine(20, "outPoint layer=boundary overshootMs=3"));
+  if (nowplaying) lines.push(engineLine(21, "nowplaying via=metadata title=y artist=y album=y artwork=n state=playing rate=1"));
+  // The engine's OWN MPNowPlayingInfoCenter work, in the App process: not WebKit's.
+  lines.push("2026-09-25 10:00:30.000 Df App[1234:5678] [com.apple.mediaremote:NowPlaying] MRMediaRemote setNowPlayingInfo");
+  return [...lines, ...extra].join("\n");
+}
+
+function passingRecord() {
+  return {
+    phase: "native", v: 1, stage: "done",
+    // The shape probe-native.js records (helloOf): the page's decision, then the engine's answer.
+    hello: { mode: "native", reason: "native", engine: { mode: "native", reason: "override" } },
+    play: { cmd: "playForay", ok: true, reason: null }, forayItems: 3,
+    hiddenAt: 1_000_000, visibleAt: 1_000_000 + 120_000,
+    restarts: 1, helloAfterRestart: { mode: "native", reason: "override" },
+    snapshotAfterRestart: { state: "playing", index: 2, running: true },
+    mediaElementsProbe: 0, mediaElementsRealApp: 0,
+    rowsBeforeReload: { "cp_pos:probe-native-a": '{"s":50}', "cp_foray:probe-native-foray": '{"i":2}' },
+    realAppBootedAt: 1_000_200_000,
+  };
+}
+const PASS_STEPS = { launch: "ai.jwlabs.foura: 4242", foreground: "ai.jwlabs.foura: 4242", webcontent_killed: "1" };
+const PINNED_BRIDGE = { engineHello: { attempted: true, mode: "legacy", reason: "override", phase: "seam" } };
+const byId = (n) => Object.fromEntries(n.assertions.map((x) => [x.id, x.verdict]));
+
+test("NE-36 parseEngineRows: the mirrored ring rows, and only lines from the engine's subsystem", () => {
+  const rows = NE36.parseEngineRows(nativeLog());
+  assert.deepEqual(rows.map((r) => r.kind), ["build", "seam", "seam", "outPoint", "nowplaying"]);
+  assert.equal(rows[1].fields.observedGapMs, "510");
+  assert.equal(rows[2].fields.bgRemainingMs, "25000");
+  assert.equal(rows[4].fields.via, "metadata");
+  /* The same shape from another process or subsystem is not the engine. */
+  assert.deepEqual(NE36.parseEngineRows("Df SpringBoard[1:2] [com.apple.x:y] #3 seam askedGapMs=500"), []);
+  assert.deepEqual(NE36.parseEngineRows(null), []);
+});
+
+test("NE-36 forbidden lines: WebKit's publish, the legacy plugin's reach, an HTMLMediaElement", () => {
+  const clean = NE36.forbiddenNativeLines(nativeLog());
+  assert.deepEqual(clean, { webkitPublish: [], forayAudioReached: [], htmlMedia: [] },
+    "the engine's own MediaRemote line is the point of the exercise, not a WebKit publish");
+  const dirty = NE36.forbiddenNativeLines([
+    "Df com.apple.WebKit.GPU[9:9] [com.apple.WebKit:Media] MRMediaRemote NowPlaying publish",
+    `Df App[1:2] [ai.jwlabs.foura:ForayAudio] ${FORAY_AUDIO_REACHED_NEEDLE} state=playing`,
+    "Df com.apple.WebKit.WebContent[7:7] [com.apple.WebKit:Media] HTMLMediaElement::HTMLMediaElement(0x1)",
+  ].join("\n"));
+  assert.equal(dirty.webkitPublish.length, 1);
+  assert.equal(dirty.forayAudioReached.length, 1);
+  assert.equal(dirty.htmlMedia.length, 1);
+});
+
+const plist = (pairs) =>
+  `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n` +
+  pairs.map(([k, v]) => `\t<key>${k}</key>\n\t${v}\n`).join("") + `</dict>\n</plist>\n`;
+
+test("NE-36 native-rows: only the owned rows and the probe record leave the export", () => {
+  const xml = plist([
+    ["CapacitorStorage.cp_pos:ep-1", "<string>{&quot;s&quot;:12.5}</string>"],
+    ["CapacitorStorage.cp_foray:f-1", "<string>{&quot;i&quot;:1,&quot;t&quot;:&quot;a&amp;b&quot;}</string>"],
+    ["CapacitorStorage.cp_sb_session", "<string>eyJhbGciOiJFUzI1NiJ9.SECRET.SIG</string>"],
+    ["CapacitorStorage.cp_rate", "<string>1.5</string>"],
+    ["ForayEngine.restore", "<string>{}</string>"],
+    ["ForayEngine.strikes", "<integer>0</integer>"],
+    ["CapacitorStorage.foray_probe_native", `<string>${JSON.stringify({ phase: "native", stage: "done" }).replace(/"/g, "&quot;")}</string>`],
+    ["CapacitorStorage.cp_pos:empty", "<string/>"],
+  ]);
+  const r = NE36.parseDefaultsExport(xml);
+  assert.deepEqual(r.rows, { "cp_pos:ep-1": '{"s":12.5}', "cp_foray:f-1": '{"i":1,"t":"a&b"}', "cp_pos:empty": "" });
+  assert.deepEqual(r.probe, { phase: "native", stage: "done" });
+  assert.equal(JSON.stringify(r).includes("SECRET"), false, "a session token left the export");
+  assert.throws(() => NE36.parseDefaultsExport("bplist00\u0000"), /BINARY plist/);
+  assert.throws(() => NE36.parseDefaultsExport(""), /empty/);
+  assert.throws(() => NE36.parseDefaultsExport("{}"), /not an XML property list/);
+});
+
+test("NE-36 native-rows CLI: stdout carries no other key", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ne36-rows-"));
+  const file = path.join(dir, "defaults.plist");
+  fs.writeFileSync(file, plist([
+    ["CapacitorStorage.cp_pos:ep-1", "<string>1</string>"],
+    ["CapacitorStorage.cp_sb_session", "<string>TOKEN-VALUE</string>"],
+  ]));
+  const r = spawnSync(process.execPath, [path.join(HERE, "ios-ci.mjs"), "native-rows", file], { encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(JSON.parse(r.stdout).rows, { "cp_pos:ep-1": "1" });
+  assert.equal(r.stdout.includes("TOKEN-VALUE") || r.stdout.includes("cp_sb_session"), false);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("NE-36 legacy smoke: pinned only on legacy/override; silence is inconclusive", () => {
+  assert.equal(NE36.legacySmokeVerdict(PINNED_BRIDGE).verdict, "pinned");
+  assert.equal(NE36.legacySmokeVerdict({ engineHello: { attempted: true, mode: "native", reason: "build-default" } }).verdict, "unpinned");
+  assert.equal(NE36.legacySmokeVerdict({ engineHello: { attempted: true, mode: "legacy", reason: "crash-loop" } }).verdict, "unpinned");
+  assert.equal(NE36.legacySmokeVerdict({ engineHello: { attempted: true, mode: null, error: "timeout" } }).verdict, "inconclusive");
+  for (const b of [null, {}, { engineHello: { attempted: false } }]) assert.equal(NE36.legacySmokeVerdict(b).verdict, "inconclusive");
+});
+
+test("NE-36 verdict: nothing measured is no-coverage, never a pass", () => {
+  const n = NE36.nativeProbeVerdict({});
+  assert.equal(n.verdict, "no-coverage");
+  assert.equal(n.ran, false);
+  assert.match(n.headline, /did not run/);
+  assert.equal(byId(n)["legacy-smoke"], "no-coverage");
+  /* A log that never saw an engine row proves nothing about forbidden lines. */
+  const silent = NE36.nativeProbeVerdict({ record: passingRecord(), rowsAfter: passingRecord().rowsBeforeReload, logText: "Df kernel[0:0] nothing here", steps: PASS_STEPS, bridge: PINNED_BRIDGE });
+  const v = byId(silent);
+  for (const id of ["seams", "nowplaying", "no-webkit-publish", "no-setnowplaying"]) assert.equal(v[id], "no-coverage", id);
+  assert.equal(silent.verdict, "incomplete");
+});
+
+test("NE-36 verdict: every assertion passes on a complete, clean run", () => {
+  const rec = passingRecord();
+  const n = NE36.nativeProbeVerdict({ record: rec, rowsAfter: { ...rec.rowsBeforeReload }, logText: nativeLog(), steps: PASS_STEPS, bridge: PINNED_BRIDGE });
+  assert.deepEqual(byId(n), {
+    "legacy-smoke": "pass", "native-lane": "pass", played: "pass", background: "pass", "webcontent-kill": "pass",
+    seams: "pass", nowplaying: "pass", "no-webkit-publish": "pass", "no-setnowplaying": "pass",
+    "no-html-media": "pass", "reload-clobber": "pass",
+  });
+  assert.equal(n.verdict, "pass");
+});
+
+test("NE-36 verdict: each failure is named", () => {
+  const rec = passingRecord();
+  const base = { record: rec, rowsAfter: { ...rec.rowsBeforeReload }, logText: nativeLog(), steps: PASS_STEPS, bridge: PINNED_BRIDGE };
+  const clobbered = NE36.nativeProbeVerdict({ ...base, rowsAfter: { ...rec.rowsBeforeReload, "cp_pos:probe-native-a": '{"s":0}' } });
+  assert.equal(byId(clobbered)["reload-clobber"], "fail");
+  assert.match(clobbered.assertions.find((x) => x.id === "reload-clobber").evidence, /cp_pos:probe-native-a/);
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, rowsAfter: {} }))["reload-clobber"], "fail", "a deleted row is a clobber");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, logText: nativeLog({ seams: 1 }) })).seams, "fail");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, logText: nativeLog({ nowplaying: false }) })).nowplaying, "fail");
+  const webkit = nativeLog({ extra: ["Df com.apple.WebKit.GPU[9:9] MRMediaRemote NowPlaying from WebKit"] });
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, logText: webkit }))["no-webkit-publish"], "fail");
+  const reached = nativeLog({ extra: [`Df App[1:2] ${FORAY_AUDIO_REACHED_NEEDLE} state=none`] });
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, logText: reached }))["no-setnowplaying"], "fail");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, mediaElementsRealApp: 1 } }))["no-html-media"], "fail");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, hello: { mode: "native", reason: "native", engine: { mode: "native", reason: "build-default" } } } }))["native-lane"], "fail", "native by build default is not the seed");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, hello: { mode: "native", reason: "native" } } }))["native-lane"], "fail", "no engine answer recorded");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, hello: { mode: "legacy", reason: "engine-legacy", engine: { mode: "legacy", reason: "crash-loop" } } } }))["native-lane"], "fail");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, snapshotAfterRestart: { state: "idle", running: false } } }))["webcontent-kill"], "fail");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, bridge: { engineHello: { attempted: true, mode: "native", reason: "build-default" } } }))["legacy-smoke"], "fail");
+  assert.equal(NE36.nativeProbeVerdict({ ...base, rowsAfter: {} }).verdict, "fail");
+});
+
+test("NE-36 verdict: what cannot be concluded says so", () => {
+  const rec = passingRecord();
+  const base = { record: rec, rowsAfter: { ...rec.rowsBeforeReload }, logText: nativeLog(), steps: PASS_STEPS, bridge: PINNED_BRIDGE };
+  /* A relaunch is not a WebContent kill. */
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, steps: { ...PASS_STEPS, foreground: "ai.jwlabs.foura: 5000" } }))["webcontent-kill"], "no-coverage");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, steps: { ...PASS_STEPS, webcontent_killed: "0" } }))["webcontent-kill"], "no-coverage");
+  /* Too short a hidden window is not a pass. */
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, visibleAt: rec.hiddenAt + 60_000 } })).background, "no-coverage");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, visibleAt: rec.hiddenAt + 90_000 } })).background, "no-coverage", "exactly 90 s is not MORE than 90 s");
+  /* A binary without `foray`: the fallback episode still runs, the seams do not count. */
+  const off = byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, play: { cmd: "playForay", ok: false, reason: "capability-off" }, fallback: { ok: true } } }));
+  assert.equal(off.played, "no-coverage");
+  assert.equal(off.seams, "no-coverage");
+  assert.equal(off["reload-clobber"], "pass");
+  /* No rows read, or the real page never booted: no clobber verdict either way. */
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, rowsBeforeReload: {} } }))["reload-clobber"], "no-coverage");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, realAppBootedAt: undefined } }))["reload-clobber"], "no-coverage");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, rowsAfter: null }))["reload-clobber"], "no-coverage");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, mediaElementsRealApp: undefined } }))["no-html-media"], "no-coverage");
+});
+
+test("NE-36 report: the JS-lane sections are labelled, section 5 carries the run id and the Simulator limits", () => {
+  const md = renderReport({ bridge: PINNED_BRIDGE, outPoint: null, seam: null, signingState: "absent" });
+  assert.match(md, new RegExp(`### 2\\. The out-point while backgrounded — ${NE36.JS_LANE_LABEL.replace(/[()/]/g, "\\$&")}`));
+  assert.match(md, /### 3\. The SEAM TRANSITION while backgrounded — JS lane \(Android\/web parity\)/);
+  assert.match(md, /### 3b\. [^\n]*JS lane \(Android\/web parity\)/);
+  assert.match(md, /### 5\. Native engine lane \(NE-36\) — `no-coverage`/);
+  assert.match(md, /did not run/);
+  assert.ok(md.indexOf("### 5.") < md.indexOf("### 4."), "section 5 sits beside the lanes, above the upload");
+  const rec = passingRecord();
+  const n = NE36.nativeProbeVerdict({ record: rec, rowsAfter: { ...rec.rowsBeforeReload }, logText: nativeLog(), steps: PASS_STEPS, bridge: PINNED_BRIDGE });
+  const full = renderReport({ bridge: PINNED_BRIDGE, signingState: "absent", nativeProbe: n, runId: "31234567890" });
+  for (const a of n.assertions) assert.match(full, new RegExp(`\\| ${a.title.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")} \\| \`pass\` \\|[^\\n]*\\| run 31234567890 \\|`));
+  assert.ok(full.includes(NE36.NATIVE_SIMULATOR_LIMITS));
+  assert.match(full, /W-8: cp_pos \/ cp_foray rows unchanged by the reload/);
+});
+
+test("NE-36 verdict CLI: reads native-rows.json, native-steps.txt and the native log from the dump's directory", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ne36-verdict-"));
+  const rec = passingRecord();
+  fs.writeFileSync(path.join(dir, "localstorage.json"), JSON.stringify({ foray_probe_bridge: JSON.stringify(PINNED_BRIDGE) }));
+  fs.writeFileSync(path.join(dir, "native-rows.json"), JSON.stringify({ rows: { ...rec.rowsBeforeReload }, probe: rec, keysSeen: 9 }));
+  fs.writeFileSync(path.join(dir, "native-steps.txt"), "seed_native=native\nlaunch=ai.jwlabs.foura: 4242\nbackgrounded_at=1\nwebcontent_killed=1\nforeground=ai.jwlabs.foura: 4242\n");
+  fs.writeFileSync(path.join(dir, "simulator-log-native.txt"), nativeLog());
+  const out = path.join(dir, "gh-output.txt");
+  const r = spawnSync(process.execPath, [path.join(HERE, "ios-ci.mjs"), "verdict", path.join(dir, "localstorage.json")], {
+    encoding: "utf8", env: { ...process.env, GITHUB_OUTPUT: out, GITHUB_STEP_SUMMARY: "", GITHUB_RUN_ID: "999" },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /### 5\. Native engine lane \(NE-36\) — `pass`/);
+  assert.match(r.stdout, /run 999/);
+  const o = fs.readFileSync(out, "utf8");
+  assert.match(o, /^native=pass$/m);
+  assert.match(o, /^legacy_smoke=pinned$/m);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
