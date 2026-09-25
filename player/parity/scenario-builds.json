@@ -1,6 +1,13 @@
 {
-  "//": "NE-30s: the page's build (buildForayQueue) of every Foray a manager-foray or prepare scenario plays, keyed <case id>@<step index>. The Swift scenario drivers read it (the engine never builds a Foray, plan §3 A-1). Refresh: node tools/parity/scenario-builds.mjs --write; run.test.js holds it current.",
+  "//": "NE-30s: the page's build (buildForayQueue) of every Foray a manager-episode, manager-foray or prepare scenario plays, keyed <case id>@<step index>. The Swift scenario drivers read it (the engine never builds a Foray, plan §3 A-1). Refresh: node tools/parity/scenario-builds.mjs --write; run.test.js holds it current.",
   "builds": {
+    "manager-episode/interruption-step-back-stops-at-the-in-point@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"Static","show":"Indie"}
+      ]
+    },
     "manager-foray/a-copy-with-no-duration-is-skipped@0": {
       "isLocalFile": false, "allowAdPad": false, "warnings": 0,
       "skipped": [],

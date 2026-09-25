@@ -138,7 +138,7 @@ test("NE-29s: foray-builds.json holds the page's build of every committed Foray 
   assert.ok(ran >= 30, `only ${ran} committed cases ran over the table`);
 });
 
-test("NE-30s: scenario-builds.json is the page's current build of every Foray a manager-foray or prepare scenario plays", async () => {
+test("NE-30s: scenario-builds.json is the page's current build of every Foray a manager-episode, manager-foray or prepare scenario plays", async () => {
   /* The Swift scenario drivers read a scenario's Foray from this table (the
      engine never builds one, plan §3 A-1). It depends on the fixtures and the
      frozen fixture data only, so it is held CURRENT here: a re-recorded
@@ -151,7 +151,7 @@ test("NE-30s: scenario-builds.json is the page's current build of every Foray a 
   let steps = 0;
   for (const f of FIXTURES.filter((x) => SCENARIO_BUILD_FAMILIES.includes(x.family))) {
     for (const c of f.doc.cases) {
-      for (const [i, s] of c.steps.entries()) {
+      for (const [i, s] of (c.steps ?? []).entries()) {
         if (s.call !== "playForay" && s.call !== "setQueueFromForay") continue;
         assert.ok(table[buildKey(c.id, i)], `${c.id} step ${i} has no build`);
         steps += 1;

@@ -13,7 +13,9 @@
 
    THE TABLE. `player/parity/scenario-builds.json`, keyed `<case id>@<step
    index>` for every playForay / setQueueFromForay step of the manager-foray
-   and prepare families: the built items, the report's projection (skipped
+   and prepare families (and of manager-episode, whose Foray steps the
+   "the tape changes no episode path" XCTest replays with the tape on): the
+   built items, the report's projection (skipped
    entries as runner.js `project("forayReport")` shows them, and the warning
    count) and the two options the load-time ladder reads. Written by
    `node tools/parity/scenario-builds.mjs --write`.
@@ -35,7 +37,7 @@ import { buildForayQueue } from "../foray-queue.js";
 export const SCENARIO_BUILDS_FILE = "player/parity/scenario-builds.json";
 
 /** The families whose scenarios play a Foray the page built. */
-export const SCENARIO_BUILD_FAMILIES = Object.freeze(["manager-foray", "prepare"]);
+export const SCENARIO_BUILD_FAMILIES = Object.freeze(["manager-episode", "manager-foray", "prepare"]);
 
 /** The calls that hand a Foray to be built. */
 const BUILD_CALLS = new Set(["playForay", "setQueueFromForay"]);
@@ -103,7 +105,7 @@ export async function scenarioBuildTable(fixtures, root = REPO_ROOT) {
 /** The table as the file holds it: keys sorted, one queue item per line, so
     a refresh diffs by item. */
 export function serializeScenarioBuilds(table) {
-  const note = "NE-30s: the page's build (buildForayQueue) of every Foray a manager-foray or prepare scenario plays, keyed <case id>@<step index>. The Swift scenario drivers read it (the engine never builds a Foray, plan §3 A-1). Refresh: node tools/parity/scenario-builds.mjs --write; run.test.js holds it current.";
+  const note = "NE-30s: the page's build (buildForayQueue) of every Foray a manager-episode, manager-foray or prepare scenario plays, keyed <case id>@<step index>. The Swift scenario drivers read it (the engine never builds a Foray, plan §3 A-1). Refresh: node tools/parity/scenario-builds.mjs --write; run.test.js holds it current.";
   const NL = "\n";
   const entries = Object.keys(table).sort().map((key) => {
     const b = table[key];
