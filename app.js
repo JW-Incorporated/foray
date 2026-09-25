@@ -15920,6 +15920,10 @@ async function auditionVoiceRow(id) {
        over an episode it is playing (NE-22, OQ-5). */
     if (result && result.ok === false && result.reason === "engine-busy") {
       paintVoiceNotice("Pause playback to preview");
+    } else if (result && result.ok === false && result.reason === "narration-loaded") {
+      /* Web player: a preview would cut the narrator's line off, paused or
+         not (player/client.js auditionVoice), so pausing would not help. */
+      paintVoiceNotice("Preview is unavailable while the narrator is on a line.");
     } else if (result && result.voiceFallback) {
       paintVoiceNotice("Your chosen voice isn't installed; using the best available.");
     } else {

@@ -38,7 +38,7 @@
 
 **Steps:**
 1. iOS: during a narration line press pause, then Next clip onto another line. The new line must be heard (mobile-native-1).
-2. Android: open the voice picker mid-narration and Preview. The Foray must not skip the line (mobile-native-2).
+2. Android: open the voice picker mid-narration and tap Preview. The picker must say "Preview is unavailable while the narrator is on a line." and the Foray must keep speaking that line, not skip it (mobile-native-2; a preview would cut the line off, so it is refused).
 3. Android, airplane mode, a network-only voice: narration must move on at once, not after a long silence (mobile-native-3).
 4. iOS over Spotify: play a Foray to its end without pausing. Spotify must offer to resume (mobile-native-4).
 5. Pause, or press Stop, while a rendered bridge line is still loading: nothing may start playing (player-core-2).

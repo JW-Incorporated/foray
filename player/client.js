@@ -4898,6 +4898,15 @@ const ForayPlayer = {
        something plays, and app.js says "Pause playback to preview". */
     if (engineMode === null) return engineModeReady.then(() => ForayPlayer.auditionVoice(text, voiceId));
     if (engineMode === "native" && engine) return auditionThroughEngine(text, voiceId);
+    /* NOT OVER A NARRATION LINE (round-3 review, L3). There is one
+       synthesiser, and every platform now flushes it before a new utterance
+       (iOS stopSpeaking(.immediate), Android QUEUE_FLUSH, Web Speech
+       cancel()), so a preview cut the loaded line off, playing or paused. The
+       cut line sends no `finished` and the preview's own is ignored
+       (mobile-native-2), so the Foray sat silent until the narration deadline
+       and then skipped a line nobody heard. Refused while a line is loaded,
+       as native mode refuses while the engine plays; app.js names it. */
+    if (manager && manager.isNarrationPlayhead) return Promise.resolve({ ok: false, reason: "narration-loaded" });
     /* `audition` (audit round 3, mobile-native-2): the plugins echo it on
        `finished`, so a preview's end is never taken for narration's. */
     return ttsBridge.speak(text, { rate: NARRATION_RATE, voice: voiceId, audition: true });

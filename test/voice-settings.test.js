@@ -631,6 +631,19 @@ test("a voiceFallback result shows the non-blocking notice", async () => {
   assert.match(ui.notice.textContent, /isn't installed/);
 });
 
+test("a preview refused because the narrator is on a line says so, and does not say 'pause'", async () => {
+  /* Round-3 review (L3): the web player refuses a preview while a narration
+     line is loaded, paused or not (a preview would cut the line off).
+     MUTATION: drop the narration-loaded branch in auditionVoiceRow -- no notice. */
+  const { ui } = mount({ onAudition: async () => ({ ok: false, reason: "narration-loaded" }) });
+  await ui.open.click();
+  await tick();
+  await findIn(installedRows(ui)[0], ".voice-row-audition").click();
+  assert.strictEqual(ui.notice.hidden, false);
+  assert.match(ui.notice.textContent, /narrator is on a line/);
+  assert.doesNotMatch(ui.notice.textContent, /pause/i, "pausing would not make the preview play");
+});
+
 test("a clean audition (no fallback) clears any previous notice", async () => {
   const { ui } = mount({ onAudition: async () => ({ ok: true, voiceFallback: false }) });
   await ui.open.click();

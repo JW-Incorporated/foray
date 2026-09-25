@@ -3718,3 +3718,52 @@ test("a skip from a PAUSED narration line to the next line is heard, not queued 
   assert.equal(speech.audible(), "The second line.", `the next line is heard: queue=${JSON.stringify(speech.queue)} paused=${speech.paused}`);
   restore();
 });
+
+test("a voice Preview never cuts off the narrator's line, playing or paused (round-3 review, L3)", async (t) => {
+  /* Every platform flushes the one synthesiser before a new utterance, so a
+     Preview mid-line killed the line; the kill sends no `finished`, the
+     preview's own is ignored, and the Foray sat silent to the narration
+     deadline, then skipped the line. The web player now refuses the preview
+     while a narration line is loaded (native mode already refused while its
+     engine plays). MUTATION: drop the isNarrationPlayhead refusal in
+     client.js auditionVoice -- the preview is spoken over the line. */
+  const speech = {
+    queue: [], paused: false,
+    get speaking() { return this.queue.length > 0 && !this.paused; },
+    get pending() { return this.queue.length > 1; },
+    speak(u) { this.queue.push(u.text); },
+    pause() { this.paused = true; },
+    resume() { this.paused = false; },
+    cancel() { this.queue = []; },
+    getVoices() { return []; },
+  };
+  const { client, doc, restore } = await bootClient(t, { speech });
+  const foray = {
+    id: "f-preview", kind: "deep-dive", title: "A Foray", status: "published",
+    slots: [{ id: "one", title: "Slot one" }],
+    items: [
+      { type: "narration", slot: "one", id: "n1", duration_sec: 20, script: "The narrator's line." },
+      { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: "sa" },
+    ],
+  };
+  const segments = indexSegments({ segments: [
+    { id: "sa", item_id: "ep-a", start_sec: 100, end_sec: 200, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+  ] });
+  const sources = indexSources({ sources: [
+    { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
+  ] });
+  await client.playForay(resolveForay(foray, { segments, sources }), { startIndex: 0 });
+  await settle();
+  assert.deepEqual(speech.queue, ["The narrator's line."], "precondition: the line is speaking");
+
+  const playing = await client.auditionVoice("one, two, three", null);
+  assert.deepEqual(playing, { ok: false, reason: "narration-loaded" });
+  assert.deepEqual(speech.queue, ["The narrator's line."], "the line was not flushed for the preview");
+
+  transport(doc).press();               // pause the line: still refused, the line is still loaded
+  await settle();
+  const paused = await client.auditionVoice("one, two, three", null);
+  assert.equal(paused.reason, "narration-loaded");
+  assert.deepEqual(speech.queue, ["The narrator's line."]);
+  restore();
+});
