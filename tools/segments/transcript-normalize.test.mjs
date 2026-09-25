@@ -134,7 +134,7 @@ test("JSON text is left alone by the markup stripper", () => {
    MUTATION: drop the BOM strip in parseJson -- zero cues and a parse warning. */
 test("a JSON transcript with a leading byte-order mark parses like one without", () => {
   const plain = fixture("podcasting20-basic.json");
-  const bom = "﻿" + plain.replace(/^﻿/, "");
+  const bom = "\uFEFF" + plain.replace(/^\uFEFF/, "");
   const r = normalize(bom, "application/json");
   assert.deepEqual(r.warnings, []);
   assert.deepEqual(r.cues, normalize(plain, "application/json").cues);

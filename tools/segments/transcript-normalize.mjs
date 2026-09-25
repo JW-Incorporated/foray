@@ -74,7 +74,7 @@ const MIME_FORMATS = new Map([
 /** What the bytes look like, ignoring what anyone claimed. Returns null when
     nothing recognisable is present — the caller turns that into a warning. */
 export function sniffFormat(body) {
-  const s = String(body || "").replace(/^﻿/, "").trimStart();
+  const s = String(body || "").replace(/^\uFEFF/, "").trimStart();
   if (!s) return null;
   if (/^WEBVTT\b/i.test(s)) return "vtt";
   if (s[0] === "{" || s[0] === "[") return "json";
@@ -160,7 +160,7 @@ function cleanText(lines, { markup = true } = {}) {
 const CUE_LINE_RE = /^(.+?)\s*-->\s*([^\s]+)(?:\s+(.*))?$/;
 
 function parseBlocks(body, format, warnings) {
-  const text = String(body).replace(/^﻿/, "").replace(/\r\n?/g, "\n");
+  const text = String(body).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
 
   if (format === "vtt" && !/^\s*WEBVTT\b/i.test(text)) {
     warnings.push("missing WEBVTT header; parsed anyway");
@@ -247,7 +247,7 @@ function parseJson(body, warnings) {
   try {
     // sniffFormat already looks past a leading BOM; JSON.parse does not. A raw
     // cache file written before the fetch path stripped it still carries one.
-    data = JSON.parse(String(body).replace(/^﻿/, ""));
+    data = JSON.parse(String(body).replace(/^\uFEFF/, ""));
   } catch (e) {
     warnings.push(`JSON did not parse: ${e.message}`);
     return [];
