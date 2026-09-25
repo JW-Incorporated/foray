@@ -3561,3 +3561,19 @@ test("Next clip from the penultimate clip onto a closing line does not end the F
   assert.match(audio.src, /n1\.mp3$/);
   restore();
 });
+
+test("a scrub made while paused survives starting a Foray (audit round 3, player-core-8)", async (t) => {
+  /* `play()` flushes both stores on the way out (player-3); `playForay()` did
+     not. KILLING MUTATION: delete `flushPositions()` from `playForay`. */
+  const { client, doc, audio, storage, restore } = await pausedAt(t, 600);
+  const { scrub } = sheet(doc);
+  scrub.value = "500";                                   // 1800 s
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 1800) < 1, "precondition: the element moved");
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 600) < 1, "precondition: the row still says 600");
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1800) < 1, `the scrub is what was kept, got ${posRow(storage, "ep-a").seconds}`);
+  restore();
+});

@@ -4936,6 +4936,12 @@ const ForayPlayer = {
     backend.notePlayGesture();
     // The jingle's element needs the same tap, for the same reason (§13).
     if (interlude) interlude.prime();
+    /* LEAVING IS A FLUSH HERE TOO (audit round 3, player-core-8), for the
+       reason `play()` gives: the outgoing episode or Foray is still the
+       manager's current item and `foray` until the two lines below replace
+       them, and neither the reducer's `play` nor a paused player writes a
+       position on the way out. Synchronous, so the tap above stays spent first. */
+    flushPositions();
     /* `onChange ?? forayWatcher`: a Foray started from somewhere that is not
        its page (the restored mini bar, the lock screen) still reaches the page
        that asked to watch — see `watchForay`. */
