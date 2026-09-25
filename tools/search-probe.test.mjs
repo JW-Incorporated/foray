@@ -764,3 +764,14 @@ test("formatTable calls out the inert-directory state in words, not only in a ze
   });
   assert.match(out, /the directory pass is inert/);
 });
+
+/* Audit round 3, arch-drift-6: the probe's normaliseTitle claimed to be
+   verbatim from the API/app rule but lacked the NFKD fold, so a target with a
+   diacritic, or a result Apple returns in a compatibility font, never matched
+   and the probe reported the show absent: a false search regression.
+   MUTATION: drop `.normalize("NFKD").replace(...)` -- both ranks go null. */
+test("targetRank folds diacritics and compatibility fonts the way the app does", () => {
+  assert.equal(normaliseTitle("Café Society"), "cafe society");
+  assert.equal(targetRank([{ title: "Other" }, { title: "Cafe Society" }], "Café Society"), 2);
+  assert.equal(targetRank([{ title: "\u{1D413}\u{1D421}\u{1D41E} \u{1D403}\u{1D41A}\u{1D422}\u{1D425}\u{1D432}" }], "The Daily"), 1);
+});

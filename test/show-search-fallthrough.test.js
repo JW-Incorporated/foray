@@ -529,6 +529,7 @@ test("the two normalised-title rules are one rule: app.js and api/shows/appleSho
   const server = fs.readFileSync(path.join(ROOT, "api", "shows", "appleShowSearch.ts"), "utf8");
   assert.ok(APP_SRC.includes(EXPR), "app.js must carry the rule verbatim");
   assert.ok(server.includes(EXPR), "api/shows/appleShowSearch.ts must carry the same rule verbatim");
+  assert.ok(fs.readFileSync(path.join(ROOT, "tools", "search-probe.mjs"), "utf8").includes(EXPR), "tools/search-probe.mjs must carry the same rule verbatim (arch-drift-6)");
 
   /* THE STEM IS THE SECOND HALF OF THE SAME RULE and is pinned the same way
      (adversarial review 2026-09-12, defect 3): the dedup that matters runs on

@@ -368,11 +368,14 @@ export const PARITY_CASES = [
 ];
 
 /** The normalised-title rule, verbatim from `api/shows/appleShowSearch.ts`'s
-    `normaliseShowTitle` and `app.js`'s copy of it. Used here ONLY to locate a
+    `normaliseShowTitle` and `app.js`'s copy of it, NFKD fold included (audit
+    round 3, arch-drift-6: this copy had missed it, so a `Café` target or a
+    compatibility-font result never matched). test/show-search-fallthrough.test.js
+    reads this file and fails if the expression drifts. Used here ONLY to locate a
     target title in a result list — never to dedupe; the endpoint has already
     done that by the time these rows arrive. */
 export function normaliseTitle(title) {
-  return String(title || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return String(title || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 /** 1-INDEXED rank of `target` in `shows`, or `null` when absent. 1-indexed
