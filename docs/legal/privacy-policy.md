@@ -191,12 +191,13 @@ is marked to be left out of them.
 
 **Delete my data** reaches these too, in any iPhone app that has the native
 player, whichever player is in use at the time (the native one, or the web
-view's after a Foray, a fallback or the **Developer** switch): the app first
-tells the player to stop without saving a position, then to delete its rows,
-every `ForayEngine.` value and the diagnostics file, and only then clears
-everything else; if the player cannot, the app says the device is not fully
-clear (`player/durable-store.js:engineDataDeletion()`, §7). Deleting the app
-removes them in every case.
+view's, which the app can switch to part-way through a launch, after a failed
+start or through the **Developer** switch): the app first tells the player to
+stop without saving a position, then to delete its rows, every `ForayEngine.`
+value and the diagnostics file, and only then clears everything else; if the
+player cannot, the app says the device is not fully clear
+(`player/durable-store.js:engineDataDeletion()`, §7). Deleting the app removes
+them in every case.
 
 **The event queue is not a `cp_` key.** Until 2026-09, the buffer of events
 waiting to be sent lived at `cp_events` (with a `cp_synced_ts` bookmark) inside
