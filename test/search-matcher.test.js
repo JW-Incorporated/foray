@@ -507,3 +507,37 @@ test("tokenize still accepts ordinary long-ish real words under the ceiling", ()
   const tokens = SE.tokenize("electroencephalography basics");
   assert.ok(tokens.includes("electroencephalography"));
 });
+
+/* ---------- round-3 audit, search-api-css-2: own properties only ---------- */
+
+/* The real semantic index, read once: the modifiers map is where
+   `mods["constructor"]` found the Object function. */
+function realSemanticCtx(items = []) {
+  const semantic = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "semantic-index.json"), "utf8"));
+  return { discover: { items }, itemTags: { tags: {} }, semantic };
+}
+
+test("search-api-css-2: 'constructor' is a word, not an inherited Object filter", () => {
+  /* MUTATION: go back to `if (mods[tok]) filters.push(mods[tok])` — the
+     Object function lands in filters and the word is dropped. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const ctx = realSemanticCtx();
+  for (const q of ["constructor", "constructor theory", "hasownproperty", "tostring valueof"]) {
+    const interp = SE.interpretQuery(q, ctx);
+    assert.ok(interp.filters.every((f) => typeof f.type === "string"), `${q}: a filter with no type got in`);
+  }
+  const interp = SE.interpretQuery("constructor theory", ctx);
+  assert.deepEqual(interp.filters, []);
+  assert.ok(interp.groups.some((g) => g.token === "constructor"), "the word is kept as content");
+});
+
+test("search-api-css-2: 'constructor theory' with nothing matching answers empty instead of throwing", () => {
+  /* MUTATION: `f.type.startsWith("duration")` without the typeof guard, with
+     the Object filter back — TypeError: Cannot read properties of undefined. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const ctx = realSemanticCtx();
+  const interp = SE.interpretQuery("constructor theory", ctx);
+  assert.doesNotThrow(() => SE.searchWithRelaxation([], interp, 0, ctx.itemTags, () => 0.5));
+  const hand = { groups: [], filters: [{ value: 1 }, Object], thinAnchorCount: 0, hasPrimary: false };
+  assert.doesNotThrow(() => SE.searchWithRelaxation([], hand, 0, {}, () => 0.5), "a typeless filter never throws");
+});

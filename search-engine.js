@@ -44,6 +44,21 @@ const ALIASES = {
   car: ["automotive"], cars: ["automotive"], ocean: ["sea", "marine"],
 };
 
+/* OWN PROPERTIES ONLY (round-3 audit, search-api-css-2). A query token is
+   typed text, and the three maps it is looked up in (ALIASES, the semantic
+   index's modifiers and concepts) are plain objects: `mods["constructor"]`
+   answered with the Object function, which was pushed as a filter, dropped
+   the word, and threw in searchWithRelaxation on `f.type.startsWith`. */
+const hasOwn = (obj, key) => obj != null && Object.prototype.hasOwnProperty.call(obj, key);
+const aliasesFor = (tok) => (hasOwn(ALIASES, tok) ? ALIASES[tok] : []);
+const conceptById = (concepts, id) => (hasOwn(concepts, id) ? concepts[id] : undefined);
+/** A modifier is a filter only when it is an own entry shaped like one. */
+function modifierFor(mods, tok) {
+  const m = hasOwn(mods, tok) ? mods[tok] : undefined;
+  return m && typeof m === "object" && typeof m.type === "string" ? m : undefined;
+}
+const isDurationFilter = (f) => typeof f?.type === "string" && f.type.startsWith("duration");
+
 /* A content token whose corpus document-frequency (title+hook+topics+tags,
    see corpusDF) is at/above this fraction of the catalog is a "broad" word
    -- a real topic/genre marker (history, science, comedy) too common to
@@ -518,7 +533,7 @@ function primeVocabulary(ctx) {
   for (const c of Object.values(concepts)) {
     (c.terms || []).forEach(t => terms.add(t));
     (c.related || []).forEach(rid => {
-      (concepts[rid]?.terms || []).forEach(t => terms.add(t));
+      (conceptById(concepts, rid)?.terms || []).forEach(t => terms.add(t));
     });
   }
   for (const t of terms) {
@@ -720,12 +735,13 @@ function interpretQuery(q, ctx) {
   const concepts = ctx.semantic?.concepts || {};
 
   const contentTokens = tokens.filter(tok => {
-    if (mods[tok]) { filters.push(mods[tok]); return false; }
+    const mod = modifierFor(mods, tok);
+    if (mod) { filters.push(mod); return false; }
     return true;
   });
 
   const groups = contentTokens.map(tok => {
-    const aliasesOf = ALIASES[tok] || [];
+    const aliasesOf = aliasesFor(tok);
     const exactKeys = new Set([tok, ...aliasesOf]);
     /* See lemmaVariants above -- bridges a query token to a concept that
        only lists the OTHER inflection (singular/plural) of the same
@@ -814,7 +830,7 @@ function interpretQuery(q, ctx) {
     }
 
     const others = contentTokens.filter(o => o !== tok);
-    const otherKeys = others.map(o => new Set([o, ...(ALIASES[o] || [])]));
+    const otherKeys = others.map(o => new Set([o, ...aliasesFor(o)]));
 
     let hasConceptExpansion = false;
     for (const [cid, c] of Object.entries(concepts)) {
@@ -831,7 +847,7 @@ function interpretQuery(q, ctx) {
       c.terms.forEach(t => addTerm(t, wTerm, "own"));
       if (supported) (c.topics || []).forEach(t => topicBoosts.add(t));
       (c.related || []).forEach(rid => {
-        const rc = concepts[rid];
+        const rc = conceptById(concepts, rid);
         if (rc) rc.terms?.forEach(t => addTerm(t, wRelated, "related"));
       });
     }
@@ -958,7 +974,7 @@ function passesFilters(item, filters) {
   for (const f of filters) {
     if (f.type === "duration_max" && !(item.duration_min && item.duration_min <= f.value)) return false;
     if (f.type === "duration_min" && !(item.duration_min && item.duration_min >= f.value)) return false;
-    if (f.type === "branch" && !f.value.includes(branchOf(item))) return false;
+    if (f.type === "branch" && !(Array.isArray(f.value) && f.value.includes(branchOf(item)))) return false;
     if (f.type === "recency_days") {
       const d = new Date(item.release_date || 0);
       if ((Date.now() - d.getTime()) / 86400000 > f.value) return false;
@@ -1359,8 +1375,8 @@ function searchWithRelaxation(pool, interp, minScore, itemTags, rankFallback) {
   };
   let results = attempt(interp.filters);
   let relaxed = null;
-  if (!results.length && interp.filters.some(f => f.type.startsWith("duration"))) {
-    results = attempt(interp.filters.filter(f => !f.type.startsWith("duration")));
+  if (!results.length && interp.filters.some(isDurationFilter)) {
+    results = attempt(interp.filters.filter(f => !isDurationFilter(f)));
     if (results.length) relaxed = "duration";
   }
   if (!results.length && interp.filters.length) {
@@ -1729,7 +1745,7 @@ function suggestAdjacentTopics(interp, ctx) {
       for (const rid of c.related || []) {
         if (seen.has(rid) || rid === cid) continue;
         seen.add(rid);
-        const rc = concepts[rid];
+        const rc = conceptById(concepts, rid);
         if (!rc) continue;
         const coverage = (rc.terms || []).reduce((n, t) => n + tagCount(t, ctx), 0);
         if (coverage > 0) suggestions.push({ id: rid, label: prettyConceptLabel(rid), coverage });

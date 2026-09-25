@@ -593,7 +593,7 @@ const FLOORS = {
      drift that produced THREE copies of hitText/hitTag, two of them looser than
      the ranker they claimed to describe. Every test in there was
      mutation-checked — see the suite header. */
-  "test/search-matcher.test.js": 22,
+  "test/search-matcher.test.js": 24, // round-3 audit, L4: constructor is a word and a typeless filter never throws (search-api-css-2 x2); 22 -> 24
   /* The rich/sparse/empty tiering and the ranking prefix the narrow branch shows
      (#216). Floored because the battery cannot stand in for it: the disagreement
      it pins only reaches the page on a sparse or single-show query, and no query
