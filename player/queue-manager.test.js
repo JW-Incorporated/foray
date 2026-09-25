@@ -3360,3 +3360,68 @@ test("stop() while a narration line's speak() is in flight leaves no voice behin
   assert.equal(m.isNarrationPlayhead, false);
   m.dispose();
 });
+
+/* ---------- audit round 3: a `finished` says which utterance it is ---------- */
+
+/** fakeTts whose speak() names each utterance, and whose finish() can carry a payload. */
+function namedTts() {
+  const t = fakeTts();
+  let n = 0;
+  const speak = t.speak;
+  const listeners = new Set();
+  t.speak = async (text, opts) => { await speak(text, opts); n += 1; return { ok: true, utteranceId: `u${n}` }; };
+  t.onFinished = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
+  t.finishWith = (payload) => { for (const fn of [...listeners]) fn(payload); };
+  return t;
+}
+
+async function onANarrationLine(tts) {
+  const made = make({ tts });
+  await made.m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+  ]), { resolveItem });
+  assert.equal(made.m.isNarrationPlayhead, true, "precondition: the line is speaking");
+  return made;
+}
+
+test("a preview's `finished` never advances past narration (mobile-native-2)", async () => {
+  /* MUTATION: drop the `audition` check in `_onTtsFinished` and the Foray moves
+     on past a line the listener did not hear. */
+  const tts = namedTts();
+  const { m, backend } = await onANarrationLine(tts);
+  tts.finishWith({ audition: true });   // no id to compare: the flag alone must stop it
+  await tick();
+  await tick();
+  assert.equal(m.isNarrationPlayhead, true, "still on the line");
+  assert.ok(!backend.loads().includes("load:foray-1#1"), `${backend.loads()}`);
+  m.dispose();
+});
+
+test("a `finished` naming another utterance is stale and is dropped; this line's own advances (mobile-native-2)", async () => {
+  /* MUTATION: drop the utterance-id comparison in `_onTtsFinished`. */
+  const tts = namedTts();
+  const { m, backend } = await onANarrationLine(tts);
+  tts.finishWith({ utteranceId: "u0-an-older-line" });
+  await tick();
+  await tick();
+  assert.equal(m.isNarrationPlayhead, true, "a stale finish advances nothing");
+  tts.finishWith({ utteranceId: "u1" });
+  await tick();
+  await tick();
+  assert.ok(backend.loads().includes("load:foray-1#1"), `this line's own finish advances: ${backend.loads()}`);
+  m.dispose();
+});
+
+test("an engine error reported on `finished` moves on at once (mobile-native-3)", async () => {
+  /* The Android plugin now reports onError as `finished` with `error`, instead
+     of leaving the line 'speaking' in silence until the narration deadline. */
+  const tts = namedTts();
+  const { m, backend, log } = await onANarrationLine(tts);
+  tts.finishWith({ utteranceId: "u1", error: -4 });
+  await tick();
+  await tick();
+  assert.ok(backend.loads().includes("load:foray-1#1"), `the queue moved on: ${backend.loads()}`);
+  assert.ok(log.some((l) => /tts\.finished\.error code=-4/.test(l)), JSON.stringify(log.filter((l) => /tts/.test(l))));
+  m.dispose();
+});

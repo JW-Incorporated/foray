@@ -606,7 +606,9 @@ test("MUTATION GUARD: Audition speaks at NARRATION_RATE (1x), never the listener
     "client.js takes the narration speed from the one constant, not a copy");
   const body = src.match(/\n  auditionVoice\(text, voiceId\) \{\n([\s\S]*?)\n  \},/);
   assert.ok(body, "auditionVoice(text, voiceId) is still where this test looks for it");
-  assert.match(body[1], /ttsBridge\.speak\(text, \{ rate: NARRATION_RATE, voice: voiceId \}\)/);
+  /* ...and flagged as a preview (audit round 3, mobile-native-2), so its
+     `finished` never advances a Foray. MUTATION: drop `audition: true`. */
+  assert.match(body[1], /ttsBridge\.speak\(text, \{ rate: NARRATION_RATE, voice: voiceId, audition: true \}\)/);
   assert.ok(!/currentRate\(/.test(body[1]), "the listener's speed plays no part in a Preview");
 });
 

@@ -489,7 +489,7 @@ export class PlayerQueueManager {
         so `dispose()` can remove it; `null` when the bridge offers none. */
     this._ttsFinishedUnsubscribe = null;
     if (this._tts && typeof this._tts.onFinished === "function") {
-      this._ttsFinishedUnsubscribe = this._tts.onFinished(() => this._onTtsFinished());
+      this._ttsFinishedUnsubscribe = this._tts.onFinished((payload) => this._onTtsFinished(payload));
     }
     /** Bumped every time a NEW synth utterance starts speaking (`_loadedId`
         moves onto a synth item). `_onTtsFinished` captures this value at the
@@ -519,6 +519,8 @@ export class PlayerQueueManager {
         `lastVoiceFallback` above. `null` until the first narration item
         speaks. */
     this._lastSpeakResult = null;
+    /** The id the plugin gave the utterance now speaking (mobile-native-2). */
+    this._utteranceId = null;
     /** True when the item `_loadedId` refers to was spoken via `_tts` rather
         than loaded into `backend` — nothing in `backend` is playing it, so
         the rate/playback effects below must not touch the backend for it. */
@@ -1787,6 +1789,11 @@ export class PlayerQueueManager {
       throw new Error(`foray-tts: ${result.reason ?? "speak() refused"}`);
     }
     this._lastSpeakResult = result || null;
+    /* WHICH UTTERANCE IS OURS (audit round 3, mobile-native-2): the plugins
+       name each utterance on accept and echo it on `finished`;
+       `_onTtsFinished` drops a finish for any other one. Null from an older
+       shell that names none, which keeps today's behaviour. */
+    this._utteranceId = typeof result?.utteranceId === "string" && result.utteranceId ? result.utteranceId : null;
     return result;
   }
 
@@ -2108,10 +2115,28 @@ export class PlayerQueueManager {
    *      dispatches, not after, so two `finished` events arriving before
    *      either's `_handle` call resolves cannot both pass the check.
    */
-  _onTtsFinished() {
+  _onTtsFinished(payload = null) {
     if (this._disposed) return false;
+    /* NOT EVERY `finished` IS THIS LINE'S (audit round 3, mobile-native-2).
+       A voice-picker preview spoken mid-Foray, or a line this manager has
+       already left, used to be indistinguishable from the current line's own
+       completion and advanced past narration nobody heard. A preview's finish
+       never advances; a finish naming a different utterance is stale. */
+    if (payload && payload.audition === true) {
+      this._emit("tts.finished.ignored — a preview, not narration");
+      return false;
+    }
+    const finishedId = typeof payload?.utteranceId === "string" ? payload.utteranceId : null;
+    if (finishedId && this._utteranceId && finishedId !== this._utteranceId) {
+      this._emit("tts.finished.ignored — not the line this player is on");
+      return false;
+    }
     if (!this._loadedIsSynth) return false;
     if (this._applying > 0) return false;
+    /* AN ENGINE ERROR ENDS THE LINE NOW (mobile-native-3): the plugin reports
+       it as a `finished` carrying `error`, so the queue moves on at once
+       instead of running the narration clock over silence to its deadline. */
+    if (payload && payload.error != null) this._emit(`tts.finished.error code=${payload.error}`);
     const seq = this._speakSeq;
     if (this._advancedSpeakSeq === seq) return false;
     this._advancedSpeakSeq = seq;

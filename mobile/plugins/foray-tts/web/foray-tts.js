@@ -125,8 +125,20 @@ function findMatches(text, entries) {
       if (m.index === re.lastIndex) re.lastIndex++; // guard zero-width
     }
   }
-  matches.sort((a, b) => a.start - b.start);
-  return matches;
+  /* ONE MATCH PER STRETCH OF TEXT (audit round 3, mobile-native-8). Two
+     terms where one contains the other ("X" and "X Y") both matched at the
+     same start, and `buildAndroidSsml` then emitted the shared words twice.
+     Earliest first, the LONGEST at a given start, and anything starting
+     inside a kept match is dropped. */
+  matches.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+  const kept = [];
+  let cursor = 0;
+  for (const m of matches) {
+    if (m.start < cursor) continue;
+    kept.push(m);
+    cursor = m.end;
+  }
+  return kept;
 }
 
 /** Structured overrides for iOS: only terms with an authored (non-null) ipa.
@@ -189,6 +201,8 @@ export function shellApplies(bridge = (typeof window !== "undefined" ? window.Ca
  *  @param {number} [opts.rate]
  *  @param {number} [opts.pitch]
  *  @param {number} [opts.volume]
+ *  @param {boolean} [opts.audition]  a voice-picker preview: the plugin echoes
+ *    it on `finished` so the queue never treats a preview's end as narration's
  *  @param {object} [opts.bridge] injected `window.Capacitor` (or a fake, for tests)
  *  @param {object} [opts.speechSynth] injected `window.speechSynthesis` (or a fake)
  *  @param {function} [opts.UtteranceCtor] injected `SpeechSynthesisUtterance`
@@ -202,6 +216,7 @@ export async function speak(text, opts = {}) {
     rate,
     pitch,
     volume,
+    audition = false,
     bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),
     speechSynth = (typeof window !== "undefined" ? window.speechSynthesis : undefined),
     UtteranceCtor = (typeof window !== "undefined" ? window.SpeechSynthesisUtterance : undefined),
@@ -225,6 +240,10 @@ export async function speak(text, opts = {}) {
         rate: rate ?? null,
         pitch: pitch ?? null,
         volume: volume ?? null,
+        /* A voice-picker preview, not narration (audit round 3,
+           mobile-native-2): the plugins echo it on `finished` so the queue
+           never advances on a preview's completion. */
+        audition: audition === true,
       });
       /* `voice`/`voiceFallback` are hoisted out of `native` so a caller can read
          "which voice spoke, and was my ask honoured?" without branching on
@@ -235,6 +254,10 @@ export async function speak(text, opts = {}) {
         overridesApplied: ipaOverrides.length,
         voice: (result && result.voice) || "",
         voiceFallback: !!(result && result.voiceFallback),
+        /* WHICH UTTERANCE (mobile-native-2): both plugins name it here and echo
+           it on `finished`, so the queue can tell this line's completion from
+           a stale one. Null from an older shell, which the queue tolerates. */
+        utteranceId: (result && typeof result.utteranceId === "string" && result.utteranceId) || null,
         native: result,
       };
     } catch (e) {
@@ -266,6 +289,12 @@ export async function speak(text, opts = {}) {
       if (typeof rate === "number") utter.rate = rate;
       if (typeof pitch === "number") utter.pitch = pitch;
       if (typeof volume === "number") utter.volume = volume;
+      /* A NEW LINE REPLACES THE OLD ONE (audit round 3, mobile-native-1).
+         `speechSynthesis.speak` only enqueues, and a paused queue stays
+         paused: after a skip away from a paused line the next line queued
+         silently behind it. Android always spoke with QUEUE_FLUSH; iOS and
+         this path now flush too. */
+      if (typeof speechSynth.cancel === "function") speechSynth.cancel();
       speechSynth.speak(utter);
       /* Documented, W3C Web Speech API spec, quoted in on-device-tts.md §3:
          no phoneme/IPA control exists on this path at all -- 0 overrides is

@@ -113,6 +113,30 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     static let STATE_IDLE = "idle"
 
     private let synthesizer = AVSpeechSynthesizer()
+    /// WHICH UTTERANCE (audit round 3, mobile-native-2): the id `speak()`
+    /// returned for each queued utterance, and whether it was a voice-picker
+    /// preview, so `finished` can say whose completion it is. Keyed by the
+    /// utterance object; removed on finish or cancel. The delegate runs on a
+    /// different thread from the plugin method, hence the lock.
+    private var utteranceMeta: [ObjectIdentifier: (id: String, audition: Bool)] = [:]
+    private let utteranceMetaLock = NSLock()
+
+    /// A new `speak()` REPLACES whatever the synthesizer holds (audit round 3,
+    /// mobile-native-1). `AVSpeechSynthesizer.speak` only enqueues, and a
+    /// paused synthesizer stays paused: after a skip away from a narration line
+    /// (the reducer pauses before it loads) the next line queued silently
+    /// behind the paused one. Android always spoke with QUEUE_FLUSH; this is
+    /// the same rule. `stopSpeaking` fires `didCancel`, never `didFinish`,
+    /// so flushing never advances the queue.
+    static func mustFlushBeforeSpeaking(isSpeaking: Bool, isPaused: Bool) -> Bool {
+        return isSpeaking || isPaused
+    }
+
+    private func takeUtteranceMeta(_ utterance: AVSpeechUtterance) -> (id: String, audition: Bool)? {
+        utteranceMetaLock.lock()
+        defer { utteranceMetaLock.unlock() }
+        return utteranceMeta.removeValue(forKey: ObjectIdentifier(utterance))
+    }
 
     override public func load() {
         synthesizer.delegate = self
@@ -227,19 +251,32 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// `speak()` call site below for months -- `speak()` resolves on ACCEPT,
     /// not completion, so nothing in that method itself can ever learn when
     /// the listener stops hearing the line. This is the other half: fired
-    /// once per utterance, unconditionally, with no payload -- the web/queue
-    /// layer (`player/queue-manager.js`'s `_onTtsFinished`) already tracks
-    /// WHICH utterance is current and de-dupes a stray duplicate itself, so
-    /// this delegate method stays a pure "an utterance just ended" signal
-    /// and does not try to also answer "which one" -- one native event, one
-    /// job.
+    /// once per utterance, unconditionally. THE PAYLOAD NAMES THE UTTERANCE
+    /// (audit round 3, mobile-native-2): `utteranceId` is the id `speak()`
+    /// returned and `audition` says it was a preview. The queue used to be
+    /// unable to tell a stale completion (a preview, or a line it had already
+    /// left) from the current line's, because it compared only its own
+    /// sequence number; `_onTtsFinished` now drops any finish that is not the
+    /// line it is waiting for.
     ///
     /// Fired for EVERY completion, not gated on whether JS is still
     /// listening: `notifyListeners` is a no-op with no registered listener
     /// (Capacitor's own documented behaviour), so there is nothing here to
     /// guard.
     public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        notifyListeners(Self.FINISHED_EVENT, data: JSObject())
+        var data = JSObject()
+        if let meta = takeUtteranceMeta(utterance) {
+            data["utteranceId"] = meta.id
+            data["audition"] = meta.audition
+        }
+        notifyListeners(Self.FINISHED_EVENT, data: data)
+    }
+
+    /// A cancelled utterance (a `stop()`, or a new `speak()` flushing the old
+    /// one) is forgotten and NOTHING is emitted: a cancel is never a finish,
+    /// and a stop that advanced the queue would be a skip.
+    public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        _ = takeUtteranceMeta(utterance)
     }
 
     /// The `rate` this plugin receives is a PLAYBACK-SPEED MULTIPLIER, not a
@@ -675,12 +712,24 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
            because both are guarded on the native engine's ownership (NE-16). */
         Self.claimSession()
 
+        /* mobile-native-1: replace, never queue behind (see
+           `mustFlushBeforeSpeaking`). */
+        if Self.mustFlushBeforeSpeaking(isSpeaking: synthesizer.isSpeaking, isPaused: synthesizer.isPaused) {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        /* mobile-native-2: an id per utterance, echoed on `finished`. */
+        let utteranceId = UUID().uuidString
+        let audition = call.getBool("audition") ?? false
+        utteranceMetaLock.lock()
+        utteranceMeta[ObjectIdentifier(utterance)] = (id: utteranceId, audition: audition)
+        utteranceMetaLock.unlock()
         synthesizer.speak(utterance)
 
         var result = JSObject()
         result["ok"] = true
         result["platform"] = "ios"
         result["accepted"] = true
+        result["utteranceId"] = utteranceId
         result["overridesApplied"] = appliedCount
         result["reason"] = ""
         /* WHICH VOICE ACTUALLY SPOKE, read back off the utterance rather than
@@ -807,9 +856,9 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
        that keeps this card and L-03 from fighting: `speechSynthesizer(_:didFinish:)`
        is what raises `FINISHED_EVENT`, and that event advances the queue. A
        stop that advanced the queue past the line it just silenced would turn
-       every pause-then-stop into a skip. There is no `didCancel` handler here
-       precisely so that nothing is emitted on that path — the absence is the
-       mechanism, which is why it is written down. */
+       every pause-then-stop into a skip. The `didCancel` handler above only
+       forgets the utterance's id (mobile-native-2); it emits nothing, and that
+       silence is the mechanism, which is why it is written down. */
 
     /// Pause the current utterance at the next word boundary.
     ///

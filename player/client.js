@@ -4898,7 +4898,9 @@ const ForayPlayer = {
        something plays, and app.js says "Pause playback to preview". */
     if (engineMode === null) return engineModeReady.then(() => ForayPlayer.auditionVoice(text, voiceId));
     if (engineMode === "native" && engine) return auditionThroughEngine(text, voiceId);
-    return ttsBridge.speak(text, { rate: NARRATION_RATE, voice: voiceId });
+    /* `audition` (audit round 3, mobile-native-2): the plugins echo it on
+       `finished`, so a preview's end is never taken for narration's. */
+    return ttsBridge.speak(text, { rate: NARRATION_RATE, voice: voiceId, audition: true });
   },
 
   /* ---------- K-01: the bundled-voice measurement ----------

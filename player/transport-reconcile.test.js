@@ -3662,3 +3662,50 @@ test("the Foray page is not repainted while the document is hidden, and is repai
   assert.ok(paints >= 1, "the page is repainted once it is visible again");
   restore();
 });
+
+test("a skip from a PAUSED narration line to the next line is heard, not queued behind the pause (audit round 3, mobile-native-1)", async (t) => {
+  /* A synthesizer's speak() only enqueues, and a paused one stays paused: after
+     a pause and a skip, the next line used to wait silently behind the paused
+     one (iOS AVSpeechSynthesizer, and Web Speech). This fake models exactly that
+     queue. MUTATION: delete the `cancel()` before `speak()` in foray-tts.js's
+     Web Speech branch and nothing is audible after the skip. */
+  const speech = {
+    queue: [], paused: false, transport: [],
+    get speaking() { return this.queue.length > 0 && !this.paused; },
+    get pending() { return this.queue.length > 1; },
+    speak(u) { this.queue.push(u.text); },
+    pause() { this.transport.push("pause"); this.paused = true; },
+    resume() { this.transport.push("resume"); this.paused = false; },
+    cancel() { this.transport.push("cancel"); this.queue = []; this.paused = false; },
+    getVoices() { return []; },
+    audible() { return this.paused ? null : (this.queue[0] ?? null); },
+  };
+  const { client, doc, restore } = await bootClient(t, { speech });
+  const foray = {
+    id: "f-two-lines", kind: "deep-dive", title: "A Foray", status: "published",
+    slots: [{ id: "one", title: "Slot one" }],
+    items: [
+      { type: "narration", slot: "one", id: "n1", duration_sec: 20, script: "The first line." },
+      { type: "narration", slot: "one", id: "n2", duration_sec: 20, script: "The second line." },
+      { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: "sa" },
+    ],
+  };
+  const segments = indexSegments({ segments: [
+    { id: "sa", item_id: "ep-a", start_sec: 100, end_sec: 200, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+  ] });
+  const sources = indexSources({ sources: [
+    { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
+  ] });
+  await client.playForay(resolveForay(foray, { segments, sources }), { startIndex: 0 });
+  await settle();
+  assert.equal(speech.audible(), "The first line.", "precondition: the first line is speaking");
+  transport(doc).press();               // pause the line
+  await settle();
+  assert.equal(speech.audible(), null, "precondition: paused");
+  await client.forayNext();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1);
+  assert.equal(speech.audible(), "The second line.", `the next line is heard: queue=${JSON.stringify(speech.queue)} paused=${speech.paused}`);
+  restore();
+});
