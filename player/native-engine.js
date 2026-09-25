@@ -155,6 +155,8 @@ export function createNativeEngine({
   let listening = false;
   let pendingNotify = false;
   let pendingEvents = [];
+  /** The engine's hand-back has been told to subscribers (see handBack). */
+  let handedBack = false;
   const stats = { accepted: 0, stale: 0, invalid: 0, invalidEvents: 0, bridgeErrors: 0 };
 
   const diag = (row) => { try { onDiag?.(row); } catch (_) { /* a record must never cost a press */ } };
@@ -176,7 +178,26 @@ export function createNativeEngine({
     latest = { snapshot, receivedAtMs: now() };
     stats.accepted++;
     scheduleNotify();
+    if (snapshot.session === "relinquished") handBack(`snapshot:${via}`);
     return true;
+  }
+
+  /* THE HAND-BACK CANNOT BE MISSED. The engine announces its own relinquish
+     (the hello watchdog's, §4.6) with ONE `modeChanged` event, and only to a
+     page that is visible at that moment: a page that was hidden (the phone
+     locked, a car launch) never hears it, and would go on sending every
+     press to a torn-down engine that refuses each one `relinquished`, with
+     no player at all until a restart. So anything that shows the engine is
+     gone — a reply refused `relinquished`, a snapshot whose session is
+     `relinquished` — is the same news, told to subscribers once as a
+     page-local `modeChanged` (never on the wire). Native lane only: a page
+     that decided JS sent the relinquish itself and has nothing to hand back. */
+  function handBack(via) {
+    if (handedBack || decided?.mode !== "native") return;
+    handedBack = true;
+    diag({ kind: "engine", what: "hand-back-seen", via });
+    pendingEvents.push({ type: "modeChanged", mode: "legacy", reason: "downgrade", local: true });
+    flushSoon();
   }
 
   function scheduleNotify() {
@@ -215,6 +236,10 @@ export function createNativeEngine({
       return;
     }
     if (ev.type === "snapshot") { accept(ev.snapshot, "event"); return; }
+    if (ev.type === "modeChanged" && ev.mode === "legacy") {
+      if (handedBack) return; // already told, from a reply or a snapshot
+      handedBack = true;
+    }
     pendingEvents.push(ev);
     flushSoon();
   }
@@ -311,6 +336,7 @@ export function createNativeEngine({
       return { ok: false, reason: BRIDGE_ERROR, snapshot: latest?.snapshot ?? null, local: true };
     }
     accept(reply.snapshot, `send:${cmd}`);
+    if (reply.ok === false && reply.reason === "relinquished") handBack(`send:${cmd}`);
     return reply;
   }
 

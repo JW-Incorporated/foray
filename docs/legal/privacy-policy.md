@@ -189,12 +189,14 @@ is marked to be left out of them.
 | `ForayEngine.holdPolicy` | A **Developer** setting: how long the paused player keeps its claim on the phone's audio | **No** |
 | `Application Support/foray-engine/diag.jsonl` (a file, not a key) | The native player's diagnostic record, capped at the most recent 2,000 rows: the same kinds of row as `cp_diag` — the audio session, interruptions, remote and car button presses, now-playing, resumes, and the *type* of audio route (for example `carAudio`) — under the same rules: no audio, no URLs, no account id, and no device or car names. The only free text is what the lock screen was shown — the now-playing title, artist and album fields, which are catalogue names such as the episode and show — each cut to 40 characters. A copy of each row, without that free text, goes to the iPhone's own system log, which stays on the phone like every app's. **Playback diagnostics** → Copy includes these rows | **No** — it is never transmitted, and it is marked to be left out of phone backups |
 
-**Delete my data** reaches these too while the native player is the one in use:
-the app first tells the player to stop without saving a position, then to
-delete its rows, every `ForayEngine.` value and the diagnostics file, and only
-then clears everything else; if the player cannot, the app says the device is
-not fully clear (`player/durable-store.js:engineDataDeletion()`, §7). Deleting
-the app removes them in every case.
+**Delete my data** reaches these too, in any iPhone app that has the native
+player, whichever player is in use at the time (the native one, or the web
+view's after a Foray, a fallback or the **Developer** switch): the app first
+tells the player to stop without saving a position, then to delete its rows,
+every `ForayEngine.` value and the diagnostics file, and only then clears
+everything else; if the player cannot, the app says the device is not fully
+clear (`player/durable-store.js:engineDataDeletion()`, §7). Deleting the app
+removes them in every case.
 
 **The event queue is not a `cp_` key.** Until 2026-09, the buffer of events
 waiting to be sent lived at `cp_events` (with a `cp_synced_ts` bookmark) inside

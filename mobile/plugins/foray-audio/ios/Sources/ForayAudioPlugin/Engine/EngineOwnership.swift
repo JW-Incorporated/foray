@@ -221,6 +221,12 @@ final class EngineOwnership {
     private var healthyObservations: [EngineObservation] = []
     private var pageHealthTimer: EngineObservation?
     private var helloTimer: EngineObservation?
+    /// The page of the current navigation has already said engineHello. The
+    /// hello is sent while client.js is still being evaluated, well before
+    /// the load event that ends the navigation, so on a real launch it
+    /// usually arrives BEFORE `pageDidFinishLoad`; a watchdog armed after it
+    /// would have nothing left to cancel it. Cleared when a navigation starts.
+    private(set) var helloThisNavigation = false
 
     init(store: EnginePrivateStore, environment: LaunchEnvironment, flag: SessionOwnershipFlag,
          timing: EngineTiming, lifecycle: OwnershipLifecycle, diag: @escaping (DiagEntry) -> Void,
@@ -373,9 +379,14 @@ final class EngineOwnership {
     /// The WebView finished loading a page. Each load must say hello: a page
     /// that does not (an old web bundle, a page that threw at boot) would run
     /// the JS player over an engine that owns the remote surface.
+    ///
+    /// A page that already said hello during this navigation (the usual
+    /// order: the hello leaves at module evaluation, the load finishes
+    /// later) arms nothing: it has claimed the engine.
     func pageDidFinishLoad(foreground: Bool) {
         guard engine != nil, !relinquished else { return }
         cancelHelloTimers()
+        guard !helloThisNavigation else { return }
         if foreground {
             pageHealthTimer = timing.schedule(afterMs: Self.pageHealthMs, repeating: false) { [weak self] in
                 MainActor.assumeIsolated {
@@ -388,8 +399,16 @@ final class EngineOwnership {
         armHelloWatchdog()
     }
 
-    /// engineHello arrived: the page has claimed the engine.
+    /// The WebView started a navigation (`loading` went true): the page that
+    /// is coming has not said hello yet, whatever the last one did.
+    func pageDidStartLoad() {
+        helloThisNavigation = false
+    }
+
+    /// engineHello arrived: the page has claimed the engine, for the rest of
+    /// this navigation.
     func helloReceived() {
+        helloThisNavigation = true
         cancelHelloTimers()
     }
 

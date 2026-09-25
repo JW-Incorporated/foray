@@ -581,11 +581,51 @@ final class EngineOwnershipTests: XCTestCase {
         launch.owner.helloReceived()
         XCTAssertEqual(launch.ownerTiming.live.count, 0)
 
+        // A second navigation (a reload): its page has not said hello yet.
+        launch.owner.pageDidStartLoad()
         launch.owner.pageDidFinishLoad(foreground: false)
         XCTAssertEqual(launch.ownerTiming.live.map(\.afterMs), [EngineOwnership.helloWatchdogMs])
         launch.owner.helloReceived()
         XCTAssertFalse(launch.owner.relinquished)
         XCTAssertEqual(launch.owner.store.strikes, 0)
+    }
+
+    /// THE REAL ORDER ON A LAUNCH. client.js sends engineHello while the
+    /// module is being evaluated, long before the load event, so the hello
+    /// reaches the owner BEFORE `pageDidFinishLoad`. That load must arm
+    /// nothing: no timer, no page-health strike at 10 s, no relinquish at
+    /// 15 s. Before the fix every foreground launch struck and then dropped
+    /// an idle engine to the web player, and three launches pinned legacy.
+    /// A later navigation that never says hello is still watched.
+    /// TO SEE IT FAIL: drop `guard !helloThisNavigation` from
+    /// `pageDidFinishLoad`, or stop setting the flag in `helloReceived`.
+    @MainActor
+    func testAHelloBeforeTheLoadFinishesArmsNoWatchdog() {
+        let (defaults, _) = freshDefaults()
+        for _ in 0..<4 {
+            let launch = Launch(defaults)
+            launch.load()
+            XCTAssertEqual(launch.owner.mode, .native, "a page that said hello is never a strike")
+            launch.ownerTiming.fire(afterMs: EngineOwnership.healthyRunLoopMs)
+
+            launch.owner.pageDidStartLoad()
+            launch.owner.helloReceived()
+            launch.owner.pageDidFinishLoad(foreground: true)
+            XCTAssertEqual(launch.ownerTiming.live.count, 0, "the page already claimed the engine")
+            launch.ownerTiming.fire(afterMs: EngineOwnership.pageHealthMs)
+            launch.ownerTiming.fire(afterMs: EngineOwnership.helloWatchdogMs)
+            XCTAssertFalse(launch.owner.relinquished)
+            XCTAssertEqual(launch.legacyRuns, 0)
+            XCTAssertEqual(launch.owner.store.strikes, 0)
+            XCTAssertFalse(launch.modeRows.contains { $0[field: "reason"] == .string("page-health") })
+
+            // A reload whose page never says hello is still watched.
+            launch.owner.pageDidStartLoad()
+            launch.owner.pageDidFinishLoad(foreground: false)
+            XCTAssertEqual(launch.ownerTiming.live.map(\.afterMs), [EngineOwnership.helloWatchdogMs])
+            launch.owner.helloReceived()
+            XCTAssertEqual(launch.ownerTiming.live.count, 0)
+        }
     }
 
     /// The watchdog never stops the listener's audio: while the engine runs

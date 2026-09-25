@@ -343,12 +343,20 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
             return
         }
-        // `loading` went false: the page finished loading.
-        guard (change?[.newKey] as? Bool) == false else { return }
+        // `loading` went true: a navigation started, and its page has not
+        // said hello yet. `loading` went false: the page finished loading.
+        // Both hop to main in the order KVO saw them, and the start is seen
+        // before the page's scripts run, so it is on main before that page's
+        // engineHello (which hops to main too).
+        guard let loading = change?[.newKey] as? Bool else { return }
         DispatchQueue.main.async {
             MainActor.assumeIsolated {
-                EngineOwnership.shared.pageDidFinishLoad(
-                    foreground: UIApplication.shared.applicationState == .active)
+                if loading {
+                    EngineOwnership.shared.pageDidStartLoad()
+                } else {
+                    EngineOwnership.shared.pageDidFinishLoad(
+                        foreground: UIApplication.shared.applicationState == .active)
+                }
             }
         }
     }

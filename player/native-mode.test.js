@@ -492,6 +492,82 @@ test("NATIVE: after the relinquish a Foray position write lands, and the adopted
   assert.ok(!health.includes("externally-owned"), "and nothing was refused");
 });
 
+test("NATIVE: an engine that relinquished while the page was HIDDEN hands back on return — the page runs today's player", async (t) => {
+  /* The hello watchdog (or anything else) tears the engine down while the
+     phone is locked: its one modeChanged goes only to a visible page, so this
+     page never hears it. KILLING MUTATION: drop the `relinquished` checks in
+     native-engine.js (`handBack`) — the lane stays native, every press is
+     refused `relinquished`, and nothing can play until a restart. */
+  const h = await bootNative(t);
+  assert.equal(await h.client.whenEngineReady(), "native");
+  await h.client.play(episode());
+  await drain();
+  await h.client.togglePlayback(); // paused: the engine is idle
+  await drain();
+  h.doc.hidden = true;
+  h.doc.fire("visibilitychange");
+  await drain();
+  assert.equal(h.ref.visible, false);
+  // The engine gives the audio back by itself while the page is hidden.
+  await h.ref.engineSend({ v: 1, cmdSeq: 900, cmd: "relinquish", source: "restore", issuedAtWallMs: 1, args: { cap: "all" } });
+  await drain();
+  assert.equal(h.ref.relinquished, true);
+
+  h.doc.hidden = false;
+  h.doc.fire("visibilitychange");
+  await drain(20);
+  assert.deepEqual(h.win.ForayMediaSession.calls, ["uninstall", "install"], "the legacy lane came back");
+  const sentBefore = h.ref.diagnostics.filter((r) => r.kind === "cmd" && r.cmd === "playEpisode").length;
+  assert.equal(await h.client.play(episode("ep-b", "Ep B")), true, "a press plays, in today's player");
+  await drain();
+  assert.ok(h.elements.some((e) => !e.paused), "on the page's own element");
+  const sentAfter = h.ref.diagnostics.filter((r) => r.kind === "cmd" && r.cmd === "playEpisode").length;
+  assert.equal(sentAfter, sentBefore, "nothing was sent to the torn-down engine");
+});
+
+test("DELETE MY DATA after a Foray tap (the engine torn down) still clears the engine's store, and says so", async (t) => {
+  /* KILLING MUTATION: in the reference engine (and EngineBridge.send), refuse
+     purge `relinquished` like every other command — the engine's rows survive
+     and the purge reports the device NOT clear, with no retry that can fix it. */
+  const h = await bootNative(t);
+  await h.client.play(episode());
+  await drain();
+  await h.client.togglePlayback();
+  await drain();
+  assert.ok(h.ref.storage.getItem("cp_last_episode"), "the engine stored rows");
+  await h.client.playForay(synthetic(), { startIndex: 0 });
+  await drain();
+  assert.equal(h.ref.relinquished, true, "the Foray tap tore the engine down");
+
+  const out = await h.win.forayStorage.purge();
+  assert.deepEqual(out.engine, { ok: true }, JSON.stringify(out.engine));
+  assert.equal(h.ref.storage.length, 0, "every row the engine stored is gone");
+  assert.ok(cmds(h.ref).includes("purge"));
+});
+
+test("DELETE MY DATA in the web-player lane (hello said legacy) reaches the engine's store too", async (t) => {
+  /* An earlier native launch left rows behind; this launch runs the web
+     player (the Developer switch set to Web). KILLING MUTATION: drop
+     `storage.setEnginePurge(...)` from onEngineDecision — the purge never
+     asks the engine, reports ok, and the engine's rows survive. */
+  const ref = createReferenceEngine({ scheduler: manualScheduler(), now: () => 1_790_000_000_000, mode: "legacy", reason: "override" });
+  ref.storage.setItem("cp_last_episode", JSON.stringify({ id: "ep-old", title: "Old" }));
+  const h = await bootNative(t, { engine: ref });
+  assert.equal(await h.client.whenEngineReady(), "js");
+  const out = await h.win.forayStorage.purge();
+  assert.deepEqual(out.engine, { ok: true }, "the engine was asked, and cleared");
+  assert.equal(ref.storage.length, 0);
+  assert.ok(cmds(ref).includes("purge"));
+});
+
+test("DELETE MY DATA off the iOS shell asks no engine at all", async (t) => {
+  const h = await bootNative(t, { platform: "web" });
+  assert.equal(await h.client.whenEngineReady(), "js");
+  const out = await h.win.forayStorage.purge();
+  assert.equal(out.engine, undefined);
+  assert.equal(cmds(h.ref).length, 0);
+});
+
 test("A hello that REJECTS lands in the JS lane with relinquish{cap:'all'} already sent", async (t) => {
   /* KILLING MUTATION: drop the relinquish in native-engine.js's hello — the
      engine never hears it, and a native engine that might be running would

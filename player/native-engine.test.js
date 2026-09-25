@@ -350,6 +350,58 @@ test("setVisible tells the engine, and coming back READS the snapshot instead of
   assert.ok(heard.includes("visibility:false") && heard.includes("visibility:true"));
 });
 
+/* ---------- the hand-back a hidden page missed ---------- */
+
+test("a hand-back the page never heard (it was hidden) is learned from a `relinquished` reply, and told ONCE", async () => {
+  /* The engine says modeChanged only to a visible page (EngineBridge.transitioned).
+     MUTATION: drop the `relinquished` check in send() -> nobody is told, and
+     every later press is refused until a restart. MUTATION: drop the
+     `handedBack` dedupe -> a late wire modeChanged is told a second time. */
+  let gone = false;
+  const cap = fakeCapacitor({
+    hello: nativeHello({ snapshot: snap({ seq: 1 }) }),
+    sendReply: () => (gone ? { ok: false, reason: "relinquished", snapshot: snap({ seq: 1 }) } : { ok: true, snapshot: snap({ seq: 1 }) }),
+  });
+  const eng = createNativeEngine({ capacitor: cap, scheduler: manualScheduler() });
+  await eng.engineModeReady;
+  const heard = [];
+  eng.subscribe((ev) => { if (ev.type === "modeChanged") heard.push(ev); });
+  await eng.setVisible(false);
+  gone = true; // the watchdog relinquished while the page was hidden: no event
+  await eng.send("play", undefined, { source: "tap" });
+  await tick();
+  assert.equal(heard.length, 1, "the refusal is the news");
+  assert.deepStrictEqual([heard[0].mode, heard[0].reason, heard[0].local], ["legacy", "downgrade", true]);
+  await eng.send("pause", undefined, { source: "tap" });
+  cap.emit({ type: "modeChanged", mode: "legacy", reason: "downgrade" });
+  await tick();
+  assert.equal(heard.length, 1, "told once, however many ways it arrives");
+});
+
+test("a snapshot whose session is `relinquished` is the hand-back too; a JS-lane page is never told one", async () => {
+  // MUTATION: drop the session check in accept() -> the read on visible says nothing.
+  const cap = fakeCapacitor({ hello: nativeHello({ snapshot: snap({ seq: 1 }) }), readReply: snap({ seq: 4, session: "relinquished" }) });
+  const eng = createNativeEngine({ capacitor: cap, scheduler: manualScheduler() });
+  await eng.engineModeReady;
+  const heard = [];
+  eng.subscribe((ev) => { if (ev.type === "modeChanged") heard.push(ev.mode); });
+  await eng.read("snapshot");
+  await tick();
+  assert.deepStrictEqual(heard, ["legacy"]);
+
+  const legacy = fakeCapacitor({
+    hello: { mode: "legacy", reason: "override", protocol: 1 },
+    sendReply: { ok: false, reason: "relinquished", snapshot: snap({ seq: 2, session: "relinquished" }) },
+  });
+  const js = createNativeEngine({ capacitor: legacy, scheduler: manualScheduler() });
+  assert.equal((await js.engineModeReady).mode, "js");
+  const none = [];
+  js.subscribe((ev) => { if (ev.type === "modeChanged") none.push(ev); });
+  await js.send("purge", {}, { source: "tap" });
+  await tick();
+  assert.deepStrictEqual(none, [], "the JS lane has nothing to hand back");
+});
+
 /* ---------- the name that crosses the bridge ---------- */
 
 test("the client calls the plugin the Swift side registers, and engineHello is one of its methods", async () => {
