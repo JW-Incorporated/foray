@@ -292,10 +292,24 @@ test("the root group runs node --test with explicit paths, not a glob", () => {
   const { cwd, steps } = commandsFor(planSuiteRuns(root).groups[0]);
   assert.strictEqual(cwd, ".");
   assert.deepStrictEqual(steps, [
-    { cmd: "node", args: ["--test", "test/a.test.js", "tools/refresh/b.test.mjs"] },
+    { cmd: "node", args: ["--test", "--test-timeout=120000", "test/a.test.js", "tools/refresh/b.test.mjs"] },
   ]);
   // No wildcards anywhere: a pattern that stops matching fails silently green.
   assert.ok(!steps[0].args.some((a) => a.includes("*")));
+});
+
+test("tests-4: the root group carries a per-test timeout, before the suite paths", () => {
+  /* MUTATION: drop `--test-timeout` from commandsFor's root branch. node:test's
+     default is Infinity, so one hung test then holds the data-and-site runner
+     for GitHub's 360-minute default instead of failing in two minutes. */
+  const root = fixture({ "test/a.test.js": EMPTY_SUITE });
+  const { steps } = commandsFor(planSuiteRuns(root).groups[0]);
+  const args = steps[0].args;
+  const flag = args.find((a) => a.startsWith("--test-timeout="));
+  assert.ok(flag, "the root node --test run has no --test-timeout");
+  const ms = Number(flag.split("=")[1]);
+  assert.ok(Number.isFinite(ms) && ms > 0 && ms <= 10 * 60 * 1000, `unreasonable --test-timeout: ${flag}`);
+  assert.ok(args.indexOf(flag) < args.indexOf("test/a.test.js"), "flags must precede the suite paths");
 });
 
 test("a package group installs then runs npm test with package-relative paths", () => {

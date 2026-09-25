@@ -147,7 +147,12 @@ jobs:
         run: |
           set -euo pipefail
           # REST + --paginate: `gh pr view --json files` truncates at 100.
-          gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename' > changed-files.txt
+          #
+          # BOTH SIDES OF A RENAME (ci-release-2): see automerge-nightly.yml.
+          # A rename out of a governed path is a change to that path.
+          gh api --paginate "repos/$REPO/pulls/$PR/files" \
+            --jq '.[] | [.filename, (.previous_filename // empty)] | @json' > file-entries.jsonl
+          jq -r '.[]' file-entries.jsonl > changed-files.txt
           # Read labels live rather than from the event payload — a PR opened
           # before the founder labels it must go green on the `labeled` re-run.
           gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name' > pr-labels.txt
@@ -156,7 +161,7 @@ jobs:
           # "Every path I could see is clean" is worth nothing if I could not see
           # all of them, so compare against the PR's own count and refuse.
           expected=$(gh api "repos/$REPO/pulls/$PR" --jq '.changed_files')
-          actual=$(wc -l < changed-files.txt | tr -d ' ')
+          actual=$(wc -l < file-entries.jsonl | tr -d ' ')
           if [ "$expected" != "$actual" ]; then
             echo "INCOMPLETE changed-file list: API reports $expected, we read $actual"
             echo "TRUNCATED=--truncated" >> "$GITHUB_ENV"

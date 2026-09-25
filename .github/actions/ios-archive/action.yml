@@ -60,11 +60,15 @@ runs:
         { sw_vers; xcodebuild -version; } | tee "$RUNNER_TEMP/ios-release/toolchain.txt"
 
     - name: Install the shell's dependencies
+      # `npm ci`, against the committed mobile/package-lock.json (ci-release-12),
+      # exactly as every Android path already does. `npm install` resolves a
+      # second tree whenever package.json and the lock disagree, and this is the
+      # build a listener installs.
       shell: bash
       working-directory: mobile
       run: |
         set -euo pipefail
-        npm install --no-audit --no-fund
+        npm ci --no-audit --no-fund
 
     - name: Build the webDir and generate the iOS project
       shell: bash
@@ -199,8 +203,21 @@ runs:
       # 1 and fails this whole job — see tools/mobile/ios-ci.mjs signingReadiness().
       run: node tools/mobile/ios-ci.mjs signing-gate
 
-    - name: Archive, export and upload to TestFlight
-      id: upload
+    # THREE STEPS, NOT ONE, AND NONE OF THE SECRET-HOLDING ONES WRITES INTO $ART
+    # (round-3 review of ci-release-13). $ART is uploaded as an artifact, and on
+    # this PUBLIC repo any signed-in user can download it. GitHub masks secrets in
+    # the console log only, never in artifact files, and never a transformed
+    # (e.g. base64-decoded) value. So a process whose environment holds the p12,
+    # its password or the App Store Connect key must not write anything that
+    # lands under $ART:
+    #   1. archive and sign     - certificate + profile, no ASC key, no $ART
+    #   2. verify the archive   - NO secrets; its report goes into $ART
+    #   3. export and upload    - ASC key only; altool's log is written OUTSIDE
+    #                             $ART, and step 4 copies a redacted version in.
+    # Each step also holds only the credentials it uses. The keychain made in
+    # step 1 stays unlocked (-lut 3600) and on the search list for step 3's export.
+    - name: Archive and sign (certificate and profile; no App Store Connect key)
+      id: archive
       if: steps.signing.outputs.ready == 'true'
       shell: bash
       env:
@@ -208,9 +225,6 @@ runs:
         IOS_DIST_CERT_PASSWORD: ${{ inputs.ios_dist_cert_password }}
         IOS_PROVISIONING_PROFILE_BASE64: ${{ inputs.ios_provisioning_profile_base64 }}
         APPLE_TEAM_ID: ${{ inputs.apple_team_id }}
-        APP_STORE_CONNECT_KEY_ID: ${{ inputs.app_store_connect_key_id }}
-        APP_STORE_CONNECT_ISSUER_ID: ${{ inputs.app_store_connect_issuer_id }}
-        APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ inputs.app_store_connect_private_key_base64 }}
         MARKETING_VERSION: ${{ inputs.marketing_version }}
         BUILD_NUMBER: ${{ inputs.build_number }}
         APP_ID: ai.jwlabs.foura
@@ -237,10 +251,6 @@ runs:
         XC_PROFILES="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
         mkdir -p "$XC_PROFILES"
         cp "$PROFILES/foray.mobileprovision" "$XC_PROFILES/$PROFILE_UUID.mobileprovision"
-
-        mkdir -p "$HOME/.appstoreconnect/private_keys"
-        echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode \
-          > "$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
 
         node -e '
           const fs = require("node:fs");
@@ -296,7 +306,12 @@ runs:
           exit 1
         fi
 
-        # AND READ THE EMBEDDED FRAMEWORKS BACK OUT OF THE ARCHIVE, for the same
+    - name: Read the embedded frameworks back out of the archive (no secrets in this step)
+      if: steps.signing.outputs.ready == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        # READ THE EMBEDDED FRAMEWORKS BACK OUT OF THE ARCHIVE, for the same
         # reason the two version fields are read back above: a step that edits a
         # build input and silently does not reach the bundle is this repo's
         # "green and wrong" failure shape, and for THIS input the place it
@@ -306,6 +321,20 @@ runs:
         node tools/mobile/ios-embedded-frameworks.mjs verify \
           "$RUNNER_TEMP/Foray.xcarchive/Products/Applications/App.app" \
           | tee "$ART/embedded-frameworks.txt"
+
+    - name: Export and upload to TestFlight (App Store Connect key only)
+      id: upload
+      if: steps.signing.outputs.ready == 'true'
+      shell: bash
+      env:
+        APP_STORE_CONNECT_KEY_ID: ${{ inputs.app_store_connect_key_id }}
+        APP_STORE_CONNECT_ISSUER_ID: ${{ inputs.app_store_connect_issuer_id }}
+        APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ inputs.app_store_connect_private_key_base64 }}
+      run: |
+        set -euo pipefail
+        mkdir -p "$HOME/.appstoreconnect/private_keys"
+        echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode \
+          > "$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
 
         xcodebuild -exportArchive \
           -archivePath "$RUNNER_TEMP/Foray.xcarchive" \
@@ -347,7 +376,9 @@ runs:
         # before this block existed. A broken retry must not be able to invent a
         # successful upload, and `while [ "$attempt" -le 5 ]` is a hard ceiling in
         # case the module ever stops saying no.
-        UPLOAD_LOG="$ART/altool-upload.log"
+        # OUTSIDE $ART: this step holds the ASC key. The next step copies a
+        # redacted version in, from a step that holds nothing.
+        UPLOAD_LOG="$RUNNER_TEMP/altool-upload.log"
         attempt=1
         uploaded=no
         while [ "$attempt" -le 5 ]; do
@@ -380,8 +411,41 @@ runs:
         fi
         echo "uploaded=true" >> "$GITHUB_OUTPUT"
 
+    - name: Copy a redacted altool log into the release logs (no secrets in this step)
+      if: always() && steps.signing.outputs.ready == 'true'
+      shell: bash
+      # Drops any PEM block and blanks every run of 40+ base64 characters: the
+      # shapes a leaked .p8 or its base64 would take. altool's own output
+      # (status lines, UUIDs, Apple's error text) survives, which is what the
+      # upload step's "see altool-upload.log" needs.
+      run: |
+        set -uo pipefail
+        LOG="$RUNNER_TEMP/altool-upload.log"
+        if [ -f "$LOG" ]; then
+          sed -E -e '/-----BEGIN [A-Z ]*PRIVATE KEY-----/,/-----END [A-Z ]*PRIVATE KEY-----/d' \
+                 -e 's#[A-Za-z0-9+/=]{40,}#[redacted]#g' "$LOG" > "$ART/altool-upload.log"
+        fi
+
     - name: Record 'not uploaded' when signing was not ready
       id: upload_absent
       if: steps.signing.outputs.ready != 'true'
       shell: bash
       run: echo "uploaded=false" >> "$GITHUB_OUTPUT"
+
+    # ci-release-13: the upload step's error tells the reader to "see
+    # altool-upload.log in this job's artifacts", and until this step there
+    # were no artifacts. `if: always()` because the failing run is the one
+    # whose logs matter. $ART ($RUNNER_TEMP/ios-release) holds ONLY logs and
+    # text reports: the .p12, the keychain, the provisioning profile, the
+    # ExportOptions plist and the App Store Connect .p8 are all written
+    # elsewhere ($RUNNER_TEMP/*, $HOME/.appstoreconnect) and never into it.
+    # tools/mobile/release-workflow.test.mjs pins that nothing secret is
+    # written under $ART. Short retention: these are for the morning after.
+    - name: Keep the release logs (altool-upload.log, toolchain, SwiftPM resolve)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-release-logs-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/ios-release
+        if-no-files-found: ignore
+        retention-days: 14

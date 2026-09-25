@@ -612,18 +612,20 @@ test("the last segment's boundary is the end of the queue, not a stall", async (
   restore();
 });
 
-test("the stop rows come from the REAL element, not from typed strings", () => {
-  /* Review's finding 8, answered. Seven of the parse table's patterns were pinned only
-     against literals in the mechanism suite, so renaming any of those emitters would
-     empty that half of the record with all 61 suites green. The three worth driving
-     for real are the `stop` rows, because a stop is the thing a listener notices.
+/* THE STOP ROWS COME FROM THE REAL ELEMENT, NOT FROM TYPED STRINGS.
+   Review's finding 8, answered. Seven of the parse table's patterns were pinned only
+   against literals in the mechanism suite, so renaming any of those emitters would
+   empty that half of the record with all 61 suites green. The three worth driving
+   for real are the `stop` rows, because a stop is the thing a listener notices.
 
-     Not a source scan — the assertions below are on the record produced by a real
-     `HtmlAudioBackend` reacting to a real element. Two patterns stay literal-only and
-     are named honestly: `restore` (`restoreQueue` is the episode path, which a Foray
-     never takes) and `knownCar` (no JS caller passes a route name yet). */
-  assert.ok(true, "see the three tests that follow");
-});
+   Not a source scan — the assertions in the three tests below are on the record
+   produced by a real `HtmlAudioBackend` reacting to a real element. Two patterns stay
+   literal-only and are named honestly: `restore` (`restoreQueue` is the episode path,
+   which a Foray never takes) and `knownCar` (no JS caller passes a route name yet).
+
+   (tests-7, round-3 audit: this was a test whose only assertion was `assert.ok(true)`,
+   which padded this suite's floor by one and read as coverage. It is a comment now, and
+   the floor in test/suite-integrity.test.js came down by one in the same change.) */
 
 test("a media error becomes a stop row carrying the CODE and no source", async (t) => {
   /* MUTATION: reword `audio.error code=` in `html-audio-backend.js`. This fails while

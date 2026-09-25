@@ -16,9 +16,19 @@ on:
   # SHA. Removing this trigger would silently strand every auto-updated PR.
   workflow_dispatch: {}
 
+# security-3 (round-3 audit): read-only by default. The repository's default
+# workflow token is write-all, and this workflow runs PR-authored code and its
+# dependencies on every same-repo PR. Nothing here writes to the repo; a job
+# that needs more (ios-gate reads the Actions API) declares it on the job.
+permissions:
+  contents: read
+
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # tests-4: a hung test holds a runner for GitHub's 360-minute default
+    # otherwise. Every job here finishes in minutes (measured 2026-09-25).
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: backend
@@ -68,7 +78,17 @@ jobs:
     # exist, api/'s own install alone is not enough. Caught here BECAUSE
     # this job installs api/ only the first time it ran — see this PR's
     # second commit for the reproduction.
+    #
+    # ci-release-11: `npm ci`, not `npm install`. vercel.json's installCommand
+    # is `npm ci` for both, and `npm install` quietly rewrites a lockfile that
+    # disagrees with package.json, so this job used to pass a drift that the
+    # production install then refuses.
+    #
+    # arch-drift-12: `npm run typecheck` (tsc over api/**/*.ts and every
+    # backend/src file they import, api/tsconfig.typecheck.json). tsx strips
+    # types without checking them, so before this nothing type-checked api/.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: api
@@ -77,8 +97,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
-      - run: npm install --omit=dev --prefix ../backend
+          cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            backend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm ci --omit=dev --prefix ../backend --no-audit --no-fund
+      - run: npm run typecheck
       - run: npm test
 
   engine-paths:
@@ -138,6 +163,7 @@ jobs:
     needs: engine-paths
     if: ${{ !cancelled() && (github.event_name != 'workflow_dispatch' || needs.engine-paths.outputs.swift != 'false') }}
     runs-on: macos-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - run: swift test --package-path ios/ForayKit
@@ -376,6 +402,7 @@ jobs:
 
   data-and-site:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         # Full history (blobless: commits and trees only). The deploy stamp's
@@ -544,6 +571,7 @@ jobs:
     # promote it into protect-main's required-checks list at that point,
     # rather than leaving it advisory forever.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: test/playwright

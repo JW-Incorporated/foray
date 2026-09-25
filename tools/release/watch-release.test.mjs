@@ -656,10 +656,14 @@ test("only the watchdog may close the issue — MUTATION: --may-close on the tri
   assert.doesNotMatch(code(TRIGGER_WF), /gh issue close/);
 });
 
-test("both workflows run on a schedule, share one concurrency group, and walk git in parseGitLog's format", () => {
+test("both workflows run on a schedule, each in its OWN concurrency group, and walk git in parseGitLog's format", () => {
+  /* ci-release-9: a shared group kept one running and ONE pending run between
+     the two workflows and cancelled the older pending one, so a watchdog or
+     trigger run could vanish. MUTATION: put both back in `release-alarm`. */
+  const groups = [WATCH_WF, TRIGGER_WF].map((wf) => (block(wf, "concurrency") ?? "").match(/group: (\S+)/)?.[1]);
+  assert.deepEqual(groups, ["release-watch", "release-trigger"]);
   for (const wf of [WATCH_WF, TRIGGER_WF]) {
     assert.match(block(wf, "on"), /schedule:\s*\n\s*- cron: "[^"]+"/);
-    assert.match(block(wf, "concurrency"), /group: release-alarm/);
     assert.match(block(wf, "concurrency"), /cancel-in-progress: false/);
     assert.match(wf, /fetch-depth: 0/, "G3 needs the full history");
     const formats = [...code(wf).matchAll(/--format='([^']+)'/g)].map((m) => m[1]);
@@ -669,4 +673,72 @@ test("both workflows run on a schedule, share one concurrency group, and walk gi
   assert.match(code(WATCH_WF), /workflows\/release-trigger\.yml\/runs\?event=schedule&status=success/);
   assert.match(code(TRIGGER_WF), /workflows\/release-watch\.yml\/runs\?event=schedule&status=success/);
   assert.ok(fs.existsSync(path.join(ROOT, ".github/workflows/release-trigger.yml")));
+});
+
+/* ══════════════════ ci-release-6: main is judged by its required checks ══════════ */
+
+const CI_RUN_RED = { name: "CI", event: "push", status: "completed", conclusion: "failure", path: ".github/workflows/ci.yml" };
+const check = (name, conclusion, status = "completed", started_at = "2026-09-24T10:00:00Z") => ({ name, status, conclusion, started_at });
+/* ci.yml's push run on the head: the required checks are judged only when it exists. */
+const CI_RAN = [{ name: "CI", event: "push", status: "in_progress", conclusion: null, path: ".github/workflows/ci.yml" }];
+
+test("ci-release-6: an advisory ios-kit failure no longer holds the release", () => {
+  /* The measured case: runs 35950411353 and 35900753042 were `failure` with
+     only ios-kit red. MUTATION: drop the `/ci.yml` skip in mainState -> the
+     whole-run conclusion wins again and this is HOLD_MAIN_RED. */
+  const mainChecks = [check("backend", "success"), check("data-and-site", "success"), check("ios-kit", "failure"), check("playwright", "failure")];
+  const d = triggerDecision({ runs: [DONE], commits: WAITING, bundle: BUNDLE, mainRuns: [CI_RUN_RED], mainStatus: {}, mainChecks });
+  assert.equal(d.code, "DISPATCH", d.reason);
+});
+
+test("ci-release-6: a red REQUIRED check still holds it, and names the check", () => {
+  const mainChecks = [check("backend", "failure"), check("data-and-site", "success")];
+  const d = triggerDecision({ runs: [DONE], commits: WAITING, bundle: BUNDLE, mainRuns: [CI_RUN_RED], mainStatus: {}, mainChecks });
+  assert.equal(d.code, "HOLD_MAIN_RED");
+  assert.match(d.reason, /backend/);
+});
+
+test("ci-release-6: a required check still running, or not reported yet, is building", () => {
+  const running = [check("backend", null, "in_progress"), check("data-and-site", "success")];
+  assert.equal(mainState(CI_RAN, {}, running).state, "building");
+  const missing = [check("backend", "success")];
+  const m = mainState(CI_RAN, {}, missing);
+  assert.equal(m.state, "building");
+  assert.match(m.building.join(), /data-and-site \(not reported yet\)/);
+});
+
+test("ci-release-6: the newest run of a required check wins (a green re-run clears an old red)", () => {
+  const rerun = [
+    check("backend", "failure", "completed", "2026-09-24T10:00:00Z"),
+    check("backend", "success", "completed", "2026-09-24T11:00:00Z"),
+    check("data-and-site", "success"),
+  ];
+  assert.equal(mainState(CI_RAN, {}, rerun).state, "green");
+});
+
+test("ci-release-6: without check runs (an older caller), ci.yml is still read as a whole run — stricter, never looser", () => {
+  assert.equal(mainState([CI_RUN_RED], {}).state, "red");
+});
+
+test("ci-release-6: the required list IS pr-triage's REQUIRED_CHECKS, and the trigger fetches the head's check runs", async () => {
+  const { REQUIRED_CHECKS } = await import("../ci/pr-triage.mjs");
+  const all = REQUIRED_CHECKS.map((n) => check(n, "success"));
+  assert.equal(mainState(CI_RAN, {}, all).state, "green");
+  assert.equal(mainState(CI_RAN, {}, all.slice(1)).state, "building", "every required check is consulted");
+  assert.match(code(TRIGGER_WF), /commits\/\$HEAD_SHA\/check-runs\?per_page=100" main-checks\.json/);
+  assert.match(code(TRIGGER_WF), /--main-checks main-checks\.json/);
+});
+
+test("ci-release-6: a BOT-MERGED head (no ci.yml run, so no required checks at all) still releases", () => {
+  /* Replays f33caadf: merged by the Actions bot with GITHUB_TOKEN, so the push
+     triggered no workflow — no CI:push run and an EMPTY check_runs list, only
+     Pages. Reading the missing checks as "not reported yet" returned
+     HOLD_MAIN_BUILDING on every 2-hourly run until a human merge landed on top.
+     MUTATION: drop `&& ciRan` from mainState's byChecks -> HOLD_MAIN_BUILDING. */
+  const pages = { name: "pages build and deployment", event: "dynamic", status: "completed", conclusion: "success", path: "dynamic/pages/pages-build-deployment" };
+  const d = triggerDecision({ runs: [DONE], commits: WAITING, bundle: BUNDLE, mainRuns: [pages], mainStatus: { state: "success", total_count: 1 }, mainChecks: [] });
+  assert.equal(d.code, "DISPATCH", d.reason);
+  assert.equal(mainState([pages], {}, []).state, "green");
+  // ...and once ci.yml DOES run on the head, a missing required check is building again.
+  assert.equal(mainState([...CI_RAN, pages], {}, []).state, "building");
 });

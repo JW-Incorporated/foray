@@ -89,6 +89,7 @@
  *        --verdict-out verdict.json
  *   node tools/release/watch-release.mjs --mode trigger --runs runs.json \
  *        --commits commits.txt --main-runs main-runs.json --main-status status.json \
+ *        --main-checks check-runs.json \
  *        --peer-workflow watch-workflow.json --peer-runs watch-runs.json \
  *        --verdict-out verdict.json
  *   node tools/release/watch-release.mjs --mode issue --verdict verdict.json \
@@ -103,6 +104,10 @@
 
 import fs from "node:fs";
 import process from "node:process";
+/* protect-main's required contexts. ONE list, owned by the merge machinery: the
+ * release trigger must call main "red" for exactly the checks that can block a
+ * merge, and no others (ci-release-6). */
+import { REQUIRED_CHECKS } from "../ci/pr-triage.mjs";
 
 /* ─────────────────────────── the numbers, and why ────────────────────────── */
 
@@ -578,21 +583,57 @@ const RED_RUN = new Set(["failure", "timed_out", "startup_failure", "action_requ
 
 /** Is main itself red or still building, ignoring the release machinery?
  *
- *  Main runs almost nothing on push today (Pages, and a commit status from the
- *  deploy host) — PR checks did the gating before the merge. So this is a weak
- *  signal, and it is read that way: only runs of OTHER workflows on main's head
- *  count (release.yml and the scheduled/dispatched watchers attach to the same
- *  commit and must not hold themselves up), and a combined status with zero
- *  statuses is ignored, because GitHub reports that as `pending` forever. */
-export function mainState(mainRuns, combinedStatus) {
+ *  What runs on a push to main: ci.yml (the same jobs a PR ran), Pages, and a
+ *  commit status from the deploy host. Only runs of OTHER workflows on main's
+ *  head count (release.yml and the scheduled/dispatched watchers attach to the
+ *  same commit and must not hold themselves up), and a combined status with
+ *  zero statuses is ignored, because GitHub reports that as `pending` forever.
+ *
+ *  ci.yml IS JUDGED BY ITS REQUIRED CHECKS, NOT ITS RUN (ci-release-6, round-3
+ *  audit). The run's conclusion is `failure` whenever ANY job fails, including
+ *  the advisory ones protect-main deliberately does not require (ios-kit, the
+ *  macOS Swift build; playwright, "ADVISORY-ONLY ... DELIBERATELY"). Reading
+ *  the run held every automatic release behind a red ios-kit that release.yml
+ *  does not even build from (measured: runs 35950411353 and 35900753042 failed
+ *  with only ios-kit red). So when the head's check runs are supplied, a ci.yml
+ *  run is skipped here and the REQUIRED contexts — pr-triage's REQUIRED_CHECKS,
+ *  the same list the merge gate uses — are read instead: a failed one is red,
+ *  a running or not-yet-reported one is building. Without check runs (an older
+ *  caller), ci.yml is read as a whole run, as before: stricter, never looser.
+ *
+ *  ONLY WHEN ci.yml ACTUALLY RAN ON THIS SHA (round-3 review). A PR the Actions
+ *  bot merged (automerge-nightly, or the pr-hygiene sweep, both arming with
+ *  GITHUB_TOKEN) lands a push that triggers NO workflow, so ci.yml never runs
+ *  on that SHA and no required check is ever reported there. Measured: 5 of 15
+ *  consecutive main commits. Reading "no backend check" as "building" held
+ *  every automatic release until a human-merged commit landed on top. With no
+ *  ci.yml run on the head, the required checks are not applicable, exactly as
+ *  before ci-release-6: the PR's own required checks gated that merge. */
+export function mainState(mainRuns, combinedStatus, checkRuns = null, requiredChecks = REQUIRED_CHECKS) {
   const failing = [];
   const building = [];
+  const ciRan = (Array.isArray(mainRuns) ? mainRuns : []).some(
+    (r) => r && typeof r === "object" && typeof r.path === "string" && r.path.endsWith("/ci.yml")
+  );
+  const byChecks = Array.isArray(checkRuns) && ciRan;
   for (const r of Array.isArray(mainRuns) ? mainRuns : []) {
     if (!r || typeof r !== "object") continue;
     if (r.event === "schedule" || r.event === "workflow_dispatch") continue;
     if (typeof r.path === "string" && r.path.endsWith("/release.yml")) continue;
+    if (byChecks && typeof r.path === "string" && r.path.endsWith("/ci.yml")) continue;
     if (isInFlight(r)) building.push(r.name);
     else if (RED_RUN.has(r.conclusion)) failing.push(r.name);
+  }
+  if (byChecks) {
+    for (const name of requiredChecks) {
+      // The newest check run of that name (a re-run adds a second one).
+      const latest = checkRuns
+        .filter((c) => c && c.name === name)
+        .sort((a, b) => String(b.started_at ?? "").localeCompare(String(a.started_at ?? "")) || (b.id ?? 0) - (a.id ?? 0))[0];
+      if (!latest) building.push(`${name} (not reported yet)`);
+      else if (latest.status !== "completed") building.push(name);
+      else if (RED_RUN.has(latest.conclusion) || latest.conclusion === "cancelled") failing.push(name);
+    }
   }
   const s = combinedStatus && typeof combinedStatus === "object" ? combinedStatus : {};
   if (s.total_count > 0) {
@@ -609,7 +650,7 @@ export function mainState(mainRuns, combinedStatus) {
  *  release-relevant is waiting; the retry budget is spent; or main is red or
  *  still building. Otherwise dispatch — which is also how a FAILED release is
  *  retried, since its commits are still waiting. */
-export function triggerDecision({ runs, commits, bundle, mainRuns, mainStatus }) {
+export function triggerDecision({ runs, commits, bundle, mainRuns, mainStatus, mainChecks = null }) {
   const inFlight = sortRuns(runs).find(isInFlight);
   if (inFlight) {
     return { dispatch: false, code: "HOLD_IN_FLIGHT", reason: `Release run #${inFlight.run_number} is already ${inFlight.status}.` };
@@ -625,7 +666,7 @@ export function triggerDecision({ runs, commits, bundle, mainRuns, mainStatus })
     return { dispatch: false, code: "HOLD_RETRY_BUDGET",
       reason: `The last ${failures.length} release runs failed; not spending more macOS time until someone looks.` };
   }
-  const main = mainState(mainRuns, mainStatus);
+  const main = mainState(mainRuns, mainStatus, mainChecks);
   if (main.state !== "green") {
     const names = main.state === "red" ? main.failing : main.building;
     return { dispatch: false, code: main.state === "red" ? "HOLD_MAIN_RED" : "HOLD_MAIN_BUILDING",
@@ -637,8 +678,8 @@ export function triggerDecision({ runs, commits, bundle, mainRuns, mainStatus })
 }
 
 /** The trigger's own verdict: its decision, plus whether the WATCHDOG is alive. */
-export function triggerVerdict({ runs, commits, bundle, mainRuns, mainStatus, peerWorkflow, peerRuns, now }) {
-  const decision = triggerDecision({ runs, commits, bundle, mainRuns, mainStatus });
+export function triggerVerdict({ runs, commits, bundle, mainRuns, mainStatus, mainChecks = null, peerWorkflow, peerRuns, now }) {
+  const decision = triggerDecision({ runs, commits, bundle, mainRuns, mainStatus, mainChecks });
   return verdictOf("trigger", [
     livenessGate("L", "release-watch", peerWorkflow, peerRuns, WATCHDOG_STALE_HOURS, now),
   ], { decision });
@@ -831,6 +872,8 @@ export async function run(argv, env = process.env) {
         runs, commits, bundle,
         mainRuns: listOf(readJson(arg(argv, "--main-runs")), "workflow_runs"),
         mainStatus: readJson(arg(argv, "--main-status")),
+        // ci-release-6: optional, so an older trigger workflow still runs.
+        mainChecks: arg(argv, "--main-checks") ? listOf(readJson(arg(argv, "--main-checks")), "check_runs") : null,
         peerWorkflow, peerRuns, now,
       });
       writeOutput(env, `dispatch=${verdict.decision.dispatch}`);
