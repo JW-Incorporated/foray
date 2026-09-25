@@ -4,7 +4,6 @@ import {
   dampedDelta,
   nextWeight,
   nextConfidence,
-  computeCardIgnoredStreak,
   buildKnownNodeMap,
   applyEvent,
   applyEventBatch,
@@ -186,33 +185,6 @@ describe("nextWeight / nextConfidence — clamping", () => {
   });
 });
 
-describe("computeCardIgnoredStreak", () => {
-  it("counts consecutive topic-overlapping card_shown events, including the current one", () => {
-    const history: PersistedEvent[] = [
-      evt({ type: "card_shown", payload: { episode_slug: "e1", topics: [FUSION], archetype: "stretch" } }),
-      evt({ type: "card_shown", payload: { episode_slug: "e2", topics: [FUSION], archetype: "stretch" } }),
-      evt({ type: "card_shown", payload: { episode_slug: "e3", topics: [FUSION], archetype: "stretch" } })
-    ];
-    const current = evt({ type: "card_shown", payload: { episode_slug: "e4", topics: [FUSION], archetype: "stretch" } });
-    expect(computeCardIgnoredStreak(history, current)).toBe(4);
-  });
-
-  it("resets the streak at an intervening pick with overlapping topics", () => {
-    const history: PersistedEvent[] = [
-      evt({ type: "card_shown", payload: { episode_slug: "e1", topics: [FUSION], archetype: "stretch" } }),
-      evt({ type: "picked", payload: { episode_slug: "e1", topics: [FUSION], archetype: "stretch" } }),
-      evt({ type: "card_shown", payload: { episode_slug: "e2", topics: [FUSION], archetype: "stretch" } })
-    ];
-    const current = evt({ type: "card_shown", payload: { episode_slug: "e3", topics: [FUSION], archetype: "stretch" } });
-    expect(computeCardIgnoredStreak(history, current)).toBe(2);
-  });
-
-  it("ignores card_shown events with no topic overlap", () => {
-    const history: PersistedEvent[] = [evt({ type: "card_shown", payload: { episode_slug: "e1", topics: [POLITICS], archetype: "stretch" } })];
-    const current = evt({ type: "card_shown", payload: { episode_slug: "e2", topics: [FUSION], archetype: "stretch" } });
-    expect(computeCardIgnoredStreak(history, current)).toBe(1);
-  });
-});
 
 describe("buildKnownNodeMap", () => {
   it("maps node id -> label from a taxonomy file", () => {
@@ -341,6 +313,39 @@ describe("card_ignored_repeatedly fires once per threshold (round 3)", () => {
     const outcomes = await applyEventBatch(events, newDeps());
     const firedSlugs = outcomes.flatMap((o, i) => (o.applied.some((a) => a.reason === "card_ignored_repeatedly") ? [events[i]!.payload] : []));
     expect(firedSlugs).toEqual([{ episode_slug: "e9", topics: [FUSION], archetype: "deep-learn" }]);
+  });
+
+  /* Round-3 review (L6): the streak was the highest count among a card's
+     topics and every topic on the card was penalised by it, so a topic the
+     listener had JUST picked was penalised because its sibling hit five, and a
+     topic's own fifth showing could hide behind a sibling's seventh.
+     MUTATION: judge every topic by the card's highest count again (pass
+     `ignoredCardShownCount: streaks.observe(event)`) -- FUSION is penalised
+     straight after its pick, and POLITICS' fifth showing is skipped. */
+  it("each topic is judged on its own count: a just-picked topic is not penalised for its sibling", async () => {
+    const pick = (topics: string[]) => evt({ type: "picked", payload: { episode_slug: "p", topics, archetype: "deep-learn" } });
+    const both = (n: number) => shown(n, [FUSION, POLITICS]);
+    const events = [both(1), both(2), both(3), both(4), pick([FUSION]), both(5)];
+    const outcomes = await applyEventBatch(events, newDeps());
+    expect(outcomes[5]!.applied.map((a) => a.nodeId)).toEqual([POLITICS]);
+
+    const s3 = [shown(20, [FUSION]), shown(21, [FUSION]), both(22), both(23), both(24), both(25), both(26)];
+    const out3 = await applyEventBatch(s3, newDeps());
+    // FUSION fires at its 5th (event 4); POLITICS at ITS 5th (event 6), where FUSION is at 7.
+    expect(out3.map((o) => o.applied.map((a) => a.nodeId))).toEqual([[], [], [], [], [FUSION], [], [POLITICS]]);
+  });
+
+  it("CardShownStreaks.observeCounts reports each topic's own count; a pick clears only its topics", () => {
+    const s = new CardShownStreaks();
+    expect([...s.observeCounts(shown(1, [FUSION]))]).toEqual([[FUSION, 1]]);
+    expect([...s.observeCounts(shown(2, [FUSION, POLITICS]))]).toEqual([[FUSION, 2], [POLITICS, 1]]);
+    expect(s.observeCounts(evt({ type: "picked", payload: { episode_slug: "p", topics: [POLITICS], archetype: "comfort" } })).size).toBe(0);
+    expect([...s.observeCounts(shown(3, [FUSION, POLITICS]))]).toEqual([[FUSION, 3], [POLITICS, 1]]);
+  });
+
+  it("per-topic counts win over the single streak; the single streak alone covers every topic", () => {
+    expect(deriveInterestDeltas(shown(1, [FUSION, POLITICS]), { ignoredCardShownCount: IGNORED_CARD_SHOWN_THRESHOLD }).map((d) => d.nodeId)).toEqual([FUSION, POLITICS]);
+    expect(deriveInterestDeltas(shown(1, [FUSION, POLITICS]), { ignoredCardShownCounts: new Map([[FUSION, 5], [POLITICS, 4]]) }).map((d) => d.nodeId)).toEqual([FUSION]);
   });
 
   it("CardShownStreaks counts per topic and reports the highest", () => {
