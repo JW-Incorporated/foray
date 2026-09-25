@@ -111,6 +111,20 @@ export function nextConfidence(previousConfidence: number): number {
   return clamp(0, 1, previousConfidence + CONFIDENCE_GAIN);
 }
 
+/** One thumbs vote's move on its node. A down-vote moves the subject only for
+    a reason about the subject (TOPIC_DOWNVOTE_REASONS); any other down is
+    audited with no weight change. */
+function thumbsVoteDeltas(nodeId: string, direction: "up" | "down", reasons: readonly string[] | undefined, slot: string | null): InterestDelta[] {
+  if (direction === "down") {
+    const rs = Array.isArray(reasons) ? reasons : [];
+    if (!rs.some((r) => TOPIC_DOWNVOTE_REASONS.includes(r))) {
+      return [{ nodeId, reason: "thumbs_down_named_node", delta: 0, durable: false, archetypeSlot: slot }];
+    }
+    return [{ nodeId, reason: "thumbs_down_named_node", delta: -THUMBS_DOWN, durable: true, archetypeSlot: slot }];
+  }
+  return [{ nodeId, reason: "more_like_this", delta: THUMBS_UP, durable: true, archetypeSlot: slot }];
+}
+
 /**
  * Pure derivation: event -> zero or more node-level deltas. Never touches
  * storage. `event.archetype` (the row-level slot-provenance column) is
@@ -166,14 +180,20 @@ export function deriveInterestDeltas(event: PersistedEvent, ctx: DeriveContext =
 
     case "thumbs": {
       const p = event.payload;
-      if (p.direction === "down") {
-        const reasons = Array.isArray(p.reasons) ? p.reasons : [];
-        if (!reasons.some((r) => TOPIC_DOWNVOTE_REASONS.includes(r))) {
-          return [{ nodeId: p.node_id, reason: "thumbs_down_named_node" as const, delta: 0, durable: false, archetypeSlot: slot }];
-        }
-        return [{ nodeId: p.node_id, reason: "thumbs_down_named_node" as const, delta: -THUMBS_DOWN, durable: true, archetypeSlot: slot }];
-      }
-      return [{ nodeId: p.node_id, reason: "more_like_this" as const, delta: THUMBS_UP, durable: true, archetypeSlot: slot }];
+      /* A CHANGED OR WITHDRAWN VOTE TAKES THE OLD ONE'S MOVE BACK (round-3
+         audit, app-2-6). The client logs the vote it replaced; without this,
+         up, clear, up reached this job as three ups and moved the subject three
+         times. The undo reuses the replaced vote's own reason code with the
+         opposite sign (no new reason, so no user_interests enum migration),
+         and a replaced vote that moved nothing (a non-subject down) has
+         nothing to undo. */
+      const undo = p.replaces
+        ? thumbsVoteDeltas(p.node_id, p.replaces.direction, p.replaces.reasons, slot)
+            .filter((d) => d.durable)
+            .map((d) => ({ ...d, delta: -d.delta }))
+        : [];
+      if (p.direction === "cleared") return undo;
+      return [...undo, ...thumbsVoteDeltas(p.node_id, p.direction, p.reasons, slot)];
     }
 
     case "saved": {

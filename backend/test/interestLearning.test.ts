@@ -357,3 +357,45 @@ describe("card_ignored_repeatedly fires once per threshold (round 3)", () => {
     expect(s.observe(shown(4, [FUSION]))).toBe(1);
   });
 });
+
+/* Round-3 audit app-2-6 (completeness sweep): a changed or withdrawn thumbs
+   vote takes the replaced vote's move back. The client logged only the ups, so
+   up, clear, up reached this job as three ups and moved the subject three
+   times; it now logs `direction: "cleared"` and `replaces`.
+   MUTATIONS (each run): return [] for "cleared" -> the up/cleared/up batch
+   lands at +0.2, and a cleared up undoes nothing, red; drop `undo` from the
+   changed-vote path -> the up -> down flip is one row, red; undo a
+   non-durable replaced vote (drop the `.filter((d) => d.durable)`) -> "a
+   non-subject down has nothing to undo" sees an extra row, red. */
+describe("thumbs: a changed or withdrawn vote undoes the one it replaces (app-2-6)", () => {
+  const thumbs = (payload: Record<string, unknown>) => evt({ type: "thumbs", payload: { node_id: FUSION, ...payload } as never });
+
+  it("up, cleared, up moves the node by ONE up, not three", async () => {
+    const taxonomyRepo = new InMemoryTaxonomyRepository();
+    const deps: ApplyDeps = { taxonomyRepo, auditRepo: new InMemoryInterestAuditRepository(), knownNodes: new Map([[FUSION, { label: "Fusion" }]]) };
+    await applyEventBatch([
+      thumbs({ direction: "up" }),
+      thumbs({ direction: "cleared", replaces: { direction: "up", reasons: [] } }),
+      thumbs({ direction: "up" })
+    ], deps);
+    const once = deriveInterestDeltas(thumbs({ direction: "up" }))[0]!.delta;
+    expect((await taxonomyRepo.getNode(USER, FUSION))!.weight).toBeCloseTo(once, 10);
+  });
+
+  it("a cleared up is one negative more_like_this; a cleared subject down gives the down back", () => {
+    expect(deriveInterestDeltas(thumbs({ direction: "cleared", replaces: { direction: "up" } }))).toEqual([
+      { nodeId: FUSION, reason: "more_like_this", delta: -0.1, durable: true, archetypeSlot: null }
+    ]);
+    const d = deriveInterestDeltas(thumbs({ direction: "cleared", replaces: { direction: "down", reasons: ["Not my subject"] } }));
+    expect(d).toHaveLength(1);
+    expect(d[0]).toMatchObject({ reason: "thumbs_down_named_node", durable: true });
+    expect(d[0]!.delta).toBeGreaterThan(0);
+  });
+
+  it("up -> a subject down undoes the up and applies the down; a non-subject down has nothing to undo", () => {
+    const flip = deriveInterestDeltas(thumbs({ direction: "down", reasons: ["Not my subject"], replaces: { direction: "up" } }));
+    expect(flip.map((x) => [x.reason, Math.sign(x.delta)])).toEqual([["more_like_this", -1], ["thumbs_down_named_node", -1]]);
+    expect(deriveInterestDeltas(thumbs({ direction: "cleared", replaces: { direction: "down", reasons: ["Bad audio quality"] } }))).toEqual([]);
+    expect(deriveInterestDeltas(thumbs({ direction: "cleared" }))).toEqual([]);
+  });
+});

@@ -52,7 +52,7 @@ this isn't optional — a mismatched `user_id` is simply rejected.
 | `skipped_at` | `episode_slug, show?, topics[], elapsed_seconds, duration_seconds?` | **not currently observable on web — see §4** |
 | `finished` | `episode_slug, show?, topics[], percent_complete, source` | `source` mandatory, see §1.2 |
 | `voice_command` | `command, node_id?, show?, episode_slug?` | `command` in `more_like_this\|something_different\|less_x\|never_this_show` |
-| `thumbs` | `direction (up\|down), node_id, episode_slug?` | `node_id` mandatory — thumbs always target a named node |
+| `thumbs` | `direction (up\|down\|cleared), node_id, episode_slug?, replaces?` | `node_id` mandatory — thumbs always target a named node. `replaces {direction (up\|down), reasons?}` names the vote a changed or withdrawn one replaces, and a `cleared` row always carries it; the learning job takes that vote's move back (round-3 audit, app-2-6) |
 | `saved` | `episode_slug, show?, topics[]` | |
 | `session_built` | `session_key, builder` | |
 | `session_rated` | `session_key, rating (good\|meh\|bad)` | |

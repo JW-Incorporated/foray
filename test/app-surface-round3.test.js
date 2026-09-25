@@ -294,6 +294,38 @@ test("app-2-6: up, clear, up leaves one nudge, not three; up -> a non-subject do
   near(interest(), 0.58, "and flipping it to up undoes the down first");
 });
 
+test("app-2-6 (sweep): a changed or withdrawn vote is logged with the vote it replaces, and reaches the server as 'cleared'", () => {
+  /* The client-side nudge was fixed in the lane, but the event log still saw
+     only the ups: a clear logged nothing, so up, clear, up reached the learning
+     job as three ups (backend interestLearning.ts undoes `replaces` now).
+     MUTATION: drop `|| replaces` from the logEvent guard -> no 'cleared' row,
+     red. Drop `replaces` from the logged payload -> red. Drop the `replaces`
+     spread in toEventRow -> the server row carries nothing to undo, red.
+     Let toEventRow send a 'cleared' row with no `replaces` -> red. */
+  const m = loadApp();
+  m.run(`state.interests = { "science": 0.5 }; globalThis.__log = []; logEvent = (type, payload) => __log.push({ type, payload });`);
+  const entry = { segment_id: "seg-9", topic: "science", item_id: "ep" };
+  const logged = () => JSON.parse(m.run(`JSON.stringify(__log)`)).map((e) => e.payload);
+  m.ctx.setFeedback(entry, "up");
+  m.ctx.setFeedback(entry, null);
+  m.ctx.setFeedback(entry, "up");
+  m.ctx.setFeedback(entry, "down", { reasons: ["Not my subject"] });
+  const rows = logged();
+  assert.deepStrictEqual(rows.map((p) => [p.direction, p.replaces && p.replaces.direction]), [
+    ["up", null], ["cleared", "up"], ["up", null], ["down", "up"],
+  ]);
+  assert.deepStrictEqual(rows[1].reasons, [], "a withdrawal carries no reasons of its own");
+
+  const toRow = (payload) => JSON.parse(JSON.stringify(m.ctx.toEventRow({ type: "thumbs", ts: "2026-09-25T00:00:00Z", payload }, "u1")));
+  const cleared = toRow(rows[1]);
+  assert.strictEqual(cleared.type, "thumbs");
+  assert.deepStrictEqual([cleared.payload.direction, cleared.payload.node_id, cleared.payload.replaces], ["cleared", "science", { direction: "up", reasons: [] }]);
+  assert.deepStrictEqual(toRow(rows[3]).payload.replaces, { direction: "up", reasons: [] }, "a changed vote names the one it replaced");
+  assert.strictEqual(toRow(rows[0]).payload.replaces, undefined, "a first vote has nothing to replace");
+  assert.strictEqual(m.ctx.toEventRow({ type: "thumbs", ts: "t", payload: { direction: "cleared", node_id: "science" } }, "u1"), null,
+    "a withdrawal that does not say what it withdrew is not sent");
+});
+
 /* ---------- app-2-10: a panel drag captures its pointer ----------------------- */
 
 test("app-2-10: panel drag-to-dismiss captures the pointer, and a lost capture ends the drag", () => {

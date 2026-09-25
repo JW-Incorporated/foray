@@ -678,7 +678,9 @@ function toEventRow(e, userId) {
       // `node_id` is MANDATORY — the learning job keys the signal on a taxonomy
       // node, so a thumb with nowhere to land is dropped here rather than
       // inserted as a row nothing can read (events-client-integration-spec §2).
-      if (!p.node_id || (p.direction !== "up" && p.direction !== "down")) return null;
+      if (!p.node_id || (p.direction !== "up" && p.direction !== "down" && p.direction !== "cleared")) return null;
+      // A withdrawn vote means nothing without the vote it withdrew (app-2-6).
+      if (p.direction === "cleared" && !p.replaces) return null;
       // `episode_slug` is OPTIONAL in the contract, and optional means absent —
       // the schema is `z.string().optional()`, which rejects an explicit null.
       return row("thumbs", {
@@ -691,6 +693,11 @@ function toEventRow(e, userId) {
         note: p.note || null,
         segment_id: p.segment_id || null,
         foray_id: p.foray_id || null,
+        // The vote this one changed or withdrew, so the learning job can take
+        // its move back (round-3 audit, app-2-6). Absent on a first vote.
+        ...(p.replaces && (p.replaces.direction === "up" || p.replaces.direction === "down")
+          ? { replaces: { direction: p.replaces.direction, reasons: Array.isArray(p.replaces.reasons) ? p.replaces.reasons : [] } }
+          : {}),
       });
     case "session_shown":
       return row("session_built", { session_key: p.session_id, builder: e.builder || "unknown" });
@@ -11920,7 +11927,8 @@ function setFeedback(entry, direction, { reasons = [], note = "" } = {}) {
      Clearing a vote, or changing it, used to leave the old nudge in place, so
      up, clear, up drove a topic to 1.0 in about thirteen taps. The previous
      vote's nudge is undone in the same step that applies the new one. */
-  const undo = -voteNudge(all[segId]);
+  const prev = all[segId] && all[segId].direction ? all[segId] : null;
+  const undo = -voteNudge(prev);
   const vote = direction ? { direction, reasons, note, ts: new Date().toISOString() } : null;
   editStored("cp_foray_feedback", {}, (v) => {
     const next = { ...plainObject(v) };
@@ -11929,16 +11937,24 @@ function setFeedback(entry, direction, { reasons = [], note = "" } = {}) {
     return next;
   });
 
-  if (direction) {
+  /* The event says which vote it replaces, and a withdrawn vote is logged as
+     "cleared" (round-3 audit, app-2-6): the learning job takes the replaced
+     vote's move back (backend interestLearning.ts), so the server counts up,
+     clear, up once, as this device does. */
+  const replaces = prev ? { direction: prev.direction, reasons: Array.isArray(prev.reasons) ? prev.reasons : [] } : null;
+  if (direction || replaces) {
     logEvent("thumbs", {
-      direction,
+      direction: direction || "cleared",
       node_id: entry.topic || null,
       episode_slug: entry.item_id || null,
       segment_id: segId,
       foray_id: state.foray ? state.foray.id : null,
-      reasons,
-      note: note.trim() || null,
+      reasons: direction ? reasons : [],
+      note: direction ? note.trim() || null : null,
+      replaces,
     });
+  }
+  if (direction) {
     /* A thumb is an action the listener took, so it moves the same weights
        playing something does — just harder, and in whichever direction.
        ONLY WHEN THE REASON IS ABOUT THE SUBJECT (audit round 2, p-foray-6): a
@@ -11950,12 +11966,9 @@ function setFeedback(entry, direction, { reasons = [], note = "" } = {}) {
     const net = undo + voteNudge({ direction, reasons });
     if (net) nudgeTopics([entry.topic], net);
     trySyncEvents();
-  } else if (undo) {
-    /* A cleared vote logs nothing yet: the events contract only knows
-       up/down (backend/src/types/events.ts ThumbsPayloadSchema), and a row the
-       learning job cannot parse is worse than a missing retraction. The
-       server-side half is recorded as a follow-up. */
-    nudgeTopics([entry.topic], undo);
+  } else if (replaces) {
+    if (undo) nudgeTopics([entry.topic], undo);
+    trySyncEvents();
   }
   paintFeedback(segId);
 }

@@ -231,7 +231,7 @@ and a timestamp:
 |---|---|
 | `picked` | Episode slug, its topic ids, an `app` label, and a context label. See the note below — both labels carry less about you than their names suggest |
 | `saved` | Episode slug, topic ids |
-| `thumbs` | Up or down; the taxonomy node it applies to; optionally the episode slug, segment id and foray id; the reason codes you selected; **and the free-text note you typed** (a single line, up to 200 characters) |
+| `thumbs` | Up or down, or that you withdrew a vote; when you change or withdraw a vote, the direction and reason codes of the vote it replaces (so the change is counted once); the taxonomy node it applies to; optionally the episode slug, segment id and foray id; the reason codes you selected; **and the free-text note you typed** (a single line, up to 200 characters) |
 | `session_shown` → stored as `session_built` | A session key and which builder produced it |
 
 **Not sent — recorded only on your device:** `play_started`, `position` (your play

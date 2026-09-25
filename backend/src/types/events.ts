@@ -94,14 +94,28 @@ export const VoiceCommandPayloadSchema = z.object({
 });
 export type VoiceCommandPayload = z.infer<typeof VoiceCommandPayloadSchema>;
 
-export const ThumbsPayloadSchema = z.object({
+/** One thumbs vote as the listener left it: its direction and, on a down-vote,
+    the reason chips. */
+const ThumbsVoteSchema = z.object({
   direction: z.enum(["up", "down"]),
+  reasons: z.array(z.string()).optional()
+});
+
+export const ThumbsPayloadSchema = z.object({
+  /** "cleared": the listener withdrew their vote (tapped the lit thumb again).
+      A cleared row always carries `replaces` (round-3 audit, app-2-6). */
+  direction: z.enum(["up", "down", "cleared"]),
   node_id: z.string().min(1),
   episode_slug: z.string().optional(),
   /** The listener's chips on a down-vote (app.js setFeedback). Kept, not
       stripped, because the learning job moves the subject only for a reason
       about the subject (interestLearning.ts TOPIC_DOWNVOTE_REASONS). */
-  reasons: z.array(z.string()).optional()
+  reasons: z.array(z.string()).optional(),
+  /** The vote this row replaces, when the listener changed or withdrew one
+      (app.js setFeedback). The learning job takes that vote's move back before
+      applying this one, so up, clear, up counts once, not three times
+      (round-3 audit, app-2-6). Absent on a first vote and on older rows. */
+  replaces: ThumbsVoteSchema.optional()
 });
 export type ThumbsPayload = z.infer<typeof ThumbsPayloadSchema>;
 
