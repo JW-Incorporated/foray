@@ -2,6 +2,17 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-25 (round-3 code audit: the founder's rulings on Q2-Q5)
+
+Wyatt, 2026-09-25, answering the round-3 questions (`docs/audit/round-3-code/synthesis.md`), verbatim:
+*"Create a human action for me to follow up on creating a protected release environment. Same with supabase. For Q4, I don't understand, those seem like forays that we would want. We should likely loosen to allow those. Q5 yes move everything in the app to the native engine."*
+
+- **Q2 (signing secrets behind a protected `release` environment):** a founder follow-up, HUMAN-ACTIONS #115. The code side stays inactive until he has made the environment.
+- **Q3 (the Supabase RLS migration):** a founder follow-up, HUMAN-ACTIONS #116. The migration file lands in the round-3 fix PR; production is untouched until he applies it.
+- **Q4 (the generation safety check refuses ordinary documentary prompts):** **loosen it.** Prompts framed as reporting, history, education or survival (his examples: how the Catholic Church covered up the sexual abuse of children; how sex education for kids changed in the 1970s; how to survive a nuclear bomb) must be accepted. What stays refused whatever the framing: sexual content involving minors, and operational instructions for serious harm (weapons, attacks). The regexes move from topic words to intent, with the documentary cases as passing tests and the harmful framings as refusing ones.
+- **Q5 (resume when a known car route reconnects):** **yes, and the native engine owns it**, like the rest of playback. When a known car route comes back and 4a had been playing when the route was lost, the native engine resumes; a pause the listener made stays paused. The dead web-player branch is deleted. Added to `docs/native-engine-plan.md` as card NE-38r. "Move everything in the app to the native engine" is read as all of playback on iOS (milestones M2-M4 already move Forays, narration, seams and interludes). Whether Android moves too is an open question to the founder.
+
+
 ## 2026-09-24 (the iOS app plays episodes natively: the M1 decision, the pause-hold default and OQ-9's answer — NE-27d, G-7)
 
 **The decision.** On iOS, episodes play in the native engine by default: a single
