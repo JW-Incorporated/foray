@@ -34,6 +34,7 @@
    1 Hz ticker stands in for `timeupdate` while audio is flowing. */
 
 import { lastEpisodeRow as lastEpisodeRowOf } from "./continuation.js";
+import { buildForayQueue } from "./foray-queue.js";
 
 /** The stand-in for `timeupdate`: once a second, only while visible and only
     while the snapshot says audio is flowing. 1 Hz is the engine's own snapshot
@@ -200,6 +201,9 @@ export class NativeManagerFacade {
     this._voice = typeof voice === "string" && voice ? voice : null;
     this._interludeEnabled = interludeEnabled !== false;
     this._queue = [];
+    /** The Foray the page built (NE-35): `{id, title, report, isLocalFile,
+        allowAdPad}` while the pick is a Foray, else null. */
+    this._foray = null;
     this._lastEpisodeRow = lastEpisodeRow;
     this._onStateSettled = typeof onStateSettled === "function" ? onStateSettled : null;
     this._onSeamGapChange = typeof onSeamGapChange === "function" ? onSeamGapChange : null;
@@ -276,11 +280,15 @@ export class NativeManagerFacade {
 
   /** The strategy's queue for a pick: the pick. */
   setQueueFromPick(item) {
+    this._foray = null;
     this._queue = item ? [item] : [];
     return this._queue;
   }
 
-  loadQueue(items) { this._queue = (items || []).filter(Boolean); }
+  loadQueue(items) {
+    this._foray = null;
+    this._queue = (items || []).filter(Boolean);
+  }
 
   /**
    * Play the picked item. ONE command carrying its own start (`startSec`), never
@@ -290,6 +298,10 @@ export class NativeManagerFacade {
    * @returns {Promise<boolean>} whether the engine took it
    */
   async play(index = 0, opts = {}) {
+    /* Inside a Foray a clip is not an episode: the engine holds the queue the
+       page built, so moving to one of its clips is `jump`, never a playEpisode
+       that would replace the Foray with one of its source episodes. */
+    if (this._foray) return this.jump(index, opts);
     const item = this._queue[index];
     if (!item?.id) return false;
     const args = { item, lastEpisodeRow: this._lastEpisodeRow(item) ?? { id: item.id } };
@@ -306,6 +318,66 @@ export class NativeManagerFacade {
   skipToPrevious(opts) { return this._send("previous", undefined, opts?.source); }
   seek(seconds, opts) {
     const sec = Number(seconds);
+    return this._send("seekTo", { sec: Number.isFinite(sec) ? Math.max(0, sec) : 0 }, opts?.source);
+  }
+
+  /* ---------- a Foray, as intents (NE-35) ---------- */
+
+  /**
+   * THE PAGE BUILDS THE FORAY (plan §3 A-1): `buildForayQueue` runs here, in
+   * JS, exactly as PlayerQueueManager.setQueueFromForay runs it, and the
+   * engine is handed the result and never builds one itself (it re-validates
+   * the structure, J-4). Nothing is sent: `playForay` below is the send.
+   * @returns the build report, as the manager's own setQueueFromForay does
+   */
+  setQueueFromForay(foray, opts = {}) {
+    const report = buildForayQueue(foray, opts);
+    this._queue = report.items;
+    this._foray = {
+      id: report.id, title: report.title, report,
+      isLocalFile: Boolean(opts.isLocalFile), allowAdPad: Boolean(opts.allowAdPad),
+    };
+    return report;
+  }
+
+  /** The args `playForay` carries for the built Foray (§5.2): its items and
+      the rest of the build report, verbatim. Null with nothing built. */
+  forayArgs({ startElapsedSec = null, voiceId = null } = {}) {
+    const f = this._foray;
+    if (!f || !f.report.items.length) return null;
+    const { items, ...buildReport } = f.report;
+    const args = {
+      forayId: f.id, title: f.title, items, buildReport,
+      isLocalFile: f.isLocalFile, allowAdPad: f.allowAdPad,
+      voiceId: typeof voiceId === "string" && voiceId ? voiceId : null,
+    };
+    const at = Number(startElapsedSec);
+    if (startElapsedSec != null && Number.isFinite(at) && at > 0) args.startElapsedSec = at;
+    return args;
+  }
+
+  /**
+   * Start the built Foray: ONE command carrying its own start on the Foray
+   * clock (`startElapsedSec`), which the engine resolves to a clip and an
+   * offset itself — never a play followed by a seek (races-1).
+   * @returns {Promise<boolean>} whether the engine took it
+   */
+  async playForay(opts = {}) {
+    const args = this.forayArgs(opts);
+    if (!args) return false;
+    return this._send("playForay", args, opts.source);
+  }
+
+  /** A clip of the Foray, by its index in the built queue. */
+  jump(index, opts) {
+    const i = Number.isInteger(index) ? Math.max(0, index) : 0;
+    return this._send("jump", { index: i }, opts?.source);
+  }
+
+  /** A point on the FORAY's clock (the scrubber, a nudge): the engine finds
+      the clip and the offset inside it (`segmentAtElapsed`, `scrubTarget`). */
+  seekForay(elapsedSec, opts) {
+    const sec = Number(elapsedSec);
     return this._send("seekTo", { sec: Number.isFinite(sec) ? Math.max(0, sec) : 0 }, opts?.source);
   }
 
@@ -351,13 +423,6 @@ export class NativeManagerFacade {
 
   /** Positions are the engine's rows (OWNED_PREFIXES); the page writes none. */
   _persistPosition() {}
-
-  /** M1: Forays play in the JS player after an ordered relinquish (NE-22). A
-      Foray reaching the facade is a missed relinquish, and saying so loudly
-      beats a silent tap. */
-  setQueueFromForay() {
-    throw new Error("capability-off: the native engine does not play Forays in this build — relinquish first (NE-22)");
-  }
 
   /* ---------- repaint hooks ---------- */
 
