@@ -19,11 +19,12 @@
  *   I-23  identity is the request, not the body;
  *         /reset clears map and queue TOGETHER           tests 17, 20, 21
  *   P-01  concurrent requests are answered concurrently  test 22
- *   round-3 audit (data-tools-1, security-8):
+ *   round-3 audit (data-tools-1, security-8, security-9):
  *         a leftover reply never answers a new run        test 28
  *         web pages and foreign Hosts are refused          tests 29, 30
  *         /answer and /reset need the run's token          test 31
  *         a header-derived id cannot escape the queue      test 32
+ *         the default port is not the events server's      test 33
  *
  * THE HTTP TESTS GO OVER REAL HTTP, on 127.0.0.1 with an ephemeral port, and
  * the file tests write real files into a real temp directory. Nothing about
@@ -55,6 +56,7 @@ import {
   messageResponse,
   CHARS_PER_TOKEN,
   RETRY_COUNT_HEADER,
+  DEFAULT_PORT,
   safeHeaderId,
 } from "./relay.mjs";
 import { splitArgs, driverEnv, driverEntryFromPackage, PLACEHOLDER_KEY, REPO_ROOT } from "./start-run.mjs";
@@ -680,4 +682,10 @@ test("32. a header-derived id is reduced to a safe file name before it names a f
     assert.ok(fs.existsSync(path.join(dir, "queue", `${entry.id}.request.json`)));
     assert.equal(fs.existsSync(path.join(dir, "..", "evil.request.json")), false);
   });
+});
+
+test("33. the relay's default port is 8788, not the retired events server's 8787 (security-9)", () => {
+  // MUTATION: put DEFAULT_PORT back to 8787, where a stale events-server
+  // launcher bound every interface and a relay on 127.0.0.1 answered beside it.
+  assert.equal(DEFAULT_PORT, 8788);
 });

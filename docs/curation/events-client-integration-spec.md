@@ -119,7 +119,7 @@ following are currently emitted at all:
   successful write.
 - Batch inserts via `supabase.from('events').insert(rows)` in chunks (e.g.
   ~500 rows) rather than one request per event.
-- **Retire** the current `EVENTS_ENDPOINT = "http://127.0.0.1:8787/events"`
+- **Retired (2026-09-25):** `tools/events-server.mjs` and `scripts/events-server.vbs` were deleted in the round-3 code audit (security-9, data-tools-12); the generation relay now defaults to port 8788. Original note: **Retire** the current `EVENTS_ENDPOINT = "http://127.0.0.1:8787/events"`
   localhost stopgap (`app.js` lines 65-84) once Supabase sync lands — don't
   maintain two parallel sync paths.
 - Every row's `payload` should validate against the shape in §2 before

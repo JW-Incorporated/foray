@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **21 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **22 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -18,6 +18,18 @@
    - **Keep them:** tell Claude "recover the 2026-09-14 nightly digest". It re-cuts the scan back to the 14th and opens `nightly/2026-09-14-recovery`, which is the branch name the guard looks for.
 
 **Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
+
+## #115 🟢 [UPGRADE] Remove the retired events server from your Windows Startup folder (~2 min)
+<!-- ha filed=2026-09-25 kind=default -->
+
+**Why:** `ForayEventsServer.vbs` in your Startup folder starts `tools/events-server.mjs` from the old `commute-curator` checkout at every login. Nothing uses it (events go to Supabase), it listens on every network interface on port 8787 with no auth, and the repo copy has now been deleted (round-3 audit security-9). Only you can remove the Startup entry.
+
+**Steps:**
+1. Press Win+R, type `shell:startup`, press Enter.
+2. Delete `ForayEventsServer.vbs`.
+3. In Task Manager → Details, end the `node.exe` whose command line is `node tools\events-server.mjs` (or just sign out and back in).
+
+**Worked if:** `netstat -ano | findstr :8787` prints nothing after your next login.
 
 ## #114 🟡 [DECIDE] Drive the M1 car test on the next TestFlight build after `engine/m1` merges — the native player is its default (~3 drives)
 <!-- ha filed=2026-09-24 kind=default -->

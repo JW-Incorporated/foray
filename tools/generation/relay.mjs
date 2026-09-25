@@ -151,7 +151,7 @@
  * would reintroduce "waited forever on a file" by a different route.
  *
  * Usage:
- *   node tools/generation/relay.mjs [--port 8787] [--dir data-local/relay]
+ *   node tools/generation/relay.mjs [--port 8788] [--dir data-local/relay]
  *                                   [--park-timeout-ms 0] [--quiet]
  *
  * LOCAL AND AUTHENTICATED (round-3 audit, data-tools-1 + security-8)
@@ -169,6 +169,8 @@
  *   - A header-derived id (an idempotency key) is used as a file name only
  *     after it is reduced to [A-Za-z0-9_-] (or hashed), so it cannot escape the
  *     queue directory.
+ *   - The default port is 8788: 8787 was the retired events server's
+ *     (data-tools-12 / security-9), which bound every interface.
  *
  * Started for you, together with the driver, by `tools/generation/start-run.mjs`.
  * The floor for this file's suite lives in test/suite-integrity.test.js.
@@ -182,7 +184,7 @@ import { fileURLToPath } from "node:url";
 
 /* ------------------------------------------------------------------ constants */
 
-export const DEFAULT_PORT = 8787;
+export const DEFAULT_PORT = 8788;
 export const DEFAULT_DIR = "data-local/relay";
 
 /* A real idempotency key, if anything ever sends one. Checked before the
