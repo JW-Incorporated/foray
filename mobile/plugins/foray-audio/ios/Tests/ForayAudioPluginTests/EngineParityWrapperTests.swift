@@ -83,6 +83,11 @@ final class EngineParityWrapperTests: XCTestCase {
     func testManagerForayFamily() { assertParityFamily("manager-foray", requireRunner: true) }
     func testPrepareFamily() { assertParityFamily("prepare", requireRunner: true) }
 
+    /// NE-33: the default voice, the lexicon and the speech rate as the app links them.
+    func testDefaultVoiceFamily() { assertParityFamily("default-voice", requireRunner: true) }
+    func testLexiconFamily() { assertParityFamily("lexicon", requireRunner: true) }
+    func testSpeechRateFamily() { assertParityFamily("speech-rate", requireRunner: true) }
+
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.
     func testEveryManifestFamilyIsExecutedOrPending() throws {

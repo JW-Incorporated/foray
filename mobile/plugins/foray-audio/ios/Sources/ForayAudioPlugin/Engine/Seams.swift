@@ -198,15 +198,25 @@ enum SpeechEnd: String, Equatable, Sendable {
     case cancelled
 }
 
+/// The engine's one synthesizer (SpeechNarrator, NE-33): the audition line
+/// (OQ-5) and the Foray's narration, never both at once (an audition is
+/// refused `engine-busy` while the engine runs).
 protocol Speaking: AnyObject {
-    /// The end of the utterance in flight, ON MAIN, once per `speak`. The host
-    /// sets it at start and clears it at teardown. NE-25c's session probe
-    /// waits on it (DV-9 is "what happens to the session after `didFinish`");
-    /// NE-33's narrator will turn it into a core input.
+    /// The end of the AUDITION line in flight, ON MAIN, once per `speak`. The
+    /// host sets it at start and clears it at teardown. NE-25c's session probe
+    /// waits on it (DV-9 is "what happens to the session after `didFinish`").
     var onFinish: ((SpeechEnd) -> Void)? { get set }
+    /// What the synthesizer says about a line of NARRATION, keyed by the
+    /// utterance `seq` the core stamped on `narrate(.speak)`: the core's
+    /// `NarratorEvent` input, delivered on main (the host feeds it back into
+    /// the core, after the turn in progress).
+    var onNarratorEvent: ((NarratorEvent) -> Void)? { get set }
     /// Audible: the core emits it only after an activation (OQ-5).
     func speak(text: String, voiceId: String?)
     func stopSpeaking()
+    /// Carry out one of the core's narration commands (speak is audible, and
+    /// the core emits it only with the session active).
+    func narrate(_ command: NarrationCommand)
 }
 
 // MARK: - Clocks and timers (MainQueueTiming)

@@ -50,7 +50,11 @@ enum EngineBoot {
             remote: RemoteSurface(),
             nowPlaying: NowPlayingPublisher(),
             deck: deck,
-            speaker: PreviewSpeaker(config: PreviewSpeaker.Config(sessionIsActive: { session.phase == .active },
+            // NE-33: the one synthesizer, for the audition and the narration,
+            // on the path DV-9 chose (PCM while DV-9 has no row; direct
+            // behind `speechDirect`, off).
+            speaker: SpeechNarrator(config: SpeechNarrator.Config(path: config.speechDirect ? .direct : .pcm,
+                                                                  sessionIsActive: sessionIsActive,
                                                                   diag: { store.diag($0) })),
             timing: timing,
             output: store,
