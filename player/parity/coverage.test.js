@@ -263,7 +263,7 @@ test("NE-29j/NE-29s: foray-progress and media-session owe nothing, the Foray fam
     and audition, owed to NE-31s rather than NE-30s. */
 const NE31J_NARRATION_FILES = Object.freeze(["narration.json", "jingle.json", "audition.json"].map((f) => `player/parity/fixtures/manager-foray/${f}`));
 
-test("NE-30j/NE-30s: html-audio-backend and foray-playback owe nothing, the tape/deck/prepare families are burned down by NE-30s leaving only the pair's decisions owed to NE-32, and prepare is authored with its n.* tokens", () => {
+test("NE-30j/NE-30s/NE-32: html-audio-backend and foray-playback owe nothing, the tape/deck/prepare families are burned down (NE-30s, and the pair's decisions by NE-32), and prepare is authored with its n.* tokens", () => {
   /* NE-30j's acceptance: "the families pass in JS (prepare against
      reference-engine). The guard shows zero unported entries for
      html-audio-backend and foray-playback, apart from those tagged NE-31j and
@@ -280,15 +280,16 @@ test("NE-30j/NE-30s: html-audio-backend and foray-playback owe nothing, the tape
     if (stem.startsWith("//")) continue;
     for (const [name, v] of Object.entries(names)) assert.notEqual(v.card, "NE-30j", `${stem} :: ${name} is still owed to NE-30j, the card that records it`);
   }
-  const pairFile = "player/parity/fixtures/deck/deck-pair.json";
-  const owedTo = (c, fam, file) => (fam === "deck" && file === pairFile ? "NE-32" : undefined);
+  /* NE-32 ported the pair's decisions (deck-pair.json), so nothing in these
+     families is owed to any card. MUTATION: put a deck/ id back in
+     swift-pending.json -> red. */
   for (const fam of ["manager-foray", "deck", "prepare"]) {
     // NE-31j's narration files are owed to NE-31s (its own test below).
     const files = FIXTURES.filter((f) => f.family === fam && !NE31J_NARRATION_FILES.includes(f.file));
     assert.ok(files.length > 0, `${fam} is recorded`);
     assert.ok(DATA.capabilities.foray.includes(fam), `${fam} is charged to the foray capability`);
     for (const f of files) for (const c of f.doc.cases) {
-      assert.equal(DATA.pending[c.id], owedTo(c, fam, f.file), `${c.id}: ${owedTo(c, fam, f.file) ?? "nothing"} must owe it (NE-30s ported the rest)`);
+      assert.equal(DATA.pending[c.id], undefined, `${c.id}: nothing may owe it (NE-30s and NE-32 ported them)`);
     }
   }
   const prepare = FIXTURES.filter((f) => f.family === "prepare").flatMap((f) => f.doc.cases);

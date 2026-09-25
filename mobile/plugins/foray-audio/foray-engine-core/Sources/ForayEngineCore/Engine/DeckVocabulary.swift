@@ -86,6 +86,12 @@ public enum DeckEvent: Equatable, Sendable {
     /// audible (html-audio-backend.js `_maybeOpenPrefetchWindow`): the
     /// moment to prepare the next item (NE-30s).
     case prepareWindow(token: DeckToken)
+    /// NE-32: the DeckPair's report on the load `token`, just before its
+    /// `.ready`: whether the standby deck answered it (`hit`, a promotion) or
+    /// it degraded to an ordinary load, and the load stages the standby deck
+    /// reached (`Vocabulary.Stage`), so the packed `seam` row says WHERE a
+    /// prepare missed. A single deck never sends it.
+    case prepared(token: DeckToken, hit: Bool, stages: [Vocabulary.Stage])
 }
 
 /// What the deck says RIGHT NOW, read synchronously on main by the host

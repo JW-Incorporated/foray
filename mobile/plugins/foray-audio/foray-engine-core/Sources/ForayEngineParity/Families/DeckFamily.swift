@@ -14,10 +14,8 @@ import ForayEngineCore
 ///     runner.js's driven clock (the outpoint family's `DeckWorld`), with the
 ///     reducer's `ended` event (the file ran out first: one, natural, end);
 ///   - `deck-pair.json` (player/deck-policy.js too): the warm handover's
-///     decisions. Those are NE-32's (plan §14: "the DeckPair ones"), so this
-///     runner ports none of its exports and every deck-pair case stays pending
-///     in swift-pending.json, failing as `E_UNKNOWN_EXPORT` until NE-32
-///     registers them.
+///     decisions, which the native DeckPair asks (card NE-32 registered them:
+///     `DeckPairFamily.calls`).
 public enum DeckFamily {
     public static let module = "player/deck-policy.js"
 
@@ -26,7 +24,7 @@ public enum DeckFamily {
             family: "deck",
             module: DeckFamily.module,
             reads: [:],
-            calls: [
+            calls: DeckPairFamily.calls.merging([
                 "deckRate": DeckFamily.deckRate,
                 "deckSeekTarget": DeckFamily.deckSeekTarget,
                 "deckVolume": DeckFamily.deckVolume,
@@ -34,7 +32,7 @@ public enum DeckFamily {
                 "deckReportedRate": DeckFamily.deckReportedRate,
                 "loadDeadlineMs": DeckEpisodeFamily.loadDeadlineMs,
                 "sameSourceIsSeek": DeckEpisodeFamily.sameSourceIsSeek
-            ]),
+            ], uniquingKeysWith: { _, single in single })),
         ModuleRoutedRunner.scenarios: DeckSlicesRunner()
     ])
 
