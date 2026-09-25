@@ -105,3 +105,19 @@ test("the dist ships nothing from docs/, so the UX prototype is not on the app's
   assert.ok(m, "prepare-dist.mjs must still declare EXTRAS");
   assert.doesNotMatch(m[1], /docs\//, `EXTRAS ships a docs/ page: ${m[1]}`);
 });
+
+test("the GitHub Pages artifact leaves the UX prototypes out too (security-11, the Pages half)", () => {
+  /* Round-3 review (L4): prepare-dist dropped the prototype from the Vercel
+     dist, but pages.yml uploads the whole checkout (`path: .`), so the same
+     CSP-less page was still published on the Pages origin, the production web
+     origin where cp_sb_session lives. MUTATION: delete the `rm -f docs/ux/*.html`
+     step, or move it after upload-pages-artifact. */
+  const yml = fs.readFileSync(path.join(ROOT, ".github", "workflows", "pages.yml"), "utf8");
+  const rm = yml.search(/^\s*run:\s*rm -f docs\/ux\/\*\.html\s*$/m);
+  const upload = yml.indexOf("actions/upload-pages-artifact");
+  const stamp = yml.indexOf("run: node tools/ci/generate-manifest.mjs --stamp");
+  assert.ok(rm >= 0, "pages.yml must remove docs/ux/*.html from the artifact");
+  assert.ok(upload > rm, "the removal must run before the artifact is uploaded");
+  assert.ok(stamp > rm, "and before the stamp, so the stamped tree is the uploaded tree");
+  assert.ok(fs.readdirSync(path.join(ROOT, "docs", "ux")).some((f) => f.endsWith(".html")), "premise: a prototype page exists to leave out");
+});

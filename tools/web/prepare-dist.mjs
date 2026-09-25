@@ -115,8 +115,10 @@ function fontSources() {
    link to it had been shared, but it has no CSP, inline scripts and unescaped
    innerHTML interpolation, and served from here it shares the app's origin,
    where the Supabase session lives. A prototype that needs a public URL gets
-   its own origin. (GitHub Pages still publishes it, because pages.yml uploads
-   the whole checkout; that workflow is CI's to narrow.) */
+   its own origin. pages.yml removes docs/ux/*.html from the Pages artifact
+   too (round-3 review, L4); until the HUMAN-ACTIONS #110 settings flip the
+   legacy branch deploy still serves it, so security-11 is closed on Vercel
+   and only partly on Pages until then. */
 const EXTRAS = [];
 
 function copy(rel) {
