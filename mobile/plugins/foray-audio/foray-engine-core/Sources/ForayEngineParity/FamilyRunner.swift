@@ -109,6 +109,7 @@ public enum ParityFamilies {
          RowsFamily.runner, NumberFormatFamily.runner, DiagTokensFamily.runner, MediaEpisodeFamily.runner,
          SessionFamily.runner, SessionInvariantFamily.runner, EngineModeFamily.runner,
          ContractFamily.runner, SnapshotFamily.runner, HandshakeFamily.runner,
-         DeckEpisodeFamily.runner, ManagerEpisodeFamily.runner]
+         DeckEpisodeFamily.runner, ManagerEpisodeFamily.runner,
+         InterludeFamily.runner, SeekPolicyFamily.runner, OutpointFamily.runner]
     }
 }
