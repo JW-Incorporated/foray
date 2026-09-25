@@ -3577,3 +3577,42 @@ test("a scrub made while paused survives starting a Foray (audit round 3, player
   assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1800) < 1, `the scrub is what was kept, got ${posRow(storage, "ep-a").seconds}`);
   restore();
 });
+
+test("a drag released on its starting value does not freeze the bar and clocks (audit round 3, player-core-5)", async (t) => {
+  /* A range fires `change` only when the committed value moved; a thumb put
+     back where it started fires `input` alone. `scrubbing` then stuck true and
+     every repaint skipped the bar and the clocks. KILLING MUTATION: delete the
+     release listeners (`endScrubPreview`) and the clock stays on the preview. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const { now, scrub } = clocks(doc);
+  scrub.value = "500";
+  for (const fn of scrub.listeners.get("input") ?? []) fn();
+  assert.equal(now.textContent, "30:00", "precondition: the preview follows the thumb");
+  scrub.value = "0";                                      // back where it started
+  for (const fn of scrub.listeners.get("input") ?? []) fn();
+  for (const fn of scrub.listeners.get("pointerup") ?? []) fn();
+  await new Promise((r) => setTimeout(r, 5));
+  audio.currentTime = 600;
+  audio.fire("timeupdate");
+  assert.equal(now.textContent, "10:00", "the clock follows the audio again");
+  assert.equal(scrub.value, "167", "and so does the thumb");
+  restore();
+});
+
+test("a release followed by a real change still seeks to the thumb (audit round 3, player-core-5)", async (t) => {
+  /* The release check must not clear the preview before the `change` reads it. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const { scrub } = clocks(doc);
+  scrub.value = "500";
+  for (const fn of scrub.listeners.get("input") ?? []) fn();
+  for (const fn of scrub.listeners.get("pointerup") ?? []) fn();
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await new Promise((r) => setTimeout(r, 5));
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 1800) < 1, `the scrub seeks, got ${audio.currentTime}`);
+  restore();
+});

@@ -3711,6 +3711,26 @@ function bind() {
   ui.scrub.addEventListener("keydown", () => { scrubByPointer = false; });
   ui.scrub.addEventListener("blur", () => { scrubByPointer = false; });
   ui.scrub.addEventListener("input", () => paintScrubPreview());
+  /* A RELEASE WITH NO `change` ENDS THE PREVIEW TOO (audit round 3,
+     player-core-5). Browsers fire `change` on a range only when the committed
+     value differs from the one at the start of the interaction, so a thumb
+     wiggled and put back where it started fired `input` and never `change`,
+     `scrubbing` stuck at true, and `paintPage` skipped the bar, both clocks and
+     the spoken value for the rest of the session. The check waits a task: a
+     real `change` is dispatched with the release and clears `scrubbing` itself
+     (and seeks); clearing it first would let `render()` overwrite the value the
+     `change` is about to read. */
+  const endScrubPreview = () => {
+    if (!scrubbing) return;
+    setTimeout(() => {
+      if (!scrubbing) return;
+      scrubbing = false;
+      render();
+    }, 0);
+  };
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture", "blur"]) {
+    ui.scrub.addEventListener(type, endScrubPreview);
+  }
   ui.scrub.addEventListener("change", async () => {
     /* A change with no `input` before it (some assistive paths) is still a
        step from the frozen value. */
