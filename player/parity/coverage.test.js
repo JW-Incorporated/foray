@@ -169,7 +169,7 @@ test("media-session is wholly classified: media-episode, an exclusion, or NE-29j
   assert.ok(DATA.capabilities.foray.includes("media") && !DATA.capabilities.episode.includes("media"));
 });
 
-test("seam-gap, interlude and seek-policy are wholly classified, own no unported entry, and outpoint is recorded", () => {
+test("seam-gap, interlude and seek-policy are wholly classified, own no unported entry, outpoint is recorded, and none of the four owes Swift anything", () => {
   // NE-28j's acceptance: "the guard shows zero unported entries for seam-gap,
   // interlude and seek-policy". MUTATION: put a seek-policy test back in
   // unported.json -> red; cover an interlude test from a seek-policy case -> red;
@@ -201,8 +201,16 @@ test("seam-gap, interlude and seek-policy are wholly classified, own no unported
   }
   const outpoint = FIXTURES.filter((f) => f.family === "outpoint").flatMap((f) => f.doc.cases);
   assert.ok(outpoint.some((c) => c.setup?.target === "deck"), "the outpoint family has op-log scenarios");
-  for (const c of outpoint) {
-    assert.equal(DATA.pending[c.id], "NE-28s", `${c.id} must be owed to NE-28s until the Swift port burns it down`);
+  // NE-28s burned the four families down: every case now runs in Swift, so
+  // none may sit in swift-pending.json (plan §14, NE-28s acceptance: "zero
+  // pending for every NE-28j family"). MUTATION: put one outpoint or
+  // seek-policy id back in swift-pending.json -> red here (and the Swift
+  // runner fails the stale entry as well).
+  const recorded = FIXTURES.filter((f) => ["seam-gap", "interlude", "seek-policy", "outpoint"].includes(f.family))
+    .flatMap((f) => f.doc.cases);
+  assert.ok(recorded.length > 0, "the four families have fixtures");
+  for (const c of recorded) {
+    assert.equal(DATA.pending[c.id], undefined, `${c.id} is ported by NE-28s and must not be pending`);
   }
 });
 
