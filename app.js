@@ -3079,7 +3079,17 @@ window.forayEngineLedger = { applyEngineAdvance, drainEngineEvents };
     about Up Next or lists; it only reports "this finished playing" once per
     episode. */
 function advanceQueueOnEnded(id) {
-  if (!autoAdvanceOn()) return;
+  /* THE FINISHED EPISODE LEAVES UP NEXT WITH THE SWITCH OFF TOO (audit round
+     3, app-1-9). The removal lived only inside the advance, so with continuous
+     playback off a finished row stayed at the top of Up Next with its ▶, and
+     the next advance (the switch turned on, a later episode ending) replayed
+     it. The switch decides whether anything PLAYS, not whether the finished
+     row leaves. saveQueueIds tells the car's skip and repaints the page. */
+  if (!autoAdvanceOn()) {
+    const plan = planAfterEnded(id);
+    if (plan.rest) saveQueueIds(plan.rest);
+    return;
+  }
   return playNextAfter(id, "autoadvance");
 }
 
