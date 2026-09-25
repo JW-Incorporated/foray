@@ -35,6 +35,7 @@ import {
   selectTargets,
   transcriptPath,
 } from "./fetch-transcripts.mjs";
+import { normalize } from "./transcript-normalize.mjs";
 
 const show = (over) => ({
   show_id: "s",
@@ -289,4 +290,20 @@ test("an undeclared oversize transcript is cut off at the ceiling, not buffered 
     (e) => e instanceof FetchError && e.code === "TOO_LARGE",
   );
   assert.ok(pulled <= MAX_BODY_BYTES + 2 * 1024 * 1024, `pulled ${pulled} bytes past a ${MAX_BODY_BYTES}-byte ceiling`);
+});
+
+/* Round-3 review (L8): moving the read to readBodyCapped kept a leading BOM
+   that res.text() used to strip, and parseJson then threw on it, so a
+   BOM-prefixed JSON transcript normalised to zero cues.
+   MUTATION: in fetch-limits.mjs readBodyCapped, decode with
+   Buffer.concat(...).toString("utf8") -- cues drops to 0. */
+test("a JSON transcript that starts with a byte-order mark still yields its cues", async () => {
+  const json = JSON.stringify({ segments: [{ start: 1, end: 3, text: "hello there" }] });
+  const bytes = new Uint8Array([0xef, 0xbb, 0xbf, ...Buffer.from(json)]);
+  const response = new Response(bytes, { status: 200, headers: { "content-type": "application/json" } });
+  const { text } = await fetchBody("https://t/bom.json", { attempts: 1, fetchImpl: async () => response });
+  // The raw text is what lands in the transcript cache, so it must be clean.
+  assert.notEqual(text.charCodeAt(0), 0xfeff, "the cached raw body keeps the BOM");
+  const out = normalize(text, "application/json");
+  assert.equal(out.cues.length, 1, JSON.stringify(out.warnings));
 });

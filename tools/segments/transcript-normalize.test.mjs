@@ -128,6 +128,18 @@ test("JSON text is left alone by the markup stripper", () => {
   assert.equal(r.cues[0].text, "when x < 3 and y > 4 you get uplift");
 });
 
+/* Round-3 review (L8): sniffFormat looked past a leading BOM and parseJson did
+   not, so a BOM-prefixed JSON transcript (fetched, or read back from the raw
+   cache) was detected as JSON and then parsed to nothing.
+   MUTATION: drop the BOM strip in parseJson -- zero cues and a parse warning. */
+test("a JSON transcript with a leading byte-order mark parses like one without", () => {
+  const plain = fixture("podcasting20-basic.json");
+  const bom = "﻿" + plain.replace(/^﻿/, "");
+  const r = normalize(bom, "application/json");
+  assert.deepEqual(r.warnings, []);
+  assert.deepEqual(r.cues, normalize(plain, "application/json").cues);
+});
+
 test("unreadable JSON shapes warn instead of throwing", () => {
   for (const [body, why] of [
     ['{"foo":1}', "no segment array"],

@@ -245,7 +245,9 @@ function findSegments(root) {
 function parseJson(body, warnings) {
   let data;
   try {
-    data = JSON.parse(String(body));
+    // sniffFormat already looks past a leading BOM; JSON.parse does not. A raw
+    // cache file written before the fetch path stripped it still carries one.
+    data = JSON.parse(String(body).replace(/^﻿/, ""));
   } catch (e) {
     warnings.push(`JSON did not parse: ${e.message}`);
     return [];

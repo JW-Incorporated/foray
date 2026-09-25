@@ -75,6 +75,18 @@ test("readBodyCapped returns the body when under the ceiling", async () => {
   assert.equal(controller.signal.aborted, false);
 });
 
+/* Round-3 review (L8): res.text() drops a leading UTF-8 byte-order mark and
+   Buffer#toString("utf8") keeps it, so a BOM-prefixed JSON transcript read
+   through here failed JSON.parse downstream.
+   MUTATION: decode with Buffer.concat(...).toString("utf8") again -- the
+   first char comes back as U+FEFF. */
+test("readBodyCapped drops a leading UTF-8 byte-order mark, as res.text() did", async () => {
+  const res = streamResponse([Buffer.from([0xef, 0xbb]), Buffer.from([0xbf]), Buffer.from('{"a":1}')]);
+  const body = await readBodyCapped(res, new AbortController(), 1000);
+  assert.equal(body, '{"a":1}');
+  assert.deepEqual(JSON.parse(body), { a: 1 });
+});
+
 test("readBodyCapped aborts a response that exceeds the byte ceiling mid-stream", async () => {
   // Simulates an endless/oversized chunked response: each chunk is under the
   // ceiling alone, but the stream never signals `done` before crossing it.

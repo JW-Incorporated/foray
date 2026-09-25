@@ -83,7 +83,11 @@ export async function readBodyCapped(res, controller, maxBytes = MAX_FEED_BYTES)
     try { reader.releaseLock(); } catch (_) { /* may already be released */ }
   }
 
-  return Buffer.concat(chunks.map((c) => Buffer.from(c))).toString("utf8");
+  // Decode the way the res.text() this replaced did: the WHATWG UTF-8 decode
+  // drops a leading byte-order mark. Buffer#toString keeps it as U+FEFF, and a
+  // JSON transcript that starts with one then fails JSON.parse and yields zero
+  // cues (round-3 review, L8). TextDecoder's default (ignoreBOM: false) strips it.
+  return new TextDecoder("utf-8").decode(Buffer.concat(chunks.map((c) => Buffer.from(c))));
 }
 
 /** Both guards on a response the caller already holds: the declared length,
