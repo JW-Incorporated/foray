@@ -58,7 +58,7 @@ const SKIP = 0;
  */
 export const IGNORED_PREFIXES = [
   "test/",              // root suites — never served
-  "docs/",              // except docs/ux/foray-m3-prototype.html, see EXCEPTIONS
+  "docs/",              // prose; nothing under docs/ deploys (security-11)
   "ios/",               // reference material, not the shipping app
   "mobile/",            // the Capacitor shell; its own build path entirely
   ".github/",           // CI
@@ -93,7 +93,6 @@ export const STAMP_MODULES = [
 ];
 
 export const EXCEPTIONS = [
-  (p) => p === "docs/ux/foray-m3-prototype.html",
   (p) => p.startsWith("tools/web/") && !p.endsWith(".test.mjs"),
   (p) => STAMP_MODULES.includes(p),
   (p) => p.startsWith("player/") && p.endsWith(".js") && !p.endsWith(".test.js"),

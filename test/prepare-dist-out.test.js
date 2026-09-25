@@ -95,3 +95,13 @@ test("prepare-dist exits 2 with usage for --out . / .. / bare, and deletes nothi
     fs.rmSync(parent, { recursive: true, force: true });
   }
 });
+
+test("the dist ships nothing from docs/, so the UX prototype is not on the app's origin (security-11)", () => {
+  /* docs/ux/foray-m3-prototype.html has no CSP, inline scripts and unescaped
+     innerHTML interpolation. Deployed into dist it shared the app's origin,
+     where cp_sb_session lives. MUTATION: put it back in EXTRAS. */
+  const src = fs.readFileSync(path.join(ROOT, "tools", "web", "prepare-dist.mjs"), "utf8");
+  const m = /const EXTRAS = \[([^\]]*)\];/.exec(src);
+  assert.ok(m, "prepare-dist.mjs must still declare EXTRAS");
+  assert.doesNotMatch(m[1], /docs\//, `EXTRAS ships a docs/ page: ${m[1]}`);
+});
