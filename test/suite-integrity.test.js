@@ -1023,6 +1023,7 @@ const FLOORS = {
      record. Without a test the fallback is the one artwork call site nothing
      would notice losing. */
   "test/starred-shows.test.js": 9,
+  "test/supabase-rls-verbs.test.js": 7, // round-3 L6 (2026-09-25): backend-rest-4/-5, data-integrity-10 — supabase/0003's policies pinned against the PostgREST verbs app.js uses, both ways
   /* "Up Next" listening queue, Stage 1 of docs/listening-queue-plan.md
      (kanban card t_f4da81f5). Floored because the queue's own decay path
      (an id ageing out of the pool, or the queue emptying) is exactly the
@@ -2147,28 +2148,28 @@ const BACKEND_FLOORS = {
      neither when it does not, and the seed the reply carries back. */
   "test/AnthropicSpineBuilder.test.ts": 18, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
   "test/archetypes.test.ts": 7,
-  "test/budgetGuard.test.ts": 6,
+  "test/budgetGuard.test.ts": 11, // round-3 L6 (2026-09-25): backend-rest-13: check-and-record serialised under concurrency; 6 -> 11
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
-  "test/copyRules.test.ts": 12, // title house style (2026-09-24, qa 146): refused shapes, no false positives on names/acronyms/quoted works, houseStyleTitle never lowercases; 6 -> 12 (9 on disk before it) // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
+  "test/copyRules.test.ts": 16, // round-3 L6 (2026-09-25): backend-rest-18: Act Two / Act Three caught, statute spans left alone; 12 -> 16 // title house style (2026-09-24, qa 146): refused shapes, no false positives on names/acronyms/quoted works, houseStyleTitle never lowercases; 6 -> 12 (9 on disk before it) // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 5 -> 6. L8 (2026-09-22): Foray titles/summaries/slot titles against BANNED + INTERNAL_VOCABULARY, and its no-false-positive twin; 3 -> 5
   "test/createEnricher.test.ts": 1,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c). */
   "test/createPromptUnderstander.test.ts": 1,
   "test/dataSchemaCompliance.test.ts": 8,
-  "test/dedup.test.ts": 17,
+  "test/dedup.test.ts": 20, // round-3 L6 (2026-09-25): backend-rest-22: non-Latin titles normalise, dedup and key distinctly; 17 -> 20
   "test/duration.test.ts": 12,
   /* DAILY_BUDGET_USD env parsing (L5): rejects negative / NaN / empty /
      over-cap values at startup instead of silently substituting the
      default, and leaves a genuinely unset variable on its fallback. */
   "test/env.test.ts": 11,
   "test/events.test.ts": 15,
-  "test/html.test.ts": 8,
-  "test/interestLearning.test.ts": 30,
+  "test/html.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-1/-9/-11: range-checked, NUL-dropping, prototype-safe decodeEntities; 8 -> 12
+  "test/interestLearning.test.ts": 35, // round-3 L6 (2026-09-25): backend-rest-17: card_ignored fires once per threshold, running per-topic streak; 30 -> 35
   "test/itunes.test.ts": 3,
   "test/ladderBuilder.test.ts": 13,
   "test/ladderIntegrity.test.ts": 11,
   "test/ladderProgress.test.ts": 8,
-  "test/learningJob.test.ts": 4,
+  "test/learningJob.test.ts": 9, // round-3 L6 (2026-09-25): backend-rest-2/-3: microsecond cursor, malformed rows skipped past, transaction, per-user failure isolation; 4 -> 9
   /* Anthropic provider error-path coverage (kanban card t_550d289f): the
      shared parseWithRetry/parseLastJsonBlock helper extracted from the 5
      real Anthropic provider classes' identical private copies. */
@@ -2181,7 +2182,8 @@ const BACKEND_FLOORS = {
      takes down a written Foray after the writer has spent its tokens. */
   "test/phonemize.test.ts": 12,
   "test/parseWithRetry.test.ts": 17,
-  "test/parser.test.ts": 29,
+  "test/parser.test.ts": 36, // round-3 L6 (2026-09-25): backend-rest-1/-10: parseFeed never throws on out-of-range entities; an empty guid is null; 29 -> 36
+  "test/parserItemIsolation.test.ts": 1, // round-3 L6 (2026-09-25): backend-rest-1 — a throwing item is a warning, the feed still parses
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
   "test/politeness.test.ts": 9,
@@ -2201,13 +2203,13 @@ const BACKEND_FLOORS = {
   "test/property/interestWeight.property.test.ts": 3,
   "test/redirect.test.ts": 6,
   "test/scoring.test.ts": 17,
-  "test/sessionBuilder.test.ts": 12,
+  "test/sessionBuilder.test.ts": 15, // round-3 L6 (2026-09-25): backend-rest-15/-16: the dedup log names the survivor; an unparseable date is neutral; 12 -> 15
   "test/stubEnricher.test.ts": 6,
   "test/userInterests.test.ts": 17,
   /* #703: the warm pass's feed parsing, which is what decides whether a
      reconciled episode comes out SEARCHABLE only or also MINTABLE — a duration
      read as 58 rather than 3501 makes an episode rank and then yield nothing. */
-  "test/warmTranscriptIndex.test.ts": 13,
+  "test/warmTranscriptIndex.test.ts": 20, // round-3 L6 (2026-09-25): backend-rest-8/-14: --show merges the corpus digest; bounded, expiring feed cache; 13 -> 20
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c): §3's input
      schema, `author_id` required and carried from day one per §1.3. */
   "test/generationRequest.test.ts": 5,
@@ -2456,14 +2458,14 @@ const BACKEND_FLOORS = {
   /* Stage 3b (kanban t_567b570f, docs/show-pages-plan.md §Stage 3): shared
      catalogue store CRUD (scoping by show_id, upsert-not-duplicate on
      (show_id, guid), published_at ordering, feed-state round-trip). */
-  "test/showEpisodesStore.test.ts": 5,
+  "test/showEpisodesStore.test.ts": 9, // round-3 L6 (2026-09-25): backend-rest-9: one batched upsert in a transaction, rollback, dedup by guid; 5 -> 9
   /* Stage 3b end to end: fetches+parses+upserts through the real parser,
      proves the chapters JSON body is never dereferenced during ingestion
      (only the pointer is stored), TTL cache-hit/expiry behavior, and the
      never-blank-page degrade contract (cached_stale / no_cache_error) on a
      feed fetch failure — plus that a missing enclosure never fabricates an
      audio_url. */
-  "test/ingestShowFeed.test.ts": 8,
+  "test/ingestShowFeed.test.ts": 13, // round-3 L6 (2026-09-25): backend-rest-9/-10/-12: never throws, stable guid-less identity, failure backoff; 8 -> 13
   /* §4.8 end to end (kanban card t_7f410ffc): within-act stitching rules
      (silence bridge, jingle marks cuts, measured cadence, coverage
      hard-gate), the forward-only cross-act continuity Builder (§6.2),
@@ -2533,7 +2535,7 @@ const BACKEND_FLOORS = {
      three tests), the verdict telling the operator to delete a KNOWN_UNCOVERED
      entry, and the PR body no longer claiming check-narration.mjs checked this
      Foray; 26 -> 31. */
-  "test/publishForay.test.ts": 31,
+  "test/publishForay.test.ts": 37, // round-3 L6 (2026-09-25): backend-rest-6/-19: hold rides gh pr create and is read back; no stranded checkout; 31 -> 37
   /* G-21c: REAL_DATA_SUITES names the four roadmap suites and every other
      suite the repo grep finds reading data/forays.json, data/segments.json or
      data/segment-sources.json (the list cannot rot); the TAP parser (one
@@ -2545,7 +2547,7 @@ const BACKEND_FLOORS = {
      the check-forays loader counts as a real-data read, and knownUncoveredGuidance;
      15 -> 19. (Spelled without the call syntax on purpose: REAL_DATA_READ_RE now
      matches that name, and this file is one of the suites it greps.) */
-  "test/publishSuites.test.ts": 19,
+  "test/publishSuites.test.ts": 21, // round-3 L6 (2026-09-25): backend-rest-20: the suites gate has a run timeout and a per-test timeout; 19 -> 21
   /* F-98: deterministic post-seeding, the seed floor and its one re-ask —
      the scorer and its floor, the M4 ledger an assigned seed faces, the
      summary line, and the re-ask that is kept only when it is better. */
@@ -2604,7 +2606,7 @@ const BACKEND_FLOORS = {
          new literal appears anywhere in src/;
        generateForaysArgs — the --budget-usd flag and what it actually moves. */
   "test/checkpoint.test.ts": 14,
-  "test/generateForaysArgs.test.ts": 10,
+  "test/generateForaysArgs.test.ts": 13, // round-3 L6 (2026-09-25): backend-rest-7: report.json merged across re-runs, publish records kept; 10 -> 13
   "test/models.test.ts": 7,
   "test/researchTopicFilter.test.ts": 17,
   /* F-59 (docs/curation/generation-run-2026-09-09.md): the topic resolver's

@@ -104,13 +104,17 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
   const groups = groupDuplicates(dedupInputs);
   const droppedDuplicates: { keptId: string; droppedId: string }[] = [];
   const dropSet = new Set<string>();
-  const seenRoots = new Set<string>();
+  // The survivor is the first member of each group in candidate order; the
+  // log names THAT id, not the group's root (the smallest id), which could
+  // report keptId === droppedId (backend-rest-15).
+  const survivorByRoot = new Map<string, string>();
   for (const [id, root] of groups.entries()) {
-    if (seenRoots.has(root)) {
+    const survivor = survivorByRoot.get(root);
+    if (survivor !== undefined) {
       dropSet.add(id);
-      droppedDuplicates.push({ keptId: root, droppedId: id });
+      droppedDuplicates.push({ keptId: survivor, droppedId: id });
     } else {
-      seenRoots.add(root);
+      survivorByRoot.set(root, id);
     }
   }
   const candidates = opts.candidates.filter((c) => !dropSet.has(c.id));
@@ -146,7 +150,10 @@ export async function buildSession(opts: BuildSessionOptions): Promise<BuildSess
     const components = scoreCandidate(
       {
         topics: enrichment.topics,
-        publishedAtIso: toIsoDateOrNull(c.releaseDate) ?? new Date(0).toISOString(),
+        // An unparseable date stays unparseable, so computeFreshness's neutral
+        // 0.5 branch runs; the old epoch fallback scored it as 1970, i.e.
+        // freshness 0 (backend-rest-16).
+        publishedAtIso: toIsoDateOrNull(c.releaseDate) ?? "",
         evergreen: enrichment.evergreen,
         depth: c.curatedDepth, // prefer the research doc's hand-curated depth over the stub's guess
         sourceConfidence: enrichment.sourceConfidence,

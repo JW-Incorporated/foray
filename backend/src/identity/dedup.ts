@@ -22,8 +22,12 @@ export function normalizeTitle(title: string): string {
     // e.g. "(Video)", "[Explicit]", "(Audio Only)"
     .replace(/[([][^()[\]]*\b(video|audio|explicit|clean|re-?release|repost)\b[^()[\]]*[)\]]/gi, " ")
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "") // strip diacritics
-    .replace(/[^a-z0-9]+/g, " ")
+    // Strip every combining mark (diacritics in any script), then keep
+    // letters and digits in ANY script. The old ASCII-only class deleted
+    // CJK, Cyrillic, Greek and Arabic outright, so non-Latin titles never
+    // deduplicated and all shared one identity key (backend-rest-22).
+    .replace(/\p{M}/gu, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .replace(/\s+/g, " ");
 }

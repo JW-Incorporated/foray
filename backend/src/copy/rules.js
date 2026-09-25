@@ -102,17 +102,23 @@ const COUNT = `(?:\\d+|${COUNT_WORDS.map(firstLetterEitherCase).join("|")})`;
 const POINTERS = ["this", "that", "each", "every", "next", "last", "first", "final", "opening", "closing"];
 const POINTER = `(?:${POINTERS.map(firstLetterEitherCase).join("|")})`;
 /* At most two digits: "the Clean Air Act 1956" is a statute's year, not a part. */
-const ACT_NUMBER = `(?:${COUNT_WORDS.slice(0, 10).join("|")}|\\d{1,2})`;
+/* Either case on the number word, like COUNT and POINTER: "Act Two" is the
+   natural capitalised form and used to pass the gate (backend-rest-18). */
+const ACT_NUMBER = `(?:${COUNT_WORDS.slice(0, 10).map(firstLetterEitherCase).join("|")}|\\d{1,2})`;
 /** "three acts of kindness", "the last act of defiance", "his final act as
  * president": an act OF something or AS someone is the plain-English act. */
 const NOT_PLAIN_ACT = "(?! (?:of|as)\\b)";
+/** "the No Surprises Act Four Years Later": a statute followed by a span of
+ * time. With the number word now matched in either case (backend-rest-18),
+ * this keeps a capitalised statute name out of the numbered-act shape. */
+const NOT_A_STATUTE_SPAN = "(?! (?:[Yy]ears?|[Mm]onths?|[Ww]eeks?|[Dd]ays?|[Dd]ecades?|[Tt]imes?)\\b)";
 
 const INTERNAL_VOCABULARY = [
   new RegExp(`\\b${COUNT}[ -][Bb]eats?\\b`),
   new RegExp(`\\b${COUNT}[ -][Ss]egments?\\b`),
   new RegExp(`\\b${COUNT}[ -]acts?\\b${NOT_PLAIN_ACT}`),
   new RegExp(`\\b${POINTER} act\\b${NOT_PLAIN_ACT}`),
-  new RegExp(`\\b[Aa]ct ${ACT_NUMBER}\\b`),
+  new RegExp(`\\b[Aa]ct ${ACT_NUMBER}\\b${NOT_A_STATUTE_SPAN}`),
   /\brunning order\b/i
 ];
 
@@ -178,7 +184,7 @@ function toListenerWords(text) {
   out = out.replace(new RegExp(`(\\b${COUNT}) ([Bb]eats?|[Ss]egments?)\\b`, "g"), (m, n, u) => `${n} ${unit(u)}`);
   out = out.replace(new RegExp(`(\\b${COUNT}) (acts?)\\b${NOT_PLAIN_ACT}`, "g"), (m, n, u) => `${n} ${unit(u)}`);
   out = out.replace(new RegExp(`(\\b${POINTER}) act\\b${NOT_PLAIN_ACT}`, "g"), (m, p) => `${p} part`);
-  out = out.replace(new RegExp(`\\b([Aa])ct (${ACT_NUMBER})\\b`, "g"), (m, a, n) => `${a === "A" ? "Part" : "part"} ${n}`);
+  out = out.replace(new RegExp(`\\b([Aa])ct (${ACT_NUMBER})\\b${NOT_A_STATUTE_SPAN}`, "g"), (m, a, n) => `${a === "A" ? "Part" : "part"} ${n}`);
   out = out.replace(/\brunning order\b/gi, (m) => keepCase(m, "lineup"));
   return { text: out, changed: out !== input };
 }
