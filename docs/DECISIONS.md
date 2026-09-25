@@ -2,6 +2,82 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-25 (Forays play natively on iOS: the M2 decision — NE-37d, G-7)
+
+**The decision.** On iOS, Forays play in the native engine by default: the
+clips, the narration between them and the seam jingle all come from the app's
+own player (`mobile/plugins/foray-audio`), and the page is a remote control and
+a view for them, as it already is for episodes since M1. The build default
+adds `foray` to the M1 list (`mobile/ENGINE_DEFAULT.json` →
+`{"mode":"native","capabilities":["episode","continuation","restore","foray"]}`),
+and `EngineBridgeRules.advertisedCapabilities` lists the same four. The page
+sends `playForay` only when the engine's hello grants `foray`. Android and the
+website are unchanged. This is milestone M2 of `docs/native-engine-plan.md`
+(the flip is NE-37, #840). It follows from the 2026-09-23 *"Full native engine"*
+entry and the 2026-09-24 M1 entry below, and it is part of what the founder's
+round-3 Q5 answer asks for (*"move everything in the app to the native engine"*,
+2026-09-25, above).
+
+**Narration and the interlude are part of `foray`, not capabilities of their
+own.** The plan's NE-37 card named `narration` and `interlude` as well. The
+contract (`player/engine-contract.js` `CAPABILITIES`, Swift
+`EngineContract.Capability`) defines no such names, and the coverage gate
+refuses an undefined one. Their families (`speech-rate`, `lexicon`,
+`default-voice`, `interlude`, and `manager-foray`'s narration and jingle cases)
+are charged to `foray` in `player/parity/capabilities.json`, so the `foray`
+gate in `player/parity/coverage.test.js` (zero `swift-pending`, zero
+`unported`) covers them.
+
+**What the shipping boot turns on, and what it leaves off.** `EngineBoot`
+sets `forayTapeEnabled` (NE-30s) and `deckPairEnabled` (NE-32, two `AVPlayer`
+decks with a prepared standby and the windowed three-layer out-point). The
+core's own defaults stay off, because the headless tests and the parity driver
+build cores without them. Three things stay off on purpose, and
+`tools/mobile/shell-invariants.test.mjs` keeps them unset:
+- **the silence node** (`silenceNodeEnabled`, NE-34), until the H-2 rows show a
+  suspension during a seam. The audible interlude is preferred, the node is
+  capped at `INTERLUDE_CEILING_SEC` from the out-point, and the App Review note
+  (`docs/store/app-review-background-audio.md`, guideline 2.5.4) goes with any
+  external submission;
+- **the direct synthesizer** (`speechDirect`, NE-33), until DV-9 answers;
+- **narration at the listener's speed** (`narrationFollowsListenerRate`), until
+  the founder changes his OQ-3 ruling.
+
+**The values it plays with are the founder's 2026-09-24 rulings, unchanged.**
+The silence at an unbridged seam is 0.5 s (`SEAM_GAP_SEC`, wall clock, never
+scaled by speed), and a listener hears `max(0.5 s, load)`. Synthesized
+narration at 1x is `AVSpeechUtteranceDefaultSpeechRate` (both in the
+2026-09-24 "seam silence is 0.5 s" entry below). Up Next is the page's queue
+and follows ruling 13 of the round-2 list: a row played from Up Next jumps to
+the top and nothing else moves (`player/continuation.js`, JS the reference and
+fixtures the proof). The pause-hold default stays `forever` (M1 entry below);
+OQ-12 decides any long-idle release (NE-38, NE-40d).
+
+**Why the engine's own playback, again.** The 2026-09-24 car baseline
+(`docs/field-records/2026-09-24-car-baseline.md`) showed that a held session is
+not enough: iOS gives the car back to the app whose audio last played. In M1 a
+Foray relinquished the engine and played on the web player, so after a Foray
+the session the car saw was WebKit's. With M2 the Foray's own audio runs
+through the engine's session, so that session is the one held.
+
+**How it is judged.** G-4, the founder's drive
+(`docs/native-engine-m2-drive-test.md`, HUMAN-ACTIONS #119), on the first
+TestFlight build from `main` after `engine/m2` merges, whose
+`ios-archive --check` log shows the four capabilities. It exits when
+`tools/mobile/engine-report.mjs` shows H-2 (a 51-minute screen-off Foray drive)
+complete with no `stop cause=unknown` and every seam present, with the seam
+distribution on the LTE route on record; narration resuming mid-sentence while
+locked (H5); and no Now Playing row with `4a` or `Unknown` (H6, DV-10). DV-4,
+DV-5 and the DV-9 re-check come from the same report, and the seam numbers
+feed NE-38.
+
+**What would reverse it.** The drive failing in a way the web player did not
+(the exit criteria above), or the founder choosing otherwise. The reversal is
+dropping `foray` from `ENGINE_DEFAULT.json`: the page then plays Forays on the
+web player after a relinquish, as in M1, and episodes stay native. The engine
+code stays, and the Developer row "Playback engine: Web" still returns
+everything to the web player.
+
 ## 2026-09-25 (round-3 code audit: the founder's rulings on Q2-Q5)
 
 Wyatt, 2026-09-25, answering the round-3 questions (`docs/audit/round-3-code/synthesis.md`), verbatim:
