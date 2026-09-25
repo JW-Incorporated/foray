@@ -37,6 +37,15 @@
 export const DB_NAME = "foray";
 export const DB_VERSION = 1;
 export const STORE_NAME = "kv";
+/** How long one transaction may stay open before it is abandoned (audit round
+    3, player-rest-1). WKWebView can leave a transaction that never fires
+    complete, error or abort after the app has been backgrounded (client.js
+    records it), and DurableStore runs every durable write on one serial queue,
+    so one silent transaction used to stall them all, the vault's copy of the
+    auth token included. On the deadline the transaction is aborted, the call
+    rejects with a TimeoutError (a fault the store records), and the connection
+    is dropped so the next call opens a fresh one. */
+export const IDB_TX_DEADLINE_MS = 5000;
 
 /**
  * Build an async DurableStore tier over IndexedDB, or return `null` when
@@ -59,6 +68,7 @@ export function makeIdbTier({
   dbName = DB_NAME,
   storeName = STORE_NAME,
   version = DB_VERSION,
+  txDeadlineMs = IDB_TX_DEADLINE_MS,
 } = {}) {
   const factory = factoryIn ?? (typeof indexedDB !== "undefined" ? indexedDB : null);
   if (!factory || typeof factory.open !== "function") return null;
@@ -73,6 +83,7 @@ export function makeIdbTier({
     }
     return dbPromise;
   };
+  const txOpts = { deadlineMs: txDeadlineMs, onDeadline: () => { dbPromise = null; } };
 
   return {
     name: "idb",
@@ -82,7 +93,7 @@ export function makeIdbTier({
     /** Every owned row, as a Map. The filter is in JS because the namespace is
         tiny and a key range would be one more thing to get subtly wrong. */
     async readAll(prefix) {
-      const rows = await withStore(open, storeName, "readonly", (s) => s.getAll());
+      const rows = await withStore(open, storeName, "readonly", (s) => s.getAll(), txOpts);
       const out = new Map();
       for (const row of rows ?? []) {
         if (!row || typeof row.key !== "string") continue;
@@ -98,11 +109,11 @@ export function makeIdbTier({
         reads. This one is for a human looking at the database. */
     async write(key, value) {
       await withStore(open, storeName, "readwrite", (s) =>
-        s.put({ key, value, updated_at: new Date().toISOString() }));
+        s.put({ key, value, updated_at: new Date().toISOString() }), txOpts);
     },
 
     async remove(key) {
-      await withStore(open, storeName, "readwrite", (s) => s.delete(key));
+      await withStore(open, storeName, "readwrite", (s) => s.delete(key), txOpts);
     },
   };
 }
@@ -131,16 +142,34 @@ function openDb(factory, name, version, storeName) {
  * transaction commits — see hazard 1 in the header for why the handlers are
  * wired before `fn` runs.
  */
-function withStore(open, storeName, mode, fn) {
+function withStore(open, storeName, mode, fn, { deadlineMs = IDB_TX_DEADLINE_MS, onDeadline = null } = {}) {
   return open().then((db) => new Promise((resolve, reject) => {
     let tx;
     try { tx = db.transaction(storeName, mode); } catch (err) { reject(err); return; }
     let result;
-    tx.oncomplete = () => resolve(result);
-    tx.onerror = () => reject(tx.error || new Error("indexedDB transaction failed"));
-    tx.onabort = () => reject(tx.error || new Error("indexedDB transaction aborted"));
+    /* One settlement, whichever comes first: the transaction's own events or
+       the deadline (player-rest-1). */
+    let timer = null;
+    let settled = false;
+    const settle = (fn2, v) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      fn2(v);
+    };
+    tx.oncomplete = () => settle(resolve, result);
+    tx.onerror = () => settle(reject, tx.error || new Error("indexedDB transaction failed"));
+    tx.onabort = () => settle(reject, tx.error || new Error("indexedDB transaction aborted"));
+    if (deadlineMs > 0) {
+      timer = setTimeout(() => {
+        if (settled) return;
+        settle(reject, Object.assign(new Error(`indexedDB transaction did not settle within ${deadlineMs} ms`), { name: "TimeoutError" }));
+        try { tx.abort(); } catch (_) { /* already finished, or the connection is gone */ }
+        if (onDeadline) onDeadline();
+      }, deadlineMs);
+    }
     let req;
-    try { req = fn(tx.objectStore(storeName)); } catch (err) { reject(err); return; }
+    try { req = fn(tx.objectStore(storeName)); } catch (err) { settle(reject, err); return; }
     if (req) req.onsuccess = () => { result = req.result; };
     // No per-request onerror: a failed request aborts the transaction, and
     // tx.onabort/onerror is the single place that rejection belongs.

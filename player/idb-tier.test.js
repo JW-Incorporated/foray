@@ -230,6 +230,25 @@ test("END TO END: a database that will not open leaves a working localStorage-on
   assert.equal(store.health().ok, false, "and the lost durability is recorded, not hidden");
 });
 
+test("player-rest-1: a transaction that never settles is abandoned at the deadline, aborted, and the connection reopened", async () => {
+  /* MUTATION: construct with `txDeadlineMs: 0` (the old unbounded wait) and
+     the write never settles; drop `onDeadline` and the next call reuses the
+     dead connection (`opens` stays 1). */
+  const factory = new FakeFactory();
+  const tier = makeIdbTier({ indexedDB: factory, txDeadlineMs: 30 });
+  await tier.write("cp_a", "1");
+  factory.hang = true;
+  const hung = await Promise.race([
+    tier.write("cp_b", "2").then(() => "resolved", (err) => err),
+    new Promise((r) => setTimeout(() => r("still waiting"), 500)),
+  ]);
+  assert.equal(hung?.name, "TimeoutError", `got ${hung}`);
+  assert.equal(factory.aborts, 1, "the stuck transaction is aborted");
+  factory.hang = false;
+  await tier.write("cp_c", "3");
+  assert.equal(factory.opens, 2, "a fresh connection, not the one that went silent");
+});
+
 /* ================================================================= the fake ==
 
    Just enough IndexedDB to drive the adapter, and deliberately no more. Requests
@@ -269,6 +288,9 @@ class FakeObjectStore {
   constructor(tx, store) { this.tx = tx; this.store = store; }
   put(record) {
     const req = new FakeRequest();
+    /* WKWebView after a background (audit round 3, player-rest-1): the request
+       is accepted and then nothing, not complete, not error, not abort. */
+    if (this.tx.db.factory.hang) return req;
     if (this.tx.db.factory.putError) {
       this.tx._failWith(this.tx.db.factory.putError);
       req._fail(this.tx.db.factory.putError);
@@ -325,6 +347,10 @@ class FakeTransaction {
       if (this.oncomplete) this.oncomplete({ target: this });
     };
   }
+  abort() {
+    this.db.factory.aborts += 1;
+    this._settled = true;
+  }
   _failWith(error) {
     this.error = error;
     setTimeout(() => {
@@ -358,6 +384,8 @@ class FakeFactory {
     this.blocked = blocked;
     this.putError = putError;
     this.txThrows = txThrows;
+    this.hang = false;
+    this.aborts = 0;
     this.opens = 0;
     this.db = new FakeDb(this);
     this._created = false;

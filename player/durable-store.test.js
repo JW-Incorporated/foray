@@ -2213,3 +2213,66 @@ test("SINGLE WRITER: a release that lands while hydration's own migration is mid
   await store.flush();
   assert.deepEqual(ownerWrites(native), ["cp_pos:a"]);
 });
+
+/* ---------- audit round 3, player-rest-1: one hung tier call cannot stall the queue ---------- */
+
+/** An IndexedDB stand-in whose FIRST write never settles, the WKWebView
+    behaviour client.js records after the app has been in the background. */
+function hungOnceDurable() {
+  const tier = fakeDurable();
+  const write = tier.write;
+  let hung = false;
+  tier.write = (k, v) => {
+    if (!hung) { hung = true; return new Promise(() => {}); }
+    return write(k, v);
+  };
+  return tier;
+}
+
+function hungShell({ opDeadlineMs = 30, purgeDeadlineMs = 200 } = {}) {
+  const bridge = shellBridge();
+  bridge.vault.set("cp_sb_session", "OLD");
+  const idb = hungOnceDurable();
+  const store = new DurableStore({
+    tiers: [localStorageTier(new FakeLocal()), vaultTier(bridge), idb],
+    opDeadlineMs, purgeDeadlineMs,
+  });
+  return { store, bridge, idb };
+}
+
+test("player-rest-1: a hung IndexedDB write no longer blocks the vault write of a refreshed token", async () => {
+  /* MUTATION: construct with `opDeadlineMs: 0` (the old unbounded wait) or
+     delete `_timed` from `_enqueue`, and the vault still holds OLD. */
+  const { store, bridge } = hungShell();
+  await store.hydrate();
+  store.setItem("cp_pos:ep1", "{}");          // the IndexedDB write that hangs
+  store.setItem("cp_sb_session", "NEW");      // queued behind it
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(bridge.vault.get("cp_sb_session"), "NEW", "the refreshed token reached the vault");
+  assert.ok(store.health().faults.length >= 1 || store.health().ok === false, "the hang is recorded as a fault");
+});
+
+test("player-rest-1: canKeep says no while a write of the token is still queued", async () => {
+  /* MUTATION: delete the `_confinedInFlight` check in `canKeep`. */
+  const { store } = hungShell({ opDeadlineMs: 60 });
+  await store.hydrate();
+  store.setItem("cp_pos:ep1", "{}");
+  store.setItem("cp_sb_session", "NEW");
+  assert.equal(store.canKeep("cp_sb_session"), false, "not saved and not failed: do not spend the token yet");
+  await store.flush();
+  assert.equal(store.canKeep("cp_sb_session"), true, "and yes once it has landed");
+});
+
+test("player-rest-1: purge behind a queue that will not drain reports unverified instead of hanging", async () => {
+  /* Each op is bounded, but a purge still has a deadline of its own: a queue
+     that has not drained by then is reported, never waited on for ever.
+     MUTATION: `await this._queue` back in `_purge` and this never resolves in
+     time. */
+  const { store } = hungShell({ opDeadlineMs: 0, purgeDeadlineMs: 50 });
+  await store.hydrate();
+  store.setItem("cp_pos:ep1", "{}");
+  const out = await Promise.race([store.purge(), new Promise((r) => setTimeout(() => r("hung"), 1000))]);
+  assert.notEqual(out, "hung", "Delete my data finishes");
+  assert.equal(out.ok, false);
+  assert.ok(out.unverified.some((u) => u.tier === "queue"), JSON.stringify(out.unverified));
+});
