@@ -839,6 +839,17 @@ const IdentityCheckpointSchema = z.object({
   topicDecision: z.object({ topic: z.string().min(1), reason: z.string(), basis: z.string() }).passthrough()
 });
 
+/* The pre-spine topic decision, banked the moment it is made (round-3 review,
+   L5): research-shape is filtered by it and banked right after, and the full
+   identity is only banked after the spine, so a run stopped during the spine
+   (a budget stop, a crash in the Opus call) used to resume with research-shape
+   from the checkpoint and a topic re-decided against today's supply. `topic`
+   may be null here: an unresolved pre-spine decision is still the one the
+   banked research map was built with. */
+const PreSpineTopicCheckpointSchema = z.object({
+  topicDecision: z.object({ topic: z.string().min(1).nullable(), reason: z.string(), basis: z.string() }).passthrough()
+});
+
 const SourceCheckpointSchema = z.object({
   acts: z.array(SourcedActSchema),
   newSegments: z.array(NewSegmentSchema),
@@ -1120,9 +1131,13 @@ export async function runForayPipeline(
      filtered by, and re-reading the clock minted a new Foray id, so the
      partial a listener was polling changed id mid-run. */
   const bankedIdentity = checkpoint.resumeSync("identity", (raw) => IdentityCheckpointSchema.parse(raw));
+  const bankedTopic = bankedIdentity ? null : checkpoint.resumeSync("topic", (raw) => PreSpineTopicCheckpointSchema.parse(raw));
   if (bankedIdentity) {
     topicDecision = bankedIdentity.topicDecision as unknown as PipelineTopicDecision;
     console.log(`  ${topicDecisionLine(topicDecision, basis)} [resumed]`);
+  } else if (bankedTopic) {
+    topicDecision = bankedTopic.topicDecision as unknown as PipelineTopicDecision;
+    if (topicDecision.reason !== "unresolved") console.log(`  ${topicDecisionLine(topicDecision, basis)} [resumed]`);
   } else if (options.topic) {
     topicDecision = { ...pinnedTopicDecision(options.topic, measure([options.topic])), basis };
     console.log(`  ${topicDecisionLine(topicDecision, basis)}`);
@@ -1143,6 +1158,9 @@ export async function runForayPipeline(
       };
     }
   }
+  /* Banked BEFORE research-shape, which is filtered by it (see
+     PreSpineTopicCheckpointSchema). A no-supply stop above banks nothing. */
+  if (!bankedIdentity && !bankedTopic) await checkpoint.save("topic", { topicDecision });
   /* Null only when the pre-spine text resolved nothing — the post-spine
      fallback below then gets the act titles' help, as it always did. */
   let topic: string | null = topicDecision.topic;
