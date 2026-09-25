@@ -40,7 +40,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveForay, indexSegments, indexSources, findForay, segmentStarts, segmentAtElapsed, forayElapsed } from "../foray-resolve.js";
+import {
+  resolveForay, indexSegments, indexSources, findForay, segmentStarts, segmentAtElapsed, forayElapsed,
+  fmtClock, progressSegments,
+} from "../foray-resolve.js";
+import { makeProgress, resumePoint } from "../foray-progress.js";
+import { SEAM_GAP_SEC } from "../seam-gap.js";
 import { forayRuntimeSec, itemRuntimeSec } from "../foray-queue.js";
 import { mediaMetadata, mediaSessionView, narrationCredit, APP_NAME, APP_ARTWORK_URL } from "../media-session.js";
 import { structuralCheck, seamCensus } from "../foray-structure.js";
@@ -228,6 +233,9 @@ export function committedIds(fixtures) {
   const frozen = new Set();
   for (const { doc } of fixtures) {
     if (doc.module !== "player/parity/forays.js") continue;
+    // A JS-only family (NE-30j foray-data) is never run by Swift, so it names
+    // nothing the table must hold.
+    if (doc.jsOnly === true) continue;
     for (const c of doc.cases) {
       const first = c.args?.[0];
       if (c.call === "frozenCensus" && typeof first === "string") frozen.add(first);
@@ -295,4 +303,108 @@ export function overTable(call, args, table) {
     case "structureOf": return structuralCheck(r.playable);
     default: throw new TypeError(`forays.js has no ${call}`);
   }
+}
+
+/* ---------- the foray-data family (NE-30j): the page's build, JS only ----------
+
+   foray-playback.test.js runs REAL curated Forays end to end, and part of what
+   it pins is not playback at all but the page's build of the documents — every
+   authored segment resolves to https audio, the running order is the authored
+   one, the clock renders the runtime, a resume row over the real order
+   reconciles. The engine never builds a Foray (plan §3 A-1): the page resolves
+   and sends items. So these are recorded in a JS-ONLY family (`foray-data`,
+   schema `jsOnly`): owed to no Swift card, and still a case that goes red when
+   the build or the data breaks a rule. Each answer is a set of named booleans
+   (or counts), and the cases are AUTHORED at the rule (all true, zero). */
+
+/** Every committed Foray's build: every authored segment resolves to a
+    playable entry with https audio (foray-playback's shipped-data half). */
+export function resolveAudit(foray) {
+  const r = build(foray);
+  const authored = (foray.items ?? []).filter((i) => i.type === "segment").length;
+  const resolved = r.entries.filter((e) => e.segment_id);
+  return {
+    everyAuthoredSegmentHasAnEntry: resolved.length === authored,
+    unplayable: resolved.filter((e) => e.playable !== true).length,
+    notHttps: resolved.filter((e) => !/^https:/.test(String(e.audio_url))).length,
+  };
+}
+
+function frozenForay(id) {
+  const foray = findForay(doc(FROZEN_DATA, "forays.json"), id, { unlocked: [id] });
+  if (!foray) throw new TypeError(`${id} is not in the frozen fixture`);
+  return foray;
+}
+
+/** A clock string parsed back to whole seconds, hours optional (M:SS or H:MM:SS). */
+function clockSeconds(clock) {
+  if (!/^(?:\d+:[0-5]\d|[0-9]{1,2}):[0-5]\d$/.test(clock)) return null;
+  return clock.split(":").map(Number).reverse().reduce((t, v, i) => t + v * [1, 60, 3600][i], 0);
+}
+
+/**
+ * The premises and the page-side rules foray-playback.test.js pins over a
+ * FROZEN Foray (never data/: these are stable by construction). All true is
+ * the rule.
+ */
+export function frozenAudit(id) {
+  const foray = frozenForay(id);
+  const r = build(foray, FROZEN_DATA);
+  const items = r.playable;
+  const segs = r.entries.filter((e) => e.segment_id);
+  const authored = foray.items.filter((i) => i.type === "segment");
+  const last = items.length - 1;
+
+  let mapsBack = true;
+  items.forEach((item, i) => {
+    const into = Math.min(5, (item.authored_end_sec ?? item.end_sec) - item.start_sec - 0.5);
+    const back = segmentAtElapsed(items, forayElapsed(items, i, item.start_sec + into));
+    if (back?.index !== i || Math.abs(back.into - into) >= 0.001) mapsBack = false;
+  });
+  const mid = Math.floor(items.length / 2);
+  const midElapsed = forayElapsed(items, mid, items[mid].start_sec + 5);
+
+  const progress = (over) => makeProgress({ forayId: r.id, title: r.title, now: new Date(0), ...over });
+  const closing = resumePoint(progress({ elapsedSec: r.totalSec - 10, totalSec: r.totalSec, index: last }), { totalSec: r.totalSec });
+  const longer = resumePoint(progress({ elapsedSec: r.totalSec + 600, totalSec: r.totalSec + 900, index: 99 }), { totalSec: r.totalSec });
+  const ps = progressSegments(r);
+  const at = ps[9];
+  const row = progress({ elapsedSec: at.startSec + 30, totalSec: r.totalSec, index: 9, segmentId: at.id, intoSec: 30 });
+  const exact = resumePoint(row, { totalSec: r.totalSec, maxIndex: last, segments: ps });
+  let acc = 0;
+  const reclocked = ps.filter((_, i) => i !== 9).map((s) => { const out = { ...s, startSec: acc }; acc += s.durationSec; return out; });
+  const dropped = resumePoint(row, { totalSec: acc, maxIndex: reclocked.length - 1, segments: reclocked });
+
+  return {
+    isDraft: foray.status === "draft",
+    itemsAreTyped: foray.items.every((i) => i.type === "segment" || i.type === "narration"),
+    noBridges: foray.items.every((i) => i.type === "segment"),
+    everySegmentResolves: r.unplayable.length === 0 && segs.length === authored.length && segs.every((e) => e.playable === true),
+    allHttps: items.every((i) => /^https:\/\//.test(i.audio_url)),
+    runningOrderIsAuthored: JSON.stringify(r.entries.map((e) => e.label)) === JSON.stringify(foray.items.map((i) => i.label))
+      && JSON.stringify(r.slots.map((s) => s.id)) === JSON.stringify((foray.slots ?? []).map((s) => s.id)),
+    slotsCoverEntries: r.slots.reduce((n, s) => n + s.entries.length, 0) === r.entries.length,
+    runtimeMatchesDeclared: Math.abs(r.totalSec - foray.runtime_sec) < 1,
+    clockRendersRuntime: clockSeconds(fmtClock(r.totalSec)) === Math.floor(r.totalSec),
+    moreThanOneShow: r.shows.length >= 2 && r.entries.every((e) => e.show),
+    repeatsAnEpisode: items.some((it, i) => i > 0 && items[i - 1].source_item_id === it.source_item_id),
+    beatsWithinTheD3Share: ((items.length - 1) * SEAM_GAP_SEC) / r.totalSec <= SEAM_GAP_SEC / 90,
+    elapsedIsForayTime: Math.round(forayElapsed(items, 0, items[0].start_sec + 30)) === 30
+      && midElapsed > 0 && midElapsed < r.totalSec && segmentAtElapsed(items, midElapsed).index === mid,
+    elapsedNeverExceedsTotal: forayElapsed(items, last, items[last].end_sec + 999) <= r.totalSec + 0.001,
+    everySecondMapsBack: mapsBack,
+    closingSegmentIsFinished: closing?.finished === true,
+    longerVersionClampsToTotal: longer?.elapsedSec === r.totalSec && segmentAtElapsed(items, longer.elapsedSec)?.index === last,
+    ownOrderReconcilesExact: exact?.drift === "exact" && exact.index === 9 && Math.round(exact.elapsedSec) === Math.round(at.startSec + 30),
+    droppedSegmentDegrades: dropped?.drift === "dropped" && dropped.index === -1 && dropped.elapsedSec <= acc,
+  };
+}
+
+/** The cross-episode seams of a frozen Foray: the seams that reassign a source,
+    which is where an engine resets its rate (foray-playback's speed premise). */
+export function frozenSeams(id) {
+  const items = build(frozenForay(id), FROZEN_DATA).playable;
+  let crossEpisode = 0;
+  for (let i = 1; i < items.length; i++) if (items[i].audio_url !== items[i - 1].audio_url) crossEpisode++;
+  return { playable: items.length, crossEpisodeAtLeastFive: crossEpisode >= 5 };
 }

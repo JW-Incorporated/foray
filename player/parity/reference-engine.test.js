@@ -204,8 +204,8 @@ test("WarmingBackend opens the window only while audible with an armed out-point
   b.play();
   assert.equal(b.openPrefetchWindow(), true);
   assert.equal(opened, 1);
-  b.prefetch({ id: "x" }, { startOffset: 300 });
-  b.prefetch({ id: "x" }, { startOffset: 300 });
+  b.prefetch({ id: "x", audio_url: "https://cdn.test/x.mp3" }, { startOffset: 300 });
+  b.prefetch({ id: "x", audio_url: "https://cdn.test/x.mp3" }, { startOffset: 300 });
   assert.deepStrictEqual(log.ops.filter((o) => o.startsWith("n.")), ["n.prepare:x@300"]);
 });
 

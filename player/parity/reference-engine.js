@@ -50,6 +50,7 @@ import {
 import { PlayerQueueManager } from "../queue-manager.js";
 import { PositionStore } from "../position-store.js";
 import { OpLog, FakeBackend, MemoryStore, fakeTts } from "./fakes.js";
+import { warmOffset, prefetchDecision, warmPromotion } from "../deck-policy.js";
 
 /** What `engineHello` names this engine. */
 export const REFERENCE_ENGINE_VERSION = "reference-1";
@@ -68,28 +69,43 @@ const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)
  * FakeBackend with the warm handover. Same tokens as FakeBackend (the manager
  * suites' grammar), plus the native-only `n.prepare:<id>@<s>` when a segment is
  * warmed and `n.handover:<id>@<s>` when a load finds it warm.
+ *
+ * THE DECISIONS ARE THE REAL ONES (NE-30j). Whether to warm and whether a warm
+ * load may be promoted are deck-policy.js `prefetchDecision` and
+ * `warmPromotion` — what HtmlAudioBackend asks and what the native DeckPair
+ * answers identically — so a same-episode seam is not warmed here either (the
+ * same-source seek covers it), and a load is handed over only for the SOURCE
+ * and in-point that were warmed. A warm load here is ready at once: there is no
+ * network, so the race is always won; losing it is the deck family's case.
  */
 export class WarmingBackend extends FakeBackend {
   constructor(opts = {}) {
     super(opts);
     this._warm = null;
+    this._currentUrl = null;
     /** Assigned by the manager when `prefetch` exists (queue-manager.js §11). */
     this.onPrefetchWindow = null;
     this.ended = false;
   }
   prefetch(item, { startOffset = 0 } = {}) {
-    const offset = round(Number.isFinite(startOffset) && startOffset > 0 ? startOffset : 0);
-    if (this._warm && this._warm.id === item.id && this._warm.offset === offset) return true;
-    this._warm = { id: item.id, offset };
+    const offset = round(warmOffset(startOffset));
+    const decision = prefetchDecision({
+      available: true, url: item?.audio_url, currentUrl: this._currentUrl, warm: this._warm, offsetSec: offset,
+    });
+    if (decision === "already") { this._warm.id = item.id; return true; }
+    if (decision !== "start") return false;
+    this._warm = { id: item.id, url: item.audio_url, offset, ready: true, failed: false };
     this.log.push(`n.prepare:${item.id}@${offset}`);
     return true;
   }
   async load(item, opts = {}) {
-    const offset = round(opts.startOffset ?? 0);
+    const offset = round(warmOffset(opts.startOffset ?? 0));
     const warm = this._warm;
     this._warm = null;
-    if (warm && warm.id === item.id && warm.offset === offset) this.log.push(`n.handover:${item.id}@${offset}`);
+    const verdict = warmPromotion({ warm, url: item?.audio_url, offsetSec: offset, canPlay: true, atSec: offset });
+    if (verdict === "promote") this.log.push(`n.handover:${item.id}@${offset}`);
     this.ended = false;
+    this._currentUrl = item?.audio_url ?? null;
     return super.load(item, opts);
   }
   /** The playhead is PREFETCH_LEAD_SEC from an armed out-point while audible:

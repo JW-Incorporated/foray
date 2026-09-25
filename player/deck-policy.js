@@ -592,7 +592,182 @@ export function outPointStep(state, event) {
       }
       return { state: stopAt(state, layer, atSec, ops), ops };
     }
+    /* NE-30j. The FILE ran out before the boundary: an authored `end_sec` past
+       the real audio (html-audio-backend.js logs `outPoint.beyondDuration` for
+       it). That is the item's one end, the natural one — so the watch is spent
+       exactly as a stop spends it, and a layer that reports the boundary later
+       is stale rather than a second end. */
+    case "ended": {
+      if (state.timerDueMs !== null) ops.push("watchdog.cancel");
+      ops.push("ended:natural");
+      return { state: { ...state, fired: true, playing: false, timerDueMs: null }, ops };
+    }
     default:
       return { state, ops };
   }
+}
+
+/* ---------- the element's readings and the setters' guards (NE-30j) ----------
+
+   What the backend does with a value it is handed, or reads off the element,
+   before anything acts on it. The native deck (AVDeck) is handed the same
+   values over the bridge and must refuse and clamp them the same way. */
+
+/** Where a seek goes, or null when the value is junk and the seek is ignored
+    (not a number, not finite, or negative). */
+export function deckSeekTarget(seconds) {
+  return typeof seconds === "number" && Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
+}
+
+/** The volume a duck may set: clamped to 0..1, and junk is silence rather than
+    a throw (hold-to-talk ducking uses this, not a gain node). */
+export function deckVolume(v) {
+  return Math.min(1, Math.max(0, Number(v) || 0));
+}
+
+/** The duration the deck reports: a finite number, else null — never NaN,
+    which every consumer would have to special-case. */
+export function deckDuration(d) {
+  return typeof d === "number" && Number.isFinite(d) ? d : null;
+}
+
+/** The rate the deck REPORTS (the lock screen's position state extrapolates
+    with it): the element's own when it has a usable one, otherwise the rate we
+    asked for. A rate the engine refused is a rate the lock screen must not
+    claim. */
+export function deckReportedRate({ elementRate, pendingRate }) {
+  return typeof elementRate === "number" && Number.isFinite(elementRate) && elementRate > 0 ? elementRate : pendingRate;
+}
+
+/* ---------- the warm handover: the standby deck (NE-30j; DeckPair, NE-32) ----------
+
+   `HtmlAudioBackend` can prepare the NEXT segment on a second element while the
+   current one is audible, and hand the player role over at the boundary. On
+   the web that is parked (html-audio-backend.js §"prefetch"); on iOS the
+   native DeckPair prepares on a standby deck. Either way the DECISIONS are the
+   same, and they live here: whether to warm at all, when the element counts as
+   ready, whether a warm element may be promoted for the load in front of it,
+   the order of the handover, what a refused play may recover, and what an
+   unexplained pause means while a warm load is in flight. */
+
+/** The in-point a warm load is parked at: a positive finite offset, else 0. */
+export function warmOffset(startOffset) {
+  return Number.isFinite(startOffset) && startOffset > 0 ? startOffset : 0;
+}
+
+/**
+ * Whether `prefetch(item)` warms, and if not, why.
+ *   "unavailable"   no standby deck, parked, released or stood down
+ *   "no-url"        nothing to fetch
+ *   "same-episode"  the next item is in the source the player already holds:
+ *                   the same-source SEEK covers that seam, and a refetch could
+ *                   come back differently stitched
+ *   "already"       the standby deck already holds exactly this (url, offset)
+ *   "start"         warm it (a failed warm load does not count as held)
+ */
+export function prefetchDecision({ available, url, currentUrl, warm = null, offsetSec = 0 }) {
+  if (!available) return "unavailable";
+  if (!url) return "no-url";
+  if (url === currentUrl) return "same-episode";
+  if (warm && warm.url === url && warm.offset === offsetSec && !warm.failed) return "already";
+  return "start";
+}
+
+/** A warm load is READY only once the playhead is at its in-point AND the
+    element can produce audio — never on `canplay` for the file's head, which
+    would hand over 0:00 of somebody else's episode. `offsetSec` 0 needs no
+    seek. */
+export function warmSettled({ offsetSec, atSec, canPlay }) {
+  const near = offsetSec === 0 || Math.abs((atSec ?? 0) - offsetSec) <= SETTLE_NEAR_SEC;
+  return near && canPlay === true;
+}
+
+/**
+ * May the warm element BECOME the player for the load in front of it? Asked at
+ * the boundary, and readiness is RE-ASSERTED rather than trusted: a buffer can
+ * go away, or the element drift off its in-point, without an error.
+ *
+ * @param {object} s
+ * @param {object|null} s.warm   {url, offset, ready, failed} or null
+ * @param {string} s.url         the load's source
+ * @param {number} s.offsetSec   the load's in-point (`warmOffset`)
+ * @param {boolean} s.canPlay    the warm element can produce audio NOW
+ * @param {number} s.atSec       the warm element's playhead NOW
+ * @returns {string} "promote", or why not: "none", "not-ready", "failed",
+ *   "different-item", "wrong-offset", "buffer-gone", "drifted"
+ */
+export function warmPromotion({ warm, url, offsetSec, canPlay, atSec }) {
+  if (!warm) return "none";
+  if (warm.failed) return "failed";
+  if (!warm.ready) return "not-ready";
+  if (warm.url !== url) return "different-item";
+  if (warm.offset !== offsetSec) return "wrong-offset";
+  if (canPlay !== true) return "buffer-gone";
+  if (Math.abs((atSec ?? 0) - offsetSec) > SETTLE_NEAR_SEC) return "drifted";
+  return "promote";
+}
+
+/**
+ * The handover, in order. ORDER IS THE SAFETY PROPERTY: the outgoing element
+ * stops reporting and is paused BEFORE the roles swap, so no instant has two
+ * elements un-paused (on iOS a second one that plays takes the session). The
+ * demoted element's buffer is NOT dropped (that is media work queued in front of
+ * the promoted element's start); identity is adopted before any element write;
+ * and the rate and the duck are carried onto the element that inherits the
+ * role. Nothing here plays: the manager's own play follows the load.
+ * @returns {string[]}
+ */
+export function handoverSteps() {
+  return [
+    "detach-outgoing", "pause-outgoing", "swap-roles", "attach-incoming",
+    "adopt-identity", "carry-volume", "carry-rate",
+  ];
+}
+
+/** Does forgetting a warm load also drop its buffer? Only at `release` —
+    nothing is waiting on the element's task queue then. At a boundary, a
+    replacement or a stand-down, dropping it queues media work in front of the
+    load the listener is waiting for. */
+export function discardFreesBuffer(cause) {
+  return cause === "release";
+}
+
+/**
+ * A play the PLAYER element refused: recover onto the element that holds the
+ * gesture, or report? Recover only an autoplay refusal (`NotAllowedError`) of a
+ * handover not yet proven by a `playing`, on the live player of an unreleased
+ * backend. An `AbortError` is an ordinary interrupted play (a pause or a skip),
+ * and a pause clears the window: recovering either would start audio the
+ * listener had just stopped.
+ * @returns {"recover"|"report"}
+ */
+export function playRefusalAction({ errorName, handoverUnproven, isPlayer = true, released = false }) {
+  if (released || !isPlayer || !handoverUnproven) return "report";
+  return errorName === "NotAllowedError" ? "recover" : "report";
+}
+
+/**
+ * A `pause` event nobody asked for.
+ *   "own"         the pause we caused (the boundary's, a transport pause)
+ *   "ran-out"     the file ended — `pause` fires before `ended`
+ *   "report"      tell the manager (it reconciles)
+ *   "stand-down"  report AND stop warming for good: a warm load was IN FLIGHT,
+ *                 the one window in which a second element could have taken
+ *                 the session. A warm buffer already ready is not evidence.
+ */
+export function unexplainedPauseAction({ expected, ended, warmInFlight }) {
+  if (expected) return "own";
+  if (ended) return "ran-out";
+  return warmInFlight ? "stand-down" : "report";
+}
+
+/**
+ * Does the prefetch window open on this tick? Only while the player is
+ * AUDIBLE (a paused page is the throttled state warming exists to avoid), with
+ * an armed boundary, once per boundary, and within `leadSec` of WALL clock —
+ * so a faster rate opens it earlier in the episode.
+ */
+export function prefetchWindowOpens({ available, outPointSec, armed, paused, atSec, rate, leadSec, alreadyOpened = false }) {
+  if (!available || outPointSec == null || !armed || paused || alreadyOpened) return false;
+  return !((outPointSec - atSec) / deckRate(rate) > leadSec);
 }
