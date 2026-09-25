@@ -118,7 +118,11 @@ export function loadTranscriptArchive(): TranscriptDigestEntry[] {
      both describe an episode the committed one is the better row; the local
      digest exists to ADD episodes, never to restate them. */
   const seen = new Set<string>();
+  /* How many of `entries` came from the COMMITTED digests: disambiguateItemIds
+     decides their ids from committed rows alone (round-3 review, L5). */
+  let committed = 0;
   for (const file of ["data/transcript-digests.json", "data/breadth-transcript-digests.json", CORPUS_DIGEST_FILE]) {
+    if (file === CORPUS_DIGEST_FILE) committed = entries.length;
     const full = path.join(REPO_ROOT, file);
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- hardcoded repo-relative path list, not external input.
     if (!fs.existsSync(full)) continue;
@@ -133,7 +137,7 @@ export function loadTranscriptArchive(): TranscriptDigestEntry[] {
       entries.push(t);
     }
   }
-  disambiguateItemIds(entries);
+  disambiguateItemIds(entries, { committed });
   cachedDigests = entries;
   return cachedDigests;
 }
@@ -1401,6 +1405,9 @@ export function deriveItemId(entry: TranscriptDigestEntry): string {
  *
  * Kept as the id of every entry that does NOT collide, so the ids already
  * committed in data/segments.json and data/segment-sources.json keep resolving.
+ * A committed entry's collisions are judged among committed entries only, so a
+ * same-titled episode in one machine's local corpus cannot move it (see
+ * disambiguateItemIds).
  */
 export function legacyItemId(entry: TranscriptDigestEntry): string {
   const slug = entry.title
@@ -1417,22 +1424,39 @@ export function legacyItemId(entry: TranscriptDigestEntry): string {
 /**
  * gen-6: gives every entry whose legacy id another entry (a different guid)
  * also derives a short guid-hash suffix, so each episode has its own item id.
- * Every member of a colliding group is suffixed, none is privileged by load
- * order. Mutates and returns `entries`; `loadTranscriptArchive` calls it.
+ *
+ * COMMITTED IDS DEPEND ON COMMITTED ROWS ONLY (round-3 review, L5). The first
+ * `committed` entries come from the committed digests; the rest from this
+ * machine's local corpus digest, which CI and a fresh checkout do not have.
+ * A committed entry is suffixed only when ANOTHER COMMITTED entry shares its
+ * legacy id, so its id is the same on every machine, and an id already in
+ * data/segments.json or segment-sources.json does not change the day the local
+ * corpus gains a same-titled episode. A local entry is suffixed when its
+ * legacy id collides with anything, committed or local, so it never takes an
+ * incumbent's id. Within each rule every member of a colliding group is
+ * suffixed, none is privileged by load order. `committed` defaults to all of
+ * them. Mutates and returns `entries`; `loadTranscriptArchive` calls it.
  */
-export function disambiguateItemIds(entries: TranscriptDigestEntry[]): TranscriptDigestEntry[] {
-  const guidsById = new Map<string, Set<string>>();
-  for (const entry of entries) {
-    const id = legacyItemId(entry);
-    let guids = guidsById.get(id);
-    if (!guids) guidsById.set(id, (guids = new Set()));
-    guids.add(String(entry.guid));
-  }
-  for (const entry of entries) {
-    if ((guidsById.get(legacyItemId(entry))?.size ?? 0) > 1) {
+export function disambiguateItemIds(entries: TranscriptDigestEntry[], options: { committed?: number } = {}): TranscriptDigestEntry[] {
+  const committedCount = Math.min(options.committed ?? entries.length, entries.length);
+  const groups = (list: TranscriptDigestEntry[]): Map<string, Set<string>> => {
+    const guidsById = new Map<string, Set<string>>();
+    for (const entry of list) {
+      const id = legacyItemId(entry);
+      let guids = guidsById.get(id);
+      if (!guids) guidsById.set(id, (guids = new Set()));
+      guids.add(String(entry.guid));
+    }
+    return guidsById;
+  };
+  const committedGroups = groups(entries.slice(0, committedCount));
+  const allGroups = groups(entries);
+  entries.forEach((entry, i) => {
+    const within = i < committedCount ? committedGroups : allGroups;
+    if ((within.get(legacyItemId(entry))?.size ?? 0) > 1) {
       entry.item_id_suffix = crypto.createHash("sha1").update(String(entry.guid)).digest("hex").slice(0, 6);
     }
-  }
+  });
   return entries;
 }
 

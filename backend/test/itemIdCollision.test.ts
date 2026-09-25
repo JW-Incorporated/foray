@@ -47,6 +47,26 @@ describe("gen-6: item ids are unique per episode", () => {
     expect(new Set(one)).toEqual(new Set(two));
   });
 
+  /* Round-3 review (L5): every member of a colliding group was suffixed over
+     committed + local rows together, so a committed episode's id depended on
+     which machine's corpus was loaded, and changed (orphaning the id already
+     in data/segments.json) the day the local corpus gained a same-titled
+     episode.
+     MUTATION: judge committed entries against every entry again (use
+     allGroups for them) -- the committed Monday round-up gains a suffix. */
+  it("a local episode that collides with a committed one takes the suffix; the committed id does not move", () => {
+    const committedOnly = disambiguateItemIds([{ ...a }, { ...unrelated }], { committed: 2 }).map(deriveItemId);
+    const withLocal = disambiguateItemIds([{ ...a }, { ...unrelated }, { ...b }], { committed: 2 }).map(deriveItemId);
+    expect(committedOnly[0]).toBe(legacyItemId(a));
+    expect(withLocal[0], "the committed id is the same with or without the local corpus").toBe(legacyItemId(a));
+    expect(withLocal[2]).not.toBe(legacyItemId(b));
+    expect(withLocal[2]!.startsWith(legacyItemId(b))).toBe(true);
+    expect(new Set(withLocal).size).toBe(3);
+    // Two committed rows that collide with each other are still both suffixed.
+    const both = disambiguateItemIds([{ ...a }, { ...b }], { committed: 2 }).map(deriveItemId);
+    expect(both.every((id) => id !== legacyItemId(a))).toBe(true);
+  });
+
   it("the loaded archive never gives two guids one item id", () => {
     /* MUTATION THAT KILLS THIS: drop the disambiguateItemIds call from
        loadTranscriptArchive (only bites when the digests on this machine hold
