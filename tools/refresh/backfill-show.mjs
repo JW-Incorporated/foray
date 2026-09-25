@@ -40,10 +40,12 @@
    looks episodes up at `limit=25`, which is roughly a year on a weekly show
    (measured 2026-08-19: Cider Chat at limit=25 reaches back to 2026-01-21, at
    limit=200 to 2022-03-23). Anything this script emits from deeper than the
-   iTunes window resolves to no trackId and `resolve.mjs` drops it — correctly,
-   since the trackId is the only trustworthy duplicate guard. So the default
-   matches the window rather than the feed, and asking for more is allowed but
-   will report drops.
+   iTunes window resolves to no trackId and `resolve.mjs` does not publish it —
+   correctly, since the trackId is the only trustworthy duplicate guard. So the
+   default matches the window rather than the feed, and asking for more is
+   allowed but will report those rows unresolved (in resolved.json's `retry`
+   list: a backfill pending file names no scan state, so nothing is carried
+   into the nightly's).
 
    Usage:
      node tools/refresh/backfill-show.mjs --show cider-chat

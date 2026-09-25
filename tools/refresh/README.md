@@ -17,8 +17,8 @@ scan.mjs ──▶ fresh-pending.json ──▶ resolve.mjs ──▶ resolved.j
 
 | Script | Keyless? | Role |
 |--------|----------|------|
-| `scan.mjs`    | ✅ | Poll curated RSS feeds, emit episodes newer than last run |
-| `resolve.mjs` | ✅ (iTunes lookup) | Resolve `apple_track_id`, dedup, drop unresolvable/dupe/invalid-topic |
+| `scan.mjs`    | ✅ | Poll curated RSS feeds, emit episodes newer than last run, plus last night's `state.retry` |
+| `resolve.mjs` | ✅ (iTunes lookup) | Resolve `apple_track_id` by guid, enclosure URL, then exact title (fuzzy only on the same release date), dedup, drop dupe/invalid-topic; carry a failed lookup or a not-yet-indexed episode in `state.retry` for up to 3 nights |
 | `merge.mjs`   | ✅ | Apply agent-authored hooks/tags, enforce copy rules, write data files |
 | `candidates.mjs` | — | S-11: change-index loading + curated-scan-selection + curation-candidates helpers (not a stage) |
 | `enclosure.mjs` | — | Shared audio-provenance helpers (not a stage) |
