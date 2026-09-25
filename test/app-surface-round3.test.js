@@ -613,3 +613,44 @@ test("app-2-2: each local pass hands over at most SHOW_PASS_LIMIT rows, and the 
   assert.ok(!m.run('state.breadthShowCache["100000"]'), "the oldest go first, even for integer-like Apple ids");
   assert.ok(m.run(`state.breadthShowCache["${100000 + max + 24}"]`), "the newest stay");
 });
+
+test("round-3 review (L2): played to the end and closed, the Foray page drops 'Jump back in' for 'Played'", async () => {
+  /* refreshForayResume nulled state.forayResume when the point read finished
+     but left the rendered "Jump back in at 10:00" banner up over a 0:00 clock
+     and a Play from the top. MUTATION: drop the finished branch -- the banner
+     still says "Jump back in at 10:00". */
+  const m = loadApp();
+  for (const sel of ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd", "#fy-now", "#fy-strip", "#fy-list"]) m.els[sel] = makeEl("button");
+  const banner = makeEl("div");
+  let removed = 0;
+  const at = makeEl("span");
+  at.remove = () => { removed += 1; };
+  const left = makeEl("span");
+  const restart = makeEl("button");
+  at.textContent = "Jump back in at 10:00";
+  left.textContent = "50 min left";
+  restart.textContent = "Start over";
+  m.els["#fy-resume"] = banner;
+  m.els["#fy-resume .fy-resume-at"] = at;
+  m.els["#fy-resume .fy-resume-left"] = left;
+  m.els["#fy-restart"] = restart;
+  const r = { id: "f1", title: "A Foray", playable: [{ id: "s1" }, { id: "s2" }], totalSec: 3600, foray: {} };
+  let stored = { elapsedSec: 600, index: 0, label: "50 min left" };
+  const player = {
+    forayResume: () => stored,
+    fmtClock: (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`,
+    playForay: async () => true, forayToggle: async () => {}, watchForay: () => {},
+  };
+  m.ctx.ForayPlayer = player;
+  m.ctx.logEvent = () => {};
+  m.run(`state.foray = ${JSON.stringify(r)}; state.forayResume = ${JSON.stringify(stored)};`);
+  m.ctx.bindForayTransport(m.run("state.foray"), player, stored);
+  m.ctx.paintForay({ forayId: "f1", index: 1, playing: true, running: true, elapsedSec: 3500 });
+  stored = { elapsedSec: 3600, index: 1, label: "Played", finished: true };   // it ran to the end
+  m.ctx.paintForay({ forayId: "f1", index: -1, playing: false, running: false, elapsedSec: 0 });
+  assert.strictEqual(m.run("state.forayResume"), null, "premise: no resume point");
+  assert.strictEqual(removed, 1, "the 'Jump back in at' line is gone");
+  assert.ok(banner.classList.contains("fy-played"), "the banner is the Played variant");
+  assert.strictEqual(left.textContent, "Played");
+  assert.strictEqual(restart.textContent, "Play again");
+});

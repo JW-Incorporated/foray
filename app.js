@@ -13627,6 +13627,25 @@ function refreshForayResume() {
   if (state.forayResume && typeof player.fmtClock === "function") {
     setStatusText(at, `Jump back in at ${player.fmtClock(state.forayResume.elapsedSec)}`);
     if (state.forayResume.label) setStatusText(left, state.forayResume.label);
+    return;
+  }
+  /* NO RESUME POINT ANY MORE, SO NO "JUMP BACK IN" (round-3 review, L2). Played
+     to the end and closed, the point reads finished and state.forayResume goes
+     null, but the banner rendered with "Jump back in at 10:00" stayed up
+     (paintForay only sets banner.hidden = live) over a 0:00 clock and a Play
+     that starts from the top: the page contradicting itself. A finished Foray
+     turns the banner into renderForay's "Played" variant, in place (its button
+     already starts from the top, which is what "Play again" does); with no
+     point at all the banner goes. */
+  const banner = $("#fy-resume");
+  if (!banner) return;
+  if (point && point.finished) {
+    banner.classList?.add("fy-played");
+    if (at && typeof at.remove === "function") at.remove();
+    setStatusText(left, point.label || "Played");
+    setStatusText($("#fy-restart"), "Play again");
+  } else if (typeof banner.remove === "function") {
+    banner.remove();
   }
 }
 
