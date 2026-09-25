@@ -530,6 +530,14 @@ export class ReferenceEngine {
         case "setModeOverride": this.modeOverride = args.mode; return null;
         case "setHoldPolicy": this.holdPolicy = args.policy; return null;
         case "probeSession": this._row({ kind: "probe" }); return null;
+        /* Developer only (NE-24, DV-7a): the native engine persists its
+           restore record and exits at the next background entry while
+           paused. The reference has no process to end; it only refuses what
+           the Swift refuses, an empty queue. */
+        case "simulateTermination":
+          if (!this.playing || !this._currentItem()) return "not-loaded";
+          this._row({ kind: "restore", event: "sim-termination-armed" });
+          return null;
         default: return "unknown-cmd";
       }
     })();

@@ -162,30 +162,39 @@ final class EngineOwnership {
     /// cold path (`bootIfNeeded`, NE-24) or the plugin's `load()`. The other
     /// reads the same object, so the strike accounting happens once.
     ///
-    /// `engineFactory: nil` IS THIS BUILD'S TRUTH: the real conformers of
-    /// the session, grace, remote, Now Playing and store seams land in NE-16,
-    /// NE-16g, NE-18 and NE-19, and the boot that wires them (NE-24) supplies
-    /// the factory. Until then `decide` sees `built: false` and every launch
-    /// is `legacy reason=not-built`, whatever the plist or a Developer
-    /// override says: a binary with no engine cannot be told to run one.
+    /// THE FACTORY IS `EngineBoot.makeEngine` (NE-24): the real session,
+    /// grace, remote, Now Playing, deck, speaker and store seams, over the
+    /// SAME store and ring the owner keeps its keys in and the bridge reads,
+    /// then the cold boot from the restore record. So `decide` sees
+    /// `built: true`, and the lane is the plist's default, the Developer
+    /// override and the strikes, as §4.6 rules.
+    ///
+    /// ROWS ONLY IN THE NATIVE LANE. The owner's rows go to the ring only
+    /// once the process has decided native, because only a native page wires
+    /// "Delete my data" to the engine's purge (client.js `engineDataDeletion`,
+    /// which the bridge now carries through to `EngineStore.purge`). A legacy
+    /// launch therefore still leaves no private key it did not need and no
+    /// row: the same guarantee the not-built build gave.
     static var shared: EngineOwnership {
         if let instance { return instance }
         let timing = MainQueueTiming()
         let diagnostics = EngineDiagnostics(timing: timing)
+        let store = EngineStore(diagnostics: diagnostics)
+        let environment = LaunchEnvironment.from(info: Bundle.main.infoDictionary)
+        var decided: EngineOwnership?
         let owner = EngineOwnership(
-            store: EnginePrivateStore(keys: EngineStore(diagnostics: diagnostics)),
-            environment: .from(info: Bundle.main.infoDictionary),
+            store: EnginePrivateStore(keys: store),
+            environment: environment,
             flag: ProcessSessionOwnershipFlag(),
             timing: timing,
             lifecycle: UIKitOwnershipLifecycle(),
-            // NO ROWS YET, ON PURPOSE. Until the page's "Delete my data"
-            // reaches the engine's purge (NE-22 / NE-27), a row in the ring
-            // would outlive the deletion. A build with no engine therefore
-            // leaves no trace at all: no private key (decideOnce writes only
-            // what changed) and no row. NE-24 routes this sink to
-            // `diagnostics.record` when it supplies the factory.
-            diag: { _ in },
-            engineFactory: nil)
+            diag: { entry in
+                MainActor.assumeIsolated {
+                    if decided?.mode == .native { store.diag(entry) }
+                }
+            },
+            engineFactory: { EngineBoot.makeEngine(store: store, timing: timing, bundleVersion: environment.currentBuild) })
+        decided = owner
         instance = owner
         return owner
     }

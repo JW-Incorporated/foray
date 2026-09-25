@@ -84,6 +84,52 @@ public struct EngineCore {
         state = initial
     }
 
+    /// What a cold boot rebuilt from the engine's private restore record
+    /// (card NE-24; plan §4.5): the core, and the queue and index the host
+    /// hands it as `.lifecycle(.coldLaunch(autoplay: false))`, which paints
+    /// Now Playing at rate 0 and activates nothing (S-3).
+    public struct ColdRestore {
+        public let core: EngineCore
+        public let queue: [EngineItem]
+        public let index: Int
+    }
+
+    /// A core rebuilt from a restore record, or nil for a record there is
+    /// nothing to play from: `relinquished` (the legacy lane owns playback,
+    /// §4.6), `foray` (M2, NE-30s: until then a Foray tap relinquishes, so an
+    /// M1 build never writes one), an empty queue, or an item with no id.
+    ///
+    /// What the record carries and a core cannot learn from an input comes
+    /// back here: the listener's speed, where the current item was (as the
+    /// stored position a cold start resumes from, through `ResumeRules`, the
+    /// same rule the JS cold start applies), and the walked hops and pending
+    /// events the page has not drained yet, with their sequence numbers, so a
+    /// termination loses none of them and the next one written is numbered
+    /// after them. The queue and index are NOT set here: they arrive through
+    /// the one door, as `coldLaunch`, so the rows and the surface follow.
+    public static func restoring(_ record: RestoreRecord, config: EngineConfig) -> ColdRestore? {
+        guard record.mode == .episode, !record.queue.isEmpty, record.queue.indices.contains(record.index) else {
+            return nil
+        }
+        let items = record.queue.compactMap(EngineItem.init(node:))
+        guard items.count == record.queue.count else { return nil }
+        var config = config
+        config.rate = record.rate
+        let current = items[record.index]
+        var positions: [String: ResumeRules.StoredPosition] = [:]
+        if record.offsetSec > 0 {
+            positions[current.id] = ResumeRules.StoredPosition(seconds: record.offsetSec, duration: current.durationSec)
+        }
+        var core = EngineCore(config: config, positions: positions)
+        let events: [PendingEvent] = record.pendingEvents.compactMap(PendingEvent.init(restored:))
+        core.state.pendingEvents = Array(events.suffix(EngineCore.pendingEventsCap))
+        core.state.lastEventSeq = events.map(\.seq).max() ?? 0
+        let advances: [AdvanceEntry] = record.advanceLog.compactMap(AdvanceEntry.init(restored:))
+        core.state.advanceLog = Array(advances.suffix(EngineCore.advanceLogCap))
+        core.state.lastAdvanceSeq = advances.map(\.seq).max() ?? 0
+        return ColdRestore(core: core, queue: items, index: record.index)
+    }
+
     /// `canNext` (plan §5.5): the queue has a next item, or the continuation
     /// chain is non-empty, REGARDLESS of `autoAdvance` (as the page's
     /// `EPISODE_NAVIGATION.next` does today).
@@ -190,6 +236,15 @@ public struct EngineCore {
         case .setModeOverride, .probeSession:
             // The host's (EngineOwnership NE-17, SessionProbe NE-25c).
             break
+        case .simulateTermination:
+            // Developer only (NE-24, DV-7a). The record a cold boot restores
+            // from is written NOW, from this state; the host exits at the
+            // next background entry while paused. Nothing queued is nothing
+            // to restore, so there is nothing to simulate.
+            guard !state.queue.isEmpty else { return refuse(.notLoaded) }
+            writeRestore()
+            diag("restore", [JSONMember("kind", .string("sim-termination-armed")),
+                             JSONMember("item", state.currentItem.map { JSONNode.string($0.id) } ?? .null)])
         case let .setHoldPolicy(policy): state.holdPolicy = policy
         }
     }

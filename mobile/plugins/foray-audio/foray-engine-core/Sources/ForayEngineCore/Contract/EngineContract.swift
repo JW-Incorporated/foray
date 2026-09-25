@@ -72,6 +72,7 @@ public enum EngineContract {
         case setModeOverride
         case setHoldPolicy
         case probeSession
+        case simulateTermination
     }
 
     /// `EVENTS`: the `type` of every "engine" event (§5.4).

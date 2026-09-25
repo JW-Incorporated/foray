@@ -36,3 +36,14 @@ private final class ResignObservation: EngineObservation {
         cancel()
     }
 }
+
+extension UIKitOwnershipLifecycle {
+    /// Whether iOS launched this process straight into the background: a
+    /// car's or a headset's play reaching a terminated 4a (NE-24's `build
+    /// launch=background`, which DV-7a is judged on). Read at the boot, inside
+    /// `didFinishLaunching`, where a user's launch is still `.inactive`.
+    @MainActor
+    static var launchedInBackground: Bool {
+        UIApplication.shared.applicationState == .background
+    }
+}

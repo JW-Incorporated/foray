@@ -69,6 +69,23 @@ public struct PendingEvent: Equatable {
     }
 }
 
+extension PendingEvent {
+    /// One entry of a restore record's `pendingEvents`, read back after a
+    /// termination (NE-24). Nil for anything `node` would not have written:
+    /// a restored event is re-sent to the page, so it must be one it knows.
+    init?(restored node: JSONNode) {
+        guard let seqValue = node["seq"]?.numberValue, seqValue.isFinite, seqValue >= 0,
+              seqValue.rounded(.towardZero) == seqValue,
+              let kind = node["kind"]?.stringValue,
+              let episodeId = node["episode_id"]?.stringValue, !episodeId.isEmpty,
+              let seconds = node["seconds"]?.numberValue, seconds.isFinite,
+              let atMs = node["at"]?.numberValue, atMs.isFinite else { return nil }
+        let duration = node["duration"]?.numberValue
+        self.init(seq: Int(seqValue), kind: kind, episodeId: episodeId, seconds: seconds,
+                  duration: duration.flatMap { $0.isFinite ? $0 : nil }, atMs: atMs)
+    }
+}
+
 /// One walked continuation hop (plan §5.5): the page applies it on attach
 /// through `applyEngineAdvance`, idempotently, and acks it by `seq`.
 public struct AdvanceEntry: Equatable {
@@ -83,6 +100,19 @@ public struct AdvanceEntry: Equatable {
         members.append(JSONMember("seq", .number(Double(seq))))
         members.append(JSONMember("at", .number(atMs)))
         return .object(members)
+    }
+}
+
+extension AdvanceEntry {
+    /// One walked hop from a restore record's `advanceLog` (NE-24): the hop
+    /// as the page sent it, which the contract decodes again, with its `seq`
+    /// and `at`. Nil for an entry the contract would refuse.
+    init?(restored node: JSONNode) {
+        guard let seqValue = node["seq"]?.numberValue, seqValue.isFinite, seqValue >= 0,
+              seqValue.rounded(.towardZero) == seqValue,
+              let atMs = node["at"]?.numberValue, atMs.isFinite,
+              let hop = try? EngineContract.Hop(contract: node, at: "") else { return nil }
+        self.init(seq: Int(seqValue), hop: hop, atMs: atMs)
     }
 }
 

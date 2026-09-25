@@ -105,7 +105,7 @@ test("the names: protocol 1, the plan's commands and events, and every refusal s
   // bare "session-failed" instead of one entry per token -> red.
   assert.equal(PROTOCOL, 1);
   assert.deepStrictEqual([...BRIDGE_METHODS], ["engineHello", "engineSend", "engineRead"]);
-  for (const cmd of ["playEpisode", "setContinuation", "relinquish", "setModeOverride", "setHoldPolicy", "ackEvents", "ackAdvances", "probeSession", "audition"]) {
+  for (const cmd of ["playEpisode", "setContinuation", "relinquish", "setModeOverride", "setHoldPolicy", "ackEvents", "ackAdvances", "probeSession", "simulateTermination", "audition"]) {
     assert.ok(COMMANDS.includes(cmd), `§5.2 names ${cmd}`);
   }
   assert.equal(new Set(COMMANDS).size, COMMANDS.length, "no command twice");
