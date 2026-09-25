@@ -129,6 +129,51 @@ test("a page past its TTL is not served, and is dropped", () => {
   assert.strictEqual(app._state('showEpisodesCache.has("old")'), false, "and the dead row is evicted");
 });
 
+test("the cache is an LRU of SHOW_EPISODES_CACHE_MAX shows, and expired pages are swept on insert", () => {
+  /* Audit round 3, app-1-11. Unbounded, every show visited kept its whole first
+     page (descriptions and all) alive for the session.
+     MUTATION: drop the size loop in cacheShowEpisodes — the first assertion goes
+     red. Drop the expiry sweep — the `stale` assertion goes red. Drop the
+     recency move in cachedShowEpisodes — "lru-0 survives" goes red. */
+  app._state("showEpisodesCache.clear()");
+  const max = app._state("SHOW_EPISODES_CACHE_MAX");
+  assert.ok(max >= 5 && max <= 50, "a handful of shows, not the session");
+  for (let i = 0; i < max; i += 1) app.cacheShowEpisodes(`lru-${i}`, { episodes: EPS("a"), nextCursor: null, stale: false });
+  assert.ok(app.cachedShowEpisodes("lru-0"), "a read makes lru-0 the most recent");
+  app.cacheShowEpisodes("lru-new", { episodes: EPS("a"), nextCursor: null, stale: false });
+  assert.strictEqual(app._state("showEpisodesCache.size"), max, "never more than the cap");
+  assert.ok(app._state('showEpisodesCache.has("lru-0")'), "lru-0 survives: it was read most recently");
+  assert.ok(!app._state('showEpisodesCache.has("lru-1")'), "the least recently used show is the one dropped");
+  const ttl = app._state("SHOW_EPISODES_TTL_MS");
+  /* The MOST recent entry expires, so the LRU bound alone would keep it: only
+     the sweep removes it (and then nothing else needs evicting). */
+  app._state(`showEpisodesCache.get("lru-new").at -= ${ttl + 1000};`);
+  app.cacheShowEpisodes("lru-newer", { episodes: EPS("a"), nextCursor: null, stale: false });
+  assert.ok(!app._state('showEpisodesCache.has("lru-new")'), "an expired page is swept on insert, not only when read");
+  assert.ok(app._state('showEpisodesCache.has("lru-2")'), "and the sweep made the room, so no live page was evicted");
+  app._state("showEpisodesCache.clear()");
+});
+
+test("an evicted show's rows keep their ids in itemIndex but drop the publisher text", () => {
+  /* Audit round 3, app-1-11 (perf-7): every painted row snapshotted its full
+     description into state.itemIndex, which nothing ever cleared. On eviction the
+     row is trimmed to what the durable tier keeps; the id still resolves.
+     MUTATION: make dropShowEpisodes only delete the cache entry — red. */
+  app._state("showEpisodesCache.clear()");
+  const show = { show_id: "evict-me", title: "Evict Me" };
+  const long = "x".repeat(5000);
+  const row = app.fullCatalogueRowToEpRowItem(show, { guid: "g1", title: "T", description_text: long, audio_url: "https://cdn.test/e.mp3" });
+  app.cacheShowEpisodes("evict-me", { episodes: [{ guid: "g1", title: "T" }], nextCursor: null, stale: false });
+  const max = app._state("SHOW_EPISODES_CACHE_MAX");
+  for (let i = 0; i < max; i += 1) app.cacheShowEpisodes(`other-${i}`, { episodes: EPS("a"), nextCursor: null, stale: false });
+  const snap = app._state("state.itemIndex")[row.id];
+  assert.ok(snap, "the id still resolves");
+  assert.strictEqual(snap.description, null, "the full description is released");
+  assert.ok(snap.hook.length <= app._state("EPISODE_SNAP_HOOK_MAX"), "the hook is trimmed");
+  assert.strictEqual(snap.audio_url, "https://cdn.test/e.mp3", "and it still plays");
+  app._state("showEpisodesCache.clear()");
+});
+
 test("the TTL is a bound on staleness, not a day", () => {
   /* A podcast gains episodes. Half an hour is the order of magnitude that makes
      a repeat visit instant without making the list wrong. */

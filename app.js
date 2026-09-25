@@ -4037,19 +4037,46 @@ function fullCatalogueRowToEpRowItem(show, ep) {
    add an eviction policy and a schema for no gain the founder asked about. */
 const SHOW_EPISODES_TTL_MS = 30 * 60 * 1000;
 
-/** Cached first pages, `show_id -> { at, episodes, nextCursor, stale }`. */
+/** Cached first pages, `show_id -> { at, episodes, nextCursor, stale }`.
+    BOUNDED (audit round 3, app-1-11): an LRU of SHOW_EPISODES_CACHE_MAX shows —
+    Map insertion order is the recency order, a hit moves to the end — with the
+    expired entries swept on every insert. Unbounded, every show visited kept its
+    whole first page (descriptions included) alive for the session. */
 const showEpisodesCache = new Map();
+const SHOW_EPISODES_CACHE_MAX = 10;
 
 /** The cached first page, or null when absent or past its TTL. */
 function cachedShowEpisodes(show_id) {
   const hit = showEpisodesCache.get(show_id);
   if (!hit) return null;
-  if (Date.now() - hit.at > SHOW_EPISODES_TTL_MS) { showEpisodesCache.delete(show_id); return null; }
+  if (Date.now() - hit.at > SHOW_EPISODES_TTL_MS) { dropShowEpisodes(show_id); return null; }
+  showEpisodesCache.delete(show_id);
+  showEpisodesCache.set(show_id, hit);
   return hit;
 }
 
 function cacheShowEpisodes(show_id, payload) {
-  showEpisodesCache.set(show_id, { ...payload, at: Date.now() });
+  const now = Date.now();
+  for (const [k, v] of showEpisodesCache) if (now - v.at > SHOW_EPISODES_TTL_MS) dropShowEpisodes(k);
+  showEpisodesCache.delete(show_id);
+  showEpisodesCache.set(show_id, { ...payload, at: now });
+  while (showEpisodesCache.size > SHOW_EPISODES_CACHE_MAX) dropShowEpisodes(showEpisodesCache.keys().next().value);
+}
+
+/** Forget a show's cached page AND the publisher text its rows put in
+    `state.itemIndex` (app-1-11). The row snapshots stay — ids must keep
+    resolving for stars, Up Next and history — but trimmed the way the durable
+    tier stores them (`storableEpisode`: a short hook, no description), which is
+    what the episode page already shows for such an episode after a reload. A
+    catalogue episode is never touched. */
+function dropShowEpisodes(show_id) {
+  showEpisodesCache.delete(show_id);
+  const prefix = `${show_id}--`;
+  for (const id of Object.keys(state.itemIndex)) {
+    if (!id.startsWith(prefix) || state.poolIds.has(id)) continue;
+    const snap = state.itemIndex[id];
+    if (snap && snap.description != null) state.itemIndex[id] = { ...storableEpisode(snap), chapters: snap.chapters ?? null };
+  }
 }
 
 /** First-page fetches currently in flight, by show id.
