@@ -34,6 +34,7 @@ import {
   UA,
   awaitHostSlot,
   backoffMs,
+  discardBody,
   holdHost,
   hostKey,
   resetHostGates,
@@ -501,4 +502,63 @@ test("the backend service sends the same User-Agent as the tools (#316 follow-up
     [],
     `these backend files spell out a User-Agent instead of reading env.userAgent: ${others.join(", ")}`
   );
+});
+
+/* ------------------------------------------------ discardBody (data-tools-6)
+   Audit round 3: verify-source-audio and decode-compare drained EVERY probe
+   response with `await res.arrayBuffer()`, so a host that ignored `Range` and
+   answered 200 handed over the whole episode before the probe said "not 206".
+
+   A body that counts what was pulled from it, so "read nothing" is observable. */
+function countingBody(totalBytes, chunk = 16 * 1024) {
+  const state = { pulled: 0 };
+  const stream = new ReadableStream({
+    pull(controller) {
+      if (state.pulled >= totalBytes) return controller.close();
+      const n = Math.min(chunk, totalBytes - state.pulled);
+      state.pulled += n;
+      controller.enqueue(new Uint8Array(n));
+    },
+  }, { highWaterMark: 0 });
+  return { stream, state };
+}
+
+/* MUTATION: drain regardless of status (the old `await res.arrayBuffer()`) --
+   all 8 MB are pulled and this goes red. */
+test("discardBody cancels a 200 answer to a two-byte probe instead of downloading it", async () => {
+  const { stream, state } = countingBody(8 * 1024 * 1024);
+  const res = new Response(stream, { status: 200, headers: { "content-length": String(8 * 1024 * 1024) } });
+  assert.equal(await discardBody(res), "cancelled");
+  assert.ok(state.pulled < 64 * 1024, `pulled ${state.pulled} bytes of a body nobody wanted`);
+});
+
+/* MUTATION: always cancel -- the 206 is then reported "cancelled". Draining the
+   two bytes is what hands the socket back to the pool. */
+test("discardBody drains the small 206 the probe asked for, and never throws", async () => {
+  const res = new Response(new Uint8Array(2), { status: 206, headers: { "content-length": "2", "content-range": "bytes 0-1/1000" } });
+  assert.equal(await discardBody(res), "drained");
+  // A 206 that declares a huge length is not the answer to bytes=0-1: cancelled.
+  const { stream, state } = countingBody(4 * 1024 * 1024);
+  const big = new Response(stream, { status: 206, headers: { "content-length": String(4 * 1024 * 1024) } });
+  assert.equal(await discardBody(big), "cancelled");
+  assert.ok(state.pulled < 64 * 1024);
+  assert.equal(await discardBody({ status: 200, body: null }), "none");
+  assert.equal(await discardBody(null), "none");
+});
+
+/* The four probe tools let go of bodies through the helper and nothing else, so
+   they cannot drift apart again. MUTATION: put `await res.arrayBuffer()` back
+   in verify-source-audio.mjs. */
+test("every two-byte probe releases its body through discardBody", () => {
+  const PROBES = [
+    "tools/foray/verify-source-audio.mjs",
+    "tools/transcribe/decode-compare.mjs",
+    "tools/transcribe/ad-inflation.mjs",
+    "tools/refresh/dai.mjs",
+  ];
+  for (const f of PROBES) {
+    const src = readFileSync(join(REPO, f), "utf8");
+    assert.match(src, /\bdiscardBody\(res\)/, `${f} does not release its probe body through discardBody`);
+    assert.doesNotMatch(src, /res\.arrayBuffer\(\)|res\.body\??\.cancel/, `${f} releases a probe body by hand`);
+  }
 });
