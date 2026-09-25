@@ -6,7 +6,7 @@ import type { SourcedAct, SourcedSlot, TapeRelevanceInput } from "../types/tapeS
 import type { WrittenAct, WrittenBeat } from "./writeNarration";
 import { decideConnectiveNarration, pageOfWrittenBeat } from "./writeNarration";
 import { clipOpening, introRestatesClip, planActSeams } from "./actSeams";
-import { isSynthesisVerified, isTapeSource, purposeWasRevised, scriptSeconds, tapeDocIdFor, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
+import { findHoldingDoc, isSynthesisVerified, isTapeSource, purposeWasRevised, scriptSeconds, tapeDocIdFor, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
 import { phraseIsInWindow } from "../types/anchorText";
 import { loadCatalogueData, type CatalogueShow } from "./catalogueLookup";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
@@ -71,10 +71,6 @@ export interface FailingPage {
   detail: string;
 }
 
-function normalizeQuote(s: string): string {
-  return s.replace(/\s+/g, " ").trim().toLowerCase();
-}
-
 export interface GroundedQuoteResult {
   rate: number | null;
   checkableQuotes: number;
@@ -102,7 +98,6 @@ export function computeGroundedQuoteRate(writtenActs: WrittenAct[]): GroundedQuo
   for (const { claim, page } of flattenWrittenPages(writtenActs)) {
     const evidence = page.evidence;
     if (!evidence || evidence.length === 0) continue;
-    const haystacks = evidence.map((e: { text: string }) => normalizeQuote(e.text));
     const bad: string[] = [];
     for (const source of page.sources) {
       if (isTapeSource(source)) {
@@ -121,9 +116,13 @@ export function computeGroundedQuoteRate(writtenActs: WrittenAct[]): GroundedQuo
         continue;
       }
       checkableQuotes++;
-      const needle = normalizeQuote(source.quote);
-      const grounded = needle.length > 0 && haystacks.some((h) => h.includes(needle));
-      if (grounded) groundedQuotes++;
+      /* arch-drift-2 (round-3 audit): a print quote is grounded by the SAME
+         predicate the narration gate used (writeNarration.ts gateSelectedClaims
+         -> findHoldingDoc, which folds curly quotes, dashes, ellipses, NBSP and
+         NFKC). The old private normaliser only collapsed whitespace and case,
+         so a straight-apostrophe quote the writer gate accepted against a
+         curly-apostrophe page was refused here at publish. */
+      if (findHoldingDoc(source.quote, evidence) !== null) groundedQuotes++;
       else bad.push(source.quote);
     }
     if (bad.length > 0) {
