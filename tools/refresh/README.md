@@ -335,7 +335,11 @@ What `--source index` does, end to end:
 
 1. Reads `data/shows-index-pointer.json` (S-04b's published pointer) and
    fetches `changed.json` + `id-map.json` + `top.json` from its
-   `asset_base_url`.
+   `asset_base_url`. `changed.json` is `{ baseline, changed }`; until the
+   import persists a prior-release snapshot it is
+   `{ baseline: false, changed: null }`, which (like a pre-baseline bare
+   array, which listed every show) reads as **index unavailable**, and the
+   scan falls back to a full scan (audit round 3, data-tools-14).
 2. Scans only curated shows whose feed the release says changed
    (`selectChangedCuratedShows`). A curated show **absent** from
    `id-map.json` — a join gap in that release, not evidence the show is

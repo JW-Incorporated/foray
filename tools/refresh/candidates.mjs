@@ -98,11 +98,29 @@ export async function loadChangeIndex({ pointerPath = POINTER_PATH, fetchImpl = 
   } catch (e) {
     return { ok: false, reason: `asset did not parse as JSON: ${e.message}` };
   }
-  if (!Array.isArray(changedRaw) || typeof idMap !== "object" || idMap === null || !Array.isArray(topRows)) {
-    return { ok: false, reason: "unexpected asset shape (expected changed.json array, id-map.json object, top.json array)" };
+  if (typeof idMap !== "object" || idMap === null || !Array.isArray(topRows)) {
+    return { ok: false, reason: "unexpected asset shape (expected id-map.json object, top.json array)" };
+  }
+  /* changed.json is { baseline, changed } (audit round 3, data-tools-14).
+     baseline:false means the release had no previous snapshot to diff
+     against, so it cannot say what changed: index unavailable, full scan.
+     A bare array is the pre-fix shape, and every one ever published was
+     diffed against an empty snapshot (every show "changed"), so it is
+     treated exactly the same way rather than trusted. */
+  if (Array.isArray(changedRaw)) {
+    return { ok: false, reason: "changed.json is a bare array (pre-baseline release: every show listed, no real diff) -- index unavailable" };
+  }
+  if (!changedRaw || typeof changedRaw !== "object" || !("baseline" in changedRaw)) {
+    return { ok: false, reason: "unexpected asset shape (expected changed.json { baseline, changed })" };
+  }
+  if (changedRaw.baseline !== true) {
+    return { ok: false, reason: "changed.json has no baseline (no previous-release snapshot) -- index unavailable" };
+  }
+  if (!Array.isArray(changedRaw.changed)) {
+    return { ok: false, reason: "unexpected asset shape (changed.json baseline:true without a changed array)" };
   }
 
-  return { ok: true, changedIds: new Set(changedRaw.map(Number)), idMap, topRows };
+  return { ok: true, changedIds: new Set(changedRaw.changed.map(Number)), idMap, topRows };
 }
 
 /** Curated shows to scan tonight: the curated catalogue intersected with
