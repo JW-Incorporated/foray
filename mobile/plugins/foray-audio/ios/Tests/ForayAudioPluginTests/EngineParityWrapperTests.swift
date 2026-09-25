@@ -72,6 +72,12 @@ final class EngineParityWrapperTests: XCTestCase {
     func testSeekPolicyFamily() { assertParityFamily("seek-policy", requireRunner: true) }
     func testOutpointFamily() { assertParityFamily("outpoint", requireRunner: true) }
 
+    /// NE-29s: the Foray clock, resume rules, structural check and lock screen as the app links them.
+    func testForayClockFamily() { assertParityFamily("foray-clock", requireRunner: true) }
+    func testForayProgressFamily() { assertParityFamily("foray-progress", requireRunner: true) }
+    func testForayStructureFamily() { assertParityFamily("foray-structure", requireRunner: true) }
+    func testMediaFamily() { assertParityFamily("media", requireRunner: true) }
+
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.
     func testEveryManifestFamilyIsExecutedOrPending() throws {

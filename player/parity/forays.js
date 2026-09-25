@@ -25,9 +25,15 @@
    WHAT THE SWIFT RUNNER NEEDS (NE-29s). The same build as input. The engine
    never builds a Foray — `buildForayQueue` and `foray-resolve` stay the page's
    (plan §3 A-1, §11) — so the Swift side of these cases needs the page's build
-   of each named Foray, not a Swift resolver. That is NE-29s's harness choice
-   (a JS-emitted build table read by ForayEngineParity, or a parity-only join);
-   the expects do not depend on which.
+   of each named Foray, not a Swift resolver. NE-29s chose a JS-emitted build
+   table: `player/parity/foray-builds.json`, written by
+   `node tools/parity/foray-builds.mjs --write` from `buildTable` below, holds
+   `r.playable` of every Foray a case here names (and of each frozen one), and
+   ForayEngineParity answers each case over it with the Swift ports. Every
+   function below is `<rule>Of(r)` over a build, so run.test.js can hold the
+   table to the same authored expects in JS (`overTable`): a stale table is
+   still a real page build that passes every rule, and a publish that edits
+   data/ never turns npm test red for it — `--check` says when to refresh.
 
    The page never imports this file. It is harness code, like runner.js. */
 
@@ -50,7 +56,7 @@ function doc(dir, name) {
 }
 
 /** The page's build of a raw Foray against the documents in `dir`. */
-function build(foray, dir = "data") {
+export function build(foray, dir = "data") {
   if (!foray || typeof foray !== "object" || !Array.isArray(foray.items)) {
     throw new TypeError("a Foray document ({id, title, items}) is required — pass it through $foray");
   }
@@ -77,7 +83,12 @@ function rows(r) {
  * @returns {number} 0 is the rule
  */
 export function appAsArtist(foray) {
-  return rows(build(foray)).filter(({ meta, credit }) => meta.artist === APP_NAME || credit === APP_NAME).length;
+  return appAsArtistOf(build(foray));
+}
+
+/** `appAsArtist` over a build `{title, playable}`. */
+export function appAsArtistOf(r) {
+  return rows(r).filter(({ meta, credit }) => meta.artist === APP_NAME || credit === APP_NAME).length;
 }
 
 /**
@@ -94,7 +105,11 @@ export function appAsArtist(foray) {
  *                      app's artwork
  */
 export function lockScreenAudit(foray) {
-  const r = build(foray);
+  return lockScreenAuditOf(build(foray));
+}
+
+/** `lockScreenAudit` over a build `{title, playable}`. */
+export function lockScreenAuditOf(r) {
   const list = rows(r);
   const key = ({ meta }) => `${meta.title}|${meta.artist}|${meta.album}`;
   let frozenDisplays = 0;
@@ -117,7 +132,11 @@ export function lockScreenAudit(foray) {
  *             durationIsNotSegment: boolean, positionIsForayClock: boolean }}
  */
 export function lockScreenClock(foray) {
-  const r = build(foray);
+  return lockScreenClockOf(build(foray));
+}
+
+/** `lockScreenClock` over a build `{title, playable, totalSec}`. */
+export function lockScreenClockOf(r) {
   const mid = Math.floor(r.playable.length / 2);
   const index = r.playable.findIndex((it, i) => i >= mid && Number.isFinite(it.end_sec - it.start_sec));
   if (index < 0) return { tapeItemFound: false, durationIsForayTotal: false, durationIsNotSegment: false, positionIsForayClock: false };
@@ -147,7 +166,11 @@ export function lockScreenClock(foray) {
  * @returns {{[k: string]: boolean}} all true is the rule
  */
 export function clockAudit(foray) {
-  const r = build(foray);
+  return clockAuditOf(foray, build(foray));
+}
+
+/** `clockAudit` of the raw Foray over a build `{playable}`. */
+export function clockAuditOf(foray, r) {
   const items = r.playable;
   const starts = segmentStarts(items);
   const total = forayRuntimeSec(items);
@@ -191,4 +214,85 @@ export function frozenCensus(id) {
 export function committedForays() {
   const list = doc("data", "forays.json").forays ?? [];
   return { atLeastTwo: list.length >= 2 };
+}
+
+/* ---------- the Swift half's input (NE-29s) ---------- */
+
+/** Where the build table lives, repo-relative. */
+export const BUILDS_FILE = "player/parity/foray-builds.json";
+
+/** What a case here names: `$foray` ids (data/) and frozenCensus ids (the
+    frozen fixture), over every fixture file that targets this module. */
+export function committedIds(fixtures) {
+  const data = new Set();
+  const frozen = new Set();
+  for (const { doc } of fixtures) {
+    if (doc.module !== "player/parity/forays.js") continue;
+    for (const c of doc.cases) {
+      const first = c.args?.[0];
+      if (c.call === "frozenCensus" && typeof first === "string") frozen.add(first);
+      else if (typeof first?.$foray === "string") data.add(first.$foray);
+    }
+  }
+  return { data: [...data].sort(), frozen: [...frozen].sort() };
+}
+
+/** The table: the page's build (`r.playable`) of every named Foray. */
+export function buildTable(fixtures) {
+  const { data, frozen } = committedIds(fixtures);
+  const committed = doc("data", "forays.json").forays ?? [];
+  const table = { data: {}, frozen: {} };
+  for (const id of data) {
+    const foray = committed.find((f) => f?.id === id);
+    if (foray) table.data[id] = build(structuredClone(foray)).playable;
+  }
+  for (const id of frozen) {
+    const foray = findForay(doc(FROZEN_DATA, "forays.json"), id, {});
+    if (foray) table.frozen[id] = build(foray, FROZEN_DATA).playable;
+  }
+  return table;
+}
+
+/** The table as the file holds it: one queue item per line, ids sorted, so a
+    refresh diffs by item. */
+export function serializeTable(table) {
+  const note = "NE-29s: the page's build (resolveForay(...).playable) of every committed Foray a player/parity/forays.js case names, and of each frozen one. ForayEngineParity reads it (the engine never builds a Foray, plan §3 A-1). Refresh: node tools/parity/foray-builds.mjs --write. run.test.js holds every build here to the same authored expects.";
+  const NL = "\n";
+  const section = (obj) => Object.keys(obj).sort().map((id) => {
+    const items = obj[id].map((it) => `      ${JSON.stringify(it)}`).join("," + NL);
+    return `    ${JSON.stringify(id)}: [${NL}${items}${NL}    ]`;
+  }).join("," + NL);
+  return ["{", `  "//": ${JSON.stringify(note)},`, `  "data": {`, section(table.data), "  },",
+    `  "frozen": {`, section(table.frozen), "  }", "}", ""].join(NL);
+}
+
+/** A build read back from the table, shaped as the rules above read one. */
+export function fromTable(foray, playable) {
+  return { title: foray?.title ?? "", playable, totalSec: forayRuntimeSec(playable) };
+}
+
+/**
+ * One case of this module answered over the TABLE's build rather than a fresh
+ * one: what the Swift runner computes, in JS. `foray` is the case's first
+ * argument after macro expansion. Throws when the table lacks the build.
+ */
+export function overTable(call, args, table) {
+  const first = args[0];
+  if (call === "committedForays") return committedForays();
+  if (call === "frozenCensus") {
+    const playable = table.frozen?.[first];
+    if (!Array.isArray(playable)) throw new TypeError(`${first} has no frozen build in ${BUILDS_FILE}`);
+    return seamCensus(playable);
+  }
+  const playable = table.data?.[first?.id];
+  if (!Array.isArray(playable)) throw new TypeError(`${first?.id} has no build in ${BUILDS_FILE}`);
+  const r = fromTable(first, playable);
+  switch (call) {
+    case "appAsArtist": return appAsArtistOf(r);
+    case "lockScreenAudit": return lockScreenAuditOf(r);
+    case "lockScreenClock": return lockScreenClockOf(r);
+    case "clockAudit": return clockAuditOf(first, r);
+    case "structureOf": return structuralCheck(r.playable);
+    default: throw new TypeError(`forays.js has no ${call}`);
+  }
 }

@@ -93,7 +93,8 @@ final class ScenarioWorld {
                                      "lifecycle", "remote", "checkpoint"]
     /// The `setup` keys this driver implements; any other is refused, never
     /// ignored, so a case that needs the seam beat or narration (M2) says so.
-    static let setupKeys: Set<String> = ["target", "positions", "positionEvents", "rate", "backend", "catalogue", "session"]
+    static let setupKeys: Set<String> = ["target", "positions", "positionEvents", "rate", "backend", "catalogue", "session",
+                                         "seamGapSec"]
     /// A fixed wall clock (rows are stamped with it) and a monotonic one that
     /// moves a second per step, so nothing in one step is "within 500 ms" of
     /// another unless a case says so.
@@ -135,6 +136,12 @@ final class ScenarioWorld {
         guard case let .object(fields) = setup else { throw HarnessError("E_BAD_CASE", "setup must be an object") }
         for key in fields.keys where !ScenarioWorld.setupKeys.contains(key) {
             throw HarnessError("E_BAD_CASE", "setup.\(key) is not implemented by the Swift scenario driver (M2: the seam beat, narration and the interlude are NE-30s/NE-31s)")
+        }
+        // The seam beat is NE-30s's: until then the core has none, which is
+        // exactly a manager built with `seamGapSec: 0` (NE-29s, media/remote).
+        // Any other beat is a case this driver cannot run yet, never a guess.
+        if setup["seamGapSec"] != .undefined && setup["seamGapSec"] != .number(0) {
+            throw HarnessError("E_BAD_CASE", "setup.seamGapSec \(setup["seamGapSec"]) needs the seam beat (NE-30s); the Swift scenario driver runs only 0")
         }
         guard let target = setup["target"].stringValue, target == "manager" || target == "engine" else {
             throw HarnessError("E_SCENARIO_TARGET", "the Swift scenario driver runs target manager or engine, got \(setup["target"])")
@@ -191,15 +198,18 @@ final class ScenarioWorld {
         case "lifecycle":
             try lifecycle(fields, context: context)
             settle()
+        case "remote":
+            try remote(fields, context: context)
+            if fields["await"] != .bool(false) { settle() }
         case "checkpoint":
             guard let name = fields["checkpoint"]?.stringValue else {
                 throw HarnessError("E_BAD_CASE", "a checkpoint needs a name")
             }
             checkpoint(name)
         default:
-            // clock (the manager's scheduler: the seam beat), tts, interlude
-            // and remote have no Swift driver yet; say which, never skip.
-            throw HarnessError("E_BAD_CASE", "the \"\(verb)\" verb has no Swift scenario driver yet (M2: NE-30s/NE-31s; remote presses: NE-29j)")
+            // clock (the manager's scheduler: the seam beat), tts and
+            // interlude have no Swift driver yet; say which, never skip.
+            throw HarnessError("E_BAD_CASE", "the \"\(verb)\" verb has no Swift scenario driver yet (M2: NE-30s/NE-31s)")
         }
     }
 
@@ -243,9 +253,44 @@ final class ScenarioWorld {
         case "playForay":
             feed(.queue(.load(try forayQueue(arg(0)))))
             feed(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        case "setQueueFromForay":
+            // The same page-built queue, loaded and not started (NE-29s).
+            feed(.queue(.load(try forayQueue(arg(0)))))
         default:
             throw HarnessError("E_UNKNOWN_EXPORT", "\"\(name)\" is not a manager call the Swift scenario driver makes")
         }
+    }
+
+    /// A lock-screen, car or headset press (NE-29s; runner.js `remote`).
+    /// The press goes through the SAME table the page's does
+    /// (`MediaMapping.intent(for:)`, which the media-episode family pins over
+    /// `mediaSessionActions`), and the intent reaches the engine the way iOS
+    /// delivers it: as the `MPRemoteCommand` it stands for, into
+    /// `EngineCore`'s own remote handlers (plan §4.5). runner.js's surface
+    /// installs every intent, so every action is installed here too.
+    private func remote(_ fields: [String: JSONValue], context: Codec.Context) throws {
+        guard let name = fields["remote"]?.stringValue, let action = MediaAction(rawValue: name) else {
+            throw HarnessError("E_BAD_CASE", "unknown remote action \(fields["remote"] ?? .null)")
+        }
+        let details = try Codec.expandInputs(fields["details"] ?? .object([:]), context)
+        let press = MediaMapping.PressDetails(seekTime: details["seekTime"].numberValue,
+                                              close: details["close"] == .bool(true))
+        guard let intent = MediaMapping.intent(for: action, details: press) else { return } // an ignored press
+        let command: RemotePress
+        switch intent {
+        case .play: command = RemotePress(.play)
+        case .pause: command = RemotePress(.pause)
+        case .next: command = RemotePress(.nextTrack)
+        case .previous: command = RemotePress(.previousTrack)
+        case let .seekBy(offset):
+            command = offset < 0 ? RemotePress(.skipBackward, value: -offset) : RemotePress(.skipForward, value: offset)
+        case let .seekTo(position): command = RemotePress(.changePlaybackPosition, value: position)
+        case .stop:
+            // runner.js's surface CLOSES on stop; natively a remote stop is a
+            // pause (plan §4.5, T-7). No answer is pinned for the difference.
+            throw HarnessError("E_BAD_CASE", "a remote stop pauses natively (T-7) where the JS surface closes; no Swift case runs it")
+        }
+        feed(.remote(command))
     }
 
     private func deck(_ fields: [String: JSONValue]) throws {

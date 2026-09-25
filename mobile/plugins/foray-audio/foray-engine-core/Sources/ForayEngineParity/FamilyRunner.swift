@@ -110,6 +110,7 @@ public enum ParityFamilies {
          SessionFamily.runner, SessionInvariantFamily.runner, EngineModeFamily.runner,
          ContractFamily.runner, SnapshotFamily.runner, HandshakeFamily.runner,
          DeckEpisodeFamily.runner, ManagerEpisodeFamily.runner,
-         InterludeFamily.runner, SeekPolicyFamily.runner, OutpointFamily.runner]
+         InterludeFamily.runner, SeekPolicyFamily.runner, OutpointFamily.runner,
+         ForayClockFamily.runner, ForayProgressFamily.runner, ForayStructureFamily.runner, MediaFamily.runner]
     }
 }
