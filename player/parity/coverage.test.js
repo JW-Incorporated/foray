@@ -413,9 +413,14 @@ test("capabilities.json holds the plan §6.6 map", () => {
 
 test("every capability the engine advertises has zero pending and zero unported entries", () => {
   // Read from mobile/ENGINE_DEFAULT.json and the Swift `advertisedCapabilities`
-  // literal. Today neither exists, so nothing is advertised and this passes
-  // trivially; the synthetic cases below are what prove it has teeth.
+  // literal. Since NE-27b (the M1 flip) both name episode, continuation and
+  // restore, so this is the live gate on the shipping build; the synthetic
+  // cases below are what prove it has teeth.
+  // MUTATION: add one manager-episode id to swift-pending.json -> red, naming
+  // mobile/ENGINE_DEFAULT.json (or the Swift file) and the case.
   const advertised = advertisedCapabilities(REPO_ROOT);
+  assert.deepStrictEqual([...advertised.keys()].sort(), ["continuation", "episode", "restore"],
+    "NE-27b: the M1 build advertises exactly episode, continuation and restore");
   assert.deepStrictEqual(capabilityGate(advertised, DATA), []);
 });
 

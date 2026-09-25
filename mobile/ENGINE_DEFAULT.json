@@ -1,3 +1,4 @@
 {
-  "mode": "js"
+  "mode": "native",
+  "capabilities": ["episode", "continuation", "restore"]
 }

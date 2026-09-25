@@ -34,16 +34,19 @@ public enum EngineBridgeRules {
     /// `advertisedCapabilities` reads this literal, and `coverage.test.js`
     /// refuses any entry whose families still owe swift-pending or unported
     /// work (plan §6.6). So:
-    ///   - `continuation` is here: `setContinuation` and the hop walk are the
-    ///     core's (NE-14s), and its family owes nothing.
-    ///   - `episode` is NOT, yet: the core plays episodes, but
-    ///     `manager-episode` and `deck-episode` still carry unported tests,
-    ///     and the gate is right to refuse a claim the fixtures cannot back.
-    ///     The card that empties them adds it here.
-    ///   - `restore` waits for the cold path (NE-24); `foray` for M2 (NE-30s).
-    /// A capability missing here is refused `capability-off` by `engineSend`,
-    /// whatever the plist says.
-    public static let advertisedCapabilities: [String] = ["continuation"]
+    ///   - `episode` (NE-27b, the M1 flip): the core plays episodes (NE-14s),
+    ///     and NE-14k emptied `manager-episode` / `deck-episode` of the 42
+    ///     unported transport-reconcile tests, so every family it lists owes
+    ///     nothing.
+    ///   - `continuation`: `setContinuation` and the hop walk are the core's
+    ///     (NE-14s), and its family owes nothing.
+    ///   - `restore` (NE-27b): the cold path boots from the restore record
+    ///     (NE-24), and its families owe nothing.
+    ///   - `foray` is NOT, yet: it waits for M2 (NE-30s).
+    /// These three are exactly what shell-invariants lets an M1 native
+    /// default (mobile/ENGINE_DEFAULT.json) list. A capability missing here is
+    /// refused `capability-off` by `engineSend`, whatever the plist says.
+    public static let advertisedCapabilities: [String] = ["episode", "continuation", "restore"]
 
     /// `ForayEngineCapabilities` (the plist, from mobile/ENGINE_DEFAULT.json)
     /// ∩ `advertisedCapabilities`, in the contract's order. Nil (no plist key)
