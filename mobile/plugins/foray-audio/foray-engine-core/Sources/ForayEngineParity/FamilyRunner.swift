@@ -111,6 +111,7 @@ public enum ParityFamilies {
          ContractFamily.runner, SnapshotFamily.runner, HandshakeFamily.runner,
          DeckEpisodeFamily.runner, ManagerEpisodeFamily.runner,
          InterludeFamily.runner, SeekPolicyFamily.runner, OutpointFamily.runner,
-         ForayClockFamily.runner, ForayProgressFamily.runner, ForayStructureFamily.runner, MediaFamily.runner]
+         ForayClockFamily.runner, ForayProgressFamily.runner, ForayStructureFamily.runner, MediaFamily.runner,
+         DeckFamily.runner, ManagerForayFamily.runner, PrepareFamily.runner]
     }
 }

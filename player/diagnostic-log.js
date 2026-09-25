@@ -2068,6 +2068,11 @@ export const ENGINE_ROW_KINDS = Object.freeze([
   "speaker",
   /* NE-16g / NE-24: a cold play's span row (grace=, bgRemainingMs), which DV-7a reads. */
   "cold-play",
+  /* NE-30s, the Foray tape: the seam beat beginning, ending and being cut
+     (beat), a ladder refusal at load (skip) and a noted copy (gate), the
+     standby deck asked to prepare (prepare), a rendered bridge that would not
+     load (bridge), and a playForay refused for its structure (foray). */
+  "beat", "skip", "gate", "prepare", "bridge", "foray",
 ]);
 
 const ENGINE_HEADER_KEYS = new Set(["seq", "at", "mono", "kind", "event", "dropped"]);

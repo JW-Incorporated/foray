@@ -21,6 +21,12 @@ public enum GraceReason: String, Equatable, Sendable, CaseIterable {
     case coldPlay = "cold-play"
     /// The next episode of a continuation chain loading after an end.
     case autoAdvance = "auto-advance"
+    /// A Foray seam reached in the background with the next item prepared
+    /// (NE-30s): the span runs from the out-point until it is audible.
+    case seam = "seam"
+    /// The same, with nothing prepared: the next item loads cold inside the
+    /// beat, the case that most needs the process kept awake (NE-30s).
+    case prepareMiss = "prepare-miss"
 }
 
 /// How a grace span ended. Every begin has exactly one of these.
@@ -139,6 +145,10 @@ public enum EngineEvent: Equatable {
     /// `error{code}`: `chain-start` when a hop's start failed (C-6), `load`
     /// for any other failed item.
     case error(code: String, message: String)
+    /// `skipped` (plan §5.4; NE-30s): ADR-0007's ladder refused a segment at
+    /// load (the copy in hand is not the one the times were authored
+    /// against), so it was never audible and the Foray went on without it.
+    case skipped(itemId: String, index: Int, reason: String)
 }
 
 /// What the core asks the world to do.
@@ -184,6 +194,7 @@ public enum EngineCommand: Equatable {
             case .setRate: return "deckSetRate"
             case .setOutPoint: return "deckSetOutPoint"
             case .unload: return "deckUnload"
+            case .prepare: return "deckPrepare"
             }
         case .sessionActivate: return SessionPolicy.TurnMarker.activate
         case .sessionDeactivate: return SessionPolicy.TurnMarker.deactivate

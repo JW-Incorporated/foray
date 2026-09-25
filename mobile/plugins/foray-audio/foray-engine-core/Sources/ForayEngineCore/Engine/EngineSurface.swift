@@ -63,7 +63,7 @@ extension EngineCore {
             forayTitle: "", index: 0, total: 0,
             showArtworkUrl: node["artwork_url"]?.stringValue,
             durationSec: duration, positionSec: position, playbackRate: state.rate,
-            buffering: state.buffering || loading, playing: state.isRunning, inSeamGap: false,
+            buffering: state.buffering || loading, playing: state.isRunning, inSeamGap: state.inSeamGap,
             ended: state.stateType == "ended", foray: state.forayId != nil)
     }
 }

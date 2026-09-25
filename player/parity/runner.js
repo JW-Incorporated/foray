@@ -358,7 +358,7 @@ function project(kind, value) {
     WHAT THE SWIFT RUNNER NEEDS (NE-30s): the same build as input, not a Swift
     resolver — the engine never builds a Foray (plan §3 A-1). The same harness
     choice NE-29s makes for `$foray` (forays.js). */
-async function forayBuildFor(spec, ctx) {
+export async function forayBuildFor(spec, ctx) {
   const { resolveForay, indexSegments, indexSources, findForay } = await importModule(ctx.root, "player/foray-resolve.js");
   const dir = spec?.data === "frozen" ? "tools/foray/fixtures/frozen/data" : spec?.data === "committed" ? "data" : null;
   if (!dir || typeof spec.id !== "string") throw new HarnessError("E_BAD_CASE", `forayBuild needs {id, data: "frozen" | "committed"}`);
