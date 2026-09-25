@@ -856,3 +856,21 @@ test("app-1-8: a page of rows parses cp_saved once, not once per row's star", ()
   assert.strictEqual(m.ctx.isSaved("e1"), false, "a new stored string is read, not the old parse");
 });
 
+test("perf-3: the Now Playing sheet's per-tick reads parse nothing once Up Next and Saved are unchanged", async () => {
+  /* Every 4 Hz timeupdate read EPISODE_NAVIGATION.next, .upNextCount and
+     .isSaved, each re-parsing cp_queue and cp_saved. player/client.js is
+     unchanged: its getters now read the memoised maps. MUTATION: make
+     storedValue call lsGet again -> dozens of parses per second; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  m.ctx.forayContinuation = await import(pathToFileURL(path.join(ROOT, "player/continuation.js")).href);
+  m.ctx.ForayPlayer = { currentEpisodeId: () => "cur" };
+  m.ctx.localStorage.setItem("cp_queue", JSON.stringify(["cur", "q1", "q2"]));
+  m.ctx.localStorage.setItem("cp_saved", JSON.stringify({ q1: { id: "q1", audio_url: "https://x.test/1.mp3" } }));
+  m.ctx.localStorage.setItem("cp_episode_snaps", JSON.stringify({ q2: { id: "q2", audio_url: "https://x.test/2.mp3" } }));
+  const nav = vm.runInContext("EPISODE_NAVIGATION", m.ctx);
+  const warm = [nav.next, nav.upNextCount, nav.isSaved("cur")];
+  assert.ok(typeof warm[0] === "function" && warm[1] === 3, "premise: the getters answer");
+  const parses = countParses(m);
+  for (let tick = 0; tick < 40; tick++) { void nav.next; void nav.upNextCount; nav.isSaved("cur"); }
+  assert.strictEqual(parses.n, 0, `${parses.n} parses over 40 ticks`);
+});
