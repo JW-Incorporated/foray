@@ -9,6 +9,7 @@ import * as searchModule from "../episodes/search.ts";
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
 import { episodeSearchCache, episodeFeedFailureCache } from "../_lib/searchCache.ts";
 import { liveEpisodeGuid } from "../_lib/liveEpisodeId.ts";
+import { episodeIdentity as dbEpisodeIdentity } from "../../backend/src/catalog/ingestShowFeed.ts";
 
 const pick = (m) => (typeof m.default === "function" ? m.default : m.default.default);
 const search = pick(searchModule);
@@ -74,4 +75,20 @@ test("liveEpisodeGuid: a real guid wins, an empty one falls back, and the feed p
   assert.equal(liveEpisodeGuid({ guid: "g", title: "T", publishedAt: null }, 3), "g");
   assert.equal(liveEpisodeGuid({ guid: "", title: "T", publishedAt: null }, 3), "noguid:T:3");
   assert.equal(liveEpisodeGuid({ guid: null, title: "T", publishedAt: "2026-01-01T00:00:00.000Z" }, 3), "noguid:T:2026-01-01T00:00:00.000Z");
+});
+
+/* Round-3 review (L6): the DB ingest keyed a guid-less episode as
+   noguid:<enclosure url>:<title>:<date> while the live list and search keyed it
+   noguid:<title>:<date>, so with DATABASE_URL set the list and search served
+   different ids, and every stored guid-less row was duplicated on the next
+   ingest (and again whenever the enclosure URL rotated).
+   MUTATION: put the enclosure URL back into the DB key -- the ids differ. */
+test("the DB ingest and the live paths mint one id for a guid-less episode, and a rotated URL keeps it", () => {
+  const dated = { guid: null, title: "Talk One", publishedAt: "2026-01-01T00:00:00.000Z", enclosureUrl: "https://cdn.example.com/1.mp3" };
+  assert.equal(dbEpisodeIdentity(dated), liveEpisodeGuid(dated, 0));
+  assert.equal(dbEpisodeIdentity(dated), "noguid:Talk One:2026-01-01T00:00:00.000Z", "the key rows were already stored under");
+  assert.equal(dbEpisodeIdentity({ ...dated, enclosureUrl: "https://dts.podtrac.com/redirect.mp3/cdn.example.com/1.mp3" }), dbEpisodeIdentity(dated));
+  const undated = { guid: "", title: "Talk Two", publishedAt: null, enclosureUrl: "https://cdn.example.com/2.mp3" };
+  assert.equal(dbEpisodeIdentity(undated), liveEpisodeGuid(undated, 7));
+  assert.equal(liveEpisodeGuid(undated, 7), liveEpisodeGuid(undated, 8), "a prepended episode does not move an undated one's id");
 });

@@ -1,3 +1,4 @@
+import { episodeIdentity } from "../feeds/episodeIdentity";
 import { fetchFeedConditional } from "../feeds/conditionalGet";
 import { parseFeed, type ParsedEpisode } from "../feeds/parser";
 import type { CatalogShowEpisode, ShowEpisodesStore, ShowFeedState } from "./showEpisodesStore";
@@ -51,16 +52,13 @@ export function failureBackoffMs(consecutiveFailures: number, ttlMs: number): nu
 }
 
 /**
- * Stable per-episode identity. Composite fallback mirrors ADR-0002's spirit
- * (guid is unreliable alone). `||` rather than `??` so an empty guid can
- * never become the identity "" (backend-rest-10), and no positional index:
- * an index shifts when the publisher prepends a new episode, which minted a
- * duplicate row on every ingest. The enclosure URL is always present here
- * (toCatalogEpisode drops items without one).
+ * Stable per-episode identity: the ONE rule in feeds/episodeIdentity.ts, also
+ * used by the live list and search, so both paths mint the same id. No
+ * positional index here: the enclosure URL is always present on this path
+ * (toCatalogEpisode drops items without one), so an undated guid-less episode
+ * is keyed by it rather than by a feed position that shifts on every prepend.
  */
-export function episodeIdentity(ep: ParsedEpisode): string {
-  return ep.guid || `noguid:${ep.enclosureUrl ?? ""}:${ep.title}:${ep.publishedAt ?? ""}`;
-}
+export { episodeIdentity };
 
 function toCatalogEpisode(showId: string, ep: ParsedEpisode): CatalogShowEpisode | null {
   if (!ep.enclosureUrl) return null; // no real audio_url -> not a playable episode, drop it (never a fabricated pointer)

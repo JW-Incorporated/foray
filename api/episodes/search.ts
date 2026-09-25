@@ -202,8 +202,9 @@ function mapAppleHit(hit: AppleEpisodeHit, idMap: Map<number, string>): EpisodeS
 }
 
 /** Maps a freshly-parsed live-feed episode to our shape (show-scoped path).
- *  `idx` is its position in the whole feed, so a guid-less episode gets the
- *  same fallback id the per-show list serves it under (liveEpisodeGuid). */
+ *  A guid-less episode gets the same fallback id the per-show list serves it
+ *  under (liveEpisodeGuid, the rule the DB ingest also uses); `idx`, its
+ *  position in the whole feed, is only the last resort for that id. */
 export function mapLiveEpisode(showId: string, showTitle: string | null, ep: ParsedEpisode, idx: number): EpisodeSearchResult | null {
   if (!ep.enclosureUrl) return null;
   return {
