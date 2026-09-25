@@ -50,6 +50,9 @@
    Fixtures for the formats live in ./fixtures, tests in
    ./transcript-normalize.test.mjs.                                            */
 
+// Also dependency-free: the one entity decoder in tools/ (data-tools-13).
+import { decodeEntities } from "../refresh/entities.mjs";
+
 /* ------------------------------------------------------------------ format */
 
 /** Declared MIME type -> format. Parameters (`; charset=utf-8`) are stripped
@@ -126,31 +129,8 @@ function round3(n) {
 
 /* --------------------------------------------------------------------- text */
 
-const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", "#39": "'" };
-
-function decodeEntities(s) {
-  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, name) => {
-    const key = name.toLowerCase();
-    if (Object.prototype.hasOwnProperty.call(ENTITIES, key)) return ENTITIES[key];
-    if (key.startsWith("#x")) {
-      const cp = parseInt(key.slice(2), 16);
-      return Number.isFinite(cp) ? safeFromCodePoint(cp, whole) : whole;
-    }
-    if (key.startsWith("#")) {
-      const cp = parseInt(key.slice(1), 10);
-      return Number.isFinite(cp) ? safeFromCodePoint(cp, whole) : whole;
-    }
-    return whole;
-  });
-}
-
-function safeFromCodePoint(cp, fallback) {
-  try {
-    return String.fromCodePoint(cp);
-  } catch {
-    return fallback;
-  }
-}
+/* Entities are decoded by tools/refresh/entities.mjs, the one decoder in
+   tools/ (audit round 3, data-tools-13); a third private copy lived here. */
 
 /** Cue payload -> plain text plus whatever speaker the markup named.
 

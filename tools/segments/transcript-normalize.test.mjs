@@ -353,3 +353,14 @@ test("detectFormat falls back to the declared type when the body is unrecognisab
   assert.equal(detectFormat("x", "TEXT/VTT; charset=utf-8").format, "vtt", "type params and case must not matter");
   assert.equal(detectFormat("x", "application/pdf").format, null);
 });
+
+/* Audit round 3, data-tools-13: cue text is decoded by the one entity decoder
+   in tools/ (tools/refresh/entities.mjs), not a private third copy. The copy
+   knew seven names, so a transcript's `&rsquo;` survived into the cue text.
+   MUTATION: restore the local seven-name decoder -- the apostrophe stays an
+   entity. */
+test("cue text entities go through the shared decoder", () => {
+  const body = "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nit&rsquo;s &#8220;fine&#8221; &amp; &#99999999; ok\n";
+  const r = normalize(body, "text/vtt");
+  assert.equal(r.cues[0].text, "it\u2019s \u201cfine\u201d & &#99999999; ok");
+});

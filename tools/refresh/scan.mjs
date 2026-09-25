@@ -28,13 +28,14 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve as resolvePath } from "node:path";
 import { createRequire } from "node:module";
-import { audioFieldsFrom } from "./enclosure.mjs";
+import { audioFieldsFrom, durationMinutes } from "./enclosure.mjs";
 import { decodeEntities } from "./entities.mjs";
 import { UA } from "../segments/politeness.mjs";
 import { fetchFeedCapped, capItems } from "./fetch-limits.mjs";
 import { loadChangeIndex, selectChangedCuratedShows, curationCandidates } from "./candidates.mjs";
+import { retryItems } from "./resolve.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
@@ -52,17 +53,6 @@ const OUT_PATH = process.env.PENDING_PATH || join(ROOT, "data-local", "fresh-pen
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
-
-function normDuration(raw) {
-  if (raw == null) return null;
-  const s = String(raw).trim();
-  if (/^\d+$/.test(s)) return Math.round(Number(s) / 60);
-  const parts = s.split(":").map(Number);
-  if (parts.some(isNaN)) return null;
-  if (parts.length === 3) return Math.round(parts[0] * 60 + parts[1] + parts[2] / 60);
-  if (parts.length === 2) return Math.round(parts[0] + parts[1] / 60);
-  return null;
-}
 
 function loadState() {
   try { return JSON.parse(readFileSync(STATE_PATH, "utf8")); } catch (_) { return { seen: {} }; }
@@ -100,7 +90,11 @@ async function main() {
   if (SOURCE === "index" && indexMode === null) {
     indexMode = { used: true, changed: shows.length, total: curatedFeedShows.length };
   }
-  const pending = [];
+  /* Last night's unresolved episodes first (audit round 3, data-tools-2):
+     resolve.mjs carries an episode iTunes had not indexed yet, or whose lookup
+     failed, in state.retry, because this scan already marked its guid seen. */
+  const pending = retryItems(state, knownTitles);
+  if (pending.length) console.log(`retrying ${pending.length} episode(s) resolve could not match last night`);
   const withheld = [];
   let polled = 0, failed = 0;
 
@@ -141,7 +135,7 @@ async function main() {
           topics: show.taxonomy_node_ids || [],
           guid, title,
           release_date: pub.toISOString().slice(0, 10),
-          duration_min: normDuration(it["itunes:duration"]),
+          duration_min: durationMinutes(it["itunes:duration"]),   // one parser (arch-drift-5)
           duration_sec: audio.duration_sec,
           audio_url: audio.audio_url,
           audio_type: audio.audio_type,
@@ -163,6 +157,8 @@ async function main() {
   writeFileSync(STATE_PATH, JSON.stringify(state));
   writeFileSync(OUT_PATH, JSON.stringify({
     generated_at: state.last_run,
+    // Where resolve.mjs carries tonight's unresolved episodes (state.retry).
+    state_path: resolvePath(STATE_PATH),
     window_hours: WINDOW_H,
     source: SOURCE,
     ...(indexMode ? { index: indexMode } : {}),

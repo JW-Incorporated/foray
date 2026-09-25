@@ -40,10 +40,12 @@
    looks episodes up at `limit=25`, which is roughly a year on a weekly show
    (measured 2026-08-19: Cider Chat at limit=25 reaches back to 2026-01-21, at
    limit=200 to 2022-03-23). Anything this script emits from deeper than the
-   iTunes window resolves to no trackId and `resolve.mjs` drops it — correctly,
-   since the trackId is the only trustworthy duplicate guard. So the default
-   matches the window rather than the feed, and asking for more is allowed but
-   will report drops.
+   iTunes window resolves to no trackId and `resolve.mjs` does not publish it —
+   correctly, since the trackId is the only trustworthy duplicate guard. So the
+   default matches the window rather than the feed, and asking for more is
+   allowed but will report those rows unresolved (in resolved.json's `retry`
+   list: a backfill pending file names no scan state, so nothing is carried
+   into the nightly's).
 
    Usage:
      node tools/refresh/backfill-show.mjs --show cider-chat
@@ -58,9 +60,10 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { createRequire } from "node:module";
-import { audioFieldsFrom } from "./enclosure.mjs";
+import { audioFieldsFrom, durationMinutes } from "./enclosure.mjs";
 import { decodeEntities } from "./entities.mjs";
 import { UA } from "../segments/politeness.mjs";
+import { readResponseCapped } from "./fetch-limits.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -71,18 +74,6 @@ const THROTTLE_MS = 1500;
 export const DEFAULT_NEWEST = 25;
 
 const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
-
-/** itunes:duration -> whole minutes. Same three shapes scan.mjs accepts. */
-export function normDuration(raw) {
-  if (raw == null) return null;
-  const s = String(raw).trim();
-  if (/^\d+$/.test(s)) return Math.round(Number(s) / 60);
-  const parts = s.split(":").map(Number);
-  if (parts.some(isNaN)) return null;
-  if (parts.length === 3) return Math.round(parts[0] * 60 + parts[1] + parts[2] / 60);
-  if (parts.length === 2) return Math.round(parts[0] + parts[1] / 60);
-  return null;
-}
 
 export class BackfillError extends Error {
   constructor(code, message) {
@@ -205,7 +196,7 @@ export function pendingRecord(show, it) {
       topics: show.taxonomy_node_ids || [],
       guid, title,
       release_date: pub.toISOString().slice(0, 10),
-      duration_min: normDuration(it["itunes:duration"]),
+      duration_min: durationMinutes(it["itunes:duration"]),   // one parser (arch-drift-5)
       duration_sec: audio.duration_sec,
       audio_url: audio.audio_url,
       audio_type: audio.audio_type,
@@ -274,10 +265,27 @@ export function parseArgs(argv) {
   };
 }
 
-async function fetchFeed(url) {
-  const res = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
-  if (!res.ok) throw new BackfillError(`HTTP_${res.status}`, `${url}: HTTP ${res.status}`);
-  return res.text();
+/** How long one feed fetch may take, headers and body together. */
+export const FEED_TIMEOUT_MS = 30_000;
+
+/** One feed, bounded in time AND bytes (audit round 3, data-tools-7): it had
+    neither, so one hung feed hung the backfill forever and an endless one
+    buffered until memory ran out. */
+export async function fetchFeed(url, { fetchImpl = fetch, timeoutMs = FEED_TIMEOUT_MS } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetchImpl(url, { headers: { "User-Agent": UA }, redirect: "follow", signal: controller.signal });
+    if (!res.ok) throw new BackfillError(`HTTP_${res.status}`, `${url}: HTTP ${res.status}`);
+    return await readResponseCapped(res, controller);
+  } catch (e) {
+    if (controller.signal.aborted && !(e instanceof BackfillError) && e?.code !== "TOO_LARGE") {
+      throw new BackfillError("TIMEOUT", `${url}: no complete response in ${timeoutMs}ms`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function main() {

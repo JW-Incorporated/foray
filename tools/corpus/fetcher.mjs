@@ -39,6 +39,21 @@ const ATTEMPT_TIMEOUT_MS = 30_000;
 const RESPONSE_CAP = 50 * 1024 * 1024; // 50MB
 const MAX_RETRY_AFTER_S = 60;
 
+/** The slowest body rate the corpus waits for: 64 KiB/s. A 50 MB PDF gets
+    ~13 minutes on top of the base allowance. */
+const MIN_BODY_BYTES_PER_SEC = 64 * 1024;
+
+/** How long reading a response BODY may take, separate from the time to its
+    headers (audit round 3, data-tools-3). The old single 30 s
+    AbortSignal.timeout covered both, so a large PDF on a slow host could not
+    be read inside it. Scales with the declared length; an undeclared length
+    (chunked) gets four base allowances. */
+export function bodyTimeoutMs(declaredLength, attemptTimeoutMs = ATTEMPT_TIMEOUT_MS) {
+  const n = Number(declaredLength);
+  if (Number.isFinite(n) && n > 0) return attemptTimeoutMs + Math.ceil(n / MIN_BODY_BYTES_PER_SEC) * 1000;
+  return attemptTimeoutMs * 4;
+}
+
 const sleepReal = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export function createFetcher({
@@ -81,16 +96,34 @@ export function createFetcher({
     return run;
   }
 
+  /* The attempt timeout bounds time-to-HEADERS only. The controller outlives
+     it so the body read is bounded by its own clock (readBody below). */
   async function rawGet(url, accept) {
-    const res = await fetchImpl(url, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(attemptTimeoutMs),
-      headers: {
-        "user-agent": USER_AGENT,
-        accept: accept ?? "*/*",
-      },
-    });
-    return res;
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(new DOMException("headers timed out", "TimeoutError")), attemptTimeoutMs);
+    try {
+      const res = await fetchImpl(url, {
+        redirect: "manual",
+        signal: ctl.signal,
+        headers: {
+          "user-agent": USER_AGENT,
+          accept: accept ?? "*/*",
+        },
+      });
+      return { res, ctl };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** Runs `read` under a body deadline that aborts the request's controller. */
+  async function readBody(ctl, timeoutMs, read) {
+    const timer = setTimeout(() => ctl.abort(new DOMException("body read timed out", "TimeoutError")), timeoutMs);
+    try {
+      return await read();
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async function robotsFor(urlObj) {
@@ -98,11 +131,11 @@ export function createFetcher({
     if (s.robots !== undefined) return s.robots;
     const robotsUrl = `${urlObj.protocol}//${urlObj.host}/robots.txt`;
     try {
-      const res = await withHostSlot(urlObj.host, defaultDelayMs, () =>
+      const { res, ctl } = await withHostSlot(urlObj.host, defaultDelayMs, () =>
         rawGet(robotsUrl, "text/plain")
       );
       if (res.status >= 200 && res.status < 300) {
-        const text = await res.text();
+        const text = await readBody(ctl, attemptTimeoutMs, () => res.text());
         s.robots = parseRobots(text, AGENT_TOKEN);
       } else {
         // 4xx: no robots → everything allowed. 5xx: can't know; we proceed
@@ -153,12 +186,13 @@ export function createFetcher({
       );
 
       let res = null;
+      let ctl = null;
       let lastErr = null;
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         try {
-          res = await withHostSlot(urlObj.host, delayMs, () =>
+          ({ res, ctl } = await withHostSlot(urlObj.host, delayMs, () =>
             rawGet(urlObj.href)
-          );
+          ));
           lastErr = null;
         } catch (err) {
           lastErr = err;
@@ -206,32 +240,22 @@ export function createFetcher({
       // Enforce the cap WHILE streaming: content-length can be absent
       // (chunked) or a lie, and buffering-then-checking would already have
       // paid the memory cost the cap exists to prevent.
+      //
+      // A body read that fails (its own deadline, a reset mid-stream) is a
+      // fetch-level failure like any other: returned, never thrown (audit
+      // round 3, data-tools-3). It used to escape fetchUrl, which promises not
+      // to throw, and end the whole ingest run.
       let buf;
-      if (res.body?.getReader) {
-        const reader = res.body.getReader();
-        const parts = [];
-        let total = 0;
-        let overflow = false;
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          total += value.byteLength;
-          if (total > RESPONSE_CAP) {
-            overflow = true;
-            await reader.cancel();
-            break;
-          }
-          parts.push(value);
-        }
-        if (overflow) {
-          return { ok: false, status: res.status, finalUrl: urlObj.href, contentType: res.headers.get("content-type"), body: null, notes: [...notes, `response exceeded ${RESPONSE_CAP} cap mid-stream`] };
-        }
-        buf = Buffer.concat(parts.map((p) => Buffer.from(p)));
-      } else {
-        buf = Buffer.from(await res.arrayBuffer());
-        if (buf.length > RESPONSE_CAP) {
-          return { ok: false, status: res.status, finalUrl: urlObj.href, contentType: res.headers.get("content-type"), body: null, notes: [...notes, `response ${buf.length} bytes exceeds ${RESPONSE_CAP} cap`] };
-        }
+      try {
+        buf = await readBody(ctl, bodyTimeoutMs(len, attemptTimeoutMs), () => readCapped(res));
+      } catch (err) {
+        return { ok: false, status: res.status, finalUrl: urlObj.href, contentType: res.headers.get("content-type"), body: null, notes: [...notes, `body read failed: ${err?.name ?? "Error"}`] };
+      }
+      if (buf === OVER_CAP) {
+        return { ok: false, status: res.status, finalUrl: urlObj.href, contentType: res.headers.get("content-type"), body: null, notes: [...notes, `response exceeded ${RESPONSE_CAP} cap mid-stream`] };
+      }
+      if (buf.length > RESPONSE_CAP) {
+        return { ok: false, status: res.status, finalUrl: urlObj.href, contentType: res.headers.get("content-type"), body: null, notes: [...notes, `response ${buf.length} bytes exceeds ${RESPONSE_CAP} cap`] };
       }
       return {
         ok: true,
@@ -246,4 +270,28 @@ export function createFetcher({
   }
 
   return { fetchUrl };
+}
+
+const OVER_CAP = Symbol("over cap");
+
+/** Reads a body into a Buffer, stopping at RESPONSE_CAP (returns OVER_CAP).
+    Throws whatever the stream throws; fetchUrl turns that into a result. */
+async function readCapped(res) {
+  if (res.body?.getReader) {
+    const reader = res.body.getReader();
+    const parts = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > RESPONSE_CAP) {
+        await reader.cancel();
+        return OVER_CAP;
+      }
+      parts.push(value);
+    }
+    return Buffer.concat(parts.map((p) => Buffer.from(p)));
+  }
+  return Buffer.from(await res.arrayBuffer());
 }

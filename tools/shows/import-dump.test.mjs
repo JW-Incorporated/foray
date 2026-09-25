@@ -234,6 +234,9 @@ test("acceptance: two builds over the same fixture produce byte-identical output
       const b = await readFile(join(dirB, file));
       assert.ok(a.equals(b), `${file} differs between two runs over the same fixture`);
     }
+    /* data-tools-14: no prior-release snapshot is persisted, so the build says
+       it has no baseline instead of listing every show as changed. */
+    assert.deepEqual(JSON.parse(await readFile(join(dirA, "changed.json"), "utf8")), { baseline: false, changed: null });
     // Spot-check a shard too.
     const shardA = readFileSync(join(dirA, "shards", "sh.json.gz"));
     const shardB = readFileSync(join(dirB, "shards", "sh.json.gz"));

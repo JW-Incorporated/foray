@@ -10,7 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { openMigrated } from "./db.mjs";
-import { ingestCapturedText } from "./ingest.mjs";
+import { ingestCapturedText, ingestMany } from "./ingest.mjs";
 const tmpDb = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), "corpus-ingest-")), "t.db");
 
 /* --- the structural guard on the archive-deletion bug -------------------- */
@@ -259,4 +259,28 @@ test("ingestCapturedText: a title change between captures removes the old archiv
   const mdAfter = fs.readdirSync(path.join(ARCHIVE, "markdown")).filter((f) => f.startsWith(idPrefix));
   assert.deepEqual(rawAfter, [`${idPrefix}a-renamed-source.txt`], "the old-title raw file must not be left behind");
   assert.deepEqual(mdAfter, [`${idPrefix}a-renamed-source.md`], "the old-title markdown file must not be left behind");
+});
+
+/* Audit round 3, data-tools-3: a throw out of one source used to escape
+   ingestMany, skip every remaining source and record nothing for the one that
+   threw. MUTATION: remove the per-source try/catch -- ingestMany rejects and
+   the second source is never fetched. */
+test("ingestMany: one source that throws is recorded as failed and the run goes on", async () => {
+  const db = openMigrated(tmpDb(), { create: true });
+  const bad = seededSource(db, { url: "https://example.com/stalls.pdf" });
+  const next = seededSource(db, { url: "https://example.com/gone" });
+  const asked = [];
+  const fetcher = {
+    fetchUrl: async (url) => {
+      asked.push(url);
+      if (url.includes("stalls")) { const e = new Error("body read timed out"); e.name = "TimeoutError"; throw e; }
+      return { ok: false, status: 404, finalUrl: url, contentType: null, body: null, notes: [] };
+    },
+  };
+  const results = await ingestMany(db, fetcher, [bad, next], capture());
+  assert.deepEqual(results.map((r) => r.outcome), ["failed", "failed"]);
+  assert.equal(asked.length, 2, "the second source was still fetched");
+  const row = db.prepare("SELECT http_status, fetch_notes FROM documents WHERE source_id = ?").get(bad.id);
+  assert.equal(row.http_status, 0);
+  assert.match(row.fetch_notes, /ingest threw: TimeoutError/);
 });

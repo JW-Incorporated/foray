@@ -269,3 +269,24 @@ test("distinct guids get distinct keys even when they slug the same", () => {
   assert.equal(safeKey("g1"), safeKey("g1"));
   assert.match(safeKey("!!!"), /^[0-9a-f]{10}$/, "an unsluggable guid still yields a key");
 });
+
+/* Audit round 3, data-tools-7: the byte ceiling was checked only after
+   res.text() had buffered the whole body. It is now counted while streaming.
+   MUTATION: go back to `await res.text()` -- all 40 MB are pulled. */
+test("an undeclared oversize transcript is cut off at the ceiling, not buffered whole", async () => {
+  const total = 40 * 1024 * 1024;
+  let pulled = 0;
+  const body = new ReadableStream({
+    pull(c) {
+      if (pulled >= total) return c.close();
+      pulled += 1024 * 1024;
+      c.enqueue(new Uint8Array(1024 * 1024));
+    },
+  }, { highWaterMark: 0 });
+  const response = new Response(body, { status: 200, headers: { "content-type": "text/vtt" } });
+  await assert.rejects(
+    () => fetchBody("https://t/endless.vtt", { attempts: 1, fetchImpl: async () => response }),
+    (e) => e instanceof FetchError && e.code === "TOO_LARGE",
+  );
+  assert.ok(pulled <= MAX_BODY_BYTES + 2 * 1024 * 1024, `pulled ${pulled} bytes past a ${MAX_BODY_BYTES}-byte ceiling`);
+});

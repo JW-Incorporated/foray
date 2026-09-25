@@ -17,8 +17,8 @@ scan.mjs ──▶ fresh-pending.json ──▶ resolve.mjs ──▶ resolved.j
 
 | Script | Keyless? | Role |
 |--------|----------|------|
-| `scan.mjs`    | ✅ | Poll curated RSS feeds, emit episodes newer than last run |
-| `resolve.mjs` | ✅ (iTunes lookup) | Resolve `apple_track_id`, dedup, drop unresolvable/dupe/invalid-topic |
+| `scan.mjs`    | ✅ | Poll curated RSS feeds, emit episodes newer than last run, plus last night's `state.retry` |
+| `resolve.mjs` | ✅ (iTunes lookup) | Resolve `apple_track_id` by guid, enclosure URL, then exact title (fuzzy only on the same release date), dedup, drop dupe/invalid-topic; carry a failed lookup or a not-yet-indexed episode in `state.retry` for up to 3 nights |
 | `merge.mjs`   | ✅ | Apply agent-authored hooks/tags, enforce copy rules, write data files |
 | `candidates.mjs` | — | S-11: change-index loading + curated-scan-selection + curation-candidates helpers (not a stage) |
 | `enclosure.mjs` | — | Shared audio-provenance helpers (not a stage) |
@@ -335,7 +335,11 @@ What `--source index` does, end to end:
 
 1. Reads `data/shows-index-pointer.json` (S-04b's published pointer) and
    fetches `changed.json` + `id-map.json` + `top.json` from its
-   `asset_base_url`.
+   `asset_base_url`. `changed.json` is `{ baseline, changed }`; until the
+   import persists a prior-release snapshot it is
+   `{ baseline: false, changed: null }`, which (like a pre-baseline bare
+   array, which listed every show) reads as **index unavailable**, and the
+   scan falls back to a full scan (audit round 3, data-tools-14).
 2. Scans only curated shows whose feed the release says changed
    (`selectChangedCuratedShows`). A curated show **absent** from
    `id-map.json` — a join gap in that release, not evidence the show is
