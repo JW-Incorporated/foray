@@ -927,3 +927,37 @@ test("app-1-14: a playlist title keeps accented and non-Latin words whole", () =
   assert.strictEqual(t("the history of ai"), "History AI", "ASCII stopwords and acronyms still apply");
   assert.strictEqual(t("!!!"), "Playlist");
 });
+
+/* ==================================================================== */
+/* app-1-6: a generated playlist's link survives a re-deal                */
+/* ==================================================================== */
+
+test("app-1-6: #/playlist/gen-<leaf> resolves from the catalogue after a re-deal, and for a leaf outside the top three", async () => {
+  /* generatedPlaylistById looked the id up among the three Home shows, which
+     drop any leaf whose root is dealt into a card slot this boot. MUTATION:
+     resolve through generatedPlaylists().find again -> "not found" once the
+     leaf's root is dealt; red. */
+  const m = mount();
+  await m.booted();
+  const home = m.ctx.generatedPlaylists();
+  assert.ok(home.length > 0, "premise: Home shows generated playlists");
+  const shown = home[0];
+  const before = [...shown.items].map((p) => p.id);
+  const again = m.ctx.generatedPlaylistById(shown.id);
+  assert.deepStrictEqual([...again.items].map((p) => p.id), before, "the page matches Home's card while Home shows it");
+
+  const leaf = m.ctx.nodeById(shown.branch);
+  m.state.cardSlots = [{ slot: 1, branch: leaf.parent, role: "top", item: null, items: [] }];   // the next boot deals its root
+  assert.ok(!m.ctx.generatedPlaylists().some((p) => p.id === shown.id), "premise: Home no longer shows it");
+  const afterRedeal = m.ctx.generatedPlaylistById(shown.id);
+  assert.ok(afterRedeal && afterRedeal.items.length >= 3, "a re-deal made the link 'Playlist not found'");
+
+  const pool = m.ctx.poolFiltered();
+  const other = m.state.taxonomy.nodes.find((n) => n.parent !== null && !home.some((p) => p.branch === n.id)
+    && pool.filter((it) => (it.topics || []).includes(n.id)).length >= 3);
+  assert.ok(other, "premise: a leaf with episodes that Home does not show");
+  assert.ok(m.ctx.generatedPlaylistById(`gen-${other.id}`), "a real leaf outside the top three is not answerable");
+  assert.strictEqual(m.ctx.generatedPlaylistById("gen-no-such-leaf"), null);
+  const root = m.state.taxonomy.nodes.find((n) => n.parent === null);
+  assert.strictEqual(m.ctx.generatedPlaylistById(`gen-${root.id}`), null, "a root is a subject, not a generated playlist");
+});

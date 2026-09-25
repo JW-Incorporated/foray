@@ -2053,9 +2053,33 @@ function generatedPlaylists() {
   }
   return out;
 }
+/* ANY REAL LEAF IS ANSWERABLE (audit round 3, app-1-6; qa 116's rule for
+   #/subject/). This used to look the id up in generatedPlaylists(), whose top-3
+   cut and slot-parent filter exist only to choose what HOME shows -- and the
+   card slots are re-dealt at random every boot. So a reload, a relaunch
+   (relaunchRoute), a Jump back in card or a shared link said "Playlist not
+   found" whenever the leaf's root was dealt this time or interests had moved it
+   out of the top three. Now the id resolves from the catalogue alone: the leaf
+   exists and holds at least GENERATED_PLAYLIST_MIN pool episodes, newest first,
+   leaving out the episodes the card slots show where enough remain (so the
+   page matches Home's card whenever Home shows it). */
 function generatedPlaylistById(id) {
-  if (!/^gen-/.test(String(id || ""))) return null;
-  return generatedPlaylists().find(p => p.id === id) || null;
+  const m = /^gen-(.+)$/.exec(String(id || ""));
+  if (!m) return null;
+  const node = nodeById(m[1]);
+  if (!node || node.parent === null) return null;
+  const onLeaf = poolFiltered().filter(it => (it.topics || []).includes(node.id));
+  const slots = state.cardSlots || [];
+  const slotItemIds = new Set(slots.flatMap(sl => (sl.items || []).map(it => it.id)).concat(slots.map(sl => sl.item?.id)).filter(Boolean));
+  const unslotted = onLeaf.filter(it => !slotItemIds.has(it.id));
+  const items = (unslotted.length >= GENERATED_PLAYLIST_MIN ? unslotted : onLeaf)
+    .sort((a, b) => String(b.release_date || "").localeCompare(String(a.release_date || "")) || String(a.id).localeCompare(String(b.id)))
+    .slice(0, GENERATED_PLAYLIST_SIZE);
+  if (items.length < GENERATED_PLAYLIST_MIN) return null;
+  return withMirror({
+    id: "gen-" + node.id, branch: node.id, title: node.label || node.id,
+    items: items.map(playlistPart), sparse: false, isSubject: false, isGenerated: true,
+  });
 }
 
 /* U-05 (docs/ui-transition-plan.md D7): does one of the listener's OWN
