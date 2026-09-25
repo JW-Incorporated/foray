@@ -1,5 +1,7 @@
 import { SlidingWindowBucket, APPLE_BUCKET_WINDOW_MS, APPLE_BUCKET_CAPACITY } from "./appleBucket";
 import { TtlCache } from "./searchCache";
+import { KeyedBuckets } from "./keyedBuckets";
+import { appleCallerBuckets, normalizeSearchText, CLIENT_LIMITED_ERROR } from "./clientLimit";
 
 /**
  * S-06 (docs/search-plan.md): the Apple fall-through for SHOW search.
@@ -127,7 +129,7 @@ export interface AppleShowResult {
     `searchBreadthShows` does to the same query, so "Radiolab" and " radiolab "
     are one question here too. */
 export function appleShowCacheKey(query: string, limit: number): string {
-  return `${limit}::${String(query || "").trim().toLowerCase()}`;
+  return `${limit}::${normalizeSearchText(query)}`;
 }
 
 /** One Apple hit -> one client-shaped row, or `null` if it cannot be mapped.
@@ -337,7 +339,14 @@ export async function appleShowSearch(
   query: string,
   limit: number,
   fetchImpl: typeof fetch = fetch,
-  deps: { bucket?: SlidingWindowBucket; cache?: TtlCache<AppleShowResult[]> } = {}
+  deps: {
+    bucket?: SlidingWindowBucket;
+    cache?: TtlCache<AppleShowResult[]>;
+    /** The caller's key (clientLimit.ts clientKey) and its per-client bucket
+        (security-10). Without a key, no per-client limit applies. */
+    callerKey?: string;
+    callerBuckets?: KeyedBuckets;
+  } = {}
 ): Promise<AppleShowSearchOutcome> {
   const bucket = deps.bucket ?? appleShowBucket;
   const cache = deps.cache ?? appleShowCache;
@@ -346,6 +355,11 @@ export async function appleShowSearch(
   const cached = cache.get(key);
   if (cached) return { shows: cached, error: null, cached: true };
 
+  /* The caller's own budget before the shared one (security-10): one client
+     cannot drain the directory for every listener on this instance. */
+  if (deps.callerKey !== undefined && !(deps.callerBuckets ?? appleCallerBuckets).tryConsume(deps.callerKey)) {
+    return { shows: [], error: CLIENT_LIMITED_ERROR, cached: false };
+  }
   if (!bucket.tryConsume()) {
     return { shows: [], error: "rate limit exceeded — try again shortly", cached: false };
   }

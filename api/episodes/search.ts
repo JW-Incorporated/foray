@@ -7,6 +7,10 @@ import { loadShowIdMap } from "../_lib/showIdMap";
 import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "../_lib/searchCache";
 import { sharedFeedReader, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache";
 import { liveEpisodeGuid } from "../_lib/liveEpisodeId";
+import {
+  appleCallerBuckets, clientKey, normalizeSearchText, CLIENT_LIMITED_ERROR,
+  QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY_TOO_LONG_ERROR, QUERY_TOO_SHORT_ERROR,
+} from "../_lib/clientLimit";
 
 /**
  * GET /api/episodes/search?q=<query>&show=<show_id> — episode search (S-07,
@@ -366,6 +370,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     res.status(400).json({ error: "q is required" });
     return;
   }
+  if (q.length > QUERY_MAX_CHARS) {
+    res.status(400).json({ error: QUERY_TOO_LONG_ERROR });
+    return;
+  }
 
   const showScope = firstParam(req.query.show);
   const limitParam = firstParam(req.query.limit);
@@ -417,6 +425,18 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   }
 
   // General (unscoped) search — the rate-limited Apple path.
+  /* security-10: the caller's own budget, and a query worth a slot, before the
+     shared Apple bucket. Same one shape as every other answer. */
+  const refusal = normalizeSearchText(q).length < QUERY_MIN_CHARS
+    ? QUERY_TOO_SHORT_ERROR
+    : !appleCallerBuckets.tryConsume(clientKey(req.headers))
+      ? CLIENT_LIMITED_ERROR
+      : null;
+  if (refusal) {
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).json({ query: q, show: null, episodes: [], source: [], total: 0, capped: false, degraded: true, error: refusal });
+    return;
+  }
   if (!appleSearchBucket.tryConsume()) {
     res.setHeader("Cache-Control", "no-store");
     res.status(200).json({

@@ -8,6 +8,8 @@
  * refetches.
  */
 
+import { normalizeSearchText } from "./clientLimit";
+
 export interface Clock {
   now(): number;
 }
@@ -83,8 +85,10 @@ export class TtlCache<T> {
   }
 }
 
+/** Trivial variants of one query share one key (security-10): case, width,
+    punctuation and spacing are folded (clientLimit.ts normalizeSearchText). */
 export function normalizeQueryKey(q: string, show: string | null, limit: number): string {
-  return `${show ?? ""}::${limit}::${q.trim().toLowerCase()}`;
+  return `${show ?? ""}::${limit}::${normalizeSearchText(q)}`;
 }
 
 export const episodeSearchCache = new TtlCache<unknown>();
