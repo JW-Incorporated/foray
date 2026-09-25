@@ -2099,7 +2099,9 @@ function paintPage(running) {
  * clocks go through the same formatter's rule first, so they add up.
  */
 function paintClocks(pos, dur, valuetext = true) {
-  const whole = foray ? Math.floor : Math.round;
+  /* One rounding rule for both clocks (audit round 3, arch-drift-10): the
+     elapsed text is floored everywhere now, so its countdown is too. */
+  const whole = Math.floor;
   const now = foray ? fmtClock(pos) : formatTimestamp(pos, EXACT);
   if (ui.tNow.textContent !== now) ui.tNow.textContent = now;
   const left = dur ? remainingClock(whole(dur) - whole(pos)) : "--:--";

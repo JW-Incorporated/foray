@@ -3024,14 +3024,21 @@ test("ROUND 2 honesty-13: elapsed and remaining add up, and the countdown keeps 
   await client.play({ ...episodeItem(), duration_sec: 60 });
   await settle();
   const { now, left } = clocks(doc);
+  /* Audit round 3, arch-drift-10: every clock floors now (the Foray clock
+     always did), so 12.5 s reads 0:12 and the countdown is derived from the
+     same floored seconds. */
   audio.currentTime = 12.5;
   audio.fire("timeupdate");
-  assert.equal(now.textContent, "0:13");
-  assert.equal(left.textContent, "-0:47", "13 + 47 = 60");
+  assert.equal(now.textContent, "0:12");
+  assert.equal(left.textContent, "-0:48", "12 + 48 = 60");
   audio.currentTime = 59.3;
   audio.fire("timeupdate");
   assert.equal(left.textContent, "-0:01", "a clock that shows a second keeps its minus");
   audio.currentTime = 59.6;
+  audio.fire("timeupdate");
+  assert.equal(now.textContent, "0:59", "still playing, so not yet the end");
+  assert.equal(left.textContent, "-0:01");
+  audio.currentTime = 60;
   audio.fire("timeupdate");
   assert.equal(left.textContent, "0:00", "and only a clock that shows nothing drops it");
   restore();

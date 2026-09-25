@@ -10047,7 +10047,7 @@ function moreFromShow(item) {
    are no chapters — matches every other absence-is-a-real-state section on
    this page (moreFromShow, similarShowsSection, showForaysHtml). */
 function fmtChapterTime(seconds) {
-  const s = Math.max(0, Math.round(Number(seconds) || 0));
+  const s = Math.max(0, Math.floor(Number(seconds) || 0)); // floored like the player's clocks (arch-drift-10)
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
