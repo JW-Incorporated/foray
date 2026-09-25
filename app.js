@@ -3942,6 +3942,20 @@ function renderAllShows(initialQuery = "") {
    `state.itemIndex[id]` first, so a full-catalogue row plays and stars
    exactly like a curated one. No new row UI needed; every episode gets a
    real, playable audio_url straight from the endpoint, never a link-out. */
+/** THE ONE IDENTITY OF A SHOW-EPISODE ROW (audit round 3, app-1-3/app-1-5).
+    The feed's guid when it has one; otherwise the SAME fallback the list
+    endpoint mints (api/shows/[show_id]/episodes.ts toLiveEpisode:
+    `noguid:<title>:<published_at>`). The show-scoped search endpoint passes a
+    null guid straight through, and building the id as `${show}--${ep.guid}`
+    made every guid-less row `<show>--null`: one itemIndex slot, so each row's
+    ▶ played the last row's audio. Rows from the endpoints carry `guid`, never
+    `id`, so this is also what two fetched pages are compared by. */
+function showEpisodeGuid(ep) {
+  if (!ep) return "";
+  if (ep.guid != null && String(ep.guid) !== "") return String(ep.guid);
+  return `noguid:${ep.title ?? ""}:${ep.published_at ?? ""}`;
+}
+
 function fullCatalogueRowToEpRowItem(show, ep) {
   const id = `${show.show_id}--${ep.guid}`;
   return snapshot(id, {
@@ -5113,12 +5127,16 @@ function paintShowDescription(header) {
   el.hidden = false;
 }
 
-/** Do two fetched pages hold the same episodes, in the same order? Ids only —
-    a description edit upstream is not a reason to yank the list out from under
-    someone who is reading it. */
+/** Do two fetched pages hold the same episodes, in the same order? Identity
+    only — a description edit upstream is not a reason to yank the list out from
+    under someone who is reading it.
+    BY GUID, NOT `id` (audit round 3, app-1-3): endpoint rows carry `guid` and no
+    `id`, so comparing `id` was `undefined !== undefined` on every row and any
+    two pages of the same length (every 100-row first page) read as unchanged —
+    a new episode at the top never repainted. */
 function sameEpisodeList(a, b) {
   if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) if (a[i].id !== b[i].id) return false;
+  for (let i = 0; i < a.length; i += 1) if (showEpisodeGuid(a[i]) !== showEpisodeGuid(b[i])) return false;
   return true;
 }
 

@@ -82,7 +82,12 @@ function loadApp() {
 }
 
 const app = loadApp();
-const EPS = (...ids) => ids.map((id) => ({ id, title: id }));
+/* REAL API ROWS (audit round 3, app-1-3). `api/shows/:id/episodes` returns
+   CatalogShowEpisode rows — `guid`, `title`, `published_at` — and NO `id`. This
+   fixture used to build `{ id, title }`, a shape production never sends, which is
+   exactly why it could not see sameEpisodeList comparing `undefined` to
+   `undefined` on every real row. */
+const EPS = (...ids) => ids.map((id) => ({ show_id: "s", guid: id, title: id, published_at: "2026-09-01T00:00:00Z" }));
 
 /* ---------- the fetch no longer defeats the HTTP cache ------------------- */
 
@@ -140,11 +145,26 @@ test("sameEpisodeList compares ids and order, not contents", () => {
      MUTATION: compare with JSON.stringify — the title change below then reads
      as a change and the list repaints for nothing. */
   assert.strictEqual(app.sameEpisodeList(EPS("a", "b"), EPS("a", "b")), true);
-  assert.strictEqual(app.sameEpisodeList(EPS("a", "b"), [{ id: "a", title: "EDITED" }, { id: "b", title: "b" }]), true);
+  assert.strictEqual(app.sameEpisodeList(EPS("a", "b"), [{ ...EPS("a")[0], title: "EDITED" }, EPS("b")[0]]), true);
   assert.strictEqual(app.sameEpisodeList(EPS("a", "b"), EPS("b", "a")), false, "order is part of it");
   assert.strictEqual(app.sameEpisodeList(EPS("a"), EPS("a", "b")), false, "a new episode is a change");
   assert.strictEqual(app.sameEpisodeList(null, EPS("a")), false);
   assert.strictEqual(app.sameEpisodeList(EPS("a"), null), false);
+});
+
+test("a same-length page with a NEW episode at the top is a change (real API rows)", () => {
+  /* Audit round 3, app-1-3. Every show with 100+ episodes returns exactly
+     PAGE_SIZE rows, so a new episode keeps the page the same length: the head
+     changes and the tail drops one. Compared by `id`, which these rows do not
+     carry, that read as "unchanged" and the refresh never repainted.
+     MUTATION: compare `a[i].id !== b[i].id` again. This goes red. */
+  const yesterday = EPS("e3", "e2", "e1");
+  const today = EPS("e4", "e3", "e2");
+  assert.strictEqual(app.sameEpisodeList(yesterday, today), false, "a new head episode must repaint");
+  /* Guid-less rows fall back to title + date, like the list endpoint does. */
+  const noGuid = (title, published_at) => ({ show_id: "s", guid: null, title, published_at });
+  assert.strictEqual(app.sameEpisodeList([noGuid("A", "d1")], [noGuid("B", "d2")]), false);
+  assert.strictEqual(app.sameEpisodeList([noGuid("A", "d1")], [noGuid("A", "d1")]), true);
 });
 
 /* ---------- the load path's shape ---------------------------------------- */
