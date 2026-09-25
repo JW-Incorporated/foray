@@ -41,82 +41,9 @@ process.on("unhandledRejection", () => {});
 
 /* ---------- a small DOM ---------- */
 
-class El {
-  constructor(tag) {
-    this.tagName = String(tag || "div").toUpperCase();
-    this.children = [];
-    this.parent = null;
-    this.id = null;
-    this.className = "";
-    this.textContent = "";
-    this.value = "";
-    this.hidden = false;
-    this.disabled = false;
-    this.attrs = {};
-    this.dataset = {};
-    this.style = { setProperty() {} };
-    this._html = "";
-    this._on = new Map();
-    const cls = () => new Set(String(this.className).split(/\s+/).filter(Boolean));
-    this.classList = {
-      add: (...c) => { const s = cls(); c.forEach((x) => s.add(x)); this.className = [...s].join(" "); },
-      remove: (...c) => { const s = cls(); c.forEach((x) => s.delete(x)); this.className = [...s].join(" "); },
-      contains: (c) => cls().has(c),
-      toggle: (c, on) => { const want = on ?? !cls().has(c); if (want) this.classList.add(c); else this.classList.remove(c); return want; },
-    };
-  }
-  get firstElementChild() { return this.children[0] || null; }
-  get innerHTML() { return this._html; }
-  set innerHTML(html) {
-    this._html = String(html);
-    this.children = [];
-    const stack = [this];
-    const re = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g;
-    let m;
-    while ((m = re.exec(this._html))) {
-      const [, closing, tag, rest] = m;
-      if (closing) { if (stack.length > 1) stack.pop(); continue; }
-      const kid = new El(tag);
-      for (const a of rest.matchAll(/([a-zA-Z_:][\w:.-]*)(?:="([^"]*)")?/g)) {
-        const [, name, val = ""] = a;
-        kid.attrs[name] = val;
-        if (name === "id") kid.id = val;
-        if (name === "class") kid.className = val;
-      }
-      stack[stack.length - 1].appendChild(kid);
-      if (!/^(img|input|br|hr|meta|link|source)$/i.test(tag) && !/\/\s*$/.test(rest)) stack.push(kid);
-    }
-  }
-  appendChild(k) { k.parent = this; this.children.push(k); return k; }
-  append(...ks) { ks.forEach((k) => this.appendChild(k)); }
-  remove() { if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this); }
-  setAttribute(k, v) { this.attrs[k] = String(v); }
-  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
-  removeAttribute(k) { delete this.attrs[k]; }
-  hasAttribute(k) { return k in this.attrs; }
-  addEventListener(t, fn) { if (!this._on.has(t)) this._on.set(t, []); this._on.get(t).push(fn); }
-  removeEventListener() {}
-  listeners(t) { return (this._on.get(t) || []).length; }
-  focus() {} blur() {} select() {}
-  closest() { return null; }
-  getBoundingClientRect() { return { top: 0, left: 0, width: 0, height: 0 }; }
-  descendants() { return this.children.flatMap((c) => [c, ...c.descendants()]); }
-  querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
-  querySelectorAll(sel) {
-    const parts = String(sel).trim().split(/\s+/);
-    let scopes = [this];
-    for (const p of parts) scopes = scopes.flatMap((s) => s.descendants().filter((e) => matches(e, p)));
-    return [...new Set(scopes)];
-  }
-}
-function matches(el, sel) {
-  return sel.split(/(?=[#.[])/).every((tok) => {
-    if (tok.startsWith("#")) return el.id === tok.slice(1);
-    if (tok.startsWith(".")) return el.classList.contains(tok.slice(1));
-    if (tok.startsWith("[")) { const name = tok.slice(1, -1).split("=")[0]; return name in el.attrs; }
-    return el.tagName === tok.toUpperCase();
-  });
-}
+/* The shared small DOM (audit round 3, tests-10): one copy, and a
+   `[name="value"]` selector compares the value. */
+const { El } = require("./helpers/fake-dom.js");
 
 async function settle(n = 30) { for (let i = 0; i < n; i++) await new Promise((r) => setTimeout(r, 0)); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -660,5 +587,33 @@ test("perf-5: the two roman faces are preloaded, same-origin, as fonts", () => {
   const html = read("index.html");
   for (const f of ["fonts/fraunces-variable.woff2", "fonts/dm-sans-variable.woff2"]) {
     assert.ok(html.includes(`<link rel="preload" href="${f}" as="font" type="font/woff2" crossorigin>`), `${f} is not preloaded`);
+  }
+});
+
+/* ==================================================================== */
+/* tests-10: the shared small DOM compares attribute values               */
+/* ==================================================================== */
+
+test("tests-10: [name=\"value\"] matches only the element with that value, in both harnesses' shared DOM", () => {
+  /* boot-path and load-states each had a copy whose `[data-x="id"]` threw the
+     value away, so a lookup by value got the first element carrying the
+     attribute. MUTATION: in test/helpers/fake-dom.js make the valued branch
+     `name in el.attrs` again -> the lookup for "b" answers "a"; red. Put an
+     inline El back in either suite -> the second assertion group is red. */
+  const { El } = require("./helpers/fake-dom.js");
+  const root = new El("div");
+  root.innerHTML = '<ul><li><button data-star="a" class="star">A</button></li><li><button data-star="b.c #d" class="star on">B</button></li></ul>';
+  const [a, b] = root.querySelectorAll("[data-star]");
+  assert.ok(a && b, "premise: two stars");
+  assert.strictEqual(root.querySelector('[data-star="b.c #d"]'), b, "a value holding . # and a space is one token");
+  assert.strictEqual(root.querySelector("[data-star='a']"), a);
+  assert.strictEqual(root.querySelector('button.on[data-star="b.c #d"]'), b);
+  assert.strictEqual(root.querySelector('[data-star="zzz"]'), null, "a value no element has matches nothing");
+  assert.strictEqual(root.querySelectorAll('ul [data-star="a"]').length, 1);
+  assert.throws(() => root.querySelector("[data-star^=a]"), /not supported/, "an operator it does not know throws instead of matching nothing");
+  for (const f of ["boot-path.test.js", "load-states.test.js"]) {
+    const src = fs.readFileSync(path.join(__dirname, f), "utf8");
+    assert.ok(!/\bclass El\b/.test(src), `${f} carries its own El again`);
+    assert.ok(src.includes('require("./helpers/fake-dom.js")'), `${f} does not use the shared DOM`);
   }
 });
