@@ -151,3 +151,68 @@ test("round 2: the README's STATUS table agrees with the ledger", () => {
   assert.ok(all, "round-2 README's STATUS table has no all-rows line");
   assert.equal(Number(all.split("|").map((c) => c.trim()).filter(Boolean)[1].replace(/\*/g, "")), R2_STATUS.length);
 });
+
+/* ---------- round 3 (docs/audit/round-3-code/, 2026-09-25) ----------
+   The code audit's ledger, held to the same three promises. Round 3 has no
+   uncertain verdicts; its L7 lane ships in its own PR (#821, and the held
+   #822), so the README table also counts the rows whose `where` names those,
+   which keeps "fixed" from reading as "in the main fix PR" for them.
+   MUTATION: delete a row from round-3-code/status.tsv -> the first test goes
+   red; mark a refuted row "fixed" -> the second; edit a README count (either
+   column) -> the third. Each was run. */
+const R3 = (f) => fs.readFileSync(path.join(DIR, "round-3-code", f), "utf8").replace(/\r\n/g, "\n");
+const R3_FINDINGS = R3("findings.tsv").replace(/\n+$/, "").split("\n").slice(1).map((l) => {
+  const c = l.split("\t");
+  return { id: c[0], verdict: c[3], title: c[6] };
+});
+const [R3_HEAD, ...R3_ROWS] = R3("status.tsv").trimEnd().split("\n").map((l) => l.split("\t"));
+const R3_STATUS = R3_ROWS.map(([id, title, disposition, where, note]) => ({ id, title, disposition, where, note }));
+const inL7Pr = (s) => /#82[12]\b/.test(s.where);
+
+test("round 3: every finding has exactly one status row, under its own title", () => {
+  assert.deepEqual(R3_HEAD, ["id", "title", "disposition", "where", "note"]);
+  assert.equal(R3_FINDINGS.length, 186, "round 3 verified 186 findings");
+  const seen = new Map();
+  for (const s of R3_STATUS) {
+    assert.ok(!seen.has(s.id), `${s.id} has two status rows`);
+    seen.set(s.id, s);
+    assert.ok(DISPOSITIONS.has(s.disposition), `${s.id}: "${s.disposition}" is not a disposition`);
+    assert.ok(s.where && s.note, `${s.id} says neither where nor why`);
+  }
+  for (const f of R3_FINDINGS) {
+    const s = seen.get(f.id);
+    assert.ok(s, `${f.id} ("${f.title.slice(0, 60)}") has no status row`);
+    assert.equal(s.title, f.title.trim(), `${f.id}: the status row names a different finding`);
+  }
+  assert.equal(R3_STATUS.length, R3_FINDINGS.length, "the ledger has rows for findings that do not exist");
+});
+
+test("round 3: a refuted or deliberate verdict is kept, and a confirmed finding never takes one", () => {
+  const byId = new Map(R3_STATUS.map((s) => [s.id, s]));
+  for (const f of R3_FINDINGS) {
+    const d = byId.get(f.id).disposition;
+    if (f.verdict === "refuted") assert.equal(d, "refuted", f.id);
+    else if (f.verdict === "deliberate") assert.equal(d, "deliberate", f.id);
+    else {
+      assert.equal(f.verdict, "confirmed", `${f.id}: an unknown verdict "${f.verdict}"`);
+      assert.ok(!["refuted", "deliberate"].includes(d), `${f.id}: a confirmed finding cannot take the verifier's "${d}"`);
+    }
+  }
+});
+
+test("round 3: the README's STATUS table agrees with the ledger", () => {
+  const readme = R3("README.md");
+  const status = readme.slice(readme.indexOf("## STATUS"));
+  assert.ok(status.length > 20, "round-3 README has no STATUS section");
+  for (const d of DISPOSITIONS) {
+    const line = status.split("\n").find((l) => l.startsWith(`| ${d} `));
+    assert.ok(line, `round-3 README's STATUS table has no "${d}" row`);
+    const cells = line.split("|").map((c) => c.trim()).filter(Boolean);
+    const rows = R3_STATUS.filter((s) => s.disposition === d);
+    assert.deepEqual([Number(cells[1]), Number(cells[2])], [rows.length, rows.filter(inL7Pr).length], `README row "${d}"`);
+  }
+  const all = status.split("\n").find((l) => /^\| \*\*all rows\*\*/.test(l));
+  assert.ok(all, "round-3 README's STATUS table has no all-rows line");
+  const cells = all.split("|").map((c) => c.trim()).filter(Boolean).map((c) => Number(c.replace(/\*/g, "")));
+  assert.deepEqual(cells.slice(1), [R3_STATUS.length, R3_STATUS.filter(inL7Pr).length]);
+});
