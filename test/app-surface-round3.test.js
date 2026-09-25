@@ -409,3 +409,23 @@ test("app-2-5: a show index whose body stalls after the headers still ends, abor
   assert.ok(signal && signal.aborted, "and the stalled request is aborted");
   assert.strictEqual(m.run("showIndexPromise"), null, "so the next focus asks again");
 });
+
+/* ---------- data-integrity-8: cp_lastpick is retired and removed once --------- */
+
+test("data-integrity-8: cp_lastpick is never written, and a stored copy is removed once storage settles", () => {
+  /* Nothing has read cp_lastpick since the Continue banner was deleted, yet every
+     pick stored a full untrimmed episode snapshot in it, in every tier.
+     MUTATION: drop `storageSettleWaiters.push(forgetRetiredKeys)` — the stored
+     copy survives, red. (The write itself is pinned in
+     test/playlist-durability.test.js.) */
+  const m = loadApp();
+  m.store.set("cp_lastpick", JSON.stringify({ id: "old", hook: "x".repeat(4000) }));
+  m.store.set("cp_saved", "{}");
+  m.run("markStorageSettled();");
+  assert.strictEqual(m.store.has("cp_lastpick"), false, "the retired key is removed after hydration");
+  assert.strictEqual(m.store.get("cp_saved"), "{}", "and nothing else is touched");
+  const code = SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
+  assert.ok(!/lsSet\(\s*["']cp_lastpick["']/.test(code), "no code path writes it");
+  const policy = fs.readFileSync(path.join(ROOT, "docs/legal/privacy-policy.md"), "utf8");
+  assert.match(policy, /\| `cp_lastpick` \| Retired/, "the privacy policy says it is retired");
+});

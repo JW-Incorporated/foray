@@ -5356,26 +5356,37 @@ function bindPickLogging(scope) {
       const m = /^playlist-(.+)$/.exec(a.dataset.ctx || "");
       if (m) touchPlaylistPlayed(m[1]);
 
-      /* Only a part the catalogue still holds is recorded as the last pick
-         (`cp_lastpick`, named in docs/legal/privacy-policy.md). An archived
-         playlist part has a snapshot in `state.itemIndex` (seeded by
-         renderPlaylistDetail so this handler can report its topics), but that
-         snapshot is a PARTIAL one — no audio_url, no hook, no artwork — and a
-         record of something the app cannot play is worth nothing. liveEpisode()
-         is that rule (a partial part has no audio_url), without the
-         curated-pool restriction that kept every show-page episode out.
-         Nothing renders this record any more: the Continue banner that read it
-         (`bannerHtml`) lost its caller at the U-11 cutover and was deleted in
-         visual pass 1 (2026-09-23); "Jump back in" reads the player's own
-         position store instead (see jumpBackInHtml). */
-      const snap = liveEpisode(id);
-      if (snap) {
-        lsSet("cp_lastpick", { ...snap, ts: new Date().toISOString() });
-      }
+      /* NO "LAST PICK" RECORD (audit round 3, data-integrity-8). This used to
+         store a full, untrimmed snapshot of every picked episode in
+         `cp_lastpick`, which nothing has read since the Continue banner
+         (`bannerHtml`) was deleted in visual pass 1 (2026-09-23) — "Jump back
+         in" reads the player's own position store. A record kept for no
+         purpose fails data minimisation, so the write is gone and the stored
+         key is removed once (forgetRetiredKeys below). */
       trySyncEvents();
     });
   });
 }
+
+/* Keys the app no longer writes, removed from every storage tier once the
+   durable store has hydrated — before that, a removal from the localStorage
+   mirror would be undone by the IndexedDB copy migrating back. The privacy
+   policy's row for each says it is retired. */
+const RETIRED_STORAGE_KEYS = ["cp_lastpick"];
+function forgetRetiredKeys() {
+  const store = storageBackend();
+  if (!store) return;
+  for (const key of RETIRED_STORAGE_KEYS) {
+    /* Only when present: a removal is a durable-tier write, and a device that
+       never held the key has nothing to forget. */
+    try { if (store.getItem(key) !== null) store.removeItem(key); } catch (_) { /* best-effort: nothing reads it */ }
+  }
+}
+/* Queued straight onto the settle waiters, not through afterStorageSettles():
+   at script evaluation the store has not been published yet, so that would run
+   it at once against the bare mirror. markStorageSettled() runs every waiter
+   exactly once, on hydration or at the ceiling. */
+storageSettleWaiters.push(forgetRetiredKeys);
 
 /* Every in-app play button. A tap on one also records the LIST it sat in — the
    other play buttons in `scope` carrying the same `data-ctx` (a show page's
