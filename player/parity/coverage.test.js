@@ -326,10 +326,19 @@ test("NE-31j: tts-bridge owes nothing, nothing is owed to NE-31j, the narration 
   assert.ok(files.some((f) => f.family === "speech-rate"), "speech-rate is recorded");
   assert.ok(DATA.capabilities.foray.includes("speech-rate"), "speech-rate is charged to the foray capability");
   const ids = new Map(files.flatMap((f) => f.doc.cases.map((c) => [c.id, c])));
+  /* speech-rate has no Swift runner until NE-33. A manager-foray case the
+     NE-30s EngineCore already passes (a rendered bridge is an ordinary item)
+     is not pending — the Swift runner refuses a stale pending entry — and
+     every other one is owed to NE-31s. */
+  let owed31s = 0;
   for (const [id] of ids) {
-    const want = id.startsWith("speech-rate/") ? "NE-33" : "NE-31s";
-    assert.equal(DATA.pending[id], want, `${id} must be owed to ${want} until the Swift port burns it down`);
+    if (id.startsWith("speech-rate/")) assert.equal(DATA.pending[id], "NE-33", `${id} must be owed to NE-33 until SpeechRules burns it down`);
+    else {
+      assert.ok([undefined, "NE-31s"].includes(DATA.pending[id]), `${id} is owed to ${DATA.pending[id]}, not NE-31s`);
+      if (DATA.pending[id] === "NE-31s") owed31s++;
+    }
   }
+  assert.ok(owed31s >= 40, `the narration overlay is owed to NE-31s (${owed31s} ids)`);
   const SPEC = [
     "manager-foray/each-utterance-finishes-at-most-once", "manager-foray/a-pause-holds-the-utterance",
     "manager-foray/stop-never-advances", "manager-foray/stop-during-a-bridge-never-advances",
