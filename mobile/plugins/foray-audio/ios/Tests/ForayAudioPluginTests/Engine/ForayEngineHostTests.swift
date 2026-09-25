@@ -273,14 +273,21 @@ final class ForayEngineHostTests: XCTestCase {
     // MARK: - Remote targets
 
     /// Plan §4.5 (T-7): every command gets a target; `stop` is registered AND
-    /// disabled, because a car's stop must never tear the player down.
+    /// disabled, because a car's stop must never tear the player down. With
+    /// nothing to act on every command is disabled (NE-18:
+    /// `commandAvailability` of `mode: none`); a restored item enables all but
+    /// `stop`, which stays disabled.
     /// TO SEE IT FAIL: enable `stop`, or skip registering it.
     @MainActor
     func testEveryRemoteCommandIsRegisteredAndStopIsDisabled() {
         let world = FakeWorld()
-        _ = started(world)
+        let engine = started(world)
         for command in MediaMapping.RemoteCommand.allCases {
             XCTAssertEqual(world.remote.liveTargets(for: command), 1, "\(command)")
+            XCTAssertEqual(world.remote.enabled[command], false, "\(command)")
+        }
+        engine.handle(.lifecycle(.coldLaunch(queue: [Self.item("a"), Self.item("b")], index: 0, autoplay: false)))
+        for command in MediaMapping.RemoteCommand.allCases {
             XCTAssertEqual(world.remote.enabled[command], command != .stop, "\(command)")
         }
     }
