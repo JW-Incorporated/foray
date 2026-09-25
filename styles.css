@@ -1466,6 +1466,19 @@ button.pl-save {
   cursor: pointer;
 }
 button.pl-save.on { color: var(--gold); border-color: var(--gold); }
+/* Saved or saving: a state, not an action (its click does nothing). */
+button.pl-save[aria-disabled="true"] { cursor: default; }
+/* "Open your copy", its own link beside the saved state: 44px tall like the
+   capsule it sits next to. `[hidden]` restated because the display below
+   would otherwise override the attribute. */
+.pl-save-open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-left: 12px;
+  font-weight: 600;
+}
+.pl-save-open[hidden] { display: none; }
 /* Never display: none — it is a live region, and one hidden while empty may
    not be announced when it fills. Empty, it is zero-height already. */
 .pl-save-note:not(:empty) { margin-top: 6px; }
