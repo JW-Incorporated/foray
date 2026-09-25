@@ -249,6 +249,47 @@ test("player-rest-1: a transaction that never settles is abandoned at the deadli
   assert.equal(factory.opens, 2, "a fresh connection, not the one that went silent");
 });
 
+test("player-rest-2: a connection the browser closed is forgotten, and the next write opens a fresh one", async () => {
+  /* WebKit's "Connection to Indexed Database server lost", or Clear site data:
+     the close event fires and the old handle is dead. MUTATION: drop the
+     `db.onclose` handler in `idbConnection` AND the InvalidStateError retry in
+     `withStore`, and every later write rejects. */
+  const factory = new FakeFactory();
+  const tier = makeIdbTier({ indexedDB: factory });
+  await tier.write("cp_a", "1");
+  factory.db.closed = true;
+  factory.db.onclose();
+  await tier.write("cp_b", "2");
+  assert.equal(factory.opens, 2, "reopened");
+  assert.equal((await tier.readAll("cp_")).get("cp_b"), "2");
+});
+
+test("player-rest-2: a dead handle with no close event is retried once on a fresh connection", async () => {
+  /* MUTATION: delete the InvalidStateError retry in `withStore`. */
+  const factory = new FakeFactory();
+  const tier = makeIdbTier({ indexedDB: factory });
+  await tier.write("cp_a", "1");
+  factory.db.closed = true;              // no close event delivered
+  await tier.write("cp_b", "2");
+  assert.equal(factory.opens, 2);
+  assert.equal((await tier.readAll("cp_")).get("cp_b"), "2");
+});
+
+test("player-rest-2: versionchange closes and forgets the handle", async () => {
+  /* MUTATION: drop the `db.onversionchange` handler in `idbConnection`. */
+  const factory = new FakeFactory();
+  let closed = 0;
+  factory.db.close = () => { closed += 1; factory.db.closed = true; };
+  const tier = makeIdbTier({ indexedDB: factory });
+  await tier.write("cp_a", "1");
+  factory.db.onversionchange();
+  assert.equal(closed, 1, "the old connection is closed, so it cannot block the other context");
+  factory.txThrows = false;
+  const opensBefore = factory.opens;
+  await tier.readAll("cp_");
+  assert.equal(factory.opens, opensBefore + 1, "and the next call opens a new one");
+});
+
 /* ================================================================= the fake ==
 
    Just enough IndexedDB to drive the adapter, and deliberately no more. Requests
@@ -373,6 +414,9 @@ class FakeDb {
     return this.stores.get(name);
   }
   transaction(names, mode) {
+    /* A connection the browser closed (audit round 3, player-rest-2): every
+       transaction() on it throws InvalidStateError until a fresh open. */
+    if (this.closed) throw Object.assign(new Error("The database connection is closing."), { name: "InvalidStateError" });
     if (this.factory.txThrows) throw new Error("no transaction available");
     return new FakeTransaction(this, names, mode);
   }
@@ -406,6 +450,7 @@ class FakeFactory {
     setTimeout(() => {
       if (this.openError) { req.error = this.openError; if (req.onerror) req.onerror({ target: req }); return; }
       if (this.blocked) { if (req.onblocked) req.onblocked({ target: req }); return; }
+      this.db.closed = false;   // a fresh open is a live connection again
       req.result = this.db;
       if (!this._created) { this._created = true; if (req.onupgradeneeded) req.onupgradeneeded({ target: req }); }
       if (req.onsuccess) req.onsuccess({ target: req });

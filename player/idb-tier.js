@@ -23,7 +23,13 @@
    2. A FAILED OPEN IS NOT CACHED AS A SUCCESS. Private-mode Safari, a blocked
       upgrade and a corrupted database all reject `open()`. The memoised promise
       is cleared on rejection so a later write can try again, rather than every
-      subsequent call inheriting one dead promise.
+      subsequent call inheriting one dead promise. NOR IS A CLOSED ONE (audit
+      round 3, player-rest-2): the browser can close a connection it opened
+      successfully (WebKit's "Connection to Indexed Database server lost" after
+      a background, "Clear site data"), after which every `transaction()` throws
+      InvalidStateError. `idbConnection` forgets the handle on `close` and
+      `versionchange`, and `withStore` retries once on a fresh connection.
+      `event-log.js` shares both rather than keeping a copy.
 
    ── What is verified and what is not ──────────────────────────────────────
    `idb-tier.test.js` drives this against a hand-rolled fake `indexedDB` (no
@@ -73,17 +79,8 @@ export function makeIdbTier({
   const factory = factoryIn ?? (typeof indexedDB !== "undefined" ? indexedDB : null);
   if (!factory || typeof factory.open !== "function") return null;
 
-  let dbPromise = null;
-  const open = () => {
-    if (!dbPromise) {
-      dbPromise = openDb(factory, dbName, version, storeName).catch((err) => {
-        dbPromise = null;   // hazard 2: never cache a failure as the answer
-        throw err;
-      });
-    }
-    return dbPromise;
-  };
-  const txOpts = { deadlineMs: txDeadlineMs, onDeadline: () => { dbPromise = null; } };
+  const open = idbConnection(() => openDb(factory, dbName, version, storeName));
+  const txOpts = { deadlineMs: txDeadlineMs };
 
   return {
     name: "idb",
@@ -138,14 +135,63 @@ function openDb(factory, name, version, storeName) {
 }
 
 /**
- * Run one request inside one transaction and resolve with its result AFTER the
- * transaction commits — see hazard 1 in the header for why the handlers are
- * wired before `fn` runs.
+ * A memoised connection (hazard 2): `open()` resolves the one live IDBDatabase,
+ * and `open.drop()` forgets it. A failed open is never cached, and neither is a
+ * connection the browser has since closed: `close` and `versionchange` drop it,
+ * so the next call opens a fresh one instead of every call throwing
+ * InvalidStateError for the rest of the page's life (audit round 3,
+ * player-rest-2). Shared with `event-log.js`.
+ *
+ * @param {() => Promise<IDBDatabase>} openDb
+ * @returns {(() => Promise<IDBDatabase>) & {drop: () => void}}
  */
-function withStore(open, storeName, mode, fn, { deadlineMs = IDB_TX_DEADLINE_MS, onDeadline = null } = {}) {
+export function idbConnection(openDb) {
+  let dbPromise = null;
+  const forget = (p) => { if (dbPromise === p) dbPromise = null; };
+  const open = () => {
+    if (!dbPromise) {
+      const p = openDb().then((db) => {
+        try {
+          db.onclose = () => forget(p);
+          db.onversionchange = () => {
+            try { db.close(); } catch (_) { /* already closing */ }
+            forget(p);
+          };
+        } catch (_) { /* a handle that refuses handlers is still a handle */ }
+        return db;
+      }, (err) => {
+        forget(p);   // hazard 2: never cache a failure as the answer
+        throw err;
+      });
+      dbPromise = p;
+    }
+    return dbPromise;
+  };
+  open.drop = () => { dbPromise = null; };
+  return open;
+}
+
+/**
+ * Run one transaction and resolve with its (last) request's result AFTER the
+ * transaction commits — see hazard 1 in the header for why the handlers are
+ * wired before `fn` runs. `open` is an `idbConnection`.
+ *
+ * Bounded by `deadlineMs` (player-rest-1): a transaction that has not settled
+ * by then is aborted and the connection dropped. A connection the browser
+ * closed (`transaction()` throws InvalidStateError) is dropped and the call
+ * retried ONCE on a fresh one (player-rest-2).
+ */
+export function withStore(open, storeName, mode, fn, { deadlineMs = IDB_TX_DEADLINE_MS } = {}, retried = false) {
   return open().then((db) => new Promise((resolve, reject) => {
     let tx;
-    try { tx = db.transaction(storeName, mode); } catch (err) { reject(err); return; }
+    try { tx = db.transaction(storeName, mode); } catch (err) {
+      if (err?.name === "InvalidStateError" && typeof open.drop === "function") {
+        open.drop();
+        if (!retried) { withStore(open, storeName, mode, fn, { deadlineMs }, true).then(resolve, reject); return; }
+      }
+      reject(err);
+      return;
+    }
     let result;
     /* One settlement, whichever comes first: the transaction's own events or
        the deadline (player-rest-1). */
@@ -165,7 +211,7 @@ function withStore(open, storeName, mode, fn, { deadlineMs = IDB_TX_DEADLINE_MS,
         if (settled) return;
         settle(reject, Object.assign(new Error(`indexedDB transaction did not settle within ${deadlineMs} ms`), { name: "TimeoutError" }));
         try { tx.abort(); } catch (_) { /* already finished, or the connection is gone */ }
-        if (onDeadline) onDeadline();
+        if (typeof open.drop === "function") open.drop();
       }, deadlineMs);
     }
     let req;

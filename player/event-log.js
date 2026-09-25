@@ -67,6 +67,8 @@
    scheduling under load — which are only observable in a browser.
 */
 
+import { idbConnection, withStore } from "./idb-tier.js";
+
 export const DB_NAME = "foray_events";
 export const DB_VERSION = 1;
 export const STORE_NAME = "events";
@@ -126,16 +128,11 @@ export function createEventLog({
   const ring = [];
   let nextRingId = 1;
 
-  let dbPromise = null;
-  const open = () => {
-    if (!dbPromise) {
-      dbPromise = openDb(factory, DB_NAME, DB_VERSION, STORE_NAME).catch((err) => {
-        dbPromise = null; // a failed open is not cached as the answer (idb-tier.js hazard 2)
-        throw err;
-      });
-    }
-    return dbPromise;
-  };
+  /* idb-tier.js's connection and transaction helpers, shared rather than
+     copied (audit round 3, player-rest-2): a failed open is not cached (hazard
+     2), a connection the browser closed is forgotten and retried once, and a
+     transaction that never settles is abandoned at a deadline. */
+  const open = idbConnection(() => openDb(factory, DB_NAME, DB_VERSION, STORE_NAME));
 
   const pendingRows = [];
   let flushTimer = null;
@@ -545,27 +542,9 @@ function openDb(factory, name, version, storeName) {
   });
 }
 
-/** Run one transaction and resolve with the LAST request's result after commit
-    — hazard 1 from `idb-tier.js`'s header: handlers are wired before any
-    request is issued, because a transaction auto-commits once nothing is
-    pending against it, and awaiting a request before assigning `oncomplete`
-    is a race the transaction usually wins. `fn` may issue several requests
-    (a loop of `add`/`delete`, or a `get` that issues a `put` from inside its
-    own `onsuccess`) — the transaction stays open as long as something is
-    pending, so chaining a new request from inside an earlier one's handler is
-    safe as long as it happens synchronously inside that handler. */
-function withStore(open, storeName, mode, fn) {
-  return open().then((db) => new Promise((resolve, reject) => {
-    let tx;
-    try { tx = db.transaction(storeName, mode); } catch (err) { reject(err); return; }
-    let result;
-    tx.oncomplete = () => resolve(result);
-    tx.onerror = () => reject(tx.error || new Error("indexedDB transaction failed"));
-    tx.onabort = () => reject(tx.error || new Error("indexedDB transaction aborted"));
-    let req;
-    try { req = fn(tx.objectStore(storeName)); } catch (err) { reject(err); return; }
-    // No per-request onerror: a failed request aborts the transaction, and
-    // tx.onabort/onerror is the single place that rejection belongs.
-    if (req) req.onsuccess = () => { result = req.result; };
-  }));
-}
+/* `withStore` is idb-tier.js's (imported above): one transaction, resolved
+   with the LAST request's result after commit. `fn` may issue several
+   requests (a loop of `add`/`delete`, or a `get` that issues a `put` from
+   inside its own `onsuccess`); the transaction stays open as long as
+   something is pending, so chaining a request from inside an earlier one's
+   handler is safe as long as it happens synchronously inside that handler. */
