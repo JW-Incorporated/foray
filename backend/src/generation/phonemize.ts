@@ -115,6 +115,21 @@ export function phonemizedCount(items: ForayItem[]): number {
   return items.filter((i) => i.type === "narration" && (i as ForayNarrationItem).tts !== undefined).length;
 }
 
+/** gen-16 (round-3 audit): the line a caller prints after the stage, so a
+ *  total miss ("phonemized 0 of 34 pages") is visible rather than discovered
+ *  by a listener. Counts only narration items with a non-empty script: the
+ *  pages the stage could have phonemized. */
+export function phonemizedSummary(items: ForayItem[]): string {
+  const pages = items.filter(
+    (i) => i.type === "narration" && typeof (i as ForayNarrationItem).script === "string" && (i as ForayNarrationItem).script.trim() !== ""
+  ).length;
+  return `phonemized ${phonemizedCount(items)} of ${pages} pages`;
+}
+
+/** The phoneme JSON for a long Foray can pass spawnSync's 1 MiB default, which
+ *  kills the child with ENOBUFS and used to look exactly like "no phonemes". */
+export const PHONEMIZER_MAX_BUFFER = 64 * 1024 * 1024;
+
 /**
  * The production phonemizer: one subprocess per Foray, not per page.
  *
@@ -129,20 +144,39 @@ export function phonemizedCount(items: ForayItem[]): number {
  */
 export function runPhonemizer(
   scripts: Array<{ id: string; script: string }>,
-  { repoRoot = process.cwd(), python = process.env.FORAY_PYTHON || "python3" } = {}
+  {
+    repoRoot = process.cwd(),
+    python = process.env.FORAY_PYTHON || "python3",
+    log = (line: string) => console.warn(line)
+  }: { repoRoot?: string; python?: string; log?: (line: string) => void } = {}
 ): Map<string, Phonemized> {
   const empty = new Map<string, Phonemized>();
   if (scripts.length === 0) return empty;
   const res = spawnSync(
     python,
     [path.join(repoRoot, PHONEMIZER_SCRIPT), "--json", "-"],
-    { cwd: repoRoot, input: JSON.stringify({ items: scripts }), encoding: "utf8" }
+    { cwd: repoRoot, input: JSON.stringify({ items: scripts }), encoding: "utf8", maxBuffer: PHONEMIZER_MAX_BUFFER }
   );
-  if (res.status !== 0 || !res.stdout) return empty;
+  /* gen-16: still never throws, but never silent either. The reason the
+     stage produced nothing (ENOENT: no interpreter; ENOBUFS: output over the
+     buffer; a non-zero exit and what it printed) is logged, so "no phonemes"
+     can be told apart from "phonemes were not wanted". */
+  if (res.error || res.status !== 0 || !res.stdout) {
+    const code = (res.error as NodeJS.ErrnoException | undefined)?.code ?? res.error?.message;
+    const stderr = String(res.stderr ?? "").trim().slice(0, 400);
+    log(
+      `runPhonemizer: no phonemes for ${scripts.length} page(s): ` +
+        [code ? `error ${code}` : null, res.status !== null ? `exit ${res.status}` : null, res.signal ? `signal ${res.signal}` : null, stderr ? `stderr: ${stderr}` : null]
+          .filter(Boolean)
+          .join("; ")
+    );
+    return empty;
+  }
   let parsed: { items?: Array<{ id?: string; phonemes?: string; tts?: { model?: string; vocab?: string } }> };
   try {
     parsed = JSON.parse(res.stdout);
-  } catch {
+  } catch (err) {
+    log(`runPhonemizer: no phonemes for ${scripts.length} page(s): unparseable output (${(err as Error).message})`);
     return empty;
   }
   const out = new Map<string, Phonemized>();
