@@ -890,6 +890,21 @@ export class PlayerQueueManager {
       // first, stores the current playhead, and the reload then resumes to the
       // exact spot the user just asked to leave.
       this._armOffset("_forceNextOffset", 0);
+      /* From `idle` (a failed load) or `ended` the reducer has no item in focus,
+         and `skipToPrevious(null)` there is its "queue exhausted" branch: it
+         returns `ended`, which a Foray records as Played and restarts from clip
+         1 (audit round 3, player-core-1). Name the item this manager holds and
+         the reducer takes its fresh-play branch: the clip reloads at its
+         in-point, which is what ‹‹ after a failure means. Holding nothing,
+         previous does nothing. Everywhere else `null` keeps the reducer's
+         restart-in-place. Decided here rather than in the reducer so no
+         recorded reducer rule (the queue-state parity family) moves. */
+      const t = this.state.type;
+      if (t === "idle" || t === "ended") {
+        const held = this._currentItem();
+        if (!held) return this._emit("skip.previous.ignored — nothing held to restart");
+        return this._handle(E.skipToPrevious(refOf(held)));
+      }
       return this._handle(E.skipToPrevious(null));
     });
   }

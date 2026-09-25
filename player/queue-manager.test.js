@@ -521,6 +521,28 @@ test("skipToPrevious restarts at zero, not at the playhead just saved", async ()
   assert.ok(backend.calls.includes("load:a@0"), `expected restart at 0, got ${backend.calls}`);
 });
 
+test("previous after a failed load reloads the clip, and never ends the queue (player-core-1)", async () => {
+  /* A failed load leaves the machine `idle`. ‹‹ from there used to reach the
+     reducer as `skipToPrevious(null)`, which returned `ended` — the state a Foray
+     reads as "Played". MUTATION: pass `null` again from `skipToPrevious` and the
+     state goes to `ended` with no reload. */
+  const { m, backend } = make({ backend: { failLoadFor: ["b"] } });
+  m.loadQueue([ep("a"), ep("b"), ep("c")]);
+  await m.play(1);
+  await tick();
+  assert.equal(m.state.type, "idle", "precondition: the load failed");
+  backend.failLoadFor.clear();
+  backend.calls.length = 0;
+
+  await m.skipToPrevious();
+  await tick();
+  assert.notEqual(m.state.type, "ended", "previous never finishes the queue");
+  assert.equal(m.state.type, "playing", "the failed clip is retried");
+  assert.equal(m.currentIndex, 1);
+  assert.ok(backend.calls.includes("load:b@0"), `reloaded at the top, got ${backend.calls}`);
+  m.dispose();
+});
+
 test("ROUND 2 review: a play settling mid-skip-back does not wipe the skip's armed restart offset", async () => {
   /* `_transport`'s finally used to clear `_forceNextOffset` whatever action
      armed it. A play still awaiting `backend.play()` can settle while a

@@ -3499,3 +3499,34 @@ test("previousMeansRestart is the player's own window: false at the start, true 
   assert.equal(client.previousMeansRestart(), true);
   restore();
 });
+
+test("‹‹ after a failed Foray load retries the clip; it never marks the Foray Played (audit round 3, player-core-1)", async (t) => {
+  /* The listener's clip would not load (a 404, a timeout, an iOS refusal) and
+     the machine went `idle`. ‹‹ is the natural retry. It used to reach the
+     reducer as `skipToPrevious(null)`, which returned `ended`, and `ended` is
+     what `persistForayProgress` writes as "Played" and what the next ▶ restarts
+     from clip 1. MUTATION: pass `null` from `PlayerQueueManager.skipToPrevious`
+     again and nothing reloads (with the reducer's no-op) or the status reads
+     `ended` (without it). */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = synthetic();
+  audio.loadPlan.set("https://cdn.test/b.mp3", "error");
+  await client.playForay(resolved, { startIndex: 1 });
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().ended, false, "precondition: a failed load is not the end");
+
+  audio.loadPlan.clear();
+  const before = audio.calls.length;
+  await client.forayPrevious();
+  await settle();
+  await settle();
+  const status = client.forayStatus();
+  assert.equal(status.ended, false, "previous never finishes a Foray");
+  assert.equal(status.index, 1, "the failed clip is the one retried");
+  assert.ok(audio.calls.slice(before).includes("load"), `the clip is reloaded: ${audio.calls.slice(before).join(", ")}`);
+  assert.equal(status.playing, true, "and it plays");
+  const row = client.forayResume(resolved.id, { resolved, includeFinished: true });
+  assert.notEqual(row?.finished, true, `the resume row is not Played: ${JSON.stringify(row)}`);
+  restore();
+});
