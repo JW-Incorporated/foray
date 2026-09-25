@@ -1408,7 +1408,62 @@ function bindRetry(scope, run) {
 function poolFiltered() {
   const pool = fullPool();
   if (!familyMode()) return pool;
-  return pool.filter(i => i.explicit !== true && branchOf(i) !== "comedy");
+  return pool.filter(familySafe);
+}
+
+/* FAMILY MODE FAILS CLOSED (audit round 3, data-integrity-4; founder Q1,
+   default ruling pending his word). The filter hid only `explicit === true`,
+   and 516 of the pool's 2,167 episodes carry no `explicit` at all -- 157 of
+   them outside comedy, from shows with explicit-rated episodes beside them
+   (Lex Fridman, Ancient History Fangirl, 20VC...), plus every one of
+   session.json's. The rule now, in this one predicate:
+     - explicit === true            -> hidden (as before)
+     - comedy                       -> hidden (as before: older items predate ratings)
+     - explicit === false           -> shown
+     - no rating on the episode     -> the SHOW's catalogue rating decides: shown
+                                       only when catalog.json rates the show clean,
+                                       hidden when it is rated explicit or unrated.
+   And every list goes through it, not only the pool: the show page's curated
+   and full-catalogue lists, "More from this show", and Library. The backfill of
+   the 516 from the refresh pipeline's contentAdvisoryRating is a separate data
+   PR; this does not wait for it. test/boot-path.test.js pins that nothing
+   unrated gets through unless its show is rated clean. */
+function familySafe(item) {
+  if (!item || typeof item !== "object") return false;
+  if (item.explicit === true) return false;
+  if (branchOf(item) === "comedy") return false;
+  if (item.explicit === false) return true;
+  const show = catalogShowForItem(item);
+  return Boolean(show && show.explicit === false);
+}
+
+/** Family Mode's answer for one row: everything when it is off. */
+function familyAllows(item) {
+  return !familyMode() || familySafe(item);
+}
+
+/* The catalogue record an episode belongs to: by show_id when it carries one,
+   else by title (and the one alias), the join episodesForShow uses. Indexed
+   once per loaded catalogue. */
+let catalogShowIndex = null;
+function catalogShowForItem(item) {
+  const shows = state.catalog?.shows;
+  if (!Array.isArray(shows)) return null;
+  if (!catalogShowIndex || catalogShowIndex.shows !== shows) {
+    const byId = new Map(), byTitle = new Map();
+    for (const s of shows) {
+      if (!s) continue;
+      if (s.show_id) byId.set(s.show_id, s);
+      if (s.title) byTitle.set(s.title, s);
+    }
+    for (const [title, alias] of Object.entries(TITLE_ALIASES)) {
+      if (byTitle.has(title) && !byTitle.has(alias)) byTitle.set(alias, byTitle.get(title));
+    }
+    catalogShowIndex = { shows, byId, byTitle };
+  }
+  return (item.show_id && catalogShowIndex.byId.get(item.show_id))
+    || (item.show && catalogShowIndex.byTitle.get(item.show))
+    || null;
 }
 
 /* The visible half of the same flag Family Mode has quietly filtered on since
@@ -1424,6 +1479,8 @@ function poolFiltered() {
    screen readers (ARIA forbids it on the generic role), so VoiceOver read the
    badge as "E" (audit round 2, a11y-11). No `title=`: a tooltip a phone never
    shows is not an explanation, and the label already says the word. */
+const FAMILY_HIDES_NOTE = "Family mode is on, so this show's episodes are hidden.";
+
 function explicitBadge(isExplicit) {
   return isExplicit === true ? `<span class="explicit-badge" role="img" aria-label="Explicit">E</span>` : "";
 }
@@ -3332,7 +3389,8 @@ function episodesForShow(show) {
   if (!show) return [];
   const pool = (state.discover?.items || []);
   const wanted = new Set([show.title, TITLE_ALIASES[show.title]].filter(Boolean));
-  return pool.filter(it => wanted.has(it.show))
+  /* familyAllows: a show page skipped Family Mode entirely (data-integrity-4). */
+  return pool.filter(it => wanted.has(it.show) && familyAllows(it))
     .sort((a, b) => dateValue(b.release_date) - dateValue(a.release_date));
 }
 
@@ -4960,7 +5018,10 @@ function renderShow(show_id, initialQuery = "") {
       c.innerHTML = `<p class="note">No episodes match ${quoteQuery(esc(searchQuery.trim()))}.</p>`;
       return;
     }
-    const rows = visible.map((ep) => fullCatalogueRowToEpRowItem(show, ep));
+    /* Family Mode's one predicate here too (data-integrity-4): these rows carry
+       no rating of their own, so the show's catalogue rating decides. */
+    const rows = visible.map((ep) => fullCatalogueRowToEpRowItem(show, ep)).filter(familyAllows);
+    if (!rows.length && visible.length) { c.innerHTML = `<p class="note">${esc(FAMILY_HIDES_NOTE)}</p>`; return; }
     c.innerHTML = rows.map((item, i) => epRow(item, i, ctx, -1)).join("");
     bindRows(c);
   }
@@ -10996,9 +11057,12 @@ function renderLibrary() {
   setBodyClass("view-page");
   fullPool(); // populate itemIndex/poolIds so saved/history rows can play in-app
 
-  const savedRows = rowsForIds(Object.keys(savedMap()));
+  /* Family Mode reaches Library too (data-integrity-4). An "unnamed" row has
+     nothing in it to hide. */
+  const family = (r) => r.state === "unnamed" || familyAllows(r.item);
+  const savedRows = rowsForIds(Object.keys(savedMap())).filter(family);
   const historyIds = pickedHistory().slice().reverse().slice(0, 20);
-  const historyRows = rowsForIds(historyIds);
+  const historyRows = rowsForIds(historyIds).filter(family);
   const allPlaylists = playlists();
   const queued = queueIds();
 

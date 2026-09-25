@@ -999,3 +999,81 @@ test("app-3-13: any throw between the documents and the first page paints Try ag
   assert.ok((m.winListeners.get("hashchange") || []).length > 0, "no hashchange: no typed route can recover the page");
   assert.strictEqual(m.ctx.__painted, true, "the service worker waits on a first page that never came");
 });
+
+/* ==================================================================== */
+/* data-integrity-4: Family mode fails closed, on every list              */
+/* ==================================================================== */
+
+test("data-integrity-4: INVARIANT — with Family mode on, no pool episode without a clean rating gets through, on the real data", async () => {
+  /* 516 of discover.json's items carry no `explicit`; the filter hid only
+     `explicit === true`. MUTATION: put `i.explicit !== true && branchOf(i) !==
+     "comedy"` back in poolFiltered -> unrated items from unrated shows (Lex
+     Fridman's, session.json's) pass; red. */
+  const m = mount();
+  await m.booted();
+  m.ctx.localStorage.setItem("cp_family", "true");
+  const pool = m.ctx.poolFiltered();
+  const catalog = JSON.parse(read("data/catalog-client.json")).shows;
+  const byTitle = new Map(catalog.map((s) => [s.title, s]));
+  assert.ok(pool.length > 0, "premise: Family mode still has something to play");
+  const leaks = [];
+  for (const it of pool) {
+    if (it.explicit === true) leaks.push(`${it.id}: explicit`);
+    else if (it.explicit !== false) {
+      const show = m.ctx.catalogShowForItem(it);
+      if (!show || show.explicit !== false) leaks.push(`${it.id}: unrated, show ${show ? show.explicit : "unknown"}`);
+    }
+  }
+  assert.deepStrictEqual(leaks, [], `${leaks.length} episodes without a clean rating got through`);
+  const unrated = JSON.parse(read("data/discover.json")).items.filter((it) => it.explicit !== true && it.explicit !== false);
+  assert.ok(unrated.some((it) => byTitle.get(it.show) && byTitle.get(it.show).explicit === false && pool.some((p) => p.id === it.id)),
+    "an unrated episode of a show rated clean inherits the rating (founder Q1 default) and is shown");
+});
+
+test("data-integrity-4: the predicate — an unrated episode inherits its show's rating, else it is hidden", async () => {
+  const m = mount();
+  await m.booted();
+  const shows = m.state.catalog.shows;
+  const clean = shows.find((s) => s.explicit === false);
+  const rated = shows.find((s) => s.explicit === true);
+  const unratedShow = shows.find((s) => s.explicit == null);
+  assert.ok(clean && rated && unratedShow, "premise: the catalogue has all three show ratings");
+  const ep = (show, extra = {}) => ({ id: "x", show: show ? show.title : "No Such Show", topics: ["history"], ...extra });
+  const safe = (it) => m.ctx.familySafe(it);
+  assert.strictEqual(safe(ep(clean)), true, "unrated, show rated clean -> shown");
+  assert.strictEqual(safe(ep(rated)), false, "unrated, show rated explicit -> hidden");
+  assert.strictEqual(safe(ep(unratedShow)), false, "unrated, show unrated -> hidden (fail closed)");
+  assert.strictEqual(safe(ep(null)), false, "unrated, show unknown -> hidden (fail closed)");
+  assert.strictEqual(safe(ep(unratedShow, { explicit: false })), true, "an episode's own clean rating is enough");
+  assert.strictEqual(safe(ep(clean, { explicit: true })), false, "an episode's own explicit rating wins over a clean show");
+  assert.strictEqual(safe(ep(clean, { topics: ["comedy"] })), false, "comedy stays out, as before");
+  assert.strictEqual(safe(ep(null, { show_id: clean.show_id, show: "Renamed" })), true, "joined by show_id first");
+});
+
+test("data-integrity-4: a show page and Library go through the same predicate", async () => {
+  /* episodesForShow and Library read state.discover.items / cp_saved directly
+     and never asked Family mode. MUTATION: drop familyAllows from
+     episodesForShow (or the Library filter) -> an explicit episode is listed;
+     red. */
+  const m = mount();
+  await m.booted();
+  const items = m.state.discover.items;
+  const explicitEp = items.find((it) => it.explicit === true);
+  assert.ok(explicitEp, "premise: the pool has an explicit episode");
+  const show = m.state.catalog.shows.find((s) => s.title === explicitEp.show) || { title: explicitEp.show };
+  assert.ok(m.ctx.episodesForShow(show).some((it) => it.id === explicitEp.id), "premise: with Family mode off it is listed");
+  m.ctx.localStorage.setItem("cp_family", "true");
+  const listed = m.ctx.episodesForShow(show);
+  assert.ok(!listed.some((it) => it.id === explicitEp.id), "the show page lists an explicit episode in Family mode");
+  assert.ok(listed.every((it) => m.ctx.familySafe(it)), "and nothing unrated-unsafe either");
+
+  m.state.itemIndex[explicitEp.id] = m.ctx.snapshot(explicitEp.id, explicitEp);
+  m.ctx.localStorage.setItem("cp_family", "false");
+  m.ctx.toggleStar(explicitEp.id);
+  m.ctx.localStorage.setItem("cp_family", "true");
+  m.ctx.renderLibrary();
+  assert.ok(!m.view.innerHTML.includes(`data-star="${explicitEp.id}"`), "Library shows a saved explicit episode in Family mode");
+  m.ctx.localStorage.setItem("cp_family", "false");
+  m.ctx.renderLibrary();
+  assert.ok(m.view.innerHTML.includes(`data-star="${explicitEp.id}"`), "premise: with Family mode off Library shows it");
+});
