@@ -233,6 +233,14 @@
       "reason": "js-module-shape",
       "why": "Text scan: app.js reuses the discover pool it already fetched; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
     },
+    "artworkUrlsByShow harvests the discover pool by exact show name": {
+      "reason": "webview-only",
+      "why": "The page joins show artwork out of data/discover.json (client.js, through foray-sources.js artworkUrlsByShow) and hands the engine a finished URL per item; the engine never reads the discover pool. The engine half — a miss falls back to the app artwork, never a blank — is media/artwork-miss-falls-back."
+    },
+    "artworkUrlsByShow survives a missing, malformed or empty document": {
+      "reason": "webview-only",
+      "why": "The page joins show artwork out of data/discover.json (client.js, through foray-sources.js artworkUrlsByShow) and hands the engine a finished URL per item; the engine never reads the discover pool. The engine half — a miss falls back to the app artwork, never a blank — is media/artwork-miss-falls-back."
+    },
     "clear() empties the OS slot and reports none": {
       "reason": "webview-only",
       "why": "clear() emptying the WebView session; native nil-on-finish is NowPlayingPublisher's (NE-18). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."

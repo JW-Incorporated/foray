@@ -114,7 +114,7 @@ test("every constant every source module exports is in the generated file, or om
   for (const needle of [
     "enum Transport {", "restartWindowSec: Double = 4", "seekInsideEndSec: Double = 0.25",
     "positionIntervalMs: Double = 15000", "rates: [Double] = [0.75, 1, 1.25, 1.5, 1.75, 2]",
-    "seamGapSec: Double = 0.5", "interludeCeilingSec: Double = 4.5", "jingleDurationSec: Double = 1.5",
+    "seamGapSec: Double = 0.5", "interludeCeilingSec: Double = 4.5", "jingleDurationSec: Double = 3",
     "adPadCeilingSec: Double = 120", "seekBackwardSec: Double = 15", "seekForwardSec: Double = 30",
   ]) assert.ok(committed.includes(needle), `EngineConstants.swift lacks ${needle}`);
 });

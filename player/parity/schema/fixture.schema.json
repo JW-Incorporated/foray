@@ -122,11 +122,11 @@
       }
     },
     "verb": {
-      "description": "The closed scenario verbs (plan §6.2). remote has no JS driver yet; a JS case using it fails with E_NO_JS_DRIVER naming the card that adds it (runner.js PENDING_DRIVERS). session and lifecycle (NE-14j) take the values in runner.js SESSION_EVENTS and LIFECYCLE_EVENTS.",
+      "description": "The closed scenario verbs (plan §6.2). Every verb has a JS driver; a verb added without one fails with E_NO_JS_DRIVER naming the card that adds it (runner.js PENDING_DRIVERS). session and lifecycle (NE-14j) take the values in runner.js SESSION_EVENTS and LIFECYCLE_EVENTS; remote (NE-29j) takes an action from runner.js REMOTE_ACTIONS, with optional details (seekto's {seekTime}), pressed through media-session.js mediaSessionActions.",
       "enum": ["call", "settle", "clock", "deck", "tts", "interlude", "session", "lifecycle", "remote", "checkpoint"]
     },
     "step": {
-      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay; for the deck target, outPointSec, rate and token).",
+      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay, details; for the deck target, outPointSec, rate and token).",
       "type": "object",
       "minProperties": 1
     },

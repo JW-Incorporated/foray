@@ -1,0 +1,112 @@
+{
+  "family": "foray-clock",
+  "module": "player/parity/forays.js",
+  "note": "The Foray clock over every committed Foray, through the page's own build of it (player/parity/forays.js clockAudit): the document's runtime_sec agrees with the clock within check-forays.mjs's 0.5 s (so the one committed jingle counts its 3.0 s, OQ-6), every item starts where the last ended, every start maps back to its item, and forayElapsed round-trips. Authored invariants, so a publish that edits or adds Forays cannot turn them red — only one that breaks the clock. A Foray deleted from data/ must drop its case here.",
+  "cases": [
+    {
+      "id": "foray-clock/committed-grilling-history-2",
+      "covers": [],
+      "authored": true,
+      "call": "clockAudit",
+      "args": [{ "$foray": "grilling-history-2" }],
+      "expect": {
+        "return": {
+          "elapsedRoundTrips": true,
+          "everyStartMapsBack": true,
+          "startsAreCumulative": true,
+          "statedRuntimeHolds": true
+        }
+      }
+    },
+    {
+      "id": "foray-clock/committed-capital-types-1",
+      "covers": [],
+      "authored": true,
+      "call": "clockAudit",
+      "args": [{ "$foray": "capital-types-1" }],
+      "expect": {
+        "return": {
+          "elapsedRoundTrips": true,
+          "everyStartMapsBack": true,
+          "startsAreCumulative": true,
+          "statedRuntimeHolds": true
+        }
+      }
+    },
+    {
+      "id": "foray-clock/committed-geology-plates-1",
+      "covers": [],
+      "authored": true,
+      "call": "clockAudit",
+      "args": [{ "$foray": "geology-plates-1" }],
+      "expect": {
+        "return": {
+          "elapsedRoundTrips": true,
+          "everyStartMapsBack": true,
+          "startsAreCumulative": true,
+          "statedRuntimeHolds": true
+        }
+      }
+    },
+    {
+      "id": "foray-clock/committed-beyond-the-algorithm-engineering-production-ai-s-e6533b",
+      "covers": [],
+      "authored": true,
+      "call": "clockAudit",
+      "args": [{ "$foray": "beyond-the-algorithm-engineering-production-ai-s-e6533b" }],
+      "expect": {
+        "return": {
+          "elapsedRoundTrips": true,
+          "everyStartMapsBack": true,
+          "startsAreCumulative": true,
+          "statedRuntimeHolds": true
+        }
+      }
+    },
+    {
+      "id": "foray-clock/committed-how-ai-actually-gets-built-3b83e1",
+      "covers": [],
+      "authored": true,
+      "call": "clockAudit",
+      "args": [{ "$foray": "how-ai-actually-gets-built-3b83e1" }],
+      "expect": {
+        "return": {
+          "elapsedRoundTrips": true,
+          "everyStartMapsBack": true,
+          "startsAreCumulative": true,
+          "statedRuntimeHolds": true
+        }
+      }
+    },
+    {
+      "id": "foray-clock/committed-the-chain-reaction-how-engineering-disasters-rea-25f1b7",
+      "covers": [],
+      "authored": true,
+      "call": "clockAudit",
+      "args": [{ "$foray": "the-chain-reaction-how-engineering-disasters-rea-25f1b7" }],
+      "expect": {
+        "return": {
+          "elapsedRoundTrips": true,
+          "everyStartMapsBack": true,
+          "startsAreCumulative": true,
+          "statedRuntimeHolds": true
+        }
+      }
+    },
+    {
+      "id": "foray-clock/committed-what-engineers-actually-do-all-day-e08236",
+      "covers": [],
+      "authored": true,
+      "call": "clockAudit",
+      "args": [{ "$foray": "what-engineers-actually-do-all-day-e08236" }],
+      "expect": {
+        "return": {
+          "elapsedRoundTrips": true,
+          "everyStartMapsBack": true,
+          "startsAreCumulative": true,
+          "statedRuntimeHolds": true
+        }
+      }
+    }
+  ]
+}

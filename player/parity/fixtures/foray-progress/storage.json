@@ -1,0 +1,1062 @@
+{
+  "family": "foray-progress",
+  "module": "player/parity/foray-store.js",
+  "note": "The storage half of player/foray-progress.js through player/parity/foray-store.js storageRun: readProgress / writeProgress / clearProgress / listProgress against a Storage built from data (a refusing one, none, one without key()), and the throttled ForayProgressStore (save, markFinished, get, clear, list, the refused-write counter). Each case returns every op's answer and the rows left behind. Port: NE-29s.",
+  "cases": [
+    {
+      "id": "foray-progress/one-row-per-foray",
+      "covers": [
+        "foray-progress::one Foray is one row, so two Forays cannot overwrite each other"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            [
+              "write",
+              {
+                "foray_id": "grilling-history-1",
+                "title": "The history of grilling",
+                "elapsed_sec": 1180,
+                "total_sec": 3673,
+                "index": 9,
+                "segment_id": null,
+                "into_sec": 0,
+                "updated_at": "2026-08-16T10:00:00.000Z"
+              }
+            ],
+            [
+              "write",
+              {
+                "foray_id": "other-foray",
+                "title": "The history of grilling",
+                "elapsed_sec": 60,
+                "total_sec": 3673,
+                "index": 9,
+                "segment_id": null,
+                "into_sec": 0,
+                "updated_at": "2026-08-16T10:00:00.000Z"
+              }
+            ],
+            ["read", "grilling-history-1"],
+            ["read", "other-foray"]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            true,
+            {
+              "elapsed_sec": 1180,
+              "foray_id": "grilling-history-1",
+              "index": 9,
+              "into_sec": 0,
+              "segment_id": null,
+              "title": "The history of grilling",
+              "total_sec": 3673,
+              "updated_at": "2026-08-16T10:00:00.000Z"
+            },
+            {
+              "elapsed_sec": 60,
+              "foray_id": "other-foray",
+              "index": 9,
+              "into_sec": 0,
+              "segment_id": null,
+              "title": "The history of grilling",
+              "total_sec": 3673,
+              "updated_at": "2026-08-16T10:00:00.000Z"
+            }
+          ],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"The history of grilling\",\"elapsed_sec\":1180,\"total_sec\":3673,\"index\":9,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}",
+            "cp_foray:other-foray": "{\"foray_id\":\"other-foray\",\"title\":\"The history of grilling\",\"elapsed_sec\":60,\"total_sec\":3673,\"index\":9,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/write-read-back",
+      "covers": ["foray-progress::a written position reads back identically"],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            [
+              "write",
+              {
+                "foray_id": "grilling-history-1",
+                "title": "The history of grilling",
+                "elapsed_sec": 1180,
+                "total_sec": 3673,
+                "index": 9,
+                "segment_id": null,
+                "into_sec": 0,
+                "updated_at": "2026-08-16T10:00:00.000Z"
+              }
+            ],
+            ["read", "grilling-history-1"]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            {
+              "elapsed_sec": 1180,
+              "foray_id": "grilling-history-1",
+              "index": 9,
+              "into_sec": 0,
+              "segment_id": null,
+              "title": "The history of grilling",
+              "total_sec": 3673,
+              "updated_at": "2026-08-16T10:00:00.000Z"
+            }
+          ],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"The history of grilling\",\"elapsed_sec\":1180,\"total_sec\":3673,\"index\":9,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/corrupt-json",
+      "covers": [
+        "foray-progress::corrupt JSON reads as no position rather than throwing into the render loop"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "initial": { "cp_foray:grilling-history-1": "{not json" },
+          "ops": [["read", "grilling-history-1"]]
+        }
+      ],
+      "expect": {
+        "return": { "results": [null], "rows": { "cp_foray:grilling-history-1": "{not json" } }
+      }
+    },
+    {
+      "id": "foray-progress/missing-fields",
+      "covers": ["foray-progress::a row missing its required fields reads as no position"],
+      "call": "storageRun",
+      "args": [
+        {
+          "initial": { "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\"}" },
+          "ops": [["read", "grilling-history-1"]]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [null],
+          "rows": { "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\"}" }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/refused-write",
+      "covers": [
+        "foray-progress::a storage that refuses writes returns false instead of throwing"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            ["failWrites", true],
+            [
+              "write",
+              {
+                "foray_id": "grilling-history-1",
+                "title": "The history of grilling",
+                "elapsed_sec": 1180,
+                "total_sec": 3673,
+                "index": 9,
+                "segment_id": null,
+                "into_sec": 0,
+                "updated_at": "2026-08-16T10:00:00.000Z"
+              }
+            ]
+          ]
+        }
+      ],
+      "expect": { "return": { "results": [null, false], "rows": {} } }
+    },
+    {
+      "id": "foray-progress/no-storage",
+      "covers": ["foray-progress::reading with no storage at all is null, not a crash"],
+      "call": "storageRun",
+      "args": [{ "storage": "none", "ops": [["read", "grilling-history-1"], ["list"]] }],
+      "expect": { "return": { "results": [null, []], "rows": {} } }
+    },
+    {
+      "id": "foray-progress/clear",
+      "covers": ["foray-progress::clear removes the row"],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            [
+              "write",
+              {
+                "foray_id": "grilling-history-1",
+                "title": "The history of grilling",
+                "elapsed_sec": 1180,
+                "total_sec": 3673,
+                "index": 9,
+                "segment_id": null,
+                "into_sec": 0,
+                "updated_at": "2026-08-16T10:00:00.000Z"
+              }
+            ],
+            ["clear", "grilling-history-1"],
+            ["read", "grilling-history-1"]
+          ]
+        }
+      ],
+      "expect": { "return": { "results": [true, null, null], "rows": {} } }
+    },
+    {
+      "id": "foray-progress/list-only-cp-foray",
+      "covers": [
+        "foray-progress::listProgress returns only cp_foray rows, ignoring the rest of localStorage"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "initial": {
+            "cp_saved": "{}",
+            "cp_diag": "[]",
+            "cp_pos:some-episode": "{}",
+            "cp_interests": "{}"
+          },
+          "ops": [
+            [
+              "write",
+              {
+                "foray_id": "grilling-history-1",
+                "title": "The history of grilling",
+                "elapsed_sec": 1180,
+                "total_sec": 3673,
+                "index": 9,
+                "segment_id": null,
+                "into_sec": 0,
+                "updated_at": "2026-08-16T10:00:00.000Z"
+              }
+            ],
+            ["list", { "now": "2026-08-16T11:00:00.000Z" }]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            [
+              {
+                "elapsed_sec": 1180,
+                "foray_id": "grilling-history-1",
+                "index": 9,
+                "into_sec": 0,
+                "segment_id": null,
+                "title": "The history of grilling",
+                "total_sec": 3673,
+                "updated_at": "2026-08-16T10:00:00.000Z"
+              }
+            ]
+          ],
+          "rows": {
+            "cp_diag": "[]",
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"The history of grilling\",\"elapsed_sec\":1180,\"total_sec\":3673,\"index\":9,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}",
+            "cp_interests": "{}",
+            "cp_pos:some-episode": "{}",
+            "cp_saved": "{}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/list-newest-first",
+      "covers": [
+        "foray-progress::listProgress is newest first, so the home screen leads with the live one"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            [
+              "write",
+              {
+                "foray_id": "older",
+                "title": "The history of grilling",
+                "elapsed_sec": 1180,
+                "total_sec": 3673,
+                "index": 9,
+                "segment_id": null,
+                "into_sec": 0,
+                "updated_at": "2026-08-10T10:00:00.000Z"
+              }
+            ],
+            [
+              "write",
+              {
+                "foray_id": "newest",
+                "title": "The history of grilling",
+                "elapsed_sec": 1180,
+                "total_sec": 3673,
+                "index": 9,
+                "segment_id": null,
+                "into_sec": 0,
+                "updated_at": "2026-08-16T09:00:00.000Z"
+              }
+            ],
+            [
+              "write",
+              {
+                "foray_id": "middle",
+                "title": "The history of grilling",
+                "elapsed_sec": 1180,
+                "total_sec": 3673,
+                "index": 9,
+                "segment_id": null,
+                "into_sec": 0,
+                "updated_at": "2026-08-14T10:00:00.000Z"
+              }
+            ],
+            ["list", { "now": "2026-08-16T10:00:00.000Z" }]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            true,
+            true,
+            [
+              {
+                "elapsed_sec": 1180,
+                "foray_id": "newest",
+                "index": 9,
+                "into_sec": 0,
+                "segment_id": null,
+                "title": "The history of grilling",
+                "total_sec": 3673,
+                "updated_at": "2026-08-16T09:00:00.000Z"
+              },
+              {
+                "elapsed_sec": 1180,
+                "foray_id": "middle",
+                "index": 9,
+                "into_sec": 0,
+                "segment_id": null,
+                "title": "The history of grilling",
+                "total_sec": 3673,
+                "updated_at": "2026-08-14T10:00:00.000Z"
+              },
+              {
+                "elapsed_sec": 1180,
+                "foray_id": "older",
+                "index": 9,
+                "into_sec": 0,
+                "segment_id": null,
+                "title": "The history of grilling",
+                "total_sec": 3673,
+                "updated_at": "2026-08-10T10:00:00.000Z"
+              }
+            ]
+          ],
+          "rows": {
+            "cp_foray:middle": "{\"foray_id\":\"middle\",\"title\":\"The history of grilling\",\"elapsed_sec\":1180,\"total_sec\":3673,\"index\":9,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-14T10:00:00.000Z\"}",
+            "cp_foray:newest": "{\"foray_id\":\"newest\",\"title\":\"The history of grilling\",\"elapsed_sec\":1180,\"total_sec\":3673,\"index\":9,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T09:00:00.000Z\"}",
+            "cp_foray:older": "{\"foray_id\":\"older\",\"title\":\"The history of grilling\",\"elapsed_sec\":1180,\"total_sec\":3673,\"index\":9,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-10T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/list-expires-old",
+      "covers": ["foray-progress::a position older than the age limit stops being offered"],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            [
+              "write",
+              {
+                "foray_id": "grilling-history-1",
+                "title": "The history of grilling",
+                "elapsed_sec": 1180,
+                "total_sec": 3673,
+                "index": 9,
+                "segment_id": null,
+                "into_sec": 0,
+                "updated_at": "2026-01-01T00:00:00.000Z"
+              }
+            ],
+            ["list", { "now": "2026-08-16T10:00:00.000Z" }],
+            ["read", "grilling-history-1"]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            [],
+            {
+              "elapsed_sec": 1180,
+              "foray_id": "grilling-history-1",
+              "index": 9,
+              "into_sec": 0,
+              "segment_id": null,
+              "title": "The history of grilling",
+              "total_sec": 3673,
+              "updated_at": "2026-01-01T00:00:00.000Z"
+            }
+          ],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"The history of grilling\",\"elapsed_sec\":1180,\"total_sec\":3673,\"index\":9,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-01-01T00:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/list-keeps-undated",
+      "covers": ["foray-progress::an undated row is kept rather than silently dropped"],
+      "call": "storageRun",
+      "args": [
+        {
+          "initial": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"elapsed_sec\":600,\"total_sec\":3673}"
+          },
+          "ops": [["list"]]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            [
+              {
+                "elapsed_sec": 600,
+                "foray_id": "grilling-history-1",
+                "total_sec": 3673
+              }
+            ]
+          ],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"elapsed_sec\":600,\"total_sec\":3673}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/list-no-key",
+      "covers": [
+        "foray-progress::listProgress tolerates a storage without key() instead of throwing"
+      ],
+      "call": "storageRun",
+      "args": [{ "storage": "noKey", "ops": [["list"]] }],
+      "expect": { "return": { "results": [[]], "rows": {} } }
+    },
+    {
+      "id": "foray-progress/mark-finished",
+      "covers": [
+        "foray-progress::markFinished writes a row that reads back finished at 100%, past the throttle (honesty-2)"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 3670, "totalSec": 3673 }
+            ],
+            [
+              "markFinished",
+              {
+                "forayId": "grilling-history-1",
+                "title": "t",
+                "totalSec": 3673,
+                "index": 31,
+                "segmentId": "last",
+                "intoSec": 90
+              }
+            ],
+            ["get", "grilling-history-1"]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            true,
+            {
+              "elapsed_sec": 3673,
+              "foray_id": "grilling-history-1",
+              "index": 31,
+              "into_sec": 90,
+              "segment_id": "last",
+              "title": "t",
+              "total_sec": 3673,
+              "updated_at": "2026-08-16T10:00:00.000Z"
+            }
+          ],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"t\",\"elapsed_sec\":3673,\"total_sec\":3673,\"index\":31,\"segment_id\":\"last\",\"into_sec\":90,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/store-first-write",
+      "covers": ["foray-progress::the store writes the first position immediately"],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            [
+              "save",
+              {
+                "forayId": "grilling-history-1",
+                "elapsedSec": 30,
+                "totalSec": 3673,
+                "index": 0
+              }
+            ],
+            ["get", "grilling-history-1"]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            {
+              "elapsed_sec": 30,
+              "foray_id": "grilling-history-1",
+              "index": 0,
+              "into_sec": 0,
+              "segment_id": null,
+              "title": "",
+              "total_sec": 3673,
+              "updated_at": "2026-08-16T10:00:00.000Z"
+            }
+          ],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"\",\"elapsed_sec\":30,\"total_sec\":3673,\"index\":0,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/store-4hz-tick",
+      "covers": ["foray-progress::a 4 Hz tick does not become 4 writes a second"],
+      "call": "storageRun",
+      "args": [
+        {
+          "everySec": 5,
+          "ops": [
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 30, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 30.25, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 30.5, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 30.75, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 31, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 31.25, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 31.5, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 31.75, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 32, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 32.25, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 32.5, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 32.75, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 33, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 33.25, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 33.5, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 33.75, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 35, "totalSec": 3673 }
+            ]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true
+          ],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"\",\"elapsed_sec\":35,\"total_sec\":3673,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/store-big-seek",
+      "covers": [
+        "foray-progress::the throttle is on the clock, so a big seek writes at once in either direction"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "everySec": 5,
+          "ops": [
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 1200, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 300, "totalSec": 3673 }
+            ],
+            ["get", "grilling-history-1"]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            true,
+            {
+              "elapsed_sec": 300,
+              "foray_id": "grilling-history-1",
+              "index": -1,
+              "into_sec": 0,
+              "segment_id": null,
+              "title": "",
+              "total_sec": 3673,
+              "updated_at": "2026-08-16T10:00:00.000Z"
+            }
+          ],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"\",\"elapsed_sec\":300,\"total_sec\":3673,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/store-force",
+      "covers": [
+        "foray-progress::force writes through the throttle — pause and page-hide cannot wait for a tick"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "everySec": 5,
+          "ops": [
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 100, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 101, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              {
+                "forayId": "grilling-history-1",
+                "elapsedSec": 101,
+                "totalSec": 3673,
+                "force": true
+              }
+            ],
+            ["get", "grilling-history-1"]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            false,
+            true,
+            {
+              "elapsed_sec": 101,
+              "foray_id": "grilling-history-1",
+              "index": -1,
+              "into_sec": 0,
+              "segment_id": null,
+              "title": "",
+              "total_sec": 3673,
+              "updated_at": "2026-08-16T10:00:00.000Z"
+            }
+          ],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"\",\"elapsed_sec\":101,\"total_sec\":3673,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/store-per-foray",
+      "covers": [
+        "foray-progress::the throttle is per Foray, so switching between two does not swallow a write"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "everySec": 5,
+          "ops": [
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 100, "totalSec": 3673 }
+            ],
+            ["save", { "forayId": "other", "elapsedSec": 100, "totalSec": 3673 }]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [true, true],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"\",\"elapsed_sec\":100,\"total_sec\":3673,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}",
+            "cp_foray:other": "{\"foray_id\":\"other\",\"title\":\"\",\"elapsed_sec\":100,\"total_sec\":3673,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/store-refuses-nonsense",
+      "covers": ["foray-progress::the store refuses a save it cannot make sense of"],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            ["save", { "forayId": "", "elapsedSec": 10, "totalSec": 3673 }],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 10, "totalSec": 0 }
+            ],
+            [
+              "save",
+              {
+                "forayId": "grilling-history-1",
+                "elapsedSec": { "$num": "NaN" },
+                "totalSec": 3673
+              }
+            ]
+          ]
+        }
+      ],
+      "expect": { "return": { "results": [false, false, false], "rows": {} } }
+    },
+    {
+      "id": "foray-progress/store-clear-resets-throttle",
+      "covers": [
+        "foray-progress::clearing resets the throttle too, so the next save is not swallowed"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "everySec": 5,
+          "ops": [
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 100, "totalSec": 3673 }
+            ],
+            ["storeClear", "grilling-history-1"],
+            ["get", "grilling-history-1"],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 101, "totalSec": 3673 }
+            ]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [true, null, null, true],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"\",\"elapsed_sec\":101,\"total_sec\":3673,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/store-full-quota",
+      "covers": ["foray-progress::a full quota does not make the store think it saved"],
+      "call": "storageRun",
+      "args": [
+        {
+          "everySec": 5,
+          "ops": [
+            ["failWrites", true],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 100, "totalSec": 3673 }
+            ],
+            ["failWrites", false],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 101, "totalSec": 3673 }
+            ]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [null, false, null, true],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"\",\"elapsed_sec\":101,\"total_sec\":3673,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/store-list",
+      "covers": [
+        "foray-progress::list() surfaces what the home screen renders, most recent first"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            [
+              "save",
+              {
+                "forayId": "a",
+                "title": "A",
+                "elapsedSec": 600,
+                "totalSec": 3673,
+                "now": "2026-08-15T10:00:00.000Z"
+              }
+            ],
+            [
+              "save",
+              {
+                "forayId": "b",
+                "title": "B",
+                "elapsedSec": 900,
+                "totalSec": 3673,
+                "now": "2026-08-16T10:00:00.000Z"
+              }
+            ],
+            ["storeList", { "now": "2026-08-16T11:00:00.000Z" }]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            true,
+            [
+              {
+                "elapsed_sec": 900,
+                "foray_id": "b",
+                "index": -1,
+                "into_sec": 0,
+                "segment_id": null,
+                "title": "B",
+                "total_sec": 3673,
+                "updated_at": "2026-08-16T10:00:00.000Z"
+              },
+              {
+                "elapsed_sec": 600,
+                "foray_id": "a",
+                "index": -1,
+                "into_sec": 0,
+                "segment_id": null,
+                "title": "A",
+                "total_sec": 3673,
+                "updated_at": "2026-08-15T10:00:00.000Z"
+              }
+            ]
+          ],
+          "rows": {
+            "cp_foray:a": "{\"foray_id\":\"a\",\"title\":\"A\",\"elapsed_sec\":600,\"total_sec\":3673,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-15T10:00:00.000Z\"}",
+            "cp_foray:b": "{\"foray_id\":\"b\",\"title\":\"B\",\"elapsed_sec\":900,\"total_sec\":3673,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/store-counts-refusals",
+      "covers": [
+        "foray-progress::a refused write is counted, so 'nothing to resume' and 'we forgot' are distinguishable"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            ["failWrites", true],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 100, "totalSec": 3673 }
+            ],
+            [
+              "save",
+              { "forayId": "grilling-history-1", "elapsedSec": 200, "totalSec": 3673 }
+            ],
+            ["counters"]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [null, false, false, { "failedWrites": 2, "refusedWrites": 2 }],
+          "rows": {}
+        }
+      }
+    },
+    {
+      "id": "foray-progress/new-fields-null",
+      "covers": [
+        "foray-progress::the two new fields round-trip through storage as null, not undefined"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            [
+              "write",
+              {
+                "foray_id": "grilling-history-1",
+                "title": "",
+                "elapsed_sec": 60,
+                "total_sec": 3673,
+                "index": -1,
+                "segment_id": null,
+                "into_sec": 0,
+                "updated_at": "2026-08-16T10:00:00.000Z"
+              }
+            ],
+            ["read", "grilling-history-1"]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            {
+              "elapsed_sec": 60,
+              "foray_id": "grilling-history-1",
+              "index": -1,
+              "into_sec": 0,
+              "segment_id": null,
+              "title": "",
+              "total_sec": 3673,
+              "updated_at": "2026-08-16T10:00:00.000Z"
+            }
+          ],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"\",\"elapsed_sec\":60,\"total_sec\":3673,\"index\":-1,\"segment_id\":null,\"into_sec\":0,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    },
+    {
+      "id": "foray-progress/store-carries-anchor",
+      "covers": [
+        "foray-progress::the writer carries the segment id and offset through to the row"
+      ],
+      "call": "storageRun",
+      "args": [
+        {
+          "ops": [
+            [
+              "save",
+              {
+                "forayId": "grilling-history-1",
+                "elapsedSec": 220,
+                "totalSec": 540,
+                "index": 2,
+                "segmentId": "s3",
+                "intoSec": 40
+              }
+            ],
+            ["get", "grilling-history-1"]
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "results": [
+            true,
+            {
+              "elapsed_sec": 220,
+              "foray_id": "grilling-history-1",
+              "index": 2,
+              "into_sec": 40,
+              "segment_id": "s3",
+              "title": "",
+              "total_sec": 540,
+              "updated_at": "2026-08-16T10:00:00.000Z"
+            }
+          ],
+          "rows": {
+            "cp_foray:grilling-history-1": "{\"foray_id\":\"grilling-history-1\",\"title\":\"\",\"elapsed_sec\":220,\"total_sec\":540,\"index\":2,\"segment_id\":\"s3\",\"into_sec\":40,\"updated_at\":\"2026-08-16T10:00:00.000Z\"}"
+          }
+        }
+      }
+    }
+  ]
+}

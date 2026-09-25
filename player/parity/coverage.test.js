@@ -142,11 +142,11 @@ test("a suite whose recording card has landed owes nothing, and is fixtured into
    left the Foray and narration tests for NE-29j to record into `media`. So it
    is not a RECORDED_SUITE — it still owes — but what it owes is fixed: only
    NE-29j's half, and only in the foray capability's family. */
-test("media-session is wholly classified: media-episode, an exclusion, or NE-29j's Foray half — nothing else", () => {
-  // NE-12j's acceptance. MUTATION: re-tag one unported media-session entry to
-  // NE-12j / media-episode (what `record.mjs --classify` would give a new test)
-  // -> red; add a media-session covers[] entry to a queue-state case -> red (a
-  // lock-screen rule the reducer port would silently own instead of NE-12s).
+test("media-session is wholly classified: media-episode, an exclusion, or NE-29j's Foray half (media) — nothing else, and nothing owed", () => {
+  // NE-12j's acceptance, closed by NE-29j's ("media-session has zero unported
+  // entries"). MUTATION: put one media-session test back in unported.json -> red;
+  // add a media-session covers[] entry to a queue-state case -> red (a
+  // lock-screen rule the reducer port would silently own instead of MediaMapping).
   const { status } = classify(REPO_ROOT, DATA, FIXTURES);
   const names = Object.entries(status["media-session"]);
   assert.ok(names.length > 0, "media-session has no tests on disk");
@@ -155,14 +155,14 @@ test("media-session is wholly classified: media-episode, an exclusion, or NE-29j
     const label = `media-session :: ${JSON.stringify(name)}`;
     if (st.covered.length) {
       tally.fixtured++;
-      for (const id of st.covered) assert.ok(id.startsWith("media-episode/"), `${label} is covered by ${id}, outside media-episode`);
+      for (const id of st.covered) assert.ok(id.startsWith("media-episode/") || id.startsWith("media/"), `${label} is covered by ${id}, outside media-episode and media`);
     } else if (st.excluded) tally.excluded++;
     else {
-      assert.deepStrictEqual(st.unported, { card: "NE-29j", family: "media" }, `${label} must be fixtured, excluded, or NE-29j's`);
+      assert.fail(`${label} must be fixtured or excluded; it is ${JSON.stringify(st.unported ?? "in no list")}`);
       tally.owed++;
     }
   }
-  assert.ok(tally.fixtured > 0 && tally.excluded > 0 && tally.owed > 0, JSON.stringify(tally));
+  assert.ok(tally.fixtured > 0 && tally.excluded > 0 && tally.owed === 0, JSON.stringify(tally));
   // media-episode is charged to the episode capability and media to foray, so
   // the half NE-29j owes can never hold the episode capability back (plan §6.6).
   assert.ok(DATA.capabilities.episode.includes("media-episode"));
@@ -182,11 +182,15 @@ test("seam-gap, interlude and seek-policy are wholly classified, own no unported
     for (const [name, st] of names) {
       const label = `${suite} :: ${JSON.stringify(name)}`;
       if (st.covered.length) {
-        for (const id of st.covered) assert.ok(id.startsWith(prefix), `${label} is covered by ${id}, outside its own family`);
-      } else if (!st.excluded) {
-        // The one frozen-Foray count is a rule over a real Foray, which is
-        // NE-29j's foray-structure work, not a rule of the interlude module.
-        assert.deepStrictEqual(st.unported, { card: "NE-29j", family: "foray-structure" }, `${label} must be fixtured or excluded`);
+        /* The one frozen-Foray count is a rule over a real Foray: NE-29j
+           recorded it into foray-structure, not into the interlude module's
+           family. Nothing else may leave its own family. */
+        const frozen = suite === "interlude" && name.startsWith("capital-types-1 (frozen)");
+        for (const id of st.covered) {
+          assert.ok(id.startsWith(frozen ? "foray-structure/" : prefix), `${label} is covered by ${id}, outside its own family`);
+        }
+      } else {
+        assert.ok(st.excluded, `${label} must be fixtured or excluded`);
       }
     }
   }
@@ -207,6 +211,44 @@ test("seam-gap, interlude and seek-policy are wholly classified, own no unported
   assert.ok(recorded.length > 0, "the four families have fixtures");
   for (const c of recorded) {
     assert.equal(DATA.pending[c.id], undefined, `${c.id} is ported by NE-28s and must not be pending`);
+  }
+});
+
+test("NE-29j: foray-progress and media-session owe nothing, the Foray families are owed to NE-29s and default-voice to NE-33, and 4a is never the artist of a committed Foray", () => {
+  /* NE-29j's acceptance: "the families pass in JS and sit in swift-pending
+     tagged NE-29s. media-session has zero unported entries. 'Never 4a as artist
+     of anything audible' is an authored case over every committed Foray."
+     MUTATION: put a foray-progress test back in unported.json -> red; re-tag one
+     foray-clock id to NE-29j in swift-pending.json -> red; drop the never-4a
+     case of one committed Foray (or un-author it) -> red. */
+  const { status } = classify(REPO_ROOT, DATA, FIXTURES);
+  for (const [name, st] of Object.entries(status["foray-progress"])) {
+    const label = `foray-progress :: ${JSON.stringify(name)}`;
+    assert.ok(st.covered.length > 0 || st.excluded, `${label} must be fixtured or excluded`);
+    for (const id of st.covered) assert.ok(/^(foray-progress|resume-rules|rows)\//.test(id), `${label} is covered by ${id}`);
+  }
+  for (const stem of ["foray-progress", "media-session"]) {
+    assert.deepStrictEqual(Object.keys(DATA.unported[stem] ?? {}), [], `${stem} owes unported.json nothing`);
+  }
+  const owedTo = { "foray-clock": "NE-29s", "foray-progress": "NE-29s", "foray-structure": "NE-29s", media: "NE-29s", "default-voice": "NE-33" };
+  for (const [fam, card] of Object.entries(owedTo)) {
+    const cases = FIXTURES.filter((f) => f.family === fam).flatMap((f) => f.doc.cases);
+    assert.ok(cases.length > 0, `${fam} is recorded`);
+    for (const c of cases) assert.equal(DATA.pending[c.id], card, `${c.id} must be owed to ${card} until the Swift port burns it down`);
+    assert.ok(DATA.capabilities.foray.includes(fam), `${fam} is charged to the foray capability`);
+    const owedHere = Object.values(DATA.unported).flatMap((t) => Object.values(t ?? {})).filter((e) => e?.family === fam);
+    assert.deepStrictEqual(owedHere, [], `${fam} has unported entries`);
+  }
+  /* Over the committed Forays as recorded (one case each, by $foray id). A
+     publish that ADDS a Foray does not turn this red — that would block data
+     publishes on a parity file — but its case should be added with the next
+     parity change; a Foray removed from data/ fails its case loudly (E_BAD_MACRO). */
+  const never4a = FIXTURES.filter((f) => f.family === "media").flatMap((f) => f.doc.cases).filter((c) => c.call === "appAsArtist");
+  assert.ok(never4a.length >= 2, "at least two committed Forays carry the never-4a case");
+  for (const c of never4a) {
+    assert.equal(typeof c.args?.[0]?.$foray, "string", `${c.id} runs over a committed Foray by id`);
+    assert.equal(c.authored, true, `${c.id} must be authored`);
+    assert.deepStrictEqual(c.expect, { return: 0 }, `${c.id} must expect zero`);
   }
 });
 

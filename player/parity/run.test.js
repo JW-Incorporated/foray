@@ -272,8 +272,26 @@ test("scenario: on a manual clock the seam beat holds the next play until the cl
   assert.equal(after.inSeamGap, false);
 });
 
-test("scenario: a verb with no JS driver fails loudly with its card, never silently skips", async () => {
-  await assert.rejects(scenario([{ remote: "next" }]), /E_NO_JS_DRIVER.*NE-29j/);
+test("scenario: a remote press goes through the real action table into the real manager, and a press the OS could not deliver is refused", async () => {
+  /* NE-29j. The `remote` driver: nexttrack loads the next item at its in-point
+     and arms its out-point, pause pauses the element, seekto without a usable
+     time is not a seek to zero (the table's own refusal), and an action name the
+     OS does not have is a malformed case, not a no-op. */
+  const got = await scenario([
+    { call: "loadQueue", args: [[{ $seg: ["a", 100, 210] }, { $seg: ["b", 400, 500] }]] }, { call: "play", args: [0] },
+    { checkpoint: "started" },
+    { remote: "nexttrack" }, { checkpoint: "next" },
+    { remote: "seekto", details: {} }, { checkpoint: "no-time" },
+    { remote: "pause" }, { checkpoint: "paused" },
+  ], { seamGapSec: 0 });
+  const [, next, noTime, paused] = got.checkpoints;
+  assert.ok(next.ops.includes("load:b@400"), next.ops.join(" "));
+  assert.ok(next.ops.includes("outPoint:500"), next.ops.join(" "));
+  assert.equal(next.index, 1);
+  assert.deepStrictEqual(noTime.ops, [], "seekto with no time does nothing");
+  assert.ok(paused.ops.includes("pause"));
+  await assert.rejects(scenario([{ remote: "next" }]), /E_BAD_CASE.*unknown remote action/);
+  assert.deepStrictEqual(Object.keys(PENDING_DRIVERS), [], "every schema verb has a JS driver");
 });
 
 /* ---------- NE-14j: the session, lifecycle and held-load drivers ---------- */

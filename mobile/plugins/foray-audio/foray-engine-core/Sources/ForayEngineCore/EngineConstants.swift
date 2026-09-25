@@ -182,7 +182,7 @@ public enum EngineConstants {
         /// `JINGLE_ASSET_URL`
         public static let jingleAssetUrl: String = "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav"
         /// `JINGLE_DURATION_SEC`
-        public static let jingleDurationSec: Double = 1.5
+        public static let jingleDurationSec: Double = 3
         /// `NARRATION`
         public static let narration: String = "narration"
         /// `NARRATION_CHARS_PER_SEC`
@@ -191,6 +191,16 @@ public enum EngineConstants {
         public static let narrationFallbackSec: Double = 8
         /// `SEGMENT`
         public static let segment: String = "segment"
+    }
+
+    /// `player/foray-structure.js`
+    public enum ForayStructure {
+        /// `QUEUE_KINDS`
+        public static let queueKinds: [String] = ["episode", "tts", "jingle"]
+        /// `REFUSED_STRUCTURE`
+        public static let refusedStructure: String = "refused-structure"
+        /// `STRUCTURE_PROBLEMS`
+        public static let structureProblems: [String] = ["empty", "not-an-object", "no-id", "duplicate-id", "unknown-kind", "no-audio", "bad-bounds", "dai-unanchored", "no-reference", "silent-narration", "no-duration"]
     }
 
     /// `player/html-audio-backend.js`

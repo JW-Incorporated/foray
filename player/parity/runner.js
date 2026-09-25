@@ -208,17 +208,43 @@ export async function runCase(c, fixture, { root = REPO_ROOT } = {}) {
     JS case using one fails loudly rather than being silently skipped. */
 export const PENDING_DRIVERS = Object.freeze({
   /* `session` and `lifecycle` were listed here for NE-14j, which drives them
-     now (SESSION_EVENTS and LIFECYCLE_EVENTS below).
-
-     `remote`: NE-12j recorded media-session's episode subset without it: the remote-press
-     table is a pure function of a surface and the presses, asked through
-     player/parity/media-actions.js, so no press needed a manager behind it. The
-     media-session tests that DO press a lock-screen button into a live manager
-     are the Foray ones (a real Foray's nexttrack, previoustrack, pause, seekto),
-     and NE-12j left them in unported.json for NE-29j — so NE-29j is the first
-     card that needs this driver. */
-  remote: "NE-29j",
+     now (SESSION_EVENTS and LIFECYCLE_EVENTS below). `remote` was listed for
+     NE-29j, which drives it now (REMOTE_ACTIONS below). Every schema verb has
+     a JS driver; the mechanism stays for the next verb the schema gains. */
 });
+
+/** What a `remote` step can press (NE-29j): a lock-screen, car or headphone
+    button, as the OS names it (media-session.js MEDIA_ACTIONS). A step is
+    `{remote: "<action>", details?: {...}}` — `details` is what the OS hands
+    the handler (`seekto` carries `{seekTime}`).
+
+    THE PRESS GOES THROUGH THE REAL TABLE. The driver asks
+    `mediaSessionActions(surface)` for the handler — the same function that
+    installs the page's handlers and that NE-12s ports as MediaMapping — and
+    calls it, so a remap (seekbackward's -15, seekto's refusal of a missing
+    time) reaches the manager exactly as it reaches the page. The SURFACE is the
+    one media-session.test.js's `realPlayer` builds over a real manager: play
+    resumes, pause pauses, stop stops, next/previous skip, and both seeks are
+    precise seeks on the loaded element's clock. On iOS the engine's remote
+    handlers answer the same presses (plan §4.5); the op log is the claim.
+
+    A press of an action the surface did not install is a HARNESS error: the OS
+    never delivers a command nobody registered. */
+export const REMOTE_ACTIONS = Object.freeze([
+  "play", "pause", "stop", "previoustrack", "nexttrack", "seekbackward", "seekforward", "seekto",
+]);
+
+function remoteSurface(m, backend) {
+  return {
+    play: () => m.resume(),
+    pause: () => m.pause(),
+    stop: () => m.stop(),
+    next: () => m.skipToNext(),
+    previous: () => m.skipToPrevious(),
+    seekBy: (offset) => m.seek(Math.max(0, backend.currentTime + offset), { precise: true }),
+    seekTo: (position) => m.seek(position, { precise: true }),
+  };
+}
 
 /** What a `session` step can say (NE-14j): the audio session's notifications,
     as the page hands them to the manager.
@@ -398,6 +424,7 @@ async function runScenario(c, ctx) {
   if (setup.target === "deck") return runDeckScenario(c, setup, ctx);
   if (setup.target !== "manager") throw new HarnessError("E_SCENARIO_TARGET", `no JS driver for target "${setup.target}"`);
   const { PlayerQueueManager, __resetInstanceForTests } = await importModule(ctx.root, "player/queue-manager.js");
+  const { mediaSessionActions } = await importModule(ctx.root, "player/media-session.js");
 
   const log = new OpLog();
   const backend = new FakeBackend({ log, ...(setup.backend ?? {}) });
@@ -523,6 +550,18 @@ async function runScenario(c, ctx) {
           interlude.finish(step.reason ?? "ended");
           await tick();
           break;
+        case "remote": {
+          if (!REMOTE_ACTIONS.includes(step.remote)) {
+            throw new HarnessError("E_BAD_CASE", `unknown remote action ${JSON.stringify(step.remote)} (have ${REMOTE_ACTIONS.join(", ")})`);
+          }
+          const handler = new Map(mediaSessionActions(remoteSurface(m, backend))).get(step.remote);
+          if (!handler) throw new HarnessError("E_BAD_CASE", `the surface installs no "${step.remote}" handler, so the OS could never deliver this press`);
+          const run = Promise.resolve("details" in step ? handler(expandInputs(step.details, ctx)) : handler());
+          if (step.await === false) floating.push(run.catch(() => {}));
+          else await run;
+          await tick();
+          break;
+        }
         case "checkpoint":
           checkpoint(step.checkpoint);
           break;

@@ -1,0 +1,1188 @@
+{
+  "family": "foray-structure",
+  "module": "player/foray-structure.js",
+  "note": "J-4 (plan §5.2 playForay: 'the engine re-validates structure'): player/foray-structure.js structuralCheck, buildForayQueue's post-condition stated once — ids present and unique, a known kind, audio for a segment and a jingle, finite forward bounds, ADR-0007's anchors for a DAI source, a reference duration for a segment the ladder checks at load, narration that can be heard, and a positive duration for everything the clock cannot subtract — answered as refused-structure with every problem named. And seamCensus, what each join is by the manager's own seam rules. Port: NE-29s StructuralCheck.",
+  "cases": [
+    {
+      "id": "foray-structure/refused-structure",
+      "covers": [],
+      "read": "REFUSED_STRUCTURE",
+      "expect": { "value": "refused-structure" }
+    },
+    {
+      "id": "foray-structure/queue-kinds",
+      "covers": [],
+      "read": "QUEUE_KINDS",
+      "expect": { "value": ["episode", "tts", "jingle"] }
+    },
+    {
+      "id": "foray-structure/structure-problems",
+      "covers": [],
+      "read": "STRUCTURE_PROBLEMS",
+      "expect": {
+        "value": [
+          "empty",
+          "not-an-object",
+          "no-id",
+          "duplicate-id",
+          "unknown-kind",
+          "no-audio",
+          "bad-bounds",
+          "dai-unanchored",
+          "no-reference",
+          "silent-narration",
+          "no-duration"
+        ]
+      }
+    },
+    {
+      "id": "foray-structure/check-valid-mixed",
+      "covers": [],
+      "note": "Segments, a script-only narration line and a jingle: what buildForayQueue emits.",
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              { "audio_url": "https://example.test/a.mp3", "source_item_id": "ep-a" }
+            ]
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": { "return": { "ok": true, "problems": [], "reason": null } }
+    },
+    {
+      "id": "foray-structure/check-empty",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [[]],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "empty", "index": -1 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-not-an-array",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [null],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "empty", "index": -1 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-not-an-object",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              { "audio_url": "https://example.test/a.mp3", "source_item_id": "ep-a" }
+            ]
+          },
+          "bridge-1",
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "not-an-object", "index": 1 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-no-id",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          { "$seg": ["", 100, 210, { "audio_url": "https://example.test/a.mp3" }] },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "no-id", "index": 0 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-duplicate-id",
+      "covers": [],
+      "note": "Every id-keyed lookup takes the first match.",
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              { "audio_url": "https://example.test/a.mp3", "source_item_id": "ep-a" }
+            ]
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["f#0", 400, 460, { "audio_url": "https://example.test/b.mp3" }] },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "duplicate-id", "index": 3 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-unknown-kind",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              { "audio_url": "https://example.test/a.mp3", "source_item_id": "ep-a" }
+            ]
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          { "id": "x", "kind": "chapter", "audio_url": "https://example.test/c.mp3" },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "unknown-kind", "index": 2 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-segment-no-audio",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          { "$seg": ["f#0", 100, 210] },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "no-audio", "index": 0 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-segment-no-out-point",
+      "covers": [],
+      "note": "A Foray segment without an out-point is a whole episode.",
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "id": "f#0",
+            "kind": "episode",
+            "audio_url": "https://example.test/a.mp3",
+            "start_sec": 100
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "bad-bounds", "index": 0 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-segment-backwards",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          { "$seg": ["f#0", 210, 100, { "audio_url": "https://example.test/a.mp3" }] },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "bad-bounds", "index": 0 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-segment-negative-start",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          { "$seg": ["f#0", -1, 100, { "audio_url": "https://example.test/a.mp3" }] },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "bad-bounds", "index": 0 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-segment-nan-end",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              { "$num": "NaN" },
+              { "audio_url": "https://example.test/a.mp3" }
+            ]
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "bad-bounds", "index": 0 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-dai-unanchored",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              {
+                "audio_url": "https://example.test/a.mp3",
+                "dai_suspected": true,
+                "start_anchor": "and so",
+                "end_anchor": null
+              }
+            ]
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "dai-unanchored", "index": 0 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-dai-anchored",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              {
+                "audio_url": "https://example.test/a.mp3",
+                "dai_suspected": true,
+                "start_anchor": "and so",
+                "end_anchor": "that was it",
+                "needs_drift_check": true,
+                "reference_duration_sec": 1800
+              }
+            ]
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": { "return": { "ok": true, "problems": [], "reason": null } }
+    },
+    {
+      "id": "foray-structure/check-no-reference",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              {
+                "audio_url": "https://example.test/a.mp3",
+                "dai_suspected": true,
+                "start_anchor": "a",
+                "end_anchor": "b",
+                "needs_drift_check": true,
+                "reference_duration_sec": null
+              }
+            ]
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "no-reference", "index": 0 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-silent-narration",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              { "audio_url": "https://example.test/a.mp3", "source_item_id": "ep-a" }
+            ]
+          },
+          {
+            "$tts": ["bridge-1", { "script": "  ", "duration_sec": 8, "audio_url": null }]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "silent-narration", "index": 1 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-narration-asset-only",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              { "audio_url": "https://example.test/a.mp3", "source_item_id": "ep-a" }
+            ]
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              { "audio_url": "https://example.test/n.mp3", "duration_sec": 4.2 }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": { "return": { "ok": true, "problems": [], "reason": null } }
+    },
+    {
+      "id": "foray-structure/check-narration-no-duration",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              { "audio_url": "https://example.test/a.mp3", "source_item_id": "ep-a" }
+            ]
+          },
+          { "$tts": ["bridge-1", { "script": "Hello.", "duration_sec": 0 }] },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "no-duration", "index": 1 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-jingle-no-audio",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              { "audio_url": "https://example.test/a.mp3", "source_item_id": "ep-a" }
+            ]
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          { "id": "jingle-1", "kind": "jingle", "duration_sec": 3 },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "no-audio", "index": 2 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-jingle-no-duration",
+      "covers": [],
+      "call": "structuralCheck",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              { "audio_url": "https://example.test/a.mp3", "source_item_id": "ep-a" }
+            ]
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://example.test/j.wav"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [{ "code": "no-duration", "index": 2 }],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/check-several-problems",
+      "covers": [],
+      "note": "Every problem of every item, in queue order: a refusal row says exactly what was wrong.",
+      "call": "structuralCheck",
+      "args": [[{ "$seg": ["", 5, 1] }, "x", { "$seg": ["", 5, 1] }]],
+      "expect": {
+        "return": {
+          "ok": false,
+          "problems": [
+            { "code": "no-id", "index": 0 },
+            { "code": "no-audio", "index": 0 },
+            { "code": "bad-bounds", "index": 0 },
+            { "code": "not-an-object", "index": 1 },
+            { "code": "no-id", "index": 2 },
+            { "code": "no-audio", "index": 2 },
+            { "code": "bad-bounds", "index": 2 }
+          ],
+          "reason": "refused-structure"
+        }
+      }
+    },
+    {
+      "id": "foray-structure/census-mixed",
+      "covers": [],
+      "note": "No beat and no sting next to narration or an authored jingle (seam-gap.js, interlude.js: a sting never plays out of a jingle); the last join is two cuts of one episode, so a beat but neither a sting nor a source change.",
+      "call": "seamCensus",
+      "args": [
+        [
+          {
+            "$seg": [
+              "f#0",
+              100,
+              210,
+              { "audio_url": "https://example.test/a.mp3", "source_item_id": "ep-a" }
+            ]
+          },
+          {
+            "$tts": [
+              "bridge-1",
+              {
+                "script": "Next, the other side.",
+                "duration_sec": 1.235,
+                "duration_source": "estimated",
+                "audio_url": null
+              }
+            ]
+          },
+          {
+            "id": "jingle-1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          {
+            "$seg": [
+              "f#3",
+              400,
+              460,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          },
+          {
+            "$seg": [
+              "f#4",
+              900,
+              1000,
+              { "audio_url": "https://example.test/b.mp3", "source_item_id": "ep-b" }
+            ]
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "beats": 1,
+          "items": 5,
+          "jingles": 0,
+          "sameSource": 1,
+          "seams": 4,
+          "segments": 3,
+          "sourceChanges": 0
+        }
+      }
+    },
+    {
+      "id": "foray-structure/census-tape-only",
+      "covers": [],
+      "call": "seamCensus",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$seg": ["b", 300, 400, { "source_item_id": "ep-a" }] },
+          { "$seg": ["c", 10, 70, { "source_item_id": "ep-c" }] }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "beats": 2,
+          "items": 3,
+          "jingles": 1,
+          "sameSource": 1,
+          "seams": 2,
+          "segments": 3,
+          "sourceChanges": 1
+        }
+      }
+    },
+    {
+      "id": "foray-structure/census-one-item",
+      "covers": [],
+      "call": "seamCensus",
+      "args": [[{ "$seg": ["a"] }]],
+      "expect": {
+        "return": {
+          "beats": 0,
+          "items": 1,
+          "jingles": 0,
+          "sameSource": 0,
+          "seams": 0,
+          "segments": 1,
+          "sourceChanges": 0
+        }
+      }
+    },
+    {
+      "id": "foray-structure/census-empty",
+      "covers": [],
+      "call": "seamCensus",
+      "args": [[]],
+      "expect": {
+        "return": {
+          "beats": 0,
+          "items": 0,
+          "jingles": 0,
+          "sameSource": 0,
+          "seams": 0,
+          "segments": 0,
+          "sourceChanges": 0
+        }
+      }
+    },
+    {
+      "id": "foray-structure/census-null",
+      "covers": [],
+      "call": "seamCensus",
+      "args": [null],
+      "expect": {
+        "return": {
+          "beats": 0,
+          "items": 0,
+          "jingles": 0,
+          "sameSource": 0,
+          "seams": 0,
+          "segments": 0,
+          "sourceChanges": 0
+        }
+      }
+    }
+  ]
+}
