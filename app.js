@@ -15183,6 +15183,7 @@ const AUDITION_LINE = "one, two, three, four, five, six, seven, eight, nine, ten
 
 let voiceUi = null;
 let voiceState = { voices: [], path: "none", loading: false, selected: null, auditioning: null, notice: "" };
+const VOICE_SHEET_SUB = "Pick which voice reads 4a's narration. Tap Preview to hear it count to ten, at the speed narration uses.";
 
 /** Quality label from `listVoices()`'s own `quality` field — never re-derived,
     per the card ("quality label from `qualityRank`"): the plugin already
@@ -15208,8 +15209,11 @@ function buildVoiceSheet() {
   title.id = "voice-title";
   panel.setAttribute("aria-labelledby", "voice-title");
 
-  const sub = ddEl("p", "fy-sheet-sub",
-    "Pick which voice reads 4a's narration. Tap Preview to hear it count to ten at your playback speed.");
+  /* "at the speed narration uses", not "at your playback speed" (audit round
+     3, app-3-8): a Preview has spoken at NARRATION_RATE (1x) since the
+     2026-09-24 ruling, whatever the listener's speed. listener-copy pins this
+     sentence against auditionVoice's rate. */
+  const sub = ddEl("p", "fy-sheet-sub", VOICE_SHEET_SUB);
   /* ONLY WHEN THERE ARE DIMMED VOICES (review 2026-09-23). This sentence was
      part of the fixed subtitle, and the sheet also opens on the Web Speech path
      in a desktop browser, which never shows a dimmed row — so a desktop listener
