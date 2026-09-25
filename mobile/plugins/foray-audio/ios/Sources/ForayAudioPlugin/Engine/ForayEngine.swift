@@ -119,6 +119,11 @@ final class ForayEngine {
     /// The core's state, for the bridge's snapshot (NE-20) and the tests.
     var state: EngineState { core.state }
 
+    /// The core itself, as a value: the snapshot reads `canNext` and
+    /// `canPrevious` from it (NE-20). A copy, so nothing outside the host can
+    /// move the engine's state.
+    var coreValue: EngineCore { core }
+
     /// Timers still armed, by kind (diagnostics and tests).
     var liveTimers: Set<EngineTimer> { Set(timers.keys) }
 
@@ -132,6 +137,16 @@ final class ForayEngine {
     /// remote surface at all.
     var onTurnCompleted: (() -> Void)?
     var onTornDown: (() -> Void)?
+
+    /// The bridge's two hooks (NE-20). `onTransition` runs after every input
+    /// the host handled to the end, and once more when the host tears down:
+    /// the bridge re-reads the snapshot there and decides (coalesced, visible
+    /// only) whether the page hears of it. `onEmit` hands on each of the
+    /// core's own events (`advanced`, `error`) after the output has them.
+    /// Unlike `onTurnCompleted`, neither is cleared by teardown: the page must
+    /// still hear that the engine gave the process back.
+    var onTransition: (() -> Void)?
+    var onEmit: ((EngineEvent) -> Void)?
 
     // MARK: - Start and teardown
 
@@ -197,6 +212,7 @@ final class ForayEngine {
         let tornDown = onTornDown
         onTornDown = nil
         tornDown?()
+        onTransition?()
     }
 
     // MARK: - Inputs
@@ -226,6 +242,7 @@ final class ForayEngine {
         drain()
         publishSurface()
         onTurnCompleted?()
+        onTransition?()
         return EngineVerdict(failures: failures, deferred: false)
     }
 
@@ -367,6 +384,7 @@ final class ForayEngine {
             seams.speaker.speak(text: text, voiceId: voiceId)
         case let .emit(event):
             seams.output.emit(event)
+            onEmit?(event)
         case let .diag(entry):
             seams.output.diag(entry)
         case let .commandFailed(reason):
