@@ -3754,11 +3754,17 @@ async function retryCatalog() {
      app-1-15; races-7's rule for retryForayDocs). The fetch is bounded but can
      take seconds, and a listener who moved on meanwhile had that page re-rendered
      under them — scroll, an in-progress show-page search and focus all lost. The
-     catalogue is still kept; only the repaint is the asking page's. */
-  const stillHere = renderToken();
+     catalogue is still kept; only the repaint is the asking page's.
+     THE PAGE IS THE ROUTE, NOT THE RENDER (round-3 review, L2). renderToken
+     compares the render epoch, which every renderCurrentPage bumps, same-page
+     repaints included (the header's refresh, a drawer switch): one of those
+     during the fetch repainted the failed state, the fetch then stored the
+     catalogue, and nothing repainted, so the page said the catalogue had not
+     loaded when it had. The Create build's rule (races-3): same hash, repaint. */
+  const askedFrom = currentHash();
   const catalog = await fetchJson("data/catalog-client.json");
   if (catalog) state.catalog = catalog;
-  if (!stillHere()) return;
+  if (currentHash() !== askedFrom) return;
   renderCurrentPage();
   /* The retried page is the page's real paint (audit round 2, nav-3): its name
      reaches the document, and focus the replaced Retry button took with it

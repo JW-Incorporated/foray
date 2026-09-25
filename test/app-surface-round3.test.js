@@ -375,24 +375,36 @@ test("app-1-15: retryCatalog keeps the catalogue but repaints only if the asking
   /* The listener taps Try again, then goes to Home or a show page before the
      bounded fetch answers; the retry re-rendered whatever was current and moved
      focus to its heading.
-     MUTATION: drop the `if (!stillHere()) return;` — red. */
+     MUTATION: drop the route check (`if (currentHash() !== askedFrom) return;`) — red.
+     Round-3 review (L2): the check was the render epoch, which a SAME-page
+     repaint during the fetch also moves, so the failed page was never told the
+     catalogue arrived. MUTATION: compare renderToken() again -- the same-page
+     case below does not repaint. */
   const m = loadApp();
   let answer;
   m.ctx.fetchJson = () => new Promise((r) => { answer = r; });
   let painted = 0;
   m.ctx.renderCurrentPage = () => { painted += 1; };
   m.ctx.pageDidPaint = () => {};
+  m.run('location.hash = "#/shows";');
   const left = m.ctx.retryCatalog();
-  m.run("renderEpoch += 1;"); // the listener navigated
+  m.run('location.hash = "#/"; renderEpoch += 1;'); // the listener navigated
   answer({ shows: [{ show_id: "s" }] });
   await left;
   assert.strictEqual(painted, 0, "the page the listener moved to is not re-rendered");
   assert.strictEqual(m.run("state.catalog.shows[0].show_id"), "s", "but the catalogue is kept");
 
+  m.run('location.hash = "#/shows";');
   const stayed = m.ctx.retryCatalog();
   answer({ shows: [] });
   await stayed;
   assert.strictEqual(painted, 1, "the page that asked, still on screen, repaints");
+
+  const repainted = m.ctx.retryCatalog();
+  m.run("renderEpoch += 1;"); // a same-page repaint (↻, a drawer switch) landed during the fetch
+  answer({ shows: [{ show_id: "t" }] });
+  await repainted;
+  assert.strictEqual(painted, 2, "a same-page repaint does not stop the page learning the catalogue arrived");
 });
 
 /* ---------- app-2-5: the show index's body read is inside its deadline -------- */
