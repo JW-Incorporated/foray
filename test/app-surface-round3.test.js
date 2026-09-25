@@ -78,7 +78,7 @@ function loadApp() {
     location: { hash: "#/", href: "https://example.test/", pathname: "/", search: "" },
     history: { replaceState: noop, pushState: noop, state: null },
     CSS: { escape: (s) => String(s) },
-    URL, URLSearchParams, Math, Date, JSON, Promise, Intl, TextEncoder,
+    URL, URLSearchParams, Math, Date, JSON, Promise, Intl, TextEncoder, AbortController,
     setTimeout: (fn, ms, ...args) => { nextTimer += 1; timers.set(nextTimer, { fn, ms, args }); return nextTimer; },
     clearTimeout: (id) => { timers.delete(id); },
     setInterval: () => 0, clearInterval: noop,
@@ -388,4 +388,24 @@ test("app-1-15: retryCatalog keeps the catalogue but repaints only if the asking
   answer({ shows: [] });
   await stayed;
   assert.strictEqual(painted, 1, "the page that asked, still on screen, repaints");
+});
+
+/* ---------- app-2-5: the show index's body read is inside its deadline -------- */
+
+test("app-2-5: a show index whose body stalls after the headers still ends, aborts, and lets a later focus retry", async () => {
+  /* withDeadline wrapped only fetch(); headers inside the bound and then a
+     stalled body left `await res.text()` pending, the `finally` never ran, and
+     every later focus got the same hung promise for the session.
+     MUTATION: move `await res.text()` back outside the deadlined attempt — the
+     load never settles and the test times out/fails. */
+  const m = loadApp();
+  let signal = null;
+  m.ctx.fetch = (url, opts) => { signal = opts && opts.signal; return Promise.resolve({ ok: true, text: () => new Promise(() => {}) }); };
+  const p = m.ctx.loadShowIndex();
+  await flush(); await flush();
+  m.fire(m.run("DATA_DEADLINE_MS"));
+  const settled = await Promise.race([p, new Promise((r) => setTimeout(() => r("still pending"), 200))]);
+  assert.strictEqual(settled, null, "the load answers null like any failure");
+  assert.ok(signal && signal.aborted, "and the stalled request is aborted");
+  assert.strictEqual(m.run("showIndexPromise"), null, "so the next focus asks again");
 });

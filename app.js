@@ -7077,14 +7077,20 @@ function loadShowIndex() {
          of the session — the opposite of this header's "a later focus
          retries". Past the bound it answers null like a failure, the promise
          clears, and the next focus asks again. */
+      /* THE BODY IS INSIDE THE DEADLINE TOO (audit round 3, app-2-5), as in
+         fetchApiJson: headers inside the bound and then a stalled body left
+         `await res.text()` — and so this promise — pending for the session. */
       const ctl = typeof AbortController === "function" ? new AbortController() : null;
-      const res = await withDeadline(
-        fetch(SHOW_INDEX_PATH, ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" }),
+      const text = await withDeadline(
+        (async () => {
+          const res = await fetch(SHOW_INDEX_PATH, ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" });
+          return res && res.ok ? await res.text() : null;
+        })(),
         DATA_DEADLINE_MS,
         () => { try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ } return null; }
       );
-      if (!res || !res.ok) return null;
-      const parsed = SearchEngine.parseShowIndex(await res.text());
+      if (text == null) return null;
+      const parsed = SearchEngine.parseShowIndex(text);
       /* An empty parse is a failure, not an empty index: it means the file
          arrived truncated or in a shape `parseShowIndex` does not read, and
          adopting it would permanently shadow the curated pass with nothing. */
