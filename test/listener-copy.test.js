@@ -201,7 +201,7 @@ const STALE = [
      must follow the mechanism: no user-facing language implying we produce a
      new audio file". A foray plays each moment from the show's own feed. */
   ["stitching", /stitch/i, "the 2026-08-11 playback ruling: no copy implying we produce a new audio file"],
-  ["clipping", /we clip|clip the best/i, "the 2026-08-11 playback ruling, same reason"],
+  ["clipping", /\bwe clip\b|\bclip the best\b/i, "the 2026-08-11 playback ruling, same reason"],
 ];
 
 /* MUTATION: restore any one of the stale strings (e.g. "Pull to refresh." in

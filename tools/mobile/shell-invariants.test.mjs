@@ -3083,7 +3083,7 @@ test("NE-11s: both wrappers require the six contract families, the registry hold
   }
   for (const file of swiftFilesUnder(path.join(CORE_DIR, "Sources/ForayEngineCore/Contract"))) {
     const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
-    assert.doesNotMatch(code, /(JSONSerialization|JSONEncoder|JSONDecoder|Codable|Decodable)/,
+    assert.doesNotMatch(code, /\b(JSONSerialization|JSONEncoder|JSONDecoder|Codable|Decodable)\b/,
       `${path.relative(ROOT, file)} decodes the contract with Foundation's JSON; it reads JSONNode (NE-11s)`);
   }
 });

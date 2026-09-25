@@ -1897,7 +1897,7 @@ const SHOW_MATCH_UNMATCHED = SHOW_MATCH_SUBSTRING + 1;
    search fold, and scoreMatch runs per item per query). */
 function foldText(s) {
   const str = String(s || "");
-  return /[^ -]/.test(str) ? foldDiacritics(str) : str.toLowerCase();
+  return /[^\x00-\x7f]/.test(str) ? foldDiacritics(str) : str.toLowerCase();
 }
 
 /* An item's folded title/hook/show/topics, remembered per item OBJECT and

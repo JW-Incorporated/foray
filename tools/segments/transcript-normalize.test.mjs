@@ -280,7 +280,7 @@ test("empty and garbage input returns no cues plus a warning, never an exception
     "", "   ", "\n\n\n", "﻿",
     "not a transcript, just a sentence",
     "<html><body>404 Not Found</body></html>",
-    " ",
+    "\u0000\u0001\u0002",
     "-->",
     "WEBVTT",
     "{",

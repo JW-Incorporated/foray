@@ -385,7 +385,7 @@ test("no file outside search-engine.js declares its own hitText/hitTag", () => {
      nobody remembered to add to a skip list. */
   const tracked = execFileSync("git", ["ls-files", "-z", "*.js", "*.mjs", "*.cjs"],
     { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 24 })
-    .split(" ").filter(Boolean);
+    .split("\u0000").filter(Boolean);
   const offenders = [];
   for (const rel of tracked) {
     if (rel === "search-engine.js") continue;
@@ -654,4 +654,36 @@ test("search-api-css-11: a recency filter refuses an unparseable release_date, l
   assert.equal(SE.passesFilters({}, recent), false, "no date");
   assert.equal(SE.passesFilters({ release_date: "not a date" }, recent), false, "an unparseable date");
   assert.equal(SE.passesFilters({ release_date: "Tuesday-ish" }, [{ type: "recency_days", value: 7 }]), false);
+});
+
+/* ---------- round-3 review (L4): no raw control bytes in tracked source ---------- */
+
+test("no tracked source file carries a raw control byte (a NUL makes grep and ripgrep call it binary)", () => {
+  /* foldText's ASCII fast path was written `/[^<NUL>-<DEL>]/` with the raw
+     bytes, so grep printed only "Binary file search-engine.js matches" and
+     ripgrep stopped at the NUL: the search engine dropped out of every
+     repo-wide search. The same sweep found a raw NUL in two test files and two
+     raw BACKSPACE bytes where `\b` was meant, which made two assertions test
+     nothing. Read as raw bytes on purpose, over every tracked source file;
+     tab, newline and carriage return are the only C0 bytes allowed.
+     MUTATION: put a literal NUL back into foldText -- this names
+     search-engine.js and its line. */
+  const tracked = execFileSync("git", ["ls-files", "-z", "*.js", "*.mjs", "*.cjs", "*.ts", "*.tsx", "*.html", "*.css"],
+    { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 24 })
+    .split("\u0000").filter(Boolean);
+  const offenders = [];
+  for (const rel of tracked) {
+    let bytes;
+    try { bytes = fs.readFileSync(path.join(ROOT, rel)); } catch (_) { continue; }
+    for (let i = 0; i < bytes.length; i++) {
+      const b = bytes[i];
+      if ((b < 0x20 && b !== 0x09 && b !== 0x0a && b !== 0x0d) || b === 0x7f) {
+        const line = bytes.subarray(0, i).toString("latin1").split("\n").length;
+        offenders.push(`${rel}:${line} (0x${b.toString(16).padStart(2, "0")})`);
+        break;
+      }
+    }
+  }
+  assert.ok(tracked.includes("search-engine.js"), "the sweep found the search engine");
+  assert.deepStrictEqual(offenders, [], "write the escape (\u0000, \b), never the raw byte");
 });
