@@ -143,17 +143,33 @@ export type EventPayloadByType = z.infer<typeof EventPayloadByTypeSchema>;
  * the schema (rather than omitted) so a future resolver pass can populate
  * them without a contract-shape change.
  */
-export const EventRowSchema = z
-  .object({
-    id: z.string().uuid().optional(),
-    user_id: z.string().uuid(),
-    ts: z.string().datetime({ offset: true }).optional(),
-    session_id: z.null().optional(),
-    episode_id: z.null().optional(),
-    archetype: z.string().nullable().optional()
-  })
-  .and(EventPayloadByTypeSchema);
+const EventRowBaseSchema = z.object({
+  id: z.string().uuid().optional(),
+  user_id: z.string().uuid(),
+  ts: z.string().datetime({ offset: true }).optional(),
+  session_id: z.null().optional(),
+  episode_id: z.null().optional(),
+  archetype: z.string().nullable().optional()
+});
+
+export const EventRowSchema = EventRowBaseSchema.and(EventPayloadByTypeSchema);
 export type EventRow = z.infer<typeof EventRowSchema>;
+
+/**
+ * READ PATH ONLY. A `picked` row the shipped web client wrote for a card that
+ * sits in no menu slot: Jump back in ("jbi-episode"), Up Next, a button with
+ * no data-ctx. app.js toEventRow writes the row's `archetype` column as null
+ * and puts no slot in the payload. Those rows are real picks, and the learning
+ * job counted them (with no slot) before the read path validated; rejecting
+ * them moved the cursor past every such pick for good (round-3 review, L6).
+ * The write path keeps the strict contract above; this only lets the reader
+ * accept what the client already wrote, with the slot unknown.
+ */
+export const SlotlessPickedRowSchema = EventRowBaseSchema.extend({
+  archetype: z.null().optional(),
+  type: z.literal("picked"),
+  payload: EpisodeContextSchema.extend({ app: z.string().nullable().optional() })
+});
 
 /** Parses and validates a candidate row; throws a ZodError with a readable path on failure. */
 export function parseEventRow(input: unknown): EventRow {

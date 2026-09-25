@@ -1,5 +1,5 @@
 import type { Client } from "pg";
-import { parseEventRow, safeParseEventRow, type EventRow } from "../types/events";
+import { SlotlessPickedRowSchema, parseEventRow, safeParseEventRow, type EventRow } from "../types/events";
 
 /**
  * Read/write access to the `events` table (0009_events.sql). Pluggable-sink
@@ -69,6 +69,13 @@ export function toPersistedEvent(
       : row;
   const parsed = safeParseEventRow(input);
   if (!parsed.success) {
+    /* A pick from a card in no menu slot (Jump back in, Up Next) carries no
+       slot at all. It is a real pick with the slot unknown, not a broken row:
+       the deriver already reads a missing slot as null. */
+    const slotless = SlotlessPickedRowSchema.safeParse(input);
+    if (slotless.success) {
+      return { ok: true, event: { ...slotless.data, id: row.id, ts: row.ts } as unknown as PersistedEvent };
+    }
     const issue = parsed.error.issues[0];
     const reason = issue ? `${issue.path.join(".") || "(row)"}: ${issue.message}` : "invalid event row";
     return { ok: false, invalid: { id: row.id, ts: row.ts, reason } };

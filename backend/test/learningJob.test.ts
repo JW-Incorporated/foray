@@ -212,11 +212,12 @@ describe("learning job over Postgres-shaped stores (round 3)", () => {
       saved(1, U1, "2026-09-01T12:00:00.100000Z"),
       { id: id(2), user_id: U1, ts: toMicros("2026-09-01T12:00:00.200000Z"), type: "finished", payload: { episode_slug: "e2", percent_complete: 1, topics: "nope" } },
       { id: id(3), user_id: U1, ts: toMicros("2026-09-01T12:00:00.300000Z"), type: "picked", payload: { episode_slug: "e3" }, archetype: "stretch" },
-      { id: id(4), user_id: U1, ts: toMicros("2026-09-01T12:00:00.400000Z"), type: "picked", payload: { episode_slug: "e4" } }
+      { id: id(4), user_id: U1, ts: toMicros("2026-09-01T12:00:00.400000Z"), type: "picked", payload: { episode_slug: "e4", topics: 5 } }
     );
     const first = await runLearningJobForUser(U1, deps);
     // The saved row, and the pick whose slot rode the row's archetype column
-    // (topics default to []). The pick with no slot anywhere breaks the contract.
+    // (topics default to []). A pick whose topics are not a list breaks the
+    // contract, slot or no slot.
     expect(first.eventsProcessed).toBe(2);
     expect(first.invalidEvents.map((e) => e.id)).toEqual([id(2), id(4)]);
     expect(first.invalidEvents[0]!.reason).toMatch(/topics/);
@@ -224,6 +225,25 @@ describe("learning job over Postgres-shaped stores (round 3)", () => {
     const second = await runLearningJobForUser(U1, deps);
     expect(second.eventsProcessed).toBe(0);
     expect(second.invalidEvents).toEqual([]);
+  });
+
+  /* Round-3 review (L6): the exact row app.js toEventRow writes for a pick
+     outside a menu slot (Jump back in's "jbi-episode", Up Next): archetype
+     column null, no slot in the payload. It used to fail PickedPayloadSchema
+     and be skipped for good.
+     MUTATION: drop the SlotlessPickedRowSchema branch in toPersistedEvent --
+     the pick is invalid and no picked_from_menu delta is written. */
+  it("a pick from a card in no menu slot (the client's jbi-episode row) is learned from, with no slot", async () => {
+    pg.events.push({
+      id: id(5), user_id: U1, ts: toMicros("2026-09-01T12:00:00.500000Z"), type: "picked", archetype: null,
+      payload: { episode_slug: "lex-353-whyte", topics: [FUSION], app: "Apple Podcasts" }
+    });
+    const first = await runLearningJobForUser(U1, deps);
+    expect(first.invalidEvents).toEqual([]);
+    expect(first.eventsProcessed).toBe(1);
+    const rows = auditRepo.all();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ nodeId: FUSION, reason: "picked_from_menu" });
   });
 
   it("a batch that ends on a malformed row still advances the cursor past it", async () => {
