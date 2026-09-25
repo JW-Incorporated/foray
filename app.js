@@ -1887,11 +1887,22 @@ function buildCards({ reserve = [] } = {}) {
      durable ones for good and the seen window started over (races-4). */
   const dealtBranches = state.cardSlots.map(sl => sl.branch);
   const dealtIds = state.cardSlots.flatMap(sl => sl.items.map(it => it.id));
+  /* EACH DEAL HAS AN EPOCH (audit round 3, app-1-7). A deal made while storage
+     is settling is recorded later; if a newer deal replaces it first (the
+     first-run picks re-deal), its recorder stands down, so the pre-pick deal is
+     never counted as seen after all. `lastDealRecorded` tells the re-deal
+     whether there is anything of this deal to undo. */
+  const epoch = ++dealEpoch;
+  lastDealRecorded = false;
   afterStorageSettles(() => {
-    lsSet("cp_recent_branches", lsGet("cp_recent_branches", []).concat(dealtBranches).slice(-BRANCH_MEMORY));
+    if (epoch !== dealEpoch) return;
+    lsSet("cp_recent_branches", stringList(lsGet("cp_recent_branches", [])).concat(dealtBranches).slice(-BRANCH_MEMORY));
     rememberSeen(dealtIds);
+    lastDealRecorded = true;
   });
 }
+let dealEpoch = 0;
+let lastDealRecorded = false;
 
 function subjectLabel(branch) {
   return (state.taxonomy?.nodes || []).find(n => n.id === branch && n.parent === null)?.label || branch;
@@ -5871,10 +5882,16 @@ function applyOnboardingPicks(pickedRootIds, typedSubject) {
 function redealAfterOnboardingPicks(pickedRoots = []) {
   const dealt = state.cardSlots || [];
   if (!dealt.length) return;
-  const dealtIds = new Set(dealt.flatMap(sl => (sl.items || []).map(it => it.id)));
-  lsSet("cp_seen", lsGet("cp_seen", []).filter(id => !dealtIds.has(id)));
-  const recent = lsGet("cp_recent_branches", []);
-  lsSet("cp_recent_branches", recent.slice(0, Math.max(0, recent.length - dealt.length)));
+  /* Undo only a deal that was RECORDED (app-1-7). Recording waits for storage
+     to settle, so a deal still waiting has written nothing: undoing it used to
+     cut the previous session's entries off cp_recent_branches, and then its
+     recorder fired anyway. The re-deal below supersedes it instead. */
+  if (lastDealRecorded) {
+    const dealtIds = new Set(dealt.flatMap(sl => (sl.items || []).map(it => it.id)));
+    lsSet("cp_seen", stringList(lsGet("cp_seen", [])).filter(id => !dealtIds.has(id)));
+    const recent = stringList(lsGet("cp_recent_branches", []));
+    lsSet("cp_recent_branches", recent.slice(0, Math.max(0, recent.length - dealt.length)));
+  }
   buildCards({ reserve: Array.isArray(pickedRoots) ? pickedRoots : [] });
 }
 

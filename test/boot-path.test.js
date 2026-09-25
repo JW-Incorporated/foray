@@ -756,3 +756,35 @@ test("app-1-1: no first-run sheet is offered while the store has not answered; i
   assert.strictEqual(m.ctx.isGenuineFirstTimeUser(), false);
   assert.ok(!sheetUp(), "a returning listener got the first-run sheet");
 });
+
+/* ==================================================================== */
+/* app-1-7: a re-deal before storage settles records only the new deal    */
+/* ==================================================================== */
+
+test("app-1-7: 'Show my picks' before storage settles keeps the durable deal memory and records only the re-deal", async () => {
+  /* The undo ran against a deal whose recorder had not run yet (it cut the
+     PREVIOUS session's entries), and then both recorders fired, so the
+     pre-pick deal was counted as seen after all. MUTATION: drop the
+     `epoch !== dealEpoch` stand-down -> deal 1's branches are recorded; red.
+     Drop the `lastDealRecorded` guard -> the undo runs early; red on the
+     durable entries. */
+  const { store, tier } = await storeOver({ idb: { cp_recent_branches: JSON.stringify(["r1", "r2", "r3"]), cp_seen: JSON.stringify(["s1"]) } });
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
+  await m.booted();
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise");
+  const deal1 = m.state.cardSlots.map((sl) => sl.branch);
+  const deal1Ids = m.state.cardSlots.flatMap((sl) => sl.items.map((it) => it.id));
+  assert.ok(deal1.length, "premise: a deal was made");
+  m.ctx.redealAfterOnboardingPicks([]);
+  const deal2 = m.state.cardSlots.map((sl) => sl.branch);
+  const deal2Ids = new Set(m.state.cardSlots.flatMap((sl) => sl.items.map((it) => it.id)));
+  tier.release();
+  await store.hydrate();
+  await settle(20);
+  const recent = JSON.parse(store.getItem("cp_recent_branches"));
+  assert.deepStrictEqual(recent, ["r1", "r2", "r3"].concat(deal2).slice(-8), "only the re-deal is remembered, after the durable entries");
+  const seen = JSON.parse(store.getItem("cp_seen"));
+  assert.ok(seen.includes("s1"), "the durable seen list survived");
+  const leaked = deal1Ids.filter((id) => !deal2Ids.has(id) && seen.includes(id));
+  assert.strictEqual(leaked.length, 0, `the pre-pick deal was recorded as seen: ${leaked}`);
+});
