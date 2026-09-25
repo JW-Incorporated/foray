@@ -185,11 +185,23 @@ export function clearProgress(storage, forayId) {
 export function listProgress(storage, { now = Date.now(), maxAgeH = MAX_AGE_H } = {}) {
   if (!storage || typeof storage.key !== "function") return [];
   const out = [];
-  let n = 0;
-  try { n = Number(storage.length) || 0; } catch (_) { return []; }
-  for (let i = 0; i < n; i++) {
-    let key = null;
-    try { key = storage.key(i); } catch (_) { continue; }
+  /* ONE SNAPSHOT WHEN THE STORE CAN GIVE ONE (audit round 3, player-rest-4):
+     DurableStore's `key(i)` rebuilds its whole owned-key list on every call,
+     so the index walk below is O(n²) in every `cp_` row, not just the Foray
+     rows it keeps. The walk stays for plain Storage and for test fakes. */
+  let keys = null;
+  if (typeof storage.keys === "function") {
+    try { keys = storage.keys(KEY_PREFIX); } catch (_) { keys = null; }
+  }
+  if (!Array.isArray(keys)) {
+    let n = 0;
+    try { n = Number(storage.length) || 0; } catch (_) { return []; }
+    keys = [];
+    for (let i = 0; i < n; i++) {
+      try { keys.push(storage.key(i)); } catch (_) { /* skip an unreadable index */ }
+    }
+  }
+  for (const key of keys) {
     if (typeof key !== "string" || !key.startsWith(KEY_PREFIX)) continue;
     const r = readProgress(storage, key.slice(KEY_PREFIX.length));
     if (r && !isStale(r, { now, maxAgeH })) out.push(r);

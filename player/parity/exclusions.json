@@ -52,6 +52,10 @@
     "the hidden deadline says which budget it used, so an artifact can be read": {
       "reason": "text-pin",
       "why": "Pins the backend's English `load.deadline Nms (hidden|visible)` telemetry string. Which budget applies is fixtured in deck-episode (deadline-hidden, deadline-visible); the engine's rows carry tokens, not this sentence."
+    },
+    "an interrupted play() (AbortError) is telemetry, never onError (audit round 3, player-core-3)": {
+      "reason": "webview-only",
+      "why": "An HTMLMediaElement play() promise rejected with AbortError because a pause() or a new src cut it off. AVPlayer has no play() promise to interrupt, so the native deck has no such rejection to classify."
     }
   },
   "media-session": {
@@ -388,6 +392,10 @@
     "the manager adds no macrotask between a settled load and play()": {
       "reason": "webview-only",
       "why": "WebKit's user-gesture indicator is task-scoped, so a timer between the load and play() strands an autoplay start. The native engine starts audio from native code, where no autoplay gesture exists to lose."
+    },
+    "reconnecting a route never resumes on the web and Android path, even one reported as a car (player-core-10)": {
+      "reason": "webview-only",
+      "why": "The JS manager's route policy runs only on the web and Android path (founder Q5 default, audit round 3): reconnecting never resumes there. The native engine owns route policy (EngineCore.knownCarRoutes) and pins it with its own XCTests."
     }
   },
   "queue-state": {
@@ -576,6 +584,22 @@
     "the sheet shows ⏭, Up Next (N) and Save from the page's episode surface, and each does the page's own thing (audit round 2, p-impatient-7 / p-switcher-5)": {
       "reason": "dom-only",
       "why": "The sheet's ⏭, Up Next (N) and Save read the page's own episode surface. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "a Next clip tap that throws leaves the index where the audio is, and repaints (audit round 3, player-rest-5)": {
+      "reason": "dom-only",
+      "why": "A click handler's rejection guard and the page's pending Foray index in client.js; the engine never owns a DOM control or the page's index bookkeeping."
+    },
+    "a drag released on its starting value does not freeze the bar and clocks (audit round 3, player-core-5)": {
+      "reason": "dom-only",
+      "why": "A range input's input/change/pointerup semantics and the page's scrub preview flag; the engine draws no slider."
+    },
+    "a release followed by a real change still seeks to the thumb (audit round 3, player-core-5)": {
+      "reason": "dom-only",
+      "why": "The ordering of a range input's pointerup and change events against the page's scrub preview; the engine draws no slider."
+    },
+    "the Foray page is not repainted while the document is hidden, and is repainted on return (audit round 3, perf-8)": {
+      "reason": "dom-only",
+      "why": "Whether client.js repaints the Foray page while document.hidden; page painting the engine never does."
     }
   }
 }

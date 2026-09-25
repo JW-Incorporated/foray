@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * The bridge half of `foray-tts` on Android: wraps {@link TextToSpeech}.
@@ -122,6 +124,22 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
      *  {@link TextToSpeech#isSpeaking} exists but answers about the ENGINE,
      *  which other apps share; this answers about us. */
     private boolean speaking = false;
+    /** The id of the utterance this plugin is speaking (or has paused), or
+     *  null. Audit round 3, mobile-native-2: {@code onDone}/{@code onError} for
+     *  any OTHER id (an utterance a QUEUE_FLUSH or a pause already cut) is
+     *  ignored, and {@code finished} carries this id so the page can tell
+     *  whose completion it is. Cleared BEFORE every {@code tts.stop()} this
+     *  plugin makes, so the stop's own callbacks are never mistaken for the
+     *  engine failing. A resumed remainder keeps the same id. */
+    private volatile String currentUtteranceId = null;
+    /** Whether {@link #currentUtteranceId} is a voice-picker preview, echoed
+     *  on {@code finished} so the queue never advances on it. */
+    private volatile boolean currentIsAudition = false;
+    /** Whether the current line was handed to the engine as SSML. Its
+     *  {@code onRangeStart} offsets then index markup, not text, so a resume
+     *  re-speaks the plain line from its start rather than a substring that
+     *  could cut through a tag (audit round 3, mobile-native-8). */
+    private boolean lastWasSsml = false;
 
     /** The three words {@code state()} reports, matching iOS exactly so one
      *  caller can read both platforms. */
@@ -282,6 +300,15 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
 
                 @Override
                 public void onDone(String utteranceId) {
+                    /* mobile-native-2: only the utterance this plugin is on.
+                       An utterance a QUEUE_FLUSH replaced (a preview spoken
+                       over narration, a skip) reports its own end, and that
+                       end must not advance whichever line is current now. */
+                    if (utteranceId == null || !utteranceId.equals(currentUtteranceId) || paused) {
+                        return;
+                    }
+                    final boolean audition = currentIsAudition;
+                    currentUtteranceId = null;
                     speaking = false;
                     paused = false;
                     /* §7 item 3 (L-03). `speak()` itself stays accept-only
@@ -295,11 +322,29 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                        `ForayAudioPlugin.java`'s TRANSPORT_EVENT emission
                        already makes for a command coming off a media-session
                        callback. */
-                    notifyListeners(FINISHED_EVENT, new JSObject());
+                    JSObject finished = new JSObject();
+                    finished.put("utteranceId", utteranceId);
+                    finished.put("audition", audition);
+                    notifyListeners(FINISHED_EVENT, finished);
+                }
+
+                /* AN ENGINE ERROR ENDS THE LINE (audit round 3,
+                   mobile-native-3). This was a no-op: a network voice in a
+                   dead zone, a dead engine process or a failed synthesis left
+                   `speaking` true and sent nothing, so the page ran the
+                   narration clock over silence until its deadline (1.5x the
+                   line plus 10 s). Both overloads are Android's; API 21+
+                   calls the one with a code. A stop this plugin made cleared
+                   `currentUtteranceId` first, so it never lands here. */
+                @Override
+                public void onError(String utteranceId) {
+                    onEngineError(utteranceId, TextToSpeech.ERROR);
                 }
 
                 @Override
-                public void onError(String utteranceId) { /* completion is not awaited; see below */ }
+                public void onError(String utteranceId, int errorCode) {
+                    onEngineError(utteranceId, errorCode);
+                }
             });
 
             /* PASSED THROUGH, NOT DROPPED, per the card's explicit instruction
@@ -322,6 +367,12 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                resume. */
             lastBoundary = 0;
             paused = false;
+            /* mobile-native-2: this is the utterance the plugin is on from now;
+               a preview says so. Set BEFORE speak(): its callbacks run on the
+               engine's thread and can arrive before speak() returns. */
+            currentIsAudition = Boolean.TRUE.equals(call.getBoolean("audition", false));
+            currentUtteranceId = utteranceId;
+            lastWasSsml = androidSsml != null && !androidSsml.isEmpty();
             if (androidSsml != null && !androidSsml.isEmpty()) {
                 /* TextToSpeech has no public "speak SSML" entry point distinct
                    from speak(CharSequence, ...) -- the undocumented behaviour
@@ -337,11 +388,21 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                that was handed to the engine, SSML markup included, because
                `onRangeStart`'s offsets are into that string and not into the
                plain text. */
-            lastSpokenText = (androidSsml != null && !androidSsml.isEmpty()) ? androidSsml : text;
+            /* THE PLAIN LINE, NOT THE MARKUP (audit round 3, mobile-native-8).
+               This kept the SSML string so `onRangeStart`'s offsets would index
+               it, but a resume then spoke a substring of the markup: no
+               `<speak>`, possibly half a `<phoneme>` tag, read aloud or
+               rejected. `resume()` re-speaks the plain line from its start when
+               SSML was used (`lastWasSsml`), and from the boundary otherwise. */
+            lastSpokenText = text;
             speaking = speakResult == TextToSpeech.SUCCESS;
+            if (!speaking) {
+                currentUtteranceId = null;
+            }
 
             pendingResult.put("ok", speakResult == TextToSpeech.SUCCESS);
             pendingResult.put("accepted", speakResult == TextToSpeech.SUCCESS);
+            pendingResult.put("utteranceId", utteranceId);
             pendingResult.put("usedSsml", androidSsml != null && !androidSsml.isEmpty());
             pendingResult.put("overridesRequested", overrideCount);
             /* Same reporting contract the iOS half states: say which voice
@@ -616,9 +677,13 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         boolean accepted = false;
         if (tts != null && !ttsInitFailed && speaking && !paused) {
             try {
-                tts.stop();
+                /* Flags BEFORE the stop (mobile-native-3): the stop's own
+                   callbacks can arrive on the engine's thread before
+                   `tts.stop()` returns, and `onEngineError` must see a pause,
+                   not a line that failed. */
                 paused = true;
                 speaking = false;
+                tts.stop();
                 accepted = true;
             } catch (Exception e) {
                 Log.w(TAG, "pause() failed", e);
@@ -652,15 +717,22 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         boolean fromStart = false;
         if (tts != null && !ttsInitFailed && paused && lastSpokenText != null) {
             try {
-                int from = lastBoundary;
+                int from = lastWasSsml ? 0 : lastBoundary;
                 if (from < 0 || from >= lastSpokenText.length()) {
                     from = 0;
                 }
                 fromStart = from == 0;
                 String remainder = lastSpokenText.substring(from);
                 Bundle params = new Bundle();
+                /* The SAME utterance id (mobile-native-2): the remainder is
+                   the rest of the line the page is waiting on, so its end is
+                   that line's end. Plain text always (mobile-native-8). */
+                String resumedId = currentUtteranceId != null ? currentUtteranceId : UUID.randomUUID().toString();
+                currentUtteranceId = resumedId;
+                paused = false;
+                speaking = true;
                 int speakResult = tts.speak(
-                    remainder, TextToSpeech.QUEUE_FLUSH, params, UUID.randomUUID().toString()
+                    remainder, TextToSpeech.QUEUE_FLUSH, params, resumedId
                 );
                 accepted = speakResult == TextToSpeech.SUCCESS;
                 if (accepted) {
@@ -670,10 +742,14 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                        — off by however far the first pause had got. */
                     lastSpokenText = remainder;
                     lastBoundary = 0;
-                    paused = false;
-                    speaking = true;
+                    lastWasSsml = false;
+                } else {
+                    paused = true;
+                    speaking = false;
                 }
             } catch (Exception e) {
+                paused = true;
+                speaking = false;
                 Log.w(TAG, "resume() failed", e);
             }
         }
@@ -702,8 +778,13 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         JSObject result = new JSObject();
         result.put("platform", "android");
         boolean accepted = false;
+        /* Forgotten BEFORE the stop (mobile-native-2/3): the stop's own
+           callbacks are then for no utterance this plugin is on. */
+        currentUtteranceId = null;
         if (tts != null && !ttsInitFailed && (speaking || paused)) {
             try {
+                speaking = false;
+                paused = false;
                 tts.stop();
                 accepted = true;
             } catch (Exception e) {
@@ -719,6 +800,28 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         result.put("state", stateWord());
         result.put("reason", accepted ? "" : "nothing to act on");
         call.resolve(result);
+    }
+
+    /**
+     * An engine error on the utterance this plugin is speaking: the line is
+     * over, and the page is told so at once as a {@code finished} carrying
+     * {@code error}, so the queue moves on instead of waiting out its deadline
+     * (audit round 3, mobile-native-3). Ignored for any other utterance, and
+     * while paused (a pause is a stop this plugin made).
+     */
+    private void onEngineError(String utteranceId, int errorCode) {
+        if (utteranceId == null || !utteranceId.equals(currentUtteranceId) || paused) {
+            return;
+        }
+        final boolean audition = currentIsAudition;
+        currentUtteranceId = null;
+        speaking = false;
+        paused = false;
+        JSObject finished = new JSObject();
+        finished.put("utteranceId", utteranceId);
+        finished.put("audition", audition);
+        finished.put("error", errorCode);
+        notifyListeners(FINISHED_EVENT, finished);
     }
 
     /** {@code speaking | paused | idle}. {@code paused} is checked first for
@@ -801,7 +904,20 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
          *  {@code "cpu"} reads as a fallback that fired and it is not one: it
          *  is the only path compiled. */
         default boolean acceleratorWired() { return false; }
+
+        /** Free what {@link #load} opened (audit round 3, mobile-native-5):
+         *  an ORT session holds the ~86 MB model in native memory, which a
+         *  dropped Java reference never frees. Called once, after the probe. */
+        default void close() { }
     }
+
+    /** The probe's own thread (audit round 3, mobile-native-5). Two model
+     *  loads and a synthesis per line used to run inside the @PluginMethod,
+     *  on the one plugin thread every Capacitor call shares, so a probe run
+     *  mid-Foray stalled ForayAudio.setNowPlaying, ForayTts.speak/pause and
+     *  the vault for its whole length. One thread, so two taps queue rather
+     *  than load the model twice at once. */
+    private static final ExecutorService PROBE_EXECUTOR = Executors.newSingleThreadExecutor();
 
     /** The seam. Null on every build that ships today; K-04 sets it. */
     public static KokoroProbeEngine probeEngine = null;
@@ -884,8 +1000,38 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
          * method returns. An engine registered at startup would be running
          * ONNX Runtime in every listener's app for a card that measures one
          * phone. */
-        KokoroProbeEngine engine = probeEngine;
-        if (engine == null) engine = KokoroOrtProbeEngine.create(getContext());
+        final List<int[]> lines = idLines;
+        PROBE_EXECUTOR.execute(() -> {
+            KokoroProbeEngine owned = null;
+            try {
+                KokoroProbeEngine engine = probeEngine;
+                if (engine == null) {
+                    engine = KokoroOrtProbeEngine.create(getContext());
+                    owned = engine;
+                }
+                measureProbe(call, result, lines, passage, engine);
+            } catch (Throwable t) {
+                Log.e(TAG, "the Kokoro probe failed", t);
+                JSObject failed = new JSObject();
+                failed.put("platform", "android");
+                failed.put("ok", false);
+                failed.put("reason", "threw");
+                failed.put("detail", t.getClass().getSimpleName());
+                call.resolve(failed);
+            } finally {
+                /* The engine THIS call built is closed here, whatever
+                   happened (mobile-native-5); a test's injected
+                   `probeEngine` belongs to the test. */
+                if (owned != null) {
+                    try { owned.close(); } catch (Throwable ignored) { }
+                }
+            }
+        });
+    }
+
+    /** The measurement itself, on {@link #PROBE_EXECUTOR}. */
+    private void measureProbe(PluginCall call, JSObject result, List<int[]> idLines, JSObject passage,
+                              KokoroProbeEngine engine) {
         if (engine == null) {
             result.put("ok", false);
             result.put("reason", "engine-absent");

@@ -294,7 +294,9 @@ test("scenario: session and lifecycle steps drive the manager's own interruption
     { session: "routeAvailable", routeName: "Civic" }, { checkpoint: "back" },
   ]);
   assert.equal(routed.checkpoints[0].state, "interrupted");
-  assert.equal(routed.checkpoints[1].state, "playing", "a route seen as a car resumes");
+  /* Audit round 3, player-core-10 (founder Q5 default): reconnecting never
+     resumes on the JS path; the native engine owns route policy. */
+  assert.equal(routed.checkpoints[1].state, "interrupted", "a reconnect starts nothing on the JS path");
   const cold = await scenario([{ lifecycle: "coldLaunch", items: [{ $ep: ["a"] }], autoplay: true }], { positions: { a: 1800 } });
   assert.deepStrictEqual(cold.checkpoints[0].ops, ["load:a@1800", "rate:1", "play"]);
   // The page's two reconcile routes ask the element and only ever move towards paused.

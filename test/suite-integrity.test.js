@@ -398,6 +398,8 @@ const FLOORS = {
      episodes a show" silently, with a green suite and no error anywhere. Seven
      mutations named in the file's header; all seven were run and are red. */
   "test/api-origin.test.js": 5,
+  "test/clock-formatters.test.js": 2, // audit round 3, arch-drift-10 (2026-09-25): the episode, Foray and chapter clocks share one floored rule
+  "test/jingle-duration.test.js": 1, // audit round 3, arch-drift-4 (2026-09-25): the generator's jingle length is the player's, which is the interlude file's
   "test/app-security.test.js": 26,
   "test/app-surface-round3.test.js": 20, // audit round 3 (2026-09-25, lane L2): the app-surface fixes with no better-fitting suite (app-2-14/15, app-1-15/16, app-2-1/2/3/5/6/7/8/9/10/11/12/13, app-3-1, data-integrity-8), each test naming its id and the mutation that kills it; zero slack; new
   "test/episode-page.test.js": 8,

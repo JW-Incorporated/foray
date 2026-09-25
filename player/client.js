@@ -642,7 +642,8 @@ storageReady.then((hydrated) => {
  *     goes away.
  *   - `routeChange` / `old-device-gone` is the car switched off or headphones
  *     out: `manager.routeChanged`, corner case #13, which pauses. It can only
- *     stop audio, never start it.
+ *     stop audio, never start it: reconnecting never resumes on this path
+ *     (audit round 3, player-core-10); the native engine owns route policy.
  *   - `interruptionBegan`, `foreground` and `mediaServicesReset` RECONCILE
  *     rather than command. These can be delivered LATE — a suspended page
  *     handles them when it wakes (`lagMs` in the record measures it) — and an
@@ -1513,6 +1514,44 @@ function setForayIndex(index, { pending = true } = {}) {
   else notifyForay();
 }
 
+/** Move the Foray's index and then the manager, and put the index back if
+    either throws (audit round 3, player-rest-5). `setForayIndex` records
+    `pendingFrom` so `syncForaySegment` waits for the manager to arrive; a move
+    that threw left it waiting for good, the page showing a clip the audio never
+    reached, and `forayPlayhead()` null, so the resume point stopped being saved.
+    Rethrows: the tap's own guard (`guardTap`) reports it. */
+async function moveForay(index, move) {
+  try {
+    setForayIndex(index);
+    await move();
+  } catch (err) {
+    if (foray) {
+      foray.pendingFrom = null;
+      const at = manager?.currentIndex ?? -1;
+      if (at >= 0) foray.index = at;
+    }
+    throw err;
+  }
+}
+
+/** A transport control's click handler that cannot leave the page behind
+    (audit round 3, player-rest-5). The handlers below call async methods, and
+    a rejection used to be unhandled and skip the repaint — the restored-ribbon
+    crash was one real instance. Reported to the field record as a `control`
+    tap failure (the error's class only), and the page repaints either way. */
+function guardTap(run) {
+  return (...args) => {
+    let p;
+    try { p = Promise.resolve(run(...args)); } catch (err) { p = Promise.reject(err); }
+    return p.catch((err) => {
+      try { diag.tapFailed({ phase: "control", name: err?.name ?? null }); } catch (_) { /* the record is best-effort */ }
+      console.warn("[player] a transport control failed", err);
+    }).finally(() => {
+      try { render(); } catch (_) { /* a repaint that throws must not reject the tap */ }
+    });
+  };
+}
+
 /** Reconcile with the manager when IT moved us — the out-point path, where the
     backend reports an end and the manager loads the next segment with nothing
     in this file involved. Called from render(), which every relevant media
@@ -1947,7 +1986,12 @@ function render() {
   syncMediaSession();
   if (foray) {
     persistForayProgress();
-    notifyForay();
+    /* The Foray page is page too (audit round 3, perf-8): `paintForay` wrote
+       its clock, strip fill, labels and notice four times a second with the
+       screen off for the length of a drive. The resume row above is not paint
+       and keeps running; `reconcileOnReturn` calls `render()` on the way back,
+       which lands here visible and repaints the page once. */
+    if (!(typeof document !== "undefined" && document.hidden === true)) notifyForay();
   } else {
     _announceEpisodeEndedIfNeeded();
   }
@@ -2055,7 +2099,9 @@ function paintPage(running) {
  * clocks go through the same formatter's rule first, so they add up.
  */
 function paintClocks(pos, dur, valuetext = true) {
-  const whole = foray ? Math.floor : Math.round;
+  /* One rounding rule for both clocks (audit round 3, arch-drift-10): the
+     elapsed text is floored everywhere now, so its countdown is too. */
+  const whole = Math.floor;
   const now = foray ? fmtClock(pos) : formatTimestamp(pos, EXACT);
   if (ui.tNow.textContent !== now) ui.tNow.textContent = now;
   const left = dur ? remainingClock(whole(dur) - whole(pos)) : "--:--";
@@ -3467,8 +3513,11 @@ function bind() {
      short-circuit and the toggle have to read the same authority or the fix in
      one is undone by the other. */
   const toggle = () => setRunning(!transportIsRunning());
-  ui.playBtn.addEventListener("click", toggle);
-  ui.bigPlay.addEventListener("click", toggle);
+  /* Guarded at the listener (audit round 3, player-rest-5): a rejection is
+     reported and the page repaints. `toggle` itself stays the plain call the
+     lock screen's surface is pinned to. */
+  ui.playBtn.addEventListener("click", guardTap(toggle));
+  ui.bigPlay.addEventListener("click", guardTap(toggle));
 
   /* U-13: the only listener that reaches `stopAndClose` from the UI. Everything
      else that used to (the mini bar's ✕) now collapses instead. */
@@ -3703,15 +3752,35 @@ function bind() {
   ui.backBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
   ui.fwdBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
   ui.skipBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
-  ui.clipPrev.addEventListener("click", () => ForayPlayer.forayPrevious());
-  ui.clipNext.addEventListener("click", () => ForayPlayer.forayNext());
+  ui.clipPrev.addEventListener("click", guardTap(() => ForayPlayer.forayPrevious()));
+  ui.clipNext.addEventListener("click", guardTap(() => ForayPlayer.forayNext()));
 
   /* The clocks follow the thumb while it moves (audit round 2, player-6). */
   ui.scrub.addEventListener("pointerdown", () => { scrubByPointer = true; });
   ui.scrub.addEventListener("keydown", () => { scrubByPointer = false; });
   ui.scrub.addEventListener("blur", () => { scrubByPointer = false; });
   ui.scrub.addEventListener("input", () => paintScrubPreview());
-  ui.scrub.addEventListener("change", async () => {
+  /* A RELEASE WITH NO `change` ENDS THE PREVIEW TOO (audit round 3,
+     player-core-5). Browsers fire `change` on a range only when the committed
+     value differs from the one at the start of the interaction, so a thumb
+     wiggled and put back where it started fired `input` and never `change`,
+     `scrubbing` stuck at true, and `paintPage` skipped the bar, both clocks and
+     the spoken value for the rest of the session. The check waits a task: a
+     real `change` is dispatched with the release and clears `scrubbing` itself
+     (and seeks); clearing it first would let `render()` overwrite the value the
+     `change` is about to read. */
+  const endScrubPreview = () => {
+    if (!scrubbing) return;
+    setTimeout(() => {
+      if (!scrubbing) return;
+      scrubbing = false;
+      render();
+    }, 0);
+  };
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture", "blur"]) {
+    ui.scrub.addEventListener(type, endScrubPreview);
+  }
+  ui.scrub.addEventListener("change", guardTap(async () => {
     /* A change with no `input` before it (some assistive paths) is still a
        step from the frozen value. */
     if (!scrubbing) rebaseHeldScrubStep();
@@ -3725,7 +3794,7 @@ function bind() {
     const dur = episodeDurationSec();
     if (dur) await seekEpisodeTo(frac * dur);
     else render();
-  });
+  }));
 
   ui.rateBtn.addEventListener("click", () => openRatePicker());
 
@@ -4829,7 +4898,9 @@ const ForayPlayer = {
        something plays, and app.js says "Pause playback to preview". */
     if (engineMode === null) return engineModeReady.then(() => ForayPlayer.auditionVoice(text, voiceId));
     if (engineMode === "native" && engine) return auditionThroughEngine(text, voiceId);
-    return ttsBridge.speak(text, { rate: NARRATION_RATE, voice: voiceId });
+    /* `audition` (audit round 3, mobile-native-2): the plugins echo it on
+       `finished`, so a preview's end is never taken for narration's. */
+    return ttsBridge.speak(text, { rate: NARRATION_RATE, voice: voiceId, audition: true });
   },
 
   /* ---------- K-01: the bundled-voice measurement ----------
@@ -4936,6 +5007,12 @@ const ForayPlayer = {
     backend.notePlayGesture();
     // The jingle's element needs the same tap, for the same reason (§13).
     if (interlude) interlude.prime();
+    /* LEAVING IS A FLUSH HERE TOO (audit round 3, player-core-8), for the
+       reason `play()` gives: the outgoing episode or Foray is still the
+       manager's current item and `foray` until the two lines below replace
+       them, and neither the reducer's `play` nor a paused player writes a
+       position on the way out. Synchronous, so the tap above stays spent first. */
+    flushPositions();
     /* `onChange ?? forayWatcher`: a Foray started from somewhere that is not
        its page (the restored mini bar, the lock screen) still reaches the page
        that asked to watch — see `watchForay`. */
@@ -5197,8 +5274,14 @@ const ForayPlayer = {
     const last = foray.resolved.playable.length - 1;
     if (manager.currentIndex >= last) return;
     foray.error = null;
-    setForayIndex(manager.currentIndex + 1);
-    await manager.skipToNext();
+    const nextIndex = manager.currentIndex + 1;
+    /* THE NEXT CLIP, NOT THE NEXT NON-NARRATION ITEM (audit round 3,
+       player-core-6). `skipToNext` steps over every `kind: "tts"` item — the
+       Swift transition-bridge rule — and in a Foray a narration line is
+       authored content: Next used to jump past it while the page highlighted
+       it, and from the clip before a closing line it ended the Foray unheard.
+       `play(index)`, the way `forayPrevious` already moves. */
+    await moveForay(nextIndex, () => manager.play(nextIndex));
     render();
   },
 
@@ -5223,8 +5306,7 @@ const ForayPlayer = {
       segmentStartSec: segmentStarts(foray.resolved.playable)[index],
     });
     if (choice === PREVIOUS.ITEM_BEFORE) {
-      setForayIndex(index - 1);
-      await manager.play(foray.index);
+      await moveForay(index - 1, () => manager.play(index - 1));
     } else {
       await manager.skipToPrevious();
     }
@@ -5246,9 +5328,8 @@ const ForayPlayer = {
     if (!scrub) return;
     if (scrub.reload) {
       foray.error = null;
-      setForayIndex(scrub.index);
       /* The offset rides on the load (races-1) — see `playForay`. */
-      await manager.play(scrub.index, scrub.offset != null ? { startOffset: scrub.offset } : undefined);
+      await moveForay(scrub.index, () => manager.play(scrub.index, scrub.offset != null ? { startOffset: scrub.offset } : undefined));
     } else if (scrub.offset != null) {
       await manager.seek(scrub.offset, { precise: true });
     }

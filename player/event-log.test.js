@@ -71,6 +71,25 @@ test("the memory ring is capped at retention, oldest dropped first", async () =>
   assert.deepEqual(rows.map((r) => r.type), ["t2", "t3", "t4"], "the oldest two must be gone");
 });
 
+test("player-rest-2: after the browser closes the connection, rows still reach IndexedDB, not the memory ring", async () => {
+  /* event-log.js shares idb-tier.js's connection helper now. MUTATION: put the
+     old memo back (no close handling, no retry) and the second batch is
+     demoted to the ring. */
+  const factory = new FakeFactory();
+  let flush;
+  const log = createEventLog({ indexedDB: factory, scheduleFlush: (fn) => { flush = fn; } });
+  log.append({ type: "a", payload: {} });
+  await flush();
+  await log.unsynced();                 // the first batch has landed on a live connection
+  factory.db.closed = true;             // server lost; no close event delivered
+  log.append({ type: "b", payload: {} });
+  await flush();
+  const rows = await log.unsynced();
+  assert.deepEqual(rows.map((r) => r.type), ["a", "b"]);
+  assert.ok(rows.every((r) => !String(r.id).startsWith("mem:")), `${JSON.stringify(rows.map((r) => r.id))}`);
+  assert.equal(factory.opens, 2, "reopened once");
+});
+
 /* ---------- batching ---------- */
 
 test("several append() calls in one tick schedule exactly one flush", () => {
@@ -811,6 +830,9 @@ class FakeDb {
     return this.stores.get(name);
   }
   transaction(names, mode) {
+    /* A connection the browser closed (audit round 3, player-rest-2): every
+       transaction() on it throws InvalidStateError until a fresh open. */
+    if (this.closed) throw Object.assign(new Error("The database connection is closing."), { name: "InvalidStateError" });
     if (this.factory.txThrows) throw new Error("no transaction available");
     return new FakeTransaction(this, names, mode);
   }
@@ -835,6 +857,7 @@ class FakeFactory {
     setTimeout(() => {
       if (this.openError) { req.error = this.openError; if (req.onerror) req.onerror({ target: req }); return; }
       if (this.blocked) { if (req.onblocked) req.onblocked({ target: req }); return; }
+      this.db.closed = false;   // a fresh open is a live connection again
       req.result = this.db;
       if (!this._created) { this._created = true; if (req.onupgradeneeded) req.onupgradeneeded({ target: req }); }
       if (req.onsuccess) req.onsuccess({ target: req });

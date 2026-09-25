@@ -868,3 +868,113 @@ test("createForayTtsShell exposes the whole transport, bound to the baked-in bri
   }
   assert.deepEqual(calls.map((c) => c.method), ["pause", "resume", "stop", "state"]);
 });
+
+/* ------------------------------------------------ audit round 3: native TTS */
+
+const SWIFT_SRC = () => readPlugin("ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift");
+const JAVA_SRC = () => readPlugin("android/src/main/java/ai/jwlabs/foura/tts/ForayTtsPlugin.java");
+/** One Swift/Java method's body, from its signature to the next member. */
+const bodyOf = (src, signature) => {
+  const at = src.indexOf(signature);
+  assert.ok(at >= 0, `${signature} is still where this test looks for it`);
+  const next = src.slice(at + signature.length).search(/\n    (?:@objc |@PluginMethod|public |private |static |\/\*\*)/);
+  return src.slice(at, next < 0 ? undefined : at + signature.length + next);
+};
+
+test("mobile-native-1: the Web Speech path cancels what is queued or paused before it speaks", async () => {
+  /* MUTATION: delete `speechSynth.cancel()` in speak()'s Web Speech branch. */
+  const order = [];
+  class FakeUtterance { constructor(text) { this.text = text; } }
+  await speak("the next line", {
+    bridge: undefined,
+    speechSynth: { speak: () => order.push("speak"), cancel: () => order.push("cancel") },
+    UtteranceCtor: FakeUtterance,
+  });
+  assert.deepStrictEqual(order, ["cancel", "speak"]);
+});
+
+test("mobile-native-1: iOS speak() flushes a paused or speaking synthesizer before it enqueues", () => {
+  /* MUTATION: drop the flush, or move it after `synthesizer.speak(utterance)`. */
+  const body = bodyOf(SWIFT_SRC(), "@objc func speak(_ call: CAPPluginCall) {");
+  const flush = body.indexOf("if Self.mustFlushBeforeSpeaking(isSpeaking: synthesizer.isSpeaking, isPaused: synthesizer.isPaused) {\n            synthesizer.stopSpeaking(at: .immediate)");
+  const enqueue = body.indexOf("synthesizer.speak(utterance)");
+  assert.ok(flush >= 0 && enqueue > flush, "stopSpeaking(.immediate) runs before the new utterance is queued");
+  assert.match(SWIFT_SRC(), /static func mustFlushBeforeSpeaking\(isSpeaking: Bool, isPaused: Bool\) -> Bool \{\n\s*return isSpeaking \|\| isPaused/);
+});
+
+test("mobile-native-2: speak() passes `audition` to the plugin and hands back the utterance id", async () => {
+  /* MUTATION: drop `audition` from the native payload, or the `utteranceId` hoist. */
+  const { calls, bridge } = fakeBridge(() => ({ ok: true, utteranceId: "u-42" }));
+  const result = await speak("a preview", { bridge, audition: true });
+  assert.strictEqual(calls[0].payload.audition, true);
+  assert.strictEqual(result.utteranceId, "u-42");
+  const plain = await speak("a narration line", { bridge: fakeBridge(() => ({ ok: true })).bridge });
+  assert.strictEqual(plain.utteranceId, null, "an older shell that names nothing reads as null");
+});
+
+test("mobile-native-2: both plugins name the utterance on accept and on `finished`", () => {
+  /* MUTATION: go back to an empty `finished` payload on either platform, or
+     let Android's onDone fire for an utterance it is no longer on. */
+  const swift = SWIFT_SRC();
+  assert.match(swift, /result\["utteranceId"\] = utteranceId/);
+  const didFinish = bodyOf(swift, "public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {");
+  assert.match(didFinish, /data\["utteranceId"\] = meta\.id/);
+  assert.match(didFinish, /data\["audition"\] = meta\.audition/);
+  assert.match(swift, /didCancel utterance: AVSpeechUtterance\) \{\n\s*_ = takeUtteranceMeta\(utterance\)\n\s*\}/, "a cancel forgets and emits nothing");
+  const java = JAVA_SRC();
+  assert.match(java, /pendingResult\.put\("utteranceId", utteranceId\);/);
+  assert.match(java, /public void onDone\(String utteranceId\) \{[\s\S]*?if \(utteranceId == null \|\| !utteranceId\.equals\(currentUtteranceId\) \|\| paused\) \{\n\s*return;/);
+  assert.match(java, /finished\.put\("utteranceId", utteranceId\);\n\s*finished\.put\("audition", audition\);\n\s*notifyListeners\(FINISHED_EVENT, finished\);/);
+});
+
+test("mobile-native-3: Android reports an engine error as `finished` with `error`, on both onError overloads", () => {
+  /* MUTATION: put the no-op `onError(String utteranceId) { }` back, or drop the
+     API 21 overload. */
+  const java = JAVA_SRC();
+  assert.match(java, /public void onError\(String utteranceId\) \{\n\s*onEngineError\(utteranceId, TextToSpeech\.ERROR\);/);
+  assert.match(java, /public void onError\(String utteranceId, int errorCode\) \{\n\s*onEngineError\(utteranceId, errorCode\);/);
+  const handler = bodyOf(java, "private void onEngineError(String utteranceId, int errorCode) {");
+  assert.match(handler, /speaking = false;/);
+  assert.match(handler, /paused = false;/);
+  assert.match(handler, /finished\.put\("error", errorCode\);/);
+  assert.match(handler, /notifyListeners\(FINISHED_EVENT, finished\);/);
+  assert.match(handler, /!utteranceId\.equals\(currentUtteranceId\) \|\| paused/, "a pause is a stop this plugin made, never an engine error");
+});
+
+test("mobile-native-8: overlapping lexicon terms produce one override, the longest, and no doubled text", () => {
+  /* MUTATION: drop the overlap pass in findMatches and "Big Green" is spoken
+     twice in the SSML. */
+  const lexicon = [{ term: "Big", ipa: "bɪɡ" }, { term: "Big Green", ipa: "bɪɡ ɡriːn" }];
+  const text = "The Big Green Egg is a grill.";
+  const overrides = buildIpaOverrides(text, lexicon);
+  assert.deepStrictEqual(overrides.map((o) => o.term), ["Big Green"]);
+  const ssml = buildAndroidSsml(text, lexicon);
+  assert.equal(ssml, '<speak>The <phoneme alphabet="ipa" ph="bɪɡ ɡriːn">Big Green</phoneme> Egg is a grill.</speak>');
+});
+
+test("mobile-native-8: Android resumes from the plain line, never from a substring of the SSML", () => {
+  /* MUTATION: keep `lastSpokenText = ... androidSsml : text`, or drop the
+     `lastWasSsml ? 0` in resume(). */
+  const java = JAVA_SRC();
+  assert.match(java, /lastSpokenText = text;/);
+  assert.ok(!/lastSpokenText = \(androidSsml/.test(java), "the markup is never what resume() re-speaks");
+  assert.match(bodyOf(java, "public void resume(PluginCall call) {"), /int from = lastWasSsml \? 0 : lastBoundary;/);
+});
+
+test("mobile-native-5: the Kokoro probe runs off the shared plugin thread and closes the session it opened", () => {
+  /* Each run used to leak one native OrtSession (~86 MB) on Android and block
+     every Capacitor call for its duration on both platforms. MUTATION: call
+     `measureProbe` inline instead of through PROBE_EXECUTOR, drop the finally's
+     close(), or have KokoroOrtProbeEngine.close() leave `session` open. */
+  const java = JAVA_SRC();
+  assert.match(java, /private static final ExecutorService PROBE_EXECUTOR = Executors\.newSingleThreadExecutor\(\);/);
+  const probe = bodyOf(java, "public void kokoroProbe(PluginCall call) {");
+  assert.match(probe, /PROBE_EXECUTOR\.execute\(\(\) -> \{[\s\S]*?measureProbe\(call, result, lines, passage, engine\);[\s\S]*?\} finally \{[\s\S]*?owned\.close\(\);/);
+  assert.equal((java.match(/measureProbe\(/g) ?? []).length, 2, "defined once, called once, from the executor");
+  assert.match(java, /default void close\(\) \{ \}/, "the engine seam can be closed");
+  const engine = readPlugin("android/src/main/java/ai/jwlabs/foura/tts/KokoroOrtProbeEngine.java");
+  assert.match(engine, /public void close\(\) \{\s*OrtSession s = session;\s*session = null;\s*if \(s != null\) \{\s*try \{ s\.close\(\); \}/);
+  const swift = SWIFT_SRC();
+  assert.match(swift, /@objc func kokoroProbe\(_ call: CAPPluginCall\) \{\s*Self\.probeQueue\.async \{ \[weak self\] in\s*self\?\.runKokoroProbe\(call\)/);
+  assert.match(java, /failed\.put\("reason", "threw"\);/, "a throw is reported in the page's closed vocabulary");
+});

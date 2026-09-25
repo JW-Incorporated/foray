@@ -222,6 +222,11 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private var artworkCache: (uri: String, item: MPMediaItemArtwork?)?
     /// Remote artwork URIs with a load in flight, so one slow fetch is one fetch.
     private var artworkLoading = Set<String>()
+    /// The last remote artwork load that FAILED, and when it may be tried
+    /// again (audit round 3, mobile-native-6). A failure is not cached as "no
+    /// artwork" for the rest of the item any more: a dead zone or a slow host
+    /// as the car connects is usually transient.
+    private var artworkRetryAfter: (uri: String, at: Date)?
 
     /// L-02's log-side needle (`FORAY_AUDIO_REACHED_NEEDLE` in
     /// `tools/mobile/ios-ci.mjs`, pinned to this string by
@@ -792,6 +797,17 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             return .none
         case (_, .playing):
             return holding ? .supersede : .none
+        /* THE END OF PLAYBACK RELEASES WHOEVER ACTIVATED (audit round 3,
+           mobile-native-4). A Foray played through without a pause never took
+           the hold, but every narration line activated this same shared
+           session (`ForayTtsPlugin` claims it), so ending on `holding` alone
+           left a non-mixable `.playback` session active after the Foray and
+           never told the app it interrupted that it may resume -- the one
+           promise design comment §2 makes. From playing or paused into ended
+           or none, release and notify either way. Never from the playing path,
+           and never from a state that had nothing to play. */
+        case (.playing, .none), (.playing, .ended), (.paused, .none), (.paused, .ended):
+            return .releaseAndNotify
         case (_, .none), (_, .ended):
             return holding ? .releaseAndNotify : .none
         default:
@@ -1038,9 +1054,12 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// are read from disk once, and a remote image is fetched asynchronously
     /// (`URLSession`, bounded) with the entry re-posted when it lands. Until it
     /// lands the entry goes out without artwork -- the same "no artwork, never a
-    /// guess" rule `media-session.js`'s `artworkUrl()` enforces upstream -- and
-    /// a failed load is cached as none, so a dead URL costs one attempt and not
-    /// one per write. On `stateQueue`.
+    /// guess" rule `media-session.js`'s `artworkUrl()` enforces upstream. A
+    /// failed REMOTE load is not cached as none (audit round 3, mobile-native-6):
+    /// it is retried once `artworkRetryAfterSec` has passed, so a dead URL costs
+    /// one attempt per interval and not one per write, and a fetch that timed
+    /// out in a dead zone does not leave the lock screen bare for the rest of
+    /// the item. On `stateQueue`.
     private func artworkItem(for uri: String) -> MPMediaItemArtwork? {
         guard !uri.isEmpty else { return nil }
         if let cached = artworkCache, cached.uri == uri { return cached.item }
@@ -1055,12 +1074,24 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         if url.isFileURL {
             return rememberArtwork(uri: uri, image: UIImage(contentsOfFile: url.path))
         }
+        guard Self.artworkLoadAllowed(uri: uri, lastFailure: artworkRetryAfter, now: Date()) else { return nil }
         loadRemoteArtwork(uri: uri, url: url)
         return nil
     }
 
-    /// Cache and wrap. A `nil` image is cached too -- "this URI has no artwork"
-    /// is an answer, and asking again on every write is the bug above.
+    /// How long a failed remote artwork load waits before it is tried again.
+    static let artworkRetryAfterSec: Double = 45
+
+    /// Whether a remote artwork load may start: not while the same URI's last
+    /// failure is inside its retry window (mobile-native-6).
+    static func artworkLoadAllowed(uri: String, lastFailure: (uri: String, at: Date)?, now: Date) -> Bool {
+        guard let failure = lastFailure, failure.uri == uri else { return true }
+        return now >= failure.at
+    }
+
+    /// Cache and wrap. A `nil` image from the bundle or a file is cached too --
+    /// "this URI has no artwork" is an answer there, and asking again on every
+    /// write is the bug above. A remote failure is not (see `artworkItem`).
     private func rememberArtwork(uri: String, image: UIImage?) -> MPMediaItemArtwork? {
         let item = image.map { image in MPMediaItemArtwork(boundsSize: image.size) { _ in image } }
         artworkCache = (uri: uri, item: item)
@@ -1081,8 +1112,15 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             self.stateQueue.async {
                 self.artworkLoading.remove(uri)
                 let image = data.flatMap { UIImage(data: $0) }
+                /* ONLY A SUCCESS IS CACHED (mobile-native-6). A failure or a
+                   timeout records a retry time instead of a permanent nil. */
+                guard image != nil else {
+                    self.artworkRetryAfter = (uri: uri, at: Date().addingTimeInterval(Self.artworkRetryAfterSec))
+                    return
+                }
+                if self.artworkRetryAfter?.uri == uri { self.artworkRetryAfter = nil }
                 _ = self.rememberArtwork(uri: uri, image: image)
-                if image != nil && self.lastPayload.artworkUri == uri && self.lastPayload.state != .none {
+                if self.lastPayload.artworkUri == uri && self.lastPayload.state != .none {
                     self.applyNowPlayingInfo(self.lastPayload)
                 }
             }

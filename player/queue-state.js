@@ -473,8 +473,8 @@ function handleInterruptionEnded(state, shouldResume) {
 function handleRouteChanged(state, oldDeviceUnavailable) {
   if (!oldDeviceUnavailable) {
     // A route became available (e.g. BT reconnect). The reducer does not
-    // auto-resume — "resume only for previously-known car routes" is a
-    // policy that lives in the manager, which issues an explicit play.
+    // auto-resume, and on the web/Android path nothing else does either
+    // (player-core-10): the native iOS engine owns route policy.
     return [state, [F.emitTelemetry("route.changed.available")]];
   }
 

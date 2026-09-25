@@ -209,8 +209,18 @@ export function verdict(observed, opts = {}) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function listTargets(endpoint) {
-  const res = await fetch(`${endpoint}/json/list`);
+/** How long one step of the probe may take: never more than its own cap, and
+ *  never past the probe's deadline (audit round 3, mobile-native-10). At least
+ *  1 ms, so a step that starts at the deadline fails fast instead of never. */
+export function stepTimeoutMs(deadline, now, capMs) {
+  return Math.max(1, Math.min(capMs, deadline - now));
+}
+
+/** The DevTools target list, BOUNDED (mobile-native-10): a forwarded port that
+ *  accepts the connection and never answers used to hold this fetch for
+ *  undici's 300 s header timeout, well past `--timeout-ms`. */
+export async function listTargets(endpoint, { timeoutMs = 5000, fetchImpl = fetch } = {}) {
+  const res = await fetchImpl(`${endpoint}/json/list`, { signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) throw new Error(`${endpoint}/json/list answered ${res.status}`);
   return res.json();
 }
@@ -281,9 +291,9 @@ async function probe({ endpoint, timeoutMs, title }) {
   while (Date.now() < deadline) {
     attempts += 1;
     try {
-      const target = pickPage(await listTargets(endpoint));
+      const target = pickPage(await listTargets(endpoint, { timeoutMs: stepTimeoutMs(deadline, Date.now(), 5000) }));
       if (target) {
-        const observed = await evaluate(target.webSocketDebuggerUrl, PROBE_EXPRESSION, 30000);
+        const observed = await evaluate(target.webSocketDebuggerUrl, PROBE_EXPRESSION, stepTimeoutMs(deadline, Date.now(), 30000));
         const v = verdict(observed, { expectedTitle: title });
         last = { ...v, observed, target: { url: target.url, title: target.title } };
         if (v.ok) break;

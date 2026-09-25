@@ -127,6 +127,22 @@ test("a rejected play() surfaces as onError, never an unhandled rejection", asyn
   assert.match(reported ?? "", /NotAllowedError/);
 });
 
+test("an interrupted play() (AbortError) is telemetry, never onError (audit round 3, player-core-3)", async () => {
+  /* A pause or a skip's fresh load cuts off a pending play promise with
+     AbortError. Reported, it drove the reducer to idle and the skip's own load
+     was then ignored. MUTATION: delete the AbortError early return in play()'s
+     catch and `reported` names AbortError. */
+  const { b, el, log } = mk();
+  await b.load(item("a"));
+  el.playResult = Promise.reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+  let reported = null;
+  b.onError = (m) => { reported = m; };
+  b.play();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(reported, null, "a cancel is not a player error");
+  assert.ok(log.some((l) => /^play\.aborted/.test(l)), JSON.stringify(log));
+});
+
 /* THE FIRST play() OF A SESSION (#225).
 
    Autoplay policy is about TASKS, not time: WebKit lifts an element's gesture
@@ -2322,7 +2338,11 @@ test("only an autoplay refusal is recovered — a pause mid-handover must not re
   assert.equal(b.el, w, "no swap-back: this was not an autoplay refusal");
   assert.equal(b.canPrefetch, true, "and it must not cost the rest of the Foray");
   assert.equal(log.some((l) => /handover\.refused/.test(l)), false);
-  assert.match(reported ?? "", /AbortError/, "it reports, exactly as it did before this feature");
+  /* Audit round 3, player-core-3: an AbortError is a cancel, not a failure,
+     so it no longer reaches the manager's degrade path at all (it used to
+     report, and the report dropped the listener's skip into idle). */
+  assert.equal(reported, null, "an interrupted play() is not reported as an error");
+  assert.ok(log.some((l) => /play.aborted/.test(l)), "it is recorded as telemetry");
 });
 
 test("an autoplay refusal that lands after the listener paused must not restart audio", async () => {
