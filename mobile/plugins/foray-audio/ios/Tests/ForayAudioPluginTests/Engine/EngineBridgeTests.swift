@@ -264,13 +264,13 @@ final class EngineBridgeTests: XCTestCase {
     /// `helloReceived()`.
     @MainActor
     func testHelloAnswersNativeOrLegacy() {
-        let rig = Rig(capabilities: ["episode", "continuation", "foray"])
+        let rig = Rig(capabilities: ["episode", "foray", "bogus"])
         let native = rig.bridge.hello(Self.hello)
         accepted(.helloResponse, native)
         XCTAssertEqual(native["mode"], .string("native"))
         XCTAssertEqual(native["reason"], .string("build-default"))
-        XCTAssertEqual(native["capabilities"], .array([.string("episode"), .string("continuation")]),
-                       "the plist's ∩ the advertised: foray is not advertised in M1")
+        XCTAssertEqual(native["capabilities"], .array([.string("episode"), .string("foray")]),
+                       "the plist's ∩ the advertised: an unknown one is dropped, foray is advertised since NE-37")
         XCTAssertEqual(native["pendingAdvances"], .array([]))
         XCTAssertEqual(rig.owner.hellos, 1)
 

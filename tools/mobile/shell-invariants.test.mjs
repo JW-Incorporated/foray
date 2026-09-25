@@ -3690,14 +3690,16 @@ test("NE-25b: the two-deck spike measures AVDeck's own gate: two real decks, no 
  * is which FILE reaches for what, and that the pair ships OFF. */
 
 test("NE-32: DeckPair ships off, never touches a player, and the out-point's three layers live in AVDeck's one watch", () => {
-  /* MUTATION: default `deckPairEnabled` to true; build a DeckPair in EngineBoot
-     without the flag; seek or pause `player` from DeckPair.swift, or import
+  /* The pair SHIPPED off; since NE-37 the shipping boot turns it on (NE-27's
+     test holds that), and the core's own default stays off.
+     MUTATION: default the core's `deckPairEnabled` to true; build a DeckPair
+     in EngineBoot without the flag; seek or pause `player` from DeckPair.swift, or import
      AVFoundation there; write `forwardPlaybackEndTime` or add a boundary
      observer outside AVDeck's `apply`; raise the stop pad; arm the watchdog
      with anything but `config.schedule(.watchdog`; let the pair play a deck in
      the handover. Each fails here. */
   const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
-  assert.match(core, /deckPairEnabled: Bool = false\)/, "EngineConfig.deckPairEnabled defaults OFF (until NE-37)");
+  assert.match(core, /deckPairEnabled: Bool = false\)/, "EngineConfig.deckPairEnabled defaults OFF in the core (EngineBoot turns it on, NE-37)");
 
   const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
   assert.match(boot, /config\.deckPairEnabled\s*\?\s*DeckPair\.make\(/, "the boot builds a DeckPair only behind the flag");
@@ -4359,28 +4361,50 @@ function engineDefaultRefusal(engineDefault, stateText) {
     return 'mobile/ENGINE_DEFAULT.json says "native", but STATE.md records no line "OQ-9 answer (<date>): native default ..." carrying the ruling in double quotes';
   }
   const caps = engineDefault.capabilities ?? [];
-  const allowed = ["episode", "continuation", "restore"];
+  /* NE-37, the M2 flip: `foray` joins M1's three. Narration and the interlude
+     are families of `foray` (player/parity/capabilities.json), and
+     `remainder` is a bookkeeping gate no build may ship. */
+  const allowed = ["episode", "continuation", "restore", "foray"];
   const extra = caps.filter((c) => !allowed.includes(c));
-  if (extra.length) return `the M1 native default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;
+  if (extra.length) return `the M2 native default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;
   return null;
 }
 
 test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answer", () => {
   /* MUTATIONS: commit {"mode":"native"} with STATE.md's OQ-9 line deleted ->
-     red; keep the line but drop its quoted ruling -> red; add "foray" to a
-     native default in M1 -> red. The synthetic cases below are those mutations,
-     run every time, so the guard cannot go vacuous while the default is js. */
+     red; keep the line but drop its quoted ruling -> red; add "remainder" (or
+     anything past M2's four) to a native default -> red. The synthetic cases
+     below are those mutations, run every time, so the guard cannot go vacuous
+     while the default is js. */
   const record = 'OQ-9 answer (2026-09-24): native default for the founder\'s builds, "Full native engine".';
   assert.equal(engineDefaultRefusal({ mode: "js" }, ""), null, "a js default needs no record");
   assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode"] }, "") ?? "", /OQ-9/);
   assert.match(engineDefaultRefusal({ mode: "native" }, "OQ-9 answer (2026-09-24): native default, unquoted") ?? "", /OQ-9/);
   assert.match(engineDefaultRefusal({ mode: "native" }, "  " + record) ?? "", /OQ-9/, "the record is a line of its own");
   assert.equal(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "restore"] }, record), null);
-  assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "foray"] }, record) ?? "", /foray/);
+  assert.equal(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"] }, record), null);
+  assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "remainder"] }, record) ?? "", /remainder/);
+  assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["foray", "narration"] }, record) ?? "", /narration/);
 
   const committed = JSON.parse(fs.readFileSync(ENGINE_DEFAULT_JSON, "utf8"));
   const refusal = engineDefaultRefusal(committed, fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n"));
   assert.equal(refusal, null, refusal ?? "");
+
+  /* NE-37, the M2 flip: a default that grants `foray` needs a boot that plays
+     one. The core's flags stay OFF (headless tests and the parity driver build
+     cores without them); the shipping boot turns on the tape and the deck
+     pair, and leaves the silence node (H-2), the direct synthesizer (DV-9) and
+     narration at the listener's speed (OQ-3) off. MUTATION: drop "foray" from
+     ENGINE_DEFAULT.json while the boot turns the tape on, or the reverse; set
+     any of the three held flags in the boot. */
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.equal(/config\.forayTapeEnabled = true\b/.test(boot), (committed.capabilities ?? []).includes("foray"),
+    "ENGINE_DEFAULT.json grants foray exactly when EngineBoot turns the Foray tape on");
+  assert.deepEqual([...(committed.capabilities ?? [])].sort(), ["continuation", "episode", "foray", "restore"], "NE-37: the M2 default");
+  assert.match(boot, /config\.deckPairEnabled = true\b/, "NE-37 turns the deck pair on with the tape");
+  for (const held of ["silenceNodeEnabled", "speechDirect", "narrationFollowsListenerRate"]) {
+    assert.doesNotMatch(boot, new RegExp(String.raw`config\.${held}\s*=`), `the boot must leave ${held} at the core's default (off)`);
+  }
 });
 
 /* ─────────── NE-33: SpeechNarrator, SpeechRules and the bundled lexicon ───────────

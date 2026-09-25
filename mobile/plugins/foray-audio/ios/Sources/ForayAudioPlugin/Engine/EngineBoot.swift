@@ -37,10 +37,22 @@ enum EngineBoot {
 
         let session = AudioSessionOwner(config: AudioSessionOwner.Config(diag: { store.diag($0) }))
         var config = EngineConfig(build: bundleVersion)
+        // NE-37, THE M2 FLIP: the app's engine plays Forays. The core's own
+        // defaults stay OFF (every headless test and the parity driver build
+        // one without them); the shipping boot turns on the Foray tape
+        // (NE-30s) and the two-deck pair with its prepared standby (NE-32).
+        // The rest stay off on purpose: the silence node until H-2 rows show a
+        // suspension (NE-34), the direct synthesizer until DV-9 answers
+        // (NE-33), and narration at the listener's speed until the founder
+        // changes his 1x ruling (OQ-3). The page only sends `playForay` when
+        // the hello grants `foray` (mobile/ENGINE_DEFAULT.json ∩
+        // EngineBridgeRules.advertisedCapabilities).
+        config.forayTapeEnabled = true
+        config.deckPairEnabled = true
         let sessionIsActive = { session.phase == .active }
         // NE-34: the seam's jingle on the bundled asset (nil, and no jingle,
         // if the asset did not ship), and the silence node only behind its
-        // flag (OFF). Neither sounds until the Foray tape is on (NE-37).
+        // flag (OFF). The jingle sounds at a Foray's seams now the tape is on.
         let interlude = InterludePlayer.make(sessionIsActive: sessionIsActive, diag: { store.diag($0) },
                                              timing: timing)
         config.interludeAvailable = interlude != nil
@@ -49,7 +61,7 @@ enum EngineBoot {
                                                      timing: timing))
             : nil
         // NE-32: two decks with a prepared standby, behind `deckPairEnabled`
-        // (off until NE-37); otherwise M1's one deck. Either way the deck's
+        // (on since NE-37, above); off, M1's one deck. Either way the deck's
         // `outPoint` rows go into the ring.
         let deck: DeckDriving = config.deckPairEnabled
             ? DeckPair.make(sessionIsActive: sessionIsActive, diag: { store.diag($0) })

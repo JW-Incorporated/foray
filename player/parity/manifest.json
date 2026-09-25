@@ -835,7 +835,7 @@
       "files": {
         "player/parity/fixtures/manager-foray/audition.json": "9c1eed332cf0db001efc1de1e1b0c27f1bd50fef9c49202229d8312c9adcfb60",
         "player/parity/fixtures/manager-foray/jingle.json": "c9016c928cfc2dd0a8c3429124dbc5da2b6775b2161601a3aedaed4b74f4fff2",
-        "player/parity/fixtures/manager-foray/narration.json": "f135c434a7091d03debd2b6afe9d8f1c67cefa40d37daf3a3e64439d628b147b",
+        "player/parity/fixtures/manager-foray/narration.json": "f3ab3692cd724ae3ca65316607d1b68f77c3191f4bf843369749acd9f4956c77",
         "player/parity/fixtures/manager-foray/real-forays.json": "ce2d584ca45514c92c7a0b9095d4566d40429fb180f17faa352c202c4c88b6f4",
         "player/parity/fixtures/manager-foray/tape.json": "bffeb969f00fbe7d2b5c1a7a8fcd450f2ddc43b04e53428eeb320ceffa38bf73"
       },
@@ -1955,7 +1955,7 @@
     },
     "transport": {
       "files": {
-        "player/parity/fixtures/transport/transport.json": "341d2b9351fbc5c8a01cde7f37b27fc4e46822f4eef004f0b6f15061f6825478"
+        "player/parity/fixtures/transport/transport.json": "4f9dc490e507f9a78e0009b4dad83082940c6bb563d297ffb22a82a267b2838f"
       },
       "ids": [
         "transport/restart-window-4s",

@@ -23,6 +23,8 @@
     "THE FOUNDER'S PRESS: after a stop the page never saw, the transport says Play": "facade:native-facades::attach replaces a stale belief with the engine's word, says it corrected, and one press then sends one intent",
     "and the press resumes — the reconcile did not start anything itself": "facade:native-facades::attach only READS: returning to the page sends no command, so it can never start audio",
     "previousMeansRestart is the player's own window: false at the start, true once past it, null with nothing current (audit round 2, p-car-5)": "facade:native-facades::the playhead and the duration are the snapshot's: extrapolated while flowing, frozen otherwise, null while unknown",
-    "the button says what the AUDIO is doing, not what we last believed": "facade:native-facades::one authority: state, elementIsAudible and the media events all read the same snapshot"
+    "the button says what the AUDIO is doing, not what we last believed": "facade:native-facades::one authority: state, elementIsAudible and the media events all read the same snapshot",
+    "a finished Foray does not come back looking mid-listen": "facade:native-facades::attach replaces a stale belief with the engine's word, says it corrected, and one press then sends one intent",
+    "PERSONA: a Foray played after an episode takes the bar, and one press resumes it where it was": "facade:native-mode::NE-35: restoreForay over an idle engine paints the bar, sends restoreBar and nothing audible; the first press is playForay at the row"
   }
 }

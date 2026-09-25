@@ -26,6 +26,13 @@
     "a file that simply ran out is not an interruption": "xctest:AVDeckTests/testTheEndIsEndedNotAnUncommandedPause",
     "a pause nobody asked for is reported; one we caused is not": "xctest:AVDeckTests/testAnExternalPauseBecomesAReconcileInput",
     "paused and ended are read off the element, not off what we believe": "xctest:AVDeckTests/testTheReadingFollowsTheLoadAndThePlay",
-    "the out-point's own pause is not an unexplained one": "xctest:AVDeckTests/testTheUncommandedPauseRule"
+    "the out-point's own pause is not an unexplained one": "xctest:AVDeckTests/testTheUncommandedPauseRule",
+    "AUDIT: play on a FINISHED Foray starts it over instead of replaying its last segment": "xctest:ForayTapeTests/testPlayOnAnEndedForayStartsAtZero",
+    "a position that CAN be read is still written, so the refusal is not a mute": "xctest:ForayTapeTests/testTheCpForayCadence",
+    "a Foray played to the end is MARKED 'Played', not wiped back to unplayed (honesty-2)": "xctest:ForayTapeTests/testTheCpForayCadence",
+    "A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH THE FAILED SEGMENT'S IN-POINT": "xctest:ForayTapeTests/testAFailedSeamLoadNeverWritesTheClipThatNeverLoaded",
+    "THE STORE IS NEVER HANDED A POSITION NOBODY READ": "xctest:ForayTapeTests/testAFailedSeamLoadNeverWritesTheClipThatNeverLoaded",
+    "THE POSITION THE ROUTE DIED AT IS WRITTEN, past the save throttle": "xctest:ForayTapeTests/testALostRouteWritesWhereItDiedPastTheThrottle",
+    "ROUND 2 races-1: a resume superseded by Next clip inside its load window never seeks the new clip": "xctest:ForayTapeTests/testAResumeSupersededByNextNeverSeeksTheNewClip"
   }
 }

@@ -512,7 +512,7 @@ final class ForayEngine {
             // The narrating overlay's synthesiser: SpeechNarrator (NE-33), the
             // same one that speaks an audition. Its answers come back through
             // `onNarratorEvent`, after this turn (the inbox). The core asks
-            // only with the Foray tape on (off until NE-37).
+            // only with the Foray tape on (the shipping boot's, since NE-37).
             seams.speaker.narrate(command)
         case let .interlude(command):
             interpretInterlude(command)

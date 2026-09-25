@@ -938,6 +938,14 @@
     "the sheet shows ⏭, Up Next (N) and Save from the page's episode surface, and each does the page's own thing (audit round 2, p-impatient-7 / p-switcher-5)": {
       "reason": "dom-only",
       "why": "The sheet's ⏭, Up Next (N) and Save read the page's own episode surface. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "AUDIT: \"Next clip\" is disabled on the last segment instead of silently doing nothing": {
+      "reason": "dom-only",
+      "why": "client.js render() disables the sheet's \"Next clip\" button when the playhead's index is the Foray's last; in native mode the index is the engine snapshot's (NE-35) and the page paints it the same way. The engine's own refusal of a next past the end is ForayTapeTests/testAForayNeverChains; the button's state is page painting with nothing for Swift to reimplement."
+    },
+    "PERSONA: an episode played AFTER the Foray keeps the bar": {
+      "reason": "dom-only",
+      "why": "lastPlayedForay() is the page choosing which bar to paint at boot, by comparing the updated_at stamps of the cp_foray and cp_last_episode rows. In native mode the page makes the same choice over the rows the engine writes in the same format (the rows family, cp-foray.json); the engine never decides what the page's bar shows."
     }
   },
   "tts-bridge": {

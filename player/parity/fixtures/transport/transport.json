@@ -454,7 +454,8 @@
     {
       "id": "transport/previous-narration-just-started-goes-back-past-it",
       "covers": [
-        "transport-policy::previous is measured on the Foray clock, so it goes back past a narration line too; a jump in flight restarts"
+        "transport-policy::previous is measured on the Foray clock, so it goes back past a narration line too; a jump in flight restarts",
+        "transport-reconcile::ROUND 2 player-4: Previous clip pressed just into a narration line goes back PAST the narrator"
       ],
       "note": "Audit round 2, player-4: measured on the element's clock this was NaN (a narration line has no start_sec) and always restarted the line.",
       "call": "previousAction",
@@ -498,7 +499,10 @@
     },
     {
       "id": "transport/skip-foray-back",
-      "covers": ["transport-policy::a Foray nudge moves on the Foray clock and never below zero"],
+      "covers": [
+        "transport-policy::a Foray nudge moves on the Foray clock and never below zero",
+        "transport-reconcile::VISUAL PASS: inside a Foray the sheet's ↺15 nudges within the clip — it does not restart it"
+      ],
       "call": "skipTarget",
       "args": [{ "foray": true, "positionSec": 100, "offsetSec": -15, "durationSec": 900 }],
       "expect": { "return": 85 }
@@ -522,7 +526,8 @@
     {
       "id": "transport/skip-foray-near-end-stops-short",
       "covers": [
-        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored"
+        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored",
+        "transport-reconcile::ROUND 2 player-5: 30↻ near the end of a Foray stops short of the end instead of finishing it"
       ],
       "call": "skipTarget",
       "args": [{ "foray": true, "positionSec": 880, "offsetSec": 30, "durationSec": 900 }],
@@ -649,7 +654,8 @@
     {
       "id": "transport/nudge-in-a-clip-seeks",
       "covers": [
-        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks",
+        "transport-reconcile::VISUAL PASS: inside a Foray the sheet's ↺15 nudges within the clip — it does not restart it"
       ],
       "call": "nudgeAction",
       "args": [
@@ -681,7 +687,8 @@
     {
       "id": "transport/nudge-back-in-a-line-restarts-it",
       "covers": [
-        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks",
+        "transport-reconcile::ROUND 2 player-11: a nudge inside a SPOKEN line restarts it (back) or skips it (forward), and says so"
       ],
       "call": "nudgeAction",
       "args": [
@@ -713,7 +720,8 @@
     {
       "id": "transport/nudge-forward-in-a-line-skips-it",
       "covers": [
-        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks",
+        "transport-reconcile::ROUND 2 player-11: a nudge inside a SPOKEN line restarts it (back) or skips it (forward), and says so"
       ],
       "call": "nudgeAction",
       "args": [
@@ -729,7 +737,8 @@
     {
       "id": "transport/nudge-forward-in-the-last-line-does-nothing",
       "covers": [
-        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks",
+        "transport-reconcile::ROUND 2 review: 30↻ inside the Foray's LAST spoken line does not claim to have skipped it"
       ],
       "call": "nudgeAction",
       "args": [
@@ -967,7 +976,8 @@
     {
       "id": "transport/scrub-finished-foray-reloads",
       "covers": [
-        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item"
+        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item",
+        "transport-reconcile::AUDIT: a FINISHED Foray can be scrubbed back into its last segment"
       ],
       "call": "scrubTarget",
       "args": [
@@ -1015,7 +1025,8 @@
     {
       "id": "transport/scrub-to-the-end-lands-inside",
       "covers": [
-        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item"
+        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item",
+        "transport-reconcile::AUDIT: a scrub to the very END of a Foray lands inside the last segment, so the boundary still fires"
       ],
       "call": "scrubTarget",
       "args": [
@@ -1065,7 +1076,8 @@
     {
       "id": "transport/offset-at-the-end",
       "covers": [
-        "transport-policy::a Foray-clock offset lands inside the item, never on its out-point"
+        "transport-policy::a Foray-clock offset lands inside the item, never on its out-point",
+        "transport-reconcile::AUDIT: a scrub to the very END of a Foray lands inside the last segment, so the boundary still fires"
       ],
       "call": "sourceOffsetFor",
       "args": [{ "$seg": ["b", 100, 210] }, 110],
@@ -1137,7 +1149,8 @@
     {
       "id": "transport/offset-rendered-narration",
       "covers": [
-        "transport-policy::a spoken narration item has nothing to seek; a rendered one seeks in its own file"
+        "transport-policy::a spoken narration item has nothing to seek; a rendered one seeks in its own file",
+        "transport-reconcile::AUDIT: a scrub into a narration bridge lands where it was aimed, not at its first word"
       ],
       "call": "sourceOffsetFor",
       "args": [

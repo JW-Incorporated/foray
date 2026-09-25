@@ -10,17 +10,19 @@ public struct EngineConfig: Equatable {
     /// M2's Foray tape (card NE-30s): the `playForay` command, ADR-0007's
     /// load-time ladder, the seam beat and its transport cuts, the standby
     /// deck's prepare, rendered narration bridges and the `cp_foray` cadence.
-    /// OFF until NE-37 (plan §12: M2 code that changes shared episode paths
-    /// merges behind an off-by-default flag); off, `playForay` is refused
-    /// `capability-off` and every episode path is exactly M1's.
+    /// OFF by default (plan §12: M2 code that changes shared episode paths
+    /// merged behind an off-by-default flag); off, `playForay` is refused
+    /// `capability-off` and every episode path is exactly M1's. The shipping
+    /// boot (EngineBoot) turns it on since NE-37, the M2 flip.
     public var forayTapeEnabled: Bool
     /// `seamGapSec` (`SEAM_GAP_SEC`, 0.5 s: the founder's ruling of
     /// 2026-09-24). Passed straight through, as the JS manager passes it:
     /// `SeamGap` owns what a nonsense length means (no beat).
     public var seamGapSec: Double
     /// NE-32's DeckPair: two decks, the standby one prepared and prerolled at
-    /// the next segment's in-point while the current one is audible. OFF until
-    /// NE-37 (plan §4.3). The core decides nothing on it (it prepares when the
+    /// the next segment's in-point while the current one is audible. OFF by
+    /// default; the shipping boot turns it on since NE-37 (plan §4.3). The
+    /// core decides nothing on it (it prepares when the
     /// deck opens the prefetch window, and a single deck never opens one); the
     /// host reads it to choose which deck it builds.
     public var deckPairEnabled: Bool
@@ -1318,6 +1320,12 @@ public struct EngineCore {
             stopRow(.routeChange)
             dispatch(.routeChanged(oldDeviceUnavailable: true))
             releaseSeamGap()
+            // The clock stops with the route, so no later tick carries the
+            // position it died at past the 5 s throttle: write it NOW
+            // (client.js `reconcileOnReturn`'s forced write; NE-37 ports
+            // transport-reconcile's "THE POSITION THE ROUTE DIED AT IS
+            // WRITTEN"). An unknown playhead still writes nothing.
+            persistForay(force: true)
         } else {
             dispatch(.routeChanged(oldDeviceUnavailable: false))
         }

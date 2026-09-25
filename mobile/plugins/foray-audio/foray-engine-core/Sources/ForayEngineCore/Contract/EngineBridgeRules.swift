@@ -42,11 +42,17 @@ public enum EngineBridgeRules {
     ///     (NE-14s), and its family owes nothing.
     ///   - `restore` (NE-27b): the cold path boots from the restore record
     ///     (NE-24), and its families owe nothing.
-    ///   - `foray` is NOT, yet: it waits for M2 (NE-30s).
-    /// These three are exactly what shell-invariants lets an M1 native
-    /// default (mobile/ENGINE_DEFAULT.json) list. A capability missing here is
+    ///   - `foray` (NE-37, the M2 flip): the core plays Forays (NE-30s, the
+    ///     tape; NE-31s narration and the jingle; NE-32 the deck pair; NE-33
+    ///     the narrator; NE-34 the interlude), and NE-37 emptied the last 20
+    ///     `transport-reconcile` tests owed to `manager-foray`, so every family
+    ///     it lists owes nothing. Narration and the interlude are families of
+    ///     this capability, not capabilities of their own
+    ///     (player/parity/capabilities.json).
+    /// These four are exactly what shell-invariants lets a native default
+    /// (mobile/ENGINE_DEFAULT.json) list. A capability missing here is
     /// refused `capability-off` by `engineSend`, whatever the plist says.
-    public static let advertisedCapabilities: [String] = ["episode", "continuation", "restore"]
+    public static let advertisedCapabilities: [String] = ["episode", "continuation", "restore", "foray"]
 
     /// `ForayEngineCapabilities` (the plist, from mobile/ENGINE_DEFAULT.json)
     /// ∩ `advertisedCapabilities`, in the contract's order. Nil (no plist key)
