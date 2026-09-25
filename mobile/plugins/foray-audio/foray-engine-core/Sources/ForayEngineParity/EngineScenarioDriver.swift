@@ -252,7 +252,15 @@ final class ScenarioWorld {
         guard let event = fields["deck"]?.stringValue else { throw HarnessError("E_BAD_CASE", "a deck step needs an event") }
         switch event {
         case "ended":
+            // The file ran out: the deck is silent and at its end (NE-14k;
+            // runner.js sets the fake element's `paused` and `ended` first).
+            reading.audible = false
+            reading.ended = true
             feed(.deck(.ended(token: deckToken ?? 0)))
+        case "ranOut":
+            // At the end with the `.ended` event not yet delivered (NE-14k).
+            reading.audible = false
+            reading.ended = true
         case "error":
             feed(.deck(.failed(token: deckToken ?? 0, message: fields["message"]?.stringValue ?? "error")))
         case "time":

@@ -331,7 +331,7 @@
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
-        "player/parity/fixtures/manager-episode/scenarios.json": "75498f235f0be0b2f7ce8e1bcbeb7365c300c1446b400705b52daaccf457b250"
+        "player/parity/fixtures/manager-episode/scenarios.json": "26cd0da639b02fe1666e190ab0378c10262d2ec98593dd5efd0fd9941d8af724"
       },
       "ids": [
         "manager-episode/last-episode-row-full-snapshot",
@@ -366,7 +366,18 @@
         "manager-episode/set-rate-hands-the-deck-only-ladder-values",
         "manager-episode/pause-silences-an-audible-element",
         "manager-episode/position-events-at-most-once-a-minute",
-        "manager-episode/position-events-are-per-item"
+        "manager-episode/position-events-are-per-item",
+        "manager-episode/an-unseen-stop-is-corrected-once-and-one-press-resumes",
+        "manager-episode/a-file-that-ran-out-is-not-an-external-stop",
+        "manager-episode/a-failed-skip-leaves-the-playhead-on-the-held-item",
+        "manager-episode/a-lost-route-writes-where-it-stopped",
+        "manager-episode/background-keeps-a-scrub-made-while-paused",
+        "manager-episode/a-press-resumes-where-the-deck-is",
+        "manager-episode/a-superseded-load-that-fails-stops-nothing",
+        "manager-episode/a-finished-episode-starts-cold-from-the-top",
+        "manager-episode/play-after-the-end-starts-from-the-top",
+        "manager-episode/no-resume-and-a-late-should-resume-change-nothing",
+        "manager-episode/a-scrub-made-while-paused-survives-stop"
       ]
     },
     "media-episode": {
@@ -1114,7 +1125,7 @@
     },
     "transport": {
       "files": {
-        "player/parity/fixtures/transport/transport.json": "ff647462944435dc9ace8410ffffc8c7bcfdc3451210e703f4cdc3469aa098df"
+        "player/parity/fixtures/transport/transport.json": "341d2b9351fbc5c8a01cde7f37b27fc4e46822f4eef004f0b6f15061f6825478"
       },
       "ids": [
         "transport/restart-window-4s",

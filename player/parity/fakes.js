@@ -53,6 +53,12 @@ export class FakeBackend {
     this.outPoint = null;
     this.failLoadFor = new Set(failLoadFor);
     this.paused = true;
+    /** NE-14k. The element's own `ended`: set by the scenario's `deck: "ended"`
+        and `deck: "ranOut"` verbs, cleared by a load or a play, as an
+        <audio> element clears it. The manager reads it in two places (the
+        reconcile's "a finished file is not an external stop" and
+        `reEnteringLoadedItem`'s "play after the end starts from the top"). */
+    this.ended = false;
     this.onItemEnded = null;
     this.onError = null;
   }
@@ -63,6 +69,7 @@ export class FakeBackend {
     this._loadedId = item.id;
     this.outPoint = null; // contract: a load drops any armed boundary
     this.paused = true;
+    this.ended = false;
     this.currentTime = startOffset;
     this.log.push(`load:${item.id}@${r(startOffset)}`);
     if (this.holdLoads) {
@@ -81,7 +88,7 @@ export class FakeBackend {
     else held.resolve();
     return true;
   }
-  play() { this.paused = false; this.log.push("play"); }
+  play() { this.paused = false; this.ended = false; this.log.push("play"); }
   pause() { this.paused = true; this.log.push("pause"); }
   seek(s) { this.currentTime = s; this.log.push(`seek:${r(s)}`); }
   setOutPoint(s) {
