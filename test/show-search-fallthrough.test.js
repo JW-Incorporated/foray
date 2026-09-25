@@ -507,7 +507,7 @@ test("the directory pass has its own hot-query cache, and a failure is not cache
   assert.strictEqual(bad.directoryCalls().length, 2, "a failure must not be remembered as an answer");
 });
 
-test("the two normalised-title rules are one rule: app.js and api/shows/appleShowSearch.ts agree character for character", () => {
+test("the two normalised-title rules are one rule: app.js and api/_lib/appleShowSearch.ts agree character for character", () => {
   /* The dedup happens on BOTH sides — the endpoint merges Apple beneath the
      catalogue, the client merges whatever arrives beneath what is painted — so
      two copies of the rule exist, in two languages, with no import between
@@ -526,9 +526,9 @@ test("the two normalised-title rules are one rule: app.js and api/shows/appleSho
   /* Folded since audit round 2 (search-9): the NFKD + combining-mark strip is
      part of the rule now, in both copies. */
   const EXPR = String.raw`String(title || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()`;
-  const server = fs.readFileSync(path.join(ROOT, "api", "shows", "appleShowSearch.ts"), "utf8");
+  const server = fs.readFileSync(path.join(ROOT, "api", "_lib", "appleShowSearch.ts"), "utf8");
   assert.ok(APP_SRC.includes(EXPR), "app.js must carry the rule verbatim");
-  assert.ok(server.includes(EXPR), "api/shows/appleShowSearch.ts must carry the same rule verbatim");
+  assert.ok(server.includes(EXPR), "api/_lib/appleShowSearch.ts must carry the same rule verbatim");
 
   /* THE STEM IS THE SECOND HALF OF THE SAME RULE and is pinned the same way
      (adversarial review 2026-09-12, defect 3): the dedup that matters runs on
@@ -536,7 +536,7 @@ test("the two normalised-title rules are one rule: app.js and api/shows/appleSho
      drift this test exists to stop. */
   const SEP = String.raw`/\s[–—]\s|\s-\s|:|\s\(|\s\[/u`;
   const STEM = String.raw`return normaliseShowTitle(cut > 0 ? raw.slice(0, cut) : raw);`;
-  for (const [label, src] of [["app.js", APP_SRC], ["api/shows/appleShowSearch.ts", server]]) {
+  for (const [label, src] of [["app.js", APP_SRC], ["api/_lib/appleShowSearch.ts", server]]) {
     assert.ok(src.includes(SEP), `${label} must carry the separator set verbatim`);
     assert.ok(src.includes(STEM), `${label} must carry the stem rule verbatim`);
   }
