@@ -2,6 +2,64 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-24 (the iOS app plays episodes natively: the M1 decision, the pause-hold default and OQ-9's answer — NE-27d, G-7)
+
+**The decision.** On iOS, episodes play in the native engine by default: a single
+episode, a continuation into the next episode, and a restore after a relaunch
+(`mobile/ENGINE_DEFAULT.json` → `{"mode":"native","capabilities":["episode","continuation","restore"]}`).
+The engine in `mobile/plugins/foray-audio` owns the queue position, the
+`AVPlayer`, remote commands, Now Playing and the audio session, and the page is a
+remote control and a view for those three. **Forays keep the web player in the M1
+build** (their segments, seams and narration are M2, NE-37 and its own entry,
+NE-37d). Android and the website are unchanged. This is milestone M1 of
+`docs/native-engine-plan.md` and it follows from the 2026-09-23 entry below
+(*"Full native engine"*).
+
+**Why the engine's own playback, not a held session.** The HUMAN-ACTIONS #108
+baseline (`docs/field-records/2026-09-24-car-baseline.md`, build 2026092429)
+held an active `.playback` session in the app process for 8 minutes while paused
+and locked, with Now Playing written and re-asserted, and the car still chose
+Spotify on connect. iOS gives the car back to the app whose audio last PLAYED,
+and for the web player that was WebKit's media process. So the session that is
+held must be the one the engine's own playback ran through. The M1 car test
+(`docs/native-engine-m1-car-test.md`) is judged against that record: (1) paused
+in the app, locked, the car connects → 4a resumes; (2) paused from the car, a
+long pause, play → 4a resumes and stays.
+
+**OQ-9's answer: native is the default in the founder's builds, with a way back.**
+The Developer drawer's "Playback engine: Web" row returns to the web player (applied after a restart),
+and TestFlight's Previous Builds is the escape if a build will not start. This is
+plan §9a's default, applied by the orchestrator under the founder's *"Full native
+engine"* (2026-09-23) and *"keep chugging through all the engine building
+milestones"* (2026-09-24), and recorded in `STATE.md` (the NE-27 entry). A
+founder ruling overrides it. If he prefers opt-in, `ENGINE_DEFAULT.json` stays
+`js` and turning the Developer row on becomes step 0 of the car test.
+
+**The pause-hold default is `forever`.** A pause does not release the session
+(S-4 as written): `HoldPolicy.default = .forever` in
+`Policy/SessionPolicy.swift`, `DEFAULT_HOLD_POLICY = "forever"` in
+`player/engine-contract.js`. The Developer row "Pause hold: forever / none" is
+the H-1b arm, and the build row and every `session` row record the policy and
+`secondaryAudioShouldBeSilencedHint`, so the side effect of holding (other apps
+going quiet) is on record. A long-idle release (for example `until:60`) amends
+S-4, so it is **not** adopted here. OQ-12 decides it from the H-1 and H-1b rows
+(NE-38), and that ruling gets its own entry (NE-40d).
+
+**When it takes effect.** This entry records the decision; the flip is a
+separate PR (NE-27), per G-7. As of this entry `ENGINE_DEFAULT.json` still says
+`js`: NE-27 part 1 (#812) landed the legal edits, the OQ-9 guard in
+`tools/mobile/shell-invariants.test.mjs` (native only while `STATE.md` carries the OQ-9 answer)
+and the car-test script, and the flip itself waits on G-1b (required
+`engine-parity` and `ios-gate`), zero unported `episode` tests in
+`player/parity/coverage.test.js`, and the page's four Developer rows. The first
+build with the flip is named in a HUMAN-ACTIONS item, and M1 ends with the G-3
+car test on that build.
+
+**What would reverse it.** The car test failing on the native build in a way the
+baseline did not (the exit criteria are in the plan's NE-27 card), or the founder
+choosing opt-in. Either way the reversal is `ENGINE_DEFAULT.json` back to `js`;
+the engine code stays and the Developer row still reaches it.
+
 ## 2026-09-24 (the deploy stamp is a build output: nothing generated is committed — issue #701)
 
 **Decision.** `deploy-manifest.json`, `data/forays-directory.json` and `sw.js`'s
