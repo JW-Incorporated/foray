@@ -472,6 +472,35 @@ test("scenario (NE-30j): the engine target stamps T on every checkpoint, the man
   assert.deepEqual(deck.checkpoints[0].ops.slice(-3), ["watchdog.cancel", "ended:natural", "outPoint.stale:boundary"]);
 });
 
+test("scenario (NE-31j): the narration overlay's driver — the bridge's shapes, the narration views, an awake clock, a silent synthesiser, and dispose", async () => {
+  const mgr = (steps, setup = {}) => runCase({ id: "f/m", covers: [], setup: { target: "manager", ...setup }, steps }, { family: "f", doc: {} });
+  const line = { call: "playForay", args: [{ id: "f", title: "F", items: [{ type: "narration", id: "n1", script: "a line", duration_sec: 4 }] }] };
+  // The chosen voice reaches speak() beside the 1x rate; views are opt-in.
+  const spoken = await mgr([line, { clock: 750, every: 250 }, { checkpoint: "c" }], {
+    tts: true, voice: "v", rate: 2, scheduler: "manual", narrationTicks: true,
+    view: ["narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying"],
+  });
+  const [c] = spoken.checkpoints;
+  assert.deepEqual(c.ops, ["tts.speak:a line@1:v"]);
+  assert.deepEqual([c.narrationSec, c.narrationPlayhead, c.narrationTicks, c.lastVoiceFallback, c.wasPlaying], [0.75, true, 3, false, null]);
+  // `every` moves an awake clock; it must divide the jump.
+  await assert.rejects(mgr([{ clock: 700, every: 250 }], { scheduler: "manual" }), /E_BAD_CASE/);
+  await assert.rejects(mgr([{ checkpoint: "c" }], { view: ["narrationTicks"] }), /E_BAD_CASE.*narrationTicks/);
+  // A bridge with no transport answers nothing; one whose pause rejects still
+  // logs the ask. Neither throws out of the manager.
+  const bare = await mgr([line, { call: "pause" }, { checkpoint: "c" }], { tts: { transport: false, onFinished: false } });
+  assert.deepEqual(bare.checkpoints[0].ops, ["tts.speak:a line@1"]);
+  const angry = await mgr([line, { call: "pause" }, { checkpoint: "c" }], { tts: { pause: "rejects" } });
+  assert.deepEqual(angry.checkpoints[0].ops, ["tts.speak:a line@1", "tts.pause"]);
+  // `silent` is the session taken from under the line: only state() says so.
+  const taken = await mgr([line, { tts: "silent" }, { session: "interruptionReconciled" }, { checkpoint: "c" }], { tts: { state: true } });
+  assert.equal(taken.checkpoints[0].state, "interrupted");
+  await assert.rejects(mgr([line, { tts: "explode" }], { tts: true }), /E_BAD_CASE/);
+  // dispose is a call a scenario may make: the synthesiser is silenced.
+  const gone = await mgr([line, { call: "dispose" }, { checkpoint: "c" }], { tts: true });
+  assert.deepEqual(gone.checkpoints[0].ops.slice(-2), ["tts.stop", "release"]);
+});
+
 /* ---------- the fakes ---------- */
 
 test("manualScheduler fires nothing until advanced, then in due order", async () => {

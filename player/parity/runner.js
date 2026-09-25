@@ -285,6 +285,11 @@ export const MANAGER_CALLS = Object.freeze([
   "skipToNext", "skipToPrevious", "stop", "seek", "setRate", "setVoice", "setInterludeEnabled",
   "interruptionBegan", "interruptionEnded", "routeChanged", "restoreColdLaunchState",
   "reconcileWithBackend",
+  /* NE-31j. The page tearing the player down mid-utterance or mid-jingle
+     (the engine's own teardown natively): what it silences and releases is
+     the claim. The harness's own teardown still runs after the ops are
+     copied, so a case asserts only the dispose it asked for. */
+  "dispose",
 ]);
 
 /** How many macrotask turns a scenario waits, at its end, for what it floated
@@ -311,10 +316,26 @@ function managerView(m) {
       timersLive          how many timers are alive on the manual clock (0:
                           nothing left to fire, so no beat can start audio
                           after a pause, a stop or a skip)
-      positionSec         the deck's playhead */
-export const VIEW_KEYS = Object.freeze(["outPoint", "seamGapRemainingMs", "timersLive", "positionSec"]);
+      positionSec         the deck's playhead
 
-function extraView(keys, { m, backend, scheduler }) {
+    NE-31j, the narration overlay:
+
+      narrationSec        the spoken line's clock, in seconds (null: nothing
+                          is being spoken) — what the Foray clock and the lock
+                          screen read for a synth item
+      narrationPlayhead   true while a synth line is the playhead
+      narrationTicks      how many times the narration pulse has fired
+                          (setup.narrationTicks) — the surface's repaint
+      lastVoiceFallback   the synthesiser's own "I spoke in another voice"
+                          (null: nothing has spoken)
+      wasPlaying          the interrupted state's wasPlaying (null in any other
+                          state): whether one press, or should-resume, resumes */
+export const VIEW_KEYS = Object.freeze([
+  "outPoint", "seamGapRemainingMs", "timersLive", "positionSec",
+  "narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying",
+]);
+
+function extraView(keys, { m, backend, scheduler, ticks }) {
   const out = {};
   for (const k of keys) {
     if (k === "outPoint") out.outPoint = backend.outPoint ?? null;
@@ -323,6 +344,13 @@ function extraView(keys, { m, backend, scheduler }) {
       if (typeof scheduler.live !== "number") throw new HarnessError("E_BAD_CASE", `view "timersLive" needs setup.scheduler = "manual"`);
       out.timersLive = scheduler.live;
     } else if (k === "positionSec") out.positionSec = backend.currentTime;
+    else if (k === "narrationSec") out.narrationSec = m.narrationElapsedSec ?? null;
+    else if (k === "narrationPlayhead") out.narrationPlayhead = m.isNarrationPlayhead === true;
+    else if (k === "narrationTicks") {
+      if (!ticks) throw new HarnessError("E_BAD_CASE", `view "narrationTicks" needs setup.narrationTicks = true`);
+      out.narrationTicks = ticks.count;
+    } else if (k === "lastVoiceFallback") out.lastVoiceFallback = m.lastVoiceFallback ?? null;
+    else if (k === "wasPlaying") out.wasPlaying = m.state?.type === "interrupted" ? m.state.wasPlaying === true : null;
     else throw new HarnessError("E_BAD_CASE", `unknown view key ${JSON.stringify(k)} (one of ${VIEW_KEYS.join(", ")})`);
   }
   return out;
@@ -605,6 +633,12 @@ async function runScenario(c, ctx) {
   const catalogue = built ? Object.fromEntries(built.sources) : (setup.catalogue ?? {});
   const view = setup.view ?? [];
   if (!Array.isArray(view)) throw new HarnessError("E_BAD_CASE", "setup.view is a list of view keys");
+  /* NE-31j. The narration pulse: the surface's `onNarrationTick` (client.js
+     repaints on it; the native engine's narration clock drives the same
+     snapshot). Wired only when a case asks, because the manager runs its
+     ticker — and so its deadline — only when a surface listens. Counted, not
+     logged: how often a page repaints is not an act on the outside world. */
+  const ticks = setup.narrationTicks === true ? { count: 0 } : null;
 
   __resetInstanceForTests();
   const m = new PlayerQueueManager({
@@ -615,6 +649,8 @@ async function runScenario(c, ctx) {
     ...(setup.rate !== undefined ? { rate: setup.rate } : {}),
     ...(setup.seamGapSec !== undefined ? { seamGapSec: setup.seamGapSec } : {}),
     ...(setup.interludeEnabled !== undefined ? { interludeEnabled: setup.interludeEnabled } : {}),
+    ...(setup.voice !== undefined ? { voice: setup.voice } : {}),
+    ...(ticks ? { onNarrationTick: () => { ticks.count++; } } : {}),
   });
 
   const { verbs } = closedSets();
@@ -623,7 +659,7 @@ async function runScenario(c, ctx) {
   let returned = [];
   const checkpoint = (name) => {
     checkpoints.push({
-      name, ops: log.since(mark), ...managerView(m), ...extraView(view, { m, backend, scheduler }),
+      name, ops: log.since(mark), ...managerView(m), ...extraView(view, { m, backend, scheduler, ticks }),
       ...(returned.length ? { returned } : {}),
     });
     mark = log.length;
@@ -669,7 +705,15 @@ async function runScenario(c, ctx) {
           break;
         case "clock":
           if (!scheduler.advance) throw new HarnessError("E_BAD_CASE", `"clock" needs setup.scheduler = "manual"`);
-          await scheduler.advance(step.clock);
+          /* NE-31j. `every`: move the clock in steps of that many ms, as an
+             AWAKE page's timers fire (the narration ticker every 250 ms). One
+             jump is a suspended page, which is a different rule. */
+          if (step.every !== undefined) {
+            if (!(Number.isInteger(step.every) && step.every > 0 && Number.isInteger(step.clock) && step.clock % step.every === 0)) {
+              throw new HarnessError("E_BAD_CASE", "clock with `every` takes whole ms, a multiple of `every`");
+            }
+            for (let t = 0; t < step.clock; t += step.every) await scheduler.advance(step.every);
+          } else await scheduler.advance(step.clock);
           break;
         case "deck":
           /* The file ran out: the element is paused and `ended` (NE-14k: the
@@ -724,8 +768,12 @@ async function runScenario(c, ctx) {
         }
         case "tts":
           if (!tts) throw new HarnessError("E_BAD_CASE", `"tts" needs setup.tts`);
-          if (step.tts !== "finish") throw new HarnessError("E_BAD_CASE", `unknown tts event "${step.tts}"`);
-          tts.finish();
+          /* NE-31j. `silent`: the session was taken from under the line; the
+             synthesiser stops and reports nothing (only setup.tts.state can
+             then say so). */
+          if (step.tts === "finish") tts.finish();
+          else if (step.tts === "silent") tts.silence();
+          else throw new HarnessError("E_BAD_CASE", `unknown tts event "${step.tts}" (finish, silent)`);
           await tick();
           break;
         case "interlude":
