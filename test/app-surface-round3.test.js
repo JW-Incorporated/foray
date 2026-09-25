@@ -184,3 +184,16 @@ test("app-1-16: show links go through showRouteHash, and the prefetch parses the
      (forayCreditHtml and the credit upgrade included). */
   assert.ok(!/#\/show\/\$\{esc\(/.test(SRC), "every `#/show/` link goes through showRouteHash or encodeURIComponent");
 });
+
+test("app-2-13: Foray links go through forayRouteHash, which encodes", () => {
+  /* forayCardV2Html, the show page's Forays rows and the Forays page rows built
+     `#/foray/${esc(id)}` while Library and the router encode: an id carrying
+     `/`, `#`, `?` or `%` broke routing from those surfaces only.
+     MUTATION: restore `href="#/foray/${esc(foray.id)}"` in forayCardV2Html — the
+     card assertion goes red; restore any other producer — the source guard does. */
+  const m = loadApp();
+  assert.strictEqual(m.ctx.forayRouteHash(ODD_ID), `#/foray/${ODD_HASH}`);
+  const card = m.ctx.forayCardV2Html({ id: ODD_ID, title: "Odd Foray", topic: "science" });
+  assert.ok(card.includes(`href="#/foray/${ODD_HASH}"`), card.slice(0, 300));
+  assert.ok(!/#\/foray\/\$\{esc\(/.test(SRC), "every `#/foray/` link goes through forayRouteHash");
+});

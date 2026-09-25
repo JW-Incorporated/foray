@@ -4293,7 +4293,7 @@ function showForaysHtml(show) {
   return `<footer class="show-forays">
     <h3 class="show-forays-h">Used in the following forays</h3>
     <p class="show-forays-note">Not part of ${esc(show.title)}'s own catalogue — each of these forays plays a moment from one of its episodes.</p>
-    ${forays.map(f => `<a class="show-forays-row" href="#/foray/${esc(f.id)}">
+    ${forays.map(f => `<a class="show-forays-row" href="${esc(forayRouteHash(f.id))}">
       <span class="show-forays-title">${esc(f.title)}</span>${f.status === "published" ? "" : `<span class="show-forays-draft">draft</span>`}
     </a>`).join("")}
   </footer>`;
@@ -4462,6 +4462,14 @@ function parseShowRoute(hash = currentHash()) {
 function showRouteHash(show_id, query = "") {
   const q = String(query || "").trim();
   return `#/show/${encodeURIComponent(show_id)}${q ? "/q/" + encodeURIComponent(q) : ""}`;
+}
+
+/** `#/foray/<id>`, encoded (audit round 3, app-2-13) — the one producer of a
+    Foray route, as showRouteHash is of a show's and playlistRoute of a
+    playlist's. The router decodes the segment (forayRouteId), so an id carrying
+    `/`, `#`, `?` or `%` broke routing from every surface that only HTML-escaped. */
+function forayRouteHash(id) {
+  return `#/foray/${encodeURIComponent(id)}`;
 }
 
 /** Whether the page on screen is `show_id`'s — compared DECODED: the hash
@@ -9568,7 +9576,7 @@ function forayCardV2Html(foray, { stretch = false, draft = false } = {}) {
      a title and a strip, and the strip's length is only in its aria-label. */
   const facts = forayFactsLabel(r, player);
   const subject = subjectLabel((foray.topic || "").split("/")[0]);
-  return `<a class="hv2-foray-card${stretch ? " hv2-stretch" : ""}" href="#/foray/${esc(foray.id)}">
+  return `<a class="hv2-foray-card${stretch ? " hv2-stretch" : ""}" href="${esc(forayRouteHash(foray.id))}">
     ${stretch ? `<span class="hv2-stretch-tag">Stretch</span>` : ""}
     ${draft ? `<span class="hv2-draft-tag">draft</span>` : ""}
     <span class="hv2-foray-title">${esc(foray.title)}</span>
@@ -13160,7 +13168,7 @@ function forayRowsHtml(list, { inSection = false } = {}) {
   return `<div class="fy-home">${list.map(f => {
     const sub = forayListSubLabel(f, progress, { draftTag: false });
     return `
-    <a class="fy-home-row" href="#/foray/${esc(f.id)}">
+    <a class="fy-home-row" href="${esc(forayRouteHash(f.id))}">
       ${inSection && f.status === "published" ? "" : `<span class="fy-home-kicker">foray${f.status === "published" ? "" : " · draft"}</span>`}
       <span class="fy-home-title">${esc(f.title)}</span>
       ${sub ? `<span class="fy-home-sub">${esc(sub)}</span>` : ""}
@@ -13290,7 +13298,7 @@ function forayResumeRows({ limit = 3, includeFinished = false } = {}) {
 function jumpBackInHtml(rows) {
   if (!rows.length) return "";
   return `<div class="fy-home fy-jbi">${rows.map(p => `
-    <a class="fy-home-row fy-jbi-row" href="#/foray/${esc(p.id)}">
+    <a class="fy-home-row fy-jbi-row" href="${esc(forayRouteHash(p.id))}">
       <span class="fy-home-kicker">Jump back in</span>
       <span class="fy-home-title">${esc(p.title || p.id)}</span>
       <span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(p.percent))}"></span></span>
