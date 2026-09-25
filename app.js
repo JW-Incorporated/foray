@@ -1859,7 +1859,11 @@ function rememberSeen(ids) {
    format/evergreen only exist on the ~27-episode curated set, not the
    1000+-item discover pool — see docs/DECISIONS.md 2026-07-30). */
 function branchChain(items, history, seen) {
-  const byRecency = (a, b) => new Date(b.release_date || 0) - new Date(a.release_date || 0);
+  /* dateValue, not `new Date(x || 0)` (audit round 3, app-1-13): an
+     unparseable date made the comparator NaN, and a sort over an inconsistent
+     comparator leaves the order to the engine, so a branch's lead episode
+     could be arbitrary. dateValue reads it as 0, the oldest. */
+  const byRecency = (a, b) => dateValue(b.release_date) - dateValue(a.release_date);
   const unseen = items.filter(it => !history.has(it.id) && !seen.has(it.id)).sort(byRecency);
   const seenNotPlayed = items.filter(it => !history.has(it.id) && seen.has(it.id)).sort(byRecency);
   const played = items.filter(it => history.has(it.id)).sort(byRecency);

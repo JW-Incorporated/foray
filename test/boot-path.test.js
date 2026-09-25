@@ -895,3 +895,22 @@ test("app-1-12: while the module may still arrive, the buffer is a real queue an
   for (let i = 0; i < 700; i++) m.ctx.logEvent("picked", { episode_id: `e${i}` });
   assert.strictEqual(vm.runInContext("_bufferedEvents.length", m.ctx) >= 700, true);
 });
+
+/* ==================================================================== */
+/* app-1-13 / app-1-14: small correctness in the deal and the titles      */
+/* ==================================================================== */
+
+test("app-1-13: an unparseable release date sorts as the oldest, and the newest episode still leads its branch", () => {
+  /* `new Date("garbage") - x` is NaN, which a sort reads as "equal", so the
+     newest item after it never moved ahead of it. MUTATION: put the
+     `new Date(b.release_date || 0) - new Date(a.release_date || 0)`
+     comparator back -> "old" leads; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  const items = [
+    { id: "old", release_date: "2024-01-01" },
+    { id: "bad", release_date: "not a date" },
+    { id: "new", release_date: "2025-06-01" },
+  ];
+  const chain = m.ctx.branchChain(items, new Set(), new Set()).map((it) => it.id);
+  assert.deepStrictEqual([...chain], ["new", "old", "bad"]);
+});
