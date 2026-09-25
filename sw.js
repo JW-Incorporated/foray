@@ -162,9 +162,11 @@ const DATA_PREFIX = "data/";
    CHANGED file is crawling. Much lower and a slow-but-working connection is
    told it is offline; much higher and a black-holed connection (a captive
    portal, a dead zone that accepts the SYN) hangs the page instead of falling
-   back. A fetch that times out is not abandoned — it still writes to the cache
-   when it lands, so the next load's revalidation is a cheap 304 rather than the
-   same timeout again. */
+   back. A fetch that times out is not abandoned: it still completes, which
+   fills the browser's HTTP cache, so the next load's revalidation is a cheap
+   304 rather than the same timeout again. It reaches the GENERATION cache only
+   for an untracked path; a manifest-tracked file keeps the copy install
+   verified (see cachePut). */
 const NET_TIMEOUT_MS = 6000;
 
 self.addEventListener("install", (e) => {
@@ -469,13 +471,16 @@ function networkFetch(request) {
 function fromOrigin(request, env) {
   const live = networkFetch(request).then(
     (res) => {
-      /* Written to the cache whenever it lands, including after this call has
-         already given up on it. That is what keeps a slow connection from being
-         stuck on the same timeout every load. Handed to `waitUntil` rather than
-         left floating: the response has already gone back to the page by then,
-         and a worker the browser is free to terminate would otherwise drop the
-         write — the failure being "the cache never fills, and nobody notices
-         until the next dead zone". */
+      /* Offered to the cache whenever it lands, including after this call has
+         already given up on it. What that warms depends on the path: the
+         fetch itself fills the browser's HTTP cache (the next load's
+         revalidation is a cheap 304), an UNTRACKED path is written into the
+         current generation, and a manifest-tracked file is left alone, because
+         cachePut keeps the copy install verified (round-3 audit, app-3-14:
+         this comment used to claim every late answer "writes to the cache").
+         Handed to `waitUntil` rather than left floating: the response has
+         already gone back to the page by then, and a worker the browser is
+         free to terminate would otherwise drop the write. */
       if (res && res.ok) env.waitUntil(cachePut(request, res.clone()));
       return res;
     },

@@ -108,6 +108,10 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
   const posted = [];
   const store = new Map();
   const waits = [];
+  /* Resolvers for `nextWaitUntil()`: woken by the next waitUntil() call, so a
+     test can await a write the worker registers LATER (a response that lands
+     after the timeout) instead of guessing a number of ticks (app-3-14). */
+  const waitHooks = [];
   const puts = [];
   let claims = 0;
   let skipped = 0;
@@ -217,7 +221,13 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
   vm.runInContext(SW_SRC, ctx, { filename: "sw.js" });
 
   const event = (extra) => {
-    const e = { waitUntil: (p) => waits.push(p), ...extra };
+    const e = {
+      waitUntil: (p) => {
+        waits.push(p);
+        for (const wake of waitHooks.splice(0)) wake();
+      },
+      ...extra,
+    };
     return e;
   };
 
@@ -249,6 +259,11 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
         the postMessages, which by design outlive the response. */
     async settle() {
       while (waits.length) await Promise.all(waits.splice(0));
+    },
+    /** Resolves the next time the worker calls waitUntil(). Arm it BEFORE the
+        action that makes the worker register the work. */
+    nextWaitUntil() {
+      return new Promise((resolve) => waitHooks.push(resolve));
     },
     /** Run every timer the worker is waiting on. */
     fireTimers() {
@@ -890,26 +905,67 @@ test("a hanging origin is bounded: the last-known copy is served instead", async
   assert.equal(await data.text(), '{"forays":["grilling-history-1"]}');
 });
 
-test("a response that lands after the timeout still warms the CURRENT generation's cache", async () => {
+/* A RESPONSE THAT LANDS AFTER THE TIMEOUT (round-3 audit, app-3-14). This used
+   to be one test, "still warms the CURRENT generation's cache", proved with a
+   generation that had no __manifest__ entry, so every path was untracked. In
+   production every generation carries its manifest and app.js is tracked, and
+   cachePut keeps the verified copy (`if (have) return;`): the late write is a
+   no-op there, and the only warm-up is the browser's HTTP cache. The two tests
+   below pin what really happens for each kind of path, and they await the
+   worker's own waitUntil() instead of a fixed number of ticks. */
+const GEN_MANIFEST = "https://foray.invalid/__manifest__";
+
+test("a TRACKED file that lands after the timeout keeps the generation's verified bytes", async () => {
+  /* MUTATION: drop `if (have) return;` in cachePut, or the whole tracked
+     branch — the late, unverified APP@2 replaces the verified APP@1. */
   let release;
   const h = loadWorker({
-    generations: { "1": { "app.js": "APP@1" } },
+    generations: {
+      "1": {
+        "app.js": "APP@1",
+        [GEN_MANIFEST]: JSON.stringify({ [`${BASE}app.js`]: "sha256:" + sha256Hex("APP@1") }),
+      },
+    },
     pointer: "1",
     network: () => new Promise((resolve) => { release = () => resolve(ok("APP@2")); }),
   });
   const pending = h.fire(sub("app.js"), { clientId: "page-1" });
   h.fireTimers();
-  const served = await Promise.race([
-    pending.then((r) => r.text()),
-    new Promise((r) => setTimeout(() => r("never answered"), 500)),
-  ]);
-  assert.equal(unstampPin(served), "APP@1");
+  assert.equal(unstampPin(await (await pending).text()), "APP@1", "the timeout served the verified copy");
 
+  const landed = h.nextWaitUntil();
   release();
-  await new Promise((r) => setTimeout(r, 0));
-  await new Promise((r) => setTimeout(r, 0));
-  await new Promise((r) => setTimeout(r, 0));
-  assert.equal(h.cachedBody("app.js", "foray-gen-1"), "APP@2");
+  await landed;
+  await h.settle();
+  assert.equal(h.cachedBody("app.js", "foray-gen-1"), "APP@1", "a late answer never replaces a verified file");
+  assert.equal(h.puts.filter((p) => p.url.endsWith("app.js")).length, 0, "and nothing was written at all");
+});
+
+test("an UNTRACKED file that lands after the timeout is written into the current generation", async () => {
+  /* The path cachePut's untracked branch exists for (data/show-index.tsv).
+     MUTATION: make the untracked branch `return` instead of `cache.put` — the
+     late answer never reaches the generation. */
+  const INDEX = "data/show-index.tsv";
+  let release;
+  const h = loadWorker({
+    generations: {
+      "1": {
+        [INDEX]: "rows@1",
+        [GEN_MANIFEST]: JSON.stringify({ [`${BASE}app.js`]: "sha256:" + sha256Hex("APP@1") }),
+      },
+    },
+    pointer: "1",
+    network: () => new Promise((resolve) => { release = () => resolve(ok("rows@2")); }),
+  });
+  const pending = h.fire(sub(INDEX), { clientId: "page-1" });
+  h.fireTimers();
+  assert.equal(await (await pending).text(), "rows@1", "the timeout served the last-known copy");
+
+  const landed = h.nextWaitUntil();
+  release();
+  await landed;
+  await h.settle();
+  assert.equal(h.cachedBody(INDEX, "foray-gen-1"), "rows@2");
 });
 
 test("RUNTIME WRITE INTEGRITY: a live origin answer for a manifest-tracked file cannot silently overwrite it with different bytes", async () => {
