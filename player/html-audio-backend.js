@@ -1636,6 +1636,18 @@ export class HtmlAudioBackend {
         // A promoted element refusing to play is recoverable and must not stop
         // the Foray — see `_recoverFromRefusedHandover`.
         if (this._recoverFromRefusedHandover(el, err)) return;
+        /* AN INTERRUPTED play() IS A CANCEL, NOT A FAILURE (audit round 3,
+           player-core-3). `AbortError` is what a pending play promise rejects
+           with when a `pause()` or a fresh load cuts it off — and the manager
+           emits `pausePlayback` before `loadItem` on every skip and pause, so
+           a press inside the play-pending window (seconds, on a locked page)
+           produces one. Reported as an error it drove the reducer to `idle`,
+           and the skip's own load then landed in `idle` and was ignored: the
+           listener's skip silently stopped the Foray. Telemetry only. */
+        if (err?.name === "AbortError") {
+          this._emit("play.aborted — an interrupted play() is a cancel, not a failure");
+          return;
+        }
         // NotAllowedError = autoplay policy: the first play must come from a
         // real gesture. Surface it as state, never as an unhandled rejection.
         this._emit(`play.rejected ${err?.name ?? err}`);
