@@ -94,12 +94,20 @@ export const JINGLE = "jingle";
     replaces BOTH the day it is cut. */
 export const JINGLE_ASSET_URL = "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav";
 
-/** "roughly 1-2 seconds" (§4.8). Fixed rather than measured because the
-    asset is fixed — unlike narration, there is no script to estimate a
-    duration from and no per-Foray variance to carry a `duration_source` for.
-    Update this one constant, once, the day the real asset is cut and its
-    true length is known. */
-export const JINGLE_DURATION_SEC = 1.5;
+/** The length of the file both the jingle item and the seam interlude play
+    (F-90 made them one asset). THE ONE COPY (audit round 3, arch-drift-4): the
+    jingle item said 1.5 s ("roughly 1-2 seconds", §4.8, written for the asset
+    before it existed) while `interlude.js` pinned the same WAV at 3.0 s, so every
+    jingle undercounted runtime, segment offsets and resume math by 1.5 s under
+    a `DURATION_MEASURED` label. It lives here because `interlude.js` already
+    imports from this module and this one cannot import it back;
+    `interlude.js`'s `INTERLUDE_DURATION_SEC` is this value, and
+    `interlude.test.js` measures it against the WAV header. Change it with the
+    asset, and restate every `runtime_sec` (`check-forays.mjs` says which). */
+export const INTERLUDE_ASSET_DURATION_SEC = 3.0;
+
+/** A jingle item plays that file to its end, so it lasts exactly as long. */
+export const JINGLE_DURATION_SEC = INTERLUDE_ASSET_DURATION_SEC;
 
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;

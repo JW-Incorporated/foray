@@ -226,7 +226,9 @@ const BUTTONS = {
   ".up-next": { rule: "button.up-next" },
   ".up-next-remove": { rule: "button.up-next-remove" },
   ".voice-row-audition": { rule: ".voice-row-audition" },
-  '<button type="submit">': { size: ["#pl-form button", "#cr-form button"] },
+  /* #pl-form's Go went with the #/playlists builder (round-3 audit,
+     search-api-css-10); Create's Build is the one submit button left. */
+  '<button type="submit">': { size: ["#cr-form button"] },
 };
 
 test("every <button> the app renders is classified, and reaches 44px the way its class says", () => {

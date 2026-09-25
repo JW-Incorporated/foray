@@ -21,6 +21,7 @@ import {
 } from "../src/generation/veracityMetrics";
 import type { WrittenAct, WrittenBeat } from "../src/generation/writeNarration";
 import type { NarratedBeat, Source } from "../src/types/narration";
+import { findHoldingDoc } from "../src/types/narration";
 import type { SourcedAct, TapePointer } from "../src/types/tapeSourcing";
 
 /**
@@ -111,6 +112,18 @@ describe("computeGroundedQuoteRate", () => {
     expect(result!.ungroundedPages).toHaveLength(1);
     expect(result!.ungroundedPages[0]!.reason).toBe("ungrounded-quote");
     expect(result!.ungroundedPages[0]!.claim).toBe("beat 23");
+  });
+
+  it("arch-drift-2: a quote the narration gate accepted is grounded here too (curly vs straight apostrophe, em dash)", () => {
+    /* MUTATION THAT KILLS THIS: go back to a private whitespace-and-case
+       normaliser. "don't" is then not in "don’t", and a page the writer
+       gate (findHoldingDoc) accepted is counted ungrounded at publish. */
+    const doc = { docId: "d1", title: "T", text: "The crew said they don’t trust the gauge — not since 1978…" };
+    const quote = "they don't trust the gauge - not since 1978...";
+    expect(findHoldingDoc(quote, [doc])).not.toBeNull();
+    const beat = narratedBeat({ sources: [source({ quote })], evidence: [doc] });
+    const result = computeGroundedQuoteRate(actsOf([narrationBeat("c1", beat)]));
+    expect(result).toMatchObject({ checkableQuotes: 1, groundedQuotes: 1, rate: 1, ungroundedPages: [] });
   });
 
   it("excludes pages with no evidence from the denominator rather than failing them", () => {

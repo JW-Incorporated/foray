@@ -22,8 +22,8 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
 import {
-  DEFAULT_MAX_RESIDENT_BYTES, DEFAULT_MIN_FREE_BYTES, DOWNLOAD_DIR, ROOT, UA,
-  DiskBudgetError, DiskGuardError, SelectionError, UnusableUrlError, FetchAudioError,
+  CHECKPOINT_PATH, DEFAULT_MAX_RESIDENT_BYTES, DEFAULT_MIN_FREE_BYTES, DOWNLOAD_DIR, ROOT, UA,
+  DiskBudgetError, DiskGuardError, SelectionError, SizeOverrunError, UnusableUrlError, FetchAudioError,
   HostGate, ResidentLedger,
   assertFreeSpace, backoffDelayMs, cleanup, estimateBytes, extensionFor, fetchEpisode,
   fmtBytes, hostOf, loadCheckpoint, mergeCheckpoint, parseContentRange, parseRetryAfter,
@@ -249,6 +249,152 @@ test("the downloader sends Accept-Language, or Captivate 404s every enclosure", 
 
   // Corner case #1: the publisher's declared URL, never a resolved CDN one.
   assert.equal(seen[0].url, "https://episodes.captivate.fm/episode/95c360e7.mp3");
+});
+
+/* ------------------------------------------ the network shell, end to end
+   Audit round 3 (data-tools-4, -5, -9). These drive fetchEpisode against a
+   fetch stub whose bodies are real ReadableStreams that honour the request's
+   AbortSignal, so a timer firing mid-body is observable the way it is on a real
+   socket. Nothing leaves the process. */
+
+/** A body that sends `chunks` (Buffers) `gapMs` apart, then either closes or,
+    with `stall`, goes silent until the request is aborted. */
+function streamedBody(chunks, { gapMs = 0, stall = false, signal } = {}) {
+  let i = 0;
+  let aborted = false;
+  return new ReadableStream({
+    start(controller) {
+      signal?.addEventListener("abort", () => {
+        aborted = true;
+        try { controller.error(new DOMException("aborted", "AbortError")); } catch (_) { /* already closed */ }
+      });
+    },
+    async pull(controller) {
+      if (aborted) return;
+      if (i < chunks.length) {
+        if (gapMs) await new Promise((r) => setTimeout(r, gapMs));
+        if (aborted) return;
+        controller.enqueue(new Uint8Array(chunks[i++]));
+        return;
+      }
+      if (stall) return new Promise(() => {});       // silent until aborted
+      controller.close();
+    },
+  });
+}
+
+async function withFetch(stub, fn) {
+  const real = globalThis.fetch;
+  globalThis.fetch = stub;
+  try { return await fn(); } finally { globalThis.fetch = real; }
+}
+
+/* data-tools-5. MUTATION: arm one timer before fetch and clear it only in the
+   finally (the old shape) -- the 60 ms deadline then cuts a body that is still
+   streaming, and the run retries instead of finishing in one request. */
+test("a slow body that keeps sending finishes: the deadline covers the headers, not the stream", async () => {
+  const seen = [];
+  await withFetch(async (url, init) => {
+    seen.push(init.headers.Range || null);
+    const chunks = Array.from({ length: 6 }, () => Buffer.alloc(100, 0x61));
+    return new Response(streamedBody(chunks, { gapMs: 30, signal: init.signal }), {
+      status: 200, headers: { "content-length": "600", etag: '"v1"' },
+    });
+  }, () => withTempDir(async (dir) => {
+    const got = await fetchEpisode(item({ audio_bytes: 600 }), {
+      dir, checkpointPath: join(dir, "checkpoint.json"), minFreeBytes: 0, timeoutMs: 60, stallMs: 1000,
+    });
+    assert.equal(got.bytes, 600);
+  }));
+  assert.deepEqual(seen, [null], "one request carried the whole 180 ms body");
+});
+
+/* data-tools-4 (+ the stall half of -5). The first attempt stalls after 400 of
+   1000 bytes; the stall timer aborts it. By then the checkpoint must already
+   hold the file's identity, so when the resume comes back with a DIFFERENT
+   ETag the partial is thrown away and the file restarts, instead of 400 bytes
+   of v1 being spliced onto 600 of v2.
+   MUTATION: drop the `status: "partial"` checkpoint write (identity then only
+   exists after completion) -- the resume is accepted, two requests instead of
+   three, and the file on disk starts with v1's bytes. */
+test("an interrupted download whose ETag changes before the resume restarts from zero", async () => {
+  const seen = [];
+  await withFetch(async (url, init) => {
+    const range = init.headers.Range || null;
+    seen.push(range);
+    if (seen.length === 1) {
+      return new Response(streamedBody([Buffer.alloc(400, 0x31)], { stall: true, signal: init.signal }), {
+        status: 200, headers: { "content-length": "1000", etag: '"v1"' },
+      });
+    }
+    if (range) {
+      return new Response(streamedBody([Buffer.alloc(600, 0x32)], { signal: init.signal }), {
+        status: 206, headers: { "content-length": "600", "content-range": "bytes 400-999/1000", etag: '"v2"' },
+      });
+    }
+    return new Response(streamedBody([Buffer.alloc(1000, 0x32)], { signal: init.signal }), {
+      status: 200, headers: { "content-length": "1000", etag: '"v2"' },
+    });
+  }, () => withTempDir(async (dir) => {
+    const cp = join(dir, "checkpoint.json");
+    const got = await fetchEpisode(item({ audio_bytes: 1000 }), {
+      dir, checkpointPath: cp, minFreeBytes: 0, timeoutMs: 1000, stallMs: 80,
+    });
+    assert.equal(got.bytes, 1000);
+    const bytes = await readFile(got.path);
+    assert.equal(bytes[0], 0x32, "no v1 byte survives at the head of the file");
+    assert.ok(bytes.every((b) => b === 0x32), "the whole file is v2");
+    const entry = (await loadCheckpoint(cp)).episodes["show--ep"];
+    assert.equal(entry.status, "complete");
+    assert.equal(entry.identity, '"v2"');
+  }));
+  assert.deepEqual(seen, [null, "bytes=400-", null], "fresh, a refused resume, then a restart");
+});
+
+test("the checkpoint records identity and expected size as soon as the headers are accepted", async () => {
+  await withTempDir(async (dir) => {
+    const cp = join(dir, "checkpoint.json");
+    let calls = 0;
+    let midStream = null;
+    await withFetch(async (url, init) => {
+      calls += 1;
+      // The retry after the stall gets a 404, which is final: the run settles
+      // here and never reaches past the stub.
+      if (calls > 1) return new Response(null, { status: 404 });
+      return new Response(streamedBody([Buffer.alloc(300, 0x61)], { stall: true, signal: init.signal }), {
+        status: 200, headers: { "content-length": "900", etag: '"e1"' },
+      });
+    }, async () => {
+      const run = fetchEpisode(item({ audio_bytes: 900 }), {
+        dir, checkpointPath: cp, minFreeBytes: 0, timeoutMs: 1000, stallMs: 150,
+      }).then(() => null, (e) => e);
+      await new Promise((r) => setTimeout(r, 80));   // headers accepted, body stalled
+      midStream = (await loadCheckpoint(cp)).episodes["show--ep"];
+      const err = await run;
+      assert.ok(err instanceof FetchAudioError, "the stalled run ends in a named error");
+    });
+    assert.equal(midStream?.status, "partial");
+    assert.equal(midStream?.identity, '"e1"');
+    assert.equal(midStream?.bytes_expected, 900);
+  });
+});
+
+/* data-tools-9. MUTATION: delete the `rm(part)` in the SizeOverrun/DiskBudget
+   branch -- the .part (up to 1.5x the estimate) stays on disk while the
+   ledger's finally releases its bytes. */
+test("a size overrun deletes its partial and marks the checkpoint discarded", async () => {
+  await withTempDir(async (dir) => {
+    const cp = join(dir, "checkpoint.json");
+    const it = item({ audio_bytes: 100 });
+    await withFetch(async (url, init) => new Response(streamedBody([Buffer.alloc(1000, 0x61)], { signal: init.signal }), {
+      status: 200, headers: { "content-length": "100" },
+    }), () => assert.rejects(
+      () => fetchEpisode(it, { dir, checkpointPath: cp, minFreeBytes: 0 }),
+      (e) => e instanceof SizeOverrunError,
+    ));
+    assert.equal(existsSync(partPathFor(targetPath(it.id, it.audio_url, dir))), false, "the runaway .part is gone");
+    assert.equal((await loadCheckpoint(cp)).episodes[it.id].status, "discarded");
+  });
 });
 
 /* --------------------------------------------------------- disk arithmetic */
@@ -502,6 +648,19 @@ test("a minimum gap between starts stops a queued run arriving as a burst", asyn
   assert.ok(Date.now() - t0 >= 55, `three requests took ${Date.now() - t0}ms, expected >= ~60ms of spacing`);
 });
 
+/* Audit round 3, data-tools-10. With perHost=2 the first two jobs both pass
+   #acquire at once; the old gate read `lastStart` for both before either wrote
+   it, so both started in the same millisecond. MUTATION: go back to
+   read-sleep-write (`lastStart`) and the two starts land together. */
+test("with perHost 2 the gap still spaces two jobs admitted together", async () => {
+  const gate = new HostGate({ perHost: 2, minGapMs: 60 });
+  const starts = [];
+  await Promise.all([1, 2, 3].map(() => gate.run("cdn.example.com", async () => { starts.push(Date.now()); })));
+  starts.sort((a, b) => a - b);
+  assert.ok(starts[1] - starts[0] >= 50, `the first two starts were ${starts[1] - starts[0]}ms apart, expected ~60ms`);
+  assert.ok(starts[2] - starts[1] >= 50, `the second and third starts were ${starts[2] - starts[1]}ms apart, expected ~60ms`);
+});
+
 test("a throwing job still releases its slot", async () => {
   const gate = new HostGate({ perHost: 1, minGapMs: 0 });
   await assert.rejects(() => gate.run("h", async () => { throw new Error("boom"); }));
@@ -630,10 +789,21 @@ test("every error type carries a machine-readable code", () => {
 const git = (args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
 const isRepo = (() => { try { git(["rev-parse", "--git-dir"]); return true; } catch (_) { return false; } })();
 
+/* Audit round 3, tests-8. These probes are names ONLY the `audio-cache/`
+   directory rule can ignore: the checkpoint and an .aac, neither of which any
+   global pattern covers. The old `.mp3` probe was also ignored by `*.mp3`, so
+   it stayed green with the directory rule deleted.
+   MUTATION: delete `audio-cache/` from .gitignore -- check-ignore exits 1 on
+   both probes and this goes red. */
 test("the download dir is gitignored", { skip: !isRepo && "not a git checkout" }, () => {
   const dirName = basename(DOWNLOAD_DIR);
-  const ignore = execFileSync("git", ["check-ignore", "-v", `${dirName}/anything.mp3`], { cwd: ROOT, encoding: "utf8" });
-  assert.match(ignore, /\.gitignore/);
+  for (const name of [basename(CHECKPOINT_PATH), "x.aac"]) {
+    let ignore = "";
+    try { ignore = execFileSync("git", ["check-ignore", "-v", "--no-index", `${dirName}/${name}`], { cwd: ROOT, encoding: "utf8" }); } catch (_) { ignore = ""; }
+    // `-v` prints `<source>:<line>:<pattern>\t<path>`; the pattern must be the directory rule itself.
+    const [source, , pattern] = ignore.split("\t")[0].split(":");
+    assert.deepEqual([source, pattern], [".gitignore", `${dirName}/`], `${dirName}/${name} is not ignored by the ${dirName}/ rule (${ignore.trim() || "not ignored"})`);
+  }
 });
 
 test("NOTHING under the download dir is git-tracked", { skip: !isRepo && "not a git checkout" }, () => {
@@ -713,7 +883,8 @@ test("a real file inside the download dir stays invisible to git", { skip: !isRe
   // Proves the ignore rule against an actual file rather than a hypothetical
   // path — `git check-ignore` and `git status` have disagreed before.
   await mkdir(DOWNLOAD_DIR, { recursive: true });
-  const probe = join(DOWNLOAD_DIR, "gitignore-probe.mp3");
+  // .aac, not .mp3: `*.mp3` would hide this file even with no directory rule.
+  const probe = join(DOWNLOAD_DIR, "gitignore-probe.aac");
   try {
     await writeFile(probe, Buffer.alloc(64));
     assert.equal(git(["status", "--porcelain", "--", basename(DOWNLOAD_DIR)]), "");

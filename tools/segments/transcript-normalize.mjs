@@ -50,6 +50,9 @@
    Fixtures for the formats live in ./fixtures, tests in
    ./transcript-normalize.test.mjs.                                            */
 
+// Also dependency-free: the one entity decoder in tools/ (data-tools-13).
+import { decodeEntities } from "../refresh/entities.mjs";
+
 /* ------------------------------------------------------------------ format */
 
 /** Declared MIME type -> format. Parameters (`; charset=utf-8`) are stripped
@@ -71,7 +74,7 @@ const MIME_FORMATS = new Map([
 /** What the bytes look like, ignoring what anyone claimed. Returns null when
     nothing recognisable is present — the caller turns that into a warning. */
 export function sniffFormat(body) {
-  const s = String(body || "").replace(/^﻿/, "").trimStart();
+  const s = String(body || "").replace(/^\uFEFF/, "").trimStart();
   if (!s) return null;
   if (/^WEBVTT\b/i.test(s)) return "vtt";
   if (s[0] === "{" || s[0] === "[") return "json";
@@ -126,31 +129,8 @@ function round3(n) {
 
 /* --------------------------------------------------------------------- text */
 
-const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", "#39": "'" };
-
-function decodeEntities(s) {
-  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, name) => {
-    const key = name.toLowerCase();
-    if (Object.prototype.hasOwnProperty.call(ENTITIES, key)) return ENTITIES[key];
-    if (key.startsWith("#x")) {
-      const cp = parseInt(key.slice(2), 16);
-      return Number.isFinite(cp) ? safeFromCodePoint(cp, whole) : whole;
-    }
-    if (key.startsWith("#")) {
-      const cp = parseInt(key.slice(1), 10);
-      return Number.isFinite(cp) ? safeFromCodePoint(cp, whole) : whole;
-    }
-    return whole;
-  });
-}
-
-function safeFromCodePoint(cp, fallback) {
-  try {
-    return String.fromCodePoint(cp);
-  } catch {
-    return fallback;
-  }
-}
+/* Entities are decoded by tools/refresh/entities.mjs, the one decoder in
+   tools/ (audit round 3, data-tools-13); a third private copy lived here. */
 
 /** Cue payload -> plain text plus whatever speaker the markup named.
 
@@ -180,7 +160,7 @@ function cleanText(lines, { markup = true } = {}) {
 const CUE_LINE_RE = /^(.+?)\s*-->\s*([^\s]+)(?:\s+(.*))?$/;
 
 function parseBlocks(body, format, warnings) {
-  const text = String(body).replace(/^﻿/, "").replace(/\r\n?/g, "\n");
+  const text = String(body).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
 
   if (format === "vtt" && !/^\s*WEBVTT\b/i.test(text)) {
     warnings.push("missing WEBVTT header; parsed anyway");
@@ -265,7 +245,9 @@ function findSegments(root) {
 function parseJson(body, warnings) {
   let data;
   try {
-    data = JSON.parse(String(body));
+    // sniffFormat already looks past a leading BOM; JSON.parse does not. A raw
+    // cache file written before the fetch path stripped it still carries one.
+    data = JSON.parse(String(body).replace(/^\uFEFF/, ""));
   } catch (e) {
     warnings.push(`JSON did not parse: ${e.message}`);
     return [];

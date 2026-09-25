@@ -3,10 +3,11 @@ import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { ingestShowFeed } from "../../../backend/src/catalog/ingestShowFeed";
 import { PostgresShowEpisodesStore, type CatalogShowEpisode } from "../../../backend/src/catalog/showEpisodesStore";
-import { fetchFeedConditional } from "../../../backend/src/feeds/conditionalGet";
-import { parseFeed, type ParsedEpisode } from "../../../backend/src/feeds/parser";
+import { type ParsedEpisode } from "../../../backend/src/feeds/parser";
 import { applyCors } from "../../_lib/cors";
 import { decodeCursor, paginate } from "../../_lib/episodeCursor";
+import { liveEpisodeGuid } from "../../_lib/liveEpisodeId";
+import { sharedFeedReader } from "../../_lib/feedCache";
 
 /**
  * Fetch-on-demand per-show episode list (Stage 3b, kanban t_567b570f,
@@ -30,10 +31,11 @@ import { decodeCursor, paginate } from "../../_lib/episodeCursor";
  * (conditional GET, capped body size — see conditionalGet.ts), parse it
  * with the same parser the DB-backed ingest path uses, and paginate the
  * result in memory (100/page, keyset cursor on published_at+guid — see
- * episodeCursor.ts). Nothing is persisted between invocations: this is a
- * plain GET dressed as conditional (no prior etag/last-modified to send),
- * and the CDN edge cache (`s-maxage=3600`) is what actually saves repeat
- * fetches, not the conditional-GET mechanism itself.
+ * episodeCursor.ts). The parsed feed is kept per show in the warm instance
+ * for a few minutes and then revalidated with the etag/last-modified it holds
+ * (api/_lib/feedCache.ts, shared with the show-scoped search; round-3 audit,
+ * search-api-css-3), so the pages of one show cost one fetch, not one each.
+ * The CDN edge cache (`s-maxage=3600`) still saves repeat URLs.
  *
  * DB mode (when DATABASE_URL IS set — currently dormant in production) is
  * unchanged from Stage 3b's original behavior.
@@ -68,7 +70,7 @@ let showIndex: Map<string, CatalogShowMeta> | null = null; // show_id -> catalog
 // vercel.json's `functions["api/shows/**/*.ts"].includeFiles` glob names
 // them explicitly. If you rename either file, move this function outside
 // api/shows/**, or change how it locates the repo root, update vercel.json's
-// includeFiles glob in the same change — api/test/vercel-bundle.test.mjs
+// includeFiles glob in the same change — api/_test/vercel-bundle.test.mjs
 // checks this pairing but only catches drift that test runs against, not a
 // glob that silently stops matching after a rename.
 function findRepoRoot(startDir: string): string {
@@ -190,7 +192,7 @@ function toListRow(ep: CatalogShowEpisode) {
 
 function toLiveEpisode(showId: string, ep: ParsedEpisode, idx: number): CatalogShowEpisode | null {
   if (!ep.enclosureUrl) return null;
-  const guid = ep.guid ?? `noguid:${ep.title}:${ep.publishedAt ?? idx}`;
+  const guid = liveEpisodeGuid(ep, idx);
   return {
     show_id: showId,
     guid,
@@ -228,75 +230,153 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   }
 
   const showHeader = { title: meta.title, description: null as string | null, image: meta.image };
+  const cursor = decodeCursor(firstParam(req.query.cursor));
 
   const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    // No-DB mode (D14): fetch the feed live, no persisted cache between
-    // invocations. See this file's header for why the conditional-GET
-    // mechanism doesn't buy anything here without stored etag state.
-    const cursor = decodeCursor(firstParam(req.query.cursor));
-    const fetchResult = await fetchFeedConditional(meta.feedUrl, { etag: null, lastModified: null });
-
-    if (fetchResult.error || fetchResult.body === null) {
-      // Never a 500, never blank (repo convention — see ingestShowFeed.ts's
-      // own degrade rule): 200 with an empty list and the error surfaced.
-      // Cache-Control: no-store so a transient feed hiccup is never pinned
-      // at the edge for the next hour of visitors to that show.
-      res.setHeader("Cache-Control", "no-store");
-      res.status(200).json({
+  if (databaseUrl) {
+    /* ONE ENDPOINT, ONE SHAPE (round-3 audit, arch-drift-13). The DB branch
+       had drifted from the live one: it returned every episode unpaginated
+       with no `next_cursor` (which app.js reads as "this is the whole show"),
+       had no `degraded`, and ran `connect()` outside any try, so an
+       unreachable database was a 500. It now paginates with the same cursor
+       and emits the same fields, and a database it cannot use degrades to
+       the live branch instead of failing the request. Dormant in production
+       (no DATABASE_URL today). */
+    let session: DbSession | null = null;
+    try {
+      session = await openDbSession(databaseUrl);
+      const result = await session.refresh(showId, meta.feedUrl);
+      const episodes = await session.episodes(showId);
+      const { page, nextCursor } = paginate(episodes, cursor, PAGE_SIZE);
+      const stale = result.status === "cached_stale";
+      res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
+      res.status(200).json(listBody({
         show_id: showId,
+        // DB mode has no per-show description without editing the store;
+        // left null rather than guessed.
         show: showHeader,
-        episodes: [],
-        next_cursor: null,
-        source: "live",
-        degraded: true,
-        error: fetchResult.error ?? `unexpected empty body (status ${fetchResult.status})`
-      });
+        episodes: page.map(toListRow),
+        next_cursor: nextCursor,
+        source: "db",
+        degraded: false,
+        stale,
+        error: stale || result.status === "no_cache_error" ? result.error ?? null : null,
+      }));
       return;
+    } catch {
+      /* Fall through to the live branch below: the listener still gets the
+         show, the same shape, from the feed. */
+    } finally {
+      if (session) await session.end().catch(() => {});
     }
+  }
 
-    const parsed = parseFeed(fetchResult.body);
-    const episodes = parsed.episodes
-      .map((ep, idx) => toLiveEpisode(showId, ep, idx))
-      .filter((ep): ep is CatalogShowEpisode => ep !== null);
+  await serveLive(res, showId, meta, showHeader, cursor);
+}
 
-    const { page, nextCursor } = paginate(episodes, cursor, PAGE_SIZE);
+/** Every list response, both branches, has exactly these keys (the contract
+    test in api/_test/episodes-shape.test.mjs runs both through one assertion). */
+export const LIST_RESPONSE_KEYS = ["show_id", "show", "episodes", "next_cursor", "source", "degraded", "stale", "error"] as const;
 
-    res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
-    res.status(200).json({
+function listBody(body: {
+  show_id: string;
+  show: { title: string | null; description: string | null; image: string | null };
+  episodes: unknown[];
+  next_cursor: string | null;
+  source: "live" | "db";
+  degraded: boolean;
+  stale: boolean;
+  error: string | null;
+}) {
+  return body;
+}
+
+/** No-DB mode (D14): the feed, read through the per-show parsed-feed cache. */
+async function serveLive(
+  res: ApiResponse,
+  showId: string,
+  meta: CatalogShowMeta,
+  showHeader: { title: string | null; description: string | null; image: string | null },
+  cursor: ReturnType<typeof decodeCursor>
+): Promise<void> {
+  // No-DB mode (D14): the feed is read through the per-show parsed-feed
+  // cache the show-scoped search shares (round-3 audit, search-api-css-3):
+  // each cursor page used to re-download and re-parse the whole feed. Kept
+  // per warm instance, revalidated with the etag/last-modified it holds.
+  const feed = await sharedFeedReader.read(showId, meta.feedUrl);
+
+  if (!feed.parsed) {
+    // Never a 500, never blank (repo convention — see ingestShowFeed.ts's
+    // own degrade rule): 200 with an empty list and the error surfaced.
+    // Cache-Control: no-store so a transient feed hiccup is never pinned
+    // at the edge for the next hour of visitors to that show.
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).json(listBody({
       show_id: showId,
-      show: { ...showHeader, description: parsed.descriptionText || null },
-      episodes: page.map(toListRow),
-      next_cursor: nextCursor,
+      show: showHeader,
+      episodes: [],
+      next_cursor: null,
       source: "live",
-      degraded: false,
-      error: null
-    });
+      degraded: true,
+      stale: false,
+      error: feed.error ?? "feed unavailable",
+    }));
     return;
   }
 
-  const client = new Client({ connectionString: databaseUrl });
-  await client.connect();
-  try {
-    const store = new PostgresShowEpisodesStore(client);
-    const result = await ingestShowFeed(showId, meta.feedUrl, store);
-    const episodes = await store.episodesForShow(showId);
+  const parsed = feed.parsed;
+  const episodes = parsed.episodes
+    .map((ep, idx) => toLiveEpisode(showId, ep, idx))
+    .filter((ep): ep is CatalogShowEpisode => ep !== null);
 
-    res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
-    res.status(200).json({
-      show_id: showId,
-      // DB mode has no per-show description available without editing
-      // ingestShowFeed.ts/showEpisodesStore.ts, which is out of scope for
-      // this card (see the design comment on kanban t_4bd3c0a3) — left
-      // null rather than guessed. Production has no DATABASE_URL today, so
-      // this branch is currently dormant.
-      show: showHeader,
-      episodes: episodes.map(toListRow),
-      source: "db",
-      stale: result.status === "cached_stale",
-      error: result.status === "cached_stale" || result.status === "no_cache_error" ? result.error ?? null : null
-    });
-  } finally {
-    await client.end();
+  const { page, nextCursor } = paginate(episodes, cursor, PAGE_SIZE);
+
+  /* A KEPT copy served because the refresh was refused (per-show budget) or
+     failed is stale, and says so, like the DB branch's cached_stale (round-3
+     review, L4). It is not pinned at the edge for an hour either: no-store, as
+     the degraded branch above, so the next visitor gets a fresh try. */
+  const stale = feed.source === "stale";
+  res.setHeader("Cache-Control", stale ? "no-store" : "s-maxage=3600, stale-while-revalidate=86400");
+  res.status(200).json(listBody({
+    show_id: showId,
+    show: { ...showHeader, description: parsed.descriptionText || null },
+    episodes: page.map(toListRow),
+    next_cursor: nextCursor,
+    source: "live",
+    degraded: false,
+    stale,
+    error: null,
+  }));
+}
+
+/* The database, behind one small seam so the DB branch can be exercised
+   without a database (its tests inject a session). */
+interface DbSession {
+  refresh(showId: string, feedUrl: string): Promise<{ status: string; error?: string | null }>;
+  episodes(showId: string): Promise<CatalogShowEpisode[]>;
+  end(): Promise<void>;
+}
+
+async function realDbSession(databaseUrl: string): Promise<DbSession> {
+  const client = new Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+  } catch (err) {
+    await client.end().catch(() => {});
+    throw err;
   }
+  const store = new PostgresShowEpisodesStore(client);
+  return {
+    refresh: (showId, feedUrl) => ingestShowFeed(showId, feedUrl, store),
+    episodes: (showId) => store.episodesForShow(showId),
+    end: () => client.end(),
+  };
+}
+
+let openDbSession: (databaseUrl: string) => Promise<DbSession> = realDbSession;
+
+/** Test-only: replace how the DB branch opens its session; no argument
+    restores the real Postgres client. */
+export function _setDbSessionForTests(open?: (databaseUrl: string) => Promise<DbSession>): void {
+  openDbSession = open ?? realDbSession;
 }

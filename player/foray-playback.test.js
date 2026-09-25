@@ -2123,6 +2123,12 @@ test("the markup app.js emits carries every hook the harness serves", async () =
 
 test("app.js reads and writes through window.forayStorage when one is published", async () => {
   const { dom, forayStorage, durableTier, store } = await mountForayPage({ durable: true });
+  /* Round-3 review (L1): a thumb given BEFORE the store has answered waits for
+     it (editStored), so it lands on the durable votes rather than over them.
+     This test is about the write path once storage is up, as it is on the
+     real page a moment after boot: let the store hydrate first. */
+  await forayStorage.hydrate();
+  for (let i = 0; i < 20; i++) await new Promise((r) => setImmediate(r));
   await dom.thumbs.find((t) => t.dataset.thumb === "up").click();
   // The synchronous mirror is written before anything is awaited...
   assert.ok(store.has("cp_foray_feedback"), "localStorage is still the fast mirror");

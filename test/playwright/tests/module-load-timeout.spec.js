@@ -7,7 +7,7 @@
  * only exercised.
  */
 import { test, expect } from "@playwright/test";
-import { startServer, registerAndActivate, cacheNames } from "../lib/harness.mjs";
+import { startServer, registerAndActivate, cacheNames, updateAndAwaitNewWorker } from "../lib/harness.mjs";
 
 test.describe("MODULE LOAD TIMEOUT (real browser)", () => {
   test("player/client.js hanging during install aborts the whole install", async ({ page }) => {
@@ -69,16 +69,20 @@ test.describe("MODULE LOAD TIMEOUT (real browser)", () => {
     await registerAndActivate(page, server.baseUrl);
     const oldManifest = server.currentManifest();
 
-    // New deploy: player/client.js now fails outright (a real connection
-    // reset, not a hang) — this is a firm reject, not the timeout path
-    // exercised above.
+    // New deploy: player/client.js CHANGED and now fails outright (a real
+    // connection reset, not a hang) — a firm reject, not the timeout path
+    // exercised above. It must be a changed file: an unchanged module is
+    // copied from the current generation at install, never fetched (perf-4).
+    server.setFiles({ "player/client.js": "export const VALUE = 2;" });
     server.failOn("player/client.js");
 
-    await page.evaluate(() => navigator.serviceWorker.register("sw.js"));
-    // Give the failed install a moment to actually reject, then confirm the
-    // pointer cache still names the OLD generation and no new generation
-    // cache was ever created.
-    await page.waitForTimeout(1000);
+    // THE PREMISE (round-3 audit, tests-1): a second worker installed and
+    // failed. register() on an existing registration never re-installs, and an
+    // unstamped sw.js never changed bytes, so this used to prove nothing.
+    const second = await updateAndAwaitNewWorker(page);
+    expect(second).toEqual({ appeared: true, state: "redundant" });
+    // Then the pointer cache still names the OLD generation and no new
+    // generation cache was ever created.
     const pointer = await page.evaluate(async () => {
       const c = await caches.open("foray-pointer");
       const res = await c.match("https://foray.invalid/__generation-pointer__");
@@ -88,6 +92,7 @@ test.describe("MODULE LOAD TIMEOUT (real browser)", () => {
 
     const names = await cacheNames(page);
     expect(names).toContain("foray-gen-" + oldManifest.deploy_id);
+    expect(names.filter((n) => n.startsWith("foray-gen-"))).toEqual(["foray-gen-" + oldManifest.deploy_id]);
 
     server.clearFaults();
     await server.close();

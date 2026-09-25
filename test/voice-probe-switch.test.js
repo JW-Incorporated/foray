@@ -395,3 +395,33 @@ test("nothing in the probe path touches how narration is spoken", async () => {
     assert.ok(!body.includes(forbidden), `runVoiceProbe must not mention ${forbidden}`);
   }
 });
+
+/* ==================================================================== */
+/* audit round 3, app-3-11: one probe at a time                          */
+/* ==================================================================== */
+
+test("app-3-11: a second tap while a probe runs starts no second probe, and the control is disabled until it ends", async () => {
+  /* MUTATION: drop the voiceProbeRunning guard -> two engine loads at once;
+     red on the call count. Drop the disabling -> red on `disabled`. */
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  let finish;
+  h.ctx.window.ForayPlayer.runVoiceProbe = () => { h.probeCalls.push(Date.now()); return new Promise((r) => { finish = r; }); };
+  h.openDrawer();
+  const first = h.fn("runVoiceProbe")();
+  await h.settle(3);
+  assert.strictEqual(h.run().disabled, true, "the run control looks tappable mid-run");
+  const second = h.fn("runVoiceProbe")();
+  await h.settle(3);
+  assert.strictEqual(h.probeCalls.length, 1, "a second probe was started beside the first");
+  assert.strictEqual(second, first, "the second tap is handed the run already under way");
+  assert.match(h.status().textContent, /Running the voice probe/, "the reopened sheet says a run is under way");
+  finish({ engine: "kokoro-probe", ok: false, reason: "model-absent" });
+  await first;
+  await h.settle(3);
+  assert.strictEqual(h.run().disabled, false, "the control never came back");
+  const third = h.fn("runVoiceProbe")();
+  await h.settle(3);
+  finish({ engine: "kokoro-probe", ok: false, reason: "model-absent" });
+  await third;
+  assert.strictEqual(h.probeCalls.length, 2, "a run after the first has ended is a new run");
+});

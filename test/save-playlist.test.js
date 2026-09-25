@@ -442,7 +442,7 @@ test("with 50 playlists kept, Save says so and pushes nothing off the end", () =
 test("Create's builder refuses at the cap too, and nothing cuts a store that already holds more than 50", () => {
   /* MUTATION 1: drop buildPlaylist's cap check -> savePlaylists' slice pushes
      the oldest playlist off the end and the first half fails. MUTATION 2: put
-     `.slice(0, PLAYLISTS_CAP)` back in applyPlaylistEdit -> the refused save
+     `.slice(0, 50)` back in editPlaylists -> the refused save
      and the remove each cut the 52-entry store and the second half fails. */
   const m = appMount({ seed: { cp_playlists: JSON.stringify(Array.from({ length: 49 }, (_, i) => ownPlaylist(i))) } });
   renderAndSave(m, GEN_ID);   // the 50th: a saved copy, told it "stays as it is now"
@@ -514,6 +514,14 @@ test("the copy's own page is an own playlist's page: remove, no Save, and no 'ge
 /* 7. FAMILY MODE                                                         */
 /* ==================================================================== */
 
+/* Family Mode fails closed (round-3 data-integrity-4, familySafe): an episode
+   with no rating is shown only when its catalogue show is rated clean, and
+   these fixture shows are not in any catalogue. So the Family Mode tests rate
+   the fixture's ordinary episodes clean, as a refreshed catalogue would. */
+function rateClean(m) {
+  for (const it of m.state.discover.items) if (it.explicit === undefined) it.explicit = false;
+}
+
 test("a copy saved under Family Mode holds only what Family Mode showed", () => {
   /* The rule is the source's (generatedPlaylists reads poolFiltered); the copy
      inherits it by snapshotting the source as shown. MUTATION: build the copy
@@ -521,6 +529,7 @@ test("a copy saved under Family Mode holds only what Family Mode showed", () => 
      change generatedPlaylists to fullPool()) -> the explicit episode is saved
      and this fails. */
   const m = appMount({ seed: { cp_family: "true" }, startups: [1, 2, 3, 4] });
+  rateClean(m);
   m.state.discover.items.push(ep("st-explicit", { release_date: "2026-09-08", explicit: true }));
   renderAndSave(m, GEN_ID);
   const copy = m.stored()[0];
@@ -529,10 +538,11 @@ test("a copy saved under Family Mode holds only what Family Mode showed", () => 
 });
 
 test("a copy saved with Family Mode OFF neither lists nor plays an explicit episode once Family Mode is on", () => {
-  /* The leak direction. MUTATION: drop the `familyHides(live)` line from
+  /* The leak direction. MUTATION: drop the `!familyAllows(live)` line from
      resolveParts -> the copy's page draws the explicit row with its ▶ and
      Home's play button starts it (it is newest, so first); this fails. */
   const m = appMount({ startups: [1, 2, 3, 4] });
+  rateClean(m);
   m.state.discover.items.push(ep("st-explicit", { release_date: "2026-09-08", explicit: true }));
   renderAndSave(m, GEN_ID);
   const copy = m.stored()[0];
@@ -644,7 +654,7 @@ async function hydrating(m, durable) {
 }
 
 test("a save before hydration is provisional, lands on the hydrated list, and only then says Saved", async () => {
-  /* MUTATION 1: make editPlaylists write immediately (drop the storageWaiting
+  /* MUTATION 1: make editStored write immediately (drop the storageWaiting
      branch) -> the early write marks cp_playlists dirty, hydration skips the
      durable list, and "Own 1" is lost. MUTATION 2: answer "saved" for a queued
      edit in savePlaylistCopy -> the control claims Saved before anything is
@@ -660,7 +670,7 @@ test("a save before hydration is provisional, lands on the hydrated list, and on
   assert.strictEqual(m.el("pl-save-note").textContent, "Saving. 4a is still opening your playlists.");
   assert.ok(!events().includes("playlist_saved"), "nothing is logged as saved yet");
   btn.click();
-  assert.strictEqual(m.evalIn("pendingPlaylistEdits.length"), 1, "a second tap queues nothing");
+  assert.strictEqual(m.evalIn('pendingStoredEdits.get("cp_playlists").length'), 1, "a second tap queues nothing");
 
   h.land();
   assert.deepStrictEqual(h.list().map((p) => p.title), ["Startups", "Own 1"], "the copy joined the durable list");

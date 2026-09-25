@@ -30,7 +30,15 @@ const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 
 process.on("unhandledRejection", () => {});
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { waitFor } = require("./helpers/wait-for.js");
+
+/* EVERY SHOW PASS HAS ANSWERED — the positive signal each test waits for
+   (audit round 3, tests-3), instead of a fixed sleep(300) raced against the
+   product's own 250 ms debounce. The catalogue, directory and shard passes each
+   report exactly once (runShowSearchCostly's showPassDone), and the last one
+   records this token as settled. A NEGATIVE — "zero shard requests" — is only
+   meaningful after it: before the tick, zero requests is true of any build. */
+const settled = (m) => waitFor(() => m.evalIn("showSearchSettled.token === showSearchToken"));
 
 function makeEl(tag) {
   const handlers = new Map();
@@ -174,7 +182,7 @@ test("offline: a search for a shard-only show makes ZERO shard requests", async 
      request would still fire and this assertion would see 1, not 0. */
   const m = mount({ onLine: false });
   m.type("science friday");
-  await sleep(300);
+  await settled(m);
   assert.strictEqual(m.shardCalls().length, 0,
     `offline must fire zero shard requests, saw: ${JSON.stringify(m.shardCalls())}`);
 });
@@ -182,7 +190,7 @@ test("offline: a search for a shard-only show makes ZERO shard requests", async 
 test("online: the identical search DOES fire a shard request (control, so the test above proves something)", async () => {
   const m = mount({ onLine: true });
   m.type("science friday");
-  await sleep(300);
+  await settled(m);
   assert.strictEqual(m.shardCalls().length, 1,
     `online must fire exactly one shard request for a fresh query, saw: ${JSON.stringify(m.shardCalls())}`);
 });
@@ -195,7 +203,7 @@ test('offline: the results header note becomes visible (the static copy is "Show
      directly against the app.js source). */
   const m = mount({ onLine: false });
   m.type("lex");
-  await sleep(300);
+  await settled(m);
   assert.strictEqual(m.offlineNote().hidden, false, "the offline note must be visible");
 });
 
@@ -224,7 +232,7 @@ test("an EMPTY offline search says so in one line — no 'No shows found' over '
      `shows.length > 0` clause from the offline note's hidden test. */
   const m = mount({ onLine: false });
   m.type("zzqx-nothing");
-  await sleep(300);
+  await settled(m);
   assert.match(m.note().textContent, /^You're offline — no shows found for “zzqx-nothing”\.$/, m.note().textContent);
   assert.strictEqual(m.offlineNote().hidden, true, "no rows, so nothing for the offline note to explain");
   const partial = m.byId.get("sh-partial-note");
@@ -235,7 +243,7 @@ test("an EMPTY offline search says so in one line — no 'No shows found' over '
 test("online: the offline header stays hidden", async () => {
   const m = mount({ onLine: true });
   m.type("lex");
-  await sleep(300);
+  await settled(m);
   assert.strictEqual(m.offlineNote().hidden, true, "the offline note must not show while online");
 });
 
@@ -245,7 +253,7 @@ test("offline: the curated/local result still paints — offline degrades the ne
      MUTATION: skip the local pass too when offline. */
   const m = mount({ onLine: false });
   m.type("lex fridman");
-  await sleep(300);
+  await settled(m);
   assert.ok(m.results().innerHTML.includes("Lex Fridman Podcast"),
     "the curated show must still be found locally while offline");
 });
@@ -262,7 +270,7 @@ test("offline: no OTHER request fires either — the directory and catalogue pas
      regression in this one. */
   const m = mount({ onLine: false });
   m.type("lex fridman");
-  await sleep(300);
+  await settled(m);
   assert.strictEqual(m.shardCalls().length, 0);
 });
 
@@ -278,7 +286,7 @@ test("a pi: result opens a page with a header and (when present) episodes, from 
      this assertion would fail on the title. */
   const m = mount({ onLine: true });
   m.type("science friday");
-  await sleep(300);
+  await settled(m);
   assert.strictEqual(m.shardCalls().length, 1);
 
   const show = m.evalIn('showById("pi:555")');
@@ -300,7 +308,7 @@ test("#/show/pi:<n> route: the URL-encoded colon still resolves (encodeURICompon
      decoded one. */
   const m = mount({ onLine: true });
   m.type("science friday");
-  await sleep(300);
+  await settled(m);
 
   const encoded = m.evalIn('encodeURIComponent("pi:555")');
   m.ctx.location.hash = `#/show/${encoded}`;
@@ -350,7 +358,7 @@ test("a shard result's accent-aware rank survives mergeShowRows/rankShows re-ran
     window.fetchShardRows = async (key) => (key === "ca" ? ${JSON.stringify(CAFE_SHARD)} : []);
   `);
   m.type("cafe");
-  await sleep(300);
+  await settled(m);
   const html = m.results().innerHTML;
   const posCafe = html.indexOf("Café");
   const posCafeteria = html.indexOf("Cafeteria Talk");
@@ -374,7 +382,7 @@ test("a shard row duplicating an already-painted curated show by title is droppe
     window.fetchShardRows = async (key) => (key === "fr" ? ${JSON.stringify(LEX_SHARD)} : []);
   `);
   m.type("fridman");
-  await sleep(300);
+  await settled(m);
   const html = m.results().innerHTML;
   /* Counted as a row's visible title, not as any occurrence: since audit round
      2 (search-11) each row also carries its full name in `title=`, because the

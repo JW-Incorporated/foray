@@ -229,22 +229,10 @@ body.ui-v2 .wordmark {
   font-style: italic;
 }
 
-/* Foundational surface/line/text-hierarchy classes so U-02+ cards have
-   something to build on rather than re-declaring the palette per screen.
-   Not a component library — three utility layers over the token set. */
-body.ui-v2 .ui-v2-surface { background: var(--surface); border: 1px solid var(--line); }
-body.ui-v2 .ui-v2-surface-2 { background: var(--surface2); border: 1px solid var(--line); }
-body.ui-v2 .ui-v2-text-muted { color: var(--muted); }
-body.ui-v2 .ui-v2-text-faint { color: var(--faint); }
-
-/* The amber/violet split (issue #127): amber marks the LISTENER's own
-   material (their plays, saves, playback affordances); violet marks what 4a
-   itself authored (narrator voice, editorial framing, Foray badges). U-03+
-   apply these classes to the real Home/Search/Create screens; this
-   foundation card only establishes the two roles so later cards inherit a
-   single definition of each rather than re-deriving the meaning per screen. */
-body.ui-v2 .ui-v2-mine { color: var(--amber); }
-body.ui-v2 .ui-v2-authored { color: var(--violet); }
+/* The ui-v2 utility classes (.ui-v2-surface, -surface-2, -text-muted,
+   -text-faint, -mine, -authored) are gone (round-3 audit, search-api-css-10):
+   no template ever emitted one. The amber/violet roles they named live on as
+   the tokens every component reads (var(--amber) / var(--violet)). */
 
 * { box-sizing: border-box; }
 
@@ -679,7 +667,7 @@ body.view-home .topbar h1 .wordmark { display: none; }
      ever reports). `dvh` was here before and tracked the browser chrome
      live: during iOS Safari's rubber-band overscroll bounce the reported
      dynamic viewport height jitters as the gesture plays out, and since
-     `.cards4`/`.mini-card` below derive their size from `.home`'s height via
+     the retired `.cards4` grid and its `.mini-card`s derived their size from `.home`'s height via
      `flex: 1`, that jitter visibly stretched and shrank the cards while
      scrolling (#reported 2026-08-31, introduced by #359's bounce
      restore). `svh` stays fixed regardless of toolbar/overscroll state, so
@@ -697,8 +685,7 @@ body.view-home .topbar h1 .wordmark { display: none; }
      bug. With `min-height` the column still fills exactly one screen in the
      common case, and when it genuinely cannot, the page grows and scrolls
      (body scroll is already live — see the `overflow: hidden` note above)
-     instead of destroying the cards. Pair with `.cards4`'s own floor below:
-     that is what makes "grow" happen rather than "shrink to nothing". */
+     instead of destroying the cards. */
   min-height: calc(100vh - var(--topbar-h) - env(safe-area-inset-top));
   min-height: calc(100svh - var(--topbar-h) - env(safe-area-inset-top));
   /* Contain the rubber-band bounce here so it doesn't chain into resizing
@@ -714,28 +701,9 @@ body.view-home .topbar h1 .wordmark { display: none; }
   margin: 0 auto;
 }
 
-/* NOTHING GOES IN `.home` BUT THE BANNER AND `.cards4`.
-
-   `.home` is a fixed-height flex column whose only `flex: 1` child is
-   `.cards4`, and it is `overflow: visible` — so a tall sibling added inside it
-   silently starves the cards to zero height and overflows on top of whatever
-   follows. That is what "Shows we vouch for" (#433) did at every viewport
-   including desktop: `.cards4` measured 0 px and each card 26 px.
-
-   #458 worked around it with a `.home-below` wrapper that parked the row under
-   the fold. This change removes the workaround AND the reason for it: the
-   founder asked for a home screen that is the four cards and little else, so
-   the vouch row, the show search, the playlist builder and the foray list each
-   moved to their own menu page (see renderHome's header comment in app.js).
-   With no tall sibling left to park, a second scrollable surface stacked under
-   a deliberately one-screen one was simply the wrong shape, and it is gone.
-
-   The container itself is NOT the bug and is left alone: a fixed-height column
-   is exactly right for "four cards, one screen, done choosing", which is the
-   product. What was wrong twice was the content put in it. app.js pins that as
-   a test rather than another CSS guard, because CSS cannot express "and no
-   fifth thing" — test/home-information-architecture.test.js fails if anything
-   but the banner and `.cards4` renders inside `.home`. */
+/* `.cards4`, the retired flag-off four-card grid, is gone with its floor
+   (round-3 audit, search-api-css-10): renderHome() always renders Home v2,
+   which never emits it (test/home-information-architecture.test.js pins that). */
 
 /* The Continue banner (`.banner`, `#banner-slot`) is gone (visual pass 1,
    2026-09-23): `bannerHtml()` lost its only caller at the U-11 cutover and
@@ -746,33 +714,6 @@ body.view-home .topbar h1 .wordmark { display: none; }
 
 /* ---------- first-run intro popup ---------- */
 
-.cards4 {
-  flex: 1;
-  /* The floor that turns "the cards get crushed" into "the page gets taller".
-     Was `min-height: 0`, i.e. no floor at all: as the only `flex: 1` child of
-     a fixed-height column, `.cards4` absorbed every optional sibling's height
-     by shrinking, and a banner + three "Jump back in" rows took it to 63.8px
-     with 26px cards. `.mini-card` sets `overflow: hidden`, so nothing looked
-     broken — the four cards simply became slivers with the artwork and hook
-     clipped away.
-
-     The number is not a guess: four `.mini-card`s at their own minimum plus
-     the three 8px gaps. A card's minimum is its 56px artwork (`.mini-card img`)
-     plus its 12px top and bottom padding plus its 1px top and bottom border —
-     everything here is `border-box`, so the border is inside the number, not
-     around it. 56 + 24 + 2 = 82, and 4*82 + 3*8 = 352px. (344 was the first
-     value here, and it omitted the border: each card came out at 80px, an
-     80 - 12 - 12 - 1 - 1 = 54px content box against 56px of artwork, clipped
-     2px top and bottom by `overflow: hidden` — the very failure the floor
-     exists to prevent, two pixels' worth.)
-     Keep the arithmetic here in sync with those rules — it is recomputed from
-     `.mini-card`'s own box in test/home-layout.test.js, which fails if any of
-     them moves. */
-  min-height: calc(4 * (56px + 2 * 12px + 2 * 1px) + 3 * 8px);
-  display: grid;
-  grid-template-rows: repeat(4, 1fr);
-  gap: 8px;
-}
 .mini-card {
   display: flex; align-items: center; gap: 14px;
   /* A CARD, NOT A LINK (audit 2026-09-22, qa row 78). It was an <a> with the
@@ -912,48 +853,11 @@ input[type="text"] {
   color: var(--text);
   font-family: inherit; font-size: var(--fs-lg);
 }
-#pl-form {
-  flex: none;
-  display: flex; gap: 8px;
-  margin-bottom: 14px;
-}
-#pl-input {
-  flex: 1;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-}
-#pl-form button {
-  flex: none;
-  min-width: 72px;
-  min-height: 48px;
-  /* A CAPSULE, like every other primary CTA (Get started, Follow) — it sat at
-     the card/input radius and read as a lozenge split in two with the field
-     beside it (visual pass 1, 2026-09-23). The field keeps `--radius-lg`,
-     like every text field (`input[type="text"]` above). */
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: #fff;
-  font-weight: 700;
-  font-size: var(--fs-lg);
-  cursor: pointer;
-  box-shadow: var(--shadow);
-}
-/* Building-state guard (H bug, kanban t_838a13c0): buildPlaylist() has a
-   measured 1.3-8s worst case (cold-session term expansion, or a catalogue
-   this large scoring against a query with no repeated-query cache hit yet —
-   see app.js's searchCache), and the submit was fully synchronous with no
-   visible affordance for that stall. Same idiom as .fy-btn:disabled a few
-   sections up: dim + no pointer, not hidden, so the label ("Building…") stays
-   legible as an explanation rather than the control just vanishing. */
-#pl-form button:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
-
 /* ---------- Create (#/create, U-06, docs/ui-transition-plan.md D7+D8) ----------
-   Reuses `#pl-form`'s tokens/shape via `#cr-form`'s own rules below (kept
-   separate ids on purpose -- the two forms live on different pages and a
-   shared selector here would make a future #/playlists-only tweak leak onto
-   Create, or vice versa) so #cr-input/#cr-form's button read visually as the
-   same control family without literally being the same element. */
+   The field and its capsule button: the same shape as every primary CTA
+   (the capsule) beside a field at the text-field radius. The #/playlists
+   builder (#pl-form) these rules were modelled on is gone, and its rules
+   with it (round-3 audit, search-api-css-10). */
 #cr-form {
   flex: none;
   display: flex; gap: 8px;
@@ -968,7 +872,7 @@ input[type="text"] {
   flex: none;
   min-width: 72px;
   min-height: 48px;
-  border-radius: var(--radius-pill); /* a capsule, like #pl-form's Go */
+  border-radius: var(--radius-pill); /* a capsule, like every primary CTA */
   border: 1px solid var(--accent);
   background: var(--accent);
   color: #fff;
@@ -977,9 +881,10 @@ input[type="text"] {
   cursor: pointer;
   box-shadow: var(--shadow);
 }
-/* Same loading-state guard as #pl-form button:disabled above, and for the
-   identical reason -- buildPlaylist() is synchronous and can stall for
-   seconds; see bindCreateFormSubmit's header in app.js. */
+/* Building-state guard: buildPlaylist() is synchronous and can stall for
+   seconds (a cold-session term expansion); dim + no pointer, not hidden, so
+   the label ("Building…") stays legible. See bindCreateFormSubmit's header
+   in app.js. */
 #cr-form button:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
 
 .cr-suggestions {
@@ -3911,23 +3816,19 @@ body.ui-v2 button.up-next-remove {
 }
 
 /* ---------- Playlists index + detail (renderPlaylists/renderPlaylistDetail) ---------- */
-body.ui-v2 #pl-form input,
 body.ui-v2 .show-ep-search input {
   border-color: var(--line);
   background: var(--surface);
   color: var(--text);
 }
-/* `#cr-form` rides on the same rule. The Create page's field and button were
-   written to read as `#pl-form`'s control family (see `#cr-form`'s own rules),
-   but it landed after this restyle enumerated its selectors, so its button kept
-   v1 blue with white text beside Playlists' violet (audit 2026-09-22). */
-body.ui-v2 #pl-form button,
+/* Create's build button in the v2 paint: violet, like the other authored
+   primaries (audit 2026-09-22). The #pl-form half of this list went with the
+   #/playlists builder (round-3 audit, search-api-css-10). */
 body.ui-v2 #cr-form button {
   border-color: var(--violet);
   background: var(--violet);
   color: var(--bg);
 }
-body.ui-v2 #pl-form button:disabled,
 body.ui-v2 #cr-form button:disabled { background: var(--surface2); border-color: var(--line); color: var(--faint); }
 body.ui-v2 button.danger { color: var(--muted); }
 

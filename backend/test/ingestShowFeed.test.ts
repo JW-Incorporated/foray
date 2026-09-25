@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { ingestShowFeed } from "../src/catalog/ingestShowFeed";
+import { ingestShowFeed, failureBackoffMs, FAILURE_BACKOFF_BASE_MS } from "../src/catalog/ingestShowFeed";
 import { InMemoryShowEpisodesStore } from "../src/catalog/showEpisodesStore";
 
 const FEED_ONE_EP = `<?xml version="1.0"?>
@@ -172,5 +172,114 @@ describe("ingestShowFeed", () => {
 
     const headersSent = secondFetch.mock.calls[0]![1].headers;
     expect(headersSent["If-None-Match"]).toBe('"v1"');
+  });
+});
+
+/* Round-3 audit, lane L6: backend-rest-9 (never throws; a failed ingest is a
+   recorded failure that falls back to cache), backend-rest-10 (no "" identity,
+   no positional index), backend-rest-12 (a failing feed backs off). */
+describe("ingestShowFeed round-3 hardening", () => {
+  const T0 = new Date("2026-03-01T00:00:00.000Z").getTime();
+  const errorFetch = () =>
+    vi.fn().mockResolvedValue({
+      status: 500,
+      ok: false,
+      headers: { get: () => null },
+      text: async () => ""
+    } as unknown as Response);
+
+  it("does not throw when the store rejects the upsert; records the failure and serves the cache (backend-rest-9)", async () => {
+    const store = new InMemoryShowEpisodesStore();
+    await ingestShowFeed("show-a", "https://example.com/feed.xml", store, {
+      fetchImpl: mockFetchOk(FEED_TWO_EPS),
+      now: () => T0,
+      ttlMs: 1
+    });
+    vi.spyOn(store, "upsertEpisodes").mockRejectedValueOnce(new Error("invalid byte sequence for encoding UTF8: 0x00"));
+
+    const result = await ingestShowFeed("show-a", "https://example.com/feed.xml", store, {
+      fetchImpl: mockFetchOk(FEED_TWO_EPS),
+      now: () => T0 + 10,
+      ttlMs: 1
+    });
+    expect(result.status).toBe("cached_stale");
+    expect(result.episodeCount).toBe(2);
+    expect(result.error).toMatch(/0x00/);
+    const state = await store.getFeedState("show-a");
+    expect(state!.last_fetch_ok).toBe(false);
+    expect(state!.consecutive_failures).toBe(1);
+  });
+
+  it("returns no_cache_error instead of rejecting when the store itself is down", async () => {
+    const store = new InMemoryShowEpisodesStore();
+    vi.spyOn(store, "getFeedState").mockRejectedValue(new Error("connection refused"));
+    const result = await ingestShowFeed("show-a", "https://example.com/feed.xml", store, {
+      fetchImpl: mockFetchOk(FEED_TWO_EPS)
+    });
+    expect(result.status).toBe("no_cache_error");
+    expect(result.error).toMatch(/connection refused/);
+  });
+
+  it("keeps guid-less episodes apart, with an identity that does not shift when an episode is prepended (backend-rest-10)", async () => {
+    const item = (n: number) =>
+      `<item><title>Ep ${n}</title><guid></guid><enclosure url="https://cdn.example.com/${n}.mp3" type="audio/mpeg"/></item>`;
+    const feed = (items: string) => `<rss><channel><title>T</title>${items}</channel></rss>`;
+    const store = new InMemoryShowEpisodesStore();
+    await ingestShowFeed("show-a", "https://example.com/f.xml", store, {
+      fetchImpl: mockFetchOk(feed(item(1) + item(2))),
+      now: () => T0,
+      ttlMs: 1
+    });
+    const first = await store.episodesForShow("show-a");
+    expect(first).toHaveLength(2);
+    expect(first.every((e) => e.guid !== "")).toBe(true);
+
+    await ingestShowFeed("show-a", "https://example.com/f.xml", store, {
+      fetchImpl: mockFetchOk(feed(item(3) + item(1) + item(2))),
+      now: () => T0 + 10,
+      ttlMs: 1
+    });
+    expect(await store.episodesForShow("show-a")).toHaveLength(3); // not 5: no duplicate rows minted
+  });
+
+  it("backs off after a failure instead of refetching on every request (backend-rest-12)", async () => {
+    const store = new InMemoryShowEpisodesStore();
+    await ingestShowFeed("show-a", "https://example.com/feed.xml", store, {
+      fetchImpl: mockFetchOk(FEED_TWO_EPS),
+      now: () => T0,
+      ttlMs: 60_000
+    });
+    const failing = errorFetch();
+    const ttlMs = 24 * 60 * 60 * 1000;
+    const failedAt = T0 + 120_000; // past the 60 s TTL of the successful fetch
+    await ingestShowFeed("show-a", "https://example.com/feed.xml", store, { fetchImpl: failing, now: () => failedAt, ttlMs: 60_000 });
+    expect(failing).toHaveBeenCalledTimes(1);
+
+    // One minute later: inside the back-off window, so no network call.
+    const during = await ingestShowFeed("show-a", "https://example.com/feed.xml", store, {
+      fetchImpl: failing,
+      now: () => failedAt + 60_000,
+      ttlMs
+    });
+    expect(failing).toHaveBeenCalledTimes(1);
+    expect(during.status).toBe("cached_stale");
+    expect(during.episodeCount).toBe(2);
+
+    // Past the window (base * 2^1): it tries again.
+    await ingestShowFeed("show-a", "https://example.com/feed.xml", store, {
+      fetchImpl: failing,
+      now: () => failedAt + failureBackoffMs(1, ttlMs) + 1,
+      ttlMs
+    });
+    expect(failing).toHaveBeenCalledTimes(2);
+  });
+
+  it("failureBackoffMs doubles per failure and is capped at the TTL", () => {
+    const ttl = 24 * 60 * 60 * 1000;
+    expect(failureBackoffMs(0, ttl)).toBe(FAILURE_BACKOFF_BASE_MS);
+    expect(failureBackoffMs(1, ttl)).toBe(2 * FAILURE_BACKOFF_BASE_MS);
+    expect(failureBackoffMs(3, ttl)).toBe(8 * FAILURE_BACKOFF_BASE_MS);
+    expect(failureBackoffMs(50, ttl)).toBe(ttl);
+    expect(failureBackoffMs(2, 1000)).toBe(1000);
   });
 });

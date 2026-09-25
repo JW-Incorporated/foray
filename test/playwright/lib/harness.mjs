@@ -85,3 +85,38 @@ export async function terminateServiceWorker(page) {
   await client.send("Target.closeTarget", { targetId: swTarget.targetId });
   await client.detach();
 }
+
+/**
+ * Asks the registration for an update and reports what the SECOND worker did
+ * (round-3 audit, tests-1). Every "a new deploy lands" spec used to call
+ * register()/update() and then assert that the old generation survived, which
+ * holds trivially when no second worker ever installs, and one never did while
+ * the fixture served sw.js unstamped. Each such spec now asserts this premise
+ * first: a new worker appeared (`appeared`) and reached `activated` (a good
+ * deploy) or `redundant` (an install that must promote nothing).
+ *
+ * The `updatefound` listener is attached BEFORE update() runs, so an install
+ * that fails fast (already redundant by the time update()'s promise settles)
+ * is still seen.
+ */
+export async function updateAndAwaitNewWorker(page, { timeoutMs = 15000 } = {}) {
+  return page.evaluate(async (timeoutMs) => {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return { appeared: false, state: "no-registration" };
+    const found = new Promise((resolve) => {
+      reg.addEventListener("updatefound", () => resolve(reg.installing), { once: true });
+    });
+    await reg.update().catch(() => {});
+    const worker = await Promise.race([found, new Promise((r) => setTimeout(() => r(null), 3000))]);
+    if (!worker) return { appeared: false, state: "none" };
+    const settled = (s) => s === "activated" || s === "redundant";
+    if (settled(worker.state)) return { appeared: true, state: worker.state };
+    const state = await new Promise((resolve) => {
+      const t = setTimeout(() => resolve(worker.state), timeoutMs);
+      worker.addEventListener("statechange", () => {
+        if (settled(worker.state)) { clearTimeout(t); resolve(worker.state); }
+      });
+    });
+    return { appeared: true, state };
+  }, timeoutMs);
+}

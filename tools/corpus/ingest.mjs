@@ -377,11 +377,29 @@ export function ingestCapturedText(db, source, capturedText, { capturedAt = new 
   return { sourceId: source.id, outcome: "ok", chunks: chunks.length, tokens: tokenCount, notes };
 }
 
-/** Ingest a set of sources sequentially (the fetcher paces hosts). */
+/** Ingest a set of sources sequentially (the fetcher paces hosts).
+
+    ONE BAD SOURCE NEVER ENDS THE RUN (audit round 3, data-tools-3). A throw
+    out of one source (a fetch path that broke its never-throw promise, a
+    disk error while archiving) used to propagate out of this loop, skip
+    every remaining source and record nothing. It is now caught per source
+    and recorded as a failed `documents` row, like any other fetch failure. */
 export async function ingestMany(db, fetcher, sources, opts = {}) {
   const results = [];
   for (const source of sources) {
-    const r = await ingestSource(db, fetcher, source, opts);
+    let r;
+    try {
+      r = await ingestSource(db, fetcher, source, opts);
+    } catch (err) {
+      const note = `ingest threw: ${err?.name ?? "Error"}: ${err?.message ?? String(err)}`;
+      try {
+        db.prepare(`
+          INSERT INTO documents (source_id, http_status, content_hash, raw_path, markdown_path, token_count, fetch_notes)
+          VALUES (?, 0, NULL, NULL, NULL, 0, ?)
+        `).run(source.id, note);
+      } catch (_) { /* the row is best-effort; the result below still says it failed */ }
+      r = { sourceId: source.id, status: 0, outcome: "failed", notes: [note] };
+    }
     results.push(r);
     opts.onResult?.(source, r);
   }

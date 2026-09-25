@@ -444,6 +444,57 @@ export type ReportEntry = {
 };
 
 /**
+ * A `report.json` row as read back from disk: any earlier run's shape, plus
+ * the `publish_refused` field publish-foray writes onto it.
+ */
+export type PriorReportEntry = Partial<ReportEntry> & { publish_refused?: unknown } & Record<string, unknown>;
+
+/**
+ * The rows an earlier run left in `report.json`, or none. An unreadable file
+ * is set aside as `report.json.unreadable-<ms>` rather than silently lost.
+ */
+export function readPriorReportEntries(reportPath: string): PriorReportEntry[] {
+  if (!fs.existsSync(reportPath)) return [];
+  try {
+    const doc = JSON.parse(fs.readFileSync(reportPath, "utf8")) as { entries?: unknown };
+    return Array.isArray(doc.entries) ? (doc.entries.filter((e) => e && typeof e === "object") as PriorReportEntry[]) : [];
+  } catch {
+    fs.renameSync(reportPath, `${reportPath}.unreadable-${Date.now()}`);
+    return [];
+  }
+}
+
+/**
+ * backend-rest-7: this run's rows merged over an earlier run's. A row matches
+ * an earlier one by prompt, or by candidate file basename. An earlier row this
+ * run did not touch (a candidate skipped as already built) is kept as it was,
+ * with the `publish` / `publish_refused` records publish-foray wrote onto it;
+ * a new row is appended.
+ *
+ * A matched earlier row is replaced in place WITHOUT its publish records.
+ * Every row in `current` is a candidate this run built afresh (a skipped one
+ * produces no row), so the file on disk is a different build from the one
+ * that was published or refused. Carrying the record over reported the new
+ * build as already refused or already published (round-3 review, L6: refuse,
+ * delete the candidate, re-run).
+ */
+export function mergeReportEntries(prior: readonly PriorReportEntry[], current: readonly ReportEntry[]): PriorReportEntry[] {
+  const base = (f: unknown) => (typeof f === "string" ? path.basename(f) : null);
+  const merged: PriorReportEntry[] = prior.map((e) => ({ ...e }));
+  for (const entry of current) {
+    const i = merged.findIndex(
+      (old) => (typeof old.prompt === "string" && old.prompt === entry.prompt) || (base(old.file) !== null && base(old.file) === base(entry.file))
+    );
+    if (i < 0) {
+      merged.push({ ...entry });
+      continue;
+    }
+    merged[i] = { ...entry };
+  }
+  return merged;
+}
+
+/**
  * One prompt's worth of `main()`'s loop body, extracted so a test can drive
  * it directly — same reason `parseArgs`/`normalizePrompts`/`candidateFilename`
  * are already exported. `deps.runPipeline` defaults to the real
@@ -828,8 +879,16 @@ async function main(): Promise<void> {
     const callsTotal = report.reduce((sum, r) => sum + (r.calls ?? 0), 0);
 
     const reportPath = path.join(path.resolve(args.out), "report.json");
+    /* backend-rest-7: the batch is re-run in the same --out directory by
+       design (the skip above is the outer resume), so report.json is MERGED,
+       not rewritten from this run alone. Rows for candidates skipped as
+       already built, and the publish / publish_refused records publish-foray
+       wrote onto them, survive the re-run; a rebuilt candidate's row starts
+       clean. Read once, before this run writes. */
+    const priorEntries = args.dryRun ? [] : readPriorReportEntries(reportPath);
     const writeReport = (notification: NotificationResult | null): void => {
       if (args.dryRun) return;
+      const entries = mergeReportEntries(priorEntries, report);
       fs.writeFileSync(
         reportPath,
         `${JSON.stringify(
@@ -849,7 +908,7 @@ async function main(): Promise<void> {
                and all. Null when there is no corpus directory at all (CI, a
                fresh checkout), which is not the same as "nothing was missing". */
             corpus: corpus.showsOnDisk > 0 ? corpus : null,
-            entries: report
+            entries
           },
           null,
           2

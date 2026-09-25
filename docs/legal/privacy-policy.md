@@ -129,7 +129,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_history` | The last 200 episode ids you picked or played in the app | **No** (but see `picked` in §2) |
 | `cp_seen` | Episode ids already shown to you, so they are not repeated | **No** |
 | `cp_saved` | The episodes you saved | **No** (but see `saved` in §2) |
-| `cp_lastpick` | A snapshot of the last episode you picked | **No** (but marking it Done sends `finished` — §2) |
+| `cp_lastpick` | Retired (2026-09-25): it used to hold a snapshot of the last episode you picked, which nothing in the app read any more. It is no longer written, and a copy left from an earlier version is deleted the next time the app starts | **No** |
 | `cp_playlists` | Playlists you built, including the text you typed to build them, and playlists you saved from ones 4a made for you (a generated playlist or a Suggested subject). A saved one also notes where it came from: which kind it was and its id, so saving it again does not make a second copy. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
 | `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; holds only the ids — the details it shows are in `cp_episode_snaps` | **No** |
@@ -231,7 +231,7 @@ and a timestamp:
 |---|---|
 | `picked` | Episode slug, its topic ids, an `app` label, and a context label. See the note below — both labels carry less about you than their names suggest |
 | `saved` | Episode slug, topic ids |
-| `thumbs` | Up or down; the taxonomy node it applies to; optionally the episode slug, segment id and foray id; the reason codes you selected; **and the free-text note you typed** (a single line, up to 200 characters) |
+| `thumbs` | Up or down, or that you withdrew a vote; when you change or withdraw a vote, the direction and reason codes of the vote it replaces (so the change is counted once); the taxonomy node it applies to; optionally the episode slug, segment id and foray id; the reason codes you selected; **and the free-text note you typed** (a single line, up to 200 characters) |
 | `session_shown` → stored as `session_built` | A session key and which builder produced it |
 
 **Not sent — recorded only on your device:** `play_started`, `position` (your play

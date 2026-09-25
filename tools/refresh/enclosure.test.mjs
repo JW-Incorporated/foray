@@ -5,9 +5,10 @@
    below is a shape real feeds actually emit. */
 
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import {
-  pickEnclosure, durationSeconds, isPlayableType, looksTokened, audioFieldsFrom, hostOf, normalizeAudioUrl,
+  pickEnclosure, durationSeconds, durationMinutes, isPlayableType, looksTokened, audioFieldsFrom, hostOf, normalizeAudioUrl,
 } from "./enclosure.mjs";
 
 const enc = (url, type, length) => ({
@@ -64,6 +65,59 @@ test("durationSeconds returns null on garbage rather than NaN", () => {
   // NaN would propagate into the scrubber range and render an unusable UI.
   for (const bad of ["", "  ", "unknown", "1:2:3:4", null, undefined, "abc:def"]) {
     assert.equal(durationSeconds(bad), null, `expected null for ${JSON.stringify(bad)}`);
+  }
+});
+
+/* ---------- one duration parser (audit round 3, arch-drift-5) ----------
+   The backend's normalizeDuration is the reference: its OWN fixture table
+   (backend/test/duration.test.ts) is read here and every case is asked of the
+   tools parser, so the two cannot drift again without this going red. The
+   backend is read, never edited. */
+
+function backendDurationFixtures() {
+  const src = readFileSync(new URL("../../backend/test/duration.test.ts", import.meta.url), "utf8");
+  const lit = (t) => (t.trim() === "undefined" ? undefined : t.trim() === "null" ? null : JSON.parse(t));
+  const cases = [];
+  for (const m of src.matchAll(/normalizeDuration\(([^)]*)\)\.seconds\)\.toBe\(([^)]*)\)/g)) {
+    cases.push([lit(m[1]), Number(m[2].replace(/[^\d*+ ]/g, "").split("+").reduce((a, t) => a + t.split("*").reduce((x, y) => x * Number(y), 1), 0))]);
+  }
+  for (const m of src.matchAll(/const result = normalizeDuration\(([^)]*)\);\s*expect\(result\.seconds\)\.(toBeNull\(\)|toBe\((\d+)\))/g)) {
+    cases.push([lit(m[1]), m[3] === undefined ? null : Number(m[3])]);
+  }
+  return cases;
+}
+
+test("durationSeconds agrees with the backend's normalizeDuration on every backend fixture", () => {
+  const cases = backendDurationFixtures();
+  assert.ok(cases.length >= 10, "read " + cases.length + " cases from backend/test/duration.test.ts; the table moved");
+  const inputs = cases.map(([raw]) => raw);
+  for (const needed of ["1834.7", "12:75", "3:01:52", "00:00:00", 1834, undefined]) {
+    assert.ok(inputs.some((r) => Object.is(r, needed)), "the backend table no longer carries " + JSON.stringify(needed));
+  }
+  for (const [raw, want] of cases) {
+    assert.equal(durationSeconds(raw), want, "durationSeconds(" + JSON.stringify(raw) + ")");
+  }
+});
+
+/* MUTATION: drop the decimal branch -- "1834.5" reads null again, as the three
+   deleted normDuration copies did; or drop the out-of-range guard -- "12:75"
+   reads 795 (13 min). */
+test("decimal seconds parse and out-of-range components refuse, in seconds and minutes", () => {
+  assert.equal(durationSeconds("1834.5"), 1835);
+  assert.equal(durationMinutes("1834.5"), 31);
+  assert.equal(durationSeconds("12:75"), null);
+  assert.equal(durationMinutes("12:75"), null);
+  assert.equal(durationSeconds("1:60:00"), null);
+  assert.equal(durationMinutes("01:10:53"), 71);
+  assert.equal(durationMinutes("23:20"), 23);
+  assert.equal(durationMinutes("00:00:00"), null, "zero length is not a length");
+});
+
+test("no tool keeps a private itunes:duration parser", () => {
+  for (const f of ["tools/refresh/scan.mjs", "tools/refresh/backfill-show.mjs", "tools/harvest-episodes.mjs"]) {
+    const src = readFileSync(new URL("../../" + f, import.meta.url), "utf8");
+    assert.doesNotMatch(src, /function normDuration/, f + " parses itunes:duration itself");
+    assert.match(src, /durationMinutes\(it\["itunes:duration"\]\)/, f + " does not derive duration_min from the one parser");
   }
 });
 

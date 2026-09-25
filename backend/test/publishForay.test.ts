@@ -17,6 +17,7 @@ import {
   recordPublishInReport,
   recordRefusalInReport,
   restoreDataFiles,
+  shipPublish,
   snapshotDataFiles,
   supersedeLines,
   writePublishDataFiles,
@@ -684,5 +685,104 @@ describe("the verdict and the PR body say what was actually checked", () => {
     expect(body).not.toMatch(/passed check-forays\.mjs and\s+check-narration\.mjs/);
     expect(body).toMatch(/passed check-forays\.mjs/);
     expect(body).toMatch(/it is not a check of this Foray's narration/);
+  });
+});
+
+/* Round-3 audit, lane L6: backend-rest-6 (hold rides `gh pr create` and is
+   read back) and backend-rest-19 (a failed commit/push/PR never strands the
+   checkout on the publish branch). */
+describe("shipPublish — hold is atomic, and a failure never strands the checkout", () => {
+  let dir = "";
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-ship-"));
+    fs.mkdirSync(path.join(dir, "data"));
+    fs.writeFileSync(path.join(dir, "data", "forays.json"), '{"forays":["ORIGINAL"]}\n');
+  });
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const silent = { log: () => undefined, error: () => undefined };
+  const opts = (over: Partial<Parameters<typeof shipPublish>[1]> = {}) => {
+    const snapshot = snapshotDataFiles(dir, ["data/forays.json"]);
+    fs.writeFileSync(path.join(dir, "data", "forays.json"), '{"forays":["ORIGINAL","WRITTEN"]}\n');
+    return {
+      repoRoot: dir,
+      branch: "generate/x",
+      previousRef: { kind: "branch" as const, name: "main" },
+      snapshot,
+      files: ["data/forays.json"],
+      commitMessage: "Generated Foray: X (x)",
+      prTitle: "Generated Foray: X",
+      prBody: "body",
+      hold: true,
+      out: silent,
+      ...over
+    };
+  };
+  /** A runner that answers commitPublish's proof and can be told to fail one command. */
+  function scripted(failOn?: (key: string) => boolean, labels = "hold") {
+    const calls: string[] = [];
+    const run: Runner = (cmd, args) => {
+      const key = [cmd, ...args].join(" ");
+      calls.push(key);
+      if (failOn && failOn(key)) throw new Error(`simulated failure: ${key}`);
+      if (key.startsWith("git rev-list --count")) return "1";
+      if (key.startsWith("git diff --name-only")) return "data/forays.json";
+      if (key.startsWith("gh pr create")) return "https://github.com/o/r/pull/9";
+      if (key.startsWith("gh pr view")) return labels;
+      return "";
+    };
+    return { run, calls };
+  }
+
+  it("passes --label hold to `gh pr create` itself, not in a second call (backend-rest-6)", () => {
+    const { run, calls } = scripted();
+    const { prUrl } = shipPublish(run, opts());
+    expect(prUrl).toBe("https://github.com/o/r/pull/9");
+    const create = calls.find((c) => c.startsWith("gh pr create"))!;
+    expect(create).toContain("--label hold");
+    expect(calls.some((c) => c.startsWith("gh pr edit"))).toBe(false);
+  });
+
+  it("a plain --no-hold publish sends no label", () => {
+    const { run, calls } = scripted(undefined, "");
+    shipPublish(run, opts({ hold: false }));
+    expect(calls.find((c) => c.startsWith("gh pr create"))).not.toContain("--label");
+    expect(calls.some((c) => c.startsWith("gh pr view"))).toBe(false);
+  });
+
+  it("exits loudly when the PR is not held after the create and one retry", () => {
+    const { run, calls } = scripted(undefined, "");
+    expect(() => shipPublish(run, opts())).toThrow(/IS NOT HELD/);
+    expect(calls.some((c) => c.startsWith("gh pr edit https://github.com/o/r/pull/9 --add-label hold"))).toBe(true);
+  });
+
+  it("a failed push undoes the publish: reset, data files restored byte for byte, switched back, branch deleted (backend-rest-19)", () => {
+    const { run, calls } = scripted((k) => k.startsWith("git push"));
+    expect(() => shipPublish(run, opts())).toThrow(/simulated failure: git push/);
+    expect(fs.readFileSync(path.join(dir, "data", "forays.json"), "utf8")).toBe('{"forays":["ORIGINAL"]}\n');
+    const after = calls.slice(calls.findIndex((c) => c.startsWith("git push")) + 1);
+    expect(after).toEqual([`git reset --mixed ${PUBLISH_BASE}`, "git switch main", "git branch -D generate/x"]);
+    expect(calls.some((c) => c.startsWith("gh "))).toBe(false);
+  });
+
+  it("a failed commit is undone the same way", () => {
+    const { run, calls } = scripted((k) => k.startsWith("git commit"));
+    expect(() => shipPublish(run, opts())).toThrow(/simulated failure/);
+    expect(calls).toContain("git branch -D generate/x");
+    expect(fs.readFileSync(path.join(dir, "data", "forays.json"), "utf8")).toBe('{"forays":["ORIGINAL"]}\n');
+  });
+
+  it("a failed PR after a successful push keeps the pushed branch and prints the command that finishes it", () => {
+    const errors: string[] = [];
+    const { run, calls } = scripted((k) => k.startsWith("gh pr create"));
+    expect(() => shipPublish(run, opts({ out: { log: () => undefined, error: (l: string) => errors.push(l) } }))).toThrow(/simulated failure/);
+    expect(calls.some((c) => c.startsWith("git branch -D"))).toBe(false);
+    const msg = errors.join("\n");
+    expect(msg).toContain("generate/x IS PUSHED");
+    expect(msg).toContain("gh pr create --base main --head generate/x");
+    expect(msg).toContain("--label hold");
+    expect(msg).toContain("git switch main");
   });
 });

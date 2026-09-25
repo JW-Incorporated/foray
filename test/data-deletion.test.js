@@ -98,8 +98,15 @@ function keyFamiliesInPolicy() {
   return found;
 }
 
+/** Keys app.js no longer writes and removes once storage settles
+    (`RETIRED_STORAGE_KEYS`; audit round 3, data-integrity-8). A seeded one is
+    gone after boot on every path, so "nothing was touched" excludes it. */
+const RETIRED_KEYS = new Set(
+  JSON.parse((/const RETIRED_STORAGE_KEYS = (\[[^\]]*\]);/.exec(read("app.js")) || [null, "[]"])[1])
+);
+
 /** The `cp_` keys a fixture seeded, for "nothing was touched" assertions. */
-const seededKeys = (seed) => Object.keys(seed).filter((k) => k.startsWith("cp_"));
+const seededKeys = (seed) => Object.keys(seed).filter((k) => k.startsWith("cp_") && !RETIRED_KEYS.has(k));
 
 /** One concrete key per family, so a patterned family is exercised with real
     instances rather than with its own stem. */
@@ -678,23 +685,36 @@ test("with no durable store published, the control says so instead of claiming s
 
 /* ================= 3. the server rows ================= */
 
-test("the table list is the RLS migration's list of per-user tables", () => {
-  /* Pinned against the migration so a new per-user table cannot appear there
-     without this failing — the deletion has to grow with the schema, and nothing
-     else in CI would notice. */
-  const sql = read("backend/migrations/supabase/0001_auth_and_rls.sql");
-  const block = /foreach t in array array\[([\s\S]*?)\]/.exec(sql);
-  assert.ok(block, "the RLS migration's table array could not be parsed");
-  const inSql = [...block[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort();
+test("the table list is every table with a user_id column, across ALL migrations", () => {
+  /* Enumerated from the schema itself, not from one migration's list (round-3
+     audit, data-integrity-10): 0001's RLS array had no `learning_cursor`, so a
+     per-user row survived every "successful" deletion and nothing noticed. Every
+     `create table` in backend/migrations/*.sql with a `user_id` column must be
+     in app.js's SB_USER_TABLES, or in SERVICE_ROLE_ONLY below with a reason. */
+  const dir = path.join(ROOT, "backend", "migrations");
+  const withUserId = [];
+  for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(".sql")).sort()) {
+    const sql = read(`backend/migrations/${f}`).replace(/--[^\n]*/g, "");
+    for (const m of sql.matchAll(/create table if not exists\s+([a-z_]+)\s*\(([\s\S]*?)\n\);/g)) {
+      if (/^\s*user_id\s/m.test(m[2])) withUserId.push(m[1]);
+    }
+  }
+  /* Offline-pipeline tables: their user_id is the pipeline operator's, never a
+     listener's auth.uid(), no client path writes them, and supabase/0003 makes
+     them deny-all. Deleting from them with a listener's token would be a 204
+     that deleted nothing, i.e. a false success. */
+  const SERVICE_ROLE_ONLY = ["cost_events", "episode_enrichment", "episodes", "shows"];
   const inApp = [...codeOnly(APP_SRC).matchAll(/const SB_USER_TABLES = \[([\s\S]*?)\];/g)]
-    .flatMap((m) => [...m[1].matchAll(/"([a-z_]+)"/g)].map((x) => x[1]))
-    .sort();
+    .flatMap((m) => [...m[1].matchAll(/"([a-z_]+)"/g)].map((x) => x[1]));
+  assert.ok(withUserId.includes("learning_cursor") && withUserId.includes("events"), "the schema scan found nothing");
   assert.deepStrictEqual(
-    inApp, inSql,
-    "app.js's SB_USER_TABLES and the RLS migration disagree about which tables " +
-      "hold per-user rows. A table in the migration and not in app.js is data a " +
+    [...inApp].sort(),
+    withUserId.filter((t) => !SERVICE_ROLE_ONLY.includes(t)).sort(),
+    "app.js's SB_USER_TABLES and the schema disagree about which tables hold " +
+      "per-user rows. A table in the schema and not in app.js is data a " +
       "deletion silently leaves behind."
   );
+  assert.strictEqual(inApp[inApp.length - 1], "app_users", "app_users goes last: everything else keys to it");
 });
 
 test("one authenticated DELETE per table, filtered to this account's own uid", async () => {
@@ -703,7 +723,7 @@ test("one authenticated DELETE per table, filtered to this account's own uid", a
   await ui.go.click();
 
   const calls = deletes();
-  assert.strictEqual(calls.length, 8, "every per-user table must be asked");
+  assert.strictEqual(calls.length, 9, "every per-user table must be asked");
   for (const c of calls) {
     assert.ok(c.url.startsWith(`${SB_URL}/rest/v1/`), c.url);
     assert.ok(c.url.includes("user_id=eq.uid-abc"), `unfiltered delete: ${c.url}`);
@@ -711,6 +731,38 @@ test("one authenticated DELETE per table, filtered to this account's own uid", a
     assert.ok(c.headers.apikey, "the publishable key is required by the REST endpoint");
   }
   assert.ok(calls[0].url.includes("/events?"), "events is the table the promise rests on — delete it first");
+});
+
+/* Round-3 review (L6): learning_cursor joined SB_USER_TABLES while the policy
+   that lets a listener delete its row (supabase/0003) is not applied to
+   production. Under 0002 it is deny-all, the DELETE is a 204 that removes
+   nothing, and it was counted and worded as deleted.
+   MUTATION: drop learning_cursor from SB_DELETE_UNVERIFIED (or treat any 2xx
+   as deleted) -- the table reads "deleted" and the sheet says everything is. */
+test("a table whose delete policy may not be live is 'unconfirmed' unless the server shows the removed row", async () => {
+  const { arm, ui, ctx, deletes } = await mount({ seed: { cp_sb_session: sessionRow() } });
+  await arm();
+  const result = await ctx.deleteMyData();
+  const cursor = result.remote.tables.find((t) => t.table === "learning_cursor");
+  assert.strictEqual(cursor.state, "unconfirmed", "a 204 with no rows shown is not a deletion we saw");
+  assert.deepStrictEqual([...result.remote.unconfirmed], ["learning_cursor"]);
+  assert.strictEqual(result.remote.deleted, 8, "not counted among the deleted tables");
+  assert.strictEqual(result.remote.ok, true, "it does not block the rest of the deletion");
+  const call = deletes().find((c) => c.url.includes("/learning_cursor?"));
+  assert.strictEqual(call.headers.Prefer, "return=representation", "it asks for the removed rows back");
+  assert.match(ui.status.textContent, /except possibly one bookkeeping record/);
+  assert.doesNotMatch(ui.status.textContent, /kept about you is deleted\./);
+
+  // With the policy live, the server returns the row it removed: deleted, and said plainly.
+  const live = await mount({
+    seed: { cp_sb_session: sessionRow() },
+    reply: (url) => (url.includes("/learning_cursor?") ? { status: 200, json: [{ user_id: "uid-abc" }] } : { status: 204 }),
+  });
+  await live.arm();
+  const ok = await live.ctx.deleteMyData();
+  assert.strictEqual(ok.remote.tables.find((t) => t.table === "learning_cursor").state, "deleted");
+  assert.deepStrictEqual([...ok.remote.unconfirmed], []);
+  assert.match(live.ui.status.textContent, /What 4a's server kept about you is deleted\./);
 });
 
 test("the events rows are deleted before the local token that reaches them", async () => {
@@ -767,7 +819,7 @@ test("a 401 is a refusal, not a success", async () => {
   await arm();
   const result = await ctx.deleteMyData();
   assert.strictEqual(result.state, "remote-failed");
-  assert.strictEqual(result.remote.failed.length, 8);
+  assert.strictEqual(result.remote.failed.length, 9);
 });
 
 test("a 404 means the table is not in this project — no rows of ours, not a failure", async () => {
@@ -791,7 +843,7 @@ test("deleting never signs up a new anonymous account", async () => {
     "creating an account in order to delete one would leave a fresh row behind"
   );
   assert.strictEqual(result.remote.attempted, false, "no token on the device means no rows to reach");
-  assert.match(ui.status.textContent, /never signed in/i);
+  assert.match(ui.status.textContent, /No sign-in remains on this device/);
   assert.strictEqual(result.ok, true);
 });
 
@@ -994,7 +1046,7 @@ test("a second click while a deletion is in flight is refused", async () => {
   const second = await ctx.deleteMyData();
   await first;
   assert.strictEqual(second.state, "busy", "two purges and two DELETE sweeps must not race one token");
-  assert.strictEqual(deletes().length, 8, "exactly one sweep of the tables");
+  assert.strictEqual(deletes().length, 9, "exactly one sweep of the tables");
 });
 
 /* ================= 6. what the listener reads ================= */
@@ -1195,7 +1247,7 @@ test("a refresh response with no user object does not throw the deletion away", 
   const result = await ctx.deleteMyData();
   assert.strictEqual(result.ok, true, JSON.stringify(result));
   const dels = log.filter((e) => e.kind === "fetch" && e.method === "DELETE");
-  assert.strictEqual(dels.length, 8);
+  assert.strictEqual(dels.length, 9);
   assert.ok(dels.every((d) => d.url.includes("user_id=eq.uid-abc")), "the id we already held is the right one");
   assert.ok(dels.every((d) => d.headers.Authorization === "Bearer at-9"));
 });
@@ -1214,6 +1266,7 @@ test("EVERY status message the control can show is inside the copy budget", asyn
     { state: "remote-failed", remote: { ok: false, attempted: true, failed: [{}], deleted: 0 }, local: null },
     { state: "remote-failed", remote: { ok: false, attempted: true, failed: [], revoked: { ok: false, status: 0 }, deleted: 8 }, local: null },
     { state: "done", remote: { ok: true, attempted: true, deleted: 8 }, local: { ok: true } },
+    { state: "done", remote: { ok: true, attempted: true, deleted: 8, unconfirmed: ["learning_cursor"] }, local: { ok: true } },
     { state: "done", remote: { ok: true, attempted: false, deleted: 0 }, local: { ok: true } },
     { state: "done", remote: { ok: true, attempted: false, deviceOnly: true, deleted: 0 }, local: { ok: true } },
     { state: "local-incomplete", remote: { ok: true, attempted: true, deleted: 8 }, local: { ok: false, reason: "no-durable-tier" } },
@@ -1833,7 +1886,7 @@ test("VAULT: Delete my data uses the token from the device-only vault, then empt
   await arm();
   await ui.go.click();
   const calls = deletes();
-  assert.strictEqual(calls.length, 8, "the account in the vault was not reached");
+  assert.strictEqual(calls.length, 9, "the account in the vault was not reached");
   assert.strictEqual(calls[0].headers.Authorization, "Bearer at-1");
   assert.deepStrictEqual([...vault.data.keys()], [], "the token survived the deletion in the vault");
   assert.deepStrictEqual(cpKeys(), { local: [], idb: [] });
@@ -2008,4 +2061,210 @@ test("NATIVE ENGINE: an engine that refuses its purge makes the device NOT clear
   assert.doesNotMatch(ui.status.textContent, /^Done/);
   assert.match(ui.status.textContent, /NOT/);
   assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "the page's own purge still ran");
+});
+
+/* ---------- audit round 3, lane L1: one sync at a time, one account ----------
+
+   app-1-2: overlapping syncs each read the same unsynced rows (unsynced() does
+   not claim them) and POSTed them, and the events table has no client id, so
+   the server kept every row twice; on a fresh device each overlapping sync
+   signed up its own anonymous account. */
+
+const eventPosts = (log) => log.filter((e) => e.kind === "fetch" && e.method === "POST" && e.url.includes("/rest/v1/events"));
+
+test("app-1-2: three overlapping syncs POST the queued rows once, and a row logged mid-run still goes out after it", async () => {
+  /* MUTATION: start a fresh syncEventsOnce per call again (drop the `syncRun`
+     branch) -> the same batch is POSTed three times; red. Drop the follow-up
+     (`return syncRun` alone) -> the row logged mid-run is never sent; red. */
+  const { ctx, log, queue } = await mount({ seed: { cp_sb_session: sessionRow(), cp_interests: "{}" }, events: QUEUED });
+  const real = ctx.fetch;
+  ctx.fetch = (url, opts) => (opts && opts.method === "POST" && String(url).includes("/rest/v1/events")
+    ? new Promise((r) => setTimeout(r, 20)).then(() => real(url, opts))
+    : real(url, opts));
+  const a = ctx.trySyncEvents();
+  await new Promise((r) => setTimeout(r, 0));
+  queue.append({ type: "picked", payload: { episode_id: "ep-2", topics: [] } });
+  const b = ctx.trySyncEvents();
+  const c = ctx.trySyncEvents();
+  assert.strictEqual(b, c, "callers during a run share ONE follow-up");
+  await Promise.all([a, b, c]);
+  const posts = eventPosts(log);
+  const slugs = posts.flatMap((p) => JSON.parse(p.body).map((r) => r.payload.episode_slug));
+  assert.deepStrictEqual(slugs.sort(), ["ep-1", "ep-2"], `each row once: ${JSON.stringify(slugs)}`);
+  assert.deepStrictEqual(await queue.unsynced(), []);
+});
+
+test("app-1-2: two syncs on a fresh device create ONE anonymous account, not two", async () => {
+  /* MUTATION: make ensureAnonSession call ensureAnonSessionOnce directly (no
+     shared in-flight promise) -> two signups; red. */
+  const { ctx, log } = await mount({
+    seed: { cp_interests: "{}" },
+    reply: (url) => (/\/auth\/v1\/signup/.test(url)
+      ? { status: 200, json: { access_token: "at-9", refresh_token: "rt-9", expires_at: 4102444800, user: { id: `uid-${log.length}` } } }
+      : { status: 204 }),
+  });
+  const [s1, s2] = await Promise.all([ctx.ensureAnonSession(), ctx.ensureAnonSession()]);
+  const signups = log.filter((e) => e.kind === "fetch" && /\/auth\/v1\/signup/.test(e.url));
+  assert.strictEqual(signups.length, 1, "a second account was minted");
+  assert.strictEqual(s1.user_id, s2.user_id);
+  assert.strictEqual(JSON.parse(ctx.localStorage.getItem("cp_sb_session")).user_id, s1.user_id);
+});
+
+test("app-1-10: a backlog over 500 rows whose second chunk fails re-sends only what was not accepted", async () => {
+  /* Ids were marked synced only after the LAST chunk, so chunk 1 accepted and
+     chunk 2 refused meant chunk 1 went up again next time. MUTATION: mark all
+     ids once after the loop again -> 500 rows are POSTed twice; red. */
+  const backlog = [];
+  for (let i = 0; i < 1001; i++) {
+    backlog.push({ type: "picked", payload: { episode_id: `ep-${i}`, topics: [] } });
+    if (i === 499 || i === 700) backlog.push({ type: "position", payload: { episode_id: `ep-${i}`, seconds: 1, duration: 10 } });
+  }
+  let posts = 0;
+  let failSecond = true;
+  const { ctx, log, queue } = await mount({
+    seed: { cp_sb_session: sessionRow(), cp_interests: "{}" },
+    events: backlog,
+    reply: (url, method) => {
+      if (method === "POST" && url.includes("/rest/v1/events")) {
+        posts += 1;
+        return posts === 2 && failSecond ? { status: 503 } : { status: 201 };
+      }
+      return { status: 204 };
+    },
+  });
+  await ctx.trySyncEvents();
+  const left = await queue.unsynced();
+  assert.strictEqual(left.filter((e) => e.type === "picked").length, 501, "the accepted first chunk is marked synced");
+  assert.ok(left.some((e) => e.type === "position" && e.payload.episode_id === "ep-700"), "a local-only row inside the refused chunk stays with it");
+  assert.ok(!left.some((e) => e.type === "position" && e.payload.episode_id === "ep-499"), "a local-only row inside the accepted chunk is marked with it");
+  failSecond = false;
+  await ctx.trySyncEvents();
+  const sent = eventPosts(log).flatMap((p) => JSON.parse(p.body).map((r) => r.payload.episode_slug));
+  const accepted = sent.length - 500;   // the refused chunk (500 rows) was POSTed once and refused
+  assert.strictEqual(accepted, 1001, `rows stored: ${accepted}`);
+  assert.strictEqual(new Set(sent.slice(0, 500)).size, 500);
+  assert.ok(!sent.slice(1000).includes("ep-0"), "chunk 1 was sent again");
+  assert.deepStrictEqual(await queue.unsynced(), []);
+});
+
+test("app-1-4: a refresh that fails TRANSIENTLY keeps the account — no signup, the token untouched, the rows wait", async () => {
+  /* sbAuth answered null for every non-2xx and every network error, so a 503
+     from the token endpoint signed the device up as a new user and split its
+     history across two accounts. MUTATION: drop `if (!refreshTokenDead(res))
+     return null;` -> a signup goes out; red. */
+  for (const answer of [{ status: 503 }, { status: 429 }, new Error("Failed to fetch"), { status: 400, json: { error: "something_else" } }]) {
+    const { ctx, log } = await mount({
+      seed: { cp_sb_session: sessionRow({ expired: true }), cp_interests: "{}" },
+      events: QUEUED,
+      reply: (url) => (/\/auth\/v1\/token/.test(url) ? answer
+        : /\/auth\/v1\/signup/.test(url) ? { status: 200, json: { access_token: "at-new", refresh_token: "rt-new", user: { id: "uid-new" } } }
+          : { status: 201 }),
+    });
+    const label = answer instanceof Error ? "a network error" : `a ${answer.status}`;
+    assert.strictEqual(await ctx.ensureAnonSession(), null, `${label} still produced a session`);
+    assert.ok(!log.some((e) => e.kind === "fetch" && /\/auth\/v1\/signup/.test(e.url)), `${label} signed up a new account`);
+    assert.strictEqual(JSON.parse(ctx.localStorage.getItem("cp_sb_session")).user_id, "uid-abc");
+    await ctx.trySyncEvents();
+    assert.strictEqual(eventPosts(log).length, 0, "nothing is posted without the account");
+  }
+});
+
+test("app-1-4: a refresh token the server calls dead (400 invalid_grant / refresh_token_not_found) is replaced by a new account", async () => {
+  /* MUTATION: never sign up after a refresh failure -> a device whose token is
+     truly gone never syncs again; red. */
+  /* Round-3 review (L1): current GoTrue answers a reused, rotated-out token
+     with error_code refresh_token_already_used, and a dead session with
+     session_not_found / session_expired. MUTATION: drop them from
+     DEAD_REFRESH_CODES -- those bodies return null and never sign up. */
+  for (const body of [
+    { error: "invalid_grant", error_description: "Invalid Refresh Token" },
+    { code: 400, error_code: "refresh_token_not_found" },
+    { code: 400, error_code: "refresh_token_already_used", msg: "Invalid Refresh Token: Already Used" },
+    { code: 400, error_code: "session_not_found" },
+    { code: 400, error_code: "session_expired" },
+  ]) {
+    const { ctx, log } = await mount({
+      seed: { cp_sb_session: sessionRow({ expired: true }), cp_interests: "{}" },
+      reply: (url) => (/\/auth\/v1\/token/.test(url) ? { status: 400, json: body }
+        : /\/auth\/v1\/signup/.test(url) ? { status: 200, json: { access_token: "at-new", refresh_token: "rt-new", expires_at: 4102444800, user: { id: "uid-new" } } }
+          : { status: 201 }),
+    });
+    const s = await ctx.ensureAnonSession();
+    assert.strictEqual(s && s.user_id, "uid-new", JSON.stringify(body));
+    assert.strictEqual(log.filter((e) => e.kind === "fetch" && /\/auth\/v1\/signup/.test(e.url)).length, 1);
+  }
+});
+
+/* ---------- audit round 3, lane L1: the retry after "device NOT fully clear" ---------- */
+
+const stubbornQueue = () => ({
+  append() {}, async unsynced() { return []; }, async markSynced() {}, async pruneToRetention() {},
+  health() { return { ok: false }; },
+  async purge() { return { ok: false, remaining: 3 }; },
+});
+
+test("app-3-6: a retry after the server step succeeded says the server copy is deleted, not 'never signed in', and asks nothing of the server", async () => {
+  /* Run 1 deleted every row and revoked the sign-in; the queue would not
+     clear. The retry found no cp_sb_session and said the device was "never
+     signed in". MUTATION: drop the ddRemoteDone check in deleteRemoteData ->
+     the retry's message names no deletion; red. */
+  const { arm, ui, ctx, log } = await mount({ seed: { cp_sb_session: sessionRow(), cp_interests: "{}" }, eventLog: stubbornQueue() });
+  await arm();
+  const first = await ctx.deleteMyData();
+  assert.strictEqual(first.state, "local-incomplete", "premise: the server step succeeded and the device did not clear");
+  const requestsAfterRun1 = log.filter((e) => e.kind === "fetch").length;
+  await arm();
+  const retry = await ctx.deleteMyData();
+  assert.strictEqual(retry.state, "local-incomplete");
+  assert.match(ui.status.textContent, /What 4a's server kept about you is deleted[.,]/);
+  assert.doesNotMatch(ui.status.textContent, /never signed in|NOT deleted/);
+  assert.strictEqual(log.filter((e) => e.kind === "fetch").length, requestsAfterRun1, "the retry asked the server again");
+});
+
+test("app-3-6: a token that survived the failed purge, now revoked, does not turn the retry into 'NOT deleted'", async () => {
+  /* Case (b): cp_sb_session survived and expired; its refresh token was
+     revoked by run 1, so the refresh 400'd, every DELETE 401'd, and the sheet
+     said the server copy was NOT deleted and left the device uncleared.
+     MUTATION: drop the ddRemoteDone check -> remote-failed; red. */
+  const { arm, ctx, log, store } = await mount({
+    seed: { cp_sb_session: sessionRow(), cp_interests: "{}" },
+    eventLog: stubbornQueue(),
+    reply: (url, method) => {
+      if (/\/auth\/v1\/token/.test(url)) return { status: 400, json: { error: "invalid_grant" } };
+      if (method === "DELETE" && log.some((e) => e.kind === "fetch" && /logout/.test(e.url))) return { status: 401 };
+      return { status: 204 };
+    },
+  });
+  await arm();
+  assert.strictEqual((await ctx.deleteMyData()).state, "local-incomplete", "premise");
+  store.setItem("cp_sb_session", sessionRow({ expired: true }));   // the copy the failed purge left behind
+  await arm();
+  const retry = await ctx.deleteMyData();
+  assert.notStrictEqual(retry.state, "remote-failed", ctx.deletionMessage(retry));
+  assert.ok(!store.getItem("cp_sb_session"), "the device was left holding the revoked token");
+});
+
+test("app-3-6: the moment the server step succeeds, cp_sb_session is removed on its own, before a purge that throws", async () => {
+  /* MUTATION: drop the removeItem("cp_sb_session") before clearLocalData ->
+     the throwing purge leaves the revoked token for the retry; red. */
+  const { ctx, arm } = await mount({ seed: { cp_sb_session: sessionRow(), cp_interests: "{}" } });
+  const real = ctx.window.forayStorage;
+  const removed = [];
+  ctx.window.forayStorage = {
+    getItem: (k) => real.getItem(k), setItem: (k, v) => real.setItem(k, v),
+    removeItem: (k) => { removed.push(k); real.removeItem(k); },
+    purge: async () => { throw new Error("InvalidStateError"); },
+  };
+  await arm();
+  const result = await ctx.deleteMyData();
+  assert.strictEqual(result.local.reason, "purge-failed", "premise");
+  assert.deepStrictEqual(removed, ["cp_sb_session"]);
+  assert.strictEqual(real.getItem("cp_sb_session"), null);
+});
+
+test("app-3-6: with no token at all the sheet says, neutrally, that nothing on the server is reachable", async () => {
+  const { ctx } = await mount();
+  const msg = ctx.deletionMessage({ state: "done", remote: { ok: true, attempted: false, deleted: 0 }, local: { ok: true } });
+  assert.match(msg, /No sign-in remains on this device, so nothing on 4a's server is reachable from it\./);
+  assert.doesNotMatch(msg, /never signed in/, "a device whose rows a previous run deleted was told it had never signed in");
 });

@@ -9,7 +9,9 @@
      3. interpreting every PlayerEffect into a backend call
      4. the 15s position timer, which the reducer explicitly does not model
      5. cold-launch restore, before any network (corner case #15)
-     6. route policy (auto-resume only on known car routes, corner case #13)
+     6. route policy (corner case #13: a lost route pauses; on this web and
+        Android path reconnecting never resumes, audit round 3 player-core-10 —
+        the native iOS engine owns its own route policy)
      7. the single-instance invariant (corner case #19)
 
    Nothing here mutates player state directly. Every transition goes through
@@ -417,7 +419,6 @@ export class PlayerQueueManager {
     this.queue = [];
     this.currentIndex = -1;
     this._timer = null;
-    this._knownCarRoutes = new Set();
     this._forceNextOffset = null;
     /** A start position the SURFACE asked for, in the source's own seconds —
         `play(index, { startOffset })`. Audit round 2 (races-1, p-impatient-1):
@@ -454,8 +455,8 @@ export class PlayerQueueManager {
         2 review). Corner case #13 says a lost route never comes back on its
         own; since 2026-09-23 the paused app keeps its session, so iOS can send
         `shouldResume` at the end of a LATER call or Siri, and without this the
-        phone speaker in a parked car would start talking. Only a press, or a
-        known car route reappearing, clears it. */
+        phone speaker in a parked car would start talking. Only a press clears
+        it: a route reappearing never resumes on this path (player-core-10). */
     this._pausedByRoute = false;
     // Two distinct notions of "where we are", conflated in the Swift:
     //   currentIndex  what is actually LOADED — savePosition writes against it
@@ -488,7 +489,7 @@ export class PlayerQueueManager {
         so `dispose()` can remove it; `null` when the bridge offers none. */
     this._ttsFinishedUnsubscribe = null;
     if (this._tts && typeof this._tts.onFinished === "function") {
-      this._ttsFinishedUnsubscribe = this._tts.onFinished(() => this._onTtsFinished());
+      this._ttsFinishedUnsubscribe = this._tts.onFinished((payload) => this._onTtsFinished(payload));
     }
     /** Bumped every time a NEW synth utterance starts speaking (`_loadedId`
         moves onto a synth item). `_onTtsFinished` captures this value at the
@@ -503,6 +504,11 @@ export class PlayerQueueManager {
         provably a duplicate rather than merely "already handled once this
         session" — see `_onTtsFinished`. */
     this._advancedSpeakSeq = null;
+    /** How many `speak()` calls this manager has issued (audit round 3,
+        player-core-2/4). A load that finds itself stale after its speak()
+        resolved silences the voice only when no NEWER speak() has replaced it
+        since; otherwise the stop would cut off the line that superseded it. */
+    this._speakIssued = 0;
     /** The listener's chosen narration voice identifier (V-01), or `null` to
         let the plugin pick its own best-installed tier. The one place it
         lives, same discipline as `_rate` immediately above: `voice` getter
@@ -513,6 +519,8 @@ export class PlayerQueueManager {
         `lastVoiceFallback` above. `null` until the first narration item
         speaks. */
     this._lastSpeakResult = null;
+    /** The id the plugin gave the utterance now speaking (mobile-native-2). */
+    this._utteranceId = null;
     /** True when the item `_loadedId` refers to was spoken via `_tts` rather
         than loaded into `backend` — nothing in `backend` is playing it, so
         the rate/playback effects below must not touch the backend for it. */
@@ -890,6 +898,21 @@ export class PlayerQueueManager {
       // first, stores the current playhead, and the reload then resumes to the
       // exact spot the user just asked to leave.
       this._armOffset("_forceNextOffset", 0);
+      /* From `idle` (a failed load) or `ended` the reducer has no item in focus,
+         and `skipToPrevious(null)` there is its "queue exhausted" branch: it
+         returns `ended`, which a Foray records as Played and restarts from clip
+         1 (audit round 3, player-core-1). Name the item this manager holds and
+         the reducer takes its fresh-play branch: the clip reloads at its
+         in-point, which is what ‹‹ after a failure means. Holding nothing,
+         previous does nothing. Everywhere else `null` keeps the reducer's
+         restart-in-place. Decided here rather than in the reducer so no
+         recorded reducer rule (the queue-state parity family) moves. */
+      const t = this.state.type;
+      if (t === "idle" || t === "ended") {
+        const held = this._currentItem();
+        if (!held) return this._emit("skip.previous.ignored — nothing held to restart");
+        return this._handle(E.skipToPrevious(refOf(held)));
+      }
       return this._handle(E.skipToPrevious(null));
     });
   }
@@ -913,6 +936,18 @@ export class PlayerQueueManager {
       await this._transport("stop", () => this._handle(E.stop()));
     } finally {
       this._narrationStopping = false;
+    }
+    /* THE POSTCONDITION OF `stop()` IS SILENCE TOO (audit round 3,
+       player-core-7), for the reason `pause()` gives: from `interrupted` or
+       `loadingItem` the reducer's stop emits no `pausePlayback`, because it
+       believes nothing is audible, and in the #689 drift the element is. Stop
+       then hid the bar and released the lock screen over sound nothing could
+       stop. Read the element. (A line whose speak() is still in flight when
+       Stop lands is silenced by `_loadItem`'s own staleness check, which sees
+       `idle` when the call returns.) Never in the other direction. */
+    if (this.elementIsAudible) {
+      this._emit("stop.forced — the element was audible while the machine said it was not");
+      await this.backend.pause();
     }
     if (wasSynth) await this._stopNarration();
     this._stopTimer();
@@ -1065,11 +1100,16 @@ export class PlayerQueueManager {
     }
   }
 
-  /** Corner case #13. The reducer never auto-resumes; that policy lives here.
-      A route reappearing only resumes if we have seen it before as a car route
-      — otherwise plugging in headphones would blast audio unasked. */
-  async routeChanged({ oldDeviceUnavailable, routeName = null, isCarRoute = false }) {
-    if (isCarRoute && routeName) this._knownCarRoutes.add(routeName);
+  /** Corner case #13. A lost route pauses. RECONNECTING NEVER RESUMES on this
+      path (audit round 3, player-core-10; founder Q5 default). A known-car-route
+      auto-resume used to live here, but the only production caller
+      (`client.js` `onNativeSession`) reports route LOSS alone, with no name
+      and no car flag, so the set it read was never filled and the branch never
+      ran — and it would have resumed a pause the listener made themselves. The
+      native iOS engine owns route policy (EngineCore's `knownCarRoutes`, pinned
+      by its own XCTests). `routeName`/`isCarRoute` are accepted and ignored,
+      so an older caller is not an error. */
+  async routeChanged({ oldDeviceUnavailable }) {
     // Losing the output device mid-beat is not the beat's business to finish:
     // the next thing that happens is a pause, and a beat that outlived it would
     // start audio into a dead route the moment the timer fired. A route
@@ -1081,15 +1121,6 @@ export class PlayerQueueManager {
       await this._transport("routeLost", () => this._handle(E.routeChanged(true)));
     } else {
       await this._handle(E.routeChanged(false));
-    }
-
-    if (!oldDeviceUnavailable && routeName && this._knownCarRoutes.has(routeName)) {
-      const item = this._currentItem();
-      if (item && this.state.type === "interrupted" && this.state.wasPlaying) {
-        this._emit(`route.autoResume.knownCar=${routeName}`);
-        this._pausedByRoute = false;
-        await this._handle(E.play(refOf(item)));
-      }
     }
   }
 
@@ -1468,6 +1499,22 @@ export class PlayerQueueManager {
   }
 
   async _loadItem(ref) {
+    /* A NEWER TRANSITION ALREADY CHOSE ANOTHER TARGET (audit round 3,
+       player-core-9). `_handle` sets the state synchronously and then awaits
+       its effects one by one, so a second skip reduced during the first skip's
+       `pausePlayback` (a real bridge round trip on a synth line) runs its own
+       `loadItem(D)` first; this one, for C, would then claim a newer
+       `_loadSeq`, supersede D and land `itemLoaded` into `loadingItem(D)` —
+       `playing(D)` with D's out-point armed on C's timeline. The reducer's
+       target is the authority on what should load: the reducer emits every
+       `loadItem` alongside a state whose item in focus IS that ref, so by the
+       time the effect runs anything else means a newer event moved the player
+       (a newer skip, which may even have finished loading, or a stop). Such a
+       load is dropped before it claims the player. */
+    const focus = focusOf(this.state);
+    if (!sameItemRef(focus, ref)) {
+      return this._emit(`load.stale ${ref?.id} — the player is now on ${focus?.id ?? this.state.type}`);
+    }
     /* Claim this load. A wait that comes back to find this changed has been
        superseded and must not start audio for an item nobody is on — see
        `_transport` for why the comparison cannot be made any earlier. */
@@ -1611,7 +1658,18 @@ export class PlayerQueueManager {
            sets it to 0), the same item, and speech actually paused. */
         const resumingSpeech = forced == null && this._loadedId === item.id && this._narrationPaused;
         if (!resumingSpeech) {
+          const mine = ++this._speakIssued;
           await this._speakNarration(item);
+          /* SUPERSEDED WHILE speak() WAS IN FLIGHT (audit round 3,
+             player-core-4): the voice started on accept, and a skip, a row tap,
+             a pause or a stop moved the player on during the bridge round trip.
+             The backend branch below has had this check since 2026-09-22; the
+             synth branch did not, so the stale call stamped `_loadedIsSynth`
+             and kept talking over the next item. Silence it (unless a newer
+             speak() already replaced it) and leave everything else alone. */
+          if (this._loadSeq !== seq || !(this.state.type === "loadingItem" && sameItemRef(this.state.target, ref))) {
+            return this._abandonSpeech(mine, `load.superseded ${item.id} — the player moved on while speak() was in flight`);
+          }
           this._loadedId = item.id;
           this._beginSynthNarration(item);
         } else {
@@ -1731,6 +1789,11 @@ export class PlayerQueueManager {
       throw new Error(`foray-tts: ${result.reason ?? "speak() refused"}`);
     }
     this._lastSpeakResult = result || null;
+    /* WHICH UTTERANCE IS OURS (audit round 3, mobile-native-2): the plugins
+       name each utterance on accept and echo it on `finished`;
+       `_onTtsFinished` drops a finish for any other one. Null from an older
+       shell that names none, which keeps today's behaviour. */
+    this._utteranceId = typeof result?.utteranceId === "string" && result.utteranceId ? result.utteranceId : null;
     return result;
   }
 
@@ -1904,6 +1967,15 @@ export class PlayerQueueManager {
     await this._ttsTransport("stop");
   }
 
+  /** A speak() whose load went stale while it was in flight (audit round 3,
+      player-core-2/4). The voice started on accept, so it has to be told to
+      stop — unless a newer speak() has been issued since, which already
+      replaced this utterance and must not be cut off. */
+  async _abandonSpeech(mine, why) {
+    if (this._speakIssued === mine) await this._ttsTransport("stop");
+    return this._emit(why);
+  }
+
   /** One call into the bridge, reported and never thrown. `_emit` carries the
       accepted/refused answer into the telemetry stream, which is what puts it
       in the field record (`diagnostic-log.js`) — so "I pressed pause and it
@@ -2043,10 +2115,28 @@ export class PlayerQueueManager {
    *      dispatches, not after, so two `finished` events arriving before
    *      either's `_handle` call resolves cannot both pass the check.
    */
-  _onTtsFinished() {
+  _onTtsFinished(payload = null) {
     if (this._disposed) return false;
+    /* NOT EVERY `finished` IS THIS LINE'S (audit round 3, mobile-native-2).
+       A voice-picker preview spoken mid-Foray, or a line this manager has
+       already left, used to be indistinguishable from the current line's own
+       completion and advanced past narration nobody heard. A preview's finish
+       never advances; a finish naming a different utterance is stale. */
+    if (payload && payload.audition === true) {
+      this._emit("tts.finished.ignored — a preview, not narration");
+      return false;
+    }
+    const finishedId = typeof payload?.utteranceId === "string" ? payload.utteranceId : null;
+    if (finishedId && this._utteranceId && finishedId !== this._utteranceId) {
+      this._emit("tts.finished.ignored — not the line this player is on");
+      return false;
+    }
     if (!this._loadedIsSynth) return false;
     if (this._applying > 0) return false;
+    /* AN ENGINE ERROR ENDS THE LINE NOW (mobile-native-3): the plugin reports
+       it as a `finished` carrying `error`, so the queue moves on at once
+       instead of running the narration clock over silence to its deadline. */
+    if (payload && payload.error != null) this._emit(`tts.finished.error code=${payload.error}`);
     const seq = this._speakSeq;
     if (this._advancedSpeakSeq === seq) return false;
     this._advancedSpeakSeq = seq;
@@ -2404,6 +2494,16 @@ export class PlayerQueueManager {
     if (!bridge) return this._advancePastBridgeFailure();
     const bIdx = this.queue.findIndex((i) => i.id === bridge.id);
     if (bIdx >= 0) this.currentIndex = bIdx;
+    /* THE LISTENER CAN MOVE DURING THE BRIDGE'S LOAD (audit round 3,
+       player-core-2). A rendered bridge loads from a URL, 5-11 s on a hidden
+       page, and a pause or a stop in that window changes the state but not the
+       load, so `backend.play()` used to start the bridge anyway: a pause
+       undone from the car, or a line playing after Stop closed the player.
+       After the await, the bridge plays only if nothing newer loaded and the
+       machine is still transitioning to it. */
+    const seq = this._loadSeq;
+    const stillOurs = () => this._loadSeq === seq
+      && this.state.type === "transitioning" && this.state.to?.id === bridge.id;
     try {
       /* §7 item 1: a mid-Foray bridge is EXACTLY the shape a script-only
          narration item takes today (`next.item.kind === TTS` is what makes
@@ -2415,10 +2515,17 @@ export class PlayerQueueManager {
          `_targetIndex`, the bridge-specific "always starts at zero" — exactly
          as each already had it. */
       if (this._isSynthNarration(bridge)) {
+        const mine = ++this._speakIssued;
         await this._speakNarration(bridge);
+        if (!stillOurs()) {
+          return this._abandonSpeech(mine, `transitionTTS.superseded ${bridge.id} — the player moved on while speak() was in flight`);
+        }
         this._beginSynthNarration(bridge);
       } else {
         await this.backend.load(bridge, { startOffset: 0 });
+        if (!stillOurs()) {
+          return this._emit(`transitionTTS.superseded ${bridge.id} — loaded, but the player moved on; not started`);
+        }
         this._endSynthNarration();
         this.backend.play();
       }
@@ -2617,6 +2724,28 @@ function boundsOf(item) {
 
 /** Queue items are plain catalogue-shaped objects; the reducer only needs
     identity, kind, and (for a segment) the slice it occupies. */
+/** `queue-state.js`'s identity rule (id, kind and bounds), for the manager's
+    own staleness checks (audit round 3, player-core-4/9). */
+/** The item a state is about, as queue-state.js's `currentItem` reads it. */
+function focusOf(state) {
+  switch (state?.type) {
+    case "playing": return state.item;
+    case "transitioning": return state.to;
+    case "interrupted": return state.item;
+    case "loadingItem": return state.target;
+    default: return null;
+  }
+}
+
+function sameItemRef(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const ab = a.bounds ?? null;
+  const bb = b.bounds ?? null;
+  const sameBounds = ab === bb || (ab != null && bb != null && ab.startSec === bb.startSec && ab.endSec === bb.endSec);
+  return a.id === b.id && a.kind === b.kind && sameBounds;
+}
+
 function refOf(item) {
   return itemRef(item.id, item.kind ?? "episode", boundsOf(item));
 }

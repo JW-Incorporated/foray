@@ -5,6 +5,8 @@ import * as path from "path";
 import {
   DefaultEvidenceGatherer,
   EVIDENCE_MAX_PASSAGE_CHARS,
+  EVIDENCE_MAX_TAPE_CHARS,
+  TAPE_CUT_MARK,
   EVIDENCE_MAX_PRINT_PASSAGES,
   EVIDENCE_TAPE_WINDOW_SEC,
   beatKindOf,
@@ -17,6 +19,7 @@ import {
   titlesForItem
 } from "../src/generation/gatherEvidence";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
+import { BudgetExceededError } from "../src/cost/budgetGuard";
 import { EMPTY_EVIDENCE_TTL_MS, emptyEvidenceTtlMs, readEvidenceCache } from "../src/generation/evidenceCache";
 import { findHoldingDoc } from "../src/types/narration";
 import { leadingNounPhrase } from "../src/types/spine";
@@ -146,6 +149,123 @@ describe("cueWindowText — the tape a beat is anchored to, ±90 seconds of it",
     const justOutside: TranscriptCue[] = [{ text: "just outside", start_sec: 0, end_sec: tape.startSec - EVIDENCE_TAPE_WINDOW_SEC - 1 }];
     expect(cueWindowText(justInside, tape.startSec, tape.endSec)).toBe("just inside");
     expect(cueWindowText(justOutside, tape.startSec, tape.endSec)).toBe("");
+  });
+
+  /* gen-2 (round-3 audit): one cue per second of ~15 chars, like measured
+     speech. A 180 s clip padded by 90 s each side is ~5,400 chars, over the
+     3,000 cap. The old cut kept the pre-roll and dropped the clip's tail. */
+  const perSecond = (from: number, to: number, label: string): TranscriptCue[] =>
+    Array.from({ length: to - from }, (_, i) => ({ text: `${label}${from + i}xx`.padEnd(14, "x"), start_sec: from + i, end_sec: from + i + 0.9 }));
+
+  it("gen-2: keeps a long clip whole, shrinking the padding symmetrically to fit the cap", () => {
+    /* MUTATION THAT KILLS THIS: go back to cutting the joined window from
+       the end — "clip1179" (the clip's last second) is then missing. */
+    const cues = [...perSecond(1000 - 90, 1000, "pre"), ...perSecond(1000, 1180, "clip"), ...perSecond(1180, 1270, "post")];
+    const text = cueWindowText(cues, 1000, 1180);
+    expect(text.length).toBeLessThanOrEqual(EVIDENCE_MAX_TAPE_CHARS);
+    expect(text).toContain("clip1000xx");
+    expect(text).toContain("clip1179xx");
+    const pre = (text.match(/\bpre\d+/g) ?? []).length;
+    const post = (text.match(/\bpost\d+/g) ?? []).length;
+    expect(pre).toBeGreaterThan(0);
+    expect(Math.abs(pre - post)).toBeLessThanOrEqual(1);
+    expect(text).not.toContain(TAPE_CUT_MARK.trim());
+  });
+
+  it("gen-2: a clip over the cap by itself loses all padding and is cut with a visible mark", () => {
+    const cues = [...perSecond(900, 1000, "pre"), ...perSecond(1000, 1300, "clip"), ...perSecond(1300, 1400, "post")];
+    const text = cueWindowText(cues, 1000, 1300);
+    expect(text.length).toBeLessThanOrEqual(EVIDENCE_MAX_TAPE_CHARS);
+    expect(text.startsWith("clip1000xx")).toBe(true);
+    expect(text).not.toMatch(/\bpre\d+|\bpost\d+/);
+    expect(text.endsWith(TAPE_CUT_MARK)).toBe(true);
+  });
+});
+
+describe("gen-5: a failed retrieval is flagged, not passed off as an answer", () => {
+  class ThrowingRetriever implements ExternalResearcher {
+    readonly providerName = "throwing";
+    constructor(private readonly err: Error) {}
+    async research(): Promise<ExternalResearchResult> {
+      return { notes: "", controversies: [] };
+    }
+    async retrievePassages(): Promise<RetrievedPassage[]> {
+      throw this.err;
+    }
+  }
+
+  it("a 529 from retrieval gives an empty pack marked retrievalFailed (one query and two)", async () => {
+    /* MUTATION THAT KILLS THIS: drop `retrievalFailed` — a memo upstream then
+       keeps the empty pack for the whole run. */
+    const g = gatherer(new ThrowingRetriever(new Error("529 overloaded")));
+    const connective = await g.gather({ claim: "the bakestone came first" }, ctx);
+    expect(connective.docs).toEqual([]);
+    expect(connective.retrievalFailed).toBe(true);
+    const content = await g.gather({ claim: "the bakestone came first before the griddle arrived", requiresEvidence: true }, ctx);
+    expect(content.docs).toEqual([]);
+    expect(content.retrievalFailed).toBe(true);
+  });
+
+  it("an answered empty retrieval is a verdict, not a failure", async () => {
+    const pack = await gatherer(new FakeRetriever([])).gather({ claim: "the bakestone came first" }, ctx);
+    expect(pack.retrievalFailed).toBeUndefined();
+  });
+
+  it("a budget refusal propagates instead of degrading to an empty pack (one query and two)", async () => {
+    const g = gatherer(new ThrowingRetriever(new BudgetExceededError(1, 9.9, 0.2, 10)));
+    await expect(g.gather({ claim: "the bakestone came first" }, ctx)).rejects.toBeInstanceOf(BudgetExceededError);
+    await expect(g.gather({ claim: "the bakestone came first before the griddle arrived", requiresEvidence: true }, ctx)).rejects.toBeInstanceOf(
+      BudgetExceededError
+    );
+  });
+});
+
+/* Round-3 review (L5): in the two-query race, the winner branch returned before
+   the budget check, so a refusal met by the losing query was dropped and the
+   run kept spending after the guard said stop.
+   MUTATION: drop the settled budgetStop check in printEvidenceFor -- the
+   first gather resolves; drop the deferred hold -- the late refusal is lost
+   and the next gather resolves. */
+describe("a budget refusal from the losing query of the two-query race", () => {
+  const found: RetrievedPassage = { docId: "print:1", title: "Bread history", text: "The bakestone came first.", retrievedAt: "2026-09-09T12:00:00.000Z" };
+  class SplitRetriever implements ExternalResearcher {
+    readonly providerName = "split";
+    constructor(private readonly refuseFirst: boolean, private readonly lateRefusal: Promise<void> = Promise.resolve()) {}
+    async research(): Promise<ExternalResearchResult> {
+      return { notes: "", controversies: [] };
+    }
+    async retrievePassages(request: PassageRetrievalRequest): Promise<RetrievedPassage[]> {
+      const isClaim = request.claim === CLAIM;
+      if (isClaim) {
+        if (this.refuseFirst) throw new BudgetExceededError(1, 9.9, 0.2, 10);
+        await new Promise((r) => setTimeout(r, 5));
+        return [found];
+      }
+      if (this.refused) return [found];
+      await this.lateRefusal;
+      this.refused = true;
+      throw new BudgetExceededError(1, 9.9, 0.2, 10);
+    }
+    /** The loser refuses ONCE; any later retrieval would succeed, so only the
+     * held refusal can make the next gather throw. */
+    private refused = false;
+  }
+  const CLAIM = "the bakestone came first before the griddle arrived";
+
+  it("a refusal the loser has already met is thrown, not dropped behind the winner's documents", async () => {
+    await expect(gatherer(new SplitRetriever(false)).gather({ claim: CLAIM, requiresEvidence: true }, ctx)).rejects.toBeInstanceOf(BudgetExceededError);
+  });
+
+  it("a refusal the loser meets after the winner returned is thrown by the next gather", async () => {
+    let release: () => void = () => {};
+    const late = new Promise<void>((r) => (release = r));
+    const g = gatherer(new SplitRetriever(false, late));
+    // The winner lands first (5 ms), while the loser is still waiting.
+    const pack = await g.gather({ claim: CLAIM, requiresEvidence: true }, ctx);
+    expect(pack.docs.map((d) => d.title)).toEqual(["Bread history"]);
+    release();
+    await new Promise((r) => setTimeout(r, 0));
+    await expect(g.gather({ claim: "anything else at all", requiresEvidence: true }, ctx)).rejects.toBeInstanceOf(BudgetExceededError);
   });
 });
 

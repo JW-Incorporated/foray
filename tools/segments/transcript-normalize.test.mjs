@@ -128,6 +128,18 @@ test("JSON text is left alone by the markup stripper", () => {
   assert.equal(r.cues[0].text, "when x < 3 and y > 4 you get uplift");
 });
 
+/* Round-3 review (L8): sniffFormat looked past a leading BOM and parseJson did
+   not, so a BOM-prefixed JSON transcript (fetched, or read back from the raw
+   cache) was detected as JSON and then parsed to nothing.
+   MUTATION: drop the BOM strip in parseJson -- zero cues and a parse warning. */
+test("a JSON transcript with a leading byte-order mark parses like one without", () => {
+  const plain = fixture("podcasting20-basic.json");
+  const bom = "\uFEFF" + plain.replace(/^\uFEFF/, "");
+  const r = normalize(bom, "application/json");
+  assert.deepEqual(r.warnings, []);
+  assert.deepEqual(r.cues, normalize(plain, "application/json").cues);
+});
+
 test("unreadable JSON shapes warn instead of throwing", () => {
   for (const [body, why] of [
     ['{"foo":1}', "no segment array"],
@@ -268,7 +280,7 @@ test("empty and garbage input returns no cues plus a warning, never an exception
     "", "   ", "\n\n\n", "﻿",
     "not a transcript, just a sentence",
     "<html><body>404 Not Found</body></html>",
-    " ",
+    "\u0000\u0001\u0002",
     "-->",
     "WEBVTT",
     "{",
@@ -352,4 +364,15 @@ test("detectFormat falls back to the declared type when the body is unrecognisab
   assert.deepEqual(warnings, []);
   assert.equal(detectFormat("x", "TEXT/VTT; charset=utf-8").format, "vtt", "type params and case must not matter");
   assert.equal(detectFormat("x", "application/pdf").format, null);
+});
+
+/* Audit round 3, data-tools-13: cue text is decoded by the one entity decoder
+   in tools/ (tools/refresh/entities.mjs), not a private third copy. The copy
+   knew seven names, so a transcript's `&rsquo;` survived into the cue text.
+   MUTATION: restore the local seven-name decoder -- the apostrophe stays an
+   entity. */
+test("cue text entities go through the shared decoder", () => {
+  const body = "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nit&rsquo;s &#8220;fine&#8221; &amp; &#99999999; ok\n";
+  const r = normalize(body, "text/vtt");
+  assert.equal(r.cues[0].text, "it\u2019s \u201cfine\u201d & &#99999999; ok");
 });

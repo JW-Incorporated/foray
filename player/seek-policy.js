@@ -247,8 +247,15 @@ export function canPlaySegment(item, ctx) {
 
 /* ---------- rendering ---------- */
 
-function hms(totalSeconds) {
-  const s = Math.max(0, Math.round(totalSeconds));
+/** `m:ss`, or `h:mm:ss` past an hour: THE clock text, for an episode's
+    position (`formatTimestamp`), a Foray's (`foray-resolve.js` `fmtClock`) and
+    a chapter stamp (`app.js` `fmtChapterTime`, a classic script, pinned to
+    this by test/clock-formatters.test.js). FLOORED (audit round 3,
+    arch-drift-10): a live playhead shows the second it is in, so 3599.6 s of a
+    3600 s episode reads 59:59, not a finished 1:00:00 while audio still plays,
+    and the three surfaces no longer disagree about the same second. */
+export function hms(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
@@ -258,7 +265,9 @@ function hms(totalSeconds) {
 }
 
 /**
- * Render a timestamp for display. The ONLY approved way to show one.
+ * Render an episode timestamp for display, honest about its precision. The
+ * clock text itself is `hms` above, which the Foray clock (`fmtClock`) and the
+ * chapter stamps (`fmtChapterTime`) share; this adds the precision rule.
  *
  * Exact   -> "1:07:30"
  * Approx  -> "~68 min"

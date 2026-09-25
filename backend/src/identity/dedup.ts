@@ -17,13 +17,24 @@ const DURATION_TOLERANCE_SECONDS = 90;
 /** Lowercase, strip punctuation/bracketed noise tags, collapse whitespace. */
 export function normalizeTitle(title: string): string {
   return title
+    // Symbols first (™ ® © and the like): NFKD expands "™" to the LETTERS
+    // "TM", and now that letters in any script are kept, "Hard Fork™" would
+    // stop deduplicating with "Hard Fork" (round-3 review, L6).
+    .replace(/\p{S}/gu, " ")
+    // Decompose and strip every combining mark (diacritics in any script)
+    // BEFORE lowercasing: a compatibility letter ("ℌ", fullwidth "Ｆ")
+    // decomposes to an uppercase one, which lowercasing first left behind.
+    // The app and the API fold in this order too.
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
     .toLowerCase()
     // strip bracketed/parenthesized noise commonly added per-feed-variant,
     // e.g. "(Video)", "[Explicit]", "(Audio Only)"
     .replace(/[([][^()[\]]*\b(video|audio|explicit|clean|re-?release|repost)\b[^()[\]]*[)\]]/gi, " ")
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "") // strip diacritics
-    .replace(/[^a-z0-9]+/g, " ")
+    // Keep letters and digits in ANY script. The old ASCII-only class deleted
+    // CJK, Cyrillic, Greek and Arabic outright, so non-Latin titles never
+    // deduplicated and all shared one identity key (backend-rest-22).
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .replace(/\s+/g, " ");
 }

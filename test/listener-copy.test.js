@@ -201,7 +201,7 @@ const STALE = [
      must follow the mechanism: no user-facing language implying we produce a
      new audio file". A foray plays each moment from the show's own feed. */
   ["stitching", /stitch/i, "the 2026-08-11 playback ruling: no copy implying we produce a new audio file"],
-  ["clipping", /we clip|clip the best/i, "the 2026-08-11 playback ruling, same reason"],
+  ["clipping", /\bwe clip\b|\bclip the best\b/i, "the 2026-08-11 playback ruling, same reason"],
 ];
 
 /* MUTATION: restore any one of the stale strings (e.g. "Pull to refresh." in
@@ -527,4 +527,22 @@ test("a down-vote moves the subject's weight only when its reason is about the s
   const before = state.interests["business/startups"];
   ctx.setFeedback(entry(3), "up");
   assert.ok(state.interests["business/startups"] > before, "a thumbs-up still does");
+});
+
+/* app-3-8 (audit round 3): the voice sheet said Preview plays "at your
+   playback speed" after auditions moved to NARRATION_RATE (1x, founder
+   2026-09-24). The sentence and the rate are pinned together so they cannot
+   drift again. MUTATION: put "at your playback speed" back, or give
+   auditionVoice a rate other than NARRATION_RATE. */
+test("app-3-8: the voice sheet's subtitle says Preview speaks at the narration speed, and it does", () => {
+  const sub = /const VOICE_SHEET_SUB = "([^"]+)";/.exec(APP_SRC);
+  assert.ok(sub, "the voice sheet subtitle is one named constant");
+  assert.strictEqual(sub[1], "Pick which voice reads 4a's narration. Tap Preview to hear it count to ten, at the speed narration uses.");
+  const copy = literals(APP_SRC).map((l) => l.text).join("\n");
+  assert.ok(!/at your playback speed/i.test(copy), "a string still promises a Preview at the listener's playback speed");
+  const client = read("player/client.js");
+  const audition = /\n  auditionVoice\(text, voiceId\) \{\n([\s\S]*?)\n  \},/.exec(client);
+  assert.ok(audition, "auditionVoice(text, voiceId) is where this test looks for it");
+  assert.match(audition[1], /rate: NARRATION_RATE\b/, "Preview no longer speaks at the narration rate the subtitle names");
+  assert.match(read("player/queue-manager.js"), /export const NARRATION_RATE = 1;/, "NARRATION_RATE moved: re-read the subtitle");
 });

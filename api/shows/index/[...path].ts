@@ -149,6 +149,46 @@ export function resolveShardRelease(shardReleases: ShardRelease[] | undefined, k
 /** Repo-relative pointer path, overridable for tests the same way
  *  `api/episodes/search.ts`'s `_setShowMetaRootForTests` overrides its own
  *  root — see that file's convention note. */
+/* Upstream bounds (round-3 audit, search-api-css-7). Release assets are
+   capped by the pipeline's SHARD_TOO_LARGE budget far below these; the caps
+   exist so a wrong or hostile upstream cannot hold or exhaust the function. */
+export const UPSTREAM_TIMEOUT_MS = 5_000;
+export const MAX_UPSTREAM_BYTES = 16 * 1024 * 1024;
+export const MAX_DECOMPRESSED_BYTES = 64 * 1024 * 1024;
+export const INDEX_CACHE_CONTROL = "public, max-age=300";
+let upstreamTimeoutMs = UPSTREAM_TIMEOUT_MS;
+
+/** Test-only: shorten the upstream deadline; no argument restores it. */
+export function _setUpstreamTimeoutMsForTests(ms?: number): void {
+  upstreamTimeoutMs = ms ?? UPSTREAM_TIMEOUT_MS;
+}
+
+/** The response body, refusing more than `cap` bytes (a declared length over
+    the cap is refused before reading). */
+async function readCapped(res: Response, cap: number): Promise<Buffer> {
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > cap) throw new Error(`asset is ${declared} bytes, over the ${cap}-byte cap`);
+  if (!res.body) {
+    const whole = Buffer.from(await res.arrayBuffer());
+    if (whole.length > cap) throw new Error(`asset exceeds the ${cap}-byte cap`);
+    return whole;
+  }
+  const reader = res.body.getReader();
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > cap) {
+      await reader.cancel().catch(() => {});
+      throw new Error(`asset exceeds the ${cap}-byte cap`);
+    }
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks);
+}
+
 let pointerPath = path.resolve(__dirname, "..", "..", "..", "data", "shows-index-pointer.json");
 
 export function _setPointerPathForTests(absPath?: string): void {
@@ -260,24 +300,34 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   }
 
   const upstreamUrl = `${upstreamBase}/${upstreamAsset}`;
-  let upstreamRes: Response;
+  /* BOUNDED (round-3 audit, search-api-css-7). The upstream fetch had no
+     timeout, so a hung GitHub redirect held the function until the platform
+     killed it, and `arrayBuffer()` sat outside any try, so a body that failed
+     mid-read was a 500 instead of this endpoint's 502 contract. The fetch AND
+     the body read now share one UPSTREAM_TIMEOUT_MS deadline, the bytes read
+     are capped, and gunzip is capped too. */
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), upstreamTimeoutMs);
+  let raw: Buffer;
   try {
-    upstreamRes = await fetch(upstreamUrl);
+    const upstreamRes = await fetch(upstreamUrl, { signal: controller.signal });
+    if (!upstreamRes.ok) {
+      res.setHeader("Cache-Control", "no-store");
+      res.status(502).json({ available: false, error: `upstream responded ${upstreamRes.status}` });
+      return;
+    }
+    raw = await readCapped(upstreamRes, MAX_UPSTREAM_BYTES);
   } catch (err) {
     res.setHeader("Cache-Control", "no-store");
     res.status(502).json({ available: false, error: `upstream fetch failed: ${(err as Error).message}` });
     return;
-  }
-  if (!upstreamRes.ok) {
-    res.setHeader("Cache-Control", "no-store");
-    res.status(502).json({ available: false, error: `upstream responded ${upstreamRes.status}` });
-    return;
+  } finally {
+    clearTimeout(timer);
   }
 
-  const raw = Buffer.from(await upstreamRes.arrayBuffer());
   let jsonText: string;
   try {
-    jsonText = (isGzippedAsset(requestPath) ? zlib.gunzipSync(raw) : raw).toString("utf8");
+    jsonText = (isGzippedAsset(requestPath) ? zlib.gunzipSync(raw, { maxOutputLength: MAX_DECOMPRESSED_BYTES }) : raw).toString("utf8");
   } catch (err) {
     res.setHeader("Cache-Control", "no-store");
     res.status(502).json({ available: false, error: `upstream asset failed to decompress: ${(err as Error).message}` });
@@ -297,15 +347,17 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  // Content-addressed by the release tag (one immutable release per
-  // export_version, S-04b's idempotency contract) — safe to cache hard.
+  // NOT immutable (round-3 audit, search-api-css-7). The release behind this
+  // URL is immutable, but the URL does not carry the release tag: a pointer
+  // bump serves different bytes at the same URL, and `immutable` told a
+  // browser never to revalidate it for an hour. A short max-age instead.
   // `X-Shows-Index-Version` carries the pointer's own `release_tag` (S-04c)
   // so the client's Cache Storage layer (`app.js`'s `readShardFromCacheStorage`/
   // `writeShardToCacheStorage`) can tag a cached entry with the version that
   // produced it and detect staleness on a later pointer bump, without a
   // second round trip to fetch `manifest.json`/the pointer separately —
   // see this file's header, FR-t_546eac9f-2.
-  res.setHeader("Cache-Control", "public, max-age=3600, immutable");
+  res.setHeader("Cache-Control", INDEX_CACHE_CONTROL);
   if (pointer.release_tag) res.setHeader("X-Shows-Index-Version", pointer.release_tag);
   res.status(200);
   res.json(parsed);

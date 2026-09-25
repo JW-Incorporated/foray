@@ -176,21 +176,33 @@ export const GENERIC_LABEL_WORDS = new Set([
   "world"
 ]);
 
+/* gen-15 (round-3 audit): both caches remember WHICH root they were read
+   from. They used to return the first root's data for every later root, and
+   ignored FORAY_SKIP_CATALOGUE_CACHE, unlike their sibling loaders. */
 let cachedNodes: TaxonomyNode[] | null = null;
+let cachedNodesRoot: string | null = null;
 let cachedConceptTerms: Map<string, Map<string, number>> | null = null;
+let cachedConceptTermsRoot: string | null = null;
+
+function cacheUsable(cachedRoot: string | null, root: string): boolean {
+  return cachedRoot === root && process.env.FORAY_SKIP_CATALOGUE_CACHE !== "1";
+}
 
 export function loadTaxonomyNodes(root: string = REPO_ROOT): TaxonomyNode[] {
-  if (cachedNodes) return cachedNodes;
+  if (cachedNodes && cacheUsable(cachedNodesRoot, root)) return cachedNodes;
   const raw = fs.readFileSync(path.join(root, "data", "taxonomy.json"), "utf8");
   const parsed = JSON.parse(raw) as { nodes: TaxonomyNode[] };
   cachedNodes = parsed.nodes;
+  cachedNodesRoot = root;
   return cachedNodes;
 }
 
 /** Test seam — the module-level cache would otherwise leak one test's fixture into the next. */
 export function resetTaxonomyCache(): void {
   cachedNodes = null;
+  cachedNodesRoot = null;
   cachedConceptTerms = null;
+  cachedConceptTermsRoot = null;
 }
 
 /** A node's searchable tokens: its id path segments plus its human label. */
@@ -240,7 +252,7 @@ function addTerm(into: NodeTermWeights, nodeId: string, term: string, weight: nu
  * without `data/` is a real case (see `researchShape.resolveFilterTopic`).
  */
 export function loadConceptTermWeights(root: string = REPO_ROOT): NodeTermWeights {
-  if (cachedConceptTerms) return cachedConceptTerms;
+  if (cachedConceptTerms && cacheUsable(cachedConceptTermsRoot, root)) return cachedConceptTerms;
   const weights: NodeTermWeights = new Map();
   try {
     const file = path.join(root, "data", "semantic-index.json");
@@ -266,6 +278,7 @@ export function loadConceptTermWeights(root: string = REPO_ROOT): NodeTermWeight
     /* An unreadable semantic index means "no advertised phrases", not a crash. */
   }
   cachedConceptTerms = weights;
+  cachedConceptTermsRoot = root;
   return weights;
 }
 

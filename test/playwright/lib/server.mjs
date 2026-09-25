@@ -31,6 +31,22 @@ function computeManifest(files) {
   return { deploy_id: deployId, files: filesObj };
 }
 
+/* THE WORKER'S OWN BYTES FOLLOW THE DEPLOY (round-3 audit, tests-1). A browser
+   re-runs install() only when the fetched sw.js differs byte for byte from the
+   registered copy (sw.js's BUILD_ID header). The production build stamps
+   BUILD_ID with the deploy id (tools/ci/generate-manifest.mjs stampBuild); this
+   fixture used to serve the copied sw.js verbatim, so a setFiles() "new deploy"
+   never changed its bytes, update() was a no-op, and every "the old generation
+   survives" spec passed without a second install ever running. Served here with
+   BUILD_ID replaced by the deploy id of the manifest currently being served
+   (the frozen one included), exactly as a stamped deploy would. */
+export const BUILD_ID_RE = /const BUILD_ID = "[^"]*";/;
+
+export function stampSw(src, deployId) {
+  if (!BUILD_ID_RE.test(src)) throw new Error("fixture sw.js has no BUILD_ID line to stamp");
+  return src.replace(BUILD_ID_RE, `const BUILD_ID = "${deployId}";`);
+}
+
 function contentType(p) {
   if (p.endsWith(".html")) return "text/html; charset=utf-8";
   if (p.endsWith(".js")) return "application/javascript; charset=utf-8";
@@ -90,6 +106,11 @@ export function startFixtureServer(initialFiles) {
       const manifest = manifestOverride || computeManifest(files);
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(manifest));
+      return;
+    }
+    if (p === "sw.js" && Object.prototype.hasOwnProperty.call(files, p)) {
+      res.writeHead(200, { "content-type": contentType(p) });
+      res.end(stampSw(files[p], (manifestOverride || computeManifest(files)).deploy_id));
       return;
     }
     if (Object.prototype.hasOwnProperty.call(files, p)) {

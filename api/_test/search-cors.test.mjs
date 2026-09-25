@@ -1,5 +1,5 @@
 // api/shows/search.ts CORS wiring test (S-02, kanban t_4bd3c0a3) — see
-// api/test/cors.test.mjs for the shared-module unit tests; this only
+// api/_test/cors.test.mjs for the shared-module unit tests; this only
 // confirms the endpoint actually calls applyCors.
 import { test } from "node:test";
 import assert from "node:assert";

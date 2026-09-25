@@ -11,6 +11,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
+import { sharedFeedReader } from "../_lib/feedCache.ts";
 
 // tsx's ESM/CJS interop for a `export default` TS file can present the
 // default export nested (`{ default: handler }`) depending on the loader
@@ -71,6 +72,9 @@ function mockRes() {
 function withMockedFetch(impl, run) {
   const original = globalThis.fetch;
   globalThis.fetch = impl;
+  /* The parsed feed is kept per show (search-api-css-3); each test brings its
+     own feed, so none may answer from another test's copy. */
+  sharedFeedReader.clear();
   return Promise.resolve(run()).finally(() => {
     globalThis.fetch = original;
   });
@@ -177,4 +181,33 @@ test("missing show_id is 400", async () => {
     await handler(req, res);
     assert.strictEqual(res.statusCode, 400);
   });
+});
+
+/* Round-3 review (L4): the live branch ignored feed.source, so a kept copy the
+   feed cache served because a refresh was refused or failed went out as
+   stale:false and pinned at the edge for an hour.
+   MUTATION: emit `stale: false` and the s-maxage header unconditionally again. */
+test("a kept copy served after a refused or failed refresh says stale:true and is not edge-cached", async () => {
+  await withoutDatabaseUrl(() =>
+    withMockedFetch(
+      async () => new Response(FEED_TWO_EPS, { status: 200, headers: { "content-type": "application/rss+xml" } }),
+      async () => {
+        const realRead = sharedFeedReader.read;
+        const fresh = await realRead(REAL_SHOW_ID, "https://unused.example/feed");
+        assert.ok(fresh.parsed, "premise: the fixture feed parses");
+        sharedFeedReader.read = async () => ({ ...fresh, source: "stale" });
+        try {
+          const res = mockRes();
+          await handler({ method: "GET", query: { show_id: REAL_SHOW_ID }, headers: {} }, res);
+          assert.strictEqual(res.statusCode, 200);
+          assert.strictEqual(res.body.episodes.length, 2, "the kept copy is still served");
+          assert.strictEqual(res.body.stale, true);
+          assert.strictEqual(res.body.degraded, false);
+          assert.strictEqual(res.headers["Cache-Control"], "no-store");
+        } finally {
+          sharedFeedReader.read = realRead;
+        }
+      }
+    )
+  );
 });

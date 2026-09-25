@@ -611,6 +611,44 @@ test("NATIVE: setContinuation reaches the engine, and an advance it walks is app
   assert.equal(find(h.doc.body, "fp-title").textContent, "Ep B", "the bar names the episode the engine moved to");
 });
 
+test("NATIVE: with Continuous playback off an episode that ends is announced to the page, which takes it off Up Next (round-3 review, L1)", async (t) => {
+  /* app-1-9 removed the finished row in app.js advanceQueueOnEnded, fed only
+     by onEpisodeEnded, which returned early in native mode: with the switch
+     off the engine walks no hop, so no `advanced` reached the page and the row
+     stayed on iOS. KILLING MUTATION: return early for every native end again
+     -- `ended` stays empty. And with the switch on the engine walks and the
+     page is NOT told (it would start the next episode twice). */
+  const h = await bootNative(t);
+  assert.equal(await h.client.whenEngineReady(), "native");
+  const ended = [];
+  h.client.onEpisodeEnded((id) => ended.push(id));
+  await h.client.play(episode());
+  assert.equal(await h.client.setContinuation({ planSeq: 3, autoAdvance: false, chain: [] }), true);
+  await h.ref.deck("ended");
+  await drain(20);
+  h.scheduler.runAll();                 // the engine's coalesced snapshot goes out
+  await drain(20);
+  assert.deepEqual(ended, ["ep-a"], "the page heard the end it has to act on");
+});
+
+test("NATIVE: with Continuous playback on the engine walks at an end, and the page is not told a second time (round-3 review, L1)", async (t) => {
+  const on = await bootNative(t);
+  assert.equal(await on.client.whenEngineReady(), "native");
+  const endedOn = [];
+  on.client.onEpisodeEnded((id) => endedOn.push(id));
+  await on.client.play(episode());
+  const epB = episode("ep-b", "Ep B");
+  await on.client.setContinuation({
+    planSeq: 4, autoAdvance: true,
+    chain: [{ planSeq: 4, hopSeq: 1, finishedId: "ep-a", nextId: "ep-b", fromList: false, queueAfter: [], item: epB, lastEpisodeRow: { id: "ep-b", title: "Ep B" } }],
+  });
+  await on.ref.deck("ended");
+  await drain(20);
+  on.scheduler.runAll();
+  await drain(20);
+  assert.deepEqual(endedOn, [], "with the switch on the engine walks, and the page is not told a second time");
+});
+
 test("NATIVE: a play superseded while the engine loads answers false; the one that replaced it answers true", async (t) => {
   /* transport-reconcile's ROUND 2 p-impatient-2, in native mode (facades.json
      maps it here): `play()` answers for THIS item, not for whoever owns the

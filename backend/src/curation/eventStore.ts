@@ -1,5 +1,5 @@
 import type { Client } from "pg";
-import { parseEventRow, type EventRow } from "../types/events";
+import { SlotlessPickedRowSchema, parseEventRow, safeParseEventRow, type EventRow } from "../types/events";
 
 /**
  * Read/write access to the `events` table (0009_events.sql). Pluggable-sink
@@ -23,6 +23,66 @@ export type PersistedEvent = EventRow & {
   ts: string;
 };
 
+/** A fetched row that failed the event contract (backend-rest-3). */
+export interface InvalidEventRow {
+  id: string;
+  ts: string;
+  reason: string;
+}
+
+/**
+ * One page of a user's events after a cursor. `events` holds only rows that
+ * pass the event contract; `invalid` the ones that did not. `last` is the
+ * (ts, id) of the last row fetched, VALID OR NOT, so the job can move its
+ * cursor past a malformed row instead of re-reading it on every run.
+ */
+export interface EventPage {
+  events: PersistedEvent[];
+  invalid: InvalidEventRow[];
+  last: { ts: string; id: string } | null;
+}
+
+/**
+ * Postgres timestamptz is microsecond-precise; a JS Date is not. The cursor
+ * must carry the full value, or `ts > cursor` re-selects the last event on
+ * every run (backend-rest-2). So ts is always read as this text.
+ */
+export const TS_TEXT_SQL = `to_char(ts at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+
+/**
+ * Validates one raw row against the event contract. Never throws: a row a
+ * client wrote with no topics, or topics as a string, used to crash the
+ * learning job and stall the user's cursor for good (backend-rest-3).
+ */
+export function toPersistedEvent(
+  row: { id: string; ts: string } & Record<string, unknown>
+): { ok: true; event: PersistedEvent } | { ok: false; invalid: InvalidEventRow } {
+  /* The shipped web client puts a card's slot in the row's `archetype`
+     column, not in the payload the contract puts it in (events-client-
+     integration-spec.md, the `picked` row's "add archetype" note). Read it
+     from the column when the payload lacks it, so a real pick is not thrown
+     away over where one field was written. */
+  const payload = row.payload;
+  const input =
+    payload && typeof payload === "object" && !Array.isArray(payload) && (payload as Record<string, unknown>).archetype === undefined && typeof row.archetype === "string"
+      ? { ...row, payload: { ...(payload as Record<string, unknown>), archetype: row.archetype } }
+      : row;
+  const parsed = safeParseEventRow(input);
+  if (!parsed.success) {
+    /* A pick from a card in no menu slot (Jump back in, Up Next) carries no
+       slot at all. It is a real pick with the slot unknown, not a broken row:
+       the deriver already reads a missing slot as null. */
+    const slotless = SlotlessPickedRowSchema.safeParse(input);
+    if (slotless.success) {
+      return { ok: true, event: { ...slotless.data, id: row.id, ts: row.ts } as unknown as PersistedEvent };
+    }
+    const issue = parsed.error.issues[0];
+    const reason = issue ? `${issue.path.join(".") || "(row)"}: ${issue.message}` : "invalid event row";
+    return { ok: false, invalid: { id: row.id, ts: row.ts, reason } };
+  }
+  return { ok: true, event: { ...parsed.data, id: row.id, ts: row.ts } as PersistedEvent };
+}
+
 export interface EventStore {
   /** Validates and persists one event row. */
   record(input: EventRow): Promise<PersistedEvent>;
@@ -35,6 +95,9 @@ export interface EventStore {
    * user's full history (first run / no cursor yet).
    */
   fetchSince(userId: string, afterTs: string | null, afterId: string | null, limit?: number): Promise<PersistedEvent[]>;
+
+  /** fetchSince plus the rows that failed validation and the last (ts, id) fetched — the learning job's read path. */
+  fetchPage(userId: string, afterTs: string | null, afterId: string | null, limit?: number): Promise<EventPage>;
 
   /** Test/debug helper — every event ever recorded, insertion order. */
   all(): Promise<PersistedEvent[]>;
@@ -81,6 +144,12 @@ export class InMemoryEventStore implements EventStore {
       .slice(0, limit);
   }
 
+  async fetchPage(userId: string, afterTs: string | null, afterId: string | null, limit = 1000): Promise<EventPage> {
+    const events = await this.fetchSince(userId, afterTs, afterId, limit);
+    const last = events[events.length - 1];
+    return { events, invalid: [], last: last ? { ts: last.ts, id: last.id } : null };
+  }
+
   async all(): Promise<PersistedEvent[]> {
     return [...this.events];
   }
@@ -99,7 +168,7 @@ export class PostgresEventStore implements EventStore {
     const result = await this.client.query<{
       id: string;
       user_id: string;
-      ts: string;
+      ts_text: string;
       type: string;
       session_id: string | null;
       episode_id: string | null;
@@ -108,7 +177,7 @@ export class PostgresEventStore implements EventStore {
     }>(
       `insert into events (user_id, type, session_id, episode_id, archetype, payload)
        values ($1, $2, $3, $4, $5, $6)
-       returning id, user_id, ts, type, session_id, episode_id, archetype, payload`,
+       returning id, user_id, ${TS_TEXT_SQL} as ts_text, type, session_id, episode_id, archetype, payload`,
       [
         validated.user_id,
         validated.type,
@@ -122,7 +191,7 @@ export class PostgresEventStore implements EventStore {
     return {
       ...validated,
       id: row.id,
-      ts: new Date(row.ts).toISOString()
+      ts: row.ts_text
     } as PersistedEvent;
   }
 
@@ -132,17 +201,21 @@ export class PostgresEventStore implements EventStore {
     afterId: string | null,
     limit = 1000
   ): Promise<PersistedEvent[]> {
+    return (await this.fetchPage(userId, afterTs, afterId, limit)).events;
+  }
+
+  async fetchPage(userId: string, afterTs: string | null, afterId: string | null, limit = 1000): Promise<EventPage> {
     const result = await this.client.query<{
       id: string;
       user_id: string;
-      ts: string;
+      ts_text: string;
       type: string;
       session_id: string | null;
       episode_id: string | null;
       archetype: string | null;
       payload: unknown;
     }>(
-      `select id, user_id, ts, type, session_id, episode_id, archetype, payload
+      `select id, user_id, ${TS_TEXT_SQL} as ts_text, type, session_id, episode_id, archetype, payload
        from events
        where user_id = $1
          and (
@@ -154,19 +227,24 @@ export class PostgresEventStore implements EventStore {
        limit $4`,
       [userId, afterTs, afterId, limit]
     );
-    return result.rows.map(
-      (row) =>
-        ({
-          id: row.id,
-          user_id: row.user_id,
-          ts: new Date(row.ts).toISOString(),
-          type: row.type,
-          session_id: row.session_id as null,
-          episode_id: row.episode_id as null,
-          archetype: row.archetype,
-          payload: row.payload
-        }) as PersistedEvent
-    );
+    const events: PersistedEvent[] = [];
+    const invalid: InvalidEventRow[] = [];
+    for (const row of result.rows) {
+      const checked = toPersistedEvent({
+        id: row.id,
+        user_id: row.user_id,
+        ts: row.ts_text,
+        type: row.type,
+        session_id: row.session_id,
+        episode_id: row.episode_id,
+        archetype: row.archetype,
+        payload: row.payload
+      });
+      if (checked.ok) events.push(checked.event);
+      else invalid.push(checked.invalid);
+    }
+    const lastRow = result.rows[result.rows.length - 1];
+    return { events, invalid, last: lastRow ? { ts: lastRow.ts_text, id: lastRow.id } : null };
   }
 
   /** Debug helper only (small fixtures/manual inspection) — the job never calls this. */

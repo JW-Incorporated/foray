@@ -35,6 +35,7 @@ import {
   selectTargets,
   transcriptPath,
 } from "./fetch-transcripts.mjs";
+import { normalize } from "./transcript-normalize.mjs";
 
 const show = (over) => ({
   show_id: "s",
@@ -268,4 +269,41 @@ test("distinct guids get distinct keys even when they slug the same", () => {
   assert.notEqual(safeKey("Episode: One!"), safeKey("Episode - One"));
   assert.equal(safeKey("g1"), safeKey("g1"));
   assert.match(safeKey("!!!"), /^[0-9a-f]{10}$/, "an unsluggable guid still yields a key");
+});
+
+/* Audit round 3, data-tools-7: the byte ceiling was checked only after
+   res.text() had buffered the whole body. It is now counted while streaming.
+   MUTATION: go back to `await res.text()` -- all 40 MB are pulled. */
+test("an undeclared oversize transcript is cut off at the ceiling, not buffered whole", async () => {
+  const total = 40 * 1024 * 1024;
+  let pulled = 0;
+  const body = new ReadableStream({
+    pull(c) {
+      if (pulled >= total) return c.close();
+      pulled += 1024 * 1024;
+      c.enqueue(new Uint8Array(1024 * 1024));
+    },
+  }, { highWaterMark: 0 });
+  const response = new Response(body, { status: 200, headers: { "content-type": "text/vtt" } });
+  await assert.rejects(
+    () => fetchBody("https://t/endless.vtt", { attempts: 1, fetchImpl: async () => response }),
+    (e) => e instanceof FetchError && e.code === "TOO_LARGE",
+  );
+  assert.ok(pulled <= MAX_BODY_BYTES + 2 * 1024 * 1024, `pulled ${pulled} bytes past a ${MAX_BODY_BYTES}-byte ceiling`);
+});
+
+/* Round-3 review (L8): moving the read to readBodyCapped kept a leading BOM
+   that res.text() used to strip, and parseJson then threw on it, so a
+   BOM-prefixed JSON transcript normalised to zero cues.
+   MUTATION: in fetch-limits.mjs readBodyCapped, decode with
+   Buffer.concat(...).toString("utf8") -- cues drops to 0. */
+test("a JSON transcript that starts with a byte-order mark still yields its cues", async () => {
+  const json = JSON.stringify({ segments: [{ start: 1, end: 3, text: "hello there" }] });
+  const bytes = new Uint8Array([0xef, 0xbb, 0xbf, ...Buffer.from(json)]);
+  const response = new Response(bytes, { status: 200, headers: { "content-type": "application/json" } });
+  const { text } = await fetchBody("https://t/bom.json", { attempts: 1, fetchImpl: async () => response });
+  // The raw text is what lands in the transcript cache, so it must be clean.
+  assert.notEqual(text.charCodeAt(0), 0xfeff, "the cached raw body keeps the BOM");
+  const out = normalize(text, "application/json");
+  assert.equal(out.cues.length, 1, JSON.stringify(out.warnings));
 });
