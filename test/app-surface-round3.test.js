@@ -319,3 +319,27 @@ test("app-2-10: panel drag-to-dismiss captures the pointer, and a lost capture e
   panel.dispatch("pointerdown", { pointerId: 2, pointerType: "mouse", button: 0, clientY: 10, timeStamp: 3, target });
   assert.deepStrictEqual(captured, [1, 2], "and the next press is not ignored");
 });
+
+/* ---------- app-2-1: Home's Jump back in never thins a rich entry ------------- */
+
+test("app-2-1: lastEpisodeCard seeds the player's pointer only when the index has nothing richer", () => {
+  /* The pointer carries id/title/show/artwork/audio/duration only. Home calls
+     lastEpisodeCard() on every render, and it snapshotted the pointer over the
+     episode's full pool/show-page entry, so the episode page lost its notes,
+     chapters, date and topics for the session (fullPool is memoised and never
+     re-seeds).
+     MUTATION: restore the unguarded `snapshot(r.id, r)` — red. */
+  const m = loadApp();
+  const pointer = { id: "ep-1", title: "Ep One", show: "Show", audio_url: "https://cdn.test/1.mp3", duration_sec: 600, percent: 40, label: "6 min left", updated_at: "2026-09-25T00:00:00Z" };
+  m.ctx.ForayPlayer = { lastEpisodeCard: () => ({ ...pointer }) };
+  m.run(`state.itemIndex["ep-1"] = { id: "ep-1", title: "Ep One", show: "Show", audio_url: "https://cdn.test/1.mp3", description: "Full notes", topics: ["science"], release_date: "2026-09-01", chapters: [{ t: 0 }] };`);
+  const card = m.ctx.lastEpisodeCard();
+  assert.strictEqual(card.id, "ep-1");
+  const kept = m.run(`state.itemIndex["ep-1"]`);
+  assert.strictEqual(kept.description, "Full notes", "the rich entry survives Home's render");
+  assert.deepStrictEqual(Array.from(kept.topics), ["science"]);
+  /* With nothing in the index the pointer is still seeded, so the card can play. */
+  m.run(`delete state.itemIndex["ep-1"];`);
+  m.ctx.lastEpisodeCard();
+  assert.strictEqual(m.run(`state.itemIndex["ep-1"].audio_url`), "https://cdn.test/1.mp3");
+});

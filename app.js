@@ -9486,8 +9486,13 @@ function lastEpisodeCard() {
     if (!r) return null;
     /* Seeded into the item index so a tap can play it without waiting for a
        catalogue that may not hold it at all — the pointer's snapshot carries
-       `audio_url` precisely so this is possible. */
-    snapshot(r.id, r);
+       `audio_url` precisely so this is possible.
+       NEVER OVER A RICHER ENTRY (audit round 3, app-2-1), exactly as
+       playerPointerEpisode seeds it: the pointer carries seven fields, and
+       Home renders on every open, so an unguarded snapshot replaced the played
+       episode's pool or show-page entry — notes, chapters, date, topics — with
+       the thin pointer for the rest of the session. */
+    if (!state.itemIndex[r.id]) snapshot(r.id, r);
     return {
       /* `item` is the snapshot itself, carried so the card can render a play
          button: `playBtn` needs `audio_url` to decide whether to render at all,
