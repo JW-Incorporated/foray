@@ -91,12 +91,19 @@ struct OutpointRunner: FamilyRunner {
 
     func run(_ testCase: FixtureCase, in file: FixtureFile, context: Codec.Context) throws -> JSONValue {
         guard testCase.kind == .scenario else { return try pure.run(testCase, in: file, context: context) }
+        return try DeckWorld.run(testCase, context: context, family: family)
+    }
+}
+
+extension DeckWorld {
+    /// runner.js `runDeckScenario`: the steps over a fresh world, then `end`.
+    static func run(_ testCase: FixtureCase, context: Codec.Context, family: String) throws -> JSONValue {
         guard let rawSetup = testCase.fields["setup"], let rawSteps = testCase.fields["steps"]?.arrayValue else {
             throw HarnessError("E_BAD_CASE", "case \(testCase.id) is not a scenario")
         }
         let setup = try Codec.expandInputs(rawSetup, context)
         guard setup["target"] == .string("deck") else {
-            throw HarnessError("E_SCENARIO_TARGET", "the Swift outpoint family drives the deck target only, not \(setup["target"])")
+            throw HarnessError("E_SCENARIO_TARGET", "the Swift \(family) family drives the deck target only, not \(setup["target"])")
         }
         let world = DeckWorld()
         if setup["rate"] != .undefined { world.dispatch(.rate(setup["rate"].numberValue, atSec: world.atSec, nowMs: world.nowMs)) }
@@ -124,7 +131,7 @@ struct OutpointRunner: FamilyRunner {
 
 /// runner.js `runDeckScenario`'s locals, as one object every step mutates.
 final class DeckWorld {
-    static let events = ["load", "play", "pause", "seek", "rate", "stall", "unstall", "endTime", "boundary"]
+    static let events = ["load", "play", "pause", "seek", "rate", "stall", "unstall", "endTime", "boundary", "ended"]
 
     var state = DeckPolicy.OutPointWatch()
     var nowMs: Double = 0
@@ -194,6 +201,11 @@ final class DeckWorld {
             }
             let layer: DeckPolicy.OutPointLayer = event == "endTime" ? .endTime : .boundary
             dispatch(.layer(layer, token: token, atSec: atSec, nowMs: nowMs))
+        case "ended":
+            // NE-30j: the FILE ran out (an authored end past the real audio).
+            guard loads > 0 else { throw HarnessError("E_BAD_CASE", "an end with nothing loaded") }
+            if step["sec"] != .undefined { atMs = DeckWorld.toMs(step["sec"].toNumber) }
+            dispatch(.ended(atSec: atSec))
         default:
             throw HarnessError("E_BAD_CASE", "unknown deck event \"\(event)\" (one of \(DeckWorld.events.joined(separator: ", ")))")
         }

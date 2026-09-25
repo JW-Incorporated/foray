@@ -263,12 +263,13 @@ test("NE-29j/NE-29s: foray-progress and media-session owe nothing, the Foray fam
     and audition, owed to NE-31s rather than NE-30s. */
 const NE31J_NARRATION_FILES = Object.freeze(["narration.json", "jingle.json", "audition.json"].map((f) => `player/parity/fixtures/manager-foray/${f}`));
 
-test("NE-30j: html-audio-backend and foray-playback owe nothing, the tape/deck/prepare families are owed to NE-30s and the pair's decisions to NE-32, and prepare is authored with its n.* tokens", () => {
+test("NE-30j/NE-30s: html-audio-backend and foray-playback owe nothing, the tape/deck/prepare families are burned down by NE-30s leaving only the pair's decisions owed to NE-32, and prepare is authored with its n.* tokens", () => {
   /* NE-30j's acceptance: "the families pass in JS (prepare against
      reference-engine). The guard shows zero unported entries for
      html-audio-backend and foray-playback, apart from those tagged NE-31j and
      NE-39j." MUTATION: put a foray-playback test back in unported.json -> red;
-     re-tag a manager-foray id to NE-30j in swift-pending.json -> red; un-author a
+     put a manager-foray id back in swift-pending.json (NE-30s burned the tape,
+     deck and prepare families down) -> red; un-author a
      prepare case, or strip its n.* tokens from the expect -> red; mark foray-data
      not jsOnly -> red (the page's build is never owed to Swift). */
   for (const stem of ["html-audio-backend", "foray-playback"]) {
@@ -280,14 +281,14 @@ test("NE-30j: html-audio-backend and foray-playback owe nothing, the tape/deck/p
     for (const [name, v] of Object.entries(names)) assert.notEqual(v.card, "NE-30j", `${stem} :: ${name} is still owed to NE-30j, the card that records it`);
   }
   const pairFile = "player/parity/fixtures/deck/deck-pair.json";
-  const owedTo = (c, fam, file) => (fam === "deck" && file === pairFile ? "NE-32" : "NE-30s");
+  const owedTo = (c, fam, file) => (fam === "deck" && file === pairFile ? "NE-32" : undefined);
   for (const fam of ["manager-foray", "deck", "prepare"]) {
     // NE-31j's narration files are owed to NE-31s (its own test below).
     const files = FIXTURES.filter((f) => f.family === fam && !NE31J_NARRATION_FILES.includes(f.file));
     assert.ok(files.length > 0, `${fam} is recorded`);
     assert.ok(DATA.capabilities.foray.includes(fam), `${fam} is charged to the foray capability`);
     for (const f of files) for (const c of f.doc.cases) {
-      assert.equal(DATA.pending[c.id], owedTo(c, fam, f.file), `${c.id} must be owed to ${owedTo(c, fam, f.file)} until the Swift port burns it down`);
+      assert.equal(DATA.pending[c.id], owedTo(c, fam, f.file), `${c.id}: ${owedTo(c, fam, f.file) ?? "nothing"} must owe it (NE-30s ported the rest)`);
     }
   }
   const prepare = FIXTURES.filter((f) => f.family === "prepare").flatMap((f) => f.doc.cases);

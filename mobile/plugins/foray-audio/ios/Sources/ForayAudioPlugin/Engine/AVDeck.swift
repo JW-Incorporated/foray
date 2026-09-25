@@ -212,6 +212,11 @@ final class AVDeck: DeckDriving {
             setOutPoint(sec)
         case .unload:
             unload()
+        case .prepare:
+            // One deck has no standby to warm (NE-30s asks; the DeckPair that
+            // answers is NE-32's, behind `deckPairEnabled`). Ignored, the seam
+            // loads cold inside the beat, which is the audible seam either way.
+            break
         }
     }
 

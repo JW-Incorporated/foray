@@ -112,6 +112,11 @@ extension DeckPolicy {
         case timer(atSec: Double, nowMs: Double)
         /// Layer 1 or 2 reported the boundary for `token`.
         case layer(OutPointLayer, token: Int, atSec: Double, nowMs: Double)
+        /// NE-30j/NE-30s: the FILE ran out before the boundary (an authored
+        /// `end_sec` past the real audio). That is the item's one end, the
+        /// natural one, so the watch is spent exactly as a stop spends it and
+        /// a layer that reports the boundary later is stale, not a second end.
+        case ended(atSec: Double)
     }
 
     /// What the native deck is commanded to do. `token` is the op-log spelling.
@@ -128,6 +133,8 @@ extension DeckPolicy {
         case early(OutPointLayer)
         /// A report for another token, an unarmed boundary, or after the stop.
         case stale(OutPointLayer)
+        /// The file ran out first: the item's one, natural, end.
+        case endedNatural
 
         public var token: String {
             func num(_ value: Double?) -> String { value.map(JSWriter.numberToString) ?? "null" }
@@ -139,6 +146,7 @@ extension DeckPolicy {
             case let .stop(layer, overshootMs): return "outPoint.stop:\(layer.rawValue):\(num(overshootMs))"
             case let .early(layer): return "outPoint.early:\(layer.rawValue)"
             case let .stale(layer): return "outPoint.stale:\(layer.rawValue)"
+            case .endedNatural: return "ended:natural"
             }
         }
     }
@@ -214,6 +222,15 @@ extension DeckPolicy {
             }
             let result = stopAt(state, layer: layer, atSec: atSec, ops: &ops)
             return (result, ops)
+
+        case .ended:
+            if state.timerDueMs != nil { ops.append(.watchdogCancel) }
+            ops.append(.endedNatural)
+            var next = state
+            next.fired = true
+            next.playing = false
+            next.timerDueMs = nil
+            return (next, ops)
         }
     }
 

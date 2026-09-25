@@ -146,6 +146,11 @@ public enum EngineBridgeRules {
         case let .error(code, message):
             return .object([JSONMember("type", .string(EngineContract.EventType.error.rawValue)),
                             JSONMember("code", .string(code)), JSONMember("message", .string(message))])
+        case let .skipped(itemId, index, reason):
+            // NE-30s: ADR-0007's ladder refused a segment at load.
+            return .object([JSONMember("type", .string(EngineContract.EventType.skipped.rawValue)),
+                            JSONMember("itemId", .string(itemId)), JSONMember("index", .number(Double(index))),
+                            JSONMember("reason", .string(reason))])
         }
     }
 
@@ -206,8 +211,8 @@ public enum EngineSnapshot {
         }
         members += [
             JSONMember("running", .bool(state.isRunning)),
-            // Seams and the interlude are M2's (NE-30s, NE-31s).
-            JSONMember("inSeamGap", .bool(false)),
+            // The interlude is NE-31s's.
+            JSONMember("inSeamGap", .bool(state.inSeamGap)),
             JSONMember("inInterlude", .bool(false)),
             JSONMember("buffering", .bool(state.buffering)),
             JSONMember("ended", .bool(type == "ended")),
@@ -222,7 +227,7 @@ public enum EngineSnapshot {
             JSONMember("canPrevious", .bool(item != nil && core.canPrevious)),
             JSONMember("autoAdvance", .bool(state.autoAdvance)),
             JSONMember("lastError", lastError.map { JSONNode.string($0) } ?? .null),
-            JSONMember("skippedSegments", .number(0)),
+            JSONMember("skippedSegments", .number(Double(state.skippedSegments))),
             JSONMember("pendingAdvances", .number(Double(state.advanceLog.count))),
             JSONMember("pendingEvents", .number(Double(state.pendingEvents.count))),
             JSONMember("session", .string(state.session.rawValue)),

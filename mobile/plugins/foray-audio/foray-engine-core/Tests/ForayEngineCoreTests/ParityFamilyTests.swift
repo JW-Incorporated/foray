@@ -82,6 +82,14 @@ final class ParityFamilyTests: XCTestCase {
     func testForayStructureFamily() { assertParityFamily("foray-structure", requireRunner: true) }
     func testMediaFamily() { assertParityFamily("media", requireRunner: true) }
 
+    /// Recorded by NE-30j, ported by NE-30s: the deck's guards and its
+    /// single-deck slices (`DeckPolicy`; the pair's decisions stay NE-32's),
+    /// the manager's Foray tape through `EngineCore` with the tape on, and
+    /// the prepare family's audible seams through the contract. Each must RUN.
+    func testDeckFamily() { assertParityFamily("deck", requireRunner: true) }
+    func testManagerForayFamily() { assertParityFamily("manager-foray", requireRunner: true) }
+    func testPrepareFamily() { assertParityFamily("prepare", requireRunner: true) }
+
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree
     /// problem. And something must have RUN: zero failures from a runner that

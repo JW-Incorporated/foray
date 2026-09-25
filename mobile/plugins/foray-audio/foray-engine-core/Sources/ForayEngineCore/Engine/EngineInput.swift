@@ -44,6 +44,38 @@ public struct EngineItem: Equatable {
 
     /// `refOf(item)`: what the reducer knows of it.
     public var ref: QueueItemRef { QueueItemRef(id: id, kind: kind, bounds: bounds) }
+
+    // MARK: what a built Foray item carries (NE-30s)
+
+    /// The item as the seam rule reads it (seam-gap.js `isSegment`).
+    public var seam: SeamItem { SeamItem(startSec: startSec, endSec: endSec) }
+
+    /// ADR-0007's load-time ladder reads these off the BUILT item
+    /// (foray-queue.js carries them "so the gate never has to go back to a
+    /// catalogue it does not own"). `!item?.needs_drift_check` is truthiness.
+    public var needsDriftCheck: Bool { node["needs_drift_check"]?.isTruthy ?? false }
+    public var daiSuspected: Bool { node["dai_suspected"]?.isTruthy ?? false }
+    public var referenceDurationSec: Double? { node["reference_duration_sec"]?.numberValue }
+    /// `item.ad_pad_sec ?? undefined`: null is no pad.
+    public var adPadSec: Double? { node["ad_pad_sec"]?.numberValue }
+
+    /// `_isSynthNarration(item)`: a `tts` item with a non-empty `script` and
+    /// no file. It is SPOKEN (NE-31s), never loaded on a deck; a narration item
+    /// with a file (a rendered bridge) plays on the deck like any other audio.
+    public var isSynthNarration: Bool {
+        guard kind == .tts, audioUrl == nil, let script = node["script"]?.stringValue else { return false }
+        return !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// The item as the Foray clock and the structural check read it.
+    public var forayItem: ForayItem { ForayItem(node: node) }
+
+    /// The item as TransportPolicy's Foray-clock rules read it.
+    public var transportItem: TransportPolicy.Item {
+        TransportPolicy.Item(startSec: startSec, endSec: endSec, authoredEndSec: node["authored_end_sec"]?.numberValue,
+                             durationSec: durationSec, kind: node["kind"]?.stringValue,
+                             hasAudioUrl: node["audio_url"]?.isTruthy ?? false)
+    }
 }
 
 /// Why a play-ish intent arrived; recorded before anything else (D-4).
@@ -64,6 +96,10 @@ public enum QueueInput: Equatable {
     case setRate(Double?)
     /// `seek(seconds, {precise})` in the source's own seconds.
     case seek(sec: Double, precise: Bool)
+    /// `setQueueFromForay(foray, {isLocalFile, allowAdPad})` with the PAGE's
+    /// build (NE-30s): the queue is replaced and nothing loads, as `load`, and
+    /// the two options the load-time ladder reads are kept for its loads.
+    case loadForay([EngineItem], isLocalFile: Bool, allowAdPad: Bool)
 }
 
 /// A press from the lock screen, the car or a headset (`MPRemoteCommand`).
@@ -159,6 +195,9 @@ public enum EngineTimer: String, Equatable, Sendable, CaseIterable {
     case graceExpired = "grace-expired"
     /// `pauseHoldPolicy = .until(m)` ran out while paused.
     case holdExpired = "hold-expired"
+    /// The seam beat's remainder ran out (NE-30s): the wait parked on it
+    /// goes on, and the next segment becomes audible.
+    case seamBeat = "seam-beat"
 }
 
 /// Everything `EngineCore.handle` accepts.
