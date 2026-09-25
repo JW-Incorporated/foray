@@ -1,3 +1,4 @@
+import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import { tokenizeForSourcing } from "./catalogueLookup";
@@ -73,6 +74,11 @@ export interface TranscriptDigestEntry {
    * `audioSourceLookup.ts`). Optional: a digest row that lacks it is a row this
    * pipeline may not mint tape from, not a parse error. */
   enclosure_url?: string;
+  /** gen-6 (round-3 audit), runtime only, never read from a file: set by
+   * `disambiguateItemIds` when another entry of the loaded archive (a
+   * different guid) derives the same `<show_id>--<slug60>` id. A short hash
+   * of this entry's guid, appended by `deriveItemId`. */
+  item_id_suffix?: string;
 }
 
 let cachedDigests: TranscriptDigestEntry[] | null = null;
@@ -127,6 +133,7 @@ export function loadTranscriptArchive(): TranscriptDigestEntry[] {
       entries.push(t);
     }
   }
+  disambiguateItemIds(entries);
   cachedDigests = entries;
   return cachedDigests;
 }
@@ -1320,6 +1327,21 @@ function contentWordCount(words: string[]): number {
  * re-exports it, so every existing import is unchanged.
  */
 export function deriveItemId(entry: TranscriptDigestEntry): string {
+  const legacy = legacyItemId(entry);
+  return entry.item_id_suffix ? `${legacy}-${entry.item_id_suffix}` : legacy;
+}
+
+/**
+ * The id before gen-6: `<show_id>--<slug(title) cut to 60>`, which is NOT
+ * unique per episode. Recurring round-ups ("Scott Becker: 6 healthcare news
+ * stories we are following today", "the best moments of ...") share their first
+ * 60 slug characters across episodes, so two episodes minted one id, and one
+ * episode's audio row and transcript were attributed to the other.
+ *
+ * Kept as the id of every entry that does NOT collide, so the ids already
+ * committed in data/segments.json and data/segment-sources.json keep resolving.
+ */
+export function legacyItemId(entry: TranscriptDigestEntry): string {
   const slug = entry.title
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -1329,6 +1351,28 @@ export function deriveItemId(entry: TranscriptDigestEntry): string {
     .slice(0, 60)
     .replace(/-+$/g, "");
   return `${entry.show_id}--${slug || "episode"}`;
+}
+
+/**
+ * gen-6: gives every entry whose legacy id another entry (a different guid)
+ * also derives a short guid-hash suffix, so each episode has its own item id.
+ * Every member of a colliding group is suffixed, none is privileged by load
+ * order. Mutates and returns `entries`; `loadTranscriptArchive` calls it.
+ */
+export function disambiguateItemIds(entries: TranscriptDigestEntry[]): TranscriptDigestEntry[] {
+  const guidsById = new Map<string, Set<string>>();
+  for (const entry of entries) {
+    const id = legacyItemId(entry);
+    let guids = guidsById.get(id);
+    if (!guids) guidsById.set(id, (guids = new Set()));
+    guids.add(String(entry.guid));
+  }
+  for (const entry of entries) {
+    if ((guidsById.get(legacyItemId(entry))?.size ?? 0) > 1) {
+      entry.item_id_suffix = crypto.createHash("sha1").update(String(entry.guid)).digest("hex").slice(0, 6);
+    }
+  }
+  return entries;
 }
 
 /**
