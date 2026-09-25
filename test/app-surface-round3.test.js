@@ -218,3 +218,20 @@ test("app-2-9: 'Shows 4a vouches for' is the same set whatever the device locale
   const expected = Array.from(m.ctx.seededShuffle(codepoint.map((id) => ({ show_id: id })), m.ctx.dayOfYearSeed(now)).slice(0, 4), (s) => s.show_id);
   assert.deepStrictEqual(plain, expected, "and the base order is plain codepoint order");
 });
+
+/* ---------- app-2-8: a URL ending in a balanced ')' keeps it ------------------ */
+
+test("app-2-8: the notes linkifier keeps a balanced closing paren and still drops a sentence's", () => {
+  /* The pattern excludes a trailing `)` so `(see https://x.test/a)` does not eat
+     the sentence's paren — which also cut Wikipedia-style links:
+     …/wiki/Mercury_(planet) linked to …/wiki/Mercury_(planet.
+     MUTATION: delete the `while (src[…] === ")" …)` extension — red. */
+  const m = loadApp();
+  const links = (text) => Array.from(m.ctx.episodeDescriptionTokens(text), (t) => ({ ...t })).filter((t) => t.kind === "link").map((t) => t.text);
+  const tokens = (text) => Array.from(m.ctx.episodeDescriptionTokens(text), (t) => t.text);
+  assert.deepStrictEqual(links("see https://en.wikipedia.org/wiki/Mercury_(planet) now"), ["https://en.wikipedia.org/wiki/Mercury_(planet)"]);
+  assert.deepStrictEqual(links("see https://en.wikipedia.org/wiki/Mercury_(planet)."), ["https://en.wikipedia.org/wiki/Mercury_(planet)"], "a full stop after it is still the sentence's");
+  assert.deepStrictEqual(links("(see https://x.test/a)"), ["https://x.test/a"], "an unbalanced paren is the sentence's");
+  assert.deepStrictEqual(tokens("(see https://x.test/a)"), ["(see ", "https://x.test/a", ")"], "and it stays in the text, nothing lost");
+  assert.deepStrictEqual(tokens("(https://w.test/F_(x)) 1:02"), ["(", "https://w.test/F_(x)", ") ", "1:02"], "only the balanced one is taken back, and scanning resumes after it");
+});

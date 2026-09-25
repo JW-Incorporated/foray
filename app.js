@@ -10282,8 +10282,17 @@ function episodeDescriptionTokens(text, durationSec = null) {
   let m;
   while ((m = DESC_TOKEN_RE.exec(src)) !== null) {
     if (m.index > last) out.push({ kind: "text", text: src.slice(last, m.index) });
-    const [whole, url, stamp] = m;
+    let [whole, url, stamp] = m;
     if (url) {
+      /* BALANCED PARENTHESES STAY IN THE URL (audit round 3, app-2-8; the GFM
+         autolink rule). The pattern leaves a trailing `)` to the sentence, which
+         cut `…/wiki/Mercury_(planet)` to `…/wiki/Mercury_(planet`. A `)` right
+         after the match is taken back while the URL has an unclosed `(`. */
+      const opens = (u) => u.split("(").length - 1;
+      const closes = (u) => u.split(")").length - 1;
+      while (src[m.index + url.length] === ")" && opens(url) > closes(url)) url += ")";
+      whole = url;
+      DESC_TOKEN_RE.lastIndex = m.index + url.length;
       out.push({ kind: "link", text: url, href: safeUrl(url) });
     } else {
       const secs = parseTimestampSeconds(stamp);
