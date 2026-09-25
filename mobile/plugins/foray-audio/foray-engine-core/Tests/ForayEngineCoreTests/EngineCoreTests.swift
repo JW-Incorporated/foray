@@ -582,7 +582,8 @@ final class EngineCoreTests: XCTestCase {
     func testPlayingAnotherEpisodeKeepsAScrubMadeWhilePaused() throws {
         func episode(_ id: String) -> JSONNode {
             .object([JSONMember("item", .object([JSONMember("id", .string(id)),
-                                                 JSONMember("audio_url", .string("https://cdn.example/\(id).mp3"))]))])
+                                                 JSONMember("audio_url", .string("https://cdn.example/\(id).mp3"))])),
+                     JSONMember("lastEpisodeRow", .object([JSONMember("id", .string(id))]))])
         }
         var host = Host()
         host.send(try EngineCoreTests.command("playEpisode", episode("a")))
