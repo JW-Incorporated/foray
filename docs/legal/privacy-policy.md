@@ -68,7 +68,11 @@ migrate it. (`player/durable-store.js`, `player/idb-tier.js`.) **In the iOS and
 Android app there is a third copy**, in the app's own preferences store (iOS
 `UserDefaults`, Android `SharedPreferences`), because the system can clear a
 web view's storage and does not clear that one. It holds the same `cp_` rows
-(`player/durable-store.js:preferencesTier()`).
+(`player/durable-store.js:preferencesTier()`). In the iOS app, episodes can
+also be played by the app's own native audio player rather than the web view's;
+when it is the player in use, it writes three kinds of those rows itself and
+keeps a few values of its own, all on the phone. "The iOS app's native audio
+player", after the table below, lists them.
 
 **Phone backups.** In the iOS and Android app, all three of those places are
 part of the app's data, which your phone includes in its own backups — iCloud
@@ -133,9 +137,9 @@ The app also asks the browser to mark its storage as persistent
 | `cp_shard_shows` | The last 50 shows from the wider podcast directory whose page you opened — title, publisher name and artwork address — so a link to one of them still opens after the app reloads | **No** |
 | `cp_starred_shows` | A per-device map of shows you followed from a show page (the Follow button; the key keeps its older "starred" name) — a lightweight favorite, separate from episode saves (`cp_saved`). No notifications, no auto-download, following a show never adds its new episodes anywhere, and never changes what 4a surfaces to you elsewhere | **No** |
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
-| `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in | **No** |
-| `cp_pos:<id>` | Your position in seconds inside an individual episode | **No** |
-| `cp_last_episode` | Which single episode was playing most recently, plus the title, show name, artwork address and audio address needed to redraw the now-playing bar before anything else has loaded. One row, overwritten each time you start something — not a listening history. Your position in it is not stored here; that is `cp_pos:<id>` above | **No** |
+| `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in. In the iOS app, written by the native audio player when it is the one playing (see below) | **No** |
+| `cp_pos:<id>` | Your position in seconds inside an individual episode. In the iOS app, written by the native audio player when it is the one playing (see below) | **No** |
+| `cp_last_episode` | Which single episode was playing most recently, plus the title, show name, artwork address and audio address needed to redraw the now-playing bar before anything else has loaded. One row, overwritten each time you start something — not a listening history. Your position in it is not stored here; that is `cp_pos:<id>` above. In the iOS app, written by the native audio player when it is the one playing (see below) | **No** |
 | `cp_rate` | Your playback speed | **No** |
 | `cp_voice` | Your chosen narration voice — an identifier the device's own voice list reported | **No** |
 | `cp_interlude` | Whether the short jingle between a foray's segments is on or off — a local per-device preference. On unless you turn it off | **No** |
@@ -152,6 +156,45 @@ The app also asks the browser to mark its storage as persistent
 | `cp_storage_health` | A diagnostic record of storage failures, for troubleshooting | **No** |
 | `cp_storage_stale` | The names (never the values) of any of the keys above that this device's `localStorage` refused to update while a durable copy accepted the change, so the next launch reads the newer durable copy instead of the stale one. Usually absent; kept only in the durable copies — IndexedDB, and in the iOS and Android app its preferences store too — never in `localStorage` | **No** |
 | `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It also keeps search rows (query length, local hit counts, timings), now-playing, remote-command and native-session rows. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the menu's **Developer** → **Playback diagnostics** shows it and lets you copy or clear it |
+
+**The iOS app's native audio player.** In the iOS app, episodes can be played
+by the app's own audio player, built on Apple's AVFoundation, instead of by the
+web view, so that listening carries on with the screen locked and a car's play
+button reaches it after a long pause. A build decides which player it starts
+with (`mobile/ENGINE_DEFAULT.json`); the menu's **Developer** group can switch
+back to the web view's player, and the app switches back by itself if the
+native player fails to start cleanly three launches in a row. The native player
+plays audio from the publisher's own address exactly as the web view does (§4),
+fetches the lock screen's artwork from the same address the page shows it from
+(§4.3), and sends nothing to us: it adds nothing to §2.
+
+When it is the player in use, it writes three kinds of the rows above itself —
+`cp_pos:<id>`, `cp_foray:<id>` and `cp_last_episode`
+(`player/engine-contract.js:OWNED_PREFIXES`) — in the same format, into the
+app's preferences store, and the web view reads them back from there and keeps
+its own copies as before. It also keeps these values of its own. They are not
+`cp_` keys: they sit in the same iOS preferences store (`UserDefaults`) under
+names beginning `ForayEngine.`, which the web view's storage never reads, plus
+one file (`mobile/plugins/foray-audio/`). Like the preferences store, the
+`ForayEngine.` values are part of the phone's own backups; the diagnostics file
+is marked to be left out of them.
+
+| Name | What it holds | Does it leave your device? |
+|---|---|---|
+| `ForayEngine.modeOverride` | Which player the **Developer** switch chose — automatic, native or the web view's. Absent until the switch is used | **No** |
+| `ForayEngine.strikes` | How many launches in a row the native player did not start cleanly. At three, the app uses the web view's player until the app is next updated | **No** |
+| `ForayEngine.sentinel` | A random id for the current launch, written as the native player starts and cleared once it is running — how the count above is kept | **No** |
+| `ForayEngine.stickyLegacyBuild` | The app's build number, when three failed starts switched it to the web view's player, so the next update tries the native player again | **No** |
+| `ForayEngine.restore` | What the player needs to carry on after iOS closed the app in the background — so a car's play button still works: the episodes it was playing and could play next (id, title, show name, artwork and audio addresses — the same details `cp_episode_snaps` keeps), where in them it was, your speed, and any positions and automatic "next episode" steps it recorded while the app was closed and has not yet added to your on-device listening record. Overwritten as you listen | **No** |
+| `ForayEngine.holdPolicy` | A **Developer** setting: how long the paused player keeps its claim on the phone's audio | **No** |
+| `Application Support/foray-engine/diag.jsonl` (a file, not a key) | The native player's diagnostic record, capped at the most recent 2,000 rows: the same kinds of row as `cp_diag` — the audio session, interruptions, remote and car button presses, now-playing, resumes, and the *type* of audio route (for example `carAudio`) — under the same rules: no audio, no URLs, no account id, and no device or car names. The only free text is what the lock screen was shown — the now-playing title, artist and album fields, which are catalogue names such as the episode and show — each cut to 40 characters. A copy of each row, without that free text, goes to the iPhone's own system log, which stays on the phone like every app's. **Playback diagnostics** → Copy includes these rows | **No** — it is never transmitted, and it is marked to be left out of phone backups |
+
+**Delete my data** reaches these too while the native player is the one in use:
+the app first tells the player to stop without saving a position, then to
+delete its rows, every `ForayEngine.` value and the diagnostics file, and only
+then clears everything else; if the player cannot, the app says the device is
+not fully clear (`player/durable-store.js:engineDataDeletion()`, §7). Deleting
+the app removes them in every case.
 
 **The event queue is not a `cp_` key.** Until 2026-09, the buffer of events
 waiting to be sent lived at `cp_events` (with a `cp_synced_ts` bookmark) inside
@@ -464,6 +507,11 @@ optional) — one stray tap cannot trigger it.
   key added to the app in future is covered without anyone updating a list. If
   either store refuses, or cannot be read to confirm, **the app tells you the
   device is not fully clear** rather than claiming it is.
+- **The iOS app's native audio player's own values and its diagnostics file**
+  (§1), while it is the player in use: the player is told to stop without
+  saving a position and to delete them before anything else is cleared, and a
+  player that cannot is reported the same way, as a device that is not fully
+  clear.
 - **The event queue on this device** (`foray_events`, §1): every event waiting to
   be sent, and every one already sent that the device still keeps. It is emptied
   and re-read the same way, so no row can be sent later under the new anonymous
