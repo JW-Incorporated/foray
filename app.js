@@ -2816,6 +2816,11 @@ function drainEngineEvents(events) {
   return logged;
 }
 
+/* Handed to the player (a classic script cannot export): in native mode
+   player/client.js's attach applies the engine's pending hops and position
+   events through these two, then acks them (NE-22). */
+window.forayEngineLedger = { applyEngineAdvance, drainEngineEvents };
+
 /** Called from `ForayPlayer.onEpisodeEnded` (player/client.js) with the id of
     the episode that just finished ordinary (non-Foray) playback. The player
     deliberately never reports `ended` for a Foray, which has its own
@@ -13160,8 +13165,20 @@ function restoreNowPlayingRibbon() {
       if ((restored || late) && isHomeRoute()) renderCurrentPage();
     } catch (_) { /* a ribbon that cannot be restored is not a reason to fail boot */ }
   };
-  if (window.ForayPlayer) go(false);
-  else window.addEventListener("forayplayer:ready", () => go(true), { once: true });
+  /* THE LANE FIRST (NE-22). Inside the iOS shell the player cannot restore
+     anything until engineHello has said whether the native engine or the page
+     plays; until then both restores would answer a promise, and a promise is
+     truthy, so the episode fallback below would never run. Everywhere else
+     `engineModePending` answers false at once and this stays synchronous. */
+  const whenLaneKnown = (late) => {
+    const p = window.ForayPlayer;
+    let pending = false;
+    try { pending = typeof p?.engineModePending === "function" && p.engineModePending() === true; } catch (_) { pending = false; }
+    if (!pending) return go(late);
+    Promise.resolve(p.whenEngineReady()).then(() => go(late), () => go(late));
+  };
+  if (window.ForayPlayer) whenLaneKnown(false);
+  else window.addEventListener("forayplayer:ready", () => whenLaneKnown(true), { once: true });
 }
 
 /** The part-played Foray for the bar, when it is the most recent thing played —
@@ -14938,7 +14955,11 @@ async function auditionVoiceRow(id) {
   paintVoiceList();
   try {
     const result = await player.auditionVoice(AUDITION_LINE, id);
-    if (result && result.voiceFallback) {
+    /* Native mode: the engine owns the one audio session and will not speak
+       over an episode it is playing (NE-22, OQ-5). */
+    if (result && result.ok === false && result.reason === "engine-busy") {
+      paintVoiceNotice("Pause playback to preview");
+    } else if (result && result.voiceFallback) {
       paintVoiceNotice("Your chosen voice isn't installed; using the best available.");
     } else {
       paintVoiceNotice("");
