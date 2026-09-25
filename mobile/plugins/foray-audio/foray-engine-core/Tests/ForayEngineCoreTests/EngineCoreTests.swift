@@ -18,6 +18,8 @@ final class EngineCoreTests: XCTestCase {
         var monoMs: Double = 0
         var activationOK = true
         var lastLoad: DeckToken?
+        /// What the host read from `backgroundTimeRemaining` (nil: foreground).
+        var bgRemainingMs: Double?
 
         init(config: EngineConfig = EngineConfig(build: "test"),
              positions: [String: ResumeRules.StoredPosition] = [:]) {
@@ -28,13 +30,14 @@ final class EngineCoreTests: XCTestCase {
         @discardableResult
         mutating func send(_ input: EngineInput, after ms: Double = 1000) -> [EngineCommand] {
             monoMs += ms
-            let now = EngineNow(wallMs: 1_790_000_000_000, monoMs: monoMs, deck: reading)
+            let now = EngineNow(wallMs: 1_790_000_000_000, monoMs: monoMs, deck: reading, bgRemainingMs: bgRemainingMs)
             var all = core.handle(input, now: now)
             if let id = all.compactMap(Host.activation).last {
                 all += core.handle(.sessionResult(SessionResult(requestId: id, ok: activationOK,
                                                                 error: activationOK ? nil : "cannot-interrupt-others",
                                                                 activateMs: 3)),
-                                   now: EngineNow(wallMs: 1_790_000_000_000, monoMs: monoMs, deck: reading))
+                                   now: EngineNow(wallMs: 1_790_000_000_000, monoMs: monoMs, deck: reading,
+                                                  bgRemainingMs: bgRemainingMs))
             }
             for command in all {
                 switch command {
@@ -352,6 +355,98 @@ final class EngineCoreTests: XCTestCase {
         var cold = Host()
         XCTAssertTrue(cold.send(.lifecycle(.coldLaunch(queue: [EngineCoreTests.item("a")], index: 0, autoplay: true)))
             .contains(.graceBegin(.coldPlay)))
+    }
+
+    // MARK: - grace= in the remote, resume and cold-play rows (NE-16g)
+
+    /// The diag rows of one kind in a turn, in order.
+    func rows(_ kind: String, in commands: [EngineCommand]) -> [DiagEntry] {
+        commands.compactMap { if case let .diag(entry) = $0, entry.kind == kind { return entry }; return nil }
+    }
+
+    /// The H-1 verdict reads the `remote` row: a car's play in the background
+    /// must say `grace=y` with the budget the host read, although the span
+    /// opens only while the press is handled; the row still leads the turn
+    /// (D-4). A pause opens nothing and says `grace=n`.
+    /// TO SEE IT FAIL: drop the `defer` in `onRemote` that fills the grace
+    /// fields after the press (the play then reads `grace=n`), or write the
+    /// row after the switch (it no longer leads the turn).
+    func testTheRemoteRowSaysWhetherThePressIsCovered() throws {
+        var host = playing()
+        host.send(.command(.pause, source: .tap))
+        host.send(.lifecycle(.background))
+        host.bgRemainingMs = 29_400.4
+
+        let press = host.send(.remote(RemotePress(.play, routePort: "carAudio")))
+        let row = try XCTUnwrap(rows("remote", in: press).first, "\(press)")
+        XCTAssertEqual(index(press) { if case let .diag(entry) = $0 { return entry.kind == "remote" }; return false }, 0,
+                       "the remote row is the turn's first command")
+        XCTAssertEqual(row[field: "grace"], .string("y"))
+        XCTAssertEqual(row[field: "graceReason"], .string("remote-play"))
+        XCTAssertEqual(row[field: "bgRemainingMs"], .number(29_400))
+        XCTAssertEqual(row[field: "route"], .string("carAudio"))
+        XCTAssertEqual(row[field: "state"], .string("interrupted"), "the state the press found")
+
+        host.land()
+        host.confirm()
+        let pause = host.send(.remote(RemotePress(.pause)))
+        let paused = try XCTUnwrap(rows("remote", in: pause).first)
+        XCTAssertEqual(paused[field: "grace"], .string("n"))
+        XCTAssertEqual(paused[field: "graceReason"], .null)
+
+        host.bgRemainingMs = nil
+        let foreground = try XCTUnwrap(rows("remote", in: host.send(.remote(RemotePress(.pause)))).first)
+        XCTAssertEqual(foreground[field: "bgRemainingMs"], .null, "the foreground has no budget to report")
+    }
+
+    /// Plan §10: DV-1/H-1 and H-3 are judged on `resume grace=`, and DV-7a on
+    /// the cold play. Each resume writes one `resume` row (kind interruption
+    /// or route) and a cold play one `cold-play` row, as its span opens and
+    /// before the activation it waits on.
+    /// TO SEE IT FAIL: drop `spanRow(for: intent)` from `begin` (no route or
+    /// cold-play row), or the `spanRow` calls in `onInterruptionEnded`.
+    func testResumeAndColdPlayRowsCarryGrace() throws {
+        var host = playing()
+        host.bgRemainingMs = 27_000
+        host.send(.session(.interruptionBegan(reason: "default")))
+        let resumed = host.send(.session(.interruptionEnded(shouldResume: true)))
+        let resume = try XCTUnwrap(rows("resume", in: resumed).first, "\(resumed)")
+        XCTAssertEqual(rows("resume", in: resumed).count, 1)
+        XCTAssertEqual(resume[field: "kind"], .string("interruption"))
+        XCTAssertEqual(resume[field: "item"], .string("a"))
+        XCTAssertEqual(resume[field: "grace"], .string("y"))
+        XCTAssertEqual(resume[field: "graceReason"], .string("interruption-resume"))
+        XCTAssertEqual(resume[field: "bgRemainingMs"], .number(27_000))
+        if let activate = index(resumed, { Host.activation($0) != nil }),
+           let at = index(resumed, { if case let .diag(entry) = $0 { return entry.kind == "resume" }; return false }) {
+            XCTAssertLessThan(at, activate, "the row is written before the activation it waits on")
+        }
+
+        var car = playing()
+        car.bgRemainingMs = 12_000
+        car.send(.session(.route(RouteChange(oldDeviceUnavailable: true, routeName: "Civic", isCarRoute: true))))
+        let back = car.send(.session(.route(RouteChange(oldDeviceUnavailable: false, routeName: "Civic"))))
+        let route = try XCTUnwrap(rows("resume", in: back).first, "\(back)")
+        XCTAssertEqual(route[field: "kind"], .string("route"))
+        XCTAssertEqual(route[field: "grace"], .string("y"))
+        XCTAssertEqual(route[field: "graceReason"], .string("route-resume"))
+        XCTAssertEqual(route[field: "bgRemainingMs"], .number(12_000))
+
+        var cold = Host()
+        cold.bgRemainingMs = 25_000
+        let launched = cold.send(.lifecycle(.coldLaunch(queue: [EngineCoreTests.item("a")], index: 0, autoplay: true)))
+        let coldRow = try XCTUnwrap(rows("cold-play", in: launched).first, "\(launched)")
+        XCTAssertEqual(coldRow[field: "item"], .string("a"))
+        XCTAssertEqual(coldRow[field: "index"], .number(0))
+        XCTAssertEqual(coldRow[field: "grace"], .string("y"))
+        XCTAssertEqual(coldRow[field: "graceReason"], .string("cold-play"))
+        XCTAssertEqual(coldRow[field: "bgRemainingMs"], .number(25_000))
+
+        // A foreground tap play is no resume and no cold play: no such rows.
+        var tap = Host()
+        tap.send(.queue(.load([EngineCoreTests.item("a")])))
+        let played = tap.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        XCTAssertTrue(rows("resume", in: played).isEmpty && rows("cold-play", in: played).isEmpty, "\(played)")
     }
 
     // MARK: - Interruptions and routes

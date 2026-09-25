@@ -90,6 +90,17 @@ final class ForayEngine {
     /// The live BackgroundGrace task, if any. The core keeps at most one span
     /// open (`EngineState.grace`), so the host holds at most one task.
     private var graceTask: BackgroundTaskID?
+    /// The open span's reason and when it began (monotonic), for the `grace`
+    /// rows' `heldMs`: from a car's press to its first audible frame is the
+    /// resume latency the M1 drive is judged on (NE-26r). Kept for a refused
+    /// begin too, because the span is real even when the task is not.
+    private var graceSpan: (reason: GraceReason, sinceMs: Double)?
+
+    /// Below this much background time at a begin, the `grace` row says
+    /// `low=y` (plan §4.4: "if backgroundTimeRemaining is already small ...
+    /// that is written to the row"). // MEASURE: NE-38 sets it from the H-1
+    /// rows; 5 s is about one CDN load that goes wrong.
+    static let lowBackgroundRemainingMs: Double = 5_000
 
     /// The Developer session probe (NE-25c), built by the first
     /// `probeSession`. Nil on every launch nobody probed.
@@ -203,6 +214,7 @@ final class ForayEngine {
             graceTask = nil
             seams.background.endTask(task)
         }
+        graceSpan = nil
         seams.deck.onEvent = nil
         seams.deck.invalidate()
         seams.speaker.onFinish = nil
@@ -336,8 +348,18 @@ final class ForayEngine {
     /// Both clocks and the deck's reading at the moment the input is handled
     /// (`DeckReading`: the core asks the deck at the moment it decides, as the
     /// JS asks its element).
+    ///
+    /// The background budget rides along (NE-16g) so the core can put it into
+    /// the `remote`, `resume` and `cold-play` rows it writes for this input.
     private func now() -> EngineNow {
-        EngineNow(wallMs: seams.timing.wallMs, monoMs: seams.timing.monoMs, deck: seams.deck.reading)
+        EngineNow(wallMs: seams.timing.wallMs, monoMs: seams.timing.monoMs, deck: seams.deck.reading,
+                  bgRemainingMs: backgroundRemainingMs())
+    }
+
+    /// `backgroundTimeRemaining` in whole milliseconds; nil in the foreground
+    /// or when it is not a number a row can carry.
+    private func backgroundRemainingMs() -> Double? {
+        seams.background.backgroundTimeRemainingSec.flatMap { $0.isFinite ? ($0 * 1000).rounded() : nil }
     }
 
     /// Every command has a case: a command the host drops is a stuck player.
@@ -366,8 +388,8 @@ final class ForayEngine {
             seams.session.rebuild()
         case let .graceBegin(reason):
             beginGrace(reason)
-        case .graceEnd:
-            endGrace()
+        case let .graceEnd(outcome):
+            endGrace(outcome: outcome)
         case let .timerArm(timer, afterMs, repeating):
             arm(timer, afterMs: afterMs, repeating: repeating)
         case let .timerCancel(timer):
@@ -504,40 +526,55 @@ final class ForayEngine {
     /// or a nearly spent budget is written to the row, because that is the
     /// span the car will go silent in.
     private func beginGrace(_ reason: GraceReason) {
-        if let stale = graceTask {
+        if graceTask != nil || graceSpan != nil {
             // The core never opens a second span; if it ever did, the first
             // task must not outlive it unowned.
-            graceTask = nil
-            seams.background.endTask(stale)
+            endGrace(outcome: nil)
         }
         let task = seams.background.beginTask(named: "ForayEngine.grace.\(reason.rawValue)") { [weak self] in
             MainActor.assumeIsolated { self?.graceExpired() }
         }
         graceTask = task
+        graceSpan = (reason, seams.timing.monoMs)
         // Nil (foreground) or non-finite is JSON null, never a number the
         // row cannot carry.
-        let remainingMs: JSONNode = seams.background.backgroundTimeRemainingSec
-            .flatMap { $0.isFinite ? JSONNode.number(($0 * 1000).rounded()) : nil } ?? .null
+        let remainingMs = backgroundRemainingMs()
         seams.output.diag(DiagEntry(kind: "grace", fields: [
             JSONMember("kind", .string("begin")),
             JSONMember("reason", .string(reason.rawValue)),
             JSONMember("task", .string(task == nil ? "invalid" : "ok")),
-            JSONMember("bgRemainingMs", remainingMs)
+            JSONMember("bgRemainingMs", remainingMs.map { JSONNode.number($0) } ?? .null),
+            JSONMember("low", remainingMs.map { JSONNode.string($0 < Self.lowBackgroundRemainingMs ? "y" : "n") } ?? .null)
         ]))
     }
 
-    private func endGrace() {
-        guard let task = graceTask else { return }
-        graceTask = nil
-        seams.background.endTask(task)
+    /// The span is over: end its task (if the system gave one) and write how
+    /// it ended and how long it was held: `grace kind=end outcome=<how>`, or
+    /// `grace kind=expired` when the system took the time back. `outcome` nil
+    /// is the host's own cleanup (a stale span replaced), which writes no row.
+    private func endGrace(outcome: GraceOutcome?) {
+        let span = graceSpan
+        graceSpan = nil
+        if let task = graceTask {
+            graceTask = nil
+            seams.background.endTask(task)
+        }
+        guard let outcome, let span else { return }
+        seams.output.diag(DiagEntry(kind: "grace", fields: [
+            JSONMember("kind", .string(outcome == .expired ? "expired" : "end")),
+            JSONMember("outcome", .string(outcome.rawValue)),
+            JSONMember("reason", .string(span.reason.rawValue)),
+            JSONMember("heldMs", .number((seams.timing.monoMs - span.sinceMs).rounded()))
+        ]))
     }
 
     /// The system took the time back. UIKit requires the task to end INSIDE
-    /// this handler, so it ends here, first; then the core hears it and applies
-    /// the deterministic outcome (a pause with `stop cause=grace-expired`).
-    /// Its own `.graceEnd(.expired)` then finds no task to end.
+    /// this handler, so it ends here, first, with its `grace kind=expired`
+    /// row; then the core hears it and applies the deterministic outcome (a
+    /// pause with `stop cause=grace-expired`). Its own `.graceEnd(.expired)`
+    /// then finds no task to end and no span to write twice.
     private func graceExpired() {
-        endGrace()
+        endGrace(outcome: .expired)
         handle(.timer(.graceExpired))
     }
 

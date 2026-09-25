@@ -350,8 +350,9 @@ final class AudioSessionOwner: SessionControlling {
     }
 }
 
-/// The three block observers, removed together, once (host teardown).
-private final class NotificationObservation: EngineObservation {
+/// Block observers, removed together, once (host teardown): the owner's
+/// three, and BackgroundGrace's two lifecycle observers (NE-16g).
+final class NotificationObservation: EngineObservation {
     private let center: NotificationCenter
     private var tokens: [NSObjectProtocol]
 
