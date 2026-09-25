@@ -1451,6 +1451,25 @@ input[type="text"] {
 }
 .lib-more:active { color: var(--text); }
 
+/* Save on a generated playlist's or a subject queue's page (founder,
+   2026-09-25). A capsule like Follow, 44px tall by its own size. */
+.pl-save-wrap { margin: 4px 0 12px; }
+button.pl-save {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  cursor: pointer;
+}
+button.pl-save.on { color: var(--gold); border-color: var(--gold); }
+/* Never display: none — it is a live region, and one hidden while empty may
+   not be announced when it fills. Empty, it is zero-height already. */
+.pl-save-note:not(:empty) { margin-top: 6px; }
+
 button.danger {
   min-height: 44px;
   margin-top: 12px;
@@ -3660,6 +3679,13 @@ body.ui-v2 button.show-star {
 }
 /* Starring is the listener's own material -- amber, per #127. */
 body.ui-v2 button.show-star.on { color: var(--amber); border-color: var(--amber); }
+/* Saving a playlist makes it the listener's own material -- amber, per #127. */
+body.ui-v2 button.pl-save {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--muted);
+}
+body.ui-v2 button.pl-save.on { color: var(--amber); border-color: var(--amber); }
 /* Taxonomy chips are 4a's own editorial categorisation of the show, not the
    listener's -- violet. */
 body.ui-v2 .fy-chip {

@@ -1468,6 +1468,10 @@ const FOLLOW_TOGGLE = { offText: "+ Follow", onText: "✓ Followed", offLabel: "
    a listener can use. */
 const FOLLOW_NOTE = "Following keeps a show one tap away in your Library. New episodes stay on the show's page; nothing is queued for you.";
 const UP_NEXT_TOGGLE = { offText: "+ Up Next", onText: "✓ Up Next", offLabel: "Add to Up Next", onLabel: "In Up Next" };
+/* Keeping a playlist 4a made (founder, 2026-09-25: "we should add a feature to
+   save playlists"). Once saved the control reads "Saved" and OPENS the
+   listener's copy, so its name says where it goes. See savePlaylistCopy. */
+const SAVE_PLAYLIST_TOGGLE = { offText: "Save to my playlists", onText: "✓ Saved", offLabel: "Save to my playlists", onLabel: "Saved. Open your copy" };
 
 /* ---------- stars ---------- */
 
@@ -2174,7 +2178,9 @@ function playlistSpine(p) {
 }
 
 function playlists() {
-  let all = lsGet("cp_playlists", null);
+  /* A save made before hydration has landed shows at once (see editPlaylists);
+     with none pending this is the plain read it always was. */
+  let all = pendingPlaylistEdits.length ? pendingPlaylistsValue() : lsGet("cp_playlists", null);
   let touched = false;
   if (all === null) {
     all = lsGet("cp_quests", []);   // migrate the old key once
@@ -2210,12 +2216,167 @@ function playlists() {
     if (hydratePlaylistParts(p, sources)) touched = true;
   }
   /* Deliberately not through savePlaylists(): a read must not be the thing that
-     enforces the 50 cap on a store that already holds more. */
-  if (touched) lsSet("cp_playlists", all);
+     enforces the 50 cap on a store that already holds more. And never before
+     hydration has answered: a read-path write then is the early write property 2
+     of durable-store.js keeps over the durable list for good — and with a save
+     pending it would write that save over the list too. The backfill is
+     recomputed on every read, so nothing is lost by waiting. */
+  if (touched && !storageWaiting()) lsSet("cp_playlists", all);
   return all;
 }
 
 function savePlaylists(all) { return lsSet("cp_playlists", all.slice(0, 50).map(withMirror)); }
+
+/* THE SINGLE WRITER FOR A NEW PLAYLIST WRITE (audit round 3, app-1-1). A
+   read-modify-write of cp_playlists before hydration has landed reads the
+   unhydrated (possibly empty) list and writes it back, and durable-store.js's
+   property 2 then keeps that early write over the durable list for good. So a
+   write here is an EDIT — a pure function from the stored list to the new one —
+   run at once once storage has settled, or queued and re-run over the SETTLED
+   list when hydration lands, with playlists() reading the queued edits over the
+   unhydrated value meanwhile so the page paints the change at once.
+
+   Same name and contract as the round-3 integration's editPlaylists (PR #835),
+   which backs it with the general editStored overlay: when both have landed,
+   keep that one and delete this block and pendingPlaylistEdits — every caller
+   is already written against the shared contract. `fn` must be pure: it is
+   re-run on every read of the overlay. Returns lsSet's answer now, or true for
+   a queued edit. */
+const pendingPlaylistEdits = [];
+const PLAYLISTS_CAP = 50;
+
+function applyPlaylistEdit(value, fn) {
+  let base = value;
+  if (base === null) {   // a key never written starts from the legacy list, as playlists() does
+    const legacy = lsGet("cp_quests", []);
+    base = Array.isArray(legacy) ? legacy : [];
+  }
+  const list = Array.isArray(base) ? base.filter(x => x && typeof x === "object") : [];
+  return fn(list).slice(0, PLAYLISTS_CAP).map(withMirror);
+}
+
+function pendingPlaylistsValue() {
+  return pendingPlaylistEdits.reduce((v, fn) => applyPlaylistEdit(v, fn), lsGet("cp_playlists", null));
+}
+
+function editPlaylists(fn) {
+  if (!storageWaiting()) return lsSet("cp_playlists", applyPlaylistEdit(lsGet("cp_playlists", null), fn));
+  if (!pendingPlaylistEdits.length) {
+    afterStorageSettles(() => {
+      const value = pendingPlaylistsValue();
+      pendingPlaylistEdits.length = 0;
+      lsSet("cp_playlists", value);
+    });
+  }
+  pendingPlaylistEdits.push(fn);
+  return true;
+}
+
+/* ---------- keeping a playlist 4a made (founder, 2026-09-25) ----------
+
+   "We should add a feature to save playlists." A generated playlist
+   (generatedPlaylists) and a Suggested subject queue (subjectQueueById) are
+   rebuilt on every load, so what a listener liked yesterday could be gone
+   today. Saving one SNAPSHOTS the items it holds right now — the same part
+   shape a built playlist stores (playlistPart, #276) — into a new cp_playlists
+   entry. From then on it is the listener's own: listed in Library and on the
+   Playlists page, drawn as their own under "Playlists for you" (no generated
+   badge), removable like any other, and it never changes by itself.
+
+   `saved_from: { kind: "generated" | "subject", source_id }` records where it
+   came from, which is what makes the save IDEMPOTENT: the same source saved
+   twice finds the first copy instead of making a second one, and the control
+   reads "Saved" and opens that copy. Remove the copy and the source can be
+   saved again.
+
+   THE CAP IS SAID, NOT APPLIED. cp_playlists holds at most 50 and every write
+   slices to 50, so a 51st entry would silently push the oldest playlist off
+   the end. A save never does that: with 50 already kept it is refused, and the
+   page says so.
+
+   Family Mode: both sources are built from poolFiltered(), so a copy saved
+   under Family Mode holds only what Family Mode showed. After that it is an own
+   playlist like any other, resolved through resolveParts: an item plays in-app
+   while the catalogue has it or a stored snapshot carries its audio_url, and
+   otherwise stays listed, labelled, and links out. */
+function savedFromOf(p) {
+  if (!p || !p.id) return null;
+  if (p.isGenerated) return { kind: "generated", source_id: p.id };
+  if (p.isSubject) return { kind: "subject", source_id: p.id };
+  return null;
+}
+
+function sameSource(a, b) {
+  return Boolean(a && b && a.kind === b.kind && a.source_id === b.source_id);
+}
+
+/** The listener's saved copy of `from` ({kind, source_id}), or null. */
+function savedCopyOf(from, list = playlists()) {
+  return list.find(x => sameSource(x.saved_from, from)) || null;
+}
+
+/** Save a generated playlist or a Suggested subject queue as the listener's own.
+    @returns {{status: "saved"|"exists"|"full"|"unsaved"|"not-saveable", playlist?: object}} */
+function savePlaylistCopy(p) {
+  const from = savedFromOf(p);
+  if (!from) return { status: "not-saveable" };
+  const all = playlists();
+  const existing = savedCopyOf(from, all);
+  if (existing) return { status: "exists", playlist: existing };
+  if (all.length >= PLAYLISTS_CAP) return { status: "full" };
+  const copy = withMirror({
+    id: "s" + Date.now(),
+    title: p.title,
+    items: playlistSpine(p).filter(part => part && part.id).map(playlistPart),
+    created: new Date().toISOString(),
+    last_played_at: null,
+    sparse: false,
+    saved_from: { kind: from.kind, source_id: from.source_id },
+  });
+  /* The edit re-checks both rules against the list it is handed — the SETTLED
+     list, when this was queued behind hydration — and leaves it alone rather
+     than duplicating or pushing an old playlist off the end. */
+  const ok = editPlaylists(list =>
+    (list.length >= PLAYLISTS_CAP || savedCopyOf(from, list)) ? list : [copy, ...list]);
+  if (!ok) return { status: "unsaved" };
+  return { status: "saved", playlist: savedCopyOf(from) || copy };
+}
+
+const SAVE_PLAYLIST_NOTES = {
+  saved: "Saved to your playlists. Your copy stays as it is now.",
+  full: `You have ${PLAYLISTS_CAP} playlists, the most 4a keeps. Remove one to save this.`,
+  unsaved: "This playlist could not be saved — this device has no storage space left.",
+};
+
+/** The Save control a generated playlist's or a subject queue's page carries. */
+function savePlaylistControlHtml(copy) {
+  const on = Boolean(copy);
+  const { text, attr } = toggleMarkup(on, SAVE_PLAYLIST_TOGGLE);
+  return `<div class="pl-save-wrap">
+        <button type="button" class="pl-save${on ? " on" : ""}" id="pl-save"${attr}>${text}</button>
+        <p class="note pl-save-note" id="pl-save-note" role="status"></p>
+      </div>`;
+}
+
+function bindSavePlaylist(p) {
+  const btn = $("#pl-save");
+  if (!btn) return;
+  const from = savedFromOf(p);
+  btn.addEventListener("click", (e) => {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+    const existing = savedCopyOf(from);
+    if (existing) { location.hash = "#/" + playlistRoute(existing); return; }
+    const result = savePlaylistCopy(p);
+    const saved = result.status === "saved" || result.status === "exists";
+    setToggleLabel(btn, saved, SAVE_PLAYLIST_TOGGLE);
+    btn.classList.toggle("on", saved);
+    const note = SAVE_PLAYLIST_NOTES[result.status];
+    if (note) setStatusText($("#pl-save-note"), note);
+    if (result.status === "saved") {
+      logEvent("playlist_saved", { playlist_id: result.playlist.id, from_kind: from.kind, from_id: from.source_id });
+    }
+  });
+}
 
 /* ---------- Up Next (cp_queue) ----------
 
@@ -9953,6 +10114,9 @@ function renderPlaylistDetail(id) {
      labels cannot disagree; `hasOpened` stays what the next-up marker asks. */
   const played = rows.filter(r => rowProgress(r.item)?.state === "played").length;
   const ctx = playlistCtx(p);
+  /* A generated playlist or a subject queue can be kept (savePlaylistCopy);
+     the listener's own playlists, saved copies included, are not saved again. */
+  const source = savedFromOf(p);
 
   $("#view").innerHTML = `
     <div class="page">
@@ -9963,6 +10127,7 @@ function renderPlaylistDetail(id) {
           <p class="sub">${joinMeta(countLabel(rows.length, "episode"), p.isSubject ? "picked for you" : (p.isGenerated ? "generated for you" : "playlist"), played ? `${played} played` : "")}</p>
         </div>
       </div>
+      ${source ? savePlaylistControlHtml(savedCopyOf(source)) : ""}
       ${p.sparse ? `<p class="note">Only found a few on this — here's what 4a has.</p>` : ""}
       ${p.relaxed === "duration" ? `<p class="note">Couldn't match the length you asked for — here's what 4a found without it.</p>` : ""}
       ${partsNote(rows)}
@@ -9975,6 +10140,7 @@ function renderPlaylistDetail(id) {
     logEvent("playlist_removed", { playlist_id: p.id });
     leaveRemovedPlaylist();
   });
+  if (source) bindSavePlaylist(p);
   bindPickLogging($("#view"));
   bindStars($("#view"));
   bindUpNext($("#view"));
@@ -10768,7 +10934,7 @@ function renderPlaylists() {
     <div class="page">
       <div class="page-head">
         <a class="back" href="#/">‹</a>
-        <div><h2>Playlists</h2>${all.length ? `<p class="sub">${all.length} built</p>` : ""}</div>
+        <div><h2>Playlists</h2>${all.length ? `<p class="sub">${countLabel(all.length, "playlist")}</p>` : ""}</div>
       </div>
       <a class="page-link-row" href="#/create">Build a playlist ›</a>
       ${all.length ? all.map(p => `

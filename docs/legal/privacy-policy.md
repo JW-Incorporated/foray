@@ -130,7 +130,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_seen` | Episode ids already shown to you, so they are not repeated | **No** |
 | `cp_saved` | The episodes you saved | **No** (but see `saved` in §2) |
 | `cp_lastpick` | A snapshot of the last episode you picked | **No** (but marking it Done sends `finished` — §2) |
-| `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
+| `cp_playlists` | Playlists you built, including the text you typed to build them, and playlists you saved from ones 4a made for you (a generated playlist or a Suggested subject). A saved one also notes where it came from: which kind it was and its id, so saving it again does not make a second copy. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
 | `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; holds only the ids — the details it shows are in `cp_episode_snaps` | **No** |
 | `cp_episode_snaps` | A copy of the details of each episode in your Up Next list and your recent history — title, show name, length, publish date, artwork and audio addresses, topic ids and the first couple of sentences of its description — so those lists can still show and play an episode after the app reloads, including episodes from outside 4a's own catalogue. An episode is dropped from it once neither list names it any more | **No** |
@@ -221,7 +221,7 @@ request that is not to our own origin.
 ## 2. What leaves your device, exactly
 
 The app buffers events locally (in the event queue described above) and
-periodically sends some of them to our database (Supabase — see §3). **Eighteen of the twenty-two event types the app records never leave the device.** The
+periodically sends some of them to our database (Supabase — see §3). **Nineteen of the twenty-three event types the app records never leave the device.** The
 buffer is trimmed to the most recent 5,000 entries.
 
 **Sent** (`app.js:toEventRow()`). Every row carries your anonymous account id
@@ -238,7 +238,8 @@ and a timestamp:
 position; stored about every 15 seconds, recorded as an event at most once a
 minute per episode — `player/position-store.js:save()`), `foray_play`,
 `foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
-`unsaved`, `playlist_built`, `playlist_removed`, `family_mode`,
+`unsaved`, `playlist_built`, `playlist_saved` (keeping a playlist 4a made as
+your own), `playlist_removed`, `family_mode`,
 `autoadvance_pref` (toggling continuous playback on or off), `voice_pref`
 (choosing a narration voice — V-01), `refreshed_all`,
 `storage_fault`, `queued` and its counterpart `unqueued`
