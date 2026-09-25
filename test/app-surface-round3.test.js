@@ -59,6 +59,8 @@ function loadApp() {
   const win = makeEl("window");
   const doc = makeEl("document");
   const view = makeEl("main");
+  /* Elements a test registers by selector, for code that looks them up. */
+  const els = {};
   const ctx = {
     console: { log: noop, info: noop, warn: noop, error: noop, debug: noop },
     fetch: () => new Promise(() => {}),
@@ -72,7 +74,7 @@ function loadApp() {
     document: {
       body: makeEl("body"), documentElement: makeEl("html"), readyState: "complete",
       addEventListener: doc.addEventListener, removeEventListener: doc.removeEventListener, createElement: makeEl,
-      querySelector: (sel) => (sel === "#view" ? view : null), querySelectorAll: () => [], getElementById: () => null,
+      querySelector: (sel) => (sel === "#view" ? view : els[sel] || null), querySelectorAll: () => [], getElementById: (id) => els["#" + id] || null,
     },
     navigator: { userAgent: "node", onLine: true },
     location: { hash: "#/", href: "https://example.test/", pathname: "/", search: "" },
@@ -98,6 +100,7 @@ function loadApp() {
     win,
     doc,
     view,
+    els,
     timers,
     store,
     run: (code) => vm.runInContext(code, ctx),
@@ -428,4 +431,34 @@ test("data-integrity-8: cp_lastpick is never written, and a stored copy is remov
   assert.ok(!/lsSet\(\s*["']cp_lastpick["']/.test(code), "no code path writes it");
   const policy = fs.readFileSync(path.join(ROOT, "docs/legal/privacy-policy.md"), "utf8");
   assert.match(policy, /\| `cp_lastpick` \| Retired/, "the privacy policy says it is retired");
+});
+
+/* ---------- app-2-11: the Search CTA's query reaches Create without a timer --- */
+
+test("app-2-11: the Search CTA hands its query to Create through module state, consumed when the form is bound", () => {
+  /* The CTA set location.hash and prefilled on a setTimeout(0), assuming the
+     hashchange render ran first; the spec does not order those tasks, and when
+     the timer won there was no #cr-form and the listener landed on an empty
+     Create page.
+     MUTATION: restore the setTimeout(0) hand-off — no pending query reaches
+     renderCreate (and a 0 ms timer is armed), red. */
+  const m = loadApp();
+  const btn = makeEl("button");
+  btn.dataset.createPlaylist = "tokamaks";
+  const scope = makeEl("div");
+  scope.querySelector = (sel) => (sel === "[data-create-playlist]" ? btn : null);
+  m.ctx.bindCreatePlaylistCta(scope);
+  btn.dispatch("click");
+  assert.strictEqual(m.ctx.location.hash, "#/create", "it navigates");
+  assert.ok(![...m.timers.values()].some((t) => t.ms === 0), "and arms no race-prone 0 ms timer");
+
+  const submits = [];
+  m.ctx.bindCreateFormSubmit = (e) => submits.push(e.currentTarget);
+  m.els["#cr-form"] = makeEl("form");
+  m.els["#cr-input"] = makeEl("input");
+  m.ctx.renderCreate();
+  assert.strictEqual(m.els["#cr-input"].value, "tokamaks", "the form is prefilled");
+  assert.deepStrictEqual(submits, [m.els["#cr-form"]], "and submitted through the one creation path");
+  m.ctx.renderCreate();
+  assert.strictEqual(submits.length, 1, "consumed once: a later visit to Create does not rebuild it");
 });

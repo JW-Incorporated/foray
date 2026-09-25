@@ -8563,25 +8563,24 @@ function createPlaylistCtaHtml(query) {
 /* Hands off to Create's own, single creation path (#cr-form's
    bindCreateFormSubmit) rather than calling buildPlaylist() from here --
    see createPlaylistCtaHtml's header for why a second creation path is out
-   of scope. Navigates first so #cr-form exists, then prefills and submits
-   it on the next task-queue turn (route() replaces #view synchronously on
-   the hashchange handler, which runs after this click handler returns —
-   same "let the browser get a paint/task turn" idiom bindCreateFormSubmit
-   itself already documents for its own setTimeout(0)). It used to hand off
-   to #/playlists' form; that builder is gone (p-first-6). */
+   of scope. It used to hand off to #/playlists' form; that builder is gone
+   (p-first-6).
+
+   THE QUERY RIDES IN MODULE STATE, NOT ON A TIMER (audit round 3, app-2-11).
+   This navigated and then prefilled on a setTimeout(0), assuming the
+   hashchange render would run first. The spec does not order a timer task
+   against a hashchange task, so on a slow WebView the timer could win, find no
+   #cr-form and land the listener on an empty Create page. Now the query waits
+   in `pendingCreateQuery` and renderCreate consumes it once its form is bound —
+   whenever that render happens. */
+let pendingCreateQuery = null;
+
 function bindCreatePlaylistCta(scope) {
   const btn = scope.querySelector("[data-create-playlist]");
   if (!btn) return;
   btn.addEventListener("click", () => {
-    const query = btn.dataset.createPlaylist || "";
+    pendingCreateQuery = btn.dataset.createPlaylist || "";
     location.hash = "#/create";
-    setTimeout(() => {
-      const input = $("#cr-input");
-      const form = $("#cr-form");
-      if (!input || !form) return; // route() failed to land on #/create — nothing to prefill
-      input.value = query;
-      form.dispatchEvent(new Event("submit", { cancelable: true }));
-    }, 0);
   });
 }
 
@@ -11073,6 +11072,16 @@ function renderCreate() {
       if (form) bindCreateFormSubmit({ preventDefault() {}, currentTarget: form });
     });
   });
+  /* A Search CTA's hand-off (app-2-11): prefilled and submitted through the
+     same path, now that the form exists. Consumed once. */
+  if (pendingCreateQuery !== null) {
+    const query = pendingCreateQuery;
+    pendingCreateQuery = null;
+    const form = $("#cr-form");
+    const input = $("#cr-input");
+    if (input) input.value = query;
+    if (form && !createBuildPending) bindCreateFormSubmit({ preventDefault() {}, currentTarget: form });
+  }
 }
 
 /* ---------- Forays (#128) ----------
