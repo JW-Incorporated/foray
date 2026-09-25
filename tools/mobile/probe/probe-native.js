@@ -238,7 +238,14 @@ async function maybeFinale() {
   try {
     if (rec.stage === "booting") await start();
     else if (rec.stage === "playing" || rec.stage === "restarted") await restarted();
-    else await save(); // a stage past the finale: nothing more to do on this page
+    else {
+      /* A stage past the finale (or one that stopped early): still SAY HELLO.
+         Every foreground page load owes the engine one within 10 s, or it takes
+         a page-health strike and downgrades (EngineOwnership.pageHealthMs) —
+         which trial run 36176555294 showed, on a page that stayed silent. */
+      rec.helloLate = helloOf(await engine.hello());
+      await save();
+    }
   } catch (e) {
     fail("boot", e);
     await save();

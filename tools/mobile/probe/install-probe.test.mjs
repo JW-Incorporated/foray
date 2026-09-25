@@ -774,6 +774,10 @@ test("the native probe page can load no media at all", () => {
   assert.doesNotMatch(m[1], /media-src/);
   assert.doesNotMatch(m[1], /unsafe-inline|unsafe-eval/);
   assert.match(html, /<script type="module" src="probe-native\.js"><\/script>/);
+  /* The phase file loads here too, BEFORE the module: the audio base set on
+     index.html does not survive the navigation (trial run 36176555294). */
+  const phaseTag = html.indexOf('<script src="probe-phase.js"></script>');
+  assert.ok(phaseTag > 0 && phaseTag < html.indexOf('src="probe-native.js"'));
 });
 
 test("probe-native.js drives the REAL engine client and builds the Foray with the REAL queue builder", () => {

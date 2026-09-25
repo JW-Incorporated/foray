@@ -2234,12 +2234,15 @@ test("NE-36 staged step: pinned to the legacy lane with web, the native pass see
   const background = at("xcrun simctl launch \"$UDID\" com.apple.Preferences");
   const kill = at("webcontent_killed=");
   const foreground = at('echo "foreground=$(xcrun simctl launch "$UDID" "$APP_ID")"');
-  const exported = at('defaults export "$APP_ID" - > "$WORK/defaults.plist"');
+  /* The app's OWN plist, from its data container: `simctl spawn defaults export`
+     reads the device-wide domain (trial run 36176555294 got only the seed back). */
+  const exported = at('cp "$DATA/Library/Preferences/$APP_ID.plist" "$WORK/defaults.plist"');
+  assert.ok(at('DATA=$(xcrun simctl get_app_container "$UDID" "$APP_ID" data)') < exported);
   const rows = at('native-rows "$WORK/defaults.plist" > "$ART/native-rows.json"');
   assert.ok(terminate < install && install < seed && seed < launch, "terminate -> install -> seed -> launch");
   assert.ok(launch < background && background < kill && kill < foreground && foreground < exported && exported < rows);
   /* The raw export never lands in $ART: it holds every CapacitorStorage value. */
-  assert.doesNotMatch(run, /defaults export[^\n]*\$ART/);
+  assert.doesNotMatch(run, /(defaults export|Preferences\/\$APP_ID\.plist)[^\n]*\$ART\//);
   assert.match(run, /WORK="\$RUNNER_TEMP\/ios-ci-native-work"/);
   /* The kill is the Simulator's WebContent, not anything on the host. */
   assert.match(run, /awk '\/com\\\.apple\\\.WebKit\\\.WebContent\/ && \/CoreSimulator\/ \{print \$1\}'/);
