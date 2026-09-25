@@ -1895,6 +1895,19 @@ test("the iOS ForayAudioPlugin touches AVAudioSession.setActive from its two ses
   assert.equal((table.match(/\.hold\b/g) ?? []).length, 1, "exactly one transition may take the session");
 });
 
+test("the iOS end of playback releases and notifies even when the plugin never took the hold (audit round 3, mobile-native-4)", () => {
+  /* Every narration line activates the shared session (ForayTtsPlugin), so a
+     Foray played through without a pause ended with a non-mixable session
+     still active and the interrupted app never told it could resume.
+     MUTATION: drop the playing/paused -> ended/none row from sessionMove. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const table = swiftFuncBody(code, "sessionMove");
+  assert.match(table, /case \(\.playing, \.none\), \(\.playing, \.ended\), \(\.paused, \.none\), \(\.paused, \.ended\):\s*return \.releaseAndNotify/);
+  const endRow = table.indexOf("(.playing, .ended)");
+  const holdingRow = table.indexOf("case (_, .none), (_, .ended):");
+  assert.ok(endRow >= 0 && holdingRow > endRow, "the end-of-playback row is matched before the holding-only fallback");
+});
+
 test("the iOS resume transition deactivates NOTHING; a pause the OS caused takes no hold; a hold the OS took is taken back (review 2026-09-23)", () => {
   /* Three findings against the paused-hold model, each a line of Swift:
      1. `releaseQuietly` called `setActive(false)` on the paused -> playing

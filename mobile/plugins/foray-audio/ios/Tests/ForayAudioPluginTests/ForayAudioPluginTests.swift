@@ -325,11 +325,24 @@ final class ForayAudioPluginTests: XCTestCase {
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .playing, holding: false), .none)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .none, holding: true), .releaseAndNotify)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .ended, holding: true), .releaseAndNotify)
-        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .ended, holding: false), .none)
+        /* Audit round 3, mobile-native-4: a Foray that ends with no pause never
+           took the hold, but its narration activated the shared session, so the
+           end of playback releases and notifies whether or not we hold.
+           MUTATION: drop the `(.playing, .ended)` row from `sessionMove`. */
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .ended, holding: false), .releaseAndNotify)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .none, holding: false), .releaseAndNotify)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .ended, holding: false), .releaseAndNotify)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .none, to: .ended, holding: false), .none)
+        XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .ended, to: .none, holding: false), .none)
         for from in [S.none, S.playing, S.paused, S.ended] {
             for to in [S.none, S.playing, S.paused, S.ended] {
                 let move = ForayAudioPlugin.sessionMove(from: from, to: to, holding: false)
-                XCTAssertTrue(move == .none || move == .hold, "\(from)->\(to) released a session nobody held")
+                let endOfPlayback = (from == .playing || from == .paused) && (to == .none || to == .ended)
+                if endOfPlayback {
+                    XCTAssertEqual(move, .releaseAndNotify, "\(from)->\(to) is the end of playback")
+                } else {
+                    XCTAssertTrue(move == .none || move == .hold, "\(from)->\(to) released a session nobody held")
+                }
             }
         }
     }

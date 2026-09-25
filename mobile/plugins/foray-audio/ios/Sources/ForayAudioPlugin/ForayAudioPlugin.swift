@@ -792,6 +792,17 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             return .none
         case (_, .playing):
             return holding ? .supersede : .none
+        /* THE END OF PLAYBACK RELEASES WHOEVER ACTIVATED (audit round 3,
+           mobile-native-4). A Foray played through without a pause never took
+           the hold, but every narration line activated this same shared
+           session (`ForayTtsPlugin` claims it), so ending on `holding` alone
+           left a non-mixable `.playback` session active after the Foray and
+           never told the app it interrupted that it may resume -- the one
+           promise design comment §2 makes. From playing or paused into ended
+           or none, release and notify either way. Never from the playing path,
+           and never from a state that had nothing to play. */
+        case (.playing, .none), (.playing, .ended), (.paused, .none), (.paused, .ended):
+            return .releaseAndNotify
         case (_, .none), (_, .ended):
             return holding ? .releaseAndNotify : .none
         default:
