@@ -12,7 +12,7 @@ import type {
   NarrationVerifierBuilder,
   VerifyClipBrief
 } from "./NarrationVerifierBuilder";
-import { recordUsage } from "./usageTracking";
+import { createMessage } from "./anthropicCall";
 
 /**
  * Real §4.7 verification via the Anthropic API — a SEPARATE call, and
@@ -121,13 +121,12 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
       sessionId: ctx.sessionId
     });
 
-    const response = await this.client.messages.create({
+    const response = await createMessage(this.client, {
       model: MODEL,
       max_tokens: maxOutputTokens,
       messages: [{ role: "user", content: promptText }]
-    });
+    }, "narration-verify");
 
-    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic narration-verify response had no text block");
 
@@ -148,7 +147,7 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
         sessionId: ctx.sessionId
       });
 
-      const retryResponse = await this.client.messages.create({
+      const retryResponse = await createMessage(this.client, {
         model: MODEL,
         max_tokens: maxOutputTokens,
         messages: [
@@ -156,8 +155,7 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
           { role: "assistant", content: textBlock.text },
           { role: "user", content: reaskLine }
         ]
-      });
-      recordUsage(retryResponse.usage);
+      }, "narration-verify");
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic narration-verify re-ask response had no text block");
       return retryTextBlock.text;

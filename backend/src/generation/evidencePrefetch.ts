@@ -1,5 +1,6 @@
 import { beatKindOf, claimHash, type EvidenceBeat, type EvidenceGatherer, type EvidencePack } from "./gatherEvidence";
 import { decideConnectiveNarration, evidenceBeatFor, slotNeighbours, type SlotNeighbours } from "./writeNarration";
+import { findBudgetError } from "../cost/budgetGuard";
 import type { ExternalResearchContext } from "./ExternalResearcher";
 import type { SourcedAct, SourcedSlot, TapePointer } from "../types/tapeSourcing";
 
@@ -194,9 +195,17 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
       while (next < queue.length) {
         const beat = queue[next++]!;
         try {
-          await this.lookup(beat, ctx);
-          prefetched += 1;
+          const pack = await this.lookup(beat, ctx);
+          /* gen-5: a pack whose retrieval FAILED is counted as failed, and
+             lookup() has already dropped it from the memo so narration asks
+             again. */
+          if (pack.retrievalFailed) {
+            failed += 1;
+            console.warn(`evidencePrefetch: retrieval failed for "${beat.claim.slice(0, 60)}" — narration will ask again`);
+          } else prefetched += 1;
         } catch (err) {
+          /* A budget stop ends the run at this stage, as it would anywhere. */
+          if (findBudgetError(err)) throw err;
           failed += 1;
           console.warn(
             `evidencePrefetch: could not gather for "${beat.claim.slice(0, 60)}" — narration will ask again (${err instanceof Error ? err.message : String(err)})`
@@ -233,10 +242,19 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
     const key = evidenceMemoKey(beat);
     const held = this.memo.get(key);
     if (held) return held;
-    const pending = this.inner.gather(beat, ctx).catch((err: unknown) => {
-      this.memo.delete(key);
-      throw err;
-    });
+    const pending = this.inner.gather(beat, ctx).then(
+      (pack) => {
+        /* gen-5: a pack whose retrieval failed (a 429, a network error) is
+           handed to THIS asker but not kept: it is not a verdict, and a memo
+           that kept it would give every later round the same empty pack. */
+        if (pack.retrievalFailed && this.memo.get(key) === pending) this.memo.delete(key);
+        return pack;
+      },
+      (err: unknown) => {
+        if (this.memo.get(key) === pending) this.memo.delete(key);
+        throw err;
+      }
+    );
     this.memo.set(key, pending);
     return pending;
   }

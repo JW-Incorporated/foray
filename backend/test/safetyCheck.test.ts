@@ -73,3 +73,41 @@ describe("checkSafety", () => {
     expect(result).toEqual({ allowed: true, category: null, explanation: null });
   });
 });
+
+/**
+ * Round-3 audit gen-9, PENDING A FOUNDER RULING (founder question Q4).
+ *
+ * These four documentary prompts are rejected today by subject/intent
+ * co-occurrence (bare "sexual"/"sex" next to "children"/"kids"; bare
+ * "how to"/"steps to" next to "bomb"). DECISIONS.md §4.1 says a false
+ * positive is "a confusing, un-appealable rejection with no recourse", and
+ * these are exactly that. The default ruling for round 3 is: NO change to
+ * the refusal regexes until the founder rules. So:
+ *
+ *   - the must-pass cases are recorded here as SKIPPED tests, so the day
+ *     the regexes are narrowed they are un-skipped rather than rediscovered;
+ *   - the second block pins today's behaviour, so any change to the rules
+ *     that lets them through (or not) is a visible, deliberate diff.
+ *
+ * Ruling reference: docs/audit/round-3-code (finding gen-9, founder Q4).
+ */
+const GEN_9_DOCUMENTARY_PROMPTS = [
+  "How the Catholic Church covered up the sexual abuse of children",
+  "How sex education for kids changed in the 1970s",
+  "How to survive a nuclear bomb",
+  "Steps to peace after the Oklahoma City bomb"
+];
+
+describe("gen-9 (pending founder Q4): documentary prompts that should pass", () => {
+  for (const prompt of GEN_9_DOCUMENTARY_PROMPTS) {
+    it.skip(`must pass once the ruling lands: "${prompt}"`, () => {
+      expect(checkSafety(prompt).allowed).toBe(true);
+    });
+  }
+});
+
+describe("gen-9 (pending founder Q4): today's behaviour, pinned until the ruling", () => {
+  it("all four documentary prompts are still rejected: the regexes were not loosened without a ruling", () => {
+    expect(GEN_9_DOCUMENTARY_PROMPTS.map((p) => checkSafety(p).allowed)).toEqual([false, false, false, false]);
+  });
+});

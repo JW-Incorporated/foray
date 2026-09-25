@@ -82,6 +82,25 @@ export class FileCheckpointStore implements CheckpointStore {
     fs.renameSync(tmp, file);
   }
 
+  /** gen-12: rewrites the file without `stages` (same temp-and-rename write as
+   * save). Never throws. */
+  drop(key: string, stages: CheckpointStageKey[]): void {
+    try {
+      const existing = this.load(key);
+      if (!existing) return;
+      const kept = { ...existing.stages };
+      for (const stage of stages) delete kept[stage];
+      const file = this.filePathFor(key);
+      const tmp = `${file}.tmp`;
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- see load().
+      fs.writeFileSync(tmp, `${JSON.stringify({ ...existing, updatedAt: new Date().toISOString(), stages: kept }, null, 2)}\n`);
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- see load().
+      fs.renameSync(tmp, file);
+    } catch {
+      /* a stale stage left behind costs one failed resume, not the run */
+    }
+  }
+
   /** Called once a candidate has been written: the checkpoint has done its job
    * and a stale one beside a finished candidate is only a trap for the next
    * reader. Never throws — a leftover file is harmless. */

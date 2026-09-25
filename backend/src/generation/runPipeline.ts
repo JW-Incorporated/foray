@@ -17,14 +17,16 @@ import { deepenActs } from "./deepenActs";
 import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
-import { createActGate, narrationActConcurrency, writeNarration } from "./writeNarration";
+import { createActGate, narrationActConcurrency, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
 import { verifiedPageSummaries } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer } from "./evidencePrefetch";
-import { createEvidenceGatherer, type EvidenceGatherer } from "./gatherEvidence";
+import { createEvidenceGatherer, findDigestForItem, titlesForItem, type EvidenceGatherer } from "./gatherEvidence";
+import { loadCatalogueData } from "./catalogueLookup";
 import { ForayStitcher } from "./stitchForay";
 import {
   finalizeForay,
   generationBatchId,
+  isMintedPoolCollisionError,
   makeSupersedableCut,
   mintedSegmentRow,
   readExistingForayIds,
@@ -474,29 +476,44 @@ export function forayCopy(intent: { subject: string; angle?: string; title?: str
 }
 
 
-export function slotsFromSpine(spine: Spine): ForaySlot[] {
-  const slots: ForaySlot[] = [];
+/**
+ * gen-4 (round-3 audit): the slot id every slot of the spine DECLARES, per act
+ * and per slot by position, minted ONCE. Two acts may legitimately name a slot
+ * the same thing; the id must still be unique because check-forays joins items
+ * to slots by it, so a numeric suffix is added, keeping the first occurrence's
+ * id stable (a re-run that adds a later duplicate must not renumber an earlier
+ * one). The same map is handed to the stitcher (`StitchForayOptions.slotIds`),
+ * so items carry the declared id instead of re-slugging their slot's title:
+ * before, both "Origins" slots' items said `origins` while `slots` declared
+ * `origins` and `origins-2`, and check-forays refused the Foray.
+ */
+export function slotIdsFromSpine(spine: Spine): string[][] {
   const seen = new Set<string>();
-  for (const act of spine.acts) {
-    for (const slot of act.slots) {
+  return spine.acts.map((act) =>
+    act.slots.map((slot) => {
       const id = slugifySlotTitle(slot.title);
-      /* Two acts may legitimately name a slot the same thing; the id must still
-         be unique because check-forays joins items to slots by it. A numeric
-         suffix keeps the first occurrence's id stable, which matters because a
-         re-run that adds a later duplicate must not renumber the earlier one. */
       let unique = id;
       let n = 2;
       while (seen.has(unique)) unique = `${id}-${n++}`;
       seen.add(unique);
+      return unique;
+    })
+  );
+}
+
+export function slotsFromSpine(spine: Spine): ForaySlot[] {
+  const ids = slotIdsFromSpine(spine);
+  const slots: ForaySlot[] = [];
+  spine.acts.forEach((act, actIndex) => {
+    act.slots.forEach((slot, slotIndex) => {
       /* The TITLE a listener reads gets the listener's words (rules.js
          INTERNAL_VOCABULARY, which check-forays refuses in a slot title); the
-         ID stays the raw title's slug, because stitchAct and partialProjection
-         join items to slots by slugifying the spine's own slot.title. */
+         ID is the declared one above, which items carry by position. */
       const copy = toListenerWords(slot.title);
       if (copy.changed) console.warn(`runPipeline: slot title "${slot.title}" used the pipeline's own words and was rewritten to "${copy.text}" — the spine ignored its slot-title instruction`);
-      slots.push({ id: unique, title: copy.text });
-    }
-  }
+      slots.push({ id: ids[actIndex]![slotIndex]!, title: copy.text });
+    });
+  });
   return slots;
 }
 
@@ -813,6 +830,15 @@ const MintedSegmentSourceSchema = z.object({
   source: z.literal("generation-tier-2")
 });
 
+/** gen-13: the Foray's identity, banked the first time it is known and
+ * resumed thereafter (see `bankedIdentity` in runForayPipeline). */
+const IdentityCheckpointSchema = z.object({
+  startedAt: z.string().min(1),
+  forayId: z.string().min(1),
+  topic: z.string().min(1),
+  topicDecision: z.object({ topic: z.string().min(1), reason: z.string(), basis: z.string() }).passthrough()
+});
+
 const SourceCheckpointSchema = z.object({
   acts: z.array(SourcedActSchema),
   newSegments: z.array(NewSegmentSchema),
@@ -924,6 +950,22 @@ export async function runForayPipeline(
 
   const stage = async <T>(name: string, parse: (raw: unknown) => T, fn: () => Promise<T>): Promise<T> => {
     return (await stageDetail(name, parse, fn)).value;
+  };
+
+  /* gen-12 (round-3 audit): a RESUMED sourcing whose minted rows now collide
+     with the committed pool (another Foray published a row at the same start
+     while this one waited out a budget window) is stale against the world.
+     Left banked, every later resume replays it and is refused the same way
+     until someone passes --no-resume, so it is dropped, with everything
+     built on it (narration and stitching), and the next attempt re-sources
+     against the pool as it is now. */
+  const dropStaleSourcing = async (checkForaysErrors: readonly string[]): Promise<void> => {
+    if (!checkpoint.wasResumed("source")) return;
+    if (!checkForaysErrors.some(isMintedPoolCollisionError)) return;
+    const dropped = await checkpoint.drop((name) => name === "source" || name.startsWith("narrate:") || name.startsWith("stitch:"));
+    console.warn(
+      `runForayPipeline: the resumed sourcing collides with the committed segment pool; dropped ${dropped.length} banked stage(s) (${dropped.join(", ")}) so the next attempt re-sources (gen-12)`
+    );
   };
 
   /* WS-B (docs/curation/generation-fix-plan-2026-09-09.md): `pipelineTokens`
@@ -1071,7 +1113,17 @@ export async function runForayPipeline(
   const preSpineText = [req.prompt, intent.subject, intent.angle].join(" ");
   let topicDecision: PipelineTopicDecision;
   let preSpineCandidates: TopicCandidate[] = [];
-  if (options.topic) {
+  /* gen-13 (round-3 audit): a resumed run takes the Foray's IDENTITY (its
+     topic, start stamp and id) from the checkpoint rather than re-deriving
+     it. Re-deciding the topic against today's supply could gate sourcing on
+     a different node from the one the banked research map and spine were
+     filtered by, and re-reading the clock minted a new Foray id, so the
+     partial a listener was polling changed id mid-run. */
+  const bankedIdentity = checkpoint.resumeSync("identity", (raw) => IdentityCheckpointSchema.parse(raw));
+  if (bankedIdentity) {
+    topicDecision = bankedIdentity.topicDecision as unknown as PipelineTopicDecision;
+    console.log(`  ${topicDecisionLine(topicDecision, basis)} [resumed]`);
+  } else if (options.topic) {
     topicDecision = { ...pinnedTopicDecision(options.topic, measure([options.topic])), basis };
     console.log(`  ${topicDecisionLine(topicDecision, basis)}`);
   } else {
@@ -1233,13 +1285,15 @@ export async function runForayPipeline(
      would mint two ids for one piece of work. Determinism is untouched —
      both stamps are read from the injected clock, so the same request and the
      same clock still produce the same id (`runPipeline.test.ts`). */
-  const startedAt = now().toISOString();
+  const startedAt = bankedIdentity?.startedAt ?? now().toISOString();
   /* G-30 (manual step 25): an id that already sits in `data/forays.json` is
      suffixed `-2`, `-3`, … HERE — before the first partial candidate hands it
      to `finalizeForay`, which would otherwise throw on the duplicate at act 1
      (and again at the end, after the whole run was paid for). The read is the
      same file finalize reads; a checkout without it takes the id as minted. */
-  const forayId = uniqueForayId(forayIdFor(mintedFrom, startedAt), (deps.existingForayIds ?? readExistingForayIds)(options.root));
+  const forayId =
+    bankedIdentity?.forayId ?? uniqueForayId(forayIdFor(mintedFrom, startedAt), (deps.existingForayIds ?? readExistingForayIds)(options.root));
+  if (!bankedIdentity) await checkpoint.save("identity", { startedAt, forayId, topic, topicDecision });
   const slots = slotsFromSpine(spine);
   const allActTitles = spine.acts.map((a) => a.title);
 
@@ -1356,7 +1410,10 @@ export async function runForayPipeline(
      against a pool that has since gained the row. */
   const rowContext = { batchId: generationBatchId(forayId), sources: sourced.newSegmentSources };
   const mintedPool = sourced.newSegments.map((s) => mintedSegmentRow(s, topic, rowContext) as unknown as SegmentRecord);
-  const runtimePool = mintedPool.length ? [...mintedPool, ...loadSegmentPool()] : loadSegmentPool();
+  /* gen-15: the pool the run SOURCED against (injected, or loaded once above),
+     not a fresh read of the repo root's pool, so runtime seconds are measured
+     on the rows the Foray actually references. */
+  const runtimePool = mintedPool.length ? [...mintedPool, ...segmentPool] : segmentPool;
 
   /* §4.7 — write narration, then verify it independently (distinct instances,
      enforced there). Driven ONE CALL PER ACT rather than one call for all, so
@@ -1407,6 +1464,8 @@ export async function runForayPipeline(
     deepened,
     {
       continuity: { builder: continuityBuilder },
+      /* gen-4: items carry the slot ids `slots` declares, by position. */
+      slotIds: slotIdsFromSpine(spine),
       onActReady: deps.onActReady
         ? async ({ actIndex, itemsSoFar }) => {
             if (actIndex === 0) ttlA1Ms = Date.now() - pipelineStartMs;
@@ -1451,6 +1510,7 @@ export async function runForayPipeline(
               finalize
             );
             await deps.onActReady!(candidate);
+            await dropStaleSourcing(candidate.validation.checkForaysErrors);
             /* G-30 (manual step 10): the partial-refusal exit. AFTER the
                callback, so the refused partial is on disk for whoever reads
                the report; BEFORE `checkpoint.stage` records this act's
@@ -1517,6 +1577,15 @@ export async function runForayPipeline(
      reports its error when it reaches it. Declared BEFORE the acts start
      because F-97 reads it from inside them too (`ground`). */
   const settledActs: Array<WrittenAct | undefined> = [];
+  /* gen-8 (round-3 audit): Q-09's cross-act show memory. Every act gets the
+     shows introduced in the acts before it, computed once from sourcing, so a
+     show named in act 1 is not re-introduced by name in act 3. The show is
+     named the way the act's own clip brief names it (`titlesForClip`). */
+  const showCatalogue = loadCatalogueData();
+  const showsBeforeAct = showsHeardBeforeEachAct(sourced.acts, (tape) => {
+    const titles = titlesForItem(tape.itemId, showCatalogue, findDigestForItem(tape.itemId, archive, showCatalogue));
+    return titles?.showTitle ?? sourced.newSegmentSources.find((s) => s.id === tape.itemId)?.show ?? "";
+  });
   const narrations: Array<Promise<WrittenAct>> = sourced.acts.map((act, i) => {
     const p = gate.run(() =>
       stage(
@@ -1548,7 +1617,8 @@ export async function runForayPipeline(
                  the acts that have already landed when THIS act starts. With
                  `actConcurrency` acts starting together the first wave sees
                  none; a later act's thesis seam may rest on them. */
-              ground: () => verifiedPageSummaries(settledActs)
+              ground: () => verifiedPageSummaries(settledActs),
+              showsIntroduced: [showsBeforeAct[i] ?? []]
             },
             spine.voice,
             ctx
@@ -1665,6 +1735,7 @@ export async function runForayPipeline(
 
   // §4.9 — validate against the same two checkers CI runs. Writes nothing.
   const result = await timed("finalize", () => finalize(input, options.root));
+  await dropStaleSourcing(result.validation.checkForaysErrors);
 
   /* `finalize`'s own internal breakdown (build-record/check-forays/check-
      narration) plus this function's now-complete stage list — appended

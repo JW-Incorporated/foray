@@ -48,6 +48,10 @@ export const StitchedTapeItemSchema = z
      * (§4.8 rule 4's own audit key — see `SourcedBeat`/coverage below). */
     beatIndex: z.number().int().nonnegative(),
     slotTitle: z.string().trim().min(1),
+    /** gen-4 (round-3 audit): the slot id the Foray's `slots` DECLARES for this
+     * slot (`slotIdsFromSpine`), carried by position. When present it is the
+     * item's `slot`; the title is re-slugged only when it is absent. */
+    slotId: z.string().trim().min(1).optional(),
     segmentId: z.string().trim().min(1),
     itemId: z.string().trim().min(1),
     startSec: z.number().nonnegative(),
@@ -75,6 +79,8 @@ export const StitchedNarrationItemSchema = z
      * index this narration item covers coverage for. */
     beatIndex: z.number().int().nonnegative().optional(),
     slotTitle: z.string().trim().min(1).optional(),
+    /** gen-4: see StitchedTapeItemSchema.slotId. */
+    slotId: z.string().trim().min(1).optional(),
     mode: z.enum(["Hinge", "Frame", "Marker", "Correction", "Patch", "Carry", "Intro"]),
     script: z.string().trim().min(1),
     id: z.string().trim().min(1),
