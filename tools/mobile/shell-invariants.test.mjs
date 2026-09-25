@@ -3682,6 +3682,82 @@ test("NE-25b: the two-deck spike measures AVDeck's own gate: two real decks, no 
   for (const file of files) assert.ok(exempt.has(`${CLICK_TRACK_DIR}/${file}`), `${file} is not in the hash-checked exempt set`);
 });
 
+/* ─────────── NE-32: DeckPair and the three-layer out-point ───────────
+ *
+ * docs/native-engine-plan.md §4.3 and card NE-32. The Simulator tests
+ * (DeckPairSeamTests, DeckPairTests) prove the behaviour; what they cannot see
+ * is which FILE reaches for what, and that the pair ships OFF. */
+
+test("NE-32: DeckPair ships off, never touches a player, and the out-point's three layers live in AVDeck's one watch", () => {
+  /* MUTATION: default `deckPairEnabled` to true; build a DeckPair in EngineBoot
+     without the flag; seek or pause `player` from DeckPair.swift, or import
+     AVFoundation there; write `forwardPlaybackEndTime` or add a boundary
+     observer outside AVDeck's `apply`; raise the stop pad; arm the watchdog
+     with anything but `config.schedule(.watchdog`; let the pair play a deck in
+     the handover. Each fails here. */
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  assert.match(core, /deckPairEnabled: Bool = false\)/, "EngineConfig.deckPairEnabled defaults OFF (until NE-37)");
+
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.match(boot, /config\.deckPairEnabled\s*\?\s*DeckPair\.make\(/, "the boot builds a DeckPair only behind the flag");
+  assert.equal([...boot.matchAll(/DeckPair\.make\(/g)].length, 1);
+
+  const pairPath = path.join(ENGINE_DIR, "DeckPair.swift");
+  assert.deepEqual(swiftImports(pairPath).sort(), ["ForayEngineCore", "Foundation"], "DeckPair speaks DeckCommands; it imports no AVFoundation");
+  const pair = stripSwiftComments(fs.readFileSync(pairPath, "utf8"));
+  assert.doesNotMatch(pair, /\bplayer\b|\bAVPlayer\b/, "DeckPair must never touch a deck's AVPlayer (NE-25b §10.3: a foreign seek leaves a deck ready at the wrong place)");
+  const handover = swiftFuncBody(pair, "handover") ?? "";
+  assert.doesNotMatch(handover, /\.send\(\.play\)/, "no handover step plays");
+  const pause = handover.indexOf("outgoing.send(.pause)");
+  assert.ok(pause > 0 && pause < handover.indexOf("activeIndex = standbyIndex"), "the outgoing deck is paused before the roles swap");
+  assert.match(handover, /guard !outgoing\.reading\.audible else/, "the swap waits for the outgoing deck to read not audible");
+  assert.match(handover, /for step in DeckPolicy\.handoverSteps\(\)/, "the handover runs the core's step list, in its order");
+  assert.match(swiftFuncBody(pair, "load") ?? "", /DeckPolicy\.warmPromotion\(/, "promotion is the core's decision");
+  assert.match(swiftFuncBody(pair, "prepare") ?? "", /DeckPolicy\.prefetchDecision\(/, "warming is the core's decision");
+
+  const deck = stripSwiftComments(fs.readFileSync(AVDECK_SWIFT, "utf8"));
+  assert.match(deck, /static let defaultStopPadSec: Double = 0\n/, "stopPad stays 0 (NE-25a measured no early stop)");
+  assert.deepEqual(swiftCallersOf(deck, "player\\.addBoundaryTimeObserver"), ["apply"]);
+  const writers = [...deck.matchAll(/func\s+(\w+)\s*\(/g)].map((m) => m[1])
+    .filter((n) => /forwardPlaybackEndTime\s*=/.test(swiftFuncBody(deck, n) ?? ""));
+  assert.deepEqual([...new Set(writers)].sort(), ["apply", "resetOutPoint"], "layer 1 is written by the watch's ops (and cleared on a new load) only");
+  assert.match(swiftFuncBody(deck, "step") ?? "", /DeckPolicy\.outPointStep\(watch, event\)/, "the out-point's decisions are the core's reducer");
+  const apply = swiftFuncBody(deck, "apply") ?? "";
+  assert.match(apply, /config\.schedule\(\.watchdog, ms\)/, "the watchdog's one timer comes from the scheduler seam");
+  assert.match(apply, /Self\.time\(\$0 \+ config\.stopPadSec\)/, "layer 1 is end + stopPad");
+  assert.doesNotMatch(deck, /repeating:\s*true/, "the watchdog is one-shot timers, never a repeating poll");
+});
+
+/* ─────────── NE-31s: the narration, interlude and jingle overlays ───────────
+ *
+ * docs/native-engine-plan.md §14 NE-31s. The manager-foray narration and
+ * jingle families prove the behaviour; what they cannot see is that every
+ * new switch ships OFF, that a line is uttered at NARRATION_RATE unless the
+ * listener-rate flag is on, and that nothing audible is emitted without the
+ * session (speak, interludeStart, silenceStart). */
+
+test("NE-31s: the overlays ship off, a line is uttered at NARRATION_RATE, and nothing audible starts without the session", () => {
+  /* MUTATION: default narrationFollowsListenerRate, interludeAvailable or
+     silenceNodeEnabled to true; utter a line at `state.rate` unconditionally;
+     drop the session guard from speakLine or armInterlude; let the host speak
+     a Foray line through the audition's speaker. Each fails here. */
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  assert.match(core, /narrationFollowsListenerRate: Bool = false/, "narration rides the listener's rate only behind a flag that defaults OFF");
+  assert.match(core, /interludeAvailable: Bool = false/, "no jingle until the host has a player (NE-34)");
+  assert.match(core, /silenceNodeEnabled: Bool = false/, "the silence node ships OFF (NE-34)");
+  assert.match(swiftFuncBody(core, "speakLine") ?? "", /guard state\.session == \.active else/, "a line is never spoken without the session");
+  assert.match(swiftFuncBody(core, "armInterlude") ?? "", /guard state\.session == \.active else/, "the jingle never starts without the session");
+  assert.match(core, /config\.narrationFollowsListenerRate \? state\.rate : EngineConstants\.QueueManager\.narrationRate/,
+    "the utterance rate is NARRATION_RATE (OQ-3) unless the flag is on");
+  assert.match(swiftFuncBody(core, "startSilence") ?? "", /Interlude\.silenceNodeSec\(/, "the silence node's cap is the interlude rule's");
+
+  const host = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "ForayEngine.swift"), "utf8"));
+  const interpret = swiftFuncBody(host, "interpret") ?? "";
+  const narration = interpret.slice(interpret.indexOf("case let .narration("), interpret.indexOf("case let .interlude("));
+  assert.ok(narration.length > 0, "the host interprets the narration commands");
+  assert.doesNotMatch(narration, /speaker\./, "a Foray line never goes through the audition's speaker (NE-33's SpeechNarrator owns it)");
+});
+
 test("NE-25c: one synthesizer configuration, a platform-free probe reached only through probeSession, and a smoke on the production pieces", () => {
   /* DV-9 (plan §10) is answered on the founder's phone by the Developer
      session probe, and NE-33 picks SpeechNarrator's path from that one row.

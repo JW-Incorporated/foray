@@ -18,6 +18,12 @@ public struct EngineConfig: Equatable {
     /// 2026-09-24). Passed straight through, as the JS manager passes it:
     /// `SeamGap` owns what a nonsense length means (no beat).
     public var seamGapSec: Double
+    /// NE-32's DeckPair: two decks, the standby one prepared and prerolled at
+    /// the next segment's in-point while the current one is audible. OFF until
+    /// NE-37 (plan §4.3). The core decides nothing on it (it prepares when the
+    /// deck opens the prefetch window, and a single deck never opens one); the
+    /// host reads it to choose which deck it builds.
+    public var deckPairEnabled: Bool
     /// NE-31s, OQ-3 (founder, 2026-09-24: "1x for now, but maybe we change
     /// later"): a spoken line is uttered at `NARRATION_RATE` whatever the
     /// listener's speed. On, it would ride the listener's rate instead. OFF.
@@ -44,12 +50,14 @@ public struct EngineConfig: Equatable {
                 forayTapeEnabled: Bool = false, seamGapSec: Double = SeamGap.defaultGapSec,
                 narrationFollowsListenerRate: Bool = false, narrationPulse: Bool = true,
                 interludeAvailable: Bool = false, interludeEnabled: Bool = true,
-                silenceNodeEnabled: Bool = false, voiceId: String? = nil) {
+                silenceNodeEnabled: Bool = false, voiceId: String? = nil,
+                deckPairEnabled: Bool = false) {
         self.build = build
         self.holdPolicy = holdPolicy
         self.rate = rate
         self.forayTapeEnabled = forayTapeEnabled
         self.seamGapSec = seamGapSec
+        self.deckPairEnabled = deckPairEnabled
         self.narrationFollowsListenerRate = narrationFollowsListenerRate
         self.narrationPulse = narrationPulse
         self.interludeAvailable = interludeAvailable
@@ -996,6 +1004,10 @@ public struct EngineCore {
         case let .prepareWindow(token):
             guard token == state.loadedToken else { return }
             warmNextSegment()
+        case let .prepared(token, hit, stages):
+            // Only the load in flight is described; a stale report is dropped.
+            guard state.pendingLoad?.token == token else { return }
+            state.deckPrepare = DeckPrepareReport(token: token, hit: hit, stages: stages)
         }
     }
 
@@ -1822,11 +1834,17 @@ public struct EngineCore {
     /// The load the beat held becomes audible: the packed `seam` row (plan
     /// §13 item 37) when it was a real seam, then `itemLoaded`.
     private mutating func seamLanded(armedAt: Double?) {
+        // NE-32: the DeckPair's own report on this load, when it sent one,
+        // is the truth about the standby deck (a prepare ASKED is not a
+        // prepare HIT); without one the row says what it always said.
+        let report = state.deckPrepare.flatMap { $0.token == state.loadedToken ? $0 : nil }
+        state.deckPrepare = nil
         if let armedAt {
             let row = SeamRow(observedGapMs: now.monoMs - armedAt, askedGapMs: state.gapAskedMs,
-                              prepared: state.preparedItemId != nil && state.preparedItemId == state.loadedId,
+                              prepared: report?.hit
+                                  ?? (state.preparedItemId != nil && state.preparedItemId == state.loadedId),
                               grace: state.grace != nil, bgRemainingMs: now.bgRemainingMs.map { $0.rounded() },
-                              stages: [.ready, .play])
+                              stages: report.map { $0.stages + [.play] } ?? [.ready, .play])
             out.append(.diag(row.entry))
         }
         stopSilence("landed")

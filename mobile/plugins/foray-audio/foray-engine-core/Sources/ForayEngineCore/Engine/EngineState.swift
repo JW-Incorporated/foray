@@ -129,6 +129,10 @@ public struct EngineState: Equatable {
     /// The item the standby deck was last asked to prepare (a seam that finds
     /// it there was a prepare hit).
     public var preparedItemId: String?
+    /// The DeckPair's report on the load in flight (NE-32, `.prepared`), for
+    /// the packed seam row; nil when the deck sent none (one deck, the
+    /// parity driver), and the row then says what it said before NE-32.
+    public var deckPrepare: DeckPrepareReport?
     /// Segments ADR-0007's ladder refused at load (the snapshot's `skippedSegments`).
     public var skippedSegments = 0
     /// The `cp_foray` write throttle: foray-progress.js `ForayProgressStore`'s
@@ -297,4 +301,17 @@ public enum DeferredIntent: Equatable {
 public struct LastRemote: Equatable {
     public let command: MediaMapping.RemoteCommand
     public let atMono: Double
+}
+
+/// What the DeckPair said about one load (NE-32; `DeckEvent.prepared`).
+public struct DeckPrepareReport: Equatable {
+    public var token: DeckToken
+    public var hit: Bool
+    public var stages: [Vocabulary.Stage]
+
+    public init(token: DeckToken, hit: Bool, stages: [Vocabulary.Stage]) {
+        self.token = token
+        self.hit = hit
+        self.stages = stages
+    }
 }

@@ -36,12 +36,20 @@ enum EngineBoot {
             holdPolicy: holdPolicy.load() ?? .default))
 
         let session = AudioSessionOwner(config: AudioSessionOwner.Config(diag: { store.diag($0) }))
+        let config = EngineConfig(build: bundleVersion)
+        let sessionIsActive = { session.phase == .active }
+        // NE-32: two decks with a prepared standby, behind `deckPairEnabled`
+        // (off until NE-37); otherwise M1's one deck. Either way the deck's
+        // `outPoint` rows go into the ring.
+        let deck: DeckDriving = config.deckPairEnabled
+            ? DeckPair.make(sessionIsActive: sessionIsActive, diag: { store.diag($0) })
+            : AVDeck(config: AVDeck.Config(sessionIsActive: sessionIsActive, diag: { store.diag($0) }))
         let seams = EngineSeams(
             session: session,
             background: BackgroundGrace(),
             remote: RemoteSurface(),
             nowPlaying: NowPlayingPublisher(),
-            deck: AVDeck(config: AVDeck.Config(sessionIsActive: { session.phase == .active })),
+            deck: deck,
             speaker: PreviewSpeaker(config: PreviewSpeaker.Config(sessionIsActive: { session.phase == .active },
                                                                   diag: { store.diag($0) })),
             timing: timing,
@@ -49,7 +57,7 @@ enum EngineBoot {
             holdPolicy: holdPolicy,
             // Developer "Simulate system termination" only (DV-7a).
             terminate: { exit(0) })
-        let engine = ForayEngine(seams: seams, config: EngineConfig(build: bundleVersion))
+        let engine = ForayEngine(seams: seams, config: config)
         engine.start()
         engine.coldBoot(from: store.restoreRecord())
         return engine
