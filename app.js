@@ -326,11 +326,37 @@ function afterStorageSettles(fn) {
    value has the right shape. */
 const pendingStoredEdits = new Map();
 
-/** The value of `key` with any edits still waiting for storage applied. */
+/** The value of `key` with any edits still waiting for storage applied.
+    With none waiting it is the SHARED parse (`lsGetShared`): callers read it
+    and never mutate it -- every writer goes through `editStored`, whose edit
+    is handed a fresh parse. */
 function storedValue(key, fallback) {
   const edits = pendingStoredEdits.get(key);
-  const base = lsGet(key, fallback);
-  return edits ? edits.reduce((v, fn) => fn(v), base) : base;
+  if (!edits) return lsGetShared(key, fallback);
+  return edits.reduce((v, fn) => fn(v), lsGet(key, fallback));
+}
+
+/* ONE PARSE PER STORED STRING (audit round 3, app-1-8 and perf-3). `lsGet`
+   JSON.parses on every call, and the hot readers call it per row and per tick:
+   every epRow's star asked isSaved -> savedMap -> a parse of the whole of
+   cp_saved (a 100-row show page parsed it 100 times per paint), and the Now
+   Playing sheet's row2 reads EPISODE_NAVIGATION's getters on every 4 Hz
+   timeupdate, each re-parsing cp_queue and cp_saved. The parsed value is kept
+   against the exact string the store returned; a write stores a new string,
+   so the next read re-parses and nothing needs invalidating by hand. The
+   value is SHARED: read-only for every caller. */
+const lsParseMemo = new Map();
+function lsGetShared(key, fallback) {
+  const store = storageBackend();
+  if (!store) return fallback;
+  let raw;
+  try { raw = store.getItem(key); } catch (_) { return fallback; }
+  const hit = lsParseMemo.get(key);
+  if (hit && hit.raw === raw && hit.store === store) return hit.value ?? fallback;
+  let value = null;
+  try { value = JSON.parse(raw); } catch (_) { value = null; }
+  lsParseMemo.set(key, { raw, store, value });
+  return value ?? fallback;
 }
 
 /** Apply `fn` to `key`'s stored value: now, or over the settled store once
@@ -1604,22 +1630,37 @@ function isSaved(id) { return id in savedMap(); }
 function toggleStar(id) {
   const had = Boolean(savedMap()[id]);
   let entry = null;
-  if (had) {
-    logEvent("unsaved", { episode_id: id });
-  } else {
+  if (!had) {
     const snap = state.itemIndex[id];
     if (!snap) return;
-    entry = { ...snap, saved_at: new Date().toISOString() };
-    boostTopics(snap.topics, 0.05);
-    logEvent("saved", { episode_id: id, topics: snap.topics });
+    /* TRIMMED LIKE EVERY OTHER STORED SNAPSHOT (app-1-8): `{ ...snap }` kept
+       a breadth episode's whole publisher description twice (as `hook` and
+       as `description`) plus its chapters, so a heavy Saved list reached
+       hundreds of KB of the localStorage mirror's 5 MB. */
+    entry = savableEpisode({ ...snap, saved_at: new Date().toISOString() });
   }
   /* An edit, not a write (app-1-1): before storage settles it waits and is
-     replayed over the durable Saved list. */
-  editStored("cp_saved", {}, (m) => {
+     replayed over the durable Saved list. Every entry is brought to the
+     trimmed shape as it passes (app-1-8), so an old untrimmed list shrinks on
+     the next star. */
+  const ok = editStored("cp_saved", {}, (m) => {
     const out = plainObject(m);
+    for (const k of Object.keys(out)) out[k] = savableEpisode(out[k]);
     if (had) delete out[id]; else out[id] = entry;
     return out;
   });
+  /* A REFUSED WRITE LEAVES THE STAR AS IT WAS (app-1-8): lsSet's answer used
+     to be ignored, so a full store showed a star that the next reload lost.
+     The buttons below repaint from storage, so they show what was kept; the
+     save is logged and nudges interests only once it is. */
+  if (ok) {
+    if (had) {
+      logEvent("unsaved", { episode_id: id });
+    } else {
+      boostTopics(entry.topics, 0.05);
+      logEvent("saved", { episode_id: id, topics: entry.topics });
+    }
+  }
   /* The Now Playing sheet's Save reads `EPISODE_NAVIGATION.isSaved`; a star
      pressed on a row while the sheet is open has to reach it too — AFTER the
      write (audit round 2 review): the sheet paints synchronously from storage,
@@ -2558,6 +2599,24 @@ function episodeSnaps() {
   return plainObject(storedValue(EPISODE_SNAPS_KEY, {}));
 }
 
+/* A SAVED snapshot keeps more than an add-side one (app-1-8): the episode
+   page reads a star's description first (storedEpisode), and for a breadth
+   episode nothing else holds it after a reload. So the hook is trimmed as
+   storableEpisode trims it, and the description and chapters are kept, each
+   bounded, instead of dropped. */
+const SAVED_DESCRIPTION_MAX = 4000;
+const SAVED_CHAPTERS_MAX = 100;
+function savableEpisode(snap) {
+  if (!snap || typeof snap !== "object") return snap;
+  const out = storableEpisode(snap);
+  const d = snap.description;
+  out.description = typeof d === "string" && d.length > SAVED_DESCRIPTION_MAX
+    ? d.slice(0, SAVED_DESCRIPTION_MAX - 1) + "…"
+    : (d ?? null);
+  out.chapters = Array.isArray(snap.chapters) ? snap.chapters.slice(0, SAVED_CHAPTERS_MAX) : (snap.chapters ?? null);
+  return out;
+}
+
 function storableEpisode(snap) {
   const hook = typeof snap.hook === "string" && snap.hook.length > EPISODE_SNAP_HOOK_MAX
     ? snap.hook.slice(0, EPISODE_SNAP_HOOK_MAX - 1) + "…"
@@ -2612,8 +2671,10 @@ function liveEpisode(id) {
   if (cached && cached.audio_url) return cached;
   const stored = storedEpisode(id);
   if (stored && stored.audio_url) {
-    state.itemIndex[id] = stored;
-    return stored;
+    /* A copy: the stored value is the shared parse (lsGetShared, app-1-8). */
+    const seeded = { ...stored };
+    state.itemIndex[id] = seeded;
+    return seeded;
   }
   return null;
 }

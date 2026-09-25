@@ -794,3 +794,65 @@ test("app-1-7: 'Show my picks' before storage settles keeps the durable deal mem
   const leaked = deal1Ids.filter((id) => !deal2Ids.has(id) && seen.includes(id));
   assert.strictEqual(leaked.length, 0, `the pre-pick deal was recorded as seen: ${leaked}`);
 });
+
+/* ==================================================================== */
+/* app-1-8 / perf-3: cp_saved is trimmed, and parsed once per string      */
+/* ==================================================================== */
+
+/** Count JSON.parse calls app.js makes, from now on. */
+function countParses(m) {
+  const counter = { n: 0 };
+  m.ctx.JSON = { stringify: JSON.stringify, parse: (...a) => { counter.n += 1; return JSON.parse(...a); } };
+  return counter;
+}
+
+test("app-1-8: a star stores a trimmed snapshot, and an old untrimmed entry shrinks on the next star", () => {
+  /* toggleStar stored `{ ...snap }`: a breadth episode's whole description as
+     hook AND description, plus every chapter. MUTATION: store `{ ...snap }`
+     again -> the stored hook is 20,000 characters; red. */
+  const huge = "x".repeat(20000);
+  const chapters = Array.from({ length: 300 }, (_, i) => ({ title: `c${i}`, start_time_seconds: i }));
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  m.ctx.localStorage.setItem("cp_saved", JSON.stringify({ old: { id: "old", title: "Old", hook: huge, description: huge, chapters } }));
+  m.state.itemIndex.b = { id: "b", title: "B", audio_url: "https://x.test/b.mp3", topics: [], hook: huge, description: huge, chapters };
+  m.ctx.toggleStar("b");
+  const saved = JSON.parse(m.ctx.localStorage.getItem("cp_saved"));
+  for (const id of ["b", "old"]) {
+    assert.ok(saved[id].hook.length <= 280, `${id}: hook ${saved[id].hook.length}`);
+    assert.ok(saved[id].description.length <= 4000, `${id}: description kept for the episode page, bounded (${saved[id].description.length})`);
+    assert.ok(saved[id].chapters.length <= 100, `${id}: chapters ${saved[id].chapters.length}`);
+  }
+  assert.ok(m.ctx.localStorage.getItem("cp_saved").length < 20000, "the whole list is small");
+});
+
+test("app-1-8: a star the store refuses stays off, and is not logged or learned from", () => {
+  /* lsSet's refusal was ignored: the star lit, the save was logged, and the
+     next reload lost it. MUTATION: ignore editStored's answer in toggleStar ->
+     a "saved" event is logged; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  const ls = m.ctx.localStorage;
+  const realSet = ls.setItem;
+  ls.setItem = (k, v) => { if (k === "cp_saved") throw new Error("QuotaExceededError"); return realSet(k, v); };
+  m.state.itemIndex.b = { id: "b", title: "B", audio_url: "https://x.test/b.mp3", topics: ["science"] };
+  const events = vm.runInContext("_bufferedEvents.length", m.ctx);
+  m.ctx.toggleStar("b");
+  assert.strictEqual(m.ctx.isSaved("b"), false, "the star shows what was kept");
+  const logged = vm.runInContext("_bufferedEvents", m.ctx).slice(events).map((r) => r.type);
+  assert.ok(!logged.includes("saved"), `logged: ${logged}`);
+});
+
+test("app-1-8: a page of rows parses cp_saved once, not once per row's star", () => {
+  /* MUTATION: make storedValue call lsGet (a fresh parse) again -> 100 parses; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  const saved = {};
+  for (let i = 0; i < 100; i++) saved[`e${i}`] = { id: `e${i}`, title: `E${i}`, hook: "h".repeat(200) };
+  m.ctx.localStorage.setItem("cp_saved", JSON.stringify(saved));
+  const parses = countParses(m);
+  let html = "";
+  for (let i = 0; i < 100; i++) html += m.ctx.starBtn(`e${i}`);
+  assert.strictEqual((html.match(/class="star on"/g) || []).length, 100, "premise: every star reads saved");
+  assert.ok(parses.n <= 1, `${parses.n} parses for one paint`);
+  m.ctx.localStorage.setItem("cp_saved", JSON.stringify({ e0: saved.e0 }));
+  assert.strictEqual(m.ctx.isSaved("e1"), false, "a new stored string is read, not the old parse");
+});
+
