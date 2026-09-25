@@ -128,10 +128,13 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "ForayAudio"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "setNowPlaying", returnType: CAPPluginReturnPromise),
-        /* NE-01: the native engine's handshake, STUBBED. iOS only: Android's
-           `ForayAudioPlugin.java` never gains it (docs/native-engine-plan.md
-           §4.1, "three bridge methods on the existing plugin"). */
-        CAPPluginMethod(name: "engineHello", returnType: CAPPluginReturnPromise)
+        /* NE-20: the native engine's three bridge methods. iOS only:
+           Android's `ForayAudioPlugin.java` never gains them
+           (docs/native-engine-plan.md §4.1, "three bridge methods on the
+           existing plugin"); a new command never needs a new method. */
+        CAPPluginMethod(name: "engineHello", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "engineSend", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "engineRead", returnType: CAPPluginReturnPromise)
     ]
 
     /// The event this plugin raises when the OS, a Bluetooth button or a car
@@ -560,29 +563,113 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         return event
     }
 
-    // MARK: - engineHello (NE-01 stub)
+    // MARK: - The engine's bridge (NE-20)
+
+    /// The bridge, built on main at the first engine call. Touched on main
+    /// only (every method below hops there first).
+    private var engineBridge: EngineBridge?
+
+    @MainActor
+    private func bridgeOnMain() -> EngineBridge {
+        if let engineBridge { return engineBridge }
+        let owner = EngineOwnership.shared
+        let bridge = EngineBridge(
+            owner: owner,
+            // The owner's store IS the engine's (EngineStore, NE-19): the
+            // shared rows and the diagnostics ring the page reads.
+            records: owner.store.keys as? EngineRecords,
+            timing: MainQueueTiming(),
+            declaredCapabilities: Bundle.main.infoDictionary?[EngineBridge.capabilitiesKey] as? [String],
+            deliver: { [weak self] event in self?.notifyEngineEvent(event) })
+        engineBridge = bridge
+        return bridge
+    }
 
     /// The page's first question to the native engine (docs/native-engine-plan.md
-    /// §5.1). NE-01 builds no engine, so the answer is always
-    /// `{mode: "legacy", reason: "not-built"}`: keep playing the way the app
-    /// plays today. The dictionary comes from `ForayEngineCore` rather than
-    /// being written here, which is also what proves the plugin links the
-    /// nested core package in the app build. NE-20 replaces this body.
+    /// §5.1): which lane plays this process, and, when it is the engine's,
+    /// everything the page needs to attach. The answer is built by
+    /// `ForayEngineCore` (`EngineBridgeRules`), which is also what proves the
+    /// plugin links the nested core package in the app build.
     ///
-    /// RESOLVES ALWAYS, like every method on this plugin (class header). No
-    /// page calls it yet; one that did before NE-21 would read "legacy" and
-    /// carry on unchanged.
+    /// RESOLVES ALWAYS, like every method on this plugin (class header).
+    /// Bridge calls arrive off main; the engine and its owner are
+    /// main-confined, so each call hops there and resolves from there.
     @objc func engineHello(_ call: CAPPluginCall) {
-        // The page claimed the engine: the hello watchdog stands down
-        // (NE-17). Bridge calls arrive off main; the owner is main-confined.
-        DispatchQueue.main.async {
-            MainActor.assumeIsolated { EngineOwnership.shared.helloReceived() }
+        let payload = EngineBridge.payload(from: call.options)
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else {
+                    return call.resolve(Self.jsObject(EngineBridgeRules.legacyHello(reason: .notBuilt)))
+                }
+                call.resolve(Self.jsObject(self.bridgeOnMain().hello(payload)))
+            }
         }
-        var result = JSObject()
-        for (key, value) in EngineHandshake.notBuiltHello() {
-            result[key] = value
+    }
+
+    /// One command (§5.2): `{v, cmdSeq, cmd, args, source}` in, `{ok,
+    /// reason?, snapshot}` out, dispatched on main. RESOLVES ALWAYS: a
+    /// payload the contract refuses is `{ok: false, reason: "unknown-cmd"}`.
+    @objc func engineSend(_ call: CAPPluginCall) {
+        let payload = EngineBridge.payload(from: call.options)
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else {
+                    return call.resolve(Self.jsObject(EngineBridgeRules.sendResponse(
+                        refusal: .relinquished, snapshot: EngineBridge.emptySnapshot())))
+                }
+                call.resolve(Self.jsObject(self.bridgeOnMain().send(payload)))
+            }
         }
-        call.resolve(result)
+    }
+
+    /// The snapshot, the shared rows by prefix, or the whole diagnostics
+    /// ring in one call (§5.1). RESOLVES ALWAYS: an unowned prefix reads
+    /// nothing.
+    @objc func engineRead(_ call: CAPPluginCall) {
+        let payload = EngineBridge.payload(from: call.options)
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else {
+                    return call.resolve(Self.jsObject(EngineBridgeRules.rowsResponse([:])))
+                }
+                call.resolve(Self.jsObject(self.bridgeOnMain().read(payload)))
+            }
+        }
+    }
+
+    /// The `engine` event (native-engine.js `ENGINE_EVENT`). Best effort: a
+    /// page with no listener drops it, and the page reads on visible anyway.
+    private func notifyEngineEvent(_ event: JSONNode) {
+        notifyListeners(EngineBridgeRules.eventName, data: Self.jsObject(event))
+    }
+
+    /// The core's JSON as Capacitor carries it. A non-finite number cannot
+    /// cross (JSON has none), so it crosses as null, as `JSON.stringify`
+    /// writes it.
+    static func jsObject(_ node: JSONNode) -> JSObject {
+        guard case let .object(members) = node else { return [:] }
+        var object = JSObject()
+        for member in members { object[member.key] = jsValue(member.value) }
+        return object
+    }
+
+    private static func jsValue(_ node: JSONNode) -> JSValue {
+        switch node {
+        case .null:
+            return NSNull()
+        case let .bool(flag):
+            return flag
+        case let .number(number):
+            if number.isFinite { return number }
+            return NSNull()
+        case let .string(text):
+            return text
+        case let .array(items):
+            let array: JSArray = items.map { jsValue($0) }
+            return array
+        case .object:
+            return jsObject(node)
+        }
     }
 
     // MARK: - setNowPlaying

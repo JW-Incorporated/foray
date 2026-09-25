@@ -2465,14 +2465,15 @@ test("NE-01: foray-audio links the core by path, keeps ONE product, and its test
   assert.match(fs.readFileSync(wrapper, "utf8"), /ParityRunner\.run\(/, "the Simulator-side parity wrapper runs nothing");
 });
 
-test("NE-01: engineHello is an iOS-only stub that answers from the core and always resolves", () => {
-  /* The first of the engine's three bridge methods (§5.1), stubbed until
-     NE-20: `{mode: "legacy", reason: "not-built"}`, i.e. "play the way the
-     app plays today". Its answer is built by ForayEngineCore, which is what
-     makes the app build prove the plugin links the nested package.
-     Android never gains it (§4.1).
+test("NE-01: engineHello is iOS-only, answers from the core and always resolves", () => {
+  /* The first of the engine's three bridge methods (§5.1). NE-01 stubbed it
+     as `{mode: "legacy", reason: "not-built"}`; since NE-20 the answer is the
+     bridge's, and every answer (legacy or native) is still built by
+     ForayEngineCore (`EngineBridgeRules`), which is what makes the app build
+     prove the plugin links the nested package. Android never gains it (§4.1).
      MUTATION: drop the CAPPluginMethod line, make the body `call.reject(...)`,
-     answer `native`, or add `engineHello` to the Java; each fails. */
+     build the answer in the plugin, or add `engineHello` to the Java; each
+     fails. */
   const swift = fs.readFileSync(AUDIO_SWIFT, "utf8");
   const declared = [...swift.matchAll(/CAPPluginMethod\(name:\s*"(\w+)"/g)].map((m) => m[1]);
   assert.ok(declared.includes("engineHello"), "ForayAudioPlugin.swift does not declare engineHello as a CAPPluginMethod");
@@ -2480,7 +2481,8 @@ test("NE-01: engineHello is an iOS-only stub that answers from the core and alwa
   assert.match(code, /^import ForayEngineCore$/m, "ForayAudioPlugin.swift no longer imports ForayEngineCore");
   const body = swiftFuncBody(code, "engineHello");
   assert.ok(body, "ForayAudioPlugin.swift has no func engineHello");
-  assert.match(body, /EngineHandshake\.notBuiltHello\(\)/, "engineHello no longer answers from the core");
+  assert.match(body, /call\.resolve\(Self\.jsObject\(self\.bridgeOnMain\(\)\.hello\(payload\)\)\)/, "engineHello no longer answers through the bridge");
+  assert.match(body, /EngineBridgeRules\.legacyHello\(reason: \.notBuilt\)/, "engineHello's fallback no longer answers from the core");
   assert.match(body, /call\.resolve\(/, "engineHello must resolve");
   assert.doesNotMatch(body, /\.reject\(/, "engineHello must never reject (the plugin's every-method-resolves rule)");
 
@@ -3866,7 +3868,12 @@ test("NE-17: load() asks EngineOwnership, and today's registration runs only thr
   assert.match(legacy, /stateQueue\.sync \{ legacyLane = true \}/);
   assert.match(swiftFuncBody(code, "setNowPlaying"), /guard let self, self\.legacyLane else \{ return \}\s*self\.apply\(payload\)/,
     "in the native lane a stale page's payload must not write over the engine's Now Playing");
-  assert.match(swiftFuncBody(code, "engineHello"), /EngineOwnership\.shared\.helloReceived\(\)/, "a hello stands the watchdog down");
+  // NE-20: the hello reaches the owner through the bridge, which the plugin
+  // builds over the process's one owner.
+  assert.match(swiftFuncBody(code, "bridgeOnMain"), /let owner = EngineOwnership\.shared[\s\S]*EngineBridge\(\s*owner: owner,/,
+    "the bridge must be built over EngineOwnership.shared");
+  assert.match(swiftFuncBody(stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBridge.swift"), "utf8")), "hello"),
+    /^\{\s*owner\.helloReceived\(\)/, "a hello stands the watchdog down, first");
 });
 
 test("NE-17: the owner is Foundation-only, keeps its keys through EngineStore and its flag through EngineModeFlag, and the host hands it two hooks", () => {
@@ -3896,4 +3903,74 @@ test("NE-17: the owner is Foundation-only, keeps its keys through EngineStore an
   const lifecycle = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "OwnershipLifecycle.swift"), "utf8"));
   assert.match(lifecycle, /UIApplication\.willResignActiveNotification, UIApplication\.didEnterBackgroundNotification/);
   assert.match(lifecycle, /queue: \.main/);
+});
+
+/* ─────────── NE-20: the bridge (engineHello, engineSend, engineRead, the "engine" event) ───────────
+ *
+ * docs/native-engine-plan.md §5.1-§5.4, card NE-20. The Simulator XCTests
+ * (EngineBridgeTests) prove what the bridge answers; these pin the names the
+ * page and the plugin must agree on, which no Swift test can see. */
+
+test("NE-20: the bridge's method and event names are engine-contract.js's, the plugin hops to main and always resolves, and nothing leaves a hidden page", async () => {
+  /* MUTATION: rename a CAPPluginMethod or drop one; `call.reject(` in any of
+     the three; call the bridge off main; add engineSend to the Java; rename
+     the event (`EngineBridgeRules.eventName`) or ENGINE_EVENT; add an event
+     type the contract does not list; import UIKit into EngineBridge.swift;
+     deliver an engine or diag event without the visibility guard; advertise
+     a capability the contract does not define. Each fails. */
+  const { BRIDGE_METHODS, EVENTS, CAPABILITIES } = await import("../../player/engine-contract.js");
+  const { ENGINE_EVENT } = await import("../../player/native-engine.js");
+
+  const swift = fs.readFileSync(AUDIO_SWIFT, "utf8");
+  const code = stripSwiftComments(swift);
+  const declared = [...swift.matchAll(/CAPPluginMethod\(name:\s*"(\w+)"/g)].map((m) => m[1]);
+  const verbs = { engineHello: "hello", engineSend: "send", engineRead: "read" };
+  assert.deepEqual(Object.keys(verbs), [...BRIDGE_METHODS], "the plugin's three methods are engine-contract.js BRIDGE_METHODS");
+  for (const method of BRIDGE_METHODS) {
+    assert.ok(declared.includes(method), `ForayAudioPlugin.swift does not declare ${method} as a CAPPluginMethod`);
+    const body = swiftFuncBody(code, method);
+    assert.ok(body, `ForayAudioPlugin.swift has no func ${method}`);
+    assert.match(body, /let payload = EngineBridge\.payload\(from: call\.options\)\s*DispatchQueue\.main\.async \{[\s\S]*MainActor\.assumeIsolated \{/,
+      `${method} must decode the options and hop to main before touching the engine`);
+    assert.match(body, new RegExp(String.raw`call\.resolve\(Self\.jsObject\(self\.bridgeOnMain\(\)\.${verbs[method]}\(payload\)\)\)`),
+      `${method} must resolve with the bridge's answer`);
+    assert.doesNotMatch(body, /\.reject\(/, `${method} must never reject (the plugin's every-method-resolves rule)`);
+  }
+  const java = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"), "utf8");
+  for (const method of BRIDGE_METHODS) {
+    assert.doesNotMatch(java, new RegExp(String.raw`\b${method}\b`), `${method} is iOS only; Android never gains it`);
+  }
+
+  const contract = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Contract/EngineContract.swift"), "utf8"));
+  const caseNames = (enumName) => {
+    const at = contract.indexOf(`enum ${enumName}:`);
+    assert.ok(at >= 0, `EngineContract has no enum ${enumName}`);
+    const body = contract.slice(at, contract.indexOf("}", at));
+    return [...body.matchAll(/case (\w+)/g)].map((m) => m[1]);
+  };
+  assert.deepEqual(caseNames("BridgeMethod"), [...BRIDGE_METHODS]);
+  assert.deepEqual(caseNames("EventType"), [...EVENTS]);
+
+  const rulesPath = path.join(CORE_DIR, "Sources/ForayEngineCore/Contract/EngineBridgeRules.swift");
+  const rules = stripSwiftComments(fs.readFileSync(rulesPath, "utf8"));
+  assert.equal(/static let eventName = "(\w+)"/.exec(rules)?.[1], ENGINE_EVENT, "the Swift event name and native-engine.js ENGINE_EVENT disagree");
+  assert.match(swiftFuncBody(code, "notifyEngineEvent"), /notifyListeners\(EngineBridgeRules\.eventName, data:/, "engine events ride on the one event name");
+  const advertised = /static let advertisedCapabilities: \[String\] = \[([^\]]*)\]/.exec(rules);
+  assert.ok(advertised, "EngineBridgeRules must declare the advertisedCapabilities literal coverage.js reads");
+  for (const [, cap] of advertised[1].matchAll(/"([^"]+)"/g)) {
+    assert.ok(CAPABILITIES.includes(cap), `advertisedCapabilities names ${cap}, which engine-contract.js CAPABILITIES does not define`);
+  }
+
+  const bridgePath = path.join(ENGINE_DIR, "EngineBridge.swift");
+  assert.deepEqual(swiftImports(bridgePath).sort(), ["ForayEngineCore", "Foundation"], "the bridge imports only Foundation and the core");
+  const bridge = stripSwiftComments(fs.readFileSync(bridgePath, "utf8"));
+  assert.doesNotMatch(bridge, /\b(AVAudioSession|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|UserDefaults|NotificationCenter)\b/,
+    "the bridge reaches a platform API");
+  for (const name of ["engineEmitted", "liveRow"]) {
+    assert.match(swiftFuncBody(bridge, name) ?? "", /guard coalescer\.visible else \{ return \}\s*deliver\(/, `${name} delivers only to a visible page`);
+  }
+  assert.match(swiftFuncBody(bridge, "transitioned") ?? "", /if coalescer\.visible \{ deliver\(EngineBridgeRules\.modeChangedEvent/);
+  assert.match(swiftFuncBody(bridge, "apply") ?? "", /case \.emit:\s*deliver\(EngineBridgeRules\.snapshotEvent\(snapshot\(\)\)\)/,
+    "a snapshot event leaves only on the coalescer's word");
+  assert.equal([...bridge.matchAll(/\bdeliver\(/g)].length, 4, "every deliver( is one of the four above");
 });
