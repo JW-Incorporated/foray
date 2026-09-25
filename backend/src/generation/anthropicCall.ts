@@ -22,11 +22,15 @@ import { recordUsage } from "./usageTracking";
 export async function createMessage(
   client: Anthropic,
   params: Anthropic.MessageCreateParamsNonStreaming,
-  label: string
+  label: string,
+  options: { allowTruncated?: boolean } = {}
 ): Promise<Anthropic.Message> {
   const response = await client.messages.create(params);
   recordUsage(response.usage);
-  assertReplyComplete(response.stop_reason, label, params.max_tokens);
+  /* `allowTruncated` is for the one caller that reads a truncated reply
+     WITHOUT repairing it (evidence retrieval keeps only the passages that
+     finished; see createWebSearchTurnKeepingTruncation). Nobody else passes it. */
+  if (!options.allowTruncated) assertReplyComplete(response.stop_reason, label, params.max_tokens);
   return response;
 }
 
@@ -101,7 +105,35 @@ export async function createWebSearchTurn(
   label: string,
   meter: () => Promise<unknown>
 ): Promise<Anthropic.ContentBlock[]> {
-  let response = await createMessage(client, params, label);
+  return (await runWebSearchTurn(client, params, label, meter, false)).content;
+}
+
+/**
+ * The same turn, but a reply that hit `max_tokens` is RETURNED, flagged
+ * `truncated`, instead of refused. For evidence retrieval only (round-3
+ * review, L5): a truncated retrieval refused as a failure was retried on every
+ * later ask with the same prompt and the same ceiling, paying for the web
+ * search again and usually truncating again. The caller must not repair the
+ * text: it keeps only the passages that finished (see
+ * AnthropicExternalResearcher.salvageCompletePassages).
+ */
+export async function createWebSearchTurnKeepingTruncation(
+  client: Anthropic,
+  params: Anthropic.MessageCreateParamsNonStreaming,
+  label: string,
+  meter: () => Promise<unknown>
+): Promise<{ content: Anthropic.ContentBlock[]; truncated: boolean }> {
+  return runWebSearchTurn(client, params, label, meter, true);
+}
+
+async function runWebSearchTurn(
+  client: Anthropic,
+  params: Anthropic.MessageCreateParamsNonStreaming,
+  label: string,
+  meter: () => Promise<unknown>,
+  allowTruncated: boolean
+): Promise<{ content: Anthropic.ContentBlock[]; truncated: boolean }> {
+  let response = await createMessage(client, params, label, { allowTruncated });
   const content: Anthropic.ContentBlock[] = [...response.content];
   let continuations = 0;
   while (response.stop_reason === "pause_turn" && continuations < MAX_PAUSE_TURN_CONTINUATIONS) {
@@ -110,9 +142,10 @@ export async function createWebSearchTurn(
     response = await createMessage(
       client,
       { ...params, messages: [...params.messages, { role: "assistant", content: content as Anthropic.ContentBlockParam[] }] },
-      label
+      label,
+      { allowTruncated }
     );
     content.push(...response.content);
   }
-  return content;
+  return { content, truncated: response.stop_reason === "max_tokens" };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { AnthropicExternalResearcher } from "../src/generation/AnthropicExternalResearcher";
+import { AnthropicExternalResearcher, RetrievalUnreadableError, salvageCompletePassages } from "../src/generation/AnthropicExternalResearcher";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { makeFakeAnthropicClient, textBlock, toolUseBlock } from "./helpers/fakeAnthropicClient";
@@ -140,12 +140,61 @@ describe("AnthropicExternalResearcher", () => {
       ]);
     });
 
-    it("retrievePassages returns a miss ([]) on an unparseable answer and never re-asks without the tool", async () => {
+    /* Round-3 review (L5): an unparseable reply used to come back as [], which
+       gatherEvidence records as a confirmed "nothing exists" verdict and caches.
+       It is a failure: thrown, never cached, asked again.
+       MUTATION: return [] from the parse catch again -- this resolves. */
+    it("retrievePassages FAILS (throws RetrievalUnreadableError) on an unparseable answer, and never re-asks without the tool", async () => {
       const { client, create } = makeFakeAnthropicClient([]);
       create.mockResolvedValue(searchReply(["I could not find anything verbatim, sorry."]));
       const researcher = new AnthropicExternalResearcher(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
-      await expect(researcher.retrievePassages(request, ctx)).resolves.toEqual([]);
+      await expect(researcher.retrievePassages(request, ctx)).rejects.toBeInstanceOf(RetrievalUnreadableError);
       expect(create).toHaveBeenCalledTimes(1);
+      // A turn still paused after the last continuation has no answer text at all: the same failure.
+      create.mockReset();
+      create.mockResolvedValue({ stop_reason: "pause_turn", content: [textBlock("Searching.")] });
+      await expect(researcher.retrievePassages(request, ctx)).rejects.toBeInstanceOf(RetrievalUnreadableError);
+    });
+
+    it("an explicit empty answer is still an empty result, not a failure", async () => {
+      const { client, create } = makeFakeAnthropicClient([]);
+      create.mockResolvedValue(searchReply(['{"passages": []}']));
+      const researcher = new AnthropicExternalResearcher(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+      await expect(researcher.retrievePassages(request, ctx)).resolves.toEqual([]);
+    });
+
+    /* Round-3 review (L5): a reply cut off at max_tokens was refused, recorded as
+       a failed retrieval, and re-asked at full search cost on every later page.
+       It now keeps the passages that finished and drops the one the cut went
+       through, unrepaired.
+       MUTATION: use createWebSearchTurn (which refuses the truncated reply) --
+       this rejects with TruncatedReplyError. */
+    it("a truncated retrieval keeps the passages that finished, drops the cut one, and makes ONE call", async () => {
+      const { client, create } = makeFakeAnthropicClient([]);
+      create.mockResolvedValue(
+        searchReply(
+          [
+            '{"passages": [{"title": "One", "url": "https://e/1", "text": "First whole passage, with a \\"quote\\" and a } brace."}, ',
+            '{"title": "Two", "text": "Second whole passage."}, {"title": "Three", "text": "Cut off mid-sen'
+          ],
+          "max_tokens"
+        )
+      );
+      const researcher = new AnthropicExternalResearcher(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+      const passages = await researcher.retrievePassages(request, ctx);
+      expect(passages.map((p) => p.title)).toEqual(["One", "Two"]);
+      expect(passages[0]!.text).toBe('First whole passage, with a "quote" and a } brace.');
+      expect(create).toHaveBeenCalledTimes(1);
+
+      create.mockResolvedValue(searchReply(['{"passages": [{"title": "Only", "text": "never fini'], "max_tokens"));
+      await expect(researcher.retrievePassages(request, ctx)).rejects.toBeInstanceOf(RetrievalUnreadableError);
+    });
+
+    it("salvageCompletePassages reads the last passages array and ignores what the cut went through", () => {
+      expect(salvageCompletePassages('Draft: {"passages": [{"title": "x", "text": "old"}]} Final: {"passages": [{"title": "y", "text": "new"}, {"title": "z", "te')).toEqual([
+        { title: "y", text: "new" }
+      ]);
+      expect(salvageCompletePassages("no json here")).toEqual([]);
     });
 
     it("a pause_turn is continued with the tool and the paused content, and the answer comes from the continuation", async () => {
