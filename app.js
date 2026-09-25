@@ -13277,6 +13277,9 @@ function renderDrawer() {
      painted above with the others; this is the control that appears and
      disappears with it, which no label line can express. */
   syncVoiceProbeRun();
+  /* NE-22d: the engine's Developer rows, which exist only where an engine
+     answered (see § the engine's Developer rows). */
+  syncEngineDevRows();
 }
 
 /* ---------- THE DRAWER IS A MODAL, WITH THE SAME CONTRACT AS A SHEET ----------
@@ -13803,6 +13806,186 @@ function syncVoiceProbeRun() {
   if (toggle && toggle.parentNode) toggle.parentNode.insertBefore(run, toggle.nextSibling);
   else (drawerDevGroup() || drawer).appendChild(run);
   run.addEventListener("click", () => runVoiceProbe());
+}
+
+/* ---------- the engine's Developer rows (NE-22d) ----------
+
+   The four rows the M1 car test drives (docs/native-engine-m1-car-test.md,
+   "Before it can be run" item 2), in the Developer group above "Playback
+   diagnostics":
+
+     Playback engine: Automatic / Native / Web (applies after restart)  NE-17
+     Pause hold: forever / none                                          NE-16
+     Simulate system termination                                         NE-24
+     Session probe                                                       NE-25c
+
+   THE PLAYER DECIDES WHICH EXIST AND SENDS THEIR COMMANDS. app.js is a classic
+   script with no engine client of its own, so every row reads
+   `ForayPlayer.engineDeveloperStatus()` (null: no rows at all, which is the
+   web, Android and a shell with no engine) and sends through
+   `ForayPlayer.engineDeveloperSend()` (player/client.js, over the NE-21 engine
+   client's engineSend). Nothing here reaches the bridge directly, so a page
+   with no engine cannot send one of these by any path.
+
+   APPENDED AND REMOVED, NEVER `hidden` (the reason `syncVoiceProbeRun` gives).
+   Painted by `renderDrawer` like every other drawer label, from the ENGINE's
+   answer: the pause hold is its snapshot, the engine setting is what it
+   confirmed storing, and a one-shot row says what the engine replied to the
+   last tap ("armed", or why it refused). A row with a send in flight is
+   disabled, so a double tap is one command. */
+const ENGINE_OVERRIDE_ORDER = ["auto", "native", "web"];
+const ENGINE_OVERRIDE_WORDS = { auto: "Automatic", native: "Native", web: "Web" };
+
+/** Why the engine refused, in words (engine-contract.js REFUSALS, plus the
+    page-side `bridge-error`). An unlisted reason is shown as sent. */
+const ENGINE_REFUSAL_WORDS = {
+  "not-loaded": "play and pause an episode first",
+  "engine-busy": "pause playback first",
+  "capability-off": "not available on this build",
+  relinquished: "the web player has playback until the app restarts",
+  "unknown-cmd": "this build does not know that command",
+  "bridge-error": "the app did not answer",
+};
+
+/** The last reply to each one-shot row, this page load. */
+const engineDevOutcome = {};
+const engineDevInFlight = new Set();
+
+function engineDevStatus() {
+  const p = window.ForayPlayer;
+  if (!p || typeof p.engineDeveloperStatus !== "function" || typeof p.engineDeveloperSend !== "function") return null;
+  try { return p.engineDeveloperStatus() || null; } catch (_) { return null; }
+}
+
+function engineRefusalWords(reply) {
+  const reason = reply && reply.reason ? String(reply.reason) : "bridge-error";
+  return ENGINE_REFUSAL_WORDS[reason] || reason;
+}
+
+/** The word after "Pause hold:" for a snapshot holdPolicy ("forever" | "none"
+    | "until:<minutes>"), or "not known" before the engine has said. */
+function holdPolicyWord(policy) {
+  if (policy === "forever" || policy === "none") return policy;
+  const m = /^until:(\d+)$/.exec(policy || "");
+  return m ? `${m[1]} min` : "not known";
+}
+
+const ENGINE_DEV_ROWS = [
+  {
+    id: "engine-mode-override", cmd: "setModeOverride",
+    paint(btn, st) {
+      const word = ENGINE_OVERRIDE_WORDS[st.override] || "not known";
+      const now = st.lane === "native" ? "Native" : "Web";
+      setControlLabel(btn, `Playback engine: ${word} (applies after restart) · now ${now}`,
+        `Playback engine: ${word}, applies after restart. Running now: ${now}`);
+    },
+    next(st) {
+      const i = ENGINE_OVERRIDE_ORDER.indexOf(st.override);
+      return { mode: ENGINE_OVERRIDE_ORDER[(i + 1) % ENGINE_OVERRIDE_ORDER.length] };
+    },
+  },
+  {
+    id: "engine-hold-policy", cmd: "setHoldPolicy", role: "switch",
+    paint(btn, st) {
+      setControlLabel(btn, `Pause hold: ${holdPolicyWord(st.holdPolicy)}`, "Pause hold forever");
+      btn.setAttribute("aria-checked", String(st.holdPolicy === "forever"));
+    },
+    next(st) { return { policy: st.holdPolicy === "forever" ? "none" : "forever" }; },
+  },
+  {
+    id: "engine-simulate-termination", cmd: "simulateTermination", oneShot: true,
+    title: "Simulate system termination",
+    armed: "armed. Lock the phone: the app saves its place and closes",
+  },
+  {
+    id: "engine-session-probe", cmd: "probeSession", oneShot: true,
+    title: "Session probe",
+    armed: "armed. Lock the phone now; it speaks in 10 seconds",
+  },
+];
+
+function paintEngineDevRow(row, btn, st) {
+  btn.disabled = engineDevInFlight.has(row.id);
+  if (!row.oneShot) { row.paint(btn, st); return; }
+  const out = engineDevOutcome[row.id];
+  const text = !out ? row.title
+    : out.ok ? `${row.title}: ${row.armed}`
+      : `${row.title}: refused, ${engineRefusalWords(out)}`;
+  setControlLabel(btn, text, text);
+}
+
+async function tapEngineDevRow(row) {
+  if (engineDevInFlight.has(row.id)) return null;
+  const st = engineDevStatus();
+  if (!st || !Array.isArray(st.commands) || !st.commands.includes(row.cmd)) { renderDrawer(); return null; }
+  const args = row.next ? row.next(st) : undefined;
+  engineDevInFlight.add(row.id);
+  renderDrawer();
+  let reply = null;
+  try {
+    reply = await window.ForayPlayer.engineDeveloperSend(row.cmd, args);
+  } catch (_) {
+    reply = null;
+  } finally {
+    engineDevInFlight.delete(row.id);
+  }
+  const answer = reply || { ok: false, reason: "bridge-error" };
+  if (row.oneShot) engineDevOutcome[row.id] = { ok: !!answer.ok, reason: answer.reason };
+  renderDrawer();
+  /* The one-shot rows change their words in place, which a screen reader
+     does not re-read on a focused button; the switch and the setting are
+     said by their own state. */
+  if (row.oneShot) {
+    const btn = $("#" + row.id);
+    if (btn) announce(btn.textContent);
+  }
+  return answer;
+}
+
+/** Create, paint or remove the engine rows. Called from `renderDrawer`, and
+    once the player module has said which lane plays. */
+function syncEngineDevRows() {
+  const drawer = $("#drawer");
+  if (!drawer) return;
+  const st = engineDevStatus();
+  const cmds = st && Array.isArray(st.commands) ? st.commands : [];
+  const want = ENGINE_DEV_ROWS.filter((row) => cmds.includes(row.cmd));
+  for (const row of ENGINE_DEV_ROWS) {
+    if (want.includes(row)) continue;
+    const gone = $("#" + row.id);
+    if (gone) gone.remove();
+  }
+  if (!want.length) return;
+  const group = drawerDevGroup() || drawer;
+  const diag = $("#diag-open");
+  const before = diag && diag.parentNode === group ? diag : null;
+  for (const row of want) {
+    let btn = $("#" + row.id);
+    if (!btn) {
+      btn = ddEl("button", "drawer-item as-btn drawer-wrap", "");
+      btn.type = "button";
+      btn.id = row.id;
+      /* A setting changes IN the drawer (the switches' rule, Joey 2026-08-31). */
+      btn.dataset.drawerStay = "1";
+      if (row.role) btn.setAttribute("role", row.role);
+      if (before) group.insertBefore(btn, before);
+      else group.appendChild(btn);
+      btn.addEventListener("click", () => tapEngineDevRow(row));
+    }
+    paintEngineDevRow(row, btn, st);
+  }
+}
+
+/** The rows appear only once the lane is known: engineHello answers up to 5 s
+    after launch, so a drawer painted before then has no engine to ask. */
+function bindEngineDevRows() {
+  const whenLane = () => {
+    const p = window.ForayPlayer;
+    const ready = p && typeof p.whenEngineReady === "function" ? p.whenEngineReady() : null;
+    Promise.resolve(ready).then(syncEngineDevRows, syncEngineDevRows);
+  };
+  if (window.ForayPlayer) whenLane();
+  else window.addEventListener("forayplayer:ready", whenLane, { once: true });
 }
 
 /** Run the probe and show its numbers where the founder can copy them: the
@@ -16917,6 +17100,9 @@ async function init() {
      item is where a scrolled thumb lands. */
   bindDeveloperToggles();
   bindDiagnosticsControl();
+  /* The engine's four rows land above "Playback diagnostics", once the player
+     says which lane plays (NE-22d). */
+  bindEngineDevRows();
   /* The drawer's last item, appended rather than written into index.html — see
      the § delete my data header for why, and note it is deliberately BELOW the
      two settings toggles: it is the one control in there that cannot be undone. */

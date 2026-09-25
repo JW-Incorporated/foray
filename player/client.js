@@ -373,6 +373,77 @@ async function onEngineDecision(decision) {
   return engineMode;
 }
 
+/* ---------- the Developer engine rows (NE-22d) ----------
+
+   The four rows the M1 car test drives (docs/native-engine-m1-car-test.md):
+   'Playback engine: Automatic / Native / Web (applies after restart)' (NE-17),
+   'Pause hold: forever / none' (NE-16), 'Simulate system termination' (NE-24)
+   and the session probe (NE-25c). app.js draws them; this file is the only
+   thing that may send their commands, and it sends nothing else for them.
+
+   WHICH ROWS EXIST. None off the iOS shell (the web, Android: `engine` is
+   null) and none on a shell whose binary has no engine methods (`no-method`).
+   The engine setting alone wherever the bridge answers but the page runs the
+   JS player: the native side takes setModeOverride in every lane, because it
+   is how a listener on the web player asks for the native one at the next
+   launch. The other three need a running engine, so only the native lane.
+
+   WHAT IS READ BACK. The pause hold is the engine's snapshot (`holdPolicy`).
+   The engine setting has no snapshot field: it is what the engine confirmed
+   storing this process (an ok reply), else what decided this launch — the
+   engine's own hello reason `override` means the stored choice (native lane:
+   Native, legacy lane: Web), `build-default`/`no-plist-key` mean Automatic,
+   and anything else (a crash-loop pin, no answer) is not known, never a
+   guess. */
+export const DEVELOPER_ENGINE_COMMANDS = Object.freeze([
+  "setModeOverride", "setHoldPolicy", "simulateTermination", "probeSession",
+]);
+
+/** The override the engine last confirmed storing in this process. */
+let developerOverride = null;
+
+/** "auto" | "native" | "web", or null when the launch does not say. */
+function launchOverride(decision) {
+  const e = decision?.engine;
+  if (!e) return null;
+  if (e.reason === "override") return e.mode === "native" ? "native" : "web";
+  if (e.reason === "build-default" || e.reason === "no-plist-key") return "auto";
+  return null;
+}
+
+/** The rows' view, or null when there are no rows. Synchronous: app.js paints
+    it inside renderDrawer. */
+function engineDeveloperStatus() {
+  if (!engine) return null;
+  const decision = engine.decision;
+  if (!decision || engineMode === null) return null;
+  if (decision.reason === "not-ios" || decision.reason === "no-method") return null;
+  const native = engineMode === "native";
+  const hold = native ? engine.latest()?.snapshot?.holdPolicy : null;
+  return {
+    lane: native ? "native" : "js",
+    override: developerOverride ?? launchOverride(decision),
+    holdPolicy: typeof hold === "string" ? hold : null,
+    commands: native ? [...DEVELOPER_ENGINE_COMMANDS] : ["setModeOverride"],
+  };
+}
+
+/** One Developer row's command, through the page's engine client. Resolves
+    the engine's `{ok, reason?, snapshot}`, or null when there was nothing to
+    send it to: no engine, a lane that does not take it, or a command that is
+    not one of the four. Never rejects. */
+async function engineDeveloperSend(cmd, args) {
+  const status = engineDeveloperStatus();
+  if (!status || !status.commands.includes(cmd)) return null;
+  try {
+    const reply = await engine.send(cmd, args, { source: "tap" });
+    if (cmd === "setModeOverride" && reply?.ok) developerOverride = args.mode;
+    return reply ?? null;
+  } catch (_) {
+    return null;
+  }
+}
+
 /* Started immediately, awaited by app.js before its first write. Rejection is
    impossible by construction (every tier failure is caught into `health()`), but
    an unhandled rejection here would take the module down, so it is attached. */
@@ -4373,6 +4444,15 @@ const ForayPlayer = {
   whenEngineReady() {
     return engineModeReady.then(() => engineMode);
   },
+
+  /** The Developer engine rows (NE-22d): which exist and what the engine
+      says their values are, or null for no rows. See the block above
+      `engineDeveloperStatus`. */
+  engineDeveloperStatus,
+
+  /** Send one of the four Developer engine commands; null when nothing was
+      sent. */
+  engineDeveloperSend,
 
   /**
    * Does "previous" mean RESTART right now? `episodePreviousRestarts`'

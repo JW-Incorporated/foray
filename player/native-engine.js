@@ -254,7 +254,17 @@ export function createNativeEngine({
         });
       }
       const verdict = decideMode({ platform, methodPresent, hello: answer });
-      decided = { ...verdict, hello: verdict.mode === "native" ? answer : null };
+      /* `engine` is the ENGINE's own {mode, reason}, kept whenever its hello
+         validated (native, or a well-formed legacy answer): the Developer
+         engine setting (NE-22d) reads "which override decided this launch"
+         from it, and a legacy launch's reason would otherwise be lost to
+         `engine-legacy`. Never kept from an answer decideMode refused. */
+      const validAnswer = verdict.reason === "native" || verdict.reason === "engine-legacy";
+      decided = {
+        ...verdict,
+        hello: verdict.mode === "native" ? answer : null,
+        engine: validAnswer ? { mode: answer.mode, reason: answer.reason } : null,
+      };
       diag({ kind: "engine", what: "mode", mode: verdict.mode, reason: verdict.reason });
       if (verdict.relinquish) {
         /* SENT, NOT AWAITED. The reply may never come — a hung hello is the
