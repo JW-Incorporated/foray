@@ -93,7 +93,7 @@ const FLOORS = {
      `search` entry kind on PlayerDiagnostics — query length only, never the
      query text, per this suite's own §7. */
   "player/diagnostic-log.test.js": 101, // review 2026-09-23 (fix/founder-reports-2026-09-23): a write before a slow hydration is HELD and written after the adopted ring (real DurableStore), the next write flushes by itself, the give-up force, a Clear drops what was held; the webkit door's skip is a row under the dashed command and the spec action is refused; 96 -> 101 // merge of fix/fr-diag (2026-09-23 founder record: recorded 939, entries 0, no build row): the clear mark, the build kept outside the ring, the MISSING gap line naming key+tiers, the boot row's hydration flag; 89 -> 96 // founder 2026-09-23 (fix/founder-reports-2026-09-23): a dropped duplicate press is a remote row saying dup=y, counted on the header apart from unhandled; the webkit door joins REMOTE_ORIGINS; 88 -> 89 // founder 2026-09-23 ("my car resumed Spotify"): the `remote` row (what the native side received, from which door, handled or not) and its header line; `via=` on a nowplaying row so a pause is a write; the plugin's own session acts are session kinds; 83 -> 88 // 2026-09-22 audit (L2), founder report 3: a `build` row per boot and a `build …` header line; 81 -> 83 // 2026-09-22 audit (L2), founder report 2: an unexplained stop carries hiddenFor + the element's readyState/networkState/error; a stall with no seam is a coalesced `media` row; an external play is a `transport` row; session rows carry hiddenFor; 76 -> 81 // #685 (2026-09-13): the voiceProbe line says rendered-vs-estimated and flags an impossible RTF; a synthesis-failed refusal keeps its numbers; 74 -> 76 // client audit (2026-09-12): the search row's one vocabulary + `hidden`, and the epMs/ctaMs fields; 72 -> 74 // K-01 (2026-09-12): the voiceProbe row — named fields only, null-not-zero on a refusal, and both report lines; 68 -> 72 // L-06 + M-03 (2026-09-12): the `nowplaying`, `session` and `transport` entries; 57 -> 68 // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
-  "player/diagnostic-record.test.js": 25, // 2026-09-23 founder record (fix/fr-diag): the bounded wait on hydration (a hung IndexedDB no longer costs the boot and build rows) and a Clear that keeps the build on the header; 23 -> 25
+  "player/diagnostic-record.test.js": 26, // NE-26 (docs/native-engine-plan.md): the real page's Copy report reads the engine's ring once through ForayAudio, merges it, and the synchronous report carries the engine header line; 25 -> 26 // 2026-09-23 founder record (fix/fr-diag): the bounded wait on hydration (a hung IndexedDB no longer costs the boot and build rows) and a Clear that keeps the build on the header; 23 -> 25
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
      rather than a wrong answer on screen, which makes them the two suites in
@@ -316,6 +316,13 @@ const FLOORS = {
   "player/native-engine.test.js": 18,
   "player/native-facades.test.js": 16,
   "player/parity/reference-engine.test.js": 14,
+  /* NE-26: the engine half of Copy — the 2,000-row ring merged by wall clock
+     (a merge, never a sort), the engine header line in both modes, the
+     per-kind engine lines, every row accounted for (unknown kinds, unreadable
+     rows, evicted and missing seqs, rows from before a Clear), the one bounded
+     engineRead through the real client, and the pin of ENGINE_ROW_KINDS to the
+     Swift emitters. Zero slack. */
+  "player/engine-diagnostics.test.js": 20,
   /* NE-08: the suites that READ their fixtures (plan §6.3). Each test runs the
      `transport` / `resume-rules` cases that name it, so the one file is the JS
      assertion and the Swift port's case list (NE-09). Zero slack: a deleted
@@ -483,7 +490,7 @@ const FLOORS = {
   "test/data-deletion.test.js": 79, // NE-23: in native mode the deletion stops and purges the engine before the page's own purge (its private keys go, cp_engine_applied is the page's to clear), and an engine that refuses is not a clear device; 77 -> 79 // persist-6: Delete my data finds the token in the vault and empties it, a sync signs up into the vault only, and never refreshes or signs up against a vault it could not read; 68 -> 73 // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
-  "test/diagnostics-surface.test.js": 19,
+  "test/diagnostics-surface.test.js": 24, // NE-26 (docs/native-engine-plan.md): Copy takes the merged record, one engine read per press, and shows it; opening repaints with it; a late merge never paints over a Clear; a failed merge falls back to the page's own; the clipboard is asked inside the tap (ClipboardItem with a promise); 19 -> 24
   /* The Foray directory AT THE PAGE (FD-03/04/05/01, 2026-09-10): the real app.js
      mounted over the real directory module, resolver, resume store and field
      record. What only this suite can see is the ORDER in init() — cache read
