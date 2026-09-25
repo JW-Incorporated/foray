@@ -56,6 +56,6 @@ export function clientKey(headers: Headers): string {
     return typeof s === "string" && s.trim() ? s : null;
   };
   const forwarded = pick("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
+  if (forwarded) return (forwarded.split(",")[0] ?? forwarded).trim();
   return pick("x-real-ip")?.trim() ?? "unknown";
 }
