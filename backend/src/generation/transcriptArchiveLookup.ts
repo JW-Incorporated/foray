@@ -300,6 +300,9 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
   private readonly cuesByKey = new Map<string, TranscriptCue[] | null>();
   private readonly guidIndexByDir = new Map<string, Map<string, string>>();
   private readonly filesByDir = new Map<string, Map<string, string>>();
+  /** gen-7: every locate() answer, the misses included (about a fifth of the
+   * archive has no body on disk, and each miss used to re-walk the listing). */
+  private readonly locatedByKey = new Map<string, string | null>();
 
   constructor(root: string = path.join(REPO_ROOT, "data-local", "transcripts", "normalized")) {
     this.root = root;
@@ -407,6 +410,14 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
   }
 
   private locate(showId: string, guid: string): string | null {
+    const key = `${showId}\u0000${guid}`;
+    if (this.locatedByKey.has(key)) return this.locatedByKey.get(key) ?? null;
+    const found = this.locateUncached(showId, guid);
+    this.locatedByKey.set(key, found);
+    return found;
+  }
+
+  private locateUncached(showId: string, guid: string): string | null {
     const dir = this.showDir(showId);
     if (!dir) return null;
     /* THE WRITER'S OWN KEY FIRST (#703). `corpusSafeKey` is byte-identical to
@@ -419,8 +430,17 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
     if (exact) return path.join(dir, exact);
     const slug = guidSlug(guid);
     if (slug) {
-      const byName = [...files.keys()].find((f) => f.startsWith(`${slug}-`) || f === `${slug}.json`);
-      if (byName) return path.join(dir, files.get(byName)!);
+      /* gen-7 (round-3 audit): the legacy bare-slug name is an exact name, and
+         is trusted as one. A PREFIX match is not: guid "ep-5" is a prefix of
+         "ep-5-bonus-<hash>.json", which is another episode's body. So a
+         prefix candidate is opened and used only when the guid it records is
+         this guid. */
+      const legacy = files.get(`${slug}.json`);
+      if (legacy) return path.join(dir, legacy);
+      for (const [lower, real] of files) {
+        if (!lower.startsWith(`${slug}-`)) continue;
+        if (bodyGuid(path.join(dir, real)) === guid) return path.join(dir, real);
+      }
     }
     // Fallback: index the directory's real guids once, then look the guid up.
     let index = this.guidIndexByDir.get(dir);
@@ -459,6 +479,17 @@ function guidSlug(guid: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
+}
+
+/** The guid a normalized body records about itself, or null. */
+function bodyGuid(file: string): string | null {
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- path came from the provider's own directory walk.
+    const j = JSON.parse(fs.readFileSync(file, "utf8")) as { guid?: unknown };
+    return typeof j.guid === "string" ? j.guid : null;
+  } catch {
+    return null;
+  }
 }
 
 function readCues(file: string): TranscriptCue[] | null {
