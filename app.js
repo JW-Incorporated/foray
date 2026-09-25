@@ -14380,8 +14380,9 @@ let voiceProbeRunning = null;
 const VOICE_PROBE_RUNNING_LINE = "Running the voice probe — this takes about 90 seconds.";
 function runVoiceProbe() {
   if (voiceProbeRunning) {
+    const ui = diagSheet();
     openDiagSheet();
-    diagSheet().status.textContent = VOICE_PROBE_RUNNING_LINE;
+    ui.status.textContent = VOICE_PROBE_RUNNING_LINE;
     return voiceProbeRunning;
   }
   const run = runVoiceProbeOnce();
