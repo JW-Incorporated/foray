@@ -90,7 +90,7 @@ function heldIdb(seed = {}) {
  * @param {object|null} [o.eventLog] a queue to publish as window.forayEventLog
  * @param {number} [o.storageWaitMs] the hydration bound, shortened
  */
-function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs = null, hash = "#/", readyState = "complete", ceilingMs = null } = {}) {
+function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs = null, hash = "#/", readyState = "complete", ceilingMs = null, holdTimer = null } = {}) {
   const docListeners = new Map();
   const body = new El("body");
   const view = new El("main"); view.id = "view"; body.appendChild(view);
@@ -134,7 +134,9 @@ function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs 
     history: { replaceState() {}, pushState() {}, back() {} },
     CSS: { escape: (s) => String(s) },
     URL, URLSearchParams, Math, Date, JSON, Promise, clearTimeout, queueMicrotask,
-    setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
+    /* `holdTimer(fn, ms)` returning true keeps that timer for the test to fire
+       itself (tests-11): a claim about WHICH timer is armed needs no wall clock. */
+    setTimeout: (fn, ms) => { if (holdTimer && holdTimer(fn, ms)) return 0; const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
     requestAnimationFrame: (fn) => setTimeout(fn, 0),
     encodeURIComponent, decodeURIComponent,
     scrollY: 0, scrollTo() {},
@@ -359,11 +361,14 @@ test("ROUND 2 review (races-4): a hydration that NEVER finishes is bounded, and 
      armStorageSettleCeiling from settleOnHydrate -> the gate never opens; red.
      Push `saveInterests` per call again -> the waiter count grows; red. */
   const { store } = await storeOver({ idb: { cp_seen: JSON.stringify(["x"]) } });   // never released
-  /* The ceiling is short (audit round 3, tests-11): the claim is that A ceiling
-     opens the gate, not that 4000 ms of wall clock does. It is long enough that
-     the premise asserts below run before it on a slow runner (booted() is at
-     most 600 settle ticks), and the loop polls against a deadline. */
-  const m = mount({ store, storageWaitMs: 20, ceilingMs: 600 });
+  /* NO WALL CLOCK (audit round 3, tests-11). This waited out a real 4000 ms
+     ceiling on every run, and a short one races the premise asserts below on a
+     slow runner (booted() alone can outlast it). The claim is that the ceiling
+     is ARMED and that firing it opens the gate, so the timer armed with the
+     ceiling's (unique) delay is held, counted, and fired by the test. */
+  const CEILING = 7_654_321;
+  const held = [];
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: CEILING, holdTimer: (fn, ms) => (ms === CEILING ? (held.push(fn), true) : false) });
   await m.booted();
   const tax = JSON.parse(read("data/taxonomy.json"));
   const root = tax.nodes.find((n) => n.parent === null);
@@ -372,8 +377,9 @@ test("ROUND 2 review (races-4): a hydration that NEVER finishes is bounded, and 
   const after = vm.runInContext("storageSettleWaiters.length", m.ctx);
   assert.ok(after - before <= 1, `five nudges queued ${after - before} waiters`);
   assert.strictEqual(m.ctx.storageWaiting(), true, "premise: still hydrating");
-  const deadline = Date.now() + 5000;
-  while (m.ctx.storageWaiting() && Date.now() < deadline) await sleep(20);
+  assert.strictEqual(held.length, 1, "the settle ceiling was armed once");
+  held[0]();
+  await settle(5);
   assert.strictEqual(m.ctx.storageWaiting(), false, "the ceiling opened the gate");
   const saved = JSON.parse(store.getItem("cp_interests") || "null");
   assert.ok(saved && typeof saved[root.id] === "number", "the interests reached the store's sync tier");
