@@ -399,6 +399,7 @@ const FLOORS = {
      mutations named in the file's header; all seven were run and are red. */
   "test/api-origin.test.js": 5,
   "test/app-security.test.js": 26,
+  "test/app-surface-round3.test.js": 1, // audit round 3 (2026-09-25, lane L2): the app-surface fixes with no better-fitting suite, one test per finding id; new
   "test/episode-page.test.js": 8,
   /* 2026-09-18, founder: "Only forays are in the jump back in section, podcasts
      and playlists should be there too." The episode card existed but was

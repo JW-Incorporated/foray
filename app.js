@@ -11140,11 +11140,22 @@ const PLAYER_WAIT_MS = 5000;
 
 function playerBridge() {
   if (window.ForayPlayer) return Promise.resolve(window.ForayPlayer);
+  /* EACH WAIT CLEANS UP AFTER ITSELF (audit round 3, app-2-14). On the broken-
+     deploy path the event never fires, and every visit to #/forays, Library or
+     a Try again used to leave one listener and its closure attached for the
+     session: finish() resolved but removed nothing. */
   return new Promise(resolve => {
     let done = false;
-    const finish = () => { if (!done) { done = true; resolve(window.ForayPlayer || null); } };
+    let timer = null;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener("forayplayer:ready", finish);
+      clearTimeout(timer);
+      resolve(window.ForayPlayer || null);
+    };
     window.addEventListener("forayplayer:ready", finish, { once: true });
-    setTimeout(finish, PLAYER_WAIT_MS);
+    timer = setTimeout(finish, PLAYER_WAIT_MS);
   });
 }
 
