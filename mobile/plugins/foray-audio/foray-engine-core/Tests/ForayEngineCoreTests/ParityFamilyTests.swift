@@ -72,6 +72,16 @@ final class ParityFamilyTests: XCTestCase {
     func testSeekPolicyFamily() { assertParityFamily("seek-policy", requireRunner: true) }
     func testOutpointFamily() { assertParityFamily("outpoint", requireRunner: true) }
 
+    /// Recorded by NE-29j, ported by NE-29s: the Foray clock (`ForayClock`),
+    /// the Foray's resume rules and throttled row writer (ResumeRules' Foray
+    /// half, `Rows`), J-4's structural check (`StructuralCheck`) and the
+    /// Foray half of the lock screen (`MediaMapping`, and remote presses into
+    /// `EngineCore`), over every committed Foray too. Each must RUN here.
+    func testForayClockFamily() { assertParityFamily("foray-clock", requireRunner: true) }
+    func testForayProgressFamily() { assertParityFamily("foray-progress", requireRunner: true) }
+    func testForayStructureFamily() { assertParityFamily("foray-structure", requireRunner: true) }
+    func testMediaFamily() { assertParityFamily("media", requireRunner: true) }
+
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree
     /// problem. And something must have RUN: zero failures from a runner that

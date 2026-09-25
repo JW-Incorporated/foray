@@ -214,13 +214,17 @@ test("seam-gap, interlude and seek-policy are wholly classified, own no unported
   }
 });
 
-test("NE-29j: foray-progress and media-session owe nothing, the Foray families are owed to NE-29s and default-voice to NE-33, and 4a is never the artist of a committed Foray", () => {
+test("NE-29j/NE-29s: foray-progress and media-session owe nothing, the Foray families are ported (nothing pending) and default-voice is owed to NE-33, and 4a is never the artist of a committed Foray", () => {
   /* NE-29j's acceptance: "the families pass in JS and sit in swift-pending
      tagged NE-29s. media-session has zero unported entries. 'Never 4a as artist
      of anything audible' is an authored case over every committed Foray."
-     MUTATION: put a foray-progress test back in unported.json -> red; re-tag one
-     foray-clock id to NE-29j in swift-pending.json -> red; drop the never-4a
-     case of one committed Foray (or un-author it) -> red. */
+     NE-29s's acceptance: "equal counts and zero pending for foray-clock,
+     foray-progress, foray-structure and media" — every case of the four now
+     runs in Swift, so none may sit in swift-pending.json.
+     MUTATION: put a foray-progress test back in unported.json -> red; put one
+     foray-clock id back in swift-pending.json (any card) -> red; re-tag one
+     default-voice id away from NE-33 -> red; drop the never-4a case of one
+     committed Foray (or un-author it) -> red. */
   const { status } = classify(REPO_ROOT, DATA, FIXTURES);
   for (const [name, st] of Object.entries(status["foray-progress"])) {
     const label = `foray-progress :: ${JSON.stringify(name)}`;
@@ -230,11 +234,14 @@ test("NE-29j: foray-progress and media-session owe nothing, the Foray families a
   for (const stem of ["foray-progress", "media-session"]) {
     assert.deepStrictEqual(Object.keys(DATA.unported[stem] ?? {}), [], `${stem} owes unported.json nothing`);
   }
-  const owedTo = { "foray-clock": "NE-29s", "foray-progress": "NE-29s", "foray-structure": "NE-29s", media: "NE-29s", "default-voice": "NE-33" };
+  const owedTo = { "foray-clock": null, "foray-progress": null, "foray-structure": null, media: null, "default-voice": "NE-33" };
   for (const [fam, card] of Object.entries(owedTo)) {
     const cases = FIXTURES.filter((f) => f.family === fam).flatMap((f) => f.doc.cases);
     assert.ok(cases.length > 0, `${fam} is recorded`);
-    for (const c of cases) assert.equal(DATA.pending[c.id], card, `${c.id} must be owed to ${card} until the Swift port burns it down`);
+    for (const c of cases) {
+      if (card) assert.equal(DATA.pending[c.id], card, `${c.id} must be owed to ${card} until the Swift port burns it down`);
+      else assert.equal(DATA.pending[c.id], undefined, `${c.id} is ported by NE-29s and must not be pending`);
+    }
     assert.ok(DATA.capabilities.foray.includes(fam), `${fam} is charged to the foray capability`);
     const owedHere = Object.values(DATA.unported).flatMap((t) => Object.values(t ?? {})).filter((e) => e?.family === fam);
     assert.deepStrictEqual(owedHere, [], `${fam} has unported entries`);
