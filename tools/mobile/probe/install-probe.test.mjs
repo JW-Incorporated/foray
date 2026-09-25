@@ -21,6 +21,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import {
   DEFAULT_PHASE,
@@ -37,7 +38,9 @@ import {
   TONE_C_NAME,
   TONE_NAME,
   TONE_SECONDS,
+  NATIVE_PHASE,
   assertBuildArtefact,
+  checkAudioBase,
   installProbe,
   makeToneWav,
   patchIndexHtml,
@@ -65,6 +68,9 @@ const REQUIRED_PLAYER_FILES = [
   "foray-queue.js",
   "deck-policy.js",
   "transport-policy.js",
+  "native-engine.js",
+  "engine-contract.js",
+  "engine-vocabulary.js",
 ];
 
 function tmpBundle(page = PAGE) {
@@ -273,7 +279,7 @@ test("an unknown phase is refused BEFORE anything is written", () => {
   /* A typo'd `--phase` must not install a probe that lands on the default and get
      reported as the phase that was asked for — that is a run measuring one thing and
      labelled another. */
-  for (const bad of ["native", "outpoints", "", null, undefined, 7]) {
+  for (const bad of ["natives", "outpoints", "", null, undefined, 7]) {
     assert.throws(() => phaseScript(bad), /unknown probe phase/);
   }
   const dir = tmpBundle();
@@ -693,4 +699,140 @@ test("the middle segment's audio outlasts the Simulator's ~26 s suspension ceili
     `SEGMENT_A_END_SEC (${firstEnd}) is close enough to the arm (${armSec}) that a missed override ` +
       `could produce a boundary at a time nothing chose`
   );
+});
+
+/* ───────────────────── NE-36: the native engine's phase ───────────────────── */
+
+const NATIVE_BASE = "file:///Users/runner/Library/Developer/CoreSimulator/Devices/X/data/Containers/Bundle/Application/Y/App.app/public/";
+
+test("the native phase refuses to install without an audio base, before writing anything", () => {
+  /* Without the installed bundle's path the engine's AVPlayer could open none of the
+     three segments, and three failed loads would read as "the engine never advanced". */
+  assert.equal(NATIVE_PHASE, "native");
+  assert.ok(PHASES.includes(NATIVE_PHASE));
+  const dir = tmpBundle();
+  const before = fs.readdirSync(dir).sort();
+  assert.throws(() => installProbe(dir, { phase: "native" }), /needs --audio-base/);
+  assert.deepEqual(fs.readdirSync(dir).sort(), before, "a refused native install still wrote files");
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("the native phase file carries the audio base as a second bare assignment", () => {
+  const dir = tmpBundle();
+  const r = installProbe(dir, { phase: "native", audioBase: NATIVE_BASE });
+  assert.equal(r.phase, "native");
+  const src = fs.readFileSync(path.join(dir, PHASE_ASSET), "utf8");
+  assert.equal(src, `window.FORAY_PROBE_PHASE = "native";\nwindow.FORAY_PROBE_AUDIO_BASE = ${JSON.stringify(NATIVE_BASE)};\n`);
+  for (const a of ["probe-native.html", "probe-native.js", "probe-native-foray.js"]) {
+    assert.ok(fs.existsSync(path.join(dir, a)), `${a} was not installed`);
+  }
+  /* A JS-lane phase never carries it, even if one is passed. */
+  const again = installProbe(dir, { phase: "seam", audioBase: NATIVE_BASE });
+  assert.equal(again.phase, "seam");
+  assert.equal(fs.readFileSync(path.join(dir, PHASE_ASSET), "utf8"), phaseScript("seam"));
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("the audio base must be an absolute file:/// directory URL", () => {
+  assert.equal(checkAudioBase(NATIVE_BASE), NATIVE_BASE);
+  for (const bad of [
+    "capacitor://localhost/", // the WebView's scheme: AVFoundation cannot open it
+    "file:///no/trailing/slash",
+    "/Users/runner/App.app/public/",
+    "file://relative/",
+    'file:///a"b/',
+    "file:///a b/",
+    "",
+    null,
+  ]) {
+    assert.throws(() => checkAudioBase(bad), /--audio-base/, `accepted ${JSON.stringify(bad)}`);
+    // `null` is "no base" to phaseScript (the JS-lane phases); installProbe refuses it for native.
+    if (bad !== null) assert.throws(() => phaseScript("native", { audioBase: bad }), /--audio-base/);
+  }
+});
+
+test("the CLI takes --audio-base without mistaking its value for the bundle dir", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const dir = tmpBundle();
+  const script = path.join(PROBE_DIR, "install-probe.mjs");
+  const ok = spawnSync(process.execPath, [script, dir, "--phase", "native", "--audio-base", NATIVE_BASE, "--list"], { encoding: "utf8" });
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.match(ok.stdout, /would install probe \(phase native\)/);
+  const missing = spawnSync(process.execPath, [script, dir, "--phase", "native", "--list"], { encoding: "utf8" });
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /needs --audio-base/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("the native probe page can load no media at all", () => {
+  /* The page hands the Foray to the ENGINE; its CSP has no media-src, so "the page
+     played nothing" is structural. */
+  const html = asset("probe-native.html");
+  const m = /http-equiv="Content-Security-Policy"\s+content="([^"]+)"/.exec(html);
+  assert.ok(m, "probe-native.html has no CSP");
+  assert.match(m[1], /default-src 'none'/);
+  assert.doesNotMatch(m[1], /media-src/);
+  assert.doesNotMatch(m[1], /unsafe-inline|unsafe-eval/);
+  assert.match(html, /<script type="module" src="probe-native\.js"><\/script>/);
+});
+
+test("probe-native.js drives the REAL engine client and builds the Foray with the REAL queue builder", () => {
+  const js = asset("probe-native.js");
+  const imports = [...js.matchAll(/from "\.\/player\/([\w-]+\.js)"/g)].map((m) => m[1]);
+  assert.deepEqual(imports.sort(), ["foray-queue.js", "native-engine.js"]);
+  for (const f of imports) assert.ok(PROBE_PLAYER_DEPS.includes(f), `player/${f} is not required of the bundle`);
+  assert.match(js, /from "\.\/probe-native-foray\.js"/);
+  assert.match(js, /engine\.send\("playForay", args/);
+  assert.match(js, /buildForayQueue\(probeForay\(rec\.audioBase\), \{ isLocalFile: true/);
+  /* Nothing on the page may make a sound or reach the legacy Now Playing path:
+     those are exactly what the native assertions look for. */
+  const code = js.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.doesNotMatch(code, /\.play\(\)|new Audio\(|setNowPlaying|mediaSession/);
+  /* The reload clobber check reads the rows AFTER the pause, then loads the real page. */
+  const pause = js.indexOf('engine.send("pause"');
+  const rows = js.indexOf('engine.read("rows")');
+  const reload = js.indexOf('location.replace("index.html")');
+  assert.ok(pause > 0 && rows > pause && reload > rows, "pause -> rows -> reload, in that order");
+  assert.match(js, /reload-requested/);
+});
+
+test("the committed native Foray: three segments, local tones, each inside its file", async () => {
+  const mod = await import(pathToFileURL(path.join(PROBE_DIR, "probe-native-foray.js")).href);
+  assert.equal(mod.PROBE_FORAY_SEGMENTS.length, 3);
+  const seconds = Object.fromEntries(TONES.map((t) => [t.name, t.seconds]));
+  for (const s of mod.PROBE_FORAY_SEGMENTS) {
+    assert.ok(seconds[s.file], `${s.file} is not a generated tone`);
+    assert.ok(s.end_sec > s.start_sec && s.end_sec <= seconds[s.file] - 2, `${s.item_id} ends outside ${s.file}`);
+  }
+  const foray = mod.probeForay(NATIVE_BASE);
+  assert.equal(foray.items.length, 3);
+  for (const it of foray.items) {
+    assert.equal(it.type, "segment");
+    assert.ok(it.audio_url.startsWith(NATIVE_BASE));
+  }
+  /* It builds, with the real builder, to three playable items and no skips. */
+  const { buildForayQueue } = await import(pathToFileURL(path.join(REPO_ROOT, "player", "foray-queue.js")).href);
+  const q = buildForayQueue(foray, { isLocalFile: true });
+  assert.equal(q.items.length, 3);
+  assert.equal(q.skipped.length, 0);
+  assert.equal(mod.probeEpisode(NATIVE_BASE).item.audio_url, NATIVE_BASE + TONE_NAME);
+});
+
+test("probe-bridge.js: the native reload boot stays on the real app; JS-lane passes record the legacy smoke", async () => {
+  const js = asset("probe-bridge.js");
+  /* The reload branch is checked at parse time and RETURNS before any navigation. */
+  const branch = js.indexOf('nrec.stage === "reload-requested"');
+  const navigate = js.indexOf("location.replace(target)");
+  assert.ok(branch > 0 && branch < navigate);
+  assert.match(js, /realAppAfterReload\(nrec\);\s*return;/);
+  /* The smoke's hello speaks the contract's protocol. */
+  const { PROTOCOL } = await import(pathToFileURL(path.join(REPO_ROOT, "player", "engine-contract.js")).href);
+  assert.ok(
+    js.includes(`"engineHello", { pageBuild: "probe-bridge", protocol: ${PROTOCOL} }`),
+    "the smoke's engineHello does not speak engine-contract.js PROTOCOL"
+  );
+  /* The native phase skips the setNowPlaying round trip and the M-01 writes. */
+  assert.match(js, /if \(native\) \{\s*out\.setNowPlayingRoundTrip = \{ attempted: false/);
+  assert.match(js, /snapshot\(\{ touchMediaSession: !native \}\)/);
+  assert.match(js, /if \(touchMediaSession\) snapshotMediaSession\(\);/);
 });

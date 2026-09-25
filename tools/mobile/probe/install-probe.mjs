@@ -41,7 +41,16 @@
  * USAGE
  *   node tools/mobile/probe/install-probe.mjs <dir containing index.html>
  *   node tools/mobile/probe/install-probe.mjs <dir> --phase seam
+ *   node tools/mobile/probe/install-probe.mjs <dir> --phase native --audio-base file:///…/App.app/public/
  *   node tools/mobile/probe/install-probe.mjs <dir> --list
+ *
+ * THE NATIVE PHASE (card NE-36) is the one that goes into the INSTALLED app, not
+ * the copy: its three segments are `file://` URLs the native engine's AVPlayer
+ * opens directly, and the only place those paths exist is the bundle container
+ * `simctl install` chose. So the workflow installs first, asks
+ * `simctl get_app_container … app` where it went, and runs this against
+ * `<that>/public` with `--audio-base file://<that>/public/`. See
+ * `ios-build-native-pass.yml` beside this file.
  */
 
 import fs from "node:fs";
@@ -60,6 +69,9 @@ export const PROBE_ASSETS = [
   "probe-outpoint.js",
   "probe-seam.html",
   "probe-seam.js",
+  "probe-native.html",
+  "probe-native.js",
+  "probe-native-foray.js",
 ];
 
 /** Which measurement this install is for. `probe-bridge.js` reads it and navigates
@@ -73,7 +85,14 @@ export const PROBE_ASSETS = [
  *  unanswerable. So the workflow installs, measures, re-installs with the other
  *  phase, and measures again — about 95 s more on a runner that bills at 10x, for
  *  two unconfounded results instead of one ambiguous one. */
-export const PHASES = ["outpoint", "seam"];
+export const PHASES = ["outpoint", "seam", "native"];
+
+/** THE NATIVE ENGINE'S LANE (card NE-36). `outpoint` and `seam` measure the JS
+ *  player (`HtmlAudioBackend`, `PlayerQueueManager`) and are pinned to the legacy
+ *  lane by seeding `ForayEngine.modeOverride=web`; `native` seeds `native` and
+ *  hands a committed 3-segment Foray (`probe-native-foray.js`) to the ENGINE with
+ *  `engineSend playForay`, so nothing in the page makes a sound. */
+export const NATIVE_PHASE = "native";
 export const DEFAULT_PHASE = "outpoint";
 
 /** The generated one-line file that carries the phase into the page.
@@ -105,6 +124,10 @@ export const PROBE_PLAYER_DEPS = [
   "foray-queue.js",
   "deck-policy.js",
   "transport-policy.js",
+  // NE-36's native phase: the page's REAL engine client and its contract.
+  "native-engine.js",
+  "engine-contract.js",
+  "engine-vocabulary.js",
 ];
 
 /** The generated tone. Not committed — a 2 MB WAV in a repo that guards a 3 MB
@@ -278,17 +301,41 @@ export function assertBuildArtefact(dir) {
 
 /** The phase file's contents. A plain assignment, no logic — the page's own
  *  default lives in `probe-bridge.js` so a missing file degrades rather than
- *  breaks. */
-export function phaseScript(phase) {
+ *  breaks. The native phase adds ONE more assignment, its audio base. */
+export function phaseScript(phase, { audioBase = null } = {}) {
   if (!PHASES.includes(phase)) {
     throw new Error(`unknown probe phase ${JSON.stringify(phase)}; expected one of ${PHASES.join(", ")}`);
   }
-  return `window.FORAY_PROBE_PHASE = ${JSON.stringify(phase)};\n`;
+  const lines = [`window.FORAY_PROBE_PHASE = ${JSON.stringify(phase)};`];
+  if (audioBase != null) lines.push(`window.FORAY_PROBE_AUDIO_BASE = ${JSON.stringify(checkAudioBase(audioBase))};`);
+  return lines.join("\n") + "\n";
 }
 
-export function installProbe(dir, { write = true, phase = DEFAULT_PHASE } = {}) {
+/** The native phase's audio base: an absolute `file:///` directory URL ending in
+ *  `/`. AVDeck fails any `audio_url` that is not an absolute URL (`no-url`), and a
+ *  `capacitor://` URL is the WebView's scheme, which AVFoundation cannot open. A
+ *  wrong base would not be a wrong measurement, it would be three failed loads
+ *  read as "the engine never advanced", so it is refused here, on the host, where
+ *  the message can be read. */
+export function checkAudioBase(base) {
+  if (typeof base !== "string" || !/^file:\/\/\/[^\s"'\\<>]+\/$/.test(base)) {
+    throw new Error(
+      `--audio-base must be an absolute file:/// directory URL ending in "/" (got ${JSON.stringify(base)})`
+    );
+  }
+  return base;
+}
+
+export function installProbe(dir, { write = true, phase = DEFAULT_PHASE, audioBase = null } = {}) {
   const abs = assertBuildArtefact(dir);
-  const script = phaseScript(phase); // validates `phase` before anything is written
+  if (phase === NATIVE_PHASE && audioBase == null) {
+    throw new Error(
+      "the native phase needs --audio-base file:///…/App.app/public/: its segments are files the " +
+        "engine's AVPlayer opens, and without the installed bundle's path it could open none of them"
+    );
+  }
+  // Validates `phase` and `audioBase` before anything is written.
+  const script = phaseScript(phase, { audioBase: phase === NATIVE_PHASE ? audioBase : null });
   const indexPath = path.join(abs, "index.html");
   const patched = patchIndexHtml(fs.readFileSync(indexPath, "utf8"));
 
@@ -331,15 +378,19 @@ if (isMain) {
      saw it because both call sites pass `--phase`; a human debugging by hand would
      have hit it immediately. */
   const phaseArgIdx = phaseIdx >= 0 ? phaseIdx + 1 : -1;
-  const dir = argv.find((a, i) => !a.startsWith("-") && i !== phaseArgIdx);
+  const baseIdx = argv.indexOf("--audio-base");
+  const audioBase = baseIdx >= 0 ? argv[baseIdx + 1] ?? "" : null;
+  const baseArgIdx = baseIdx >= 0 ? baseIdx + 1 : -1;
+  const dir = argv.find((a, i) => !a.startsWith("-") && i !== phaseArgIdx && i !== baseArgIdx);
   if (!dir) {
     console.error(
-      `Usage: node tools/mobile/probe/install-probe.mjs <bundle dir> [--phase ${PHASES.join("|")}] [--list]`
+      `Usage: node tools/mobile/probe/install-probe.mjs <bundle dir> [--phase ${PHASES.join("|")}] ` +
+        `[--audio-base file:///…/] [--list]`
     );
     process.exit(2);
   }
   try {
-    const r = installProbe(dir, { write: !listOnly, phase });
+    const r = installProbe(dir, { write: !listOnly, phase, audioBase });
     console.log(
       `${listOnly ? "would install" : "installed"} probe (phase ${r.phase}) into ${r.target}: ` +
         `${r.copied.join(", ")}; tones ` +

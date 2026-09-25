@@ -1641,7 +1641,7 @@ const FLOORS = {
      inject-app-icon: byte-level --check, refuse a half fix. Floored exact. */
   "tools/mobile/inject-splash.test.mjs": 19,
   "tools/mobile/inject-background-audio.test.mjs": 54, // NE-24: +4 -- the AppDelegate cold path (the import and ForayEngineColdPath.bootIfNeeded() as the first statement of didFinishLaunching, byte-identical elsewhere; idempotent, half-patched refused; exactly one didFinishLaunching, @main or @UIApplicationMain; the CLI patches beside the plist, --check quotes it, a missing AppDelegate fails with the plist untouched) // NE-17: +9 -- ForayEngineDefault / ForayEngineCapabilities from mobile/ENGINE_DEFAULT.json (committed js; absent reads js; written at the root, replaced not refused, byte-identical elsewhere; strict parse; the re-read is a real function; the CLI writes on every edit and --check prints ForayEngineDefault=js)
-  "tools/mobile/ios-ci.test.mjs": 137, // founder 2026-09-23: section 3d reads taken-over-severed for a live object taken over with no tee onto WebKit's MediaSession — the state that shipped as "4a / unknown / unknown"; 136 -> 137 // +7: L-02 takeover verdict + reached needle (2026-09-10); +4: M-03 session needle (2026-09-12)
+  "tools/mobile/ios-ci.test.mjs": 152, // NE-36 (2026-09-25): +15, the lane seeding, the staged native pass, native-rows, and the native verdict and its report section; 137 -> 152 // founder 2026-09-23: section 3d reads taken-over-severed for a live object taken over with no tee onto WebKit's MediaSession — the state that shipped as "4a / unknown / unknown"; 136 -> 137 // +7: L-02 takeover verdict + reached needle (2026-09-10); +4: M-03 session needle (2026-09-12)
   /* The embedded-framework plist rules (2026-09-13). Release run 34739630705
      archived, exported, and was REJECTED by App Store Connect: the ONNX Runtime
      xcframework Microsoft ships carries no `MinimumOSVersion`, which altool
@@ -1666,7 +1666,7 @@ const FLOORS = {
   "tools/mobile/engine-report.test.mjs": 25,
   "tools/mobile/ios-workflow.test.mjs": 45, // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
-  "tools/mobile/probe/install-probe.test.mjs": 39,
+  "tools/mobile/probe/install-probe.test.mjs": 50, // NE-36 (2026-09-25): the native phase, its audio base, its page and its Foray; 39 -> 50
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent
      failure impossible — a backfill that reports success while emitting nothing, or

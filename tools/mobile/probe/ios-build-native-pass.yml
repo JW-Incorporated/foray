@@ -1,0 +1,96 @@
+# NE-36 — THE ios-build CHANGES, STAGED FOR THE G-1b / G-1c SITTING.
+#
+# `.github/workflows/ios-build.yml` is a governed file (path-policy DENIES
+# `.github/`), and docs/native-engine-plan.md puts this step in the founder's
+# G-1b PR (or a G-1c sitting of its own). So the card lands everything the step
+# CALLS — `install-probe.mjs --phase native`, `probe-native.js`, `ios-ci.mjs
+# seed-mode` / `native-rows` and the verdict's section 5 — and stages the YAML
+# here, where `ios-ci.test.mjs` reads it and pins what it must keep. Until it is
+# pasted in, every ios-build summary says the native pass "did not run", and the
+# legacy smoke reads `unpinned`: silence is no-coverage, never a pass.
+#
+# TWO EDITS.
+#
+# 1. PIN THE EXISTING PASSES TO THE LEGACY LANE. In "Install the probed app",
+#    right after `xcrun simctl install "$UDID" "$PROBED"`, and in "Run the
+#    probes", right after pass 2's reinstall, add `seed_js_lane` below. The M1
+#    flip made the native engine the build default; the out-point and seam
+#    passes drive the JS player on purpose, and must not run with a native
+#    engine holding the session under them. The summary labels them
+#    "JS lane (Android/web parity)" already; the bridge record's engineHello
+#    answer is the smoke that proves the seed took (`legacy` / `override`).
+#    Its own file, NOT native-steps.txt: that file's presence is what tells the
+#    verdict the native pass ran.
+#
+# 2. ADD THE NATIVE PASS as its own step, AFTER "Run the probes" (whose
+#    localStorage read must already have happened: the native pass boots
+#    probe-bridge.js again, which rewrites `foray_probe_bridge`) and BEFORE
+#    "Report what the probes established". The verdict step needs no change: it
+#    reads native-rows.json, native-steps.txt and simulator-log-native.txt from
+#    $ART by default.
+#
+# COST: about 200 s more on a runner that bills at 10x (15 + 125 + 8 + 40 s of
+# sleeps, plus an in-place install). The 125 s is the card's "more than 90 s"
+# with the ~35 s Settings has taken to come forward on a cold Simulator.
+#
+# SECURITY: the defaults export holds every `CapacitorStorage.` value the app
+# wrote (a session token included), so it goes to a work directory that is never
+# uploaded; `native-rows` lets out only `cp_pos:*`, `cp_foray:*` and the probe's
+# own record — the same boundary the localStorage read keeps.
+
+seed_js_lane: |
+  node tools/mobile/ios-ci.mjs seed-mode "$UDID" "$APP_ID" web >> "$ART/lane-seeds.txt"
+
+steps:
+      - name: Run the native-engine probe (NE-36 — playForay, > 90 s backgrounded, WebContent kill, reload)
+        id: probe_native
+        if: env.PROBES != 'false' && steps.probe_install.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          STEPS="$ART/native-steps.txt"
+          WORK="$RUNNER_TEMP/ios-ci-native-work"
+          rm -rf "$WORK" && mkdir -p "$WORK"
+          # Its own capture and its own cap, like each pass above.
+          xcrun simctl spawn "$UDID" log stream --style compact \
+            --predicate 'process == "App" OR senderImagePath CONTAINS "WebKit"' \
+            2>&1 | head -c 20000000 > "$ART/simulator-log-native.txt" &
+          LOG_PID=$!
+          trap 'kill "$LOG_PID" 2>/dev/null || true' EXIT
+
+          # The engine decides its lane once per process, at launch: terminate, then seed.
+          xcrun simctl terminate "$UDID" "$APP_ID" || true
+          # IN PLACE, in the installed bundle: the engine's AVPlayer opens the three
+          # segments as files, and this is the only path they have.
+          APPDIR=$(xcrun simctl get_app_container "$UDID" "$APP_ID" app)
+          node tools/mobile/probe/install-probe.mjs "$APPDIR/public" --phase native --audio-base "file://$APPDIR/public/"
+          node tools/mobile/ios-ci.mjs seed-mode "$UDID" "$APP_ID" native >> "$STEPS"
+
+          echo "launch=$(xcrun simctl launch "$UDID" "$APP_ID")" >> "$STEPS"
+          sleep 15
+          xcrun simctl io "$UDID" screenshot "$ART/05-native-playing.png" || true
+          xcrun simctl launch "$UDID" com.apple.Preferences \
+            || xcrun simctl launch "$UDID" com.apple.mobilesafari
+          echo "backgrounded_at=$(date +%s)" >> "$STEPS"
+          sleep 125
+
+          # A-3: kill the Simulator's WebContent process(es) mid-Foray, app still hidden.
+          KILLED=$(ps -axo pid=,command= | awk '/com\.apple\.WebKit\.WebContent/ && /CoreSimulator/ {print $1}')
+          N=0
+          for P in $KILLED; do if kill -9 "$P" 2>/dev/null; then N=$((N+1)); fi; done
+          echo "webcontent_killed=$N" >> "$STEPS"
+          sleep 8
+
+          # Foreground. The pid must not change: a relaunch is not a WebContent kill.
+          echo "foreground=$(xcrun simctl launch "$UDID" "$APP_ID")" >> "$STEPS"
+          echo "foreground_at=$(date +%s)" >> "$STEPS"
+          # The page settles 4 s, pauses, reads the rows, loads index.html (W-8), and
+          # the real page stamps its record 15 s later.
+          sleep 40
+          xcrun simctl io "$UDID" screenshot "$ART/06-native-after-reload.png" || true
+
+          xcrun simctl spawn "$UDID" defaults export "$APP_ID" - > "$WORK/defaults.plist"
+          plutil -convert xml1 "$WORK/defaults.plist"
+          node tools/mobile/ios-ci.mjs native-rows "$WORK/defaults.plist" > "$ART/native-rows.json"
+          xcrun simctl terminate "$UDID" "$APP_ID" || true

@@ -22,7 +22,11 @@
  *   node tools/mobile/ios-ci.mjs redact-localstorage <rows.json>
  *   node tools/mobile/ios-ci.mjs decode-localstorage <rows.json...>
  *   node tools/mobile/ios-ci.mjs verdict <localstorage.json> [probe-console.txt]
+ *   node tools/mobile/ios-ci.mjs seed-mode <udid> <bundle id> <auto|native|web>
+ *   node tools/mobile/ios-ci.mjs native-rows <defaults-export.xml>
  */
+
+import { execFileSync } from "node:child_process";
 
 import fs from "node:fs";
 import path from "node:path";
@@ -2444,6 +2448,371 @@ export function mediaSessionTakeoverVerdict(probe, logText) {
   };
 }
 
+/* ─────────────────── NE-36: the lanes, and the native probe ─────────────────
+ *
+ * docs/native-engine-plan.md card NE-36. Since the M1 flip the shell's build
+ * default is the NATIVE engine, so the out-point and seam passes — which drive
+ * the JS player on purpose — would otherwise run with a native engine holding
+ * the audio session underneath them. They are pinned to the legacy lane by
+ * seeding `ForayEngine.modeOverride=web` before launch, and labelled as what
+ * they are: the JS lane, which is Android's and the web's player. A third pass
+ * seeds `native` and measures the engine itself.
+ *
+ * THE SEEDING HAS NO LAUNCH-ARGUMENT FORM (plan §13 item 46): the override is a
+ * `UserDefaults` key the engine reads at `didFinishLaunching`, so it is written
+ * into the app's defaults domain before the launch, with the process not
+ * running. The argv is built here so `ios-ci.test.mjs` pins it. */
+
+/** The label the JS-lane sections carry in the summary. */
+export const JS_LANE_LABEL = "JS lane (Android/web parity)";
+
+/** EnginePrivateKey.modeOverride (EngineKeys.swift), verbatim. */
+export const MODE_OVERRIDE_KEY = "ForayEngine.modeOverride";
+/** EngineMode.Override's stored values (EngineConstants.modeOverrides). */
+export const MODE_OVERRIDES = ["auto", "native", "web"];
+
+function checkSeedArgs(udid, bundleId, mode) {
+  if (typeof udid !== "string" || !/^[A-Za-z0-9-]+$/.test(udid)) throw new Error(`seed-mode: bad simulator udid ${JSON.stringify(udid)}`);
+  if (typeof bundleId !== "string" || !/^[A-Za-z0-9.-]+$/.test(bundleId)) throw new Error(`seed-mode: bad bundle id ${JSON.stringify(bundleId)}`);
+  if (!MODE_OVERRIDES.includes(mode)) throw new Error(`seed-mode: mode must be one of ${MODE_OVERRIDES.join(", ")} (got ${JSON.stringify(mode)})`);
+}
+
+/** `xcrun simctl spawn <udid> defaults write <bundle> ForayEngine.modeOverride <mode>`,
+ *  as argv. The workflow runs it with the app NOT running: the engine decides its
+ *  lane once per process (`EngineOwnership.decideOnce`). */
+export function seedModeArgv(udid, bundleId, mode) {
+  checkSeedArgs(udid, bundleId, mode);
+  return ["xcrun", "simctl", "spawn", udid, "defaults", "write", bundleId, MODE_OVERRIDE_KEY, mode];
+}
+
+/** The read-back, so a seed that silently wrote somewhere else is visible. It
+ *  is corroboration only: the probe page's own engineHello answer is the proof. */
+export function readModeArgv(udid, bundleId) {
+  checkSeedArgs(udid, bundleId, "auto");
+  return ["xcrun", "simctl", "spawn", udid, "defaults", "read", bundleId, MODE_OVERRIDE_KEY];
+}
+
+/**
+ * The legacy-mode bridge smoke: every JS-lane pass's bridge record carries the
+ * engine's own engineHello answer (`probe-bridge.js` `checkEngineHello`).
+ *   pinned       legacy / override: the pass ran in the lane it is labelled with
+ *   unpinned     native, or legacy for another reason: the seeding did not take
+ *   inconclusive no answer at all
+ */
+export function legacySmokeVerdict(bridge) {
+  const h = bridge && typeof bridge === "object" ? bridge.engineHello : null;
+  if (!h || typeof h !== "object" || h.attempted !== true) {
+    return { verdict: "inconclusive", headline: "No engineHello answer was recorded by a JS-lane pass — no coverage, not a pass." };
+  }
+  if (h.mode === "legacy" && h.reason === "override") {
+    return { verdict: "pinned", headline: `The engine answered \`legacy\` / \`override\` in the ${h.phase || "?"} pass: the JS-lane measurements ran in the JS lane (measured).` };
+  }
+  if (typeof h.mode === "string") {
+    return {
+      verdict: "unpinned",
+      headline:
+        `The engine answered \`${h.mode}\` / \`${h.reason}\` in the ${h.phase || "?"} pass, so the JS-lane ` +
+        "measurements ran beside an engine that was NOT pinned to legacy. Seed `ForayEngine.modeOverride=web` " +
+        "before the launch (ios-build-native-pass.yml).",
+    };
+  }
+  return { verdict: "inconclusive", headline: `engineHello did not answer (${h.error || "no reason recorded"}) — no coverage.` };
+}
+
+/* ---- the unified log: the engine's own rows ---- */
+
+/** One mirrored ring row (`DiagGate.loggerText`: `#<seq> <kind> key=value …`).
+ *  The subsystem is the bundle id and the category `engine`, so a line must carry
+ *  `ai.jwlabs.foura` as well as the row shape to count. */
+const ENGINE_ROW_RE = /#(\d+) ([A-Za-z][A-Za-z0-9._:-]*)((?: [^\s=]+=\S*)*)\s*$/;
+export const ENGINE_SUBSYSTEM = "ai.jwlabs.foura";
+
+export function parseEngineRows(text) {
+  const rows = [];
+  if (typeof text !== "string") return rows;
+  for (const line of text.split("\n")) {
+    if (!line.includes(ENGINE_SUBSYSTEM)) continue;
+    const m = ENGINE_ROW_RE.exec(line);
+    if (!m) continue;
+    const fields = {};
+    for (const part of m[3].trim().split(" ")) {
+      if (!part) continue;
+      const i = part.indexOf("=");
+      if (i > 0) fields[part.slice(0, i)] = part.slice(i + 1);
+    }
+    rows.push({ seq: Number(m[1]), kind: m[2], fields, line: line.trim().slice(0, 300) });
+  }
+  return rows;
+}
+
+/** WebKit's HTMLMediaElement lifecycle, as its release log names it. */
+const HTML_MEDIA_LOG_RE = /HTMLMediaElement::HTMLMediaElement|HTMLMediaElement::create|HTMLAudioElement::create/;
+
+/** The lines the native lane must never produce. A Now Playing line counts as
+ *  WebKit's only when it names WebKit: the engine's own MPNowPlayingInfoCenter
+ *  writes produce MediaRemote lines in the App process too, and those are the
+ *  point of the exercise. */
+export function forbiddenNativeLines(text) {
+  const out = { webkitPublish: [], forayAudioReached: [], htmlMedia: [] };
+  if (typeof text !== "string") return out;
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.includes(FORAY_AUDIO_REACHED_NEEDLE)) out.forayAudioReached.push(line.slice(0, 300));
+    if (HTML_MEDIA_LOG_RE.test(line)) out.htmlMedia.push(line.slice(0, 300));
+    if (line.includes("WebKit") && NOW_PLAYING_NEEDLES.some((n) => line.includes(n))) out.webkitPublish.push(line.slice(0, 300));
+  }
+  return out;
+}
+
+/* ---- UserDefaults: the engine's rows and the probe's record ---- */
+
+/** The Preferences plugin's prefix (`EngineHandshake.preferencesKeyPrefix`). */
+export const PREFERENCES_PREFIX = "CapacitorStorage.";
+/** The only keys `native-rows` ever lets out of the raw export: the engine's
+ *  owned rows and the probe's own record. Everything else — including any
+ *  session token the app keeps under `CapacitorStorage.` — stays in the work
+ *  directory, which is never uploaded (the same boundary as the localStorage
+ *  read above). */
+export const NATIVE_ROW_PREFIXES = ["cp_pos:", "cp_foray:"];
+export const NATIVE_PROBE_KEY = "foray_probe_native";
+
+function unescapeXml(s) {
+  return s
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&amp;/g, "&");
+}
+
+/**
+ * `defaults export <bundle> <file>` then `plutil -convert xml1`, reduced to the
+ * rows and the record. Only `<key>…</key><string>…</string>` pairs are read:
+ * every value this cares about is a string.
+ * @returns {{rows: Object<string,string>, probe: object|null, keysSeen: number}}
+ */
+export function parseDefaultsExport(xml) {
+  if (typeof xml !== "string" || xml.trim() === "") throw new Error("native-rows: the defaults export is empty");
+  if (xml.startsWith("bplist")) throw new Error("native-rows: the export is a BINARY plist; run `plutil -convert xml1` on it first");
+  if (!/<plist[\s>]/.test(xml)) throw new Error("native-rows: that is not an XML property list");
+  const rows = {};
+  let probe = null;
+  let keysSeen = 0;
+  const re = /<key>([^<]*)<\/key>\s*(<string>([\s\S]*?)<\/string>|<string\s*\/>)?/g;
+  let m;
+  while ((m = re.exec(xml))) {
+    keysSeen++;
+    const key = unescapeXml(m[1]);
+    // Not a string value (a number, a dict, data): nothing here reads one.
+    if (!key.startsWith(PREFERENCES_PREFIX) || m[2] === undefined) continue;
+    const rowKey = key.slice(PREFERENCES_PREFIX.length);
+    const value = m[3] === undefined ? "" : unescapeXml(m[3]);
+    if (NATIVE_ROW_PREFIXES.some((p) => rowKey.startsWith(p))) rows[rowKey] = value;
+    else if (rowKey === NATIVE_PROBE_KEY) {
+      try { probe = JSON.parse(value); } catch { probe = { unreadable: true }; }
+    }
+  }
+  return { rows, probe, keysSeen };
+}
+
+/** `native-steps.txt`: the workflow's own `key=value` lines. */
+export function parseSteps(text) {
+  const out = {};
+  if (typeof text !== "string") return out;
+  for (const line of text.split("\n")) {
+    const m = /^([a-z_]+)=(.*)$/.exec(line.trim());
+    if (m) out[m[1]] = m[2].trim();
+  }
+  return out;
+}
+
+/** `simctl launch` prints `<bundle>: <pid>`. */
+function pidOf(s) {
+  const m = /:\s*(\d+)\s*$/.exec(String(s ?? ""));
+  return m ? Number(m[1]) : null;
+}
+
+/** How long the app must stay backgrounded (card NE-36: "more than 90 s"). */
+export const NATIVE_MIN_HIDDEN_SEC = 90;
+/** Three segments, two seams. */
+export const NATIVE_EXPECTED_SEAMS = 2;
+
+const NC = "no-coverage";
+
+/**
+ * Every native-lane assertion, each with its own verdict. `pass`/`fail` are
+ * measurements; `no-coverage` is everything else, and it is never a pass.
+ *
+ * @param {object} p
+ * @param {object|null} p.record   the `foray_probe_native` record (from UserDefaults)
+ * @param {object|null} p.rowsAfter the owned rows after the reload (`parseDefaultsExport(...).rows`)
+ * @param {string|null} p.logText  `simulator-log-native.txt`
+ * @param {object} p.steps         `parseSteps(native-steps.txt)`
+ * @param {object|null} p.bridge   the JS-lane bridge record (for the legacy smoke)
+ */
+export function nativeProbeVerdict({ record = null, rowsAfter = null, logText = null, steps = {}, bridge = null } = {}) {
+  const a = [];
+  const add = (id, title, verdict, evidence) => a.push({ id, title, verdict, evidence });
+  const rec = record && typeof record === "object" && record.phase === "native" ? record : null;
+  const ran = rec !== null || Object.keys(steps || {}).length > 0 || (typeof logText === "string" && logText.trim() !== "");
+
+  const smoke = legacySmokeVerdict(bridge);
+  add("legacy-smoke", "JS-lane passes pinned to legacy (bridge smoke)",
+    smoke.verdict === "pinned" ? "pass" : smoke.verdict === "unpinned" ? "fail" : NC, smoke.headline);
+
+  if (!ran) {
+    return {
+      verdict: NC,
+      ran: false,
+      assertions: a,
+      headline:
+        "The native pass did not run in this workflow (its step is the G-1b / G-1c sitting's: " +
+        "tools/mobile/probe/ios-build-native-pass.yml). Nothing below the smoke was measured.",
+    };
+  }
+
+  // 1. the lane
+  const h = rec?.hello;
+  if (!h) add("native-lane", "engineHello answered native / override", NC, "no probe record reached UserDefaults");
+  else if (h.mode === "native" && h.reason === "override") add("native-lane", "engineHello answered native / override", "pass", "native / override (the seed took)");
+  else add("native-lane", "engineHello answered native / override", "fail", `answered ${h.mode} / ${h.reason}: the seed did not take, or the engine refused the lane`);
+
+  // 2. the play
+  const forayOff = rec?.play?.reason === "capability-off";
+  if (!rec?.play) add("played", "playForay taken by the engine", NC, "no play was recorded");
+  else if (rec.play.ok) add("played", "playForay taken by the engine", "pass", `playForay ok (${rec.forayItems ?? "?"} items)`);
+  else if (forayOff) add("played", "playForay taken by the engine", NC,
+    "refused capability-off: this binary does not advertise `foray` yet (NE-37 flips it); " +
+      `fell back to playEpisode, which answered ${rec.fallback?.ok ? "ok" : rec.fallback?.reason ?? "nothing"}`);
+  else add("played", "playForay taken by the engine", "fail", `refused ${rec.play.reason}`);
+
+  // 3. the background window
+  const hiddenSec = rec && Number.isFinite(rec.hiddenAt) && Number.isFinite(rec.visibleAt) ? (rec.visibleAt - rec.hiddenAt) / 1000 : null;
+  if (hiddenSec == null) add("background", `backgrounded for more than ${NATIVE_MIN_HIDDEN_SEC} s`, NC, "the page never recorded both a hidden and a visible moment");
+  else add("background", `backgrounded for more than ${NATIVE_MIN_HIDDEN_SEC} s`, hiddenSec > NATIVE_MIN_HIDDEN_SEC ? "pass" : NC,
+    `${hiddenSec.toFixed(1)} s hidden, observed by the page${hiddenSec > NATIVE_MIN_HIDDEN_SEC ? "" : " — too short to count"}`);
+
+  // 4. A-3: the WebContent kill
+  const killed = Number(steps.webcontent_killed);
+  const pidBefore = pidOf(steps.launch);
+  const pidAfter = pidOf(steps.foreground);
+  if (pidBefore != null && pidAfter != null && pidBefore !== pidAfter) {
+    add("webcontent-kill", "A-3: the engine survives a WebContent kill mid-Foray", NC,
+      `the app process changed (${pidBefore} -> ${pidAfter}): a relaunch, not a WebContent kill, so nothing here is about A-3`);
+  } else if (!Number.isFinite(killed) || killed < 1) {
+    add("webcontent-kill", "A-3: the engine survives a WebContent kill mid-Foray", NC, `no WebContent process was killed (${steps.webcontent_killed ?? "not recorded"})`);
+  } else if (!rec || !(rec.restarts >= 1)) {
+    add("webcontent-kill", "A-3: the engine survives a WebContent kill mid-Foray", NC,
+      `${killed} WebContent process(es) killed, but the page never booted again to attach`);
+  } else {
+    const ha = rec.helloAfterRestart;
+    const snap = rec.snapshotAfterRestart;
+    const alive = ha?.mode === "native" && snap && (snap.running === true || snap.state === "playing" || snap.state === "loading");
+    add("webcontent-kill", "A-3: the engine survives a WebContent kill mid-Foray", alive ? "pass" : "fail",
+      `${killed} killed; the reloaded page attached ${ha?.mode ?? "?"} and saw ${snap ? `state=${snap.state} index=${snap.index} running=${snap.running}` : "no snapshot"}`);
+  }
+
+  // log coverage: the engine's own rows prove the capture watched the App process
+  const logPresent = typeof logText === "string" && logText.trim() !== "";
+  const rows = parseEngineRows(logText);
+  const covered = rows.length > 0;
+  const noLog = logPresent ? "the log was captured but carried no engine row, so it never watched the engine" : "no simulator-log-native.txt";
+  const seams = rows.filter((r) => r.kind === "seam");
+  const nowplaying = rows.filter((r) => r.kind === "nowplaying");
+  const outPoints = rows.filter((r) => r.kind === "outPoint");
+
+  // 5. seams
+  if (!covered) add("seams", "seams advanced (engine seam rows)", NC, noLog);
+  else if (forayOff || !rec?.play?.ok) add("seams", "seams advanced (engine seam rows)", NC, "no Foray was playing, so there were no seams to advance");
+  else {
+    const hidden = seams.filter((r) => r.fields.bgRemainingMs && r.fields.bgRemainingMs !== "null").length;
+    const gaps = seams.map((r) => r.fields.observedGapMs).join(", ");
+    add("seams", "seams advanced (engine seam rows)", seams.length >= NATIVE_EXPECTED_SEAMS ? "pass" : "fail",
+      `${seams.length} of ${NATIVE_EXPECTED_SEAMS} seam rows (${hidden} in the background); observedGapMs ${gaps || "none"}; ${outPoints.length} outPoint row(s)`);
+  }
+
+  // 6. Now Playing
+  const set = nowplaying.filter((r) => r.fields.via === "metadata" || r.fields.via === "state");
+  if (!covered) add("nowplaying", "nowPlayingInfo was set by the engine", NC, noLog);
+  else add("nowplaying", "nowPlayingInfo was set by the engine", set.length ? "pass" : "fail",
+    set.length ? `${set.length} nowplaying row(s); first: \`${set[0].line.slice(-120)}\`` : "the engine wrote rows but no nowplaying row with via=metadata|state");
+
+  // 7. the forbidden lines (coverage-gated: a log that never saw the engine proves nothing)
+  const bad = forbiddenNativeLines(logText);
+  const forbid = (id, title, lines) => {
+    if (!covered) return add(id, title, NC, noLog);
+    add(id, title, lines.length ? "fail" : "pass", lines.length ? `${lines.length} line(s); first: \`${lines[0].slice(0, 160)}\`` : "none, over a log that carried the engine's own rows");
+  };
+  forbid("no-webkit-publish", "no WebKit/MRMediaRemote publish line", bad.webkitPublish);
+  forbid("no-setnowplaying", "no 'ForayAudio.setNowPlaying reached'", bad.forayAudioReached);
+
+  // 8. HTMLMediaElement: the page counters AND the log
+  const probeCount = rec?.mediaElementsProbe;
+  const realCount = rec?.mediaElementsRealApp;
+  if (!Number.isFinite(probeCount) || !Number.isFinite(realCount)) {
+    add("no-html-media", "no HTMLMediaElement constructed", bad.htmlMedia.length ? "fail" : NC,
+      `page counters incomplete (probe ${probeCount ?? "n/a"}, real app ${realCount ?? "n/a"})` +
+        (bad.htmlMedia.length ? `; the log shows ${bad.htmlMedia.length} construction line(s)` : ""));
+  } else {
+    const n = probeCount + realCount + bad.htmlMedia.length;
+    add("no-html-media", "no HTMLMediaElement constructed", n === 0 ? "pass" : "fail",
+      `probe page ${probeCount}, real app after the reload ${realCount}, log ${bad.htmlMedia.length}`);
+  }
+
+  // 9. W-8: the reload clobber check
+  const before = rec?.rowsBeforeReload;
+  if (!before || typeof before !== "object" || !Object.keys(before).length) {
+    add("reload-clobber", "W-8: cp_pos / cp_foray rows unchanged by the reload", NC, "no rows were read before the reload");
+  } else if (!Number.isFinite(rec.realAppBootedAt)) {
+    add("reload-clobber", "W-8: cp_pos / cp_foray rows unchanged by the reload", NC, "the real page never booted after the reload");
+  } else if (!rowsAfter || typeof rowsAfter !== "object") {
+    add("reload-clobber", "W-8: cp_pos / cp_foray rows unchanged by the reload", NC, "no UserDefaults export after the reload");
+  } else {
+    const keys = new Set([...Object.keys(before), ...Object.keys(rowsAfter)]);
+    const changed = [...keys].filter((k) => before[k] !== rowsAfter[k]).sort();
+    add("reload-clobber", "W-8: cp_pos / cp_foray rows unchanged by the reload", changed.length ? "fail" : "pass",
+      changed.length
+        ? `changed across the reload, with the engine paused before its rows were read: ${changed.slice(0, 6).join(", ")}`
+        : `${keys.size} row(s) byte-identical before and after the real page booted`);
+  }
+
+  const verdicts = a.map((x) => x.verdict);
+  const verdict = verdicts.includes("fail") ? "fail" : verdicts.every((v) => v === "pass") ? "pass" : "incomplete";
+  return {
+    verdict,
+    ran: true,
+    assertions: a,
+    headline:
+      verdict === "pass"
+        ? "Every native-lane assertion passed (measured, on a Simulator)."
+        : verdict === "fail"
+          ? `Failed: ${a.filter((x) => x.verdict === "fail").map((x) => x.id).join(", ")}.`
+          : `Incomplete — no coverage for: ${a.filter((x) => x.verdict === NC).map((x) => x.id).join(", ")}. Silence is not a pass.`,
+  };
+}
+
+/** What a Simulator cannot show about the native lane, printed with the section. */
+export const NATIVE_SIMULATOR_LIMITS =
+  "Simulator limits: no car, CarPlay or Bluetooth route; no real suspension or jetsam (the process " +
+  "runs on the host's power policy), so a hidden window here is weaker than a locked phone's; " +
+  "backgrounding is Settings coming forward, not a lock; the WebContent kill is a host `kill -9`, " +
+  "not the OS reclaiming memory; the reload clobber check loads index.html from the page, not " +
+  "UIKit's `WKWebView.reload()`; Now Playing is the engine's own `nowplaying` row, not the lock " +
+  "screen; the audio is bundled files, never a network fetch. The founder's car baseline " +
+  "(docs/field-records/2026-09-24-car-baseline.md) stays the device evidence.";
+
+/** The section, as markdown. Every assertion carries the run id. */
+export function renderNativeSection(n, runId) {
+  const run = runId ? `run ${runId}` : "run id not reported";
+  const lines = [`### 5. Native engine lane (NE-36) — \`${n.verdict}\``, "", n.headline, ""];
+  lines.push("| assertion | verdict | evidence | run |", "|---|---|---|---|");
+  for (const x of n.assertions) {
+    lines.push(`| ${x.title} | \`${x.verdict}\` | ${String(x.evidence).replace(/\|/g, "\\|").replace(/\n/g, " ")} | ${run} |`);
+  }
+  lines.push("", `> ${NATIVE_SIMULATOR_LIMITS}`, "");
+  return lines.join("\n");
+}
+
 /** A SIMULATOR IS NOT A DEVICE, and this sentence ships with every verdict.
  *  The simulator runs on the host's CPU with the host's power policy: it does
  *  not model true suspension, the freezer, or RunningBoard's assertions. So a
@@ -2466,7 +2835,7 @@ export const SIMULATOR_CAVEAT =
  * the gate and "not configured" in the summary. A report that cannot observe what
  * it asserts should not assert it.
  */
-export function renderReport({ bridge, outPoint, seam, signingState, build, lifecycle, seamLogText, bridgeLogText }) {
+export function renderReport({ bridge, outPoint, seam, signingState, build, lifecycle, seamLogText, bridgeLogText, nativeProbe = null, runId = null }) {
   const b = bridgeVerdict(bridge);
   const o = outPointVerdict(outPoint);
   const s = seamTransitionVerdict(seam ?? null);
@@ -2478,9 +2847,9 @@ export function renderReport({ bridge, outPoint, seam, signingState, build, life
   lines.push("## iOS shell — what this run actually established", "");
   if (build) lines.push(`**Build:** ${build}`, "");
   lines.push(`### 1. Capacitor's bridge vs our CSP — \`${b.verdict}\``, "", b.headline, "", b.detail, "");
-  lines.push(`### 2. The out-point while backgrounded — \`${o.verdict}\``, "", o.headline, "", o.detail, "");
+  lines.push(`### 2. The out-point while backgrounded — ${JS_LANE_LABEL} — \`${o.verdict}\``, "", o.headline, "", o.detail, "");
   lines.push(
-    `### 3. The SEAM TRANSITION while backgrounded — \`${s.verdict}\``,
+    `### 3. The SEAM TRANSITION while backgrounded — ${JS_LANE_LABEL} — \`${s.verdict}\``,
     "",
     s.headline,
     "",
@@ -2496,7 +2865,7 @@ export function renderReport({ bridge, outPoint, seam, signingState, build, life
      Reported unconditionally, including `inconclusive`, because the silent version of
      this section is what let the shortfall read as a footnote about save cadence. */
   lines.push(
-    `### 3b. Where the record STOPS, and whether audio stopped with it — \`${sus.verdict}\``,
+    `### 3b. Where the record STOPS, and whether audio stopped with it — ${JS_LANE_LABEL} — \`${sus.verdict}\``,
     "",
     sus.headline,
     "",
@@ -2524,6 +2893,10 @@ export function renderReport({ bridge, outPoint, seam, signingState, build, life
     tk.detail,
     ""
   );
+  /* SECTION 5 IS RENDERED ABOVE 4, beside the lanes it is about: NE-36's native
+     pass, or — until its step lands (G-1b / G-1c) — the legacy smoke alone and a
+     plain "did not run". Never omitted: an absent section reads as nothing wrong. */
+  lines.push(renderNativeSection(nativeProbe ?? nativeProbeVerdict({ bridge }), runId));
   lines.push(
     `### 4. TestFlight upload — \`${signingState || "not reported"}\``,
     "",
@@ -2650,6 +3023,28 @@ if (isMain) {
         if (Array.isArray(parsed)) rows.push(...parsed);
       }
       console.log(JSON.stringify(decodeLocalStorageRows(rows), null, 2));
+    } else if (cmd === "seed-mode") {
+      /* NE-36. Writes the override, then reads it back. The read-back is printed as
+         `seed_<mode>=<value>` for the steps file; a mismatch is LOUD but not fatal —
+         the probe page's own engineHello answer is what the verdict trusts. */
+      const [udid, bundleId, mode] = rest;
+      const w = seedModeArgv(udid, bundleId, mode);
+      execFileSync(w[0], w.slice(1), { stdio: ["ignore", "inherit", "inherit"] });
+      let back = "";
+      try {
+        const r = readModeArgv(udid, bundleId);
+        back = execFileSync(r[0], r.slice(1), { encoding: "utf8" }).trim();
+      } catch (e) { back = `unreadable (${e.message.split("\n")[0]})`; }
+      console.log(`seed_${mode}=${back}`);
+      if (back !== mode) console.error(`::warning::seed-mode wrote ${mode} but read back ${back}`);
+    } else if (cmd === "native-rows") {
+      /* NE-36. The raw export stays wherever the workflow put it (a work directory
+         that is never uploaded); ONLY the owned rows and the probe's record come
+         out, on stdout, for $ART. */
+      if (!rest[0]) throw new Error("native-rows needs a defaults export (XML plist)");
+      const r = parseDefaultsExport(fs.readFileSync(rest[0], "utf8"));
+      console.log(JSON.stringify(r, null, 2));
+      console.error(`kept ${Object.keys(r.rows).length} owned row(s) of ${r.keysSeen} key(s); probe record ${r.probe ? "present" : "ABSENT"}`);
     } else if (cmd === "verdict") {
       const dump = readMaybe(rest[0]) || {};
       const consoleText =
@@ -2671,6 +3066,20 @@ if (isMain) {
         bridgeLogPath && fs.existsSync(bridgeLogPath) ? fs.readFileSync(bridgeLogPath, "utf8") : null;
       const lifecycle = seamLogText != null ? parseSimulatorLifecycle(seamLogText) : null;
       const { bridge, outPoint, outPoints, seam, seams, sources } = collectProbes({ dump, consoleText });
+      /* NE-36's native pass, defaulted from the same directory for the same reason
+         (a governed workflow, no new argv): `native-rows.json`, `native-steps.txt`
+         and `simulator-log-native.txt` beside the dump. Absent files are absent
+         coverage, never a pass. */
+      const artDir = rest[0] ? path.dirname(path.resolve(rest[0])) : null;
+      const inArt = (name) => (artDir && fs.existsSync(path.join(artDir, name)) ? fs.readFileSync(path.join(artDir, name), "utf8") : null);
+      const nativeRows = readMaybe(artDir ? path.join(artDir, "native-rows.json") : null);
+      const nativeProbe = nativeProbeVerdict({
+        record: nativeRows?.probe ?? null,
+        rowsAfter: nativeRows?.rows ?? null,
+        logText: inArt("simulator-log-native.txt"),
+        steps: parseSteps(inArt("native-steps.txt")),
+        bridge,
+      });
       console.error(
         `read ${Object.keys(dump).length} localStorage key(s) and ${consoleText.length} bytes of ` +
           `console log; bridge record ${bridge ? `from ${sources.bridge}` : "ABSENT"}; ` +
@@ -2690,6 +3099,8 @@ if (isMain) {
         bridgeLogText,
         signingState: process.env.SIGNING_STATE || null,
         build: process.env.IOS_BUILD_STATUS || null,
+        nativeProbe,
+        runId: process.env.GITHUB_RUN_ID || null,
       });
       if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, report + "\n");
       console.log(report);
@@ -2704,7 +3115,8 @@ if (isMain) {
         fs.appendFileSync(
           process.env.GITHUB_OUTPUT,
           `bridge=${b.verdict}\noutpoint=${o.verdict}\nseam=${s.verdict}\nsuspension=${sus.verdict}\n` +
-            `mediasession=${ms.verdict}\nnowplaying=${npc.verdict}\ntakeover=${tk.verdict}\n`
+            `mediasession=${ms.verdict}\nnowplaying=${npc.verdict}\ntakeover=${tk.verdict}\n` +
+            `native=${nativeProbe.verdict}\nlegacy_smoke=${legacySmokeVerdict(bridge).verdict}\n`
         );
       }
       /* Deliberately exit 0 for every verdict, INCLUDING the bad ones. This step
@@ -2716,7 +3128,7 @@ if (isMain) {
          `contents: read` and no token, deliberately — so if a verdict belongs in a
          PR body, a human or a session puts it there. */
     } else {
-      console.error("Usage: node tools/mobile/ios-ci.mjs <signing-gate|pick-simulator|verdict> [args]");
+      console.error("Usage: node tools/mobile/ios-ci.mjs <signing-gate|pick-simulator|verdict|seed-mode|native-rows> [args]");
       process.exit(2);
     }
   } catch (e) {
