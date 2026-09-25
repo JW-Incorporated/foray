@@ -25,6 +25,7 @@ import { ForayStitcher } from "./stitchForay";
 import {
   finalizeForay,
   generationBatchId,
+  isMintedPoolCollisionError,
   makeSupersedableCut,
   mintedSegmentRow,
   readExistingForayIds,
@@ -924,6 +925,22 @@ export async function runForayPipeline(
     return (await stageDetail(name, parse, fn)).value;
   };
 
+  /* gen-12 (round-3 audit): a RESUMED sourcing whose minted rows now collide
+     with the committed pool (another Foray published a row at the same start
+     while this one waited out a budget window) is stale against the world.
+     Left banked, every later resume replays it and is refused the same way
+     until someone passes --no-resume, so it is dropped, with everything
+     built on it (narration and stitching), and the next attempt re-sources
+     against the pool as it is now. */
+  const dropStaleSourcing = async (checkForaysErrors: readonly string[]): Promise<void> => {
+    if (!checkpoint.wasResumed("source")) return;
+    if (!checkForaysErrors.some(isMintedPoolCollisionError)) return;
+    const dropped = await checkpoint.drop((name) => name === "source" || name.startsWith("narrate:") || name.startsWith("stitch:"));
+    console.warn(
+      `runForayPipeline: the resumed sourcing collides with the committed segment pool; dropped ${dropped.length} banked stage(s) (${dropped.join(", ")}) so the next attempt re-sources (gen-12)`
+    );
+  };
+
   /* WS-B (docs/curation/generation-fix-plan-2026-09-09.md): `pipelineTokens`
      sums every Anthropic reply's `usage` across the whole run — see
      `usageTracking.ts`'s own doc comment on why this is a single
@@ -1452,6 +1469,7 @@ export async function runForayPipeline(
               finalize
             );
             await deps.onActReady!(candidate);
+            await dropStaleSourcing(candidate.validation.checkForaysErrors);
             /* G-30 (manual step 10): the partial-refusal exit. AFTER the
                callback, so the refused partial is on disk for whoever reads
                the report; BEFORE `checkpoint.stage` records this act's
@@ -1666,6 +1684,7 @@ export async function runForayPipeline(
 
   // §4.9 — validate against the same two checkers CI runs. Writes nothing.
   const result = await timed("finalize", () => finalize(input, options.root));
+  await dropStaleSourcing(result.validation.checkForaysErrors);
 
   /* `finalize`'s own internal breakdown (build-record/check-forays/check-
      narration) plus this function's now-complete stage list — appended
