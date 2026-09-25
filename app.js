@@ -8497,6 +8497,9 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
     container.hidden = false;
     whenIdle(() => searchDataSettled().then(() => {
       if (myToken !== showSearchToken) { reportCtaMs(null); return; } // a newer query already superseded this one
+      /* Belt to the router's supersede (app-2-3): a section no longer in the
+         document is nobody's, so the multi-second scan is not run for it. */
+      if (container.isConnected === false) { reportCtaMs(null); return; }
       const ctaStart = nowMs();
       /* A scan that throws must not leave "Still looking" up for good: the
          pending line is a promise that this callback always ends it. */
@@ -15690,6 +15693,12 @@ function renderCurrentPage() {
   resetPageHeadScrollState();
   renderEpoch++;
   const h = currentHash();
+  /* LEAVING SEARCH ENDS ITS SEARCH (audit round 3, app-2-3). The Search page's
+     passes were superseded only by a keystroke, a new Search mount or ✕ — never
+     by navigating away — so a pending debounce tick still fired its fetches and
+     index scan, and the playlist-CTA scan (1.3-8 s cold, main thread) ran over
+     the show page the listener had just opened. */
+  if (!/^#\/shows($|\/)/.test(h)) supersedeShowSearch();
   /* A repaint of the page already on screen keeps its shelves where the
      listener left them (audit round 2, perf-8) — a settings switch, the late
      ribbon and ↻ all come through here without a navigation. */

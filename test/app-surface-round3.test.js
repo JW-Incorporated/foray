@@ -462,3 +462,55 @@ test("app-2-11: the Search CTA hands its query to Create through module state, c
   m.ctx.renderCreate();
   assert.strictEqual(submits.length, 1, "consumed once: a later visit to Create does not rebuild it");
 });
+
+/* ---------- app-2-3: leaving Search supersedes its passes --------------------- */
+
+test("app-2-3: the router supersedes the Search page's passes when it leaves #/shows, and only then", () => {
+  /* showSearchToken moved only on a keystroke, a new Search mount or ✕, so a
+     debounce tick pending when the listener tapped a show result still fired
+     its fetches and index scan, and the playlist-CTA scan ran over the show
+     page they had just opened.
+     MUTATION: drop the supersedeShowSearch() call in renderCurrentPage — the
+     tick survives and the token is unchanged, red. */
+  const m = loadApp();
+  for (const name of ["renderShow", "renderAllShows", "resetPageHeadScrollState", "renderTabBar", "pageDidPaint", "landOnPage", "restoreRails", "noteRoutePainted"]) m.ctx[name] = () => {};
+  m.run("state.ready = true;");
+  const arm = () => m.run("showSearchDebounceTimer = setTimeout(() => {}, SHOW_SEARCH_DEBOUNCE_MS); showSearchToken");
+
+  m.ctx.location.hash = "#/shows/q/fridman";
+  const stay = arm();
+  m.ctx.renderCurrentPage();
+  assert.strictEqual(m.run("showSearchToken"), stay, "a repaint of Search itself leaves its search alone");
+  assert.ok(m.run("showSearchDebounceTimer"), "and its pending tick");
+
+  m.ctx.location.hash = "#/show/lex-fridman-podcast";
+  const before = m.run("showSearchToken");
+  const tick = m.run("showSearchDebounceTimer");
+  m.ctx.renderCurrentPage();
+  assert.ok(m.run("showSearchToken") > before, "every in-flight pass is superseded");
+  assert.strictEqual(m.run("showSearchDebounceTimer"), null, "the pending tick is cancelled");
+  assert.ok(!m.timers.has(tick), "and its timer cleared");
+});
+
+test("app-2-3: the deferred playlist-CTA scan is skipped for a section no longer in the document", async () => {
+  /* The belt to the router's supersede: the whenIdle callback checked only the
+     token, so the 1.3-8 s relaxation scan ran for a detached container.
+     MUTATION: drop the `container.isConnected === false` return — the scan
+     runs, red. */
+  const m = loadApp();
+  const container = makeEl("section");
+  m.els["#pl-search-results"] = container;
+  m.ctx.playlists = () => [];
+  m.ctx.generatedPlaylistCandidatesForQuery = () => [];
+  m.ctx.searchDataSettled = () => Promise.resolve();
+  let scans = 0;
+  m.ctx.createPlaylistCtaHtml = () => { scans += 1; return ""; };
+  const token = m.run("showSearchToken");
+  const reported = [];
+  m.ctx.renderPlaylistSearchResults("fridman", token, (ms) => reported.push(ms));
+  container.isConnected = false; // the listener tapped a result: #view was replaced
+  m.fire(0);
+  await flush();
+  assert.strictEqual(scans, 0, "no scan for a section nobody can see");
+  assert.deepStrictEqual(reported, [null], "and the diagnostics entry is still closed");
+});
