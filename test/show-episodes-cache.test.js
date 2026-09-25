@@ -174,6 +174,40 @@ test("an evicted show's rows keep their ids in itemIndex but drop the publisher 
   app._state("showEpisodesCache.clear()");
 });
 
+test("round-3 review (L2): a page past its TTL is not served, but its rows keep their notes until a refetch (or eviction) replaces them", () => {
+  /* cachedShowEpisodes trimmed the show's itemIndex rows the moment the page
+     expired, before the refetch answered; offline or failed, nothing re-seeded
+     them and the Episode notes vanished for the session. MUTATION: call
+     dropShowEpisodes on expiry again -- the description is null. */
+  app._state("showEpisodesCache.clear()");
+  const show = { show_id: "expire-me", title: "Expire Me" };
+  const row = app.fullCatalogueRowToEpRowItem(show, { guid: "g1", title: "T", description_text: "Full notes.", audio_url: "https://cdn.test/x.mp3" });
+  app.cacheShowEpisodes("expire-me", { episodes: [{ guid: "g1", title: "T" }], nextCursor: null, stale: false });
+  const ttl = app._state("SHOW_EPISODES_TTL_MS");
+  app._state(`showEpisodesCache.get("expire-me").at -= ${ttl + 1000};`);
+  assert.strictEqual(app.cachedShowEpisodes("expire-me"), null, "the stale page is not served");
+  assert.strictEqual(app._state("state.itemIndex")[row.id].description, "Full notes.", "the notes are still there for the episode page");
+  app.cacheShowEpisodes("another", { episodes: EPS("a"), nextCursor: null, stale: false });   // the insert sweep
+  assert.strictEqual(app._state("state.itemIndex")[row.id].description, "Full notes.", "the sweep does not trim them either");
+  app._state("showEpisodesCache.clear()");
+});
+
+test("round-3 review (L2): eviction does not trim a starred episode's notes", () => {
+  /* MUTATION: drop the savedMap() skip in dropShowEpisodes -- the starred
+     row's description is null after eviction. */
+  app._state("showEpisodesCache.clear()");
+  const show = { show_id: "starred-show", title: "Starred" };
+  const row = app.fullCatalogueRowToEpRowItem(show, { guid: "g9", title: "Kept", description_text: "Starred notes.", audio_url: "https://cdn.test/s.mp3" });
+  app._state(`localStorage.setItem("cp_saved", JSON.stringify({ [${JSON.stringify(row.id)}]: { id: ${JSON.stringify(row.id)}, title: "Kept", description: "Starred notes." } }))`);
+  app.cacheShowEpisodes("starred-show", { episodes: [{ guid: "g9", title: "Kept" }], nextCursor: null, stale: false });
+  const max = app._state("SHOW_EPISODES_CACHE_MAX");
+  for (let i = 0; i < max; i += 1) app.cacheShowEpisodes(`fill-${i}`, { episodes: EPS("a"), nextCursor: null, stale: false });
+  assert.strictEqual(app._state('showEpisodesCache.has("starred-show")'), false, "premise: evicted");
+  assert.strictEqual(app._state("state.itemIndex")[row.id].description, "Starred notes.");
+  app._state('localStorage.removeItem("cp_saved")');
+  app._state("showEpisodesCache.clear()");
+});
+
 test("the TTL is a bound on staleness, not a day", () => {
   /* A podcast gains episodes. Half an hour is the order of magnitude that makes
      a repeat visit instant without making the list wrong. */

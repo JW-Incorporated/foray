@@ -4499,7 +4499,13 @@ const SHOW_EPISODES_CACHE_MAX = 10;
 function cachedShowEpisodes(show_id) {
   const hit = showEpisodesCache.get(show_id);
   if (!hit) return null;
-  if (Date.now() - hit.at > SHOW_EPISODES_TTL_MS) { dropShowEpisodes(show_id); return null; }
+  /* Past its TTL the ROW goes, but the text its rows put in itemIndex stays
+     (round-3 review, L2): this runs before the refetch has answered, and an
+     offline or failed refetch re-seeds nothing, so trimming here took the
+     Episode notes off every episode page of this show for the session. The
+     trim is LRU eviction's (cacheShowEpisodes), and a successful refetch
+     replaces the rows anyway. */
+  if (Date.now() - hit.at > SHOW_EPISODES_TTL_MS) { showEpisodesCache.delete(show_id); return null; }
   showEpisodesCache.delete(show_id);
   showEpisodesCache.set(show_id, hit);
   return hit;
@@ -4507,7 +4513,8 @@ function cachedShowEpisodes(show_id) {
 
 function cacheShowEpisodes(show_id, payload) {
   const now = Date.now();
-  for (const [k, v] of showEpisodesCache) if (now - v.at > SHOW_EPISODES_TTL_MS) dropShowEpisodes(k);
+  // Expired rows are swept (the row only, as above); the text trim is eviction's.
+  for (const [k, v] of showEpisodesCache) if (now - v.at > SHOW_EPISODES_TTL_MS) showEpisodesCache.delete(k);
   showEpisodesCache.delete(show_id);
   showEpisodesCache.set(show_id, { ...payload, at: now });
   while (showEpisodesCache.size > SHOW_EPISODES_CACHE_MAX) dropShowEpisodes(showEpisodesCache.keys().next().value);
@@ -4522,8 +4529,12 @@ function cacheShowEpisodes(show_id, payload) {
 function dropShowEpisodes(show_id) {
   showEpisodesCache.delete(show_id);
   const prefix = `${show_id}--`;
+  /* A STARRED episode keeps its text (round-3 review, L2): its star's snapshot
+     holds up to 4000 characters of description, but resolveEpisode reads
+     itemIndex first, so a trimmed entry hid notes a reload would show. */
+  const saved = savedMap();
   for (const id of Object.keys(state.itemIndex)) {
-    if (!id.startsWith(prefix) || state.poolIds.has(id)) continue;
+    if (!id.startsWith(prefix) || state.poolIds.has(id) || saved[id]) continue;
     const snap = state.itemIndex[id];
     if (snap && snap.description != null) state.itemIndex[id] = { ...storableEpisode(snap), chapters: snap.chapters ?? null };
   }
