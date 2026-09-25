@@ -6845,7 +6845,11 @@ function showsWeVouchFor(limit = 8, now = new Date()) {
   const shows = (state.catalog?.shows || [])
     .filter(s => s.editorial_note && s.editorial_note.trim())
     .slice()
-    .sort((a, b) => a.show_id.localeCompare(b.show_id));
+    /* CODEPOINT order, not localeCompare (audit round 3, app-2-9): with no
+       locale argument that collates in the DEVICE's locale, and under lt, et,
+       cs and sk the committed ids sort differently — so the seeded shuffle
+       picked a different "same set for every visitor" there. */
+    .sort((a, b) => (a.show_id < b.show_id ? -1 : a.show_id > b.show_id ? 1 : 0));
   if (!shows.length) return [];
   return seededShuffle(shows, dayOfYearSeed(now)).slice(0, limit);
 }

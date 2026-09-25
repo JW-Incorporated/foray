@@ -197,3 +197,24 @@ test("app-2-13: Foray links go through forayRouteHash, which encodes", () => {
   assert.ok(card.includes(`href="#/foray/${ODD_HASH}"`), card.slice(0, 300));
   assert.ok(!/#\/foray\/\$\{esc\(/.test(SRC), "every `#/foray/` link goes through forayRouteHash");
 });
+
+/* ---------- app-2-9: the vouched-for set does not depend on the locale -------- */
+
+test("app-2-9: 'Shows 4a vouches for' is the same set whatever the device locale collates", () => {
+  /* The base order used a bare localeCompare, which collates in the device's
+     locale (lt/et/cs/sk sort the committed ids differently), so the seeded
+     shuffle picked different shows there. Simulated here by a context whose
+     localeCompare collates in REVERSE: the answer must not move.
+     MUTATION: restore `.sort((a, b) => a.show_id.localeCompare(b.show_id))` — red. */
+  const m = loadApp();
+  const ids = ["zeta", "alpha", "chi", "hotel", "yankee", "bravo", "cz-show", "ch-show", "delta", "echo"];
+  m.run(`state.catalog = { shows: ${JSON.stringify(ids.map((id) => ({ show_id: id, title: id, editorial_note: "yes" })))} };`);
+  const now = new Date("2026-09-25T12:00:00Z");
+  const plain = Array.from(m.ctx.showsWeVouchFor(4, now), (s) => s.show_id);
+  m.run("String.prototype.localeCompare = function (b) { const a = String(this); return a < b ? 1 : a > b ? -1 : 0; };");
+  const reversed = Array.from(m.ctx.showsWeVouchFor(4, now), (s) => s.show_id);
+  assert.deepStrictEqual(reversed, plain, "a locale's collation must not change the day's picks");
+  const codepoint = ids.slice().sort();
+  const expected = Array.from(m.ctx.seededShuffle(codepoint.map((id) => ({ show_id: id })), m.ctx.dayOfYearSeed(now)).slice(0, 4), (s) => s.show_id);
+  assert.deepStrictEqual(plain, expected, "and the base order is plain codepoint order");
+});
