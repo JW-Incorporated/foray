@@ -236,7 +236,8 @@ final class NarrationOverlayTests: XCTestCase {
             host.confirm()
             host.reading.audible = false
             host.reading.ended = true
-            return (host, host.send(.deck(.ended(token: host.lastLoad ?? 0)), after: 0))
+            let out = host.send(.deck(.ended(token: host.lastLoad ?? 0)), after: 0)
+            return (host, out)
         }
         let (_, off) = seam(NarrationOverlayTests.tape)
         XCTAssertFalse(off.contains { if case .silenceStart = $0 { return true }; return false }, "\(off)")

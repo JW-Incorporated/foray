@@ -2073,6 +2073,11 @@ export const ENGINE_ROW_KINDS = Object.freeze([
      standby deck asked to prepare (prepare), a rendered bridge that would not
      load (bridge), and a playForay refused for its structure (foray). */
   "beat", "skip", "gate", "prepare", "bridge", "foray",
+  /* NE-31s, the overlays: a spoken line's life (narration: voice, started,
+     resuming in place, ended by finish or deadline, suspended, cancelled,
+     voice fallback), the jingle's (interlude: started, cut, ended, skipped)
+     and the flagged-off silence node's (silence: stopped, capped, refused). */
+  "narration", "interlude", "silence",
 ]);
 
 const ENGINE_HEADER_KEYS = new Set(["seq", "at", "mono", "kind", "event", "dropped"]);

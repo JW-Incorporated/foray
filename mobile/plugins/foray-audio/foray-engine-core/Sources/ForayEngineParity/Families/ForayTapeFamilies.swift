@@ -20,7 +20,9 @@ public enum ManagerForayFamily {
     public static let runner = makeRunner()
 
     public static func makeRunner(mutation: EngineScenarioDriver.Mutation? = nil) -> FamilyRunner {
-        ForayTapeRunner(family: "manager-foray", target: "manager",
+        // NE-31j recorded audition's refusal against reference-engine (the
+        // contract's `audition`), so this family runs both targets.
+        ForayTapeRunner(family: "manager-foray", targets: ["manager", "engine"],
                         driver: EngineScenarioDriver(mutation: mutation, forayTape: true))
     }
 }
@@ -29,16 +31,16 @@ public enum PrepareFamily {
     public static let runner = makeRunner()
 
     public static func makeRunner(mutation: EngineScenarioDriver.Mutation? = nil) -> FamilyRunner {
-        ForayTapeRunner(family: "prepare", target: "engine",
+        ForayTapeRunner(family: "prepare", targets: ["engine"],
                         driver: EngineScenarioDriver(mutation: mutation, forayTape: true))
     }
 }
 
-/// Scenarios only, of one target: a fixture file that names a module, or a
-/// case aimed at another target, is refused rather than run.
+/// Scenarios only, of the family's targets: a fixture file that names a
+/// module, or a case aimed at another target, is refused rather than run.
 struct ForayTapeRunner: FamilyRunner {
     let family: String
-    let target: String
+    let targets: [String]
     let driver: EngineScenarioDriver
 
     func run(_ testCase: FixtureCase, in file: FixtureFile, context: Codec.Context) throws -> JSONValue {
@@ -46,8 +48,9 @@ struct ForayTapeRunner: FamilyRunner {
             throw HarnessError("E_BAD_CASE", "the \(family) family is scenarios only; \(testCase.id) is not one")
         }
         let setupTarget = testCase.fields["setup"]?.objectValue?["target"]?.stringValue
-        guard setupTarget == target else {
-            throw HarnessError("E_SCENARIO_TARGET", "the Swift \(family) family drives the \(target) target, not \(setupTarget ?? "none")")
+        guard let setupTarget, targets.contains(setupTarget) else {
+            throw HarnessError("E_SCENARIO_TARGET",
+                               "the Swift \(family) family drives the \(targets.joined(separator: " and ")) target, not \(setupTarget ?? "none")")
         }
         return try driver.run(testCase, context: context).encoded
     }
