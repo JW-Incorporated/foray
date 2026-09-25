@@ -169,6 +169,39 @@ test("media-session is wholly classified: media-episode, an exclusion, or NE-29j
   assert.ok(DATA.capabilities.foray.includes("media") && !DATA.capabilities.episode.includes("media"));
 });
 
+test("seam-gap, interlude and seek-policy are wholly classified, own no unported entry, and outpoint is recorded", () => {
+  // NE-28j's acceptance: "the guard shows zero unported entries for seam-gap,
+  // interlude and seek-policy". MUTATION: put a seek-policy test back in
+  // unported.json -> red; cover an interlude test from a seek-policy case -> red;
+  // tag one outpoint id to another card in swift-pending.json -> red.
+  const { status } = classify(REPO_ROOT, DATA, FIXTURES);
+  const ownFamily = { "seam-gap": "seam-gap/", interlude: "interlude/", "seek-policy": "seek-policy/" };
+  for (const [suite, prefix] of Object.entries(ownFamily)) {
+    const names = Object.entries(status[suite]);
+    assert.ok(names.length > 0, `${suite} has no tests on disk`);
+    for (const [name, st] of names) {
+      const label = `${suite} :: ${JSON.stringify(name)}`;
+      if (st.covered.length) {
+        for (const id of st.covered) assert.ok(id.startsWith(prefix), `${label} is covered by ${id}, outside its own family`);
+      } else if (!st.excluded) {
+        // The one frozen-Foray count is a rule over a real Foray, which is
+        // NE-29j's foray-structure work, not a rule of the interlude module.
+        assert.deepStrictEqual(st.unported, { card: "NE-29j", family: "foray-structure" }, `${label} must be fixtured or excluded`);
+      }
+    }
+  }
+  for (const fam of ["seam-gap", "interlude", "seek-policy", "outpoint"]) {
+    const owedHere = Object.values(DATA.unported).flatMap((t) => Object.values(t ?? {})).filter((e) => e?.family === fam);
+    assert.deepStrictEqual(owedHere, [], `${fam} has unported entries`);
+    assert.ok(DATA.capabilities.foray.includes(fam), `${fam} is charged to the foray capability`);
+  }
+  const outpoint = FIXTURES.filter((f) => f.family === "outpoint").flatMap((f) => f.doc.cases);
+  assert.ok(outpoint.some((c) => c.setup?.target === "deck"), "the outpoint family has op-log scenarios");
+  for (const c of outpoint) {
+    assert.equal(DATA.pending[c.id], "NE-28s", `${c.id} must be owed to NE-28s until the Swift port burns it down`);
+  }
+});
+
 /* transport-reconcile is NE-21's (plan §6.5): each of its tests is a rule the
    page keeps in native mode (a JS-only facade test in native-facades.test.js,
    facades.json), a rule with no Swift meaning (an exclusion), or a rule the

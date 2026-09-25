@@ -1,0 +1,996 @@
+{
+  "family": "seek-policy",
+  "module": "player/seek-policy.js",
+  "note": "ADR-0007's ladder AT LOAD (seek-policy.js segmentLoadGate, which PlayerQueueManager#_segmentGate asks and the native engine will too): a built Foray segment against the duration of the copy the listener was actually served, with and without ADR-0008's pad. The dai-synth-* cases are synthetic DAI copies: one 1800 s reference timeline with a 90 s pad, served with each ad load in the table, across the 30 s drift tolerance and the pad's own bound, with the pad off and on.",
+  "cases": [
+    {
+      "id": "seek-policy/load-gate-settled-at-build",
+      "covers": [],
+      "note": "A segment buildForayQueue settled as exact (a static enclosure) never consults the gate again, whatever the copy reports.",
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#1",
+          "kind": "episode",
+          "source_item_id": "ep-static",
+          "dai_suspected": false,
+          "needs_drift_check": false
+        },
+        { "observedDuration": 1800 }
+      ],
+      "expect": { "return": { "ok": true } }
+    },
+    {
+      "id": "seek-policy/load-gate-no-item",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [null, {}],
+      "expect": { "return": { "ok": true } }
+    },
+    {
+      "id": "seek-policy/load-gate-no-duration",
+      "covers": [],
+      "note": "The deck has not reported a duration: the ad load cannot be compared, so the segment is skipped rather than played at a guess.",
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": null,
+          "needs_drift_check": true
+        },
+        {}
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "the copy in hand reports no duration, so the ad load cannot be compared to the reference"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-nan-duration",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": null,
+          "needs_drift_check": true
+        },
+        { "observedDuration": { "$num": "NaN" } }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "the copy in hand reports no duration, so the ad load cannot be compared to the reference"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-infinite-duration",
+      "covers": [],
+      "note": "A live stream's duration is Infinity: not a copy anyone can compare.",
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": null,
+          "needs_drift_check": true
+        },
+        { "observedDuration": { "$num": "Infinity" } }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "the copy in hand reports no duration, so the ad load cannot be compared to the reference"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-string-duration",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": null,
+          "needs_drift_check": true
+        },
+        { "observedDuration": "2510" }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "the copy in hand reports no duration, so the ad load cannot be compared to the reference"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-matching-copy",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": null,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2510 }
+      ],
+      "expect": {
+        "return": {
+          "note": "exact — ad load matches the reference copy (9s duration drift)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-at-tolerance",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": null,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2531 }
+      ],
+      "expect": {
+        "return": {
+          "note": "exact — ad load matches the reference copy (30s duration drift)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-past-tolerance",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": null,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2532 }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-shorter-copy",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": null,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2200 }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-local-file",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": null,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 9999, "isLocalFile": true }
+      ],
+      "expect": { "return": { "note": "exact — local file", "ok": true } }
+    },
+    {
+      "id": "seek-policy/load-gate-pad-not-opted-in",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": 100,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2567 }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-pad-covers",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": 100,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2567, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "padded — PADDABLE: 100s pad within the 120s ceiling (ADR-0008)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-pad-exceeded",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": 60,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 4200, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "this copy carries 1699s of ad load, beyond the 60s the pad bounds (ADR-0008)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-pad-over-ceiling",
+      "covers": [],
+      "note": "buildForayQueue drops this at build time; the gate still refuses it if a built item ever carries one.",
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": 121,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2567, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "LOCATE-REQUIRED: 121s pad exceeds the 120s ceiling (ADR-0008)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-rung3-outranks-pad",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": 100,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2510, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "exact — ad load matches the reference copy (9s duration drift)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-missing-pad-field",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": 2501,
+          "ad_pad_sec": { "$undefined": true },
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2567, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/load-gate-no-reference",
+      "covers": [],
+      "note": "buildForayQueue drops a DAI segment with no reference duration; a built item that carries none anyway falls to the honest skip.",
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "f#3",
+          "kind": "episode",
+          "source_item_id": "ep-dai",
+          "dai_suspected": true,
+          "reference_duration_sec": null,
+          "ad_pad_sec": null,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2510 }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-0",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1800, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "note": "exact — ad load matches the reference copy (0s duration drift)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-15",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1815, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "note": "exact — ad load matches the reference copy (15s duration drift)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-30",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1830, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "note": "exact — ad load matches the reference copy (30s duration drift)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-31",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1831, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-45",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1845, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-60",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1860, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-89",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1889, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-90",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1890, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-91",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1891, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-120",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1920, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-600",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2400, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-minus-30",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1770, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "note": "exact — ad load matches the reference copy (30s duration drift)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-nopad-load-minus-31",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1769, "allowAdPad": false }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-0",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1800, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "exact — ad load matches the reference copy (0s duration drift)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-15",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1815, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "exact — ad load matches the reference copy (15s duration drift)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-30",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1830, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "exact — ad load matches the reference copy (30s duration drift)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-31",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1831, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "padded — PADDABLE: 90s pad within the 120s ceiling (ADR-0008)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-45",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1845, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "padded — PADDABLE: 90s pad within the 120s ceiling (ADR-0008)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-60",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1860, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "padded — PADDABLE: 90s pad within the 120s ceiling (ADR-0008)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-89",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1889, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "padded — PADDABLE: 90s pad within the 120s ceiling (ADR-0008)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-90",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1890, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "padded — PADDABLE: 90s pad within the 120s ceiling (ADR-0008)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-91",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1891, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "this copy carries 91s of ad load, beyond the 90s the pad bounds (ADR-0008)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-120",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1920, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "this copy carries 120s of ad load, beyond the 90s the pad bounds (ADR-0008)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-600",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 2400, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "ok": false,
+          "reason": "this copy carries 600s of ad load, beyond the 90s the pad bounds (ADR-0008)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-minus-30",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1770, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "exact — ad load matches the reference copy (30s duration drift)",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "seek-policy/dai-synth-pad-load-minus-31",
+      "covers": [],
+      "call": "segmentLoadGate",
+      "args": [
+        {
+          "id": "synth#1",
+          "kind": "episode",
+          "source_item_id": "ep-synth",
+          "dai_suspected": true,
+          "reference_duration_sec": 1800,
+          "ad_pad_sec": 90,
+          "needs_drift_check": true
+        },
+        { "observedDuration": 1769, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "note": "padded — PADDABLE: 90s pad within the 120s ceiling (ADR-0008)",
+          "ok": true
+        }
+      }
+    }
+  ]
+}

@@ -34,8 +34,21 @@ public enum EngineConstants {
         public static let loadSettleTimeoutMs: Double = 10000
         /// `OUT_POINT_ARM_LEAD_SEC`
         public static let outPointArmLeadSec: Double = 2
+        /// `OUT_POINT_LAYER`
+        public enum OutPointLayer {
+            /// `OUT_POINT_LAYER.END_TIME`
+            public static let endTime: String = "endTime"
+            /// `OUT_POINT_LAYER.BOUNDARY`
+            public static let boundary: String = "boundary"
+            /// `OUT_POINT_LAYER.WATCHDOG`
+            public static let watchdog: String = "watchdog"
+        }
         /// `OUT_POINT_MIN_TIMER_MS`
         public static let outPointMinTimerMs: Double = 4
+        /// `OUT_POINT_WATCHDOG_POLL_MS`
+        public static let outPointWatchdogPollMs: Double = 250
+        /// `OUT_POINT_WATCHDOG_WINDOW_SEC`
+        public static let outPointWatchdogWindowSec: Double = 1.5
         /// `RECOVERY`
         public enum Recovery {
             /// `RECOVERY.ARM_OUT_POINT`
@@ -47,6 +60,13 @@ public enum EngineConstants {
         }
         /// `SETTLE_NEAR_SEC`
         public static let settleNearSec: Double = 1
+        /// `WATCHDOG_WAKE`
+        public enum WatchdogWake {
+            /// `WATCHDOG_WAKE.STOP`
+            public static let stop: String = "stop"
+            /// `WATCHDOG_WAKE.REARM`
+            public static let rearm: String = "rearm"
+        }
     }
 
     /// `player/default-voice.js`

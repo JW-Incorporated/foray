@@ -108,7 +108,7 @@
       "type": "object",
       "required": ["target"],
       "properties": {
-        "target": { "description": "What the scenario drives. JS drivers exist for: manager.", "enum": ["manager", "deck", "engine"] },
+        "target": { "description": "What the scenario drives. JS drivers exist for: manager, and deck (NE-28j: the outpoint family over deck-policy.js outPointStep and a driven clock).", "enum": ["manager", "deck", "engine"] },
         "positionEvents": { "description": "NE-14j: the manager's position store is the real PositionStore, and its onSave writes event.position:<id>@<seconds>:<duration> into the op log (plan §5.5 pendingEvents).", "type": "boolean" },
         "scheduler": { "enum": ["instant", "manual"] },
         "backend": { "type": "object" },
@@ -126,7 +126,7 @@
       "enum": ["call", "settle", "clock", "deck", "tts", "interlude", "session", "lifecycle", "remote", "checkpoint"]
     },
     "step": {
-      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay).",
+      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay; for the deck target, outPointSec, rate and token).",
       "type": "object",
       "minProperties": 1
     },
